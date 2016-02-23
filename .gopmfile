@@ -1,0 +1,8 @@
+[target]
+path = github.com/deluan/gosonic
+
+[deps]
+github.com/astaxie/beego = tag:v1.6.0
+
+[res]
+include = conf
