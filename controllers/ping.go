@@ -3,7 +3,7 @@ package controllers
 import (
 	"github.com/astaxie/beego"
 	"encoding/xml"
-	"github.com/deluan/gosonic/responses"
+	"github.com/deluan/gosonic/controllers/responses"
 )
 
 type PingController struct{ beego.Controller }

@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/responses"
+	"github.com/deluan/gosonic/controllers/responses"
 )
 
 type GetLicenseController struct{ beego.Controller }
