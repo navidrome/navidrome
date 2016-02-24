@@ -10,6 +10,8 @@ import (
 
 	"github.com/astaxie/beego"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/deluan/gosonic/controllers"
+"encoding/xml"
 )
 
 func init() {
@@ -33,8 +35,11 @@ func TestPing(t *testing.T) {
 		Convey("The Result Should Not Be Empty", func() {
 			So(w.Body.Len(), ShouldBeGreaterThan, 0)
 		})
-		Convey("The Result Should Be A Pong", func() {
-			So(w.Body.String(), ShouldEqual, "<subsonic-response xmlns=\"http://subsonic.org/restapi\" status=\"ok\" version=\"1.0.0\"></subsonic-response>")
+		Convey("The Result Should Be A Valid Ping Response", func() {
+			v := controllers.PingResponse{}
+			xml.Unmarshal(w.Body.Bytes(), &v)
+			So(v.Status, ShouldEqual, "ok")
+			So(v.Version, ShouldEqual, "1.0.0")
 		})
 
 	})
