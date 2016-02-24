@@ -13,7 +13,7 @@ type Subsonic struct {
 }
 
 func NewEmpty() Subsonic {
-	return Subsonic{Status: "ok", Version: beego.AppConfig.String("apiversion")}
+	return Subsonic{Status: "ok", Version: beego.AppConfig.String("apiVersion")}
 }
 
 func NewXML(body interface{}) []byte {

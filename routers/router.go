@@ -17,5 +17,6 @@ func init() {
 	beego.Include(
 		&controllers.PingController{},
 		&controllers.GetLicenseController{},
+		&controllers.GetMusicFoldersController{},
 	)
 }

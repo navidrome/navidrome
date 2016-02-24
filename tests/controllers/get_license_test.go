@@ -12,6 +12,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"encoding/xml"
 	"fmt"
+	"github.com/deluan/gosonic/tests"
 )
 
 func init() {
@@ -22,7 +23,7 @@ func init() {
 
 // TestGet is a sample to run an endpoint test
 func TestGetLicense(t *testing.T) {
-	r, _ := http.NewRequest("GET", "/rest/getLicense.view", nil)
+	r, _ := http.NewRequest("GET", test.AddParams("/rest/getLicense.view"), nil)
 	w := httptest.NewRecorder()
 	beego.BeeApp.Handlers.ServeHTTP(w, r)
 
