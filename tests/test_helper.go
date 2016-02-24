@@ -26,12 +26,12 @@ func AddParams(url string) string {
 	return fmt.Sprintf("%s?u=%s&p=%s&c=%s&v=%s", url, testUser, testPassword, testClient, testVersion)
 }
 
-func Get(url string, methodName string) (*http.Request, *httptest.ResponseRecorder) {
+func Get(url string, testCase string) (*http.Request, *httptest.ResponseRecorder) {
 	r, _ := http.NewRequest("GET", url, nil)
 	w := httptest.NewRecorder()
 	beego.BeeApp.Handlers.ServeHTTP(w, r)
 
-	beego.Trace("testing", methodName, fmt.Sprintf("\nUrl: %s\n\nCode[%d]\n%s", r.URL, w.Code, w.Body.String()))
+	beego.Trace("testing", testCase, fmt.Sprintf("\nUrl: %s\nStatus Code: [%d]\n%s", r.URL, w.Code, w.Body.String()))
 
 	return r, w
 }
