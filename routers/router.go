@@ -14,5 +14,8 @@ import (
 )
 
 func init() {
-	beego.Include(&controllers.PingController{})
+	beego.Include(
+		&controllers.PingController{},
+		&controllers.GetLicenseController{},
+	)
 }

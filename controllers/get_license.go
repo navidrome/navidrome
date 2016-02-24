@@ -6,11 +6,11 @@ import (
 	"github.com/deluan/gosonic/responses"
 )
 
-type PingController struct{ beego.Controller }
+type GetLicenseController struct{ beego.Controller }
 
-// @router /rest/ping.view [get]
-func (this *PingController) Get() {
-	response := responses.NewSubsonic()
+// @router /rest/getLicense.view [get]
+func (this *GetLicenseController) Get() {
+	response := responses.NewGetLicense(true)
 	xmlBody, _ := xml.Marshal(response)
 	this.Ctx.Output.Body([]byte(xml.Header + string(xmlBody)))
 }
