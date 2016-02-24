@@ -1,32 +1,16 @@
 package test
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
-	"runtime"
 	"encoding/xml"
-	"path/filepath"
 	_ "github.com/deluan/gosonic/routers"
-	"github.com/astaxie/beego"
 	. "github.com/smartystreets/goconvey/convey"
-	"fmt"
 	"github.com/deluan/gosonic/controllers/responses"
-	"github.com/deluan/gosonic/tests"
+	. "github.com/deluan/gosonic/tests"
 )
 
-func init() {
-	_, file, _, _ := runtime.Caller(1)
-	appPath, _ := filepath.Abs(filepath.Dir(filepath.Join(file, "../.." + string(filepath.Separator))))
-	beego.TestBeegoInit(appPath)
-}
-
 func TestPing(t *testing.T) {
-	r, _ := http.NewRequest("GET", test.AddParams("/rest/ping.view"), nil)
-	w := httptest.NewRecorder()
-	beego.BeeApp.Handlers.ServeHTTP(w, r)
-
-	beego.Trace("testing", "TestPing", fmt.Sprintf("\nUrl: %s\n\nCode[%d]\n%s", r.URL, w.Code, w.Body.String()))
+	_, w := Get(AddParams("/rest/ping.view"), "TestPing")
 
 	Convey("Subject: Ping Endpoint\n", t, func() {
 		Convey("Status code should be 200", func() {

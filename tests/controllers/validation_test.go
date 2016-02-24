@@ -1,31 +1,16 @@
 package test
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
-	"runtime"
 	"encoding/xml"
-	"path/filepath"
 	_ "github.com/deluan/gosonic/routers"
-	"github.com/astaxie/beego"
+	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
-	"fmt"
 	"github.com/deluan/gosonic/controllers/responses"
 )
 
-func init() {
-	_, file, _, _ := runtime.Caller(1)
-	appPath, _ := filepath.Abs(filepath.Dir(filepath.Join(file, "../.." + string(filepath.Separator))))
-	beego.TestBeegoInit(appPath)
-}
-
 func TestCheckParams(t *testing.T) {
-	r, _ := http.NewRequest("GET", "/rest/ping.view", nil)
-	w := httptest.NewRecorder()
-	beego.BeeApp.Handlers.ServeHTTP(w, r)
-
-	beego.Trace("testing", "TestCheckParams", fmt.Sprintf("\nUrl: %s\n\nCode[%d]\n%s", r.URL, w.Code, w.Body.String()))
+	_, w := Get("/rest/ping.view", "TestCheckParams")
 
 	Convey("Subject: Validation\n", t, func() {
 		Convey("Status code should be 200", func() {
@@ -43,11 +28,7 @@ func TestCheckParams(t *testing.T) {
 }
 
 func TestAuthentication(t *testing.T) {
-	r, _ := http.NewRequest("GET", "/rest/ping.view?u=INVALID&p=INVALID&c=test&v=1.0.0", nil)
-	w := httptest.NewRecorder()
-	beego.BeeApp.Handlers.ServeHTTP(w, r)
-
-	beego.Trace("testing", "TestCheckParams", fmt.Sprintf("\nUrl: %s\n\nCode[%d]\n%s", r.URL, w.Code, w.Body.String()))
+	_, w := Get("/rest/ping.view?u=INVALID&p=INVALID&c=test&v=1.0.0", "TestAuthentication")
 
 	Convey("Subject: Validation\n", t, func() {
 		Convey("Status code should be 200", func() {
