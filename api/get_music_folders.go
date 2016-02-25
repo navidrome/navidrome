@@ -8,7 +8,7 @@ import (
 
 type GetMusicFoldersController struct{ beego.Controller }
 
-func (this *GetMusicFoldersController) Get() {
+func (c *GetMusicFoldersController) Get() {
 	repository := new(repositories.MediaFolderRepository)
 	mediaFolderList, _ := repository.GetAll()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
@@ -18,7 +18,7 @@ func (this *GetMusicFoldersController) Get() {
 	}
 	musicFolders := &responses.MusicFolders{Folders: folders}
 	response := responses.NewXML(musicFolders)
-	this.Ctx.Output.Body(response)
+	c.Ctx.Output.Body(response)
 }
 
 

@@ -8,10 +8,10 @@ import (
 
 type PingController struct{ beego.Controller }
 
-func (this *PingController) Get() {
+func (c *PingController) Get() {
 	response := responses.NewEmpty()
 	xmlBody, _ := xml.Marshal(response)
-	this.Ctx.Output.Body([]byte(xml.Header + string(xmlBody)))
+	c.Ctx.Output.Body([]byte(xml.Header + string(xmlBody)))
 }
 
 

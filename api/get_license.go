@@ -7,9 +7,9 @@ import (
 
 type GetLicenseController struct{ beego.Controller }
 
-func (this *GetLicenseController) Get() {
+func (c *GetLicenseController) Get() {
 	response := responses.NewXML(&responses.License{Valid: true})
-	this.Ctx.Output.Body(response)
+	c.Ctx.Output.Body(response)
 }
 
 
