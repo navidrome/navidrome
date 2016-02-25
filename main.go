@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "github.com/deluan/gosonic/docs"
 	_ "github.com/deluan/gosonic/routers"
 
 	"github.com/astaxie/beego"
