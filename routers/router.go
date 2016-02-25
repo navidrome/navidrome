@@ -4,7 +4,7 @@ import (
 	"github.com/deluan/gosonic/controllers"
 
 	"github.com/astaxie/beego"
-"github.com/astaxie/beego/context"
+	"github.com/astaxie/beego/context"
 )
 
 func init() {
