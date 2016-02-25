@@ -20,7 +20,7 @@ func TestGetMusicFolders(t *testing.T) {
 			v := new(string)
 			err := xml.Unmarshal(w.Body.Bytes(), &v)
 			So(err, ShouldBeNil)
-			So(w.Body.String(), ShouldContainSubstring, `musicFolder id="1" name="iTunes Library"`)
+			So(w.Body.String(), ShouldContainSubstring, `musicFolder id="0" name="iTunes Library"`)
 		})
 	})
 }
