@@ -9,7 +9,7 @@ GoSonic is an application that implements the [Subsonic API](http://www.subsonic
 having its own music library like the original [Subsonic application](http://www.subsonic.org), it interacts directly
 with your iTunes library.
 
-The main goals for this project are:
+The project's main goals are:
 * Full compatibility with the available [Subsonic clients](http://www.subsonic.org/pages/apps.jsp)
 * Use all metadata from iTunes
 * Update play counts, last played dates, ratings, etc..  on iTunes
