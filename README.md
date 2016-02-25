@@ -5,6 +5,8 @@ GoSonic
 
 __This is still a work in progress, and has no releases available__
 
+__PROGRESS__: Currently implementing API v1.0.0 
+
 GoSonic is an application that implements the [Subsonic API](http://www.subsonic.org/pages/api.jsp), but instead of
 having its own music library like the original [Subsonic application](http://www.subsonic.org), it interacts directly
 with your iTunes library.
