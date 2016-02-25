@@ -3,6 +3,8 @@ path = github.com/deluan/gosonic
 
 [deps]
 github.com/astaxie/beego = tag:v1.6.0
+github.com/blevesearch/bleve = commit:a5bb81e
+github.com/dhowden/itl = commit:35d15a3
 
 [res]
 include = conf
