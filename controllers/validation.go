@@ -10,7 +10,7 @@ type ControllerInterface interface {
 	CustomAbort(status int, body string)
 }
 
-func validate(controller ControllerInterface) {
+func Validate(controller ControllerInterface) {
 	if beego.AppConfig.String("disableValidation") != "true" {
 		checkParameters(controller)
 		authenticate(controller)

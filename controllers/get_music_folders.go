@@ -10,8 +10,6 @@ type GetMusicFoldersController struct{ beego.Controller }
 
 // @router /rest/getMusicFolders.view [get]
 func (this *GetMusicFoldersController) Get() {
-	validate(this)
-
 	repository := new(repositories.MediaFolderRepository)
 	mediaFolderList, _ := repository.GetAll()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/astaxie/beego"
 	"net/http/httptest"
-"net/http"
+	"net/http"
 	"path/filepath"
 	"runtime"
 )
