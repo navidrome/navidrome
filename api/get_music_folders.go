@@ -1,14 +1,13 @@
-package controllers
+package api
 
 import (
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/controllers/responses"
+	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/repositories"
 )
 
 type GetMusicFoldersController struct{ beego.Controller }
 
-// @router /rest/getMusicFolders.view [get]
 func (this *GetMusicFoldersController) Get() {
 	repository := new(repositories.MediaFolderRepository)
 	mediaFolderList, _ := repository.GetAll()

@@ -8,7 +8,6 @@ import (
 type MainController struct{ beego.Controller }
 
 
-// @router / [get]
 func (this *MainController) Get() {
 	this.Ctx.Redirect(302, "/static/Jamstash/")
 }

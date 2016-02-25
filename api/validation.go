@@ -1,8 +1,8 @@
-package controllers
+package api
 
 import (
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/controllers/responses"
+	"github.com/deluan/gosonic/api/responses"
 )
 
 type ControllerInterface interface {

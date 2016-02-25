@@ -1,22 +1,25 @@
 package routers
 
 import (
-	"github.com/deluan/gosonic/controllers"
+	"github.com/deluan/gosonic/api"
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/context"
+	"github.com/deluan/gosonic/controllers"
 )
 
 func init() {
-	beego.Include(
-		&controllers.MainController{},
-		&controllers.PingController{},
-		&controllers.GetLicenseController{},
-		&controllers.GetMusicFoldersController{},
+	ns := beego.NewNamespace("/rest",
+		beego.NSRouter("/ping.view", &api.PingController{}),
+		beego.NSRouter("/getLicense.view", &api.GetLicenseController{}),
+		beego.NSRouter("/getMusicFolders.view", &api.GetMusicFoldersController{}),
 	)
+	beego.AddNamespace(ns)
+
+	beego.Router("/", &controllers.MainController{})
 
 	var ValidateRequest = func(ctx *context.Context) {
-		controllers.Validate(&beego.Controller{Ctx: ctx})
+		api.Validate(&beego.Controller{Ctx: ctx})
 	}
 
 	beego.InsertFilter("/rest/*", beego.BeforeRouter, ValidateRequest)

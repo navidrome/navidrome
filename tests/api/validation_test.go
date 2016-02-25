@@ -6,7 +6,7 @@ import (
 	_ "github.com/deluan/gosonic/routers"
 	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/deluan/gosonic/controllers/responses"
+	"github.com/deluan/gosonic/api/responses"
 )
 
 func TestCheckParams(t *testing.T) {

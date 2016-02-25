@@ -5,7 +5,7 @@ import (
 	"encoding/xml"
 	_ "github.com/deluan/gosonic/routers"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/deluan/gosonic/controllers/responses"
+	"github.com/deluan/gosonic/api/responses"
 	. "github.com/deluan/gosonic/tests"
 )
 

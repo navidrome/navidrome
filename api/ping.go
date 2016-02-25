@@ -1,14 +1,13 @@
-package controllers
+package api
 
 import (
 	"github.com/astaxie/beego"
 	"encoding/xml"
-	"github.com/deluan/gosonic/controllers/responses"
+	"github.com/deluan/gosonic/api/responses"
 )
 
 type PingController struct{ beego.Controller }
 
-// @router /rest/ping.view [get]
 func (this *PingController) Get() {
 	response := responses.NewEmpty()
 	xmlBody, _ := xml.Marshal(response)
