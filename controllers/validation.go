@@ -14,6 +14,7 @@ func validate(controller ControllerInterface) {
 	if beego.AppConfig.String("disableValidation") != "true" {
 		checkParameters(controller)
 		authenticate(controller)
+		// TODO Validate version
 	}
 }
 
@@ -29,7 +30,7 @@ func checkParameters(c ControllerInterface) {
 
 func authenticate(c ControllerInterface) {
 	user := c.GetString("u")
-	pass := c.GetString("p")
+	pass := c.GetString("p") // TODO Handle hex-encoded password
 	if (user != beego.AppConfig.String("user") || pass != beego.AppConfig.String("password")) {
 		cancel(c, responses.ERROR_AUTHENTICATION_FAIL)
 	}
