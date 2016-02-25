@@ -20,6 +20,13 @@ func init() {
 			[]string{"get"},
 			nil})
 
+	beego.GlobalControllerRouter["github.com/deluan/gosonic/controllers:MainController"] = append(beego.GlobalControllerRouter["github.com/deluan/gosonic/controllers:MainController"],
+		beego.ControllerComments{
+			"Get",
+			`/`,
+			[]string{"get"},
+			nil})
+
 	beego.GlobalControllerRouter["github.com/deluan/gosonic/controllers:ObjectController"] = append(beego.GlobalControllerRouter["github.com/deluan/gosonic/controllers:ObjectController"],
 		beego.ControllerComments{
 			"Post",

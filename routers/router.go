@@ -9,6 +9,7 @@ import (
 
 func init() {
 	beego.Include(
+		&controllers.MainController{},
 		&controllers.PingController{},
 		&controllers.GetLicenseController{},
 		&controllers.GetMusicFoldersController{},
@@ -19,4 +20,5 @@ func init() {
 	}
 
 	beego.InsertFilter("/rest/*", beego.BeforeRouter, ValidateRequest)
+	beego.ErrorController(&controllers.MainController{})
 }
