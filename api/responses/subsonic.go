@@ -9,7 +9,7 @@ type Subsonic struct {
 	XMLName xml.Name `xml:"http://subsonic.org/restapi subsonic-response"`
 	Status  string   `xml:"status,attr"`
 	Version string   `xml:"version,attr"`
-	Body    []byte 	 `xml:",innerxml"`
+	Body    []byte   `xml:",innerxml"`
 }
 
 func NewEmpty() Subsonic {

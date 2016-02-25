@@ -20,6 +20,3 @@ func (c *GetMusicFoldersController) Get() {
 	response := responses.NewXML(musicFolders)
 	c.Ctx.Output.Body(response)
 }
-
-
-

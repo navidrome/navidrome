@@ -32,9 +32,9 @@ func init() {
 }
 
 type error struct {
-	XMLName xml.Name`xml:"error"`
-	Code    int     `xml:"code,attr"`
-	Message string  `xml:"message,attr"`
+	XMLName xml.Name `xml:"error"`
+	Code    int      `xml:"code,attr"`
+	Message string   `xml:"message,attr"`
 }
 
 func NewError(errorCode int) []byte {

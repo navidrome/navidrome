@@ -3,23 +3,23 @@ package test
 import (
 	"fmt"
 	"github.com/astaxie/beego"
-	"net/http/httptest"
 	"net/http"
+	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"runtime"
-	"os"
 )
 
 const (
-	testUser = "deluan"
+	testUser     = "deluan"
 	testPassword = "wordpass"
-	testClient = "test"
-	testVersion = "1.0.0"
+	testClient   = "test"
+	testVersion  = "1.0.0"
 )
 
 func init() {
 	_, file, _, _ := runtime.Caller(1)
-	appPath, _ := filepath.Abs(filepath.Dir(filepath.Join(file, ".." + string(filepath.Separator))))
+	appPath, _ := filepath.Abs(filepath.Dir(filepath.Join(file, ".."+string(filepath.Separator))))
 	beego.TestBeegoInit(appPath)
 
 	noLog := os.Getenv("NOLOG")
@@ -41,4 +41,3 @@ func Get(url string, testCase string) (*http.Request, *httptest.ResponseRecorder
 
 	return r, w
 }
-

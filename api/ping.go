@@ -1,8 +1,8 @@
 package api
 
 import (
-	"github.com/astaxie/beego"
 	"encoding/xml"
+	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 )
 
@@ -13,6 +13,3 @@ func (c *PingController) Get() {
 	xmlBody, _ := xml.Marshal(response)
 	c.Ctx.Output.Body([]byte(xml.Header + string(xmlBody)))
 }
-
-
-

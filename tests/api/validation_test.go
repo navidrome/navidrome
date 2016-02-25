@@ -1,12 +1,12 @@
 package api_test
 
 import (
-	"testing"
 	"encoding/xml"
+	"github.com/deluan/gosonic/api/responses"
 	_ "github.com/deluan/gosonic/routers"
 	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/deluan/gosonic/api/responses"
+	"testing"
 )
 
 func TestCheckParams(t *testing.T) {
@@ -44,5 +44,3 @@ func TestAuthentication(t *testing.T) {
 		})
 	})
 }
-
-

@@ -19,9 +19,9 @@ func Validate(controller ControllerInterface) {
 }
 
 func checkParameters(c ControllerInterface) {
-	requiredParameters := []string {"u", "p", "v", "c",}
+	requiredParameters := []string{"u", "p", "v", "c"}
 
-	for _,p := range requiredParameters {
+	for _, p := range requiredParameters {
 		if c.GetString(p) == "" {
 			cancel(c, responses.ERROR_MISSING_PARAMETER)
 		}
@@ -31,7 +31,7 @@ func checkParameters(c ControllerInterface) {
 func authenticate(c ControllerInterface) {
 	user := c.GetString("u")
 	pass := c.GetString("p") // TODO Handle hex-encoded password
-	if (user != beego.AppConfig.String("user") || pass != beego.AppConfig.String("password")) {
+	if user != beego.AppConfig.String("user") || pass != beego.AppConfig.String("password") {
 		cancel(c, responses.ERROR_AUTHENTICATION_FAIL)
 	}
 }

@@ -1,11 +1,11 @@
 package api_test
 
 import (
-	"testing"
+	"encoding/xml"
 	_ "github.com/deluan/gosonic/routers"
 	. "github.com/deluan/gosonic/tests"
-	"encoding/xml"
 	. "github.com/smartystreets/goconvey/convey"
+	"testing"
 )
 
 func TestGetLicense(t *testing.T) {
@@ -24,4 +24,3 @@ func TestGetLicense(t *testing.T) {
 
 	})
 }
-

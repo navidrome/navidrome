@@ -1,12 +1,12 @@
 package api_test
 
 import (
-	"testing"
 	_ "github.com/deluan/gosonic/routers"
 	. "github.com/deluan/gosonic/tests"
+	"testing"
 
-	. "github.com/smartystreets/goconvey/convey"
 	"encoding/xml"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestGetMusicFolders(t *testing.T) {
@@ -24,4 +24,3 @@ func TestGetMusicFolders(t *testing.T) {
 		})
 	})
 }
-

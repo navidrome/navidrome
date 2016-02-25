@@ -11,6 +11,3 @@ func (c *GetLicenseController) Get() {
 	response := responses.NewXML(&responses.License{Valid: true})
 	c.Ctx.Output.Body(response)
 }
-
-
-

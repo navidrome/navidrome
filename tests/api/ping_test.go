@@ -1,12 +1,12 @@
 package api_test
 
 import (
-	"testing"
 	"encoding/xml"
-	_ "github.com/deluan/gosonic/routers"
-	. "github.com/smartystreets/goconvey/convey"
 	"github.com/deluan/gosonic/api/responses"
+	_ "github.com/deluan/gosonic/routers"
 	. "github.com/deluan/gosonic/tests"
+	. "github.com/smartystreets/goconvey/convey"
+	"testing"
 )
 
 func TestPing(t *testing.T) {
@@ -28,4 +28,3 @@ func TestPing(t *testing.T) {
 
 	})
 }
-

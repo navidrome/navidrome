@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"github.com/deluan/gosonic/models"
 	"encoding/json"
+	"github.com/deluan/gosonic/models"
 
 	"github.com/astaxie/beego"
 )
@@ -89,4 +89,3 @@ func (o *ObjectController) Delete() {
 	o.Data["json"] = "delete success!"
 	o.ServeJSON()
 }
-
