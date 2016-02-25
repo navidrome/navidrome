@@ -6,6 +6,7 @@ import (
 	. "github.com/deluan/gosonic/tests"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"encoding/xml"
 )
 
 func TestGetMusicFolders(t *testing.T) {
@@ -14,6 +15,12 @@ func TestGetMusicFolders(t *testing.T) {
 	Convey("Subject: GetMusicFolders Endpoint\n", t, func() {
 		Convey("Status code should be 200", func() {
 			So(w.Code, ShouldEqual, 200)
+		})
+		Convey("The response should include the default folder", func() {
+			v := new(string)
+			err := xml.Unmarshal(w.Body.Bytes(), &v)
+			So(err, ShouldBeNil)
+			So(w.Body.String(), ShouldContainSubstring, `musicFolder id="1" name="iTunes Library"`)
 		})
 	})
 }
