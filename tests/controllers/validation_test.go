@@ -1,4 +1,4 @@
-package test
+package controller_test
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 func TestCheckParams(t *testing.T) {
 	_, w := Get("/rest/ping.view", "TestCheckParams")
 
-	Convey("Subject: Validation\n", t, func() {
+	Convey("Subject: CheckParams\n", t, func() {
 		Convey("Status code should be 200", func() {
 			So(w.Code, ShouldEqual, 200)
 		})
@@ -30,7 +30,7 @@ func TestCheckParams(t *testing.T) {
 func TestAuthentication(t *testing.T) {
 	_, w := Get("/rest/ping.view?u=INVALID&p=INVALID&c=test&v=1.0.0", "TestAuthentication")
 
-	Convey("Subject: Validation\n", t, func() {
+	Convey("Subject: Authentication\n", t, func() {
 		Convey("Status code should be 200", func() {
 			So(w.Code, ShouldEqual, 200)
 		})

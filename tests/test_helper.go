@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"runtime"
+	"os"
 )
 
 const (
@@ -20,6 +21,11 @@ func init() {
 	_, file, _, _ := runtime.Caller(1)
 	appPath, _ := filepath.Abs(filepath.Dir(filepath.Join(file, ".." + string(filepath.Separator))))
 	beego.TestBeegoInit(appPath)
+
+	noLog := os.Getenv("NOLOG")
+	if noLog != "" {
+		beego.SetLevel(beego.LevelError)
+	}
 }
 
 func AddParams(url string) string {
@@ -31,7 +37,7 @@ func Get(url string, testCase string) (*http.Request, *httptest.ResponseRecorder
 	w := httptest.NewRecorder()
 	beego.BeeApp.Handlers.ServeHTTP(w, r)
 
-	beego.Trace("testing", testCase, fmt.Sprintf("\nUrl: %s\nStatus Code: [%d]\n%s", r.URL, w.Code, w.Body.String()))
+	beego.Debug("testing", testCase, fmt.Sprintf("\nUrl: %s\nStatus Code: [%d]\n%s", r.URL, w.Code, w.Body.String()))
 
 	return r, w
 }
