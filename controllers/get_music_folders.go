@@ -13,7 +13,7 @@ func (this *GetMusicFoldersController) Get() {
 	validate(this)
 
 	repository := new(repositories.MediaFolderRepository)
-	mediaFolderList := repository.GetAll()
+	mediaFolderList, _ := repository.GetAll()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {
 		folders[i].Id = f.Id

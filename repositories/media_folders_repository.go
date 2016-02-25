@@ -7,9 +7,9 @@ import (
 
 type MediaFolderRepository struct {}
 
-func (*MediaFolderRepository) GetAll() []*models.MediaFolder {
+func (*MediaFolderRepository) GetAll() ([]*models.MediaFolder, error) {
 	mediaFolder := models.MediaFolder{Id: "1", Name: "iTunes Library", Path: beego.AppConfig.String("musicFolder")}
 	result := make([]*models.MediaFolder, 1)
 	result[0] = &mediaFolder
-	return result
+	return result, nil
 }
