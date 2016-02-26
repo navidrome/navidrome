@@ -6,13 +6,14 @@ go:
  - 1.6
 
 install:
+  - go get github.com/smartystreets/goconvey
   - go get github.com/gpmgo/gopm
   - gopm list -v
-  - gopm get -v
+  - gopm get -v -g
 
 script:
-  - gopm test ./... -v
+  - go test ./... -v
 
 notifications:
   email:
-    - deluan@deluan.com
+    - travis@deluan.com
