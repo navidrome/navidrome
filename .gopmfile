@@ -2,7 +2,7 @@
 path = github.com/deluan/gosonic
 
 [deps]
-github.com/astaxie/beego = tag:v1.6.0
+github.com/astaxie/beego = commit:92d0b9a
 github.com/dhowden/itl = commit:35d15a3
 github.com/HouzuoGuo/tiedot = tag:3.2
 github.com/smartystreets/goconvey = tag:1.6.0
