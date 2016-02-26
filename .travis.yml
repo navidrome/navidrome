@@ -7,6 +7,8 @@ go:
 
 install:
   - go get github.com/gpmgo/gopm
+  - gopm list -v
+  - gopm get -v
 
 script:
   - gopm test ./... -v
