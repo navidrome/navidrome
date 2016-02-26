@@ -38,11 +38,11 @@ $ go get github.com/gpmgo/gopm
 $ gopm get -v -g
 ```  
 
-From here it's a normal Go development cycle:
+From here it's a normal [BeeGo](http://beego.me) development cycle. Some useful commands: 
 
-* Test with `go test ./.. -v`
 * Start local server with `bee run`
-* Start test runner with `goconvey` 
+* Start test runner on the browser with `NOLOG=1 goconvey --port 9090` 
+* Test from command line with `go test ./... -v`
 
 
 ### Useful Links

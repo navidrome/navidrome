@@ -5,7 +5,7 @@ path = github.com/deluan/gosonic
 github.com/astaxie/beego = commit:92d0b9a
 github.com/dhowden/itl = commit:35d15a3
 github.com/HouzuoGuo/tiedot = tag:3.2
-github.com/smartystreets/goconvey = tag:1.6.0
+github.com/smartystreets/goconvey = commit:899ed5a
 
 [res]
 include = conf
