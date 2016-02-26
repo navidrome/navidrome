@@ -22,7 +22,7 @@ The project's main goals are:
 * Update play counts, last played dates, ratings, etc..  on iTunes (at least on Mac OS)
 * Learning Go ;) [![Gopher](https://blog.golang.org/favicon.ico)](https://golang.org)
 
-Currently implementing [API version](http://www.subsonic.org/pages/api.jsp#versions):
+Supported [Subsonic API version](http://www.subsonic.org/pages/api.jsp#versions):
 
 * _1.0.0 &larr; In progress_
 * 1.2.0
@@ -56,7 +56,10 @@ From here it's a normal [BeeGo](http://beego.me) development cycle. Some useful 
 * http://beego.me/
 
 #### DB
-https://github.com/HouzuoGuo/tiedot
+* https://github.com/HouzuoGuo/tiedot
 
 #### Search
-https://github.com/blevesearch/bleve
+* http://blevesearch.com
+
+#### Testing
+* http://goconvey.co/
