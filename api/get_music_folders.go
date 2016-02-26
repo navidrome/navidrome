@@ -9,7 +9,7 @@ import (
 type GetMusicFoldersController struct{ beego.Controller }
 
 func (c *GetMusicFoldersController) Get() {
-	repository := new(repositories.MediaFolderRepository)
+	repository := repositories.NewMediaFolderRepository()
 	mediaFolderList, _ := repository.GetAll()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {

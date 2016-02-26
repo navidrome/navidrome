@@ -17,6 +17,7 @@ func init() {
 	beego.AddNamespace(ns)
 
 	beego.Router("/", &controllers.MainController{})
+	beego.Router("/sync", &controllers.SyncController{})
 
 	var ValidateRequest = func(ctx *context.Context) {
 		api.Validate(&beego.Controller{Ctx: ctx})

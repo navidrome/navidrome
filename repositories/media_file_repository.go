@@ -1,10 +1,24 @@
 package repositories
 
-//import "github.com/deluan/gosonic/models"
-//
-//func AddMediaFile(m models.MediaFile) string {
-//	m.ID = "user_" + strconv.FormatInt(time.Now().UnixNano(), 10)
-//	UserList[u.Id] = &u
-//	return u.Id
-//}
-//
+import (
+	"github.com/deluan/gosonic/models"
+	"fmt"
+	"crypto/md5"
+)
+
+type MediaFile struct {
+	BaseRepository
+}
+
+func NewMediaFileRepository() *MediaFile {
+	r := &MediaFile{}
+	r.col = createCollection("MediaFiles")
+	return r
+}
+
+func (r *MediaFile) Add(m *models.MediaFile) error {
+	if m.Id == "" {
+		m.Id = fmt.Sprintf("%x", md5.Sum([]byte(m.Path)))
+	}
+	return r.saveOrUpdate(m)
+}

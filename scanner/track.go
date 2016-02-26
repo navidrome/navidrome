@@ -1,8 +1,10 @@
-package models
+package scanner
 
-import "time"
+import (
+	"time"
+)
 
-type MediaFile struct {
+type Track struct {
 	Id         string
 	Path       string
 	Album      string
