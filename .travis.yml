@@ -1,0 +1,16 @@
+sudo: false
+
+language: go
+
+go:
+ - 1.6
+
+install:
+  - go get github.com/gpmgo/gopm
+
+script:
+  - gopm test ./... -v
+
+notifications:
+  email:
+    - marty.schoch@gmail.com

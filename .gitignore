@@ -5,3 +5,4 @@ gosonic.index
 static/Jamstash
 devDb
 tmp
+.vendor
