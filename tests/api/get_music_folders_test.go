@@ -1,4 +1,4 @@
-package api_test
+package api
 
 import (
 	_ "github.com/deluan/gosonic/routers"

@@ -56,7 +56,7 @@ func (r *BaseRepository) saveOrUpdate(rec interface{}) error {
 	if err != nil {
 		return err
 	}
-	docId, err := r.queryFirstKey(`{"in": ["Id"], "eq": "%s"}`, m["Id"])
+	docId, err := r.queryFirstKey(`{"in": ["Id"], "eq": "%s", "limit": 1}`, m["Id"])
 	if docId == 0 {
 		_, err = r.col.Insert(m)
 		return err

@@ -5,11 +5,13 @@ import (
 )
 
 type Track struct {
-	Id         string
-	Path       string
-	Album      string
-	Artist     string
-	Title      string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	Id          string
+	Path        string
+	Title       string
+	Album       string
+	Artist      string
+	AlbumArtist string
+	Compilation bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

@@ -40,9 +40,16 @@ $ gopm get -v -g
 
 From here it's a normal [BeeGo](http://beego.me) development cycle. Some useful commands: 
 
-* Start local server with `bee run`
-* Start test runner on the browser with `NOLOG=1 goconvey --port 9090` 
-* Test from command line with `go test ./... -v`
+```bash
+# Start local server (with hot reload)
+$ bee run
+
+# Start test runner on the browser
+$ NOLOG=1 goconvey --port 9090
+ 
+# Runa all tests 
+$ go test ./... -v
+```
 
 
 ### Useful Links

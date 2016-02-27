@@ -11,18 +11,36 @@ var (
 	once sync.Once
 )
 
-func createCollection(name string) *db.Col {
+func createCollection(name string, ix ...interface{}) *db.Col {
+	log := false
+	if dbInstance().Use(name) == nil {
+		if err := dbInstance().Create(name); err != nil {
+			beego.Error(err)
+		}
+		log = true
+	}
+
 	col := dbInstance().Use(name)
-	if col != nil {
-		return col
-	}
-	if err := dbInstance().Create(name); err != nil {
-		beego.Error(err)
-	}
-	if err := col.Index([]string{"Id"}); err != nil {
-		beego.Error(name, err)
+
+	createIndex(col, []string{"Id"}, log)
+	for _, i := range ix {
+		switch i := i.(type) {
+		case string:
+			createIndex(col, []string{i}, log)
+		case []string:
+			createIndex(col, i, log)
+		default:
+			beego.Error("Trying to create an Index with an invalid type: ", i)
+		}
 	}
 	return col
+}
+
+func createIndex(col *db.Col, path []string, log bool) (err error) {
+	if err := col.Index(path); err != nil && log {
+		beego.Error(path, err)
+	}
+	return err
 }
 
 func dbInstance() *db.DB {
