@@ -1,32 +1,19 @@
-package test
+package api_test
 
 import (
 	"fmt"
 	"github.com/astaxie/beego"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
-	"runtime"
+	_ "github.com/deluan/gosonic/routers"
 )
 
 const (
-	testUser     = "deluan"
+	testUser = "deluan"
 	testPassword = "wordpass"
-	testClient   = "test"
-	testVersion  = "1.0.0"
+	testClient = "test"
+	testVersion = "1.0.0"
 )
-
-func init() {
-	_, file, _, _ := runtime.Caller(1)
-	appPath, _ := filepath.Abs(filepath.Dir(filepath.Join(file, ".."+string(filepath.Separator))))
-	beego.TestBeegoInit(appPath)
-
-	noLog := os.Getenv("NOLOG")
-	if noLog != "" {
-		beego.SetLevel(beego.LevelError)
-	}
-}
 
 func AddParams(url string) string {
 	return fmt.Sprintf("%s?u=%s&p=%s&c=%s&v=%s", url, testUser, testPassword, testClient, testVersion)

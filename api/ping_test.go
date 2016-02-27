@@ -1,15 +1,16 @@
-package api
+package api_test
 
 import (
 	"encoding/xml"
 	"github.com/deluan/gosonic/api/responses"
-	_ "github.com/deluan/gosonic/routers"
-	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"github.com/deluan/gosonic/tests"
 )
 
 func TestPing(t *testing.T) {
+	tests.Init(t, false)
+
 	_, w := Get(AddParams("/rest/ping.view"), "TestPing")
 
 	Convey("Subject: Ping Endpoint\n", t, func() {

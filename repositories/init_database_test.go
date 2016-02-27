@@ -4,6 +4,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	_ "github.com/deluan/gosonic/tests"
 	"testing"
+	"github.com/deluan/gosonic/tests"
 )
 
 const (
@@ -11,11 +12,7 @@ const (
 )
 
 func TestCreateCollection(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
-	dbInstance().Drop(testCollectionName)
+	tests.Init(t, true)
 
 	Convey("Given an empty DB", t, func() {
 
@@ -50,5 +47,10 @@ func TestCreateCollection(t *testing.T) {
 				So(allPaths, ShouldContainKey, "Name")
 			})
 		})
+
+		Reset(func() {
+			dbInstance().Drop(testCollectionName)
+		})
 	})
+
 }

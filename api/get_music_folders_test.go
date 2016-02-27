@@ -1,15 +1,16 @@
-package api
+package api_test
 
 import (
-	_ "github.com/deluan/gosonic/routers"
-	. "github.com/deluan/gosonic/tests"
 	"testing"
 
 	"encoding/xml"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/deluan/gosonic/tests"
 )
 
 func TestGetMusicFolders(t *testing.T) {
+	tests.Init(t, false)
+
 	_, w := Get(AddParams("/rest/getMusicFolders.view"), "TestGetMusicFolders")
 
 	Convey("Subject: GetMusicFolders Endpoint\n", t, func() {

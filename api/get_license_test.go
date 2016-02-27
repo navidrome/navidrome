@@ -1,14 +1,15 @@
-package api
+package api_test
 
 import (
 	"encoding/xml"
-	_ "github.com/deluan/gosonic/routers"
-	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"github.com/deluan/gosonic/tests"
 )
 
 func TestGetLicense(t *testing.T) {
+	tests.Init(t, false)
+
 	_, w := Get(AddParams("/rest/getLicense.view"), "TestGetLicense")
 
 	Convey("Subject: GetLicense Endpoint\n", t, func() {
