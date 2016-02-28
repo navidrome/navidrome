@@ -15,13 +15,3 @@ type MediaFile struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
-
-func (m*MediaFile) RealArtist() string {
-	if (m.Compilation) {
-		return "Various Artists"
-	}
-	if (m.AlbumArtist != "") {
-		return m.AlbumArtist
-	}
-	return m.Artist
-}

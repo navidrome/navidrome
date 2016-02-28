@@ -14,7 +14,7 @@ func NewArtistRepository() *Artist {
 	return r
 }
 
-func (r *Artist) Put(m *models.Artist) (*models.Artist, error) {
+func (r *Artist) Put(m *models.Artist) (*models.Artist, error) { // TODO Return only error
 	if m.Id == "" {
 		m.Id = r.NewId(m.Name)
 	}

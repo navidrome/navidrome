@@ -6,11 +6,14 @@ import (
 	"github.com/deluan/gosonic/models"
 	"strings"
 	"fmt"
+	"encoding/json"
 )
 
 type Scanner interface {
 	LoadFolder(path string) []Track
 }
+
+type tempIndex map[string]*models.ArtistInfo
 
 func StartImport() {
 	go doImport(beego.AppConfig.String("musicFolder"), &ItunesScanner{})
@@ -27,20 +30,24 @@ func importLibrary(files []Track) {
 	mfRepo := repositories.NewMediaFileRepository()
 	albumRepo := repositories.NewAlbumRepository()
 	artistRepo := repositories.NewArtistRepository()
-	var artistIndex = make(map[string]map[string]string)
+	var artistIndex = make(map[string]tempIndex)
 
 	for _, t := range files {
 		mf, album, artist := processTrack(&t)
 		mergeInfo(mfRepo, mf, albumRepo, album, artistRepo, artist)
 		fmt.Printf("%#v\n", album)
 		fmt.Printf("%#v\n\n", artist)
-		collectIndex(mf, artistIndex)
+		collectIndex(artist, artistIndex)
 	}
 
-	//j,_ := json.MarshalIndent(artistIndex, "", "    ")
-	//fmt.Println(string(j))
-	c, _ := mfRepo.CountAll()
+	if err := saveIndex(artistIndex); err != nil {
+		beego.Error(err)
+	}
 
+	j,_ := json.MarshalIndent(artistIndex, "", "    ")
+	fmt.Println(string(j))
+
+	c, _ := mfRepo.CountAll()
 	beego.Info("Total mediafiles in database:", c)
 }
 
@@ -64,7 +71,7 @@ func processTrack(t *Track) (*models.MediaFile, *models.Album, *models.Artist) {
 	}
 
 	artist := &models.Artist{
-		Name: t.Artist,
+		Name: t.RealArtist(),
 	}
 
 	return mf, album, artist
@@ -89,7 +96,7 @@ func mergeInfo(mfRepo *repositories.MediaFile, mf *models.MediaFile, albumRepo *
 		beego.Error(err)
 	}
 	artist.AddAlbums(sAlbum, sArtist.Albums)
-	sArtist, err = artistRepo.Put(artist)
+	_, err = artistRepo.Put(artist)
 	if err != nil {
 		beego.Error(err)
 	}
@@ -99,8 +106,8 @@ func mergeInfo(mfRepo *repositories.MediaFile, mf *models.MediaFile, albumRepo *
 	}
 }
 
-func collectIndex(m *models.MediaFile, artistIndex map[string]map[string]string) {
-	name := m.RealArtist()
+func collectIndex(a *models.Artist, artistIndex map[string]tempIndex) {
+	name := a.Name
 	indexName := strings.ToLower(models.NoArticle(name))
 	if indexName == "" {
 		return
@@ -108,8 +115,25 @@ func collectIndex(m *models.MediaFile, artistIndex map[string]map[string]string)
 	initial := strings.ToUpper(indexName[0:1])
 	artists := artistIndex[initial]
 	if artists == nil {
-		artists = make(map[string]string)
+		artists = make(tempIndex)
 		artistIndex[initial] = artists
 	}
-	artists[indexName] = name
+	artists[indexName] = &models.ArtistInfo{ArtistId: a.Id, Artist: a.Name}
+}
+
+func saveIndex(artistIndex map[string]tempIndex) error {
+	idxRepo := repositories.NewArtistIndexRepository()
+
+	for k, temp := range artistIndex {
+		idx := &models.ArtistIndex{Id: k}
+		for _, v := range temp {
+			idx.Artists = append(idx.Artists, *v)
+		}
+		err := idxRepo.Put(idx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
