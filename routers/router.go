@@ -9,6 +9,12 @@ import (
 )
 
 func init() {
+	mapEndpoints()
+	mapControllers()
+	mapFilters()
+}
+
+func mapEndpoints() {
 	ns := beego.NewNamespace("/rest",
 		beego.NSRouter("/ping.view", &api.PingController{}),
 		beego.NSRouter("/getLicense.view", &api.GetLicenseController{}),
@@ -16,13 +22,19 @@ func init() {
 	)
 	beego.AddNamespace(ns)
 
+}
+
+func mapControllers() {
 	beego.Router("/", &controllers.MainController{})
 	beego.Router("/sync", &controllers.SyncController{})
 
+	beego.ErrorController(&controllers.MainController{})
+}
+
+func mapFilters() {
 	var ValidateRequest = func(ctx *context.Context) {
 		api.Validate(&beego.Controller{Ctx: ctx})
 	}
 
 	beego.InsertFilter("/rest/*", beego.BeforeRouter, ValidateRequest)
-	beego.ErrorController(&controllers.MainController{})
 }

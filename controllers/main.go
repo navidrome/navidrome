@@ -12,7 +12,7 @@ func (c *MainController) Get() {
 }
 
 func (c *MainController) Error404() {
-	if beego.BConfig.RunMode == beego.DEV || beego.BConfig.Log.AccessLogs {
+	if beego.BConfig.RunMode != beego.PROD || beego.BConfig.Log.AccessLogs {
 		r := c.Ctx.Request
 		devInfo := fmt.Sprintf("   | %-10s | %-40s | %-16s | %-10s |", r.Method, r.URL.Path, " ", "notmatch")
 		if beego.DefaultAccessLogFilter == nil || !beego.DefaultAccessLogFilter.Filter(c.Ctx) {
