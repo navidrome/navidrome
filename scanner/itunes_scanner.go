@@ -16,6 +16,7 @@ func (s *ItunesScanner) LoadFolder(path string) []Track {
 	mediaFiles := make([]Track, len(l.Tracks))
 	i := 0
 	for id, t := range l.Tracks {
+		// TODO Decode XML entities (&)
 		if t.Location != "" && strings.Contains(t.Kind, "audio") {
 			mediaFiles[i].Id = id
 			mediaFiles[i].Album = t.Album
