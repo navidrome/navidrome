@@ -9,7 +9,7 @@ import (
 
 const delimiter = "."
 
-func explodeList(l []interface{}, parent string, delimiter string) (map[string]interface{}, error) {
+func flattenList(l []interface{}, parent string, delimiter string) (map[string]interface{}, error) {
 	var err error
 	var key string
 	j := make(map[string]interface{})
@@ -32,7 +32,7 @@ func explodeList(l []interface{}, parent string, delimiter string) (map[string]i
 			j[key] = v
 		case []interface{}:
 			out := make(map[string]interface{})
-			out, err = explodeList(v, key, delimiter)
+			out, err = flattenList(v, key, delimiter)
 			if err != nil {
 				return nil, err
 			}
@@ -41,7 +41,7 @@ func explodeList(l []interface{}, parent string, delimiter string) (map[string]i
 			}
 		case map[string]interface{}:
 			out := make(map[string]interface{})
-			out, err = explodeMap(v, key, delimiter)
+			out, err = flattenMap(v, key, delimiter)
 			if err != nil {
 				return nil, err
 			}
@@ -55,7 +55,7 @@ func explodeList(l []interface{}, parent string, delimiter string) (map[string]i
 	return j, nil
 }
 
-func explodeMap(m map[string]interface{}, parent string, delimiter string) (map[string]interface{}, error) {
+func flattenMap(m map[string]interface{}, parent string, delimiter string) (map[string]interface{}, error) {
 	var err error
 	j := make(map[string]interface{})
 	for k, i := range m {
@@ -75,7 +75,7 @@ func explodeMap(m map[string]interface{}, parent string, delimiter string) (map[
 			j[k] = v
 		case []interface{}:
 			out := make(map[string]interface{})
-			out, err = explodeList(v, k, delimiter)
+			out, err = flattenList(v, k, delimiter)
 			if err != nil {
 				return nil, err
 			}
@@ -84,7 +84,7 @@ func explodeMap(m map[string]interface{}, parent string, delimiter string) (map[
 			}
 		case map[string]interface{}:
 			out := make(map[string]interface{})
-			out, err = explodeMap(v, k, delimiter)
+			out, err = flattenMap(v, k, delimiter)
 			if err != nil {
 				return nil, err
 			}
@@ -101,14 +101,14 @@ func explodeMap(m map[string]interface{}, parent string, delimiter string) (map[
 func FlattenMap(input map[string]interface{}) (map[string]interface{}, error) {
 	var flattened map[string]interface{}
 	var err error
-	flattened, err = explodeMap(input, "", delimiter)
+	flattened, err = flattenMap(input, "", delimiter)
 	if err != nil {
 		return nil, err
 	}
 	return flattened, nil
 }
 
-func marshal(rec interface{}) (map[string]interface{}, error) {
+func ToMap(rec interface{}) (map[string]interface{}, error) {
 	// Convert to JSON...
 	b, err := json.Marshal(rec);
 	if err != nil {
@@ -121,8 +121,21 @@ func marshal(rec interface{}) (map[string]interface{}, error) {
 	return m, err
 }
 
+func ToStruct(m map[string]interface{}) (interface{}, error) {
+	// Convert to JSON...
+	b, err := json.Marshal(m);
+	if err != nil {
+		return nil, err
+	}
+
+	// ... then convert to map
+	var rec interface{}
+	err = json.Unmarshal(b, &rec)
+	return rec, err
+}
+
 func Flatten(input interface{}) (map[string]interface{}, error) {
-	m, err := marshal(input)
+	m, err := ToMap(input)
 	if err != nil {
 		return nil, err
 	}

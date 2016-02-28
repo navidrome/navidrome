@@ -6,7 +6,7 @@ type BaseRepository struct {
 
 
 func (r *BaseRepository) saveOrUpdate(id string, rec interface{}) error {
-	return hmset(r.key + "_id_" + id, rec)
+	return saveStruct(r.key + "_id_" + id, rec)
 }
 
 func (r *BaseRepository) Dump() {

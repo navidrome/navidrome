@@ -28,8 +28,8 @@ func db() *ledis.DB {
 	return _dbInstance
 }
 
-func hmset(key string, data interface{}) error {
-	h, err := utils.Flatten(data)
+func saveStruct(key string, data interface{}) error {
+	h, err := utils.ToMap(data)
 	if err != nil {
 		return err
 	}
@@ -41,6 +41,18 @@ func hmset(key string, data interface{}) error {
 		i++
 	}
 	return db().HMset([]byte(key), fvList...)
+}
+
+func readStruct(key string) (interface{}, error) {
+	fvs, _ := db().HGetAll([]byte(key))
+	var m = make(map[string]interface{}, len(fvs))
+	for _, fv := range fvs {
+		var v interface{}
+		json.Unmarshal(fv.Value, &v)
+		m[string(fv.Field)] = v
+	}
+
+	return utils.ToStruct(m)
 }
 
 func hset(key, field, value string) error {
