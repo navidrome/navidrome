@@ -5,8 +5,6 @@ import (
 	"github.com/deluan/gosonic/repositories"
 	"github.com/deluan/gosonic/models"
 	"strings"
-	"fmt"
-	"encoding/json"
 )
 
 type Scanner interface {
@@ -46,8 +44,10 @@ func updateDatastore(files []Track) {
 		collectIndex(m, artistIndex)
 	}
 	//mfRepo.Dump()
-	j,_ := json.MarshalIndent(artistIndex, "", "    ")
-	fmt.Println(string(j))
+	//j,_ := json.MarshalIndent(artistIndex, "", "    ")
+	//fmt.Println(string(j))
+	c, _ := mfRepo.CountAll()
+	beego.Info("Total mediafiles in database:", c)
 }
 
 func collectIndex(m *models.MediaFile, artistIndex map[string]map[string]string) {

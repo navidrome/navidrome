@@ -28,7 +28,7 @@ func db() *ledis.DB {
 	return _dbInstance
 }
 
-func saveStruct(key string, data interface{}) error {
+func saveStruct(key, id string, data interface{}) error {
 	h, err := utils.ToMap(data)
 	if err != nil {
 		return err
@@ -40,7 +40,10 @@ func saveStruct(key string, data interface{}) error {
 		fvList[i].Value, _ = json.Marshal(v)
 		i++
 	}
-	return db().HMset([]byte(key), fvList...)
+	kh := key + "_id_" + id
+	ks := key + "_ids"
+	db().SAdd([]byte(ks), []byte(id))
+	return db().HMset([]byte(kh), fvList...)
 }
 
 func readStruct(key string) (interface{}, error) {
@@ -53,6 +56,11 @@ func readStruct(key string) (interface{}, error) {
 	}
 
 	return utils.ToStruct(m)
+}
+
+func count(key string) (int, error) {
+	ids, err := db().SMembers([]byte(key + "_ids"))
+	return len(ids), err
 }
 
 func hset(key, field, value string) error {

@@ -6,7 +6,11 @@ type BaseRepository struct {
 
 
 func (r *BaseRepository) saveOrUpdate(id string, rec interface{}) error {
-	return saveStruct(r.key + "_id_" + id, rec)
+	return saveStruct(r.key, id, rec)
+}
+
+func (r *BaseRepository) CountAll() (int, error) {
+	return count(r.key)
 }
 
 func (r *BaseRepository) Dump() {
