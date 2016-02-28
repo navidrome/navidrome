@@ -46,8 +46,9 @@ func saveStruct(key, id string, data interface{}) error {
 	return db().HMset([]byte(kh), fvList...)
 }
 
-func readStruct(key string) (interface{}, error) {
-	fvs, _ := db().HGetAll([]byte(key))
+func readStruct(key, id string, rec interface{}) error {
+	kh := key + "_id_" + id
+	fvs, _ := db().HGetAll([]byte(kh))
 	var m = make(map[string]interface{}, len(fvs))
 	for _, fv := range fvs {
 		var v interface{}
@@ -55,15 +56,10 @@ func readStruct(key string) (interface{}, error) {
 		m[string(fv.Field)] = v
 	}
 
-	return utils.ToStruct(m)
+	return utils.ToStruct(m, rec)
 }
 
 func count(key string) (int, error) {
 	ids, err := db().SMembers([]byte(key + "_ids"))
 	return len(ids), err
-}
-
-func hset(key, field, value string) error {
-	_, err := db().HSet([]byte(key), []byte(field), []byte(value))
-	return err
 }

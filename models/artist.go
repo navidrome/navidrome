@@ -6,8 +6,9 @@ import (
 )
 
 type Artist struct {
-	Id string
-	Name string
+	Id     string
+	Name   string
+	Albums map[string]bool
 }
 
 func NoArticle(name string) string {
@@ -19,4 +20,20 @@ func NoArticle(name string) string {
 		}
 	}
 	return name
+}
+
+func (a *Artist) AddAlbums(albums ...interface{}) {
+	if a.Albums == nil {
+		a.Albums = make(map[string]bool)
+	}
+	for _, v := range albums {
+		switch v := v.(type) {
+		case *Album:
+			a.Albums[v.Id] = true
+		case map[string]bool:
+			for k, _ := range v {
+				a.Albums[k] = true
+			}
+		}
+	}
 }

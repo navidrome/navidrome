@@ -2,8 +2,6 @@ package repositories
 
 import (
 	"github.com/deluan/gosonic/models"
-	"fmt"
-	"crypto/md5"
 )
 
 type MediaFile struct {
@@ -16,9 +14,6 @@ func NewMediaFileRepository() *MediaFile {
 	return r
 }
 
-func (r *MediaFile) Add(m *models.MediaFile) error {
-	if m.Id == "" {
-		m.Id = fmt.Sprintf("%x", md5.Sum([]byte(m.Path)))
-	}
+func (r *MediaFile) Put(m *models.MediaFile) error {
 	return r.saveOrUpdate(m.Id, m)
 }

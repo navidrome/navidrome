@@ -121,17 +121,16 @@ func ToMap(rec interface{}) (map[string]interface{}, error) {
 	return m, err
 }
 
-func ToStruct(m map[string]interface{}) (interface{}, error) {
+func ToStruct(m map[string]interface{}, rec interface{}) error {
 	// Convert to JSON...
 	b, err := json.Marshal(m);
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// ... then convert to map
-	var rec interface{}
+	// ... then convert to struct
 	err = json.Unmarshal(b, &rec)
-	return rec, err
+	return err
 }
 
 func Flatten(input interface{}) (map[string]interface{}, error) {
