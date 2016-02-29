@@ -5,6 +5,7 @@ import (
 	"github.com/deluan/gosonic/repositories"
 	"github.com/deluan/gosonic/models"
 	"strings"
+"github.com/deluan/gosonic/utils"
 )
 
 type Scanner interface {
@@ -92,7 +93,7 @@ func persist(mfRepo *repositories.MediaFile, mf *models.MediaFile, albumRepo *re
 
 func collectIndex(a *models.Artist, artistIndex map[string]tempIndex) {
 	name := a.Name
-	indexName := strings.ToLower(models.NoArticle(name))
+	indexName := strings.ToLower(utils.NoArticle(name))
 	if indexName == "" {
 		return
 	}
