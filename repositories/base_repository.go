@@ -14,6 +14,7 @@ type BaseRepository struct {
 	table string
 }
 
+// TODO Use annotations to specify fields to be used
 func (r *BaseRepository) NewId(fields ...string) string {
 	s := fmt.Sprintf("%s\\%s", strings.ToUpper(r.table), strings.Join(fields, ""))
 	return fmt.Sprintf("%x", md5.Sum([]byte(s)))
@@ -24,14 +25,7 @@ func (r *BaseRepository) CountAll() (int, error) {
 	return len(ids), err
 }
 
-func (r *BaseRepository) saveOrUpdate(id string, rec interface{}) error {
-	return r.saveEntity(id, rec)
-}
-
-func (r *BaseRepository) Dump() {
-}
-
-func (r *BaseRepository) saveEntity(id string, entity interface{}) error {
+func (r *BaseRepository) saveOrUpdate(id string, entity interface{}) error {
 	recordPrefix := fmt.Sprintf("%s:%s:", r.table, id)
 	allKey := r.table + "s:all"
 

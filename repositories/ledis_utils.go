@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	_ledisInstance *ledis.Ledis
 	_dbInstance *ledis.DB
 	once sync.Once
 )
@@ -21,7 +22,14 @@ func db() *ledis.DB {
 		if err != nil {
 			panic(err)
 		}
+		_ledisInstance = l
 		_dbInstance = instance
 	})
 	return _dbInstance
+}
+
+
+func dropDb() {
+	db()
+	_ledisInstance.FlushAll()
 }

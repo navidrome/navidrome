@@ -1,0 +1,1909 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Major Version</key><integer>1</integer>
+	<key>Minor Version</key><integer>1</integer>
+	<key>Application Version</key><string>12.3.2.35</string>
+	<key>Date</key><date>2016-02-28T18:37:03Z</date>
+	<key>Features</key><integer>5</integer>
+	<key>Show Content Ratings</key><true/>
+	<key>Library Persistent ID</key><string>12B1ABAD6D8E7496</string>
+	<key>Tracks</key>
+	<dict>
+		<key>106</key>
+		<dict>
+			<key>Track ID</key><integer>106</integer>
+			<key>Size</key><integer>5237173438</integer>
+			<key>Total Time</key><integer>7580223</integer>
+			<key>Year</key><integer>2011</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2013-12-30T17:34:06Z</date>
+			<key>Play Count</key><integer>1</integer>
+			<key>Release Date</key><date>2011-11-23T08:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>96070F0AB1E1AE6F</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Movie</key><true/>
+			<key>Has Video</key><true/>
+			<key>Name</key><string>Hugo</string>
+			<key>Artist</key><string>Martin Scorsese</string>
+			<key>Genre</key><string>Kids &#38; Family</string>
+			<key>Kind</key><string>Purchased MPEG-4 video file</string>
+			<key>Sort Name</key><string>Hugo</string>
+			<key>Sort Artist</key><string>Martin Scorsese</string>
+			<key>Content Rating</key><string>ca-movie|PG|200|</string>
+		</dict>
+		<key>108</key>
+		<dict>
+			<key>Track ID</key><integer>108</integer>
+			<key>Size</key><integer>10414554</integer>
+			<key>Total Time</key><integer>301641</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>9</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:55Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>C54EAA29C88CD00D</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Sleep Like a Baby Tonight</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Sleep Like a Baby Tonight</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/09%20Sleep%20Like%20a%20Baby%20Tonight.m4a</string>
+		</dict>
+		<key>110</key>
+		<dict>
+			<key>Track ID</key><integer>110</integer>
+			<key>Size</key><integer>6188995</integer>
+			<key>Total Time</key><integer>170840</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>1</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2013-12-16T19:48:06Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2013-12-13T08:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>C6225CE270748558</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>No Better</string>
+			<key>Artist</key><string>Lorde</string>
+			<key>Album Artist</key><string>Lorde</string>
+			<key>Composer</key><string>Ella Yelich O'Connor &#38; Joel Little</string>
+			<key>Album</key><string>No Better - Single</string>
+			<key>Genre</key><string>Pop</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>No Better</string>
+			<key>Sort Album</key><string>No Better - Single</string>
+			<key>Sort Artist</key><string>Lorde</string>
+		</dict>
+		<key>112</key>
+		<dict>
+			<key>Track ID</key><integer>112</integer>
+			<key>Size</key><integer>45674908</integer>
+			<key>Total Time</key><integer>199765</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>2</integer>
+			<key>Track Count</key><integer>2</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2013-12-16T19:48:06Z</date>
+			<key>Release Date</key><date>2013-12-13T08:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>D66842117A24AE76</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Music Video</key><true/>
+			<key>Has Video</key><true/>
+			<key>Name</key><string>Royals</string>
+			<key>Artist</key><string>Lorde</string>
+			<key>Album Artist</key><string>Lorde</string>
+			<key>Album</key><string>No Better - Single</string>
+			<key>Genre</key><string>Pop</string>
+			<key>Kind</key><string>Purchased MPEG-4 video file</string>
+			<key>Sort Name</key><string>Royals (TV Edit)</string>
+			<key>Sort Album</key><string>No Better - Single</string>
+			<key>Sort Artist</key><string>Lorde</string>
+		</dict>
+		<key>114</key>
+		<dict>
+			<key>Track ID</key><integer>114</integer>
+			<key>Size</key><integer>4611956</integer>
+			<key>Total Time</key><integer>122511</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>3</integer>
+			<key>Track Count</key><integer>101</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2016-02-28T18:36:35Z</date>
+			<key>Date Added</key><date>2013-12-23T02:21:40Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2013-11-29T08:00:00Z</date>
+			<key>Compilation</key><true/>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>8F5678E401FF0DEF</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Rocking Around the Christmas Tree</string>
+			<key>Artist</key><string>Brenda Lee</string>
+			<key>Album Artist</key><string>Various Artists</string>
+			<key>Album</key><string>100 Christmas Hits &#38; Xmas Classics: The Greatest Holiday Songs &#38; Carols Collection</string>
+			<key>Genre</key><string>Holiday</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Rocking Around the Christmas Tree</string>
+			<key>Sort Album</key><string>100 Christmas Hits &#38; Xmas Classics: The Greatest Holiday Songs &#38; Carols Collection</string>
+			<key>Sort Artist</key><string>Brenda Lee</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/Compilations/100%20Christmas%20Hits%20&#38;%20Xmas%20Classics_%20The%20Greatest%20Holiday%20Songs%20&#38;%20Carols%20Collection/03%20Rocking%20Around%20the%20Christmas%20Tree.m4a</string>
+		</dict>
+		<key>116</key>
+		<dict>
+			<key>Track ID</key><integer>116</integer>
+			<key>Size</key><integer>6904386</integer>
+			<key>Total Time</key><integer>194116</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>6</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:38Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>EDB69FA1B70C2931</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Volcano</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Volcano</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/06%20Volcano.m4a</string>
+		</dict>
+		<key>118</key>
+		<dict>
+			<key>Track ID</key><integer>118</integer>
+			<key>Size</key><integer>9336108</integer>
+			<key>Total Time</key><integer>265267</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>8</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:52Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>1F82B48E9364268F</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Cedarwood Road</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Cedarwood Road</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/08%20Cedarwood%20Road.m4a</string>
+		</dict>
+		<key>120</key>
+		<dict>
+			<key>Track ID</key><integer>120</integer>
+			<key>Size</key><integer>8636426</integer>
+			<key>Total Time</key><integer>245598</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>7</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:45Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>4549EC9A21F340E5</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Raised By Wolves</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Raised By Wolves</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/07%20Raised%20By%20Wolves.m4a</string>
+		</dict>
+		<key>122</key>
+		<dict>
+			<key>Track ID</key><integer>122</integer>
+			<key>Size</key><integer>9928436</integer>
+			<key>Total Time</key><integer>285842</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>11</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:57Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>6FA96BD49EA79F4B</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>The Troubles</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Troubles</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/11%20The%20Troubles.m4a</string>
+		</dict>
+		<key>124</key>
+		<dict>
+			<key>Track ID</key><integer>124</integer>
+			<key>Size</key><integer>10715123</integer>
+			<key>Total Time</key><integer>305133</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>10</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:54Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>4162CD5034AF56FC</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>This Is Where You Can Reach Me Now</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>This Is Where You Can Reach Me Now</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/10%20This%20Is%20Where%20You%20Can%20Reach%20Me%20Now.m4a</string>
+		</dict>
+		<key>126</key>
+		<dict>
+			<key>Track ID</key><integer>126</integer>
+			<key>Size</key><integer>8118374</integer>
+			<key>Date Modified</key><date>2016-02-24T18:38:14Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Release Date</key><date>2003-04-28T07:00:00Z</date>
+			<key>Persistent ID</key><string>E9D0323956666112</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Digital Booklet - Songs of Innocence</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>PDF document</string>
+			<key>Sort Name</key><string>Digital Booklet - Songs of Innocence</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/Digital%20Booklet%20-%20Songs%20of%20Innocence.pdf</string>
+		</dict>
+		<key>128</key>
+		<dict>
+			<key>Track ID</key><integer>128</integer>
+			<key>Size</key><integer>8465279</integer>
+			<key>Total Time</key><integer>239846</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>3</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:35Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>44D36C6A95010C83</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>California (There Is No End to Love)</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>California (There Is No End to Love)</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/03%20California%20(There%20Is%20No%20End%20to%20Love).m4a</string>
+		</dict>
+		<key>130</key>
+		<dict>
+			<key>Track ID</key><integer>130</integer>
+			<key>Size</key><integer>5590819</integer>
+			<key>Total Time</key><integer>152742</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>9</integer>
+			<key>Track Count</key><integer>25</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2016-02-28T18:37:02Z</date>
+			<key>Date Added</key><date>2013-12-23T02:11:09Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2013-10-29T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>706CE6A3FAA79EE3</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Santa Claus Is Coming to Town</string>
+			<key>Artist</key><string>Frank Sinatra</string>
+			<key>Album Artist</key><string>Frank Sinatra, Dean Martin &#38; Sammy Davis, Jr.</string>
+			<key>Album</key><string>The Rat Pack - Christmas Hits - Sinatra / Dean / Davis - The Very Best of the Ratpack at Xmas</string>
+			<key>Genre</key><string>Holiday</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Santa Claus Is Coming to Town</string>
+			<key>Sort Album</key><string>Rat Pack - Christmas Hits - Sinatra / Dean / Davis - The Very Best of the Ratpack at Xmas</string>
+			<key>Sort Artist</key><string>Frank Sinatra</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/Frank%20Sinatra,%20Dean%20Martin%20&#38;%20Sammy%20Davis,%20Jr_/The%20Rat%20Pack%20-%20Christmas%20Hits%20-%20Sinatra%20_%20Dean%20_%20Davis%20-%20The%20Very%20Best%20of%20the%20Ratpack%20at%20Xmas/09%20Santa%20Claus%20Is%20Coming%20to%20Town.m4a</string>
+		</dict>
+		<key>132</key>
+		<dict>
+			<key>Track ID</key><integer>132</integer>
+			<key>Size</key><integer>8842208</integer>
+			<key>Total Time</key><integer>252162</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>2</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:32Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>E04FE8F487A5AD96</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Every Breaking Wave</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Every Breaking Wave</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/02%20Every%20Breaking%20Wave.m4a</string>
+		</dict>
+		<key>134</key>
+		<dict>
+			<key>Track ID</key><integer>134</integer>
+			<key>Size</key><integer>6797130</integer>
+			<key>Total Time</key><integer>190960</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>6</integer>
+			<key>Track Count</key><integer>10</integer>
+			<key>Year</key><integer>2015</integer>
+			<key>Date Modified</key><date>2015-03-01T02:53:40Z</date>
+			<key>Date Added</key><date>2015-03-01T02:53:40Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2015-02-17T08:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>61013A618EEA26CD</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>Every Age</string>
+			<key>Artist</key><string>José González</string>
+			<key>Album Artist</key><string>José González</string>
+			<key>Album</key><string>Vestiges &#38; Claws</string>
+			<key>Genre</key><string>Singer/Songwriter</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Every Age</string>
+			<key>Sort Album</key><string>Vestiges &#38; Claws</string>
+			<key>Sort Artist</key><string>José González</string>
+		</dict>
+		<key>136</key>
+		<dict>
+			<key>Track ID</key><integer>136</integer>
+			<key>Size</key><integer>6353549</integer>
+			<key>Total Time</key><integer>176781</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>6</integer>
+			<key>Track Count</key><integer>14</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:14Z</date>
+			<key>Date Added</key><date>2013-11-21T15:26:36Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2013-10-14T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>944816B1BA476F46</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>New</string>
+			<key>Artist</key><string>Paul McCartney</string>
+			<key>Album Artist</key><string>Paul McCartney</string>
+			<key>Composer</key><string>Paul McCartney</string>
+			<key>Album</key><string>NEW (Deluxe Edition)</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>New</string>
+			<key>Sort Album</key><string>NEW (Deluxe Edition)</string>
+			<key>Sort Artist</key><string>Paul McCartney</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/Paul%20McCartney/NEW%20(Deluxe%20Edition)/06%20New.m4a</string>
+		</dict>
+		<key>138</key>
+		<dict>
+			<key>Track ID</key><integer>138</integer>
+			<key>Size</key><integer>8024225</integer>
+			<key>Total Time</key><integer>226763</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>4</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:42Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>A89D879A64D75D85</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Song for Someone</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Song for Someone</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/04%20Song%20for%20Someone.m4a</string>
+		</dict>
+		<key>140</key>
+		<dict>
+			<key>Track ID</key><integer>140</integer>
+			<key>Size</key><integer>8497977</integer>
+			<key>Total Time</key><integer>223384</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>11</integer>
+			<key>Track Count</key><integer>12</integer>
+			<key>Year</key><integer>2012</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:04Z</date>
+			<key>Date Added</key><date>2015-03-06T04:40:10Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2012-01-24T08:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>61017FC6C16E8DEA</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Forever Young</string>
+			<key>Artist</key><string>Nabby Clifford</string>
+			<key>Album Artist</key><string>Nabby Clifford</string>
+			<key>Album</key><string>Sings Classics Reggae</string>
+			<key>Genre</key><string>Reggae</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Forever Young</string>
+			<key>Sort Album</key><string>Sings Classics Reggae</string>
+			<key>Sort Artist</key><string>Nabby Clifford</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/Nabby%20Clifford/Sings%20Classics%20Reggae/11%20Forever%20Young.m4a</string>
+		</dict>
+		<key>142</key>
+		<dict>
+			<key>Track ID</key><integer>142</integer>
+			<key>Size</key><integer>12653397</integer>
+			<key>Total Time</key><integer>325667</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>2</integer>
+			<key>Track Count</key><integer>3</integer>
+			<key>Year</key><integer>1985</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2013-12-08T18:45:11Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>1985-08-15T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>EB73C5E49607C5A9</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>Boy (Go) [feat. Michael Stipe] {Long Version} [Long Version]</string>
+			<key>Artist</key><string>Golden Palominos</string>
+			<key>Album Artist</key><string>Golden Palominos</string>
+			<key>Composer</key><string>Golden Palominos</string>
+			<key>Album</key><string>Boy (Go) (feat. Michael Stipe) - Single</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Boy (Go) [feat. Michael Stipe] {Long Version} [Long Version]</string>
+			<key>Sort Album</key><string>Boy (Go) (feat. Michael Stipe) - Single</string>
+			<key>Sort Artist</key><string>Golden Palominos</string>
+		</dict>
+		<key>144</key>
+		<dict>
+			<key>Track ID</key><integer>144</integer>
+			<key>Size</key><integer>9300291</integer>
+			<key>Total Time</key><integer>255382</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:32Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>25148535B44C7C57</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>The Miracle (Of Joey Ramone)</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Miracle (Of Joey Ramone)</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/01%20The%20Miracle%20(Of%20Joey%20Ramone).m4a</string>
+		</dict>
+		<key>146</key>
+		<dict>
+			<key>Track ID</key><integer>146</integer>
+			<key>Size</key><integer>4988505</integer>
+			<key>Total Time</key><integer>133698</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>6</integer>
+			<key>Track Count</key><integer>101</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2016-02-28T18:36:45Z</date>
+			<key>Date Added</key><date>2013-12-23T02:20:49Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2013-11-29T08:00:00Z</date>
+			<key>Compilation</key><true/>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>18BAED46A23DB02C</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Frosty the Snowman</string>
+			<key>Artist</key><string>Nat "King" Cole</string>
+			<key>Album Artist</key><string>Various Artists</string>
+			<key>Album</key><string>100 Christmas Hits &#38; Xmas Classics: The Greatest Holiday Songs &#38; Carols Collection</string>
+			<key>Genre</key><string>Holiday</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Frosty the Snowman</string>
+			<key>Sort Album</key><string>100 Christmas Hits &#38; Xmas Classics: The Greatest Holiday Songs &#38; Carols Collection</string>
+			<key>Sort Artist</key><string>Nat "King" Cole</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/Compilations/100%20Christmas%20Hits%20&#38;%20Xmas%20Classics_%20The%20Greatest%20Holiday%20Songs%20&#38;%20Carols%20Collection/06%20Frosty%20the%20Snowman.m4a</string>
+		</dict>
+		<key>148</key>
+		<dict>
+			<key>Track ID</key><integer>148</integer>
+			<key>Size</key><integer>11149865</integer>
+			<key>Total Time</key><integer>319457</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>5</integer>
+			<key>Track Count</key><integer>11</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:46Z</date>
+			<key>Date Added</key><date>2014-09-05T16:58:58Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-09T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>74BB39D181431EEA</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Iris (Hold Me Close)</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Album</key><string>Songs of Innocence</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Iris (Hold Me Close)</string>
+			<key>Sort Album</key><string>Songs of Innocence</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Songs%20of%20Innocence/05%20Iris%20(Hold%20Me%20Close).m4a</string>
+		</dict>
+		<key>150</key>
+		<dict>
+			<key>Track ID</key><integer>150</integer>
+			<key>Size</key><integer>39877486</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2013-12-30T17:34:06Z</date>
+			<key>Play Count</key><integer>1</integer>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>C74EE5B5AE8D4ED7</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Movie</key><true/>
+			<key>Name</key><string>Hugo - iTunes Extras</string>
+			<key>Artist</key><string>Martin Scorsese</string>
+			<key>Album</key><string>Hugo</string>
+			<key>Kind</key><string>iTunes Extras</string>
+			<key>Sort Name</key><string>Hugo - iTunes Extras</string>
+			<key>Sort Album</key><string>Hugo</string>
+		</dict>
+		<key>152</key>
+		<dict>
+			<key>Track ID</key><integer>152</integer>
+			<key>Size</key><integer>9104039</integer>
+			<key>Total Time</key><integer>261013</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>1</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2013-12-08T18:57:48Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2013-08-23T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>C2999C4B62742DBE</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>Youth</string>
+			<key>Artist</key><string>Foxes</string>
+			<key>Album Artist</key><string>Foxes</string>
+			<key>Composer</key><string>Louisa Allen &#38; Jonny Harris</string>
+			<key>Album</key><string>Youth - Single</string>
+			<key>Genre</key><string>Pop</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Youth</string>
+			<key>Sort Album</key><string>Youth - Single</string>
+			<key>Sort Artist</key><string>Foxes</string>
+		</dict>
+		<key>154</key>
+		<dict>
+			<key>Track ID</key><integer>154</integer>
+			<key>Size</key><integer>7598093</integer>
+			<key>Total Time</key><integer>182653</integer>
+			<key>Disc Number</key><integer>3</integer>
+			<key>Disc Count</key><integer>4</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>17</integer>
+			<key>Year</key><integer>2011</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2013-12-23T02:25:52Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2011-10-07T07:00:00Z</date>
+			<key>Compilation</key><true/>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>3E57F45DC676A87E</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>Feliz Navidad</string>
+			<key>Artist</key><string>José Feliciano</string>
+			<key>Album Artist</key><string>Various Artists</string>
+			<key>Composer</key><string>José Feliciano</string>
+			<key>Album</key><string>Pure... Christmas</string>
+			<key>Genre</key><string>Holiday</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Feliz Navidad</string>
+			<key>Sort Album</key><string>Pure... Christmas</string>
+			<key>Sort Artist</key><string>José Feliciano</string>
+		</dict>
+		<key>156</key>
+		<dict>
+			<key>Track ID</key><integer>156</integer>
+			<key>Size</key><integer>5669554</integer>
+			<key>Total Time</key><integer>155128</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>16</integer>
+			<key>Track Count</key><integer>101</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2016-02-28T18:36:47Z</date>
+			<key>Date Added</key><date>2013-12-23T02:21:13Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2013-11-29T08:00:00Z</date>
+			<key>Compilation</key><true/>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>80ECE23848FF2DC1</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Jingle Bells</string>
+			<key>Artist</key><string>Frank Sinatra</string>
+			<key>Album Artist</key><string>Various Artists</string>
+			<key>Album</key><string>100 Christmas Hits &#38; Xmas Classics: The Greatest Holiday Songs &#38; Carols Collection</string>
+			<key>Genre</key><string>Holiday</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Jingle Bells</string>
+			<key>Sort Album</key><string>100 Christmas Hits &#38; Xmas Classics: The Greatest Holiday Songs &#38; Carols Collection</string>
+			<key>Sort Artist</key><string>Frank Sinatra</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/Compilations/100%20Christmas%20Hits%20&#38;%20Xmas%20Classics_%20The%20Greatest%20Holiday%20Songs%20&#38;%20Carols%20Collection/16%20Jingle%20Bells.m4a</string>
+		</dict>
+		<key>158</key>
+		<dict>
+			<key>Track ID</key><integer>158</integer>
+			<key>Size</key><integer>8334725</integer>
+			<key>Total Time</key><integer>237320</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>12</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2014-07-05T17:27:33Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-06-17T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>5ED3E8ED15496A25</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>Back in the World</string>
+			<key>Artist</key><string>David Gray</string>
+			<key>Album Artist</key><string>David Gray</string>
+			<key>Album</key><string>Mutineers (Bonus Track Version)</string>
+			<key>Genre</key><string>Singer/Songwriter</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Back in the World</string>
+			<key>Sort Album</key><string>Mutineers (Bonus Track Version)</string>
+			<key>Sort Artist</key><string>David Gray</string>
+		</dict>
+		<key>160</key>
+		<dict>
+			<key>Track ID</key><integer>160</integer>
+			<key>Size</key><integer>9334945</integer>
+			<key>Total Time</key><integer>245693</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>1</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:23Z</date>
+			<key>Date Added</key><date>2014-02-19T20:40:38Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-02-17T08:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>AEC48F1AD5D438FA</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Nothing But Trouble</string>
+			<key>Artist</key><string>Phantogram</string>
+			<key>Album Artist</key><string>Phantogram</string>
+			<key>Composer</key><string>Josh Carter and Sarah Barthel</string>
+			<key>Album</key><string>Nothing But Trouble - Single</string>
+			<key>Genre</key><string>Alternative</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Nothing But Trouble</string>
+			<key>Sort Album</key><string>Nothing But Trouble - Single</string>
+			<key>Sort Artist</key><string>Phantogram</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/Phantogram/Nothing%20But%20Trouble%20-%20Single/01%20Nothing%20But%20Trouble.m4a</string>
+		</dict>
+		<key>162</key>
+		<dict>
+			<key>Track ID</key><integer>162</integer>
+			<key>Size</key><integer>7926732</integer>
+			<key>Total Time</key><integer>227274</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>1</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2016-02-24T18:41:29Z</date>
+			<key>Date Added</key><date>2014-02-04T02:57:32Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-02-02T08:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>3CFE49FFE43E1D9E</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Invisible (RED) Edit Version</string>
+			<key>Artist</key><string>U2</string>
+			<key>Album Artist</key><string>U2</string>
+			<key>Composer</key><string>Paul Hewson, David Evans, Adam Clayton &#38; Larry Mullen, Jr.</string>
+			<key>Album</key><string>Invisible (RED) Edit Version</string>
+			<key>Genre</key><string>Rock</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Invisible (RED) Edit Version</string>
+			<key>Sort Album</key><string>Invisible (RED) Edit Version</string>
+			<key>Sort Artist</key><string>U2</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/U2/Invisible%20(RED)%20Edit%20Version/01%20Invisible%20(RED)%20Edit%20Version.m4a</string>
+		</dict>
+		<key>164</key>
+		<dict>
+			<key>Track ID</key><integer>164</integer>
+			<key>Size</key><integer>7985464</integer>
+			<key>Total Time</key><integer>223215</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>3</integer>
+			<key>Track Count</key><integer>12</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2013-08-01T01:55:24Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2013-06-04T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>837F86DFEF16774A</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>Kangaroo Court</string>
+			<key>Artist</key><string>Capital Cities</string>
+			<key>Album Artist</key><string>Capital Cities</string>
+			<key>Composer</key><string>Sebu Simonian &#38; Ryan Merchant</string>
+			<key>Album</key><string>In a Tidal Wave of Mystery</string>
+			<key>Genre</key><string>Alternative</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Kangaroo Court</string>
+			<key>Sort Album</key><string>In a Tidal Wave of Mystery</string>
+			<key>Sort Artist</key><string>Capital Cities</string>
+		</dict>
+		<key>166</key>
+		<dict>
+			<key>Track ID</key><integer>166</integer>
+			<key>Size</key><integer>5682595</integer>
+			<key>Total Time</key><integer>154971</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>9</integer>
+			<key>Track Count</key><integer>101</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2016-02-28T18:36:42Z</date>
+			<key>Date Added</key><date>2013-12-23T02:22:31Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2013-11-29T08:00:00Z</date>
+			<key>Compilation</key><true/>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>334454E5339901B1</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Let It Snow, Let It Snow, Let It Snow</string>
+			<key>Artist</key><string>Dean Martin</string>
+			<key>Album Artist</key><string>Various Artists</string>
+			<key>Album</key><string>100 Christmas Hits &#38; Xmas Classics: The Greatest Holiday Songs &#38; Carols Collection</string>
+			<key>Genre</key><string>Holiday</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Let It Snow, Let It Snow, Let It Snow</string>
+			<key>Sort Album</key><string>100 Christmas Hits &#38; Xmas Classics: The Greatest Holiday Songs &#38; Carols Collection</string>
+			<key>Sort Artist</key><string>Dean Martin</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/Compilations/100%20Christmas%20Hits%20&#38;%20Xmas%20Classics_%20The%20Greatest%20Holiday%20Songs%20&#38;%20Carols%20Collection/09%20Let%20It%20Snow,%20Let%20It%20Snow,%20Let%20It%20Snow.m4a</string>
+		</dict>
+		<key>168</key>
+		<dict>
+			<key>Track ID</key><integer>168</integer>
+			<key>Size</key><integer>8017048</integer>
+			<key>Total Time</key><integer>215493</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>1</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2014-06-13T00:55:43Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-07-07T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>9EEE14AC2D0859B3</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>My Silver Lining</string>
+			<key>Artist</key><string>First Aid Kit</string>
+			<key>Album Artist</key><string>First Aid Kit</string>
+			<key>Composer</key><string>Klara Söderberg &#38; Johanna Söderberg</string>
+			<key>Album</key><string>My Silver Lining - Single</string>
+			<key>Genre</key><string>Alternative</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>My Silver Lining</string>
+			<key>Sort Album</key><string>My Silver Lining - Single</string>
+			<key>Sort Artist</key><string>First Aid Kit</string>
+		</dict>
+		<key>170</key>
+		<dict>
+			<key>Track ID</key><integer>170</integer>
+			<key>Size</key><integer>8774296</integer>
+			<key>Total Time</key><integer>248840</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>1</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2014-01-20T22:41:34Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-01-13T08:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>7EDF26B92153EE10</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>Glacier</string>
+			<key>Artist</key><string>James Vincent McMorrow</string>
+			<key>Album Artist</key><string>James Vincent McMorrow</string>
+			<key>Album</key><string>Glacier - Single</string>
+			<key>Genre</key><string>Alternative</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Glacier</string>
+			<key>Sort Album</key><string>Glacier - Single</string>
+			<key>Sort Artist</key><string>James Vincent McMorrow</string>
+		</dict>
+		<key>172</key>
+		<dict>
+			<key>Track ID</key><integer>172</integer>
+			<key>Size</key><integer>6841297</integer>
+			<key>Total Time</key><integer>192227</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>1</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2014-04-05T23:17:59Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-03-04T08:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>C5EFA8C512982DA5</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>So Bad</string>
+			<key>Artist</key><string>Kandle</string>
+			<key>Album Artist</key><string>Kandle</string>
+			<key>Album</key><string>So Bad - Single</string>
+			<key>Genre</key><string>Alternative</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>So Bad</string>
+			<key>Sort Album</key><string>So Bad - Single</string>
+			<key>Sort Artist</key><string>Kandle</string>
+		</dict>
+		<key>174</key>
+		<dict>
+			<key>Track ID</key><integer>174</integer>
+			<key>Size</key><integer>959306892</integer>
+			<key>Total Time</key><integer>1420800</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>1</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2014-01-04T15:57:58Z</date>
+			<key>Play Count</key><integer>1</integer>
+			<key>Release Date</key><date>2013-09-25T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Episode Order</key><integer>1</integer>
+			<key>Persistent ID</key><string>253F413692527B65</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>TV Show</key><true/>
+			<key>Has Video</key><true/>
+			<key>Name</key><string>Pilot</string>
+			<key>Artist</key><string>The Michael J. Fox Show</string>
+			<key>Album</key><string>The Michael J. Fox Show: Free Episode</string>
+			<key>Genre</key><string>Comedy</string>
+			<key>Kind</key><string>Purchased MPEG-4 video file</string>
+			<key>Sort Name</key><string>Pilot</string>
+			<key>Sort Album</key><string>Michael J. Fox Show: Free Episode</string>
+			<key>Sort Artist</key><string>The Michael J. Fox Show</string>
+			<key>Sort Series</key><string>Michael J. Fox Show</string>
+			<key>Content Rating</key><string>ca-tv||0|</string>
+			<key>Series</key><string>The Michael J. Fox Show</string>
+			<key>Episode</key><string>101</string>
+		</dict>
+		<key>176</key>
+		<dict>
+			<key>Track ID</key><integer>176</integer>
+			<key>Size</key><integer>6878986</integer>
+			<key>Total Time</key><integer>186685</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>2</integer>
+			<key>Track Count</key><integer>101</integer>
+			<key>Year</key><integer>2013</integer>
+			<key>Date Modified</key><date>2016-02-28T18:36:42Z</date>
+			<key>Date Added</key><date>2013-12-23T02:19:52Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2013-11-29T08:00:00Z</date>
+			<key>Compilation</key><true/>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>16CC2E86A969C55A</string>
+			<key>Track Type</key><string>File</string>
+			<key>Purchased</key><true/>
+			<key>File Folder Count</key><integer>5</integer>
+			<key>Library Folder Count</key><integer>1</integer>
+			<key>Name</key><string>Rudolph the Red-Nosed Reindeer</string>
+			<key>Artist</key><string>Gene Autry</string>
+			<key>Album Artist</key><string>Various Artists</string>
+			<key>Album</key><string>100 Christmas Hits &#38; Xmas Classics: The Greatest Holiday Songs &#38; Carols Collection</string>
+			<key>Genre</key><string>Holiday</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Rudolph the Red-Nosed Reindeer</string>
+			<key>Sort Album</key><string>100 Christmas Hits &#38; Xmas Classics: The Greatest Holiday Songs &#38; Carols Collection</string>
+			<key>Sort Artist</key><string>Gene Autry</string>
+			<key>Location</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/Music/Compilations/100%20Christmas%20Hits%20&#38;%20Xmas%20Classics_%20The%20Greatest%20Holiday%20Songs%20&#38;%20Carols%20Collection/02%20Rudolph%20the%20Red-Nosed%20Reindeer.m4a</string>
+		</dict>
+		<key>178</key>
+		<dict>
+			<key>Track ID</key><integer>178</integer>
+			<key>Size</key><integer>7139981</integer>
+			<key>Total Time</key><integer>197733</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>1</integer>
+			<key>Track Count</key><integer>1</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2014-03-18T15:57:21Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-03-17T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>AF34BB6380439E6E</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>Glass</string>
+			<key>Artist</key><string>MØ</string>
+			<key>Album Artist</key><string>MØ</string>
+			<key>Composer</key><string>Karen Marie Ørsted, Ronni Vindahl &#38; August Fenger</string>
+			<key>Album</key><string>Glass - Single</string>
+			<key>Genre</key><string>Pop</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Glass</string>
+			<key>Sort Album</key><string>Glass - Single</string>
+			<key>Sort Artist</key><string>MØ</string>
+		</dict>
+		<key>180</key>
+		<dict>
+			<key>Track ID</key><integer>180</integer>
+			<key>Size</key><integer>7760529</integer>
+			<key>Total Time</key><integer>205107</integer>
+			<key>Disc Number</key><integer>1</integer>
+			<key>Disc Count</key><integer>1</integer>
+			<key>Track Number</key><integer>3</integer>
+			<key>Track Count</key><integer>10</integer>
+			<key>Year</key><integer>2014</integer>
+			<key>Date Modified</key><date>2015-12-06T09:19:35Z</date>
+			<key>Date Added</key><date>2014-10-04T19:08:21Z</date>
+			<key>Bit Rate</key><integer>256</integer>
+			<key>Sample Rate</key><integer>44100</integer>
+			<key>Release Date</key><date>2014-09-16T07:00:00Z</date>
+			<key>Artwork Count</key><integer>1</integer>
+			<key>Persistent ID</key><string>B67C9BC5A0C17540</string>
+			<key>Track Type</key><string>Remote</string>
+			<key>Purchased</key><true/>
+			<key>Name</key><string>Higher</string>
+			<key>Artist</key><string>Lia Ices</string>
+			<key>Album Artist</key><string>Lia Ices</string>
+			<key>Album</key><string>Ices</string>
+			<key>Genre</key><string>Alternative</string>
+			<key>Kind</key><string>Purchased AAC audio file</string>
+			<key>Sort Name</key><string>Higher</string>
+			<key>Sort Album</key><string>Ices</string>
+			<key>Sort Artist</key><string>Lia Ices</string>
+		</dict>
+	</dict>
+	<key>Playlists</key>
+	<array>
+		<dict>
+			<key>Master</key><true/>
+			<key>Playlist ID</key><integer>224</integer>
+			<key>Playlist Persistent ID</key><string>2B56F906137F73AA</string>
+			<key>All Items</key><true/>
+			<key>Visible</key><false/>
+			<key>Name</key><string>####!####</string>
+			<key>Playlist Items</key>
+			<array>
+				<dict>
+					<key>Track ID</key><integer>106</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>108</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>110</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>112</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>114</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>116</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>118</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>120</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>122</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>124</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>126</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>128</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>130</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>132</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>134</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>136</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>138</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>140</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>142</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>144</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>146</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>148</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>150</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>152</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>154</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>156</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>158</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>160</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>162</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>164</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>166</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>168</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>170</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>172</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>174</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>176</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>178</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>180</integer>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>265</integer>
+			<key>Playlist Persistent ID</key><string>071C96122A0AF5B8</string>
+			<key>Distinguished Kind</key><integer>4</integer>
+			<key>Music</key><true/>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Music</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAQIbEAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAQIbEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AgAEAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAIIAE
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAIIAEAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+			<key>Playlist Items</key>
+			<array>
+				<dict>
+					<key>Track ID</key><integer>114</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>164</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>158</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>166</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>168</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>152</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>130</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>156</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>176</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>142</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>170</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>154</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>134</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>172</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>180</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>110</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>112</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>178</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>140</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>146</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>136</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>160</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>162</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>144</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>132</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>128</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>138</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>148</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>116</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>120</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>118</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>108</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>124</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>122</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>126</integer>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>303</integer>
+			<key>Playlist Persistent ID</key><string>7B63B8584A2C4C4F</string>
+			<key>Distinguished Kind</key><integer>47</integer>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Music Videos</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAAACAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AgAEAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAIYAE
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAIYAEAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+			<key>Playlist Items</key>
+			<array>
+				<dict>
+					<key>Track ID</key><integer>112</integer>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>307</integer>
+			<key>Playlist Persistent ID</key><string>9F560177C1E87027</string>
+			<key>Distinguished Kind</key><integer>7</integer>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Rentals</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAEIAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAAAEIAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AAAIAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAAIAA
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>310</integer>
+			<key>Playlist Persistent ID</key><string>D14375DD4B9E4D6D</string>
+			<key>Distinguished Kind</key><integer>2</integer>
+			<key>Movies</key><true/>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Movies</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AgAEAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAIKAE
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAIKAEAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+			<key>Playlist Items</key>
+			<array>
+				<dict>
+					<key>Track ID</key><integer>150</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>106</integer>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>315</integer>
+			<key>Playlist Persistent ID</key><string>19EFCEEF3A91DF09</string>
+			<key>Distinguished Kind</key><integer>48</integer>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Home Videos</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAABAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AgAEAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAIYAE
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAIYAEAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>318</integer>
+			<key>Playlist Persistent ID</key><string>03AC2871D0E39D32</string>
+			<key>Distinguished Kind</key><integer>3</integer>
+			<key>TV Shows</key><true/>
+			<key>All Items</key><true/>
+			<key>Name</key><string>TV Shows</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAAAEAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AgAEAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAIKAE
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAIKAEAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+			<key>Playlist Items</key>
+			<array>
+				<dict>
+					<key>Track ID</key><integer>174</integer>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>322</integer>
+			<key>Playlist Persistent ID</key><string>C21E1D511BE1A394</string>
+			<key>Distinguished Kind</key><integer>10</integer>
+			<key>Podcasts</key><true/>
+			<key>All Items</key><true/>
+			<key>Visible</key><false/>
+			<key>Name</key><string>Podcasts</string>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>329</integer>
+			<key>Playlist Persistent ID</key><string>53233B002B5A015C</string>
+			<key>Distinguished Kind</key><integer>31</integer>
+			<key>iTunesU</key><true/>
+			<key>All Items</key><true/>
+			<key>Visible</key><false/>
+			<key>Name</key><string>iTunes U</string>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>332</integer>
+			<key>Playlist Persistent ID</key><string>E4AFB5DCCABD623D</string>
+			<key>Distinguished Kind</key><integer>5</integer>
+			<key>Audiobooks</key><true/>
+			<key>All Items</key><true/>
+			<key>Visible</key><false/>
+			<key>Name</key><string>Audiobooks</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAAAAgAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AgAEAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAIKAE
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAIKAEAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>335</integer>
+			<key>Playlist Persistent ID</key><string>F7E04333C0E8187B</string>
+			<key>Distinguished Kind</key><integer>57</integer>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Books</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAB
+			AAAAAABAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AgAEAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAIKAE
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAIKAEAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>338</integer>
+			<key>Playlist Persistent ID</key><string>19494F02C64F0EE8</string>
+			<key>Distinguished Kind</key><integer>59</integer>
+			<key>All Items</key><true/>
+			<key>Name</key><string>PDFs</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAB
+			AAAAAACAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AgAEAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAIKAE
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAIKAEAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>341</integer>
+			<key>Playlist Persistent ID</key><string>FC275C4B6561FC00</string>
+			<key>Distinguished Kind</key><integer>58</integer>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Audiobooks</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAAAAgAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AgAEAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAIKAE
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAIKAEAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>347</integer>
+			<key>Playlist Persistent ID</key><string>E24477F50898AFE1</string>
+			<key>Distinguished Kind</key><integer>26</integer>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Genius</string>
+			<key>Smart Info</key>
+			<data>
+			AAABAwAAAAIAAAAZAAABAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>350</integer>
+			<key>Playlist Persistent ID</key><string>CA61780D87E12A2D</string>
+			<key>All Items</key><true/>
+			<key>Name</key><string>90’s Music</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAEAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAB8YAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAAB88AAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgFNMc3QAAQAB
+			AAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAB
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAABAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEQAAAAAAAAAIAAAAAAAAAAA
+			AAAAAAAAAAEAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>353</integer>
+			<key>Playlist Persistent ID</key><string>DA2FF02F1161B986</string>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Classical Music</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAU0xzdAABAAEAAAACAAAAAQAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAADwAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAABEAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAg
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVxTTHN0AAEAAQAAABEAAAAB
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAACAEAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAABIAQwBsAGEAcwBzAGkAYwBhAGwAAAAIAQAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEABLAGwAYQBzAHMAaQBlAGsAAAAI
+			AQAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEgBD
+			AGwAYQBzAHMAaQBxAHUAZQAAAAgBAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAOAEsAbABhAHMAcwBpAGsAAAAIAQAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEABDAGwAYQBzAHMAaQBjAGEAAAAI
+			AQAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACjCv
+			MOkwtzDDMK8AAAAIAQAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAADgBDAGwA4QBzAGkAYwBhAAAACAEAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAASwBsAGEAcwBzAGkAcwBrAAAACAEAAAEAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAQwBsAOEAcwBz
+			AGkAYwBhAAAACAEAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAABIASwBsAGEAcwBzAGkAcwBrAHQAAAAIAQAAAQAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAQaBDsEMARBBEEEOARHBDUEQQQ6BDAETwAA
+			AAgBAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAS
+			AEsAbABhAHMAeQBjAHoAbgBhAAAACAEAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAABIASwBsAGEAcwBzAGkAbgBlAG4AAAAIAQAAAQAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADABLAGwAYQBzAGkAawAA
+			AAgBAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU
+			AEsAbABhAHMAcwB6AGkAawB1AHMAAAAIAQAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAFgBWAOEBfgBuAOEAIABoAHUAZABiAGEAAAAIAQAAAQAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgZDBkQGJwYz
+			BkoGQwZK
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>356</integer>
+			<key>Playlist Persistent ID</key><string>118A2BC8FD61DC59</string>
+			<key>All Items</key><true/>
+			<key>Name</key><string>My Top Rated</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABkAAAAQAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAADwAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAAADwAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>359</integer>
+			<key>Playlist Persistent ID</key><string>1029D9D4A0F5B782</string>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Recently Added</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAIAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABELa4tri2uLa7//////////gAAAAAACTqA
+			La4tri2uLa4AAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5AgAAAQAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAAAAB
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>362</integer>
+			<key>Playlist Persistent ID</key><string>0F4D40075BDCEE14</string>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Recently Played</string>
+			<key>Smart Info</key>
+			<data>
+			AQEAAwAAAAIAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABcAAAIAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABELa4tri2uLa7//////////gAAAAAACTqA
+			La4tri2uLa4AAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5AgAAAQAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAAAAB
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>365</integer>
+			<key>Playlist Persistent ID</key><string>30B71B7F238089F5</string>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Top 25 Most Played</string>
+			<key>Smart Info</key>
+			<data>
+			AQEBAwAAABkAAAAZAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAA==
+			</data>
+			<key>Smart Criteria</key>
+			<data>
+			U0xzdAABAAEAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADkCAAABAAAAAAAAAAAAAAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAB
+			AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWAAAAEAAA
+			AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAAAAA
+			AAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA
+			AAAAAAAA
+			</data>
+			<key>Playlist Items</key>
+			<array>
+				<dict>
+					<key>Track ID</key><integer>150</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>106</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>174</integer>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>Playlist ID</key><integer>371</integer>
+			<key>Playlist Persistent ID</key><string>090B073227DCEA80</string>
+			<key>Distinguished Kind</key><integer>50</integer>
+			<key>All Items</key><true/>
+			<key>Name</key><string>Books</string>
+		</dict>
+	</array>
+	<key>Music Folder</key><string>file:///Users/deluan/Music/iTunes/iTunes%20Media/</string>
+</dict>
+</plist>
