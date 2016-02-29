@@ -16,9 +16,9 @@ func init() {
 
 func mapEndpoints() {
 	ns := beego.NewNamespace("/rest",
-		beego.NSRouter("/ping.view", &api.PingController{}),
-		beego.NSRouter("/getLicense.view", &api.GetLicenseController{}),
-		beego.NSRouter("/getMusicFolders.view", &api.GetMusicFoldersController{}),
+		beego.NSRouter("/ping.view", &api.PingController{}, "*:Get"),
+		beego.NSRouter("/getLicense.view", &api.GetLicenseController{}, "*:Get"),
+		beego.NSRouter("/getMusicFolders.view", &api.GetMusicFoldersController{}, "*:Get"),
 	)
 	beego.AddNamespace(ns)
 
