@@ -22,5 +22,14 @@ func (r *ArtistIndex) Put(m *models.ArtistIndex) error {
 	return r.saveOrUpdate(m.Id, m)
 }
 
+func (r*ArtistIndex) Get(id string) (*models.ArtistIndex, error) {
+	entity := &models.ArtistIndex{}
+	err := r.loadEntity(id, entity)
+	return entity, err
+}
+
+func (r*ArtistIndex) GetAll() ([]*models.ArtistIndex, error) {
+	return nil, errors.New("Not Implemented")
+}
 
 
