@@ -8,9 +8,8 @@ go:
 install:
   - go get github.com/smartystreets/goconvey
   - go get github.com/gpmgo/gopm
-  - go get github.com/siddontang/ledisdb/ledis
   - gopm list -v
-  - gopm get -v -g
+  - gopm get -v -g -u
 
 script:
   - go test ./... -v
