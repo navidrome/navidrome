@@ -10,20 +10,20 @@ type Album struct {
 
 func NewAlbumRepository() *Album {
 	r := &Album{}
-	r.key = "album"
+	r.table = "album"
 	return r
 }
 
-func (r *Album) Put(m *models.Album) (*models.Album, error) {
+func (r *Album) Put(m *models.Album) error {
 	if m.Id == "" {
 		m.Id = r.NewId(m.Name)
 	}
-	return m, r.saveOrUpdate(m.Id, m)
+	return r.saveOrUpdate(m.Id, m)
 }
 
 func (r *Album) Get(id string) (*models.Album, error) {
 	rec := &models.Album{}
-	err := readStruct(r.key, id, rec)
+	err := r.loadEntity(id, rec)
 	return rec, err
 }
 

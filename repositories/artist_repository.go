@@ -10,20 +10,20 @@ type Artist struct {
 
 func NewArtistRepository() *Artist {
 	r := &Artist{}
-	r.key = "artist"
+	r.table = "artist"
 	return r
 }
 
-func (r *Artist) Put(m *models.Artist) (*models.Artist, error) { // TODO Return only error
+func (r *Artist) Put(m *models.Artist) error {
 	if m.Id == "" {
 		m.Id = r.NewId(m.Name)
 	}
-	return m, r.saveOrUpdate(m.Id, m)
+	return r.saveOrUpdate(m.Id, m)
 }
 
 func (r *Artist) Get(id string) (*models.Artist, error) {
 	rec := &models.Artist{}
-	err := readStruct(r.key, id, rec)
+	err := r.loadEntity(id, rec)
 	return rec, err
 }
 

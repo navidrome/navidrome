@@ -11,7 +11,7 @@ type ArtistIndex struct {
 
 func NewArtistIndexRepository() *ArtistIndex {
 	r := &ArtistIndex{}
-	r.key = "index"
+	r.table = "index"
 	return r
 }
 

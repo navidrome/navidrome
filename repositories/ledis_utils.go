@@ -2,11 +2,9 @@ package repositories
 
 import (
 	"sync"
-	"encoding/json"
 	"github.com/astaxie/beego"
 	"github.com/siddontang/ledisdb/ledis"
 	"github.com/siddontang/ledisdb/config"
-	"github.com/deluan/gosonic/utils"
 )
 
 var (
@@ -26,40 +24,4 @@ func db() *ledis.DB {
 		_dbInstance = instance
 	})
 	return _dbInstance
-}
-
-func saveStruct(key, id string, data interface{}) error {
-	h, err := utils.ToMap(data)
-	if err != nil {
-		return err
-	}
-	var fvList = make([]ledis.FVPair, len(h))
-	i := 0
-	for f, v := range h {
-		fvList[i].Field = []byte(f)
-		fvList[i].Value, _ = json.Marshal(v)
-		i++
-	}
-	kh := key + "_id_" + id
-	ks := key + "_ids"
-	db().SAdd([]byte(ks), []byte(id))
-	return db().HMset([]byte(kh), fvList...)
-}
-
-func readStruct(key, id string, rec interface{}) error {
-	kh := key + "_id_" + id
-	fvs, _ := db().HGetAll([]byte(kh))
-	var m = make(map[string]interface{}, len(fvs))
-	for _, fv := range fvs {
-		var v interface{}
-		json.Unmarshal(fv.Value, &v)
-		m[string(fv.Field)] = v
-	}
-
-	return utils.ToStruct(m, rec)
-}
-
-func count(key string) (int, error) {
-	ids, err := db().SMembers([]byte(key + "_ids"))
-	return len(ids), err
 }

@@ -5,8 +5,6 @@ import (
 	"github.com/deluan/gosonic/repositories"
 	"github.com/deluan/gosonic/models"
 	"strings"
-	"fmt"
-	"encoding/json"
 )
 
 type Scanner interface {
@@ -33,10 +31,8 @@ func importLibrary(files []Track) {
 	var artistIndex = make(map[string]tempIndex)
 
 	for _, t := range files {
-		mf, album, artist := processTrack(&t)
-		mergeInfo(mfRepo, mf, albumRepo, album, artistRepo, artist)
-		fmt.Printf("%#v\n", album)
-		fmt.Printf("%#v\n\n", artist)
+		mf, album, artist := parseTrack(&t)
+		persist(mfRepo, mf, albumRepo, album, artistRepo, artist)
 		collectIndex(artist, artistIndex)
 	}
 
@@ -44,14 +40,15 @@ func importLibrary(files []Track) {
 		beego.Error(err)
 	}
 
-	j,_ := json.MarshalIndent(artistIndex, "", "    ")
-	fmt.Println(string(j))
-
-	c, _ := mfRepo.CountAll()
-	beego.Info("Total mediafiles in database:", c)
+	c, _ := artistRepo.CountAll()
+	beego.Info("Total Artists in database:", c)
+	c, _ = albumRepo.CountAll()
+	beego.Info("Total Albums in database:", c)
+	c, _ = mfRepo.CountAll()
+	beego.Info("Total MediaFiles in database:", c)
 }
 
-func processTrack(t *Track) (*models.MediaFile, *models.Album, *models.Artist) {
+func parseTrack(t *Track) (*models.MediaFile, *models.Album, *models.Artist) {
 	mf := &models.MediaFile{
 		Id: t.Id,
 		Album: t.Album,
@@ -77,30 +74,17 @@ func processTrack(t *Track) (*models.MediaFile, *models.Album, *models.Artist) {
 	return mf, album, artist
 }
 
-func mergeInfo(mfRepo *repositories.MediaFile, mf *models.MediaFile, albumRepo *repositories.Album, album *models.Album, artistRepo *repositories.Artist, artist *models.Artist) {
-	artist.Id = artistRepo.NewId(artist.Name)
-
-	sAlbum, err := albumRepo.GetByName(album.Name)
-	if err != nil {
+func persist(mfRepo *repositories.MediaFile, mf *models.MediaFile, albumRepo *repositories.Album, album *models.Album, artistRepo *repositories.Artist, artist *models.Artist) {
+	if err := artistRepo.Put(artist); err != nil {
 		beego.Error(err)
 	}
+
 	album.ArtistId = artist.Id
-	album.AddMediaFiles(mf, sAlbum.MediaFiles)
-	sAlbum, err = albumRepo.Put(album)
-	if err != nil {
+	if err := albumRepo.Put(album); err != nil {
 		beego.Error(err)
 	}
 
-	sArtist, err := artistRepo.GetByName(artist.Name)
-	if err != nil {
-		beego.Error(err)
-	}
-	artist.AddAlbums(sAlbum, sArtist.Albums)
-	_, err = artistRepo.Put(artist)
-	if err != nil {
-		beego.Error(err)
-	}
-
+	mf.AlbumId = album.Id
 	if err := mfRepo.Put(mf); err != nil {
 		beego.Error(err)
 	}
