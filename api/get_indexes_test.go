@@ -28,10 +28,15 @@ func TestGetIndexes(t *testing.T) {
 		return propRepo
 	})
 
+	mockRepo.SetData("[]", 0)
+	mockRepo.SetError(false)
+	propRepo.Put(consts.LastScan, "1")
+	propRepo.SetError(false)
+
 	Convey("Subject: GetIndexes Endpoint", t, func() {
 		Convey("Return fail on Index Table error", func() {
 			mockRepo.SetError(true)
-			_, w := Get(AddParams("/rest/getIndexes.view"), "TestGetIndexes")
+			_, w := Get(AddParams("/rest/getIndexes.view", "ifModifiedSince=0"), "TestGetIndexes")
 
 			v := responses.Subsonic{}
 			xml.Unmarshal(w.Body.Bytes(), &v)
@@ -71,6 +76,26 @@ func TestGetIndexes(t *testing.T) {
 				So(w.Body.String(), ShouldContainSubstring,
 					`<indexes lastModified="1" ignoredArticles="The El La Los Las Le Les Os As O A"><index name="A"><artist id="21" name="Afrolicious"></artist></index></indexes>`)
 			})
+		})
+		Convey("And it should return empty if 'ifModifiedSince' is more recent than the index", func() {
+			mockRepo.SetData(`[{"Id": "A","Artists": [
+				{"ArtistId": "21", "Artist": "Afrolicious"}
+			]}]`, 2)
+			propRepo.Put(consts.LastScan, "1")
+
+			_, w := Get(AddParams("/rest/getIndexes.view", "ifModifiedSince=2"), "TestGetIndexes")
+
+			So(w.Body.String(), ShouldContainSubstring, emptyResponse)
+		})
+		Convey("And it should return empty if 'ifModifiedSince' is the asme as tie index last update", func() {
+			mockRepo.SetData(`[{"Id": "A","Artists": [
+				{"ArtistId": "21", "Artist": "Afrolicious"}
+			]}]`, 2)
+			propRepo.Put(consts.LastScan, "1")
+
+			_, w := Get(AddParams("/rest/getIndexes.view", "ifModifiedSince=1"), "TestGetIndexes")
+
+			So(w.Body.String(), ShouldContainSubstring, emptyResponse)
 		})
 		Reset(func() {
 			mockRepo.SetData("[]", 0)

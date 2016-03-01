@@ -20,7 +20,7 @@ func (m *MockProperty) SetError(err bool) {
 }
 
 func (m *MockProperty) Put(id string, value string) error {
-	if (m.err) {
+	if m.err {
 		return errors.New("Error!")
 	}
 	m.data[id] = value
@@ -28,9 +28,19 @@ func (m *MockProperty) Put(id string, value string) error {
 }
 
 func (m *MockProperty) Get(id string) (string, error) {
-	if (m.err) {
+	if m.err {
 		return "", errors.New("Error!")
 	} else {
 		return m.data[id], nil
 	}
+}
+
+func (m *MockProperty) DefaultGet(id string, defaultValue string) (string, error) {
+	v, err := m.Get(id)
+
+	if v == "" {
+		v = defaultValue
+	}
+
+	return v, err
 }

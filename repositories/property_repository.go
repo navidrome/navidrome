@@ -8,6 +8,7 @@ import (
 type Property interface {
 	Put(id string, value string) error
 	Get(id string) (string, error)
+	DefaultGet(id string, defaultValue string) (string, error)
 }
 
 type PropertyImpl struct {
@@ -32,4 +33,14 @@ func (r *PropertyImpl) Get(id string) (string, error) {
 	var rec interface{}
 	rec, err := r.readEntity(id)
 	return rec.(*models.Property).Value, err
+}
+
+func (r* PropertyImpl) DefaultGet(id string, defaultValue string) (string, error) {
+	v, err := r.Get(id)
+
+	if v == "" {
+		v = defaultValue
+	}
+
+	return v, err
 }

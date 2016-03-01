@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	_ "github.com/deluan/gosonic/conf"
+	"strings"
 )
 
 const (
@@ -15,8 +16,12 @@ const (
 	testVersion = "1.0.0"
 )
 
-func AddParams(url string) string {
-	return fmt.Sprintf("%s?u=%s&p=%s&c=%s&v=%s", url, testUser, testPassword, testClient, testVersion)
+func AddParams(endpoint string, params ...string) string {
+	url := fmt.Sprintf("%s?u=%s&p=%s&c=%s&v=%s", endpoint, testUser, testPassword, testClient, testVersion)
+	if len(params) > 0 {
+		url = url + "&" + strings.Join(params, "&")
+	}
+	return url
 }
 
 func Get(url string, testCase string) (*http.Request, *httptest.ResponseRecorder) {
