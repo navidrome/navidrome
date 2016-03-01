@@ -130,7 +130,7 @@ func (r *BaseRepository) loadAll(entities interface{}) error {
 	reflected := reflect.ValueOf(entities).Elem()
 
 	setName := r.table + "s:all"
-	response, err := db().XSSort([]byte(setName), 0, 0, true, true, nil, r.getFieldKeys("*"))
+	response, err := db().XSSort([]byte(setName), 0, 0, true, false, nil, r.getFieldKeys("*"))
 	if (err != nil) {
 		return err
 	}
