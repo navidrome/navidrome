@@ -5,10 +5,11 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/deluan/gosonic/tests"
 	"fmt"
+	"strconv"
 )
 
 type TestEntity struct {
-	Id string
+	Id   string
 	Name string
 }
 
@@ -18,12 +19,17 @@ func shouldBeEqual(actualStruct interface{}, expectedStruct ...interface{}) stri
 	return ShouldEqual(actual, expected)
 }
 
+func createRepo() *BaseRepository{
+	repo := &BaseRepository{}
+	repo.init("test", &TestEntity{})
+	return repo
+}
+
 func TestBaseRepository(t *testing.T) {
 	tests.Init(t, false)
 
 	Convey("Subject: NewId", t, func() {
-
-		repo := &BaseRepository{table: "test_table"}
+		repo := createRepo()
 
 		Convey("When I call NewId with a name", func() {
 			Id := repo.NewId("a name")
@@ -57,8 +63,7 @@ func TestBaseRepository(t *testing.T) {
 	Convey("Subject: saveOrUpdate/loadEntity/CountAll", t, func() {
 
 		Convey("Given an empty DB", func() {
-			dropDb()
-			repo := &BaseRepository{table: "test"}
+			repo := createRepo()
 
 			Convey("When I save a new entity", func() {
 				entity := &TestEntity{"123", "My Name"}
@@ -74,8 +79,7 @@ func TestBaseRepository(t *testing.T) {
 				})
 
 				Convey("And this entity should be equal to the the saved one", func() {
-					actualEntity := &TestEntity{}
-					repo.loadEntity("123", actualEntity)
+					actualEntity, _ := repo.readEntity("123")
 					So(actualEntity, shouldBeEqual, entity)
 				})
 
@@ -84,8 +88,7 @@ func TestBaseRepository(t *testing.T) {
 		})
 
 		Convey("Given a table with one entity", func() {
-			dropDb()
-			repo := &BaseRepository{table: "test"}
+			repo := createRepo()
 			entity := &TestEntity{"111", "One Name"}
 			repo.saveOrUpdate(entity.Id, entity)
 
@@ -110,13 +113,42 @@ func TestBaseRepository(t *testing.T) {
 				})
 
 				Convey("And the entity should be updated", func() {
-					actualEntity := &TestEntity{}
-					repo.loadEntity("111", actualEntity)
+					e, _ := repo.readEntity("111")
+					actualEntity := e.(*TestEntity)
 					So(actualEntity.Name, ShouldEqual, newEntity.Name)
 				})
 
 			})
 
+		})
+
+		Convey("Given a table with 3 entities", func() {
+			repo := createRepo()
+			for i := 1; i <= 3; i++ {
+				e := &TestEntity{strconv.Itoa(i), fmt.Sprintf("Name %d", i)}
+				repo.saveOrUpdate(e.Id, e)
+			}
+
+			Convey("When I call loadAll", func() {
+				var es = make([]TestEntity, 0)
+				err := repo.loadAll(&es)
+				Convey("Then It should not return any error", func() {
+					So(err, ShouldBeNil)
+				})
+				Convey("And I should get 3 entities", func() {
+					So(len(es), ShouldEqual, 3)
+				})
+				Convey("And the values should be retrieved", func() {
+					for _, e := range es {
+						So(e.Id, ShouldBeIn, []string{"1", "2", "3"})
+						So(e.Name, ShouldBeIn, []string{"Name 1", "Name 2", "Name 3"})
+					}
+				})
+			})
+		})
+
+		Reset(func() {
+			dropDb()
 		})
 
 	})

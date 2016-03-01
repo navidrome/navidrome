@@ -10,7 +10,7 @@ type MediaFile struct {
 
 func NewMediaFileRepository() *MediaFile {
 	r := &MediaFile{}
-	r.table = "mediafile"
+	r.init("mediafile", &models.MediaFile{})
 	return r
 }
 

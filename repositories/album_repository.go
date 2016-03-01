@@ -10,7 +10,7 @@ type Album struct {
 
 func NewAlbumRepository() *Album {
 	r := &Album{}
-	r.table = "album"
+	r.init("album", &models.Album{})
 	return r
 }
 
@@ -22,9 +22,9 @@ func (r *Album) Put(m *models.Album) error {
 }
 
 func (r *Album) Get(id string) (*models.Album, error) {
-	rec := &models.Album{}
-	err := r.loadEntity(id, rec)
-	return rec, err
+	var rec interface{}
+	rec, err := r.readEntity(id)
+	return rec.(*models.Album), err
 }
 
 func (r *Album) GetByName(name string) (*models.Album, error) {

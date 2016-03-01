@@ -9,9 +9,23 @@ import (
 	"reflect"
 )
 
-
 type BaseRepository struct {
-	table string
+	table      string
+	entityType reflect.Type
+	fieldNames []string
+}
+
+func (r *BaseRepository) init(table string, entity interface{}) {
+	r.table = table
+	r.entityType = reflect.TypeOf(entity).Elem()
+
+	h, _ := utils.ToMap(entity)
+	r.fieldNames = make([]string, len(h))
+	i := 0
+	for k, _ := range h {
+		r.fieldNames[i] = k
+		i++
+	}
 }
 
 // TODO Use annotations to specify fields to be used
@@ -67,31 +81,69 @@ func (r *BaseRepository) getParent(entity interface{}) (table string, id string)
 	return "", ""
 }
 
-func (r *BaseRepository) loadEntity(id string, entity interface{}) error {
+func (r *BaseRepository) getFieldKeys(id string) [][]byte {
 	recordPrefix := fmt.Sprintf("%s:%s:", r.table, id)
-
-	h, _ := utils.ToMap(entity)
-	var fieldKeys = make([][]byte, len(h))
-	var fieldNames = make([]string, len(h))
-	i := 0
-	for k, _ := range h {
-		fieldNames[i] = k
-		fieldKeys[i] = []byte(recordPrefix + k)
-		i++
+	var fieldKeys = make([][]byte, len(r.fieldNames))
+	for i, n := range r.fieldNames {
+		fieldKeys[i] = []byte(recordPrefix + n)
 	}
+	return fieldKeys
+}
+
+func (r* BaseRepository) newInstance() interface{} {
+	return reflect.New(r.entityType).Interface()
+}
+
+func (r *BaseRepository) readEntity(id string) (interface{}, error) {
+	entity := r.newInstance()
+
+	fieldKeys := r.getFieldKeys(id)
 
 	res, err := db().MGet(fieldKeys...)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var record = make(map[string]interface{}, len(res))
-	for i, v := range res {
+	err = r.toEntity(res, entity)
+	return entity, err
+}
+
+func (r *BaseRepository) toEntity(response [][]byte, entity interface{}) error {
+	var record = make(map[string]interface{}, len(response))
+	for i, v := range response {
 		var value interface{}
 		if err := json.Unmarshal(v, &value); err != nil {
 			return err
 		}
-		record[string(fieldNames[i])] = value
+		record[string(r.fieldNames[i])] = value
 	}
 
 	return utils.ToStruct(record, entity)
+}
+
+// TODO Optimize it! Probably very slow (and confusing!)
+func (r *BaseRepository) loadAll(entities interface{}) error {
+	total, err := r.CountAll()
+	if (err != nil) {
+		return err
+	}
+
+	reflected := reflect.ValueOf(entities).Elem()
+
+	setName := r.table + "s:all"
+	response, err := db().XSSort([]byte(setName), 0, 0, true, true, nil, r.getFieldKeys("*"))
+	if (err != nil) {
+		return err
+	}
+	numFields := len(r.fieldNames)
+	for i := 0; i < total; i++ {
+		start := i * numFields
+		entity := reflect.New(r.entityType).Interface()
+
+		if err := r.toEntity(response[start:start + numFields], entity); err != nil {
+			return err
+		}
+		reflected.Set(reflect.Append(reflected, reflect.ValueOf(entity).Elem()))
+	}
+
+	return nil
 }

@@ -10,7 +10,7 @@ type Artist struct {
 
 func NewArtistRepository() *Artist {
 	r := &Artist{}
-	r.table = "artist"
+	r.init("artist", &models.Artist{})
 	return r
 }
 
@@ -22,9 +22,9 @@ func (r *Artist) Put(m *models.Artist) error {
 }
 
 func (r *Artist) Get(id string) (*models.Artist, error) {
-	rec := &models.Artist{}
-	err := r.loadEntity(id, rec)
-	return rec, err
+	var rec interface{}
+	rec, err := r.readEntity(id)
+	return rec.(*models.Artist), err
 }
 
 func (r *Artist) GetByName(name string) (*models.Artist, error) {
