@@ -41,10 +41,10 @@ func TestIndexRepository(t *testing.T) {
 				Convey("Then It should not return any error", func() {
 					So(err, ShouldBeNil)
 				})
-				SkipConvey("And It should return 4 entities", func() {
-					So(len(indices), ShouldEqual, 4)
+				Convey("And It should return 4 entities", func() {
+					So(indices, ShouldHaveLength, 4)
 				})
-				SkipConvey("And the values should be retrieved", func() {
+				Convey("And the values should be retrieved", func() {
 					for _, e := range indices {
 						So(e.Id, ShouldBeIn, []string{"1", "2", "3", "4"})
 					}

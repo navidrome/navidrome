@@ -29,7 +29,7 @@ func (r *ArtistIndex) Get(id string) (*models.ArtistIndex, error) {
 }
 
 func (r *ArtistIndex) GetAll() ([]models.ArtistIndex, error) {
-	var indices = make([]models.ArtistIndex, 30)
+	var indices = make([]models.ArtistIndex, 0)
 	err := r.loadAll(&indices)
 	return indices, err
 }
