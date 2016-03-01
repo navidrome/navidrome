@@ -6,10 +6,10 @@ import (
 	"github.com/karlkfi/inject"
 )
 
-var (
-	indexRepository repositories.ArtistIndex
-)
+func define(ptr interface{}, constructor interface{}, argPtrs ...interface{}) {
+	utils.Graph.Define(ptr, inject.NewProvider(constructor, argPtrs...))
+}
 
 func init () {
-	utils.Graph.Define(&indexRepository, inject.NewProvider(repositories.NewArtistIndexRepository))
+	define(new(repositories.ArtistIndex), repositories.NewArtistIndexRepository)
 }
