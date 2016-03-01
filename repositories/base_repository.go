@@ -22,7 +22,7 @@ func (r *BaseRepository) init(table string, entity interface{}) {
 	h, _ := utils.ToMap(entity)
 	r.fieldNames = make([]string, len(h))
 	i := 0
-	for k, _ := range h {
+	for k := range h {
 		r.fieldNames[i] = k
 		i++
 	}
