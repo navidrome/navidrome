@@ -5,7 +5,7 @@ import (
 	"github.com/astaxie/beego"
 	"net/http"
 	"net/http/httptest"
-	_ "github.com/deluan/gosonic/routers"
+	_ "github.com/deluan/gosonic/conf"
 )
 
 const (

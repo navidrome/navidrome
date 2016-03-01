@@ -1,4 +1,4 @@
-package routers
+package conf
 
 import (
 	"github.com/deluan/gosonic/api"

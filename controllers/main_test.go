@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"github.com/astaxie/beego"
 	"fmt"
-	_ "github.com/deluan/gosonic/routers"
+	_ "github.com/deluan/gosonic/conf"
 )
 
 func TestErrorHandler(t *testing.T) {
