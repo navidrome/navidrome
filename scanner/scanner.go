@@ -15,7 +15,7 @@ type Scanner interface {
 	LoadFolder(path string) []Track
 }
 
-type tempIndex map[string]*models.ArtistInfo
+type tempIndex map[string]models.ArtistInfo
 
 // TODO Implement a flag 'isScanning'.
 func StartImport() {
@@ -30,6 +30,7 @@ func doImport(mediaFolder string, scanner Scanner) {
 }
 
 func importLibrary(files []Track) (err error){
+	indexGroups := utils.ParseIndexGroups(beego.AppConfig.String("indexGroups"))
 	mfRepo := repositories.NewMediaFileRepository()
 	albumRepo := repositories.NewAlbumRepository()
 	artistRepo := repositories.NewArtistRepository()
@@ -38,7 +39,7 @@ func importLibrary(files []Track) (err error){
 	for _, t := range files {
 		mf, album, artist := parseTrack(&t)
 		persist(mfRepo, mf, albumRepo, album, artistRepo, artist)
-		collectIndex(artist, artistIndex)
+		collectIndex(indexGroups, artist, artistIndex)
 	}
 
 	if err = saveIndex(artistIndex); err != nil {
@@ -104,19 +105,29 @@ func persist(mfRepo *repositories.MediaFile, mf *models.MediaFile, albumRepo *re
 	}
 }
 
-func collectIndex(a *models.Artist, artistIndex map[string]tempIndex) {
+func collectIndex(ig utils.IndexGroups, a *models.Artist, artistIndex map[string]tempIndex) {
 	name := a.Name
 	indexName := strings.ToLower(utils.NoArticle(name))
 	if indexName == "" {
 		return
 	}
-	initial := strings.ToUpper(indexName[0:1])
-	artists := artistIndex[initial]
+	group := findGroup(ig, indexName)
+	artists := artistIndex[group]
 	if artists == nil {
 		artists = make(tempIndex)
-		artistIndex[initial] = artists
+		artistIndex[group] = artists
 	}
-	artists[indexName] = &models.ArtistInfo{ArtistId: a.Id, Artist: a.Name}
+	artists[indexName] = models.ArtistInfo{ArtistId: a.Id, Artist: a.Name}
+}
+
+func findGroup(ig utils.IndexGroups, name string) string {
+	for k, v := range ig {
+		key := strings.ToLower(k)
+		if strings.HasPrefix(name, key) {
+			return v
+		}
+	}
+	return "#"
 }
 
 func saveIndex(artistIndex map[string]tempIndex) error {
@@ -125,7 +136,7 @@ func saveIndex(artistIndex map[string]tempIndex) error {
 	for k, temp := range artistIndex {
 		idx := &models.ArtistIndex{Id: k}
 		for _, v := range temp {
-			idx.Artists = append(idx.Artists, *v)
+			idx.Artists = append(idx.Artists, v)
 		}
 		err := idxRepo.Put(idx)
 		if err != nil {
