@@ -13,7 +13,7 @@ func TestPing(t *testing.T) {
 
 	_, w := Get(AddParams("/rest/ping.view"), "TestPing")
 
-	Convey("Subject: Ping Endpoint\n", t, func() {
+	Convey("Subject: Ping Endpoint", t, func() {
 		Convey("Status code should be 200", func() {
 			So(w.Code, ShouldEqual, 200)
 		})

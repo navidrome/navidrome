@@ -16,7 +16,7 @@ func NewAlbumRepository() *Album {
 
 func (r *Album) Put(m *models.Album) error {
 	if m.Id == "" {
-		m.Id = r.NewId(m.Name)
+		m.Id = r.NewId(m.ArtistId, m.Name)
 	}
 	return r.saveOrUpdate(m.Id, m)
 }
@@ -26,9 +26,3 @@ func (r *Album) Get(id string) (*models.Album, error) {
 	rec, err := r.readEntity(id)
 	return rec.(*models.Album), err
 }
-
-func (r *Album) GetByName(name string) (*models.Album, error) {
-	id := r.NewId(name)
-	return r.Get(id)
-}
-

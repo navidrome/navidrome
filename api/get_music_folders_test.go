@@ -13,7 +13,7 @@ func TestGetMusicFolders(t *testing.T) {
 
 	_, w := Get(AddParams("/rest/getMusicFolders.view"), "TestGetMusicFolders")
 
-	Convey("Subject: GetMusicFolders Endpoint\n", t, func() {
+	Convey("Subject: GetMusicFolders Endpoint", t, func() {
 		Convey("Status code should be 200", func() {
 			So(w.Code, ShouldEqual, 200)
 		})

@@ -23,7 +23,7 @@ func TestIndexRepository(t *testing.T) {
 
 			So(s, shouldBeEqual, i)
 		})
-		Convey("Put() should return error if Id is not set", func() {
+		Convey("Method Put() should return error if Id is not set", func() {
 			i := &models.ArtistIndex{}
 
 			err := repo.Put(i)

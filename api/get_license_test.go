@@ -12,7 +12,7 @@ func TestGetLicense(t *testing.T) {
 
 	_, w := Get(AddParams("/rest/getLicense.view"), "TestGetLicense")
 
-	Convey("Subject: GetLicense Endpoint\n", t, func() {
+	Convey("Subject: GetLicense Endpoint", t, func() {
 		Convey("Status code should be 200", func() {
 			So(w.Code, ShouldEqual, 200)
 		})
