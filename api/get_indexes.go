@@ -21,6 +21,9 @@ func (c *GetIndexesController) Prepare() {
 	inject.ExtractAssignable(utils.Graph, &c.properties)
 }
 
+/*
+	TODO: Shortcuts amd validate musicFolder parameter
+ */
 func (c *GetIndexesController) Get() {
 	var err error
 
