@@ -14,6 +14,7 @@ type Scanner interface {
 
 type tempIndex map[string]*models.ArtistInfo
 
+// TODO Implement a flag 'isScanning'.
 func StartImport() {
 	go doImport(beego.AppConfig.String("musicFolder"), &ItunesScanner{})
 }
