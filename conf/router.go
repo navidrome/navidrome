@@ -19,6 +19,7 @@ func mapEndpoints() {
 		beego.NSRouter("/ping.view", &api.PingController{}, "*:Get"),
 		beego.NSRouter("/getLicense.view", &api.GetLicenseController{}, "*:Get"),
 		beego.NSRouter("/getMusicFolders.view", &api.GetMusicFoldersController{}, "*:Get"),
+		beego.NSRouter("/getIndexes.view", &api.GetIndexesController{}, "*:Get"),
 	)
 	beego.AddNamespace(ns)
 
