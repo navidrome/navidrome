@@ -6,6 +6,9 @@ import (
 	"github.com/deluan/gosonic/models"
 	"strings"
 "github.com/deluan/gosonic/utils"
+	"github.com/deluan/gosonic/consts"
+	"time"
+	"fmt"
 )
 
 type Scanner interface {
@@ -26,7 +29,7 @@ func doImport(mediaFolder string, scanner Scanner) {
 	beego.Info("Finished importing", len(files), "files")
 }
 
-func importLibrary(files []Track) {
+func importLibrary(files []Track) (err error){
 	mfRepo := repositories.NewMediaFileRepository()
 	albumRepo := repositories.NewAlbumRepository()
 	artistRepo := repositories.NewArtistRepository()
@@ -38,7 +41,7 @@ func importLibrary(files []Track) {
 		collectIndex(artist, artistIndex)
 	}
 
-	if err := saveIndex(artistIndex); err != nil {
+	if err = saveIndex(artistIndex); err != nil {
 		beego.Error(err)
 	}
 
@@ -48,6 +51,15 @@ func importLibrary(files []Track) {
 	beego.Info("Total Albums in database:", c)
 	c, _ = mfRepo.CountAll()
 	beego.Info("Total MediaFiles in database:", c)
+
+	if err == nil {
+		propertyRepo := repositories.NewPropertyRepository()
+		millis := time.Now().UnixNano() / 1000000
+		propertyRepo.Put(consts.LastScan, fmt.Sprint(millis))
+		beego.Info("LastScan timestamp:", millis)
+	}
+
+	return err
 }
 
 func parseTrack(t *Track) (*models.MediaFile, *models.Album, *models.Artist) {

@@ -17,6 +17,7 @@ type IdxIndex struct {
 type ArtistIndex struct {
 	XMLName         xml.Name   `xml:"indexes"`
 	Index           []IdxIndex `xml:"indexes"`
+	LastModified	string     `xml:"lastModified,attr"`
 	IgnoredArticles string     `xml:"ignoredArticles,attr"`
 }
 

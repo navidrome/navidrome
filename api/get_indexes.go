@@ -6,15 +6,18 @@ import (
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
 	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/consts"
 )
 
 type GetIndexesController struct {
 	beego.Controller
 	repo repositories.ArtistIndex
+	properties repositories.Property
 }
 
 func (c *GetIndexesController) Prepare() {
 	inject.ExtractAssignable(utils.Graph, &c.repo)
+	inject.ExtractAssignable(utils.Graph, &c.properties)
 }
 
 func (c *GetIndexesController) Get() {
@@ -23,7 +26,15 @@ func (c *GetIndexesController) Get() {
 		beego.Error("Error retrieving Indexes:", err)
 		c.CustomAbort(200, string(responses.NewError(responses.ERROR_GENERIC, "Internal Error")))
 	}
-	res := &responses.ArtistIndex{IgnoredArticles: beego.AppConfig.String("ignoredArticles")}
+	res := &responses.ArtistIndex{}
+
+	res.LastModified, err = c.properties.Get(consts.LastScan)
+	if err != nil {
+		beego.Error("Error retrieving LastScan property:", err)
+		c.CustomAbort(200, string(responses.NewError(responses.ERROR_GENERIC, "Internal Error")))
+	}
+
+	res.IgnoredArticles = beego.AppConfig.String("ignoredArticles")
 	res.Index = make([]responses.IdxIndex, len(indexes))
 	for i, idx := range indexes {
 		res.Index[i].Name = idx.Id

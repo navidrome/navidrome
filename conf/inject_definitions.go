@@ -7,4 +7,5 @@ import (
 
 func init () {
 	utils.DefineSingleton(new(repositories.ArtistIndex), repositories.NewArtistIndexRepository)
+	utils.DefineSingleton(new(repositories.Property), repositories.NewPropertyRepository)
 }

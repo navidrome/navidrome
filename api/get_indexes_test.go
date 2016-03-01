@@ -6,25 +6,39 @@ import (
 	"github.com/deluan/gosonic/utils"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/deluan/gosonic/tests"
-	"github.com/deluan/gosonic/models"
 	"github.com/deluan/gosonic/repositories"
 	"encoding/xml"
-	"encoding/json"
-	"fmt"
-	"errors"
 	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/consts"
+	"github.com/deluan/gosonic/tests/mocks"
+)
+
+const (
+	emptyResponse = `<indexes lastModified="1" ignoredArticles="The El La Los Las Le Les Os As O A"></indexes>`
 )
 
 func TestGetIndexes(t *testing.T) {
 	tests.Init(t, false)
-	mockRepo := &mockArtistIndex{}
+	mockRepo := mocks.CreateMockArtistIndexRepo()
 	utils.DefineSingleton(new(repositories.ArtistIndex), func() repositories.ArtistIndex {
 		return mockRepo
 	})
+	propRepo := mocks.CreateMockPropertyRepo()
+	utils.DefineSingleton(new(repositories.Property), func() repositories.Property {
+		return propRepo
+	})
 
 	Convey("Subject: GetIndexes Endpoint", t, func() {
-		Convey("Return fail on DB error", func() {
-			mockRepo.err = true
+		Convey("Return fail on Index Table error", func() {
+			mockRepo.SetError(true)
+			_, w := Get(AddParams("/rest/getIndexes.view"), "TestGetIndexes")
+
+			v := responses.Subsonic{}
+			xml.Unmarshal(w.Body.Bytes(), &v)
+			So(v.Status, ShouldEqual, "fail")
+		})
+		Convey("Return fail on Property Table error", func() {
+			propRepo.SetError(true)
 			_, w := Get(AddParams("/rest/getIndexes.view"), "TestGetIndexes")
 
 			v := responses.Subsonic{}
@@ -43,45 +57,26 @@ func TestGetIndexes(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Then it should return an empty collection", func() {
-				So(w.Body.String(), ShouldContainSubstring, `<indexes ignoredArticles="The El La Los Las Le Les Os As O A"></indexes>`)
+				So(w.Body.String(), ShouldContainSubstring, emptyResponse)
 			})
 		})
 		Convey("When the index is not empty", func() {
-			mockRepo.data = makeMockData(`[{"Id": "A","Artists": [
+			mockRepo.SetData(`[{"Id": "A","Artists": [
 				{"ArtistId": "21", "Artist": "Afrolicious"}
 			]}]`, 2)
-			_, w := Get(AddParams("/rest/getIndexes.view"), "TestGetIndexes")
 
 			Convey("Then it should return the the items in the response", func() {
+				_, w := Get(AddParams("/rest/getIndexes.view"), "TestGetIndexes")
+
 				So(w.Body.String(), ShouldContainSubstring,
-					`<indexes ignoredArticles="The El La Los Las Le Les Os As O A"><index name="A"><artist id="21" name="Afrolicious"></artist></index></indexes>`)
+					`<indexes lastModified="1" ignoredArticles="The El La Los Las Le Les Os As O A"><index name="A"><artist id="21" name="Afrolicious"></artist></index></indexes>`)
 			})
 		})
 		Reset(func() {
-			mockRepo.data = make([]models.ArtistIndex, 0)
-			mockRepo.err = false
+			mockRepo.SetData("[]", 0)
+			mockRepo.SetError(false)
+			propRepo.Put(consts.LastScan, "1")
+			propRepo.SetError(false)
 		})
 	})
-}
-
-func makeMockData(j string, length int) []models.ArtistIndex {
-	data := make([]models.ArtistIndex, length)
-	err := json.Unmarshal([]byte(j), &data)
-	if err != nil {
-		fmt.Println("ERROR: ", err)
-	}
-	return data
-}
-
-type mockArtistIndex struct {
-	repositories.ArtistIndexImpl
-	data []models.ArtistIndex
-	err  bool
-}
-
-func (m *mockArtistIndex) GetAll() ([]models.ArtistIndex, error) {
-	if m.err {
-		return nil, errors.New("Error!")
-	}
-	return m.data, nil
 }
