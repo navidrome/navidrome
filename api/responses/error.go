@@ -2,6 +2,7 @@ package responses
 
 import (
 	"encoding/xml"
+	"fmt"
 )
 
 const (
@@ -37,13 +38,19 @@ type error struct {
 	Message string   `xml:"message,attr"`
 }
 
-func NewError(errorCode int) []byte {
+func NewError(errorCode int, message ...interface{}) []byte {
 	response := NewEmpty()
 	response.Status = "fail"
 	if errors[errorCode] == "" {
 		errorCode = ERROR_GENERIC
 	}
-	xmlBody, _ := xml.Marshal(&error{Code: errorCode, Message: errors[errorCode]})
+	var msg string
+	if (len(message) == 0) {
+		msg = errors[errorCode]
+	} else {
+		msg = fmt.Sprintf(message[0].(string), message[1:len(message)]...)
+	}
+	xmlBody, _ := xml.Marshal(&error{Code: errorCode, Message: msg})
 	response.Body = xmlBody
 	xmlResponse, _ := xml.Marshal(response)
 	return []byte(xml.Header + string(xmlResponse))

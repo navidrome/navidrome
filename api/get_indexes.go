@@ -5,6 +5,7 @@ import (
 	"github.com/deluan/gosonic/repositories"
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
+	"github.com/deluan/gosonic/api/responses"
 )
 
 type GetIndexesController struct {
@@ -17,7 +18,16 @@ func (c *GetIndexesController) Prepare() {
 }
 
 func (c *GetIndexesController) Get() {
-	if c.repo == nil {
-		c.CustomAbort(500, "INJECTION NOT WORKING")
+	indexes, err := c.repo.GetAll()
+	if err != nil {
+		beego.Error("Error retrieving Indexes:", err)
+		c.CustomAbort(200, string(responses.NewError(responses.ERROR_GENERIC, "Internal Error")))
 	}
+	res := &responses.ArtistIndex{}
+	res.Index = make([]responses.Index, len(indexes))
+	for i, idx := range indexes {
+		res.Index[i].Name = idx.Id
+	}
+
+	c.Ctx.Output.Body(responses.NewXML(res))
 }
