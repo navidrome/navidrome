@@ -43,15 +43,18 @@ func TestGetIndexes(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 			Convey("Then it should return an empty collection", func() {
-				So(w.Body.String(), ShouldContainSubstring, "<indexes></indexes>")
+				So(w.Body.String(), ShouldContainSubstring, `<indexes ignoredArticles="The El La Los Las Le Les Os As O A"></indexes>`)
 			})
 		})
 		Convey("When the index is not empty", func() {
-			mockRepo.data = makeMockData(`[{"Id": "A","Artists": []}]`, 2)
+			mockRepo.data = makeMockData(`[{"Id": "A","Artists": [
+				{"ArtistId": "21", "Artist": "Afrolicious"}
+			]}]`, 2)
 			_, w := Get(AddParams("/rest/getIndexes.view"), "TestGetIndexes")
 
 			Convey("Then it should return the the items in the response", func() {
-				So(w.Body.String(), ShouldContainSubstring, `<index name="A"></index>`)
+				So(w.Body.String(), ShouldContainSubstring,
+					`<indexes ignoredArticles="The El La Los Las Le Les Os As O A"><index name="A"><artist id="21" name="Afrolicious"></artist></index></indexes>`)
 			})
 		})
 		Reset(func() {
