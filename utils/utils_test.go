@@ -3,7 +3,6 @@ package utils
 import (
 	"testing"
 	. "github.com/smartystreets/goconvey/convey"
-	"fmt"
 )
 
 func TestParseIndexGroup(t *testing.T) {
@@ -20,7 +19,6 @@ func TestParseIndexGroup(t *testing.T) {
 
 	Convey("An entry with a group", t, func() {
 		parsed := ParseIndexGroups("A-C(ABC) Z")
-		fmt.Println("\n>>>>>>", parsed)
 
 		So(parsed, ShouldContainKey, "A")
 		So(parsed["A"], ShouldEqual, "A-C")
@@ -34,7 +32,6 @@ func TestParseIndexGroup(t *testing.T) {
 	})
 	Convey("Correctly parses UTF-8", t, func() {
 		parsed := ParseIndexGroups("UTF8(宇A海)")
-		fmt.Println("\n>>>>>>", parsed)
 
 		So(parsed, ShouldContainKey, "宇")
 		So(parsed["宇"], ShouldEqual, "UTF8")
