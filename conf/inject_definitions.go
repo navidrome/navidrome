@@ -2,10 +2,11 @@ package conf
 
 import (
 	"github.com/deluan/gosonic/utils"
-	"github.com/deluan/gosonic/repositories"
+	"github.com/deluan/gosonic/persistence"
+	"github.com/deluan/gosonic/domain"
 )
 
 func init () {
-	utils.DefineSingleton(new(repositories.ArtistIndex), repositories.NewArtistIndexRepository)
-	utils.DefineSingleton(new(repositories.Property), repositories.NewPropertyRepository)
+	utils.DefineSingleton(new(domain.ArtistIndexRepository), persistence.NewArtistIndexRepository)
+	utils.DefineSingleton(new(domain.PropertyRepository), persistence.NewPropertyRepository)
 }

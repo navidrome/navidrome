@@ -1,8 +1,8 @@
 package mocks
 
 import (
-	"github.com/deluan/gosonic/repositories"
 	"errors"
+	"github.com/deluan/gosonic/domain"
 )
 
 func CreateMockPropertyRepo() *MockProperty {
@@ -10,7 +10,7 @@ func CreateMockPropertyRepo() *MockProperty {
 }
 
 type MockProperty struct {
-	repositories.Property
+	domain.PropertyRepository
 	data map[string]string
 	err  bool
 }

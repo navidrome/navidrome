@@ -1,10 +1,10 @@
-package repositories
+package persistence
 
 import (
 	"testing"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/deluan/gosonic/tests"
-	"github.com/deluan/gosonic/models"
+	"github.com/deluan/gosonic/domain"
 "strconv"
 )
 
@@ -16,7 +16,7 @@ func TestIndexRepository(t *testing.T) {
 		repo := NewArtistIndexRepository()
 
 		Convey("It should be able to read and write to the database", func() {
-			i := &models.ArtistIndex{Id: "123"}
+			i := &domain.ArtistIndex{Id: "123"}
 
 			repo.Put(i)
 			s,_ := repo.Get("123")
@@ -24,7 +24,7 @@ func TestIndexRepository(t *testing.T) {
 			So(s, shouldBeEqual, i)
 		})
 		Convey("Method Put() should return error if Id is not set", func() {
-			i := &models.ArtistIndex{}
+			i := &domain.ArtistIndex{}
 
 			err := repo.Put(i)
 
@@ -32,7 +32,7 @@ func TestIndexRepository(t *testing.T) {
 		})
 		Convey("Given that I have 4 records", func() {
 			for i := 1; i <= 4; i++ {
-				e := &models.ArtistIndex{Id: strconv.Itoa(i)}
+				e := &domain.ArtistIndex{Id: strconv.Itoa(i)}
 				repo.Put(e)
 			}
 

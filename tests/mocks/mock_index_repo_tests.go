@@ -1,10 +1,9 @@
 package mocks
 
 import (
-	"github.com/deluan/gosonic/models"
+	"github.com/deluan/gosonic/domain"
 	"fmt"
 	"encoding/json"
-	"github.com/deluan/gosonic/repositories"
 	"errors"
 )
 
@@ -13,8 +12,8 @@ func CreateMockArtistIndexRepo() *MockArtistIndex {
 }
 
 type MockArtistIndex struct {
-	repositories.ArtistIndex
-	data []models.ArtistIndex
+	domain.ArtistIndexRepository
+	data []domain.ArtistIndex
 	err  bool
 }
 
@@ -23,14 +22,14 @@ func (m *MockArtistIndex) SetError(err bool) {
 }
 
 func (m *MockArtistIndex) SetData(j string, length int) {
-	m.data = make([]models.ArtistIndex, length)
+	m.data = make([]domain.ArtistIndex, length)
 	err := json.Unmarshal([]byte(j), &m.data)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}
 }
 
-func (m *MockArtistIndex) GetAll() ([]models.ArtistIndex, error) {
+func (m *MockArtistIndex) GetAll() ([]domain.ArtistIndex, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}

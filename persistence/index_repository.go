@@ -1,29 +1,23 @@
-package repositories
+package persistence
 
 import (
-	"github.com/deluan/gosonic/models"
+	"github.com/deluan/gosonic/domain"
 	"errors"
 	"sort"
 	"github.com/deluan/gosonic/utils"
 )
 
-type ArtistIndex interface {
-	Put(m *models.ArtistIndex) error
-	Get(id string) (*models.ArtistIndex, error)
-	GetAll() ([]models.ArtistIndex, error)
-}
-
 type artistIndex struct {
 	BaseRepository
 }
 
-func NewArtistIndexRepository() ArtistIndex {
+func NewArtistIndexRepository() domain.ArtistIndexRepository {
 	r := &artistIndex{}
-	r.init("index", &models.ArtistIndex{})
+	r.init("index", &domain.ArtistIndex{})
 	return r
 }
 
-func (r *artistIndex) Put(m *models.ArtistIndex) error {
+func (r *artistIndex) Put(m *domain.ArtistIndex) error {
 	if m.Id == "" {
 		return errors.New("Id is not set")
 	}
@@ -31,19 +25,19 @@ func (r *artistIndex) Put(m *models.ArtistIndex) error {
 	return r.saveOrUpdate(m.Id, m)
 }
 
-func (r *artistIndex) Get(id string) (*models.ArtistIndex, error) {
+func (r *artistIndex) Get(id string) (*domain.ArtistIndex, error) {
 	var rec interface{}
 	rec, err := r.readEntity(id)
-	return rec.(*models.ArtistIndex), err
+	return rec.(*domain.ArtistIndex), err
 }
 
-func (r *artistIndex) GetAll() ([]models.ArtistIndex, error) {
-	var indices = make([]models.ArtistIndex, 0)
+func (r *artistIndex) GetAll() ([]domain.ArtistIndex, error) {
+	var indices = make([]domain.ArtistIndex, 0)
 	err := r.loadAll(&indices, "")
 	return indices, err
 }
 
-type byArtistName []models.ArtistInfo
+type byArtistName []domain.ArtistInfo
 
 func (a byArtistName) Len() int {
 	return len(a)

@@ -2,8 +2,8 @@ package scanner
 
 import (
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/repositories"
-	"github.com/deluan/gosonic/models"
+	"github.com/deluan/gosonic/persistence"
+	"github.com/deluan/gosonic/domain"
 	"strings"
 "github.com/deluan/gosonic/utils"
 	"github.com/deluan/gosonic/consts"
@@ -15,7 +15,7 @@ type Scanner interface {
 	LoadFolder(path string) []Track
 }
 
-type tempIndex map[string]models.ArtistInfo
+type tempIndex map[string]domain.ArtistInfo
 
 // TODO Implement a flag 'isScanning'.
 func StartImport() {
@@ -31,9 +31,9 @@ func doImport(mediaFolder string, scanner Scanner) {
 
 func importLibrary(files []Track) (err error){
 	indexGroups := utils.ParseIndexGroups(beego.AppConfig.String("indexGroups"))
-	mfRepo := repositories.NewMediaFileRepository()
-	albumRepo := repositories.NewAlbumRepository()
-	artistRepo := repositories.NewArtistRepository()
+	mfRepo := persistence.NewMediaFileRepository()
+	albumRepo := persistence.NewAlbumRepository()
+	artistRepo := persistence.NewArtistRepository()
 	var artistIndex = make(map[string]tempIndex)
 
 	for _, t := range files {
@@ -54,7 +54,7 @@ func importLibrary(files []Track) (err error){
 	beego.Info("Total MediaFiles in database:", c)
 
 	if err == nil {
-		propertyRepo := repositories.NewPropertyRepository()
+		propertyRepo := persistence.NewPropertyRepository()
 		millis := time.Now().UnixNano() / 1000000
 		propertyRepo.Put(consts.LastScan, fmt.Sprint(millis))
 		beego.Info("LastScan timestamp:", millis)
@@ -63,8 +63,8 @@ func importLibrary(files []Track) (err error){
 	return err
 }
 
-func parseTrack(t *Track) (*models.MediaFile, *models.Album, *models.Artist) {
-	mf := &models.MediaFile{
+func parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
+	mf := &domain.MediaFile{
 		Id: t.Id,
 		Album: t.Album,
 		Artist: t.Artist,
@@ -76,20 +76,20 @@ func parseTrack(t *Track) (*models.MediaFile, *models.Album, *models.Artist) {
 		UpdatedAt: t.UpdatedAt,
 	}
 
-	album := &models.Album{
+	album := &domain.Album{
 		Name: t.Album,
 		Year: t.Year,
 		Compilation: t.Compilation,
 	}
 
-	artist := &models.Artist{
+	artist := &domain.Artist{
 		Name: t.RealArtist(),
 	}
 
 	return mf, album, artist
 }
 
-func persist(mfRepo *repositories.MediaFile, mf *models.MediaFile, albumRepo *repositories.Album, album *models.Album, artistRepo *repositories.Artist, artist *models.Artist) {
+func persist(mfRepo *persistence.MediaFile, mf *domain.MediaFile, albumRepo *persistence.Album, album *domain.Album, artistRepo *persistence.Artist, artist *domain.Artist) {
 	if err := artistRepo.Put(artist); err != nil {
 		beego.Error(err)
 	}
@@ -105,7 +105,7 @@ func persist(mfRepo *repositories.MediaFile, mf *models.MediaFile, albumRepo *re
 	}
 }
 
-func collectIndex(ig utils.IndexGroups, a *models.Artist, artistIndex map[string]tempIndex) {
+func collectIndex(ig utils.IndexGroups, a *domain.Artist, artistIndex map[string]tempIndex) {
 	name := a.Name
 	indexName := strings.ToLower(utils.NoArticle(name))
 	if indexName == "" {
@@ -117,7 +117,7 @@ func collectIndex(ig utils.IndexGroups, a *models.Artist, artistIndex map[string
 		artists = make(tempIndex)
 		artistIndex[group] = artists
 	}
-	artists[indexName] = models.ArtistInfo{ArtistId: a.Id, Artist: a.Name}
+	artists[indexName] = domain.ArtistInfo{ArtistId: a.Id, Artist: a.Name}
 }
 
 func findGroup(ig utils.IndexGroups, name string) string {
@@ -131,10 +131,10 @@ func findGroup(ig utils.IndexGroups, name string) string {
 }
 
 func saveIndex(artistIndex map[string]tempIndex) error {
-	idxRepo := repositories.NewArtistIndexRepository()
+	idxRepo := persistence.NewArtistIndexRepository()
 
 	for k, temp := range artistIndex {
-		idx := &models.ArtistIndex{Id: k}
+		idx := &domain.ArtistIndex{Id: k}
 		for _, v := range temp {
 			idx.Artists = append(idx.Artists, v)
 		}

@@ -1,7 +1,7 @@
-package repositories
+package persistence
 
 import (
-	"github.com/deluan/gosonic/models"
+	"github.com/deluan/gosonic/domain"
 )
 
 type MediaFile struct {
@@ -10,10 +10,10 @@ type MediaFile struct {
 
 func NewMediaFileRepository() *MediaFile {
 	r := &MediaFile{}
-	r.init("mediafile", &models.MediaFile{})
+	r.init("mediafile", &domain.MediaFile{})
 	return r
 }
 
-func (r *MediaFile) Put(m *models.MediaFile) error {
+func (r *MediaFile) Put(m *domain.MediaFile) error {
 	return r.saveOrUpdate(m.Id, m)
 }

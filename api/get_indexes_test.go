@@ -6,11 +6,11 @@ import (
 	"github.com/deluan/gosonic/utils"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/deluan/gosonic/tests"
-	"github.com/deluan/gosonic/repositories"
 	"encoding/xml"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/tests/mocks"
+	"github.com/deluan/gosonic/domain"
 )
 
 const (
@@ -20,11 +20,11 @@ const (
 func TestGetIndexes(t *testing.T) {
 	tests.Init(t, false)
 	mockRepo := mocks.CreateMockArtistIndexRepo()
-	utils.DefineSingleton(new(repositories.ArtistIndex), func() repositories.ArtistIndex {
+	utils.DefineSingleton(new(domain.ArtistIndexRepository), func() domain.ArtistIndexRepository {
 		return mockRepo
 	})
 	propRepo := mocks.CreateMockPropertyRepo()
-	utils.DefineSingleton(new(repositories.Property), func() repositories.Property {
+	utils.DefineSingleton(new(domain.PropertyRepository), func() domain.PropertyRepository {
 		return propRepo
 	})
 

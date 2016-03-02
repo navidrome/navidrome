@@ -1,7 +1,7 @@
-package repositories
+package persistence
 
 import (
-	"github.com/deluan/gosonic/models"
+	"github.com/deluan/gosonic/domain"
 )
 
 type Album struct {
@@ -10,19 +10,19 @@ type Album struct {
 
 func NewAlbumRepository() *Album {
 	r := &Album{}
-	r.init("album", &models.Album{})
+	r.init("album", &domain.Album{})
 	return r
 }
 
-func (r *Album) Put(m *models.Album) error {
+func (r *Album) Put(m *domain.Album) error {
 	if m.Id == "" {
 		m.Id = r.NewId(m.ArtistId, m.Name)
 	}
 	return r.saveOrUpdate(m.Id, m)
 }
 
-func (r *Album) Get(id string) (*models.Album, error) {
+func (r *Album) Get(id string) (*domain.Album, error) {
 	var rec interface{}
 	rec, err := r.readEntity(id)
-	return rec.(*models.Album), err
+	return rec.(*domain.Album), err
 }

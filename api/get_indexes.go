@@ -2,18 +2,18 @@ package api
 
 import (
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/repositories"
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/consts"
 	"strconv"
+	"github.com/deluan/gosonic/domain"
 )
 
 type GetIndexesController struct {
 	beego.Controller
-	repo       repositories.ArtistIndex
-	properties repositories.Property
+	repo       domain.ArtistIndexRepository
+	properties domain.PropertyRepository
 }
 
 func (c *GetIndexesController) Prepare() {

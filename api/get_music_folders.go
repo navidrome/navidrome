@@ -3,13 +3,13 @@ package api
 import (
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
-	"github.com/deluan/gosonic/repositories"
+	"github.com/deluan/gosonic/persistence"
 )
 
 type GetMusicFoldersController struct{ beego.Controller }
 
 func (c *GetMusicFoldersController) Get() {
-	repository := repositories.NewMediaFolderRepository()
+	repository := persistence.NewMediaFolderRepository()
 	mediaFolderList, _ := repository.GetAll()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {

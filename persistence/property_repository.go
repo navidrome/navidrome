@@ -1,15 +1,9 @@
-package repositories
+package persistence
 
 import (
-	"github.com/deluan/gosonic/models"
+	"github.com/deluan/gosonic/domain"
 "errors"
 )
-
-type Property interface {
-	Put(id string, value string) error
-	Get(id string) (string, error)
-	DefaultGet(id string, defaultValue string) (string, error)
-}
 
 type property struct {
 	BaseRepository
@@ -17,12 +11,12 @@ type property struct {
 
 func NewPropertyRepository() *property {
 	r := &property{}
-	r.init("property", &models.Property{})
+	r.init("property", &domain.Property{})
 	return r
 }
 
 func (r *property) Put(id string, value string) error {
-	m := &models.Property{Id: id, Value: value}
+	m := &domain.Property{Id: id, Value: value}
 	if m.Id == "" {
 		return errors.New("Id is required")
 	}
@@ -32,7 +26,7 @@ func (r *property) Put(id string, value string) error {
 func (r *property) Get(id string) (string, error) {
 	var rec interface{}
 	rec, err := r.readEntity(id)
-	return rec.(*models.Property).Value, err
+	return rec.(*domain.Property).Value, err
 }
 
 func (r*property) DefaultGet(id string, defaultValue string) (string, error) {
