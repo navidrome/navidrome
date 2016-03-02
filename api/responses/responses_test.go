@@ -10,7 +10,7 @@ func TestSubsonicResponses(t *testing.T) {
 
 	response := &Subsonic{Status: "ok", Version: "1.0.0"}
 
-	Convey("Subject: Subsonic Responses", t, func(){
+	Convey("Subject: Subsonic Responses", t, func() {
 		Convey("EmptyResponse", func() {
 			Convey("XML", func() {
 				So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"></subsonic-response>`)
@@ -78,6 +78,34 @@ func TestSubsonicResponses(t *testing.T) {
 				})
 				Convey("JSON", func() {
 					So(response, ShouldMatchJSON, `{"indexes":{"ignoredArticles":"A","lastModified":"1"},"status":"ok","version":"1.0.0"}`)
+				})
+			})
+		})
+
+		Convey("Directory", func() {
+			response.Directory = &Directory{Id: "1", Name: "N"}
+			Convey("With data", func() {
+				child := make([]Child, 1)
+				child[0] = Child{
+					Id:"1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
+					Year: 1985, Genre: "Rock", CoverArt: "1", Size: "8421341", ContentType: "audio/flac",
+					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
+					Duration: 146, BitRate: 320,
+				}
+				response.Directory.Child = child
+				Convey("XML", func() {
+					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><directory id="1" name="N"><child id="1" isDir="true" title="title" album="album" artist="artist" track="1" year="1985" genre="Rock" coverArt="1" size="8421341" contentType="audio/flac" suffix="flac" transcodedContentType="audio/mpeg" transcodedSuffix="mp3" duration="146" bitRate="320"></child></directory></subsonic-response>`)
+				})
+				Convey("JSON", func() {
+					So(response, ShouldMatchJSON, `{"directory":{"child":[{"album":"album","artist":"artist","bitRate":320,"contentType":"audio/flac","coverArt":"1","duration":146,"genre":"Rock","id":"1","isDir":true,"size":"8421341","suffix":"flac","title":"title","track":1,"transcodedContentType":"audio/mpeg","transcodedSuffix":"mp3","year":1985}],"id":"1","name":"N"},"status":"ok","version":"1.0.0"}`)
+				})
+			})
+			Convey("Without data", func() {
+				Convey("XML", func() {
+					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><directory id="1" name="N"></directory></subsonic-response>`)
+				})
+				Convey("JSON", func() {
+					So(response, ShouldMatchJSON, `{"directory":{"id":"1","name":"N"},"status":"ok","version":"1.0.0"}`)
 				})
 			})
 		})
