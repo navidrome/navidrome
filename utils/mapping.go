@@ -3,8 +3,8 @@
 package utils
 
 import (
-	"strconv"
 	"encoding/json"
+	"strconv"
 )
 
 const delimiter = "."
@@ -49,7 +49,7 @@ func flattenList(l []interface{}, parent string, delimiter string) (map[string]i
 				j[newkey] = value
 			}
 		default:
-		// do nothing
+			// do nothing
 		}
 	}
 	return j, nil
@@ -92,7 +92,7 @@ func flattenMap(m map[string]interface{}, parent string, delimiter string) (map[
 				j[key] = value
 			}
 		default:
-		//nothing
+			//nothing
 		}
 	}
 	return j, nil
@@ -110,7 +110,7 @@ func FlattenMap(input map[string]interface{}) (map[string]interface{}, error) {
 
 func ToMap(rec interface{}) (map[string]interface{}, error) {
 	// Convert to JSON...
-	b, err := json.Marshal(rec);
+	b, err := json.Marshal(rec)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func ToMap(rec interface{}) (map[string]interface{}, error) {
 
 func ToStruct(m map[string]interface{}, rec interface{}) error {
 	// Convert to JSON...
-	b, err := json.Marshal(m);
+	b, err := json.Marshal(m)
 	if err != nil {
 		return err
 	}

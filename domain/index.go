@@ -2,14 +2,13 @@ package domain
 
 type ArtistInfo struct {
 	ArtistId string
-	Artist string
+	Artist   string
 }
 
 type ArtistIndex struct {
-	Id string
+	Id      string
 	Artists []ArtistInfo
 }
-
 
 type ArtistIndexRepository interface {
 	BaseRepository

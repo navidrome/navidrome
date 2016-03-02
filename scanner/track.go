@@ -18,10 +18,10 @@ type Track struct {
 }
 
 func (m *Track) RealArtist() string {
-	if (m.Compilation) {
+	if m.Compilation {
 		return "Various Artists"
 	}
-	if (m.AlbumArtist != "") {
+	if m.AlbumArtist != "" {
 		return m.AlbumArtist
 	}
 	return m.Artist

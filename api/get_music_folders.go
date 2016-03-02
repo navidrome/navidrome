@@ -3,8 +3,8 @@ package api
 import (
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/domain"
-	"github.com/karlkfi/inject"
 	"github.com/deluan/gosonic/utils"
+	"github.com/karlkfi/inject"
 )
 
 type GetMusicFoldersController struct {

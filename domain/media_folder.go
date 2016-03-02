@@ -1,7 +1,7 @@
 package domain
 
 type MediaFolder struct {
-	Id string
+	Id   string
 	Name string
 	Path string
 }
@@ -9,4 +9,3 @@ type MediaFolder struct {
 type MediaFolderRepository interface {
 	GetAll() ([]MediaFolder, error)
 }
-

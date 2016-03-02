@@ -1,8 +1,8 @@
 package domain
 
 type Artist struct {
-	Id     string
-	Name   string
+	Id   string
+	Name string
 }
 
 type ArtistRepository interface {
@@ -11,4 +11,3 @@ type ArtistRepository interface {
 	Get(id string) (*Artist, error)
 	GetByName(name string) (*Artist, error)
 }
-

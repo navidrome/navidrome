@@ -22,4 +22,3 @@ func Init(t *testing.T, skipOnShort bool) {
 		beego.SetLevel(beego.LevelError)
 	}
 }
-

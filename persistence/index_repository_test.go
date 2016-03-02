@@ -1,11 +1,11 @@
 package persistence
 
 import (
-	"testing"
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/deluan/gosonic/tests"
 	"github.com/deluan/gosonic/domain"
-"strconv"
+	"github.com/deluan/gosonic/tests"
+	. "github.com/smartystreets/goconvey/convey"
+	"strconv"
+	"testing"
 )
 
 func TestIndexRepository(t *testing.T) {
@@ -19,7 +19,7 @@ func TestIndexRepository(t *testing.T) {
 			i := &domain.ArtistIndex{Id: "123"}
 
 			repo.Put(i)
-			s,_ := repo.Get("123")
+			s, _ := repo.Get("123")
 
 			So(s, shouldBeEqual, i)
 		})
@@ -37,7 +37,7 @@ func TestIndexRepository(t *testing.T) {
 			}
 
 			Convey("When I call GetAll()", func() {
-				indices, err  := repo.GetAll()
+				indices, err := repo.GetAll()
 				Convey("Then It should not return any error", func() {
 					So(err, ShouldBeNil)
 				})

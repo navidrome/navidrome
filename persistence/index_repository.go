@@ -1,10 +1,10 @@
 package persistence
 
 import (
-	"github.com/deluan/gosonic/domain"
 	"errors"
-	"sort"
+	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
+	"sort"
 )
 
 type artistIndex struct {

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type ItunesScanner struct {}
+type ItunesScanner struct{}
 
 func (s *ItunesScanner) LoadFolder(path string) []Track {
 	xml, _ := os.Open(path)
@@ -35,7 +35,7 @@ func (s *ItunesScanner) LoadFolder(path string) []Track {
 }
 
 func unescape(s string) string {
-	s,_ = url.QueryUnescape(s)
+	s, _ = url.QueryUnescape(s)
 	return strings.Replace(s, "&#38;", "&", -1)
 }
 

@@ -1,14 +1,14 @@
 package scanner
 
 import (
-	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/persistence"
-	"github.com/deluan/gosonic/domain"
-	"strings"
-"github.com/deluan/gosonic/utils"
-	"github.com/deluan/gosonic/consts"
-	"time"
 	"fmt"
+	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/consts"
+	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/persistence"
+	"github.com/deluan/gosonic/utils"
+	"strings"
+	"time"
 )
 
 type Scanner interface {
@@ -29,7 +29,7 @@ func doImport(mediaFolder string, scanner Scanner) {
 	beego.Info("Finished importing", len(files), "files")
 }
 
-func importLibrary(files []Track) (err error){
+func importLibrary(files []Track) (err error) {
 	indexGroups := utils.ParseIndexGroups(beego.AppConfig.String("indexGroups"))
 	mfRepo := persistence.NewMediaFileRepository()
 	albumRepo := persistence.NewAlbumRepository()
@@ -65,20 +65,20 @@ func importLibrary(files []Track) (err error){
 
 func parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
 	mf := &domain.MediaFile{
-		Id: t.Id,
-		Album: t.Album,
-		Artist: t.Artist,
+		Id:          t.Id,
+		Album:       t.Album,
+		Artist:      t.Artist,
 		AlbumArtist: t.AlbumArtist,
-		Title: t.Title,
+		Title:       t.Title,
 		Compilation: t.Compilation,
-		Path: t.Path,
-		CreatedAt: t.CreatedAt,
-		UpdatedAt: t.UpdatedAt,
+		Path:        t.Path,
+		CreatedAt:   t.CreatedAt,
+		UpdatedAt:   t.UpdatedAt,
 	}
 
 	album := &domain.Album{
-		Name: t.Album,
-		Year: t.Year,
+		Name:        t.Album,
+		Year:        t.Year,
 		Compilation: t.Compilation,
 	}
 

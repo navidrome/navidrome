@@ -31,4 +31,3 @@ func (r *artistRepository) GetByName(name string) (*domain.Artist, error) {
 	id := r.NewId(name)
 	return r.Get(id)
 }
-

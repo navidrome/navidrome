@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"testing"
 	. "github.com/smartystreets/goconvey/convey"
+	"testing"
 )
 
 func TestParseIndexGroup(t *testing.T) {

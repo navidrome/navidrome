@@ -1,12 +1,12 @@
 package persistence
 
 import (
-	"fmt"
 	"crypto/md5"
-	"strings"
-	"github.com/deluan/gosonic/utils"
 	"encoding/json"
+	"fmt"
+	"github.com/deluan/gosonic/utils"
 	"reflect"
+	"strings"
 )
 
 type baseRepository struct {
@@ -90,7 +90,7 @@ func (r *baseRepository) getFieldKeys(id string) [][]byte {
 	return fieldKeys
 }
 
-func (r*baseRepository) newInstance() interface{} {
+func (r *baseRepository) newInstance() interface{} {
 	return reflect.New(r.entityType).Interface()
 }
 
@@ -123,7 +123,7 @@ func (r *baseRepository) toEntity(response [][]byte, entity interface{}) error {
 // TODO Optimize it! Probably very slow (and confusing!)
 func (r *baseRepository) loadAll(entities interface{}, sortBy string) error {
 	total, err := r.CountAll()
-	if (err != nil) {
+	if err != nil {
 		return err
 	}
 
@@ -134,7 +134,7 @@ func (r *baseRepository) loadAll(entities interface{}, sortBy string) error {
 	}
 	setName := r.table + "s:all"
 	response, err := db().XSSort([]byte(setName), 0, 0, true, false, sortKey, r.getFieldKeys("*"))
-	if (err != nil) {
+	if err != nil {
 		return err
 	}
 	numFields := len(r.fieldNames)
@@ -142,7 +142,7 @@ func (r *baseRepository) loadAll(entities interface{}, sortBy string) error {
 		start := i * numFields
 		entity := reflect.New(r.entityType).Interface()
 
-		if err := r.toEntity(response[start:start + numFields], entity); err != nil {
+		if err := r.toEntity(response[start:start+numFields], entity); err != nil {
 			return err
 		}
 		reflected.Set(reflect.Append(reflected, reflect.ValueOf(entity).Elem()))

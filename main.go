@@ -1,8 +1,8 @@
 package main
 
 import (
-	_ "github.com/deluan/gosonic/conf"
 	"github.com/astaxie/beego"
+	_ "github.com/deluan/gosonic/conf"
 )
 
 func main() {

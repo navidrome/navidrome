@@ -10,4 +10,3 @@ type PropertyRepository interface {
 	Get(id string) (string, error)
 	DefaultGet(id string, defaultValue string) (string, error)
 }
-

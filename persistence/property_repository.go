@@ -1,8 +1,8 @@
 package persistence
 
 import (
+	"errors"
 	"github.com/deluan/gosonic/domain"
-"errors"
 )
 
 type propertyRepository struct {
@@ -29,7 +29,7 @@ func (r *propertyRepository) Get(id string) (string, error) {
 	return rec.(*domain.Property).Value, err
 }
 
-func (r*propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
+func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
 	v, err := r.Get(id)
 
 	if v == "" {

@@ -2,9 +2,9 @@ package api_test
 
 import (
 	"encoding/xml"
+	"github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
-	"github.com/deluan/gosonic/tests"
 )
 
 func TestGetLicense(t *testing.T) {

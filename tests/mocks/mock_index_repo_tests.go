@@ -1,10 +1,10 @@
 package mocks
 
 import (
-	"github.com/deluan/gosonic/domain"
-	"fmt"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/deluan/gosonic/domain"
 )
 
 func CreateMockArtistIndexRepo() *MockArtistIndex {

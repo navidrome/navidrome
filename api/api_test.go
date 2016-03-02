@@ -3,17 +3,17 @@ package api_test
 import (
 	"fmt"
 	"github.com/astaxie/beego"
+	_ "github.com/deluan/gosonic/conf"
 	"net/http"
 	"net/http/httptest"
-	_ "github.com/deluan/gosonic/conf"
 	"strings"
 )
 
 const (
-	testUser = "deluan"
+	testUser     = "deluan"
 	testPassword = "wordpass"
-	testClient = "test"
-	testVersion = "1.0.0"
+	testClient   = "test"
+	testVersion  = "1.0.0"
 )
 
 func AddParams(endpoint string, params ...string) string {

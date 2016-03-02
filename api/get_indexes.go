@@ -2,12 +2,12 @@ package api
 
 import (
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/utils"
-	"github.com/karlkfi/inject"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/consts"
-	"strconv"
 	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/utils"
+	"github.com/karlkfi/inject"
+	"strconv"
 )
 
 type GetIndexesController struct {
@@ -42,7 +42,7 @@ func (c *GetIndexesController) Get() {
 	i, _ := strconv.Atoi(ifModifiedSince)
 	l, _ := strconv.Atoi(res.LastModified)
 
-	if (l > i) {
+	if l > i {
 		indexes, err := c.repo.GetAll()
 		if err != nil {
 			beego.Error("Error retrieving Indexes:", err)

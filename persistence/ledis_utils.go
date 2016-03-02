@@ -1,16 +1,16 @@
 package persistence
 
 import (
-	"sync"
 	"github.com/astaxie/beego"
-	"github.com/siddontang/ledisdb/ledis"
 	"github.com/siddontang/ledisdb/config"
+	"github.com/siddontang/ledisdb/ledis"
+	"sync"
 )
 
 var (
 	_ledisInstance *ledis.Ledis
-	_dbInstance *ledis.DB
-	once sync.Once
+	_dbInstance    *ledis.DB
+	once           sync.Once
 )
 
 func db() *ledis.DB {
@@ -27,7 +27,6 @@ func db() *ledis.DB {
 	})
 	return _dbInstance
 }
-
 
 func dropDb() {
 	db()

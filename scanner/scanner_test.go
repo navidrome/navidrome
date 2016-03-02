@@ -1,17 +1,17 @@
 package scanner
 
 import (
-	"testing"
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/deluan/gosonic/utils"
 	"github.com/deluan/gosonic/domain"
-"github.com/deluan/gosonic/tests"
+	"github.com/deluan/gosonic/tests"
+	"github.com/deluan/gosonic/utils"
+	. "github.com/smartystreets/goconvey/convey"
+	"testing"
 )
 
 func TestCollectIndex(t *testing.T) {
 	tests.Init(t, false)
 
-	ig := utils.IndexGroups{"A":"A", "B":"B", "Tom":"Tom", "X":"X-Z"}
+	ig := utils.IndexGroups{"A": "A", "B": "B", "Tom": "Tom", "X": "X-Z"}
 
 	Convey("Simple Name", t, func() {
 		a := &domain.Artist{Name: "Björk"}

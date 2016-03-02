@@ -1,11 +1,11 @@
 package persistence
 
 import (
-	"testing"
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/deluan/gosonic/tests"
 	"fmt"
+	"github.com/deluan/gosonic/tests"
+	. "github.com/smartystreets/goconvey/convey"
 	"strconv"
+	"testing"
 )
 
 type TestEntity struct {

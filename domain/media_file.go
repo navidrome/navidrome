@@ -11,7 +11,7 @@ type MediaFile struct {
 	Album       string
 	Artist      string
 	AlbumArtist string
-	AlbumId	    string `parent:"album"`
+	AlbumId     string `parent:"album"`
 	Compilation bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

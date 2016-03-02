@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"encoding/xml"
-	. "github.com/smartystreets/goconvey/convey"
 	"github.com/deluan/gosonic/tests"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestGetMusicFolders(t *testing.T) {

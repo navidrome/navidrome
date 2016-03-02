@@ -11,5 +11,3 @@ func (c *SyncController) Get() {
 	scanner.StartImport()
 	c.Ctx.WriteString("Import started. Check logs")
 }
-
-

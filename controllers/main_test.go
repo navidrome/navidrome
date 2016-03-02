@@ -1,14 +1,14 @@
 package controllers_test
 
 import (
+	"fmt"
+	"github.com/astaxie/beego"
+	_ "github.com/deluan/gosonic/conf"
 	"github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 	"net/http"
 	"net/http/httptest"
-	"github.com/astaxie/beego"
-	"fmt"
-	_ "github.com/deluan/gosonic/conf"
+	"testing"
 )
 
 func TestErrorHandler(t *testing.T) {
