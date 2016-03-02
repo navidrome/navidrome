@@ -110,11 +110,13 @@ func (r *baseRepository) readEntity(id string) (interface{}, error) {
 func (r *baseRepository) toEntity(response [][]byte, entity interface{}) error {
 	var record = make(map[string]interface{}, len(response))
 	for i, v := range response {
-		var value interface{}
-		if err := json.Unmarshal(v, &value); err != nil {
-			return err
+		if len(v) > 0 {
+			var value interface{}
+			if err := json.Unmarshal(v, &value); err != nil {
+				return err
+			}
+			record[string(r.fieldNames[i])] = value
 		}
-		record[string(r.fieldNames[i])] = value
 	}
 
 	return utils.ToStruct(record, entity)
