@@ -62,6 +62,6 @@ func (c *GetIndexesController) Get() {
 	}
 
 	response := c.NewEmpty()
-	response.ArtistIndex = &res
+	response.Indexes = &res
 	c.SendResponse(response)
 }

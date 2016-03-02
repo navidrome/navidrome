@@ -30,10 +30,7 @@ func (c *BaseAPIController) SendError(errorCode int, message ...interface{}) {
 func (c *BaseAPIController) SendResponse(response responses.Subsonic) {
 	f := c.GetString("f")
 	if f == "json" {
-		type jsonWrapper struct {
-			Subsonic responses.Subsonic `json:"subsonic-response"`
-		}
-		w := &jsonWrapper{Subsonic: response}
+		w := &responses.JsonWrapper{Subsonic: response}
 		c.Data["json"] = &w
 		c.ServeJSON()
 	} else {

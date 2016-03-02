@@ -3,13 +3,12 @@ package api_test
 import (
 	"testing"
 
-	"encoding/xml"
-	"github.com/deluan/gosonic/tests"
+	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestGetMusicFolders(t *testing.T) {
-	tests.Init(t, false)
+	Init(t, false)
 
 	_, w := Get(AddParams("/rest/getMusicFolders.view"), "TestGetMusicFolders")
 
@@ -18,10 +17,7 @@ func TestGetMusicFolders(t *testing.T) {
 			So(w.Code, ShouldEqual, 200)
 		})
 		Convey("The response should include the default folder", func() {
-			v := new(string)
-			err := xml.Unmarshal(w.Body.Bytes(), &v)
-			So(err, ShouldBeNil)
-			So(w.Body.String(), ShouldContainSubstring, `musicFolder id="0" name="iTunes Library"`)
+			So(UnindentJSON(w.Body.Bytes()), ShouldContainSubstring, `{"musicFolder":[{"id":"0","name":"iTunes Library"}]}`)
 		})
 	})
 }

@@ -17,7 +17,7 @@ const (
 )
 
 func AddParams(endpoint string, params ...string) string {
-	url := fmt.Sprintf("%s?u=%s&p=%s&c=%s&v=%s", endpoint, testUser, testPassword, testClient, testVersion)
+	url := fmt.Sprintf("%s?u=%s&p=%s&c=%s&v=%s&f=json", endpoint, testUser, testPassword, testClient, testVersion)
 	if len(params) > 0 {
 		url = url + "&" + strings.Join(params, "&")
 	}

@@ -1,15 +1,15 @@
 package api_test
 
 import (
-	"encoding/xml"
 	"github.com/deluan/gosonic/api/responses"
-	"github.com/deluan/gosonic/tests"
+	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"encoding/json"
 )
 
 func TestPing(t *testing.T) {
-	tests.Init(t, false)
+	Init(t, false)
 
 	_, w := Get(AddParams("/rest/ping.view"), "TestPing")
 
@@ -21,10 +21,11 @@ func TestPing(t *testing.T) {
 			So(w.Body.Len(), ShouldBeGreaterThan, 0)
 		})
 		Convey("The result should be a valid ping response", func() {
-			v := responses.Subsonic{}
-			xml.Unmarshal(w.Body.Bytes(), &v)
-			So(v.Status, ShouldEqual, "ok")
-			So(v.Version, ShouldEqual, "1.0.0")
+			v := responses.JsonWrapper{}
+			err := json.Unmarshal(w.Body.Bytes(), &v)
+			So(err, ShouldBeNil)
+			So(v.Subsonic.Status, ShouldEqual, "ok")
+			So(v.Subsonic.Version, ShouldEqual, "1.0.0")
 		})
 
 	})

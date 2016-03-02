@@ -7,18 +7,19 @@ import (
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/tests"
 	"github.com/deluan/gosonic/tests/mocks"
 	"github.com/deluan/gosonic/utils"
+	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 const (
-	emptyResponse = `<indexes lastModified="1" ignoredArticles="The El La Los Las Le Les Os As O A"></indexes>`
+	emptyResponse = `{"indexes":{"ignoredArticles":"The El La Los Las Le Les Os As O A","lastModified":"1"}`
 )
 
 func TestGetIndexes(t *testing.T) {
-	tests.Init(t, false)
+	Init(t, false)
+
 	mockRepo := mocks.CreateMockArtistIndexRepo()
 	utils.DefineSingleton(new(domain.ArtistIndexRepository), func() domain.ArtistIndexRepository {
 		return mockRepo
@@ -56,13 +57,8 @@ func TestGetIndexes(t *testing.T) {
 			Convey("Status code should be 200", func() {
 				So(w.Code, ShouldEqual, 200)
 			})
-			Convey("It should return valid XML", func() {
-				v := new(string)
-				err := xml.Unmarshal(w.Body.Bytes(), &v)
-				So(err, ShouldBeNil)
-			})
 			Convey("Then it should return an empty collection", func() {
-				So(w.Body.String(), ShouldContainSubstring, emptyResponse)
+				So(UnindentJSON(w.Body.Bytes()), ShouldContainSubstring, emptyResponse)
 			})
 		})
 		Convey("When the index is not empty", func() {
@@ -85,7 +81,7 @@ func TestGetIndexes(t *testing.T) {
 
 			_, w := Get(AddParams("/rest/getIndexes.view", "ifModifiedSince=2"), "TestGetIndexes")
 
-			So(w.Body.String(), ShouldContainSubstring, emptyResponse)
+			So(UnindentJSON(w.Body.Bytes()), ShouldContainSubstring, emptyResponse)
 		})
 		Convey("And it should return empty if 'ifModifiedSince' is the asme as tie index last update", func() {
 			mockRepo.SetData(`[{"Id": "A","Artists": [
@@ -95,7 +91,7 @@ func TestGetIndexes(t *testing.T) {
 
 			_, w := Get(AddParams("/rest/getIndexes.view", "ifModifiedSince=1"), "TestGetIndexes")
 
-			So(w.Body.String(), ShouldContainSubstring, emptyResponse)
+			So(UnindentJSON(w.Body.Bytes()), ShouldContainSubstring, emptyResponse)
 		})
 		Reset(func() {
 			mockRepo.SetData("[]", 0)

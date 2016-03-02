@@ -1,14 +1,13 @@
 package api_test
 
 import (
-	"encoding/xml"
-	"github.com/deluan/gosonic/tests"
+	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 func TestGetLicense(t *testing.T) {
-	tests.Init(t, false)
+	Init(t, false)
 
 	_, w := Get(AddParams("/rest/getLicense.view"), "TestGetLicense")
 
@@ -17,10 +16,7 @@ func TestGetLicense(t *testing.T) {
 			So(w.Code, ShouldEqual, 200)
 		})
 		Convey("The license should always be valid", func() {
-			v := new(string)
-			err := xml.Unmarshal(w.Body.Bytes(), &v)
-			So(err, ShouldBeNil)
-			So(w.Body.String(), ShouldContainSubstring, `license valid="true"`)
+			So(UnindentJSON(w.Body.Bytes()), ShouldContainSubstring, `"license":{"valid":true}`)
 		})
 
 	})

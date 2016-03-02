@@ -9,7 +9,11 @@ type Subsonic struct {
 	Error        *Error        `xml:",omitempty"                                    json:"error,omitempty"`
 	License      *License      `xml:",omitempty"                                    json:"license,omitempty"`
 	MusicFolders *MusicFolders `xml:",omitempty"                                    json:"musicFolders,omitempty"`
-	ArtistIndex  *Indexes      `xml:",omitempty"                                    json:"indexes,omitempty"`
+	Indexes      *Indexes      `xml:",omitempty"                                    json:"indexes,omitempty"`
+}
+
+type JsonWrapper struct {
+	Subsonic Subsonic `json:"subsonic-response"`
 }
 
 type Error struct {
@@ -31,7 +35,7 @@ type MusicFolder struct {
 
 type MusicFolders struct {
 	XMLName xml.Name      `xml:"musicFolders"             json:"-"`
-	Folders []MusicFolder `xml:"musicFolders"             json:"musicFolder"`
+	Folders []MusicFolder `xml:"musicFolders"             json:"musicFolder,omitempty"`
 }
 
 type Artist struct {
@@ -48,7 +52,7 @@ type Index struct {
 
 type Indexes struct {
 	XMLName         xml.Name `xml:"indexes"               json:"-"`
-	Index           []Index  `xml:"indexes"               json:"index"`
+	Index           []Index  `xml:"indexes"               json:"index,omitempty"`
 	LastModified    string   `xml:"lastModified,attr"     json:"lastModified"`
 	IgnoredArticles string   `xml:"ignoredArticles,attr"  json:"ignoredArticles"`
 }
