@@ -4,16 +4,16 @@ import (
 	"github.com/deluan/gosonic/domain"
 )
 
-type MediaFile struct {
-	BaseRepository
+type mediaFileRepository struct {
+	baseRepository
 }
 
-func NewMediaFileRepository() *MediaFile {
-	r := &MediaFile{}
+func NewMediaFileRepository() domain.MediaFileRepository {
+	r := &mediaFileRepository{}
 	r.init("mediafile", &domain.MediaFile{})
 	return r
 }
 
-func (r *MediaFile) Put(m *domain.MediaFile) error {
+func (r *mediaFileRepository) Put(m *domain.MediaFile) error {
 	return r.saveOrUpdate(m.Id, m)
 }

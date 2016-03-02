@@ -89,7 +89,7 @@ func parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
 	return mf, album, artist
 }
 
-func persist(mfRepo *persistence.MediaFile, mf *domain.MediaFile, albumRepo *persistence.Album, album *domain.Album, artistRepo *persistence.Artist, artist *domain.Artist) {
+func persist(mfRepo domain.MediaFileRepository, mf *domain.MediaFile, albumRepo domain.AlbumRepository, album *domain.Album, artistRepo domain.ArtistRepository, artist *domain.Artist) {
 	if err := artistRepo.Put(artist); err != nil {
 		beego.Error(err)
 	}

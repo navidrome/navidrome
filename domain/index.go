@@ -12,6 +12,7 @@ type ArtistIndex struct {
 
 
 type ArtistIndexRepository interface {
+	BaseRepository
 	Put(m *ArtistIndex) error
 	Get(id string) (*ArtistIndex, error)
 	GetAll() ([]ArtistIndex, error)

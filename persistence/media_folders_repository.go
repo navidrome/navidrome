@@ -5,16 +5,18 @@ import (
 	"github.com/astaxie/beego"
 )
 
-type MediaFolder struct {}
+type mediaFolderRepository struct {
+	domain.MediaFolderRepository
+}
 
-func NewMediaFolderRepository() *MediaFolder {
-	return &MediaFolder{}
+func NewMediaFolderRepository() domain.MediaFolderRepository {
+	return &mediaFolderRepository{}
 }
 
 
-func (*MediaFolder) GetAll() ([]*domain.MediaFolder, error) {
+func (*mediaFolderRepository) GetAll() ([]domain.MediaFolder, error) {
 	mediaFolder := domain.MediaFolder{Id: "0", Name: "iTunes Library", Path: beego.AppConfig.String("musicFolder")}
-	result := make([]*domain.MediaFolder, 1)
-	result[0] = &mediaFolder
+	result := make([]domain.MediaFolder, 1)
+	result[0] = mediaFolder
 	return result, nil
 }

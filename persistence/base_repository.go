@@ -9,13 +9,13 @@ import (
 	"reflect"
 )
 
-type BaseRepository struct {
+type baseRepository struct {
 	table      string
 	entityType reflect.Type
 	fieldNames []string
 }
 
-func (r *BaseRepository) init(table string, entity interface{}) {
+func (r *baseRepository) init(table string, entity interface{}) {
 	r.table = table
 	r.entityType = reflect.TypeOf(entity).Elem()
 
@@ -29,17 +29,17 @@ func (r *BaseRepository) init(table string, entity interface{}) {
 }
 
 // TODO Use annotations to specify fields to be used
-func (r *BaseRepository) NewId(fields ...string) string {
+func (r *baseRepository) NewId(fields ...string) string {
 	s := fmt.Sprintf("%s\\%s", strings.ToUpper(r.table), strings.Join(fields, ""))
 	return fmt.Sprintf("%x", md5.Sum([]byte(s)))
 }
 
-func (r *BaseRepository) CountAll() (int, error) {
+func (r *baseRepository) CountAll() (int, error) {
 	ids, err := db().SMembers([]byte(r.table + "s:all"))
 	return len(ids), err
 }
 
-func (r *BaseRepository) saveOrUpdate(id string, entity interface{}) error {
+func (r *baseRepository) saveOrUpdate(id string, entity interface{}) error {
 	recordPrefix := fmt.Sprintf("%s:%s:", r.table, id)
 	allKey := r.table + "s:all"
 
@@ -68,7 +68,7 @@ func (r *BaseRepository) saveOrUpdate(id string, entity interface{}) error {
 }
 
 // TODO Optimize
-func (r *BaseRepository) getParent(entity interface{}) (table string, id string) {
+func (r *baseRepository) getParent(entity interface{}) (table string, id string) {
 	dt := reflect.TypeOf(entity).Elem()
 	for i := 0; i < dt.NumField(); i++ {
 		f := dt.Field(i)
@@ -81,7 +81,7 @@ func (r *BaseRepository) getParent(entity interface{}) (table string, id string)
 	return "", ""
 }
 
-func (r *BaseRepository) getFieldKeys(id string) [][]byte {
+func (r *baseRepository) getFieldKeys(id string) [][]byte {
 	recordPrefix := fmt.Sprintf("%s:%s:", r.table, id)
 	var fieldKeys = make([][]byte, len(r.fieldNames))
 	for i, n := range r.fieldNames {
@@ -90,11 +90,11 @@ func (r *BaseRepository) getFieldKeys(id string) [][]byte {
 	return fieldKeys
 }
 
-func (r* BaseRepository) newInstance() interface{} {
+func (r*baseRepository) newInstance() interface{} {
 	return reflect.New(r.entityType).Interface()
 }
 
-func (r *BaseRepository) readEntity(id string) (interface{}, error) {
+func (r *baseRepository) readEntity(id string) (interface{}, error) {
 	entity := r.newInstance()
 
 	fieldKeys := r.getFieldKeys(id)
@@ -107,7 +107,7 @@ func (r *BaseRepository) readEntity(id string) (interface{}, error) {
 	return entity, err
 }
 
-func (r *BaseRepository) toEntity(response [][]byte, entity interface{}) error {
+func (r *baseRepository) toEntity(response [][]byte, entity interface{}) error {
 	var record = make(map[string]interface{}, len(response))
 	for i, v := range response {
 		var value interface{}
@@ -121,7 +121,7 @@ func (r *BaseRepository) toEntity(response [][]byte, entity interface{}) error {
 }
 
 // TODO Optimize it! Probably very slow (and confusing!)
-func (r *BaseRepository) loadAll(entities interface{}, sortBy string) error {
+func (r *baseRepository) loadAll(entities interface{}, sortBy string) error {
 	total, err := r.CountAll()
 	if (err != nil) {
 		return err

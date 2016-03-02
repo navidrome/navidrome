@@ -19,8 +19,8 @@ func shouldBeEqual(actualStruct interface{}, expectedStruct ...interface{}) stri
 	return ShouldEqual(actual, expected)
 }
 
-func createRepo() *BaseRepository{
-	repo := &BaseRepository{}
+func createRepo() *baseRepository {
+	repo := &baseRepository{}
 	repo.init("test", &TestEntity{})
 	return repo
 }

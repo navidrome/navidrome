@@ -9,3 +9,9 @@ type Album struct {
 	Compilation  bool
 	Rating       int
 }
+
+type AlbumRepository interface {
+	BaseRepository
+	Put(m *Album) error
+	Get(id string) (*Album, error)
+}

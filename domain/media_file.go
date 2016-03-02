@@ -16,3 +16,8 @@ type MediaFile struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
+
+type MediaFileRepository interface {
+	BaseRepository
+	Put(m *MediaFile) error
+}
