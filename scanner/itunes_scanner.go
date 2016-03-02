@@ -16,7 +16,7 @@ func (s *ItunesScanner) LoadFolder(path string) []Track {
 	mediaFiles := make([]Track, len(l.Tracks))
 	i := 0
 	for id, t := range l.Tracks {
-		if t.Location != "" && strings.Contains(t.Kind, "audio") {
+		if strings.HasPrefix(t.Location, "file://") && strings.Contains(t.Kind, "audio") {
 			mediaFiles[i].Id = id
 			mediaFiles[i].Album = unescape(t.Album)
 			mediaFiles[i].Title = unescape(t.Name)

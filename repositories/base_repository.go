@@ -121,16 +121,19 @@ func (r *BaseRepository) toEntity(response [][]byte, entity interface{}) error {
 }
 
 // TODO Optimize it! Probably very slow (and confusing!)
-func (r *BaseRepository) loadAll(entities interface{}) error {
+func (r *BaseRepository) loadAll(entities interface{}, sortBy string) error {
 	total, err := r.CountAll()
 	if (err != nil) {
 		return err
 	}
 
 	reflected := reflect.ValueOf(entities).Elem()
-
+	var sortKey []byte = nil
+	if sortBy != "" {
+		sortKey = []byte(fmt.Sprintf("%s:*:%s", r.table, sortBy))
+	}
 	setName := r.table + "s:all"
-	response, err := db().XSSort([]byte(setName), 0, 0, true, false, nil, r.getFieldKeys("*"))
+	response, err := db().XSSort([]byte(setName), 0, 0, true, false, sortKey, r.getFieldKeys("*"))
 	if (err != nil) {
 		return err
 	}
