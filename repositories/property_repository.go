@@ -11,17 +11,17 @@ type Property interface {
 	DefaultGet(id string, defaultValue string) (string, error)
 }
 
-type PropertyImpl struct {
+type property struct {
 	BaseRepository
 }
 
-func NewPropertyRepository() *PropertyImpl {
-	r := &PropertyImpl{}
+func NewPropertyRepository() *property {
+	r := &property{}
 	r.init("property", &models.Property{})
 	return r
 }
 
-func (r *PropertyImpl) Put(id string, value string) error {
+func (r *property) Put(id string, value string) error {
 	m := &models.Property{Id: id, Value: value}
 	if m.Id == "" {
 		return errors.New("Id is required")
@@ -29,13 +29,13 @@ func (r *PropertyImpl) Put(id string, value string) error {
 	return r.saveOrUpdate(m.Id, m)
 }
 
-func (r *PropertyImpl) Get(id string) (string, error) {
+func (r *property) Get(id string) (string, error) {
 	var rec interface{}
 	rec, err := r.readEntity(id)
 	return rec.(*models.Property).Value, err
 }
 
-func (r* PropertyImpl) DefaultGet(id string, defaultValue string) (string, error) {
+func (r*property) DefaultGet(id string, defaultValue string) (string, error) {
 	v, err := r.Get(id)
 
 	if v == "" {

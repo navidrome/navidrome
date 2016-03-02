@@ -10,7 +10,7 @@ func CreateMockPropertyRepo() *MockProperty {
 }
 
 type MockProperty struct {
-	repositories.PropertyImpl
+	repositories.Property
 	data map[string]string
 	err  bool
 }

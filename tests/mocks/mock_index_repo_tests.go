@@ -13,7 +13,7 @@ func CreateMockArtistIndexRepo() *MockArtistIndex {
 }
 
 type MockArtistIndex struct {
-	repositories.ArtistIndexImpl
+	repositories.ArtistIndex
 	data []models.ArtistIndex
 	err  bool
 }
