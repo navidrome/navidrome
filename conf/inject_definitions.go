@@ -9,4 +9,5 @@ import (
 func init () {
 	utils.DefineSingleton(new(domain.ArtistIndexRepository), persistence.NewArtistIndexRepository)
 	utils.DefineSingleton(new(domain.PropertyRepository), persistence.NewPropertyRepository)
+	utils.DefineSingleton(new(domain.MediaFolderRepository), persistence.NewMediaFolderRepository)
 }
