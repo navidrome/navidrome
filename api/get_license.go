@@ -1,15 +1,13 @@
 package api
 
 import (
-	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 )
 
-type GetLicenseController struct{ beego.Controller }
+type GetLicenseController struct{ BaseAPIController }
 
 func (c *GetLicenseController) Get() {
-	response := responses.NewEmpty()
+	response := c.NewEmpty()
 	response.License = &responses.License{Valid: true}
-
-	c.Ctx.Output.Body(responses.ToXML(response))
+	c.SendResponse(response)
 }

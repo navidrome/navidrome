@@ -1,12 +1,7 @@
 package api
 
-import (
-	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/api/responses"
-)
-
-type PingController struct{ beego.Controller }
+type PingController struct{ BaseAPIController }
 
 func (c *PingController) Get() {
-	c.Ctx.Output.Body(responses.ToXML(responses.NewEmpty()))
+	c.SendResponse(c.NewEmpty())
 }

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/domain"
 	"github.com/karlkfi/inject"
@@ -9,7 +8,7 @@ import (
 )
 
 type GetMusicFoldersController struct {
-	beego.Controller
+	BaseAPIController
 	repo domain.MediaFolderRepository
 }
 
@@ -24,7 +23,7 @@ func (c *GetMusicFoldersController) Get() {
 		folders[i].Id = f.Id
 		folders[i].Name = f.Name
 	}
-	response := responses.NewEmpty()
+	response := c.NewEmpty()
 	response.MusicFolders = &responses.MusicFolders{Folders: folders}
-	c.Ctx.Output.Body(responses.ToXML(response))
+	c.SendResponse(response)
 }

@@ -1,10 +1,5 @@
 package responses
 
-import (
-	"encoding/xml"
-	"fmt"
-)
-
 const (
 	ERROR_GENERIC = iota * 10
 	ERROR_MISSING_PARAMETER
@@ -32,26 +27,9 @@ func init() {
 	errors[ERROR_DATA_NOT_FOUND] = "The requested data was not found"
 }
 
-type error struct {
-	XMLName xml.Name `xml:"error"`
-	Code    int      `xml:"code,attr"`
-	Message string   `xml:"message,attr"`
-}
-
-func NewError(errorCode int, message ...interface{}) []byte {
-	response := NewEmpty()
-	response.Status = "fail"
-	if errors[errorCode] == "" {
-		errorCode = ERROR_GENERIC
+func ErrorMsg(code int) string {
+	if v, found := errors[code]; found {
+		return v
 	}
-	var msg string
-	if (len(message) == 0) {
-		msg = errors[errorCode]
-	} else {
-		msg = fmt.Sprintf(message[0].(string), message[1:len(message)]...)
-	}
-	xmlBody, _ := xml.Marshal(&error{Code: errorCode, Message: msg})
-	response.Body = xmlBody
-	xmlResponse, _ := xml.Marshal(response)
-	return []byte(xml.Header + string(xmlResponse))
+	return errors[ERROR_GENERIC]
 }

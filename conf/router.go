@@ -34,7 +34,9 @@ func mapControllers() {
 
 func mapFilters() {
 	var ValidateRequest = func(ctx *context.Context) {
-		api.Validate(&beego.Controller{Ctx: ctx})
+		c := &api.BaseAPIController{}
+		c.Ctx = ctx
+		api.Validate(c)
 	}
 
 	beego.InsertFilter("/rest/*", beego.BeforeRouter, ValidateRequest)

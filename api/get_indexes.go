@@ -11,7 +11,7 @@ import (
 )
 
 type GetIndexesController struct {
-	beego.Controller
+	BaseAPIController
 	repo       domain.ArtistIndexRepository
 	properties domain.PropertyRepository
 }
@@ -30,13 +30,13 @@ func (c *GetIndexesController) Get() {
 		ifModifiedSince = "0"
 	}
 
-	res := responses.ArtistIndex{}
+	res := responses.Indexes{}
 	res.IgnoredArticles = beego.AppConfig.String("ignoredArticles")
 
 	res.LastModified, err = c.properties.DefaultGet(consts.LastScan, "-1")
 	if err != nil {
 		beego.Error("Error retrieving LastScan property:", err)
-		c.CustomAbort(200, string(responses.NewError(responses.ERROR_GENERIC, "Internal Error")))
+		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
 
 	i, _ := strconv.Atoi(ifModifiedSince)
@@ -46,13 +46,13 @@ func (c *GetIndexesController) Get() {
 		indexes, err := c.repo.GetAll()
 		if err != nil {
 			beego.Error("Error retrieving Indexes:", err)
-			c.CustomAbort(200, string(responses.NewError(responses.ERROR_GENERIC, "Internal Error")))
+			c.SendError(responses.ERROR_GENERIC, "Internal Error")
 		}
 
-		res.Index = make([]responses.IdxIndex, len(indexes))
+		res.Index = make([]responses.Index, len(indexes))
 		for i, idx := range indexes {
 			res.Index[i].Name = idx.Id
-			res.Index[i].Artists = make([]responses.IdxArtist, len(idx.Artists))
+			res.Index[i].Artists = make([]responses.Artist, len(idx.Artists))
 			for j, a := range idx.Artists {
 				res.Index[i].Artists[j].Id = a.ArtistId
 				res.Index[i].Artists[j].Name = a.Artist
@@ -61,7 +61,7 @@ func (c *GetIndexesController) Get() {
 
 	}
 
-	response := responses.NewEmpty()
+	response := c.NewEmpty()
 	response.ArtistIndex = &res
-	c.Ctx.Output.Body(responses.ToXML(response))
+	c.SendResponse(response)
 }
