@@ -27,17 +27,6 @@ func (c *BaseAPIController) SendError(errorCode int, message ...interface{}) {
 	c.CustomAbort(200, xml.Header+string(xmlBody))
 }
 
-func (c *BaseAPIController) prepResponse(response responses.Subsonic) interface{} {
-	f := c.GetString("f")
-	if f == "json" {
-		type jsonWrapper struct {
-			Subsonic responses.Subsonic `json:"subsonic-response"`
-		}
-		return jsonWrapper{Subsonic: response}
-	}
-	return response
-}
-
 func (c *BaseAPIController) SendResponse(response responses.Subsonic) {
 	f := c.GetString("f")
 	if f == "json" {
