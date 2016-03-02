@@ -30,7 +30,7 @@ func (c *GetIndexesController) Get() {
 		ifModifiedSince = "0"
 	}
 
-	res := &responses.ArtistIndex{}
+	res := responses.ArtistIndex{}
 	res.IgnoredArticles = beego.AppConfig.String("ignoredArticles")
 
 	res.LastModified, err = c.properties.DefaultGet(consts.LastScan, "-1")
@@ -61,5 +61,7 @@ func (c *GetIndexesController) Get() {
 
 	}
 
-	c.Ctx.Output.Body(responses.NewXML(res))
+	response := responses.NewEmpty()
+	response.ArtistIndex = res
+	c.Ctx.Output.Body(responses.ToXML(response))
 }
