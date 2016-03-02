@@ -25,6 +25,6 @@ func (c *GetMusicFoldersController) Get() {
 		folders[i].Name = f.Name
 	}
 	response := responses.NewEmpty()
-	response.MusicFolders = responses.MusicFolders{Folders: folders}
+	response.MusicFolders = &responses.MusicFolders{Folders: folders}
 	c.Ctx.Output.Body(responses.ToXML(response))
 }

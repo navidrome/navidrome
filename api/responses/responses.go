@@ -7,9 +7,9 @@ type Subsonic struct {
 	Status       string   `xml:"status,attr"`
 	Version      string   `xml:"version,attr"`
 	Body         []byte   `xml:",innerxml"`
-	License      License  `xml:",omitempty"`
-	MusicFolders MusicFolders `xml:",omitempty"`
-	ArtistIndex  ArtistIndex `xml:",omitempty"`
+	License      *License  `xml:",omitempty"`
+	MusicFolders *MusicFolders `xml:",omitempty"`
+	ArtistIndex  *ArtistIndex `xml:",omitempty"`
 }
 
 type License struct {
