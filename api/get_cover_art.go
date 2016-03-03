@@ -44,7 +44,6 @@ func (c *GetCoverArtController) Get() {
 		c.SendError(responses.ERROR_DATA_NOT_FOUND, "cover art not available")
 	}
 
-	c.Ctx.Output.ContentType("image/jpg")
 	c.Ctx.Output.Body(img)
 }
 

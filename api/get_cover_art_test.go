@@ -43,12 +43,14 @@ func TestGetCoverArt(t *testing.T) {
 			_, w := getCoverArt("id=NOT_FOUND")
 
 			So(w.Body.Bytes(), ShouldMatchMD5, "963552b04e87a5a55e993f98a0fbdf82")
+			So(w.Header().Get("Content-Type"), ShouldEqual, "image/png")
 		})
 		Convey("When id is found", func() {
 			mockMediaFileRepo.SetData(`[{"Id":"2","HasCoverArt":true,"Path":"tests/fixtures/01 Invisible (RED) Edit Version.mp3"}]`, 1)
 			_, w := getCoverArt("id=2")
 
 			So(w.Body.Bytes(), ShouldMatchMD5, "e859a71cd1b1aaeb1ad437d85b306668")
+			So(w.Header().Get("Content-Type"), ShouldEqual, "image/jpeg")
 		})
 		Reset(func() {
 			mockMediaFileRepo.SetData("[]", 0)
