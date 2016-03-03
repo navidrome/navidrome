@@ -45,7 +45,7 @@ func (c *GetMusicDirectoryController) Get() {
 	c.SendResponse(response)
 }
 
-func (c *GetMusicDirectoryController) buildArtistDir(a *domain.Artist, albums []domain.Album) (*responses.Directory) {
+func (c *GetMusicDirectoryController) buildArtistDir(a *domain.Artist, albums []domain.Album) *responses.Directory {
 	dir := &responses.Directory{Id: a.Id, Name: a.Name}
 
 	dir.Child = make([]responses.Child, len(albums))
@@ -62,7 +62,7 @@ func (c *GetMusicDirectoryController) buildArtistDir(a *domain.Artist, albums []
 	return dir
 }
 
-func (c *GetMusicDirectoryController) buildAlbumDir(al *domain.Album, tracks []domain.MediaFile) (*responses.Directory) {
+func (c *GetMusicDirectoryController) buildAlbumDir(al *domain.Album, tracks []domain.MediaFile) *responses.Directory {
 	dir := &responses.Directory{Id: al.Id, Name: al.Name}
 
 	dir.Child = make([]responses.Child, len(tracks))
@@ -87,7 +87,7 @@ func (c *GetMusicDirectoryController) buildAlbumDir(al *domain.Album, tracks []d
 }
 
 func (c *GetMusicDirectoryController) isArtist(id string) bool {
-	found, err := c.artistRepo.Exists(id);
+	found, err := c.artistRepo.Exists(id)
 	if err != nil {
 		beego.Error("Error searching for Artist:", err)
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
@@ -105,7 +105,7 @@ func (c *GetMusicDirectoryController) isAlbum(id string) bool {
 }
 
 func (c *GetMusicDirectoryController) retrieveArtist(id string) (a *domain.Artist, as []domain.Album) {
-	a, err := c.artistRepo.Get(id);
+	a, err := c.artistRepo.Get(id)
 	if err != nil {
 		beego.Error("Error reading Artist from DB", err)
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")

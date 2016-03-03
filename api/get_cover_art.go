@@ -1,13 +1,13 @@
 package api
 
 import (
-	"github.com/deluan/gosonic/domain"
-	"github.com/karlkfi/inject"
-	"github.com/deluan/gosonic/utils"
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/utils"
+	"github.com/dhowden/tag"
+	"github.com/karlkfi/inject"
 	"io/ioutil"
-"github.com/dhowden/tag"
 	"os"
 )
 
@@ -34,7 +34,7 @@ func (c *GetCoverArtController) Get() {
 
 	var img []byte
 
-	if (mf.HasCoverArt) {
+	if mf.HasCoverArt {
 		img, err = readFromTag(mf.Path)
 		beego.Debug("Serving cover art from", mf.Path)
 	} else {
@@ -46,7 +46,6 @@ func (c *GetCoverArtController) Get() {
 		beego.Error("Could not retrieve cover art", id, ":", err)
 		c.SendError(responses.ERROR_DATA_NOT_FOUND, "cover art not available")
 	}
-
 
 	c.Ctx.Output.ContentType("image/jpg")
 	c.Ctx.Output.Body(img)
@@ -68,4 +67,3 @@ func readFromTag(path string) ([]byte, error) {
 
 	return m.Picture().Data, nil
 }
-
