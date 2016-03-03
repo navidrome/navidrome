@@ -38,3 +38,5 @@ func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string,
 
 	return v, err
 }
+
+var _ domain.PropertyRepository = (*propertyRepository)(nil)

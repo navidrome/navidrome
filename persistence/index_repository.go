@@ -48,3 +48,5 @@ func (a byArtistName) Swap(i, j int) {
 func (a byArtistName) Less(i, j int) bool {
 	return utils.NoArticle(a[i].Artist) < utils.NoArticle(a[j].Artist)
 }
+
+var _ domain.ArtistIndexRepository = (*artistIndexRepository)(nil)

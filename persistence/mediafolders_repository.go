@@ -19,3 +19,5 @@ func (*mediaFolderRepository) GetAll() ([]domain.MediaFolder, error) {
 	result[0] = mediaFolder
 	return result, nil
 }
+
+var _ domain.MediaFolderRepository = (*mediaFolderRepository)(nil)

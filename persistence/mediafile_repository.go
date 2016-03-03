@@ -37,3 +37,5 @@ func (a byTrackNumber) Swap(i, j int) {
 func (a byTrackNumber) Less(i, j int) bool {
 	return (a[i].DiscNumber*1000 + a[i].TrackNumber) < (a[j].DiscNumber*1000 + a[j].TrackNumber)
 }
+
+var _ domain.MediaFileRepository = (*mediaFileRepository)(nil)

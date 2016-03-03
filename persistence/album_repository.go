@@ -32,3 +32,5 @@ func (r *albumRepository) FindByArtist(artistId string) ([]domain.Album, error) 
 	err := r.loadChildren("artist", artistId, &as, "Year", false)
 	return as, err
 }
+
+var _ domain.AlbumRepository = (*albumRepository)(nil)
