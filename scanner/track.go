@@ -20,6 +20,8 @@ type Track struct {
 	Duration    int
 	BitRate     int
 	Compilation bool
+	Loved       bool
+	AlbumLoved  bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

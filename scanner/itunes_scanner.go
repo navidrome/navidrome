@@ -1,7 +1,7 @@
 package scanner
 
 import (
-	"github.com/dhowden/itl"
+	"github.com/deluan/itl"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -26,6 +26,8 @@ func (s *ItunesScanner) LoadFolder(path string) []Track {
 			mediaFiles[i].AlbumArtist = unescape(t.AlbumArtist)
 			mediaFiles[i].Genre = unescape(t.Genre)
 			mediaFiles[i].Compilation = t.Compilation
+			mediaFiles[i].Loved = t.Loved
+			mediaFiles[i].AlbumLoved = t.AlbumLoved
 			mediaFiles[i].Year = t.Year
 			mediaFiles[i].TrackNumber = t.TrackNumber
 			mediaFiles[i].DiscNumber = t.DiscNumber

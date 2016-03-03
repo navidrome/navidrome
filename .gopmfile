@@ -3,7 +3,7 @@ path = github.com/deluan/gosonic
 
 [deps]
 github.com/astaxie/beego = commit:92d0b9a
-github.com/dhowden/itl = commit:35d15a3
+github.com/deluan/itl = commit:35d15a3
 github.com/siddontang/ledisdb = commit:713b229
 github.com/smartystreets/goconvey = commit:899ed5a
 github.com/karlkfi/inject = commit:fe06da2

@@ -21,6 +21,7 @@ type MediaFile struct {
 	BitRate     int
 	Genre       string
 	Compilation bool
+	Starred     bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

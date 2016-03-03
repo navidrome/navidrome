@@ -9,6 +9,7 @@ type Album struct {
 	AlbumArtist  string
 	Year         int
 	Compilation  bool
+	Starred      bool
 	Rating       int
 	Genre        string
 }
