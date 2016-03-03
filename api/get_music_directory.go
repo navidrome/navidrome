@@ -28,91 +28,101 @@ func (c *GetMusicDirectoryController) Get() {
 		c.SendError(responses.ERROR_MISSING_PARAMETER, "id parameter required")
 	}
 
-	dir := &responses.Directory{}
-	a, albums, found := c.retrieveArtist(id)
-	if found {
-		dir.Id = a.Id
-		dir.Name = a.Name
-		dir.Child = make([]responses.Child, len(albums))
-		for i, al := range albums {
-			dir.Child[i].Id = al.Id
-			dir.Child[i].Title = al.Name
-			dir.Child[i].IsDir = true
-			dir.Child[i].Album = al.Name
-			dir.Child[i].Year = al.Year
-			dir.Child[i].Artist = al.Artist
-			dir.Child[i].Genre = al.Genre
-		}
-	} else {
-		al, tracks, found := c.retrieveAlbum(id)
-		if found {
-			dir.Id = al.Id
-			dir.Name = al.Name
-			dir.Child = make([]responses.Child, len(tracks))
-			for i, mf := range tracks {
-				dir.Child[i].Id = mf.Id
-				dir.Child[i].Title = mf.Title
-				dir.Child[i].IsDir = false
-				dir.Child[i].Album = mf.Album
-				dir.Child[i].Year = mf.Year
-				dir.Child[i].Artist = mf.Artist
-				dir.Child[i].Genre = mf.Genre
-				dir.Child[i].Track = mf.TrackNumber
-				dir.Child[i].Duration = mf.Duration
-				dir.Child[i].Size = mf.Size
-				dir.Child[i].Suffix = mf.Suffix
-				dir.Child[i].BitRate = mf.BitRate
-			}
-		} else {
-			beego.Info("Id", id, "not found")
-			c.SendError(responses.ERROR_DATA_NOT_FOUND, "Directory not found")
-		}
+	response := c.NewEmpty()
+
+	switch {
+	case c.isArtist(id):
+		a, albums := c.retrieveArtist(id)
+		response.Directory = c.buildArtistDir(a, albums)
+	case c.isAlbum(id):
+		al, tracks := c.retrieveAlbum(id)
+		response.Directory = c.buildAlbumDir(al, tracks)
+	default:
+		beego.Info("Id", id, "not found")
+		c.SendError(responses.ERROR_DATA_NOT_FOUND, "Directory not found")
 	}
 
-	response := c.NewEmpty()
-	response.Directory = dir
 	c.SendResponse(response)
 }
 
-func (c *GetMusicDirectoryController) retrieveArtist(id string) (a *domain.Artist, as []domain.Album, found bool) {
-	found, err := c.artistRepo.Exists(id)
+func (c *GetMusicDirectoryController) buildArtistDir(a *domain.Artist, albums []domain.Album) (*responses.Directory) {
+	dir := &responses.Directory{Id: a.Id, Name: a.Name}
+
+	dir.Child = make([]responses.Child, len(albums))
+	for i, al := range albums {
+		dir.Child[i].Id = al.Id
+		dir.Child[i].Title = al.Name
+		dir.Child[i].IsDir = true
+		dir.Child[i].Album = al.Name
+		dir.Child[i].Year = al.Year
+		dir.Child[i].Artist = al.Artist
+		dir.Child[i].Genre = al.Genre
+	}
+	return dir
+}
+
+func (c *GetMusicDirectoryController) buildAlbumDir(al *domain.Album, tracks []domain.MediaFile) (*responses.Directory) {
+	dir := &responses.Directory{Id: al.Id, Name: al.Name}
+
+	dir.Child = make([]responses.Child, len(tracks))
+	for i, mf := range tracks {
+		dir.Child[i].Id = mf.Id
+		dir.Child[i].Title = mf.Title
+		dir.Child[i].IsDir = false
+		dir.Child[i].Album = mf.Album
+		dir.Child[i].Year = mf.Year
+		dir.Child[i].Artist = mf.Artist
+		dir.Child[i].Genre = mf.Genre
+		dir.Child[i].Track = mf.TrackNumber
+		dir.Child[i].Duration = mf.Duration
+		dir.Child[i].Size = mf.Size
+		dir.Child[i].Suffix = mf.Suffix
+		dir.Child[i].BitRate = mf.BitRate
+	}
+	return dir
+}
+
+func (c *GetMusicDirectoryController) isArtist(id string) bool {
+	found, err := c.artistRepo.Exists(id);
 	if err != nil {
 		beego.Error("Error searching for Artist:", err)
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
-	if !found {
-		return nil, nil, false
-	}
-
-	if a, err = c.artistRepo.Get(id); err != nil {
-		beego.Error("Error reading Artist from DB", err)
-		c.SendError(responses.ERROR_GENERIC, "Internal Error")
-	}
-
-	if as, err = c.albumRepo.FindByArtist(id); err != nil {
-		beego.Error("Error reading Album from DB", err)
-		c.SendError(responses.ERROR_GENERIC, "Internal Error")
-	}
-	return
+	return found
 }
 
-func (c *GetMusicDirectoryController) retrieveAlbum(id string) (al *domain.Album, mfs []domain.MediaFile, found bool) {
+func (c *GetMusicDirectoryController) isAlbum(id string) bool {
 	found, err := c.albumRepo.Exists(id)
 	if err != nil {
 		beego.Error("Error searching for Album:", err)
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
-	if !found {
-		return nil, nil, false
+	return found
+}
+
+func (c *GetMusicDirectoryController) retrieveArtist(id string) (a *domain.Artist, as []domain.Album) {
+	a, err := c.artistRepo.Get(id);
+	if err != nil {
+		beego.Error("Error reading Artist from DB", err)
+		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
 
-	if al, err = c.albumRepo.Get(id); err != nil {
+	if as, err = c.albumRepo.FindByArtist(id); err != nil {
+		beego.Error("Error reading Artist's Albums from DB", err)
+		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+	}
+	return
+}
+
+func (c *GetMusicDirectoryController) retrieveAlbum(id string) (al *domain.Album, mfs []domain.MediaFile) {
+	al, err := c.albumRepo.Get(id)
+	if err != nil {
 		beego.Error("Error reading Album from DB", err)
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
 
 	if mfs, err = c.mFileRepo.FindByAlbum(id); err != nil {
-		beego.Error("Error reading Album from DB", err)
+		beego.Error("Error reading Album's Tracks from DB", err)
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
 	return
