@@ -2,6 +2,7 @@ package domain
 
 import (
 	"time"
+	"mime"
 )
 
 type MediaFile struct {
@@ -25,6 +26,10 @@ type MediaFile struct {
 	Starred     bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+func (mf *MediaFile) ContentType() string {
+	return mime.TypeByExtension("." + mf.Suffix)
 }
 
 type MediaFileRepository interface {

@@ -6,7 +6,6 @@ import (
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
-	"mime"
 )
 
 type GetMusicDirectoryController struct {
@@ -23,11 +22,7 @@ func (c *GetMusicDirectoryController) Prepare() {
 }
 
 func (c *GetMusicDirectoryController) Get() {
-	id := c.Input().Get("id")
-
-	if id == "" {
-		c.SendError(responses.ERROR_MISSING_PARAMETER, "id parameter required")
-	}
+	id := c.ValidateParameters("id", "id parameter required")
 
 	response := c.NewEmpty()
 
@@ -83,7 +78,7 @@ func (c *GetMusicDirectoryController) buildAlbumDir(al *domain.Album, tracks []d
 		if mf.HasCoverArt {
 			dir.Child[i].CoverArt = mf.Id
 		}
-		dir.Child[i].ContentType = mime.TypeByExtension("." + mf.Suffix)
+		dir.Child[i].ContentType = mf.ContentType()
 	}
 	return dir
 }

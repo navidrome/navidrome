@@ -20,7 +20,7 @@ func getCoverArt(params ...string) (*http.Request, *httptest.ResponseRecorder) {
 	r, _ := http.NewRequest("GET", url, nil)
 	w := httptest.NewRecorder()
 	beego.BeeApp.Handlers.ServeHTTP(w, r)
-	beego.Debug("testing TestGetCoverArtDirectory", fmt.Sprintf("\nUrl: %s\nStatus Code: [%d]\n%#v", r.URL, w.Code, w.HeaderMap))
+	beego.Debug("testing TestGetCoverArt", fmt.Sprintf("\nUrl: %s\nStatus Code: [%d]\n%#v", r.URL, w.Code, w.HeaderMap))
 	return r, w
 }
 
