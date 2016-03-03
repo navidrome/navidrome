@@ -6,7 +6,9 @@ import (
 	"os"
 	"strings"
 	"path/filepath"
-"strconv"
+	"strconv"
+	"fmt"
+	"github.com/astaxie/beego"
 )
 
 type ItunesScanner struct{}
@@ -47,9 +49,13 @@ func (s *ItunesScanner) LoadFolder(path string) []Track {
 	return mediaFiles[0:i]
 }
 
-func unescape(s string) string {
-	s, _ = url.QueryUnescape(s)
-	return strings.Replace(s, "&#38;", "&", -1)
+func unescape(str string) string {
+	s := strings.Replace(str, "&#38;", "&", -1)
+	s, err := url.QueryUnescape(s)
+	if err != nil {
+		beego.Warn("Error importing string", str, ":", err)
+	}
+	return s
 }
 
 var _ Scanner = (*ItunesScanner)(nil)
