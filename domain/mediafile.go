@@ -13,6 +13,7 @@ type MediaFile struct {
 	AlbumArtist string
 	AlbumId     string `parent:"album"`
 	Track       int
+	Year        int
 	Genre       string
 	Compilation bool
 	CreatedAt   time.Time
@@ -22,4 +23,5 @@ type MediaFile struct {
 type MediaFileRepository interface {
 	BaseRepository
 	Put(m *MediaFile) error
+	FindByAlbum(albumId string) ([]MediaFile, error)
 }

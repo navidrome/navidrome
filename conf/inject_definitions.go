@@ -12,4 +12,5 @@ func init() {
 	utils.DefineSingleton(new(domain.MediaFolderRepository), persistence.NewMediaFolderRepository)
 	utils.DefineSingleton(new(domain.ArtistRepository), persistence.NewArtistRepository)
 	utils.DefineSingleton(new(domain.AlbumRepository), persistence.NewAlbumRepository)
+	utils.DefineSingleton(new(domain.MediaFileRepository), persistence.NewMediaFileRepository)
 }

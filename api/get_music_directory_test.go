@@ -22,6 +22,10 @@ func TestGetMusicDirectory(t *testing.T) {
 	utils.DefineSingleton(new(domain.AlbumRepository), func() domain.AlbumRepository {
 		return mockAlbumRepo
 	})
+	mockMediaFileRepo := mocks.CreateMockMediaFileRepo()
+	utils.DefineSingleton(new(domain.MediaFileRepository), func() domain.MediaFileRepository {
+		return mockMediaFileRepo
+	})
 
 	Convey("Subject: GetMusicDirectory Endpoint", t, func() {
 		Convey("Should fail if missing Id parameter", func() {
@@ -58,12 +62,23 @@ func TestGetMusicDirectory(t *testing.T) {
 				So(w.Body, ShouldContainJSON, `"child":[{"album":"Tardis","artist":"The KLF","id":"A","isDir":true,"title":"Tardis"}]`)
 			})
 		})
+		Convey("When id matches an album with tracks", func() {
+			mockArtistRepo.SetData(`[{"Id":"2","Name":"Céu"}]`, 1)
+			mockAlbumRepo.SetData(`[{"Id":"A","Name":"Vagarosa","ArtistId":"2"}]`, 1)
+			mockMediaFileRepo.SetData(`[{"Id":"3","Title":"Cangote","AlbumId":"A"}]`, 1)
+			_, w := Get(AddParams("/rest/getMusicDirectory.view", "id=A"), "TestGetMusicDirectory")
+
+			So(w.Body, ShouldContainJSON, `"child":[{"id":"3","isDir":false,"title":"Cangote"}]`)
+		})
 		Reset(func() {
 			mockArtistRepo.SetData("[]", 0)
 			mockArtistRepo.SetError(false)
 
 			mockAlbumRepo.SetData("[]", 0)
 			mockAlbumRepo.SetError(false)
+
+			mockMediaFileRepo.SetData("[]", 0)
+			mockMediaFileRepo.SetError(false)
 		})
 	})
 }

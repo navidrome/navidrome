@@ -29,6 +29,6 @@ func (r *albumRepository) Get(id string) (*domain.Album, error) {
 
 func (r *albumRepository) FindByArtist(artistId string) ([]domain.Album, error) {
 	var as = make([]domain.Album, 0)
-	err := r.loadChildren("artist", artistId, &as, "")
+	err := r.loadChildren("artist", artistId, &as, "Year")
 	return as, err
 }
