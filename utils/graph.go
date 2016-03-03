@@ -13,12 +13,14 @@ var (
 
 func DefineSingleton(ptr interface{}, constructor interface{}, args ...interface{}) {
 	typ := reflect.TypeOf(ptr)
-	if definitions[typ] == nil {
-		Graph.Define(ptr, inject.NewProvider(constructor, args...))
+	provider := inject.NewProvider(constructor, args...)
+
+	if _, found := definitions[typ]; found {
+		ptr = definitions[typ]
 	} else {
-		Graph.Define(definitions[typ], inject.NewProvider(constructor, args...))
+		definitions[typ] = ptr
 	}
-	definitions[typ] = ptr
+	Graph.Define(ptr, provider)
 }
 
 func init() {
