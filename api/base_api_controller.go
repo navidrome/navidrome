@@ -29,11 +29,16 @@ func (c *BaseAPIController) SendError(errorCode int, message ...interface{}) {
 
 func (c *BaseAPIController) SendResponse(response responses.Subsonic) {
 	f := c.GetString("f")
-	if f == "json" {
+	switch f {
+	case "json":
 		w := &responses.JsonWrapper{Subsonic: response}
 		c.Data["json"] = &w
 		c.ServeJSON()
-	} else {
+	case "jsonp":
+		w := &responses.JsonWrapper{Subsonic: response}
+		c.Data["jsonp"] = &w
+		c.ServeJSONP()
+	default:
 		c.Data["xml"] = &response
 		c.ServeXML()
 	}
