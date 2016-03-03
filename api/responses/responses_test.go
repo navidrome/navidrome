@@ -5,6 +5,7 @@ import (
 	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"time"
 )
 
 func TestSubsonicResponses(t *testing.T) {
@@ -106,18 +107,19 @@ func TestSubsonicResponses(t *testing.T) {
 			})
 			Convey("With all data", func() {
 				child := make([]Child, 1)
+				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				child[0] = Child{
 					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: "8421341", ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
-					Duration: 146, BitRate: 320,
+					Duration: 146, BitRate: 320, Starred: &t,
 				}
 				response.Directory.Child = child
 				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><directory id="1" name="N"><child id="1" isDir="true" title="title" album="album" artist="artist" track="1" year="1985" genre="Rock" coverArt="1" size="8421341" contentType="audio/flac" suffix="flac" transcodedContentType="audio/mpeg" transcodedSuffix="mp3" duration="146" bitRate="320"></child></directory></subsonic-response>`)
+					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><directory id="1" name="N"><child id="1" isDir="true" title="title" album="album" artist="artist" track="1" year="1985" genre="Rock" coverArt="1" size="8421341" contentType="audio/flac" suffix="flac" starred="2016-03-02T20:30:00Z" transcodedContentType="audio/mpeg" transcodedSuffix="mp3" duration="146" bitRate="320"></child></directory></subsonic-response>`)
 				})
 				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"directory":{"child":[{"album":"album","artist":"artist","bitRate":320,"contentType":"audio/flac","coverArt":"1","duration":146,"genre":"Rock","id":"1","isDir":true,"size":"8421341","suffix":"flac","title":"title","track":1,"transcodedContentType":"audio/mpeg","transcodedSuffix":"mp3","year":1985}],"id":"1","name":"N"},"status":"ok","version":"1.0.0"}`)
+					So(response, ShouldMatchJSON, `{"directory":{"child":[{"album":"album","artist":"artist","bitRate":320,"contentType":"audio/flac","coverArt":"1","duration":146,"genre":"Rock","id":"1","isDir":true,"size":"8421341","starred":"2016-03-02T20:30:00Z","suffix":"flac","title":"title","track":1,"transcodedContentType":"audio/mpeg","transcodedSuffix":"mp3","year":1985}],"id":"1","name":"N"},"status":"ok","version":"1.0.0"}`)
 				})
 			})
 		})

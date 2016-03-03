@@ -1,6 +1,9 @@
 package responses
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+	"time"
+)
 
 type Subsonic struct {
 	XMLName      xml.Name      `xml:"http://subsonic.org/restapi subsonic-response" json:"-"`
@@ -19,7 +22,7 @@ type JsonWrapper struct {
 
 type Error struct {
 	Code    int    `xml:"code,attr"                     json:"code"`
-	Message string `xml:"message,attr"                  json: "message"`
+	Message string `xml:"message,attr"                  json:"message"`
 }
 
 type License struct {
@@ -52,22 +55,23 @@ type Indexes struct {
 }
 
 type Child struct {
-	Id                    string `xml:"id,attr"                                 json:"id"`
-	IsDir                 bool   `xml:"isDir,attr"                              json:"isDir"`
-	Title                 string `xml:"title,attr"                              json:"title"`
-	Album                 string `xml:"album,attr,omitempty"                    json:"album,omitempty"`
-	Artist                string `xml:"artist,attr,omitempty"                   json:"artist,omitempty"`
-	Track                 int    `xml:"track,attr,omitempty"                    json:"track,omitempty"`
-	Year                  int    `xml:"year,attr,omitempty"                     json:"year,omitempty"`
-	Genre                 string `xml:"genre,attr,omitempty"                    json:"genre,omitempty"`
-	CoverArt              string `xml:"coverArt,attr,omitempty"                 json:"coverArt,omitempty"`
-	Size                  string `xml:"size,attr,omitempty"                     json:"size,omitempty"`
-	ContentType           string `xml:"contentType,attr,omitempty"              json:"contentType,omitempty"`
-	Suffix                string `xml:"suffix,attr,omitempty"                   json:"suffix,omitempty"`
-	TranscodedContentType string `xml:"transcodedContentType,attr,omitempty"    json:"transcodedContentType,omitempty"`
-	TranscodedSuffix      string `xml:"transcodedSuffix,attr,omitempty"         json:"transcodedSuffix,omitempty"`
-	Duration              int    `xml:"duration,attr,omitempty"                 json:"duration,omitempty"`
-	BitRate               int    `xml:"bitRate,attr,omitempty"                  json:"bitRate,omitempty"`
+	Id                    string     `xml:"id,attr"                                 json:"id"`
+	IsDir                 bool       `xml:"isDir,attr"                              json:"isDir"`
+	Title                 string     `xml:"title,attr"                              json:"title"`
+	Album                 string     `xml:"album,attr,omitempty"                    json:"album,omitempty"`
+	Artist                string     `xml:"artist,attr,omitempty"                   json:"artist,omitempty"`
+	Track                 int        `xml:"track,attr,omitempty"                    json:"track,omitempty"`
+	Year                  int        `xml:"year,attr,omitempty"                     json:"year,omitempty"`
+	Genre                 string     `xml:"genre,attr,omitempty"                    json:"genre,omitempty"`
+	CoverArt              string     `xml:"coverArt,attr,omitempty"                 json:"coverArt,omitempty"`
+	Size                  string     `xml:"size,attr,omitempty"                     json:"size,omitempty"`
+	ContentType           string     `xml:"contentType,attr,omitempty"              json:"contentType,omitempty"`
+	Suffix                string     `xml:"suffix,attr,omitempty"                   json:"suffix,omitempty"`
+	Starred               *time.Time `xml:"starred,attr,omitempty"                  json:"starred,omitempty"`
+	TranscodedContentType string     `xml:"transcodedContentType,attr,omitempty"    json:"transcodedContentType,omitempty"`
+	TranscodedSuffix      string     `xml:"transcodedSuffix,attr,omitempty"         json:"transcodedSuffix,omitempty"`
+	Duration              int        `xml:"duration,attr,omitempty"                 json:"duration,omitempty"`
+	BitRate               int        `xml:"bitRate,attr,omitempty"                  json:"bitRate,omitempty"`
 }
 
 type Directory struct {

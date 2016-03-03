@@ -6,6 +6,7 @@ import (
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
+	"time"
 )
 
 type GetMusicDirectoryController struct {
@@ -54,6 +55,11 @@ func (c *GetMusicDirectoryController) buildArtistDir(a *domain.Artist, albums []
 		dir.Child[i].Artist = al.Artist
 		dir.Child[i].Genre = al.Genre
 		dir.Child[i].CoverArt = al.CoverArtId
+		if al.Starred {
+			t := time.Now()
+			dir.Child[i].Starred = &t
+		}
+
 	}
 	return dir
 }
@@ -75,6 +81,9 @@ func (c *GetMusicDirectoryController) buildAlbumDir(al *domain.Album, tracks []d
 		dir.Child[i].Size = mf.Size
 		dir.Child[i].Suffix = mf.Suffix
 		dir.Child[i].BitRate = mf.BitRate
+		if mf.Starred {
+			dir.Child[i].Starred = &mf.UpdatedAt
+		}
 		if mf.HasCoverArt {
 			dir.Child[i].CoverArt = mf.Id
 		}
