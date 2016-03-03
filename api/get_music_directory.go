@@ -6,6 +6,7 @@ import (
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
+	"mime"
 )
 
 type GetMusicDirectoryController struct {
@@ -82,6 +83,7 @@ func (c *GetMusicDirectoryController) buildAlbumDir(al *domain.Album, tracks []d
 		if mf.HasCoverArt {
 			dir.Child[i].CoverArt = mf.Id
 		}
+		dir.Child[i].ContentType = mime.TypeByExtension("." + mf.Suffix)
 	}
 	return dir
 }
