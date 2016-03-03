@@ -127,25 +127,29 @@ func (r *baseRepository) toEntity(response [][]byte, entity interface{}) error {
 	return utils.ToStruct(record, entity)
 }
 
-// TODO Optimize it! Probably very slow (and confusing!)
 func (r *baseRepository) loadAll(entities interface{}, sortBy string) error {
-	total, err := r.CountAll()
-	if err != nil {
-		return err
-	}
+	setName := r.table + "s:all"
+	return r.loadFromSet(setName, entities, sortBy)
+}
 
+func (r* baseRepository) loadChildren(parentTable string, parentId string, entities interface{}, sortBy string) error {
+	setName := fmt.Sprintf("%s:%s:%ss", parentTable, parentId, r.table)
+	return r.loadFromSet(setName, entities, sortBy)
+}
+
+// TODO Optimize it! Probably very slow (and confusing!)
+func (r *baseRepository) loadFromSet(setName string, entities interface{}, sortBy string) error {
 	reflected := reflect.ValueOf(entities).Elem()
 	var sortKey []byte = nil
 	if sortBy != "" {
 		sortKey = []byte(fmt.Sprintf("%s:*:%s", r.table, sortBy))
 	}
-	setName := r.table + "s:all"
 	response, err := db().XSSort([]byte(setName), 0, 0, true, false, sortKey, r.getFieldKeys("*"))
 	if err != nil {
 		return err
 	}
 	numFields := len(r.fieldNames)
-	for i := 0; i < total; i++ {
+	for i := 0; i < (len(response) / numFields); i++ {
 		start := i * numFields
 		entity := reflect.New(r.entityType).Interface()
 
@@ -156,4 +160,5 @@ func (r *baseRepository) loadAll(entities interface{}, sortBy string) error {
 	}
 
 	return nil
+
 }

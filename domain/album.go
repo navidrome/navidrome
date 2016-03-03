@@ -14,4 +14,5 @@ type AlbumRepository interface {
 	BaseRepository
 	Put(m *Album) error
 	Get(id string) (*Album, error)
+	FindByArtist(artistId string) ([]Album, error)
 }

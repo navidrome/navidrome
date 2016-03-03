@@ -26,3 +26,9 @@ func (r *albumRepository) Get(id string) (*domain.Album, error) {
 	rec, err := r.readEntity(id)
 	return rec.(*domain.Album), err
 }
+
+func (r *albumRepository) FindByArtist(artistId string) ([]domain.Album, error) {
+	var as = make([]domain.Album, 0)
+	err := r.loadChildren("artist", artistId, &as, "")
+	return as, err
+}

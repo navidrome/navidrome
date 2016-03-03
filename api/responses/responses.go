@@ -19,7 +19,7 @@ type JsonWrapper struct {
 
 type Error struct {
 	Code    int      `xml:"code,attr"                     json:"code"`
-	Message string   `xml:"message,attr"                  json:"message"`
+	Message string   `xml:"message,attr"                  json: "message"`
 }
 
 type License struct {
@@ -52,22 +52,22 @@ type Indexes struct {
 }
 
 type Child struct {
-	Id string                       `xml:"id,attr"                       json:"id"`
-	IsDir bool                      `xml:"isDir,attr"                    json:"isDir"`
-	Title string                    `xml:"title,attr"                    json:"title"`
-	Album string                    `xml:"album,attr"                    json:"album"`
-	Artist string                   `xml:"artist,attr"                   json:"artist"`
-	Track int                       `xml:"track,attr"                    json:"track"`
-	Year int                        `xml:"year,attr"                     json:"year"`
-	Genre string                    `xml:"genre,attr"                    json:"genre"`
-	CoverArt string                 `xml:"coverArt,attr"                 json:"coverArt"`
-	Size string                     `xml:"size,attr"                     json:"size"`
-	ContentType string              `xml:"contentType,attr"              json:"contentType"`
-	Suffix string                   `xml:"suffix,attr"                   json:"suffix"`
-	TranscodedContentType string    `xml:"transcodedContentType,attr"    json:"transcodedContentType"`
-	TranscodedSuffix string         `xml:"transcodedSuffix,attr"         json:"transcodedSuffix"`
-	Duration int                    `xml:"duration,attr"                 json:"duration"`
-	BitRate int                     `xml:"bitRate,attr"                  json:"bitRate"`
+	Id string                       `xml:"id,attr"                                 json:"id"`
+	IsDir bool                      `xml:"isDir,attr"                              json:"isDir"`
+	Title string                    `xml:"title,attr"                              json:"title"`
+	Album string                    `xml:"album,attr,omitempty"                    json:"album,omitempty"`
+	Artist string                   `xml:"artist,attr,omitempty"                   json:"artist,omitempty"`
+	Track int                       `xml:"track,attr,omitempty"                    json:"track,omitempty"`
+	Year int                        `xml:"year,attr,omitempty"                     json:"year,omitempty"`
+	Genre string                    `xml:"genre,attr,omitempty"                    json:"genre,omitempty"`
+	CoverArt string                 `xml:"coverArt,attr,omitempty"                 json:"coverArt,omitempty"`
+	Size string                     `xml:"size,attr,omitempty"                     json:"size,omitempty"`
+	ContentType string              `xml:"contentType,attr,omitempty"              json:"contentType,omitempty"`
+	Suffix string                   `xml:"suffix,attr,omitempty"                   json:"suffix,omitempty"`
+	TranscodedContentType string    `xml:"transcodedContentType,attr,omitempty"    json:"transcodedContentType,omitempty"`
+	TranscodedSuffix string         `xml:"transcodedSuffix,attr,omitempty"         json:"transcodedSuffix,omitempty"`
+	Duration int                    `xml:"duration,attr,omitempty"                 json:"duration,omitempty"`
+	BitRate int                     `xml:"bitRate,attr,omitempty"                  json:"bitRate,omitempty"`
 }
 
 type Directory struct {

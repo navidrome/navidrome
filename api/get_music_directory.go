@@ -11,10 +11,12 @@ import (
 type GetMusicDirectoryController struct {
 	BaseAPIController
 	artistRepo domain.ArtistRepository
+	albumRepo domain.AlbumRepository
 }
 
 func (c *GetMusicDirectoryController) Prepare() {
 	inject.ExtractAssignable(utils.Graph, &c.artistRepo)
+	inject.ExtractAssignable(utils.Graph, &c.albumRepo)
 }
 
 func (c *GetMusicDirectoryController) Get() {
@@ -32,10 +34,19 @@ func (c *GetMusicDirectoryController) Get() {
 
 	dir := &responses.Directory{}
 	if found {
-		a, _:= c.retrieveArtist(id)
+		a, albums := c.retrieveArtist(id)
 
 		dir.Id = a.Id
 		dir.Name = a.Name
+		dir.Child = make([]responses.Child, len(albums))
+		for i, al := range albums {
+			dir.Child[i].Id = al.Id
+			dir.Child[i].Title = al.Name
+			dir.Child[i].IsDir = true
+			dir.Child[i].Album = al.Name
+			dir.Child[i].Year = al.Year
+			dir.Child[i].Artist = a.Name
+		}
 	} else {
 		beego.Info("Artist", id, "not found")
 		c.SendError(responses.ERROR_DATA_NOT_FOUND, "Directory not found")
@@ -54,6 +65,9 @@ func (c *GetMusicDirectoryController) retrieveArtist(id string) (a *domain.Artis
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
 
-	as = make([]domain.Album, 0)
+	if as, err = c.albumRepo.FindByArtist(id); err != nil {
+		beego.Error("Error reading Album from DB", err)
+		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+	}
 	return
 }
