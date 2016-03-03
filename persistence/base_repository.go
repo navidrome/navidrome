@@ -127,24 +127,24 @@ func (r *baseRepository) toEntity(response [][]byte, entity interface{}) error {
 	return utils.ToStruct(record, entity)
 }
 
-func (r *baseRepository) loadAll(entities interface{}, sortBy string) error {
+func (r *baseRepository) loadAll(entities interface{}, sortBy string, alpha bool) error {
 	setName := r.table + "s:all"
-	return r.loadFromSet(setName, entities, sortBy)
+	return r.loadFromSet(setName, entities, sortBy, alpha)
 }
 
-func (r* baseRepository) loadChildren(parentTable string, parentId string, entities interface{}, sortBy string) error {
+func (r* baseRepository) loadChildren(parentTable string, parentId string, entities interface{}, sortBy string, alpha bool) error {
 	setName := fmt.Sprintf("%s:%s:%ss", parentTable, parentId, r.table)
-	return r.loadFromSet(setName, entities, sortBy)
+	return r.loadFromSet(setName, entities, sortBy, alpha)
 }
 
 // TODO Optimize it! Probably very slow (and confusing!)
-func (r *baseRepository) loadFromSet(setName string, entities interface{}, sortBy string) error {
+func (r *baseRepository) loadFromSet(setName string, entities interface{}, sortBy string, alpha bool) error {
 	reflected := reflect.ValueOf(entities).Elem()
 	var sortKey []byte = nil
 	if sortBy != "" {
 		sortKey = []byte(fmt.Sprintf("%s:*:%s", r.table, sortBy))
 	}
-	response, err := db().XSSort([]byte(setName), 0, 0, true, false, sortKey, r.getFieldKeys("*"))
+	response, err := db().XSSort([]byte(setName), 0, 0, alpha, false, sortKey, r.getFieldKeys("*"))
 	if err != nil {
 		return err
 	}

@@ -20,6 +20,6 @@ func (r *mediaFileRepository) Put(m *domain.MediaFile) error {
 
 func (r *mediaFileRepository) FindByAlbum(albumId string) ([]domain.MediaFile, error) {
 	var mfs = make([]domain.MediaFile, 0)
-	err := r.loadChildren("album", albumId, &mfs, "Track")
+	err := r.loadChildren("album", albumId, &mfs, "Track", false)
 	return mfs, err
 }

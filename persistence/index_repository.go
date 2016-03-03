@@ -33,7 +33,7 @@ func (r *artistIndexRepository) Get(id string) (*domain.ArtistIndex, error) {
 
 func (r *artistIndexRepository) GetAll() ([]domain.ArtistIndex, error) {
 	var indices = make([]domain.ArtistIndex, 0)
-	err := r.loadAll(&indices, "")
+	err := r.loadAll(&indices, "", true)
 	return indices, err
 }
 

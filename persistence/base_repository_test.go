@@ -131,7 +131,7 @@ func TestBaseRepository(t *testing.T) {
 
 			Convey("When I call loadAll", func() {
 				var es = make([]TestEntity, 0)
-				err := repo.loadAll(&es, "")
+				err := repo.loadAll(&es, "", false)
 				Convey("Then It should not return any error", func() {
 					So(err, ShouldBeNil)
 				})
