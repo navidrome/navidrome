@@ -14,6 +14,10 @@ type Track struct {
 	Genre       string
 	TrackNumber int
 	Year        int
+	Size        string
+	Suffix      string
+	Duration    int
+	BitRate     int
 	Compilation bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

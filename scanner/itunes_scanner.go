@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"path/filepath"
+"strconv"
 )
 
 type ItunesScanner struct{}
@@ -26,8 +28,17 @@ func (s *ItunesScanner) LoadFolder(path string) []Track {
 			mediaFiles[i].Compilation = t.Compilation
 			mediaFiles[i].Year = t.Year
 			mediaFiles[i].TrackNumber = t.TrackNumber
+			if t.Size > 0 {
+				mediaFiles[i].Size = strconv.Itoa(t.Size)
+			}
+			if t.TotalTime > 0 {
+				mediaFiles[i].Duration = t.TotalTime / 1000
+			}
+			mediaFiles[i].BitRate = t.BitRate
 			path, _ = url.QueryUnescape(t.Location)
-			mediaFiles[i].Path = strings.TrimPrefix(path, "file://")
+			path = strings.TrimPrefix(path, "file://")
+			mediaFiles[i].Path = path
+			mediaFiles[i].Suffix = strings.TrimPrefix(filepath.Ext(path), ".")
 			mediaFiles[i].CreatedAt = t.DateAdded
 			mediaFiles[i].UpdatedAt = t.DateModified
 			i++

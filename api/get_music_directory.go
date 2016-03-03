@@ -11,8 +11,8 @@ import (
 type GetMusicDirectoryController struct {
 	BaseAPIController
 	artistRepo domain.ArtistRepository
-	albumRepo domain.AlbumRepository
-	mFileRepo domain.MediaFileRepository
+	albumRepo  domain.AlbumRepository
+	mFileRepo  domain.MediaFileRepository
 }
 
 func (c *GetMusicDirectoryController) Prepare() {
@@ -58,6 +58,10 @@ func (c *GetMusicDirectoryController) Get() {
 				dir.Child[i].Artist = mf.AlbumArtist
 				dir.Child[i].Genre = mf.Genre
 				dir.Child[i].Track = mf.Track
+				dir.Child[i].Duration = mf.Duration
+				dir.Child[i].Size = mf.Size
+				dir.Child[i].Suffix = mf.Suffix
+				dir.Child[i].BitRate = mf.BitRate
 			}
 		} else {
 			beego.Info("Id", id, "not found")

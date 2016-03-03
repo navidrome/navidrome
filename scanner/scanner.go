@@ -77,6 +77,10 @@ func parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
 		Track:       t.TrackNumber,
 		Genre:       t.Genre,
 		Year:        t.Year,
+		Size:        t.Size,
+		Suffix:      t.Suffix,
+		Duration:    t.Duration,
+		BitRate:     t.BitRate,
 	}
 
 	album := &domain.Album{

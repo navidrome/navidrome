@@ -14,6 +14,10 @@ type MediaFile struct {
 	AlbumId     string `parent:"album"`
 	Track       int
 	Year        int
+	Size        string
+	Suffix      string
+	Duration    int
+	BitRate     int
 	Genre       string
 	Compilation bool
 	CreatedAt   time.Time
