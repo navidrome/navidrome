@@ -8,6 +8,7 @@ type Album struct {
 	Year         int
 	Compilation  bool
 	Rating       int
+	Genre        string
 }
 
 type AlbumRepository interface {

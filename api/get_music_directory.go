@@ -46,6 +46,7 @@ func (c *GetMusicDirectoryController) Get() {
 			dir.Child[i].Album = al.Name
 			dir.Child[i].Year = al.Year
 			dir.Child[i].Artist = a.Name
+			dir.Child[i].Genre = al.Genre
 		}
 	} else {
 		beego.Info("Artist", id, "not found")

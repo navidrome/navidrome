@@ -22,8 +22,10 @@ func (s *ItunesScanner) LoadFolder(path string) []Track {
 			mediaFiles[i].Title = unescape(t.Name)
 			mediaFiles[i].Artist = unescape(t.Artist)
 			mediaFiles[i].AlbumArtist = unescape(t.AlbumArtist)
+			mediaFiles[i].Genre = unescape(t.Genre)
 			mediaFiles[i].Compilation = t.Compilation
 			mediaFiles[i].Year = t.Year
+			mediaFiles[i].TrackNumber = t.TrackNumber
 			path, _ = url.QueryUnescape(t.Location)
 			mediaFiles[i].Path = strings.TrimPrefix(path, "file://")
 			mediaFiles[i].CreatedAt = t.DateAdded

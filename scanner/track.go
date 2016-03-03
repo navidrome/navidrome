@@ -11,6 +11,8 @@ type Track struct {
 	Album       string
 	Artist      string
 	AlbumArtist string
+	Genre       string
+	TrackNumber int
 	Year        int
 	Compilation bool
 	CreatedAt   time.Time

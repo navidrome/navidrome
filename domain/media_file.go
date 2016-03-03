@@ -12,6 +12,8 @@ type MediaFile struct {
 	Artist      string
 	AlbumArtist string
 	AlbumId     string `parent:"album"`
+	Track       int
+	Genre       string
 	Compilation bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
