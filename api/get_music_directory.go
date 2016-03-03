@@ -40,7 +40,7 @@ func (c *GetMusicDirectoryController) Get() {
 			dir.Child[i].IsDir = true
 			dir.Child[i].Album = al.Name
 			dir.Child[i].Year = al.Year
-			dir.Child[i].Artist = a.Name //TODO AlbumArtist
+			dir.Child[i].Artist = al.Artist
 			dir.Child[i].Genre = al.Genre
 		}
 	} else {
@@ -55,7 +55,7 @@ func (c *GetMusicDirectoryController) Get() {
 				dir.Child[i].IsDir = false
 				dir.Child[i].Album = mf.Album
 				dir.Child[i].Year = mf.Year
-				dir.Child[i].Artist = mf.AlbumArtist
+				dir.Child[i].Artist = mf.Artist
 				dir.Child[i].Genre = mf.Genre
 				dir.Child[i].Track = mf.Track
 				dir.Child[i].Duration = mf.Duration
