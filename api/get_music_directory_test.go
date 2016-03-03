@@ -59,7 +59,7 @@ func TestGetMusicDirectory(t *testing.T) {
 				mockAlbumRepo.SetData(`[{"Id":"A","Name":"Tardis","ArtistId":"1"}]`, 1)
 				_, w := Get(AddParams("/rest/getMusicDirectory.view", "id=1"), "TestGetMusicDirectory")
 
-				So(w.Body, ShouldContainJSON, `"child":[{"album":"Tardis","artist":"The KLF","id":"A","isDir":true,"title":"Tardis"}]`)
+				So(w.Body, ShouldContainJSON, `"child":[{"album":"Tardis","id":"A","isDir":true,"title":"Tardis"}]`)
 			})
 		})
 		Convey("When id matches an album with tracks", func() {
