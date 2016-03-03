@@ -22,7 +22,7 @@ func (c *StreamController) Prepare() {
 
 // For realtime transcoding, see : http://stackoverflow.com/questions/19292113/not-buffered-http-responsewritter-in-golang
 func (c *StreamController) Get() {
-	id := c.ValidateParameters("id", "id parameter required")
+	id := c.GetParameter("id", "id parameter required")
 
 	mf, err := c.repo.Get(id)
 	if err != nil {

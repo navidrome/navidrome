@@ -13,12 +13,11 @@ func (c *BaseAPIController) NewEmpty() responses.Subsonic {
 	return responses.Subsonic{Status: "ok", Version: beego.AppConfig.String("apiVersion")}
 }
 
-func (c *BaseAPIController) ValidateParameters(param string, msg string) string {
+func (c *BaseAPIController) GetParameter(param string, msg string) string {
 	p := c.Input().Get(param)
 	if p == "" {
 		c.SendError(responses.ERROR_MISSING_PARAMETER, msg)
 	}
-	c.Data[param] = p
 	return p
 }
 

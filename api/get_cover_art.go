@@ -21,7 +21,7 @@ func (c *GetCoverArtController) Prepare() {
 }
 
 func (c *GetCoverArtController) Get() {
-	id := c.ValidateParameters("id", "id parameter required")
+	id := c.GetParameter("id", "id parameter required")
 
 	mf, err := c.repo.Get(id)
 	if err != nil {
