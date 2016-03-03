@@ -30,15 +30,30 @@ func (c *GetMusicDirectoryController) Get() {
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
 
+	dir := &responses.Directory{}
 	if found {
-		_, err := c.artistRepo.Get(id)
-		if err != nil {
-			beego.Error("Error reading Artist from DB", err)
-			c.SendError(responses.ERROR_GENERIC, "Internal Error")
-		}
+		a, _:= c.retrieveArtist(id)
+
+		dir.Id = a.Id
+		dir.Name = a.Name
+	} else {
+		beego.Info("Artist", id, "not found")
+		c.SendError(responses.ERROR_DATA_NOT_FOUND, "Directory not found")
 	}
 
 	response := c.NewEmpty()
-	response.Directory = &responses.Directory{}
+	response.Directory = dir
 	c.SendResponse(response)
+}
+
+func (c *GetMusicDirectoryController) retrieveArtist(id string) (a *domain.Artist, as[]domain.Album) {
+	var err error
+
+	if a, err = c.artistRepo.Get(id); err != nil {
+		beego.Error("Error reading Artist from DB", err)
+		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+	}
+
+	as = make([]domain.Album, 0)
+	return
 }

@@ -27,6 +27,12 @@ func ShouldMatchJSON(actual interface{}, expected ...interface{}) string {
 	return ShouldEqual(s, expected[0].(string))
 }
 
+func ShouldContainJSON(actual interface{}, expected ...interface{}) string {
+	a := UnindentJSON(actual.(*bytes.Buffer).Bytes())
+
+	return ShouldContainSubstring(a, expected[0].(string))
+}
+
 func ShouldReceiveError(actual interface{}, expected ...interface{}) string {
 	v := responses.Subsonic{}
 	err := xml.Unmarshal(actual.(*bytes.Buffer).Bytes(), &v)
@@ -35,7 +41,6 @@ func ShouldReceiveError(actual interface{}, expected ...interface{}) string {
 	}
 
 	return ShouldEqual(v.Error.Code, expected[0].(int))
-
 }
 
 func UnindentJSON(j []byte) string {
