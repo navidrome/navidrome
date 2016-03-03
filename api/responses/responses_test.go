@@ -1,10 +1,10 @@
 package responses_test
 
 import (
-	"testing"
-	. "github.com/smartystreets/goconvey/convey"
-	. "github.com/deluan/gosonic/tests"
 	. "github.com/deluan/gosonic/api/responses"
+	. "github.com/deluan/gosonic/tests"
+	. "github.com/smartystreets/goconvey/convey"
+	"testing"
 )
 
 func TestSubsonicResponses(t *testing.T) {
@@ -60,7 +60,7 @@ func TestSubsonicResponses(t *testing.T) {
 		Convey("Indexes", func() {
 			artists := make([]Artist, 1)
 			artists[0] = Artist{Id: "111", Name: "aaa"}
-			response.Indexes = &Indexes{LastModified:"1", IgnoredArticles:"A"}
+			response.Indexes = &Indexes{LastModified: "1", IgnoredArticles: "A"}
 
 			Convey("With data", func() {
 				index := make([]Index, 1)
@@ -95,7 +95,7 @@ func TestSubsonicResponses(t *testing.T) {
 			})
 			Convey("With just required data", func() {
 				child := make([]Child, 1)
-				child[0] = Child{ Id:"1", Title: "title", IsDir: false }
+				child[0] = Child{Id: "1", Title: "title", IsDir: false}
 				response.Directory.Child = child
 				Convey("XML", func() {
 					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><directory id="1" name="N"><child id="1" isDir="false" title="title"></child></directory></subsonic-response>`)
@@ -107,7 +107,7 @@ func TestSubsonicResponses(t *testing.T) {
 			Convey("With all data", func() {
 				child := make([]Child, 1)
 				child[0] = Child{
-					Id:"1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
+					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: "8421341", ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
 					Duration: 146, BitRate: 320,

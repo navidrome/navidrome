@@ -4,9 +4,9 @@ import (
 	"github.com/dhowden/itl"
 	"net/url"
 	"os"
-	"strings"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 type ItunesScanner struct{}

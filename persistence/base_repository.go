@@ -40,7 +40,7 @@ func (r *baseRepository) CountAll() (int, error) {
 }
 
 func (r *baseRepository) Exists(id string) (bool, error) {
-	res, err := db().SIsMember([]byte(r.table + "s:all"), []byte(id))
+	res, err := db().SIsMember([]byte(r.table+"s:all"), []byte(id))
 	return res != 0, err
 }
 
@@ -132,7 +132,7 @@ func (r *baseRepository) loadAll(entities interface{}, sortBy string, alpha bool
 	return r.loadFromSet(setName, entities, sortBy, alpha)
 }
 
-func (r* baseRepository) loadChildren(parentTable string, parentId string, entities interface{}, sortBy string, alpha bool) error {
+func (r *baseRepository) loadChildren(parentTable string, parentId string, entities interface{}, sortBy string, alpha bool) error {
 	setName := fmt.Sprintf("%s:%s:%ss", parentTable, parentId, r.table)
 	return r.loadFromSet(setName, entities, sortBy, alpha)
 }

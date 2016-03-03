@@ -1,12 +1,12 @@
 package tests
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"github.com/deluan/gosonic/api/responses"
-	"bytes"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func ShouldMatchXML(actual interface{}, expected ...interface{}) string {

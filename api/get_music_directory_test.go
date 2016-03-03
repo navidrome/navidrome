@@ -3,12 +3,12 @@ package api_test
 import (
 	"testing"
 
+	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/domain"
+	. "github.com/deluan/gosonic/tests"
 	"github.com/deluan/gosonic/tests/mocks"
 	"github.com/deluan/gosonic/utils"
-	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/deluan/gosonic/api/responses"
 )
 
 func TestGetMusicDirectory(t *testing.T) {

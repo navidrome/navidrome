@@ -2,9 +2,9 @@ package mocks
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/deluan/gosonic/domain"
-"errors"
 )
 
 func CreateMockMediaFileRepo() *MockMediaFile {
@@ -37,7 +37,7 @@ func (m *MockMediaFile) Exists(id string) (bool, error) {
 	if m.err {
 		return false, errors.New("Error!")
 	}
-	_, found := m.data[id];
+	_, found := m.data[id]
 	return found, nil
 }
 

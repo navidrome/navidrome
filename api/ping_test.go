@@ -1,11 +1,11 @@
 package api_test
 
 import (
+	"encoding/json"
 	"github.com/deluan/gosonic/api/responses"
 	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
-	"encoding/json"
 )
 
 func TestPing(t *testing.T) {

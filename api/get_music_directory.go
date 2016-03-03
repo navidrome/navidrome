@@ -1,11 +1,11 @@
 package api
 
 import (
+	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
-	"github.com/astaxie/beego"
 )
 
 type GetMusicDirectoryController struct {
@@ -74,7 +74,7 @@ func (c *GetMusicDirectoryController) Get() {
 	c.SendResponse(response)
 }
 
-func (c *GetMusicDirectoryController) retrieveArtist(id string) (a *domain.Artist, as[]domain.Album, found bool) {
+func (c *GetMusicDirectoryController) retrieveArtist(id string) (a *domain.Artist, as []domain.Album, found bool) {
 	found, err := c.artistRepo.Exists(id)
 	if err != nil {
 		beego.Error("Error searching for Artist:", err)
@@ -96,7 +96,7 @@ func (c *GetMusicDirectoryController) retrieveArtist(id string) (a *domain.Artis
 	return
 }
 
-func (c *GetMusicDirectoryController) retrieveAlbum(id string) (al *domain.Album, mfs[]domain.MediaFile, found bool) {
+func (c *GetMusicDirectoryController) retrieveAlbum(id string) (al *domain.Album, mfs []domain.MediaFile, found bool) {
 	found, err := c.albumRepo.Exists(id)
 	if err != nil {
 		beego.Error("Error searching for Album:", err)
