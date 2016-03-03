@@ -30,5 +30,6 @@ type MediaFile struct {
 type MediaFileRepository interface {
 	BaseRepository
 	Put(m *MediaFile) error
+	Get(id string) (*MediaFile, error)
 	FindByAlbum(albumId string) ([]MediaFile, error)
 }

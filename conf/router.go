@@ -21,6 +21,7 @@ func mapEndpoints() {
 		beego.NSRouter("/getMusicFolders.view", &api.GetMusicFoldersController{}, "*:Get"),
 		beego.NSRouter("/getIndexes.view", &api.GetIndexesController{}, "*:Get"),
 		beego.NSRouter("/getMusicDirectory.view", &api.GetMusicDirectoryController{}, "*:Get"),
+		beego.NSRouter("/getCoverArt.view", &api.GetCoverArtController{}, "*:Get"),
 	)
 	beego.AddNamespace(ns)
 

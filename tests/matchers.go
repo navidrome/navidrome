@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/deluan/gosonic/api/responses"
 	. "github.com/smartystreets/goconvey/convey"
+	"crypto/md5"
 )
 
 func ShouldMatchXML(actual interface{}, expected ...interface{}) string {
@@ -41,6 +42,11 @@ func ShouldReceiveError(actual interface{}, expected ...interface{}) string {
 	}
 
 	return ShouldEqual(v.Error.Code, expected[0].(int))
+}
+
+func ShouldMatchMD5(actual interface{}, expected ...interface{}) string {
+	a := fmt.Sprintf("%x", md5.Sum(actual.([]byte)))
+	return ShouldEqual(a, expected[0].(string))
 }
 
 func UnindentJSON(j []byte) string {
