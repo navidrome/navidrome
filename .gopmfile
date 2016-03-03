@@ -7,6 +7,7 @@ github.com/deluan/itl = commit:35d15a3
 github.com/siddontang/ledisdb = commit:713b229
 github.com/smartystreets/goconvey = commit:899ed5a
 github.com/karlkfi/inject = commit:fe06da2
+github.com/dhowden/tag = commit:a35ac09
 
 [res]
 include = conf

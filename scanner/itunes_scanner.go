@@ -39,7 +39,7 @@ func (s *ItunesScanner) LoadFolder(path string) []Track {
 			}
 			mediaFiles[i].BitRate = t.BitRate
 			path, _ = url.QueryUnescape(t.Location)
-			path = strings.TrimPrefix(path, "file://")
+			path = strings.TrimPrefix(unescape(path), "file://")
 			mediaFiles[i].Path = path
 			mediaFiles[i].Suffix = strings.TrimPrefix(filepath.Ext(path), ".")
 			mediaFiles[i].CreatedAt = t.DateAdded

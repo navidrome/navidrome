@@ -5,6 +5,7 @@ type Album struct {
 	Name         string
 	ArtistId     string `parent:"artist"`
 	CoverArtPath string // TODO http://stackoverflow.com/questions/13795842/linking-itunes-itc2-files-and-ituneslibrary-xml
+	CoverArtId   string
 	Artist       string
 	AlbumArtist  string
 	Year         int

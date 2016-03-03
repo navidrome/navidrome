@@ -9,6 +9,8 @@ import (
 	"github.com/deluan/gosonic/utils"
 	"strings"
 	"time"
+	"github.com/dhowden/tag"
+	"os"
 )
 
 type Scanner interface {
@@ -63,7 +65,27 @@ func importLibrary(files []Track) (err error) {
 	return err
 }
 
+func hasCoverArt(path string) bool {
+	if _, err := os.Stat(path); err == nil {
+		f, err := os.Open(path)
+		if err != nil {
+			beego.Warn("Error opening file", path, "-", err)
+			return false
+		}
+		defer f.Close()
+
+		m, err := tag.ReadFrom(f)
+		if err != nil {
+			beego.Warn("Error reading tag from file", path, "-", err)
+		}
+		return m.Picture() != nil
+	}
+	//beego.Warn("File not found:", path)
+	return false
+}
+
 func parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
+	hasCover := hasCoverArt(t.Path)
 	mf := &domain.MediaFile{
 		Id:          t.Id,
 		Album:       t.Album,
@@ -75,6 +97,7 @@ func parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
 		Path:        t.Path,
 		CreatedAt:   t.CreatedAt,
 		UpdatedAt:   t.UpdatedAt,
+		HasCoverArt: hasCover,
 		TrackNumber: t.TrackNumber,
 		DiscNumber:  t.DiscNumber,
 		Genre:       t.Genre,
@@ -93,6 +116,10 @@ func parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
 		Genre:       t.Genre,
 		Artist:      t.Artist,
 		AlbumArtist: t.AlbumArtist,
+	}
+
+	if mf.HasCoverArt {
+		album.CoverArtId = mf.Id
 	}
 
 	artist := &domain.Artist{

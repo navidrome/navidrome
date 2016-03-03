@@ -57,6 +57,7 @@ func (c *GetMusicDirectoryController) buildArtistDir(a *domain.Artist, albums []
 		dir.Child[i].Year = al.Year
 		dir.Child[i].Artist = al.Artist
 		dir.Child[i].Genre = al.Genre
+		dir.Child[i].CoverArt = al.CoverArtId
 	}
 	return dir
 }
@@ -78,6 +79,9 @@ func (c *GetMusicDirectoryController) buildAlbumDir(al *domain.Album, tracks []d
 		dir.Child[i].Size = mf.Size
 		dir.Child[i].Suffix = mf.Suffix
 		dir.Child[i].BitRate = mf.BitRate
+		if mf.HasCoverArt {
+			dir.Child[i].CoverArt = mf.Id
+		}
 	}
 	return dir
 }

@@ -1,9 +1,6 @@
-lastupdate.tmp
-gosonic
-iTunes.xml
-iTunesFull.xml
-gosonic.index
+/gosonic
+/iTunes*.xml
 static/Jamstash
 devDb
-tmp
+/tmp
 .vendor
