@@ -6,7 +6,7 @@ type Subsonic struct {
 	XMLName      xml.Name      `xml:"http://subsonic.org/restapi subsonic-response" json:"-"`
 	Status       string        `xml:"status,attr"                                   json:"status"`
 	Version      string        `xml:"version,attr"                                  json:"version"`
-	Error        *Error        `xml:",omitempty"                                    json:"error,omitempty"`
+	Error        *Error        `xml:"error,omitempty"                               json:"error,omitempty"`
 	License      *License      `xml:"license,omitempty"                             json:"license,omitempty"`
 	MusicFolders *MusicFolders `xml:"musicFolders,omitempty"                        json:"musicFolders,omitempty"`
 	Indexes      *Indexes      `xml:"indexes,omitempty"                             json:"indexes,omitempty"`
@@ -18,8 +18,8 @@ type JsonWrapper struct {
 }
 
 type Error struct {
-	Code    int      `xml:"code,attr"`
-	Message string   `xml:"message,attr"`
+	Code    int      `xml:"code,attr"                     json:"code"`
+	Message string   `xml:"message,attr"                  json:"message"`
 }
 
 type License struct {

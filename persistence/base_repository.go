@@ -39,6 +39,11 @@ func (r *baseRepository) CountAll() (int, error) {
 	return len(ids), err
 }
 
+func (r *baseRepository) Exists(id string) (bool, error) {
+	res, err := db().SIsMember([]byte(r.table + "s:all"), []byte(id))
+	return res != 0, err
+}
+
 func (r *baseRepository) saveOrUpdate(id string, entity interface{}) error {
 	recordPrefix := fmt.Sprintf("%s:%s:", r.table, id)
 	allKey := r.table + "s:all"

@@ -1,9 +1,10 @@
-package responses
+package responses_test
 
 import (
 	"testing"
 	. "github.com/smartystreets/goconvey/convey"
 	. "github.com/deluan/gosonic/tests"
+	. "github.com/deluan/gosonic/api/responses"
 )
 
 func TestSubsonicResponses(t *testing.T) {

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"github.com/deluan/gosonic/api/responses"
+	"bytes"
 )
 
 func ShouldMatchXML(actual interface{}, expected ...interface{}) string {
@@ -23,6 +25,17 @@ func ShouldMatchJSON(actual interface{}, expected ...interface{}) string {
 	}
 	s := UnindentJSON(json)
 	return ShouldEqual(s, expected[0].(string))
+}
+
+func ShouldReceiveError(actual interface{}, expected ...interface{}) string {
+	v := responses.Subsonic{}
+	err := xml.Unmarshal(actual.(*bytes.Buffer).Bytes(), &v)
+	if err != nil {
+		return fmt.Sprintf("Malformed XML: %v", err)
+	}
+
+	return ShouldEqual(v.Error.Code, expected[0].(int))
+
 }
 
 func UnindentJSON(j []byte) string {

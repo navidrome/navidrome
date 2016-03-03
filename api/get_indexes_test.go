@@ -3,7 +3,6 @@ package api_test
 import (
 	"testing"
 
-	"encoding/xml"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
@@ -39,17 +38,13 @@ func TestGetIndexes(t *testing.T) {
 			mockRepo.SetError(true)
 			_, w := Get(AddParams("/rest/getIndexes.view", "ifModifiedSince=0"), "TestGetIndexes")
 
-			v := responses.Subsonic{}
-			xml.Unmarshal(w.Body.Bytes(), &v)
-			So(v.Status, ShouldEqual, "fail")
+			So(w.Body, ShouldReceiveError, responses.ERROR_GENERIC)
 		})
 		Convey("Return fail on Property Table error", func() {
 			propRepo.SetError(true)
 			_, w := Get(AddParams("/rest/getIndexes.view"), "TestGetIndexes")
 
-			v := responses.Subsonic{}
-			xml.Unmarshal(w.Body.Bytes(), &v)
-			So(v.Status, ShouldEqual, "fail")
+			So(w.Body, ShouldReceiveError, responses.ERROR_GENERIC)
 		})
 		Convey("When the index is empty", func() {
 			_, w := Get(AddParams("/rest/getIndexes.view"), "TestGetIndexes")

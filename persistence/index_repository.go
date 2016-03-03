@@ -7,17 +7,17 @@ import (
 	"sort"
 )
 
-type artistIndex struct {
+type artistIndexRepository struct {
 	baseRepository
 }
 
 func NewArtistIndexRepository() domain.ArtistIndexRepository {
-	r := &artistIndex{}
+	r := &artistIndexRepository{}
 	r.init("index", &domain.ArtistIndex{})
 	return r
 }
 
-func (r *artistIndex) Put(m *domain.ArtistIndex) error {
+func (r *artistIndexRepository) Put(m *domain.ArtistIndex) error {
 	if m.Id == "" {
 		return errors.New("Id is not set")
 	}
@@ -25,13 +25,13 @@ func (r *artistIndex) Put(m *domain.ArtistIndex) error {
 	return r.saveOrUpdate(m.Id, m)
 }
 
-func (r *artistIndex) Get(id string) (*domain.ArtistIndex, error) {
+func (r *artistIndexRepository) Get(id string) (*domain.ArtistIndex, error) {
 	var rec interface{}
 	rec, err := r.readEntity(id)
 	return rec.(*domain.ArtistIndex), err
 }
 
-func (r *artistIndex) GetAll() ([]domain.ArtistIndex, error) {
+func (r *artistIndexRepository) GetAll() ([]domain.ArtistIndex, error) {
 	var indices = make([]domain.ArtistIndex, 0)
 	err := r.loadAll(&indices, "")
 	return indices, err
