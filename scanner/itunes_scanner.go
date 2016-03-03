@@ -28,6 +28,7 @@ func (s *ItunesScanner) LoadFolder(path string) []Track {
 			mediaFiles[i].Compilation = t.Compilation
 			mediaFiles[i].Year = t.Year
 			mediaFiles[i].TrackNumber = t.TrackNumber
+			mediaFiles[i].DiscNumber = t.DiscNumber
 			if t.Size > 0 {
 				mediaFiles[i].Size = strconv.Itoa(t.Size)
 			}

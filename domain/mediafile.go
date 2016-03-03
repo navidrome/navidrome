@@ -12,7 +12,8 @@ type MediaFile struct {
 	Artist      string
 	AlbumArtist string
 	AlbumId     string `parent:"album"`
-	Track       int
+	TrackNumber int
+	DiscNumber  int
 	Year        int
 	Size        string
 	Suffix      string

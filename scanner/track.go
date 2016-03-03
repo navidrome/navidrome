@@ -13,6 +13,7 @@ type Track struct {
 	AlbumArtist string
 	Genre       string
 	TrackNumber int
+	DiscNumber  int
 	Year        int
 	Size        string
 	Suffix      string

@@ -57,7 +57,7 @@ func (c *GetMusicDirectoryController) Get() {
 				dir.Child[i].Year = mf.Year
 				dir.Child[i].Artist = mf.Artist
 				dir.Child[i].Genre = mf.Genre
-				dir.Child[i].Track = mf.Track
+				dir.Child[i].Track = mf.TrackNumber
 				dir.Child[i].Duration = mf.Duration
 				dir.Child[i].Size = mf.Size
 				dir.Child[i].Suffix = mf.Suffix
