@@ -124,6 +124,28 @@ func TestSubsonicResponses(t *testing.T) {
 			})
 		})
 
+		Convey("User", func() {
+			response.User = &User{Username: "deluan"}
+			Convey("Without optional fields", func() {
+				Convey("XML", func() {
+					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><user username="deluan" scrobblingEnabled="false" adminRole="false" settingsRole="false" downloadRole="false" uploadRole="false" playlistRole="false" coverArtRole="false" commentRole="false" podcastRole="false" streamRole="false" jukeboxRole="false" shareRole="false" videoConversionRole="false"></user></subsonic-response>`)
+				})
+				Convey("JSON", func() {
+					So(response, ShouldMatchJSON, `{"status":"ok","user":{"adminRole":false,"commentRole":false,"coverArtRole":false,"downloadRole":false,"jukeboxRole":false,"playlistRole":false,"podcastRole":false,"scrobblingEnabled":false,"settingsRole":false,"shareRole":false,"streamRole":false,"uploadRole":false,"username":"deluan","videoConversionRole":false},"version":"1.0.0"}`)
+				})
+			})
+			Convey("With optional fields", func() {
+				response.User.Email = "gosonic@deluan.com"
+				response.User.Folder = []int{1}
+				Convey("XML", func() {
+					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><user username="deluan" email="gosonic@deluan.com" scrobblingEnabled="false" adminRole="false" settingsRole="false" downloadRole="false" uploadRole="false" playlistRole="false" coverArtRole="false" commentRole="false" podcastRole="false" streamRole="false" jukeboxRole="false" shareRole="false" videoConversionRole="false"><folder>1</folder></user></subsonic-response>`)
+				})
+				Convey("JSON", func() {
+					So(response, ShouldMatchJSON, `{"status":"ok","user":{"adminRole":false,"commentRole":false,"coverArtRole":false,"downloadRole":false,"email":"gosonic@deluan.com","folder":[1],"jukeboxRole":false,"playlistRole":false,"podcastRole":false,"scrobblingEnabled":false,"settingsRole":false,"shareRole":false,"streamRole":false,"uploadRole":false,"username":"deluan","videoConversionRole":false},"version":"1.0.0"}`)
+				})
+			})
+		})
+
 		Reset(func() {
 			response = &Subsonic{Status: "ok", Version: "1.0.0"}
 		})
