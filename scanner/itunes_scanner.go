@@ -64,6 +64,9 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	mf.Genre = unescape(t.Genre)
 	mf.Compilation = t.Compilation
 	mf.Starred = t.Loved
+	mf.Rating = t.Rating
+	mf.PlayCount = t.PlayCount
+	mf.PlayDate = t.PlayDateUTC
 	mf.Year = t.Year
 	mf.TrackNumber = t.TrackNumber
 	mf.DiscNumber = t.DiscNumber
@@ -103,6 +106,8 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 	al.Year = t.Year
 	al.Compilation = t.Compilation
 	al.Starred = t.AlbumLoved
+	al.Rating = t.AlbumRating
+	al.PlayCount += t.PlayCount
 	al.Genre = mf.Genre
 	al.Artist = mf.Artist
 	al.AlbumArtist = mf.AlbumArtist
@@ -111,6 +116,9 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 		al.CoverArtId = mf.Id
 	}
 
+	if al.PlayDate.IsZero() || t.PlayDateUTC.After(al.PlayDate) {
+		al.PlayDate = t.PlayDateUTC
+	}
 	if al.CreatedAt.IsZero() || t.DateAdded.Before(al.CreatedAt) {
 		al.CreatedAt = t.DateAdded
 	}

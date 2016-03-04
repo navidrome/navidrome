@@ -13,6 +13,8 @@ type Album struct {
 	Year         int
 	Compilation  bool
 	Starred      bool
+	PlayCount    int
+	PlayDate     time.Time
 	Rating       int
 	Genre        string
 	CreatedAt    time.Time

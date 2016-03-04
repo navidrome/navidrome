@@ -18,9 +18,11 @@ type GetAlbumListController struct {
 func (c *GetAlbumListController) Prepare() {
 	inject.ExtractAssignable(utils.Graph, &c.albumRepo)
 
-	// TODO To implement other types, we need to fix album data at import time
 	c.types = map[string]domain.QueryOptions{
-		"newest": domain.QueryOptions{SortBy: "CreatedAt", Desc: true, Alpha: true},
+		"newest":   domain.QueryOptions{SortBy: "CreatedAt", Desc: true, Alpha: true},
+		"recent":   domain.QueryOptions{SortBy: "PlayDate", Desc: true, Alpha: true},
+		"frequent": domain.QueryOptions{SortBy: "PlayCount", Desc: true},
+		"highest":  domain.QueryOptions{SortBy: "Rating", Desc: true},
 	}
 }
 
