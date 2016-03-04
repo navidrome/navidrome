@@ -5,3 +5,11 @@ type BaseRepository interface {
 	CountAll() (int, error)
 	Exists(id string) (bool, error)
 }
+
+type QueryOptions struct {
+	SortBy string
+	Alpha  bool
+	Desc   bool
+	Offset int
+	Size   int
+}

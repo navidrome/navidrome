@@ -7,6 +7,7 @@ import (
 	"github.com/deluan/gosonic/utils"
 	"reflect"
 	"strings"
+	"github.com/deluan/gosonic/domain"
 )
 
 type ledisRepository struct {
@@ -127,24 +128,29 @@ func (r *ledisRepository) toEntity(response [][]byte, entity interface{}) error 
 	return utils.ToStruct(record, entity)
 }
 
-func (r *ledisRepository) loadAll(entities interface{}, sortBy string, alpha bool) error {
+func (r *ledisRepository) loadAll(entities interface{}, qo ...domain.QueryOptions) error {
 	setName := r.table + "s:all"
-	return r.loadFromSet(setName, entities, sortBy, alpha)
+	return r.loadFromSet(setName, entities, qo...)
 }
 
-func (r *ledisRepository) loadChildren(parentTable string, parentId string, entities interface{}, sortBy string, alpha bool) error {
+func (r *ledisRepository) loadChildren(parentTable string, parentId string, entities interface{}, qo ...domain.QueryOptions) error {
 	setName := fmt.Sprintf("%s:%s:%ss", parentTable, parentId, r.table)
-	return r.loadFromSet(setName, entities, sortBy, alpha)
+	return r.loadFromSet(setName, entities, qo...)
 }
 
 // TODO Optimize it! Probably very slow (and confusing!)
-func (r *ledisRepository) loadFromSet(setName string, entities interface{}, sortBy string, alpha bool) error {
+func (r *ledisRepository) loadFromSet(setName string, entities interface{}, qo ...domain.QueryOptions) error {
+	o := domain.QueryOptions{}
+	if len(qo) > 0 {
+		o = qo[0]
+	}
+
 	reflected := reflect.ValueOf(entities).Elem()
 	var sortKey []byte = nil
-	if sortBy != "" {
-		sortKey = []byte(fmt.Sprintf("%s:*:%s", r.table, sortBy))
+	if o.SortBy != "" {
+		sortKey = []byte(fmt.Sprintf("%s:*:%s", r.table, o.SortBy))
 	}
-	response, err := db().XSSort([]byte(setName), 0, 0, alpha, false, sortKey, r.getFieldKeys("*"))
+	response, err := db().XSSort([]byte(setName), o.Offset, o.Size, o.Alpha, o.Desc, sortKey, r.getFieldKeys("*"))
 	if err != nil {
 		return err
 	}

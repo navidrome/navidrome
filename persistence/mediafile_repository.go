@@ -26,7 +26,7 @@ func (r *mediaFileRepository) Get(id string) (*domain.MediaFile, error) {
 
 func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, error) {
 	var mfs = make(domain.MediaFiles, 0)
-	err := r.loadChildren("album", albumId, &mfs, "", false)
+	err := r.loadChildren("album", albumId, &mfs)
 	sort.Sort(mfs)
 	return mfs, err
 }
