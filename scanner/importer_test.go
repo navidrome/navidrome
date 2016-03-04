@@ -13,11 +13,13 @@ func TestCollectIndex(t *testing.T) {
 
 	ig := utils.IndexGroups{"A": "A", "B": "B", "Tom": "Tom", "X": "X-Z"}
 
+	importer := &Importer{}
+
 	Convey("Simple Name", t, func() {
 		a := &domain.Artist{Name: "Björk"}
 		artistIndex := make(map[string]tempIndex)
 
-		collectIndex(ig, a, artistIndex)
+		importer.collectIndex(ig, a, artistIndex)
 
 		So(artistIndex, ShouldContainKey, "B")
 		So(artistIndex["B"], ShouldContainKey, "björk")
@@ -31,7 +33,7 @@ func TestCollectIndex(t *testing.T) {
 		a := &domain.Artist{Name: "Kraftwerk"}
 		artistIndex := make(map[string]tempIndex)
 
-		collectIndex(ig, a, artistIndex)
+		importer.collectIndex(ig, a, artistIndex)
 
 		So(artistIndex, ShouldContainKey, "#")
 		So(artistIndex["#"], ShouldContainKey, "kraftwerk")
@@ -45,7 +47,7 @@ func TestCollectIndex(t *testing.T) {
 		a := &domain.Artist{Name: "The The"}
 		artistIndex := make(map[string]tempIndex)
 
-		collectIndex(ig, a, artistIndex)
+		importer.collectIndex(ig, a, artistIndex)
 
 		So(artistIndex, ShouldContainKey, "#")
 		So(artistIndex["#"], ShouldContainKey, "the")
@@ -59,7 +61,7 @@ func TestCollectIndex(t *testing.T) {
 		a := &domain.Artist{Name: "Tom Waits"}
 		artistIndex := make(map[string]tempIndex)
 
-		collectIndex(ig, a, artistIndex)
+		importer.collectIndex(ig, a, artistIndex)
 
 		So(artistIndex, ShouldContainKey, "Tom")
 		So(artistIndex["Tom"], ShouldContainKey, "tom waits")

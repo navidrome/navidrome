@@ -3,14 +3,14 @@ package scanner
 import (
 	"fmt"
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/persistence"
-	"github.com/deluan/gosonic/utils"
-	"strings"
 	"time"
 	"github.com/dhowden/tag"
+	"github.com/deluan/gosonic/utils"
+	"github.com/deluan/gosonic/consts"
 	"os"
+	"strings"
 )
 
 type Scanner interface {
@@ -19,53 +19,71 @@ type Scanner interface {
 
 type tempIndex map[string]domain.ArtistInfo
 
-// TODO Implement a flag 'isScanning'.
 func StartImport() {
-	go doImport(beego.AppConfig.String("musicFolder"), &ItunesScanner{})
+	go func() {
+		i := &Importer{
+			scanner: &ItunesScanner{},
+			mediaFolder: beego.AppConfig.String("musicFolder"),
+			mfRepo: persistence.NewMediaFileRepository(),
+			albumRepo:persistence.NewAlbumRepository(),
+			artistRepo: persistence.NewArtistRepository(),
+			idxRepo: persistence.NewArtistIndexRepository(),
+			propertyRepo: persistence.NewPropertyRepository(),
+
+		}
+		i.Run()
+	}()
 }
 
-func doImport(mediaFolder string, scanner Scanner) {
-	beego.Info("Starting iTunes import from:", mediaFolder)
-	files := scanner.LoadFolder(mediaFolder)
-	importLibrary(files)
+// TODO Implement a flag 'inProgress'.
+type Importer struct {
+	scanner      Scanner
+	mediaFolder  string
+	mfRepo       domain.MediaFileRepository
+	albumRepo    domain.AlbumRepository
+	artistRepo   domain.ArtistRepository
+	idxRepo      domain.ArtistIndexRepository
+	propertyRepo domain.PropertyRepository
+}
+
+func (i *Importer) Run() {
+	beego.Info("Starting iTunes import from:", i.mediaFolder)
+	files := i.scanner.LoadFolder(i.mediaFolder)
+	i.importLibrary(files)
 	beego.Info("Finished importing", len(files), "files")
 }
 
-func importLibrary(files []Track) (err error) {
+func (i *Importer) importLibrary(files []Track) (err error) {
 	indexGroups := utils.ParseIndexGroups(beego.AppConfig.String("indexGroups"))
-	mfRepo := persistence.NewMediaFileRepository()
-	albumRepo := persistence.NewAlbumRepository()
-	artistRepo := persistence.NewArtistRepository()
 	var artistIndex = make(map[string]tempIndex)
 
 	for _, t := range files {
-		mf, album, artist := parseTrack(&t)
-		persist(mfRepo, mf, albumRepo, album, artistRepo, artist)
-		collectIndex(indexGroups, artist, artistIndex)
+		mf, album, artist := i.parseTrack(&t)
+		i.persist(mf, album, artist)
+		i.collectIndex(indexGroups, artist, artistIndex)
 	}
 
-	if err = saveIndex(artistIndex); err != nil {
+	if err = i.saveIndex(artistIndex); err != nil {
 		beego.Error(err)
 	}
 
-	c, _ := artistRepo.CountAll()
+	c, _ := i.artistRepo.CountAll()
 	beego.Info("Total Artists in database:", c)
-	c, _ = albumRepo.CountAll()
+	c, _ = i.albumRepo.CountAll()
 	beego.Info("Total Albums in database:", c)
-	c, _ = mfRepo.CountAll()
+	c, _ = i.mfRepo.CountAll()
 	beego.Info("Total MediaFiles in database:", c)
 
 	if err == nil {
-		propertyRepo := persistence.NewPropertyRepository()
 		millis := time.Now().UnixNano() / 1000000
-		propertyRepo.Put(consts.LastScan, fmt.Sprint(millis))
+		i.propertyRepo.Put(consts.LastScan, fmt.Sprint(millis))
 		beego.Info("LastScan timestamp:", millis)
 	}
 
 	return err
 }
 
-func hasCoverArt(path string) bool {
+func (i *Importer) hasCoverArt(path string) bool {
 	if _, err := os.Stat(path); err == nil {
 		f, err := os.Open(path)
 		if err != nil {
@@ -84,8 +102,8 @@ func hasCoverArt(path string) bool {
 	return false
 }
 
-func parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
-	hasCover := hasCoverArt(t.Path)
+func (i *Importer) parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
+	hasCover := i.hasCoverArt(t.Path)
 	mf := &domain.MediaFile{
 		Id:          t.Id,
 		Album:       t.Album,
@@ -129,29 +147,29 @@ func parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
 	return mf, album, artist
 }
 
-func persist(mfRepo domain.MediaFileRepository, mf *domain.MediaFile, albumRepo domain.AlbumRepository, album *domain.Album, artistRepo domain.ArtistRepository, artist *domain.Artist) {
-	if err := artistRepo.Put(artist); err != nil {
+func (i *Importer) persist(mf *domain.MediaFile, album *domain.Album, artist *domain.Artist) {
+	if err := i.artistRepo.Put(artist); err != nil {
 		beego.Error(err)
 	}
 
 	album.ArtistId = artist.Id
-	if err := albumRepo.Put(album); err != nil {
+	if err := i.albumRepo.Put(album); err != nil {
 		beego.Error(err)
 	}
 
 	mf.AlbumId = album.Id
-	if err := mfRepo.Put(mf); err != nil {
+	if err := i.mfRepo.Put(mf); err != nil {
 		beego.Error(err)
 	}
 }
 
-func collectIndex(ig utils.IndexGroups, a *domain.Artist, artistIndex map[string]tempIndex) {
+func (i *Importer) collectIndex(ig utils.IndexGroups, a *domain.Artist, artistIndex map[string]tempIndex) {
 	name := a.Name
 	indexName := strings.ToLower(utils.NoArticle(name))
 	if indexName == "" {
 		return
 	}
-	group := findGroup(ig, indexName)
+	group := i.findGroup(ig, indexName)
 	artists := artistIndex[group]
 	if artists == nil {
 		artists = make(tempIndex)
@@ -160,7 +178,7 @@ func collectIndex(ig utils.IndexGroups, a *domain.Artist, artistIndex map[string
 	artists[indexName] = domain.ArtistInfo{ArtistId: a.Id, Artist: a.Name}
 }
 
-func findGroup(ig utils.IndexGroups, name string) string {
+func (i *Importer) findGroup(ig utils.IndexGroups, name string) string {
 	for k, v := range ig {
 		key := strings.ToLower(k)
 		if strings.HasPrefix(name, key) {
@@ -170,15 +188,13 @@ func findGroup(ig utils.IndexGroups, name string) string {
 	return "#"
 }
 
-func saveIndex(artistIndex map[string]tempIndex) error {
-	idxRepo := persistence.NewArtistIndexRepository()
-
+func (i *Importer) saveIndex(artistIndex map[string]tempIndex) error {
 	for k, temp := range artistIndex {
 		idx := &domain.ArtistIndex{Id: k}
 		for _, v := range temp {
 			idx.Artists = append(idx.Artists, v)
 		}
-		err := idxRepo.Put(idx)
+		err := i.idxRepo.Put(idx)
 		if err != nil {
 			return err
 		}
