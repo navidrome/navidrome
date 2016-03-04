@@ -26,7 +26,7 @@ The project's main goals are:
 
 | Version     |          Notes            |
 |-------------|---------------------------|
-| 1.0.0       |       _In Progress_       |
+| 1.2.0       |       _In Progress_       |
 
 
 ### Development Environment
