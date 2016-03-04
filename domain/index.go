@@ -1,5 +1,7 @@
 package domain
 
+import "github.com/deluan/gosonic/utils"
+
 type ArtistInfo struct {
 	ArtistId string
 	Artist   string
@@ -7,7 +9,14 @@ type ArtistInfo struct {
 
 type ArtistIndex struct {
 	Id      string
-	Artists []ArtistInfo
+	Artists ArtistInfos
+}
+
+type ArtistInfos []ArtistInfo
+func (a ArtistInfos) Len() int { return len(a) }
+func (a ArtistInfos) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a ArtistInfos) Less(i, j int) bool {
+	return utils.NoArticle(a[i].Artist) < utils.NoArticle(a[j].Artist)
 }
 
 type ArtistIndexes []ArtistIndex

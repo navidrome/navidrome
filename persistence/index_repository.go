@@ -3,7 +3,6 @@ package persistence
 import (
 	"errors"
 	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/utils"
 	"sort"
 )
 
@@ -21,7 +20,7 @@ func (r *artistIndexRepository) Put(m *domain.ArtistIndex) error {
 	if m.Id == "" {
 		return errors.New("Id is not set")
 	}
-	sort.Sort(byArtistName(m.Artists))
+	sort.Sort(m.Artists)
 	return r.saveOrUpdate(m.Id, m)
 }
 
@@ -35,18 +34,6 @@ func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
 	var indices = make(domain.ArtistIndexes, 0)
 	err := r.loadAll(&indices, "", true)
 	return indices, err
-}
-
-type byArtistName []domain.ArtistInfo
-
-func (a byArtistName) Len() int {
-	return len(a)
-}
-func (a byArtistName) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
-}
-func (a byArtistName) Less(i, j int) bool {
-	return utils.NoArticle(a[i].Artist) < utils.NoArticle(a[j].Artist)
 }
 
 var _ domain.ArtistIndexRepository = (*artistIndexRepository)(nil)
