@@ -3,14 +3,14 @@ package scanner
 import (
 	"fmt"
 	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/persistence"
-	"time"
-	"github.com/dhowden/tag"
 	"github.com/deluan/gosonic/utils"
-	"github.com/deluan/gosonic/consts"
+	"github.com/dhowden/tag"
 	"os"
 	"strings"
+	"time"
 )
 
 type Scanner interface {
@@ -22,14 +22,13 @@ type tempIndex map[string]domain.ArtistInfo
 func StartImport() {
 	go func() {
 		i := &Importer{
-			scanner: &ItunesScanner{},
-			mediaFolder: beego.AppConfig.String("musicFolder"),
-			mfRepo: persistence.NewMediaFileRepository(),
-			albumRepo:persistence.NewAlbumRepository(),
-			artistRepo: persistence.NewArtistRepository(),
-			idxRepo: persistence.NewArtistIndexRepository(),
+			scanner:      &ItunesScanner{},
+			mediaFolder:  beego.AppConfig.String("musicFolder"),
+			mfRepo:       persistence.NewMediaFileRepository(),
+			albumRepo:    persistence.NewAlbumRepository(),
+			artistRepo:   persistence.NewArtistRepository(),
+			idxRepo:      persistence.NewArtistIndexRepository(),
 			propertyRepo: persistence.NewPropertyRepository(),
-
 		}
 		i.Run()
 	}()
@@ -134,6 +133,8 @@ func (i *Importer) parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *doma
 		Genre:       t.Genre,
 		Artist:      t.Artist,
 		AlbumArtist: t.AlbumArtist,
+		CreatedAt:   t.CreatedAt, // TODO Collect all songs for an album first
+		UpdatedAt:   t.UpdatedAt,
 	}
 
 	if mf.HasCoverArt {

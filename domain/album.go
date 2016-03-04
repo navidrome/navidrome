@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type Album struct {
 	Id           string
 	Name         string
@@ -13,6 +15,8 @@ type Album struct {
 	Starred      bool
 	Rating       int
 	Genre        string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type Albums []Album
@@ -22,4 +26,5 @@ type AlbumRepository interface {
 	Put(m *Album) error
 	Get(id string) (*Album, error)
 	FindByArtist(artistId string) (Albums, error)
+	GetAll(QueryOptions) (Albums, error)
 }

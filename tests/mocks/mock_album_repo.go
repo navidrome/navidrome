@@ -13,8 +13,10 @@ func CreateMockAlbumRepo() *MockAlbum {
 
 type MockAlbum struct {
 	domain.AlbumRepository
-	data map[string]*domain.Album
-	err  bool
+	data    map[string]*domain.Album
+	all     domain.Albums
+	err     bool
+	Options domain.QueryOptions
 }
 
 func (m *MockAlbum) SetError(err bool) {
@@ -23,12 +25,12 @@ func (m *MockAlbum) SetError(err bool) {
 
 func (m *MockAlbum) SetData(j string, size int) {
 	m.data = make(map[string]*domain.Album)
-	var l = make([]domain.Album, size)
-	err := json.Unmarshal([]byte(j), &l)
+	m.all = make(domain.Albums, size)
+	err := json.Unmarshal([]byte(j), &m.all)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}
-	for _, a := range l {
+	for _, a := range m.all {
 		m.data[a.Id] = &a
 	}
 }
@@ -46,6 +48,14 @@ func (m *MockAlbum) Get(id string) (*domain.Album, error) {
 		return nil, errors.New("Error!")
 	}
 	return m.data[id], nil
+}
+
+func (m *MockAlbum) GetAll(qo domain.QueryOptions) (domain.Albums, error) {
+	m.Options = qo
+	if m.err {
+		return nil, errors.New("Error!")
+	}
+	return m.all, nil
 }
 
 func (m *MockAlbum) FindByArtist(artistId string) (domain.Albums, error) {

@@ -50,6 +50,7 @@ func (c *GetMusicDirectoryController) buildArtistDir(a *domain.Artist, albums []
 		dir.Child[i].Id = al.Id
 		dir.Child[i].Title = al.Name
 		dir.Child[i].IsDir = true
+		dir.Child[i].Parent = al.ArtistId
 		dir.Child[i].Album = al.Name
 		dir.Child[i].Year = al.Year
 		dir.Child[i].Artist = al.Artist
@@ -72,6 +73,7 @@ func (c *GetMusicDirectoryController) buildAlbumDir(al *domain.Album, tracks []d
 		dir.Child[i].Id = mf.Id
 		dir.Child[i].Title = mf.Title
 		dir.Child[i].IsDir = false
+		dir.Child[i].Parent = mf.AlbumId
 		dir.Child[i].Album = mf.Album
 		dir.Child[i].Year = mf.Year
 		dir.Child[i].Artist = mf.Artist

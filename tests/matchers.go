@@ -2,12 +2,12 @@ package tests
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"github.com/deluan/gosonic/api/responses"
 	. "github.com/smartystreets/goconvey/convey"
-	"crypto/md5"
 )
 
 func ShouldMatchXML(actual interface{}, expected ...interface{}) string {
@@ -47,6 +47,16 @@ func ShouldReceiveError(actual interface{}, expected ...interface{}) string {
 func ShouldMatchMD5(actual interface{}, expected ...interface{}) string {
 	a := fmt.Sprintf("%x", md5.Sum(actual.([]byte)))
 	return ShouldEqual(a, expected[0].(string))
+}
+
+func ShouldBeAValid(actual interface{}, expected ...interface{}) string {
+	v := responses.Subsonic{}
+	err := json.Unmarshal(actual.(*bytes.Buffer).Bytes(), &v)
+	if err != nil {
+		return fmt.Sprintf("Malformed response: %v", err)
+	}
+
+	return ""
 }
 
 func UnindentJSON(j []byte) string {

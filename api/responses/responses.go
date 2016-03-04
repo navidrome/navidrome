@@ -14,7 +14,8 @@ type Subsonic struct {
 	MusicFolders *MusicFolders `xml:"musicFolders,omitempty"                        json:"musicFolders,omitempty"`
 	Indexes      *Indexes      `xml:"indexes,omitempty"                             json:"indexes,omitempty"`
 	Directory    *Directory    `xml:"directory,omitempty"                           json:"directory,omitempty"`
-	User         *User `xml:"user,omitempty"                           json:"user,omitempty"`
+	User         *User         `xml:"user,omitempty"                           json:"user,omitempty"`
+	AlbumList    *AlbumList    `xml:"albumList,omitempty"                           json:"albumList,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -57,6 +58,7 @@ type Indexes struct {
 
 type Child struct {
 	Id                    string     `xml:"id,attr"                                 json:"id"`
+	Parent                string     `xml:"parent,attr,omitempty"                   json:"parent,omitempty"`
 	IsDir                 bool       `xml:"isDir,attr"                              json:"isDir"`
 	Title                 string     `xml:"title,attr"                              json:"title"`
 	Album                 string     `xml:"album,attr,omitempty"                    json:"album,omitempty"`
@@ -81,22 +83,26 @@ type Directory struct {
 	Name  string  `xml:"name,attr"                     json:"name"`
 }
 
+type AlbumList struct {
+	Album []Child `xml:"album"                         json:"album,omitempty"`
+}
+
 type User struct {
 	Username            string `xml:"username,attr" json:"username"`
 	Email               string `xml:"email,attr,omitempty" json:"email,omitempty"`
-	ScrobblingEnabled   bool `xml:"scrobblingEnabled,attr" json:"scrobblingEnabled"`
-	MaxBitRate          int `xml:"maxBitRate,attr,omitempty" json:"maxBitRate,omitempty"`
-	AdminRole           bool `xml:"adminRole,attr" json:"adminRole"`
-	SettingsRole        bool `xml:"settingsRole,attr" json:"settingsRole"`
-	DownloadRole        bool `xml:"downloadRole,attr" json:"downloadRole"`
-	UploadRole          bool `xml:"uploadRole,attr" json:"uploadRole"`
-	PlaylistRole        bool `xml:"playlistRole,attr" json:"playlistRole"`
-	CoverArtRole        bool `xml:"coverArtRole,attr" json:"coverArtRole"`
-	CommentRole         bool `xml:"commentRole,attr" json:"commentRole"`
-	PodcastRole         bool `xml:"podcastRole,attr" json:"podcastRole"`
-	StreamRole          bool `xml:"streamRole,attr" json:"streamRole"`
-	JukeboxRole         bool `xml:"jukeboxRole,attr" json:"jukeboxRole"`
-	ShareRole           bool `xml:"shareRole,attr" json:"shareRole"`
-	VideoConversionRole bool `xml:"videoConversionRole,attr" json:"videoConversionRole"`
-	Folder              []int `xml:"folder,omitempty" json:"folder,omitempty"`
+	ScrobblingEnabled   bool   `xml:"scrobblingEnabled,attr" json:"scrobblingEnabled"`
+	MaxBitRate          int    `xml:"maxBitRate,attr,omitempty" json:"maxBitRate,omitempty"`
+	AdminRole           bool   `xml:"adminRole,attr" json:"adminRole"`
+	SettingsRole        bool   `xml:"settingsRole,attr" json:"settingsRole"`
+	DownloadRole        bool   `xml:"downloadRole,attr" json:"downloadRole"`
+	UploadRole          bool   `xml:"uploadRole,attr" json:"uploadRole"`
+	PlaylistRole        bool   `xml:"playlistRole,attr" json:"playlistRole"`
+	CoverArtRole        bool   `xml:"coverArtRole,attr" json:"coverArtRole"`
+	CommentRole         bool   `xml:"commentRole,attr" json:"commentRole"`
+	PodcastRole         bool   `xml:"podcastRole,attr" json:"podcastRole"`
+	StreamRole          bool   `xml:"streamRole,attr" json:"streamRole"`
+	JukeboxRole         bool   `xml:"jukeboxRole,attr" json:"jukeboxRole"`
+	ShareRole           bool   `xml:"shareRole,attr" json:"shareRole"`
+	VideoConversionRole bool   `xml:"videoConversionRole,attr" json:"videoConversionRole"`
+	Folder              []int  `xml:"folder,omitempty" json:"folder,omitempty"`
 }
