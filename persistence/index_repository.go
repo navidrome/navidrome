@@ -18,7 +18,7 @@ func NewArtistIndexRepository() domain.ArtistIndexRepository {
 
 func (r *artistIndexRepository) Put(m *domain.ArtistIndex) error {
 	if m.Id == "" {
-		return errors.New("Id is not set")
+		return errors.New("Index Id is not set")
 	}
 	sort.Sort(m.Artists)
 	return r.saveOrUpdate(m.Id, m)
@@ -32,7 +32,7 @@ func (r *artistIndexRepository) Get(id string) (*domain.ArtistIndex, error) {
 
 func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
 	var indices = make(domain.ArtistIndexes, 0)
-	err := r.loadAll(&indices, domain.QueryOptions{Alpha:true})
+	err := r.loadAll(&indices, domain.QueryOptions{Alpha: true})
 	return indices, err
 }
 

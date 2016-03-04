@@ -11,3 +11,5 @@ type ArtistRepository interface {
 	Get(id string) (*Artist, error)
 	GetByName(name string) (*Artist, error)
 }
+
+type Artists []Artist

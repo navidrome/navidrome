@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"errors"
 	"github.com/deluan/gosonic/domain"
 )
 
@@ -16,7 +17,7 @@ func NewArtistRepository() domain.ArtistRepository {
 
 func (r *artistRepository) Put(m *domain.Artist) error {
 	if m.Id == "" {
-		m.Id = r.NewId(m.Name)
+		return errors.New("Artist Id is not set")
 	}
 	return r.saveOrUpdate(m.Id, m)
 }

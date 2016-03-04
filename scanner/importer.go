@@ -7,14 +7,15 @@ import (
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/persistence"
 	"github.com/deluan/gosonic/utils"
-	"github.com/dhowden/tag"
-	"os"
 	"strings"
 	"time"
 )
 
 type Scanner interface {
-	LoadFolder(path string) []Track
+	ScanLibrary(path string) (int, error)
+	MediaFiles() map[string]*domain.MediaFile
+	Albums() map[string]*domain.Album
+	Artists() map[string]*domain.Artist
 }
 
 type tempIndex map[string]domain.ArtistInfo
@@ -47,19 +48,43 @@ type Importer struct {
 
 func (i *Importer) Run() {
 	beego.Info("Starting iTunes import from:", i.mediaFolder)
-	files := i.scanner.LoadFolder(i.mediaFolder)
-	i.importLibrary(files)
-	beego.Info("Finished importing", len(files), "files")
+	if total, err := i.scanner.ScanLibrary(i.mediaFolder); err != nil {
+		beego.Error("Error importing iTunes Library:", err)
+		return
+	} else {
+		//fmt.Printf(">>>>>>>>>>>>>>>>>>\n%#v\n>>>>>>>>>>>>>>>>>\n", i.scanner.Albums())
+		beego.Info("Found", total, "tracks,",
+			len(i.scanner.MediaFiles()), "songs,",
+			len(i.scanner.Albums()), "albums,",
+			len(i.scanner.Artists()), "artists")
+	}
+	if err := i.importLibrary(); err != nil {
+		beego.Error("Error persisting data:", err)
+	}
+	beego.Info("Finished importing tracks from iTunes Library")
 }
 
-func (i *Importer) importLibrary(files []Track) (err error) {
+func (i *Importer) importLibrary() (err error) {
 	indexGroups := utils.ParseIndexGroups(beego.AppConfig.String("indexGroups"))
-	var artistIndex = make(map[string]tempIndex)
+	artistIndex := make(map[string]tempIndex)
 
-	for _, t := range files {
-		mf, album, artist := i.parseTrack(&t)
-		i.persist(mf, album, artist)
-		i.collectIndex(indexGroups, artist, artistIndex)
+	for _, mf := range i.scanner.MediaFiles() {
+		if err := i.mfRepo.Put(mf); err != nil {
+			beego.Error(err)
+		}
+	}
+
+	for _, al := range i.scanner.Albums() {
+		if err := i.albumRepo.Put(al); err != nil {
+			beego.Error(err)
+		}
+	}
+
+	for _, ar := range i.scanner.Artists() {
+		if err := i.artistRepo.Put(ar); err != nil {
+			beego.Error(err)
+		}
+		i.collectIndex(indexGroups, ar, artistIndex)
 	}
 
 	if err = i.saveIndex(artistIndex); err != nil {
@@ -80,72 +105,6 @@ func (i *Importer) importLibrary(files []Track) (err error) {
 	}
 
 	return err
-}
-
-func (i *Importer) hasCoverArt(path string) bool {
-	if _, err := os.Stat(path); err == nil {
-		f, err := os.Open(path)
-		if err != nil {
-			beego.Warn("Error opening file", path, "-", err)
-			return false
-		}
-		defer f.Close()
-
-		m, err := tag.ReadFrom(f)
-		if err != nil {
-			beego.Warn("Error reading tag from file", path, "-", err)
-		}
-		return m.Picture() != nil
-	}
-	//beego.Warn("File not found:", path)
-	return false
-}
-
-func (i *Importer) parseTrack(t *Track) (*domain.MediaFile, *domain.Album, *domain.Artist) {
-	hasCover := i.hasCoverArt(t.Path)
-	mf := &domain.MediaFile{
-		Id:          t.Id,
-		Album:       t.Album,
-		Artist:      t.Artist,
-		AlbumArtist: t.AlbumArtist,
-		Title:       t.Title,
-		Compilation: t.Compilation,
-		Starred:     t.Loved,
-		Path:        t.Path,
-		CreatedAt:   t.CreatedAt,
-		UpdatedAt:   t.UpdatedAt,
-		HasCoverArt: hasCover,
-		TrackNumber: t.TrackNumber,
-		DiscNumber:  t.DiscNumber,
-		Genre:       t.Genre,
-		Year:        t.Year,
-		Size:        t.Size,
-		Suffix:      t.Suffix,
-		Duration:    t.Duration,
-		BitRate:     t.BitRate,
-	}
-
-	album := &domain.Album{
-		Name:        t.Album,
-		Year:        t.Year,
-		Compilation: t.Compilation,
-		Starred:     t.AlbumLoved,
-		Genre:       t.Genre,
-		Artist:      t.Artist,
-		AlbumArtist: t.AlbumArtist,
-		CreatedAt:   t.CreatedAt, // TODO Collect all songs for an album first
-		UpdatedAt:   t.UpdatedAt,
-	}
-
-	if mf.HasCoverArt {
-		album.CoverArtId = mf.Id
-	}
-
-	artist := &domain.Artist{
-		Name: t.RealArtist(),
-	}
-
-	return mf, album, artist
 }
 
 func (i *Importer) persist(mf *domain.MediaFile, album *domain.Album, artist *domain.Artist) {
