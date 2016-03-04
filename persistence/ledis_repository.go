@@ -9,13 +9,13 @@ import (
 	"strings"
 )
 
-type baseRepository struct {
+type ledisRepository struct {
 	table      string
 	entityType reflect.Type
 	fieldNames []string
 }
 
-func (r *baseRepository) init(table string, entity interface{}) {
+func (r *ledisRepository) init(table string, entity interface{}) {
 	r.table = table
 	r.entityType = reflect.TypeOf(entity).Elem()
 
@@ -29,22 +29,22 @@ func (r *baseRepository) init(table string, entity interface{}) {
 }
 
 // TODO Use annotations to specify fields to be used
-func (r *baseRepository) NewId(fields ...string) string {
+func (r *ledisRepository) NewId(fields ...string) string {
 	s := fmt.Sprintf("%s\\%s", strings.ToUpper(r.table), strings.Join(fields, ""))
 	return fmt.Sprintf("%x", md5.Sum([]byte(s)))
 }
 
-func (r *baseRepository) CountAll() (int, error) {
+func (r *ledisRepository) CountAll() (int, error) {
 	ids, err := db().SMembers([]byte(r.table + "s:all"))
 	return len(ids), err
 }
 
-func (r *baseRepository) Exists(id string) (bool, error) {
+func (r *ledisRepository) Exists(id string) (bool, error) {
 	res, err := db().SIsMember([]byte(r.table+"s:all"), []byte(id))
 	return res != 0, err
 }
 
-func (r *baseRepository) saveOrUpdate(id string, entity interface{}) error {
+func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 	recordPrefix := fmt.Sprintf("%s:%s:", r.table, id)
 	allKey := r.table + "s:all"
 
@@ -73,7 +73,7 @@ func (r *baseRepository) saveOrUpdate(id string, entity interface{}) error {
 }
 
 // TODO Optimize
-func (r *baseRepository) getParent(entity interface{}) (table string, id string) {
+func (r *ledisRepository) getParent(entity interface{}) (table string, id string) {
 	dt := reflect.TypeOf(entity).Elem()
 	for i := 0; i < dt.NumField(); i++ {
 		f := dt.Field(i)
@@ -86,7 +86,7 @@ func (r *baseRepository) getParent(entity interface{}) (table string, id string)
 	return "", ""
 }
 
-func (r *baseRepository) getFieldKeys(id string) [][]byte {
+func (r *ledisRepository) getFieldKeys(id string) [][]byte {
 	recordPrefix := fmt.Sprintf("%s:%s:", r.table, id)
 	var fieldKeys = make([][]byte, len(r.fieldNames))
 	for i, n := range r.fieldNames {
@@ -95,11 +95,11 @@ func (r *baseRepository) getFieldKeys(id string) [][]byte {
 	return fieldKeys
 }
 
-func (r *baseRepository) newInstance() interface{} {
+func (r *ledisRepository) newInstance() interface{} {
 	return reflect.New(r.entityType).Interface()
 }
 
-func (r *baseRepository) readEntity(id string) (interface{}, error) {
+func (r *ledisRepository) readEntity(id string) (interface{}, error) {
 	entity := r.newInstance()
 
 	fieldKeys := r.getFieldKeys(id)
@@ -112,7 +112,7 @@ func (r *baseRepository) readEntity(id string) (interface{}, error) {
 	return entity, err
 }
 
-func (r *baseRepository) toEntity(response [][]byte, entity interface{}) error {
+func (r *ledisRepository) toEntity(response [][]byte, entity interface{}) error {
 	var record = make(map[string]interface{}, len(response))
 	for i, v := range response {
 		if len(v) > 0 {
@@ -127,18 +127,18 @@ func (r *baseRepository) toEntity(response [][]byte, entity interface{}) error {
 	return utils.ToStruct(record, entity)
 }
 
-func (r *baseRepository) loadAll(entities interface{}, sortBy string, alpha bool) error {
+func (r *ledisRepository) loadAll(entities interface{}, sortBy string, alpha bool) error {
 	setName := r.table + "s:all"
 	return r.loadFromSet(setName, entities, sortBy, alpha)
 }
 
-func (r *baseRepository) loadChildren(parentTable string, parentId string, entities interface{}, sortBy string, alpha bool) error {
+func (r *ledisRepository) loadChildren(parentTable string, parentId string, entities interface{}, sortBy string, alpha bool) error {
 	setName := fmt.Sprintf("%s:%s:%ss", parentTable, parentId, r.table)
 	return r.loadFromSet(setName, entities, sortBy, alpha)
 }
 
 // TODO Optimize it! Probably very slow (and confusing!)
-func (r *baseRepository) loadFromSet(setName string, entities interface{}, sortBy string, alpha bool) error {
+func (r *ledisRepository) loadFromSet(setName string, entities interface{}, sortBy string, alpha bool) error {
 	reflected := reflect.ValueOf(entities).Elem()
 	var sortKey []byte = nil
 	if sortBy != "" {

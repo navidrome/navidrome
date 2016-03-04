@@ -6,7 +6,7 @@ import (
 )
 
 type mediaFileRepository struct {
-	baseRepository
+	ledisRepository
 }
 
 func NewMediaFileRepository() domain.MediaFileRepository {

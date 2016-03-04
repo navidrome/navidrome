@@ -6,7 +6,7 @@ import (
 )
 
 type propertyRepository struct {
-	baseRepository
+	ledisRepository
 }
 
 func NewPropertyRepository() domain.PropertyRepository {

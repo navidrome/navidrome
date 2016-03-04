@@ -5,7 +5,7 @@ import (
 )
 
 type albumRepository struct {
-	baseRepository
+	ledisRepository
 }
 
 func NewAlbumRepository() domain.AlbumRepository {

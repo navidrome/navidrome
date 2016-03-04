@@ -5,7 +5,7 @@ import (
 )
 
 type artistRepository struct {
-	baseRepository
+	ledisRepository
 }
 
 func NewArtistRepository() domain.ArtistRepository {
