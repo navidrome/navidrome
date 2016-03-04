@@ -31,7 +31,7 @@ func (c *GetCoverArtController) Get() {
 
 	var img []byte
 
-	if mf.HasCoverArt {
+	if mf != nil && mf.HasCoverArt {
 		img, err = readFromTag(mf.Path)
 		beego.Debug("Serving cover art from", mf.Path)
 	} else {

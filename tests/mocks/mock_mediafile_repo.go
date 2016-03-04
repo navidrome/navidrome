@@ -46,9 +46,6 @@ func (m *MockMediaFile) Get(id string) (*domain.MediaFile, error) {
 		return nil, errors.New("Error!")
 	}
 	mf := m.data[id]
-	if mf == nil {
-		mf = &domain.MediaFile{}
-	}
 	return mf, nil
 }
 

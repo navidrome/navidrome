@@ -21,7 +21,14 @@ func (r *mediaFileRepository) Put(m *domain.MediaFile) error {
 
 func (r *mediaFileRepository) Get(id string) (*domain.MediaFile, error) {
 	m, err := r.readEntity(id)
-	return m.(*domain.MediaFile), err
+	if err != nil {
+		return nil, err
+	}
+	mf := m.(*domain.MediaFile)
+	if mf.Id != id {
+		return nil, nil
+	}
+	return mf, nil
 }
 
 func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, error) {
