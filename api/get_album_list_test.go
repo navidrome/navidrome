@@ -41,6 +41,12 @@ func TestGetAlbumList(t *testing.T) {
 
 			So(w.Body, ShouldReceiveError, responses.ERROR_GENERIC)
 		})
+		Convey("Max size = 500", func() {
+			_, w := Get(AddParams("/rest/getAlbumList.view", "type=newest", "size=501"), "TestGetAlbumList")
+			So(w.Body, ShouldBeAValid, responses.AlbumList{})
+			So(mockAlbumRepo.Options.Size, ShouldEqual, 500)
+			So(mockAlbumRepo.Options.Alpha, ShouldBeTrue)
+		})
 		Convey("Type == newest", func() {
 			_, w := Get(AddParams("/rest/getAlbumList.view", "type=newest"), "TestGetAlbumList")
 			So(w.Body, ShouldBeAValid, responses.AlbumList{})

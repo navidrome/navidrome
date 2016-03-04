@@ -32,11 +32,12 @@ func (c *GetAlbumListController) Get() {
 
 	if !found {
 		beego.Error("getAlbumList type", typ, "not implemented!")
-		c.SendError(responses.ERROR_GENERIC, "Not implemented yet!")
+		c.SendError(responses.ERROR_GENERIC, "Not implemented!")
 	}
 
 	qo.Size = 10
 	c.Ctx.Input.Bind(&qo.Size, "size")
+	qo.Size = utils.MinInt(qo.Size, 500)
 	c.Ctx.Input.Bind(&qo.Offset, "offset")
 
 	albums, err := c.albumRepo.GetAll(qo)
