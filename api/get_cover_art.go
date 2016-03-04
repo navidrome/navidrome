@@ -20,6 +20,7 @@ func (c *GetCoverArtController) Prepare() {
 	inject.ExtractAssignable(utils.Graph, &c.repo)
 }
 
+// TODO accept size parameter
 func (c *GetCoverArtController) Get() {
 	id := c.GetParameter("id", "id parameter required")
 
