@@ -48,11 +48,11 @@ func (m *MockAlbum) Get(id string) (*domain.Album, error) {
 	return m.data[id], nil
 }
 
-func (m *MockAlbum) FindByArtist(artistId string) ([]domain.Album, error) {
+func (m *MockAlbum) FindByArtist(artistId string) (domain.Albums, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
-	var res = make([]domain.Album, len(m.data))
+	var res = make(domain.Albums, len(m.data))
 	i := 0
 	for _, a := range m.data {
 		if a.ArtistId == artistId {

@@ -32,9 +32,11 @@ func (mf *MediaFile) ContentType() string {
 	return mime.TypeByExtension("." + mf.Suffix)
 }
 
+type MediaFiles []MediaFile
+
 type MediaFileRepository interface {
 	BaseRepository
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
-	FindByAlbum(albumId string) ([]MediaFile, error)
+	FindByAlbum(albumId string) (MediaFiles, error)
 }

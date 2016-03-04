@@ -10,9 +10,11 @@ type ArtistIndex struct {
 	Artists []ArtistInfo
 }
 
+type ArtistIndexes []ArtistIndex
+
 type ArtistIndexRepository interface {
 	BaseRepository
 	Put(m *ArtistIndex) error
 	Get(id string) (*ArtistIndex, error)
-	GetAll() ([]ArtistIndex, error)
+	GetAll() (ArtistIndexes, error)
 }

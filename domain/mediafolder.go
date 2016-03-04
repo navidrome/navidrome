@@ -6,6 +6,8 @@ type MediaFolder struct {
 	Path string
 }
 
+type MediaFolders []MediaFolder
+
 type MediaFolderRepository interface {
-	GetAll() ([]MediaFolder, error)
+	GetAll() (MediaFolders, error)
 }

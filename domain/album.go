@@ -15,9 +15,11 @@ type Album struct {
 	Genre        string
 }
 
+type Albums []Album
+
 type AlbumRepository interface {
 	BaseRepository
 	Put(m *Album) error
 	Get(id string) (*Album, error)
-	FindByArtist(artistId string) ([]Album, error)
+	FindByArtist(artistId string) (Albums, error)
 }

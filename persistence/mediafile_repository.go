@@ -24,14 +24,14 @@ func (r *mediaFileRepository) Get(id string) (*domain.MediaFile, error) {
 	return m.(*domain.MediaFile), err
 }
 
-func (r *mediaFileRepository) FindByAlbum(albumId string) ([]domain.MediaFile, error) {
-	var mfs = make([]domain.MediaFile, 0)
+func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, error) {
+	var mfs = make(domain.MediaFiles, 0)
 	err := r.loadChildren("album", albumId, &mfs, "", false)
 	sort.Sort(byTrackNumber(mfs))
 	return mfs, err
 }
 
-type byTrackNumber []domain.MediaFile
+type byTrackNumber domain.MediaFiles
 
 func (a byTrackNumber) Len() int {
 	return len(a)

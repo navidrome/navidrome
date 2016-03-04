@@ -13,7 +13,7 @@ func CreateMockArtistIndexRepo() *MockArtistIndex {
 
 type MockArtistIndex struct {
 	domain.ArtistIndexRepository
-	data []domain.ArtistIndex
+	data domain.ArtistIndexes
 	err  bool
 }
 
@@ -22,14 +22,14 @@ func (m *MockArtistIndex) SetError(err bool) {
 }
 
 func (m *MockArtistIndex) SetData(j string, length int) {
-	m.data = make([]domain.ArtistIndex, length)
+	m.data = make(domain.ArtistIndexes, length)
 	err := json.Unmarshal([]byte(j), &m.data)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}
 }
 
-func (m *MockArtistIndex) GetAll() ([]domain.ArtistIndex, error) {
+func (m *MockArtistIndex) GetAll() (domain.ArtistIndexes, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}

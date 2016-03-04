@@ -31,8 +31,8 @@ func (r *artistIndexRepository) Get(id string) (*domain.ArtistIndex, error) {
 	return rec.(*domain.ArtistIndex), err
 }
 
-func (r *artistIndexRepository) GetAll() ([]domain.ArtistIndex, error) {
-	var indices = make([]domain.ArtistIndex, 0)
+func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
+	var indices = make(domain.ArtistIndexes, 0)
 	err := r.loadAll(&indices, "", true)
 	return indices, err
 }
