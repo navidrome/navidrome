@@ -163,6 +163,7 @@ func hasCoverArt(path string) bool {
 		m, err := tag.ReadFrom(f)
 		if err != nil {
 			beego.Warn("Error reading tag from file", path, "-", err)
+			return false
 		}
 		return m.Picture() != nil
 	}
