@@ -37,7 +37,10 @@ func (s *ItunesScanner) ScanLibrary(path string) (int, error) {
 			ar := s.collectArtists(&t)
 			mf := s.collectMediaFiles(&t)
 			s.collectAlbums(&t, mf, ar)
-			i++
+		}
+		i++
+		if i%1000 == 0 {
+			beego.Info("Processed", i, "tracks.", len(s.artists), "artists,", len(s.albums), "albums", len(s.mediaFiles), "songs")
 		}
 	}
 	return len(l.Tracks), nil
@@ -152,10 +155,9 @@ func artistId(t *itl.Track) string {
 }
 
 func hasCoverArt(path string) bool {
-	beego.Trace("hasCOverArt:", path)
 	defer func() {
 		if r := recover(); r != nil {
-			beego.Error("Recovered from tag panic:", r)
+			beego.Error("Reading tag for", path, "Panic:", r)
 		}
 	}()
 
