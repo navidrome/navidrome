@@ -152,6 +152,13 @@ func artistId(t *itl.Track) string {
 }
 
 func hasCoverArt(path string) bool {
+	beego.Trace("hasCOverArt:", path)
+	defer func() {
+		if r := recover(); r != nil {
+			beego.Error("Recovered from tag panic:", r)
+		}
+	}()
+
 	if _, err := os.Stat(path); err == nil {
 		f, err := os.Open(path)
 		if err != nil {
