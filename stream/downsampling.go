@@ -12,14 +12,19 @@ import (
 func Stream(path string, bitRate int, maxBitRate int, w io.Writer) error {
 	if maxBitRate > 0 && bitRate > maxBitRate {
 		cmdLine, args := createDownsamplingCommand(path, maxBitRate)
-		cmd := exec.Command(cmdLine, args...)
-		beego.Debug("Executing cmd:", cmdLine, args)
 
-		cmd.Stdout = w
+		beego.Debug("Executing cmd:", cmdLine, args)
+		cmd := exec.Command(cmdLine, args...)
 		cmd.Stderr = os.Stderr
-		err := cmd.Run()
+		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			beego.Error("Error executing", cmdLine, ":", err)
+			return err
+		}
+		if err = cmd.Start(); err != nil {
+			beego.Error("Error executing", cmdLine, ":", err)
+		} else {
+			_, err = io.Copy(w, stdout)
 		}
 		return err
 	} else {

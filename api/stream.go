@@ -7,8 +7,6 @@ import (
 	"github.com/deluan/gosonic/stream"
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
-	"io"
-	"net/http"
 	"strconv"
 )
 
@@ -17,19 +15,6 @@ type StreamController struct {
 	repo domain.MediaFileRepository
 	id   string
 	mf   *domain.MediaFile
-}
-
-type flushWriter struct {
-	f http.Flusher
-	w io.Writer
-}
-
-func (fw *flushWriter) Write(p []byte) (n int, err error) {
-	n, err = fw.w.Write(p)
-	if fw.f != nil {
-		fw.f.Flush()
-	}
-	return
 }
 
 func (c *StreamController) Prepare() {
@@ -51,21 +36,12 @@ func (c *StreamController) Prepare() {
 	c.mf = mf
 }
 
-func createFlusher(w http.ResponseWriter) io.Writer {
-	fw := flushWriter{w: w}
-	if f, ok := w.(http.Flusher); ok {
-		fw.f = f
-	}
-	return &fw
-}
-
-// TODO Investigate why it is not flushing before closing the connection
 func (c *StreamController) Stream() {
 	var maxBitRate int
 	c.Ctx.Input.Bind(&maxBitRate, "maxBitRate")
 	maxBitRate = utils.MinInt(c.mf.BitRate, maxBitRate)
 
-	beego.Debug("Streaming file", maxBitRate, ":", c.mf.Path)
+	beego.Debug("Streaming file", ":", c.mf.Path)
 	beego.Debug("Bitrate", c.mf.BitRate, "MaxBitRate", maxBitRate)
 
 	if maxBitRate > 0 {
@@ -76,7 +52,7 @@ func (c *StreamController) Stream() {
 	c.Ctx.Output.Header("Cache-Control", "must-revalidate")
 	c.Ctx.Output.Header("Pragma", "public")
 
-	err := stream.Stream(c.mf.Path, c.mf.BitRate, maxBitRate, createFlusher(c.Ctx.ResponseWriter))
+	err := stream.Stream(c.mf.Path, c.mf.BitRate, maxBitRate, c.Ctx.ResponseWriter)
 	if err != nil {
 		beego.Error("Error streaming file id", c.id, ":", err)
 	}
