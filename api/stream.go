@@ -36,16 +36,18 @@ func (c *StreamController) Prepare() {
 	c.mf = mf
 }
 
+// TODO Still getting the "Conn.Write wrote more than the declared Content-Length" error.
+// Don't know if this causes any issues
 func (c *StreamController) Stream() {
 	var maxBitRate int
 	c.Ctx.Input.Bind(&maxBitRate, "maxBitRate")
 	maxBitRate = utils.MinInt(c.mf.BitRate, maxBitRate)
 
-	beego.Debug("Streaming file", ":", c.mf.Path)
+	beego.Debug("Streaming file", c.id, ":", c.mf.Path)
 	beego.Debug("Bitrate", c.mf.BitRate, "MaxBitRate", maxBitRate)
 
 	if maxBitRate > 0 {
-		c.Ctx.Output.Header("Content-Length", strconv.Itoa(c.mf.Duration*maxBitRate*1000/8))
+		c.Ctx.Output.Header("Content-Length", strconv.Itoa((c.mf.Duration+1)*maxBitRate*1000/8))
 	}
 	c.Ctx.Output.Header("Content-Type", "audio/mpeg")
 	c.Ctx.Output.Header("Expires", "0")
@@ -54,7 +56,7 @@ func (c *StreamController) Stream() {
 
 	err := stream.Stream(c.mf.Path, c.mf.BitRate, maxBitRate, c.Ctx.ResponseWriter)
 	if err != nil {
-		beego.Error("Error streaming file id", c.id, ":", err)
+		beego.Error("Error streaming file", c.id, ":", err)
 	}
 
 	beego.Debug("Finished streaming of", c.mf.Path)
