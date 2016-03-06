@@ -146,12 +146,12 @@ func (s *ItunesScanner) collectArtists(t *itl.Track) *domain.Artist {
 }
 
 func albumId(t *itl.Track) string {
-	s := fmt.Sprintf("%s\\%s", realArtistName(t), t.Album)
+	s := strings.ToLower(fmt.Sprintf("%s\\%s", realArtistName(t), t.Album))
 	return fmt.Sprintf("%x", md5.Sum([]byte(s)))
 }
 
 func artistId(t *itl.Track) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(realArtistName(t))))
+	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(realArtistName(t)))))
 }
 
 func hasCoverArt(path string) bool {
