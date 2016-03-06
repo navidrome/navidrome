@@ -97,7 +97,7 @@ func (c *GetMusicDirectoryController) buildAlbumDir(al *domain.Album, tracks []d
 func (c *GetMusicDirectoryController) isArtist(id string) bool {
 	found, err := c.artistRepo.Exists(id)
 	if err != nil {
-		beego.Error("Error searching for Artist:", err)
+		beego.Error("Error searching for Artist", id, " - ", err)
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
 	return found

@@ -4,10 +4,11 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
+	"github.com/siddontang/ledisdb/ledis"
 	"reflect"
 	"strings"
-	"github.com/deluan/gosonic/domain"
 )
 
 type ledisRepository struct {
@@ -35,14 +36,14 @@ func (r *ledisRepository) NewId(fields ...string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(s)))
 }
 
-func (r *ledisRepository) CountAll() (int, error) {
-	ids, err := db().SMembers([]byte(r.table + "s:all"))
-	return len(ids), err
+func (r *ledisRepository) CountAll() (int64, error) {
+	size, err := db().ZCard([]byte(r.table + "s:all"))
+	return size, err
 }
 
 func (r *ledisRepository) Exists(id string) (bool, error) {
-	res, err := db().SIsMember([]byte(r.table+"s:all"), []byte(id))
-	return res != 0, err
+	res, _ := db().ZScore([]byte(r.table+"s:all"), []byte(id))
+	return res != ledis.InvalidScore, nil
 }
 
 func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
@@ -62,13 +63,14 @@ func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 
 	}
 
-	if _, err = db().SAdd([]byte(allKey), []byte(id)); err != nil {
+	sid := ledis.ScorePair{0, []byte(id)}
+	if _, err = db().ZAdd([]byte(allKey), sid); err != nil {
 		return err
 	}
 
 	if parentTable, parentId := r.getParent(entity); parentTable != "" {
 		parentCollectionKey := fmt.Sprintf("%s:%s:%ss", parentTable, parentId, r.table)
-		_, err = db().SAdd([]byte(parentCollectionKey), []byte(id))
+		_, err = db().ZAdd([]byte(parentCollectionKey), sid)
 	}
 	return nil
 }
@@ -150,7 +152,7 @@ func (r *ledisRepository) loadFromSet(setName string, entities interface{}, qo .
 	if o.SortBy != "" {
 		sortKey = []byte(fmt.Sprintf("%s:*:%s", r.table, o.SortBy))
 	}
-	response, err := db().XSSort([]byte(setName), o.Offset, o.Size, o.Alpha, o.Desc, sortKey, r.getFieldKeys("*"))
+	response, err := db().XZSort([]byte(setName), o.Offset, o.Size, o.Alpha, o.Desc, sortKey, r.getFieldKeys("*"))
 	if err != nil {
 		return err
 	}
