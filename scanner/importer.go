@@ -47,12 +47,10 @@ type Importer struct {
 }
 
 func (i *Importer) Run() {
-	beego.Info("Starting iTunes import from:", i.mediaFolder)
 	if total, err := i.scanner.ScanLibrary(i.mediaFolder); err != nil {
 		beego.Error("Error importing iTunes Library:", err)
 		return
 	} else {
-		//fmt.Printf(">>>>>>>>>>>>>>>>>>\n%#v\n>>>>>>>>>>>>>>>>>\n", i.scanner.Albums())
 		beego.Info("Found", total, "tracks,",
 			len(i.scanner.MediaFiles()), "songs,",
 			len(i.scanner.Albums()), "albums,",

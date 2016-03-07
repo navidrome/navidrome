@@ -21,11 +21,13 @@ type ItunesScanner struct {
 }
 
 func (s *ItunesScanner) ScanLibrary(path string) (int, error) {
+	beego.Info("Starting iTunes import from:", path)
 	xml, _ := os.Open(path)
 	l, err := itl.ReadFromXML(xml)
 	if err != nil {
 		return 0, err
 	}
+	beego.Info("Loaded", len(l.Tracks), "tracks")
 
 	s.mediaFiles = make(map[string]*domain.MediaFile)
 	s.albums = make(map[string]*domain.Album)
