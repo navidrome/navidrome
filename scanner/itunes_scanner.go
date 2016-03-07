@@ -43,8 +43,6 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 			ar := s.collectArtists(&t)
 			mf := s.collectMediaFiles(&t)
 			s.collectAlbums(&t, mf, ar)
-		} else {
-			beego.Trace("Skipped", t.Location, " - kind:", t.Kind)
 		}
 		i++
 		if i%1000 == 0 {
@@ -94,12 +92,12 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	mf.Path = path
 	mf.Suffix = strings.TrimPrefix(filepath.Ext(path), ".")
 
+	mf.CreatedAt = t.DateAdded
+	mf.UpdatedAt = t.DateModified
+
 	if mf.UpdatedAt.After(s.lastModifiedSince) {
 		mf.HasCoverArt = hasCoverArt(path)
 	}
-
-	mf.CreatedAt = t.DateAdded
-	mf.UpdatedAt = t.DateModified
 
 	s.mediaFiles[mf.Id] = mf
 
