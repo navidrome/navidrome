@@ -11,7 +11,7 @@ var (
 	definitions map[reflect.Type]interface{}
 )
 
-func DefineSingleton(ptr interface{}, constructor interface{}, args ...interface{}) {
+func DefineSingleton(ptr interface{}, constructor interface{}, args ...interface{}) interface{} {
 	typ := reflect.TypeOf(ptr)
 	provider := inject.NewProvider(constructor, args...)
 
@@ -21,6 +21,7 @@ func DefineSingleton(ptr interface{}, constructor interface{}, args ...interface
 		definitions[typ] = ptr
 	}
 	Graph.Define(ptr, provider)
+	return ptr
 }
 
 func init() {
