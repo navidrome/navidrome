@@ -9,33 +9,36 @@ import (
 	"strings"
 )
 
+// TODO Encapsulate as a io.Reader
 func Stream(path string, bitRate int, maxBitRate int, w io.Writer) error {
+	var f io.Reader
+	var err error
 	if maxBitRate > 0 && bitRate > maxBitRate {
-		cmdLine, args := createDownsamplingCommand(path, maxBitRate)
-
-		beego.Debug("Executing cmd:", cmdLine, args)
-		cmd := exec.Command(cmdLine, args...)
-		cmd.Stderr = os.Stderr
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			beego.Error("Error executing", cmdLine, ":", err)
-			return err
-		}
-		if err = cmd.Start(); err != nil {
-			beego.Error("Error executing", cmdLine, ":", err)
-		} else {
-			_, err = io.Copy(w, stdout)
-		}
-		return err
+		f, err = downsample(path, maxBitRate)
 	} else {
-		f, err := os.Open(path)
-		if err != nil {
-			beego.Error("Error opening file", path, ":", err)
-			return err
-		}
-		_, err = io.Copy(w, f)
+		f, err = os.Open(path)
+	}
+	if err != nil {
+		beego.Error("Error opening file", path, ":", err)
 		return err
 	}
+	if _, err = io.Copy(w, f); err != nil {
+		beego.Error("Error copying file", path, ":", err)
+		return err
+	}
+	return err
+}
+
+func downsample(path string, maxBitRate int) (f io.Reader, err error) {
+	cmdLine, args := createDownsamplingCommand(path, maxBitRate)
+
+	beego.Debug("Executing cmd:", cmdLine, args)
+	cmd := exec.Command(cmdLine, args...)
+	cmd.Stderr = os.Stderr
+	if f, err = cmd.StdoutPipe(); err != nil {
+		return f, err
+	}
+	return f, cmd.Start()
 }
 
 func createDownsamplingCommand(path string, maxBitRate int) (string, []string) {

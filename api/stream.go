@@ -46,9 +46,11 @@ func (c *StreamController) Stream() {
 	beego.Debug("Streaming file", c.id, ":", c.mf.Path)
 	beego.Debug("Bitrate", c.mf.BitRate, "MaxBitRate", maxBitRate)
 
+	contentLength := c.mf.Size
 	if maxBitRate > 0 {
-		c.Ctx.Output.Header("Content-Length", strconv.Itoa((c.mf.Duration+1)*maxBitRate*1000/8))
+		contentLength = strconv.Itoa((c.mf.Duration + 1) * maxBitRate * 1000 / 8)
 	}
+	c.Ctx.Output.Header("Content-Length", contentLength)
 	c.Ctx.Output.Header("Content-Type", "audio/mpeg")
 	c.Ctx.Output.Header("Expires", "0")
 	c.Ctx.Output.Header("Cache-Control", "must-revalidate")
