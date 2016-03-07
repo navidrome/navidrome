@@ -7,12 +7,13 @@ import (
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/persistence"
 	"github.com/deluan/gosonic/utils"
+	"strconv"
 	"strings"
 	"time"
 )
 
 type Scanner interface {
-	ScanLibrary(path string) (int, error)
+	ScanLibrary(lastModifiedSince time.Time, path string) (int, error)
 	MediaFiles() map[string]*domain.MediaFile
 	Albums() map[string]*domain.Album
 	Artists() map[string]*domain.Artist
@@ -47,7 +48,7 @@ type Importer struct {
 }
 
 func (i *Importer) Run() {
-	if total, err := i.scanner.ScanLibrary(i.mediaFolder); err != nil {
+	if total, err := i.scanner.ScanLibrary(i.lastModifiedSince(), i.mediaFolder); err != nil {
 		beego.Error("Error importing iTunes Library:", err)
 		return
 	} else {
@@ -60,6 +61,16 @@ func (i *Importer) Run() {
 		beego.Error("Error persisting data:", err)
 	}
 	beego.Info("Finished importing tracks from iTunes Library")
+}
+
+func (i *Importer) lastModifiedSince() time.Time {
+	ms, err := i.propertyRepo.Get(consts.LastScan)
+	if err != nil {
+		beego.Warn("Couldn't read LastScan:", err)
+		return time.Time{}
+	}
+	s, _ := strconv.ParseInt(ms, 10, 64)
+	return time.Unix(0, s*int64(time.Millisecond))
 }
 
 func (i *Importer) importLibrary() (err error) {
@@ -97,7 +108,7 @@ func (i *Importer) importLibrary() (err error) {
 	beego.Info("Total MediaFiles in database:", c)
 
 	if err == nil {
-		millis := time.Now().UnixNano() / 1000000
+		millis := time.Now().UnixNano() / int64(time.Millisecond)
 		i.propertyRepo.Put(consts.LastScan, fmt.Sprint(millis))
 		beego.Info("LastScan timestamp:", millis)
 	}

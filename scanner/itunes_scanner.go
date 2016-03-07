@@ -12,16 +12,19 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type ItunesScanner struct {
-	mediaFiles map[string]*domain.MediaFile
-	albums     map[string]*domain.Album
-	artists    map[string]*domain.Artist
+	mediaFiles        map[string]*domain.MediaFile
+	albums            map[string]*domain.Album
+	artists           map[string]*domain.Artist
+	lastModifiedSince time.Time
 }
 
-func (s *ItunesScanner) ScanLibrary(path string) (int, error) {
+func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (int, error) {
 	beego.Info("Starting iTunes import from:", path)
+	beego.Info("Checking for updates since", lastModifiedSince.String())
 	xml, _ := os.Open(path)
 	l, err := itl.ReadFromXML(xml)
 	if err != nil {
@@ -29,6 +32,7 @@ func (s *ItunesScanner) ScanLibrary(path string) (int, error) {
 	}
 	beego.Info("Loaded", len(l.Tracks), "tracks")
 
+	s.lastModifiedSince = lastModifiedSince
 	s.mediaFiles = make(map[string]*domain.MediaFile)
 	s.albums = make(map[string]*domain.Album)
 	s.artists = make(map[string]*domain.Artist)
@@ -39,6 +43,8 @@ func (s *ItunesScanner) ScanLibrary(path string) (int, error) {
 			ar := s.collectArtists(&t)
 			mf := s.collectMediaFiles(&t)
 			s.collectAlbums(&t, mf, ar)
+		} else {
+			beego.Trace("Skipped", t.Location, " - kind:", t.Kind)
 		}
 		i++
 		if i%1000 == 0 {
@@ -87,7 +93,10 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	path = strings.TrimPrefix(unescape(path), "file://")
 	mf.Path = path
 	mf.Suffix = strings.TrimPrefix(filepath.Ext(path), ".")
-	mf.HasCoverArt = hasCoverArt(path)
+
+	if mf.UpdatedAt.After(s.lastModifiedSince) {
+		mf.HasCoverArt = hasCoverArt(path)
+	}
 
 	mf.CreatedAt = t.DateAdded
 	mf.UpdatedAt = t.DateModified
