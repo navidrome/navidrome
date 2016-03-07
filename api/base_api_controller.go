@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/utils"
+	"time"
 )
 
 type BaseAPIController struct{ beego.Controller }
@@ -13,12 +15,24 @@ func (c *BaseAPIController) NewEmpty() responses.Subsonic {
 	return responses.Subsonic{Status: "ok", Version: beego.AppConfig.String("apiVersion")}
 }
 
-func (c *BaseAPIController) GetParameter(param string, msg string) string {
+func (c *BaseAPIController) RequiredParamString(param string, msg string) string {
 	p := c.Input().Get(param)
 	if p == "" {
 		c.SendError(responses.ERROR_MISSING_PARAMETER, msg)
 	}
 	return p
+}
+
+func (c *BaseAPIController) ParamTime(param string) time.Time {
+	var value int64
+	c.Ctx.Input.Bind(&value, param)
+	return utils.ToTime(value)
+}
+
+func (c *BaseAPIController) ParamInt(param string) int {
+	var value int
+	c.Ctx.Input.Bind(&value, param)
+	return value
 }
 
 func (c *BaseAPIController) SendError(errorCode int, message ...interface{}) {

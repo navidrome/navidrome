@@ -23,7 +23,7 @@ func (c *GetMusicDirectoryController) Prepare() {
 }
 
 func (c *GetMusicDirectoryController) Get() {
-	id := c.GetParameter("id", "id parameter required")
+	id := c.RequiredParamString("id", "id parameter required")
 
 	response := c.NewEmpty()
 

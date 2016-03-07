@@ -20,7 +20,7 @@ type StreamController struct {
 func (c *StreamController) Prepare() {
 	inject.ExtractAssignable(utils.Graph, &c.repo)
 
-	c.id = c.GetParameter("id", "id parameter required")
+	c.id = c.RequiredParamString("id", "id parameter required")
 
 	mf, err := c.repo.Get(c.id)
 	if err != nil {
@@ -39,8 +39,7 @@ func (c *StreamController) Prepare() {
 // TODO Still getting the "Conn.Write wrote more than the declared Content-Length" error.
 // Don't know if this causes any issues
 func (c *StreamController) Stream() {
-	var maxBitRate int
-	c.Ctx.Input.Bind(&maxBitRate, "maxBitRate")
+	maxBitRate := c.ParamInt("maxBitRate")
 	maxBitRate = utils.MinInt(c.mf.BitRate, maxBitRate)
 
 	beego.Debug("Streaming file", c.id, ":", c.mf.Path)

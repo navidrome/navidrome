@@ -23,12 +23,9 @@ func (c *GetIndexesController) Prepare() {
 
 // TODO: Shortcuts amd validate musicFolder parameter
 func (c *GetIndexesController) Get() {
-	var err error
+	ifModifiedSince := c.ParamTime("ifModifiedSince")
 
-	var ifModifiedSince int64
-	c.Ctx.Input.Bind(&ifModifiedSince, "ifModifiedSince")
-
-	indexes, lastModified, err := c.browser.Indexes(utils.ToTime(ifModifiedSince))
+	indexes, lastModified, err := c.browser.Indexes(ifModifiedSince)
 	if err != nil {
 		beego.Error("Error retrieving Indexes:", err)
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")

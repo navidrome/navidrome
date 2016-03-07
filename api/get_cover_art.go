@@ -22,7 +22,7 @@ func (c *GetCoverArtController) Prepare() {
 
 // TODO accept size parameter
 func (c *GetCoverArtController) Get() {
-	id := c.GetParameter("id", "id parameter required")
+	id := c.RequiredParamString("id", "id parameter required")
 
 	mf, err := c.repo.Get(id)
 	if err != nil {

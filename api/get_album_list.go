@@ -27,7 +27,7 @@ func (c *GetAlbumListController) Prepare() {
 }
 
 func (c *GetAlbumListController) Get() {
-	typ := c.GetParameter("type", "Required string parameter 'type' is not present")
+	typ := c.RequiredParamString("type", "Required string parameter 'type' is not present")
 	qo, found := c.types[typ]
 
 	if !found {
@@ -35,10 +35,8 @@ func (c *GetAlbumListController) Get() {
 		c.SendError(responses.ERROR_GENERIC, "Not implemented!")
 	}
 
-	qo.Size = 10
-	c.Ctx.Input.Bind(&qo.Size, "size")
-	qo.Size = utils.MinInt(qo.Size, 500)
-	c.Ctx.Input.Bind(&qo.Offset, "offset")
+	qo.Size = utils.MinInt(c.ParamInt("size"), 500)
+	qo.Offset = c.ParamInt("offset")
 
 	albums, err := c.albumRepo.GetAll(qo)
 	if err != nil {
