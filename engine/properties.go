@@ -1,4 +1,4 @@
-package domain
+package engine
 
 type Property struct {
 	Id    string

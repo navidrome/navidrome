@@ -2,9 +2,9 @@ package api
 
 import (
 	"fmt"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
-	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
@@ -12,13 +12,11 @@ import (
 
 type GetIndexesController struct {
 	BaseAPIController
-	properties domain.PropertyRepository
-	browser    engine.Browser
+	browser engine.Browser
 }
 
 func (c *GetIndexesController) Prepare() {
 	inject.ExtractAssignable(utils.Graph, &c.browser)
-	inject.ExtractAssignable(utils.Graph, &c.properties)
 }
 
 // TODO: Shortcuts amd validate musicFolder parameter

@@ -6,6 +6,7 @@ import (
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/engine"
 	. "github.com/deluan/gosonic/tests"
 	"github.com/deluan/gosonic/tests/mocks"
 	"github.com/deluan/gosonic/utils"
@@ -24,7 +25,7 @@ func TestGetIndexes(t *testing.T) {
 		return mockRepo
 	})
 	propRepo := mocks.CreateMockPropertyRepo()
-	utils.DefineSingleton(new(domain.PropertyRepository), func() domain.PropertyRepository {
+	utils.DefineSingleton(new(engine.PropertyRepository), func() engine.PropertyRepository {
 		return propRepo
 	})
 

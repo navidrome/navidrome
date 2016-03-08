@@ -9,6 +9,7 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/persistence"
 	"github.com/deluan/gosonic/utils"
 )
@@ -45,7 +46,7 @@ type Importer struct {
 	albumRepo    domain.AlbumRepository
 	artistRepo   domain.ArtistRepository
 	idxRepo      domain.ArtistIndexRepository
-	propertyRepo domain.PropertyRepository
+	propertyRepo engine.PropertyRepository
 	lastScan     time.Time
 }
 

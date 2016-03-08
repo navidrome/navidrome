@@ -22,13 +22,13 @@ type Browser interface {
 	Directory(id string) (*DirectoryInfo, error)
 }
 
-func NewBrowser(pr domain.PropertyRepository, fr domain.MediaFolderRepository, ir domain.ArtistIndexRepository,
+func NewBrowser(pr PropertyRepository, fr domain.MediaFolderRepository, ir domain.ArtistIndexRepository,
 	ar domain.ArtistRepository, alr domain.AlbumRepository, mr domain.MediaFileRepository) Browser {
 	return browser{pr, fr, ir, ar, alr, mr}
 }
 
 type browser struct {
-	propRepo   domain.PropertyRepository
+	propRepo   PropertyRepository
 	folderRepo domain.MediaFolderRepository
 	indexRepo  domain.ArtistIndexRepository
 	artistRepo domain.ArtistRepository
