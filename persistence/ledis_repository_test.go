@@ -2,15 +2,17 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/deluan/gosonic/tests"
-	. "github.com/smartystreets/goconvey/convey"
 	"strconv"
 	"testing"
+
+	"github.com/deluan/gosonic/tests"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 type TestEntity struct {
-	Id   string
-	Name string
+	Id       string
+	Name     string
+	ParentId string `parent:"parent"`
 }
 
 func shouldBeEqual(actualStruct interface{}, expectedStruct ...interface{}) string {
@@ -65,17 +67,23 @@ func TestBaseRepository(t *testing.T) {
 		Convey("Given an empty DB", func() {
 			repo := createRepo()
 
-			Convey("When I save a new entity", func() {
-				entity := &TestEntity{"123", "My Name"}
+			Convey("When I save a new entity and a parent", func() {
+				entity := &TestEntity{"123", "My Name", "ABC"}
 				err := repo.saveOrUpdate("123", entity)
-
-				Convey("Then the method shouldn't return any errors", func() {
+				Convey("Then saving the entity shouldn't return any errors", func() {
 					So(err, ShouldBeNil)
 				})
 
-				Convey("Then the number of entities should be 1", func() {
+				Convey("And the number of entities should be 1", func() {
 					count, _ := repo.CountAll()
 					So(count, ShouldEqual, 1)
+				})
+
+				Convey("And the number of children should be 1", func() {
+					children := make([]TestEntity, 0)
+					err := repo.loadChildren("parent", "ABC", &children)
+					So(err, ShouldBeNil)
+					So(len(children), ShouldEqual, 1)
 				})
 
 				Convey("And this entity should be equal to the the saved one", func() {
@@ -89,11 +97,11 @@ func TestBaseRepository(t *testing.T) {
 
 		Convey("Given a table with one entity", func() {
 			repo := createRepo()
-			entity := &TestEntity{"111", "One Name"}
+			entity := &TestEntity{"111", "One Name", "AAA"}
 			repo.saveOrUpdate(entity.Id, entity)
 
 			Convey("When I save an entity with a different Id", func() {
-				newEntity := &TestEntity{"222", "Another Name"}
+				newEntity := &TestEntity{"222", "Another Name", "AAA"}
 				repo.saveOrUpdate(newEntity.Id, newEntity)
 
 				Convey("Then the number of entities should be 2", func() {
@@ -104,7 +112,7 @@ func TestBaseRepository(t *testing.T) {
 			})
 
 			Convey("When I save an entity with the same Id", func() {
-				newEntity := &TestEntity{"111", "New Name"}
+				newEntity := &TestEntity{"111", "New Name", "AAA"}
 				repo.saveOrUpdate(newEntity.Id, newEntity)
 
 				Convey("Then the number of entities should be 1", func() {
@@ -125,7 +133,7 @@ func TestBaseRepository(t *testing.T) {
 		Convey("Given a table with 3 entities", func() {
 			repo := createRepo()
 			for i := 1; i <= 3; i++ {
-				e := &TestEntity{strconv.Itoa(i), fmt.Sprintf("Name %d", i)}
+				e := &TestEntity{strconv.Itoa(i), fmt.Sprintf("Name %d", i), "AAA"}
 				repo.saveOrUpdate(e.Id, e)
 			}
 
@@ -142,8 +150,44 @@ func TestBaseRepository(t *testing.T) {
 					for _, e := range es {
 						So(e.Id, ShouldBeIn, []string{"1", "2", "3"})
 						So(e.Name, ShouldBeIn, []string{"Name 1", "Name 2", "Name 3"})
+						So(e.ParentId, ShouldEqual, "AAA")
 					}
 				})
+			})
+			Convey("When I call GetAllIds", func() {
+				ids, err := repo.GetAllIds()
+				Convey("Then It should not return any error", func() {
+					So(err, ShouldBeNil)
+				})
+				Convey("And I get all saved ids", func() {
+					So(len(ids), ShouldEqual, 3)
+					for k, _ := range ids {
+						So(k, ShouldBeIn, []string{"1", "2", "3"})
+					}
+				})
+			})
+
+			Convey("When I call DeletaAll with one of the entities", func() {
+				ids := make(map[string]bool)
+				ids["1"] = true
+				err := repo.DeleteAll(ids)
+				Convey("Then It should not return any error", func() {
+					So(err, ShouldBeNil)
+				})
+				Convey("Then CountAll should return 2", func() {
+					count, _ := repo.CountAll()
+					So(count, ShouldEqual, 2)
+				})
+				Convey("And the deleted record shouldn't be among the children", func() {
+					children := make([]TestEntity, 0)
+					err := repo.loadChildren("parent", "AAA", &children)
+					So(err, ShouldBeNil)
+					So(len(children), ShouldEqual, 2)
+					for _, e := range children {
+						So(e.Id, ShouldNotEqual, "1")
+					}
+				})
+
 			})
 		})
 

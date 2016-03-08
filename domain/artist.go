@@ -10,6 +10,7 @@ type ArtistRepository interface {
 	Put(m *Artist) error
 	Get(id string) (*Artist, error)
 	GetByName(name string) (*Artist, error)
+	PurgeInactive(active *Artists) error
 }
 
 type Artists []Artist

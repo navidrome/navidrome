@@ -48,4 +48,5 @@ type MediaFileRepository interface {
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
 	FindByAlbum(albumId string) (MediaFiles, error)
+	PurgeInactive(active *MediaFiles) error
 }

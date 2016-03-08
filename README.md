@@ -68,6 +68,7 @@ $ go test ./... -v
 
 #### Search
 * https://github.com/sunfmin/redisgosearch
+* http://patshaughnessy.net/2011/11/29/two-ways-of-using-redis-to-build-a-nosql-autocomplete-search-index
 
 #### Testing
 * http://goconvey.co/

@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"errors"
+
 	"github.com/deluan/gosonic/domain"
 )
 
@@ -38,6 +39,23 @@ func (r *albumRepository) GetAll(options domain.QueryOptions) (domain.Albums, er
 	var as = make(domain.Albums, 0)
 	err := r.loadAll(&as, options)
 	return as, err
+}
+
+func (r *albumRepository) PurgeInactive(active *domain.Albums) error {
+	currentIds, err := r.GetAllIds()
+	if err != nil {
+		return err
+	}
+	for _, a := range *active {
+		currentIds[a.Id] = false
+	}
+	inactiveIds := make(map[string]bool)
+	for id, inactive := range currentIds {
+		if inactive {
+			inactiveIds[id] = true
+		}
+	}
+	return r.DeleteAll(inactiveIds)
 }
 
 var _ domain.AlbumRepository = (*albumRepository)(nil)

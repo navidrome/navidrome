@@ -2,8 +2,9 @@ package persistence
 
 import (
 	"errors"
-	"github.com/deluan/gosonic/domain"
 	"sort"
+
+	"github.com/deluan/gosonic/domain"
 )
 
 type mediaFileRepository struct {
@@ -40,6 +41,23 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, er
 	err := r.loadChildren("album", albumId, &mfs)
 	sort.Sort(mfs)
 	return mfs, err
+}
+
+func (r *mediaFileRepository) PurgeInactive(active *domain.MediaFiles) error {
+	currentIds, err := r.GetAllIds()
+	if err != nil {
+		return err
+	}
+	for _, a := range *active {
+		currentIds[a.Id] = false
+	}
+	inactiveIds := make(map[string]bool)
+	for id, inactive := range currentIds {
+		if inactive {
+			inactiveIds[id] = true
+		}
+	}
+	return r.DeleteAll(inactiveIds)
 }
 
 var _ domain.MediaFileRepository = (*mediaFileRepository)(nil)

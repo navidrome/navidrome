@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"errors"
+
 	"github.com/deluan/gosonic/domain"
 )
 
@@ -31,6 +32,23 @@ func (r *artistRepository) Get(id string) (*domain.Artist, error) {
 func (r *artistRepository) GetByName(name string) (*domain.Artist, error) {
 	id := r.NewId(name)
 	return r.Get(id)
+}
+
+func (r *artistRepository) PurgeInactive(active *domain.Artists) error {
+	currentIds, err := r.GetAllIds()
+	if err != nil {
+		return err
+	}
+	for _, a := range *active {
+		currentIds[a.Id] = false
+	}
+	inactiveIds := make(map[string]bool)
+	for id, inactive := range currentIds {
+		if inactive {
+			inactiveIds[id] = true
+		}
+	}
+	return r.DeleteAll(inactiveIds)
 }
 
 var _ domain.ArtistRepository = (*artistRepository)(nil)

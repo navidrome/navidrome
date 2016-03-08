@@ -4,17 +4,20 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strings"
+
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
 	"github.com/siddontang/ledisdb/ledis"
-	"reflect"
-	"strings"
 )
 
 type ledisRepository struct {
-	table      string
-	entityType reflect.Type
-	fieldNames []string
+	table         string
+	entityType    reflect.Type
+	fieldNames    []string
+	parentTable   string
+	parentIdField string
 }
 
 func (r *ledisRepository) init(table string, entity interface{}) {
@@ -28,6 +31,7 @@ func (r *ledisRepository) init(table string, entity interface{}) {
 		r.fieldNames[i] = k
 		i++
 	}
+	r.parentTable, r.parentIdField, _ = r.getParent(entity)
 }
 
 // TODO Use annotations to specify fields to be used
@@ -39,6 +43,62 @@ func (r *ledisRepository) NewId(fields ...string) string {
 func (r *ledisRepository) CountAll() (int64, error) {
 	size, err := db().ZCard([]byte(r.table + "s:all"))
 	return size, err
+}
+
+func (r *ledisRepository) GetAllIds() (map[string]bool, error) {
+	m := make(map[string]bool)
+	pairs, err := db().ZRange([]byte(r.table+"s:all"), 0, -1)
+	if err != nil {
+		return m, err
+	}
+	for _, p := range pairs {
+		m[string(p.Member)] = true
+	}
+	return m, err
+}
+
+func (r *ledisRepository) DeleteAll(ids map[string]bool) error {
+	allKey := r.table + "s:all"
+	keys := make([][]byte, len(ids))
+
+	i := 0
+	for id, _ := range ids {
+		// Delete from parent:parentId:table (ZSet)
+		if r.parentTable != "" {
+			parentKey := []byte(fmt.Sprintf("%s:%s:%s", r.table, id, r.parentIdField))
+			pid, err := db().Get(parentKey)
+			var parentId string
+			if err := json.Unmarshal(pid, &parentId); err != nil {
+				return err
+			}
+			if err != nil {
+				return err
+			}
+			parentKey = []byte(fmt.Sprintf("%s:%s:%ss", r.parentTable, parentId, r.table))
+			if _, err := db().ZRem(parentKey, []byte(id)); err != nil {
+				return err
+			}
+		}
+
+		// Delete record table:id:* (KV)
+		if err := r.deleteRecord(id); err != nil {
+			return err
+		}
+		keys[i] = []byte(id)
+
+		i++
+	}
+
+	// Delete from table:all (ZSet)
+	_, err := db().ZRem([]byte(allKey), keys...)
+
+	return err
+}
+
+func (r *ledisRepository) deleteRecord(id string) error {
+	keys := r.getFieldKeys(id)
+	_, err := db().Del(keys...)
+	return err
 }
 
 func (r *ledisRepository) Exists(id string) (bool, error) {
@@ -68,25 +128,42 @@ func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 		return err
 	}
 
-	if parentTable, parentId := r.getParent(entity); parentTable != "" {
-		parentCollectionKey := fmt.Sprintf("%s:%s:%ss", parentTable, parentId, r.table)
+	if parentCollectionKey := r.getParentRelationKey(entity); parentCollectionKey != "" {
 		_, err = db().ZAdd([]byte(parentCollectionKey), sid)
 	}
 	return nil
 }
 
+func (r *ledisRepository) getParentRelationKey(entity interface{}) string {
+	parentId := r.getParentId(entity)
+	if parentId != "" {
+		return fmt.Sprintf("%s:%s:%ss", r.parentTable, parentId, r.table)
+	}
+	return ""
+}
+
 // TODO Optimize
-func (r *ledisRepository) getParent(entity interface{}) (table string, id string) {
+func (r *ledisRepository) getParent(entity interface{}) (table string, idField string, id string) {
 	dt := reflect.TypeOf(entity).Elem()
 	for i := 0; i < dt.NumField(); i++ {
 		f := dt.Field(i)
-		table := f.Tag.Get("parent")
+		table = f.Tag.Get("parent")
 		if table != "" {
+			idField = f.Name
 			dv := reflect.ValueOf(entity).Elem()
-			return table, dv.FieldByName(f.Name).String()
+			id = dv.FieldByName(f.Name).String()
+			return
 		}
 	}
-	return "", ""
+	return
+}
+
+func (r *ledisRepository) getParentId(entity interface{}) string {
+	if r.parentTable != "" {
+		dv := reflect.ValueOf(entity).Elem()
+		return dv.FieldByName(r.parentIdField).String()
+	}
+	return ""
 }
 
 func (r *ledisRepository) getFieldKeys(id string) [][]byte {
@@ -135,9 +212,9 @@ func (r *ledisRepository) loadAll(entities interface{}, qo ...domain.QueryOption
 	return r.loadFromSet(setName, entities, qo...)
 }
 
-func (r *ledisRepository) loadChildren(parentTable string, parentId string, entities interface{}, qo ...domain.QueryOptions) error {
+func (r *ledisRepository) loadChildren(parentTable string, parentId string, emptyEntityArray interface{}, qo ...domain.QueryOptions) error {
 	setName := fmt.Sprintf("%s:%s:%ss", parentTable, parentId, r.table)
-	return r.loadFromSet(setName, entities, qo...)
+	return r.loadFromSet(setName, emptyEntityArray, qo...)
 }
 
 // TODO Optimize it! Probably very slow (and confusing!)

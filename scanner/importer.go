@@ -2,14 +2,15 @@ package scanner
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/persistence"
 	"github.com/deluan/gosonic/utils"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type Scanner interface {
@@ -45,14 +46,16 @@ type Importer struct {
 	artistRepo   domain.ArtistRepository
 	idxRepo      domain.ArtistIndexRepository
 	propertyRepo domain.PropertyRepository
+	lastScan     time.Time
 }
 
 func (i *Importer) Run() {
-	if total, err := i.scanner.ScanLibrary(i.lastModifiedSince(), i.mediaFolder); err != nil {
+	i.lastScan = i.lastModifiedSince()
+	if total, err := i.scanner.ScanLibrary(i.lastScan, i.mediaFolder); err != nil {
 		beego.Error("Error importing iTunes Library:", err)
 		return
 	} else {
-		beego.Info("Found", total, "tracks,",
+		beego.Debug("Found", total, "tracks,",
 			len(i.scanner.MediaFiles()), "songs,",
 			len(i.scanner.Albums()), "albums,",
 			len(i.scanner.Artists()), "artists")
@@ -76,20 +79,39 @@ func (i *Importer) lastModifiedSince() time.Time {
 func (i *Importer) importLibrary() (err error) {
 	indexGroups := utils.ParseIndexGroups(beego.AppConfig.String("indexGroups"))
 	artistIndex := make(map[string]tempIndex)
+	mfs := make(domain.MediaFiles, len(i.scanner.MediaFiles()))
+	als := make(domain.Albums, len(i.scanner.Albums()))
+	ars := make(domain.Artists, len(i.scanner.Artists()))
 
+	beego.Debug("Saving updated data")
+	j := 0
 	for _, mf := range i.scanner.MediaFiles() {
+		mfs[j] = *mf
+		j++
+		if mf.UpdatedAt.Before(i.lastScan) {
+			continue
+		}
 		if err := i.mfRepo.Put(mf); err != nil {
 			beego.Error(err)
 		}
 	}
 
+	j = 0
 	for _, al := range i.scanner.Albums() {
+		als[j] = *al
+		j++
+		if al.UpdatedAt.Before(i.lastScan) {
+			continue
+		}
 		if err := i.albumRepo.Put(al); err != nil {
 			beego.Error(err)
 		}
 	}
 
+	j = 0
 	for _, ar := range i.scanner.Artists() {
+		ars[j] = *ar
+		j++
 		if err := i.artistRepo.Put(ar); err != nil {
 			beego.Error(err)
 		}
@@ -97,6 +119,17 @@ func (i *Importer) importLibrary() (err error) {
 	}
 
 	if err = i.saveIndex(artistIndex); err != nil {
+		beego.Error(err)
+	}
+
+	beego.Debug("Purging old data")
+	if err := i.mfRepo.PurgeInactive(&mfs); err != nil {
+		beego.Error(err)
+	}
+	if err := i.albumRepo.PurgeInactive(&als); err != nil {
+		beego.Error(err)
+	}
+	if err := i.artistRepo.PurgeInactive(&ars); err != nil {
 		beego.Error(err)
 	}
 
@@ -114,22 +147,6 @@ func (i *Importer) importLibrary() (err error) {
 	}
 
 	return err
-}
-
-func (i *Importer) persist(mf *domain.MediaFile, album *domain.Album, artist *domain.Artist) {
-	if err := i.artistRepo.Put(artist); err != nil {
-		beego.Error(err)
-	}
-
-	album.ArtistId = artist.Id
-	if err := i.albumRepo.Put(album); err != nil {
-		beego.Error(err)
-	}
-
-	mf.AlbumId = album.Id
-	if err := i.mfRepo.Put(mf); err != nil {
-		beego.Error(err)
-	}
 }
 
 func (i *Importer) collectIndex(ig utils.IndexGroups, a *domain.Artist, artistIndex map[string]tempIndex) {

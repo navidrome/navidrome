@@ -3,16 +3,17 @@ package scanner
 import (
 	"crypto/md5"
 	"fmt"
-	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/itl"
-	"github.com/dhowden/tag"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/itl"
+	"github.com/dhowden/tag"
 )
 
 type ItunesScanner struct {
@@ -30,7 +31,7 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 	if err != nil {
 		return 0, err
 	}
-	beego.Info("Loaded", len(l.Tracks), "tracks")
+	beego.Debug("Loaded", len(l.Tracks), "tracks")
 
 	s.lastModifiedSince = lastModifiedSince
 	s.mediaFiles = make(map[string]*domain.MediaFile)
@@ -46,7 +47,7 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 		}
 		i++
 		if i%1000 == 0 {
-			beego.Info("Processed", i, "tracks.", len(s.artists), "artists,", len(s.albums), "albums", len(s.mediaFiles), "songs")
+			beego.Debug("Processed", i, "tracks.", len(s.artists), "artists,", len(s.albums), "albums", len(s.mediaFiles), "songs")
 		}
 	}
 	return len(l.Tracks), nil
