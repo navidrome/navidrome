@@ -35,6 +35,7 @@ func TestGetMusicDirectory(t *testing.T) {
 		})
 		Convey("Id is for an artist", func() {
 			Convey("Return fail on Artist Table error", func() {
+				mockArtistRepo.SetData(`[{"Id":"1","Name":"The Charlatans"}]`, 1)
 				mockArtistRepo.SetError(true)
 				_, w := Get(AddParams("/rest/getMusicDirectory.view", "id=1"), "TestGetMusicDirectory")
 

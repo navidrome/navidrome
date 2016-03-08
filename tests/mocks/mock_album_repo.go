@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/deluan/gosonic/domain"
 )
 
@@ -36,9 +37,6 @@ func (m *MockAlbum) SetData(j string, size int) {
 }
 
 func (m *MockAlbum) Exists(id string) (bool, error) {
-	if m.err {
-		return false, errors.New("Error!")
-	}
 	_, found := m.data[id]
 	return found, nil
 }
