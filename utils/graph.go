@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"github.com/karlkfi/inject"
 	"reflect"
+
+	"github.com/karlkfi/inject"
 )
 
 var Graph inject.Graph
@@ -11,9 +12,9 @@ var (
 	definitions map[reflect.Type]interface{}
 )
 
-func DefineSingleton(ptr interface{}, constructor interface{}, args ...interface{}) interface{} {
+func DefineSingleton(ptr interface{}, constructor interface{}) interface{} {
 	typ := reflect.TypeOf(ptr)
-	provider := inject.NewProvider(constructor, args...)
+	provider := inject.NewAutoProvider(constructor)
 
 	if _, found := definitions[typ]; found {
 		ptr = definitions[typ]

@@ -1,11 +1,13 @@
 package tests
 
 import (
-	"github.com/astaxie/beego"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/utils"
 )
 
 func Init(t *testing.T, skipOnShort bool) {
@@ -21,4 +23,5 @@ func Init(t *testing.T, skipOnShort bool) {
 	if noLog != "" {
 		beego.SetLevel(beego.LevelError)
 	}
+	utils.Graph.Finalize()
 }
