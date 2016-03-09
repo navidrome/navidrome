@@ -30,6 +30,7 @@ func mapEndpoints() {
 		beego.NSRouter("/getAlbumList.view", &api.GetAlbumListController{}, "*:Get"),
 
 		beego.NSRouter("/getPlaylists.view", &api.PlaylistsController{}, "*:GetAll"),
+		beego.NSRouter("/getPlaylist.view", &api.PlaylistsController{}, "*:Get"),
 
 		beego.NSRouter("/getUser.view", &api.UsersController{}, "*:GetUser"),
 	)

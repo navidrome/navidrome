@@ -22,9 +22,11 @@ The project's main goals are:
 * Learning Go ;) [![Gopher](https://blog.golang.org/favicon.ico)](https://golang.org)
 
 
-###  Supported Subsonic API version:
+###  Supported Subsonic API version
 
-[(Almost) up to date compatibility chart](https://github.com/deluan/gosonic/wiki/Compatibility)
+I'm currently trying to implement all functionality from API v1.2.0, with some exceptions.
+ 
+Check the (almost) up to date [compatibility chart](https://github.com/deluan/gosonic/wiki/Compatibility) for what is working.
 
 ### Development Environment
 

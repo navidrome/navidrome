@@ -12,10 +12,6 @@ import (
 	"github.com/deluan/gosonic/utils"
 )
 
-var (
-	DataNotFound = errors.New("Data Not Found")
-)
-
 type Browser interface {
 	MediaFolders() (*domain.MediaFolders, error)
 	Indexes(ifModifiedSince time.Time) (*domain.ArtistIndexes, time.Time, error)
@@ -55,25 +51,6 @@ func (b browser) Indexes(ifModifiedSince time.Time) (*domain.ArtistIndexes, time
 	}
 
 	return &domain.ArtistIndexes{}, lastModified, nil
-}
-
-type Child struct {
-	Id          string
-	Title       string
-	IsDir       bool
-	Parent      string
-	Album       string
-	Year        int
-	Artist      string
-	Genre       string
-	CoverArt    string
-	Starred     time.Time
-	Track       int
-	Duration    int
-	Size        string
-	Suffix      string
-	BitRate     int
-	ContentType string
 }
 
 type DirectoryInfo struct {

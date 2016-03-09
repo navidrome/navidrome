@@ -199,6 +199,30 @@ func TestSubsonicResponses(t *testing.T) {
 			})
 		})
 
+		Convey("Playlist", func() {
+			response.Playlist = &PlaylistWithSongs{}
+			response.Playlist.Id = "1"
+			response.Playlist.Name = "My Playlist"
+			Convey("Without data", func() {
+				Convey("XML", func() {
+					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><playlist id="1" name="My Playlist"></playlist></subsonic-response>`)
+				})
+				Convey("JSON", func() {
+					So(response, ShouldMatchJSON, `{"playlist":{"id":"1","name":"My Playlist"},"status":"ok","version":"1.0.0"}`)
+				})
+			})
+			Convey("With just required data", func() {
+				entry := make([]Child, 1)
+				entry[0] = Child{Id: "1", Title: "title", IsDir: false}
+				response.Playlist.Entry = entry
+				Convey("XML", func() {
+					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><playlist id="1" name="My Playlist"><entry id="1" isDir="false" title="title"></entry></playlist></subsonic-response>`)
+				})
+				Convey("JSON", func() {
+					So(response, ShouldMatchJSON, `{"playlist":{"entry":[{"id":"1","isDir":false,"title":"title"}],"id":"1","name":"My Playlist"},"status":"ok","version":"1.0.0"}`)
+				})
+			})
+		})
 		Reset(func() {
 			response = &Subsonic{Status: "ok", Version: "1.0.0"}
 		})
