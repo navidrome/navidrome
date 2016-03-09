@@ -18,4 +18,5 @@ func init() {
 	// Engine (Use cases)
 	utils.DefineSingleton(new(engine.PropertyRepository), persistence.NewPropertyRepository)
 	utils.DefineSingleton(new(engine.Browser), engine.NewBrowser)
+	utils.DefineSingleton(new(engine.ListGenerator), engine.NewListGenerator)
 }

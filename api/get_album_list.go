@@ -1,52 +1,56 @@
 package api
 
 import (
+	"time"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
-	"time"
 )
 
 type GetAlbumListController struct {
 	BaseAPIController
-	albumRepo domain.AlbumRepository
-	types     map[string]domain.QueryOptions
+	listGen engine.ListGenerator
+	types   map[string]strategy
 }
 
-func (c *GetAlbumListController) Prepare() {
-	inject.ExtractAssignable(utils.Graph, &c.albumRepo)
+type strategy func(offset int, size int) (*domain.Albums, error)
 
-	c.types = map[string]domain.QueryOptions{
-		"newest":   domain.QueryOptions{SortBy: "CreatedAt", Desc: true, Alpha: true},
-		"recent":   domain.QueryOptions{SortBy: "PlayDate", Desc: true, Alpha: true},
-		"frequent": domain.QueryOptions{SortBy: "PlayCount", Desc: true},
-		"highest":  domain.QueryOptions{SortBy: "Rating", Desc: true},
+func (c *GetAlbumListController) Prepare() {
+	inject.ExtractAssignable(utils.Graph, &c.listGen)
+
+	c.types = map[string]strategy{
+		"newest":   func(o int, s int) (*domain.Albums, error) { return c.listGen.GetNewest(o, s) },
+		"recent":   func(o int, s int) (*domain.Albums, error) { return c.listGen.GetRecent(o, s) },
+		"frequent": func(o int, s int) (*domain.Albums, error) { return c.listGen.GetFrequent(o, s) },
+		"highest":  func(o int, s int) (*domain.Albums, error) { return c.listGen.GetHighest(o, s) },
 	}
 }
 
 func (c *GetAlbumListController) Get() {
 	typ := c.RequiredParamString("type", "Required string parameter 'type' is not present")
-	qo, found := c.types[typ]
+	method, found := c.types[typ]
 
 	if !found {
 		beego.Error("getAlbumList type", typ, "not implemented!")
 		c.SendError(responses.ERROR_GENERIC, "Not implemented!")
 	}
 
-	qo.Size = utils.MinInt(c.ParamInt("size"), 500)
-	qo.Offset = c.ParamInt("offset")
+	offset := c.ParamInt("offset")
+	size := utils.MinInt(c.ParamInt("size"), 500)
 
-	albums, err := c.albumRepo.GetAll(qo)
+	albums, err := method(offset, size)
 	if err != nil {
 		beego.Error("Error retrieving albums:", err)
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
 
-	albumList := make([]responses.Child, len(albums))
+	albumList := make([]responses.Child, len(*albums))
 
-	for i, al := range albums {
+	for i, al := range *albums {
 		albumList[i].Id = al.Id
 		albumList[i].Title = al.Name
 		albumList[i].Parent = al.ArtistId
