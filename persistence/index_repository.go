@@ -2,8 +2,9 @@ package persistence
 
 import (
 	"errors"
-	"github.com/deluan/gosonic/domain"
 	"sort"
+
+	"github.com/deluan/gosonic/domain"
 )
 
 type artistIndexRepository struct {
@@ -30,10 +31,10 @@ func (r *artistIndexRepository) Get(id string) (*domain.ArtistIndex, error) {
 	return rec.(*domain.ArtistIndex), err
 }
 
-func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
+func (r *artistIndexRepository) GetAll() (*domain.ArtistIndexes, error) {
 	var indices = make(domain.ArtistIndexes, 0)
 	err := r.loadAll(&indices, domain.QueryOptions{Alpha: true})
-	return indices, err
+	return &indices, err
 }
 
 var _ domain.ArtistIndexRepository = (*artistIndexRepository)(nil)

@@ -17,8 +17,8 @@ var (
 )
 
 type Browser interface {
-	MediaFolders() (domain.MediaFolders, error)
-	Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error)
+	MediaFolders() (*domain.MediaFolders, error)
+	Indexes(ifModifiedSince time.Time) (*domain.ArtistIndexes, time.Time, error)
 	Directory(id string) (*DirectoryInfo, error)
 }
 
@@ -36,17 +36,17 @@ type browser struct {
 	mfileRepo  domain.MediaFileRepository
 }
 
-func (b browser) MediaFolders() (domain.MediaFolders, error) {
+func (b browser) MediaFolders() (*domain.MediaFolders, error) {
 	return b.folderRepo.GetAll()
 }
 
-func (b browser) Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error) {
+func (b browser) Indexes(ifModifiedSince time.Time) (*domain.ArtistIndexes, time.Time, error) {
 	l, err := b.propRepo.DefaultGet(consts.LastScan, "-1")
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
 
 	if err != nil {
-		return domain.ArtistIndexes{}, time.Time{}, errors.New(fmt.Sprintf("Error retrieving LastScan property: %v", err))
+		return &domain.ArtistIndexes{}, time.Time{}, errors.New(fmt.Sprintf("Error retrieving LastScan property: %v", err))
 	}
 
 	if lastModified.After(ifModifiedSince) {
@@ -54,7 +54,7 @@ func (b browser) Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.
 		return indexes, lastModified, err
 	}
 
-	return domain.ArtistIndexes{}, lastModified, nil
+	return &domain.ArtistIndexes{}, lastModified, nil
 }
 
 type Child struct {
@@ -107,11 +107,11 @@ func (c browser) Directory(id string) (*DirectoryInfo, error) {
 	return dir, nil
 }
 
-func (c browser) buildArtistDir(a *domain.Artist, albums []domain.Album) *DirectoryInfo {
+func (c browser) buildArtistDir(a *domain.Artist, albums *domain.Albums) *DirectoryInfo {
 	dir := &DirectoryInfo{Id: a.Id, Name: a.Name}
 
-	dir.Children = make([]Child, len(albums))
-	for i, al := range albums {
+	dir.Children = make([]Child, len(*albums))
+	for i, al := range *albums {
 		dir.Children[i].Id = al.Id
 		dir.Children[i].Title = al.Name
 		dir.Children[i].IsDir = true
@@ -129,11 +129,11 @@ func (c browser) buildArtistDir(a *domain.Artist, albums []domain.Album) *Direct
 	return dir
 }
 
-func (c browser) buildAlbumDir(al *domain.Album, tracks []domain.MediaFile) *DirectoryInfo {
+func (c browser) buildAlbumDir(al *domain.Album, tracks *domain.MediaFiles) *DirectoryInfo {
 	dir := &DirectoryInfo{Id: al.Id, Name: al.Name}
 
-	dir.Children = make([]Child, len(tracks))
-	for i, mf := range tracks {
+	dir.Children = make([]Child, len(*tracks))
+	for i, mf := range *tracks {
 		dir.Children[i].Id = mf.Id
 		dir.Children[i].Title = mf.Title
 		dir.Children[i].IsDir = false
@@ -176,7 +176,7 @@ func (c browser) isAlbum(id string) bool {
 	return found
 }
 
-func (c browser) retrieveArtist(id string) (a *domain.Artist, as []domain.Album, err error) {
+func (c browser) retrieveArtist(id string) (a *domain.Artist, as *domain.Albums, err error) {
 	a, err = c.artistRepo.Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Artist %s from DB: %v", id, err)
@@ -189,7 +189,7 @@ func (c browser) retrieveArtist(id string) (a *domain.Artist, as []domain.Album,
 	return
 }
 
-func (c browser) retrieveAlbum(id string) (al *domain.Album, mfs []domain.MediaFile, err error) {
+func (c browser) retrieveAlbum(id string) (al *domain.Album, mfs *domain.MediaFiles, err error) {
 	al, err = c.albumRepo.Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Album %s from DB: %v", id, err)

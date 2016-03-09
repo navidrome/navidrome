@@ -29,16 +29,16 @@ func (r *albumRepository) Get(id string) (*domain.Album, error) {
 	return rec.(*domain.Album), err
 }
 
-func (r *albumRepository) FindByArtist(artistId string) (domain.Albums, error) {
+func (r *albumRepository) FindByArtist(artistId string) (*domain.Albums, error) {
 	var as = make(domain.Albums, 0)
 	err := r.loadChildren("artist", artistId, &as, domain.QueryOptions{SortBy: "Year"})
-	return as, err
+	return &as, err
 }
 
-func (r *albumRepository) GetAll(options domain.QueryOptions) (domain.Albums, error) {
+func (r *albumRepository) GetAll(options domain.QueryOptions) (*domain.Albums, error) {
 	var as = make(domain.Albums, 0)
 	err := r.loadAll(&as, options)
-	return as, err
+	return &as, err
 }
 
 func (r *albumRepository) PurgeInactive(active *domain.Albums) error {

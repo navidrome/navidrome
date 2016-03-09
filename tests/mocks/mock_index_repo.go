@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/deluan/gosonic/domain"
 )
 
@@ -29,9 +30,9 @@ func (m *MockArtistIndex) SetData(j string, length int) {
 	}
 }
 
-func (m *MockArtistIndex) GetAll() (domain.ArtistIndexes, error) {
+func (m *MockArtistIndex) GetAll() (*domain.ArtistIndexes, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
-	return m.data, nil
+	return &m.data, nil
 }

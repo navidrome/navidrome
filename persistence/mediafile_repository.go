@@ -36,11 +36,11 @@ func (r *mediaFileRepository) Get(id string) (*domain.MediaFile, error) {
 	return mf, nil
 }
 
-func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, error) {
+func (r *mediaFileRepository) FindByAlbum(albumId string) (*domain.MediaFiles, error) {
 	var mfs = make(domain.MediaFiles, 0)
 	err := r.loadChildren("album", albumId, &mfs)
 	sort.Sort(mfs)
-	return mfs, err
+	return &mfs, err
 }
 
 func (r *mediaFileRepository) PurgeInactive(active *domain.MediaFiles) error {

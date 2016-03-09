@@ -48,15 +48,15 @@ func (m *MockAlbum) Get(id string) (*domain.Album, error) {
 	return m.data[id], nil
 }
 
-func (m *MockAlbum) GetAll(qo domain.QueryOptions) (domain.Albums, error) {
+func (m *MockAlbum) GetAll(qo domain.QueryOptions) (*domain.Albums, error) {
 	m.Options = qo
 	if m.err {
 		return nil, errors.New("Error!")
 	}
-	return m.all, nil
+	return &m.all, nil
 }
 
-func (m *MockAlbum) FindByArtist(artistId string) (domain.Albums, error) {
+func (m *MockAlbum) FindByArtist(artistId string) (*domain.Albums, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
@@ -69,5 +69,5 @@ func (m *MockAlbum) FindByArtist(artistId string) (domain.Albums, error) {
 		}
 	}
 
-	return res, nil
+	return &res, nil
 }

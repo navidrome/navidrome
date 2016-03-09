@@ -1,11 +1,12 @@
 package persistence
 
 import (
+	"strconv"
+	"testing"
+
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
-	"strconv"
-	"testing"
 )
 
 func TestIndexRepository(t *testing.T) {
@@ -56,7 +57,7 @@ func TestIndexRepository(t *testing.T) {
 					So(indices, ShouldHaveLength, 4)
 				})
 				Convey("And the values should be retrieved", func() {
-					for _, e := range indices {
+					for _, e := range *indices {
 						So(e.Id, ShouldBeIn, []string{"1", "2", "3", "4"})
 					}
 				})

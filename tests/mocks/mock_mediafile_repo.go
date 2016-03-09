@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/deluan/gosonic/domain"
 )
 
@@ -49,7 +50,7 @@ func (m *MockMediaFile) Get(id string) (*domain.MediaFile, error) {
 	return mf, nil
 }
 
-func (m *MockMediaFile) FindByAlbum(artistId string) (domain.MediaFiles, error) {
+func (m *MockMediaFile) FindByAlbum(artistId string) (*domain.MediaFiles, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
@@ -62,5 +63,5 @@ func (m *MockMediaFile) FindByAlbum(artistId string) (domain.MediaFiles, error) 
 		}
 	}
 
-	return res, nil
+	return &res, nil
 }

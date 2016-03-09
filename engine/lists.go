@@ -22,8 +22,7 @@ type listGenerator struct {
 func (g listGenerator) query(qo domain.QueryOptions, offset int, size int) (*domain.Albums, error) {
 	qo.Offset = offset
 	qo.Size = size
-	als, err := g.albumRepo.GetAll(qo)
-	return &als, err
+	return g.albumRepo.GetAll(qo)
 }
 
 func (g listGenerator) GetNewest(offset int, size int) (*domain.Albums, error) {
