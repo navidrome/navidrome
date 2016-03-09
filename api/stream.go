@@ -1,13 +1,14 @@
 package api
 
 import (
+	"strconv"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/stream"
+	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
 	"github.com/karlkfi/inject"
-	"strconv"
 )
 
 type StreamController struct {
@@ -55,7 +56,7 @@ func (c *StreamController) Stream() {
 	c.Ctx.Output.Header("Cache-Control", "must-revalidate")
 	c.Ctx.Output.Header("Pragma", "public")
 
-	err := stream.Stream(c.mf.Path, c.mf.BitRate, maxBitRate, c.Ctx.ResponseWriter)
+	err := engine.Stream(c.mf.Path, c.mf.BitRate, maxBitRate, c.Ctx.ResponseWriter)
 	if err != nil {
 		beego.Error("Error streaming file", c.id, ":", err)
 	}
@@ -66,7 +67,7 @@ func (c *StreamController) Stream() {
 func (c *StreamController) Download() {
 	beego.Debug("Sending file", c.mf.Path)
 
-	stream.Stream(c.mf.Path, 0, 0, c.Ctx.ResponseWriter)
+	engine.Stream(c.mf.Path, 0, 0, c.Ctx.ResponseWriter)
 
 	beego.Debug("Finished sending", c.mf.Path)
 }

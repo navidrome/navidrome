@@ -1,9 +1,10 @@
-package stream
+package engine
 
 import (
+	"testing"
+
 	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestDownsampling(t *testing.T) {

@@ -1,12 +1,13 @@
-package stream
+package engine
 
 import (
-	"github.com/astaxie/beego"
 	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/astaxie/beego"
 )
 
 // TODO Encapsulate as a io.Reader
