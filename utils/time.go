@@ -3,7 +3,8 @@ package utils
 import "time"
 
 func ToTime(millis int64) time.Time {
-	return time.Unix(0, millis*int64(time.Millisecond))
+	t := time.Unix(0, millis*int64(time.Millisecond))
+	return t.Local()
 }
 
 func ToMillis(t time.Time) int64 {
