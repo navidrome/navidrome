@@ -155,7 +155,7 @@ func TestBaseRepository(t *testing.T) {
 				})
 			})
 			Convey("When I call GetAllIds", func() {
-				ids, err := repo.GetAllIds()
+				ids, err := repo.getAllIds()
 				Convey("Then It should not return any error", func() {
 					So(err, ShouldBeNil)
 				})

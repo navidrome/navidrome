@@ -41,8 +41,24 @@ func (r *albumRepository) GetAll(options domain.QueryOptions) (*domain.Albums, e
 	return &as, err
 }
 
+func (r *albumRepository) GetAllIds() (*[]string, error) {
+	idMap, err := r.getAllIds()
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(idMap))
+
+	i := 0
+	for id, _ := range idMap {
+		ids[i] = id
+		i++
+	}
+
+	return &ids, nil
+}
+
 func (r *albumRepository) PurgeInactive(active *domain.Albums) error {
-	currentIds, err := r.GetAllIds()
+	currentIds, err := r.getAllIds()
 	if err != nil {
 		return err
 	}

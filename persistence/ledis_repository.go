@@ -45,7 +45,7 @@ func (r *ledisRepository) CountAll() (int64, error) {
 	return size, err
 }
 
-func (r *ledisRepository) GetAllIds() (map[string]bool, error) {
+func (r *ledisRepository) getAllIds() (map[string]bool, error) {
 	m := make(map[string]bool)
 	pairs, err := db().ZRange([]byte(r.table+"s:all"), 0, -1)
 	if err != nil {

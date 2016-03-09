@@ -44,7 +44,7 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (*domain.MediaFiles, e
 }
 
 func (r *mediaFileRepository) PurgeInactive(active *domain.MediaFiles) error {
-	currentIds, err := r.GetAllIds()
+	currentIds, err := r.getAllIds()
 	if err != nil {
 		return err
 	}

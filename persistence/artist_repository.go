@@ -35,7 +35,7 @@ func (r *artistRepository) GetByName(name string) (*domain.Artist, error) {
 }
 
 func (r *artistRepository) PurgeInactive(active *domain.Artists) error {
-	currentIds, err := r.GetAllIds()
+	currentIds, err := r.getAllIds()
 	if err != nil {
 		return err
 	}

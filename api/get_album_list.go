@@ -23,6 +23,7 @@ func (c *GetAlbumListController) Prepare() {
 	inject.ExtractAssignable(utils.Graph, &c.listGen)
 
 	c.types = map[string]strategy{
+		"random":   func(o int, s int) (*domain.Albums, error) { return c.listGen.GetRandom(o, s) },
 		"newest":   func(o int, s int) (*domain.Albums, error) { return c.listGen.GetNewest(o, s) },
 		"recent":   func(o int, s int) (*domain.Albums, error) { return c.listGen.GetRecent(o, s) },
 		"frequent": func(o int, s int) (*domain.Albums, error) { return c.listGen.GetFrequent(o, s) },
