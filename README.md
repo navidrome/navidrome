@@ -24,10 +24,7 @@ The project's main goals are:
 
 ###  Supported Subsonic API version:
 
-| Version     |          Notes            |
-|-------------|---------------------------|
-| 1.2.0       |       _In Progress_       |
-
+[(Almost) up to date compatibility chart](https://github.com/deluan/gosonic/wiki/Compatibility)
 
 ### Development Environment
 
