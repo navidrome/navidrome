@@ -2,15 +2,23 @@ package engine
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
+
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+
+	"bytes"
+	"image/jpeg"
 
 	"github.com/deluan/gosonic/domain"
 	"github.com/dhowden/tag"
+	"github.com/nfnt/resize"
 )
 
 type Cover interface {
-	GetCover(id string, size int, out io.Writer) error
+	Get(id string, size int, out io.Writer) error
 }
 
 type cover struct {
@@ -21,29 +29,48 @@ func NewCover(mr domain.MediaFileRepository) Cover {
 	return cover{mr}
 }
 
-func (c cover) GetCover(id string, size int, out io.Writer) error {
+func (c cover) Get(id string, size int, out io.Writer) error {
 	mf, err := c.mfileRepo.Get(id)
 	if err != nil {
 		return err
 	}
 
-	var img []byte
+	var reader io.Reader
 
 	if mf != nil && mf.HasCoverArt {
-		img, err = readFromTag(mf.Path)
+		reader, err = readFromTag(mf.Path)
 	} else {
-		img, err = ioutil.ReadFile("static/default_cover.jpg")
+		f, err := os.Open("static/default_cover.jpg")
+		if err == nil {
+			defer f.Close()
+			reader = f
+		}
 	}
 
 	if err != nil {
 		return DataNotFound
 	}
 
-	_, err = out.Write(img)
-	return err
+	if size > 0 {
+		return resizeImage(reader, size, out)
+	} else {
+		_, err = io.Copy(out, reader)
+		return err
+	}
+
 }
 
-func readFromTag(path string) ([]byte, error) {
+func resizeImage(reader io.Reader, size int, out io.Writer) error {
+	img, _, err := image.Decode(reader)
+	if err != nil {
+		return err
+	}
+
+	m := resize.Resize(uint(size), 0, img, resize.NearestNeighbor)
+	return jpeg.Encode(out, m, &jpeg.Options{Quality: 75})
+}
+
+func readFromTag(path string) (io.Reader, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -55,5 +82,5 @@ func readFromTag(path string) ([]byte, error) {
 		return nil, err
 	}
 
-	return m.Picture().Data, nil
+	return bytes.NewReader(m.Picture().Data), nil
 }

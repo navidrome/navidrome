@@ -17,11 +17,11 @@ func (c *GetCoverArtController) Prepare() {
 	inject.ExtractAssignable(utils.Graph, &c.cover)
 }
 
-// TODO accept size parameter
 func (c *GetCoverArtController) Get() {
 	id := c.RequiredParamString("id", "id parameter required")
+	size := c.ParamInt("size")
 
-	err := c.cover.GetCover(id, 0, c.Ctx.ResponseWriter)
+	err := c.cover.Get(id, size, c.Ctx.ResponseWriter)
 
 	switch {
 	case err == engine.DataNotFound:

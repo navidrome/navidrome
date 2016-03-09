@@ -15,6 +15,7 @@ install:
   - go get github.com/karlkfi/inject
   - go get github.com/smartystreets/goconvey
   - go get github.com/dhowden/tag
+  - go get github.com/nfnt/resize
 
 script:
   - go test ./... -v
