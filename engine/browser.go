@@ -63,21 +63,21 @@ func (c browser) Directory(id string) (*DirectoryInfo, error) {
 	var dir *DirectoryInfo
 	switch {
 	case c.isArtist(id):
-		beego.Info("Found Artist with id", id)
+		beego.Debug("Found Artist with id", id)
 		a, albums, err := c.retrieveArtist(id)
 		if err != nil {
 			return nil, err
 		}
 		dir = c.buildArtistDir(a, albums)
 	case c.isAlbum(id):
-		beego.Info("Found Album with id", id)
+		beego.Debug("Found Album with id", id)
 		al, tracks, err := c.retrieveAlbum(id)
 		if err != nil {
 			return nil, err
 		}
 		dir = c.buildAlbumDir(al, tracks)
 	default:
-		beego.Info("Id", id, "not found")
+		beego.Debug("Id", id, "not found")
 		return nil, DataNotFound
 	}
 
@@ -138,7 +138,7 @@ func (c browser) buildAlbumDir(al *domain.Album, tracks *domain.MediaFiles) *Dir
 func (c browser) isArtist(id string) bool {
 	found, err := c.artistRepo.Exists(id)
 	if err != nil {
-		beego.Error(fmt.Errorf("Error searching for Artist %s: %v", id, err))
+		beego.Debug(fmt.Errorf("Error searching for Artist %s: %v", id, err))
 		return false
 	}
 	return found
@@ -147,7 +147,7 @@ func (c browser) isArtist(id string) bool {
 func (c browser) isAlbum(id string) bool {
 	found, err := c.albumRepo.Exists(id)
 	if err != nil {
-		beego.Error(fmt.Errorf("Error searching for Album %s: %v", id, err))
+		beego.Debug(fmt.Errorf("Error searching for Album %s: %v", id, err))
 		return false
 	}
 	return found

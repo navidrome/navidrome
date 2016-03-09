@@ -69,7 +69,7 @@ func (c *BrowsingController) GetDirectory() {
 	dir, err := c.browser.Directory(id)
 	switch {
 	case err == engine.DataNotFound:
-		beego.Error(err, "Id:", id)
+		beego.Error("Requested Id", id, "not found:", err)
 		c.SendError(responses.ERROR_DATA_NOT_FOUND, "Directory not found")
 	case err != nil:
 		beego.Error(err)
