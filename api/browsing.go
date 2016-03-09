@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/engine"
@@ -8,16 +10,58 @@ import (
 	"github.com/karlkfi/inject"
 )
 
-type GetMusicDirectoryController struct {
+type BrowsingController struct {
 	BaseAPIController
 	browser engine.Browser
 }
 
-func (c *GetMusicDirectoryController) Prepare() {
+func (c *BrowsingController) Prepare() {
 	inject.ExtractAssignable(utils.Graph, &c.browser)
 }
 
-func (c *GetMusicDirectoryController) Get() {
+func (c *BrowsingController) GetMediaFolders() {
+	mediaFolderList, _ := c.browser.MediaFolders()
+	folders := make([]responses.MusicFolder, len(*mediaFolderList))
+	for i, f := range *mediaFolderList {
+		folders[i].Id = f.Id
+		folders[i].Name = f.Name
+	}
+	response := c.NewEmpty()
+	response.MusicFolders = &responses.MusicFolders{Folders: folders}
+	c.SendResponse(response)
+}
+
+// TODO: Shortcuts amd validate musicFolder parameter
+func (c *BrowsingController) GetIndexes() {
+	ifModifiedSince := c.ParamTime("ifModifiedSince")
+
+	indexes, lastModified, err := c.browser.Indexes(ifModifiedSince)
+	if err != nil {
+		beego.Error("Error retrieving Indexes:", err)
+		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+	}
+
+	res := responses.Indexes{
+		IgnoredArticles: beego.AppConfig.String("ignoredArticles"),
+		LastModified:    fmt.Sprint(utils.ToMillis(lastModified)),
+	}
+
+	res.Index = make([]responses.Index, len(*indexes))
+	for i, idx := range *indexes {
+		res.Index[i].Name = idx.Id
+		res.Index[i].Artists = make([]responses.Artist, len(idx.Artists))
+		for j, a := range idx.Artists {
+			res.Index[i].Artists[j].Id = a.ArtistId
+			res.Index[i].Artists[j].Name = a.Artist
+		}
+	}
+
+	response := c.NewEmpty()
+	response.Indexes = &res
+	c.SendResponse(response)
+}
+
+func (c *BrowsingController) GetDirectory() {
 	id := c.RequiredParamString("id", "id parameter required")
 
 	response := c.NewEmpty()
@@ -37,7 +81,7 @@ func (c *GetMusicDirectoryController) Get() {
 	c.SendResponse(response)
 }
 
-func (c *GetMusicDirectoryController) buildDirectory(d *engine.DirectoryInfo) *responses.Directory {
+func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.Directory {
 	dir := &responses.Directory{Id: d.Id, Name: d.Name}
 
 	dir.Child = make([]responses.Child, len(d.Children))
