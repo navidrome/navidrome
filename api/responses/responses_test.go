@@ -1,11 +1,12 @@
 package responses_test
 
 import (
+	"testing"
+	"time"
+
 	. "github.com/deluan/gosonic/api/responses"
 	. "github.com/deluan/gosonic/tests"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
-	"time"
 )
 
 func TestSubsonicResponses(t *testing.T) {
@@ -169,6 +170,31 @@ func TestSubsonicResponses(t *testing.T) {
 				})
 				Convey("JSON", func() {
 					So(response, ShouldMatchJSON, `{"status":"ok","user":{"adminRole":false,"commentRole":false,"coverArtRole":false,"downloadRole":false,"email":"gosonic@deluan.com","folder":[1],"jukeboxRole":false,"playlistRole":false,"podcastRole":false,"scrobblingEnabled":false,"settingsRole":false,"shareRole":false,"streamRole":false,"uploadRole":false,"username":"deluan","videoConversionRole":false},"version":"1.0.0"}`)
+				})
+			})
+		})
+		Convey("Playlists", func() {
+			response.Playlists = &Playlists{}
+
+			Convey("Without data", func() {
+				Convey("XML", func() {
+					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><playlists></playlists></subsonic-response>`)
+				})
+				Convey("JSON", func() {
+					So(response, ShouldMatchJSON, `{"playlists":{},"status":"ok","version":"1.0.0"}`)
+				})
+			})
+			Convey("With data", func() {
+				pls := make([]Playlist, 2)
+				pls[0] = Playlist{Id: "111", Name: "aaa"}
+				pls[1] = Playlist{Id: "222", Name: "bbb"}
+				response.Playlists.Playlist = pls
+
+				Convey("XML", func() {
+					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><playlists><playlist id="111" name="aaa"></playlist><playlist id="222" name="bbb"></playlist></playlists></subsonic-response>`)
+				})
+				Convey("JSON", func() {
+					So(response, ShouldMatchJSON, `{"playlists":{"playlist":[{"id":"111","name":"aaa"},{"id":"222","name":"bbb"}]},"status":"ok","version":"1.0.0"}`)
 				})
 			})
 		})

@@ -14,10 +14,12 @@ func init() {
 	utils.DefineSingleton(new(domain.ArtistRepository), persistence.NewArtistRepository)
 	utils.DefineSingleton(new(domain.AlbumRepository), persistence.NewAlbumRepository)
 	utils.DefineSingleton(new(domain.MediaFileRepository), persistence.NewMediaFileRepository)
+	utils.DefineSingleton(new(domain.PlaylistRepository), persistence.NewPlaylistRepository)
 
 	// Engine (Use cases)
 	utils.DefineSingleton(new(engine.PropertyRepository), persistence.NewPropertyRepository)
 	utils.DefineSingleton(new(engine.Browser), engine.NewBrowser)
 	utils.DefineSingleton(new(engine.ListGenerator), engine.NewListGenerator)
 	utils.DefineSingleton(new(engine.Cover), engine.NewCover)
+	utils.DefineSingleton(new(engine.Playlists), engine.NewPlaylists)
 }

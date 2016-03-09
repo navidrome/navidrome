@@ -14,8 +14,9 @@ type Subsonic struct {
 	MusicFolders *MusicFolders `xml:"musicFolders,omitempty"                        json:"musicFolders,omitempty"`
 	Indexes      *Indexes      `xml:"indexes,omitempty"                             json:"indexes,omitempty"`
 	Directory    *Directory    `xml:"directory,omitempty"                           json:"directory,omitempty"`
-	User         *User         `xml:"user,omitempty"                           json:"user,omitempty"`
+	User         *User         `xml:"user,omitempty"                                json:"user,omitempty"`
 	AlbumList    *AlbumList    `xml:"albumList,omitempty"                           json:"albumList,omitempty"`
+	Playlists    *Playlists    `xml:"playlists,omitempty"                           json:"playlists,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -85,6 +86,31 @@ type Directory struct {
 
 type AlbumList struct {
 	Album []Child `xml:"album"                         json:"album,omitempty"`
+}
+
+type Playlist struct {
+	Id   string `xml:"id,attr"                                 json:"id"`
+	Name string `xml:"name,attr"                               json:"name"`
+	/*
+		<xs:sequence>
+		    <xs:element name="allowedUser" type="xs:string" minOccurs="0" maxOccurs="unbounded"/> <!--Added in 1.8.0-->
+		</xs:sequence>
+		<xs:attribute name="id" type="xs:string" use="required"/>
+		<xs:attribute name="name" type="xs:string" use="required"/>
+		<xs:attribute name="comment" type="xs:string" use="optional"/>   <!--Added in 1.8.0-->
+		<xs:attribute name="owner" type="xs:string" use="optional"/>     <!--Added in 1.8.0-->
+		<xs:attribute name="public" type="xs:boolean" use="optional"/>   <!--Added in 1.8.0-->
+		<xs:attribute name="songCount" type="xs:int" use="required"/>    <!--Added in 1.8.0-->
+		<xs:attribute name="duration" type="xs:int" use="required"/>     <!--Added in 1.8.0-->
+		<xs:attribute name="created" type="xs:dateTime" use="required"/> <!--Added in 1.8.0-->
+		<xs:attribute name="changed" type="xs:dateTime" use="required"/> <!--Added in 1.13.0-->
+		<xs:attribute name="coverArt" type="xs:string" use="optional"/>  <!--Added in 1.11.0-->
+
+	*/
+}
+
+type Playlists struct {
+	Playlist []Playlist `xml:"playlist"                         json:"playlist,omitempty"`
 }
 
 type User struct {
