@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"html"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/itl"
@@ -191,8 +193,7 @@ func hasCoverArt(path string) bool {
 }
 
 func unescape(str string) string {
-	s := strings.Replace(str, "&#38;", "&", -1)
-	return s
+	return html.UnescapeString(str)
 }
 
 func realArtistName(t *itl.Track) string {
