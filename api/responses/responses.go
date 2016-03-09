@@ -95,8 +95,6 @@ type Playlist struct {
 		<xs:sequence>
 		    <xs:element name="allowedUser" type="xs:string" minOccurs="0" maxOccurs="unbounded"/> <!--Added in 1.8.0-->
 		</xs:sequence>
-		<xs:attribute name="id" type="xs:string" use="required"/>
-		<xs:attribute name="name" type="xs:string" use="required"/>
 		<xs:attribute name="comment" type="xs:string" use="optional"/>   <!--Added in 1.8.0-->
 		<xs:attribute name="owner" type="xs:string" use="optional"/>     <!--Added in 1.8.0-->
 		<xs:attribute name="public" type="xs:boolean" use="optional"/>   <!--Added in 1.8.0-->

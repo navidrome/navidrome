@@ -19,6 +19,7 @@ type Scanner interface {
 	MediaFiles() map[string]*domain.MediaFile
 	Albums() map[string]*domain.Album
 	Artists() map[string]*domain.Artist
+	Playlists() map[string]*domain.Playlist
 }
 
 type tempIndex map[string]domain.ArtistInfo
@@ -32,6 +33,7 @@ func StartImport() {
 			albumRepo:    persistence.NewAlbumRepository(),
 			artistRepo:   persistence.NewArtistRepository(),
 			idxRepo:      persistence.NewArtistIndexRepository(),
+			plsRepo:      persistence.NewPlaylistRepository(),
 			propertyRepo: persistence.NewPropertyRepository(),
 		}
 		i.Run()
@@ -46,6 +48,7 @@ type Importer struct {
 	albumRepo    domain.AlbumRepository
 	artistRepo   domain.ArtistRepository
 	idxRepo      domain.ArtistIndexRepository
+	plsRepo      domain.PlaylistRepository
 	propertyRepo engine.PropertyRepository
 	lastScan     time.Time
 }
@@ -59,7 +62,8 @@ func (i *Importer) Run() {
 		beego.Debug("Found", total, "tracks,",
 			len(i.scanner.MediaFiles()), "songs,",
 			len(i.scanner.Albums()), "albums,",
-			len(i.scanner.Artists()), "artists")
+			len(i.scanner.Artists()), "artists",
+			len(i.scanner.Playlists()), "playlists")
 	}
 	if err := i.importLibrary(); err != nil {
 		beego.Error("Error persisting data:", err)
@@ -83,6 +87,7 @@ func (i *Importer) importLibrary() (err error) {
 	mfs := make(domain.MediaFiles, len(i.scanner.MediaFiles()))
 	als := make(domain.Albums, len(i.scanner.Albums()))
 	ars := make(domain.Artists, len(i.scanner.Artists()))
+	pls := make(domain.Playlists, len(i.scanner.Playlists()))
 
 	beego.Debug("Saving updated data")
 	j := 0
@@ -119,6 +124,15 @@ func (i *Importer) importLibrary() (err error) {
 		i.collectIndex(indexGroups, ar, artistIndex)
 	}
 
+	j = 0
+	for _, pl := range i.scanner.Playlists() {
+		pls[j] = *pl
+		j++
+		if err := i.plsRepo.Put(pl); err != nil {
+			beego.Error(err)
+		}
+	}
+
 	if err = i.saveIndex(artistIndex); err != nil {
 		beego.Error(err)
 	}
@@ -133,6 +147,9 @@ func (i *Importer) importLibrary() (err error) {
 	if err := i.artistRepo.PurgeInactive(&ars); err != nil {
 		beego.Error(err)
 	}
+	if err := i.plsRepo.PurgeInactive(&pls); err != nil {
+		beego.Error(err)
+	}
 
 	c, _ := i.artistRepo.CountAll()
 	beego.Info("Total Artists in database:", c)
@@ -140,6 +157,8 @@ func (i *Importer) importLibrary() (err error) {
 	beego.Info("Total Albums in database:", c)
 	c, _ = i.mfRepo.CountAll()
 	beego.Info("Total MediaFiles in database:", c)
+	c, _ = i.plsRepo.CountAll()
+	beego.Info("Total Playlists in database:", c)
 
 	if err == nil {
 		millis := time.Now().UnixNano() / int64(time.Millisecond)

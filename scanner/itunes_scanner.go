@@ -22,6 +22,7 @@ type ItunesScanner struct {
 	mediaFiles        map[string]*domain.MediaFile
 	albums            map[string]*domain.Album
 	artists           map[string]*domain.Artist
+	playlists         map[string]*domain.Playlist
 	lastModifiedSince time.Time
 }
 
@@ -39,6 +40,7 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 	s.mediaFiles = make(map[string]*domain.MediaFile)
 	s.albums = make(map[string]*domain.Album)
 	s.artists = make(map[string]*domain.Artist)
+	s.playlists = make(map[string]*domain.Playlist)
 
 	i := 0
 	for _, t := range l.Tracks {
@@ -52,6 +54,12 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 			beego.Debug("Processed", i, "tracks.", len(s.artists), "artists,", len(s.albums), "albums", len(s.mediaFiles), "songs")
 		}
 	}
+
+	for _, p := range l.Playlists {
+		s.collectPlaylists(&p)
+	}
+	beego.Debug("Processed", len(l.Playlists), "playlists.")
+
 	return len(l.Tracks), nil
 }
 
@@ -63,6 +71,28 @@ func (s *ItunesScanner) Albums() map[string]*domain.Album {
 }
 func (s *ItunesScanner) Artists() map[string]*domain.Artist {
 	return s.artists
+}
+func (s *ItunesScanner) Playlists() map[string]*domain.Playlist {
+	return s.playlists
+}
+
+func (s *ItunesScanner) collectPlaylists(p *itl.Playlist) {
+	if p.Master || p.Music {
+		return
+	}
+	pl := &domain.Playlist{}
+	pl.Id = strconv.Itoa(p.PlaylistID)
+	pl.Name = p.Name
+	pl.Tracks = make([]string, 0, len(p.PlaylistItems))
+	for _, item := range p.PlaylistItems {
+		id := strconv.Itoa(item.TrackID)
+		if _, found := s.mediaFiles[id]; found {
+			pl.Tracks = append(pl.Tracks, id)
+		}
+	}
+	if len(pl.Tracks) > 0 {
+		s.playlists[pl.Id] = pl
+	}
 }
 
 func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
