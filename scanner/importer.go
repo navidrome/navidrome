@@ -55,16 +55,19 @@ type Importer struct {
 
 func (i *Importer) Run() {
 	i.lastScan = i.lastModifiedSince()
-	if total, err := i.scanner.ScanLibrary(i.lastScan, i.mediaFolder); err != nil {
+
+	total, err := i.scanner.ScanLibrary(i.lastScan, i.mediaFolder)
+	if err != nil {
 		beego.Error("Error importing iTunes Library:", err)
 		return
-	} else {
-		beego.Debug("Found", total, "tracks,",
-			len(i.scanner.MediaFiles()), "songs,",
-			len(i.scanner.Albums()), "albums,",
-			len(i.scanner.Artists()), "artists",
-			len(i.scanner.Playlists()), "playlists")
 	}
+
+	beego.Debug("Found", total, "tracks,",
+		len(i.scanner.MediaFiles()), "songs,",
+		len(i.scanner.Albums()), "albums,",
+		len(i.scanner.Artists()), "artists",
+		len(i.scanner.Playlists()), "playlists")
+
 	if err := i.importLibrary(); err != nil {
 		beego.Error("Error persisting data:", err)
 	}

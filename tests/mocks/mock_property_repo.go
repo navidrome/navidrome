@@ -31,9 +31,8 @@ func (m *MockProperty) Put(id string, value string) error {
 func (m *MockProperty) Get(id string) (string, error) {
 	if m.err {
 		return "", errors.New("Error!")
-	} else {
-		return m.data[id], nil
 	}
+	return m.data[id], nil
 }
 
 func (m *MockProperty) DefaultGet(id string, defaultValue string) (string, error) {

@@ -53,11 +53,9 @@ func (c cover) Get(id string, size int, out io.Writer) error {
 
 	if size > 0 {
 		return resizeImage(reader, size, out)
-	} else {
-		_, err = io.Copy(out, reader)
-		return err
 	}
-
+	_, err = io.Copy(out, reader)
+	return err
 }
 
 func resizeImage(reader io.Reader, size int, out io.Writer) error {
