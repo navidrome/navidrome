@@ -3,8 +3,6 @@ GoSonic
 
 [![Build Status](https://travis-ci.org/deluan/gosonic.svg?branch=master)](https://travis-ci.org/deluan/gosonic)
 
-### About
-
 __This is still a work in progress, and has no releases available__
 
 GoSonic is an application that implements the [Subsonic API](http://www.subsonic.org/pages/api.jsp), but instead of
@@ -15,7 +13,7 @@ The project's main goals are:
 
 * Full compatibility with the available [Subsonic clients](http://www.subsonic.org/pages/apps.jsp)
   (only being tested with
-    [DSub](http://www.subsonic.org/pages/apps.jsp#dsub) and 
+    [DSub](http://www.subsonic.org/pages/apps.jsp#dsub) and
     [Jamstash](http://www.subsonic.org/pages/apps.jsp#jamstash))
 * Use all metadata from iTunes, so that you can keep using iTunes to manage your music
 * Keep iTunes stats (play counts, last played dates, ratings, etc..) updated, at least on Mac OS X
@@ -25,7 +23,7 @@ The project's main goals are:
 ###  Supported Subsonic API version
 
 I'm currently trying to implement all functionality from API v1.2.0, with some exceptions.
- 
+
 Check the (almost) up to date [compatibility chart](https://github.com/deluan/gosonic/wiki/Compatibility) for what is working.
 
 ### Development Environment
