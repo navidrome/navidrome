@@ -14,6 +14,8 @@ import (
 
 	"regexp"
 
+	"mime"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/itl"
@@ -54,7 +56,7 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 
 	i := 0
 	for _, t := range l.Tracks {
-		if strings.HasPrefix(t.Location, "file://") && strings.Contains(t.Kind, "audio") {
+		if !s.skipTrack(&t) {
 			ar := s.collectArtists(&t)
 			mf := s.collectMediaFiles(&t)
 			s.collectAlbums(&t, mf, ar)
@@ -96,8 +98,20 @@ func (s *ItunesScanner) Playlists() map[string]*domain.Playlist {
 	return s.playlists
 }
 
+func (s *ItunesScanner) skipTrack(t *itl.Track) bool {
+	if !strings.HasPrefix(t.Location, "file://") {
+		return true
+	}
+
+	ext := filepath.Ext(t.Location)
+	m := mime.TypeByExtension(ext)
+
+	return !strings.HasPrefix(m, "audio/")
+}
+
 func (s *ItunesScanner) skipPlaylist(p *itl.Playlist, ignFolders bool, ignPatterns []string, fullPath string) bool {
-	if p.Master || p.Music || (ignFolders && p.Folder) {
+	// Skip all "special" iTunes playlists, and also ignored patterns
+	if p.Master || p.Music || p.Audiobooks || p.Movies || p.TVShows || p.Podcasts || (ignFolders && p.Folder) {
 		return true
 	}
 
