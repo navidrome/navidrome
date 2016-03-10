@@ -55,7 +55,12 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 		}
 	}
 
+	ignFolders, _ := beego.AppConfig.Bool("ignorePlsFolders")
 	for _, p := range l.Playlists {
+		if p.Master || p.Music || (ignFolders && p.Folder) {
+			continue
+		}
+
 		s.collectPlaylists(&p)
 	}
 	beego.Debug("Processed", len(l.Playlists), "playlists.")
@@ -77,9 +82,6 @@ func (s *ItunesScanner) Playlists() map[string]*domain.Playlist {
 }
 
 func (s *ItunesScanner) collectPlaylists(p *itl.Playlist) {
-	if p.Master || p.Music {
-		return
-	}
 	pl := &domain.Playlist{}
 	pl.Id = strconv.Itoa(p.PlaylistID)
 	pl.Name = p.Name
