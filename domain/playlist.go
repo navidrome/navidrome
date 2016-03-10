@@ -1,9 +1,10 @@
 package domain
 
 type Playlist struct {
-	Id     string
-	Name   string
-	Tracks []string
+	Id       string
+	Name     string
+	FullPath string
+	Tracks   []string
 }
 
 type PlaylistRepository interface {

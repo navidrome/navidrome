@@ -12,6 +12,8 @@ import (
 
 	"html"
 
+	"regexp"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/itl"
@@ -23,7 +25,14 @@ type ItunesScanner struct {
 	albums            map[string]*domain.Album
 	artists           map[string]*domain.Artist
 	playlists         map[string]*domain.Playlist
+	pplaylists        map[string]plsRelation
 	lastModifiedSince time.Time
+}
+
+type plsRelation struct {
+	pID       string
+	parentPID string
+	name      string
 }
 
 func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (int, error) {
@@ -41,6 +50,7 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 	s.albums = make(map[string]*domain.Album)
 	s.artists = make(map[string]*domain.Artist)
 	s.playlists = make(map[string]*domain.Playlist)
+	s.pplaylists = make(map[string]plsRelation)
 
 	i := 0
 	for _, t := range l.Tracks {
@@ -55,13 +65,18 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 		}
 	}
 
-	ignFolders, _ := beego.AppConfig.Bool("ignorePlsFolders")
+	ignFolders, _ := beego.AppConfig.Bool("plsIgnoreFolders")
+	ignPatterns := beego.AppConfig.Strings("plsIgnoredPatterns")
 	for _, p := range l.Playlists {
-		if p.Master || p.Music || (ignFolders && p.Folder) {
+		rel := plsRelation{pID: p.PlaylistPersistentID, parentPID: p.ParentPersistentID, name: unescape(p.Name)}
+		s.pplaylists[p.PlaylistPersistentID] = rel
+		fullPath := s.fullPath(p.PlaylistPersistentID)
+
+		if s.skipPlaylist(&p, ignFolders, ignPatterns, fullPath) {
 			continue
 		}
 
-		s.collectPlaylists(&p)
+		s.collectPlaylists(&p, fullPath)
 	}
 	beego.Debug("Processed", len(l.Playlists), "playlists.")
 
@@ -81,10 +96,26 @@ func (s *ItunesScanner) Playlists() map[string]*domain.Playlist {
 	return s.playlists
 }
 
-func (s *ItunesScanner) collectPlaylists(p *itl.Playlist) {
+func (s *ItunesScanner) skipPlaylist(p *itl.Playlist, ignFolders bool, ignPatterns []string, fullPath string) bool {
+	if p.Master || p.Music || (ignFolders && p.Folder) {
+		return true
+	}
+
+	for _, p := range ignPatterns {
+		m, _ := regexp.MatchString(p, fullPath)
+		if m {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s *ItunesScanner) collectPlaylists(p *itl.Playlist, fullPath string) {
 	pl := &domain.Playlist{}
 	pl.Id = strconv.Itoa(p.PlaylistID)
-	pl.Name = p.Name
+	pl.Name = unescape(p.Name)
+	pl.FullPath = fullPath
 	pl.Tracks = make([]string, 0, len(p.PlaylistItems))
 	for _, item := range p.PlaylistItems {
 		id := strconv.Itoa(item.TrackID)
@@ -95,6 +126,17 @@ func (s *ItunesScanner) collectPlaylists(p *itl.Playlist) {
 	if len(pl.Tracks) > 0 {
 		s.playlists[pl.Id] = pl
 	}
+}
+
+func (s *ItunesScanner) fullPath(pID string) string {
+	rel, found := s.pplaylists[pID]
+	if !found {
+		return ""
+	}
+	if rel.parentPID == "" {
+		return rel.name
+	}
+	return fmt.Sprintf("%s > %s", s.fullPath(rel.parentPID), rel.name)
 }
 
 func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
