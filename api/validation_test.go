@@ -58,7 +58,6 @@ func TestAuthentication(t *testing.T) {
 		_, w := Get("/rest/ping.view?u=deluan&p=enc:776f726470617373&c=test&v=1.0.0", "TestAuthentication")
 		Convey("The status should be 'ok'", func() {
 			v := responses.Subsonic{}
-			println("------", w.Body.String())
 			xml.Unmarshal(w.Body.Bytes(), &v)
 			So(v.Status, ShouldEqual, "ok")
 		})

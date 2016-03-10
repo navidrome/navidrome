@@ -27,6 +27,7 @@ func checkParameters(c ControllerInterface) {
 
 	for _, p := range requiredParameters {
 		if c.GetString(p) == "" {
+			beego.Warn("Missing required parameter:", p)
 			abortRequest(c, responses.ERROR_MISSING_PARAMETER)
 		}
 	}
@@ -42,6 +43,7 @@ func authenticate(c ControllerInterface) {
 		}
 	}
 	if user != beego.AppConfig.String("user") || pass != beego.AppConfig.String("password") {
+		beego.Warn("Invalid login:", user)
 		abortRequest(c, responses.ERROR_AUTHENTICATION_FAIL)
 	}
 }
