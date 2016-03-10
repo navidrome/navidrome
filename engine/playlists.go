@@ -35,7 +35,7 @@ func (p playlists) Get(id string) (*PlaylistInfo, error) {
 	}
 
 	if pl == nil {
-		return nil, DataNotFound
+		return nil, ErrDataNotFound
 	}
 
 	pinfo := &PlaylistInfo{Id: pl.Id, Name: pl.Name}

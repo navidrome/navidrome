@@ -25,5 +25,5 @@ type Child struct {
 }
 
 var (
-	DataNotFound = errors.New("Data Not Found")
+	ErrDataNotFound = errors.New("Data Not Found")
 )

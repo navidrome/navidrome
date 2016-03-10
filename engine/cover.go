@@ -48,7 +48,7 @@ func (c cover) Get(id string, size int, out io.Writer) error {
 	}
 
 	if err != nil {
-		return DataNotFound
+		return ErrDataNotFound
 	}
 
 	if size > 0 {

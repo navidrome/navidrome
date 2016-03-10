@@ -53,7 +53,7 @@ func TestCover(t *testing.T) {
 			err := cover.Get("2", 0, out)
 
 			Convey("Then it should return DatNotFound error", func() {
-				So(err, ShouldEqual, engine.DataNotFound)
+				So(err, ShouldEqual, engine.ErrDataNotFound)
 			})
 		})
 		Convey("When specifying a size", func() {

@@ -24,7 +24,7 @@ func (c *GetCoverArtController) Get() {
 	err := c.cover.Get(id, size, c.Ctx.ResponseWriter)
 
 	switch {
-	case err == engine.DataNotFound:
+	case err == engine.ErrDataNotFound:
 		beego.Error(err, "Id:", id)
 		c.SendError(responses.ERROR_DATA_NOT_FOUND, "Directory not found")
 	case err != nil:

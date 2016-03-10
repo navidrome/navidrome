@@ -40,7 +40,7 @@ func (c *PlaylistsController) Get() {
 
 	pinfo, err := c.pls.Get(id)
 	switch {
-	case err == engine.DataNotFound:
+	case err == engine.ErrDataNotFound:
 		beego.Error(err, "Id:", id)
 		c.SendError(responses.ERROR_DATA_NOT_FOUND, "Directory not found")
 	case err != nil:

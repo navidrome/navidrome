@@ -78,7 +78,7 @@ func (c browser) Directory(id string) (*DirectoryInfo, error) {
 		dir = c.buildAlbumDir(al, tracks)
 	default:
 		beego.Debug("Id", id, "not found")
-		return nil, DataNotFound
+		return nil, ErrDataNotFound
 	}
 
 	return dir, nil
