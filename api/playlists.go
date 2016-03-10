@@ -27,6 +27,8 @@ func (c *PlaylistsController) GetAll() {
 	for i, f := range *allPls {
 		playlists[i].Id = f.Id
 		playlists[i].Name = f.Name
+		playlists[i].Comment = "Original: " + f.FullPath
+		playlists[i].SongCount = len(f.Tracks)
 	}
 	response := c.NewEmpty()
 	response.Playlists = &responses.Playlists{Playlist: playlists}

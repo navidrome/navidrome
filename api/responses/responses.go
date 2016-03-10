@@ -90,8 +90,10 @@ type AlbumList struct {
 }
 
 type Playlist struct {
-	Id   string `xml:"id,attr"                                 json:"id"`
-	Name string `xml:"name,attr"                               json:"name"`
+	Id        string `xml:"id,attr"                                 json:"id"`
+	Name      string `xml:"name,attr"                               json:"name"`
+	Comment   string `xml:"comment,attr,omitempty"                  json:"comment,omitempty"`
+	SongCount int    `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
 	/*
 		<xs:sequence>
 		    <xs:element name="allowedUser" type="xs:string" minOccurs="0" maxOccurs="unbounded"/> <!--Added in 1.8.0-->
