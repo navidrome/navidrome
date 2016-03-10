@@ -14,7 +14,8 @@ import (
 func Stream(path string, bitRate int, maxBitRate int, w io.Writer) error {
 	var f io.Reader
 	var err error
-	if maxBitRate > 0 && bitRate > maxBitRate {
+	ds, _ := beego.AppConfig.Bool("enableDownsampling")
+	if ds && maxBitRate > 0 && bitRate > maxBitRate {
 		f, err = downsample(path, maxBitRate)
 	} else {
 		f, err = os.Open(path)
