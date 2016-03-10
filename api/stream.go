@@ -1,8 +1,6 @@
 package api
 
 import (
-	"strconv"
-
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/domain"
@@ -46,15 +44,21 @@ func (c *StreamController) Stream() {
 	beego.Debug("Streaming file", c.id, ":", c.mf.Path)
 	beego.Debug("Bitrate", c.mf.BitRate, "MaxBitRate", maxBitRate)
 
-	contentLength := c.mf.Size
-	if maxBitRate > 0 {
-		contentLength = strconv.Itoa((c.mf.Duration + 1) * maxBitRate * 1000 / 8)
-	}
-	c.Ctx.Output.Header("Content-Length", contentLength)
+	// TODO Send proper estimated content-length
+	//contentLength := c.mf.Size
+	//if maxBitRate > 0 {
+	//	contentLength = strconv.Itoa((c.mf.Duration + 1) * maxBitRate * 1000 / 8)
+	//}
+	c.Ctx.Output.Header("Content-Length", c.mf.Size)
 	c.Ctx.Output.Header("Content-Type", "audio/mpeg")
 	c.Ctx.Output.Header("Expires", "0")
 	c.Ctx.Output.Header("Cache-Control", "must-revalidate")
 	c.Ctx.Output.Header("Pragma", "public")
+
+	if c.Ctx.Request.Method == "HEAD" {
+		beego.Debug("Just a HEAD. Not streaming", c.mf.Path)
+		return
+	}
 
 	err := engine.Stream(c.mf.Path, c.mf.BitRate, maxBitRate, c.Ctx.ResponseWriter)
 	if err != nil {
