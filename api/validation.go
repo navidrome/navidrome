@@ -1,6 +1,9 @@
 package api
 
 import (
+	"encoding/hex"
+	"strings"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 )
@@ -31,7 +34,13 @@ func checkParameters(c ControllerInterface) {
 
 func authenticate(c ControllerInterface) {
 	user := c.GetString("u")
-	pass := c.GetString("p") // TODO Handle hex-encoded password
+	pass := c.GetString("p")
+	if strings.HasPrefix(pass, "enc:") {
+		e := strings.TrimPrefix(pass, "enc:")
+		if dec, err := hex.DecodeString(e); err == nil {
+			pass = string(dec)
+		}
+	}
 	if user != beego.AppConfig.String("user") || pass != beego.AppConfig.String("password") {
 		abortRequest(c, responses.ERROR_AUTHENTICATION_FAIL)
 	}
