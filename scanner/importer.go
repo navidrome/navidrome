@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"os"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
@@ -23,17 +25,51 @@ type Scanner interface {
 
 type tempIndex map[string]domain.ArtistInfo
 
-func StartImport() {
+var (
+	inProgress    = make(chan int)
+	lastUpdated   time.Time
+	itunesLibrary string
+)
+
+func init() {
+	startImport()
+}
+
+func CheckForUpdates(force bool) {
+	<-inProgress
+
+	if force {
+		lastUpdated = time.Time{}
+	}
+
+	startImport()
+}
+
+func startImport() {
 	go func() {
+		itunesLibrary = beego.AppConfig.String("musicFolder")
+
+		info, err := os.Stat(itunesLibrary)
+		if err != nil {
+			inProgress <- 1
+			beego.Error(err)
+			return
+		}
+		if lastUpdated.After(info.ModTime()) {
+			inProgress <- 1
+			return
+		}
+		lastUpdated = time.Now()
+
 		// TODO Move all to DI
 		i := &Importer{mediaFolder: beego.AppConfig.String("musicFolder")}
 		utils.ResolveDependencies(&i.mfRepo, &i.albumRepo, &i.artistRepo, &i.idxRepo, &i.plsRepo,
 			&i.propertyRepo, &i.search, &i.scanner)
 		i.Run()
+		inProgress <- 1
 	}()
 }
 
-// TODO Implement a flag 'inProgress'.
 type Importer struct {
 	scanner      Scanner
 	mediaFolder  string

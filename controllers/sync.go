@@ -8,6 +8,6 @@ import (
 type SyncController struct{ beego.Controller }
 
 func (c *SyncController) Get() {
-	scanner.StartImport()
+	scanner.CheckForUpdates(true)
 	c.Ctx.WriteString("Import started. Check logs")
 }
