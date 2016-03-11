@@ -19,7 +19,7 @@ install:
   - go get github.com/deluan/gomate
 
 script:
-  - BEEGO_RUNMODE=test go test ./...
+  - go test ./...
 
 notifications:
   email:
