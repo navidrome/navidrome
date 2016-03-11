@@ -9,6 +9,7 @@ github.com/smartystreets/goconvey = commit:899ed5a
 github.com/karlkfi/inject = commit:fe06da2
 github.com/dhowden/tag = commit:bccc91e
 github.com/nfnt/resize = commit:4d93a29
+github.com/deluan/gomate =
 
 [res]
 include = conf

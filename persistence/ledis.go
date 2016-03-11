@@ -1,10 +1,11 @@
 package persistence
 
 import (
+	"sync"
+
 	"github.com/astaxie/beego"
 	"github.com/siddontang/ledisdb/config"
 	"github.com/siddontang/ledisdb/ledis"
-	"sync"
 )
 
 var (
@@ -13,7 +14,7 @@ var (
 	once           sync.Once
 )
 
-func db() *ledis.DB {
+func Db() *ledis.DB {
 	once.Do(func() {
 		config := config.NewConfigDefault()
 		config.DataDir = beego.AppConfig.String("dbPath")
@@ -29,6 +30,6 @@ func db() *ledis.DB {
 }
 
 func dropDb() {
-	db()
+	Db()
 	_ledisInstance.FlushAll()
 }

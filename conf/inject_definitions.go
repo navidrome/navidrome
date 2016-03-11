@@ -1,10 +1,13 @@
 package conf
 
 import (
+	"github.com/deluan/gomate"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/persistence"
 	"github.com/deluan/gosonic/utils"
+
+	"github.com/deluan/gosonic/scanner"
 )
 
 func init() {
@@ -22,4 +25,11 @@ func init() {
 	utils.DefineSingleton(new(engine.ListGenerator), engine.NewListGenerator)
 	utils.DefineSingleton(new(engine.Cover), engine.NewCover)
 	utils.DefineSingleton(new(engine.Playlists), engine.NewPlaylists)
+	utils.DefineSingleton(new(engine.Search), engine.NewSearch)
+
+	// Other dependencies
+	utils.DefineSingleton(new(scanner.Scanner), scanner.NewItunesScanner)
+	utils.DefineSingleton(new(gomate.Indexer), func() gomate.Indexer {
+		return gomate.NewIndexer(gomate.NewLedisEmbeddedDB(persistence.Db()))
+	})
 }

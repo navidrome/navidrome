@@ -25,6 +25,10 @@ func DefineSingleton(ptr interface{}, constructor interface{}) interface{} {
 	return ptr
 }
 
+func ResolveDependency(ptr interface{}) {
+	inject.ExtractAssignable(Graph, ptr)
+}
+
 func init() {
 	definitions = make(map[reflect.Type]interface{})
 	Graph = inject.NewGraph()

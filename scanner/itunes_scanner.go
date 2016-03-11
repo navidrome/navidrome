@@ -31,6 +31,10 @@ type ItunesScanner struct {
 	lastModifiedSince time.Time
 }
 
+func NewItunesScanner() *ItunesScanner {
+	return &ItunesScanner{}
+}
+
 type plsRelation struct {
 	pID       string
 	parentPID string

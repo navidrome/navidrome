@@ -41,13 +41,13 @@ func (r *ledisRepository) NewId(fields ...string) string {
 }
 
 func (r *ledisRepository) CountAll() (int64, error) {
-	size, err := db().ZCard([]byte(r.table + "s:all"))
+	size, err := Db().ZCard([]byte(r.table + "s:all"))
 	return size, err
 }
 
 func (r *ledisRepository) getAllIds() (map[string]bool, error) {
 	m := make(map[string]bool)
-	pairs, err := db().ZRange([]byte(r.table+"s:all"), 0, -1)
+	pairs, err := Db().ZRange([]byte(r.table+"s:all"), 0, -1)
 	if err != nil {
 		return m, err
 	}
@@ -66,7 +66,7 @@ func (r *ledisRepository) DeleteAll(ids map[string]bool) error {
 		// Delete from parent:parentId:table (ZSet)
 		if r.parentTable != "" {
 			parentKey := []byte(fmt.Sprintf("%s:%s:%s", r.table, id, r.parentIdField))
-			pid, err := db().Get(parentKey)
+			pid, err := Db().Get(parentKey)
 			var parentId string
 			if err := json.Unmarshal(pid, &parentId); err != nil {
 				return err
@@ -75,7 +75,7 @@ func (r *ledisRepository) DeleteAll(ids map[string]bool) error {
 				return err
 			}
 			parentKey = []byte(fmt.Sprintf("%s:%s:%ss", r.parentTable, parentId, r.table))
-			if _, err := db().ZRem(parentKey, []byte(id)); err != nil {
+			if _, err := Db().ZRem(parentKey, []byte(id)); err != nil {
 				return err
 			}
 		}
@@ -90,19 +90,19 @@ func (r *ledisRepository) DeleteAll(ids map[string]bool) error {
 	}
 
 	// Delete from table:all (ZSet)
-	_, err := db().ZRem([]byte(allKey), keys...)
+	_, err := Db().ZRem([]byte(allKey), keys...)
 
 	return err
 }
 
 func (r *ledisRepository) deleteRecord(id string) error {
 	keys := r.getFieldKeys(id)
-	_, err := db().Del(keys...)
+	_, err := Db().Del(keys...)
 	return err
 }
 
 func (r *ledisRepository) Exists(id string) (bool, error) {
-	res, _ := db().ZScore([]byte(r.table+"s:all"), []byte(id))
+	res, _ := Db().ZScore([]byte(r.table+"s:all"), []byte(id))
 	return res != ledis.InvalidScore, nil
 }
 
@@ -117,19 +117,19 @@ func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 	for f, v := range h {
 		key := recordPrefix + f
 		value, _ := json.Marshal(v)
-		if err := db().Set([]byte(key), value); err != nil {
+		if err := Db().Set([]byte(key), value); err != nil {
 			return err
 		}
 
 	}
 
 	sid := ledis.ScorePair{0, []byte(id)}
-	if _, err = db().ZAdd([]byte(allKey), sid); err != nil {
+	if _, err = Db().ZAdd([]byte(allKey), sid); err != nil {
 		return err
 	}
 
 	if parentCollectionKey := r.getParentRelationKey(entity); parentCollectionKey != "" {
-		_, err = db().ZAdd([]byte(parentCollectionKey), sid)
+		_, err = Db().ZAdd([]byte(parentCollectionKey), sid)
 	}
 	return nil
 }
@@ -184,7 +184,7 @@ func (r *ledisRepository) readEntity(id string) (interface{}, error) {
 
 	fieldKeys := r.getFieldKeys(id)
 
-	res, err := db().MGet(fieldKeys...)
+	res, err := Db().MGet(fieldKeys...)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +229,7 @@ func (r *ledisRepository) loadFromSet(setName string, entities interface{}, qo .
 	if o.SortBy != "" {
 		sortKey = []byte(fmt.Sprintf("%s:*:%s", r.table, o.SortBy))
 	}
-	response, err := db().XZSort([]byte(setName), o.Offset, o.Size, o.Alpha, o.Desc, sortKey, r.getFieldKeys("*"))
+	response, err := Db().XZSort([]byte(setName), o.Offset, o.Size, o.Alpha, o.Desc, sortKey, r.getFieldKeys("*"))
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
-	"github.com/deluan/gosonic/persistence"
 	"github.com/deluan/gosonic/utils"
 )
 
@@ -26,16 +25,16 @@ type tempIndex map[string]domain.ArtistInfo
 
 func StartImport() {
 	go func() {
-		i := &Importer{
-			scanner:      &ItunesScanner{},
-			mediaFolder:  beego.AppConfig.String("musicFolder"),
-			mfRepo:       persistence.NewMediaFileRepository(),
-			albumRepo:    persistence.NewAlbumRepository(),
-			artistRepo:   persistence.NewArtistRepository(),
-			idxRepo:      persistence.NewArtistIndexRepository(),
-			plsRepo:      persistence.NewPlaylistRepository(),
-			propertyRepo: persistence.NewPropertyRepository(),
-		}
+		// TODO Move all to DI
+		i := &Importer{mediaFolder: beego.AppConfig.String("musicFolder")}
+		utils.ResolveDependency(&i.mfRepo)
+		utils.ResolveDependency(&i.albumRepo)
+		utils.ResolveDependency(&i.artistRepo)
+		utils.ResolveDependency(&i.idxRepo)
+		utils.ResolveDependency(&i.plsRepo)
+		utils.ResolveDependency(&i.propertyRepo)
+		utils.ResolveDependency(&i.search)
+		utils.ResolveDependency(&i.scanner)
 		i.Run()
 	}()
 }
@@ -50,6 +49,7 @@ type Importer struct {
 	idxRepo      domain.ArtistIndexRepository
 	plsRepo      domain.PlaylistRepository
 	propertyRepo engine.PropertyRepository
+	search       engine.Search
 	lastScan     time.Time
 }
 
@@ -123,6 +123,9 @@ func (i *Importer) importLibrary() (err error) {
 		j++
 		if err := i.artistRepo.Put(ar); err != nil {
 			beego.Error(err)
+		}
+		if err := i.search.IndexArtist(ar); err != nil {
+			beego.Error("Error indexing artist:", err)
 		}
 		i.collectIndex(indexGroups, ar, artistIndex)
 	}

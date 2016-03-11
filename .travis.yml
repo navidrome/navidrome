@@ -16,6 +16,7 @@ install:
   - go get github.com/smartystreets/goconvey
   - go get github.com/dhowden/tag
   - go get github.com/nfnt/resize
+  - go get github.com/deluan/gomate
 
 script:
   - go test ./... -v
