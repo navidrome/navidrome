@@ -80,6 +80,10 @@ func (i *Importer) lastModifiedSince() time.Time {
 		beego.Warn("Couldn't read LastScan:", err)
 		return time.Time{}
 	}
+	if ms == "" {
+		beego.Debug("First scan")
+		return time.Time{}
+	}
 	s, _ := strconv.ParseInt(ms, 10, 64)
 	return time.Unix(0, s*int64(time.Millisecond))
 }
@@ -108,6 +112,9 @@ func (i *Importer) importLibrary() (err error) {
 		if err := i.search.IndexMediaFile(mf); err != nil {
 			beego.Error("Error indexing artist:", err)
 		}
+		if !i.lastScan.IsZero() {
+			beego.Debug("Updated Track:", mf.Title)
+		}
 	}
 
 	j = 0
@@ -122,6 +129,9 @@ func (i *Importer) importLibrary() (err error) {
 		}
 		if err := i.search.IndexAlbum(al); err != nil {
 			beego.Error("Error indexing artist:", err)
+		}
+		if !i.lastScan.IsZero() {
+			beego.Debug(fmt.Sprintf(`Updated Album:"%s" from "%s"`, al.Name, al.Artist))
 		}
 	}
 
