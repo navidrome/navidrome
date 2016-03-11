@@ -8,7 +8,6 @@ import (
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
-	"github.com/karlkfi/inject"
 )
 
 type GetAlbumListController struct {
@@ -20,7 +19,7 @@ type GetAlbumListController struct {
 type strategy func(offset int, size int) (*domain.Albums, error)
 
 func (c *GetAlbumListController) Prepare() {
-	inject.ExtractAssignable(utils.Graph, &c.listGen)
+	utils.ResolveDependencies(&c.listGen)
 
 	c.types = map[string]strategy{
 		"random":   func(o int, s int) (*domain.Albums, error) { return c.listGen.GetRandom(o, s) },

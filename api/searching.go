@@ -5,7 +5,6 @@ import (
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
-	"github.com/karlkfi/inject"
 )
 
 type SearchingController struct {
@@ -14,7 +13,7 @@ type SearchingController struct {
 }
 
 func (c *SearchingController) Prepare() {
-	inject.ExtractAssignable(utils.Graph, &c.search)
+	utils.ResolveDependencies(&c.search)
 }
 
 func (c *SearchingController) Search2() {

@@ -25,8 +25,10 @@ func DefineSingleton(ptr interface{}, constructor interface{}) interface{} {
 	return ptr
 }
 
-func ResolveDependency(ptr interface{}) {
-	inject.ExtractAssignable(Graph, ptr)
+func ResolveDependencies(ptrs ...interface{}) {
+	for _, p := range ptrs {
+		inject.ExtractAssignable(Graph, p)
+	}
 }
 
 func init() {

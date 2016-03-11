@@ -5,7 +5,6 @@ import (
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
-	"github.com/karlkfi/inject"
 )
 
 type PlaylistsController struct {
@@ -14,7 +13,7 @@ type PlaylistsController struct {
 }
 
 func (c *PlaylistsController) Prepare() {
-	inject.ExtractAssignable(utils.Graph, &c.pls)
+	utils.ResolveDependencies(&c.pls)
 }
 
 func (c *PlaylistsController) GetAll() {

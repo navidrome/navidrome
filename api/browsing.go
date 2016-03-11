@@ -7,7 +7,6 @@ import (
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
-	"github.com/karlkfi/inject"
 )
 
 type BrowsingController struct {
@@ -16,7 +15,7 @@ type BrowsingController struct {
 }
 
 func (c *BrowsingController) Prepare() {
-	inject.ExtractAssignable(utils.Graph, &c.browser)
+	utils.ResolveDependencies(&c.browser)
 }
 
 func (c *BrowsingController) GetMediaFolders() {

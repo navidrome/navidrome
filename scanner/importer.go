@@ -27,14 +27,8 @@ func StartImport() {
 	go func() {
 		// TODO Move all to DI
 		i := &Importer{mediaFolder: beego.AppConfig.String("musicFolder")}
-		utils.ResolveDependency(&i.mfRepo)
-		utils.ResolveDependency(&i.albumRepo)
-		utils.ResolveDependency(&i.artistRepo)
-		utils.ResolveDependency(&i.idxRepo)
-		utils.ResolveDependency(&i.plsRepo)
-		utils.ResolveDependency(&i.propertyRepo)
-		utils.ResolveDependency(&i.search)
-		utils.ResolveDependency(&i.scanner)
+		utils.ResolveDependencies(&i.mfRepo, &i.albumRepo, &i.artistRepo, &i.idxRepo, &i.plsRepo,
+			&i.propertyRepo, &i.search, &i.scanner)
 		i.Run()
 	}()
 }

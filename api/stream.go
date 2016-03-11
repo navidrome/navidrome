@@ -6,7 +6,6 @@ import (
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
-	"github.com/karlkfi/inject"
 )
 
 type StreamController struct {
@@ -17,7 +16,7 @@ type StreamController struct {
 }
 
 func (c *StreamController) Prepare() {
-	inject.ExtractAssignable(utils.Graph, &c.repo)
+	utils.ResolveDependencies(&c.repo)
 
 	c.id = c.RequiredParamString("id", "id parameter required")
 

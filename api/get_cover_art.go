@@ -5,7 +5,6 @@ import (
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
-	"github.com/karlkfi/inject"
 )
 
 type GetCoverArtController struct {
@@ -14,7 +13,7 @@ type GetCoverArtController struct {
 }
 
 func (c *GetCoverArtController) Prepare() {
-	inject.ExtractAssignable(utils.Graph, &c.cover)
+	utils.ResolveDependencies(&c.cover)
 }
 
 func (c *GetCoverArtController) Get() {
