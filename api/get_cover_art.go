@@ -19,7 +19,7 @@ func (c *GetCoverArtController) Prepare() {
 
 func (c *GetCoverArtController) Get() {
 	id := c.RequiredParamString("id", "id parameter required")
-	size := c.ParamInt("size")
+	size := c.ParamInt("size", 0)
 
 	err := c.cover.Get(id, size, c.Ctx.ResponseWriter)
 

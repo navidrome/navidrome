@@ -40,8 +40,8 @@ func (c *GetAlbumListController) Get() {
 		c.SendError(responses.ERROR_GENERIC, "Not implemented!")
 	}
 
-	offset := c.ParamInt("offset")
-	size := utils.MinInt(c.ParamInt("size"), 500)
+	offset := c.ParamInt("offset", 0)
+	size := utils.MinInt(c.ParamInt("size", 0), 500)
 
 	albums, err := method(offset, size)
 	if err != nil {

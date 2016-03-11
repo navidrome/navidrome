@@ -6,18 +6,19 @@ import (
 )
 
 type Subsonic struct {
-	XMLName      xml.Name           `xml:"http://subsonic.org/restapi subsonic-response" json:"-"`
-	Status       string             `xml:"status,attr"                                   json:"status"`
-	Version      string             `xml:"version,attr"                                  json:"version"`
-	Error        *Error             `xml:"error,omitempty"                               json:"error,omitempty"`
-	License      *License           `xml:"license,omitempty"                             json:"license,omitempty"`
-	MusicFolders *MusicFolders      `xml:"musicFolders,omitempty"                        json:"musicFolders,omitempty"`
-	Indexes      *Indexes           `xml:"indexes,omitempty"                             json:"indexes,omitempty"`
-	Directory    *Directory         `xml:"directory,omitempty"                           json:"directory,omitempty"`
-	User         *User              `xml:"user,omitempty"                                json:"user,omitempty"`
-	AlbumList    *AlbumList         `xml:"albumList,omitempty"                           json:"albumList,omitempty"`
-	Playlists    *Playlists         `xml:"playlists,omitempty"                           json:"playlists,omitempty"`
-	Playlist     *PlaylistWithSongs `xml:"playlist,omitempty"                            json:"playlist,omitempty"`
+	XMLName       xml.Name           `xml:"http://subsonic.org/restapi subsonic-response" json:"-"`
+	Status        string             `xml:"status,attr"                                   json:"status"`
+	Version       string             `xml:"version,attr"                                  json:"version"`
+	Error         *Error             `xml:"error,omitempty"                               json:"error,omitempty"`
+	License       *License           `xml:"license,omitempty"                             json:"license,omitempty"`
+	MusicFolders  *MusicFolders      `xml:"musicFolders,omitempty"                        json:"musicFolders,omitempty"`
+	Indexes       *Indexes           `xml:"indexes,omitempty"                             json:"indexes,omitempty"`
+	Directory     *Directory         `xml:"directory,omitempty"                           json:"directory,omitempty"`
+	User          *User              `xml:"user,omitempty"                                json:"user,omitempty"`
+	AlbumList     *AlbumList         `xml:"albumList,omitempty"                           json:"albumList,omitempty"`
+	Playlists     *Playlists         `xml:"playlists,omitempty"                           json:"playlists,omitempty"`
+	Playlist      *PlaylistWithSongs `xml:"playlist,omitempty"                            json:"playlist,omitempty"`
+	SearchResult2 *SearchResult2     `xml:"searchResult2,omitempty"                            json:"searchResult2,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -117,6 +118,12 @@ type Playlists struct {
 type PlaylistWithSongs struct {
 	Playlist
 	Entry []Child `xml:"entry"                            json:"entry,omitempty"`
+}
+
+type SearchResult2 struct {
+	Artist []Artist `xml:"artist"                           json:"artist,omitempty"`
+	Album  []Child  `xml:"album"                            json:"album,omitempty"`
+	Song   []Child  `xml:"song"                             json:"song,omitempty"`
 }
 
 type User struct {

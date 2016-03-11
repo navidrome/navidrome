@@ -3,10 +3,11 @@ package api
 import (
 	"encoding/xml"
 	"fmt"
+	"time"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/utils"
-	"time"
 )
 
 type BaseAPIController struct{ beego.Controller }
@@ -23,14 +24,18 @@ func (c *BaseAPIController) RequiredParamString(param string, msg string) string
 	return p
 }
 
+func (c *BaseAPIController) ParamString(param string) string {
+	return c.Input().Get(param)
+}
+
 func (c *BaseAPIController) ParamTime(param string) time.Time {
 	var value int64
 	c.Ctx.Input.Bind(&value, param)
 	return utils.ToTime(value)
 }
 
-func (c *BaseAPIController) ParamInt(param string) int {
-	var value int
+func (c *BaseAPIController) ParamInt(param string, def int) int {
+	value := def
 	c.Ctx.Input.Bind(&value, param)
 	return value
 }

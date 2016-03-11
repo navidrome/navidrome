@@ -29,7 +29,13 @@ func init() {
 
 	// Other dependencies
 	utils.DefineSingleton(new(scanner.Scanner), scanner.NewItunesScanner)
-	utils.DefineSingleton(new(gomate.Indexer), func() gomate.Indexer {
-		return gomate.NewIndexer(gomate.NewLedisEmbeddedDB(persistence.Db()))
+	utils.DefineSingleton(new(gomate.DB), func() gomate.DB {
+		return gomate.NewLedisEmbeddedDB(persistence.Db())
 	})
+	//utils.DefineSingleton(new(gomate.Indexer), func() gomate.Indexer {
+	//	return gomate.NewIndexer(gomate.NewLedisEmbeddedDB(persistence.Db()))
+	//})
+	//utils.DefineSingleton(new(gomate.Searcher), func() gomate.Searcher {
+	//	return gomate.NewSearcher(gomate.NewLedisEmbeddedDB(persistence.Db()))
+	//})
 }

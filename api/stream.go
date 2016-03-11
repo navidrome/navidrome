@@ -38,7 +38,7 @@ func (c *StreamController) Prepare() {
 // TODO Still getting the "Conn.Write wrote more than the declared Content-Length" error.
 // Don't know if this causes any issues
 func (c *StreamController) Stream() {
-	maxBitRate := c.ParamInt("maxBitRate")
+	maxBitRate := c.ParamInt("maxBitRate", 0)
 	maxBitRate = utils.MinInt(c.mf.BitRate, maxBitRate)
 
 	beego.Debug("Streaming file", c.id, ":", c.mf.Path)

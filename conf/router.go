@@ -23,6 +23,8 @@ func mapEndpoints() {
 		beego.NSRouter("/getIndexes.view", &api.BrowsingController{}, "*:GetIndexes"),
 		beego.NSRouter("/getMusicDirectory.view", &api.BrowsingController{}, "*:GetDirectory"),
 
+		beego.NSRouter("/search2.view", &api.SearchingController{}, "*:Search2"),
+
 		beego.NSRouter("/getCoverArt.view", &api.GetCoverArtController{}, "*:Get"),
 		beego.NSRouter("/stream.view", &api.StreamController{}, "*:Stream"),
 		beego.NSRouter("/download.view", &api.StreamController{}, "*:Download"),
