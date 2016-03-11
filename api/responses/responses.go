@@ -46,6 +46,11 @@ type MusicFolders struct {
 type Artist struct {
 	Id   string `xml:"id,attr"                       json:"id"`
 	Name string `xml:"name,attr"                     json:"name"`
+	/*
+		<xs:attribute name="starred" type="xs:dateTime" use="optional"/> <!-- Added in 1.10.1 -->
+		<xs:attribute name="userRating" type="sub:UserRating" use="optional"/>  <!-- Added in 1.13.0 -->
+		<xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
+	*/
 }
 
 type Index struct {

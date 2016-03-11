@@ -62,12 +62,14 @@ func (s search) IndexMediaFile(mf *domain.MediaFile) error {
 }
 
 func (s search) SearchArtist(q string, offset int, size int) (*Results, error) {
-	q = strings.TrimSuffix(q, "*")
-	resp, err := s.sArtist.Search(q)
+	q = strings.ToLower(strings.TrimSuffix(q, "*"))
+	min := offset
+	max := min + size - 1
+	resp, err := s.sArtist.Search(q, min, max)
 	if err != nil {
 		return nil, nil
 	}
-	res := make(Results, 0, len(resp))
+	res := make(Results, len(resp))
 	for i, id := range resp {
 		a, err := s.artistRepo.Get(id)
 		if err != nil {
@@ -79,12 +81,14 @@ func (s search) SearchArtist(q string, offset int, size int) (*Results, error) {
 }
 
 func (s search) SearchAlbum(q string, offset int, size int) (*Results, error) {
-	q = strings.TrimSuffix(q, "*")
-	resp, err := s.sAlbum.Search(q)
+	q = strings.ToLower(strings.TrimSuffix(q, "*"))
+	min := offset
+	max := min + size - 1
+	resp, err := s.sAlbum.Search(q, min, max)
 	if err != nil {
 		return nil, nil
 	}
-	res := make(Results, 0, len(resp))
+	res := make(Results, len(resp))
 	for i, id := range resp {
 		al, err := s.albumRepo.Get(id)
 		if err != nil {
@@ -96,12 +100,14 @@ func (s search) SearchAlbum(q string, offset int, size int) (*Results, error) {
 }
 
 func (s search) SearchSong(q string, offset int, size int) (*Results, error) {
-	q = strings.TrimSuffix(q, "*")
-	resp, err := s.sSong.Search(q)
+	q = strings.ToLower(strings.TrimSuffix(q, "*"))
+	min := offset
+	max := min + size - 1
+	resp, err := s.sSong.Search(q, min, max)
 	if err != nil {
 		return nil, nil
 	}
-	res := make(Results, 0, len(resp))
+	res := make(Results, len(resp))
 	for i, id := range resp {
 		mf, err := s.mfileRepo.Get(id)
 		if err != nil {
