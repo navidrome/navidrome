@@ -26,12 +26,13 @@ type Scanner interface {
 type tempIndex map[string]domain.ArtistInfo
 
 var (
-	inProgress    = make(chan int)
-	lastUpdated   time.Time
+	inProgress    chan int
+	lastCheck     time.Time
 	itunesLibrary string
 )
 
 func init() {
+	inProgress = make(chan int)
 	startImport()
 }
 
@@ -39,7 +40,7 @@ func CheckForUpdates(force bool) {
 	<-inProgress
 
 	if force {
-		lastUpdated = time.Time{}
+		lastCheck = time.Time{}
 	}
 
 	startImport()
@@ -55,11 +56,11 @@ func startImport() {
 			beego.Error(err)
 			return
 		}
-		if lastUpdated.After(info.ModTime()) {
+		if lastCheck.After(info.ModTime()) {
 			inProgress <- 1
 			return
 		}
-		lastUpdated = time.Now()
+		lastCheck = time.Now()
 
 		// TODO Move all to DI
 		i := &Importer{mediaFolder: beego.AppConfig.String("musicFolder")}
