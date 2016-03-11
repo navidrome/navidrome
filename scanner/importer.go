@@ -92,6 +92,8 @@ func (i *Importer) importLibrary() (err error) {
 	ars := make(domain.Artists, len(i.scanner.Artists()))
 	pls := make(domain.Playlists, len(i.scanner.Playlists()))
 
+	i.search.ClearAll()
+
 	beego.Debug("Saving updated data")
 	j := 0
 	for _, mf := range i.scanner.MediaFiles() {
@@ -102,6 +104,9 @@ func (i *Importer) importLibrary() (err error) {
 		}
 		if err := i.mfRepo.Put(mf); err != nil {
 			beego.Error(err)
+		}
+		if err := i.search.IndexMediaFile(mf); err != nil {
+			beego.Error("Error indexing artist:", err)
 		}
 	}
 
@@ -114,6 +119,9 @@ func (i *Importer) importLibrary() (err error) {
 		}
 		if err := i.albumRepo.Put(al); err != nil {
 			beego.Error(err)
+		}
+		if err := i.search.IndexAlbum(al); err != nil {
+			beego.Error("Error indexing artist:", err)
 		}
 	}
 
