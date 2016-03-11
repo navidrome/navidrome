@@ -25,7 +25,7 @@ func (p playlists) GetAll() (*domain.Playlists, error) {
 type PlaylistInfo struct {
 	Id      string
 	Name    string
-	Entries []Child
+	Entries []Entry
 }
 
 func (p playlists) Get(id string) (*PlaylistInfo, error) {
@@ -39,7 +39,7 @@ func (p playlists) Get(id string) (*PlaylistInfo, error) {
 	}
 
 	pinfo := &PlaylistInfo{Id: pl.Id, Name: pl.Name}
-	pinfo.Entries = make([]Child, len(pl.Tracks))
+	pinfo.Entries = make([]Entry, len(pl.Tracks))
 
 	// TODO Optimize: Get all tracks at once
 	for i, mfId := range pl.Tracks {
@@ -47,26 +47,8 @@ func (p playlists) Get(id string) (*PlaylistInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		pinfo.Entries[i].Id = mf.Id
-		pinfo.Entries[i].Title = mf.Title
-		pinfo.Entries[i].IsDir = false
-		pinfo.Entries[i].Parent = mf.AlbumId
-		pinfo.Entries[i].Album = mf.Album
-		pinfo.Entries[i].Year = mf.Year
-		pinfo.Entries[i].Artist = mf.Artist
-		pinfo.Entries[i].Genre = mf.Genre
-		//pinfo.Entries[i].Track = mf.TrackNumber
-		pinfo.Entries[i].Duration = mf.Duration
-		pinfo.Entries[i].Size = mf.Size
-		pinfo.Entries[i].Suffix = mf.Suffix
-		pinfo.Entries[i].BitRate = mf.BitRate
-		if mf.Starred {
-			pinfo.Entries[i].Starred = mf.UpdatedAt
-		}
-		if mf.HasCoverArt {
-			pinfo.Entries[i].CoverArt = mf.Id
-		}
-		pinfo.Entries[i].ContentType = mf.ContentType()
+		pinfo.Entries[i] = FromMediaFile(mf)
+		pinfo.Entries[i].Track = 0
 	}
 
 	return pinfo, nil

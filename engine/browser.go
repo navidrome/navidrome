@@ -54,9 +54,9 @@ func (b browser) Indexes(ifModifiedSince time.Time) (*domain.ArtistIndexes, time
 }
 
 type DirectoryInfo struct {
-	Id       string
-	Name     string
-	Children []Child
+	Id      string
+	Name    string
+	Entries []Entry
 }
 
 func (c browser) Directory(id string) (*DirectoryInfo, error) {
@@ -87,21 +87,9 @@ func (c browser) Directory(id string) (*DirectoryInfo, error) {
 func (c browser) buildArtistDir(a *domain.Artist, albums *domain.Albums) *DirectoryInfo {
 	dir := &DirectoryInfo{Id: a.Id, Name: a.Name}
 
-	dir.Children = make([]Child, len(*albums))
+	dir.Entries = make([]Entry, len(*albums))
 	for i, al := range *albums {
-		dir.Children[i].Id = al.Id
-		dir.Children[i].Title = al.Name
-		dir.Children[i].IsDir = true
-		dir.Children[i].Parent = al.ArtistId
-		dir.Children[i].Album = al.Name
-		dir.Children[i].Year = al.Year
-		dir.Children[i].Artist = al.AlbumArtist
-		dir.Children[i].Genre = al.Genre
-		dir.Children[i].CoverArt = al.CoverArtId
-		if al.Starred {
-			dir.Children[i].Starred = al.UpdatedAt
-		}
-
+		dir.Entries[i] = FromAlbum(&al)
 	}
 	return dir
 }
@@ -109,28 +97,9 @@ func (c browser) buildArtistDir(a *domain.Artist, albums *domain.Albums) *Direct
 func (c browser) buildAlbumDir(al *domain.Album, tracks *domain.MediaFiles) *DirectoryInfo {
 	dir := &DirectoryInfo{Id: al.Id, Name: al.Name}
 
-	dir.Children = make([]Child, len(*tracks))
+	dir.Entries = make([]Entry, len(*tracks))
 	for i, mf := range *tracks {
-		dir.Children[i].Id = mf.Id
-		dir.Children[i].Title = mf.Title
-		dir.Children[i].IsDir = false
-		dir.Children[i].Parent = mf.AlbumId
-		dir.Children[i].Album = mf.Album
-		dir.Children[i].Year = mf.Year
-		dir.Children[i].Artist = mf.Artist
-		dir.Children[i].Genre = mf.Genre
-		dir.Children[i].Track = mf.TrackNumber
-		dir.Children[i].Duration = mf.Duration
-		dir.Children[i].Size = mf.Size
-		dir.Children[i].Suffix = mf.Suffix
-		dir.Children[i].BitRate = mf.BitRate
-		if mf.Starred {
-			dir.Children[i].Starred = mf.UpdatedAt
-		}
-		if mf.HasCoverArt {
-			dir.Children[i].CoverArt = mf.Id
-		}
-		dir.Children[i].ContentType = mf.ContentType()
+		dir.Entries[i] = FromMediaFile(&mf)
 	}
 	return dir
 }

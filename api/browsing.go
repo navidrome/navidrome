@@ -84,26 +84,9 @@ func (c *BrowsingController) GetDirectory() {
 func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.Directory {
 	dir := &responses.Directory{Id: d.Id, Name: d.Name}
 
-	dir.Child = make([]responses.Child, len(d.Children))
-	for i, child := range d.Children {
-		dir.Child[i].Id = child.Id
-		dir.Child[i].Title = child.Title
-		dir.Child[i].IsDir = child.IsDir
-		dir.Child[i].Parent = child.Parent
-		dir.Child[i].Album = child.Album
-		dir.Child[i].Year = child.Year
-		dir.Child[i].Artist = child.Artist
-		dir.Child[i].Genre = child.Genre
-		dir.Child[i].CoverArt = child.CoverArt
-		dir.Child[i].Track = child.Track
-		dir.Child[i].Duration = child.Duration
-		dir.Child[i].Size = child.Size
-		dir.Child[i].Suffix = child.Suffix
-		dir.Child[i].BitRate = child.BitRate
-		dir.Child[i].ContentType = child.ContentType
-		if !child.Starred.IsZero() {
-			dir.Child[i].Starred = &child.Starred
-		}
+	dir.Child = make([]responses.Child, len(d.Entries))
+	for i, entry := range d.Entries {
+		dir.Child[i] = c.ToChild(entry)
 	}
 	return dir
 }

@@ -7,15 +7,17 @@ import (
 	"github.com/deluan/gosonic/domain"
 )
 
+type Results []Entry
+
 type Search interface {
 	ClearAll() error
 	IndexArtist(ar *domain.Artist) error
 	IndexAlbum(al *domain.Album) error
 	IndexMediaFile(mf *domain.MediaFile) error
 
-	SearchArtist(q string, offset int, size int) (*domain.Artists, error)
-	//SearchAlbum(q string, offset int, size int) (*domain.Albums, error)
-	//SearchSong(q string, offset int, size int) (*domain.MediaFiles, error)
+	SearchArtist(q string, offset int, size int) (*Results, error)
+	SearchAlbum(q string, offset int, size int) (*Results, error)
+	SearchSong(q string, offset int, size int) (*Results, error)
 }
 
 type search struct {
@@ -59,29 +61,53 @@ func (s search) IndexMediaFile(mf *domain.MediaFile) error {
 	return s.idxSong.Index(mf.Id, strings.ToLower(mf.Title))
 }
 
-func (s search) SearchArtist(q string, offset int, size int) (*domain.Artists, error) {
+func (s search) SearchArtist(q string, offset int, size int) (*Results, error) {
 	q = strings.TrimSuffix(q, "*")
-	res, err := s.sArtist.Search(q)
+	resp, err := s.sArtist.Search(q)
 	if err != nil {
 		return nil, nil
 	}
-	as := make(domain.Artists, 0, len(res))
-	for _, id := range res {
+	res := make(Results, 0, len(resp))
+	for i, id := range resp {
 		a, err := s.artistRepo.Get(id)
 		if err != nil {
 			return nil, err
 		}
-		as = append(as, *a)
+		res[i] = Entry{Id: a.Id, Title: a.Name, IsDir: true}
 	}
-	return &as, nil
+	return &res, nil
 }
 
-//func (s search) SearchAlbum(q string, offset int, size int) (*domain.Albums, error) {
-//	q := strings.TrimSuffix(q, "*")
-//	return nil
-//}
-//
-//func (s search) SearchSong(q string, offset int, size int) (*domain.MediaFiles, error) {
-//	q := strings.TrimSuffix(q, "*")
-//	return nil
-//}
+func (s search) SearchAlbum(q string, offset int, size int) (*Results, error) {
+	q = strings.TrimSuffix(q, "*")
+	resp, err := s.sAlbum.Search(q)
+	if err != nil {
+		return nil, nil
+	}
+	res := make(Results, 0, len(resp))
+	for i, id := range resp {
+		al, err := s.albumRepo.Get(id)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = FromAlbum(al)
+	}
+	return &res, nil
+}
+
+func (s search) SearchSong(q string, offset int, size int) (*Results, error) {
+	q = strings.TrimSuffix(q, "*")
+	resp, err := s.sSong.Search(q)
+	if err != nil {
+		return nil, nil
+	}
+	res := make(Results, 0, len(resp))
+	for i, id := range resp {
+		mf, err := s.mfileRepo.Get(id)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = FromMediaFile(mf)
+	}
+	return &res, nil
+}

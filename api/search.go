@@ -29,15 +29,30 @@ func (c *SearchingController) Search2() {
 	as, err := c.search.SearchArtist(query, artistOffset, artistCount)
 	if err != nil {
 		beego.Error("Error searching for Artists:", err)
-		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
+	//als, err := c.search.SearchAlbum(query, albumOffset, albumCount)
+	//if err != nil {
+	//	beego.Error("Error searching for Albums:", err)
+	//}
+	//mfs, err := c.search.SearchSong(query, songOffset, songCount)
+	//if err != nil {
+	//	beego.Error("Error searching for MediaFiles:", err)
+	//}
 
 	response := c.NewEmpty()
 	searchResult2 := &responses.SearchResult2{}
 	searchResult2.Artist = make([]responses.Artist, len(*as))
 	for i, a := range *as {
-		searchResult2.Artist[i] = responses.Artist{Id: a.Id, Name: a.Name}
+		searchResult2.Artist[i] = responses.Artist{Id: a.Id, Name: a.Title}
 	}
+	//searchResult2.Album = make([]responses.Child, len(*as))
+	//for i, a := range *as {
+	//	searchResult2.Album[i] = responses.Child{Id: a.Id, Name: a.Name}
+	//}
+	//searchResult2.Artist = make([]responses.Artist, len(*as))
+	//for i, a := range *as {
+	//	searchResult2.Artist[i] = responses.Artist{Id: a.Id, Name: a.Name}
+	//}
 	response.SearchResult2 = searchResult2
 	c.SendResponse(response)
 }

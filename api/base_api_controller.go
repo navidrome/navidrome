@@ -7,6 +7,7 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
 )
 
@@ -69,4 +70,27 @@ func (c *BaseAPIController) SendResponse(response responses.Subsonic) {
 		c.Data["xml"] = &response
 		c.ServeXML()
 	}
+}
+
+func (c *BaseAPIController) ToChild(entry engine.Entry) responses.Child {
+	n := responses.Child{}
+	n.Id = entry.Id
+	n.Title = entry.Title
+	n.IsDir = entry.IsDir
+	n.Parent = entry.Parent
+	n.Album = entry.Album
+	n.Year = entry.Year
+	n.Artist = entry.Artist
+	n.Genre = entry.Genre
+	n.CoverArt = entry.CoverArt
+	n.Track = entry.Track
+	n.Duration = entry.Duration
+	n.Size = entry.Size
+	n.Suffix = entry.Suffix
+	n.BitRate = entry.BitRate
+	n.ContentType = entry.ContentType
+	if !entry.Starred.IsZero() {
+		n.Starred = &entry.Starred
+	}
+	return n
 }
