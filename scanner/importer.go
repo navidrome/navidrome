@@ -107,7 +107,7 @@ func (i *Importer) importLibrary() (err error) {
 			beego.Error("Error indexing artist:", err)
 		}
 		if !i.lastScan.IsZero() {
-			beego.Debug("Updated Track:", mf.Title)
+			beego.Debug("-- Updated Track:", mf.Title)
 		}
 	}
 
@@ -125,7 +125,7 @@ func (i *Importer) importLibrary() (err error) {
 			beego.Error("Error indexing artist:", err)
 		}
 		if !i.lastScan.IsZero() {
-			beego.Debug(fmt.Sprintf(`Updated Album:"%s" from "%s"`, al.Name, al.Artist))
+			beego.Debug(fmt.Sprintf(`-- Updated Album:"%s" from "%s"`, al.Name, al.Artist))
 		}
 	}
 

@@ -157,6 +157,17 @@ func (s *ItunesScanner) fullPath(pID string) string {
 	return fmt.Sprintf("%s > %s", s.fullPath(rel.parentPID), rel.name)
 }
 
+func (s *ItunesScanner) changeDate(t *itl.Track) time.Time {
+	allDates := []time.Time{t.DateModified, t.PlayDateUTC}
+	c := time.Time{}
+	for _, d := range allDates {
+		if c.Before(d) {
+			c = d
+		}
+	}
+	return c
+}
+
 func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	mf := &domain.MediaFile{}
 	mf.Id = strconv.Itoa(t.TrackID)
@@ -188,7 +199,7 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	mf.Suffix = strings.TrimPrefix(filepath.Ext(path), ".")
 
 	mf.CreatedAt = t.DateAdded
-	mf.UpdatedAt = t.DateModified
+	mf.UpdatedAt = s.changeDate(t)
 
 	if mf.UpdatedAt.After(s.lastModifiedSince) {
 		mf.HasCoverArt = hasCoverArt(path)
@@ -229,8 +240,9 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 	if al.CreatedAt.IsZero() || t.DateAdded.Before(al.CreatedAt) {
 		al.CreatedAt = t.DateAdded
 	}
-	if al.UpdatedAt.IsZero() || t.DateModified.After(al.UpdatedAt) {
-		al.UpdatedAt = t.DateModified
+	trackUpdate := s.changeDate(t)
+	if al.UpdatedAt.IsZero() || trackUpdate.After(al.UpdatedAt) {
+		al.UpdatedAt = trackUpdate
 	}
 
 	return al

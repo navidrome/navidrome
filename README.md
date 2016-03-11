@@ -1,7 +1,7 @@
 GoSonic
 =======
 
-[![Build Status](https://travis-ci.org/deluan/gosonic.svg?branch=master)](https://travis-ci.org/deluan/gosonic)
+[![Build Status](https://travis-ci.org/deluan/gosonic.svg?branch=master)](https://travis-ci.org/deluan/gosonic) [![Go Report Card](https://goreportcard.com/badge/github.com/deluan/gosonic)](https://goreportcard.com/report/github.com/deluan/gosonic)
 
 __This is still a work in progress, and has no releases available__
 
