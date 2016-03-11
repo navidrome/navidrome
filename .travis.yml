@@ -19,7 +19,7 @@ install:
   - go get github.com/deluan/gomate
 
 script:
-  - go test ./... -v
+  - go test ./...
 
 notifications:
   email:
