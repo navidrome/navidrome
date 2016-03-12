@@ -29,6 +29,8 @@ func mapEndpoints() {
 		beego.NSRouter("/stream.view", &api.StreamController{}, "*:Stream"),
 		beego.NSRouter("/download.view", &api.StreamController{}, "*:Download"),
 
+		beego.NSRouter("/scrobble.view", &api.MediaAnnotationController{}, "*:Scrobble"),
+
 		beego.NSRouter("/getAlbumList.view", &api.GetAlbumListController{}, "*:Get"),
 
 		beego.NSRouter("/getPlaylists.view", &api.PlaylistsController{}, "*:GetAll"),

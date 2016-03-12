@@ -29,13 +29,22 @@ func (c *BaseAPIController) ParamString(param string) string {
 	return c.Input().Get(param)
 }
 
-func (c *BaseAPIController) ParamTime(param string) time.Time {
+func (c *BaseAPIController) ParamTime(param string, def time.Time) time.Time {
 	var value int64
+	if c.Input().Get(param) == "" {
+		return def
+	}
 	c.Ctx.Input.Bind(&value, param)
 	return utils.ToTime(value)
 }
 
 func (c *BaseAPIController) ParamInt(param string, def int) int {
+	value := def
+	c.Ctx.Input.Bind(&value, param)
+	return value
+}
+
+func (c *BaseAPIController) ParamBool(param string, def bool) bool {
 	value := def
 	c.Ctx.Input.Bind(&value, param)
 	return value

@@ -7,6 +7,7 @@ import (
 	"github.com/deluan/gosonic/persistence"
 	"github.com/deluan/gosonic/utils"
 
+	"github.com/deluan/gosonic/itunesbridge"
 	"github.com/deluan/gosonic/scanner"
 )
 
@@ -28,14 +29,9 @@ func init() {
 	utils.DefineSingleton(new(engine.Search), engine.NewSearch)
 
 	// Other dependencies
+	utils.DefineSingleton(new(itunesbridge.ItunesControl), itunesbridge.NewItunesControl)
 	utils.DefineSingleton(new(scanner.Scanner), scanner.NewItunesScanner)
 	utils.DefineSingleton(new(gomate.DB), func() gomate.DB {
 		return gomate.NewLedisEmbeddedDB(persistence.Db())
 	})
-	//utils.DefineSingleton(new(gomate.Indexer), func() gomate.Indexer {
-	//	return gomate.NewIndexer(gomate.NewLedisEmbeddedDB(persistence.Db()))
-	//})
-	//utils.DefineSingleton(new(gomate.Searcher), func() gomate.Searcher {
-	//	return gomate.NewSearcher(gomate.NewLedisEmbeddedDB(persistence.Db()))
-	//})
 }

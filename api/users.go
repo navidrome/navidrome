@@ -11,5 +11,6 @@ func (c *UsersController) GetUser() {
 	r.User.Username = c.RequiredParamString("username", "Required string parameter 'username' is not present")
 	r.User.StreamRole = true
 	r.User.DownloadRole = true
+	r.User.ScrobblingEnabled = true
 	c.SendResponse(r)
 }

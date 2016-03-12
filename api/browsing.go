@@ -3,6 +3,8 @@ package api
 import (
 	"fmt"
 
+	"time"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/engine"
@@ -32,7 +34,7 @@ func (c *BrowsingController) GetMediaFolders() {
 
 // TODO: Shortcuts amd validate musicFolder parameter
 func (c *BrowsingController) GetIndexes() {
-	ifModifiedSince := c.ParamTime("ifModifiedSince")
+	ifModifiedSince := c.ParamTime("ifModifiedSince", time.Time{})
 
 	indexes, lastModified, err := c.browser.Indexes(ifModifiedSince)
 	if err != nil {
