@@ -193,8 +193,7 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	}
 	mf.BitRate = t.BitRate
 
-	path, _ := url.QueryUnescape(t.Location)
-	path = strings.TrimPrefix(unescape(path), "file://")
+	path := extractPath(t.Location)
 	mf.Path = path
 	mf.Suffix = strings.TrimPrefix(filepath.Ext(path), ".")
 
@@ -298,6 +297,13 @@ func hasCoverArt(path string) bool {
 
 func unescape(str string) string {
 	return html.UnescapeString(str)
+}
+
+func extractPath(loc string) string {
+	path := strings.Replace(loc, "+", "%2B", -1)
+	path, _ = url.QueryUnescape(path)
+	path = html.UnescapeString(path)
+	return strings.TrimPrefix(path, "file://")
 }
 
 func realArtistName(t *itl.Track) string {
