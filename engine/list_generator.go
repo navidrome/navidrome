@@ -54,10 +54,11 @@ func (g listGenerator) GetRandom(offset int, size int) (*domain.Albums, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := make(domain.Albums, len(*ids))
 	perm := rand.Perm(len(*ids))
+	r := make(domain.Albums, size)
 
-	for i, v := range perm {
+	for i := 0; i < size; i++ {
+		v := perm[i]
 		al, err := g.albumRepo.Get((*ids)[v])
 		if err != nil {
 			return nil, err
