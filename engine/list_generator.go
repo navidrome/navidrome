@@ -6,6 +6,7 @@ import (
 	"github.com/deluan/gosonic/domain"
 )
 
+// TODO Use Entries instead of Albums
 type ListGenerator interface {
 	GetNewest(offset int, size int) (*domain.Albums, error)
 	GetRecent(offset int, size int) (*domain.Albums, error)
