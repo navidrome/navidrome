@@ -51,21 +51,8 @@ $ go test ./... -v
 ```
 
 
-### Useful Links
+### Copying
 
-#### Frameworks/Projects
-* https://github.com/golang/go/wiki/Projects
-* https://golanglibs.com/
+GoSonic - Copyright (C) 2016  Deluan Cotts Quintao
 
-#### REST/Web
-* http://beego.me/
-
-#### DB
-* http://ledisdb.com
-
-#### Search
-* https://github.com/sunfmin/redisgosearch
-* http://patshaughnessy.net/2011/11/29/two-ways-of-using-redis-to-build-a-nosql-autocomplete-search-index
-
-#### Testing
-* http://goconvey.co/
+The source code is licensed under GPL v3. License is available [here](/LICENSE)
