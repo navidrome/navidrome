@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 
+	"time"
+
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
 	"github.com/siddontang/ledisdb/ledis"
@@ -18,6 +20,7 @@ type ledisRepository struct {
 	fieldNames    []string
 	parentTable   string
 	parentIdField string
+	indexes       map[string]string
 }
 
 func (r *ledisRepository) init(table string, entity interface{}) {
@@ -31,7 +34,24 @@ func (r *ledisRepository) init(table string, entity interface{}) {
 		r.fieldNames[i] = k
 		i++
 	}
-	r.parentTable, r.parentIdField, _ = r.getParent(entity)
+	r.parseAnnotations(entity)
+}
+
+func (r *ledisRepository) parseAnnotations(entity interface{}) {
+	r.indexes = make(map[string]string)
+	dt := reflect.TypeOf(entity).Elem()
+	for i := 0; i < dt.NumField(); i++ {
+		f := dt.Field(i)
+		table := f.Tag.Get("parent")
+		if table != "" {
+			r.parentTable = table
+			r.parentIdField = f.Name
+		}
+		idx := f.Tag.Get("idx")
+		if idx != "" {
+			r.indexes[idx] = f.Name
+		}
+	}
 }
 
 // TODO Use annotations to specify fields to be used
@@ -123,6 +143,18 @@ func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 
 	}
 
+	for idx, fn := range r.indexes {
+		idxName := fmt.Sprintf("%s:idx:%s", r.table, idx)
+		if _, err := Db().ZRem([]byte(idxName), []byte(id)); err != nil {
+			return err
+		}
+		score := calcScore(entity, fn)
+		sidx := ledis.ScorePair{score, []byte(id)}
+		if _, err = Db().ZAdd([]byte(idxName), sidx); err != nil {
+			return err
+		}
+	}
+
 	sid := ledis.ScorePair{0, []byte(id)}
 	if _, err = Db().ZAdd([]byte(allKey), sid); err != nil {
 		return err
@@ -134,28 +166,32 @@ func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 	return nil
 }
 
+func calcScore(entity interface{}, fieldName string) int64 {
+	var score int64
+
+	dv := reflect.ValueOf(entity).Elem()
+	v := dv.FieldByName(fieldName)
+
+	switch v.Interface().(type) {
+	case int:
+		score = v.Int()
+	case bool:
+		if v.Bool() {
+			score = 1
+		}
+	case time.Time:
+		score = utils.ToMillis(v.Interface().(time.Time))
+	}
+
+	return score
+}
+
 func (r *ledisRepository) getParentRelationKey(entity interface{}) string {
 	parentId := r.getParentId(entity)
 	if parentId != "" {
 		return fmt.Sprintf("%s:%s:%ss", r.parentTable, parentId, r.table)
 	}
 	return ""
-}
-
-// TODO Optimize
-func (r *ledisRepository) getParent(entity interface{}) (table string, idField string, id string) {
-	dt := reflect.TypeOf(entity).Elem()
-	for i := 0; i < dt.NumField(); i++ {
-		f := dt.Field(i)
-		table = f.Tag.Get("parent")
-		if table != "" {
-			idField = f.Name
-			dv := reflect.ValueOf(entity).Elem()
-			id = dv.FieldByName(f.Name).String()
-			return
-		}
-	}
-	return
 }
 
 func (r *ledisRepository) getParentId(entity interface{}) string {

@@ -6,13 +6,13 @@ type Album struct {
 	Id           string
 	Name         string
 	ArtistId     string `parent:"artist"`
-	CoverArtPath string // TODO http://stackoverflow.com/questions/13795842/linking-itunes-itc2-files-and-ituneslibrary-xml
+	CoverArtPath string
 	CoverArtId   string
 	Artist       string
 	AlbumArtist  string
-	Year         int
+	Year         int `idx:"Year"`
 	Compilation  bool
-	Starred      bool
+	Starred      bool `idx:"Starred"`
 	PlayCount    int
 	PlayDate     time.Time
 	Rating       int

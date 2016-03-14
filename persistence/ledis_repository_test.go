@@ -5,14 +5,20 @@ import (
 	"strconv"
 	"testing"
 
+	"time"
+
 	"github.com/deluan/gosonic/tests"
+	"github.com/deluan/gosonic/utils"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 type TestEntity struct {
 	Id       string
 	Name     string
-	ParentId string `parent:"parent"`
+	ParentId string    `parent:"parent"`
+	Year     time.Time `idx:"ByYear"`
+	Count    int       `idx:"ByCount"`
+	Flag     bool      `idx:"ByFlag"`
 }
 
 func shouldBeEqual(actualStruct interface{}, expectedStruct ...interface{}) string {
@@ -29,6 +35,55 @@ func createRepo() *ledisRepository {
 
 func TestBaseRepository(t *testing.T) {
 	tests.Init(t, false)
+
+	Convey("Subject: Annotations", t, func() {
+		repo := createRepo()
+		Convey("It should parse the parent table definition", func() {
+			So(repo.parentTable, ShouldEqual, "parent")
+			So(repo.parentIdField, ShouldEqual, "ParentId")
+		})
+		Convey("It should parse the definded indexes", func() {
+			So(repo.indexes, ShouldHaveLength, 3)
+			So(repo.indexes["ByYear"], ShouldEqual, "Year")
+			So(repo.indexes["ByFlag"], ShouldEqual, "Flag")
+			So(repo.indexes["ByCount"], ShouldEqual, "Count")
+		})
+	})
+
+	Convey("Subject: calcScore", t, func() {
+		repo := createRepo()
+
+		Convey("It should create an int score", func() {
+			def := repo.indexes["ByCount"]
+			entity := &TestEntity{Count: 10}
+			score := calcScore(entity, def)
+
+			So(score, ShouldEqual, 10)
+		})
+		Convey("It should create a boolean score", func() {
+			def := repo.indexes["ByFlag"]
+			Convey("Value false", func() {
+				entity := &TestEntity{Flag: false}
+				score := calcScore(entity, def)
+
+				So(score, ShouldEqual, 0)
+			})
+			Convey("Value true", func() {
+				entity := &TestEntity{Flag: true}
+				score := calcScore(entity, def)
+
+				So(score, ShouldEqual, 1)
+			})
+		})
+		Convey("It should create a time score", func() {
+			def := repo.indexes["ByYear"]
+			now := time.Now()
+			entity := &TestEntity{Year: now}
+			score := calcScore(entity, def)
+
+			So(score, ShouldEqual, utils.ToMillis(now))
+		})
+	})
 
 	Convey("Subject: NewId", t, func() {
 		repo := createRepo()
@@ -68,7 +123,7 @@ func TestBaseRepository(t *testing.T) {
 			repo := createRepo()
 
 			Convey("When I save a new entity and a parent", func() {
-				entity := &TestEntity{"123", "My Name", "ABC"}
+				entity := &TestEntity{Id: "123", Name: "My Name", ParentId: "ABC", Year: time.Now()}
 				err := repo.saveOrUpdate("123", entity)
 				Convey("Then saving the entity shouldn't return any errors", func() {
 					So(err, ShouldBeNil)
@@ -97,11 +152,11 @@ func TestBaseRepository(t *testing.T) {
 
 		Convey("Given a table with one entity", func() {
 			repo := createRepo()
-			entity := &TestEntity{"111", "One Name", "AAA"}
+			entity := &TestEntity{Id: "111", Name: "One Name", ParentId: "AAA"}
 			repo.saveOrUpdate(entity.Id, entity)
 
 			Convey("When I save an entity with a different Id", func() {
-				newEntity := &TestEntity{"222", "Another Name", "AAA"}
+				newEntity := &TestEntity{Id: "222", Name: "Another Name", ParentId: "AAA"}
 				repo.saveOrUpdate(newEntity.Id, newEntity)
 
 				Convey("Then the number of entities should be 2", func() {
@@ -112,7 +167,7 @@ func TestBaseRepository(t *testing.T) {
 			})
 
 			Convey("When I save an entity with the same Id", func() {
-				newEntity := &TestEntity{"111", "New Name", "AAA"}
+				newEntity := &TestEntity{Id: "111", Name: "New Name", ParentId: "AAA"}
 				repo.saveOrUpdate(newEntity.Id, newEntity)
 
 				Convey("Then the number of entities should be 1", func() {
@@ -133,7 +188,7 @@ func TestBaseRepository(t *testing.T) {
 		Convey("Given a table with 3 entities", func() {
 			repo := createRepo()
 			for i := 1; i <= 3; i++ {
-				e := &TestEntity{strconv.Itoa(i), fmt.Sprintf("Name %d", i), "AAA"}
+				e := &TestEntity{Id: strconv.Itoa(i), Name: fmt.Sprintf("Name %d", i), ParentId: "AAA"}
 				repo.saveOrUpdate(e.Id, e)
 			}
 
