@@ -10,4 +10,5 @@ unformatted=`$gofmtcmd -l $gofiles`
 
 for f in $unformatted; do
     $gofmtcmd -w -l "$f"
+    gofmt -s -w -l "$f"
 done
