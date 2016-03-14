@@ -14,8 +14,8 @@
 # ie 4D4 becomes 04, 13, 04.
 #
 
-AlbumArtwork="${HOME}/Music/iTunes/Album Artwork"
-DestinationDir="$AlbumArtwork/Images"
+AlbumArtwork="${HOME}/Music/iTunes 1/Album Artwork"
+DestinationDir="Artwork"
 IFS=$'\n'
 
 
