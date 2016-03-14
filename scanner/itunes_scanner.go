@@ -103,7 +103,7 @@ func (s *ItunesScanner) Playlists() map[string]*domain.Playlist {
 }
 
 func (s *ItunesScanner) skipTrack(t *itl.Track) bool {
-	if !strings.HasPrefix(t.Location, "file://") {
+	if !strings.HasPrefix(t.Location, "file://") || t.Podcast {
 		return true
 	}
 
@@ -115,7 +115,7 @@ func (s *ItunesScanner) skipTrack(t *itl.Track) bool {
 
 func (s *ItunesScanner) skipPlaylist(p *itl.Playlist, ignFolders bool, ignPatterns []string, fullPath string) bool {
 	// Skip all "special" iTunes playlists, and also ignored patterns
-	if p.Master || p.Music || p.Audiobooks || p.Movies || p.TVShows || p.Podcasts || (ignFolders && p.Folder) {
+	if p.Master || p.Music || p.Audiobooks || p.Movies || p.TVShows || p.Podcasts || p.ITunesU || (ignFolders && p.Folder) {
 		return true
 	}
 
