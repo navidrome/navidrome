@@ -7,7 +7,7 @@ import (
 	"github.com/deluan/gosonic/domain"
 )
 
-type Results []Entry
+type Results Entries
 
 type Search interface {
 	ClearAll() error

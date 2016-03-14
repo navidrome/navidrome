@@ -25,7 +25,7 @@ func (p playlists) GetAll() (*domain.Playlists, error) {
 type PlaylistInfo struct {
 	Id      string
 	Name    string
-	Entries []Entry
+	Entries Entries
 }
 
 func (p playlists) Get(id string) (*PlaylistInfo, error) {
@@ -39,7 +39,7 @@ func (p playlists) Get(id string) (*PlaylistInfo, error) {
 	}
 
 	pinfo := &PlaylistInfo{Id: pl.Id, Name: pl.Name}
-	pinfo.Entries = make([]Entry, len(pl.Tracks))
+	pinfo.Entries = make(Entries, len(pl.Tracks))
 
 	// TODO Optimize: Get all tracks at once
 	for i, mfId := range pl.Tracks {
