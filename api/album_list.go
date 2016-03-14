@@ -10,7 +10,7 @@ import (
 	"github.com/deluan/gosonic/utils"
 )
 
-type GetAlbumListController struct {
+type AlbumListController struct {
 	BaseAPIController
 	listGen engine.ListGenerator
 	types   map[string]strategy
@@ -18,7 +18,7 @@ type GetAlbumListController struct {
 
 type strategy func(offset int, size int) (*domain.Albums, error)
 
-func (c *GetAlbumListController) Prepare() {
+func (c *AlbumListController) Prepare() {
 	utils.ResolveDependencies(&c.listGen)
 
 	c.types = map[string]strategy{
@@ -30,12 +30,12 @@ func (c *GetAlbumListController) Prepare() {
 	}
 }
 
-func (c *GetAlbumListController) Get() {
+func (c *AlbumListController) GetAlbumList() {
 	typ := c.RequiredParamString("type", "Required string parameter 'type' is not present")
 	method, found := c.types[typ]
 
 	if !found {
-		beego.Error("getAlbumList type", typ, "not implemented!")
+		beego.Error("albumList type", typ, "not implemented!")
 		c.SendError(responses.ERROR_GENERIC, "Not implemented!")
 	}
 
@@ -68,5 +68,23 @@ func (c *GetAlbumListController) Get() {
 
 	response := c.NewEmpty()
 	response.AlbumList = &responses.AlbumList{Album: albumList}
+	c.SendResponse(response)
+}
+
+func (c *AlbumListController) GetStarred() {
+	albums, err := c.listGen.GetStarred()
+	if err != nil {
+		beego.Error("Error retrieving starred albums:", err)
+		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+	}
+
+	response := c.NewEmpty()
+	response.Starred = &responses.Starred{}
+	response.Starred.Album = make([]responses.Child, len(*albums))
+
+	for i, entry := range *albums {
+		response.Starred.Album[i] = c.ToChild(entry)
+	}
+
 	c.SendResponse(response)
 }

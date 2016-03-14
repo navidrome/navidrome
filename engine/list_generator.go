@@ -14,6 +14,7 @@ type ListGenerator interface {
 	GetFrequent(offset int, size int) (*domain.Albums, error)
 	GetHighest(offset int, size int) (*domain.Albums, error)
 	GetRandom(offset int, size int) (*domain.Albums, error)
+	GetStarred() (*Entries, error)
 }
 
 func NewListGenerator(alr domain.AlbumRepository) ListGenerator {
@@ -68,4 +69,18 @@ func (g listGenerator) GetRandom(offset int, size int) (*domain.Albums, error) {
 		r[i] = *al
 	}
 	return &r, nil
+}
+
+func (g listGenerator) GetStarred() (*Entries, error) {
+	albums, err := g.albumRepo.GetStarred(domain.QueryOptions{})
+	if err != nil {
+		return nil, err
+	}
+	entries := make(Entries, len(*albums))
+
+	for i, al := range *albums {
+		entries[i] = FromAlbum(&al)
+	}
+
+	return &entries, nil
 }

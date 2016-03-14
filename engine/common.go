@@ -26,6 +26,8 @@ type Entry struct {
 	ContentType string
 }
 
+type Entries []Entry
+
 var (
 	ErrDataNotFound = errors.New("Data Not Found")
 )

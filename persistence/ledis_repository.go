@@ -167,23 +167,25 @@ func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 }
 
 func calcScore(entity interface{}, fieldName string) int64 {
-	var score int64
-
 	dv := reflect.ValueOf(entity).Elem()
 	v := dv.FieldByName(fieldName)
 
-	switch v.Interface().(type) {
+	return toScore(v.Interface())
+}
+
+func toScore(value interface{}) int64 {
+	switch v := value.(type) {
 	case int:
-		score = v.Int()
+		return int64(v)
 	case bool:
-		if v.Bool() {
-			score = 1
+		if v {
+			return 1
 		}
 	case time.Time:
-		score = utils.ToMillis(v.Interface().(time.Time))
+		return utils.ToMillis(v)
 	}
 
-	return score
+	return 0
 }
 
 func (r *ledisRepository) getParentRelationKey(entity interface{}) string {
@@ -241,6 +243,36 @@ func (r *ledisRepository) toEntity(response [][]byte, entity interface{}) error 
 	}
 
 	return utils.ToStruct(record, entity)
+}
+
+func (r *ledisRepository) loadRange(idxName string, min interface{}, max interface{}, entities interface{}, qo ...domain.QueryOptions) error {
+	o := domain.QueryOptions{}
+	if len(qo) > 0 {
+		o = qo[0]
+	}
+	if o.Size == 0 {
+		o.Size = -1
+	}
+
+	minS := toScore(min)
+	maxS := toScore(max)
+
+	idxKey := fmt.Sprintf("%s:idx:%s", r.table, idxName)
+	resp, err := Db().ZRangeByScore([]byte(idxKey), minS, maxS, o.Offset, o.Size)
+	if err != nil {
+		return err
+	}
+
+	reflected := reflect.ValueOf(entities).Elem()
+	for _, pair := range resp {
+		e, err := r.readEntity(string(pair.Member))
+		if err != nil {
+			return err
+		}
+		reflected.Set(reflect.Append(reflected, reflect.ValueOf(e).Elem()))
+	}
+
+	return nil
 }
 
 func (r *ledisRepository) loadAll(entities interface{}, qo ...domain.QueryOptions) error {

@@ -74,4 +74,10 @@ func (r *albumRepository) PurgeInactive(active *domain.Albums) error {
 	return r.DeleteAll(inactiveIds)
 }
 
+func (r *albumRepository) GetStarred(options domain.QueryOptions) (*domain.Albums, error) {
+	var as = make(domain.Albums, 0)
+	err := r.loadRange("Starred", true, true, &as, options)
+	return &as, err
+}
+
 var _ domain.AlbumRepository = (*albumRepository)(nil)
