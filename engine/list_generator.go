@@ -4,6 +4,7 @@ import (
 	"math/rand"
 
 	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/utils"
 )
 
 // TODO Use Entries instead of Albums
@@ -54,7 +55,8 @@ func (g listGenerator) GetRandom(offset int, size int) (*domain.Albums, error) {
 	if err != nil {
 		return nil, err
 	}
-	perm := rand.Perm(len(*ids))
+	size = utils.MinInt(size, len(*ids))
+	perm := rand.Perm(size)
 	r := make(domain.Albums, size)
 
 	for i := 0; i < size; i++ {
