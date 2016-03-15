@@ -47,8 +47,7 @@ type plsRelation struct {
 }
 
 func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (int, error) {
-	beego.Info("Starting iTunes import from:", path)
-	beego.Info("Checking for updates since", lastModifiedSince.String())
+	beego.Info("Checking for updates since", lastModifiedSince.String(), "- Library:", path)
 	xml, _ := os.Open(path)
 	l, err := itl.ReadFromXML(xml)
 	if err != nil {
@@ -183,7 +182,26 @@ func (s *ItunesScanner) lastChangedDate(t *itl.Track) time.Time {
 	return c
 }
 
+func (s *ItunesScanner) hasChanged(t *itl.Track) bool {
+	id := strconv.Itoa(t.TrackID)
+	oldSum, _ := s.checksumRepo.Get(id)
+	newSum := s.newSums[id]
+	return oldSum != newSum
+}
+
+// Calc sum of stats fields (whose changes are not reflected in DataModified)
+func (s *ItunesScanner) calcCheckSum(t *itl.Track) string {
+	id := strconv.Itoa(t.TrackID)
+	data := fmt.Sprint(t.DateModified, t.PlayCount, t.PlayDate, t.ArtworkCount, t.Loved, t.AlbumLoved,
+		t.Rating, t.AlbumRating, t.SkipCount, t.SkipDate)
+	sum := fmt.Sprintf("%x", md5.Sum([]byte(data)))
+	s.newSums[id] = sum
+	return sum
+}
+
 func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
+	s.calcCheckSum(t)
+
 	mf := &domain.MediaFile{}
 	mf.Id = strconv.Itoa(t.TrackID)
 	mf.Album = unescape(t.Album)
@@ -262,14 +280,6 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 	return al
 }
 
-func (s *ItunesScanner) hasChanged(t *itl.Track) bool {
-	id := strconv.Itoa(t.TrackID)
-	oldSum, _ := s.checksumRepo.Get(id)
-	newSum := calcCheckSum(t)
-	s.newSums[id] = newSum
-	return oldSum != newSum
-}
-
 func (s *ItunesScanner) collectArtists(t *itl.Track) *domain.Artist {
 	id := artistId(t)
 	_, found := s.artists[id]
@@ -338,14 +348,6 @@ func realArtistName(t *itl.Track) string {
 	}
 
 	return t.Artist
-}
-
-// Calc sum of stats fields (whose changes are not reflected in DataModified)
-func calcCheckSum(t *itl.Track) string {
-	data := fmt.Sprint(t.DateModified, t.PlayCount, t.PlayDate, t.ArtworkCount, t.Loved, t.AlbumLoved,
-		t.Rating, t.AlbumRating, t.SkipCount, t.SkipDate)
-	return fmt.Sprintf("%x", md5.Sum([]byte(data)))
-
 }
 
 var _ Scanner = (*ItunesScanner)(nil)

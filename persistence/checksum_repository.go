@@ -32,6 +32,7 @@ func (r *checkSumRepository) loadData() {
 	for _, p := range pairs {
 		r.data[string(p.Field)] = string(p.Value)
 	}
+	beego.Debug("Loaded", len(r.data), "checksums")
 }
 
 func (r *checkSumRepository) Put(id, sum string) error {

@@ -13,6 +13,6 @@ func main() {
 	if beego.BConfig.RunMode == "prod" {
 		beego.SetLevel(beego.LevelInformational)
 	}
-	beego.BConfig.Log.FileLineNum = false
+	//beego.BConfig.Log.FileLineNum = false
 	beego.Run()
 }
