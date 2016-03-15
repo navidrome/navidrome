@@ -3,18 +3,15 @@ package scanner
 import (
 	"crypto/md5"
 	"fmt"
+	"html"
+	"mime"
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"html"
-
-	"regexp"
-
-	"mime"
 
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/domain"
@@ -29,10 +26,18 @@ type ItunesScanner struct {
 	playlists         map[string]*domain.Playlist
 	pplaylists        map[string]plsRelation
 	lastModifiedSince time.Time
+	checksumRepo      CheckSumRepository
+	newSums           map[string]string
 }
 
-func NewItunesScanner() *ItunesScanner {
-	return &ItunesScanner{}
+func NewItunesScanner(checksumRepo CheckSumRepository) *ItunesScanner {
+	return &ItunesScanner{checksumRepo: checksumRepo}
+}
+
+type CheckSumRepository interface {
+	Put(id, sum string) error
+	Get(id string) (string, error)
+	SetData(newSums map[string]string) error
 }
 
 type plsRelation struct {
@@ -57,6 +62,7 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 	s.artists = make(map[string]*domain.Artist)
 	s.playlists = make(map[string]*domain.Playlist)
 	s.pplaylists = make(map[string]plsRelation)
+	s.newSums = make(map[string]string)
 
 	i := 0
 	for _, t := range l.Tracks {
@@ -69,6 +75,12 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 		if i%1000 == 0 {
 			beego.Debug("Processed", i, "tracks.", len(s.artists), "artists,", len(s.albums), "albums", len(s.mediaFiles), "songs")
 		}
+	}
+
+	if err := s.checksumRepo.SetData(s.newSums); err != nil {
+		beego.Error("Error saving checksums:", err)
+	} else {
+		beego.Debug("Saved", len(s.newSums), "checksums")
 	}
 
 	ignFolders, _ := beego.AppConfig.Bool("plsIgnoreFolders")
@@ -158,6 +170,9 @@ func (s *ItunesScanner) fullPath(pID string) string {
 }
 
 func (s *ItunesScanner) lastChangedDate(t *itl.Track) time.Time {
+	if s.hasChanged(t) {
+		return time.Now()
+	}
 	allDates := []time.Time{t.DateModified, t.PlayDateUTC}
 	c := time.Time{}
 	for _, d := range allDates {
@@ -247,6 +262,14 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 	return al
 }
 
+func (s *ItunesScanner) hasChanged(t *itl.Track) bool {
+	id := strconv.Itoa(t.TrackID)
+	oldSum, _ := s.checksumRepo.Get(id)
+	newSum := calcCheckSum(t)
+	s.newSums[id] = newSum
+	return oldSum != newSum
+}
+
 func (s *ItunesScanner) collectArtists(t *itl.Track) *domain.Artist {
 	id := artistId(t)
 	_, found := s.artists[id]
@@ -315,6 +338,14 @@ func realArtistName(t *itl.Track) string {
 	}
 
 	return t.Artist
+}
+
+// Calc sum of stats fields (whose changes are not reflected in DataModified)
+func calcCheckSum(t *itl.Track) string {
+	data := fmt.Sprint(t.DateModified, t.PlayCount, t.PlayDate, t.ArtworkCount, t.Loved, t.AlbumLoved,
+		t.Rating, t.AlbumRating, t.SkipCount, t.SkipDate)
+	return fmt.Sprintf("%x", md5.Sum([]byte(data)))
+
 }
 
 var _ Scanner = (*ItunesScanner)(nil)

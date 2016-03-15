@@ -28,9 +28,11 @@ func init() {
 	utils.DefineSingleton(new(engine.Playlists), engine.NewPlaylists)
 	utils.DefineSingleton(new(engine.Search), engine.NewSearch)
 
+	utils.DefineSingleton(new(scanner.CheckSumRepository), persistence.NewCheckSumRepository)
+	utils.DefineSingleton(new(scanner.Scanner), scanner.NewItunesScanner)
+
 	// Other dependencies
 	utils.DefineSingleton(new(itunesbridge.ItunesControl), itunesbridge.NewItunesControl)
-	utils.DefineSingleton(new(scanner.Scanner), scanner.NewItunesScanner)
 	utils.DefineSingleton(new(gomate.DB), func() gomate.DB {
 		return gomate.NewLedisEmbeddedDB(persistence.Db())
 	})
