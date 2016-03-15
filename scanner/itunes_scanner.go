@@ -47,7 +47,7 @@ type plsRelation struct {
 }
 
 func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (int, error) {
-	beego.Info("Checking for updates since", lastModifiedSince.String(), "- Library:", path)
+	beego.Debug("Checking for updates since", lastModifiedSince.String(), "- Library:", path)
 	xml, _ := os.Open(path)
 	l, err := itl.ReadFromXML(xml)
 	if err != nil {

@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"strings"
 
+	"fmt"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 )
@@ -14,7 +16,7 @@ type ControllerInterface interface {
 	SendError(errorCode int, message ...interface{})
 }
 
-func Validate(controller ControllerInterface) {
+func Validate(controller BaseAPIController) {
 	if beego.AppConfig.String("disableValidation") != "true" {
 		checkParameters(controller)
 		authenticate(controller)
@@ -22,18 +24,18 @@ func Validate(controller ControllerInterface) {
 	}
 }
 
-func checkParameters(c ControllerInterface) {
+func checkParameters(c BaseAPIController) {
 	requiredParameters := []string{"u", "p", "v", "c"}
 
 	for _, p := range requiredParameters {
 		if c.GetString(p) == "" {
-			beego.Warn("Missing required parameter:", p)
+			logWarn(c, fmt.Sprintf(`Missing required parameter "%s"`, p))
 			abortRequest(c, responses.ERROR_MISSING_PARAMETER)
 		}
 	}
 }
 
-func authenticate(c ControllerInterface) {
+func authenticate(c BaseAPIController) {
 	user := c.GetString("u")
 	pass := c.GetString("p")
 	if strings.HasPrefix(pass, "enc:") {
@@ -43,11 +45,15 @@ func authenticate(c ControllerInterface) {
 		}
 	}
 	if user != beego.AppConfig.String("user") || pass != beego.AppConfig.String("password") {
-		beego.Warn("Invalid login:", user)
+		logWarn(c, fmt.Sprintf(`Invalid login for user "%s"`, user))
 		abortRequest(c, responses.ERROR_AUTHENTICATION_FAIL)
 	}
 }
 
-func abortRequest(c ControllerInterface, code int) {
+func abortRequest(c BaseAPIController, code int) {
 	c.SendError(code)
+}
+
+func logWarn(c BaseAPIController, msg string) {
+	beego.Warn(fmt.Sprintf("%s?%s: %s", c.Ctx.Request.URL.Path, c.Ctx.Request.URL.RawQuery, msg))
 }

@@ -52,7 +52,7 @@ func mapControllers() {
 
 func mapFilters() {
 	var ValidateRequest = func(ctx *context.Context) {
-		c := &api.BaseAPIController{}
+		c := api.BaseAPIController{}
 		c.Ctx = ctx
 		api.Validate(c)
 	}

@@ -102,7 +102,7 @@ func (i *Importer) Run() {
 	if err := i.importLibrary(); err != nil {
 		beego.Error("Error persisting data:", err)
 	}
-	beego.Info("Finished importing tracks from iTunes Library")
+	beego.Debug("Finished importing tracks from iTunes Library")
 }
 
 func (i *Importer) lastModifiedSince() time.Time {
@@ -126,6 +126,12 @@ func (i *Importer) importLibrary() (err error) {
 	als := make(domain.Albums, len(i.scanner.Albums()))
 	ars := make(domain.Artists, len(i.scanner.Artists()))
 	pls := make(domain.Playlists, len(i.scanner.Playlists()))
+	arc, _ := i.artistRepo.CountAll()
+	alc, _ := i.albumRepo.CountAll()
+	mfc, _ := i.mfRepo.CountAll()
+	plc, _ := i.plsRepo.CountAll()
+	alu := 0
+	mfu := 0
 
 	i.search.ClearAll()
 
@@ -143,6 +149,7 @@ func (i *Importer) importLibrary() (err error) {
 		if err := i.search.IndexMediaFile(mf); err != nil {
 			beego.Error("Error indexing artist:", err)
 		}
+		mfu++
 		if !i.lastScan.IsZero() {
 			beego.Debug("-- Updated Track:", mf.Title)
 		}
@@ -161,6 +168,7 @@ func (i *Importer) importLibrary() (err error) {
 		if err := i.search.IndexAlbum(al); err != nil {
 			beego.Error("Error indexing artist:", err)
 		}
+		alu++
 		if !i.lastScan.IsZero() {
 			beego.Debug(fmt.Sprintf(`-- Updated Album:"%s" from "%s"`, al.Name, al.Artist))
 		}
@@ -206,19 +214,22 @@ func (i *Importer) importLibrary() (err error) {
 		beego.Error(err)
 	}
 
-	c, _ := i.artistRepo.CountAll()
-	beego.Info("Total Artists in database:", c)
-	c, _ = i.albumRepo.CountAll()
-	beego.Info("Total Albums in database:", c)
-	c, _ = i.mfRepo.CountAll()
-	beego.Info("Total MediaFiles in database:", c)
-	c, _ = i.plsRepo.CountAll()
-	beego.Info("Total Playlists in database:", c)
+	arc2, _ := i.artistRepo.CountAll()
+	alc2, _ := i.albumRepo.CountAll()
+	mfc2, _ := i.mfRepo.CountAll()
+	plc2, _ := i.plsRepo.CountAll()
+
+	if arc != arc2 || alc != alc2 || mfc != mfc2 || plc != plc2 {
+		beego.Info(fmt.Sprintf("Updated library totals: %d(%+d) artists, %d(%+d) albums, %d(%+d) songs, %d(%+d) playlists", arc2, arc2-arc, alc2, alc2-alc, mfc2, mfc2-mfc, plc2, plc2-plc))
+	}
+	if alu > 0 || mfu > 0 {
+		beego.Info(fmt.Sprintf("Updated items: %d album(s), %d song(s)", alu, mfu))
+	}
 
 	if err == nil {
 		millis := time.Now().UnixNano() / int64(time.Millisecond)
 		i.propertyRepo.Put(consts.LastScan, fmt.Sprint(millis))
-		beego.Info("LastScan timestamp:", millis)
+		beego.Debug("LastScan timestamp:", millis)
 	}
 
 	return err
