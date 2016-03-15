@@ -5,6 +5,7 @@ import (
 
 	"github.com/deluan/gomate"
 	"github.com/deluan/gosonic/domain"
+	"github.com/kennygrant/sanitize"
 )
 
 type Results Entries
@@ -50,19 +51,19 @@ func (s search) ClearAll() error {
 }
 
 func (s search) IndexArtist(ar *domain.Artist) error {
-	return s.idxArtist.Index(ar.Id, strings.ToLower(ar.Name))
+	return s.idxArtist.Index(ar.Id, sanitize.Accents(strings.ToLower(ar.Name)))
 }
 
 func (s search) IndexAlbum(al *domain.Album) error {
-	return s.idxAlbum.Index(al.Id, strings.ToLower(al.Name))
+	return s.idxAlbum.Index(al.Id, sanitize.Accents(strings.ToLower(al.Name)))
 }
 
 func (s search) IndexMediaFile(mf *domain.MediaFile) error {
-	return s.idxSong.Index(mf.Id, strings.ToLower(mf.Title))
+	return s.idxSong.Index(mf.Id, sanitize.Accents(strings.ToLower(mf.Title)))
 }
 
 func (s search) SearchArtist(q string, offset int, size int) (*Results, error) {
-	q = strings.ToLower(strings.TrimSuffix(q, "*"))
+	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
 	resp, err := s.sArtist.Search(q, min, max)
@@ -81,7 +82,7 @@ func (s search) SearchArtist(q string, offset int, size int) (*Results, error) {
 }
 
 func (s search) SearchAlbum(q string, offset int, size int) (*Results, error) {
-	q = strings.ToLower(strings.TrimSuffix(q, "*"))
+	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
 	resp, err := s.sAlbum.Search(q, min, max)
@@ -100,7 +101,7 @@ func (s search) SearchAlbum(q string, offset int, size int) (*Results, error) {
 }
 
 func (s search) SearchSong(q string, offset int, size int) (*Results, error) {
-	q = strings.ToLower(strings.TrimSuffix(q, "*"))
+	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
 	resp, err := s.sSong.Search(q, min, max)
