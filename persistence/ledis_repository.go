@@ -82,7 +82,7 @@ func (r *ledisRepository) DeleteAll(ids map[string]bool) error {
 	keys := make([][]byte, len(ids))
 
 	i := 0
-	for id, _ := range ids {
+	for id := range ids {
 		// Delete from parent:parentId:table (ZSet)
 		if r.parentTable != "" {
 			parentKey := []byte(fmt.Sprintf("%s:%s:%s", r.table, id, r.parentIdField))
@@ -183,6 +183,8 @@ func toScore(value interface{}) int64 {
 		}
 	case time.Time:
 		return utils.ToMillis(v)
+	default:
+		panic("Not implemented")
 	}
 
 	return 0
