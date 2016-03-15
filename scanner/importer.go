@@ -33,7 +33,10 @@ var (
 
 func init() {
 	inProgress = make(chan int)
-	startImport()
+	go func() {
+		time.Sleep(5 * time.Second)
+		startImport()
+	}()
 }
 
 func CheckForUpdates(force bool) {
@@ -87,6 +90,10 @@ type Importer struct {
 func (i *Importer) Run() {
 	i.lastScan = i.lastModifiedSince()
 
+	if i.lastScan.IsZero() {
+		beego.Info("Starting first iTunes Library scan. This can take a while...")
+	}
+
 	total, err := i.scanner.ScanLibrary(i.lastScan, i.mediaFolder)
 	if err != nil {
 		beego.Error("Error importing iTunes Library:", err)
@@ -102,7 +109,11 @@ func (i *Importer) Run() {
 	if err := i.importLibrary(); err != nil {
 		beego.Error("Error persisting data:", err)
 	}
-	beego.Debug("Finished importing tracks from iTunes Library")
+	if i.lastScan.IsZero() {
+		beego.Info("Finished first iTunes Library import")
+	} else {
+		beego.Debug("Finished updating tracks from iTunes Library")
+	}
 }
 
 func (i *Importer) lastModifiedSince() time.Time {
