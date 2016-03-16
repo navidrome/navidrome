@@ -6,16 +6,16 @@ import (
 )
 
 type ItunesControl interface {
-	Scrobble(id string, playDate time.Time) error
+	MarkAsPlayed(id string, playDate time.Time) error
 }
 
 func NewItunesControl() ItunesControl {
-	return itunesControl{}
+	return &itunesControl{}
 }
 
 type itunesControl struct{}
 
-func (c itunesControl) Scrobble(id string, playDate time.Time) error {
+func (c *itunesControl) MarkAsPlayed(id string, playDate time.Time) error {
 	script := Script{fmt.Sprintf(
 		`set theTrack to the first item of (every track whose database ID is equal to "%s")`, id),
 		`set c to (get played count of theTrack)`,
@@ -26,6 +26,6 @@ func (c itunesControl) Scrobble(id string, playDate time.Time) error {
 	return script.Run()
 }
 
-func (c itunesControl) formatDateTime(d time.Time) string {
+func (c *itunesControl) formatDateTime(d time.Time) string {
 	return d.Format("Jan _2, 2006 3:04PM")
 }

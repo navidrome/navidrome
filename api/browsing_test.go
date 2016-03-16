@@ -7,8 +7,8 @@ import (
 	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
+	"github.com/deluan/gosonic/persistence"
 	. "github.com/deluan/gosonic/tests"
-	"github.com/deluan/gosonic/tests/mocks"
 	"github.com/deluan/gosonic/utils"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -35,11 +35,11 @@ const (
 func TestGetIndexes(t *testing.T) {
 	Init(t, false)
 
-	mockRepo := mocks.CreateMockArtistIndexRepo()
+	mockRepo := persistence.CreateMockArtistIndexRepo()
 	utils.DefineSingleton(new(domain.ArtistIndexRepository), func() domain.ArtistIndexRepository {
 		return mockRepo
 	})
-	propRepo := mocks.CreateMockPropertyRepo()
+	propRepo := engine.CreateMockPropertyRepo()
 	utils.DefineSingleton(new(engine.PropertyRepository), func() engine.PropertyRepository {
 		return propRepo
 	})
@@ -116,15 +116,15 @@ func TestGetIndexes(t *testing.T) {
 func TestGetMusicDirectory(t *testing.T) {
 	Init(t, false)
 
-	mockArtistRepo := mocks.CreateMockArtistRepo()
+	mockArtistRepo := persistence.CreateMockArtistRepo()
 	utils.DefineSingleton(new(domain.ArtistRepository), func() domain.ArtistRepository {
 		return mockArtistRepo
 	})
-	mockAlbumRepo := mocks.CreateMockAlbumRepo()
+	mockAlbumRepo := persistence.CreateMockAlbumRepo()
 	utils.DefineSingleton(new(domain.AlbumRepository), func() domain.AlbumRepository {
 		return mockAlbumRepo
 	})
-	mockMediaFileRepo := mocks.CreateMockMediaFileRepo()
+	mockMediaFileRepo := persistence.CreateMockMediaFileRepo()
 	utils.DefineSingleton(new(domain.MediaFileRepository), func() domain.MediaFileRepository {
 		return mockMediaFileRepo
 	})

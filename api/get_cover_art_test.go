@@ -10,8 +10,8 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/persistence"
 	. "github.com/deluan/gosonic/tests"
-	"github.com/deluan/gosonic/tests/mocks"
 	"github.com/deluan/gosonic/utils"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -28,7 +28,7 @@ func getCoverArt(params ...string) (*http.Request, *httptest.ResponseRecorder) {
 func TestGetCoverArt(t *testing.T) {
 	Init(t, false)
 
-	mockMediaFileRepo := mocks.CreateMockMediaFileRepo()
+	mockMediaFileRepo := persistence.CreateMockMediaFileRepo()
 	utils.DefineSingleton(new(domain.MediaFileRepository), func() domain.MediaFileRepository {
 		return mockMediaFileRepo
 	})

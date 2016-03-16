@@ -27,6 +27,7 @@ func init() {
 	utils.DefineSingleton(new(engine.Cover), engine.NewCover)
 	utils.DefineSingleton(new(engine.Playlists), engine.NewPlaylists)
 	utils.DefineSingleton(new(engine.Search), engine.NewSearch)
+	utils.DefineSingleton(new(engine.Scrobbler), engine.NewScrobbler)
 
 	utils.DefineSingleton(new(scanner.CheckSumRepository), persistence.NewCheckSumRepository)
 	utils.DefineSingleton(new(scanner.Scanner), scanner.NewItunesScanner)

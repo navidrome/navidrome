@@ -3,16 +3,17 @@ package api_test
 import (
 	"testing"
 
-	"github.com/deluan/gosonic/api/responses"
-	"github.com/deluan/gosonic/domain"
-	. "github.com/deluan/gosonic/tests"
-	"github.com/deluan/gosonic/tests/mocks"
-	"github.com/deluan/gosonic/utils"
-	. "github.com/smartystreets/goconvey/convey"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+
 	"github.com/astaxie/beego"
-	"fmt"
+	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/persistence"
+	. "github.com/deluan/gosonic/tests"
+	"github.com/deluan/gosonic/utils"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func stream(params ...string) (*http.Request, *httptest.ResponseRecorder) {
@@ -27,7 +28,7 @@ func stream(params ...string) (*http.Request, *httptest.ResponseRecorder) {
 func TestStream(t *testing.T) {
 	Init(t, false)
 
-	mockMediaFileRepo := mocks.CreateMockMediaFileRepo()
+	mockMediaFileRepo := persistence.CreateMockMediaFileRepo()
 	utils.DefineSingleton(new(domain.MediaFileRepository), func() domain.MediaFileRepository {
 		return mockMediaFileRepo
 	})

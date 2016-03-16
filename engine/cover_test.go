@@ -7,15 +7,15 @@ import (
 	"image"
 
 	"github.com/deluan/gosonic/engine"
+	"github.com/deluan/gosonic/persistence"
 	. "github.com/deluan/gosonic/tests"
-	"github.com/deluan/gosonic/tests/mocks"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestCover(t *testing.T) {
 	Init(t, false)
 
-	mockMediaFileRepo := mocks.CreateMockMediaFileRepo()
+	mockMediaFileRepo := persistence.CreateMockMediaFileRepo()
 
 	cover := engine.NewCover(mockMediaFileRepo)
 	out := new(bytes.Buffer)

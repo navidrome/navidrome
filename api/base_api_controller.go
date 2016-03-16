@@ -46,6 +46,9 @@ func (c *BaseAPIController) ParamInt(param string, def int) int {
 
 func (c *BaseAPIController) ParamBool(param string, def bool) bool {
 	value := def
+	if c.Input().Get(param) == "" {
+		return def
+	}
 	c.Ctx.Input.Bind(&value, param)
 	return value
 }

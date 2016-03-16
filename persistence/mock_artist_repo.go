@@ -1,4 +1,4 @@
-package mocks
+package persistence
 
 import (
 	"encoding/json"

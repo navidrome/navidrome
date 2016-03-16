@@ -1,9 +1,7 @@
-package mocks
+package engine
 
 import (
 	"errors"
-
-	"github.com/deluan/gosonic/engine"
 )
 
 func CreateMockPropertyRepo() *MockProperty {
@@ -11,7 +9,7 @@ func CreateMockPropertyRepo() *MockProperty {
 }
 
 type MockProperty struct {
-	engine.PropertyRepository
+	PropertyRepository
 	data map[string]string
 	err  bool
 }
