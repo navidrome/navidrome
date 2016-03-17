@@ -144,8 +144,8 @@ func (i *Importer) importLibrary() (err error) {
 	alu := 0
 	mfu := 0
 
-	i.search.ClearAll()
-
+	//i.search.ClearAll()
+	//
 	beego.Debug("Saving updated data")
 	j := 0
 	for _, mf := range i.scanner.MediaFiles() {
