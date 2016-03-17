@@ -29,7 +29,7 @@ func (c *MediaAnnotationController) Scrobble() {
 	username := c.ParamString("u")
 
 	skip, err := c.scrobbler.DetectSkipped(playerId, id, submission)
-	if err {
+	if err != nil {
 		beego.Error("Error detecting skip:", err)
 	}
 	if skip {
