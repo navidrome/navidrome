@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	keyName = []byte("checksums")
+	checkSumKeyName = []byte("checksums")
 )
 
 type checkSumRepository struct {
@@ -25,7 +25,7 @@ func NewCheckSumRepository() scanner.CheckSumRepository {
 func (r *checkSumRepository) loadData() {
 	r.data = make(map[string]string)
 
-	pairs, err := Db().HGetAll(keyName)
+	pairs, err := Db().HGetAll(checkSumKeyName)
 	if err != nil {
 		beego.Error("Error loading CheckSums:", err)
 	}
@@ -39,7 +39,7 @@ func (r *checkSumRepository) Put(id, sum string) error {
 	if id == "" {
 		return errors.New("Id is required")
 	}
-	_, err := Db().HSet(keyName, []byte(id), []byte(sum))
+	_, err := Db().HSet(checkSumKeyName, []byte(id), []byte(sum))
 	return err
 }
 
@@ -48,7 +48,7 @@ func (r *checkSumRepository) Get(id string) (string, error) {
 }
 
 func (r *checkSumRepository) SetData(newSums map[string]string) error {
-	Db().HClear(keyName)
+	Db().HClear(checkSumKeyName)
 	pairs := make([]ledis.FVPair, len(newSums))
 	r.data = make(map[string]string)
 	i := 0
@@ -58,5 +58,5 @@ func (r *checkSumRepository) SetData(newSums map[string]string) error {
 		r.data[id] = sum
 		i++
 	}
-	return Db().HMset(keyName, pairs...)
+	return Db().HMset(checkSumKeyName, pairs...)
 }

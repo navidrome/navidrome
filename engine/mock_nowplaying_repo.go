@@ -11,8 +11,9 @@ func CreateMockNowPlayingRepo() *MockNowPlaying {
 
 type MockNowPlaying struct {
 	NowPlayingRepository
-	data map[string]time.Time
-	err  bool
+	id    string
+	start time.Time
+	err   bool
 }
 
 func (m *MockNowPlaying) SetError(err bool) {
@@ -23,6 +24,7 @@ func (m *MockNowPlaying) Add(id string) error {
 	if m.err {
 		return errors.New("Error!")
 	}
-	m.data[id] = time.Now()
+	m.id = id
+	m.start = time.Now()
 	return nil
 }

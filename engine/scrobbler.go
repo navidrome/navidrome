@@ -11,10 +11,11 @@ import (
 
 type Scrobbler interface {
 	Register(id string, playDate time.Time) (*domain.MediaFile, error)
+	NowPlaying(id string) (*domain.MediaFile, error)
 }
 
 func NewScrobbler(itunes itunesbridge.ItunesControl, mr domain.MediaFileRepository, npr NowPlayingRepository) Scrobbler {
-	return scrobbler{itunes, mr, npr}
+	return &scrobbler{itunes, mr, npr}
 }
 
 type scrobbler struct {
@@ -23,7 +24,7 @@ type scrobbler struct {
 	npRepo NowPlayingRepository
 }
 
-func (s scrobbler) Register(id string, playDate time.Time) (*domain.MediaFile, error) {
+func (s *scrobbler) Register(id string, playDate time.Time) (*domain.MediaFile, error) {
 	mf, err := s.mfRepo.Get(id)
 	if err != nil {
 		return nil, err
@@ -37,4 +38,8 @@ func (s scrobbler) Register(id string, playDate time.Time) (*domain.MediaFile, e
 		return nil, err
 	}
 	return mf, nil
+}
+
+func (s *scrobbler) NowPlaying(id string) (*domain.MediaFile, error) {
+	return nil, errors.New("Not implemented")
 }
