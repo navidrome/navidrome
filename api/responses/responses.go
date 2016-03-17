@@ -141,10 +141,10 @@ type Starred struct {
 
 type NowPlayingEntry struct {
 	Child
-	UserName   string `xml:"username"                      json:"username,omitempty"`
-	MinutesAgo int    `xml:"minutesAgo"                    json:"minutesAgo,omitempty"`
-	PlayerId   int    `xml:"playerId"                      json:"playerId,omitempty"`
-	PlayerName string `xml:"playerName"                    json:"playerName,omitempty"`
+	UserName   string `xml:"username,attr"                  json:"username,omitempty"`
+	MinutesAgo int    `xml:"minutesAgo,attr"                json:"minutesAgo,omitempty"`
+	PlayerId   int    `xml:"playerId,attr"                  json:"playerId,omitempty"`
+	PlayerName string `xml:"playerName,attr"                json:"playerName,omitempty"`
 }
 
 type NowPlaying struct {

@@ -24,8 +24,8 @@ func (c *MediaAnnotationController) Scrobble() {
 	time := c.ParamTime("time", time.Now())
 	submission := c.ParamBool("submission", false)
 
-	playerName := c.Data["c"].(string)
-	username := c.Data["u"].(string)
+	playerName := c.ParamString("c")
+	username := c.ParamString("u")
 
 	if submission {
 		mf, err := c.scrobbler.Register(id, time)

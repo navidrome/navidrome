@@ -90,8 +90,21 @@ func (c *AlbumListController) GetStarred() {
 }
 
 func (c *AlbumListController) GetNowPlaying() {
+	npInfos, err := c.listGen.GetNowPlaying()
+	if err != nil {
+		beego.Error("Error retrieving now playing list:", err)
+		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+	}
+
 	response := c.NewEmpty()
 	response.NowPlaying = &responses.NowPlaying{}
-	//response.NowPlaying.Entry = make([]responses.NowPlayingEntry, 1)
+	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(*npInfos))
+	for i, entry := range *npInfos {
+		response.NowPlaying.Entry[i].Child = c.ToChild(entry)
+		response.NowPlaying.Entry[i].UserName = entry.UserName
+		response.NowPlaying.Entry[i].MinutesAgo = entry.MinutesAgo
+		response.NowPlaying.Entry[i].PlayerId = entry.PlayerId
+		response.NowPlaying.Entry[i].PlayerName = entry.PlayerName
+	}
 	c.SendResponse(response)
 }

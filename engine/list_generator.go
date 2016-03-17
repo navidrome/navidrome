@@ -4,10 +4,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
-	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 // TODO Use Entries instead of Albums
@@ -103,11 +101,11 @@ func (g listGenerator) GetNowPlaying() (*Entries, error) {
 			return nil, err
 		}
 		entries[i] = FromMediaFile(mf)
-		entries[i].UserName = beego.AppConfig.String("user")
+		entries[i].UserName = np.Username
 		entries[i].MinutesAgo = int(time.Now().Sub(np.Start).Minutes())
 		entries[i].PlayerId = np.PlayerId
 		entries[i].PlayerName = np.PlayerName
 
 	}
-	return &entries, errors.New("Not implemented")
+	return &entries, nil
 }

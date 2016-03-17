@@ -40,6 +40,9 @@ func (r *nowPlayingRepository) GetAll() (*[]engine.NowPlayingInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	if val == nil {
+		return &[]engine.NowPlayingInfo{}, nil
+	}
 	info := &engine.NowPlayingInfo{}
 	err = json.Unmarshal(val, info)
 
