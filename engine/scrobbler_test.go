@@ -53,6 +53,29 @@ func TestScrobbler(t *testing.T) {
 			})
 		})
 
+		Convey("When I inform the song that is now playing", func() {
+			mf, err := scrobbler.NowPlaying("2")
+
+			Convey("Then I get the song for that id back", func() {
+				So(err, ShouldBeNil)
+				So(mf.Title, ShouldEqual, "Hands Of Time")
+			})
+
+			Convey("And it saves the song as the one current playing", func() {
+				id, start := npRepo.Current()
+				So(id, ShouldEqual, "2")
+				So(start, ShouldHappenBefore, time.Now())
+			})
+
+			Convey("And iTunes is not notified", func() {
+				So(itCtrl.played, ShouldNotContainKey, "2")
+			})
+		})
+
+		Reset(func() {
+			itCtrl.played = make(map[string]time.Time)
+		})
+
 	})
 
 }

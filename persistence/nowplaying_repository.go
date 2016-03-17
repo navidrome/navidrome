@@ -22,7 +22,7 @@ func NewNowPlayingRepository() engine.NowPlayingRepository {
 	return r
 }
 
-func (r *nowPlayingRepository) Add(id string) error {
+func (r *nowPlayingRepository) Set(id string) error {
 	if id == "" {
 		return errors.New("Id is required")
 	}
@@ -32,12 +32,7 @@ func (r *nowPlayingRepository) Add(id string) error {
 	if err != nil {
 		return err
 	}
-	err = Db().Set(nowPlayingKeyName, []byte(h))
-	if err != nil {
-		return err
-	}
-	_, err = Db().Expire(nowPlayingKeyName, int64(engine.NowPlayingExpire.Seconds()))
-	return err
+	return Db().SetEX(nowPlayingKeyName, int64(engine.NowPlayingExpire.Seconds()), []byte(h))
 }
 
 var _ engine.NowPlayingRepository = (*nowPlayingRepository)(nil)

@@ -41,5 +41,14 @@ func (s *scrobbler) Register(id string, playDate time.Time) (*domain.MediaFile, 
 }
 
 func (s *scrobbler) NowPlaying(id string) (*domain.MediaFile, error) {
-	return nil, errors.New("Not implemented")
+	mf, err := s.mfRepo.Get(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if mf == nil {
+		return nil, errors.New(fmt.Sprintf(`Id "%s" not found`, id))
+	}
+
+	return mf, s.npRepo.Set(id)
 }

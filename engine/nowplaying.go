@@ -10,5 +10,5 @@ type NowPlayingInfo struct {
 }
 
 type NowPlayingRepository interface {
-	Add(trackId string) error
+	Set(trackId string) error
 }
