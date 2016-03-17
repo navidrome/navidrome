@@ -151,14 +151,14 @@ func (i *Importer) importLibrary() (err error) {
 	for _, mf := range i.scanner.MediaFiles() {
 		mfs[j] = *mf
 		j++
-		if err := i.search.IndexMediaFile(mf); err != nil {
-			beego.Error("Error indexing artist:", err)
-		}
 		if mf.UpdatedAt.Before(i.lastScan) {
 			continue
 		}
 		if err := i.mfRepo.Put(mf); err != nil {
 			beego.Error(err)
+		}
+		if err := i.search.IndexMediaFile(mf); err != nil {
+			beego.Error("Error indexing artist:", err)
 		}
 		mfu++
 		if !i.lastScan.IsZero() {
@@ -170,14 +170,14 @@ func (i *Importer) importLibrary() (err error) {
 	for _, al := range i.scanner.Albums() {
 		als[j] = *al
 		j++
-		if err := i.search.IndexAlbum(al); err != nil {
-			beego.Error("Error indexing artist:", err)
-		}
 		if al.UpdatedAt.Before(i.lastScan) {
 			continue
 		}
 		if err := i.albumRepo.Put(al); err != nil {
 			beego.Error(err)
+		}
+		if err := i.search.IndexAlbum(al); err != nil {
+			beego.Error("Error indexing artist:", err)
 		}
 		alu++
 		if !i.lastScan.IsZero() {
