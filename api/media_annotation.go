@@ -24,7 +24,7 @@ func (c *MediaAnnotationController) Scrobble() {
 	time := c.ParamTime("time", time.Now())
 	submission := c.ParamBool("submission", false)
 	if submission {
-		mf, err := c.scrobbler.Register(id, time, true)
+		mf, err := c.scrobbler.Register(id, time)
 		if err != nil {
 			beego.Error("Error scrobbling:", err)
 			c.SendError(responses.ERROR_GENERIC, "Internal error")

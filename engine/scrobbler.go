@@ -10,7 +10,7 @@ import (
 )
 
 type Scrobbler interface {
-	Register(id string, playDate time.Time, submit bool) (*domain.MediaFile, error)
+	Register(id string, playDate time.Time) (*domain.MediaFile, error)
 }
 
 func NewScrobbler(itunes itunesbridge.ItunesControl, mr domain.MediaFileRepository, npr NowPlayingRepository) Scrobbler {
@@ -23,7 +23,7 @@ type scrobbler struct {
 	npRepo NowPlayingRepository
 }
 
-func (s scrobbler) Register(id string, playDate time.Time, submit bool) (*domain.MediaFile, error) {
+func (s scrobbler) Register(id string, playDate time.Time) (*domain.MediaFile, error) {
 	mf, err := s.mfRepo.Get(id)
 	if err != nil {
 		return nil, err
@@ -33,10 +33,8 @@ func (s scrobbler) Register(id string, playDate time.Time, submit bool) (*domain
 		return nil, errors.New(fmt.Sprintf(`Id "%s" not found`, id))
 	}
 
-	if submit {
-		if err := s.itunes.MarkAsPlayed(id, playDate); err != nil {
-			return nil, err
-		}
+	if err := s.itunes.MarkAsPlayed(id, playDate); err != nil {
+		return nil, err
 	}
 	return mf, nil
 }

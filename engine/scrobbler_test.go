@@ -27,7 +27,7 @@ func TestScrobbler(t *testing.T) {
 
 		Convey("When I scrobble an existing song", func() {
 			now := time.Now()
-			mf, err := scrobbler.Register("2", now, true)
+			mf, err := scrobbler.Register("2", now)
 
 			Convey("Then I get the scrobbled song back", func() {
 				So(err, ShouldBeNil)
@@ -42,7 +42,7 @@ func TestScrobbler(t *testing.T) {
 		})
 
 		Convey("When the ID is not in the DB", func() {
-			_, err := scrobbler.Register("3", time.Now(), true)
+			_, err := scrobbler.Register("3", time.Now())
 
 			Convey("Then I receive an error", func() {
 				So(err, ShouldNotBeNil)
