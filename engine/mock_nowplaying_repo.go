@@ -31,6 +31,12 @@ func (m *MockNowPlaying) Set(id, username string, playerId int, playerName strin
 	return nil
 }
 
+func (m *MockNowPlaying) Clear(playerId int) (*NowPlayingInfo, error) {
+	r := m.info
+	m.info = NowPlayingInfo{}
+	return &r, nil
+}
+
 func (m *MockNowPlaying) Current() NowPlayingInfo {
 	return m.info
 }

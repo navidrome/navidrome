@@ -14,5 +14,6 @@ type NowPlayingInfo struct {
 
 type NowPlayingRepository interface {
 	Set(trackId, username string, playerId int, playerName string) error
+	Clear(playerId int) (*NowPlayingInfo, error)
 	GetAll() (*[]NowPlayingInfo, error)
 }

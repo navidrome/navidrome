@@ -35,6 +35,19 @@ func (r *nowPlayingRepository) Set(id, username string, playerId int, playerName
 	return Db().SetEX(nowPlayingKeyName, int64(engine.NowPlayingExpire.Seconds()), []byte(h))
 }
 
+func (r *nowPlayingRepository) Clear(playerId int) (*engine.NowPlayingInfo, error) {
+	val, err := Db().GetSet(nowPlayingKeyName, nil)
+	if err != nil {
+		return nil, err
+	}
+	info := &engine.NowPlayingInfo{}
+	err = json.Unmarshal(val, info)
+	if err != nil {
+		return nil, nil
+	}
+	return info, nil
+}
+
 func (r *nowPlayingRepository) GetAll() (*[]engine.NowPlayingInfo, error) {
 	val, err := Db().Get(nowPlayingKeyName)
 	if err != nil {
@@ -45,8 +58,10 @@ func (r *nowPlayingRepository) GetAll() (*[]engine.NowPlayingInfo, error) {
 	}
 	info := &engine.NowPlayingInfo{}
 	err = json.Unmarshal(val, info)
-
-	return &[]engine.NowPlayingInfo{*info}, err
+	if err != nil {
+		return &[]engine.NowPlayingInfo{}, nil
+	}
+	return &[]engine.NowPlayingInfo{*info}, nil
 }
 
 var _ engine.NowPlayingRepository = (*nowPlayingRepository)(nil)

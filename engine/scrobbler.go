@@ -10,8 +10,9 @@ import (
 )
 
 type Scrobbler interface {
-	Register(trackId string, playDate time.Time) (*domain.MediaFile, error)
-	NowPlaying(trackId, username string, playerName string) (*domain.MediaFile, error)
+	Register(playerId int, trackId string, playDate time.Time) (*domain.MediaFile, error)
+	NowPlaying(playerId int, trackId, username string, playerName string) (*domain.MediaFile, error)
+	DetectSkipped(playerId int, trackId string, submission bool) (bool, error)
 }
 
 func NewScrobbler(itunes itunesbridge.ItunesControl, mr domain.MediaFileRepository, npr NowPlayingRepository) Scrobbler {
@@ -24,7 +25,23 @@ type scrobbler struct {
 	npRepo NowPlayingRepository
 }
 
-func (s *scrobbler) Register(id string, playDate time.Time) (*domain.MediaFile, error) {
+func (s *scrobbler) DetectSkipped(playerId int, trackId string, submission bool) (bool, error) {
+	np, err := s.npRepo.Clear(playerId)
+	if err != nil {
+		return false, err
+	}
+
+	if np == nil {
+		return false, nil
+	}
+
+	if (submission && np.TrackId != trackId) || (!submission) {
+		return true, s.itunes.MarkAsSkipped(np.TrackId, time.Now())
+	}
+	return false, nil
+}
+
+func (s *scrobbler) Register(playerId int, id string, playDate time.Time) (*domain.MediaFile, error) {
 	mf, err := s.mfRepo.Get(id)
 	if err != nil {
 		return nil, err
@@ -40,7 +57,7 @@ func (s *scrobbler) Register(id string, playDate time.Time) (*domain.MediaFile, 
 	return mf, nil
 }
 
-func (s *scrobbler) NowPlaying(trackId, username string, playerName string) (*domain.MediaFile, error) {
+func (s *scrobbler) NowPlaying(playerId int, trackId, username string, playerName string) (*domain.MediaFile, error) {
 	mf, err := s.mfRepo.Get(trackId)
 	if err != nil {
 		return nil, err
@@ -50,5 +67,5 @@ func (s *scrobbler) NowPlaying(trackId, username string, playerName string) (*do
 		return nil, errors.New(fmt.Sprintf(`Id "%s" not found`, trackId))
 	}
 
-	return mf, s.npRepo.Set(trackId, username, 1, playerName)
+	return mf, s.npRepo.Set(trackId, username, playerId, playerName)
 }
