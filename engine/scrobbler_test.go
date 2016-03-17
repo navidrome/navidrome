@@ -17,9 +17,10 @@ func TestScrobbler(t *testing.T) {
 	Init(t, false)
 
 	mfRepo := persistence.CreateMockMediaFileRepo()
+	npRepo := engine.CreateMockNowPlayingRepo()
 	itCtrl := &mockItunesControl{}
 
-	scrobbler := engine.NewScrobbler(itCtrl, mfRepo)
+	scrobbler := engine.NewScrobbler(itCtrl, mfRepo, npRepo)
 
 	Convey("Given a DB with one song", t, func() {
 		mfRepo.SetData(`[{"Id":"2","Title":"Hands Of Time"}]`, 1)

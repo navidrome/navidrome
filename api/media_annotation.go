@@ -23,7 +23,6 @@ func (c *MediaAnnotationController) Scrobble() {
 	id := c.RequiredParamString("id", "Required id parameter is missing")
 	time := c.ParamTime("time", time.Now())
 	submission := c.ParamBool("submission", false)
-	println(submission)
 	if submission {
 		mf, err := c.scrobbler.Register(id, time, true)
 		if err != nil {

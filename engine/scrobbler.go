@@ -13,13 +13,14 @@ type Scrobbler interface {
 	Register(id string, playDate time.Time, submit bool) (*domain.MediaFile, error)
 }
 
-func NewScrobbler(itunes itunesbridge.ItunesControl, mr domain.MediaFileRepository) Scrobbler {
-	return scrobbler{itunes, mr}
+func NewScrobbler(itunes itunesbridge.ItunesControl, mr domain.MediaFileRepository, npr NowPlayingRepository) Scrobbler {
+	return scrobbler{itunes, mr, npr}
 }
 
 type scrobbler struct {
 	itunes itunesbridge.ItunesControl
 	mfRepo domain.MediaFileRepository
+	npRepo NowPlayingRepository
 }
 
 func (s scrobbler) Register(id string, playDate time.Time, submit bool) (*domain.MediaFile, error) {
