@@ -2,9 +2,12 @@ package engine
 
 import (
 	"math/rand"
+	"time"
 
+	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 // TODO Use Entries instead of Albums
@@ -15,14 +18,17 @@ type ListGenerator interface {
 	GetHighest(offset int, size int) (*domain.Albums, error)
 	GetRandom(offset int, size int) (*domain.Albums, error)
 	GetStarred() (*Entries, error)
+	GetNowPlaying() (*Entries, error)
 }
 
-func NewListGenerator(alr domain.AlbumRepository) ListGenerator {
-	return listGenerator{alr}
+func NewListGenerator(alr domain.AlbumRepository, mfr domain.MediaFileRepository, npr NowPlayingRepository) ListGenerator {
+	return listGenerator{alr, mfr, npr}
 }
 
 type listGenerator struct {
-	albumRepo domain.AlbumRepository
+	albumRepo    domain.AlbumRepository
+	mfRepository domain.MediaFileRepository
+	npRepo       NowPlayingRepository
 }
 
 func (g listGenerator) query(qo domain.QueryOptions, offset int, size int) (*domain.Albums, error) {
@@ -83,4 +89,25 @@ func (g listGenerator) GetStarred() (*Entries, error) {
 	}
 
 	return &entries, nil
+}
+
+func (g listGenerator) GetNowPlaying() (*Entries, error) {
+	npInfo, err := g.npRepo.GetAll()
+	if err != nil {
+		return nil, err
+	}
+	entries := make(Entries, len(*npInfo))
+	for i, np := range *npInfo {
+		mf, err := g.mfRepository.Get(np.TrackId)
+		if err != nil {
+			return nil, err
+		}
+		entries[i] = FromMediaFile(mf)
+		entries[i].UserName = beego.AppConfig.String("user")
+		entries[i].MinutesAgo = int(time.Now().Sub(np.Start).Minutes())
+		entries[i].PlayerId = np.PlayerId
+		entries[i].PlayerName = np.PlayerName
+
+	}
+	return &entries, errors.New("Not implemented")
 }

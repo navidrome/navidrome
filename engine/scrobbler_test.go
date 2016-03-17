@@ -54,7 +54,7 @@ func TestScrobbler(t *testing.T) {
 		})
 
 		Convey("When I inform the song that is now playing", func() {
-			mf, err := scrobbler.NowPlaying("2")
+			mf, err := scrobbler.NowPlaying("2", "deluan", "DSub")
 
 			Convey("Then I get the song for that id back", func() {
 				So(err, ShouldBeNil)
@@ -62,9 +62,11 @@ func TestScrobbler(t *testing.T) {
 			})
 
 			Convey("And it saves the song as the one current playing", func() {
-				id, start := npRepo.Current()
-				So(id, ShouldEqual, "2")
-				So(start, ShouldHappenBefore, time.Now())
+				info := npRepo.Current()
+				So(info.TrackId, ShouldEqual, "2")
+				So(info.Start, ShouldHappenBefore, time.Now())
+				So(info.Username, ShouldEqual, "deluan")
+				So(info.PlayerName, ShouldEqual, "DSub")
 			})
 
 			Convey("And iTunes is not notified", func() {

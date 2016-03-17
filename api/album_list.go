@@ -88,3 +88,10 @@ func (c *AlbumListController) GetStarred() {
 
 	c.SendResponse(response)
 }
+
+func (c *AlbumListController) GetNowPlaying() {
+	response := c.NewEmpty()
+	response.NowPlaying = &responses.NowPlaying{}
+	//response.NowPlaying.Entry = make([]responses.NowPlayingEntry, 1)
+	c.SendResponse(response)
+}

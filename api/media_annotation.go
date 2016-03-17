@@ -23,6 +23,10 @@ func (c *MediaAnnotationController) Scrobble() {
 	id := c.RequiredParamString("id", "Required id parameter is missing")
 	time := c.ParamTime("time", time.Now())
 	submission := c.ParamBool("submission", false)
+
+	playerName := c.Data["c"].(string)
+	username := c.Data["u"].(string)
+
 	if submission {
 		mf, err := c.scrobbler.Register(id, time)
 		if err != nil {
@@ -31,7 +35,7 @@ func (c *MediaAnnotationController) Scrobble() {
 		}
 		beego.Info(fmt.Sprintf(`Scrobbled (%s) "%s" at %v`, id, mf.Title, time))
 	} else {
-		mf, err := c.scrobbler.NowPlaying(id)
+		mf, err := c.scrobbler.NowPlaying(id, username, playerName)
 		if err != nil {
 			beego.Error("Error setting", id, "as current song:", err)
 			c.SendError(responses.ERROR_GENERIC, "Internal error")

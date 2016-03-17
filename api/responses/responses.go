@@ -18,8 +18,9 @@ type Subsonic struct {
 	AlbumList     *AlbumList         `xml:"albumList,omitempty"                           json:"albumList,omitempty"`
 	Playlists     *Playlists         `xml:"playlists,omitempty"                           json:"playlists,omitempty"`
 	Playlist      *PlaylistWithSongs `xml:"playlist,omitempty"                            json:"playlist,omitempty"`
-	SearchResult2 *SearchResult2     `xml:"searchResult2,omitempty"                            json:"searchResult2,omitempty"`
-	Starred       *Starred           `xml:"starred,omitempty"                            json:"starred,omitempty"`
+	SearchResult2 *SearchResult2     `xml:"searchResult2,omitempty"                       json:"searchResult2,omitempty"`
+	Starred       *Starred           `xml:"starred,omitempty"                             json:"starred,omitempty"`
+	NowPlaying    *NowPlaying        `xml:"nowPlaying,omitempty"                          json:"nowPlaying,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -136,6 +137,18 @@ type Starred struct {
 	Artist []Artist `xml:"artist"                           json:"artist,omitempty"`
 	Album  []Child  `xml:"album"                            json:"album,omitempty"`
 	Song   []Child  `xml:"song"                             json:"song,omitempty"`
+}
+
+type NowPlayingEntry struct {
+	Child
+	UserName   string `xml:"username"                      json:"username,omitempty"`
+	MinutesAgo int    `xml:"minutesAgo"                    json:"minutesAgo,omitempty"`
+	PlayerId   int    `xml:"playerId"                      json:"playerId,omitempty"`
+	PlayerName string `xml:"playerName"                    json:"playerName,omitempty"`
+}
+
+type NowPlaying struct {
+	Entry []NowPlayingEntry `xml:"entry"                    json:"entry,omitempty"`
 }
 
 type User struct {

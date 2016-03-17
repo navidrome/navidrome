@@ -32,6 +32,7 @@ func checkParameters(c BaseAPIController) {
 			logWarn(c, fmt.Sprintf(`Missing required parameter "%s"`, p))
 			abortRequest(c, responses.ERROR_MISSING_PARAMETER)
 		}
+		c.Data[p] = c.GetString(p)
 	}
 }
 

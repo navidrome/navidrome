@@ -5,6 +5,7 @@ import (
 
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/persistence"
 	. "github.com/deluan/gosonic/tests"
 	"github.com/deluan/gosonic/utils"
@@ -17,6 +18,11 @@ func TestGetAlbumList(t *testing.T) {
 	mockAlbumRepo := persistence.CreateMockAlbumRepo()
 	utils.DefineSingleton(new(domain.AlbumRepository), func() domain.AlbumRepository {
 		return mockAlbumRepo
+	})
+
+	mockNowPlayingRepo := engine.CreateMockNowPlayingRepo()
+	utils.DefineSingleton(new(engine.NowPlayingRepository), func() engine.NowPlayingRepository {
+		return mockNowPlayingRepo
 	})
 
 	Convey("Subject: GetAlbumList Endpoint", t, func() {

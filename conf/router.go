@@ -33,6 +33,7 @@ func mapEndpoints() {
 
 		beego.NSRouter("/getAlbumList.view", &api.AlbumListController{}, "*:GetAlbumList"),
 		beego.NSRouter("/getStarred.view", &api.AlbumListController{}, "*:GetStarred"),
+		beego.NSRouter("/getNowPlaying.view", &api.AlbumListController{}, "*:GetNowPlaying"),
 
 		beego.NSRouter("/getPlaylists.view", &api.PlaylistsController{}, "*:GetAll"),
 		beego.NSRouter("/getPlaylist.view", &api.PlaylistsController{}, "*:Get"),
@@ -54,6 +55,7 @@ func mapFilters() {
 	var ValidateRequest = func(ctx *context.Context) {
 		c := api.BaseAPIController{}
 		c.Ctx = ctx
+		c.Data = make(map[interface{}]interface{})
 		api.Validate(c)
 	}
 

@@ -24,6 +24,11 @@ type Entry struct {
 	Suffix      string
 	BitRate     int
 	ContentType string
+
+	UserName   string
+	MinutesAgo int
+	PlayerId   int
+	PlayerName string
 }
 
 type Entries []Entry

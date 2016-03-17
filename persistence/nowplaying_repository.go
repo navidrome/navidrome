@@ -22,17 +22,28 @@ func NewNowPlayingRepository() engine.NowPlayingRepository {
 	return r
 }
 
-func (r *nowPlayingRepository) Set(id string) error {
+func (r *nowPlayingRepository) Set(id, username string, playerId int, playerName string) error {
 	if id == "" {
 		return errors.New("Id is required")
 	}
-	m := &engine.NowPlayingInfo{TrackId: id, Start: time.Now()}
+	m := &engine.NowPlayingInfo{TrackId: id, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
 
 	h, err := json.Marshal(m)
 	if err != nil {
 		return err
 	}
 	return Db().SetEX(nowPlayingKeyName, int64(engine.NowPlayingExpire.Seconds()), []byte(h))
+}
+
+func (r *nowPlayingRepository) GetAll() (*[]engine.NowPlayingInfo, error) {
+	val, err := Db().Get(nowPlayingKeyName)
+	if err != nil {
+		return nil, err
+	}
+	info := &engine.NowPlayingInfo{}
+	err = json.Unmarshal(val, info)
+
+	return &[]engine.NowPlayingInfo{*info}, err
 }
 
 var _ engine.NowPlayingRepository = (*nowPlayingRepository)(nil)

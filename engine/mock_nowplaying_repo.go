@@ -11,24 +11,26 @@ func CreateMockNowPlayingRepo() *MockNowPlaying {
 
 type MockNowPlaying struct {
 	NowPlayingRepository
-	id    string
-	start time.Time
-	err   bool
+	info NowPlayingInfo
+	err  bool
 }
 
 func (m *MockNowPlaying) SetError(err bool) {
 	m.err = err
 }
 
-func (m *MockNowPlaying) Set(id string) error {
+func (m *MockNowPlaying) Set(id, username string, playerId int, playerName string) error {
 	if m.err {
 		return errors.New("Error!")
 	}
-	m.id = id
-	m.start = time.Now()
+	m.info.TrackId = id
+	m.info.Username = username
+	m.info.Start = time.Now()
+	m.info.PlayerId = playerId
+	m.info.PlayerName = playerName
 	return nil
 }
 
-func (m *MockNowPlaying) Current() (string, time.Time) {
-	return m.id, m.start
+func (m *MockNowPlaying) Current() NowPlayingInfo {
+	return m.info
 }
