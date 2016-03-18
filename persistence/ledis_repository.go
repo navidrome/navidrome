@@ -228,7 +228,7 @@ func (r *ledisRepository) readEntity(id string) (interface{}, error) {
 		return nil, err
 	}
 	if len(res[0]) == 0 {
-		return nil, domain.ErrNotFound
+		return entity, domain.ErrNotFound
 	}
 	err = r.toEntity(res, entity)
 	return entity, err
