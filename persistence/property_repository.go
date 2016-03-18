@@ -3,6 +3,7 @@ package persistence
 import (
 	"errors"
 
+	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 )
 
@@ -33,8 +34,8 @@ func (r *propertyRepository) Get(id string) (string, error) {
 func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
 	v, err := r.Get(id)
 
-	if v == "" {
-		v = defaultValue
+	if err == domain.ErrNotFound {
+		return defaultValue, nil
 	}
 
 	return v, err

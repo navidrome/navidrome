@@ -21,14 +21,13 @@ func (c *StreamController) Prepare() {
 	c.id = c.RequiredParamString("id", "id parameter required")
 
 	mf, err := c.repo.Get(c.id)
-	if err != nil {
-		beego.Error("Error reading mediafile", c.id, "from the database", ":", err)
-		c.SendError(responses.ERROR_GENERIC, "Internal error")
-	}
-
-	if mf == nil {
+	switch {
+	case err == domain.ErrNotFound:
 		beego.Error("MediaFile", c.id, "not found!")
 		c.SendError(responses.ERROR_DATA_NOT_FOUND)
+	case err != nil:
+		beego.Error("Error reading mediafile", c.id, "from the database", ":", err)
+		c.SendError(responses.ERROR_GENERIC, "Internal error")
 	}
 
 	c.mf = mf

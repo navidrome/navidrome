@@ -1,16 +1,13 @@
 package engine
 
 import (
-	"io"
-	"os"
-
+	"bytes"
 	"image"
 	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
-
-	"bytes"
 	"image/jpeg"
+	_ "image/png"
+	"io"
+	"os"
 
 	"github.com/deluan/gosonic/domain"
 	"github.com/dhowden/tag"
@@ -31,16 +28,17 @@ func NewCover(mr domain.MediaFileRepository) Cover {
 
 func (c cover) Get(id string, size int, out io.Writer) error {
 	mf, err := c.mfileRepo.Get(id)
-	if err != nil {
+	if err != nil && err != domain.ErrNotFound {
 		return err
 	}
 
 	var reader io.Reader
 
-	if mf != nil && mf.HasCoverArt {
+	if err == nil && mf.HasCoverArt {
 		reader, err = readFromTag(mf.Path)
 	} else {
-		f, err := os.Open("static/default_cover.jpg")
+		var f *os.File
+		f, err = os.Open("static/default_cover.jpg")
 		if err == nil {
 			defer f.Close()
 			reader = f

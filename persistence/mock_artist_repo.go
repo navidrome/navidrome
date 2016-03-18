@@ -43,5 +43,8 @@ func (m *MockArtist) Get(id string) (*domain.Artist, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
-	return m.data[id], nil
+	if d, ok := m.data[id]; ok {
+		return d, nil
+	}
+	return nil, domain.ErrNotFound
 }

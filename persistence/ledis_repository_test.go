@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
-
 	"time"
 
+	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/tests"
 	"github.com/deluan/gosonic/utils"
 	. "github.com/smartystreets/goconvey/convey"
@@ -27,7 +27,8 @@ func shouldBeEqual(actualStruct interface{}, expectedStruct ...interface{}) stri
 	return ShouldEqual(actual, expected)
 }
 
-func createRepo() *ledisRepository {
+func createEmptyRepo() *ledisRepository {
+	dropDb()
 	repo := &ledisRepository{}
 	repo.init("test", &TestEntity{})
 	return repo
@@ -37,7 +38,7 @@ func TestBaseRepository(t *testing.T) {
 	tests.Init(t, false)
 
 	Convey("Subject: Annotations", t, func() {
-		repo := createRepo()
+		repo := createEmptyRepo()
 		Convey("It should parse the parent table definition", func() {
 			So(repo.parentTable, ShouldEqual, "parent")
 			So(repo.parentIdField, ShouldEqual, "ParentId")
@@ -51,7 +52,7 @@ func TestBaseRepository(t *testing.T) {
 	})
 
 	Convey("Subject: calcScore", t, func() {
-		repo := createRepo()
+		repo := createEmptyRepo()
 
 		Convey("It should create an int score", func() {
 			def := repo.indexes["ByCount"]
@@ -86,7 +87,7 @@ func TestBaseRepository(t *testing.T) {
 	})
 
 	Convey("Subject: NewId", t, func() {
-		repo := createRepo()
+		repo := createEmptyRepo()
 
 		Convey("When I call NewId with a name", func() {
 			Id := repo.NewId("a name")
@@ -120,7 +121,14 @@ func TestBaseRepository(t *testing.T) {
 	Convey("Subject: saveOrUpdate/loadEntity/CountAll", t, func() {
 
 		Convey("Given an empty DB", func() {
-			repo := createRepo()
+			repo := createEmptyRepo()
+
+			Convey("When I try to retrieve an nonexistent ID", func() {
+				_, err := repo.readEntity("NOT_FOUND")
+				Convey("Then I should get a NotFound error", func() {
+					So(err, ShouldEqual, domain.ErrNotFound)
+				})
+			})
 
 			Convey("When I save a new entity and a parent", func() {
 				entity := &TestEntity{Id: "123", Name: "My Name", ParentId: "ABC", Year: time.Now()}
@@ -151,7 +159,7 @@ func TestBaseRepository(t *testing.T) {
 		})
 
 		Convey("Given a table with one entity", func() {
-			repo := createRepo()
+			repo := createEmptyRepo()
 			entity := &TestEntity{Id: "111", Name: "One Name", ParentId: "AAA"}
 			repo.saveOrUpdate(entity.Id, entity)
 
@@ -186,7 +194,7 @@ func TestBaseRepository(t *testing.T) {
 		})
 
 		Convey("Given a table with 3 entities", func() {
-			repo := createRepo()
+			repo := createEmptyRepo()
 			for i := 1; i <= 3; i++ {
 				e := &TestEntity{Id: strconv.Itoa(i), Name: fmt.Sprintf("Name %d", i), ParentId: "AAA"}
 				repo.saveOrUpdate(e.Id, e)
@@ -216,7 +224,7 @@ func TestBaseRepository(t *testing.T) {
 				})
 				Convey("And I get all saved ids", func() {
 					So(len(ids), ShouldEqual, 3)
-					for k, _ := range ids {
+					for k := range ids {
 						So(k, ShouldBeIn, []string{"1", "2", "3"})
 					}
 				})
@@ -245,10 +253,5 @@ func TestBaseRepository(t *testing.T) {
 
 			})
 		})
-
-		Reset(func() {
-			dropDb()
-		})
-
 	})
 }

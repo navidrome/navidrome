@@ -66,6 +66,8 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 	i := 0
 	for _, t := range l.Tracks {
 		if !s.skipTrack(&t) {
+			s.calcCheckSum(&t)
+
 			ar := s.collectArtists(&t)
 			mf := s.collectMediaFiles(&t)
 			s.collectAlbums(&t, mf, ar)
@@ -200,8 +202,6 @@ func (s *ItunesScanner) calcCheckSum(t *itl.Track) string {
 }
 
 func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
-	s.calcCheckSum(t)
-
 	mf := &domain.MediaFile{}
 	mf.Id = strconv.Itoa(t.TrackID)
 	mf.Album = unescape(t.Album)

@@ -45,7 +45,10 @@ func (m *MockAlbum) Get(id string) (*domain.Album, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
-	return m.data[id], nil
+	if d, ok := m.data[id]; ok {
+		return d, nil
+	}
+	return nil, domain.ErrNotFound
 }
 
 func (m *MockAlbum) GetAll(qo domain.QueryOptions) (*domain.Albums, error) {

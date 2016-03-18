@@ -3,6 +3,7 @@ package engine
 import (
 	"strings"
 
+	"github.com/astaxie/beego"
 	"github.com/deluan/gomate"
 	"github.com/deluan/gosonic/domain"
 	"github.com/kennygrant/sanitize"
@@ -73,7 +74,7 @@ func (s search) SearchArtist(q string, offset int, size int) (*Results, error) {
 	res := make(Results, len(resp))
 	for i, id := range resp {
 		a, err := s.artistRepo.Get(id)
-		if err != nil {
+		if criticalError("Artist", id, err) {
 			return nil, err
 		}
 		res[i] = Entry{Id: a.Id, Title: a.Name, IsDir: true}
@@ -92,7 +93,7 @@ func (s search) SearchAlbum(q string, offset int, size int) (*Results, error) {
 	res := make(Results, len(resp))
 	for i, id := range resp {
 		al, err := s.albumRepo.Get(id)
-		if err != nil {
+		if criticalError("Album", id, err) {
 			return nil, err
 		}
 		res[i] = FromAlbum(al)
@@ -111,10 +112,20 @@ func (s search) SearchSong(q string, offset int, size int) (*Results, error) {
 	res := make(Results, len(resp))
 	for i, id := range resp {
 		mf, err := s.mfileRepo.Get(id)
-		if err != nil {
+		if criticalError("Song", id, err) {
 			return nil, err
 		}
 		res[i] = FromMediaFile(mf)
 	}
 	return &res, nil
+}
+
+func criticalError(kind, id string, err error) bool {
+	switch {
+	case err != nil:
+		return true
+	case err == domain.ErrNotFound:
+		beego.Warn(kind, "Id", id, "not in the DB. Need a reindex?")
+	}
+	return false
 }

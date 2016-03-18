@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-
 	"time"
 
 	"github.com/deluan/gosonic/domain"
@@ -227,6 +226,9 @@ func (r *ledisRepository) readEntity(id string) (interface{}, error) {
 	res, err := Db().MGet(fieldKeys...)
 	if err != nil {
 		return nil, err
+	}
+	if len(res[0]) == 0 {
+		return nil, domain.ErrNotFound
 	}
 	err = r.toEntity(res, entity)
 	return entity, err
