@@ -72,12 +72,14 @@ func (s search) SearchArtist(q string, offset int, size int) (*Results, error) {
 		return nil, nil
 	}
 	res := make(Results, len(resp))
-	for i, id := range resp {
+	for _, id := range resp {
 		a, err := s.artistRepo.Get(id)
 		if criticalError("Artist", id, err) {
 			return nil, err
 		}
-		res[i] = Entry{Id: a.Id, Title: a.Name, IsDir: true}
+		if err == nil {
+			res = append(res, Entry{Id: a.Id, Title: a.Name, IsDir: true})
+		}
 	}
 	return &res, nil
 }
@@ -91,12 +93,14 @@ func (s search) SearchAlbum(q string, offset int, size int) (*Results, error) {
 		return nil, nil
 	}
 	res := make(Results, len(resp))
-	for i, id := range resp {
+	for _, id := range resp {
 		al, err := s.albumRepo.Get(id)
 		if criticalError("Album", id, err) {
 			return nil, err
 		}
-		res[i] = FromAlbum(al)
+		if err == nil {
+			res = append(res, FromAlbum(al))
+		}
 	}
 	return &res, nil
 }
@@ -109,13 +113,15 @@ func (s search) SearchSong(q string, offset int, size int) (*Results, error) {
 	if err != nil {
 		return nil, nil
 	}
-	res := make(Results, len(resp))
-	for i, id := range resp {
+	res := make(Results, 0, len(resp))
+	for _, id := range resp {
 		mf, err := s.mfileRepo.Get(id)
 		if criticalError("Song", id, err) {
 			return nil, err
 		}
-		res[i] = FromMediaFile(mf)
+		if err == nil {
+			res = append(res, FromMediaFile(mf))
+		}
 	}
 	return &res, nil
 }
