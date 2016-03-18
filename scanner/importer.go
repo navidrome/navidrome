@@ -2,11 +2,10 @@ package scanner
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"os"
 
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/consts"
@@ -212,16 +211,16 @@ func (i *Importer) importLibrary() (err error) {
 	}
 
 	beego.Debug("Purging old data")
-	if err := i.mfRepo.PurgeInactive(&mfs); err != nil {
+	if err := i.mfRepo.PurgeInactive(mfs); err != nil {
 		beego.Error(err)
 	}
-	if err := i.albumRepo.PurgeInactive(&als); err != nil {
+	if err := i.albumRepo.PurgeInactive(als); err != nil {
 		beego.Error(err)
 	}
-	if err := i.artistRepo.PurgeInactive(&ars); err != nil {
+	if err := i.artistRepo.PurgeInactive(ars); err != nil {
 		beego.Error(err)
 	}
-	if err := i.plsRepo.PurgeInactive(&pls); err != nil {
+	if err := i.plsRepo.PurgeInactive(pls); err != nil {
 		beego.Error(err)
 	}
 

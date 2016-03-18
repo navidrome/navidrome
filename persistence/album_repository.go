@@ -57,21 +57,10 @@ func (r *albumRepository) GetAllIds() (*[]string, error) {
 	return &ids, nil
 }
 
-func (r *albumRepository) PurgeInactive(active *domain.Albums) error {
-	currentIds, err := r.getAllIds()
-	if err != nil {
-		return err
-	}
-	for _, a := range *active {
-		currentIds[a.Id] = false
-	}
-	inactiveIds := make(map[string]bool)
-	for id, inactive := range currentIds {
-		if inactive {
-			inactiveIds[id] = true
-		}
-	}
-	return r.DeleteAll(inactiveIds)
+func (r *albumRepository) PurgeInactive(active domain.Albums) error {
+	return r.purgeInactive(active, func(e interface{}) string {
+		return e.(domain.Album).Id
+	})
 }
 
 func (r *albumRepository) GetStarred(options domain.QueryOptions) (*domain.Albums, error) {

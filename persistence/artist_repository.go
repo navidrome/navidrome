@@ -34,21 +34,10 @@ func (r *artistRepository) GetByName(name string) (*domain.Artist, error) {
 	return r.Get(id)
 }
 
-func (r *artistRepository) PurgeInactive(active *domain.Artists) error {
-	currentIds, err := r.getAllIds()
-	if err != nil {
-		return err
-	}
-	for _, a := range *active {
-		currentIds[a.Id] = false
-	}
-	inactiveIds := make(map[string]bool)
-	for id, inactive := range currentIds {
-		if inactive {
-			inactiveIds[id] = true
-		}
-	}
-	return r.DeleteAll(inactiveIds)
+func (r *artistRepository) PurgeInactive(active domain.Artists) error {
+	return r.purgeInactive(active, func(e interface{}) string {
+		return e.(domain.Artist).Id
+	})
 }
 
 var _ domain.ArtistRepository = (*artistRepository)(nil)

@@ -76,7 +76,29 @@ func (r *ledisRepository) getAllIds() (map[string]bool, error) {
 	return m, err
 }
 
-func (r *ledisRepository) DeleteAll(ids map[string]bool) error {
+type getIdFunc func(e interface{}) string
+
+func (r *ledisRepository) purgeInactive(activeList interface{}, getId getIdFunc) error {
+	currentIds, err := r.getAllIds()
+	if err != nil {
+		return err
+	}
+	reflected := reflect.ValueOf(activeList).Elem()
+	for i := 0; i < reflected.Len(); i++ {
+		a := reflected.Index(i)
+		id := getId(a.Interface())
+		currentIds[id] = false
+	}
+	inactiveIds := make(map[string]bool)
+	for id, inactive := range currentIds {
+		if inactive {
+			inactiveIds[id] = true
+		}
+	}
+	return r.removeAll(inactiveIds)
+}
+
+func (r *ledisRepository) removeAll(ids map[string]bool) error {
 	allKey := r.table + "s:all"
 	keys := make([][]byte, len(ids))
 
@@ -95,6 +117,14 @@ func (r *ledisRepository) DeleteAll(ids map[string]bool) error {
 			}
 			parentKey = []byte(fmt.Sprintf("%s:%s:%ss", r.parentTable, parentId, r.table))
 			if _, err := Db().ZRem(parentKey, []byte(id)); err != nil {
+				return err
+			}
+		}
+
+		// Delete table:idx:* (ZSet)
+		for idx := range r.indexes {
+			idxName := fmt.Sprintf("%s:idx:%s", r.table, idx)
+			if _, err := Db().ZRem([]byte(idxName), []byte(id)); err != nil {
 				return err
 			}
 		}
@@ -144,9 +174,6 @@ func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 
 	for idx, fn := range r.indexes {
 		idxName := fmt.Sprintf("%s:idx:%s", r.table, idx)
-		if _, err := Db().ZRem([]byte(idxName), []byte(id)); err != nil {
-			return err
-		}
 		score := calcScore(entity, fn)
 		sidx := ledis.ScorePair{score, []byte(id)}
 		if _, err = Db().ZAdd([]byte(idxName), sidx); err != nil {

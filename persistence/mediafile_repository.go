@@ -43,21 +43,10 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (*domain.MediaFiles, e
 	return &mfs, err
 }
 
-func (r *mediaFileRepository) PurgeInactive(active *domain.MediaFiles) error {
-	currentIds, err := r.getAllIds()
-	if err != nil {
-		return err
-	}
-	for _, a := range *active {
-		currentIds[a.Id] = false
-	}
-	inactiveIds := make(map[string]bool)
-	for id, inactive := range currentIds {
-		if inactive {
-			inactiveIds[id] = true
-		}
-	}
-	return r.DeleteAll(inactiveIds)
+func (r *mediaFileRepository) PurgeInactive(active domain.MediaFiles) error {
+	return r.purgeInactive(active, func(e interface{}) string {
+		return e.(domain.MediaFile).Id
+	})
 }
 
 var _ domain.MediaFileRepository = (*mediaFileRepository)(nil)
