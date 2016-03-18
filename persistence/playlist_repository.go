@@ -35,7 +35,7 @@ func (r *playlistRepository) GetAll(options domain.QueryOptions) (*domain.Playli
 	return &as, err
 }
 
-func (r *playlistRepository) PurgeInactive(active domain.Playlists) error {
+func (r *playlistRepository) PurgeInactive(active domain.Playlists) ([]string, error) {
 	return r.purgeInactive(active, func(e interface{}) string {
 		return e.(domain.Playlist).Id
 	})

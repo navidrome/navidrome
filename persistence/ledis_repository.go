@@ -78,32 +78,33 @@ func (r *ledisRepository) getAllIds() (map[string]bool, error) {
 
 type getIdFunc func(e interface{}) string
 
-func (r *ledisRepository) purgeInactive(activeList interface{}, getId getIdFunc) error {
+func (r *ledisRepository) purgeInactive(activeList interface{}, getId getIdFunc) ([]string, error) {
 	currentIds, err := r.getAllIds()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	reflected := reflect.ValueOf(activeList).Elem()
-	for i := 0; i < reflected.Len(); i++ {
+	totalActive := reflected.Len()
+	for i := 0; i < totalActive; i++ {
 		a := reflected.Index(i)
 		id := getId(a.Interface())
 		currentIds[id] = false
 	}
-	inactiveIds := make(map[string]bool)
+	inactiveIds := make([]string, 0, len(currentIds)-totalActive)
 	for id, inactive := range currentIds {
 		if inactive {
-			inactiveIds[id] = true
+			inactiveIds = append(inactiveIds, id)
 		}
 	}
-	return r.removeAll(inactiveIds)
+	return inactiveIds, r.removeAll(inactiveIds)
 }
 
-func (r *ledisRepository) removeAll(ids map[string]bool) error {
+func (r *ledisRepository) removeAll(ids []string) error {
 	allKey := r.table + "s:all"
 	keys := make([][]byte, len(ids))
 
 	i := 0
-	for id := range ids {
+	for _, id := range ids {
 		// Delete from parent:parentId:table (ZSet)
 		if r.parentTable != "" {
 			parentKey := []byte(fmt.Sprintf("%s:%s:%s", r.table, id, r.parentIdField))

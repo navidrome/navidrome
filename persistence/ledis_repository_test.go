@@ -231,8 +231,7 @@ func TestBaseRepository(t *testing.T) {
 			})
 
 			Convey("When I call DeletaAll with one of the entities", func() {
-				ids := make(map[string]bool)
-				ids["1"] = true
+				ids := []string{"1"}
 				err := repo.removeAll(ids)
 				Convey("Then It should not return any error", func() {
 					So(err, ShouldBeNil)

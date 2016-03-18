@@ -211,16 +211,22 @@ func (i *Importer) importLibrary() (err error) {
 	}
 
 	beego.Debug("Purging old data")
-	if err := i.mfRepo.PurgeInactive(mfs); err != nil {
+	if deleted, err := i.mfRepo.PurgeInactive(mfs); err != nil {
 		beego.Error(err)
+	} else {
+		i.search.RemoveMediaFile(deleted)
 	}
-	if err := i.albumRepo.PurgeInactive(als); err != nil {
+	if deleted, err := i.albumRepo.PurgeInactive(als); err != nil {
 		beego.Error(err)
+	} else {
+		i.search.RemoveAlbum(deleted)
 	}
-	if err := i.artistRepo.PurgeInactive(ars); err != nil {
+	if deleted, err := i.artistRepo.PurgeInactive(ars); err != nil {
 		beego.Error(err)
+	} else {
+		i.search.RemoveArtist(deleted)
 	}
-	if err := i.plsRepo.PurgeInactive(pls); err != nil {
+	if _, err := i.plsRepo.PurgeInactive(pls); err != nil {
 		beego.Error(err)
 	}
 

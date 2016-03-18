@@ -57,7 +57,7 @@ func (r *albumRepository) GetAllIds() (*[]string, error) {
 	return &ids, nil
 }
 
-func (r *albumRepository) PurgeInactive(active domain.Albums) error {
+func (r *albumRepository) PurgeInactive(active domain.Albums) ([]string, error) {
 	return r.purgeInactive(active, func(e interface{}) string {
 		return e.(domain.Album).Id
 	})

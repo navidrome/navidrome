@@ -43,7 +43,7 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (*domain.MediaFiles, e
 	return &mfs, err
 }
 
-func (r *mediaFileRepository) PurgeInactive(active domain.MediaFiles) error {
+func (r *mediaFileRepository) PurgeInactive(active domain.MediaFiles) ([]string, error) {
 	return r.purgeInactive(active, func(e interface{}) string {
 		return e.(domain.MediaFile).Id
 	})
