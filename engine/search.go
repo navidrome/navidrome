@@ -17,9 +17,9 @@ type Search interface {
 	IndexAlbum(al *domain.Album) error
 	IndexMediaFile(mf *domain.MediaFile) error
 
-	SearchArtist(q string, offset int, size int) (*Results, error)
-	SearchAlbum(q string, offset int, size int) (*Results, error)
-	SearchSong(q string, offset int, size int) (*Results, error)
+	SearchArtist(q string, offset int, size int) (Results, error)
+	SearchAlbum(q string, offset int, size int) (Results, error)
+	SearchSong(q string, offset int, size int) (Results, error)
 }
 
 type search struct {
@@ -63,7 +63,7 @@ func (s search) IndexMediaFile(mf *domain.MediaFile) error {
 	return s.idxSong.Index(mf.Id, sanitize.Accents(strings.ToLower(mf.Title)))
 }
 
-func (s search) SearchArtist(q string, offset int, size int) (*Results, error) {
+func (s search) SearchArtist(q string, offset int, size int) (Results, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -81,10 +81,10 @@ func (s search) SearchArtist(q string, offset int, size int) (*Results, error) {
 			res = append(res, Entry{Id: a.Id, Title: a.Name, IsDir: true})
 		}
 	}
-	return &res, nil
+	return res, nil
 }
 
-func (s search) SearchAlbum(q string, offset int, size int) (*Results, error) {
+func (s search) SearchAlbum(q string, offset int, size int) (Results, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -102,10 +102,10 @@ func (s search) SearchAlbum(q string, offset int, size int) (*Results, error) {
 			res = append(res, FromAlbum(al))
 		}
 	}
-	return &res, nil
+	return res, nil
 }
 
-func (s search) SearchSong(q string, offset int, size int) (*Results, error) {
+func (s search) SearchSong(q string, offset int, size int) (Results, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -123,7 +123,7 @@ func (s search) SearchSong(q string, offset int, size int) (*Results, error) {
 			res = append(res, FromMediaFile(mf))
 		}
 	}
-	return &res, nil
+	return res, nil
 }
 
 func criticalError(kind, id string, err error) bool {

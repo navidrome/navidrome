@@ -40,16 +40,16 @@ func (c *SearchingController) Search2() {
 
 	response := c.NewEmpty()
 	searchResult2 := &responses.SearchResult2{}
-	searchResult2.Artist = make([]responses.Artist, len(*as))
-	for i, e := range *as {
+	searchResult2.Artist = make([]responses.Artist, len(as))
+	for i, e := range as {
 		searchResult2.Artist[i] = responses.Artist{Id: e.Id, Name: e.Title}
 	}
-	searchResult2.Album = make([]responses.Child, len(*als))
-	for i, e := range *als {
+	searchResult2.Album = make([]responses.Child, len(als))
+	for i, e := range als {
 		searchResult2.Album[i] = c.ToChild(e)
 	}
-	searchResult2.Song = make([]responses.Child, len(*mfs))
-	for i, e := range *mfs {
+	searchResult2.Song = make([]responses.Child, len(mfs))
+	for i, e := range mfs {
 		searchResult2.Song[i] = c.ToChild(e)
 	}
 	response.SearchResult2 = searchResult2
