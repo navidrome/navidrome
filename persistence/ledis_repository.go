@@ -83,7 +83,7 @@ func (r *ledisRepository) purgeInactive(activeList interface{}, getId getIdFunc)
 	if err != nil {
 		return nil, err
 	}
-	reflected := reflect.ValueOf(activeList).Elem()
+	reflected := reflect.ValueOf(activeList)
 	totalActive := reflected.Len()
 	for i := 0; i < totalActive; i++ {
 		a := reflected.Index(i)
