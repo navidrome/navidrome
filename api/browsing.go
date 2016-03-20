@@ -47,8 +47,8 @@ func (c *BrowsingController) GetIndexes() {
 		LastModified:    fmt.Sprint(utils.ToMillis(lastModified)),
 	}
 
-	res.Index = make([]responses.Index, len(*indexes))
-	for i, idx := range *indexes {
+	res.Index = make([]responses.Index, len(indexes))
+	for i, idx := range indexes {
 		res.Index[i].Name = idx.Id
 		res.Index[i].Artists = make([]responses.Artist, len(idx.Artists))
 		for j, a := range idx.Artists {

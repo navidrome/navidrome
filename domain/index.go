@@ -26,5 +26,5 @@ type ArtistIndexRepository interface {
 	BaseRepository
 	Put(m *ArtistIndex) error
 	Get(id string) (*ArtistIndex, error)
-	GetAll() (*ArtistIndexes, error)
+	GetAll() (ArtistIndexes, error)
 }

@@ -14,7 +14,7 @@ import (
 
 type Browser interface {
 	MediaFolders() (*domain.MediaFolders, error)
-	Indexes(ifModifiedSince time.Time) (*domain.ArtistIndexes, time.Time, error)
+	Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error)
 	Directory(id string) (*DirectoryInfo, error)
 }
 
@@ -36,13 +36,13 @@ func (b browser) MediaFolders() (*domain.MediaFolders, error) {
 	return b.folderRepo.GetAll()
 }
 
-func (b browser) Indexes(ifModifiedSince time.Time) (*domain.ArtistIndexes, time.Time, error) {
+func (b browser) Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error) {
 	l, err := b.propRepo.DefaultGet(consts.LastScan, "-1")
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
 
 	if err != nil {
-		return &domain.ArtistIndexes{}, time.Time{}, errors.New(fmt.Sprintf("Error retrieving LastScan property: %v", err))
+		return nil, time.Time{}, errors.New(fmt.Sprintf("Error retrieving LastScan property: %v", err))
 	}
 
 	if lastModified.After(ifModifiedSince) {
@@ -50,7 +50,7 @@ func (b browser) Indexes(ifModifiedSince time.Time) (*domain.ArtistIndexes, time
 		return indexes, lastModified, err
 	}
 
-	return &domain.ArtistIndexes{}, lastModified, nil
+	return nil, lastModified, nil
 }
 
 type DirectoryInfo struct {
