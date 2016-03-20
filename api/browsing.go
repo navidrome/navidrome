@@ -22,8 +22,8 @@ func (c *BrowsingController) Prepare() {
 
 func (c *BrowsingController) GetMediaFolders() {
 	mediaFolderList, _ := c.browser.MediaFolders()
-	folders := make([]responses.MusicFolder, len(*mediaFolderList))
-	for i, f := range *mediaFolderList {
+	folders := make([]responses.MusicFolder, len(mediaFolderList))
+	for i, f := range mediaFolderList {
 		folders[i].Id = f.Id
 		folders[i].Name = f.Name
 	}

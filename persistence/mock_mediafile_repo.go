@@ -52,7 +52,7 @@ func (m *MockMediaFile) Get(id string) (*domain.MediaFile, error) {
 	return nil, domain.ErrNotFound
 }
 
-func (m *MockMediaFile) FindByAlbum(artistId string) (*domain.MediaFiles, error) {
+func (m *MockMediaFile) FindByAlbum(artistId string) (domain.MediaFiles, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
@@ -65,5 +65,5 @@ func (m *MockMediaFile) FindByAlbum(artistId string) (*domain.MediaFiles, error)
 		}
 	}
 
-	return &res, nil
+	return res, nil
 }

@@ -11,7 +11,7 @@ type PlaylistRepository interface {
 	BaseRepository
 	Put(m *Playlist) error
 	Get(id string) (*Playlist, error)
-	GetAll(options QueryOptions) (*Playlists, error)
+	GetAll(options QueryOptions) (Playlists, error)
 	PurgeInactive(active Playlists) ([]string, error)
 }
 

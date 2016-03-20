@@ -5,7 +5,7 @@ import (
 )
 
 type Playlists interface {
-	GetAll() (*domain.Playlists, error)
+	GetAll() (domain.Playlists, error)
 	Get(id string) (*PlaylistInfo, error)
 }
 
@@ -18,7 +18,7 @@ type playlists struct {
 	mfileRepo domain.MediaFileRepository
 }
 
-func (p playlists) GetAll() (*domain.Playlists, error) {
+func (p playlists) GetAll() (domain.Playlists, error) {
 	return p.plsRepo.GetAll(domain.QueryOptions{})
 }
 

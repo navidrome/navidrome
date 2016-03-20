@@ -29,10 +29,10 @@ func (r *playlistRepository) Get(id string) (*domain.Playlist, error) {
 	return rec.(*domain.Playlist), err
 }
 
-func (r *playlistRepository) GetAll(options domain.QueryOptions) (*domain.Playlists, error) {
+func (r *playlistRepository) GetAll(options domain.QueryOptions) (domain.Playlists, error) {
 	var as = make(domain.Playlists, 0)
 	err := r.loadAll(&as, options)
-	return &as, err
+	return as, err
 }
 
 func (r *playlistRepository) PurgeInactive(active domain.Playlists) ([]string, error) {

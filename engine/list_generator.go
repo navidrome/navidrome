@@ -80,9 +80,9 @@ func (g listGenerator) GetStarred() (Entries, error) {
 	if err != nil {
 		return nil, err
 	}
-	entries := make(Entries, len(*albums))
+	entries := make(Entries, len(albums))
 
-	for i, al := range *albums {
+	for i, al := range albums {
 		entries[i] = FromAlbum(&al)
 	}
 

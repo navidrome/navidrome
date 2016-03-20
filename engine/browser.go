@@ -13,7 +13,7 @@ import (
 )
 
 type Browser interface {
-	MediaFolders() (*domain.MediaFolders, error)
+	MediaFolders() (domain.MediaFolders, error)
 	Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error)
 	Directory(id string) (*DirectoryInfo, error)
 }
@@ -32,7 +32,7 @@ type browser struct {
 	mfileRepo  domain.MediaFileRepository
 }
 
-func (b browser) MediaFolders() (*domain.MediaFolders, error) {
+func (b browser) MediaFolders() (domain.MediaFolders, error) {
 	return b.folderRepo.GetAll()
 }
 
@@ -84,21 +84,21 @@ func (c browser) Directory(id string) (*DirectoryInfo, error) {
 	return dir, nil
 }
 
-func (c browser) buildArtistDir(a *domain.Artist, albums *domain.Albums) *DirectoryInfo {
+func (c browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *DirectoryInfo {
 	dir := &DirectoryInfo{Id: a.Id, Name: a.Name}
 
-	dir.Entries = make(Entries, len(*albums))
-	for i, al := range *albums {
+	dir.Entries = make(Entries, len(albums))
+	for i, al := range albums {
 		dir.Entries[i] = FromAlbum(&al)
 	}
 	return dir
 }
 
-func (c browser) buildAlbumDir(al *domain.Album, tracks *domain.MediaFiles) *DirectoryInfo {
+func (c browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *DirectoryInfo {
 	dir := &DirectoryInfo{Id: al.Id, Name: al.Name}
 
-	dir.Entries = make(Entries, len(*tracks))
-	for i, mf := range *tracks {
+	dir.Entries = make(Entries, len(tracks))
+	for i, mf := range tracks {
 		dir.Entries[i] = FromMediaFile(&mf)
 	}
 	return dir
@@ -122,7 +122,7 @@ func (c browser) isAlbum(id string) bool {
 	return found
 }
 
-func (c browser) retrieveArtist(id string) (a *domain.Artist, as *domain.Albums, err error) {
+func (c browser) retrieveArtist(id string) (a *domain.Artist, as domain.Albums, err error) {
 	a, err = c.artistRepo.Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Artist %s from DB: %v", id, err)
@@ -135,7 +135,7 @@ func (c browser) retrieveArtist(id string) (a *domain.Artist, as *domain.Albums,
 	return
 }
 
-func (c browser) retrieveAlbum(id string) (al *domain.Album, mfs *domain.MediaFiles, err error) {
+func (c browser) retrieveAlbum(id string) (al *domain.Album, mfs domain.MediaFiles, err error) {
 	al, err = c.albumRepo.Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Album %s from DB: %v", id, err)

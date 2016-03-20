@@ -22,8 +22,8 @@ func (c *PlaylistsController) GetAll() {
 		beego.Error(err)
 		c.SendError(responses.ERROR_GENERIC, "Internal error")
 	}
-	playlists := make([]responses.Playlist, len(*allPls))
-	for i, f := range *allPls {
+	playlists := make([]responses.Playlist, len(allPls))
+	for i, f := range allPls {
 		playlists[i].Id = f.Id
 		playlists[i].Name = f.Name
 		playlists[i].Comment = "Original: " + f.FullPath
