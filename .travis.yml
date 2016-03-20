@@ -9,16 +9,15 @@ go:
 install:
   - go get github.com/gpmgo/gopm
   - gopm list -v
-  - gopm get -v -g -u
+  - go get github.com/astaxie/beego
+  - go get github.com/deluan/itl
+  - go get github.com/siddontang/ledisdb/ledis
+  - go get github.com/karlkfi/inject
   - go get github.com/smartystreets/goconvey
-#  - go get github.com/astaxie/beego
-#  - go get github.com/deluan/itl
-#  - go get github.com/siddontang/ledisdb/ledis
-#  - go get github.com/karlkfi/inject
-#  - go get github.com/dhowden/tag
-#  - go get github.com/nfnt/resize
-#  - go get github.com/kennygrant/sanitize
-#  - go get github.com/deluan/gomate
+  - go get github.com/dhowden/tag
+  - go get github.com/nfnt/resize
+  - go get github.com/kennygrant/sanitize
+  - go get github.com/deluan/gomate
 
 script:
   - go test ./...
