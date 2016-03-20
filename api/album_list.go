@@ -16,17 +16,17 @@ type AlbumListController struct {
 	types   map[string]strategy
 }
 
-type strategy func(offset int, size int) (*domain.Albums, error)
+type strategy func(offset int, size int) (domain.Albums, error)
 
 func (c *AlbumListController) Prepare() {
 	utils.ResolveDependencies(&c.listGen)
 
 	c.types = map[string]strategy{
-		"random":   func(o int, s int) (*domain.Albums, error) { return c.listGen.GetRandom(o, s) },
-		"newest":   func(o int, s int) (*domain.Albums, error) { return c.listGen.GetNewest(o, s) },
-		"recent":   func(o int, s int) (*domain.Albums, error) { return c.listGen.GetRecent(o, s) },
-		"frequent": func(o int, s int) (*domain.Albums, error) { return c.listGen.GetFrequent(o, s) },
-		"highest":  func(o int, s int) (*domain.Albums, error) { return c.listGen.GetHighest(o, s) },
+		"random":   func(o int, s int) (domain.Albums, error) { return c.listGen.GetRandom(o, s) },
+		"newest":   func(o int, s int) (domain.Albums, error) { return c.listGen.GetNewest(o, s) },
+		"recent":   func(o int, s int) (domain.Albums, error) { return c.listGen.GetRecent(o, s) },
+		"frequent": func(o int, s int) (domain.Albums, error) { return c.listGen.GetFrequent(o, s) },
+		"highest":  func(o int, s int) (domain.Albums, error) { return c.listGen.GetHighest(o, s) },
 	}
 }
 
@@ -48,9 +48,9 @@ func (c *AlbumListController) GetAlbumList() {
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
 
-	albumList := make([]responses.Child, len(*albums))
+	albumList := make([]responses.Child, len(albums))
 
-	for i, al := range *albums {
+	for i, al := range albums {
 		albumList[i].Id = al.Id
 		albumList[i].Title = al.Name
 		albumList[i].Parent = al.ArtistId
@@ -80,9 +80,9 @@ func (c *AlbumListController) GetStarred() {
 
 	response := c.NewEmpty()
 	response.Starred = &responses.Starred{}
-	response.Starred.Album = make([]responses.Child, len(*albums))
+	response.Starred.Album = make([]responses.Child, len(albums))
 
-	for i, entry := range *albums {
+	for i, entry := range albums {
 		response.Starred.Album[i] = c.ToChild(entry)
 	}
 
@@ -98,8 +98,8 @@ func (c *AlbumListController) GetNowPlaying() {
 
 	response := c.NewEmpty()
 	response.NowPlaying = &responses.NowPlaying{}
-	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(*npInfos))
-	for i, entry := range *npInfos {
+	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(npInfos))
+	for i, entry := range npInfos {
 		response.NowPlaying.Entry[i].Child = c.ToChild(entry)
 		response.NowPlaying.Entry[i].UserName = entry.UserName
 		response.NowPlaying.Entry[i].MinutesAgo = entry.MinutesAgo

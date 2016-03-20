@@ -35,13 +35,13 @@ func (r *albumRepository) FindByArtist(artistId string) (*domain.Albums, error) 
 	return &as, err
 }
 
-func (r *albumRepository) GetAll(options domain.QueryOptions) (*domain.Albums, error) {
+func (r *albumRepository) GetAll(options domain.QueryOptions) (domain.Albums, error) {
 	var as = make(domain.Albums, 0)
 	err := r.loadAll(&as, options)
-	return &as, err
+	return as, err
 }
 
-func (r *albumRepository) GetAllIds() (*[]string, error) {
+func (r *albumRepository) GetAllIds() ([]string, error) {
 	idMap, err := r.getAllIds()
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (r *albumRepository) GetAllIds() (*[]string, error) {
 		i++
 	}
 
-	return &ids, nil
+	return ids, nil
 }
 
 func (r *albumRepository) PurgeInactive(active domain.Albums) ([]string, error) {

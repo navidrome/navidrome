@@ -28,8 +28,8 @@ type AlbumRepository interface {
 	Put(m *Album) error
 	Get(id string) (*Album, error)
 	FindByArtist(artistId string) (*Albums, error)
-	GetAll(QueryOptions) (*Albums, error)
+	GetAll(QueryOptions) (Albums, error)
 	PurgeInactive(active Albums) ([]string, error)
-	GetAllIds() (*[]string, error)
+	GetAllIds() ([]string, error)
 	GetStarred(QueryOptions) (*Albums, error)
 }
