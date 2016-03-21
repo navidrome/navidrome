@@ -150,8 +150,9 @@ func (s *ItunesScanner) collectPlaylists(p *itl.Playlist, fullPath string) {
 	pl.Tracks = make([]string, 0, len(p.PlaylistItems))
 	for _, item := range p.PlaylistItems {
 		id := strconv.Itoa(item.TrackID)
-		if _, found := s.mediaFiles[id]; found {
+		if mf, found := s.mediaFiles[id]; found {
 			pl.Tracks = append(pl.Tracks, id)
+			pl.Duration += mf.Duration
 		}
 	}
 	if len(pl.Tracks) > 0 {

@@ -23,9 +23,13 @@ func (p playlists) GetAll() (domain.Playlists, error) {
 }
 
 type PlaylistInfo struct {
-	Id      string
-	Name    string
-	Entries Entries
+	Id        string
+	Name      string
+	Entries   Entries
+	SongCount int
+	Duration  int
+	Public    bool
+	Owner     string
 }
 
 func (p playlists) Get(id string) (*PlaylistInfo, error) {
@@ -37,7 +41,14 @@ func (p playlists) Get(id string) (*PlaylistInfo, error) {
 		return nil, err
 	}
 
-	pinfo := &PlaylistInfo{Id: pl.Id, Name: pl.Name}
+	pinfo := &PlaylistInfo{
+		Id:        pl.Id,
+		Name:      pl.Name,
+		SongCount: len(pl.Tracks),
+		Duration:  pl.Duration,
+		Public:    pl.Public,
+		Owner:     pl.Owner,
+	}
 	pinfo.Entries = make(Entries, len(pl.Tracks))
 
 	// TODO Optimize: Get all tracks at once

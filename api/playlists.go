@@ -23,11 +23,14 @@ func (c *PlaylistsController) GetAll() {
 		c.SendError(responses.ERROR_GENERIC, "Internal error")
 	}
 	playlists := make([]responses.Playlist, len(allPls))
-	for i, f := range allPls {
-		playlists[i].Id = f.Id
-		playlists[i].Name = f.Name
-		playlists[i].Comment = "Original: " + f.FullPath
-		playlists[i].SongCount = len(f.Tracks)
+	for i, p := range allPls {
+		playlists[i].Id = p.Id
+		playlists[i].Name = p.Name
+		playlists[i].Comment = "Original: " + p.FullPath
+		playlists[i].SongCount = len(p.Tracks)
+		playlists[i].Duration = p.Duration
+		playlists[i].Owner = p.Owner
+		playlists[i].Public = p.Public
 	}
 	response := c.NewEmpty()
 	response.Playlists = &responses.Playlists{Playlist: playlists}
@@ -56,6 +59,10 @@ func (c *PlaylistsController) buildPlaylist(d *engine.PlaylistInfo) *responses.P
 	pls := &responses.PlaylistWithSongs{}
 	pls.Id = d.Id
 	pls.Name = d.Name
+	pls.SongCount = d.SongCount
+	pls.Owner = d.Owner
+	pls.Duration = d.Duration
+	pls.Public = d.Public
 
 	pls.Entry = c.ToChildren(d.Entries)
 	return pls

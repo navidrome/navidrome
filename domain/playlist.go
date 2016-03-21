@@ -4,6 +4,9 @@ type Playlist struct {
 	Id       string
 	Name     string
 	FullPath string
+	Duration int
+	Owner    string
+	Public   bool
 	Tracks   []string
 }
 

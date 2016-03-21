@@ -124,15 +124,14 @@ type Playlist struct {
 	Name      string `xml:"name,attr"                               json:"name"`
 	Comment   string `xml:"comment,attr,omitempty"                  json:"comment,omitempty"`
 	SongCount int    `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
+	Duration  int    `xml:"duration,attr,omitempty"                 json:"duration,omitempty"`
+	Public    bool   `xml:"public,attr,omitempty"                   json:"public,omitempty"`
+	Owner     string `xml:"owner,attr,omitempty"                    json:"owner,omitempty"`
 	/*
 		<xs:sequence>
 		    <xs:element name="allowedUser" type="xs:string" minOccurs="0" maxOccurs="unbounded"/> <!--Added in 1.8.0-->
 		</xs:sequence>
 		<xs:attribute name="comment" type="xs:string" use="optional"/>   <!--Added in 1.8.0-->
-		<xs:attribute name="owner" type="xs:string" use="optional"/>     <!--Added in 1.8.0-->
-		<xs:attribute name="public" type="xs:boolean" use="optional"/>   <!--Added in 1.8.0-->
-		<xs:attribute name="songCount" type="xs:int" use="required"/>    <!--Added in 1.8.0-->
-		<xs:attribute name="duration" type="xs:int" use="required"/>     <!--Added in 1.8.0-->
 		<xs:attribute name="created" type="xs:dateTime" use="required"/> <!--Added in 1.8.0-->
 		<xs:attribute name="changed" type="xs:dateTime" use="required"/> <!--Added in 1.13.0-->
 		<xs:attribute name="coverArt" type="xs:string" use="optional"/>  <!--Added in 1.11.0-->
