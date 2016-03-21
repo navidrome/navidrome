@@ -9,8 +9,6 @@ import (
 	"github.com/kennygrant/sanitize"
 )
 
-type Results Entries
-
 type Search interface {
 	ClearAll() error
 	IndexArtist(ar *domain.Artist) error
@@ -21,9 +19,9 @@ type Search interface {
 	RemoveAlbum(ids []string) error
 	RemoveMediaFile(ids []string) error
 
-	SearchArtist(q string, offset int, size int) (Results, error)
-	SearchAlbum(q string, offset int, size int) (Results, error)
-	SearchSong(q string, offset int, size int) (Results, error)
+	SearchArtist(q string, offset int, size int) (Entries, error)
+	SearchAlbum(q string, offset int, size int) (Entries, error)
+	SearchSong(q string, offset int, size int) (Entries, error)
 }
 
 type search struct {
@@ -79,7 +77,7 @@ func (s search) RemoveMediaFile(ids []string) error {
 	return s.idxSong.Remove(ids...)
 }
 
-func (s search) SearchArtist(q string, offset int, size int) (Results, error) {
+func (s search) SearchArtist(q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -87,7 +85,7 @@ func (s search) SearchArtist(q string, offset int, size int) (Results, error) {
 	if err != nil {
 		return nil, nil
 	}
-	res := make(Results, 0, len(resp))
+	res := make(Entries, 0, len(resp))
 	for _, id := range resp {
 		a, err := s.artistRepo.Get(id)
 		if criticalError("Artist", id, err) {
@@ -100,7 +98,7 @@ func (s search) SearchArtist(q string, offset int, size int) (Results, error) {
 	return res, nil
 }
 
-func (s search) SearchAlbum(q string, offset int, size int) (Results, error) {
+func (s search) SearchAlbum(q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -108,7 +106,7 @@ func (s search) SearchAlbum(q string, offset int, size int) (Results, error) {
 	if err != nil {
 		return nil, nil
 	}
-	res := make(Results, 0, len(resp))
+	res := make(Entries, 0, len(resp))
 	for _, id := range resp {
 		al, err := s.albumRepo.Get(id)
 		if criticalError("Album", id, err) {
@@ -121,7 +119,7 @@ func (s search) SearchAlbum(q string, offset int, size int) (Results, error) {
 	return res, nil
 }
 
-func (s search) SearchSong(q string, offset int, size int) (Results, error) {
+func (s search) SearchSong(q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -129,7 +127,7 @@ func (s search) SearchSong(q string, offset int, size int) (Results, error) {
 	if err != nil {
 		return nil, nil
 	}
-	res := make(Results, 0, len(resp))
+	res := make(Entries, 0, len(resp))
 	for _, id := range resp {
 		mf, err := s.mfileRepo.Get(id)
 		if criticalError("Song", id, err) {

@@ -84,6 +84,14 @@ func (c *BaseAPIController) SendResponse(response responses.Subsonic) {
 	}
 }
 
+func (c *BaseAPIController) ToChildren(entries engine.Entries) []responses.Child {
+	children := make([]responses.Child, len(entries))
+	for i, entry := range entries {
+		children[i] = c.ToChild(entry)
+	}
+	return children
+}
+
 func (c *BaseAPIController) ToChild(entry engine.Entry) responses.Child {
 	n := responses.Child{}
 	n.Id = entry.Id

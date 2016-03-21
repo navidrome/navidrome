@@ -45,13 +45,8 @@ func (c *AlbumListController) GetAlbumList() {
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
 	}
 
-	albumList := make([]responses.Child, len(albums))
-	for i, al := range albums {
-		albumList[i] = c.ToChild(al)
-	}
-
 	response := c.NewEmpty()
-	response.AlbumList = &responses.AlbumList{Album: albumList}
+	response.AlbumList = &responses.AlbumList{Album: c.ToChildren(albums)}
 	c.SendResponse(response)
 }
 
@@ -64,11 +59,7 @@ func (c *AlbumListController) GetStarred() {
 
 	response := c.NewEmpty()
 	response.Starred = &responses.Starred{}
-	response.Starred.Album = make([]responses.Child, len(albums))
-
-	for i, entry := range albums {
-		response.Starred.Album[i] = c.ToChild(entry)
-	}
+	response.Starred.Album = c.ToChildren(albums)
 
 	c.SendResponse(response)
 }

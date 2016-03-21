@@ -94,9 +94,6 @@ func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.
 		dir.Starred = &d.Starred
 	}
 
-	dir.Child = make([]responses.Child, len(d.Entries))
-	for i, entry := range d.Entries {
-		dir.Child[i] = c.ToChild(entry)
-	}
+	dir.Child = c.ToChildren(d.Entries)
 	return dir
 }

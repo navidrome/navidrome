@@ -57,26 +57,6 @@ func (c *PlaylistsController) buildPlaylist(d *engine.PlaylistInfo) *responses.P
 	pls.Id = d.Id
 	pls.Name = d.Name
 
-	pls.Entry = make([]responses.Child, len(d.Entries))
-	for i, child := range d.Entries {
-		pls.Entry[i].Id = child.Id
-		pls.Entry[i].Title = child.Title
-		pls.Entry[i].IsDir = child.IsDir
-		pls.Entry[i].Parent = child.Parent
-		pls.Entry[i].Album = child.Album
-		pls.Entry[i].Year = child.Year
-		pls.Entry[i].Artist = child.Artist
-		pls.Entry[i].Genre = child.Genre
-		pls.Entry[i].CoverArt = child.CoverArt
-		pls.Entry[i].Track = child.Track
-		pls.Entry[i].Duration = child.Duration
-		pls.Entry[i].Size = child.Size
-		pls.Entry[i].Suffix = child.Suffix
-		pls.Entry[i].BitRate = child.BitRate
-		pls.Entry[i].ContentType = child.ContentType
-		if !child.Starred.IsZero() {
-			pls.Entry[i].Starred = &child.Starred
-		}
-	}
+	pls.Entry = c.ToChildren(d.Entries)
 	return pls
 }
