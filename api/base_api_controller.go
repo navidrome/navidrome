@@ -104,5 +104,14 @@ func (c *BaseAPIController) ToChild(entry engine.Entry) responses.Child {
 	if !entry.Starred.IsZero() {
 		n.Starred = &entry.Starred
 	}
+	n.Path = entry.Path
+	n.PlayCount = entry.PlayCount
+	n.DiscNumber = entry.DiscNumber
+	if !entry.Created.IsZero() {
+		n.Created = &entry.Created
+	}
+	n.AlbumId = entry.AlbumId
+	n.ArtistId = entry.ArtistId
+	n.Type = entry.Type
 	return n
 }

@@ -85,21 +85,20 @@ type Child struct {
 	TranscodedSuffix      string     `xml:"transcodedSuffix,attr,omitempty"         json:"transcodedSuffix,omitempty"`
 	Duration              int        `xml:"duration,attr,omitempty"                 json:"duration,omitempty"`
 	BitRate               int        `xml:"bitRate,attr,omitempty"                  json:"bitRate,omitempty"`
+	Path                  string     `xml:"path,attr,omitempty"                     json:"path,omitempty"`
+	PlayCount             int32      `xml:"playCount,attr,omitempty"                json:"playcount,omitempty"`
+	DiscNumber            int        `xml:"discNumber,attr,omitempty"               json:"discNumber,omitempty"`
+	Created               *time.Time `xml:"created,attr,omitempty"                  json:"created,omitempty"`
+	AlbumId               string     `xml:"albumId,attr,omitempty"                  json:"albumId,omitempty"`
+	ArtistId              string     `xml:"artistId,attr,omitempty"                 json:"artistId,omitempty"`
+	Type                  string     `xml:"type,attr,omitempty"                     json:"type,omitempty"`
 	/*
-			<xs:attribute name="path" type="xs:string" use="optional"/>
-		        <xs:attribute name="isVideo" type="xs:boolean" use="optional"/>  <!-- Added in 1.4.1 -->
-		        <xs:attribute name="userRating" type="sub:UserRating" use="optional"/>  <!-- Added in 1.6.0 -->
-		        <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
-		        <xs:attribute name="playCount" type="xs:long" use="optional"/>  <!-- Added in 1.14.0 -->
-		        <xs:attribute name="discNumber" type="xs:int" use="optional"/>  <!-- Added in 1.8.0 -->
-		        <xs:attribute name="created" type="xs:dateTime" use="optional"/>  <!-- Added in 1.8.0 -->
-		        <xs:attribute name="starred" type="xs:dateTime" use="optional"/>  <!-- Added in 1.8.0 -->
-		        <xs:attribute name="albumId" type="xs:string" use="optional"/>  <!-- Added in 1.8.0 -->
-		        <xs:attribute name="artistId" type="xs:string" use="optional"/>  <!-- Added in 1.8.0 -->
-		        <xs:attribute name="type" type="sub:MediaType" use="optional"/>  <!-- Added in 1.8.0 -->
-		        <xs:attribute name="bookmarkPosition" type="xs:long" use="optional"/>  <!-- In millis. Added in 1.10.1 -->
-		        <xs:attribute name="originalWidth" type="xs:int" use="optional"/>  <!-- Added in 1.13.0 -->
-		        <xs:attribute name="originalHeight" type="xs:int" use="optional"/>  <!-- Added in 1.13.0 -->
+	   <xs:attribute name="isVideo" type="xs:boolean" use="optional"/>  <!-- Added in 1.4.1 -->
+	   <xs:attribute name="userRating" type="sub:UserRating" use="optional"/>  <!-- Added in 1.6.0 -->
+	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
+	   <xs:attribute name="bookmarkPosition" type="xs:long" use="optional"/>  <!-- In millis. Added in 1.10.1 -->
+	   <xs:attribute name="originalWidth" type="xs:int" use="optional"/>  <!-- Added in 1.13.0 -->
+	   <xs:attribute name="originalHeight" type="xs:int" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
 }
 

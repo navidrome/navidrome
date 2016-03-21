@@ -24,6 +24,13 @@ type Entry struct {
 	Suffix      string
 	BitRate     int
 	ContentType string
+	Path        string
+	PlayCount   int32
+	DiscNumber  int
+	Created     time.Time
+	AlbumId     string
+	ArtistId    string
+	Type        string
 
 	UserName   string
 	MinutesAgo int
@@ -51,6 +58,10 @@ func FromAlbum(al *domain.Album) Entry {
 	if al.Starred {
 		c.Starred = al.UpdatedAt
 	}
+	c.PlayCount = int32(al.PlayCount)
+	c.Created = al.CreatedAt
+	c.AlbumId = al.Id
+	c.ArtistId = al.ArtistId
 	return c
 }
 
@@ -76,5 +87,12 @@ func FromMediaFile(mf *domain.MediaFile) Entry {
 		c.CoverArt = mf.Id
 	}
 	c.ContentType = mf.ContentType()
+	c.Path = mf.Path
+	c.PlayCount = int32(mf.PlayCount)
+	c.DiscNumber = mf.DiscNumber
+	c.Created = mf.CreatedAt
+	c.AlbumId = mf.AlbumId
+	c.ArtistId = mf.ArtistId
+	c.Type = "music" // TODO Hardcoded for now
 	return c
 }

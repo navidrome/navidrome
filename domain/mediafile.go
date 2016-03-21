@@ -11,6 +11,7 @@ type MediaFile struct {
 	Title       string
 	Album       string
 	Artist      string
+	ArtistId    string
 	AlbumArtist string
 	AlbumId     string `parent:"album"`
 	HasCoverArt bool

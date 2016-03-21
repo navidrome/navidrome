@@ -206,6 +206,7 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	mf.Id = strconv.Itoa(t.TrackID)
 	mf.Album = unescape(t.Album)
 	mf.AlbumId = albumId(t)
+	mf.ArtistId = artistId(t)
 	mf.Title = unescape(t.Name)
 	mf.Artist = unescape(t.Artist)
 	mf.AlbumArtist = unescape(t.AlbumArtist)
