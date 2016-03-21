@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"strconv"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/engine"
@@ -25,6 +27,14 @@ func (c *BaseAPIController) RequiredParamString(param string, msg string) string
 	return p
 }
 
+func (c *BaseAPIController) RequiredParamStrings(param string, msg string) []string {
+	ps := c.Input()[param]
+	if len(ps) == 0 {
+		c.SendError(responses.ERROR_MISSING_PARAMETER, msg)
+	}
+	return ps
+}
+
 func (c *BaseAPIController) ParamString(param string) string {
 	return c.Input().Get(param)
 }
@@ -36,6 +46,18 @@ func (c *BaseAPIController) ParamTime(param string, def time.Time) time.Time {
 	}
 	c.Ctx.Input.Bind(&value, param)
 	return utils.ToTime(value)
+}
+
+func (c *BaseAPIController) ParamTimes(param string) []time.Time {
+	pStr := c.Input()[param]
+	times := make([]time.Time, len(pStr))
+	for i, t := range pStr {
+		ti, err := strconv.ParseInt(t, 10, 64)
+		if err == nil {
+			times[i] = utils.ToTime(ti)
+		}
+	}
+	return times
 }
 
 func (c *BaseAPIController) ParamInt(param string, def int) int {
@@ -59,7 +81,7 @@ func (c *BaseAPIController) SendError(errorCode int, message ...interface{}) {
 	if len(message) == 0 {
 		msg = responses.ErrorMsg(errorCode)
 	} else {
-		msg = fmt.Sprintf(message[0].(string), message[1:len(message)]...)
+		msg = fmt.Sprintf(message[0].(string), message[1:]...)
 	}
 	response.Error = &responses.Error{Code: errorCode, Message: msg}
 
