@@ -99,3 +99,11 @@ func FromMediaFile(mf *domain.MediaFile) Entry {
 	c.UserRating = mf.Rating
 	return c
 }
+
+func FromAlbums(albums domain.Albums) Entries {
+	entries := make(Entries, len(albums))
+	for i, al := range albums {
+		entries[i] = FromAlbum(&al)
+	}
+	return entries
+}

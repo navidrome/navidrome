@@ -1,11 +1,8 @@
 package api
 
 import (
-	"time"
-
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
-	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
 )
@@ -16,17 +13,17 @@ type AlbumListController struct {
 	types   map[string]strategy
 }
 
-type strategy func(offset int, size int) (domain.Albums, error)
+type strategy func(offset int, size int) (engine.Entries, error)
 
 func (c *AlbumListController) Prepare() {
 	utils.ResolveDependencies(&c.listGen)
 
 	c.types = map[string]strategy{
-		"random":   func(o int, s int) (domain.Albums, error) { return c.listGen.GetRandom(o, s) },
-		"newest":   func(o int, s int) (domain.Albums, error) { return c.listGen.GetNewest(o, s) },
-		"recent":   func(o int, s int) (domain.Albums, error) { return c.listGen.GetRecent(o, s) },
-		"frequent": func(o int, s int) (domain.Albums, error) { return c.listGen.GetFrequent(o, s) },
-		"highest":  func(o int, s int) (domain.Albums, error) { return c.listGen.GetHighest(o, s) },
+		"random":   func(o int, s int) (engine.Entries, error) { return c.listGen.GetRandom(o, s) },
+		"newest":   func(o int, s int) (engine.Entries, error) { return c.listGen.GetNewest(o, s) },
+		"recent":   func(o int, s int) (engine.Entries, error) { return c.listGen.GetRecent(o, s) },
+		"frequent": func(o int, s int) (engine.Entries, error) { return c.listGen.GetFrequent(o, s) },
+		"highest":  func(o int, s int) (engine.Entries, error) { return c.listGen.GetHighest(o, s) },
 	}
 }
 
@@ -49,21 +46,8 @@ func (c *AlbumListController) GetAlbumList() {
 	}
 
 	albumList := make([]responses.Child, len(albums))
-
 	for i, al := range albums {
-		albumList[i].Id = al.Id
-		albumList[i].Title = al.Name
-		albumList[i].Parent = al.ArtistId
-		albumList[i].IsDir = true
-		albumList[i].Album = al.Name
-		albumList[i].Year = al.Year
-		albumList[i].Artist = al.Artist
-		albumList[i].Genre = al.Genre
-		albumList[i].CoverArt = al.CoverArtId
-		if al.Starred {
-			t := time.Now()
-			albumList[i].Starred = &t
-		}
+		albumList[i] = c.ToChild(al)
 	}
 
 	response := c.NewEmpty()
