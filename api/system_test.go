@@ -26,7 +26,7 @@ func TestPing(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &v)
 			So(err, ShouldBeNil)
 			So(v.Subsonic.Status, ShouldEqual, "ok")
-			So(v.Subsonic.Version, ShouldEqual, "1.5.0")
+			So(v.Subsonic.Version, ShouldEqual, "1.8.0")
 		})
 
 	})

@@ -22,7 +22,7 @@ The project's main goals are:
 
 ###  Supported Subsonic API version
 
-I'm currently trying to implement all functionality from API v1.5.0, with some exceptions.
+I'm currently trying to implement all functionality from API v1.8.0, with some exceptions.
 
 Check the (almost) up to date [compatibility chart](https://github.com/deluan/gosonic/wiki/Compatibility) for what is working.
 
