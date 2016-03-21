@@ -213,7 +213,7 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	mf.Genre = unescape(t.Genre)
 	mf.Compilation = t.Compilation
 	mf.Starred = t.Loved
-	mf.Rating = t.Rating
+	mf.Rating = t.Rating / 20
 	mf.PlayCount = t.PlayCount
 	mf.PlayDate = t.PlayDateUTC
 	mf.Year = t.Year
@@ -257,7 +257,7 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 	al.Year = t.Year
 	al.Compilation = t.Compilation
 	al.Starred = t.AlbumLoved
-	al.Rating = t.AlbumRating
+	al.Rating = t.AlbumRating / 20
 	al.PlayCount += t.PlayCount
 	al.Genre = mf.Genre
 	al.Artist = mf.Artist

@@ -92,9 +92,9 @@ type Child struct {
 	AlbumId               string     `xml:"albumId,attr,omitempty"                  json:"albumId,omitempty"`
 	ArtistId              string     `xml:"artistId,attr,omitempty"                 json:"artistId,omitempty"`
 	Type                  string     `xml:"type,attr,omitempty"                     json:"type,omitempty"`
+	UserRating            int        `xml:"userRating,attr,omitempty"               json:"userRating,omitempty"`
 	/*
 	   <xs:attribute name="isVideo" type="xs:boolean" use="optional"/>  <!-- Added in 1.4.1 -->
-	   <xs:attribute name="userRating" type="sub:UserRating" use="optional"/>  <!-- Added in 1.6.0 -->
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
 	   <xs:attribute name="bookmarkPosition" type="xs:long" use="optional"/>  <!-- In millis. Added in 1.10.1 -->
 	   <xs:attribute name="originalWidth" type="xs:int" use="optional"/>  <!-- Added in 1.13.0 -->
@@ -103,14 +103,14 @@ type Child struct {
 }
 
 type Directory struct {
-	Child     []Child    `xml:"child"                         json:"child,omitempty"`
-	Id        string     `xml:"id,attr"                       json:"id"`
-	Name      string     `xml:"name,attr"                     json:"name"`
-	Parent    string     `xml:"parent,attr,omitempty"         json:"parent,omitempty"`
-	Starred   *time.Time `xml:"starred,attr,omitempty"        json:"starred,omitempty"`
-	PlayCount int32      `xml:"playCount,attr,omitempty"      json:"playcount,omitempty"`
+	Child      []Child    `xml:"child"                         json:"child,omitempty"`
+	Id         string     `xml:"id,attr"                       json:"id"`
+	Name       string     `xml:"name,attr"                     json:"name"`
+	Parent     string     `xml:"parent,attr,omitempty"         json:"parent,omitempty"`
+	Starred    *time.Time `xml:"starred,attr,omitempty"        json:"starred,omitempty"`
+	PlayCount  int32      `xml:"playCount,attr,omitempty"      json:"playcount,omitempty"`
+	UserRating int        `xml:"userRating,attr,omitempty"     json:"userRating,omitempty"`
 	/*
-	   <xs:attribute name="userRating" type="sub:UserRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
 }

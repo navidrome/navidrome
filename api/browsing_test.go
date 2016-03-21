@@ -162,7 +162,7 @@ func TestGetMusicDirectory(t *testing.T) {
 				mockAlbumRepo.SetData(`[{"Id":"A","Name":"Tardis","ArtistId":"1"}]`, 1)
 				_, w := Get(AddParams("/rest/getMusicDirectory.view", "id=1"), "TestGetMusicDirectory")
 
-				So(w.Body, ShouldContainJSON, `"child":[{"album":"Tardis","id":"A","isDir":true,"parent":"1","title":"Tardis"}]`)
+				So(w.Body, ShouldContainJSON, `"child":[{"album":"Tardis","albumId":"A","artistId":"1","id":"A","isDir":true,"parent":"1","title":"Tardis"}]`)
 			})
 		})
 		Convey("When id matches an album with tracks", func() {
@@ -171,7 +171,7 @@ func TestGetMusicDirectory(t *testing.T) {
 			mockMediaFileRepo.SetData(`[{"Id":"3","Title":"Cangote","AlbumId":"A"}]`, 1)
 			_, w := Get(AddParams("/rest/getMusicDirectory.view", "id=A"), "TestGetMusicDirectory")
 
-			So(w.Body, ShouldContainJSON, `"child":[{"id":"3","isDir":false,"parent":"A","title":"Cangote"}]`)
+			So(w.Body, ShouldContainJSON, `"child":[{"albumId":"A","id":"3","isDir":false,"parent":"A","title":"Cangote","type":"music"}]`)
 		})
 		Reset(func() {
 			mockArtistRepo.SetData("[]", 0)

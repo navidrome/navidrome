@@ -113,5 +113,6 @@ func (c *BaseAPIController) ToChild(entry engine.Entry) responses.Child {
 	n.AlbumId = entry.AlbumId
 	n.ArtistId = entry.ArtistId
 	n.Type = entry.Type
+	n.UserRating = entry.UserRating
 	return n
 }

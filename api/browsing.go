@@ -84,10 +84,11 @@ func (c *BrowsingController) GetDirectory() {
 
 func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.Directory {
 	dir := &responses.Directory{
-		Id:        d.Id,
-		Name:      d.Name,
-		Parent:    d.Parent,
-		PlayCount: d.PlayCount,
+		Id:         d.Id,
+		Name:       d.Name,
+		Parent:     d.Parent,
+		PlayCount:  d.PlayCount,
+		UserRating: d.UserRating,
 	}
 	if !d.Starred.IsZero() {
 		dir.Starred = &d.Starred

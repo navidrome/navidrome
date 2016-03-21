@@ -31,6 +31,7 @@ type Entry struct {
 	AlbumId     string
 	ArtistId    string
 	Type        string
+	UserRating  int
 
 	UserName   string
 	MinutesAgo int
@@ -62,6 +63,7 @@ func FromAlbum(al *domain.Album) Entry {
 	c.Created = al.CreatedAt
 	c.AlbumId = al.Id
 	c.ArtistId = al.ArtistId
+	c.UserRating = al.Rating
 	return c
 }
 
@@ -94,5 +96,6 @@ func FromMediaFile(mf *domain.MediaFile) Entry {
 	c.AlbumId = mf.AlbumId
 	c.ArtistId = mf.ArtistId
 	c.Type = "music" // TODO Hardcoded for now
+	c.UserRating = mf.Rating
 	return c
 }
