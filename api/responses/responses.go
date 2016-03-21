@@ -104,15 +104,15 @@ type Child struct {
 }
 
 type Directory struct {
-	Child []Child `xml:"child"                         json:"child,omitempty"`
-	Id    string  `xml:"id,attr"                       json:"id"`
-	Name  string  `xml:"name,attr"                     json:"name"`
+	Child     []Child    `xml:"child"                         json:"child,omitempty"`
+	Id        string     `xml:"id,attr"                       json:"id"`
+	Name      string     `xml:"name,attr"                     json:"name"`
+	Parent    string     `xml:"parent,attr,omitempty"         json:"parent,omitempty"`
+	Starred   *time.Time `xml:"starred,attr,omitempty"        json:"starred,omitempty"`
+	PlayCount int32      `xml:"playCount,attr,omitempty"      json:"playcount,omitempty"`
 	/*
-	   <xs:attribute name="parent" type="xs:string" use="optional"/>
-	   <xs:attribute name="starred" type="xs:dateTime" use="optional"/> <!-- Added in 1.10.1 -->
 	   <xs:attribute name="userRating" type="sub:UserRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
-	   <xs:attribute name="playCount" type="xs:long" use="optional"/>  <!-- Added in 1.14.0 -->
 	*/
 }
 

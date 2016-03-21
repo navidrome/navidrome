@@ -54,9 +54,12 @@ func (b browser) Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.
 }
 
 type DirectoryInfo struct {
-	Id      string
-	Name    string
-	Entries Entries
+	Id        string
+	Name      string
+	Entries   Entries
+	Parent    string
+	Starred   time.Time
+	PlayCount int32
 }
 
 func (c browser) Directory(id string) (*DirectoryInfo, error) {
@@ -90,12 +93,21 @@ func (c browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *Directo
 	dir.Entries = make(Entries, len(albums))
 	for i, al := range albums {
 		dir.Entries[i] = FromAlbum(&al)
+		dir.PlayCount += int32(al.PlayCount)
 	}
 	return dir
 }
 
 func (c browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *DirectoryInfo {
-	dir := &DirectoryInfo{Id: al.Id, Name: al.Name}
+	dir := &DirectoryInfo{
+		Id:        al.Id,
+		Name:      al.Name,
+		Parent:    al.ArtistId,
+		PlayCount: int32(al.PlayCount),
+	}
+	if al.Starred {
+		dir.Starred = al.UpdatedAt
+	}
 
 	dir.Entries = make(Entries, len(tracks))
 	for i, mf := range tracks {
