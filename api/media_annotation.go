@@ -30,6 +30,7 @@ func (c *MediaAnnotationController) Scrobble() {
 	playerName := c.ParamString("c")
 	username := c.ParamString("u")
 
+	beego.Debug("Scrobbling ids:", ids, "times:", times, "submission:", submission)
 	for i := range ids {
 		var t time.Time
 		if len(times) > 0 {
@@ -45,7 +46,6 @@ func (c *MediaAnnotationController) Scrobble() {
 		//if skip {
 		//	beego.Info("Skipped previous song")
 		//}
-
 		if submission {
 			mf, err := c.scrobbler.Register(playerId, ids[i], t)
 			if err != nil {
