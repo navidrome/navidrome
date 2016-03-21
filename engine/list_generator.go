@@ -14,7 +14,9 @@ type ListGenerator interface {
 	GetFrequent(offset int, size int) (Entries, error)
 	GetHighest(offset int, size int) (Entries, error)
 	GetRandom(offset int, size int) (Entries, error)
-	GetStarred() (Entries, error)
+	GetByName(offset int, size int) (Entries, error)
+	GetByArtist(offset int, size int) (Entries, error)
+	GetStarred(offset int, size int) (Entries, error)
 	GetNowPlaying() (Entries, error)
 }
 
@@ -56,6 +58,16 @@ func (g listGenerator) GetHighest(offset int, size int) (Entries, error) {
 	return g.query(qo, offset, size)
 }
 
+func (g listGenerator) GetByName(offset int, size int) (Entries, error) {
+	qo := domain.QueryOptions{SortBy: "Name", Alpha: true}
+	return g.query(qo, offset, size)
+}
+
+func (g listGenerator) GetByArtist(offset int, size int) (Entries, error) {
+	qo := domain.QueryOptions{SortBy: "Artist", Alpha: true}
+	return g.query(qo, offset, size)
+}
+
 func (g listGenerator) GetRandom(offset int, size int) (Entries, error) {
 	ids, err := g.albumRepo.GetAllIds()
 	if err != nil {
@@ -76,8 +88,9 @@ func (g listGenerator) GetRandom(offset int, size int) (Entries, error) {
 	return r, nil
 }
 
-func (g listGenerator) GetStarred() (Entries, error) {
-	albums, err := g.albumRepo.GetStarred(domain.QueryOptions{})
+func (g listGenerator) GetStarred(offset int, size int) (Entries, error) {
+	qo := domain.QueryOptions{Offset: offset, Size: size}
+	albums, err := g.albumRepo.GetStarred(qo)
 	if err != nil {
 		return nil, err
 	}

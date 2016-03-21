@@ -19,11 +19,14 @@ func (c *AlbumListController) Prepare() {
 	utils.ResolveDependencies(&c.listGen)
 
 	c.types = map[string]strategy{
-		"random":   func(o int, s int) (engine.Entries, error) { return c.listGen.GetRandom(o, s) },
-		"newest":   func(o int, s int) (engine.Entries, error) { return c.listGen.GetNewest(o, s) },
-		"recent":   func(o int, s int) (engine.Entries, error) { return c.listGen.GetRecent(o, s) },
-		"frequent": func(o int, s int) (engine.Entries, error) { return c.listGen.GetFrequent(o, s) },
-		"highest":  func(o int, s int) (engine.Entries, error) { return c.listGen.GetHighest(o, s) },
+		"random":               func(o int, s int) (engine.Entries, error) { return c.listGen.GetRandom(o, s) },
+		"newest":               func(o int, s int) (engine.Entries, error) { return c.listGen.GetNewest(o, s) },
+		"recent":               func(o int, s int) (engine.Entries, error) { return c.listGen.GetRecent(o, s) },
+		"frequent":             func(o int, s int) (engine.Entries, error) { return c.listGen.GetFrequent(o, s) },
+		"highest":              func(o int, s int) (engine.Entries, error) { return c.listGen.GetHighest(o, s) },
+		"alphabeticalByName":   func(o int, s int) (engine.Entries, error) { return c.listGen.GetByName(o, s) },
+		"alphabeticalByArtist": func(o int, s int) (engine.Entries, error) { return c.listGen.GetByArtist(o, s) },
+		"starred":              func(o int, s int) (engine.Entries, error) { return c.listGen.GetStarred(o, s) },
 	}
 }
 
@@ -51,7 +54,7 @@ func (c *AlbumListController) GetAlbumList() {
 }
 
 func (c *AlbumListController) GetStarred() {
-	albums, err := c.listGen.GetStarred()
+	albums, err := c.listGen.GetStarred(0, -1)
 	if err != nil {
 		beego.Error("Error retrieving starred albums:", err)
 		c.SendError(responses.ERROR_GENERIC, "Internal Error")
