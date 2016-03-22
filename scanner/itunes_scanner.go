@@ -263,6 +263,7 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 	al.Genre = mf.Genre
 	al.Artist = mf.Artist
 	al.AlbumArtist = ar.Name
+	al.Duration += mf.Duration
 
 	if mf.HasCoverArt {
 		al.CoverArtId = mf.Id

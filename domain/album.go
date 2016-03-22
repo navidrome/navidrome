@@ -15,6 +15,7 @@ type Album struct {
 	Starred      bool `idx:"Starred"`
 	PlayCount    int
 	PlayDate     time.Time
+	Duration     int
 	Rating       int
 	Genre        string
 	CreatedAt    time.Time

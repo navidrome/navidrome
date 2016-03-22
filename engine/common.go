@@ -64,6 +64,7 @@ func FromAlbum(al *domain.Album) Entry {
 	c.AlbumId = al.Id
 	c.ArtistId = al.ArtistId
 	c.UserRating = al.Rating
+	c.Duration = al.Duration
 	return c
 }
 
