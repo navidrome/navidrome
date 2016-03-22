@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"errors"
+	"time"
 
 	"github.com/deluan/gosonic/domain"
 )
@@ -49,7 +50,7 @@ func (r *albumRepository) GetAllIds() ([]string, error) {
 	ids := make([]string, len(idMap))
 
 	i := 0
-	for id, _ := range idMap {
+	for id := range idMap {
 		ids[i] = id
 		i++
 	}
@@ -65,7 +66,8 @@ func (r *albumRepository) PurgeInactive(active domain.Albums) ([]string, error) 
 
 func (r *albumRepository) GetStarred(options domain.QueryOptions) (domain.Albums, error) {
 	var as = make(domain.Albums, 0)
-	err := r.loadRange("Starred", true, true, &as, options)
+	start := time.Time{}.Add(time.Duration(1) * time.Hour)
+	err := r.loadRange("Starred", start, time.Now(), &as, options)
 	return as, err
 }
 

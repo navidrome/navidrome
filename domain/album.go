@@ -12,12 +12,13 @@ type Album struct {
 	AlbumArtist  string
 	Year         int `idx:"Year"`
 	Compilation  bool
-	Starred      bool `idx:"Starred"`
+	Starred      bool
 	PlayCount    int
 	PlayDate     time.Time
 	Duration     int
 	Rating       int
 	Genre        string
+	StarredAt    time.Time `idx:"Starred"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

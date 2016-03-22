@@ -28,6 +28,7 @@ type MediaFile struct {
 	PlayDate    time.Time
 	Rating      int
 	Starred     bool
+	StarredAt   time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

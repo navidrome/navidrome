@@ -290,7 +290,13 @@ func (r *ledisRepository) loadRange(idxName string, min interface{}, max interfa
 	maxS := toScore(max)
 
 	idxKey := fmt.Sprintf("%s:idx:%s", r.table, idxName)
-	resp, err := Db().ZRangeByScore([]byte(idxKey), minS, maxS, o.Offset, o.Size)
+	var resp []ledis.ScorePair
+	var err error
+	if o.Desc {
+		resp, err = Db().ZRevRangeByScore([]byte(idxKey), minS, maxS, o.Offset, o.Size)
+	} else {
+		resp, err = Db().ZRangeByScore([]byte(idxKey), minS, maxS, o.Offset, o.Size)
+	}
 	if err != nil {
 		return err
 	}

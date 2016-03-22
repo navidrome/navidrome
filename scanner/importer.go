@@ -153,6 +153,12 @@ func (i *Importer) importLibrary() (err error) {
 		if mf.UpdatedAt.Before(i.lastScan) {
 			continue
 		}
+		if mf.Starred {
+			original, err := i.mfRepo.Get(mf.Id)
+			if err != nil || !original.Starred {
+				mf.StarredAt = mf.UpdatedAt
+			}
+		}
 		if err := i.mfRepo.Put(mf); err != nil {
 			beego.Error(err)
 		}
@@ -171,6 +177,12 @@ func (i *Importer) importLibrary() (err error) {
 		j++
 		if al.UpdatedAt.Before(i.lastScan) {
 			continue
+		}
+		if al.Starred {
+			original, err := i.albumRepo.Get(al.Id)
+			if err != nil || !original.Starred {
+				al.StarredAt = al.UpdatedAt
+			}
 		}
 		if err := i.albumRepo.Put(al); err != nil {
 			beego.Error(err)

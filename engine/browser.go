@@ -106,9 +106,7 @@ func (b *browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *Dir
 		Parent:     al.ArtistId,
 		PlayCount:  int32(al.PlayCount),
 		UserRating: al.Rating,
-	}
-	if al.Starred {
-		dir.Starred = al.UpdatedAt
+		Starred:    al.StarredAt,
 	}
 
 	dir.Entries = make(Entries, len(tracks))

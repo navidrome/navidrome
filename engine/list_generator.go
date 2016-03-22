@@ -89,7 +89,7 @@ func (g *listGenerator) GetRandom(offset int, size int) (Entries, error) {
 }
 
 func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
-	qo := domain.QueryOptions{Offset: offset, Size: size}
+	qo := domain.QueryOptions{Offset: offset, Size: size, Desc: true}
 	albums, err := g.albumRepo.GetStarred(qo)
 	if err != nil {
 		return nil, err
