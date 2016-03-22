@@ -28,26 +28,26 @@ type JsonWrapper struct {
 }
 
 type Error struct {
-	Code    int    `xml:"code,attr"                     json:"code"`
-	Message string `xml:"message,attr"                  json:"message"`
+	Code    int    `xml:"code,attr"                      json:"code"`
+	Message string `xml:"message,attr"                   json:"message"`
 }
 
 type License struct {
-	Valid bool `xml:"valid,attr"                    json:"valid"`
+	Valid bool `xml:"valid,attr"                         json:"valid"`
 }
 
 type MusicFolder struct {
-	Id   string `xml:"id,attr"                       json:"id"`
-	Name string `xml:"name,attr"                     json:"name"`
+	Id   string `xml:"id,attr"                           json:"id"`
+	Name string `xml:"name,attr"                         json:"name"`
 }
 
 type MusicFolders struct {
-	Folders []MusicFolder `xml:"musicFolder"              json:"musicFolder,omitempty"`
+	Folders []MusicFolder `xml:"musicFolder"             json:"musicFolder,omitempty"`
 }
 
 type Artist struct {
-	Id   string `xml:"id,attr"                       json:"id"`
-	Name string `xml:"name,attr"                     json:"name"`
+	Id   string `xml:"id,attr"                           json:"id"`
+	Name string `xml:"name,attr"                         json:"name"`
 	/*
 		<xs:attribute name="starred" type="xs:dateTime" use="optional"/> <!-- Added in 1.10.1 -->
 		<xs:attribute name="userRating" type="sub:UserRating" use="optional"/>  <!-- Added in 1.13.0 -->
@@ -61,9 +61,9 @@ type Index struct {
 }
 
 type Indexes struct {
-	Index           []Index `xml:"index"                 json:"index,omitempty"`
-	LastModified    string  `xml:"lastModified,attr"     json:"lastModified"`
-	IgnoredArticles string  `xml:"ignoredArticles,attr"  json:"ignoredArticles"`
+	Index           []Index `xml:"index"                  json:"index,omitempty"`
+	LastModified    string  `xml:"lastModified,attr"      json:"lastModified"`
+	IgnoredArticles string  `xml:"ignoredArticles,attr"   json:"ignoredArticles"`
 }
 
 type Child struct {
@@ -103,20 +103,20 @@ type Child struct {
 }
 
 type Directory struct {
-	Child      []Child    `xml:"child"                         json:"child,omitempty"`
-	Id         string     `xml:"id,attr"                       json:"id"`
-	Name       string     `xml:"name,attr"                     json:"name"`
-	Parent     string     `xml:"parent,attr,omitempty"         json:"parent,omitempty"`
-	Starred    *time.Time `xml:"starred,attr,omitempty"        json:"starred,omitempty"`
-	PlayCount  int32      `xml:"playCount,attr,omitempty"      json:"playcount,omitempty"`
-	UserRating int        `xml:"userRating,attr,omitempty"     json:"userRating,omitempty"`
+	Child      []Child    `xml:"child"                              json:"child,omitempty"`
+	Id         string     `xml:"id,attr"                            json:"id"`
+	Name       string     `xml:"name,attr"                          json:"name"`
+	Parent     string     `xml:"parent,attr,omitempty"              json:"parent,omitempty"`
+	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
+	PlayCount  int32      `xml:"playCount,attr,omitempty"           json:"playcount,omitempty"`
+	UserRating int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
 	/*
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
 }
 
 type AlbumList struct {
-	Album []Child `xml:"album"                         json:"album,omitempty"`
+	Album []Child `xml:"album"                                      json:"album,omitempty"`
 }
 
 type Playlist struct {
@@ -140,54 +140,54 @@ type Playlist struct {
 }
 
 type Playlists struct {
-	Playlist []Playlist `xml:"playlist"                         json:"playlist,omitempty"`
+	Playlist []Playlist `xml:"playlist"                           json:"playlist,omitempty"`
 }
 
 type PlaylistWithSongs struct {
 	Playlist
-	Entry []Child `xml:"entry"                            json:"entry,omitempty"`
+	Entry []Child `xml:"entry"                                    json:"entry,omitempty"`
 }
 
 type SearchResult2 struct {
-	Artist []Artist `xml:"artist"                           json:"artist,omitempty"`
-	Album  []Child  `xml:"album"                            json:"album,omitempty"`
-	Song   []Child  `xml:"song"                             json:"song,omitempty"`
+	Artist []Artist `xml:"artist"                                 json:"artist,omitempty"`
+	Album  []Child  `xml:"album"                                  json:"album,omitempty"`
+	Song   []Child  `xml:"song"                                   json:"song,omitempty"`
 }
 
 type Starred struct {
-	Artist []Artist `xml:"artist"                           json:"artist,omitempty"`
-	Album  []Child  `xml:"album"                            json:"album,omitempty"`
-	Song   []Child  `xml:"song"                             json:"song,omitempty"`
+	Artist []Artist `xml:"artist"                                 json:"artist,omitempty"`
+	Album  []Child  `xml:"album"                                  json:"album,omitempty"`
+	Song   []Child  `xml:"song"                                   json:"song,omitempty"`
 }
 
 type NowPlayingEntry struct {
 	Child
-	UserName   string `xml:"username,attr"                  json:"username,omitempty"`
-	MinutesAgo int    `xml:"minutesAgo,attr"                json:"minutesAgo,omitempty"`
-	PlayerId   int    `xml:"playerId,attr"                  json:"playerId,omitempty"`
-	PlayerName string `xml:"playerName,attr"                json:"playerName,omitempty"`
+	UserName   string `xml:"username,attr"                        json:"username,omitempty"`
+	MinutesAgo int    `xml:"minutesAgo,attr"                      json:"minutesAgo,omitempty"`
+	PlayerId   int    `xml:"playerId,attr"                        json:"playerId,omitempty"`
+	PlayerName string `xml:"playerName,attr"                      json:"playerName,omitempty"`
 }
 
 type NowPlaying struct {
-	Entry []NowPlayingEntry `xml:"entry"                    json:"entry,omitempty"`
+	Entry []NowPlayingEntry `xml:"entry"                          json:"entry,omitempty"`
 }
 
 type User struct {
-	Username            string `xml:"username,attr" json:"username"`
-	Email               string `xml:"email,attr,omitempty" json:"email,omitempty"`
-	ScrobblingEnabled   bool   `xml:"scrobblingEnabled,attr" json:"scrobblingEnabled"`
-	MaxBitRate          int    `xml:"maxBitRate,attr,omitempty" json:"maxBitRate,omitempty"`
-	AdminRole           bool   `xml:"adminRole,attr" json:"adminRole"`
-	SettingsRole        bool   `xml:"settingsRole,attr" json:"settingsRole"`
-	DownloadRole        bool   `xml:"downloadRole,attr" json:"downloadRole"`
-	UploadRole          bool   `xml:"uploadRole,attr" json:"uploadRole"`
-	PlaylistRole        bool   `xml:"playlistRole,attr" json:"playlistRole"`
-	CoverArtRole        bool   `xml:"coverArtRole,attr" json:"coverArtRole"`
-	CommentRole         bool   `xml:"commentRole,attr" json:"commentRole"`
-	PodcastRole         bool   `xml:"podcastRole,attr" json:"podcastRole"`
-	StreamRole          bool   `xml:"streamRole,attr" json:"streamRole"`
-	JukeboxRole         bool   `xml:"jukeboxRole,attr" json:"jukeboxRole"`
-	ShareRole           bool   `xml:"shareRole,attr" json:"shareRole"`
-	VideoConversionRole bool   `xml:"videoConversionRole,attr" json:"videoConversionRole"`
-	Folder              []int  `xml:"folder,omitempty" json:"folder,omitempty"`
+	Username            string `xml:"username,attr"               json:"username"`
+	Email               string `xml:"email,attr,omitempty"        json:"email,omitempty"`
+	ScrobblingEnabled   bool   `xml:"scrobblingEnabled,attr"      json:"scrobblingEnabled"`
+	MaxBitRate          int    `xml:"maxBitRate,attr,omitempty"   json:"maxBitRate,omitempty"`
+	AdminRole           bool   `xml:"adminRole,attr"              json:"adminRole"`
+	SettingsRole        bool   `xml:"settingsRole,attr"           json:"settingsRole"`
+	DownloadRole        bool   `xml:"downloadRole,attr"           json:"downloadRole"`
+	UploadRole          bool   `xml:"uploadRole,attr"             json:"uploadRole"`
+	PlaylistRole        bool   `xml:"playlistRole,attr"           json:"playlistRole"`
+	CoverArtRole        bool   `xml:"coverArtRole,attr"           json:"coverArtRole"`
+	CommentRole         bool   `xml:"commentRole,attr"            json:"commentRole"`
+	PodcastRole         bool   `xml:"podcastRole,attr"            json:"podcastRole"`
+	StreamRole          bool   `xml:"streamRole,attr"             json:"streamRole"`
+	JukeboxRole         bool   `xml:"jukeboxRole,attr"            json:"jukeboxRole"`
+	ShareRole           bool   `xml:"shareRole,attr"              json:"shareRole"`
+	VideoConversionRole bool   `xml:"videoConversionRole,attr"    json:"videoConversionRole"`
+	Folder              []int  `xml:"folder,omitempty"            json:"folder,omitempty"`
 }
