@@ -31,35 +31,34 @@ func (c *MediaAnnotationController) Scrobble() {
 	username := c.ParamString("u")
 
 	beego.Debug("Scrobbling ids:", ids, "times:", times, "submission:", submission)
-	for i := range ids {
+	for i, id := range ids {
 		var t time.Time
 		if len(times) > 0 {
 			t = times[i]
 		} else {
 			t = time.Now()
 		}
-		// TODO Fix skipped songs
-		//skip, err := c.scrobbler.DetectSkipped(playerId, id, submission)
-		//if err != nil {
-		//	beego.Error("Error detecting skip:", err)
-		//}
-		//if skip {
-		//	beego.Info("Skipped previous song")
-		//}
+		skip, err := c.scrobbler.DetectSkipped(playerId, id, submission)
+		if err != nil {
+			beego.Error("Error detecting skip:", err)
+		}
+		if skip {
+			beego.Info("Skipped previous song")
+		}
 		if submission {
-			mf, err := c.scrobbler.Register(playerId, ids[i], t)
+			mf, err := c.scrobbler.Register(playerId, id, t)
 			if err != nil {
-				beego.Error("Error scrobbling:", err)
+				beego.Error("Error scrobbling", id, "-", err)
 				continue
 			}
-			beego.Info(fmt.Sprintf(`Scrobbled (%s) "%s" at %v`, ids[i], mf.Title, t))
+			beego.Info(fmt.Sprintf(`Scrobbled (%s) "%s" at %v`, id, mf.Title, t))
 		} else {
-			mf, err := c.scrobbler.NowPlaying(playerId, ids[i], username, playerName)
+			mf, err := c.scrobbler.NowPlaying(playerId, id, username, playerName)
 			if err != nil {
-				beego.Error("Error setting", ids[i], "as current song:", err)
+				beego.Error("Error setting", id, "as current song:", err)
 				continue
 			}
-			beego.Info(fmt.Sprintf(`Current Song (%s) "%s" at %v`, ids[i], mf.Title, t))
+			beego.Info(fmt.Sprintf(`Now Playing (%s) "%s" at %v`, id, mf.Title, t))
 		}
 	}
 	response := c.NewEmpty()
