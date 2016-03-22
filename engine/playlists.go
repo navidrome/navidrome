@@ -10,7 +10,7 @@ type Playlists interface {
 }
 
 func NewPlaylists(pr domain.PlaylistRepository, mr domain.MediaFileRepository) Playlists {
-	return playlists{pr, mr}
+	return &playlists{pr, mr}
 }
 
 type playlists struct {
@@ -18,7 +18,7 @@ type playlists struct {
 	mfileRepo domain.MediaFileRepository
 }
 
-func (p playlists) GetAll() (domain.Playlists, error) {
+func (p *playlists) GetAll() (domain.Playlists, error) {
 	return p.plsRepo.GetAll(domain.QueryOptions{})
 }
 
@@ -32,7 +32,7 @@ type PlaylistInfo struct {
 	Owner     string
 }
 
-func (p playlists) Get(id string) (*PlaylistInfo, error) {
+func (p *playlists) Get(id string) (*PlaylistInfo, error) {
 	pl, err := p.plsRepo.Get(id)
 	if err == domain.ErrNotFound {
 		return nil, ErrDataNotFound

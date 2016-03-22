@@ -20,7 +20,7 @@ type Browser interface {
 
 func NewBrowser(pr PropertyRepository, fr domain.MediaFolderRepository, ir domain.ArtistIndexRepository,
 	ar domain.ArtistRepository, alr domain.AlbumRepository, mr domain.MediaFileRepository) Browser {
-	return browser{pr, fr, ir, ar, alr, mr}
+	return &browser{pr, fr, ir, ar, alr, mr}
 }
 
 type browser struct {
@@ -32,11 +32,11 @@ type browser struct {
 	mfileRepo  domain.MediaFileRepository
 }
 
-func (b browser) MediaFolders() (domain.MediaFolders, error) {
+func (b *browser) MediaFolders() (domain.MediaFolders, error) {
 	return b.folderRepo.GetAll()
 }
 
-func (b browser) Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error) {
+func (b *browser) Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error) {
 	l, err := b.propRepo.DefaultGet(consts.LastScan, "-1")
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
@@ -63,23 +63,23 @@ type DirectoryInfo struct {
 	UserRating int
 }
 
-func (c browser) Directory(id string) (*DirectoryInfo, error) {
+func (b *browser) Directory(id string) (*DirectoryInfo, error) {
 	var dir *DirectoryInfo
 	switch {
-	case c.isArtist(id):
+	case b.isArtist(id):
 		beego.Debug("Found Artist with id", id)
-		a, albums, err := c.retrieveArtist(id)
+		a, albums, err := b.retrieveArtist(id)
 		if err != nil {
 			return nil, err
 		}
-		dir = c.buildArtistDir(a, albums)
-	case c.isAlbum(id):
+		dir = b.buildArtistDir(a, albums)
+	case b.isAlbum(id):
 		beego.Debug("Found Album with id", id)
-		al, tracks, err := c.retrieveAlbum(id)
+		al, tracks, err := b.retrieveAlbum(id)
 		if err != nil {
 			return nil, err
 		}
-		dir = c.buildAlbumDir(al, tracks)
+		dir = b.buildAlbumDir(al, tracks)
 	default:
 		beego.Debug("Id", id, "not found")
 		return nil, ErrDataNotFound
@@ -88,7 +88,7 @@ func (c browser) Directory(id string) (*DirectoryInfo, error) {
 	return dir, nil
 }
 
-func (c browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *DirectoryInfo {
+func (b *browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *DirectoryInfo {
 	dir := &DirectoryInfo{Id: a.Id, Name: a.Name}
 
 	dir.Entries = make(Entries, len(albums))
@@ -99,7 +99,7 @@ func (c browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *Directo
 	return dir
 }
 
-func (c browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *DirectoryInfo {
+func (b *browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *DirectoryInfo {
 	dir := &DirectoryInfo{
 		Id:         al.Id,
 		Name:       al.Name,
@@ -118,8 +118,8 @@ func (c browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *Dire
 	return dir
 }
 
-func (c browser) isArtist(id string) bool {
-	found, err := c.artistRepo.Exists(id)
+func (b *browser) isArtist(id string) bool {
+	found, err := b.artistRepo.Exists(id)
 	if err != nil {
 		beego.Debug(fmt.Errorf("Error searching for Artist %s: %v", id, err))
 		return false
@@ -127,8 +127,8 @@ func (c browser) isArtist(id string) bool {
 	return found
 }
 
-func (c browser) isAlbum(id string) bool {
-	found, err := c.albumRepo.Exists(id)
+func (b *browser) isAlbum(id string) bool {
+	found, err := b.albumRepo.Exists(id)
 	if err != nil {
 		beego.Debug(fmt.Errorf("Error searching for Album %s: %v", id, err))
 		return false
@@ -136,27 +136,27 @@ func (c browser) isAlbum(id string) bool {
 	return found
 }
 
-func (c browser) retrieveArtist(id string) (a *domain.Artist, as domain.Albums, err error) {
-	a, err = c.artistRepo.Get(id)
+func (b *browser) retrieveArtist(id string) (a *domain.Artist, as domain.Albums, err error) {
+	a, err = b.artistRepo.Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Artist %s from DB: %v", id, err)
 		return
 	}
 
-	if as, err = c.albumRepo.FindByArtist(id); err != nil {
+	if as, err = b.albumRepo.FindByArtist(id); err != nil {
 		err = fmt.Errorf("Error reading %s's albums from DB: %v", a.Name, err)
 	}
 	return
 }
 
-func (c browser) retrieveAlbum(id string) (al *domain.Album, mfs domain.MediaFiles, err error) {
-	al, err = c.albumRepo.Get(id)
+func (b *browser) retrieveAlbum(id string) (al *domain.Album, mfs domain.MediaFiles, err error) {
+	al, err = b.albumRepo.Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Album %s from DB: %v", id, err)
 		return
 	}
 
-	if mfs, err = c.mfileRepo.FindByAlbum(id); err != nil {
+	if mfs, err = b.mfileRepo.FindByAlbum(id); err != nil {
 		err = fmt.Errorf("Error reading %s's tracks from DB: %v", al.Name, err)
 	}
 	return

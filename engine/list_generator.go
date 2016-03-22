@@ -21,7 +21,7 @@ type ListGenerator interface {
 }
 
 func NewListGenerator(alr domain.AlbumRepository, mfr domain.MediaFileRepository, npr NowPlayingRepository) ListGenerator {
-	return listGenerator{alr, mfr, npr}
+	return &listGenerator{alr, mfr, npr}
 }
 
 type listGenerator struct {
@@ -30,7 +30,7 @@ type listGenerator struct {
 	npRepo       NowPlayingRepository
 }
 
-func (g listGenerator) query(qo domain.QueryOptions, offset int, size int) (Entries, error) {
+func (g *listGenerator) query(qo domain.QueryOptions, offset int, size int) (Entries, error) {
 	qo.Offset = offset
 	qo.Size = size
 	albums, err := g.albumRepo.GetAll(qo)
@@ -38,37 +38,37 @@ func (g listGenerator) query(qo domain.QueryOptions, offset int, size int) (Entr
 	return FromAlbums(albums), err
 }
 
-func (g listGenerator) GetNewest(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetNewest(offset int, size int) (Entries, error) {
 	qo := domain.QueryOptions{SortBy: "CreatedAt", Desc: true, Alpha: true}
 	return g.query(qo, offset, size)
 }
 
-func (g listGenerator) GetRecent(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetRecent(offset int, size int) (Entries, error) {
 	qo := domain.QueryOptions{SortBy: "PlayDate", Desc: true, Alpha: true}
 	return g.query(qo, offset, size)
 }
 
-func (g listGenerator) GetFrequent(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetFrequent(offset int, size int) (Entries, error) {
 	qo := domain.QueryOptions{SortBy: "PlayCount", Desc: true}
 	return g.query(qo, offset, size)
 }
 
-func (g listGenerator) GetHighest(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetHighest(offset int, size int) (Entries, error) {
 	qo := domain.QueryOptions{SortBy: "Rating", Desc: true}
 	return g.query(qo, offset, size)
 }
 
-func (g listGenerator) GetByName(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetByName(offset int, size int) (Entries, error) {
 	qo := domain.QueryOptions{SortBy: "Name", Alpha: true}
 	return g.query(qo, offset, size)
 }
 
-func (g listGenerator) GetByArtist(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetByArtist(offset int, size int) (Entries, error) {
 	qo := domain.QueryOptions{SortBy: "Artist", Alpha: true}
 	return g.query(qo, offset, size)
 }
 
-func (g listGenerator) GetRandom(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetRandom(offset int, size int) (Entries, error) {
 	ids, err := g.albumRepo.GetAllIds()
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (g listGenerator) GetRandom(offset int, size int) (Entries, error) {
 	return r, nil
 }
 
-func (g listGenerator) GetStarred(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
 	qo := domain.QueryOptions{Offset: offset, Size: size}
 	albums, err := g.albumRepo.GetStarred(qo)
 	if err != nil {
@@ -98,7 +98,7 @@ func (g listGenerator) GetStarred(offset int, size int) (Entries, error) {
 	return FromAlbums(albums), nil
 }
 
-func (g listGenerator) GetNowPlaying() (Entries, error) {
+func (g *listGenerator) GetNowPlaying() (Entries, error) {
 	npInfo, err := g.npRepo.GetAll()
 	if err != nil {
 		return nil, err

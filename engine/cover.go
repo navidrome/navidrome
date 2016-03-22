@@ -23,10 +23,10 @@ type cover struct {
 }
 
 func NewCover(mr domain.MediaFileRepository) Cover {
-	return cover{mr}
+	return &cover{mr}
 }
 
-func (c cover) Get(id string, size int, out io.Writer) error {
+func (c *cover) Get(id string, size int, out io.Writer) error {
 	mf, err := c.mfileRepo.Get(id)
 	if err != nil && err != domain.ErrNotFound {
 		return err

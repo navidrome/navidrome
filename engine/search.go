@@ -37,7 +37,7 @@ type search struct {
 }
 
 func NewSearch(ar domain.ArtistRepository, alr domain.AlbumRepository, mr domain.MediaFileRepository, db gomate.DB) Search {
-	s := search{artistRepo: ar, albumRepo: alr, mfileRepo: mr}
+	s := &search{artistRepo: ar, albumRepo: alr, mfileRepo: mr}
 	s.idxArtist = gomate.NewIndexer(db, "gomate-artist-idx")
 	s.sArtist = gomate.NewSearcher(db, "gomate-artist-idx")
 	s.idxAlbum = gomate.NewIndexer(db, "gomate-album-idx")
@@ -47,37 +47,37 @@ func NewSearch(ar domain.ArtistRepository, alr domain.AlbumRepository, mr domain
 	return s
 }
 
-func (s search) ClearAll() error {
+func (s *search) ClearAll() error {
 	return s.idxArtist.Clear()
 	return s.idxAlbum.Clear()
 	return s.idxSong.Clear()
 }
 
-func (s search) IndexArtist(ar *domain.Artist) error {
+func (s *search) IndexArtist(ar *domain.Artist) error {
 	return s.idxArtist.Index(ar.Id, sanitize.Accents(strings.ToLower(ar.Name)))
 }
 
-func (s search) IndexAlbum(al *domain.Album) error {
+func (s *search) IndexAlbum(al *domain.Album) error {
 	return s.idxAlbum.Index(al.Id, sanitize.Accents(strings.ToLower(al.Name)))
 }
 
-func (s search) IndexMediaFile(mf *domain.MediaFile) error {
+func (s *search) IndexMediaFile(mf *domain.MediaFile) error {
 	return s.idxSong.Index(mf.Id, sanitize.Accents(strings.ToLower(mf.Title)))
 }
 
-func (s search) RemoveArtist(ids []string) error {
+func (s *search) RemoveArtist(ids []string) error {
 	return s.idxArtist.Remove(ids...)
 }
 
-func (s search) RemoveAlbum(ids []string) error {
+func (s *search) RemoveAlbum(ids []string) error {
 	return s.idxAlbum.Remove(ids...)
 }
 
-func (s search) RemoveMediaFile(ids []string) error {
+func (s *search) RemoveMediaFile(ids []string) error {
 	return s.idxSong.Remove(ids...)
 }
 
-func (s search) SearchArtist(q string, offset int, size int) (Entries, error) {
+func (s *search) SearchArtist(q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -98,7 +98,7 @@ func (s search) SearchArtist(q string, offset int, size int) (Entries, error) {
 	return res, nil
 }
 
-func (s search) SearchAlbum(q string, offset int, size int) (Entries, error) {
+func (s *search) SearchAlbum(q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -119,7 +119,7 @@ func (s search) SearchAlbum(q string, offset int, size int) (Entries, error) {
 	return res, nil
 }
 
-func (s search) SearchSong(q string, offset int, size int) (Entries, error) {
+func (s *search) SearchSong(q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
