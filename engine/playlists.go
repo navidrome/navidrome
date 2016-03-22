@@ -58,7 +58,6 @@ func (p *playlists) Get(id string) (*PlaylistInfo, error) {
 			return nil, err
 		}
 		pinfo.Entries[i] = FromMediaFile(mf)
-		pinfo.Entries[i].Track = 0
 	}
 
 	return pinfo, nil
