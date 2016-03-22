@@ -7,6 +7,7 @@ import (
 	"os/exec"
 )
 
+// Original from https://github.com/bmatsuo/tuner
 type Script []string
 
 var CommandHost string
