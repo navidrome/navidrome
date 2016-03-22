@@ -50,14 +50,14 @@ func (c *MediaAnnotationController) Scrobble() {
 			mf, err := c.scrobbler.Register(playerId, ids[i], t)
 			if err != nil {
 				beego.Error("Error scrobbling:", err)
-				c.SendError(responses.ERROR_GENERIC, "Internal error")
+				continue
 			}
 			beego.Info(fmt.Sprintf(`Scrobbled (%s) "%s" at %v`, ids[i], mf.Title, t))
 		} else {
 			mf, err := c.scrobbler.NowPlaying(playerId, ids[i], username, playerName)
 			if err != nil {
 				beego.Error("Error setting", ids[i], "as current song:", err)
-				c.SendError(responses.ERROR_GENERIC, "Internal error")
+				continue
 			}
 			beego.Info(fmt.Sprintf(`Current Song (%s) "%s" at %v`, ids[i], mf.Title, t))
 		}
