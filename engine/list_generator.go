@@ -17,6 +17,7 @@ type ListGenerator interface {
 	GetByName(offset int, size int) (Entries, error)
 	GetByArtist(offset int, size int) (Entries, error)
 	GetStarred(offset int, size int) (Entries, error)
+	GetAllStarred() (albums Entries, mediaFiles Entries, err error)
 	GetNowPlaying() (Entries, error)
 }
 
@@ -96,6 +97,17 @@ func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
 	}
 
 	return FromAlbums(albums), nil
+}
+
+func (g *listGenerator) GetAllStarred() (Entries, Entries, error) {
+	albums, err := g.GetStarred(0, -1)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mediaFiles, err := g.mfRepository.GetStarred(domain.QueryOptions{Desc: true})
+
+	return albums, FromMediaFiles(mediaFiles), err
 }
 
 func (g *listGenerator) GetNowPlaying() (Entries, error) {

@@ -99,3 +99,11 @@ func FromAlbums(albums domain.Albums) Entries {
 	}
 	return entries
 }
+
+func FromMediaFiles(mfs domain.MediaFiles) Entries {
+	entries := make(Entries, len(mfs))
+	for i, mf := range mfs {
+		entries[i] = FromMediaFile(&mf)
+	}
+	return entries
+}

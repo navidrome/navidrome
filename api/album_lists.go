@@ -54,15 +54,16 @@ func (c *AlbumListController) GetAlbumList() {
 }
 
 func (c *AlbumListController) GetStarred() {
-	albums, err := c.listGen.GetStarred(0, -1)
+	albums, mediaFiles, err := c.listGen.GetAllStarred()
 	if err != nil {
-		beego.Error("Error retrieving starred albums:", err)
+		beego.Error("Error retrieving starred media:", err)
 		c.SendError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	response := c.NewEmpty()
 	response.Starred = &responses.Starred{}
 	response.Starred.Album = c.ToChildren(albums)
+	response.Starred.Song = c.ToChildren(mediaFiles)
 
 	c.SendResponse(response)
 }

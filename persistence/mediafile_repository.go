@@ -4,6 +4,8 @@ import (
 	"errors"
 	"sort"
 
+	"time"
+
 	"github.com/deluan/gosonic/domain"
 )
 
@@ -40,6 +42,13 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, er
 	var mfs = make(domain.MediaFiles, 0)
 	err := r.loadChildren("album", albumId, &mfs, domain.QueryOptions{SortBy: "TrackNumber"})
 	sort.Sort(mfs)
+	return mfs, err
+}
+
+func (r *mediaFileRepository) GetStarred(options domain.QueryOptions) (domain.MediaFiles, error) {
+	var mfs = make(domain.MediaFiles, 0)
+	start := time.Time{}.Add(time.Duration(1) * time.Hour)
+	err := r.loadRange("Starred", start, time.Now(), &mfs, options)
 	return mfs, err
 }
 

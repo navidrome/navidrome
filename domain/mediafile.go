@@ -28,7 +28,7 @@ type MediaFile struct {
 	PlayDate    time.Time
 	Rating      int
 	Starred     bool
-	StarredAt   time.Time
+	StarredAt   time.Time `idx:"Starred"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -50,5 +50,6 @@ type MediaFileRepository interface {
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
 	FindByAlbum(albumId string) (MediaFiles, error)
+	GetStarred(options QueryOptions) (MediaFiles, error)
 	PurgeInactive(active MediaFiles) ([]string, error)
 }
