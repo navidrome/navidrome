@@ -59,6 +59,9 @@ func (r *nowPlayingRepository) Head(playerId int) (*engine.NowPlayingInfo, error
 // TODO Will not work for multiple players
 func (r *nowPlayingRepository) GetAll() ([]*engine.NowPlayingInfo, error) {
 	np, err := r.Head(1)
+	if np == nil || err != nil {
+		return nil, err
+	}
 	return []*engine.NowPlayingInfo{np}, err
 }
 
