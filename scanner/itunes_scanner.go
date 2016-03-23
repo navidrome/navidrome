@@ -211,6 +211,12 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	mf.ArtistId = artistId(t)
 	mf.Title = unescape(t.Name)
 	mf.Artist = unescape(t.Artist)
+	if mf.Album == "" {
+		mf.Album = "[Unknown Album]"
+	}
+	if mf.Artist == "" {
+		mf.Artist = "[Unknown Artist]"
+	}
 	mf.AlbumArtist = unescape(t.AlbumArtist)
 	mf.Genre = unescape(t.Genre)
 	mf.Compilation = t.Compilation
@@ -265,6 +271,12 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 	al.Genre = mf.Genre
 	al.Artist = mf.Artist
 	al.AlbumArtist = ar.Name
+	if al.Name == "" {
+		al.Name = "[Unknown Album]"
+	}
+	if al.Artist == "" {
+		al.Artist = "[Unknown Artist]"
+	}
 	al.Duration += mf.Duration
 
 	if mf.HasCoverArt {
@@ -294,6 +306,9 @@ func (s *ItunesScanner) collectArtists(t *itl.Track) *domain.Artist {
 	ar := s.artists[id]
 	ar.Id = id
 	ar.Name = unescape(realArtistName(t))
+	if ar.Name == "" {
+		ar.Name = "[Unknown Artist]"
+	}
 
 	return ar
 }
