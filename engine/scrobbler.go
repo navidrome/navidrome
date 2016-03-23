@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/itunesbridge"
 )
 
 type Scrobbler interface {
 	Register(playerId int, trackId string, playDate time.Time) (*domain.MediaFile, error)
-	NowPlaying(playerId int, trackId, username string, playerName string) (*domain.MediaFile, error)
-	DetectSkipped(playerId int, trackId string, submission bool) (bool, error)
+	NowPlaying(playerId int, playerName, trackId, username string) (*domain.MediaFile, error)
 }
 
 func NewScrobbler(itunes itunesbridge.ItunesControl, mr domain.MediaFileRepository, npr NowPlayingRepository) Scrobbler {
@@ -25,39 +25,20 @@ type scrobbler struct {
 	npRepo NowPlayingRepository
 }
 
-func (s *scrobbler) DetectSkipped(playerId int, trackId string, submission bool) (bool, error) {
-	np, err := s.npRepo.Clear(playerId)
-	if err != nil {
-		return false, err
+func (s *scrobbler) Register(playerId int, trackId string, playDate time.Time) (*domain.MediaFile, error) {
+	for {
+		np, err := s.npRepo.Dequeue(playerId)
+		if err != nil || np == nil || np.TrackId == trackId {
+			break
+		}
+		err = s.itunes.MarkAsSkipped(np.TrackId, np.Start.Add(time.Duration(1)*time.Minute))
+		if err != nil {
+			beego.Warn("Error skipping track", np.TrackId)
+		} else {
+			beego.Debug("Skipped track", np.TrackId)
+		}
 	}
 
-	if np == nil {
-		return false, nil
-	}
-
-	if (submission && np.TrackId != trackId) || (!submission) {
-		return true, s.itunes.MarkAsSkipped(np.TrackId, time.Now())
-	}
-	return false, nil
-}
-
-func (s *scrobbler) Register(playerId int, id string, playDate time.Time) (*domain.MediaFile, error) {
-	mf, err := s.mfRepo.Get(id)
-	if err != nil {
-		return nil, err
-	}
-
-	if mf == nil {
-		return nil, errors.New(fmt.Sprintf(`Id "%s" not found`, id))
-	}
-
-	if err := s.itunes.MarkAsPlayed(id, playDate); err != nil {
-		return nil, err
-	}
-	return mf, nil
-}
-
-func (s *scrobbler) NowPlaying(playerId int, trackId, username string, playerName string) (*domain.MediaFile, error) {
 	mf, err := s.mfRepo.Get(trackId)
 	if err != nil {
 		return nil, err
@@ -67,5 +48,21 @@ func (s *scrobbler) NowPlaying(playerId int, trackId, username string, playerNam
 		return nil, errors.New(fmt.Sprintf(`Id "%s" not found`, trackId))
 	}
 
-	return mf, s.npRepo.Set(trackId, username, playerId, playerName)
+	if err := s.itunes.MarkAsPlayed(trackId, playDate); err != nil {
+		return nil, err
+	}
+	return mf, nil
+}
+
+func (s *scrobbler) NowPlaying(playerId int, playerName, trackId, username string) (*domain.MediaFile, error) {
+	mf, err := s.mfRepo.Get(trackId)
+	if err != nil {
+		return nil, err
+	}
+
+	if mf == nil {
+		return nil, errors.New(fmt.Sprintf(`Id "%s" not found`, trackId))
+	}
+
+	return mf, s.npRepo.Enqueue(playerId, playerName, trackId, username)
 }

@@ -2,14 +2,14 @@ package persistence
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/deluan/gosonic/engine"
 )
 
 var (
-	nowPlayingKeyName = []byte("nowplaying")
+	nowPlayingKeyPrefix = []byte("nowplaying")
 )
 
 type nowPlayingRepository struct {
@@ -22,21 +22,29 @@ func NewNowPlayingRepository() engine.NowPlayingRepository {
 	return r
 }
 
-func (r *nowPlayingRepository) Set(id, username string, playerId int, playerName string) error {
-	if id == "" {
-		return errors.New("Id is required")
-	}
+func nowPlayingKeyName(playerId int) string {
+	return fmt.Sprintf("%s:%d", nowPlayingKeyPrefix, playerId)
+}
+
+func (r *nowPlayingRepository) Enqueue(playerId int, playerName, id, username string) error {
 	m := &engine.NowPlayingInfo{TrackId: id, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
 
 	h, err := json.Marshal(m)
 	if err != nil {
 		return err
 	}
-	return Db().SetEX(nowPlayingKeyName, int64(engine.NowPlayingExpire.Seconds()), []byte(h))
+
+	keyName := []byte(nowPlayingKeyName(playerId))
+
+	_, err = Db().LPush(keyName, []byte(h))
+	Db().LExpire(keyName, int64(engine.NowPlayingExpire.Seconds()))
+	return err
 }
 
-func (r *nowPlayingRepository) Clear(playerId int) (*engine.NowPlayingInfo, error) {
-	val, err := Db().GetSet(nowPlayingKeyName, nil)
+func (r *nowPlayingRepository) Head(playerId int) (*engine.NowPlayingInfo, error) {
+	keyName := []byte(nowPlayingKeyName(playerId))
+
+	val, err := Db().LIndex(keyName, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -48,20 +56,28 @@ func (r *nowPlayingRepository) Clear(playerId int) (*engine.NowPlayingInfo, erro
 	return info, nil
 }
 
-func (r *nowPlayingRepository) GetAll() (*[]engine.NowPlayingInfo, error) {
-	val, err := Db().Get(nowPlayingKeyName)
+// TODO Will not work for multiple players
+func (r *nowPlayingRepository) GetAll() ([]*engine.NowPlayingInfo, error) {
+	np, err := r.Head(1)
+	return []*engine.NowPlayingInfo{np}, err
+}
+
+func (r *nowPlayingRepository) Dequeue(playerId int) (*engine.NowPlayingInfo, error) {
+	keyName := []byte(nowPlayingKeyName(playerId))
+
+	val, err := Db().RPop(keyName)
 	if err != nil {
 		return nil, err
 	}
 	if val == nil {
-		return &[]engine.NowPlayingInfo{}, nil
+		return nil, nil
 	}
 	info := &engine.NowPlayingInfo{}
 	err = json.Unmarshal(val, info)
 	if err != nil {
-		return &[]engine.NowPlayingInfo{}, nil
+		return nil, nil
 	}
-	return &[]engine.NowPlayingInfo{*info}, nil
+	return info, nil
 }
 
 var _ engine.NowPlayingRepository = (*nowPlayingRepository)(nil)
