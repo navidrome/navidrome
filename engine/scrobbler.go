@@ -25,10 +25,16 @@ type scrobbler struct {
 	npRepo NowPlayingRepository
 }
 
-func (s *scrobbler) Register(playerId int, trackId string, playDate time.Time) (*domain.MediaFile, error) {
+func (s *scrobbler) detectSkipped(playerId int, trackId string) {
 	for {
-		np, err := s.npRepo.Dequeue(playerId)
-		if err != nil || np == nil || np.TrackId == trackId {
+		size, _ := s.npRepo.Count(playerId)
+		np, err := s.npRepo.Tail(playerId)
+		if err != nil || np == nil || (size == 1 && np.TrackId != trackId) {
+			break
+		}
+
+		s.npRepo.Dequeue(playerId)
+		if np.TrackId == trackId {
 			break
 		}
 		err = s.itunes.MarkAsSkipped(np.TrackId, np.Start.Add(time.Duration(1)*time.Minute))
@@ -38,6 +44,10 @@ func (s *scrobbler) Register(playerId int, trackId string, playDate time.Time) (
 			beego.Debug("Skipped track", np.TrackId)
 		}
 	}
+}
+
+func (s *scrobbler) Register(playerId int, trackId string, playDate time.Time) (*domain.MediaFile, error) {
+	s.detectSkipped(playerId, trackId)
 
 	mf, err := s.mfRepo.Get(trackId)
 	if err != nil {

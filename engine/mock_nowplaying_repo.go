@@ -48,11 +48,31 @@ func (m *MockNowPlaying) Dequeue(playerId int) (*NowPlayingInfo, error) {
 	return &info, nil
 }
 
+func (m *MockNowPlaying) Count(playerId int) (int64, error) {
+	return int64(len(m.data)), nil
+}
+
+func (m *MockNowPlaying) GetAll() ([]*NowPlayingInfo, error) {
+	np, err := m.Head(1)
+	if np == nil || err != nil {
+		return nil, err
+	}
+	return []*NowPlayingInfo{np}, err
+}
+
 func (m *MockNowPlaying) Head(playerId int) (*NowPlayingInfo, error) {
 	if len(m.data) == 0 {
 		return nil, nil
 	}
 	info := m.data[0]
+	return &info, nil
+}
+
+func (m *MockNowPlaying) Tail(playerId int) (*NowPlayingInfo, error) {
+	if len(m.data) == 0 {
+		return nil, nil
+	}
+	info := m.data[len(m.data)-1]
 	return &info, nil
 }
 

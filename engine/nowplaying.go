@@ -12,17 +12,23 @@ type NowPlayingInfo struct {
 	PlayerName string
 }
 
-// This repo has the semantics of a FIFO queue, for each playerId
+// This repo must have the semantics of a FIFO queue, for each playerId
 type NowPlayingRepository interface {
 	// Insert at the head of the queue
 	Enqueue(playerId int, playerName string, trackId, username string) error
 
-	// Returns the element at the head of the queue (last inserted one)
-	Head(playerId int) (*NowPlayingInfo, error)
-
 	// Removes and returns the element at the end of the queue
 	Dequeue(playerId int) (*NowPlayingInfo, error)
 
-	// Returns all heads from all playerIds
+	// Returns the element at the head of the queue (last inserted one)
+	Head(playerId int) (*NowPlayingInfo, error)
+
+	// Returns the element at the end of the queue (first inserted one)
+	Tail(playerId int) (*NowPlayingInfo, error)
+
+	// Size of the queue for the playerId
+	Count(playerId int) (int64, error)
+
+	// Returns all tails from all playerIds
 	GetAll() ([]*NowPlayingInfo, error)
 }

@@ -80,7 +80,7 @@ func TestScrobbler(t *testing.T) {
 		})
 
 	})
-	Convey("Given a DB with two songs", t, func() {
+	Convey("Given a DB with three songs", t, func() {
 		mfRepo.SetData(`[{"Id":"1","Title":"Femme Fatale"},{"Id":"2","Title":"Here She Comes Now"},{"Id":"3","Title":"Lady Godiva's Operation"}]`, 3)
 		itCtrl.skipped = make(map[string]time.Time)
 		npRepo.ClearAll()
@@ -102,6 +102,15 @@ func TestScrobbler(t *testing.T) {
 					So(itCtrl.skipped, ShouldBeEmpty)
 					So(err, ShouldBeNil)
 				})
+			})
+		})
+		Convey("When the NowPlaying for the next song happens before the Scrobble", func() {
+			scrobbler.NowPlaying(1, "DSub", "2", "deluan")
+			scrobbler.Register(1, "1", time.Now())
+			Convey("Then the NowPlaying info is not not changed", func() {
+				np, _ := npRepo.GetAll()
+				So(np, ShouldHaveLength, 1)
+				So(np[0].TrackId, ShouldEqual, "2")
 			})
 		})
 	})

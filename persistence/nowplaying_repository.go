@@ -41,30 +41,6 @@ func (r *nowPlayingRepository) Enqueue(playerId int, playerName, id, username st
 	return err
 }
 
-func (r *nowPlayingRepository) Head(playerId int) (*engine.NowPlayingInfo, error) {
-	keyName := []byte(nowPlayingKeyName(playerId))
-
-	val, err := Db().LIndex(keyName, 0)
-	if err != nil {
-		return nil, err
-	}
-	info := &engine.NowPlayingInfo{}
-	err = json.Unmarshal(val, info)
-	if err != nil {
-		return nil, nil
-	}
-	return info, nil
-}
-
-// TODO Will not work for multiple players
-func (r *nowPlayingRepository) GetAll() ([]*engine.NowPlayingInfo, error) {
-	np, err := r.Head(1)
-	if np == nil || err != nil {
-		return nil, err
-	}
-	return []*engine.NowPlayingInfo{np}, err
-}
-
 func (r *nowPlayingRepository) Dequeue(playerId int) (*engine.NowPlayingInfo, error) {
 	keyName := []byte(nowPlayingKeyName(playerId))
 
@@ -75,8 +51,46 @@ func (r *nowPlayingRepository) Dequeue(playerId int) (*engine.NowPlayingInfo, er
 	if val == nil {
 		return nil, nil
 	}
+	return r.parseInfo(val)
+}
+
+func (r *nowPlayingRepository) Head(playerId int) (*engine.NowPlayingInfo, error) {
+	keyName := []byte(nowPlayingKeyName(playerId))
+
+	val, err := Db().LIndex(keyName, 0)
+	if err != nil {
+		return nil, err
+	}
+	return r.parseInfo(val)
+}
+
+func (r *nowPlayingRepository) Tail(playerId int) (*engine.NowPlayingInfo, error) {
+	keyName := []byte(nowPlayingKeyName(playerId))
+
+	val, err := Db().LIndex(keyName, -1)
+	if err != nil {
+		return nil, err
+	}
+	return r.parseInfo(val)
+}
+
+func (r *nowPlayingRepository) Count(playerId int) (int64, error) {
+	keyName := []byte(nowPlayingKeyName(playerId))
+	return Db().LLen(keyName)
+}
+
+// TODO Will not work for multiple players
+func (r *nowPlayingRepository) GetAll() ([]*engine.NowPlayingInfo, error) {
+	np, err := r.Tail(1)
+	if np == nil || err != nil {
+		return nil, err
+	}
+	return []*engine.NowPlayingInfo{np}, err
+}
+
+func (r *nowPlayingRepository) parseInfo(val []byte) (*engine.NowPlayingInfo, error) {
 	info := &engine.NowPlayingInfo{}
-	err = json.Unmarshal(val, info)
+	err := json.Unmarshal(val, info)
 	if err != nil {
 		return nil, nil
 	}
