@@ -60,6 +60,14 @@ func (c *BaseAPIController) ParamTimes(param string) []time.Time {
 	return times
 }
 
+func (c *BaseAPIController) RequiredParamInt(param string, msg string) int {
+	p := c.Input().Get(param)
+	if p == "" {
+		c.SendError(responses.ErrorMissingParameter, msg)
+	}
+	return c.ParamInt(param, 0)
+}
+
 func (c *BaseAPIController) ParamInt(param string, def int) int {
 	value := def
 	c.Ctx.Input.Bind(&value, param)

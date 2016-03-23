@@ -21,6 +21,25 @@ func (c *MediaAnnotationController) Prepare() {
 	utils.ResolveDependencies(&c.scrobbler, &c.ratings)
 }
 
+func (c *MediaAnnotationController) SetRating() {
+	id := c.RequiredParamString("id", "Required id parameter is missing")
+	rating := c.RequiredParamInt("rating", "Required rating parameter is missing")
+
+	beego.Debug("Setting rating", rating, "for id", id)
+	err := c.ratings.SetRating(id, rating)
+
+	switch {
+	case err == domain.ErrNotFound:
+		beego.Error(err)
+		c.SendError(responses.ErrorDataNotFound, "Id not found")
+	case err != nil:
+		beego.Error(err)
+		c.SendError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	c.SendEmptyResponse()
+}
+
 func (c *MediaAnnotationController) Star() {
 	ids := c.RequiredParamStrings("id", "Required id parameter is missing")
 
