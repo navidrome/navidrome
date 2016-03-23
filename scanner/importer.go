@@ -157,6 +157,8 @@ func (i *Importer) importLibrary() (err error) {
 			original, err := i.mfRepo.Get(mf.Id)
 			if err != nil || !original.Starred {
 				mf.StarredAt = mf.UpdatedAt
+			} else {
+				mf.StarredAt = original.StarredAt
 			}
 		}
 		if err := i.mfRepo.Put(mf); err != nil {
@@ -182,6 +184,8 @@ func (i *Importer) importLibrary() (err error) {
 			original, err := i.albumRepo.Get(al.Id)
 			if err != nil || !original.Starred {
 				al.StarredAt = al.UpdatedAt
+			} else {
+				al.StarredAt = original.StarredAt
 			}
 		}
 		if err := i.albumRepo.Put(al); err != nil {
