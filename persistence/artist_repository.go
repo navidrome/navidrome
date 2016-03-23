@@ -29,11 +29,6 @@ func (r *artistRepository) Get(id string) (*domain.Artist, error) {
 	return rec.(*domain.Artist), err
 }
 
-func (r *artistRepository) GetByName(name string) (*domain.Artist, error) {
-	id := r.NewId(name)
-	return r.Get(id)
-}
-
 func (r *artistRepository) PurgeInactive(active domain.Artists) ([]string, error) {
 	return r.purgeInactive(active, func(e interface{}) string {
 		return e.(domain.Artist).Id

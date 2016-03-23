@@ -3,7 +3,6 @@ package domain
 import "errors"
 
 type BaseRepository interface {
-	NewId(fields ...string) string
 	CountAll() (int64, error)
 	Exists(id string) (bool, error)
 }

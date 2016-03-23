@@ -90,15 +90,15 @@ func TestBaseRepository(t *testing.T) {
 		repo := createEmptyRepo()
 
 		Convey("When I call NewId with a name", func() {
-			Id := repo.NewId("a name")
+			Id := repo.newId("a name")
 			Convey("Then it should return a new Id", func() {
 				So(Id, ShouldNotBeEmpty)
 			})
 		})
 
 		Convey("When I call NewId with the same name twice", func() {
-			FirstId := repo.NewId("a name")
-			SecondId := repo.NewId("a name")
+			FirstId := repo.newId("a name")
+			SecondId := repo.newId("a name")
 
 			Convey("Then it should return the same Id each time", func() {
 				So(FirstId, ShouldEqual, SecondId)
@@ -107,8 +107,8 @@ func TestBaseRepository(t *testing.T) {
 		})
 
 		Convey("When I call NewId with different names", func() {
-			FirstId := repo.NewId("first name")
-			SecondId := repo.NewId("second name")
+			FirstId := repo.newId("first name")
+			SecondId := repo.newId("second name")
 
 			Convey("Then it should return different Ids", func() {
 				So(FirstId, ShouldNotEqual, SecondId)
