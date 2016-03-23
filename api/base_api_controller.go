@@ -89,6 +89,10 @@ func (c *BaseAPIController) SendError(errorCode int, message ...interface{}) {
 	c.CustomAbort(200, xml.Header+string(xmlBody))
 }
 
+func (c *BaseAPIController) SendEmptyResponse() {
+	c.SendResponse(c.NewEmpty())
+}
+
 func (c *BaseAPIController) SendResponse(response responses.Subsonic) {
 	f := c.GetString("f")
 	switch f {

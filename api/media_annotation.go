@@ -13,10 +13,45 @@ import (
 type MediaAnnotationController struct {
 	BaseAPIController
 	scrobbler engine.Scrobbler
+	ratings   engine.Ratings
 }
 
 func (c *MediaAnnotationController) Prepare() {
-	utils.ResolveDependencies(&c.scrobbler)
+	utils.ResolveDependencies(&c.scrobbler, &c.ratings)
+}
+
+func (c *MediaAnnotationController) Star() {
+	ids := c.RequiredParamStrings("id", "Required id parameter is missing")
+
+	beego.Debug("Starring ids:", ids)
+	err := c.ratings.SetStar(true, ids...)
+	switch {
+	case err == engine.ErrDataNotFound:
+		beego.Error(err)
+		c.SendError(responses.ErrorDataNotFound, "Directory not found")
+	case err != nil:
+		beego.Error(err)
+		c.SendError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	c.SendEmptyResponse()
+}
+
+func (c *MediaAnnotationController) Unstar() {
+	ids := c.RequiredParamStrings("id", "Required id parameter is missing")
+
+	beego.Debug("Unstarring ids:", ids)
+	err := c.ratings.SetStar(false, ids...)
+	switch {
+	case err == engine.ErrDataNotFound:
+		beego.Error(err)
+		c.SendError(responses.ErrorDataNotFound, "Directory not found")
+	case err != nil:
+		beego.Error(err)
+		c.SendError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	c.SendEmptyResponse()
 }
 
 func (c *MediaAnnotationController) Scrobble() {
@@ -54,6 +89,5 @@ func (c *MediaAnnotationController) Scrobble() {
 			beego.Info(fmt.Sprintf(`Now Playing (%s) "%s" at %v`, id, mf.Title, t))
 		}
 	}
-	response := c.NewEmpty()
-	c.SendResponse(response)
+	c.SendEmptyResponse()
 }

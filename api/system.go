@@ -5,7 +5,7 @@ import "github.com/deluan/gosonic/api/responses"
 type SystemController struct{ BaseAPIController }
 
 func (c *SystemController) Ping() {
-	c.SendResponse(c.NewEmpty())
+	c.SendEmptyResponse()
 }
 
 func (c *SystemController) GetLicense() {
