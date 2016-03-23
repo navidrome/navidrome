@@ -37,13 +37,13 @@ func TestStream(t *testing.T) {
 		Convey("Should fail if missing Id parameter", func() {
 			_, w := stream()
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_MISSING_PARAMETER)
+			So(w.Body, ShouldReceiveError, responses.ErrorMissingParameter)
 		})
 		Convey("When id is not found", func() {
 			mockMediaFileRepo.SetData(`[]`, 1)
 			_, w := stream("id=NOT_FOUND")
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_DATA_NOT_FOUND)
+			So(w.Body, ShouldReceiveError, responses.ErrorDataNotFound)
 		})
 		Convey("When id is found", func() {
 			mockMediaFileRepo.SetData(`[{"Id":"2","HasCoverArt":true,"Path":"tests/fixtures/01 Invisible (RED) Edit Version.mp3"}]`, 1)

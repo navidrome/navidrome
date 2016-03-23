@@ -1,14 +1,14 @@
 package responses
 
 const (
-	ERROR_GENERIC = iota * 10
-	ERROR_MISSING_PARAMETER
-	ERROR_CLIENT_TOO_OLD
-	ERROR_SERVER_TOO_OLD
-	ERROR_AUTHENTICATION_FAIL
-	ERROR_AUTHORIZATION_FAIL
-	ERROR_TRIAL_EXPIRED
-	ERROR_DATA_NOT_FOUND
+	ErrorGeneric = iota * 10
+	ErrorMissingParameter
+	ErrorClientTooOld
+	ErrorServerTooOld
+	ErrorAuthenticationFail
+	ErrorAuthorizationFail
+	ErrorTrialExpired
+	ErrorDataNotFound
 )
 
 var (
@@ -17,19 +17,19 @@ var (
 
 func init() {
 	errors = make(map[int]string)
-	errors[ERROR_GENERIC] = "A generic error"
-	errors[ERROR_MISSING_PARAMETER] = "Required parameter is missing"
-	errors[ERROR_CLIENT_TOO_OLD] = "Incompatible Subsonic REST protocol version. Client must upgrade"
-	errors[ERROR_SERVER_TOO_OLD] = "Incompatible Subsonic REST protocol version. Server must upgrade"
-	errors[ERROR_AUTHENTICATION_FAIL] = "Wrong username or password"
-	errors[ERROR_AUTHORIZATION_FAIL] = "User is not authorized for the given operation"
-	errors[ERROR_TRIAL_EXPIRED] = "The trial period for the Subsonic server is over. Please upgrade to Subsonic Premium. Visit subsonic.org for details"
-	errors[ERROR_DATA_NOT_FOUND] = "The requested data was not found"
+	errors[ErrorGeneric] = "A generic error"
+	errors[ErrorMissingParameter] = "Required parameter is missing"
+	errors[ErrorClientTooOld] = "Incompatible Subsonic REST protocol version. Client must upgrade"
+	errors[ErrorServerTooOld] = "Incompatible Subsonic REST protocol version. Server must upgrade"
+	errors[ErrorAuthenticationFail] = "Wrong username or password"
+	errors[ErrorAuthorizationFail] = "User is not authorized for the given operation"
+	errors[ErrorTrialExpired] = "The trial period for the Subsonic server is over. Please upgrade to Subsonic Premium. Visit subsonic.org for details"
+	errors[ErrorDataNotFound] = "The requested data was not found"
 }
 
 func ErrorMsg(code int) string {
 	if v, found := errors[code]; found {
 		return v
 	}
-	return errors[ERROR_GENERIC]
+	return errors[ErrorGeneric]
 }

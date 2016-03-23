@@ -34,18 +34,18 @@ func TestGetAlbumList(t *testing.T) {
 		Convey("Should fail if missing 'type' parameter", func() {
 			_, w := Get(AddParams("/rest/getAlbumList.view"), "TestGetAlbumList")
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_MISSING_PARAMETER)
+			So(w.Body, ShouldReceiveError, responses.ErrorMissingParameter)
 		})
 		Convey("Return fail on Album Table error", func() {
 			mockAlbumRepo.SetError(true)
 			_, w := Get(AddParams("/rest/getAlbumList.view", "type=newest"), "TestGetAlbumList")
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_GENERIC)
+			So(w.Body, ShouldReceiveError, responses.ErrorGeneric)
 		})
 		Convey("Type is invalid", func() {
 			_, w := Get(AddParams("/rest/getAlbumList.view", "type=not_implemented"), "TestGetAlbumList")
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_GENERIC)
+			So(w.Body, ShouldReceiveError, responses.ErrorGeneric)
 		})
 		Convey("Max size = 500", func() {
 			_, w := Get(AddParams("/rest/getAlbumList.view", "type=newest", "size=501"), "TestGetAlbumList")

@@ -36,7 +36,7 @@ func (c *AlbumListController) GetAlbumList() {
 
 	if !found {
 		beego.Error("albumList type", typ, "not implemented!")
-		c.SendError(responses.ERROR_GENERIC, "Not implemented!")
+		c.SendError(responses.ErrorGeneric, "Not implemented!")
 	}
 
 	offset := c.ParamInt("offset", 0)
@@ -45,7 +45,7 @@ func (c *AlbumListController) GetAlbumList() {
 	albums, err := method(offset, size)
 	if err != nil {
 		beego.Error("Error retrieving albums:", err)
-		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+		c.SendError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	response := c.NewEmpty()
@@ -57,7 +57,7 @@ func (c *AlbumListController) GetStarred() {
 	albums, err := c.listGen.GetStarred(0, -1)
 	if err != nil {
 		beego.Error("Error retrieving starred albums:", err)
-		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+		c.SendError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	response := c.NewEmpty()
@@ -71,7 +71,7 @@ func (c *AlbumListController) GetNowPlaying() {
 	npInfos, err := c.listGen.GetNowPlaying()
 	if err != nil {
 		beego.Error("Error retrieving now playing list:", err)
-		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+		c.SendError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	response := c.NewEmpty()

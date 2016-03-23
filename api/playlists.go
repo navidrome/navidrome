@@ -20,7 +20,7 @@ func (c *PlaylistsController) GetAll() {
 	allPls, err := c.pls.GetAll()
 	if err != nil {
 		beego.Error(err)
-		c.SendError(responses.ERROR_GENERIC, "Internal error")
+		c.SendError(responses.ErrorGeneric, "Internal error")
 	}
 	playlists := make([]responses.Playlist, len(allPls))
 	for i, p := range allPls {
@@ -44,10 +44,10 @@ func (c *PlaylistsController) Get() {
 	switch {
 	case err == engine.ErrDataNotFound:
 		beego.Error(err, "Id:", id)
-		c.SendError(responses.ERROR_DATA_NOT_FOUND, "Directory not found")
+		c.SendError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
 		beego.Error(err)
-		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+		c.SendError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	response := c.NewEmpty()

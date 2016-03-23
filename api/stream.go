@@ -24,10 +24,10 @@ func (c *StreamController) Prepare() {
 	switch {
 	case err == domain.ErrNotFound:
 		beego.Error("MediaFile", c.id, "not found!")
-		c.SendError(responses.ERROR_DATA_NOT_FOUND)
+		c.SendError(responses.ErrorDataNotFound)
 	case err != nil:
 		beego.Error("Error reading mediafile", c.id, "from the database", ":", err)
-		c.SendError(responses.ERROR_GENERIC, "Internal error")
+		c.SendError(responses.ErrorGeneric, "Internal error")
 	}
 
 	c.mf = mf

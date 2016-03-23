@@ -54,13 +54,13 @@ func TestGetIndexes(t *testing.T) {
 			mockRepo.SetError(true)
 			_, w := Get(AddParams("/rest/getIndexes.view", "ifModifiedSince=0"), "TestGetIndexes")
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_GENERIC)
+			So(w.Body, ShouldReceiveError, responses.ErrorGeneric)
 		})
 		Convey("Return fail on Property Table error", func() {
 			propRepo.SetError(true)
 			_, w := Get(AddParams("/rest/getIndexes.view"), "TestGetIndexes")
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_GENERIC)
+			So(w.Body, ShouldReceiveError, responses.ErrorGeneric)
 		})
 		Convey("When the index is empty", func() {
 			_, w := Get(AddParams("/rest/getIndexes.view"), "TestGetIndexes")
@@ -133,7 +133,7 @@ func TestGetMusicDirectory(t *testing.T) {
 		Convey("Should fail if missing Id parameter", func() {
 			_, w := Get(AddParams("/rest/getMusicDirectory.view"), "TestGetMusicDirectory")
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_MISSING_PARAMETER)
+			So(w.Body, ShouldReceiveError, responses.ErrorMissingParameter)
 		})
 		Convey("Id is for an artist", func() {
 			Convey("Return fail on Artist Table error", func() {
@@ -141,14 +141,14 @@ func TestGetMusicDirectory(t *testing.T) {
 				mockArtistRepo.SetError(true)
 				_, w := Get(AddParams("/rest/getMusicDirectory.view", "id=1"), "TestGetMusicDirectory")
 
-				So(w.Body, ShouldReceiveError, responses.ERROR_GENERIC)
+				So(w.Body, ShouldReceiveError, responses.ErrorGeneric)
 			})
 		})
 		Convey("When id is not found", func() {
 			mockArtistRepo.SetData(`[{"Id":"1","Name":"The Charlatans"}]`, 1)
 			_, w := Get(AddParams("/rest/getMusicDirectory.view", "id=NOT_FOUND"), "TestGetMusicDirectory")
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_DATA_NOT_FOUND)
+			So(w.Body, ShouldReceiveError, responses.ErrorDataNotFound)
 		})
 		Convey("When id matches an artist", func() {
 			mockArtistRepo.SetData(`[{"Id":"1","Name":"The KLF"}]`, 1)

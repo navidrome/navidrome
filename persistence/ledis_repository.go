@@ -176,13 +176,13 @@ func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 	for idx, fn := range r.indexes {
 		idxName := fmt.Sprintf("%s:idx:%s", r.table, idx)
 		score := calcScore(entity, fn)
-		sidx := ledis.ScorePair{score, []byte(id)}
+		sidx := ledis.ScorePair{Score: score, Member: []byte(id)}
 		if _, err = Db().ZAdd([]byte(idxName), sidx); err != nil {
 			return err
 		}
 	}
 
-	sid := ledis.ScorePair{0, []byte(id)}
+	sid := ledis.ScorePair{Score: 0, Member: []byte(id)}
 	if _, err = Db().ZAdd([]byte(allKey), sid); err != nil {
 		return err
 	}
@@ -190,7 +190,7 @@ func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 	if parentCollectionKey := r.getParentRelationKey(entity); parentCollectionKey != "" {
 		_, err = Db().ZAdd([]byte(parentCollectionKey), sid)
 	}
-	return nil
+	return err
 }
 
 func calcScore(entity interface{}, fieldName string) int64 {

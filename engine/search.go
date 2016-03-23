@@ -48,9 +48,16 @@ func NewSearch(ar domain.ArtistRepository, alr domain.AlbumRepository, mr domain
 }
 
 func (s *search) ClearAll() error {
-	return s.idxArtist.Clear()
-	return s.idxAlbum.Clear()
-	return s.idxSong.Clear()
+	if err := s.idxArtist.Clear(); err != nil {
+		return err
+	}
+	if err := s.idxAlbum.Clear(); err != nil {
+		return err
+	}
+	if err := s.idxSong.Clear(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *search) IndexArtist(ar *domain.Artist) error {

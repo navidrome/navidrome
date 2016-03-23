@@ -22,7 +22,7 @@ func (c *BaseAPIController) NewEmpty() responses.Subsonic {
 func (c *BaseAPIController) RequiredParamString(param string, msg string) string {
 	p := c.Input().Get(param)
 	if p == "" {
-		c.SendError(responses.ERROR_MISSING_PARAMETER, msg)
+		c.SendError(responses.ErrorMissingParameter, msg)
 	}
 	return p
 }
@@ -30,7 +30,7 @@ func (c *BaseAPIController) RequiredParamString(param string, msg string) string
 func (c *BaseAPIController) RequiredParamStrings(param string, msg string) []string {
 	ps := c.Input()[param]
 	if len(ps) == 0 {
-		c.SendError(responses.ERROR_MISSING_PARAMETER, msg)
+		c.SendError(responses.ErrorMissingParameter, msg)
 	}
 	return ps
 }

@@ -30,7 +30,7 @@ func checkParameters(c BaseAPIController) {
 	for _, p := range requiredParameters {
 		if c.GetString(p) == "" {
 			logWarn(c, fmt.Sprintf(`Missing required parameter "%s"`, p))
-			abortRequest(c, responses.ERROR_MISSING_PARAMETER)
+			abortRequest(c, responses.ErrorMissingParameter)
 		}
 	}
 }
@@ -46,7 +46,7 @@ func authenticate(c BaseAPIController) {
 	}
 	if user != beego.AppConfig.String("user") || pass != beego.AppConfig.String("password") {
 		logWarn(c, fmt.Sprintf(`Invalid login for user "%s"`, user))
-		abortRequest(c, responses.ERROR_AUTHENTICATION_FAIL)
+		abortRequest(c, responses.ErrorAuthenticationFail)
 	}
 }
 

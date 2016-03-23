@@ -24,7 +24,7 @@ func (c *MediaRetrievalController) GetAvatar() {
 	f, err := os.Open("static/itunes.png")
 	if err != nil {
 		beego.Error(err, "Image not found")
-		c.SendError(responses.ERROR_DATA_NOT_FOUND, "Avatar image not found")
+		c.SendError(responses.ErrorDataNotFound, "Avatar image not found")
 	}
 	defer f.Close()
 	io.Copy(c.Ctx.ResponseWriter, f)
@@ -39,9 +39,9 @@ func (c *MediaRetrievalController) GetCover() {
 	switch {
 	case err == engine.ErrDataNotFound:
 		beego.Error(err, "Id:", id)
-		c.SendError(responses.ERROR_DATA_NOT_FOUND, "Directory not found")
+		c.SendError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
 		beego.Error(err)
-		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+		c.SendError(responses.ErrorGeneric, "Internal Error")
 	}
 }

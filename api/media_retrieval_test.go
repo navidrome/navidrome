@@ -37,7 +37,7 @@ func TestGetCoverArt(t *testing.T) {
 		Convey("Should fail if missing Id parameter", func() {
 			_, w := getCoverArt()
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_MISSING_PARAMETER)
+			So(w.Body, ShouldReceiveError, responses.ErrorMissingParameter)
 		})
 		Convey("When id is found", func() {
 			mockMediaFileRepo.SetData(`[{"Id":"2","HasCoverArt":true,"Path":"tests/fixtures/01 Invisible (RED) Edit Version.mp3"}]`, 1)
@@ -50,14 +50,14 @@ func TestGetCoverArt(t *testing.T) {
 			mockMediaFileRepo.SetData(`[{"Id":"2","HasCoverArt":true,"Path":"tests/fixtures/NOT_FOUND.mp3"}]`, 1)
 			_, w := getCoverArt("id=2")
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_DATA_NOT_FOUND)
+			So(w.Body, ShouldReceiveError, responses.ErrorDataNotFound)
 		})
 		Convey("When the engine reports an error", func() {
 			mockMediaFileRepo.SetData(`[{"Id":"2","HasCoverArt":true,"Path":"tests/fixtures/NOT_FOUND.mp3"}]`, 1)
 			mockMediaFileRepo.SetError(true)
 			_, w := getCoverArt("id=2")
 
-			So(w.Body, ShouldReceiveError, responses.ERROR_GENERIC)
+			So(w.Body, ShouldReceiveError, responses.ErrorGeneric)
 		})
 		Convey("When specifying a size", func() {
 			mockMediaFileRepo.SetData(`[{"Id":"2","HasCoverArt":true,"Path":"tests/fixtures/01 Invisible (RED) Edit Version.mp3"}]`, 1)

@@ -39,7 +39,7 @@ func (c *BrowsingController) GetIndexes() {
 	indexes, lastModified, err := c.browser.Indexes(ifModifiedSince)
 	if err != nil {
 		beego.Error("Error retrieving Indexes:", err)
-		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+		c.SendError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	res := responses.Indexes{
@@ -71,10 +71,10 @@ func (c *BrowsingController) GetDirectory() {
 	switch {
 	case err == engine.ErrDataNotFound:
 		beego.Error("Requested Id", id, "not found:", err)
-		c.SendError(responses.ERROR_DATA_NOT_FOUND, "Directory not found")
+		c.SendError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
 		beego.Error(err)
-		c.SendError(responses.ERROR_GENERIC, "Internal Error")
+		c.SendError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	response.Directory = c.buildDirectory(dir)

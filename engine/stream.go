@@ -53,5 +53,5 @@ func createDownsamplingCommand(path string, maxBitRate int) (string, []string) {
 		split[i] = s
 	}
 
-	return split[0], split[1:len(split)]
+	return split[0], split[1:]
 }
