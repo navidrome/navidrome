@@ -34,9 +34,6 @@ type PlaylistInfo struct {
 
 func (p *playlists) Get(id string) (*PlaylistInfo, error) {
 	pl, err := p.plsRepo.Get(id)
-	if err == domain.ErrNotFound {
-		return nil, ErrDataNotFound
-	}
 	if err != nil {
 		return nil, err
 	}

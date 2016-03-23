@@ -82,7 +82,7 @@ func (b *browser) Directory(id string) (*DirectoryInfo, error) {
 		dir = b.buildAlbumDir(al, tracks)
 	default:
 		beego.Debug("Id", id, "not found")
-		return nil, ErrDataNotFound
+		return nil, domain.ErrNotFound
 	}
 
 	return dir, nil

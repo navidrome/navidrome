@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"image"
 
+	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/persistence"
 	. "github.com/deluan/gosonic/tests"
@@ -53,7 +54,7 @@ func TestCover(t *testing.T) {
 			err := cover.Get("2", 0, out)
 
 			Convey("Then it should return DatNotFound error", func() {
-				So(err, ShouldEqual, engine.ErrDataNotFound)
+				So(err, ShouldEqual, domain.ErrNotFound)
 			})
 		})
 		Convey("When specifying a size", func() {

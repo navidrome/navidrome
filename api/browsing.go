@@ -2,11 +2,11 @@ package api
 
 import (
 	"fmt"
-
 	"time"
 
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
 )
@@ -69,7 +69,7 @@ func (c *BrowsingController) GetDirectory() {
 
 	dir, err := c.browser.Directory(id)
 	switch {
-	case err == engine.ErrDataNotFound:
+	case err == domain.ErrNotFound:
 		beego.Error("Requested Id", id, "not found:", err)
 		c.SendError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:

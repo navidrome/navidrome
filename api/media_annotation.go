@@ -6,6 +6,7 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
 )
@@ -26,9 +27,9 @@ func (c *MediaAnnotationController) Star() {
 	beego.Debug("Starring ids:", ids)
 	err := c.ratings.SetStar(true, ids...)
 	switch {
-	case err == engine.ErrDataNotFound:
+	case err == domain.ErrNotFound:
 		beego.Error(err)
-		c.SendError(responses.ErrorDataNotFound, "Directory not found")
+		c.SendError(responses.ErrorDataNotFound, "Id not found")
 	case err != nil:
 		beego.Error(err)
 		c.SendError(responses.ErrorGeneric, "Internal Error")
@@ -43,7 +44,7 @@ func (c *MediaAnnotationController) Unstar() {
 	beego.Debug("Unstarring ids:", ids)
 	err := c.ratings.SetStar(false, ids...)
 	switch {
-	case err == engine.ErrDataNotFound:
+	case err == domain.ErrNotFound:
 		beego.Error(err)
 		c.SendError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:

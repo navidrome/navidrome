@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
 )
@@ -42,7 +43,7 @@ func (c *PlaylistsController) Get() {
 
 	pinfo, err := c.pls.Get(id)
 	switch {
-	case err == engine.ErrDataNotFound:
+	case err == domain.ErrNotFound:
 		beego.Error(err, "Id:", id)
 		c.SendError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:

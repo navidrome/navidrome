@@ -46,7 +46,7 @@ func (c *cover) Get(id string, size int, out io.Writer) error {
 	}
 
 	if err != nil {
-		return ErrDataNotFound
+		return domain.ErrNotFound
 	}
 
 	if size > 0 {

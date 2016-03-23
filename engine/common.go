@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"errors"
 	"time"
 
 	"github.com/deluan/gosonic/domain"
@@ -40,10 +39,6 @@ type Entry struct {
 }
 
 type Entries []Entry
-
-var (
-	ErrDataNotFound = errors.New("data not found")
-)
 
 func FromAlbum(al *domain.Album) Entry {
 	e := Entry{}

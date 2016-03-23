@@ -46,7 +46,7 @@ func (r ratings) SetStar(star bool, ids ...string) error {
 			}
 			continue
 		}
-		return ErrDataNotFound
+		return domain.ErrNotFound
 	}
 
 	return nil
