@@ -31,6 +31,10 @@ func (r *playlistRepository) Get(id string) (*domain.Playlist, error) {
 
 func (r *playlistRepository) GetAll(options domain.QueryOptions) (domain.Playlists, error) {
 	var as = make(domain.Playlists, 0)
+	if options.SortBy == "" {
+		options.SortBy = "Name"
+		options.Alpha = true
+	}
 	err := r.loadAll(&as, options)
 	return as, err
 }

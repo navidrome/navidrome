@@ -25,6 +25,7 @@ type ItunesScanner struct {
 	artists           map[string]*domain.Artist
 	playlists         map[string]*domain.Playlist
 	pplaylists        map[string]plsRelation
+	pmediaFiles       map[int]*domain.MediaFile
 	lastModifiedSince time.Time
 	checksumRepo      CheckSumRepository
 	newSums           map[string]string
@@ -61,6 +62,7 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 	s.artists = make(map[string]*domain.Artist)
 	s.playlists = make(map[string]*domain.Playlist)
 	s.pplaylists = make(map[string]plsRelation)
+	s.pmediaFiles = make(map[int]*domain.MediaFile)
 	s.newSums = make(map[string]string)
 
 	i := 0
@@ -144,14 +146,13 @@ func (s *ItunesScanner) skipPlaylist(p *itl.Playlist, ignFolders bool, ignPatter
 
 func (s *ItunesScanner) collectPlaylists(p *itl.Playlist, fullPath string) {
 	pl := &domain.Playlist{}
-	pl.Id = strconv.Itoa(p.PlaylistID)
+	pl.Id = p.PlaylistPersistentID
 	pl.Name = unescape(p.Name)
 	pl.FullPath = fullPath
 	pl.Tracks = make([]string, 0, len(p.PlaylistItems))
 	for _, item := range p.PlaylistItems {
-		id := strconv.Itoa(item.TrackID)
-		if mf, found := s.mediaFiles[id]; found {
-			pl.Tracks = append(pl.Tracks, id)
+		if mf, found := s.pmediaFiles[item.TrackID]; found {
+			pl.Tracks = append(pl.Tracks, mf.Id)
 			pl.Duration += mf.Duration
 		}
 	}
@@ -186,7 +187,7 @@ func (s *ItunesScanner) lastChangedDate(t *itl.Track) time.Time {
 }
 
 func (s *ItunesScanner) hasChanged(t *itl.Track) bool {
-	id := strconv.Itoa(t.TrackID)
+	id := t.PersistentID
 	oldSum, _ := s.checksumRepo.Get(id)
 	newSum := s.newSums[id]
 	return oldSum != newSum
@@ -194,7 +195,7 @@ func (s *ItunesScanner) hasChanged(t *itl.Track) bool {
 
 // Calc sum of stats fields (whose changes are not reflected in DataModified)
 func (s *ItunesScanner) calcCheckSum(t *itl.Track) string {
-	id := strconv.Itoa(t.TrackID)
+	id := t.PersistentID
 	data := fmt.Sprint(t.DateModified, t.PlayCount, t.PlayDate, t.ArtworkCount, t.Loved, t.AlbumLoved,
 		t.Rating, t.AlbumRating, t.SkipCount, t.SkipDate)
 	sum := fmt.Sprintf("%x", md5.Sum([]byte(data)))
@@ -204,7 +205,7 @@ func (s *ItunesScanner) calcCheckSum(t *itl.Track) string {
 
 func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	mf := &domain.MediaFile{}
-	mf.Id = strconv.Itoa(t.TrackID)
+	mf.Id = t.PersistentID
 	mf.Album = unescape(t.Album)
 	mf.AlbumId = albumId(t)
 	mf.ArtistId = artistId(t)
@@ -240,6 +241,7 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	}
 
 	s.mediaFiles[mf.Id] = mf
+	s.pmediaFiles[t.TrackID] = mf
 
 	return mf
 }
