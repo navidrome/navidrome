@@ -19,7 +19,7 @@ func NewArtistIndexRepository() domain.ArtistIndexRepository {
 
 func (r *artistIndexRepository) Put(m *domain.ArtistIndex) error {
 	if m.Id == "" {
-		return errors.New("Index Id is not set")
+		return errors.New("index Id is not set")
 	}
 	sort.Sort(m.Artists)
 	return r.saveOrUpdate(m.Id, m)

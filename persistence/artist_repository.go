@@ -18,7 +18,7 @@ func NewArtistRepository() domain.ArtistRepository {
 
 func (r *artistRepository) Put(m *domain.Artist) error {
 	if m.Id == "" {
-		return errors.New("Artist Id is not set")
+		return errors.New("artist Id is not set")
 	}
 	return r.saveOrUpdate(m.Id, m)
 }

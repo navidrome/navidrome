@@ -19,7 +19,7 @@ func NewAlbumRepository() domain.AlbumRepository {
 
 func (r *albumRepository) Put(m *domain.Album) error {
 	if m.Id == "" {
-		return errors.New("Album Id is not set")
+		return errors.New("album Id is not set")
 	}
 	return r.saveOrUpdate(m.Id, m)
 }

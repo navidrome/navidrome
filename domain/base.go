@@ -8,7 +8,7 @@ type BaseRepository interface {
 }
 
 var (
-	ErrNotFound = errors.New("Data not found")
+	ErrNotFound = errors.New("data not found")
 )
 
 type QueryOptions struct {

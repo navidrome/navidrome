@@ -18,7 +18,7 @@ func NewPlaylistRepository() domain.PlaylistRepository {
 
 func (r *playlistRepository) Put(m *domain.Playlist) error {
 	if m.Id == "" {
-		return errors.New("Playlist Id is not set")
+		return errors.New("playlist Id is not set")
 	}
 	return r.saveOrUpdate(m.Id, m)
 }

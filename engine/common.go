@@ -42,7 +42,7 @@ type Entry struct {
 type Entries []Entry
 
 var (
-	ErrDataNotFound = errors.New("Data Not Found")
+	ErrDataNotFound = errors.New("data not found")
 )
 
 func FromAlbum(al *domain.Album) Entry {

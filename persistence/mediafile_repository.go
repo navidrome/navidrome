@@ -19,7 +19,7 @@ func NewMediaFileRepository() domain.MediaFileRepository {
 
 func (r *mediaFileRepository) Put(m *domain.MediaFile) error {
 	if m.Id == "" {
-		return errors.New("MediaFile Id is not set")
+		return errors.New("mediaFile Id is not set")
 	}
 	return r.saveOrUpdate(m.Id, m)
 }
