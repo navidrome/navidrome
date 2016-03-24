@@ -92,10 +92,10 @@ func (c *PlaylistsController) Update() {
 
 	beego.Info(fmt.Sprintf("Updating playlist with id '%s'", playlistId))
 	if pname != nil {
-		beego.Debug(fmt.Sprintf(" -- New Name: '%s'", *pname))
+		beego.Debug(fmt.Sprintf("-- New Name: '%s'", *pname))
 	}
-	beego.Debug(fmt.Sprintf(" -- Adding: '%v'", songsToAdd))
-	beego.Debug(fmt.Sprintf(" -- Removing: '%v'", songIndexesToRemove))
+	beego.Debug(fmt.Sprintf("-- Adding: '%v'", songsToAdd))
+	beego.Debug(fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
 	err := c.pls.Update(playlistId, pname, songsToAdd, songIndexesToRemove)
 	if err != nil {

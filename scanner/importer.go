@@ -169,7 +169,7 @@ func (i *Importer) importLibrary() (err error) {
 		}
 		mfu++
 		if !i.lastScan.IsZero() {
-			beego.Debug("-- Updated Track:", mf.Title)
+			beego.Debug(fmt.Sprintf(`-- Updated Track: "%s"`, mf.Title))
 		}
 	}
 
