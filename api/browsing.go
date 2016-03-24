@@ -20,7 +20,7 @@ func (c *BrowsingController) Prepare() {
 	utils.ResolveDependencies(&c.browser)
 }
 
-func (c *BrowsingController) GetMediaFolders() {
+func (c *BrowsingController) GetMusicFolders() {
 	mediaFolderList, _ := c.browser.MediaFolders()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {
@@ -32,7 +32,6 @@ func (c *BrowsingController) GetMediaFolders() {
 	c.SendResponse(response)
 }
 
-// TODO: Shortcuts amd validate musicFolder parameter
 func (c *BrowsingController) GetIndexes() {
 	ifModifiedSince := c.ParamTime("ifModifiedSince", time.Time{})
 
@@ -62,7 +61,7 @@ func (c *BrowsingController) GetIndexes() {
 	c.SendResponse(response)
 }
 
-func (c *BrowsingController) GetDirectory() {
+func (c *BrowsingController) GetMusicDirectory() {
 	id := c.RequiredParamString("id", "id parameter required")
 
 	response := c.NewEmpty()

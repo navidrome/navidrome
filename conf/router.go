@@ -19,13 +19,13 @@ func mapEndpoints() {
 		beego.NSRouter("/ping.view", &api.SystemController{}, "*:Ping"),
 		beego.NSRouter("/getLicense.view", &api.SystemController{}, "*:GetLicense"),
 
-		beego.NSRouter("/getMusicFolders.view", &api.BrowsingController{}, "*:GetMediaFolders"),
+		beego.NSRouter("/getMusicFolders.view", &api.BrowsingController{}, "*:GetMusicFolders"),
 		beego.NSRouter("/getIndexes.view", &api.BrowsingController{}, "*:GetIndexes"),
-		beego.NSRouter("/getMusicDirectory.view", &api.BrowsingController{}, "*:GetDirectory"),
+		beego.NSRouter("/getMusicDirectory.view", &api.BrowsingController{}, "*:GetMusicDirectory"),
 
 		beego.NSRouter("/search2.view", &api.SearchingController{}, "*:Search2"),
 
-		beego.NSRouter("/getCoverArt.view", &api.MediaRetrievalController{}, "*:GetCover"),
+		beego.NSRouter("/getCoverArt.view", &api.MediaRetrievalController{}, "*:GetCoverArt"),
 		beego.NSRouter("/getAvatar.view", &api.MediaRetrievalController{}, "*:GetAvatar"),
 		beego.NSRouter("/stream.view", &api.StreamController{}, "*:Stream"),
 		beego.NSRouter("/download.view", &api.StreamController{}, "*:Download"),
@@ -39,11 +39,11 @@ func mapEndpoints() {
 		beego.NSRouter("/getStarred.view", &api.AlbumListController{}, "*:GetStarred"),
 		beego.NSRouter("/getNowPlaying.view", &api.AlbumListController{}, "*:GetNowPlaying"),
 
-		beego.NSRouter("/getPlaylists.view", &api.PlaylistsController{}, "*:GetAll"),
-		beego.NSRouter("/getPlaylist.view", &api.PlaylistsController{}, "*:Get"),
-		beego.NSRouter("/createPlaylist.view", &api.PlaylistsController{}, "*:Create"),
-		beego.NSRouter("/updatePlaylist.view", &api.PlaylistsController{}, "*:Update"),
-		beego.NSRouter("/deletePlaylist.view", &api.PlaylistsController{}, "*:Delete"),
+		beego.NSRouter("/getPlaylists.view", &api.PlaylistsController{}, "*:GetPlaylists"),
+		beego.NSRouter("/getPlaylist.view", &api.PlaylistsController{}, "*:GetPlaylist"),
+		beego.NSRouter("/createPlaylist.view", &api.PlaylistsController{}, "*:CreatePlaylist"),
+		beego.NSRouter("/updatePlaylist.view", &api.PlaylistsController{}, "*:UpdatePlaylist"),
+		beego.NSRouter("/deletePlaylist.view", &api.PlaylistsController{}, "*:DeletePlaylist"),
 
 		beego.NSRouter("/getUser.view", &api.UsersController{}, "*:GetUser"),
 	)

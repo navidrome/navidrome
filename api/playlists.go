@@ -19,7 +19,7 @@ func (c *PlaylistsController) Prepare() {
 	utils.ResolveDependencies(&c.pls)
 }
 
-func (c *PlaylistsController) GetAll() {
+func (c *PlaylistsController) GetPlaylists() {
 	allPls, err := c.pls.GetAll()
 	if err != nil {
 		beego.Error(err)
@@ -40,7 +40,7 @@ func (c *PlaylistsController) GetAll() {
 	c.SendResponse(response)
 }
 
-func (c *PlaylistsController) Get() {
+func (c *PlaylistsController) GetPlaylist() {
 	id := c.RequiredParamString("id", "id parameter required")
 
 	pinfo, err := c.pls.Get(id)
@@ -58,7 +58,7 @@ func (c *PlaylistsController) Get() {
 	c.SendResponse(response)
 }
 
-func (c *PlaylistsController) Create() {
+func (c *PlaylistsController) CreatePlaylist() {
 	songIds := c.RequiredParamStrings("songId", "Required parameter songId is missing")
 	name := c.RequiredParamString("name", "Required parameter name is missing")
 	err := c.pls.Create(name, songIds)
@@ -69,7 +69,7 @@ func (c *PlaylistsController) Create() {
 	c.SendEmptyResponse()
 }
 
-func (c *PlaylistsController) Delete() {
+func (c *PlaylistsController) DeletePlaylist() {
 	id := c.RequiredParamString("id", "Required parameter id is missing")
 	err := c.pls.Delete(id)
 	if err != nil {
@@ -79,7 +79,7 @@ func (c *PlaylistsController) Delete() {
 	c.SendEmptyResponse()
 }
 
-func (c *PlaylistsController) Update() {
+func (c *PlaylistsController) UpdatePlaylist() {
 	playlistId := c.RequiredParamString("playlistId", "Required parameter playlistId is missing")
 	songsToAdd := c.ParamStrings("songIdToAdd")
 	songIndexesToRemove := c.ParamInts("songIndexToRemove")

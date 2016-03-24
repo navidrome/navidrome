@@ -31,7 +31,7 @@ func (c *MediaRetrievalController) GetAvatar() {
 	io.Copy(c.Ctx.ResponseWriter, f)
 }
 
-func (c *MediaRetrievalController) GetCover() {
+func (c *MediaRetrievalController) GetCoverArt() {
 	id := c.RequiredParamString("id", "id parameter required")
 	size := c.ParamInt("size", 0)
 
