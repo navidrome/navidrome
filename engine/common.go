@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/deluan/gosonic/domain"
@@ -81,7 +82,10 @@ func FromMediaFile(mf *domain.MediaFile) Entry {
 		e.CoverArt = mf.Id
 	}
 	e.ContentType = mf.ContentType()
-	e.Path = mf.Path
+	// Creates a "pseudo" path, to avoid sending absolute paths to the client
+	if mf.Path != "" {
+		e.Path = fmt.Sprintf("%s/%s/%s.%s", realArtistName(mf), mf.Album, mf.Title, mf.Suffix)
+	}
 	e.PlayCount = int32(mf.PlayCount)
 	e.DiscNumber = mf.DiscNumber
 	e.Created = mf.CreatedAt
@@ -90,6 +94,17 @@ func FromMediaFile(mf *domain.MediaFile) Entry {
 	e.Type = "music" // TODO Hardcoded for now
 	e.UserRating = mf.Rating
 	return e
+}
+
+func realArtistName(mf *domain.MediaFile) string {
+	switch {
+	case mf.Compilation:
+		return "Various Artists"
+	case mf.AlbumArtist != "":
+		return mf.AlbumArtist
+	}
+
+	return mf.Artist
 }
 
 func FromAlbums(albums domain.Albums) Entries {

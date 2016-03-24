@@ -127,36 +127,34 @@ func (c *BaseAPIController) ToChildren(entries engine.Entries) []responses.Child
 }
 
 func (c *BaseAPIController) ToChild(entry engine.Entry) responses.Child {
-	n := responses.Child{}
-	n.Id = entry.Id
-	n.Title = entry.Title
-	n.IsDir = entry.IsDir
-	n.Parent = entry.Parent
-	n.Album = entry.Album
-	n.Year = entry.Year
-	n.Artist = entry.Artist
-	n.Genre = entry.Genre
-	n.CoverArt = entry.CoverArt
-	n.Track = entry.Track
-	n.Duration = entry.Duration
-	n.Size = entry.Size
-	n.Suffix = entry.Suffix
-	n.BitRate = entry.BitRate
-	n.ContentType = entry.ContentType
+	child := responses.Child{}
+	child.Id = entry.Id
+	child.Title = entry.Title
+	child.IsDir = entry.IsDir
+	child.Parent = entry.Parent
+	child.Album = entry.Album
+	child.Year = entry.Year
+	child.Artist = entry.Artist
+	child.Genre = entry.Genre
+	child.CoverArt = entry.CoverArt
+	child.Track = entry.Track
+	child.Duration = entry.Duration
+	child.Size = entry.Size
+	child.Suffix = entry.Suffix
+	child.BitRate = entry.BitRate
+	child.ContentType = entry.ContentType
 	if !entry.Starred.IsZero() {
-		n.Starred = &entry.Starred
+		child.Starred = &entry.Starred
 	}
-	//TODO Disabled for now, as DSub was using it for offline browsing. Will re-enable it when browsing by ID3 is working
-	//n.Path = entry.Path
-
-	n.PlayCount = entry.PlayCount
-	n.DiscNumber = entry.DiscNumber
+	child.Path = entry.Path
+	child.PlayCount = entry.PlayCount
+	child.DiscNumber = entry.DiscNumber
 	if !entry.Created.IsZero() {
-		n.Created = &entry.Created
+		child.Created = &entry.Created
 	}
-	n.AlbumId = entry.AlbumId
-	n.ArtistId = entry.ArtistId
-	n.Type = entry.Type
-	n.UserRating = entry.UserRating
-	return n
+	child.AlbumId = entry.AlbumId
+	child.ArtistId = entry.ArtistId
+	child.Type = entry.Type
+	child.UserRating = entry.UserRating
+	return child
 }
