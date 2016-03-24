@@ -1,10 +1,10 @@
 package api
 
 import (
+	"crypto/md5"
 	"encoding/hex"
-	"strings"
-
 	"fmt"
+	"strings"
 
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
@@ -25,7 +25,7 @@ func Validate(controller BaseAPIController) {
 }
 
 func checkParameters(c BaseAPIController) {
-	requiredParameters := []string{"u", "p", "v", "c"}
+	requiredParameters := []string{"u", "v", "c"}
 
 	for _, p := range requiredParameters {
 		if c.GetString(p) == "" {
@@ -33,18 +33,35 @@ func checkParameters(c BaseAPIController) {
 			abortRequest(c, responses.ErrorMissingParameter)
 		}
 	}
+
+	if c.GetString("p") == "" && (c.GetString("s") == "" || c.GetString("t") == "") {
+		logWarn(c, "Missing authentication information")
+	}
 }
 
 func authenticate(c BaseAPIController) {
+	password := beego.AppConfig.String("password")
 	user := c.GetString("u")
 	pass := c.GetString("p")
-	if strings.HasPrefix(pass, "enc:") {
-		e := strings.TrimPrefix(pass, "enc:")
-		if dec, err := hex.DecodeString(e); err == nil {
-			pass = string(dec)
+	salt := c.GetString("s")
+	token := c.GetString("t")
+	valid := false
+
+	switch {
+	case pass != "":
+		if strings.HasPrefix(pass, "enc:") {
+			e := strings.TrimPrefix(pass, "enc:")
+			if dec, err := hex.DecodeString(e); err == nil {
+				pass = string(dec)
+			}
 		}
+		valid = (pass == password)
+	case token != "":
+		t := fmt.Sprintf("%x", md5.Sum([]byte(password+salt)))
+		valid = (t == token)
 	}
-	if user != beego.AppConfig.String("user") || pass != beego.AppConfig.String("password") {
+
+	if user != beego.AppConfig.String("user") || !valid {
 		logWarn(c, fmt.Sprintf(`Invalid login for user "%s"`, user))
 		abortRequest(c, responses.ErrorAuthenticationFail)
 	}
