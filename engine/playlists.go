@@ -1,19 +1,25 @@
 package engine
 
 import (
+	"fmt"
+
+	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/domain"
+	"github.com/deluan/gosonic/itunesbridge"
 )
 
 type Playlists interface {
 	GetAll() (domain.Playlists, error)
 	Get(id string) (*PlaylistInfo, error)
+	Create(name string, ids []string) error
 }
 
-func NewPlaylists(pr domain.PlaylistRepository, mr domain.MediaFileRepository) Playlists {
-	return &playlists{pr, mr}
+func NewPlaylists(itunes itunesbridge.ItunesControl, pr domain.PlaylistRepository, mr domain.MediaFileRepository) Playlists {
+	return &playlists{itunes, pr, mr}
 }
 
 type playlists struct {
+	itunes    itunesbridge.ItunesControl
 	plsRepo   domain.PlaylistRepository
 	mfileRepo domain.MediaFileRepository
 }
@@ -30,6 +36,15 @@ type PlaylistInfo struct {
 	Duration  int
 	Public    bool
 	Owner     string
+}
+
+func (p *playlists) Create(name string, ids []string) error {
+	pid, err := p.itunes.CreatePlaylist(name, ids)
+	if err != nil {
+		return err
+	}
+	beego.Info(fmt.Sprintf("Created playlist '%s' with id '%s'", name, pid))
+	return nil
 }
 
 func (p *playlists) Get(id string) (*PlaylistInfo, error) {

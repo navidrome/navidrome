@@ -2,6 +2,7 @@ package itunesbridge
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -12,6 +13,7 @@ type ItunesControl interface {
 	SetAlbumLoved(trackId string, loved bool) error
 	SetTrackRating(trackId string, rating int) error
 	SetAlbumRating(trackId string, rating int) error
+	CreatePlaylist(name string, ids []string) (string, error)
 }
 
 func NewItunesControl() ItunesControl {
@@ -19,6 +21,23 @@ func NewItunesControl() ItunesControl {
 }
 
 type itunesControl struct{}
+
+func (c *itunesControl) CreatePlaylist(name string, ids []string) (string, error) {
+	pids := `"` + strings.Join(ids, `","`) + `"`
+	script := Script{
+		fmt.Sprintf(`set pls to (make new user playlist with properties {name:"%s"})`, name),
+		fmt.Sprintf(`set pids to {%s}`, pids),
+		`repeat with trackPID in pids`,
+		`	set myTrack to the first item of (every track whose persistent ID is equal to trackPID)`,
+		`	duplicate myTrack to pls`,
+		`end repeat`,
+		`persistent ID of pls`}
+	pid, err := script.OutputString()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(pid, "\n"), nil
+}
 
 func (c *itunesControl) MarkAsPlayed(trackId string, playDate time.Time) error {
 	script := Script{fmt.Sprintf(
