@@ -83,7 +83,7 @@ func (p *playlists) Update(playlistId string, name *string, idsToAdd []string, i
 			return err
 		}
 	}
-	p.plsRepo.Put(pl)
+	p.plsRepo.Put(pl) // Ignores errors, as any changes will be overridden in the next scan
 	return nil
 }
 
