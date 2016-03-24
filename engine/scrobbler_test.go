@@ -80,18 +80,42 @@ func TestScrobbler(t *testing.T) {
 		})
 
 	})
+}
+
+func TestSkipping(t *testing.T) {
+	Init(t, false)
+
+	mfRepo := persistence.CreateMockMediaFileRepo()
+	npRepo := engine.CreateMockNowPlayingRepo()
+	itCtrl := &mockItunesControl{}
+
+	scrobbler := engine.NewScrobbler(itCtrl, mfRepo, npRepo)
+
 	Convey("Given a DB with three songs", t, func() {
 		mfRepo.SetData(`[{"Id":"1","Title":"Femme Fatale"},{"Id":"2","Title":"Here She Comes Now"},{"Id":"3","Title":"Lady Godiva's Operation"}]`, 3)
 		itCtrl.skipped = make(map[string]time.Time)
 		npRepo.ClearAll()
 		Convey("When I play one song", func() {
+			start := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+			npRepo.OverrideNow(start)
 			scrobbler.NowPlaying(1, "DSub", "1", "deluan")
-			Convey("And I play the other song without scrobbling the first one", func() {
+			Convey("And I skip it before 20 seconds", func() {
+				npRepo.OverrideNow(start.Add(time.Duration(5) * time.Second))
 				scrobbler.NowPlaying(1, "DSub", "2", "deluan")
-				mf, err := scrobbler.Register(1, "2", time.Now())
 				Convey("Then the first song should be marked as skipped", func() {
+					mf, err := scrobbler.Register(1, "2", start.Add(time.Duration(3)*time.Minute))
 					So(mf.Id, ShouldEqual, "2")
 					So(itCtrl.skipped, ShouldContainKey, "1")
+					So(err, ShouldBeNil)
+				})
+			})
+			SkipConvey("And I skip it after 20 seconds", func() {
+				npRepo.OverrideNow(start.Add(time.Duration(30) * time.Second))
+				scrobbler.NowPlaying(1, "DSub", "2", "deluan")
+				Convey("Then the first song should be marked as skipped", func() {
+					mf, err := scrobbler.Register(1, "2", start.Add(time.Duration(3)*time.Minute))
+					So(mf.Id, ShouldEqual, "2")
+					So(itCtrl.skipped, ShouldBeEmpty)
 					So(err, ShouldBeNil)
 				})
 			})

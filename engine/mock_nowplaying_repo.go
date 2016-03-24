@@ -12,6 +12,7 @@ func CreateMockNowPlayingRepo() *MockNowPlaying {
 type MockNowPlaying struct {
 	NowPlayingRepository
 	data []NowPlayingInfo
+	t    time.Time
 	err  bool
 }
 
@@ -19,20 +20,19 @@ func (m *MockNowPlaying) SetError(err bool) {
 	m.err = err
 }
 
-func (m *MockNowPlaying) Enqueue(playerId int, playerName string, trackId, username string) error {
+func (m *MockNowPlaying) Enqueue(info *NowPlayingInfo) error {
 	if m.err {
 		return errors.New("Error!")
 	}
-	info := NowPlayingInfo{}
-	info.TrackId = trackId
-	info.Username = username
-	info.Start = time.Now()
-	info.PlayerId = playerId
-	info.PlayerName = playerName
 
 	m.data = append(m.data, NowPlayingInfo{})
 	copy(m.data[1:], m.data[0:])
-	m.data[0] = info
+	m.data[0] = *info
+
+	if !m.t.IsZero() {
+		m.data[0].Start = m.t
+		m.t = time.Time{}
+	}
 
 	return nil
 }
@@ -79,4 +79,8 @@ func (m *MockNowPlaying) Tail(playerId int) (*NowPlayingInfo, error) {
 func (m *MockNowPlaying) ClearAll() {
 	m.data = make([]NowPlayingInfo, 0)
 	m.err = false
+}
+
+func (m *MockNowPlaying) OverrideNow(t time.Time) {
+	m.t = t
 }

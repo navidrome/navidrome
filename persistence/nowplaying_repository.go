@@ -3,7 +3,6 @@ package persistence
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/deluan/gosonic/engine"
 )
@@ -26,15 +25,13 @@ func nowPlayingKeyName(playerId int) string {
 	return fmt.Sprintf("%s:%d", nowPlayingKeyPrefix, playerId)
 }
 
-func (r *nowPlayingRepository) Enqueue(playerId int, playerName, id, username string) error {
-	m := &engine.NowPlayingInfo{TrackId: id, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
-
-	h, err := json.Marshal(m)
+func (r *nowPlayingRepository) Enqueue(info *engine.NowPlayingInfo) error {
+	h, err := json.Marshal(info)
 	if err != nil {
 		return err
 	}
 
-	keyName := []byte(nowPlayingKeyName(playerId))
+	keyName := []byte(nowPlayingKeyName(info.PlayerId))
 
 	_, err = Db().LPush(keyName, []byte(h))
 	Db().LExpire(keyName, int64(engine.NowPlayingExpire.Seconds()))

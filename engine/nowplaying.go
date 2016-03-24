@@ -15,7 +15,7 @@ type NowPlayingInfo struct {
 // This repo must have the semantics of a FIFO queue, for each playerId
 type NowPlayingRepository interface {
 	// Insert at the head of the queue
-	Enqueue(playerId int, playerName string, trackId, username string) error
+	Enqueue(*NowPlayingInfo) error
 
 	// Removes and returns the element at the end of the queue
 	Dequeue(playerId int) (*NowPlayingInfo, error)

@@ -10,6 +10,11 @@ import (
 	"github.com/deluan/gosonic/itunesbridge"
 )
 
+const (
+	minSkipped = time.Duration(3) * time.Second
+	maxSkipped = time.Duration(20) * time.Second
+)
+
 type Scrobbler interface {
 	Register(playerId int, trackId string, playDate time.Time) (*domain.MediaFile, error)
 	NowPlaying(playerId int, playerName, trackId, username string) (*domain.MediaFile, error)
@@ -46,7 +51,7 @@ func (s *scrobbler) detectSkipped(playerId int, trackId string) {
 	}
 }
 
-func (s *scrobbler) Register(playerId int, trackId string, playDate time.Time) (*domain.MediaFile, error) {
+func (s *scrobbler) Register(playerId int, trackId string, playTime time.Time) (*domain.MediaFile, error) {
 	s.detectSkipped(playerId, trackId)
 
 	mf, err := s.mfRepo.Get(trackId)
@@ -58,7 +63,7 @@ func (s *scrobbler) Register(playerId int, trackId string, playDate time.Time) (
 		return nil, errors.New(fmt.Sprintf(`Id "%s" not found`, trackId))
 	}
 
-	if err := s.itunes.MarkAsPlayed(trackId, playDate); err != nil {
+	if err := s.itunes.MarkAsPlayed(trackId, playTime); err != nil {
 		return nil, err
 	}
 	return mf, nil
@@ -74,5 +79,6 @@ func (s *scrobbler) NowPlaying(playerId int, playerName, trackId, username strin
 		return nil, errors.New(fmt.Sprintf(`Id "%s" not found`, trackId))
 	}
 
-	return mf, s.npRepo.Enqueue(playerId, playerName, trackId, username)
+	info := &NowPlayingInfo{TrackId: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
+	return mf, s.npRepo.Enqueue(info)
 }
