@@ -39,6 +39,10 @@ func (c *BaseAPIController) ParamString(param string) string {
 	return c.Input().Get(param)
 }
 
+func (c *BaseAPIController) ParamStrings(param string) []string {
+	return c.Input()[param]
+}
+
 func (c *BaseAPIController) ParamTime(param string, def time.Time) time.Time {
 	var value int64
 	if c.Input().Get(param) == "" {
@@ -72,6 +76,18 @@ func (c *BaseAPIController) ParamInt(param string, def int) int {
 	value := def
 	c.Ctx.Input.Bind(&value, param)
 	return value
+}
+
+func (c *BaseAPIController) ParamInts(param string) []int {
+	pStr := c.Input()[param]
+	ints := make([]int, 0, len(pStr))
+	for _, s := range pStr {
+		i, err := strconv.ParseInt(s, 10, 32)
+		if err == nil {
+			ints = append(ints, int(i))
+		}
+	}
+	return ints
 }
 
 func (c *BaseAPIController) ParamBool(param string, def bool) bool {

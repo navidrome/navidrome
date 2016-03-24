@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/domain"
@@ -12,7 +13,8 @@ type Playlists interface {
 	GetAll() (domain.Playlists, error)
 	Get(id string) (*PlaylistInfo, error)
 	Create(name string, ids []string) error
-	Delete(id string) error
+	Delete(playlistId string) error
+	Update(playlistId string, name *string, idsToAdd []string, idxToRemove []int) error
 }
 
 func NewPlaylists(itunes itunesbridge.ItunesControl, pr domain.PlaylistRepository, mr domain.MediaFileRepository) Playlists {
@@ -37,6 +39,7 @@ type PlaylistInfo struct {
 	Duration  int
 	Public    bool
 	Owner     string
+	Comment   string
 }
 
 func (p *playlists) Create(name string, ids []string) error {
@@ -48,12 +51,39 @@ func (p *playlists) Create(name string, ids []string) error {
 	return nil
 }
 
-func (p *playlists) Delete(id string) error {
-	err := p.itunes.DeletePlaylist(id)
+func (p *playlists) Delete(playlistId string) error {
+	err := p.itunes.DeletePlaylist(playlistId)
 	if err != nil {
 		return err
 	}
-	beego.Info(fmt.Sprintf("Deleted playlist with id '%s'", id))
+	beego.Info(fmt.Sprintf("Deleted playlist with id '%s'", playlistId))
+	return nil
+}
+
+func (p *playlists) Update(playlistId string, name *string, idsToAdd []string, idxToRemove []int) error {
+	pl, err := p.plsRepo.Get(playlistId)
+	if err != nil {
+		return err
+	}
+	if name != nil {
+		pl.Name = *name
+		err := p.itunes.RenamePlaylist(pl.Id, pl.Name)
+		if err != nil {
+			return err
+		}
+	}
+	if len(idsToAdd) > 0 || len(idxToRemove) > 0 {
+		sort.Sort(sort.Reverse(sort.IntSlice(idxToRemove)))
+		for _, i := range idxToRemove {
+			pl.Tracks, pl.Tracks[len(pl.Tracks)-1] = append(pl.Tracks[:i], pl.Tracks[i+1:]...), ""
+		}
+		pl.Tracks = append(pl.Tracks, idsToAdd...)
+		err := p.itunes.UpdatePlaylist(pl.Id, pl.Tracks)
+		if err != nil {
+			return err
+		}
+	}
+	p.plsRepo.Put(pl)
 	return nil
 }
 
@@ -70,6 +100,7 @@ func (p *playlists) Get(id string) (*PlaylistInfo, error) {
 		Duration:  pl.Duration,
 		Public:    pl.Public,
 		Owner:     pl.Owner,
+		Comment:   pl.Comment,
 	}
 	pinfo.Entries = make(Entries, len(pl.Tracks))
 

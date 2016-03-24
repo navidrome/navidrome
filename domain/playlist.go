@@ -3,6 +3,7 @@ package domain
 type Playlist struct {
 	Id       string
 	Name     string
+	Comment  string
 	FullPath string
 	Duration int
 	Owner    string

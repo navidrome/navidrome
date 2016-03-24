@@ -14,7 +14,9 @@ type ItunesControl interface {
 	SetTrackRating(trackId string, rating int) error
 	SetAlbumRating(trackId string, rating int) error
 	CreatePlaylist(name string, ids []string) (string, error)
-	DeletePlaylist(id string) error
+	UpdatePlaylist(playlistId string, ids []string) error
+	RenamePlaylist(playlistId, name string) error
+	DeletePlaylist(playlistId string) error
 }
 
 func NewItunesControl() ItunesControl {
@@ -40,9 +42,31 @@ func (c *itunesControl) CreatePlaylist(name string, ids []string) (string, error
 	return strings.TrimSuffix(pid, "\n"), nil
 }
 
-func (c *itunesControl) DeletePlaylist(id string) error {
+func (c *itunesControl) UpdatePlaylist(playlistId string, ids []string) error {
+	pids := `"` + strings.Join(ids, `","`) + `"`
 	script := Script{
-		fmt.Sprintf(`set pls to the first item of (every playlist whose persistent ID is equal to "%s")`, id),
+		fmt.Sprintf(`set pls to the first item of (every playlist whose persistent ID is equal to "%s")`, playlistId),
+		`delete every track of pls`,
+		fmt.Sprintf(`set pids to {%s}`, pids),
+		`repeat with trackPID in pids`,
+		`	set myTrack to the first item of (every track whose persistent ID is equal to trackPID)`,
+		`	duplicate myTrack to pls`,
+		`end repeat`}
+	return script.Run()
+}
+
+func (c *itunesControl) RenamePlaylist(playlistId, name string) error {
+	script := Script{
+		fmt.Sprintf(`set pls to the first item of (every playlist whose persistent ID is equal to "%s")`, playlistId),
+		`tell pls`,
+		fmt.Sprintf(`set name to "%s"`, name),
+		`end tell`}
+	return script.Run()
+}
+
+func (c *itunesControl) DeletePlaylist(playlistId string) error {
+	script := Script{
+		fmt.Sprintf(`set pls to the first item of (every playlist whose persistent ID is equal to "%s")`, playlistId),
 		`delete pls`,
 	}
 	return script.Run()

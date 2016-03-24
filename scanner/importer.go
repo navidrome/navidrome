@@ -217,6 +217,7 @@ func (i *Importer) importLibrary() (err error) {
 	for _, pl := range i.scanner.Playlists() {
 		pl.Public = true
 		pl.Owner = beego.AppConfig.String("user")
+		pl.Comment = "Original: " + pl.FullPath
 		pls[j] = *pl
 		j++
 		if err := i.plsRepo.Put(pl); err != nil {

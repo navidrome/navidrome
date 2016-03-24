@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/domain"
@@ -27,7 +29,7 @@ func (c *PlaylistsController) GetAll() {
 	for i, p := range allPls {
 		playlists[i].Id = p.Id
 		playlists[i].Name = p.Name
-		playlists[i].Comment = "Original: " + p.FullPath
+		playlists[i].Comment = p.Comment
 		playlists[i].SongCount = len(p.Tracks)
 		playlists[i].Duration = p.Duration
 		playlists[i].Owner = p.Owner
@@ -70,6 +72,32 @@ func (c *PlaylistsController) Create() {
 func (c *PlaylistsController) Delete() {
 	id := c.RequiredParamString("id", "Required parameter id is missing")
 	err := c.pls.Delete(id)
+	if err != nil {
+		beego.Error(err)
+		c.SendError(responses.ErrorGeneric, "Internal Error")
+	}
+	c.SendEmptyResponse()
+}
+
+func (c *PlaylistsController) Update() {
+	playlistId := c.RequiredParamString("playlistId", "Required parameter playlistId is missing")
+	songsToAdd := c.ParamStrings("songIdToAdd")
+	songIndexesToRemove := c.ParamInts("songIndexToRemove")
+
+	var pname *string
+	if len(c.Input()["name"]) > 0 {
+		s := c.Input()["name"][0]
+		pname = &s
+	}
+
+	beego.Info(fmt.Sprintf("Updating playlist with id '%s'", playlistId))
+	if pname != nil {
+		beego.Debug(fmt.Sprintf(" -- New Name: '%s'", *pname))
+	}
+	beego.Debug(fmt.Sprintf(" -- Adding: '%v'", songsToAdd))
+	beego.Debug(fmt.Sprintf(" -- Removing: '%v'", songIndexesToRemove))
+
+	err := c.pls.Update(playlistId, pname, songsToAdd, songIndexesToRemove)
 	if err != nil {
 		beego.Error(err)
 		c.SendError(responses.ErrorGeneric, "Internal Error")
