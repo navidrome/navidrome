@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/engine"
@@ -37,6 +39,8 @@ func (c *SearchingController) Search2() {
 	if err != nil {
 		beego.Error("Error searching for MediaFiles:", err)
 	}
+
+	beego.Debug(fmt.Sprintf("Searching for [%s] resulted in %d songs, %d albums and %d artists", query, len(mfs), len(als), len(as)))
 
 	response := c.NewEmpty()
 	searchResult2 := &responses.SearchResult2{}
