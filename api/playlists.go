@@ -67,6 +67,16 @@ func (c *PlaylistsController) Create() {
 	c.SendEmptyResponse()
 }
 
+func (c *PlaylistsController) Delete() {
+	id := c.RequiredParamString("id", "Required parameter id is missing")
+	err := c.pls.Delete(id)
+	if err != nil {
+		beego.Error(err)
+		c.SendError(responses.ErrorGeneric, "Internal Error")
+	}
+	c.SendEmptyResponse()
+}
+
 func (c *PlaylistsController) buildPlaylist(d *engine.PlaylistInfo) *responses.PlaylistWithSongs {
 	pls := &responses.PlaylistWithSongs{}
 	pls.Id = d.Id

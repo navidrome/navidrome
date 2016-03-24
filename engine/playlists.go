@@ -12,6 +12,7 @@ type Playlists interface {
 	GetAll() (domain.Playlists, error)
 	Get(id string) (*PlaylistInfo, error)
 	Create(name string, ids []string) error
+	Delete(id string) error
 }
 
 func NewPlaylists(itunes itunesbridge.ItunesControl, pr domain.PlaylistRepository, mr domain.MediaFileRepository) Playlists {
@@ -44,6 +45,15 @@ func (p *playlists) Create(name string, ids []string) error {
 		return err
 	}
 	beego.Info(fmt.Sprintf("Created playlist '%s' with id '%s'", name, pid))
+	return nil
+}
+
+func (p *playlists) Delete(id string) error {
+	err := p.itunes.DeletePlaylist(id)
+	if err != nil {
+		return err
+	}
+	beego.Info(fmt.Sprintf("Deleted playlist with id '%s'", id))
 	return nil
 }
 

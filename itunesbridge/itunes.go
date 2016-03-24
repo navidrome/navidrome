@@ -14,6 +14,7 @@ type ItunesControl interface {
 	SetTrackRating(trackId string, rating int) error
 	SetAlbumRating(trackId string, rating int) error
 	CreatePlaylist(name string, ids []string) (string, error)
+	DeletePlaylist(id string) error
 }
 
 func NewItunesControl() ItunesControl {
@@ -37,6 +38,14 @@ func (c *itunesControl) CreatePlaylist(name string, ids []string) (string, error
 		return "", err
 	}
 	return strings.TrimSuffix(pid, "\n"), nil
+}
+
+func (c *itunesControl) DeletePlaylist(id string) error {
+	script := Script{
+		fmt.Sprintf(`set pls to the first item of (every playlist whose persistent ID is equal to "%s")`, id),
+		`delete pls`,
+	}
+	return script.Run()
 }
 
 func (c *itunesControl) MarkAsPlayed(trackId string, playDate time.Time) error {
