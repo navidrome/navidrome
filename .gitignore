@@ -4,6 +4,7 @@ static/Jamstash
 devDb
 /tmp
 .vendor
+vendor
 wiki
 TODO.md
 gosonic.log
