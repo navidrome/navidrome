@@ -21,6 +21,7 @@ type Subsonic struct {
 	SearchResult2 *SearchResult2     `xml:"searchResult2,omitempty"                       json:"searchResult2,omitempty"`
 	Starred       *Starred           `xml:"starred,omitempty"                             json:"starred,omitempty"`
 	NowPlaying    *NowPlaying        `xml:"nowPlaying,omitempty"                          json:"nowPlaying,omitempty"`
+	Song          *Child             `xml:"song,omitempty"                                json:"song,omitempty"`
 }
 
 type JsonWrapper struct {

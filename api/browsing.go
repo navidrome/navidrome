@@ -64,8 +64,6 @@ func (c *BrowsingController) GetIndexes() {
 func (c *BrowsingController) GetMusicDirectory() {
 	id := c.RequiredParamString("id", "id parameter required")
 
-	response := c.NewEmpty()
-
 	dir, err := c.browser.Directory(id)
 	switch {
 	case err == domain.ErrNotFound:
@@ -76,8 +74,27 @@ func (c *BrowsingController) GetMusicDirectory() {
 		c.SendError(responses.ErrorGeneric, "Internal Error")
 	}
 
+	response := c.NewEmpty()
 	response.Directory = c.buildDirectory(dir)
+	c.SendResponse(response)
+}
 
+func (c *BrowsingController) GetSong() {
+	id := c.RequiredParamString("id", "id parameter required")
+
+	song, err := c.browser.GetSong(id)
+	switch {
+	case err == domain.ErrNotFound:
+		beego.Error("Requested Id", id, "not found:", err)
+		c.SendError(responses.ErrorDataNotFound, "Directory not found")
+	case err != nil:
+		beego.Error(err)
+		c.SendError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	response := c.NewEmpty()
+	child := c.ToChild(*song)
+	response.Song = &child
 	c.SendResponse(response)
 }
 

@@ -15,6 +15,7 @@ type Browser interface {
 	MediaFolders() (domain.MediaFolders, error)
 	Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error)
 	Directory(id string) (*DirectoryInfo, error)
+	GetSong(id string) (*Entry, error)
 }
 
 func NewBrowser(pr PropertyRepository, fr domain.MediaFolderRepository, ir domain.ArtistIndexRepository,
@@ -85,6 +86,16 @@ func (b *browser) Directory(id string) (*DirectoryInfo, error) {
 	}
 
 	return dir, nil
+}
+
+func (b *browser) GetSong(id string) (*Entry, error) {
+	mf, err := b.mfileRepo.Get(id)
+	if err != nil {
+		return nil, err
+	}
+
+	entry := FromMediaFile(mf)
+	return &entry, nil
 }
 
 func (b *browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *DirectoryInfo {
