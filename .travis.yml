@@ -15,4 +15,4 @@ script:
 
 notifications:
   email:
-    - travis@deluan.com
+    - gosonic@deluan.com
