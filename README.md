@@ -34,9 +34,9 @@ You will need to install [Go 1.6](https://golang.org/dl/)
 
 Then install dependencies:
 ```
-$ go get github.com/beego/bee   
-$ go get github.com/gpmgo/gopm
-$ gopm get -v -g
+$ go get github.com/beego/bee           # bee command line tool     
+$ go get github.com/Masterminds/glide   # dependency manager
+$ glide install
 ```  
 
 From here it's a normal [BeeGo](http://beego.me) development cycle. Some useful commands:
@@ -46,10 +46,10 @@ From here it's a normal [BeeGo](http://beego.me) development cycle. Some useful 
 $ bee run
 
 # Start test runner on the browser
-$ NOLOG=1 goconvey --port 9090
+$ bin/goconvey.sh
 
 # Run all tests
-$ go test ./... -v
+$ go test $(glide nv) -v
 ```
 
 
