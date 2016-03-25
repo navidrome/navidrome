@@ -11,13 +11,15 @@ with your iTunes library.
 
 The project's main goals are:
 
-* Full compatibility with the available [Subsonic clients](http://www.subsonic.org/pages/apps.jsp)
-  (only being tested with
-    [DSub](http://www.subsonic.org/pages/apps.jsp#dsub) and
+* Be fully compatible with available [Subsonic clients](http://www.subsonic.org/pages/apps.jsp)
+  (actively being tested with
+    [DSub](http://www.subsonic.org/pages/apps.jsp#dsub), 
+    [SubFire](http://www.subsonic.org/pages/apps.jsp#subfire) and 
     [Jamstash](http://www.subsonic.org/pages/apps.jsp#jamstash))
 * Use all metadata from iTunes, so that you can keep using iTunes to manage your music
-* Keep iTunes stats (play counts, last played dates, ratings, etc..) updated, at least on Mac OS X
-* Learning Go ;) [![Gopher](https://blog.golang.org/favicon.ico)](https://golang.org)
+* Keep iTunes stats (play counts, last played dates, ratings, etc..) updated, at least on Mac OS X. 
+  This allows smart playlists to be used in Subsonic Clients 
+* Help me learn Go ;) [![Gopher](https://blog.golang.org/favicon.ico)](https://golang.org)
 
 
 ###  Supported Subsonic API version
