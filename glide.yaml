@@ -1,17 +1,12 @@
 package: github.com/deluan/gosonic
 import:
 - package: github.com/astaxie/beego
-  version: 92d0b9a
-- package: github.com/deluan/itl
-  version: f5c998c
-- package: github.com/siddontang/ledisdb
-  version: 713b229
-- package: github.com/karlkfi/inject
-  version: fe06da2
-- package: github.com/dhowden/tag
-  version: bccc91e
-- package: github.com/nfnt/resize
-  version: 4d93a29
+  version: v1.6.0
 - package: github.com/kennygrant/sanitize
-  version: ce9fd1f
+  version: v1.0
+- package: github.com/siddontang/ledisdb
+- package: github.com/karlkfi/inject
+- package: github.com/dhowden/tag
+- package: github.com/nfnt/resize
+- package: github.com/deluan/itl
 - package: github.com/deluan/gomate

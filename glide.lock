@@ -1,5 +1,5 @@
-hash: 788fcff14d0a6919c97721088eaf924bd7e2efca7b3c5585faf1a48dc5c6f367
-updated: 2016-03-25T01:21:33.908294047-04:00
+hash: 466d4e99ecbab6b3478d415f4c696595288a98cfa2dec8f8dfccd1767753d6db
+updated: 2016-03-25T13:30:42.383971626-04:00
 imports:
 - name: github.com/astaxie/beego
   version: 92d0b9ae95662d04e1d32eeffa52b4697b01ae37
