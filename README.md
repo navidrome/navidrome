@@ -45,9 +45,6 @@ From here it's a normal [BeeGo](http://beego.me) development cycle. Some useful 
 # Start local server (with hot reload)
 $ bee run
 
-# Start test runner on the browser
-$ bin/goconvey.sh
-
 # Run all tests
 $ go test $(glide nv) -v
 ```
