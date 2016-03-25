@@ -1,4 +1,14 @@
 package: github.com/deluan/gosonic
+license: GPL-3.0
+owners:
+- name: Deluan Quintao
+  email: gosonic@deluan.com
+  homepage: http://techbeats.deluan.com
+
+excludeDirs:
+- bin
+- static
+
 import:
 - package: github.com/astaxie/beego
   version: v1.6.0
@@ -10,3 +20,6 @@ import:
 - package: github.com/nfnt/resize
 - package: github.com/deluan/itl
 - package: github.com/deluan/gomate
+
+devImport:
+- package: github.com/smartystreets/goconvey
