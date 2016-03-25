@@ -5,13 +5,14 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/context"
+	"github.com/astaxie/beego/plugins/cors"
 	"github.com/deluan/gosonic/controllers"
 )
 
 func init() {
 	mapEndpoints()
 	mapControllers()
-	mapFilters()
+	initFilters()
 }
 
 func mapEndpoints() {
@@ -58,13 +59,20 @@ func mapControllers() {
 	beego.ErrorController(&controllers.MainController{})
 }
 
-func mapFilters() {
+func initFilters() {
 	var ValidateRequest = func(ctx *context.Context) {
 		c := api.BaseAPIController{}
 		c.Ctx = ctx
 		c.Data = make(map[interface{}]interface{})
 		api.Validate(c)
 	}
+	beego.InsertFilter("/rest/*", beego.BeforeRouter, cors.Allow(&cors.Options{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Access-Control-Allow-Origin"},
+		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
+		AllowCredentials: true,
+	}))
 
 	beego.InsertFilter("/rest/*", beego.BeforeRouter, ValidateRequest)
 }
