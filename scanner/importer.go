@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
@@ -116,7 +115,7 @@ func (i *Importer) Run() {
 }
 
 func (i *Importer) lastModifiedSince() time.Time {
-	ms, err := i.propertyRepo.Get(consts.LastScan)
+	ms, err := i.propertyRepo.Get(engine.PropLastScan)
 	if err != nil {
 		beego.Warn("Couldn't read LastScan:", err)
 		return time.Time{}
@@ -263,7 +262,7 @@ func (i *Importer) importLibrary() (err error) {
 
 	if err == nil {
 		millis := time.Now().UnixNano() / int64(time.Millisecond)
-		i.propertyRepo.Put(consts.LastScan, fmt.Sprint(millis))
+		i.propertyRepo.Put(engine.PropLastScan, fmt.Sprint(millis))
 		beego.Debug("LastScan timestamp:", millis)
 	}
 

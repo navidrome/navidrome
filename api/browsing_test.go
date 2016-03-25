@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/deluan/gosonic/api/responses"
-	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/persistence"
@@ -46,7 +45,7 @@ func TestGetIndexes(t *testing.T) {
 
 	mockRepo.SetData("[]", 0)
 	mockRepo.SetError(false)
-	propRepo.Put(consts.LastScan, "1")
+	propRepo.Put(engine.PropLastScan, "1")
 	propRepo.SetError(false)
 
 	Convey("Subject: GetIndexes Endpoint", t, func() {
@@ -88,7 +87,7 @@ func TestGetIndexes(t *testing.T) {
 			mockRepo.SetData(`[{"Id": "A","Artists": [
 				{"ArtistId": "21", "Artist": "Afrolicious"}
 			]}]`, 2)
-			propRepo.Put(consts.LastScan, "1")
+			propRepo.Put(engine.PropLastScan, "1")
 
 			_, w := Get(AddParams("/rest/getIndexes.view", "ifModifiedSince=2"), "TestGetIndexes")
 
@@ -98,7 +97,7 @@ func TestGetIndexes(t *testing.T) {
 			mockRepo.SetData(`[{"Id": "A","Artists": [
 				{"ArtistId": "21", "Artist": "Afrolicious"}
 			]}]`, 2)
-			propRepo.Put(consts.LastScan, "1")
+			propRepo.Put(engine.PropLastScan, "1")
 
 			_, w := Get(AddParams("/rest/getIndexes.view", "ifModifiedSince=1"), "TestGetIndexes")
 
@@ -107,7 +106,7 @@ func TestGetIndexes(t *testing.T) {
 		Reset(func() {
 			mockRepo.SetData("[]", 0)
 			mockRepo.SetError(false)
-			propRepo.Put(consts.LastScan, "1")
+			propRepo.Put(engine.PropLastScan, "1")
 			propRepo.SetError(false)
 		})
 	})

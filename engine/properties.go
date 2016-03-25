@@ -1,5 +1,9 @@
 package engine
 
+const (
+	PropLastScan = "LastScan"
+)
+
 type Property struct {
 	Id    string
 	Value string

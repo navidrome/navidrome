@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/consts"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/utils"
 )
@@ -37,7 +36,7 @@ func (b *browser) MediaFolders() (domain.MediaFolders, error) {
 }
 
 func (b *browser) Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error) {
-	l, err := b.propRepo.DefaultGet(consts.LastScan, "-1")
+	l, err := b.propRepo.DefaultGet(PropLastScan, "-1")
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
 
