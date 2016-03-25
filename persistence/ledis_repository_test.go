@@ -22,8 +22,8 @@ type TestEntity struct {
 }
 
 func shouldBeEqual(actualStruct interface{}, expectedStruct ...interface{}) string {
-	actual := fmt.Sprintf("%#v", actualStruct)
-	expected := fmt.Sprintf("%#v", expectedStruct[0])
+	actual := fmt.Sprintf("%v", actualStruct)
+	expected := fmt.Sprintf("%v", expectedStruct[0])
 	return ShouldEqual(actual, expected)
 }
 
@@ -131,7 +131,7 @@ func TestBaseRepository(t *testing.T) {
 			})
 
 			Convey("When I save a new entity and a parent", func() {
-				entity := &TestEntity{Id: "123", Name: "My Name", ParentId: "ABC", Year: time.Now()}
+				entity := &TestEntity{Id: "123", Name: "My Name", ParentId: "ABC", Year: time.Time{}}
 				err := repo.saveOrUpdate("123", entity)
 				Convey("Then saving the entity shouldn't return any errors", func() {
 					So(err, ShouldBeNil)
