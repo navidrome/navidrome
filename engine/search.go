@@ -15,9 +15,9 @@ type Search interface {
 	IndexAlbum(al *domain.Album) error
 	IndexMediaFile(mf *domain.MediaFile) error
 
-	RemoveArtist(ids []string) error
-	RemoveAlbum(ids []string) error
-	RemoveMediaFile(ids []string) error
+	RemoveArtist(ids ...string) error
+	RemoveAlbum(ids ...string) error
+	RemoveMediaFile(ids ...string) error
 
 	SearchArtist(q string, offset int, size int) (Entries, error)
 	SearchAlbum(q string, offset int, size int) (Entries, error)
@@ -72,15 +72,15 @@ func (s *search) IndexMediaFile(mf *domain.MediaFile) error {
 	return s.idxSong.Index(mf.Id, sanitize.Accents(strings.ToLower(mf.Title)))
 }
 
-func (s *search) RemoveArtist(ids []string) error {
+func (s *search) RemoveArtist(ids ...string) error {
 	return s.idxArtist.Remove(ids...)
 }
 
-func (s *search) RemoveAlbum(ids []string) error {
+func (s *search) RemoveAlbum(ids ...string) error {
 	return s.idxAlbum.Remove(ids...)
 }
 
-func (s *search) RemoveMediaFile(ids []string) error {
+func (s *search) RemoveMediaFile(ids ...string) error {
 	return s.idxSong.Remove(ids...)
 }
 

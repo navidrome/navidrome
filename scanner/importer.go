@@ -145,17 +145,17 @@ func (i *Importer) importLibrary() (err error) {
 	if deleted, err := i.mfRepo.PurgeInactive(mfs); err != nil {
 		beego.Error(err)
 	} else {
-		i.search.RemoveMediaFile(deleted)
+		i.search.RemoveMediaFile(deleted...)
 	}
 	if deleted, err := i.albumRepo.PurgeInactive(als); err != nil {
 		beego.Error(err)
 	} else {
-		i.search.RemoveAlbum(deleted)
+		i.search.RemoveAlbum(deleted...)
 	}
 	if deleted, err := i.artistRepo.PurgeInactive(ars); err != nil {
 		beego.Error(err)
 	} else {
-		i.search.RemoveArtist(deleted)
+		i.search.RemoveArtist(deleted...)
 	}
 	if _, err := i.plsRepo.PurgeInactive(pls); err != nil {
 		beego.Error(err)
