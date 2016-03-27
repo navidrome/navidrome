@@ -143,7 +143,7 @@ func TestBaseRepository(t *testing.T) {
 				})
 
 				Convey("And the number of children should be 1", func() {
-					children := make([]TestEntity, 0)
+					var children []TestEntity
 					err := repo.loadChildren("parent", "ABC", &children)
 					So(err, ShouldBeNil)
 					So(len(children), ShouldEqual, 1)
@@ -241,7 +241,7 @@ func TestBaseRepository(t *testing.T) {
 					So(count, ShouldEqual, 2)
 				})
 				Convey("And the deleted record shouldn't be among the children", func() {
-					children := make([]TestEntity, 0)
+					var children []TestEntity
 					err := repo.loadChildren("parent", "AAA", &children)
 					So(err, ShouldBeNil)
 					So(len(children), ShouldEqual, 2)

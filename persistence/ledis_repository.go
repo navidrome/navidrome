@@ -331,7 +331,7 @@ func (r *ledisRepository) loadFromSet(setName string, entities interface{}, qo .
 	}
 
 	reflected := reflect.ValueOf(entities).Elem()
-	var sortKey []byte = nil
+	var sortKey []byte
 	if o.SortBy != "" {
 		sortKey = []byte(fmt.Sprintf("%s:*:%s", r.table, o.SortBy))
 	}

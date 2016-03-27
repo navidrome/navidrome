@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+
 	"github.com/deluan/gosonic/api/responses"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey"
 )
 
 func ShouldMatchXML(actual interface{}, expected ...interface{}) string {
@@ -15,7 +16,7 @@ func ShouldMatchXML(actual interface{}, expected ...interface{}) string {
 	if err != nil {
 		return fmt.Sprintf("Malformed XML: %v", err)
 	}
-	return ShouldEqual(string(xml), expected[0].(string))
+	return convey.ShouldEqual(string(xml), expected[0].(string))
 
 }
 
@@ -25,13 +26,13 @@ func ShouldMatchJSON(actual interface{}, expected ...interface{}) string {
 		return fmt.Sprintf("Malformed JSON: %v", err)
 	}
 	s := UnindentJSON(json)
-	return ShouldEqual(s, expected[0].(string))
+	return convey.ShouldEqual(s, expected[0].(string))
 }
 
 func ShouldContainJSON(actual interface{}, expected ...interface{}) string {
 	a := UnindentJSON(actual.(*bytes.Buffer).Bytes())
 
-	return ShouldContainSubstring(a, expected[0].(string))
+	return convey.ShouldContainSubstring(a, expected[0].(string))
 }
 
 func ShouldReceiveError(actual interface{}, expected ...interface{}) string {
@@ -41,12 +42,12 @@ func ShouldReceiveError(actual interface{}, expected ...interface{}) string {
 		return fmt.Sprintf("Malformed XML: %v", err)
 	}
 
-	return ShouldEqual(v.Error.Code, expected[0].(int))
+	return convey.ShouldEqual(v.Error.Code, expected[0].(int))
 }
 
 func ShouldMatchMD5(actual interface{}, expected ...interface{}) string {
 	a := fmt.Sprintf("%x", md5.Sum(actual.([]byte)))
-	return ShouldEqual(a, expected[0].(string))
+	return convey.ShouldEqual(a, expected[0].(string))
 }
 
 func ShouldBeAValid(actual interface{}, expected ...interface{}) string {

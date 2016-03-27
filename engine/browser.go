@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -42,7 +41,7 @@ func (b *browser) Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time
 	lastModified := utils.ToTime(ms)
 
 	if err != nil {
-		return nil, time.Time{}, errors.New(fmt.Sprintf("error retrieving LastScan property: %v", err))
+		return nil, time.Time{}, fmt.Errorf("error retrieving LastScan property: %v", err)
 	}
 
 	if lastModified.After(ifModifiedSince) {
