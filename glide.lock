@@ -1,5 +1,5 @@
-hash: 466d4e99ecbab6b3478d415f4c696595288a98cfa2dec8f8dfccd1767753d6db
-updated: 2016-03-25T13:30:42.383971626-04:00
+hash: 74a8fca679ed86ccc4a42a35d772bdf0f918993c198a90ea0dbbae9e4d43a146
+updated: 2016-03-27T17:25:48.459693003-04:00
 imports:
 - name: github.com/astaxie/beego
   version: 92d0b9ae95662d04e1d32eeffa52b4697b01ae37
@@ -22,7 +22,9 @@ imports:
   - nopdecoder
   - crc64
 - name: github.com/deluan/gomate
-  version: 22d8ad4a0b356ef467519acee5548f3c3c3f1fdf
+  version: 3eb40643dd6ff9d53cfac334a9ec75e5045ae593
+  subpackages:
+  - ledis
 - name: github.com/deluan/itl
   version: f5c998c03029dfc1478baedefbbeaa47be97a093
 - name: github.com/dhowden/plist
@@ -78,7 +80,7 @@ imports:
   - internal/go-render/render
   - internal/oglematchers
 - name: github.com/smartystreets/goconvey
-  version: 227cdef39b7192cfc58c57f7eccd35ddb727d43b
+  version: 101844423e4188895b52ec7fcb5689d014f32c30
   subpackages:
   - convey
   - convey/reporting
@@ -99,7 +101,7 @@ imports:
   - leveldb/memdb
   - leveldb/table
 - name: golang.org/x/net
-  version: 991d3e32f76f19ee6d9caadb3a22eae8d23315f7
+  version: 1600a4cd699d70009ec28edfd69d3568f6bd757d
   subpackages:
   - html
   - html/atom
