@@ -38,6 +38,6 @@ func init() {
 	// Other dependencies
 	utils.DefineSingleton(new(itunesbridge.ItunesControl), itunesbridge.NewItunesControl)
 	utils.DefineSingleton(new(gomate.DB), func() gomate.DB {
-		return ledis.NewLedisEmbeddedDB(persistence.Db())
+		return ledis.NewEmbeddedDB(persistence.Db())
 	})
 }
