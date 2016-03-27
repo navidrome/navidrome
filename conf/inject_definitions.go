@@ -2,6 +2,7 @@ package conf
 
 import (
 	"github.com/deluan/gomate"
+	"github.com/deluan/gomate/ledis"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/persistence"
@@ -37,6 +38,6 @@ func init() {
 	// Other dependencies
 	utils.DefineSingleton(new(itunesbridge.ItunesControl), itunesbridge.NewItunesControl)
 	utils.DefineSingleton(new(gomate.DB), func() gomate.DB {
-		return gomate.NewLedisEmbeddedDB(persistence.Db())
+		return ledis.NewLedisEmbeddedDB(persistence.Db())
 	})
 }
