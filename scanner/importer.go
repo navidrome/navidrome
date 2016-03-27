@@ -129,104 +129,17 @@ func (i *Importer) lastModifiedSince() time.Time {
 }
 
 func (i *Importer) importLibrary() (err error) {
-	indexGroups := utils.ParseIndexGroups(beego.AppConfig.String("indexGroups"))
-	artistIndex := make(map[string]tempIndex)
-	mfs := make(domain.MediaFiles, len(i.scanner.MediaFiles()))
-	als := make(domain.Albums, len(i.scanner.Albums()))
-	ars := make(domain.Artists, len(i.scanner.Artists()))
-	pls := make(domain.Playlists, len(i.scanner.Playlists()))
 	arc, _ := i.artistRepo.CountAll()
 	alc, _ := i.albumRepo.CountAll()
 	mfc, _ := i.mfRepo.CountAll()
 	plc, _ := i.plsRepo.CountAll()
-	alu := 0
-	mfu := 0
 
-	//i.search.ClearAll()
-	//
 	beego.Debug("Saving updated data")
-	j := 0
-	for _, mf := range i.scanner.MediaFiles() {
-		mfs[j] = *mf
-		j++
-		if mf.UpdatedAt.Before(i.lastScan) {
-			continue
-		}
-		if mf.Starred {
-			original, err := i.mfRepo.Get(mf.Id)
-			if err != nil || !original.Starred {
-				mf.StarredAt = mf.UpdatedAt
-			} else {
-				mf.StarredAt = original.StarredAt
-			}
-		}
-		if err := i.mfRepo.Put(mf); err != nil {
-			beego.Error(err)
-		}
-		if err := i.search.IndexMediaFile(mf); err != nil {
-			beego.Error("Error indexing artist:", err)
-		}
-		mfu++
-		if !i.lastScan.IsZero() {
-			beego.Debug(fmt.Sprintf(`-- Updated Track: "%s"`, mf.Title))
-		}
-	}
-
-	j = 0
-	for _, al := range i.scanner.Albums() {
-		als[j] = *al
-		j++
-		if al.UpdatedAt.Before(i.lastScan) {
-			continue
-		}
-		if al.Starred {
-			original, err := i.albumRepo.Get(al.Id)
-			if err != nil || !original.Starred {
-				al.StarredAt = al.UpdatedAt
-			} else {
-				al.StarredAt = original.StarredAt
-			}
-		}
-		if err := i.albumRepo.Put(al); err != nil {
-			beego.Error(err)
-		}
-		if err := i.search.IndexAlbum(al); err != nil {
-			beego.Error("Error indexing artist:", err)
-		}
-		alu++
-		if !i.lastScan.IsZero() {
-			beego.Debug(fmt.Sprintf(`-- Updated Album:"%s" from "%s"`, al.Name, al.Artist))
-		}
-	}
-
-	j = 0
-	for _, ar := range i.scanner.Artists() {
-		ars[j] = *ar
-		j++
-		if err := i.artistRepo.Put(ar); err != nil {
-			beego.Error(err)
-		}
-		if err := i.search.IndexArtist(ar); err != nil {
-			beego.Error("Error indexing artist:", err)
-		}
-		i.collectIndex(indexGroups, ar, artistIndex)
-	}
-
-	j = 0
-	for _, pl := range i.scanner.Playlists() {
-		pl.Public = true
-		pl.Owner = beego.AppConfig.String("user")
-		pl.Comment = "Original: " + pl.FullPath
-		pls[j] = *pl
-		j++
-		if err := i.plsRepo.Put(pl); err != nil {
-			beego.Error(err)
-		}
-	}
-
-	if err = i.saveIndex(artistIndex); err != nil {
-		beego.Error(err)
-	}
+	mfs, mfu := i.importMediaFiles()
+	als, alu := i.importAlbums()
+	ars := i.importArtists()
+	pls := i.importPlaylists()
+	i.importArtistIndex()
 
 	beego.Debug("Purging old data")
 	if deleted, err := i.mfRepo.PurgeInactive(mfs); err != nil {
@@ -267,6 +180,115 @@ func (i *Importer) importLibrary() (err error) {
 	}
 
 	return err
+}
+
+func (i *Importer) importMediaFiles() (domain.MediaFiles, int) {
+	mfs := make(domain.MediaFiles, len(i.scanner.MediaFiles()))
+	updates := 0
+	j := 0
+	for _, mf := range i.scanner.MediaFiles() {
+		mfs[j] = *mf
+		j++
+		if mf.UpdatedAt.Before(i.lastScan) {
+			continue
+		}
+		if mf.Starred {
+			original, err := i.mfRepo.Get(mf.Id)
+			if err != nil || !original.Starred {
+				mf.StarredAt = mf.UpdatedAt
+			} else {
+				mf.StarredAt = original.StarredAt
+			}
+		}
+		if err := i.mfRepo.Put(mf); err != nil {
+			beego.Error(err)
+		}
+		if err := i.search.IndexMediaFile(mf); err != nil {
+			beego.Error("Error indexing artist:", err)
+		}
+		updates++
+		if !i.lastScan.IsZero() {
+			beego.Debug(fmt.Sprintf(`-- Updated Track: "%s"`, mf.Title))
+		}
+	}
+	return mfs, updates
+}
+
+func (i *Importer) importAlbums() (domain.Albums, int) {
+	als := make(domain.Albums, len(i.scanner.Albums()))
+	updates := 0
+	j := 0
+	for _, al := range i.scanner.Albums() {
+		als[j] = *al
+		j++
+		if al.UpdatedAt.Before(i.lastScan) {
+			continue
+		}
+		if al.Starred {
+			original, err := i.albumRepo.Get(al.Id)
+			if err != nil || !original.Starred {
+				al.StarredAt = al.UpdatedAt
+			} else {
+				al.StarredAt = original.StarredAt
+			}
+		}
+		if err := i.albumRepo.Put(al); err != nil {
+			beego.Error(err)
+		}
+		if err := i.search.IndexAlbum(al); err != nil {
+			beego.Error("Error indexing artist:", err)
+		}
+		updates++
+		if !i.lastScan.IsZero() {
+			beego.Debug(fmt.Sprintf(`-- Updated Album: "%s" from "%s"`, al.Name, al.Artist))
+		}
+	}
+	return als, updates
+}
+
+func (i *Importer) importArtists() domain.Artists {
+	ars := make(domain.Artists, len(i.scanner.Artists()))
+	j := 0
+	for _, ar := range i.scanner.Artists() {
+		ars[j] = *ar
+		j++
+		if err := i.artistRepo.Put(ar); err != nil {
+			beego.Error(err)
+		}
+		if err := i.search.IndexArtist(ar); err != nil {
+			beego.Error("Error indexing artist:", err)
+		}
+	}
+	return ars
+}
+
+func (i *Importer) importArtistIndex() {
+	indexGroups := utils.ParseIndexGroups(beego.AppConfig.String("indexGroups"))
+	artistIndex := make(map[string]tempIndex)
+
+	for _, ar := range i.scanner.Artists() {
+		i.collectIndex(indexGroups, ar, artistIndex)
+	}
+
+	if err := i.saveIndex(artistIndex); err != nil {
+		beego.Error(err)
+	}
+}
+
+func (i *Importer) importPlaylists() domain.Playlists {
+	pls := make(domain.Playlists, len(i.scanner.Playlists()))
+	j := 0
+	for _, pl := range i.scanner.Playlists() {
+		pl.Public = true
+		pl.Owner = beego.AppConfig.String("user")
+		pl.Comment = "Original: " + pl.FullPath
+		pls[j] = *pl
+		j++
+		if err := i.plsRepo.Put(pl); err != nil {
+			beego.Error(err)
+		}
+	}
+	return pls
 }
 
 func (i *Importer) collectIndex(ig utils.IndexGroups, a *domain.Artist, artistIndex map[string]tempIndex) {
