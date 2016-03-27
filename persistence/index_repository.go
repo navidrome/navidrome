@@ -37,4 +37,13 @@ func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
 	return indices, err
 }
 
+func (r *artistIndexRepository) DeleteAll() error {
+	var empty domain.ArtistIndexes
+	_, err := r.purgeInactive(empty, func(e interface{}) string {
+		return e.(domain.ArtistIndex).Id
+	})
+
+	return err
+}
+
 var _ domain.ArtistIndexRepository = (*artistIndexRepository)(nil)

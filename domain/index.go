@@ -27,4 +27,5 @@ type ArtistIndexRepository interface {
 	Put(m *ArtistIndex) error
 	Get(id string) (*ArtistIndex, error)
 	GetAll() (ArtistIndexes, error)
+	DeleteAll() error
 }
