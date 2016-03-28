@@ -76,8 +76,8 @@ type Child struct {
 	Id                    string     `xml:"id,attr"                                 json:"id"`
 	Parent                string     `xml:"parent,attr,omitempty"                   json:"parent,omitempty"`
 	IsDir                 bool       `xml:"isDir,attr"                              json:"isDir"`
-	Title                 string     `xml:"title,attr"                              json:"title"`
-	Name                  string     `xml:"name,attr"                               json:"name"`
+	Title                 string     `xml:"title,attr,omitempty"                    json:"title,omitempty"`
+	Name                  string     `xml:"name,attr,omitempty"                     json:"name,omitempty"`
 	Album                 string     `xml:"album,attr,omitempty"                    json:"album,omitempty"`
 	Artist                string     `xml:"artist,attr,omitempty"                   json:"artist,omitempty"`
 	Track                 int        `xml:"track,attr,omitempty"                    json:"track,omitempty"`

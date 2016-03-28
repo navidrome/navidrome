@@ -153,6 +153,7 @@ func (c *BaseAPIController) ToAlbums(entries engine.Entries) []responses.Child {
 func (c *BaseAPIController) ToAlbum(entry engine.Entry) responses.Child {
 	album := c.ToChild(entry)
 	album.Name = album.Title
+	album.Title = ""
 	return album
 }
 
