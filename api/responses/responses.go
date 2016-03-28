@@ -24,7 +24,8 @@ type Subsonic struct {
 	Song          *Child             `xml:"song,omitempty"                                json:"song,omitempty"`
 
 	// ID3
-	Artist *Indexes `xml:"artists,omitempty"                             json:"artists,omitempty"`
+	Artist              *Indexes             `xml:"artists,omitempty"                     json:"artists,omitempty"`
+	ArtistWithAlbumsID3 *ArtistWithAlbumsID3 `xml:"artist,omitempty"                      json:"artist,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -76,6 +77,7 @@ type Child struct {
 	Parent                string     `xml:"parent,attr,omitempty"                   json:"parent,omitempty"`
 	IsDir                 bool       `xml:"isDir,attr"                              json:"isDir"`
 	Title                 string     `xml:"title,attr"                              json:"title"`
+	Name                  string     `xml:"name,attr"                               json:"name"`
 	Album                 string     `xml:"album,attr,omitempty"                    json:"album,omitempty"`
 	Artist                string     `xml:"artist,attr,omitempty"                   json:"artist,omitempty"`
 	Track                 int        `xml:"track,attr,omitempty"                    json:"track,omitempty"`
@@ -116,9 +118,31 @@ type Directory struct {
 	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	PlayCount  int32      `xml:"playCount,attr,omitempty"           json:"playcount,omitempty"`
 	UserRating int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+
+	// ID3
+	Artist     string     `xml:"artist,attr,omitempty"              json:"artist,omitempty"`
+	ArtistId   string     `xml:"artistId,attr,omitempty"            json:"artistId,omitempty"`
+	CoverArt   string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
+	SongCount  int        `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
+	AlbumCount int        `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
+	Duration   int        `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
+	Created    *time.Time `xml:"created,attr,omitempty"             json:"created,omitempty"`
+	Year       int        `xml:"year,attr,omitempty"                json:"year,omitempty"`
+	Genre      string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
+
 	/*
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
+}
+
+type ArtistWithAlbumsID3 struct {
+	Album      []Child    `xml:"album"                              json:"album,omitempty"`
+	Id         string     `xml:"id,attr"                            json:"id"`
+	Name       string     `xml:"name,attr"                          json:"name"`
+	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
+	PlayCount  int32      `xml:"playCount,attr,omitempty"           json:"playcount,omitempty"`
+	UserRating int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	AlbumCount int        `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
 }
 
 type AlbumList struct {

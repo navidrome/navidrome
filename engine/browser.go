@@ -14,6 +14,7 @@ type Browser interface {
 	MediaFolders() (domain.MediaFolders, error)
 	Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error)
 	Directory(id string) (*DirectoryInfo, error)
+	Artist(id string) (*DirectoryInfo, error)
 	GetSong(id string) (*Entry, error)
 }
 
@@ -60,6 +61,17 @@ type DirectoryInfo struct {
 	Starred    time.Time
 	PlayCount  int32
 	UserRating int
+	AlbumCount int
+	CoverArt   string
+}
+
+func (b *browser) Artist(id string) (*DirectoryInfo, error) {
+	beego.Debug("Found Artist with id", id)
+	a, albums, err := b.retrieveArtist(id)
+	if err != nil {
+		return nil, err
+	}
+	return b.buildArtistDir(a, albums), nil
 }
 
 func (b *browser) Directory(id string) (*DirectoryInfo, error) {
@@ -98,7 +110,11 @@ func (b *browser) GetSong(id string) (*Entry, error) {
 }
 
 func (b *browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *DirectoryInfo {
-	dir := &DirectoryInfo{Id: a.Id, Name: a.Name}
+	dir := &DirectoryInfo{
+		Id:         a.Id,
+		Name:       a.Name,
+		AlbumCount: a.AlbumCount,
+	}
 
 	dir.Entries = make(Entries, len(albums))
 	for i, al := range albums {

@@ -142,6 +142,20 @@ func (c *BaseAPIController) ToChildren(entries engine.Entries) []responses.Child
 	return children
 }
 
+func (c *BaseAPIController) ToAlbums(entries engine.Entries) []responses.Child {
+	children := make([]responses.Child, len(entries))
+	for i, entry := range entries {
+		children[i] = c.ToAlbum(entry)
+	}
+	return children
+}
+
+func (c *BaseAPIController) ToAlbum(entry engine.Entry) responses.Child {
+	album := c.ToChild(entry)
+	album.Name = album.Title
+	return album
+}
+
 func (c *BaseAPIController) ToChild(entry engine.Entry) responses.Child {
 	child := responses.Child{}
 	child.Id = entry.Id

@@ -93,6 +93,24 @@ func (c *BrowsingController) GetMusicDirectory() {
 	c.SendResponse(response)
 }
 
+func (c *BrowsingController) GetArtist() {
+	id := c.RequiredParamString("id", "id parameter required")
+
+	dir, err := c.browser.Artist(id)
+	switch {
+	case err == domain.ErrNotFound:
+		beego.Error("Requested ArtistId", id, "not found:", err)
+		c.SendError(responses.ErrorDataNotFound, "Artist not found")
+	case err != nil:
+		beego.Error(err)
+		c.SendError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	response := c.NewEmpty()
+	response.ArtistWithAlbumsID3 = c.buildArtist(dir)
+	c.SendResponse(response)
+}
+
 func (c *BrowsingController) GetSong() {
 	id := c.RequiredParamString("id", "id parameter required")
 
@@ -118,6 +136,7 @@ func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.
 		Name:       d.Name,
 		Parent:     d.Parent,
 		PlayCount:  d.PlayCount,
+		AlbumCount: d.AlbumCount,
 		UserRating: d.UserRating,
 	}
 	if !d.Starred.IsZero() {
@@ -125,5 +144,21 @@ func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.
 	}
 
 	dir.Child = c.ToChildren(d.Entries)
+	return dir
+}
+
+func (c *BrowsingController) buildArtist(d *engine.DirectoryInfo) *responses.ArtistWithAlbumsID3 {
+	dir := &responses.ArtistWithAlbumsID3{
+		Id:         d.Id,
+		Name:       d.Name,
+		PlayCount:  d.PlayCount,
+		AlbumCount: d.AlbumCount,
+		UserRating: d.UserRating,
+	}
+	if !d.Starred.IsZero() {
+		dir.Starred = &d.Starred
+	}
+
+	dir.Album = c.ToAlbums(d.Entries)
 	return dir
 }
