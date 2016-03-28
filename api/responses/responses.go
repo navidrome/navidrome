@@ -16,6 +16,7 @@ type Subsonic struct {
 	Directory     *Directory         `xml:"directory,omitempty"                           json:"directory,omitempty"`
 	User          *User              `xml:"user,omitempty"                                json:"user,omitempty"`
 	AlbumList     *AlbumList         `xml:"albumList,omitempty"                           json:"albumList,omitempty"`
+	AlbumList2    *AlbumList         `xml:"albumList2,omitempty"                          json:"albumList2,omitempty"`
 	Playlists     *Playlists         `xml:"playlists,omitempty"                           json:"playlists,omitempty"`
 	Playlist      *PlaylistWithSongs `xml:"playlist,omitempty"                            json:"playlist,omitempty"`
 	SearchResult2 *SearchResult2     `xml:"searchResult2,omitempty"                       json:"searchResult2,omitempty"`

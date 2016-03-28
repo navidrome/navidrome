@@ -53,6 +53,29 @@ func (c *AlbumListController) GetAlbumList() {
 	c.SendResponse(response)
 }
 
+func (c *AlbumListController) GetAlbumList2() {
+	typ := c.RequiredParamString("type", "Required string parameter 'type' is not present")
+	method, found := c.types[typ]
+
+	if !found {
+		beego.Error("albumList2 type", typ, "not implemented!")
+		c.SendError(responses.ErrorGeneric, "Not implemented!")
+	}
+
+	offset := c.ParamInt("offset", 0)
+	size := utils.MinInt(c.ParamInt("size", 0), 500)
+
+	albums, err := method(offset, size)
+	if err != nil {
+		beego.Error("Error retrieving albums:", err)
+		c.SendError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	response := c.NewEmpty()
+	response.AlbumList2 = &responses.AlbumList{Album: c.ToAlbums(albums)}
+	c.SendResponse(response)
+}
+
 func (c *AlbumListController) GetStarred() {
 	albums, mediaFiles, err := c.listGen.GetAllStarred()
 	if err != nil {
