@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	minSkipped = time.Duration(3) * time.Second
+	minSkipped = time.Duration(5) * time.Second
 	maxSkipped = time.Duration(20) * time.Second
 )
 
@@ -31,22 +31,37 @@ type scrobbler struct {
 }
 
 func (s *scrobbler) detectSkipped(playerId int, trackId string) {
-	for {
-		size, _ := s.npRepo.Count(playerId)
-		np, err := s.npRepo.Tail(playerId)
-		if err != nil || np == nil || (size == 1 && np.TrackId != trackId) {
-			break
+	size, _ := s.npRepo.Count(playerId)
+	switch size {
+	case 0:
+		return
+	case 1:
+		np, _ := s.npRepo.Tail(playerId)
+		if np.TrackId != trackId {
+			return
 		}
-
 		s.npRepo.Dequeue(playerId)
-		if np.TrackId == trackId {
-			break
-		}
-		err = s.itunes.MarkAsSkipped(np.TrackId, np.Start.Add(time.Duration(1)*time.Minute))
-		if err != nil {
-			beego.Warn("Error skipping track", np.TrackId)
-		} else {
-			beego.Debug("Skipped track", np.TrackId)
+	default:
+		prev, _ := s.npRepo.Dequeue(playerId)
+		for {
+			if prev.TrackId == trackId {
+				break
+			}
+			np, err := s.npRepo.Dequeue(playerId)
+			if np == nil || err != nil {
+				break
+			}
+			diff := np.Start.Sub(prev.Start)
+			if diff < minSkipped || diff > maxSkipped {
+				prev = np
+				continue
+			}
+			err = s.itunes.MarkAsSkipped(prev.TrackId, prev.Start.Add(time.Duration(1)*time.Minute))
+			if err != nil {
+				beego.Warn("Error skipping track", prev.TrackId)
+			} else {
+				beego.Debug("Skipped track", prev.TrackId)
+			}
 		}
 	}
 }
