@@ -15,6 +15,7 @@ type Browser interface {
 	Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error)
 	Directory(id string) (*DirectoryInfo, error)
 	Artist(id string) (*DirectoryInfo, error)
+	Album(id string) (*DirectoryInfo, error)
 	GetSong(id string) (*Entry, error)
 }
 
@@ -63,6 +64,13 @@ type DirectoryInfo struct {
 	UserRating int
 	AlbumCount int
 	CoverArt   string
+	Artist     string
+	ArtistId   string
+	SongCount  int
+	Duration   int
+	Created    time.Time
+	Year       int
+	Genre      string
 }
 
 func (b *browser) Artist(id string) (*DirectoryInfo, error) {
@@ -74,29 +82,25 @@ func (b *browser) Artist(id string) (*DirectoryInfo, error) {
 	return b.buildArtistDir(a, albums), nil
 }
 
+func (b *browser) Album(id string) (*DirectoryInfo, error) {
+	beego.Debug("Found Album with id", id)
+	al, tracks, err := b.retrieveAlbum(id)
+	if err != nil {
+		return nil, err
+	}
+	return b.buildAlbumDir(al, tracks), nil
+}
+
 func (b *browser) Directory(id string) (*DirectoryInfo, error) {
-	var dir *DirectoryInfo
 	switch {
 	case b.isArtist(id):
-		beego.Debug("Found Artist with id", id)
-		a, albums, err := b.retrieveArtist(id)
-		if err != nil {
-			return nil, err
-		}
-		dir = b.buildArtistDir(a, albums)
+		return b.Artist(id)
 	case b.isAlbum(id):
-		beego.Debug("Found Album with id", id)
-		al, tracks, err := b.retrieveAlbum(id)
-		if err != nil {
-			return nil, err
-		}
-		dir = b.buildAlbumDir(al, tracks)
+		return b.Album(id)
 	default:
 		beego.Debug("Id", id, "not found")
 		return nil, domain.ErrNotFound
 	}
-
-	return dir, nil
 }
 
 func (b *browser) GetSong(id string) (*Entry, error) {
@@ -132,6 +136,13 @@ func (b *browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *Dir
 		PlayCount:  int32(al.PlayCount),
 		UserRating: al.Rating,
 		Starred:    al.StarredAt,
+		Artist:     al.Artist,
+		ArtistId:   al.ArtistId,
+		SongCount:  al.SongCount,
+		Duration:   al.Duration,
+		Created:    al.CreatedAt,
+		Year:       al.Year,
+		Genre:      al.Genre,
 	}
 
 	dir.Entries = make(Entries, len(tracks))
