@@ -22,6 +22,9 @@ type Subsonic struct {
 	Starred       *Starred           `xml:"starred,omitempty"                             json:"starred,omitempty"`
 	NowPlaying    *NowPlaying        `xml:"nowPlaying,omitempty"                          json:"nowPlaying,omitempty"`
 	Song          *Child             `xml:"song,omitempty"                                json:"song,omitempty"`
+
+	// ID3
+	Artist *Indexes `xml:"artists,omitempty"                             json:"artists,omitempty"`
 }
 
 type JsonWrapper struct {

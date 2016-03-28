@@ -32,9 +32,7 @@ func (c *BrowsingController) GetMusicFolders() {
 	c.SendResponse(response)
 }
 
-func (c *BrowsingController) GetIndexes() {
-	ifModifiedSince := c.ParamTime("ifModifiedSince", time.Time{})
-
+func (c *BrowsingController) getArtistIndex(ifModifiedSince time.Time) responses.Indexes {
 	indexes, lastModified, err := c.browser.Indexes(ifModifiedSince)
 	if err != nil {
 		beego.Error("Error retrieving Indexes:", err)
@@ -56,9 +54,24 @@ func (c *BrowsingController) GetIndexes() {
 			res.Index[i].Artists[j].AlbumCount = a.AlbumCount
 		}
 	}
+	return res
+}
+
+func (c *BrowsingController) GetIndexes() {
+	ifModifiedSince := c.ParamTime("ifModifiedSince", time.Time{})
+
+	res := c.getArtistIndex(ifModifiedSince)
 
 	response := c.NewEmpty()
 	response.Indexes = &res
+	c.SendResponse(response)
+}
+
+func (c *BrowsingController) GetArtists() {
+	res := c.getArtistIndex(time.Time{})
+
+	response := c.NewEmpty()
+	response.Artist = &res
 	c.SendResponse(response)
 }
 
