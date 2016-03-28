@@ -99,7 +99,7 @@ func (s *search) SearchArtist(q string, offset int, size int) (Entries, error) {
 			return nil, err
 		}
 		if err == nil {
-			res = append(res, Entry{Id: a.Id, Title: a.Name, IsDir: true})
+			res = append(res, FromArtist(a))
 		}
 	}
 	return res, nil

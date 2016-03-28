@@ -20,6 +20,7 @@ type Subsonic struct {
 	Playlists     *Playlists         `xml:"playlists,omitempty"                           json:"playlists,omitempty"`
 	Playlist      *PlaylistWithSongs `xml:"playlist,omitempty"                            json:"playlist,omitempty"`
 	SearchResult2 *SearchResult2     `xml:"searchResult2,omitempty"                       json:"searchResult2,omitempty"`
+	SearchResult3 *SearchResult3     `xml:"searchResult3,omitempty"                       json:"searchResult3,omitempty"`
 	Starred       *Starred           `xml:"starred,omitempty"                             json:"starred,omitempty"`
 	Starred2      *Starred           `xml:"starred2,omitempty"                            json:"starred2,omitempty"`
 	NowPlaying    *NowPlaying        `xml:"nowPlaying,omitempty"                          json:"nowPlaying,omitempty"`
@@ -208,6 +209,12 @@ type SearchResult2 struct {
 	Artist []Artist `xml:"artist"                                 json:"artist,omitempty"`
 	Album  []Child  `xml:"album"                                  json:"album,omitempty"`
 	Song   []Child  `xml:"song"                                   json:"song,omitempty"`
+}
+
+type SearchResult3 struct {
+	Artist []ArtistID3 `xml:"artist"                                 json:"artist,omitempty"`
+	Album  []Child     `xml:"album"                                  json:"album,omitempty"`
+	Song   []Child     `xml:"song"                                   json:"song,omitempty"`
 }
 
 type Starred struct {

@@ -38,9 +38,19 @@ type Entry struct {
 	MinutesAgo int
 	PlayerId   int
 	PlayerName string
+	AlbumCount int
 }
 
 type Entries []Entry
+
+func FromArtist(ar *domain.Artist) Entry {
+	e := Entry{}
+	e.Id = ar.Id
+	e.Title = ar.Name
+	e.AlbumCount = ar.AlbumCount
+	e.IsDir = true
+	return e
+}
 
 func FromAlbum(al *domain.Album) Entry {
 	e := Entry{}
