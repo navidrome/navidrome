@@ -54,13 +54,14 @@ func (s *scrobbler) detectSkipped(playerId int, trackId string) {
 			diff := np.Start.Sub(prev.Start)
 			if diff < minSkipped || diff > maxSkipped {
 				prev = np
+				beego.Debug(fmt.Sprintf("-- Playtime for track %s was %v. Not skipping.", prev.TrackId, diff))
 				continue
 			}
 			err = s.itunes.MarkAsSkipped(prev.TrackId, prev.Start.Add(time.Duration(1)*time.Minute))
 			if err != nil {
 				beego.Warn("Error skipping track", prev.TrackId)
 			} else {
-				beego.Debug("Skipped track", prev.TrackId)
+				beego.Debug("-- Skipped track", prev.TrackId)
 			}
 		}
 	}
