@@ -40,9 +40,19 @@ func (c *MediaAnnotationController) SetRating() {
 	c.SendEmptyResponse()
 }
 
-func (c *MediaAnnotationController) Star() {
-	ids := c.RequiredParamStrings("id", "Required id parameter is missing")
+func (c *MediaAnnotationController) getIds() []string {
+	ids := c.ParamStrings("id")
+	albumIds := c.ParamStrings("albumId")
 
+	if len(ids) == 0 && len(albumIds) == 0 {
+		c.SendError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	}
+
+	return append(ids, albumIds...)
+}
+
+func (c *MediaAnnotationController) Star() {
+	ids := c.getIds()
 	beego.Debug("Starring ids:", ids)
 	err := c.ratings.SetStar(true, ids...)
 	switch {
@@ -58,8 +68,7 @@ func (c *MediaAnnotationController) Star() {
 }
 
 func (c *MediaAnnotationController) Unstar() {
-	ids := c.RequiredParamStrings("id", "Required id parameter is missing")
-
+	ids := c.getIds()
 	beego.Debug("Unstarring ids:", ids)
 	err := c.ratings.SetStar(false, ids...)
 	switch {
