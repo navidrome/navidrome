@@ -78,7 +78,7 @@ func (r *nowPlayingRepository) Count(playerId int) (int64, error) {
 
 // TODO Will not work for multiple players
 func (r *nowPlayingRepository) GetAll() ([]*engine.NowPlayingInfo, error) {
-	np, err := r.Tail(1)
+	np, err := r.Head(1)
 	if np == nil || err != nil {
 		return nil, err
 	}

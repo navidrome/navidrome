@@ -95,6 +95,21 @@ func TestSkipping(t *testing.T) {
 		mfRepo.SetData(`[{"Id":"1","Title":"Femme Fatale"},{"Id":"2","Title":"Here She Comes Now"},{"Id":"3","Title":"Lady Godiva's Operation"}]`, 3)
 		itCtrl.skipped = make(map[string]time.Time)
 		npRepo.ClearAll()
+		Convey("When I skip 2 songs", func() {
+			start := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+			npRepo.OverrideNow(start)
+			scrobbler.NowPlaying(1, "DSub", "1", "deluan")
+			npRepo.OverrideNow(start.Add(time.Duration(2) * time.Second))
+			scrobbler.NowPlaying(1, "DSub", "3", "deluan")
+			npRepo.OverrideNow(start.Add(time.Duration(3) * time.Second))
+			scrobbler.NowPlaying(1, "DSub", "2", "deluan")
+			Convey("Then the NowPlaying song should be the last one", func() {
+				np, err := npRepo.GetAll()
+				So(err, ShouldBeNil)
+				So(np, ShouldHaveLength, 1)
+				So(np[0].TrackId, ShouldEqual, "2")
+			})
+		})
 		Convey("When I play one song", func() {
 			start := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 			npRepo.OverrideNow(start)
