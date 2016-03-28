@@ -32,6 +32,7 @@ type Entry struct {
 	ArtistId    string
 	Type        string
 	UserRating  int
+	SongCount   int
 
 	UserName   string
 	MinutesAgo int
@@ -59,6 +60,7 @@ func FromAlbum(al *domain.Album) Entry {
 	e.ArtistId = al.ArtistId
 	e.UserRating = al.Rating
 	e.Duration = al.Duration
+	e.SongCount = al.SongCount
 	return e
 }
 

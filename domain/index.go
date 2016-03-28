@@ -3,8 +3,9 @@ package domain
 import "github.com/deluan/gosonic/utils"
 
 type ArtistInfo struct {
-	ArtistId string
-	Artist   string
+	ArtistId   string
+	Artist     string
+	AlbumCount int
 }
 
 type ArtistIndex struct {

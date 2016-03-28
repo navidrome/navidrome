@@ -1,8 +1,9 @@
 package domain
 
 type Artist struct {
-	Id   string
-	Name string
+	Id         string
+	Name       string
+	AlbumCount int
 }
 
 type ArtistRepository interface {

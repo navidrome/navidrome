@@ -15,6 +15,7 @@ type Album struct {
 	Starred      bool
 	PlayCount    int
 	PlayDate     time.Time
+	SongCount    int
 	Duration     int
 	Rating       int
 	Genre        string

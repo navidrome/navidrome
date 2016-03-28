@@ -303,7 +303,7 @@ func (i *Importer) collectIndex(ig utils.IndexGroups, a *domain.Artist, artistIn
 		artists = make(tempIndex)
 		artistIndex[group] = artists
 	}
-	artists[indexName] = domain.ArtistInfo{ArtistId: a.Id, Artist: a.Name}
+	artists[indexName] = domain.ArtistInfo{ArtistId: a.Id, Artist: a.Name, AlbumCount: a.AlbumCount}
 }
 
 func (i *Importer) findGroup(ig utils.IndexGroups, name string) string {

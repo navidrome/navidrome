@@ -64,6 +64,8 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 	s.pplaylists = make(map[string]plsRelation)
 	s.pmediaFiles = make(map[int]*domain.MediaFile)
 	s.newSums = make(map[string]string)
+	songsPerAlbum := make(map[string]int)
+	albumsPerArtist := make(map[string]map[string]bool)
 
 	i := 0
 	for _, t := range l.Tracks {
@@ -73,11 +75,25 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 			ar := s.collectArtists(&t)
 			mf := s.collectMediaFiles(&t)
 			s.collectAlbums(&t, mf, ar)
+
+			songsPerAlbum[mf.AlbumId]++
+			if albumsPerArtist[mf.ArtistId] == nil {
+				albumsPerArtist[mf.ArtistId] = make(map[string]bool)
+			}
+			albumsPerArtist[mf.ArtistId][mf.AlbumId] = true
 		}
 		i++
 		if i%1000 == 0 {
 			beego.Debug("Processed", i, "tracks.", len(s.artists), "artists,", len(s.albums), "albums", len(s.mediaFiles), "songs")
 		}
+	}
+
+	for albumId, count := range songsPerAlbum {
+		s.albums[albumId].SongCount = count
+	}
+
+	for artistId, albums := range albumsPerArtist {
+		s.artists[artistId].AlbumCount = len(albums)
 	}
 
 	if err := s.checksumRepo.SetData(s.newSums); err != nil {

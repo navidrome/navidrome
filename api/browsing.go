@@ -53,6 +53,7 @@ func (c *BrowsingController) GetIndexes() {
 		for j, a := range idx.Artists {
 			res.Index[i].Artists[j].Id = a.ArtistId
 			res.Index[i].Artists[j].Name = a.Artist
+			res.Index[i].Artists[j].AlbumCount = a.AlbumCount
 		}
 	}
 
