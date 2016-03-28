@@ -91,6 +91,21 @@ func (c *AlbumListController) GetStarred() {
 	c.SendResponse(response)
 }
 
+func (c *AlbumListController) GetStarred2() {
+	albums, mediaFiles, err := c.listGen.GetAllStarred()
+	if err != nil {
+		beego.Error("Error retrieving starred media:", err)
+		c.SendError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	response := c.NewEmpty()
+	response.Starred2 = &responses.Starred{}
+	response.Starred2.Album = c.ToAlbums(albums)
+	response.Starred2.Song = c.ToChildren(mediaFiles)
+
+	c.SendResponse(response)
+}
+
 func (c *AlbumListController) GetNowPlaying() {
 	npInfos, err := c.listGen.GetNowPlaying()
 	if err != nil {

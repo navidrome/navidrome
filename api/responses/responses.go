@@ -21,6 +21,7 @@ type Subsonic struct {
 	Playlist      *PlaylistWithSongs `xml:"playlist,omitempty"                            json:"playlist,omitempty"`
 	SearchResult2 *SearchResult2     `xml:"searchResult2,omitempty"                       json:"searchResult2,omitempty"`
 	Starred       *Starred           `xml:"starred,omitempty"                             json:"starred,omitempty"`
+	Starred2      *Starred           `xml:"starred2,omitempty"                            json:"starred2,omitempty"`
 	NowPlaying    *NowPlaying        `xml:"nowPlaying,omitempty"                          json:"nowPlaying,omitempty"`
 	Song          *Child             `xml:"song,omitempty"                                json:"song,omitempty"`
 
