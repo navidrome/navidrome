@@ -52,4 +52,5 @@ type MediaFileRepository interface {
 	FindByAlbum(albumId string) (MediaFiles, error)
 	GetStarred(options QueryOptions) (MediaFiles, error)
 	PurgeInactive(active MediaFiles) ([]string, error)
+	GetAllIds() ([]string, error)
 }

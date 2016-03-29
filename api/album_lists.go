@@ -40,7 +40,7 @@ func (c *AlbumListController) GetAlbumList() {
 	}
 
 	offset := c.ParamInt("offset", 0)
-	size := utils.MinInt(c.ParamInt("size", 0), 500)
+	size := utils.MinInt(c.ParamInt("size", 10), 500)
 
 	albums, err := method(offset, size)
 	if err != nil {
@@ -63,7 +63,7 @@ func (c *AlbumListController) GetAlbumList2() {
 	}
 
 	offset := c.ParamInt("offset", 0)
-	size := utils.MinInt(c.ParamInt("size", 0), 500)
+	size := utils.MinInt(c.ParamInt("size", 10), 500)
 
 	albums, err := method(offset, size)
 	if err != nil {
@@ -122,6 +122,24 @@ func (c *AlbumListController) GetNowPlaying() {
 		response.NowPlaying.Entry[i].MinutesAgo = entry.MinutesAgo
 		response.NowPlaying.Entry[i].PlayerId = entry.PlayerId
 		response.NowPlaying.Entry[i].PlayerName = entry.PlayerName
+	}
+	c.SendResponse(response)
+}
+
+func (c *AlbumListController) GetRandomSongs() {
+	size := utils.MinInt(c.ParamInt("size", 10), 500)
+
+	songs, err := c.listGen.GetRandomSongs(size)
+	if err != nil {
+		beego.Error("Error retrieving random songs:", err)
+		c.SendError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	response := c.NewEmpty()
+	response.RandomSongs = &responses.Songs{}
+	response.RandomSongs.Songs = make([]responses.Child, len(songs))
+	for i, entry := range songs {
+		response.RandomSongs.Songs[i] = c.ToChild(entry)
 	}
 	c.SendResponse(response)
 }

@@ -52,6 +52,22 @@ func (r *mediaFileRepository) GetStarred(options domain.QueryOptions) (domain.Me
 	return mfs, err
 }
 
+func (r *mediaFileRepository) GetAllIds() ([]string, error) {
+	idMap, err := r.getAllIds()
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(idMap))
+
+	i := 0
+	for id := range idMap {
+		ids[i] = id
+		i++
+	}
+
+	return ids, nil
+}
+
 func (r *mediaFileRepository) PurgeInactive(active domain.MediaFiles) ([]string, error) {
 	return r.purgeInactive(active, func(e interface{}) string {
 		return e.(domain.MediaFile).Id

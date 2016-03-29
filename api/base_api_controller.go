@@ -44,10 +44,10 @@ func (c *BaseAPIController) ParamStrings(param string) []string {
 }
 
 func (c *BaseAPIController) ParamTime(param string, def time.Time) time.Time {
-	var value int64
 	if c.Input().Get(param) == "" {
 		return def
 	}
+	var value int64
 	c.Ctx.Input.Bind(&value, param)
 	return utils.ToTime(value)
 }
@@ -73,7 +73,10 @@ func (c *BaseAPIController) RequiredParamInt(param string, msg string) int {
 }
 
 func (c *BaseAPIController) ParamInt(param string, def int) int {
-	value := def
+	if c.Input().Get(param) == "" {
+		return def
+	}
+	var value int
 	c.Ctx.Input.Bind(&value, param)
 	return value
 }
@@ -91,10 +94,10 @@ func (c *BaseAPIController) ParamInts(param string) []int {
 }
 
 func (c *BaseAPIController) ParamBool(param string, def bool) bool {
-	value := def
 	if c.Input().Get(param) == "" {
 		return def
 	}
+	var value bool
 	c.Ctx.Input.Bind(&value, param)
 	return value
 }

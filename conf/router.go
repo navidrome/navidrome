@@ -46,6 +46,7 @@ func mapEndpoints() {
 		beego.NSRouter("/getStarred.view", &api.AlbumListController{}, "*:GetStarred"),
 		beego.NSRouter("/getStarred2.view", &api.AlbumListController{}, "*:GetStarred2"),
 		beego.NSRouter("/getNowPlaying.view", &api.AlbumListController{}, "*:GetNowPlaying"),
+		beego.NSRouter("/getRandomSongs.view", &api.AlbumListController{}, "*:GetRandomSongs"),
 
 		beego.NSRouter("/getPlaylists.view", &api.PlaylistsController{}, "*:GetPlaylists"),
 		beego.NSRouter("/getPlaylist.view", &api.PlaylistsController{}, "*:GetPlaylist"),

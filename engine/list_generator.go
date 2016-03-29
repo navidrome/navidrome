@@ -19,6 +19,7 @@ type ListGenerator interface {
 	GetStarred(offset int, size int) (Entries, error)
 	GetAllStarred() (albums Entries, mediaFiles Entries, err error)
 	GetNowPlaying() (Entries, error)
+	GetRandomSongs(size int) (Entries, error)
 }
 
 func NewListGenerator(alr domain.AlbumRepository, mfr domain.MediaFileRepository, npr NowPlayingRepository) ListGenerator {
@@ -85,6 +86,26 @@ func (g *listGenerator) GetRandom(offset int, size int) (Entries, error) {
 			return nil, err
 		}
 		r[i] = FromAlbum(al)
+	}
+	return r, nil
+}
+
+func (g *listGenerator) GetRandomSongs(size int) (Entries, error) {
+	ids, err := g.mfRepository.GetAllIds()
+	if err != nil {
+		return nil, err
+	}
+	size = utils.MinInt(size, len(ids))
+	perm := rand.Perm(size)
+	r := make(Entries, size)
+
+	for i := 0; i < size; i++ {
+		v := perm[i]
+		mf, err := g.mfRepository.Get(ids[v])
+		if err != nil {
+			return nil, err
+		}
+		r[i] = FromMediaFile(mf)
 	}
 	return r, nil
 }

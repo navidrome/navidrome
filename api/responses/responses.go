@@ -25,6 +25,7 @@ type Subsonic struct {
 	Starred2      *Starred           `xml:"starred2,omitempty"                            json:"starred2,omitempty"`
 	NowPlaying    *NowPlaying        `xml:"nowPlaying,omitempty"                          json:"nowPlaying,omitempty"`
 	Song          *Child             `xml:"song,omitempty"                                json:"song,omitempty"`
+	RandomSongs   *Songs             `xml:"randomSongs,omitempty"                         json:"randomSongs,omitempty"`
 
 	// ID3
 	Artist              *Indexes             `xml:"artists,omitempty"                     json:"artists,omitempty"`
@@ -112,6 +113,10 @@ type Child struct {
 	   <xs:attribute name="originalWidth" type="xs:int" use="optional"/>  <!-- Added in 1.13.0 -->
 	   <xs:attribute name="originalHeight" type="xs:int" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
+}
+
+type Songs struct {
+	Songs []Child `xml:"song"                              json:"song,omitempty"`
 }
 
 type Directory struct {
