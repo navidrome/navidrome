@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/astaxie/beego"
-	_ "github.com/deluan/gosonic/conf"
+	_ "github.com/deluan/gosonic/init"
 	_ "github.com/deluan/gosonic/tasks"
 )
 

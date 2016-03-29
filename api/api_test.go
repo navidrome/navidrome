@@ -2,11 +2,12 @@ package api_test
 
 import (
 	"fmt"
-	"github.com/astaxie/beego"
-	_ "github.com/deluan/gosonic/conf"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+
+	"github.com/astaxie/beego"
+	_ "github.com/deluan/gosonic/init"
 )
 
 const (

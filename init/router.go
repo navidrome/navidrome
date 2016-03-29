@@ -1,4 +1,4 @@
-package conf
+package init
 
 import (
 	"github.com/deluan/gosonic/api"
