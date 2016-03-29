@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	minSkipped = time.Duration(5) * time.Second
-	maxSkipped = time.Duration(20) * time.Second
+	minSkipped = time.Duration(3) * time.Second
+	maxSkipped = time.Duration(10) * time.Second
 )
 
 type Scrobbler interface {
