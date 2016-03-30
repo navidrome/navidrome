@@ -21,6 +21,8 @@ import:
 - package: github.com/deluan/itl
 - package: github.com/deluan/gomate
 - package: github.com/koding/multiconfig
+- package: github.com/fatih/camelcase
+- package: github.com/fatih/structs
 
 devImport:
 - package: github.com/smartystreets/goconvey

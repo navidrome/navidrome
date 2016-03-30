@@ -1,5 +1,5 @@
-hash: a5cbc7366656c70b744e5eff395de78872a0d6fee5932036e8efc03e5193154d
-updated: 2016-03-29T18:13:23.845465378-04:00
+hash: c329bb124cc9a2958755a271dd57f11bc641a22007bd709864e84291c015a3ea
+updated: 2016-03-30T00:19:31.852887615-04:00
 imports:
 - name: github.com/astaxie/beego
   version: 92d0b9ae95662d04e1d32eeffa52b4697b01ae37
@@ -33,6 +33,10 @@ imports:
   version: bccc91e40dd77b4d15d6759f2444bb2ac06a5bbb
 - name: github.com/edsrzf/mmap-go
   version: 6c75090c55983bef2e129e173681b20d24871ef8
+- name: github.com/fatih/camelcase
+  version: f6a740d52f961c60348ebb109adde9f4635d7540
+- name: github.com/fatih/structs
+  version: 73c4e3dc02a78deaba8640d5f3a8c236ec1352bf
 - name: github.com/golang/snappy
   version: 723cc1e459b8eea2dea4583200fd60757d40097a
 - name: github.com/gopherjs/gopherjs
