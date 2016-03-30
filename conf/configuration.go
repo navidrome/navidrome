@@ -22,7 +22,7 @@ type goSonic struct {
 	DisableValidation   bool   `default:"false"`
 	DownsampleCommand   string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
 	PlsIgnoreFolders    bool   `default:"true"`
-	PlsIgnoredPatterns  string `default:"^iCloud;^CDs para;^Skipped;Christian"`
+	PlsIgnoredPatterns  string `default:"^iCloud;\~"`
 	RunMode             string `default:"dev"`
 }
 
