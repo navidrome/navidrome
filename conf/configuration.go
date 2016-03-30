@@ -8,7 +8,7 @@ import (
 )
 
 type goSonic struct {
-	Port        int    `default:"8080"`
+	Port        int    `default:"4533"`
 	MusicFolder string `default:"./iTunes1.xml"`
 	DbPath      string `default:"./devDb"`
 
