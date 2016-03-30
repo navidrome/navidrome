@@ -40,7 +40,7 @@ func (c *MediaRetrievalController) GetCoverArt() {
 	switch {
 	case err == domain.ErrNotFound:
 		beego.Error(err, "Id:", id)
-		c.SendError(responses.ErrorDataNotFound, "Directory not found")
+		c.SendError(responses.ErrorDataNotFound, "Cover not found")
 	case err != nil:
 		beego.Error(err)
 		c.SendError(responses.ErrorGeneric, "Internal Error")

@@ -298,6 +298,7 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 
 	if mf.HasCoverArt {
 		al.CoverArtId = mf.Id
+		al.CoverArtPath = mf.Path
 	}
 
 	if al.PlayDate.IsZero() || t.PlayDateUTC.After(al.PlayDate) {

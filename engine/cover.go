@@ -8,6 +8,7 @@ import (
 	_ "image/png"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/deluan/gosonic/domain"
 	"github.com/dhowden/tag"
@@ -20,22 +21,44 @@ type Cover interface {
 
 type cover struct {
 	mfileRepo domain.MediaFileRepository
+	albumRepo domain.AlbumRepository
 }
 
-func NewCover(mr domain.MediaFileRepository) Cover {
-	return &cover{mr}
+func NewCover(mr domain.MediaFileRepository, alr domain.AlbumRepository) Cover {
+	return &cover{mr, alr}
+}
+
+func (c *cover) getCoverPath(id string) (string, error) {
+	switch {
+	case strings.HasPrefix(id, "al-"):
+		id = id[3:]
+		al, err := c.albumRepo.Get(id)
+		if err != nil {
+			return "", err
+		}
+		return al.CoverArtPath, nil
+	default:
+		mf, err := c.mfileRepo.Get(id)
+		if err != nil {
+			return "", err
+		}
+		if mf.HasCoverArt {
+			return mf.Path, nil
+		}
+	}
+	return "", domain.ErrNotFound
 }
 
 func (c *cover) Get(id string, size int, out io.Writer) error {
-	mf, err := c.mfileRepo.Get(id)
+	path, err := c.getCoverPath(id)
 	if err != nil && err != domain.ErrNotFound {
 		return err
 	}
 
 	var reader io.Reader
 
-	if err == nil && mf.HasCoverArt {
-		reader, err = readFromTag(mf.Path)
+	if err != domain.ErrNotFound {
+		reader, err = readFromTag(path)
 	} else {
 		var f *os.File
 		f, err = os.Open("static/default_cover.jpg")

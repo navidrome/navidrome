@@ -143,6 +143,7 @@ func (b *browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *Dir
 		Created:    al.CreatedAt,
 		Year:       al.Year,
 		Genre:      al.Genre,
+		CoverArt:   al.CoverArtId,
 	}
 
 	dir.Entries = make(Entries, len(tracks))

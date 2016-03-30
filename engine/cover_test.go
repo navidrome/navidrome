@@ -17,8 +17,9 @@ func TestCover(t *testing.T) {
 	Init(t, false)
 
 	mockMediaFileRepo := persistence.CreateMockMediaFileRepo()
+	mockAlbumRepo := persistence.CreateMockAlbumRepo()
 
-	cover := engine.NewCover(mockMediaFileRepo)
+	cover := engine.NewCover(mockMediaFileRepo, mockAlbumRepo)
 	out := new(bytes.Buffer)
 
 	Convey("Subject: GetCoverArt Endpoint", t, func() {
@@ -70,6 +71,16 @@ func TestCover(t *testing.T) {
 				So(img.Bounds().Max.Y, ShouldEqual, 100)
 			})
 		})
+		Convey("When id is for an album", func() {
+			mockAlbumRepo.SetData(`[{"Id":"1","CoverArtPath":"tests/fixtures/01 Invisible (RED) Edit Version.mp3"}]`, 1)
+			err := cover.Get("al-1", 0, out)
+
+			Convey("Then it should return the cover for the album", func() {
+				So(err, ShouldBeNil)
+				So(out.Bytes(), ShouldMatchMD5, "e859a71cd1b1aaeb1ad437d85b306668")
+			})
+		})
+
 		Reset(func() {
 			mockMediaFileRepo.SetData("[]", 0)
 			mockMediaFileRepo.SetError(false)
