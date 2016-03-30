@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/conf"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/itl"
 	"github.com/dhowden/tag"
@@ -102,8 +103,8 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 		beego.Debug("Saved", len(s.newSums), "checksums")
 	}
 
-	ignFolders, _ := beego.AppConfig.Bool("plsIgnoreFolders")
-	ignPatterns := beego.AppConfig.Strings("plsIgnoredPatterns")
+	ignFolders := conf.GoSonic.PlsIgnoreFolders
+	ignPatterns := strings.Split(conf.GoSonic.PlsIgnoredPatterns, ";")
 	for _, p := range l.Playlists {
 		rel := plsRelation{pID: p.PlaylistPersistentID, parentPID: p.ParentPersistentID, name: unescape(p.Name)}
 		s.pplaylists[p.PlaylistPersistentID] = rel

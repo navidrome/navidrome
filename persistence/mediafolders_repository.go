@@ -1,7 +1,7 @@
 package persistence
 
 import (
-	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/conf"
 	"github.com/deluan/gosonic/domain"
 )
 
@@ -14,7 +14,7 @@ func NewMediaFolderRepository() domain.MediaFolderRepository {
 }
 
 func (*mediaFolderRepository) GetAll() (domain.MediaFolders, error) {
-	mediaFolder := domain.MediaFolder{Id: "0", Name: "iTunes Library", Path: beego.AppConfig.String("musicFolder")}
+	mediaFolder := domain.MediaFolder{Id: "0", Name: "iTunes Library", Path: conf.GoSonic.MusicFolder}
 	result := make(domain.MediaFolders, 1)
 	result[0] = mediaFolder
 	return result, nil

@@ -7,10 +7,12 @@ import (
 	"testing"
 
 	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/conf"
 	"github.com/deluan/gosonic/utils"
 )
 
 func Init(t *testing.T, skipOnShort bool) {
+	conf.LoadFromFile("../tests/gosonic-test.toml")
 	if skipOnShort && testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}

@@ -3,11 +3,11 @@ package utils
 import (
 	"strings"
 
-	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/conf"
 )
 
 func NoArticle(name string) string {
-	articles := strings.Split(beego.AppConfig.String("ignoredArticles"), " ")
+	articles := strings.Split(conf.GoSonic.IgnoredArticles, " ")
 	for _, a := range articles {
 		n := strings.TrimPrefix(name, a+" ")
 		if n != name {

@@ -3,7 +3,7 @@ package persistence
 import (
 	"sync"
 
-	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/conf"
 	"github.com/siddontang/ledisdb/config"
 	"github.com/siddontang/ledisdb/ledis"
 )
@@ -17,7 +17,7 @@ var (
 func Db() *ledis.DB {
 	once.Do(func() {
 		config := config.NewConfigDefault()
-		config.DataDir = beego.AppConfig.String("dbPath")
+		config.DataDir = conf.GoSonic.DbPath
 		l, _ := ledis.Open(config)
 		instance, err := l.Select(0)
 		if err != nil {

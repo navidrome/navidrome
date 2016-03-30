@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/conf"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
@@ -49,7 +50,7 @@ func CheckForUpdates(force bool) {
 
 func startImport() {
 	go func() {
-		itunesLibrary = beego.AppConfig.String("musicFolder")
+		itunesLibrary = conf.GoSonic.MusicFolder
 
 		info, err := os.Stat(itunesLibrary)
 		if err != nil {
@@ -64,7 +65,7 @@ func startImport() {
 		lastCheck = time.Now()
 
 		// TODO Move all to DI
-		i := &Importer{mediaFolder: beego.AppConfig.String("musicFolder")}
+		i := &Importer{mediaFolder: itunesLibrary}
 		utils.ResolveDependencies(&i.mfRepo, &i.albumRepo, &i.artistRepo, &i.idxRepo, &i.plsRepo,
 			&i.propertyRepo, &i.search, &i.scanner)
 		i.Run()
@@ -263,7 +264,7 @@ func (i *Importer) importArtists() domain.Artists {
 }
 
 func (i *Importer) importArtistIndex() {
-	indexGroups := utils.ParseIndexGroups(beego.AppConfig.String("indexGroups"))
+	indexGroups := utils.ParseIndexGroups(conf.GoSonic.IndexGroups)
 	artistIndex := make(map[string]tempIndex)
 
 	for _, ar := range i.scanner.Artists() {
@@ -280,7 +281,7 @@ func (i *Importer) importPlaylists() domain.Playlists {
 	j := 0
 	for _, pl := range i.scanner.Playlists() {
 		pl.Public = true
-		pl.Owner = beego.AppConfig.String("user")
+		pl.Owner = conf.GoSonic.User
 		pl.Comment = "Original: " + pl.FullPath
 		pls[j] = *pl
 		j++

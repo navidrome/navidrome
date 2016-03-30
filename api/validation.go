@@ -8,6 +8,7 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/conf"
 )
 
 type ControllerInterface interface {
@@ -17,7 +18,7 @@ type ControllerInterface interface {
 }
 
 func Validate(controller BaseAPIController) {
-	if beego.AppConfig.String("disableValidation") != "true" {
+	if !conf.GoSonic.DisableValidation {
 		checkParameters(controller)
 		authenticate(controller)
 		// TODO Validate version
@@ -40,7 +41,7 @@ func checkParameters(c BaseAPIController) {
 }
 
 func authenticate(c BaseAPIController) {
-	password := beego.AppConfig.String("password")
+	password := conf.GoSonic.Password
 	user := c.GetString("u")
 	pass := c.GetString("p")
 	salt := c.GetString("s")
@@ -61,7 +62,7 @@ func authenticate(c BaseAPIController) {
 		valid = (t == token)
 	}
 
-	if user != beego.AppConfig.String("user") || !valid {
+	if user != conf.GoSonic.User || !valid {
 		logWarn(c, fmt.Sprintf(`Invalid login for user "%s"`, user))
 		abortRequest(c, responses.ErrorAuthenticationFail)
 	}

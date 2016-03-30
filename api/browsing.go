@@ -6,6 +6,7 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
+	"github.com/deluan/gosonic/conf"
 	"github.com/deluan/gosonic/domain"
 	"github.com/deluan/gosonic/engine"
 	"github.com/deluan/gosonic/utils"
@@ -40,7 +41,7 @@ func (c *BrowsingController) getArtistIndex(ifModifiedSince time.Time) responses
 	}
 
 	res := responses.Indexes{
-		IgnoredArticles: beego.AppConfig.String("ignoredArticles"),
+		IgnoredArticles: conf.GoSonic.IgnoredArticles,
 		LastModified:    fmt.Sprint(utils.ToMillis(lastModified)),
 	}
 

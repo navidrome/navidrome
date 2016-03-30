@@ -8,14 +8,15 @@ import (
 	"strings"
 
 	"github.com/astaxie/beego"
+	"github.com/deluan/gosonic/conf"
 )
 
 // TODO Encapsulate as a io.Reader
 func Stream(path string, bitRate int, maxBitRate int, w io.Writer) error {
 	var f io.Reader
 	var err error
-	ds, _ := beego.AppConfig.Bool("enableDownsampling")
-	if ds && maxBitRate > 0 && bitRate > maxBitRate {
+	enabled := !conf.GoSonic.DisableDownsampling
+	if enabled && maxBitRate > 0 && bitRate > maxBitRate {
 		f, err = downsample(path, maxBitRate)
 	} else {
 		f, err = os.Open(path)
@@ -44,7 +45,7 @@ func downsample(path string, maxBitRate int) (f io.Reader, err error) {
 }
 
 func createDownsamplingCommand(path string, maxBitRate int) (string, []string) {
-	cmd := beego.AppConfig.String("downsampleCommand")
+	cmd := conf.GoSonic.DownsampleCommand
 
 	split := strings.Split(cmd, " ")
 	for i, s := range split {
