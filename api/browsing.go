@@ -137,7 +137,7 @@ func (c *BrowsingController) GetSong() {
 	switch {
 	case err == domain.ErrNotFound:
 		beego.Error("Requested Id", id, "not found:", err)
-		c.SendError(responses.ErrorDataNotFound, "Directory not found")
+		c.SendError(responses.ErrorDataNotFound, "Song not found")
 	case err != nil:
 		beego.Error(err)
 		c.SendError(responses.ErrorGeneric, "Internal Error")
