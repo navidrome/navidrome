@@ -2,7 +2,7 @@ package engine
 
 import "time"
 
-const NowPlayingExpire = time.Duration(60) * time.Minute
+const NowPlayingExpire = 60 * time.Minute
 
 type NowPlayingInfo struct {
 	TrackId    string

@@ -47,7 +47,7 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, er
 
 func (r *mediaFileRepository) GetStarred(options domain.QueryOptions) (domain.MediaFiles, error) {
 	var mfs = make(domain.MediaFiles, 0)
-	start := time.Time{}.Add(time.Duration(1) * time.Hour)
+	start := time.Time{}.Add(1 * time.Hour)
 	err := r.loadRange("Starred", start, time.Now(), &mfs, options)
 	return mfs, err
 }

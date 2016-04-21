@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	minSkipped = time.Duration(3) * time.Second
-	maxSkipped = time.Duration(10) * time.Second
+	minSkipped = 3 * time.Second
+	maxSkipped = 20 * time.Second
 )
 
 type Scrobbler interface {
@@ -57,7 +57,7 @@ func (s *scrobbler) detectSkipped(playerId int, trackId string) {
 				prev = np
 				continue
 			}
-			err = s.itunes.MarkAsSkipped(prev.TrackId, prev.Start.Add(time.Duration(1)*time.Minute))
+			err = s.itunes.MarkAsSkipped(prev.TrackId, prev.Start.Add(1*time.Minute))
 			if err != nil {
 				beego.Warn("Error skipping track", prev.TrackId)
 			} else {
