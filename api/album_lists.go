@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+
 	"github.com/astaxie/beego"
 	"github.com/deluan/gosonic/api/responses"
 	"github.com/deluan/gosonic/engine"
@@ -9,8 +11,8 @@ import (
 
 type AlbumListController struct {
 	BaseAPIController
-	listGen engine.ListGenerator
-	types   map[string]strategy
+	listGen       engine.ListGenerator
+	listFunctions map[string]strategy
 }
 
 type strategy func(offset int, size int) (engine.Entries, error)
@@ -18,34 +20,43 @@ type strategy func(offset int, size int) (engine.Entries, error)
 func (c *AlbumListController) Prepare() {
 	utils.ResolveDependencies(&c.listGen)
 
-	c.types = map[string]strategy{
-		"random":               func(o int, s int) (engine.Entries, error) { return c.listGen.GetRandom(o, s) },
-		"newest":               func(o int, s int) (engine.Entries, error) { return c.listGen.GetNewest(o, s) },
-		"recent":               func(o int, s int) (engine.Entries, error) { return c.listGen.GetRecent(o, s) },
-		"frequent":             func(o int, s int) (engine.Entries, error) { return c.listGen.GetFrequent(o, s) },
-		"highest":              func(o int, s int) (engine.Entries, error) { return c.listGen.GetHighest(o, s) },
-		"alphabeticalByName":   func(o int, s int) (engine.Entries, error) { return c.listGen.GetByName(o, s) },
-		"alphabeticalByArtist": func(o int, s int) (engine.Entries, error) { return c.listGen.GetByArtist(o, s) },
-		"starred":              func(o int, s int) (engine.Entries, error) { return c.listGen.GetStarred(o, s) },
+	c.listFunctions = map[string]strategy{
+		"random":               c.listGen.GetRandom,
+		"newest":               c.listGen.GetNewest,
+		"recent":               c.listGen.GetRecent,
+		"frequent":             c.listGen.GetFrequent,
+		"highest":              c.listGen.GetHighest,
+		"alphabeticalByName":   c.listGen.GetByName,
+		"alphabeticalByArtist": c.listGen.GetByArtist,
+		"starred":              c.listGen.GetStarred,
 	}
 }
 
-func (c *AlbumListController) GetAlbumList() {
+func (c *AlbumListController) getAlbumList() (engine.Entries, error) {
 	typ := c.RequiredParamString("type", "Required string parameter 'type' is not present")
-	method, found := c.types[typ]
+	listFunc, found := c.listFunctions[typ]
 
 	if !found {
 		beego.Error("albumList type", typ, "not implemented!")
-		c.SendError(responses.ErrorGeneric, "Not implemented!")
+		return nil, errors.New("Not implemented!")
 	}
 
 	offset := c.ParamInt("offset", 0)
 	size := utils.MinInt(c.ParamInt("size", 10), 500)
 
-	albums, err := method(offset, size)
+	albums, err := listFunc(offset, size)
 	if err != nil {
 		beego.Error("Error retrieving albums:", err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, errors.New("Internal Error")
+	}
+
+	return albums, nil
+}
+
+func (c *AlbumListController) GetAlbumList() {
+	albums, err := c.getAlbumList()
+	if err != nil {
+		c.SendError(responses.ErrorGeneric, err.Error)
 	}
 
 	response := c.NewEmpty()
@@ -54,21 +65,9 @@ func (c *AlbumListController) GetAlbumList() {
 }
 
 func (c *AlbumListController) GetAlbumList2() {
-	typ := c.RequiredParamString("type", "Required string parameter 'type' is not present")
-	method, found := c.types[typ]
-
-	if !found {
-		beego.Error("albumList2 type", typ, "not implemented!")
-		c.SendError(responses.ErrorGeneric, "Not implemented!")
-	}
-
-	offset := c.ParamInt("offset", 0)
-	size := utils.MinInt(c.ParamInt("size", 10), 500)
-
-	albums, err := method(offset, size)
+	albums, err := c.getAlbumList()
 	if err != nil {
-		beego.Error("Error retrieving albums:", err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		c.SendError(responses.ErrorGeneric, err.Error)
 	}
 
 	response := c.NewEmpty()
