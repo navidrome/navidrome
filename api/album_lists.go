@@ -56,7 +56,7 @@ func (c *AlbumListController) getAlbumList() (engine.Entries, error) {
 func (c *AlbumListController) GetAlbumList() {
 	albums, err := c.getAlbumList()
 	if err != nil {
-		c.SendError(responses.ErrorGeneric, err.Error)
+		c.SendError(responses.ErrorGeneric, err.Error())
 	}
 
 	response := c.NewEmpty()
@@ -67,7 +67,7 @@ func (c *AlbumListController) GetAlbumList() {
 func (c *AlbumListController) GetAlbumList2() {
 	albums, err := c.getAlbumList()
 	if err != nil {
-		c.SendError(responses.ErrorGeneric, err.Error)
+		c.SendError(responses.ErrorGeneric, err.Error())
 	}
 
 	response := c.NewEmpty()

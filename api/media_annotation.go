@@ -87,7 +87,7 @@ func (c *MediaAnnotationController) Scrobble() {
 	ids := c.RequiredParamStrings("id", "Required id parameter is missing")
 	times := c.ParamTimes("time")
 	if len(times) > 0 && len(times) != len(ids) {
-		c.SendError(responses.ErrorGeneric, fmt.Sprintf("Wrong number of timestamps: %d", len(times)))
+		c.SendError(responses.ErrorGeneric, "Wrong number of timestamps: %d", len(times))
 	}
 	submission := c.ParamBool("submission", true)
 	playerId := 1 // TODO Multiple players, based on playerName/username/clientIP(?)
