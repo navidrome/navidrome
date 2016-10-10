@@ -1,17 +1,17 @@
 language: go
 
 go:
-  - 1.6
+  - 1.7
   - tip
 
 before_install:
-  - go get github.com/Masterminds/glide
+  - go get github.com/kardianos/govendor
 
 install:
-  - glide install
+  - govendor sync
 
 script:
-  - go test $(glide nv)
+  - BEEGO_RUNMODE=test go test `go list ./...|grep -v vendor` -v
 
 notifications:
   email:

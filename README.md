@@ -36,17 +36,17 @@ Development Environment section below, then run it with:
 $ export GOSONIC_MUSICFOLDER="/path/to/your/iTunes Library.xml"
 $ bee run
 ```
-The server should start and listening to port 4533.
+The server should start listening on port 4533.
 
 ### Development Environment
 
-You will need to install [Go 1.6](https://golang.org/dl/)
+You will need to install [Go 1.7](https://golang.org/dl/)
 
 Then install dependencies:
 ```
-$ go get github.com/beego/bee           # bee command line tool     
-$ go get github.com/Masterminds/glide   # dependency manager
-$ glide install
+$ go get github.com/beego/bee            # bee command line tool     
+$ go get github.com/kardianos/govendor   # dependency manager
+$ govendor fetch
 ```  
 
 From here it's a normal [BeeGo](http://beego.me) development cycle. Some useful commands:
@@ -56,7 +56,7 @@ From here it's a normal [BeeGo](http://beego.me) development cycle. Some useful 
 $ bee run
 
 # Run all tests
-$ go test $(glide nv) -v
+$ go test `go list ./...|grep -v vendor` -v
 ```
 
 
