@@ -44,19 +44,17 @@ You will need to install [Go 1.7](https://golang.org/dl/)
 
 Then install dependencies:
 ```
-$ go get github.com/beego/bee            # bee command line tool     
-$ go get github.com/kardianos/govendor   # dependency manager
-$ govendor fetch
+$ make setup
 ```  
 
-From here it's a normal [BeeGo](http://beego.me) development cycle. Some useful commands:
+Some useful commands:
 
 ```bash
 # Start local server (with hot reload)
-$ bee run
+$ make run
 
 # Run all tests
-$ go test `go list ./...|grep -v vendor` -v
+$ make test
 ```
 
 
