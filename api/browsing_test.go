@@ -93,7 +93,7 @@ func TestGetIndexes(t *testing.T) {
 
 			So(UnindentJSON(w.Body.Bytes()), ShouldContainSubstring, emptyResponse)
 		})
-		Convey("And it should return empty if 'ifModifiedSince' is the asme as tie index last update", func() {
+		Convey("And it should return empty if 'ifModifiedSince' is the same as the index last update", func() {
 			mockRepo.SetData(`[{"Id": "A","Artists": [
 				{"ArtistId": "21", "Artist": "Afrolicious"}
 			]}]`, 2)
