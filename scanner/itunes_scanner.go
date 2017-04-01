@@ -16,7 +16,7 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/domain"
-	"github.com/deluan/itl"
+	"github.com/dhowden/itl"
 	"github.com/dhowden/tag"
 )
 

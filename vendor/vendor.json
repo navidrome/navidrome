@@ -117,10 +117,10 @@
 			"revisionTime": "2016-03-27T21:24:59Z"
 		},
 		{
-			"checksumSHA1": "xvJx1wmO5ObZcG09+U9x0aMkq/k=",
-			"path": "github.com/deluan/itl",
-			"revision": "f5c998c03029dfc1478baedefbbeaa47be97a093",
-			"revisionTime": "2016-03-14T02:12:00Z"
+			"checksumSHA1": "pdQdj6cz/zWABiL9TqexgUv3a3w=",
+			"path": "github.com/dhowden/itl",
+			"revision": "9fbe21093131b89eda7ac73d28e90d140f6afa0d",
+			"revisionTime": "2017-03-29T21:54:56Z"
 		},
 		{
 			"checksumSHA1": "R2WqFT0v0bsYzWgIKeJkHsrVD4Y=",
@@ -429,5 +429,5 @@
 			"revisionTime": "2016-04-09T10:42:01Z"
 		}
 	],
-	"rootPath": "github.com/deluan/gosonic"
+	"rootPath": "github.com/cloudsonic/sonic-server"
 }
