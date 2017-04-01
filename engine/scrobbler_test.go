@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/deluan/gosonic/engine"
-	"github.com/deluan/gosonic/itunesbridge"
-	"github.com/deluan/gosonic/persistence"
-	. "github.com/deluan/gosonic/tests"
+	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/itunesbridge"
+	"github.com/cloudsonic/sonic-server/persistence"
+	. "github.com/cloudsonic/sonic-server/tests"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 )

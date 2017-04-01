@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/deluan/gosonic/engine"
+	"github.com/cloudsonic/sonic-server/engine"
 )
 
 var (

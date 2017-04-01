@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"github.com/astaxie/beego"
+	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/deluan/gomate"
-	"github.com/deluan/gosonic/domain"
 	"github.com/kennygrant/sanitize"
 )
 

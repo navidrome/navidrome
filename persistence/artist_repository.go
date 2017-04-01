@@ -3,7 +3,7 @@ package persistence
 import (
 	"errors"
 
-	"github.com/deluan/gosonic/domain"
+	"github.com/cloudsonic/sonic-server/domain"
 )
 
 type artistRepository struct {

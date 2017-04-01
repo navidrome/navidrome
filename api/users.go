@@ -1,6 +1,6 @@
 package api
 
-import "github.com/deluan/gosonic/api/responses"
+import "github.com/cloudsonic/sonic-server/api/responses"
 
 type UsersController struct{ BaseAPIController }
 

@@ -3,11 +3,11 @@ package utils
 import (
 	"strings"
 
-	"github.com/deluan/gosonic/conf"
+	"github.com/cloudsonic/sonic-server/conf"
 )
 
 func NoArticle(name string) string {
-	articles := strings.Split(conf.GoSonic.IgnoredArticles, " ")
+	articles := strings.Split(conf.Sonic.IgnoredArticles, " ")
 	for _, a := range articles {
 		n := strings.TrimPrefix(name, a+" ")
 		if n != name {

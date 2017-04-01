@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/astaxie/beego"
-	_ "github.com/deluan/gosonic/init"
+	_ "github.com/cloudsonic/sonic-server/init"
 )
 
 const (

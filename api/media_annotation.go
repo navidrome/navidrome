@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/api/responses"
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/engine"
-	"github.com/deluan/gosonic/utils"
+	"github.com/cloudsonic/sonic-server/api/responses"
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/utils"
 )
 
 type MediaAnnotationController struct {

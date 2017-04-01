@@ -1,11 +1,12 @@
-GoSonic
+CloudSonic Server
 =======
 
-[![Build Status](https://travis-ci.org/deluan/gosonic.svg?branch=master)](https://travis-ci.org/deluan/gosonic) [![Go Report Card](https://goreportcard.com/badge/github.com/deluan/gosonic)](https://goreportcard.com/report/github.com/deluan/gosonic)
+[![Build Status](https://travis-ci.org/cloudsonic/sonic-server.svg?branch=master)](https://travis-ci.org/cloudsonic/sonic-server) 
+[![Go Report Card](https://goreportcard.com/badge/github.com/cloudsonic/sonic-server)](https://goreportcard.com/report/github.com/cloudsonic/sonic-server)
 
 __This is still a work in progress, and has no releases available__
 
-GoSonic is an application that implements the [Subsonic API](http://www.subsonic.org/pages/api.jsp), but instead of
+CloudSonic is an application that implements the [Subsonic API](http://www.subsonic.org/pages/api.jsp), but instead of
 having its own music library like the original [Subsonic application](http://www.subsonic.org), it interacts directly
 with your iTunes library.
 
@@ -26,14 +27,14 @@ The project's main goals are:
 
 I'm currently trying to implement all functionality from API v1.8.0, with some exceptions.
 
-Check the (almost) up to date [compatibility chart](https://github.com/deluan/gosonic/wiki/Compatibility) for what is working.
+Check the (almost) up to date [compatibility chart](https://github.com/cloudsonic/sonic-server/wiki/Compatibility) for what is working.
 
 ### Installation
 
-As this is a work in progress, there are no installers yet. To have GoSonic running in your computer, follow the steps in the
+As this is a work in progress, there are no installers yet. To have the server running in your computer, follow the steps in the
 Development Environment section below, then run it with:
 ```
-$ export GOSONIC_MUSICFOLDER="/path/to/your/iTunes Library.xml"
+$ export SONIC_MUSICFOLDER="/path/to/your/iTunes Library.xml"
 $ bee run
 ```
 The server should start listening on port 4533.
@@ -60,6 +61,6 @@ $ make test
 
 ### Copying
 
-GoSonic - Copyright (C) 2017  Deluan Cotts Quintao
+CloudSonic - Copyright (C) 2017  Deluan Cotts Quintao
 
 The source code is licensed under GNU Affero GPL v3. License is available [here](/LICENSE)

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/tests"
-	"github.com/deluan/gosonic/utils"
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/tests"
+	"github.com/cloudsonic/sonic-server/utils"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

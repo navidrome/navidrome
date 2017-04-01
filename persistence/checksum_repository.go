@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/scanner"
+	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/siddontang/ledisdb/ledis"
 )
 

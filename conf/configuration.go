@@ -7,7 +7,7 @@ import (
 	"github.com/koding/multiconfig"
 )
 
-type goSonic struct {
+type sonic struct {
 	Port        int    `default:"4533"`
 	MusicFolder string `default:"./iTunes1.xml"`
 	DbPath      string `default:"./devDb"`
@@ -26,32 +26,32 @@ type goSonic struct {
 	RunMode             string `default:"dev"`
 }
 
-var GoSonic *goSonic
+var Sonic *sonic
 
 func LoadFromFlags() {
 	l := &multiconfig.FlagLoader{}
-	l.Load(GoSonic)
+	l.Load(Sonic)
 }
 
 func LoadFromFile(tomlFile string) {
 	l := &multiconfig.TOMLLoader{Path: tomlFile}
-	err := l.Load(GoSonic)
+	err := l.Load(Sonic)
 	if err != nil {
 		fmt.Printf("Error loading %s: %v\n", tomlFile, err)
 	}
 }
 
 func LoadFromLocalFile() {
-	if _, err := os.Stat("./gosonic.toml"); err == nil {
-		LoadFromFile("./gosonic.toml")
+	if _, err := os.Stat("./sonic.toml"); err == nil {
+		LoadFromFile("./sonic.toml")
 	}
 }
 
 func init() {
-	GoSonic = new(goSonic)
+	Sonic = new(sonic)
 	var l multiconfig.Loader
 	l = &multiconfig.TagLoader{}
-	l.Load(GoSonic)
+	l.Load(Sonic)
 	l = &multiconfig.EnvironmentLoader{}
-	l.Load(GoSonic)
+	l.Load(Sonic)
 }

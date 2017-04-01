@@ -1,6 +1,6 @@
 package domain
 
-import "github.com/deluan/gosonic/utils"
+import "github.com/cloudsonic/sonic-server/utils"
 
 type ArtistInfo struct {
 	ArtistId   string

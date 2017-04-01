@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sort"
 
-	"github.com/deluan/gosonic/domain"
+	"github.com/cloudsonic/sonic-server/domain"
 )
 
 type artistIndexRepository struct {

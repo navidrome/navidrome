@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/deluan/gosonic/domain"
+	"github.com/cloudsonic/sonic-server/domain"
 )
 
 type albumRepository struct {

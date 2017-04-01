@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/deluan/gosonic/api/responses"
-	. "github.com/deluan/gosonic/tests"
+	. "github.com/cloudsonic/sonic-server/api/responses"
+	. "github.com/cloudsonic/sonic-server/tests"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -163,13 +163,13 @@ func TestSubsonicResponses(t *testing.T) {
 				})
 			})
 			Convey("With optional fields", func() {
-				response.User.Email = "gosonic@deluan.com"
+				response.User.Email = "cloudsonic@deluan.com"
 				response.User.Folder = []int{1}
 				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><user username="deluan" email="gosonic@deluan.com" scrobblingEnabled="false" adminRole="false" settingsRole="false" downloadRole="false" uploadRole="false" playlistRole="false" coverArtRole="false" commentRole="false" podcastRole="false" streamRole="false" jukeboxRole="false" shareRole="false" videoConversionRole="false"><folder>1</folder></user></subsonic-response>`)
+					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><user username="deluan" email="cloudsonic@deluan.com" scrobblingEnabled="false" adminRole="false" settingsRole="false" downloadRole="false" uploadRole="false" playlistRole="false" coverArtRole="false" commentRole="false" podcastRole="false" streamRole="false" jukeboxRole="false" shareRole="false" videoConversionRole="false"><folder>1</folder></user></subsonic-response>`)
 				})
 				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"status":"ok","user":{"adminRole":false,"commentRole":false,"coverArtRole":false,"downloadRole":false,"email":"gosonic@deluan.com","folder":[1],"jukeboxRole":false,"playlistRole":false,"podcastRole":false,"scrobblingEnabled":false,"settingsRole":false,"shareRole":false,"streamRole":false,"uploadRole":false,"username":"deluan","videoConversionRole":false},"version":"1.0.0"}`)
+					So(response, ShouldMatchJSON, `{"status":"ok","user":{"adminRole":false,"commentRole":false,"coverArtRole":false,"downloadRole":false,"email":"cloudsonic@deluan.com","folder":[1],"jukeboxRole":false,"playlistRole":false,"podcastRole":false,"scrobblingEnabled":false,"settingsRole":false,"shareRole":false,"streamRole":false,"uploadRole":false,"username":"deluan","videoConversionRole":false},"version":"1.0.0"}`)
 				})
 			})
 		})

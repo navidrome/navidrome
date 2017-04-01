@@ -3,12 +3,12 @@ package api_test
 import (
 	"testing"
 
-	"github.com/deluan/gosonic/api/responses"
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/engine"
-	"github.com/deluan/gosonic/persistence"
-	. "github.com/deluan/gosonic/tests"
-	"github.com/deluan/gosonic/utils"
+	"github.com/cloudsonic/sonic-server/api/responses"
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/persistence"
+	. "github.com/cloudsonic/sonic-server/tests"
+	"github.com/cloudsonic/sonic-server/utils"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

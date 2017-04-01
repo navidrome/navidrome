@@ -3,8 +3,8 @@ package persistence
 import (
 	"errors"
 
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/engine"
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/engine"
 )
 
 type propertyRepository struct {

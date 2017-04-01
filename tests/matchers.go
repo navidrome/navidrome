@@ -7,7 +7,7 @@ import (
 	"encoding/xml"
 	"fmt"
 
-	"github.com/deluan/gosonic/api/responses"
+	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/smartystreets/goconvey/convey"
 )
 

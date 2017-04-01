@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/deluan/gosonic/domain"
+	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/dhowden/tag"
 	"github.com/nfnt/resize"
 )

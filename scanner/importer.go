@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/conf"
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/engine"
-	"github.com/deluan/gosonic/utils"
+	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/utils"
 )
 
 type Scanner interface {
@@ -50,7 +50,7 @@ func CheckForUpdates(force bool) {
 
 func startImport() {
 	go func() {
-		itunesLibrary = conf.GoSonic.MusicFolder
+		itunesLibrary = conf.Sonic.MusicFolder
 
 		info, err := os.Stat(itunesLibrary)
 		if err != nil {
@@ -264,7 +264,7 @@ func (i *Importer) importArtists() domain.Artists {
 }
 
 func (i *Importer) importArtistIndex() {
-	indexGroups := utils.ParseIndexGroups(conf.GoSonic.IndexGroups)
+	indexGroups := utils.ParseIndexGroups(conf.Sonic.IndexGroups)
 	artistIndex := make(map[string]tempIndex)
 
 	for _, ar := range i.scanner.Artists() {
@@ -281,7 +281,7 @@ func (i *Importer) importPlaylists() domain.Playlists {
 	j := 0
 	for _, pl := range i.scanner.Playlists() {
 		pl.Public = true
-		pl.Owner = conf.GoSonic.User
+		pl.Owner = conf.Sonic.User
 		pl.Comment = "Original: " + pl.FullPath
 		pls[j] = *pl
 		j++

@@ -5,8 +5,8 @@ import (
 	"sort"
 
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/itunesbridge"
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/itunesbridge"
 )
 
 type Playlists interface {

@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/tests"
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/tests"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

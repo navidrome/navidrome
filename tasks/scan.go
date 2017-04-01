@@ -5,7 +5,7 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/toolbox"
-	"github.com/deluan/gosonic/scanner"
+	"github.com/cloudsonic/sonic-server/scanner"
 )
 
 const TaskItunesScan = "iTunes Library Scanner"

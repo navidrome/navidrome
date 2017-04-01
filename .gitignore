@@ -1,4 +1,4 @@
-/gosonic
+/sonic-server
 /iTunes*.xml
 static/Jamstash
 devDb
@@ -6,7 +6,6 @@ devDb
 vendor/*/
 wiki
 TODO.md
-gosonic.log
 var
 Artwork
-gosonic.toml
+sonic.toml

@@ -2,9 +2,9 @@ package engine
 
 import (
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/itunesbridge"
-	"github.com/deluan/gosonic/utils"
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/itunesbridge"
+	"github.com/cloudsonic/sonic-server/utils"
 )
 
 type Ratings interface {

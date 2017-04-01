@@ -1,15 +1,14 @@
 package init
 
 import (
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/itunesbridge"
+	"github.com/cloudsonic/sonic-server/persistence"
+	"github.com/cloudsonic/sonic-server/scanner"
+	"github.com/cloudsonic/sonic-server/utils"
 	"github.com/deluan/gomate"
 	"github.com/deluan/gomate/ledis"
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/engine"
-	"github.com/deluan/gosonic/persistence"
-	"github.com/deluan/gosonic/utils"
-
-	"github.com/deluan/gosonic/itunesbridge"
-	"github.com/deluan/gosonic/scanner"
 )
 
 func init() {

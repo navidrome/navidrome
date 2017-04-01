@@ -1,12 +1,11 @@
 package init
 
 import (
-	"github.com/deluan/gosonic/api"
-
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/context"
 	"github.com/astaxie/beego/plugins/cors"
-	"github.com/deluan/gosonic/controllers"
+	"github.com/cloudsonic/sonic-server/api"
+	"github.com/cloudsonic/sonic-server/controllers"
 )
 
 func init() {

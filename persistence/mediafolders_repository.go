@@ -1,8 +1,8 @@
 package persistence
 
 import (
-	"github.com/deluan/gosonic/conf"
-	"github.com/deluan/gosonic/domain"
+	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/domain"
 )
 
 type mediaFolderRepository struct {
@@ -14,7 +14,7 @@ func NewMediaFolderRepository() domain.MediaFolderRepository {
 }
 
 func (*mediaFolderRepository) GetAll() (domain.MediaFolders, error) {
-	mediaFolder := domain.MediaFolder{Id: "0", Name: "iTunes Library", Path: conf.GoSonic.MusicFolder}
+	mediaFolder := domain.MediaFolder{Id: "0", Name: "iTunes Library", Path: conf.Sonic.MusicFolder}
 	result := make(domain.MediaFolders, 1)
 	result[0] = mediaFolder
 	return result, nil

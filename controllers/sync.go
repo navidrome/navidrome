@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"github.com/astaxie/beego"
-	"github.com/deluan/gosonic/scanner"
+	"github.com/cloudsonic/sonic-server/scanner"
 )
 
 type SyncController struct{ beego.Controller }

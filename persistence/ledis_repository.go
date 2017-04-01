@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deluan/gosonic/domain"
-	"github.com/deluan/gosonic/utils"
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/utils"
 	"github.com/siddontang/ledisdb/ledis"
 )
 

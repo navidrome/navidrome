@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/deluan/gosonic/api/responses"
-	"github.com/deluan/gosonic/tests"
+	"github.com/cloudsonic/sonic-server/api/responses"
+	"github.com/cloudsonic/sonic-server/tests"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
