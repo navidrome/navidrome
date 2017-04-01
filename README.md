@@ -60,6 +60,6 @@ $ make test
 
 ### Copying
 
-GoSonic - Copyright (C) 2016  Deluan Cotts Quintao
+GoSonic - Copyright (C) 2017  Deluan Cotts Quintao
 
-The source code is licensed under GPL v3. License is available [here](/LICENSE)
+The source code is licensed under GNU Affero GPL v3. License is available [here](/LICENSE)
