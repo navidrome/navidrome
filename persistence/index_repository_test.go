@@ -24,7 +24,7 @@ func TestIndexRepository(t *testing.T) {
 
 			So(s, shouldBeEqual, i)
 		})
-		Convey("It should be able to check for existance of an Id", func() {
+		Convey("It should be able to check for existence of an Id", func() {
 			i := &domain.ArtistIndex{Id: "123"}
 
 			repo.Put(i)
