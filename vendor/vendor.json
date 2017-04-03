@@ -411,6 +411,12 @@
 			"revisionTime": "2017-03-02T03:19:10Z"
 		},
 		{
+			"checksumSHA1": "ClyNDKGVhQH1K/IXbLZ1qMv0ddA=",
+			"path": "github.com/twinj/uuid",
+			"revision": "7bbe408d339787c56ec15568c947c0959db1b275",
+			"revisionTime": "2016-09-09T07:54:38Z"
+		},
+		{
 			"checksumSHA1": "vqc3a+oTUGX8PmD0TS+qQ7gmN8I=",
 			"path": "golang.org/x/net/html",
 			"revision": "ffcf1bedda3b04ebb15a168a59800a73d6dc0f4d",
