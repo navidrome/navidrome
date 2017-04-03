@@ -1,6 +1,6 @@
 #@IgnoreInspection BashAddShebang
 
-BINARY=gosonic
+BINARY=sonic-server
 
 SOURCES := $(shell find . -name '*.go')
 
@@ -12,7 +12,7 @@ $(BINARY): $(SOURCES)
 .PHONY: clean
 clean:
 	rm -f ${BINARY}
-	
+
 .PHONY: setup
 setup:
 	go get -u github.com/beego/bee                     # bee command line tool

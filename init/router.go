@@ -6,7 +6,10 @@ import (
 	"github.com/astaxie/beego/plugins/cors"
 	"github.com/cloudsonic/sonic-server/api"
 	"github.com/cloudsonic/sonic-server/controllers"
+	"github.com/twinj/uuid"
 )
+
+const requestidHeader = "X-Request-Id"
 
 func init() {
 	mapEndpoints()
@@ -67,12 +70,23 @@ func mapControllers() {
 }
 
 func initFilters() {
-	var ValidateRequest = func(ctx *context.Context) {
+	var requestIdFilter = func(ctx *context.Context) {
+		id := ctx.Input.Header(requestidHeader)
+		if id == "" {
+			id = uuid.NewV4().String()
+		}
+
+		ctx.Input.SetData("requestId", id)
+	}
+
+	var validateRequest = func(ctx *context.Context) {
 		c := api.BaseAPIController{}
+		// TODO Find a way to not depend on a controller being passed
 		c.Ctx = ctx
 		c.Data = make(map[interface{}]interface{})
 		api.Validate(c)
 	}
+
 	beego.InsertFilter("/rest/*", beego.BeforeRouter, cors.Allow(&cors.Options{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -81,5 +95,6 @@ func initFilters() {
 		AllowCredentials: true,
 	}))
 
-	beego.InsertFilter("/rest/*", beego.BeforeRouter, ValidateRequest)
+	beego.InsertFilter("/rest/*", beego.BeforeRouter, requestIdFilter)
+	beego.InsertFilter("/rest/*", beego.BeforeRouter, validateRequest)
 }

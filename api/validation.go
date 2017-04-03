@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -18,11 +19,26 @@ type ControllerInterface interface {
 }
 
 func Validate(controller BaseAPIController) {
+	addNewContext(controller)
 	if !conf.Sonic.DisableValidation {
 		checkParameters(controller)
 		authenticate(controller)
 		// TODO Validate version
 	}
+}
+
+func getData(c BaseAPIController, name string) string {
+	if v, ok := c.Ctx.Input.GetData(name).(string); ok {
+		return v
+	}
+	return ""
+}
+
+func addNewContext(c BaseAPIController) {
+	ctx := context.Background()
+
+	id := getData(c, "requestId")
+	c.context = context.WithValue(ctx, "requestId", id)
 }
 
 func checkParameters(c BaseAPIController) {
@@ -56,10 +72,10 @@ func authenticate(c BaseAPIController) {
 				pass = string(dec)
 			}
 		}
-		valid = (pass == password)
+		valid = pass == password
 	case token != "":
 		t := fmt.Sprintf("%x", md5.Sum([]byte(password+salt)))
-		valid = (t == token)
+		valid = t == token
 	}
 
 	if user != conf.Sonic.User || !valid {
