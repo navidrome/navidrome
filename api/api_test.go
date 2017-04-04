@@ -34,3 +34,14 @@ func Get(url string, testCase string) (*http.Request, *httptest.ResponseRecorder
 
 	return r, w
 }
+
+func GetWithHeader(url string, header, value, testCase string) (*http.Request, *httptest.ResponseRecorder) {
+	r, _ := http.NewRequest("GET", url, nil)
+	r.Header.Add(header, value)
+	w := httptest.NewRecorder()
+	beego.BeeApp.Handlers.ServeHTTP(w, r)
+
+	beego.Debug("testing", testCase, fmt.Sprintf("\nUrl: %s\nStatus Code: [%d]\n%s", r.URL, w.Code, w.Body.String()))
+
+	return r, w
+}

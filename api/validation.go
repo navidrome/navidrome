@@ -27,18 +27,12 @@ func Validate(controller BaseAPIController) {
 	}
 }
 
-func getData(c BaseAPIController, name string) string {
-	if v, ok := c.Ctx.Input.GetData(name).(string); ok {
-		return v
-	}
-	return ""
-}
-
 func addNewContext(c BaseAPIController) {
 	ctx := context.Background()
 
-	id := getData(c, "requestId")
-	c.context = context.WithValue(ctx, "requestId", id)
+	id := c.Ctx.Input.GetData("requestId")
+	ctx = context.WithValue(ctx, "requestId", id)
+	c.Ctx.Input.SetData("context", ctx)
 }
 
 func checkParameters(c BaseAPIController) {
@@ -54,6 +48,11 @@ func checkParameters(c BaseAPIController) {
 	if c.GetString("p") == "" && (c.GetString("s") == "" || c.GetString("t") == "") {
 		logWarn(c, "Missing authentication information")
 	}
+	ctx := c.Ctx.Input.GetData("context").(context.Context)
+	ctx = context.WithValue(ctx, "user", c.GetString("u"))
+	ctx = context.WithValue(ctx, "client", c.GetString("c"))
+	ctx = context.WithValue(ctx, "version", c.GetString("v"))
+	c.Ctx.Input.SetData("context", ctx)
 }
 
 func authenticate(c BaseAPIController) {

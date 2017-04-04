@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	"context"
+
+	"github.com/astaxie/beego"
+	"github.com/cloudsonic/sonic-server/api"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/tests"
 	. "github.com/smartystreets/goconvey/convey"
@@ -71,6 +75,42 @@ func TestAuthentication(t *testing.T) {
 			v := responses.Subsonic{}
 			xml.Unmarshal(w.Body.Bytes(), &v)
 			So(v.Status, ShouldEqual, "ok")
+		})
+	})
+}
+
+type mockController struct {
+	api.BaseAPIController
+}
+
+func (c *mockController) Get() {
+	actualContext = c.Ctx.Input.GetData("context").(context.Context)
+	c.Ctx.WriteString("OK")
+}
+
+var actualContext context.Context
+
+func TestContext(t *testing.T) {
+	tests.Init(t, false)
+	beego.Router("/rest/mocktest", &mockController{})
+
+	Convey("Subject: Context", t, func() {
+		_, w := GetWithHeader("/rest/mocktest?u=deluan&p=wordpass&c=testClient&v=1.0.0", "X-Request-Id", "123123", "TestContext")
+		Convey("The status should be 'OK'", func() {
+			resp := string(w.Body.Bytes())
+			So(resp, ShouldEqual, "OK")
+		})
+		Convey("user should be set", func() {
+			So(actualContext.Value("user"), ShouldEqual, "deluan")
+		})
+		Convey("client should be set", func() {
+			So(actualContext.Value("client"), ShouldEqual, "testClient")
+		})
+		Convey("version should be set", func() {
+			So(actualContext.Value("version"), ShouldEqual, "1.0.0")
+		})
+		Convey("context should be set", func() {
+			So(actualContext.Value("requestId"), ShouldEqual, "123123")
 		})
 	})
 }

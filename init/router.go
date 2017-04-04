@@ -75,7 +75,6 @@ func initFilters() {
 		if id == "" {
 			id = uuid.NewV4().String()
 		}
-
 		ctx.Input.SetData("requestId", id)
 	}
 

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/xml"
 	"fmt"
 	"strconv"
@@ -13,10 +12,7 @@ import (
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
-type BaseAPIController struct {
-	beego.Controller
-	context context.Context
-}
+type BaseAPIController struct{ beego.Controller }
 
 func (c *BaseAPIController) NewEmpty() responses.Subsonic {
 	return responses.Subsonic{Status: "ok", Version: beego.AppConfig.String("apiVersion")}
