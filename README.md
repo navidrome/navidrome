@@ -1,6 +1,6 @@
 # CloudSonic Server
 
-[![Build Status](https://travis-ci.org/cloudsonic/sonic-server.svg?branch=master)](https://travis-ci.org/cloudsonic/sonic-server)
+[![Build Status](https://github.com/cloudsonic/sonic-server/workflows/CI/badge.svg)](https://github.com/cloudsonic/sonic-server/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudsonic/sonic-server)](https://goreportcard.com/report/github.com/cloudsonic/sonic-server)
 
 **This is still a work in progress, and has no releases available**
