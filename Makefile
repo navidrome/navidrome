@@ -15,24 +15,23 @@ clean:
 
 .PHONY: setup
 setup:
-	go get -u github.com/beego/bee                     # bee command line tool
-	go get -u github.com/smartystreets/goconvey        # test runnner
-	go get -u github.com/kardianos/govendor            # dependency manager
-	govendor sync                                      # download all dependencies
+	@which reflex   || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
+	@which goconvey || (echo "Installing GoConvey" && GO111MODULE=off go get -u github.com/smartystreets/goconvey)
+	go mod download
 
 .PHONY: run
 run:
-	bee run -e vendor -e tests
+	@reflex -s -r "\.go$$" -- go run .
 
 .PHONY: test
 test:
-	BEEGO_RUNMODE=test go test `go list ./...|grep -v vendor` -v
+	BEEGO_RUNMODE=test go test ./... -v
 
 .PHONY: convey
 convey:
-	NOLOG=1 goconvey --port 9090 -excludedDirs vendor,static,devDb,wiki,bin,tests
+	NOLOG=1 goconvey --port 9090 -excludedDirs static,devDb,wiki,bin,tests
 
 .PHONY: cloc
 cloc:
 	# cloc can be installed using brew
-	cloc --exclude-dir=devDb,.idea,.vscode,wiki,static,vendor --exclude-ext=iml,xml .
+	cloc --exclude-dir=devDb,.idea,.vscode,wiki,static --exclude-ext=iml,xml .
