@@ -1,7 +1,7 @@
 BINARY=sonic-server
 
 build:
-	go build -x ${BINARY}
+	go build
 
 .PHONY: clean
 clean:
@@ -15,7 +15,7 @@ setup:
 
 .PHONY: run
 run:
-	@reflex -s -r "\.go$$" -- go run .
+	@reflex -s -r "(\.go$$|sonic.toml)" -- go run .
 
 .PHONY: test
 test:

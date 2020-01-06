@@ -35,7 +35,13 @@ $ export SONIC_MUSICFOLDER="/path/to/your/iTunes Library.xml"
 $ make run
 ```
 
-The server should start listening on port 4533.
+The server should start listening for requests. The default configuration is:
+
+- Port: `4533`
+- User: `anyone`
+- Password: `wordpass`
+
+To override this or any other configuration, create a file named `sonic.toml` in the project folder. For all options see the [configuration.go](conf/configuration.go) file
 
 ### Development Environment
 
