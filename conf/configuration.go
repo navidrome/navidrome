@@ -15,14 +15,14 @@ type sonic struct {
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
 	IndexGroups     string `default:"A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)"`
 
-	User     string `default:"deluan"`
+	User     string `default:"anyone"`
 	Password string `default:"wordpass"`
 
 	DisableDownsampling bool   `default:"false"`
 	DisableValidation   bool   `default:"false"`
 	DownsampleCommand   string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
 	PlsIgnoreFolders    bool   `default:"true"`
-	PlsIgnoredPatterns  string `default:"^iCloud;\~"`
+	PlsIgnoredPatterns  string `default:"^iCloud;\\~"`
 	RunMode             string `default:"dev"`
 }
 

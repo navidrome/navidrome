@@ -152,6 +152,9 @@ func (s *ItunesScanner) skipPlaylist(p *itl.Playlist, ignFolders bool, ignPatter
 	}
 
 	for _, p := range ignPatterns {
+		if p == "" {
+			continue
+		}
 		m, _ := regexp.MatchString(p, fullPath)
 		if m {
 			return true
