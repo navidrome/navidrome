@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.0 // indirect
-	github.com/astaxie/beego v1.8.0
+	github.com/astaxie/beego v1.12.0
 	github.com/cupcake/rdb v0.0.0-20161107195141-43ba34106c76 // indirect
 	github.com/deluan/gomate v0.0.0-20160327212459-3eb40643dd6f
 	github.com/dhowden/itl v0.0.0-20170329215456-9fbe21093131
