@@ -1,13 +1,7 @@
-#@IgnoreInspection BashAddShebang
-
 BINARY=sonic-server
 
-SOURCES := $(shell find . -name '*.go')
-
-all: $(BINARY)
-
-$(BINARY): $(SOURCES)
-	go build
+build:
+	go build -x ${BINARY}
 
 .PHONY: clean
 clean:
