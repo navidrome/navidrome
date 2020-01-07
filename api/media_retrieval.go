@@ -2,47 +2,53 @@ package api
 
 import (
 	"io"
+	"net/http"
 	"os"
 
 	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
-	"github.com/cloudsonic/sonic-server/utils"
 )
 
 type MediaRetrievalController struct {
-	BaseAPIController
 	cover engine.Cover
 }
 
-func (c *MediaRetrievalController) Prepare() {
-	utils.ResolveDependencies(&c.cover)
+func NewMediaRetrievalController(cover engine.Cover) *MediaRetrievalController {
+	return &MediaRetrievalController{cover: cover}
 }
 
-func (c *MediaRetrievalController) GetAvatar() {
+func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	var f *os.File
 	f, err := os.Open("static/itunes.png")
 	if err != nil {
 		beego.Error(err, "Image not found")
-		c.SendError(responses.ErrorDataNotFound, "Avatar image not found")
+		return nil, NewError(responses.ErrorDataNotFound, "Avatar image not found")
 	}
 	defer f.Close()
-	io.Copy(c.Ctx.ResponseWriter, f)
+	io.Copy(w, f)
+
+	return nil, nil
 }
 
-func (c *MediaRetrievalController) GetCoverArt() {
-	id := c.RequiredParamString("id", "id parameter required")
-	size := c.ParamInt("size", 0)
+func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	id, err := RequiredParamString(r, "id", "id parameter required")
+	if err != nil {
+		return nil, err
+	}
+	size := ParamInt(r, "size", 0)
 
-	err := c.cover.Get(id, size, c.Ctx.ResponseWriter)
+	err = c.cover.Get(id, size, w)
 
 	switch {
 	case err == domain.ErrNotFound:
 		beego.Error(err, "Id:", id)
-		c.SendError(responses.ErrorDataNotFound, "Cover not found")
+		return nil, NewError(responses.ErrorDataNotFound, "Cover not found")
 	case err != nil:
 		beego.Error(err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
+
+	return nil, nil
 }

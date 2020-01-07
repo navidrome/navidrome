@@ -1,15 +1,23 @@
 package api
 
-import "github.com/cloudsonic/sonic-server/api/responses"
+import (
+	"net/http"
 
-type SystemController struct{ BaseAPIController }
+	"github.com/cloudsonic/sonic-server/api/responses"
+)
 
-func (c *SystemController) Ping() {
-	c.SendEmptyResponse()
+type SystemController struct{}
+
+func NewSystemController() *SystemController {
+	return &SystemController{}
 }
 
-func (c *SystemController) GetLicense() {
-	response := c.NewEmpty()
+func (c *SystemController) Ping(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	return NewEmpty(), nil
+}
+
+func (c *SystemController) GetLicense(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	response := NewEmpty()
 	response.License = &responses.License{Valid: true}
-	c.SendResponse(response)
+	return response, nil
 }

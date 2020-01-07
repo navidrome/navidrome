@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/astaxie/beego"
@@ -13,34 +14,33 @@ import (
 )
 
 type BrowsingController struct {
-	BaseAPIController
 	browser engine.Browser
 }
 
-func (c *BrowsingController) Prepare() {
-	utils.ResolveDependencies(&c.browser)
+func NewBrowsingController(browser engine.Browser) *BrowsingController {
+	return &BrowsingController{browser: browser}
 }
 
-func (c *BrowsingController) GetMusicFolders() {
+func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	mediaFolderList, _ := c.browser.MediaFolders()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {
 		folders[i].Id = f.Id
 		folders[i].Name = f.Name
 	}
-	response := c.NewEmpty()
+	response := NewEmpty()
 	response.MusicFolders = &responses.MusicFolders{Folders: folders}
-	c.SendResponse(response)
+	return response, nil
 }
 
-func (c *BrowsingController) getArtistIndex(ifModifiedSince time.Time) responses.Indexes {
+func (c *BrowsingController) getArtistIndex(ifModifiedSince time.Time) (*responses.Indexes, error) {
 	indexes, lastModified, err := c.browser.Indexes(ifModifiedSince)
 	if err != nil {
 		beego.Error("Error retrieving Indexes:", err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	res := responses.Indexes{
+	res := &responses.Indexes{
 		IgnoredArticles: conf.Sonic.IgnoredArticles,
 		LastModified:    fmt.Sprint(utils.ToMillis(lastModified)),
 	}
@@ -55,98 +55,100 @@ func (c *BrowsingController) getArtistIndex(ifModifiedSince time.Time) responses
 			res.Index[i].Artists[j].AlbumCount = a.AlbumCount
 		}
 	}
-	return res
+	return res, nil
 }
 
-func (c *BrowsingController) GetIndexes() {
-	ifModifiedSince := c.ParamTime("ifModifiedSince", time.Time{})
+func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	ifModifiedSince := ParamTime(r, "ifModifiedSince", time.Time{})
 
-	res := c.getArtistIndex(ifModifiedSince)
+	res, err := c.getArtistIndex(ifModifiedSince)
+	if err != nil {
+		return nil, err
+	}
 
-	response := c.NewEmpty()
-	response.Indexes = &res
-	c.SendResponse(response)
+	response := NewEmpty()
+	response.Indexes = res
+	return response, nil
 }
 
-func (c *BrowsingController) GetArtists() {
-	res := c.getArtistIndex(time.Time{})
+func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	res, err := c.getArtistIndex(time.Time{})
+	if err != nil {
+		return nil, err
+	}
 
-	response := c.NewEmpty()
-	response.Artist = &res
-	c.SendResponse(response)
+	response := NewEmpty()
+	response.Artist = res
+	return response, nil
 }
 
-func (c *BrowsingController) GetMusicDirectory() {
-	id := c.RequiredParamString("id", "id parameter required")
-
+func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	id := ParamString(r, "id")
 	dir, err := c.browser.Directory(id)
 	switch {
 	case err == domain.ErrNotFound:
 		beego.Error("Requested Id", id, "not found:", err)
-		c.SendError(responses.ErrorDataNotFound, "Directory not found")
+		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
 		beego.Error(err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := c.NewEmpty()
+	response := NewEmpty()
 	response.Directory = c.buildDirectory(dir)
-	c.SendResponse(response)
+	return response, nil
 }
 
-func (c *BrowsingController) GetArtist() {
-	id := c.RequiredParamString("id", "id parameter required")
-
+func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	id := ParamString(r, "id")
 	dir, err := c.browser.Artist(id)
 	switch {
 	case err == domain.ErrNotFound:
 		beego.Error("Requested ArtistId", id, "not found:", err)
-		c.SendError(responses.ErrorDataNotFound, "Artist not found")
+		return nil, NewError(responses.ErrorDataNotFound, "Artist not found")
 	case err != nil:
 		beego.Error(err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := c.NewEmpty()
+	response := NewEmpty()
 	response.ArtistWithAlbumsID3 = c.buildArtist(dir)
-	c.SendResponse(response)
+	return response, nil
 }
 
-func (c *BrowsingController) GetAlbum() {
-	id := c.RequiredParamString("id", "id parameter required")
-
+func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	id := ParamString(r, "id")
 	dir, err := c.browser.Album(id)
 	switch {
 	case err == domain.ErrNotFound:
 		beego.Error("Requested AlbumId", id, "not found:", err)
-		c.SendError(responses.ErrorDataNotFound, "Album not found")
+		return nil, NewError(responses.ErrorDataNotFound, "Album not found")
 	case err != nil:
 		beego.Error(err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := c.NewEmpty()
+	response := NewEmpty()
 	response.AlbumWithSongsID3 = c.buildAlbum(dir)
-	c.SendResponse(response)
+	return response, nil
 }
 
-func (c *BrowsingController) GetSong() {
-	id := c.RequiredParamString("id", "id parameter required")
-
+func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	id := ParamString(r, "id")
 	song, err := c.browser.GetSong(id)
 	switch {
 	case err == domain.ErrNotFound:
 		beego.Error("Requested Id", id, "not found:", err)
-		c.SendError(responses.ErrorDataNotFound, "Song not found")
+		return nil, NewError(responses.ErrorDataNotFound, "Song not found")
 	case err != nil:
 		beego.Error(err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := c.NewEmpty()
-	child := c.ToChild(*song)
+	response := NewEmpty()
+	child := ToChild(*song)
 	response.Song = &child
-	c.SendResponse(response)
+	return response, nil
 }
 
 func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.Directory {
@@ -162,7 +164,7 @@ func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.
 		dir.Starred = &d.Starred
 	}
 
-	dir.Child = c.ToChildren(d.Entries)
+	dir.Child = ToChildren(d.Entries)
 	return dir
 }
 
@@ -176,7 +178,7 @@ func (c *BrowsingController) buildArtist(d *engine.DirectoryInfo) *responses.Art
 		dir.Starred = &d.Starred
 	}
 
-	dir.Album = c.ToAlbums(d.Entries)
+	dir.Album = ToAlbums(d.Entries)
 	return dir
 }
 
@@ -199,6 +201,6 @@ func (c *BrowsingController) buildAlbum(d *engine.DirectoryInfo) *responses.Albu
 		dir.Starred = &d.Starred
 	}
 
-	dir.Song = c.ToChildren(d.Entries)
+	dir.Song = ToChildren(d.Entries)
 	return dir
 }

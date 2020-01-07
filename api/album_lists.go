@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
@@ -10,16 +11,14 @@ import (
 )
 
 type AlbumListController struct {
-	BaseAPIController
 	listGen       engine.ListGenerator
 	listFunctions map[string]strategy
 }
 
-type strategy func(offset int, size int) (engine.Entries, error)
-
-func (c *AlbumListController) Prepare() {
-	utils.ResolveDependencies(&c.listGen)
-
+func NewAlbumListController(listGen engine.ListGenerator) *AlbumListController {
+	c := &AlbumListController{
+		listGen: listGen,
+	}
 	c.listFunctions = map[string]strategy{
 		"random":               c.listGen.GetRandom,
 		"newest":               c.listGen.GetNewest,
@@ -30,10 +29,16 @@ func (c *AlbumListController) Prepare() {
 		"alphabeticalByArtist": c.listGen.GetByArtist,
 		"starred":              c.listGen.GetStarred,
 	}
+	return c
 }
 
-func (c *AlbumListController) getAlbumList() (engine.Entries, error) {
-	typ := c.RequiredParamString("type", "Required string parameter 'type' is not present")
+type strategy func(offset int, size int) (engine.Entries, error)
+
+func (c *AlbumListController) getAlbumList(r *http.Request) (engine.Entries, error) {
+	typ, err := RequiredParamString(r, "type", "Required string parameter 'type' is not present")
+	if err != nil {
+		return nil, err
+	}
 	listFunc, found := c.listFunctions[typ]
 
 	if !found {
@@ -41,8 +46,8 @@ func (c *AlbumListController) getAlbumList() (engine.Entries, error) {
 		return nil, errors.New("Not implemented!")
 	}
 
-	offset := c.ParamInt("offset", 0)
-	size := utils.MinInt(c.ParamInt("size", 10), 500)
+	offset := ParamInt(r, "offset", 0)
+	size := utils.MinInt(ParamInt(r, "size", 10), 500)
 
 	albums, err := listFunc(offset, size)
 	if err != nil {
@@ -53,92 +58,90 @@ func (c *AlbumListController) getAlbumList() (engine.Entries, error) {
 	return albums, nil
 }
 
-func (c *AlbumListController) GetAlbumList() {
-	albums, err := c.getAlbumList()
+func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	albums, err := c.getAlbumList(r)
 	if err != nil {
-		c.SendError(responses.ErrorGeneric, err.Error())
+		return nil, NewError(responses.ErrorGeneric, err.Error())
 	}
 
-	response := c.NewEmpty()
-	response.AlbumList = &responses.AlbumList{Album: c.ToChildren(albums)}
-	c.SendResponse(response)
+	response := NewEmpty()
+	response.AlbumList = &responses.AlbumList{Album: ToChildren(albums)}
+	return response, nil
 }
 
-func (c *AlbumListController) GetAlbumList2() {
-	albums, err := c.getAlbumList()
+func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	albums, err := c.getAlbumList(r)
 	if err != nil {
-		c.SendError(responses.ErrorGeneric, err.Error())
+		return nil, NewError(responses.ErrorGeneric, err.Error())
 	}
 
-	response := c.NewEmpty()
-	response.AlbumList2 = &responses.AlbumList{Album: c.ToAlbums(albums)}
-	c.SendResponse(response)
+	response := NewEmpty()
+	response.AlbumList2 = &responses.AlbumList{Album: ToAlbums(albums)}
+	return response, nil
 }
 
-func (c *AlbumListController) GetStarred() {
+func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	albums, mediaFiles, err := c.listGen.GetAllStarred()
 	if err != nil {
 		beego.Error("Error retrieving starred media:", err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := c.NewEmpty()
+	response := NewEmpty()
 	response.Starred = &responses.Starred{}
-	response.Starred.Album = c.ToChildren(albums)
-	response.Starred.Song = c.ToChildren(mediaFiles)
-
-	c.SendResponse(response)
+	response.Starred.Album = ToChildren(albums)
+	response.Starred.Song = ToChildren(mediaFiles)
+	return response, nil
 }
 
-func (c *AlbumListController) GetStarred2() {
+func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	albums, mediaFiles, err := c.listGen.GetAllStarred()
 	if err != nil {
 		beego.Error("Error retrieving starred media:", err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := c.NewEmpty()
+	response := NewEmpty()
 	response.Starred2 = &responses.Starred{}
-	response.Starred2.Album = c.ToAlbums(albums)
-	response.Starred2.Song = c.ToChildren(mediaFiles)
-
-	c.SendResponse(response)
+	response.Starred2.Album = ToAlbums(albums)
+	response.Starred2.Song = ToChildren(mediaFiles)
+	return response, nil
 }
 
-func (c *AlbumListController) GetNowPlaying() {
+func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	npInfos, err := c.listGen.GetNowPlaying()
 	if err != nil {
 		beego.Error("Error retrieving now playing list:", err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := c.NewEmpty()
+	response := NewEmpty()
 	response.NowPlaying = &responses.NowPlaying{}
 	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(npInfos))
 	for i, entry := range npInfos {
-		response.NowPlaying.Entry[i].Child = c.ToChild(entry)
+		response.NowPlaying.Entry[i].Child = ToChild(entry)
 		response.NowPlaying.Entry[i].UserName = entry.UserName
 		response.NowPlaying.Entry[i].MinutesAgo = entry.MinutesAgo
 		response.NowPlaying.Entry[i].PlayerId = entry.PlayerId
 		response.NowPlaying.Entry[i].PlayerName = entry.PlayerName
 	}
-	c.SendResponse(response)
+	return response, nil
 }
 
-func (c *AlbumListController) GetRandomSongs() {
-	size := utils.MinInt(c.ParamInt("size", 10), 500)
+func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	size := utils.MinInt(ParamInt(r, "size", 10), 500)
 
 	songs, err := c.listGen.GetRandomSongs(size)
 	if err != nil {
 		beego.Error("Error retrieving random songs:", err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := c.NewEmpty()
+	response := NewEmpty()
 	response.RandomSongs = &responses.Songs{}
 	response.RandomSongs.Songs = make([]responses.Child, len(songs))
 	for i, entry := range songs {
-		response.RandomSongs.Songs[i] = c.ToChild(entry)
+		response.RandomSongs.Songs[i] = ToChild(entry)
 	}
-	c.SendResponse(response)
+	return response, nil
 }

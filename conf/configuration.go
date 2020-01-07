@@ -8,7 +8,7 @@ import (
 )
 
 type sonic struct {
-	Port        int    `default:"4533"`
+	Port        string `default:"4533"`
 	MusicFolder string `default:"./iTunes1.xml"`
 	DbPath      string `default:"./devDb"`
 
