@@ -11,6 +11,7 @@ clean:
 setup:
 	@which reflex   || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
 	@which goconvey || (echo "Installing GoConvey" && GO111MODULE=off go get -u github.com/smartystreets/goconvey)
+	@which wire     || (echo "Installing Wire"     && GO111MODULE=off go get -u go get github.com/google/wire/cmd/wire)
 	go mod download
 
 .PHONY: run

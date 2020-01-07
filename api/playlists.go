@@ -2,28 +2,27 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
-	"github.com/cloudsonic/sonic-server/utils"
 )
 
 type PlaylistsController struct {
-	BaseAPIController
 	pls engine.Playlists
 }
 
-func (c *PlaylistsController) Prepare() {
-	utils.ResolveDependencies(&c.pls)
+func NewPlaylistsController(pls engine.Playlists) *PlaylistsController {
+	return &PlaylistsController{pls: pls}
 }
 
-func (c *PlaylistsController) GetPlaylists() {
+func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	allPls, err := c.pls.GetAll()
 	if err != nil {
 		beego.Error(err)
-		c.SendError(responses.ErrorGeneric, "Internal error")
+		return nil, NewError(responses.ErrorGeneric, "Internal error")
 	}
 	playlists := make([]responses.Playlist, len(allPls))
 	for i, p := range allPls {
@@ -35,58 +34,72 @@ func (c *PlaylistsController) GetPlaylists() {
 		playlists[i].Owner = p.Owner
 		playlists[i].Public = p.Public
 	}
-	response := c.NewEmpty()
+	response := NewEmpty()
 	response.Playlists = &responses.Playlists{Playlist: playlists}
-	c.SendResponse(response)
+	return response, nil
 }
 
-func (c *PlaylistsController) GetPlaylist() {
-	id := c.RequiredParamString("id", "id parameter required")
-
+func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	id, err := RequiredParamString(r, "id", "id parameter required")
+	if err != nil {
+		return nil, err
+	}
 	pinfo, err := c.pls.Get(id)
 	switch {
 	case err == domain.ErrNotFound:
 		beego.Error(err, "Id:", id)
-		c.SendError(responses.ErrorDataNotFound, "Directory not found")
+		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
 		beego.Error(err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := c.NewEmpty()
+	response := NewEmpty()
 	response.Playlist = c.buildPlaylist(pinfo)
-	c.SendResponse(response)
+	return response, nil
 }
 
-func (c *PlaylistsController) CreatePlaylist() {
-	songIds := c.RequiredParamStrings("songId", "Required parameter songId is missing")
-	name := c.RequiredParamString("name", "Required parameter name is missing")
-	err := c.pls.Create(name, songIds)
+func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	songIds, err := RequiredParamStrings(r, "songId", "Required parameter songId is missing")
+	if err != nil {
+		return nil, err
+	}
+	name, err := RequiredParamString(r, "name", "Required parameter name is missing")
+	if err != nil {
+		return nil, err
+	}
+	err = c.pls.Create(name, songIds)
 	if err != nil {
 		beego.Error(err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
-	c.SendEmptyResponse()
+	return NewEmpty(), nil
 }
 
-func (c *PlaylistsController) DeletePlaylist() {
-	id := c.RequiredParamString("id", "Required parameter id is missing")
-	err := c.pls.Delete(id)
+func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	id, err := RequiredParamString(r, "id", "Required parameter id is missing")
+	if err != nil {
+		return nil, err
+	}
+	err = c.pls.Delete(id)
 	if err != nil {
 		beego.Error(err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
-	c.SendEmptyResponse()
+	return NewEmpty(), nil
 }
 
-func (c *PlaylistsController) UpdatePlaylist() {
-	playlistId := c.RequiredParamString("playlistId", "Required parameter playlistId is missing")
-	songsToAdd := c.ParamStrings("songIdToAdd")
-	songIndexesToRemove := c.ParamInts("songIndexToRemove")
+func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	playlistId, err := RequiredParamString(r, "playlistId", "Required parameter playlistId is missing")
+	if err != nil {
+		return nil, err
+	}
+	songsToAdd := ParamStrings(r, "songIdToAdd")
+	songIndexesToRemove := ParamInts(r, "songIndexToRemove")
 
 	var pname *string
-	if len(c.Input()["name"]) > 0 {
-		s := c.Input()["name"][0]
+	if len(r.URL.Query()["name"]) > 0 {
+		s := r.URL.Query()["name"][0]
 		pname = &s
 	}
 
@@ -97,12 +110,12 @@ func (c *PlaylistsController) UpdatePlaylist() {
 	beego.Debug(fmt.Sprintf("-- Adding: '%v'", songsToAdd))
 	beego.Debug(fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
-	err := c.pls.Update(playlistId, pname, songsToAdd, songIndexesToRemove)
+	err = c.pls.Update(playlistId, pname, songsToAdd, songIndexesToRemove)
 	if err != nil {
 		beego.Error(err)
-		c.SendError(responses.ErrorGeneric, "Internal Error")
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
-	c.SendEmptyResponse()
+	return NewEmpty(), nil
 }
 
 func (c *PlaylistsController) buildPlaylist(d *engine.PlaylistInfo) *responses.PlaylistWithSongs {
@@ -114,6 +127,6 @@ func (c *PlaylistsController) buildPlaylist(d *engine.PlaylistInfo) *responses.P
 	pls.Duration = d.Duration
 	pls.Public = d.Public
 
-	pls.Entry = c.ToChildren(d.Entries)
+	pls.Entry = ToChildren(d.Entries)
 	return pls
 }

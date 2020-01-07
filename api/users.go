@@ -1,16 +1,28 @@
 package api
 
-import "github.com/cloudsonic/sonic-server/api/responses"
+import (
+	"net/http"
 
-type UsersController struct{ BaseAPIController }
+	"github.com/cloudsonic/sonic-server/api/responses"
+)
+
+type UsersController struct{ }
+
+func NewUsersController() *UsersController {
+	return &UsersController{}
+}
 
 // TODO This is a placeholder. The real one has to read this info from a config file or the database
-func (c *UsersController) GetUser() {
-	r := c.NewEmpty()
-	r.User = &responses.User{}
-	r.User.Username = c.RequiredParamString("username", "Required string parameter 'username' is not present")
-	r.User.StreamRole = true
-	r.User.DownloadRole = true
-	r.User.ScrobblingEnabled = true
-	c.SendResponse(r)
+func (c *UsersController) GetUser(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	user, err := RequiredParamString(r, "username", "Required string parameter 'username' is not present")
+	if err != nil {
+		return nil, err
+	}
+	response := NewEmpty()
+	response.User = &responses.User{}
+	response.User.Username = user
+	response.User.StreamRole = true
+	response.User.DownloadRole = true
+	response.User.ScrobblingEnabled = true
+	return response, nil
 }
