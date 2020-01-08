@@ -6,7 +6,6 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api"
 	"github.com/cloudsonic/sonic-server/conf"
-	_ "github.com/cloudsonic/sonic-server/init"
 )
 
 func main() {

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/astaxie/beego"
-	_ "github.com/cloudsonic/sonic-server/init"
 	"github.com/cloudsonic/sonic-server/tests"
 	. "github.com/smartystreets/goconvey/convey"
 )
