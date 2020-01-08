@@ -22,6 +22,7 @@ type App struct {
 
 func (a *App) Initialize() {
 	a.logger = logrus.New()
+	initMimeTypes()
 	a.initRoutes()
 	a.initImporter()
 }

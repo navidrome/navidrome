@@ -33,6 +33,20 @@ func LoadFromFlags() {
 	l.Load(Sonic)
 }
 
+func LoadFromEnv() {
+	port := os.Getenv("PORT")
+	if port != "" {
+		Sonic.Port = port
+	}
+	l := &multiconfig.EnvironmentLoader{}
+	l.Load(Sonic)
+}
+
+func LoadFromTags() {
+	l := &multiconfig.TagLoader{}
+	l.Load(Sonic)
+}
+
 func LoadFromFile(tomlFile string) {
 	l := &multiconfig.TOMLLoader{Path: tomlFile}
 	err := l.Load(Sonic)
@@ -47,11 +61,13 @@ func LoadFromLocalFile() {
 	}
 }
 
+func Load() {
+	LoadFromLocalFile()
+	LoadFromEnv()
+	LoadFromFlags()
+}
+
 func init() {
 	Sonic = new(sonic)
-	var l multiconfig.Loader
-	l = &multiconfig.TagLoader{}
-	l.Load(Sonic)
-	l = &multiconfig.EnvironmentLoader{}
-	l.Load(Sonic)
+	LoadFromTags()
 }
