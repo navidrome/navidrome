@@ -8,7 +8,7 @@ clean:
 	rm -f ${BINARY}
 
 .PHONY: setup
-setup:
+setup: jamstash
 	@which reflex   || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
 	@which goconvey || (echo "Installing GoConvey" && GO111MODULE=off go get -u github.com/smartystreets/goconvey)
 	@which wire     || (echo "Installing Wire"     && GO111MODULE=off go get -u go get github.com/google/wire/cmd/wire)
@@ -16,7 +16,7 @@ setup:
 
 .PHONY: run
 run:
-	@reflex -s -r "(\.go$$|sonic.toml)" -- go run .
+	@reflex -s -r "(\.go$$|sonic.toml)" -R "Jamstash-master" -- go run .
 
 .PHONY: test
 test:
@@ -30,3 +30,8 @@ convey:
 cloc:
 	# cloc can be installed using brew
 	cloc --exclude-dir=devDb,.idea,.vscode,wiki,static --exclude-ext=iml,xml .
+
+jamstash:
+	wget -N https://github.com/tsquillario/Jamstash/archive/master.zip
+	unzip -o master.zip
+	rm master.zip

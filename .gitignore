@@ -1,6 +1,5 @@
 /sonic-server
 /iTunes*.xml
-static/Jamstash
 devDb
 /tmp
 vendor/*/
@@ -9,3 +8,5 @@ TODO.md
 var
 Artwork
 sonic.toml
+master.zip
+Jamstash-master
