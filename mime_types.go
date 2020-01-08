@@ -2,7 +2,7 @@ package main
 
 import "mime"
 
-func init() {
+func initMimeTypes() {
 	mt := map[string]string{
 		".mp3":  "audio/mpeg",
 		".ogg":  "audio/ogg",
@@ -39,6 +39,6 @@ func init() {
 	}
 
 	for ext, typ := range mt {
-		mime.AddExtensionType(ext, typ)
+		_ = mime.AddExtensionType(ext, typ)
 	}
 }

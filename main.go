@@ -8,8 +8,7 @@ import (
 )
 
 func main() {
-	conf.LoadFromLocalFile()
-	conf.LoadFromFlags()
+	conf.Load()
 
 	fmt.Printf("\nCloudSonic Server v%s\n\n", "0.2")
 
