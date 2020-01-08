@@ -9,7 +9,6 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/utils"
 )
 
 var initSync sync.Once
@@ -32,5 +31,4 @@ func Init(t *testing.T, skipOnShort bool) {
 	if noLog != "" {
 		beego.SetLevel(beego.LevelError)
 	}
-	utils.Graph.Finalize()
 }

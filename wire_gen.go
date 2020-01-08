@@ -15,10 +15,6 @@ import (
 	"github.com/google/wire"
 )
 
-import (
-	_ "github.com/cloudsonic/sonic-server/init"
-)
-
 // Injectors from wire_injectors.go:
 
 func initImporter(musicFolder string) *scanner.Importer {
