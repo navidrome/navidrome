@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api"
 	"github.com/cloudsonic/sonic-server/conf"
 )
@@ -12,7 +11,7 @@ func main() {
 	conf.LoadFromLocalFile()
 	conf.LoadFromFlags()
 
-	fmt.Printf("\nCloudSonic Server v%s (%s mode)\n\n", "0.2", beego.BConfig.RunMode)
+	fmt.Printf("\nCloudSonic Server v%s\n\n", "0.2")
 
 	a := App{}
 	a.Initialize()
