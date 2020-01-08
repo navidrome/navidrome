@@ -27,68 +27,70 @@ func Router() http.Handler {
 
 	r.Group(func(r chi.Router) {
 		c := initSystemController()
-		r.HandleFunc("/ping.view", addMethod(c.Ping))
-		r.HandleFunc("/getLicense.view", addMethod(c.GetLicense))
+		addEndpoint(r, "ping", c.Ping)
+		addEndpoint(r, "getLicense", c.GetLicense)
 	})
 	r.Group(func(r chi.Router) {
 		c := initBrowsingController()
-		r.HandleFunc("/getMusicFolders.view", addMethod(c.GetMusicFolders))
-		r.HandleFunc("/getIndexes.view", addMethod(c.GetIndexes))
-		r.HandleFunc("/getArtists.view", addMethod(c.GetArtists))
-		r.With(requiredParams("id")).HandleFunc("/getMusicDirectory.view", addMethod(c.GetMusicDirectory))
-		r.With(requiredParams("id")).HandleFunc("/getArtist.view", addMethod(c.GetArtist))
-		r.With(requiredParams("id")).HandleFunc("/getAlbum.view", addMethod(c.GetAlbum))
-		r.With(requiredParams("id")).HandleFunc("/getSong.view", addMethod(c.GetSong))
+		addEndpoint(r, "getMusicFolders", c.GetMusicFolders)
+		addEndpoint(r, "getMusicFolders", c.GetMusicFolders)
+		addEndpoint(r, "getIndexes", c.GetIndexes)
+		addEndpoint(r, "getArtists", c.GetArtists)
+		reqParams := r.With(requiredParams("id"))
+		addEndpoint(reqParams, "getMusicDirectory", c.GetMusicDirectory)
+		addEndpoint(reqParams, "getArtist", c.GetArtist)
+		addEndpoint(reqParams, "getAlbum", c.GetAlbum)
+		addEndpoint(reqParams, "getSong", c.GetSong)
 	})
 	r.Group(func(r chi.Router) {
 		c := initAlbumListController()
-		r.HandleFunc("/getAlbumList.view", addMethod(c.GetAlbumList))
-		r.HandleFunc("/getAlbumList2.view", addMethod(c.GetAlbumList2))
-		r.HandleFunc("/getStarred.view", addMethod(c.GetStarred))
-		r.HandleFunc("/getStarred2.view", addMethod(c.GetStarred2))
-		r.HandleFunc("/getNowPlaying.view", addMethod(c.GetNowPlaying))
-		r.HandleFunc("/getRandomSongs.view", addMethod(c.GetRandomSongs))
+		addEndpoint(r, "getAlbumList", c.GetAlbumList)
+		addEndpoint(r, "getAlbumList2", c.GetAlbumList2)
+		addEndpoint(r, "getStarred", c.GetStarred)
+		addEndpoint(r, "getStarred2", c.GetStarred2)
+		addEndpoint(r, "getNowPlaying", c.GetNowPlaying)
+		addEndpoint(r, "getRandomSongs", c.GetRandomSongs)
 	})
 	r.Group(func(r chi.Router) {
 		c := initMediaAnnotationController()
-		r.HandleFunc("/setRating.view", addMethod(c.SetRating))
-		r.HandleFunc("/star.view", addMethod(c.Star))
-		r.HandleFunc("/unstar.view", addMethod(c.Unstar))
-		r.HandleFunc("/scrobble.view", addMethod(c.Scrobble))
+		addEndpoint(r, "setRating", c.SetRating)
+		addEndpoint(r, "star", c.Star)
+		addEndpoint(r, "unstar", c.Unstar)
+		addEndpoint(r, "scrobble", c.Scrobble)
 	})
 	r.Group(func(r chi.Router) {
 		c := initPlaylistsController()
-		r.HandleFunc("/getPlaylists.view", addMethod(c.GetPlaylists))
-		r.HandleFunc("/getPlaylist.view", addMethod(c.GetPlaylist))
-		r.HandleFunc("/createPlaylist.view", addMethod(c.CreatePlaylist))
-		r.HandleFunc("/deletePlaylist.view", addMethod(c.DeletePlaylist))
-		r.HandleFunc("/updatePlaylist.view", addMethod(c.UpdatePlaylist))
+		addEndpoint(r, "getPlaylists", c.GetPlaylists)
+		addEndpoint(r, "getPlaylist", c.GetPlaylist)
+		addEndpoint(r, "createPlaylist", c.CreatePlaylist)
+		addEndpoint(r, "deletePlaylist", c.DeletePlaylist)
+		addEndpoint(r, "updatePlaylist", c.UpdatePlaylist)
 	})
 	r.Group(func(r chi.Router) {
 		c := initSearchingController()
-		r.HandleFunc("/search2.view", addMethod(c.Search2))
-		r.HandleFunc("/search3.view", addMethod(c.Search3))
+		addEndpoint(r, "search2", c.Search2)
+		addEndpoint(r, "search3", c.Search3)
 	})
 	r.Group(func(r chi.Router) {
 		c := initUsersController()
-		r.HandleFunc("/getUser.view", addMethod(c.GetUser))
+		addEndpoint(r, "getUser", c.GetUser)
 	})
 	r.Group(func(r chi.Router) {
 		c := initMediaRetrievalController()
-		r.HandleFunc("/getAvatar.view", addMethod(c.GetAvatar))
-		r.HandleFunc("/getCoverArt.view", addMethod(c.GetCoverArt))
+		addEndpoint(r, "getAvatar", c.GetAvatar)
+		addEndpoint(r, "getCoverArt", c.GetCoverArt)
 	})
 	r.Group(func(r chi.Router) {
 		c := initStreamController()
-		r.HandleFunc("/stream.view", addMethod(c.Stream))
-		r.HandleFunc("/download.view", addMethod(c.Download))
+		addEndpoint(r, "stream", c.Stream)
+		addEndpoint(r, "download", c.Download)
 	})
 	return r
 }
 
-func addMethod(method SubsonicHandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		res, err := method(w, r)
+func addEndpoint(r chi.Router, path string, f SubsonicHandler) {
+	handle := func(w http.ResponseWriter, r *http.Request) {
+		res, err := f(w, r)
 		if err != nil {
 			SendError(w, r, err)
 			return
@@ -97,6 +99,8 @@ func addMethod(method SubsonicHandler) http.HandlerFunc {
 			SendResponse(w, r, res)
 		}
 	}
+	r.HandleFunc("/"+path, handle)
+	r.HandleFunc("/"+path+".view", handle)
 }
 
 func SendError(w http.ResponseWriter, r *http.Request, err error) {
