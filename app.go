@@ -48,11 +48,11 @@ func (a *App) initRoutes() {
 	r.Use(middleware.Heartbeat("/ping"))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/static/Jamstash", 302)
+		http.Redirect(w, r, "/Jamstash", 302)
 	})
 	workDir, _ := os.Getwd()
-	filesDir := filepath.Join(workDir, "static")
-	FileServer(r, "/static", http.Dir(filesDir))
+	filesDir := filepath.Join(workDir, "Jamstash-master/dist")
+	FileServer(r, "/Jamstash", http.Dir(filesDir))
 
 	a.router = r
 }
