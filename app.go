@@ -45,6 +45,7 @@ func (a *App) initRoutes() {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.Compress(5, "application/xml", "application/json"))
 	r.Use(middleware.Heartbeat("/ping"))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
