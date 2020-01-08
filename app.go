@@ -5,25 +5,30 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/go-chi/chi"
-	chimiddleware "github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
 )
 
 type App struct {
-	router *chi.Mux
-	logger *logrus.Logger
+	router   *chi.Mux
+	logger   *logrus.Logger
+	importer *scanner.Importer
 }
 
 func (a *App) Initialize() {
 	a.logger = logrus.New()
 	a.initRoutes()
+	a.initImporter()
 }
 
 func (a *App) MountRouter(path string, subRouter http.Handler) {
 	a.router.Group(func(r chi.Router) {
-		r.Use(chimiddleware.Logger)
+		r.Use(middleware.Logger)
 		r.Mount(path, subRouter)
 	})
 }
@@ -36,10 +41,10 @@ func (a *App) Run(addr string) {
 func (a *App) initRoutes() {
 	r := chi.NewRouter()
 
-	r.Use(chimiddleware.RequestID)
-	r.Use(chimiddleware.RealIP)
-	r.Use(chimiddleware.Recoverer)
-	r.Use(chimiddleware.Heartbeat("/ping"))
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Heartbeat("/ping"))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/static/Jamstash", 302)
@@ -49,6 +54,20 @@ func (a *App) initRoutes() {
 	FileServer(r, "/static", http.Dir(filesDir))
 
 	a.router = r
+}
+
+func (a *App) initImporter() {
+	a.importer = initImporter(conf.Sonic.MusicFolder)
+	go a.startPeriodicScans()
+}
+
+func (a *App) startPeriodicScans() {
+	for {
+		select {
+		case <-time.After(5 * time.Second):
+			a.importer.CheckForUpdates(false)
+		}
+	}
 }
 
 func FileServer(r chi.Router, path string, root http.FileSystem) {
