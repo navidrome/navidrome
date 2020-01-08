@@ -7,7 +7,6 @@ import (
 	"github.com/cloudsonic/sonic-server/api"
 	"github.com/cloudsonic/sonic-server/conf"
 	_ "github.com/cloudsonic/sonic-server/init"
-	_ "github.com/cloudsonic/sonic-server/tasks"
 )
 
 func main() {

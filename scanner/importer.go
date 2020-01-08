@@ -24,55 +24,6 @@ type Scanner interface {
 
 type tempIndex map[string]domain.ArtistInfo
 
-var (
-	inProgress    chan int
-	lastCheck     time.Time
-	itunesLibrary string
-)
-
-func init() {
-	inProgress = make(chan int)
-	go func() {
-		time.Sleep(5 * time.Second)
-		startImport()
-	}()
-}
-
-func CheckForUpdates(force bool) {
-	<-inProgress
-
-	if force {
-		lastCheck = time.Time{}
-	}
-
-	startImport()
-}
-
-func startImport() {
-	go func() {
-		itunesLibrary = conf.Sonic.MusicFolder
-
-		info, err := os.Stat(itunesLibrary)
-		if err != nil {
-			inProgress <- 1
-			beego.Error(err)
-			return
-		}
-		if lastCheck.After(info.ModTime()) {
-			inProgress <- 1
-			return
-		}
-		lastCheck = time.Now()
-
-		// TODO Move all to DI
-		i := &Importer{mediaFolder: itunesLibrary}
-		utils.ResolveDependencies(&i.mfRepo, &i.albumRepo, &i.artistRepo, &i.idxRepo, &i.plsRepo,
-			&i.propertyRepo, &i.search, &i.scanner)
-		i.Run()
-		inProgress <- 1
-	}()
-}
-
 type Importer struct {
 	scanner      Scanner
 	mediaFolder  string
@@ -84,9 +35,48 @@ type Importer struct {
 	propertyRepo engine.PropertyRepository
 	search       engine.Search
 	lastScan     time.Time
+	lastCheck    time.Time
 }
 
-func (i *Importer) Run() {
+func NewImporter(mediaFolder string, scanner Scanner, mfRepo domain.MediaFileRepository, albumRepo domain.AlbumRepository, artistRepo domain.ArtistRepository, idxRepo domain.ArtistIndexRepository, plsRepo domain.PlaylistRepository, propertyRepo engine.PropertyRepository, search engine.Search) *Importer {
+	return &Importer{
+		scanner:      scanner,
+		mediaFolder:  mediaFolder,
+		mfRepo:       mfRepo,
+		albumRepo:    albumRepo,
+		artistRepo:   artistRepo,
+		idxRepo:      idxRepo,
+		plsRepo:      plsRepo,
+		propertyRepo: propertyRepo,
+		search:       search,
+	}
+}
+
+func (i *Importer) CheckForUpdates(force bool) {
+	if force {
+		i.lastCheck = time.Time{}
+	}
+
+	i.startImport()
+}
+
+func (i *Importer) startImport() {
+	go func() {
+		info, err := os.Stat(i.mediaFolder)
+		if err != nil {
+			beego.Error(err)
+			return
+		}
+		if i.lastCheck.After(info.ModTime()) {
+			return
+		}
+		i.lastCheck = time.Now()
+
+		i.scan()
+	}()
+}
+
+func (i *Importer) scan() {
 	i.lastScan = i.lastModifiedSince()
 
 	if i.lastScan.IsZero() {
