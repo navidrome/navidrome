@@ -29,12 +29,17 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 		if ParamString(r, "p") == "" && (ParamString(r, "s") == "" || ParamString(r, "t") == "") {
 			log.Warn(r, "Missing authentication information")
 		}
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, "user", ParamString(r, "u"))
-		ctx = context.WithValue(ctx, "client", ParamString(r, "c"))
-		ctx = context.WithValue(ctx, "version", ParamString(r, "v"))
-		r = r.WithContext(ctx)
 
+		user := ParamString(r, "u")
+		client := ParamString(r, "c")
+		version := ParamString(r, "v")
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, "user", user)
+		ctx = context.WithValue(ctx, "client", client)
+		ctx = context.WithValue(ctx, "version", version)
+		log.Info(ctx, "New Subsonic API request", "user", user, "client", client, "version", version, "path", r.URL.Path)
+
+		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
 	})
 }
