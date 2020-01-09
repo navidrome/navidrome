@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/log"
 )
 
 func checkRequiredParameters(next http.Handler) http.Handler {
@@ -20,14 +20,14 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 		for _, p := range requiredParameters {
 			if ParamString(r, p) == "" {
 				msg := fmt.Sprintf(`Missing required parameter "%s"`, p)
-				beego.Warn(msg)
+				log.Warn(r, msg)
 				SendError(w, r, NewError(responses.ErrorMissingParameter, msg))
 				return
 			}
 		}
 
 		if ParamString(r, "p") == "" && (ParamString(r, "s") == "" || ParamString(r, "t") == "") {
-			beego.Warn("Missing authentication information")
+			log.Warn(r, "Missing authentication information")
 		}
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, "user", ParamString(r, "u"))
@@ -63,7 +63,7 @@ func authenticate(next http.Handler) http.Handler {
 		}
 
 		if user != conf.Sonic.User || !valid {
-			beego.Warn(fmt.Sprintf(`Invalid login for user "%s"`, user))
+			log.Warn(r, "Invalid login", "user", user)
 			SendError(w, r, NewError(responses.ErrorAuthenticationFail))
 			return
 		}

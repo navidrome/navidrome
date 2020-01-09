@@ -3,10 +3,10 @@ package api
 import (
 	"net/http"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
@@ -29,10 +29,10 @@ func (c *StreamController) Prepare(r *http.Request) (err error) {
 	c.mf, err = c.repo.Get(c.id)
 	switch {
 	case err == domain.ErrNotFound:
-		beego.Error("MediaFile", c.id, "not found!")
+		log.Error(r, "Mediafile not found", "id", c.id)
 		return NewError(responses.ErrorDataNotFound)
 	case err != nil:
-		beego.Error("Error reading mediafile", c.id, "from the database", ":", err)
+		log.Error(r, "Error reading mediafile from DB", "id", c.id, err)
 		return NewError(responses.ErrorGeneric, "Internal error")
 	}
 	return nil
@@ -48,8 +48,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	maxBitRate := ParamInt(r, "maxBitRate", 0)
 	maxBitRate = utils.MinInt(c.mf.BitRate, maxBitRate)
 
-	beego.Debug("Streaming file", c.id, ":", c.mf.Path)
-	beego.Debug("Bitrate", c.mf.BitRate, "MaxBitRate", maxBitRate)
+	log.Debug(r, "Streaming file", "id", c.id, "path", c.mf.Path, "bitrate", c.mf.BitRate, "maxBitRate", maxBitRate)
 
 	// TODO Send proper estimated content-length
 	//contentLength := c.mf.Size
@@ -64,16 +63,16 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	h.Set("Pragma", "public")
 
 	if r.Method == "HEAD" {
-		beego.Debug("Just a HEAD. Not streaming", c.mf.Path)
+		log.Debug(r, "Just a HEAD. Not streaming", "path", c.mf.Path)
 		return nil, nil
 	}
 
-	err = engine.Stream(c.mf.Path, c.mf.BitRate, maxBitRate, w)
+	err = engine.Stream(r.Context(), c.mf.Path, c.mf.BitRate, maxBitRate, w)
 	if err != nil {
-		beego.Error("Error streaming file", c.id, ":", err)
+		log.Error(r, "Error streaming file", "id", c.id, err)
 	}
 
-	beego.Debug("Finished streaming of", c.mf.Path)
+	log.Debug(r, "Finished streaming", "path", c.mf.Path)
 	return nil, nil
 }
 
@@ -82,14 +81,14 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 	if err != nil {
 		return nil, err
 	}
-	beego.Debug("Sending file", c.mf.Path)
+	log.Debug(r, "Sending file", "path", c.mf.Path)
 
-	err = engine.Stream(c.mf.Path, 0, 0, w)
+	err = engine.Stream(r.Context(), c.mf.Path, 0, 0, w)
 	if err != nil {
-		beego.Error("Error downloading file", c.mf.Path, ":", err.Error())
+		log.Error(r, "Error downloading file", "path", c.mf.Path, err)
 	}
 
-	beego.Debug("Finished sending", c.mf.Path)
+	log.Debug(r, "Finished sending", "path", c.mf.Path)
 
 	return nil, nil
 }

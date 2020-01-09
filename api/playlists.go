@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/log"
 )
 
 type PlaylistsController struct {
@@ -21,7 +21,7 @@ func NewPlaylistsController(pls engine.Playlists) *PlaylistsController {
 func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	allPls, err := c.pls.GetAll()
 	if err != nil {
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal error")
 	}
 	playlists := make([]responses.Playlist, len(allPls))
@@ -47,10 +47,10 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 	pinfo, err := c.pls.Get(id)
 	switch {
 	case err == domain.ErrNotFound:
-		beego.Error(err, "Id:", id)
+		log.Error(r, err.Error(), "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -68,9 +68,9 @@ func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return nil, err
 	}
-	err = c.pls.Create(name, songIds)
+	err = c.pls.Create(r.Context(), name, songIds)
 	if err != nil {
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 	return NewEmpty(), nil
@@ -81,9 +81,9 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return nil, err
 	}
-	err = c.pls.Delete(id)
+	err = c.pls.Delete(r.Context(), id)
 	if err != nil {
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 	return NewEmpty(), nil
@@ -103,16 +103,16 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 		pname = &s
 	}
 
-	beego.Info(fmt.Sprintf("Updating playlist with id '%s'", playlistId))
+	log.Info(r, "Updating playlist", "id", playlistId)
 	if pname != nil {
-		beego.Debug(fmt.Sprintf("-- New Name: '%s'", *pname))
+		log.Debug(r, fmt.Sprintf("-- New Name: '%s'", *pname))
 	}
-	beego.Debug(fmt.Sprintf("-- Adding: '%v'", songsToAdd))
-	beego.Debug(fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
+	log.Debug(r, fmt.Sprintf("-- Adding: '%v'", songsToAdd))
+	log.Debug(r, fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
 	err = c.pls.Update(playlistId, pname, songsToAdd, songIndexesToRemove)
 	if err != nil {
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 	return NewEmpty(), nil

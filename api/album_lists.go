@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
@@ -42,7 +42,7 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (engine.Entries, err
 	listFunc, found := c.listFunctions[typ]
 
 	if !found {
-		beego.Error("albumList type", typ, "not implemented!")
+		log.Error(r, "albumList type not implemented", "type", typ)
 		return nil, errors.New("Not implemented!")
 	}
 
@@ -51,7 +51,7 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (engine.Entries, err
 
 	albums, err := listFunc(offset, size)
 	if err != nil {
-		beego.Error("Error retrieving albums:", err)
+		log.Error(r, "Error retrieving albums", "error", err)
 		return nil, errors.New("Internal Error")
 	}
 
@@ -83,7 +83,7 @@ func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Reque
 func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	albums, mediaFiles, err := c.listGen.GetAllStarred()
 	if err != nil {
-		beego.Error("Error retrieving starred media:", err)
+		log.Error(r, "Error retrieving starred media", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -97,7 +97,7 @@ func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request)
 func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	albums, mediaFiles, err := c.listGen.GetAllStarred()
 	if err != nil {
-		beego.Error("Error retrieving starred media:", err)
+		log.Error(r, "Error retrieving starred media", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -111,7 +111,7 @@ func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request
 func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	npInfos, err := c.listGen.GetNowPlaying()
 	if err != nil {
-		beego.Error("Error retrieving now playing list:", err)
+		log.Error(r, "Error retrieving now playing list", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -133,7 +133,7 @@ func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Requ
 
 	songs, err := c.listGen.GetRandomSongs(size)
 	if err != nil {
-		beego.Error("Error retrieving random songs:", err)
+		log.Error(r, "Error retrieving random songs", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 

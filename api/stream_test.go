@@ -1,4 +1,5 @@
 package api_test
+
 //
 //import (
 //	"fmt"
@@ -20,7 +21,7 @@ package api_test
 //	r, _ := http.NewRequest("GET", url, nil)
 //	w := httptest.NewRecorder()
 //	beego.BeeApp.Handlers.ServeHTTP(w, r)
-//	beego.Debug("testing TestStream", fmt.Sprintf("\nUrl: %s\nStatus Code: [%d]\n%#v", r.URL, w.Code, w.HeaderMap))
+//	log.Debug(r, "testing TestStream", fmt.Sprintf("\nUrl: %s\nStatus Code: [%d]\n%#v", r.URL, w.Code, w.HeaderMap))
 //	return r, w
 //}
 //

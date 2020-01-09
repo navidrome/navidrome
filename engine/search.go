@@ -1,10 +1,11 @@
 package engine
 
 import (
+	"context"
 	"strings"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/deluan/gomate"
 	"github.com/kennygrant/sanitize"
 )
@@ -19,9 +20,9 @@ type Search interface {
 	RemoveAlbum(ids ...string) error
 	RemoveMediaFile(ids ...string) error
 
-	SearchArtist(q string, offset int, size int) (Entries, error)
-	SearchAlbum(q string, offset int, size int) (Entries, error)
-	SearchSong(q string, offset int, size int) (Entries, error)
+	SearchArtist(ctx context.Context, q string, offset int, size int) (Entries, error)
+	SearchAlbum(ctx context.Context, q string, offset int, size int) (Entries, error)
+	SearchSong(ctx context.Context, q string, offset int, size int) (Entries, error)
 }
 
 type search struct {
@@ -84,7 +85,7 @@ func (s *search) RemoveMediaFile(ids ...string) error {
 	return s.idxSong.Remove(ids...)
 }
 
-func (s *search) SearchArtist(q string, offset int, size int) (Entries, error) {
+func (s *search) SearchArtist(ctx context.Context, q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -95,7 +96,7 @@ func (s *search) SearchArtist(q string, offset int, size int) (Entries, error) {
 	res := make(Entries, 0, len(resp))
 	for _, id := range resp {
 		a, err := s.artistRepo.Get(id)
-		if criticalError("Artist", id, err) {
+		if criticalError(ctx, "Artist", id, err) {
 			return nil, err
 		}
 		if err == nil {
@@ -105,7 +106,7 @@ func (s *search) SearchArtist(q string, offset int, size int) (Entries, error) {
 	return res, nil
 }
 
-func (s *search) SearchAlbum(q string, offset int, size int) (Entries, error) {
+func (s *search) SearchAlbum(ctx context.Context, q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -116,7 +117,7 @@ func (s *search) SearchAlbum(q string, offset int, size int) (Entries, error) {
 	res := make(Entries, 0, len(resp))
 	for _, id := range resp {
 		al, err := s.albumRepo.Get(id)
-		if criticalError("Album", id, err) {
+		if criticalError(ctx, "Album", id, err) {
 			return nil, err
 		}
 		if err == nil {
@@ -126,7 +127,7 @@ func (s *search) SearchAlbum(q string, offset int, size int) (Entries, error) {
 	return res, nil
 }
 
-func (s *search) SearchSong(q string, offset int, size int) (Entries, error) {
+func (s *search) SearchSong(ctx context.Context, q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
 	max := min + size - 1
@@ -137,7 +138,7 @@ func (s *search) SearchSong(q string, offset int, size int) (Entries, error) {
 	res := make(Entries, 0, len(resp))
 	for _, id := range resp {
 		mf, err := s.mfileRepo.Get(id)
-		if criticalError("Song", id, err) {
+		if criticalError(ctx, "Song", id, err) {
 			return nil, err
 		}
 		if err == nil {
@@ -147,12 +148,12 @@ func (s *search) SearchSong(q string, offset int, size int) (Entries, error) {
 	return res, nil
 }
 
-func criticalError(kind, id string, err error) bool {
+func criticalError(ctx context.Context, kind, id string, err error) bool {
 	switch {
 	case err != nil:
 		return true
 	case err == domain.ErrNotFound:
-		beego.Warn(kind, "Id", id, "not in the DB. Need a reindex?")
+		log.Warn(ctx, kind+"Id not in DB. Need a reindex?", "id", id)
 	}
 	return false
 }

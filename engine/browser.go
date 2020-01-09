@@ -1,21 +1,22 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
 type Browser interface {
 	MediaFolders() (domain.MediaFolders, error)
 	Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error)
-	Directory(id string) (*DirectoryInfo, error)
-	Artist(id string) (*DirectoryInfo, error)
-	Album(id string) (*DirectoryInfo, error)
+	Directory(ctx context.Context, id string) (*DirectoryInfo, error)
+	Artist(ctx context.Context, id string) (*DirectoryInfo, error)
+	Album(ctx context.Context, id string) (*DirectoryInfo, error)
 	GetSong(id string) (*Entry, error)
 }
 
@@ -73,32 +74,32 @@ type DirectoryInfo struct {
 	Genre      string
 }
 
-func (b *browser) Artist(id string) (*DirectoryInfo, error) {
-	beego.Debug("Found Artist with id", id)
+func (b *browser) Artist(ctx context.Context, id string) (*DirectoryInfo, error) {
 	a, albums, err := b.retrieveArtist(id)
 	if err != nil {
 		return nil, err
 	}
+	log.Debug(ctx, "Found Artist", "id", id, "name", a.Name)
 	return b.buildArtistDir(a, albums), nil
 }
 
-func (b *browser) Album(id string) (*DirectoryInfo, error) {
-	beego.Debug("Found Album with id", id)
+func (b *browser) Album(ctx context.Context, id string) (*DirectoryInfo, error) {
 	al, tracks, err := b.retrieveAlbum(id)
 	if err != nil {
 		return nil, err
 	}
+	log.Debug(ctx, "Found Album", "id", id, "name", al.Name)
 	return b.buildAlbumDir(al, tracks), nil
 }
 
-func (b *browser) Directory(id string) (*DirectoryInfo, error) {
+func (b *browser) Directory(ctx context.Context, id string) (*DirectoryInfo, error) {
 	switch {
-	case b.isArtist(id):
-		return b.Artist(id)
-	case b.isAlbum(id):
-		return b.Album(id)
+	case b.isArtist(ctx, id):
+		return b.Artist(ctx, id)
+	case b.isAlbum(ctx, id):
+		return b.Album(ctx, id)
 	default:
-		beego.Debug("Id", id, "not found")
+		log.Debug(ctx, "Directory not found", "id", id)
 		return nil, domain.ErrNotFound
 	}
 }
@@ -153,19 +154,19 @@ func (b *browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *Dir
 	return dir
 }
 
-func (b *browser) isArtist(id string) bool {
+func (b *browser) isArtist(ctx context.Context, id string) bool {
 	found, err := b.artistRepo.Exists(id)
 	if err != nil {
-		beego.Debug(fmt.Errorf("Error searching for Artist %s: %v", id, err))
+		log.Debug(ctx, "Error searching for Artist", "id", id, err)
 		return false
 	}
 	return found
 }
 
-func (b *browser) isAlbum(id string) bool {
+func (b *browser) isAlbum(ctx context.Context, id string) bool {
 	found, err := b.albumRepo.Exists(id)
 	if err != nil {
-		beego.Debug(fmt.Errorf("Error searching for Album %s: %v", id, err))
+		log.Debug(ctx, "Error searching for Album", "id", id, err)
 		return false
 	}
 	return found

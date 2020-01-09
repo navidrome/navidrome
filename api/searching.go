@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/log"
 )
 
 type SearchingController struct {
@@ -39,21 +39,21 @@ func (c *SearchingController) getParams(r *http.Request) error {
 	return nil
 }
 
-func (c *SearchingController) searchAll() (engine.Entries, engine.Entries, engine.Entries) {
-	as, err := c.search.SearchArtist(c.query, c.artistOffset, c.artistCount)
+func (c *SearchingController) searchAll(r *http.Request) (engine.Entries, engine.Entries, engine.Entries) {
+	as, err := c.search.SearchArtist(r.Context(), c.query, c.artistOffset, c.artistCount)
 	if err != nil {
-		beego.Error("Error searching for Artists:", err)
+		log.Error(r, "Error searching for Artists", err)
 	}
-	als, err := c.search.SearchAlbum(c.query, c.albumOffset, c.albumCount)
+	als, err := c.search.SearchAlbum(r.Context(), c.query, c.albumOffset, c.albumCount)
 	if err != nil {
-		beego.Error("Error searching for Albums:", err)
+		log.Error(r, "Error searching for Albums", err)
 	}
-	mfs, err := c.search.SearchSong(c.query, c.songOffset, c.songCount)
+	mfs, err := c.search.SearchSong(r.Context(), c.query, c.songOffset, c.songCount)
 	if err != nil {
-		beego.Error("Error searching for MediaFiles:", err)
+		log.Error(r, "Error searching for MediaFiles", err)
 	}
 
-	beego.Debug(fmt.Sprintf("Searching for [%s] resulted in %d songs, %d albums and %d artists", c.query, len(mfs), len(als), len(as)))
+	log.Debug(r, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists", len(mfs), len(als), len(as)), "query", c.query)
 	return mfs, als, as
 }
 
@@ -62,7 +62,7 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 	if err != nil {
 		return nil, err
 	}
-	mfs, als, as := c.searchAll()
+	mfs, als, as := c.searchAll(r)
 
 	response := NewEmpty()
 	searchResult2 := &responses.SearchResult2{}
@@ -81,7 +81,7 @@ func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*
 	if err != nil {
 		return nil, err
 	}
-	mfs, als, as := c.searchAll()
+	mfs, als, as := c.searchAll(r)
 
 	response := NewEmpty()
 	searchResult3 := &responses.SearchResult3{}

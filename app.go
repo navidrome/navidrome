@@ -8,20 +8,18 @@ import (
 	"time"
 
 	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/sirupsen/logrus"
 )
 
 type App struct {
 	router   *chi.Mux
-	logger   *logrus.Logger
 	importer *scanner.Importer
 }
 
 func (a *App) Initialize() {
-	a.logger = logrus.New()
 	initMimeTypes()
 	a.initRoutes()
 	a.initImporter()
@@ -35,8 +33,8 @@ func (a *App) MountRouter(path string, subRouter http.Handler) {
 }
 
 func (a *App) Run(addr string) {
-	a.logger.Info("Listening on addr ", addr)
-	a.logger.Fatal(http.ListenAndServe(addr, a.router))
+	log.Info("Started CloudSonic server", "address", addr)
+	log.Error(http.ListenAndServe(addr, a.router))
 }
 
 func (a *App) initRoutes() {
@@ -47,6 +45,7 @@ func (a *App) initRoutes() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5, "application/xml", "application/json"))
 	r.Use(middleware.Heartbeat("/ping"))
+	r.Use(InjectLogger)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/Jamstash", 302)
@@ -88,4 +87,12 @@ func FileServer(r chi.Router, path string, root http.FileSystem) {
 	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fs.ServeHTTP(w, r)
 	}))
+}
+
+func InjectLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		ctx = log.NewContext(r.Context(), "requestId", ctx.Value(middleware.RequestIDKey))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

@@ -1,19 +1,19 @@
 package engine
 
 import (
-	"fmt"
+	"context"
 	"sort"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
+	"github.com/cloudsonic/sonic-server/log"
 )
 
 type Playlists interface {
 	GetAll() (domain.Playlists, error)
 	Get(id string) (*PlaylistInfo, error)
-	Create(name string, ids []string) error
-	Delete(playlistId string) error
+	Create(ctx context.Context, name string, ids []string) error
+	Delete(ctx context.Context, playlistId string) error
 	Update(playlistId string, name *string, idsToAdd []string, idxToRemove []int) error
 }
 
@@ -42,21 +42,21 @@ type PlaylistInfo struct {
 	Comment   string
 }
 
-func (p *playlists) Create(name string, ids []string) error {
+func (p *playlists) Create(ctx context.Context, name string, ids []string) error {
 	pid, err := p.itunes.CreatePlaylist(name, ids)
 	if err != nil {
 		return err
 	}
-	beego.Info(fmt.Sprintf("Created playlist '%s' with id '%s'", name, pid))
+	log.Info(ctx, "Created playlist", "playlist", name, "id", pid)
 	return nil
 }
 
-func (p *playlists) Delete(playlistId string) error {
+func (p *playlists) Delete(ctx context.Context, playlistId string) error {
 	err := p.itunes.DeletePlaylist(playlistId)
 	if err != nil {
 		return err
 	}
-	beego.Info(fmt.Sprintf("Deleted playlist with id '%s'", playlistId))
+	log.Info(ctx, "Deleted playlist", "id", playlistId)
 	return nil
 }
 
