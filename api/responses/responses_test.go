@@ -1,93 +1,114 @@
+//+build linux darwin
+
+// TODO Fix snapshot tests in Windows
+// Response Snapshot tests. Only run in Linux and macOS, as they fail in Windows
+// Probably because of EOL char differences
 package responses_test
 
 import (
-	"testing"
+	"encoding/json"
+	"encoding/xml"
 	"time"
 
 	. "github.com/cloudsonic/sonic-server/api/responses"
-	. "github.com/cloudsonic/sonic-server/tests"
-	. "github.com/smartystreets/goconvey/convey"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestSubsonicResponses(t *testing.T) {
+var _ = Describe("Responses", func() {
+	var response *Subsonic
+	BeforeEach(func() {
+		response = &Subsonic{Status: "ok", Version: "1.8.0"}
+	})
 
-	response := &Subsonic{Status: "ok", Version: "1.0.0"}
-
-	Convey("Subject: Subsonic Responses", t, func() {
-		Convey("EmptyResponse", func() {
-			Convey("XML", func() {
-				So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"></subsonic-response>`)
-			})
-			Convey("JSON", func() {
-				So(response, ShouldMatchJSON, `{"status":"ok","version":"1.0.0"}`)
-			})
+	Describe("EmptyResponse", func() {
+		It("should match XML", func() {
+			Expect(xml.Marshal(response)).To(MatchSnapshot())
 		})
+		It("should match JSON", func() {
+			Expect(json.Marshal(response)).To(MatchSnapshot())
+		})
+	})
 
-		Convey("License", func() {
+	Describe("License", func() {
+		BeforeEach(func() {
 			response.License = &License{Valid: true}
-			Convey("XML", func() {
-				So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><license valid="true"></license></subsonic-response>`)
+		})
+		It("should match XML", func() {
+			Expect(xml.Marshal(response)).To(MatchSnapshot())
+		})
+		It("should match JSON", func() {
+			Expect(json.Marshal(response)).To(MatchSnapshot())
+		})
+	})
+
+	Describe("MusicFolders", func() {
+		BeforeEach(func() {
+			response.MusicFolders = &MusicFolders{}
+		})
+
+		Context("without data", func() {
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			Convey("JSON", func() {
-				So(response, ShouldMatchJSON, `{"license":{"valid":true},"status":"ok","version":"1.0.0"}`)
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
 
-		Convey("MusicFolders", func() {
-			response.MusicFolders = &MusicFolders{}
-
-			Convey("With data", func() {
+		Context("with data", func() {
+			BeforeEach(func() {
 				folders := make([]MusicFolder, 2)
 				folders[0] = MusicFolder{Id: "111", Name: "aaa"}
 				folders[1] = MusicFolder{Id: "222", Name: "bbb"}
 				response.MusicFolders.Folders = folders
-
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><musicFolders><musicFolder id="111" name="aaa"></musicFolder><musicFolder id="222" name="bbb"></musicFolder></musicFolders></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"musicFolders":{"musicFolder":[{"id":"111","name":"aaa"},{"id":"222","name":"bbb"}]},"status":"ok","version":"1.0.0"}`)
-				})
 			})
-			Convey("Without data", func() {
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><musicFolders></musicFolders></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"musicFolders":{},"status":"ok","version":"1.0.0"}`)
-				})
+
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("Indexes", func() {
+		BeforeEach(func() {
+			response.Indexes = &Indexes{LastModified: "1", IgnoredArticles: "A"}
+		})
+
+		Context("without data", func() {
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
 
-		Convey("Indexes", func() {
-			artists := make([]Artist, 1)
-			artists[0] = Artist{Id: "111", Name: "aaa"}
-			response.Indexes = &Indexes{LastModified: "1", IgnoredArticles: "A"}
-
-			Convey("With data", func() {
+		Context("with data", func() {
+			BeforeEach(func() {
+				artists := make([]Artist, 1)
+				artists[0] = Artist{Id: "111", Name: "aaa"}
 				index := make([]Index, 1)
 				index[0] = Index{Name: "A", Artists: artists}
 				response.Indexes.Index = index
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><indexes lastModified="1" ignoredArticles="A"><index name="A"><artist id="111" name="aaa"></artist></index></indexes></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"indexes":{"ignoredArticles":"A","index":[{"artist":[{"id":"111","name":"aaa"}],"name":"A"}],"lastModified":"1"},"status":"ok","version":"1.0.0"}`)
-				})
 			})
-			Convey("Without data", func() {
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><indexes lastModified="1" ignoredArticles="A"></indexes></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"indexes":{"ignoredArticles":"A","lastModified":"1"},"status":"ok","version":"1.0.0"}`)
-				})
+
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
+	})
 
-		Convey("Child", func() {
-			response.Directory = &Directory{Id: "1", Name: "N"}
-			Convey("With all data", func() {
+	Describe("Child", func() {
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.Directory = &Directory{Id: "1", Name: "N"}
 				child := make([]Child, 1)
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				child[0] = Child{
@@ -97,135 +118,134 @@ func TestSubsonicResponses(t *testing.T) {
 					Duration: 146, BitRate: 320, Starred: &t,
 				}
 				response.Directory.Child = child
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><directory id="1" name="N"><child id="1" isDir="true" title="title" album="album" artist="artist" track="1" year="1985" genre="Rock" coverArt="1" size="8421341" contentType="audio/flac" suffix="flac" starred="2016-03-02T20:30:00Z" transcodedContentType="audio/mpeg" transcodedSuffix="mp3" duration="146" bitRate="320"></child></directory></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"directory":{"child":[{"album":"album","artist":"artist","bitRate":320,"contentType":"audio/flac","coverArt":"1","duration":146,"genre":"Rock","id":"1","isDir":true,"size":"8421341","starred":"2016-03-02T20:30:00Z","suffix":"flac","title":"title","track":1,"transcodedContentType":"audio/mpeg","transcodedSuffix":"mp3","year":1985}],"id":"1","name":"N"},"status":"ok","version":"1.0.0"}`)
-				})
+			})
+
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("Directory", func() {
+		BeforeEach(func() {
+			response.Directory = &Directory{Id: "1", Name: "N"}
+		})
+
+		Context("without data", func() {
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
 
-		Convey("Directory", func() {
-			response.Directory = &Directory{Id: "1", Name: "N"}
-			Convey("Without data", func() {
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><directory id="1" name="N"></directory></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"directory":{"id":"1","name":"N"},"status":"ok","version":"1.0.0"}`)
-				})
-			})
-			Convey("With just required data", func() {
+		Context("with data", func() {
+			BeforeEach(func() {
 				child := make([]Child, 1)
 				child[0] = Child{Id: "1", Title: "title", IsDir: false}
 				response.Directory.Child = child
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><directory id="1" name="N"><child id="1" isDir="false" title="title"></child></directory></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"directory":{"child":[{"id":"1","isDir":false,"title":"title"}],"id":"1","name":"N"},"status":"ok","version":"1.0.0"}`)
-				})
+			})
+
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("AlbumList", func() {
+		BeforeEach(func() {
+			response.AlbumList = &AlbumList{}
+		})
+
+		Context("without data", func() {
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
 
-		Convey("AlbumList", func() {
-			response.AlbumList = &AlbumList{}
-			Convey("Without data", func() {
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><albumList></albumList></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"albumList":{},"status":"ok","version":"1.0.0"}`)
-				})
-			})
-			Convey("With just required data", func() {
+		Context("with data", func() {
+			BeforeEach(func() {
 				child := make([]Child, 1)
 				child[0] = Child{Id: "1", Title: "title", IsDir: false}
 				response.AlbumList.Album = child
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><albumList><album id="1" isDir="false" title="title"></album></albumList></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"albumList":{"album":[{"id":"1","isDir":false,"title":"title"}]},"status":"ok","version":"1.0.0"}`)
-				})
+			})
+
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("User", func() {
+		BeforeEach(func() {
+			response.User = &User{Username: "deluan"}
+		})
+
+		Context("without data", func() {
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
 
-		Convey("User", func() {
-			response.User = &User{Username: "deluan"}
-			Convey("Without optional fields", func() {
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><user username="deluan" scrobblingEnabled="false" adminRole="false" settingsRole="false" downloadRole="false" uploadRole="false" playlistRole="false" coverArtRole="false" commentRole="false" podcastRole="false" streamRole="false" jukeboxRole="false" shareRole="false" videoConversionRole="false"></user></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"status":"ok","user":{"adminRole":false,"commentRole":false,"coverArtRole":false,"downloadRole":false,"jukeboxRole":false,"playlistRole":false,"podcastRole":false,"scrobblingEnabled":false,"settingsRole":false,"shareRole":false,"streamRole":false,"uploadRole":false,"username":"deluan","videoConversionRole":false},"version":"1.0.0"}`)
-				})
-			})
-			Convey("With optional fields", func() {
+		Context("with data", func() {
+			BeforeEach(func() {
 				response.User.Email = "cloudsonic@deluan.com"
 				response.User.Folder = []int{1}
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><user username="deluan" email="cloudsonic@deluan.com" scrobblingEnabled="false" adminRole="false" settingsRole="false" downloadRole="false" uploadRole="false" playlistRole="false" coverArtRole="false" commentRole="false" podcastRole="false" streamRole="false" jukeboxRole="false" shareRole="false" videoConversionRole="false"><folder>1</folder></user></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"status":"ok","user":{"adminRole":false,"commentRole":false,"coverArtRole":false,"downloadRole":false,"email":"cloudsonic@deluan.com","folder":[1],"jukeboxRole":false,"playlistRole":false,"podcastRole":false,"scrobblingEnabled":false,"settingsRole":false,"shareRole":false,"streamRole":false,"uploadRole":false,"username":"deluan","videoConversionRole":false},"version":"1.0.0"}`)
-				})
+			})
+
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
-		Convey("Playlists", func() {
-			response.Playlists = &Playlists{}
+	})
 
-			Convey("Without data", func() {
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><playlists></playlists></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"playlists":{},"status":"ok","version":"1.0.0"}`)
-				})
+	Describe("Playlists", func() {
+		BeforeEach(func() {
+			response.Playlists = &Playlists{}
+		})
+
+		Context("without data", func() {
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			Convey("With data", func() {
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
 				pls := make([]Playlist, 2)
 				pls[0] = Playlist{Id: "111", Name: "aaa"}
 				pls[1] = Playlist{Id: "222", Name: "bbb"}
 				response.Playlists.Playlist = pls
+			})
 
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><playlists><playlist id="111" name="aaa"></playlist><playlist id="222" name="bbb"></playlist></playlists></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"playlists":{"playlist":[{"id":"111","name":"aaa"},{"id":"222","name":"bbb"}]},"status":"ok","version":"1.0.0"}`)
-				})
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-		})
-
-		Convey("Playlist", func() {
-			response.Playlist = &PlaylistWithSongs{}
-			response.Playlist.Id = "1"
-			response.Playlist.Name = "My Playlist"
-			Convey("Without data", func() {
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><playlist id="1" name="My Playlist"></playlist></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"playlist":{"id":"1","name":"My Playlist"},"status":"ok","version":"1.0.0"}`)
-				})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
-			Convey("With just required data", func() {
-				entry := make([]Child, 1)
-				entry[0] = Child{Id: "1", Title: "title", IsDir: false}
-				response.Playlist.Entry = entry
-				Convey("XML", func() {
-					So(response, ShouldMatchXML, `<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.0.0"><playlist id="1" name="My Playlist"><entry id="1" isDir="false" title="title"></entry></playlist></subsonic-response>`)
-				})
-				Convey("JSON", func() {
-					So(response, ShouldMatchJSON, `{"playlist":{"entry":[{"id":"1","isDir":false,"title":"title"}],"id":"1","name":"My Playlist"},"status":"ok","version":"1.0.0"}`)
-				})
-			})
-		})
-		Reset(func() {
-			response = &Subsonic{Status: "ok", Version: "1.0.0"}
 		})
 	})
-
-}
+})
