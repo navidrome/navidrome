@@ -56,8 +56,7 @@ func authenticate(next http.Handler) http.Handler {
 		switch {
 		case pass != "":
 			if strings.HasPrefix(pass, "enc:") {
-				e := strings.TrimPrefix(pass, "enc:")
-				if dec, err := hex.DecodeString(e); err == nil {
+				if dec, err := hex.DecodeString(pass[4:]); err == nil {
 					pass = string(dec)
 				}
 			}

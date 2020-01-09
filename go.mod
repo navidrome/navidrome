@@ -19,8 +19,8 @@ require (
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/koding/multiconfig v0.0.0-20170327155832-26b6dfd3a84a
 	github.com/nfnt/resize v0.0.0-20160724205520-891127d8d1b5
-	github.com/onsi/ginkgo v1.11.0 // indirect
-	github.com/onsi/gomega v1.8.1 // indirect
+	github.com/onsi/ginkgo v1.11.0
+	github.com/onsi/gomega v1.8.1
 	github.com/siddontang/go v0.0.0-20161005110831-1e9ce2a5ac40 // indirect
 	github.com/siddontang/ledisdb v0.0.0-20170318061737-5929802e2ea5
 	github.com/siddontang/rdb v0.0.0-20150307021120-fc89ed2e418d // indirect
