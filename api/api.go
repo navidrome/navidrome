@@ -21,7 +21,7 @@ func Router() http.Handler {
 	r.Use(checkRequiredParameters)
 
 	// Add validation middleware if not disabled
-	if !conf.Sonic.DisableValidation {
+	if !conf.Sonic.DisableAuthentication {
 		r.Use(authenticate)
 		// TODO Validate version
 	}
