@@ -12,6 +12,7 @@ import (
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/cors"
 )
 
 type App struct {
@@ -40,6 +41,7 @@ func (a *App) Run(addr string) {
 func (a *App) initRoutes() {
 	r := chi.NewRouter()
 
+	r.Use(cors.Default().Handler)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
