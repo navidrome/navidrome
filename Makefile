@@ -11,7 +11,7 @@ setup: jamstash
 
 .PHONY: run
 run:
-	@reflex -s -r "(\.go$$|sonic.toml)" -R "Jamstash-master" -- go run .
+	@reflex -s -d none -r "(\.go$$|sonic.toml)" -R "Jamstash-master" -- go run .
 
 .PHONY: test
 test:

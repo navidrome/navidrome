@@ -13,6 +13,7 @@ require (
 	github.com/fatih/camelcase v0.0.0-20160318181535-f6a740d52f96 // indirect
 	github.com/fatih/structs v1.0.0 // indirect
 	github.com/go-chi/chi v4.0.2+incompatible
+	github.com/go-chi/cors v1.0.0
 	github.com/golang/snappy v0.0.0-20170215233205-553a64147049 // indirect
 	github.com/google/wire v0.4.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
