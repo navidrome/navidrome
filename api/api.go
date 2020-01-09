@@ -123,7 +123,7 @@ func SendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		response, _ = json.Marshal(wrapper)
 	case "jsonp":
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/javascript")
 		callback := ParamString(r, "callback")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		data, _ := json.Marshal(wrapper)
