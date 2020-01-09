@@ -32,13 +32,13 @@ type Importer struct {
 	artistRepo   domain.ArtistRepository
 	idxRepo      domain.ArtistIndexRepository
 	plsRepo      domain.PlaylistRepository
-	propertyRepo engine.PropertyRepository
+	propertyRepo domain.PropertyRepository
 	search       engine.Search
 	lastScan     time.Time
 	lastCheck    time.Time
 }
 
-func NewImporter(mediaFolder string, scanner Scanner, mfRepo domain.MediaFileRepository, albumRepo domain.AlbumRepository, artistRepo domain.ArtistRepository, idxRepo domain.ArtistIndexRepository, plsRepo domain.PlaylistRepository, propertyRepo engine.PropertyRepository, search engine.Search) *Importer {
+func NewImporter(mediaFolder string, scanner Scanner, mfRepo domain.MediaFileRepository, albumRepo domain.AlbumRepository, artistRepo domain.ArtistRepository, idxRepo domain.ArtistIndexRepository, plsRepo domain.PlaylistRepository, propertyRepo domain.PropertyRepository, search engine.Search) *Importer {
 	return &Importer{
 		scanner:      scanner,
 		mediaFolder:  mediaFolder,
@@ -106,7 +106,7 @@ func (i *Importer) scan() {
 }
 
 func (i *Importer) lastModifiedSince() time.Time {
-	ms, err := i.propertyRepo.Get(engine.PropLastScan)
+	ms, err := i.propertyRepo.Get(domain.PropLastScan)
 	if err != nil {
 		log.Warn("Couldn't read LastScan", err)
 		return time.Time{}
@@ -166,7 +166,7 @@ func (i *Importer) importLibrary() (err error) {
 
 	if err == nil {
 		millis := time.Now().UnixNano() / int64(time.Millisecond)
-		i.propertyRepo.Put(engine.PropLastScan, fmt.Sprint(millis))
+		i.propertyRepo.Put(domain.PropLastScan, fmt.Sprint(millis))
 		log.Debug("LastScan", "timestamp", millis)
 	}
 

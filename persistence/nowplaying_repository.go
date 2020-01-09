@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/domain"
 )
 
 var (
@@ -15,9 +15,9 @@ type nowPlayingRepository struct {
 	ledisRepository
 }
 
-func NewNowPlayingRepository() engine.NowPlayingRepository {
+func NewNowPlayingRepository() domain.NowPlayingRepository {
 	r := &nowPlayingRepository{}
-	r.init("nowplaying", &engine.NowPlayingInfo{})
+	r.init("nowplaying", &domain.NowPlayingInfo{})
 	return r
 }
 
@@ -25,7 +25,7 @@ func nowPlayingKeyName(playerId int) string {
 	return fmt.Sprintf("%s:%d", nowPlayingKeyPrefix, playerId)
 }
 
-func (r *nowPlayingRepository) Enqueue(info *engine.NowPlayingInfo) error {
+func (r *nowPlayingRepository) Enqueue(info *domain.NowPlayingInfo) error {
 	h, err := json.Marshal(info)
 	if err != nil {
 		return err
@@ -34,11 +34,11 @@ func (r *nowPlayingRepository) Enqueue(info *engine.NowPlayingInfo) error {
 	keyName := []byte(nowPlayingKeyName(info.PlayerId))
 
 	_, err = Db().LPush(keyName, []byte(h))
-	Db().LExpire(keyName, int64(engine.NowPlayingExpire.Seconds()))
+	Db().LExpire(keyName, int64(domain.NowPlayingExpire.Seconds()))
 	return err
 }
 
-func (r *nowPlayingRepository) Dequeue(playerId int) (*engine.NowPlayingInfo, error) {
+func (r *nowPlayingRepository) Dequeue(playerId int) (*domain.NowPlayingInfo, error) {
 	keyName := []byte(nowPlayingKeyName(playerId))
 
 	val, err := Db().RPop(keyName)
@@ -51,7 +51,7 @@ func (r *nowPlayingRepository) Dequeue(playerId int) (*engine.NowPlayingInfo, er
 	return r.parseInfo(val)
 }
 
-func (r *nowPlayingRepository) Head(playerId int) (*engine.NowPlayingInfo, error) {
+func (r *nowPlayingRepository) Head(playerId int) (*domain.NowPlayingInfo, error) {
 	keyName := []byte(nowPlayingKeyName(playerId))
 
 	val, err := Db().LIndex(keyName, 0)
@@ -61,7 +61,7 @@ func (r *nowPlayingRepository) Head(playerId int) (*engine.NowPlayingInfo, error
 	return r.parseInfo(val)
 }
 
-func (r *nowPlayingRepository) Tail(playerId int) (*engine.NowPlayingInfo, error) {
+func (r *nowPlayingRepository) Tail(playerId int) (*domain.NowPlayingInfo, error) {
 	keyName := []byte(nowPlayingKeyName(playerId))
 
 	val, err := Db().LIndex(keyName, -1)
@@ -77,16 +77,16 @@ func (r *nowPlayingRepository) Count(playerId int) (int64, error) {
 }
 
 // TODO Will not work for multiple players
-func (r *nowPlayingRepository) GetAll() ([]*engine.NowPlayingInfo, error) {
+func (r *nowPlayingRepository) GetAll() ([]*domain.NowPlayingInfo, error) {
 	np, err := r.Head(1)
 	if np == nil || err != nil {
 		return nil, err
 	}
-	return []*engine.NowPlayingInfo{np}, err
+	return []*domain.NowPlayingInfo{np}, err
 }
 
-func (r *nowPlayingRepository) parseInfo(val []byte) (*engine.NowPlayingInfo, error) {
-	info := &engine.NowPlayingInfo{}
+func (r *nowPlayingRepository) parseInfo(val []byte) (*domain.NowPlayingInfo, error) {
+	info := &domain.NowPlayingInfo{}
 	err := json.Unmarshal(val, info)
 	if err != nil {
 		return nil, nil
@@ -94,4 +94,4 @@ func (r *nowPlayingRepository) parseInfo(val []byte) (*engine.NowPlayingInfo, er
 	return info, nil
 }
 
-var _ engine.NowPlayingRepository = (*nowPlayingRepository)(nil)
+var _ domain.NowPlayingRepository = (*nowPlayingRepository)(nil)

@@ -20,13 +20,13 @@ type Browser interface {
 	GetSong(id string) (*Entry, error)
 }
 
-func NewBrowser(pr PropertyRepository, fr domain.MediaFolderRepository, ir domain.ArtistIndexRepository,
+func NewBrowser(pr domain.PropertyRepository, fr domain.MediaFolderRepository, ir domain.ArtistIndexRepository,
 	ar domain.ArtistRepository, alr domain.AlbumRepository, mr domain.MediaFileRepository) Browser {
 	return &browser{pr, fr, ir, ar, alr, mr}
 }
 
 type browser struct {
-	propRepo   PropertyRepository
+	propRepo   domain.PropertyRepository
 	folderRepo domain.MediaFolderRepository
 	indexRepo  domain.ArtistIndexRepository
 	artistRepo domain.ArtistRepository
@@ -39,7 +39,7 @@ func (b *browser) MediaFolders() (domain.MediaFolders, error) {
 }
 
 func (b *browser) Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error) {
-	l, err := b.propRepo.DefaultGet(PropLastScan, "-1")
+	l, err := b.propRepo.DefaultGet(domain.PropLastScan, "-1")
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
 

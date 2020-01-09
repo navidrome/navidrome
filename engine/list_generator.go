@@ -22,14 +22,14 @@ type ListGenerator interface {
 	GetRandomSongs(size int) (Entries, error)
 }
 
-func NewListGenerator(alr domain.AlbumRepository, mfr domain.MediaFileRepository, npr NowPlayingRepository) ListGenerator {
+func NewListGenerator(alr domain.AlbumRepository, mfr domain.MediaFileRepository, npr domain.NowPlayingRepository) ListGenerator {
 	return &listGenerator{alr, mfr, npr}
 }
 
 type listGenerator struct {
 	albumRepo    domain.AlbumRepository
 	mfRepository domain.MediaFileRepository
-	npRepo       NowPlayingRepository
+	npRepo       domain.NowPlayingRepository
 }
 
 func (g *listGenerator) query(qo domain.QueryOptions, offset int, size int) (Entries, error) {

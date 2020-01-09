@@ -4,21 +4,20 @@ import (
 	"errors"
 
 	"github.com/cloudsonic/sonic-server/domain"
-	"github.com/cloudsonic/sonic-server/engine"
 )
 
 type propertyRepository struct {
 	ledisRepository
 }
 
-func NewPropertyRepository() engine.PropertyRepository {
+func NewPropertyRepository() domain.PropertyRepository {
 	r := &propertyRepository{}
-	r.init("property", &engine.Property{})
+	r.init("property", &domain.Property{})
 	return r
 }
 
 func (r *propertyRepository) Put(id string, value string) error {
-	m := &engine.Property{Id: id, Value: value}
+	m := &domain.Property{Id: id, Value: value}
 	if m.Id == "" {
 		return errors.New("Id is required")
 	}
@@ -28,7 +27,7 @@ func (r *propertyRepository) Put(id string, value string) error {
 func (r *propertyRepository) Get(id string) (string, error) {
 	var rec interface{}
 	rec, err := r.readEntity(id)
-	return rec.(*engine.Property).Value, err
+	return rec.(*domain.Property).Value, err
 }
 
 func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
@@ -41,4 +40,4 @@ func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string,
 	return v, err
 }
 
-var _ engine.PropertyRepository = (*propertyRepository)(nil)
+var _ domain.PropertyRepository = (*propertyRepository)(nil)
