@@ -18,9 +18,10 @@ type SubsonicHandler = func(http.ResponseWriter, *http.Request) (*responses.Subs
 func Router() http.Handler {
 	r := chi.NewRouter()
 
+	r.Use(checkRequiredParameters)
+
 	// Add validation middleware if not disabled
 	if !conf.Sonic.DisableValidation {
-		r.Use(checkRequiredParameters)
 		r.Use(authenticate)
 		// TODO Validate version
 	}
