@@ -1,14 +1,13 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/log"
 )
 
 type MediaAnnotationController struct {
@@ -33,15 +32,15 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 		return nil, err
 	}
 
-	beego.Debug("Setting rating", rating, "for id", id)
-	err = c.ratings.SetRating(id, rating)
+	log.Debug(r, "Setting rating", "rating", rating, "id", id)
+	err = c.ratings.SetRating(r.Context(), id, rating)
 
 	switch {
 	case err == domain.ErrNotFound:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorDataNotFound, "Id not found")
 	case err != nil:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -50,7 +49,7 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 
 func (c *MediaAnnotationController) getIds(r *http.Request) ([]string, error) {
 	ids := ParamStrings(r, "id")
-	albumIds := ParamStrings(r,"albumId")
+	albumIds := ParamStrings(r, "albumId")
 
 	if len(ids) == 0 && len(albumIds) == 0 {
 		return nil, NewError(responses.ErrorMissingParameter, "Required id parameter is missing")
@@ -64,14 +63,14 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		return nil, err
 	}
-	beego.Debug("Starring ids:", ids)
-	err = c.ratings.SetStar(true, ids...)
+	log.Debug(r, "Starring items", "ids", ids)
+	err = c.ratings.SetStar(r.Context(), true, ids...)
 	switch {
 	case err == domain.ErrNotFound:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorDataNotFound, "Id not found")
 	case err != nil:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -83,14 +82,14 @@ func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return nil, err
 	}
-	beego.Debug("Unstarring ids:", ids)
-	err = c.ratings.SetStar(false, ids...)
+	log.Debug(r, "Unstarring items", "ids", ids)
+	err = c.ratings.SetStar(r.Context(), false, ids...)
 	switch {
 	case err == domain.ErrNotFound:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -111,7 +110,7 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 	playerName := ParamString(r, "c")
 	username := ParamString(r, "u")
 
-	beego.Debug("Scrobbling ids:", ids, "times:", times, "submission:", submission)
+	log.Debug(r, "Scrobbling tracks", "ids", ids, "times", times, "submission", submission)
 	for i, id := range ids {
 		var t time.Time
 		if len(times) > 0 {
@@ -120,19 +119,19 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 			t = time.Now()
 		}
 		if submission {
-			mf, err := c.scrobbler.Register(playerId, id, t)
+			mf, err := c.scrobbler.Register(r.Context(), playerId, id, t)
 			if err != nil {
-				beego.Error("Error scrobbling", id, "-", err)
+				log.Error(r, "Error scrobbling track", "id", id, err)
 				continue
 			}
-			beego.Info(fmt.Sprintf(`Scrobbled (%s) "%s" at %v`, id, mf.Title, t))
+			log.Info(r, "Scrobbled", "id", id, "title", mf.Title, "timestamp", t)
 		} else {
-			mf, err := c.scrobbler.NowPlaying(playerId, playerName, id, username)
+			mf, err := c.scrobbler.NowPlaying(r.Context(), playerId, playerName, id, username)
 			if err != nil {
-				beego.Error("Error setting", id, "as current song:", err)
+				log.Error(r, "Error setting current song", "id", id, err)
 				continue
 			}
-			beego.Info(fmt.Sprintf(`Now Playing (%s) "%s" at %v`, id, mf.Title, t))
+			log.Info(r, "Now Playing", "id", id, "title", mf.Title, "timestamp", t)
 		}
 	}
 	return NewEmpty(), nil

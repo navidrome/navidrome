@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
@@ -33,10 +33,10 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 	return response, nil
 }
 
-func (c *BrowsingController) getArtistIndex(ifModifiedSince time.Time) (*responses.Indexes, error) {
+func (c *BrowsingController) getArtistIndex(r *http.Request, ifModifiedSince time.Time) (*responses.Indexes, error) {
 	indexes, lastModified, err := c.browser.Indexes(ifModifiedSince)
 	if err != nil {
-		beego.Error("Error retrieving Indexes:", err)
+		log.Error(r, "Error retrieving Indexes", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -61,7 +61,7 @@ func (c *BrowsingController) getArtistIndex(ifModifiedSince time.Time) (*respons
 func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ifModifiedSince := ParamTime(r, "ifModifiedSince", time.Time{})
 
-	res, err := c.getArtistIndex(ifModifiedSince)
+	res, err := c.getArtistIndex(r, ifModifiedSince)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) 
 }
 
 func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	res, err := c.getArtistIndex(time.Time{})
+	res, err := c.getArtistIndex(r, time.Time{})
 	if err != nil {
 		return nil, err
 	}
@@ -84,13 +84,13 @@ func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) 
 
 func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	id := ParamString(r, "id")
-	dir, err := c.browser.Directory(id)
+	dir, err := c.browser.Directory(r.Context(), id)
 	switch {
 	case err == domain.ErrNotFound:
-		beego.Error("Requested Id", id, "not found:", err)
+		log.Error(r, "Requested Id not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
-		beego.Error(err)
+		log.Error(err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -101,13 +101,13 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 
 func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	id := ParamString(r, "id")
-	dir, err := c.browser.Artist(id)
+	dir, err := c.browser.Artist(r.Context(), id)
 	switch {
 	case err == domain.ErrNotFound:
-		beego.Error("Requested ArtistId", id, "not found:", err)
+		log.Error(r, "Requested ArtistId not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Artist not found")
 	case err != nil:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -118,13 +118,13 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 
 func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	id := ParamString(r, "id")
-	dir, err := c.browser.Album(id)
+	dir, err := c.browser.Album(r.Context(), id)
 	switch {
 	case err == domain.ErrNotFound:
-		beego.Error("Requested AlbumId", id, "not found:", err)
+		log.Error(r, "Requested Id not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Album not found")
 	case err != nil:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
@@ -138,10 +138,10 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 	song, err := c.browser.GetSong(id)
 	switch {
 	case err == domain.ErrNotFound:
-		beego.Error("Requested Id", id, "not found:", err)
+		log.Error(r, "Requested Id not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Song not found")
 	case err != nil:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 

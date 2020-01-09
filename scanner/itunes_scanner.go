@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/dhowden/itl"
 	"github.com/dhowden/tag"
 )
@@ -49,13 +49,13 @@ type plsRelation struct {
 }
 
 func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (int, error) {
-	beego.Debug("Checking for updates since", lastModifiedSince.String(), "- Library:", path)
+	log.Debug("Checking for updates", "lastModifiedSince", lastModifiedSince, "library", path)
 	xml, _ := os.Open(path)
 	l, err := itl.ReadFromXML(xml)
 	if err != nil {
 		return 0, err
 	}
-	beego.Debug("Loaded", len(l.Tracks), "tracks")
+	log.Debug("Loaded tracks", "total", len(l.Tracks))
 
 	s.lastModifiedSince = lastModifiedSince
 	s.mediaFiles = make(map[string]*domain.MediaFile)
@@ -85,7 +85,7 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 		}
 		i++
 		if i%1000 == 0 {
-			beego.Debug("Processed", i, "tracks.", len(s.artists), "artists,", len(s.albums), "albums", len(s.mediaFiles), "songs")
+			log.Debug(fmt.Sprintf("Processed %d tracks", i), "artists", len(s.artists), "albums", len(s.albums), "songs", len(s.mediaFiles))
 		}
 	}
 
@@ -98,9 +98,9 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 	}
 
 	if err := s.checksumRepo.SetData(s.newSums); err != nil {
-		beego.Error("Error saving checksums:", err)
+		log.Error("Error saving checksums", err)
 	} else {
-		beego.Debug("Saved", len(s.newSums), "checksums")
+		log.Debug("Saved checksums", "total", len(s.newSums))
 	}
 
 	ignFolders := conf.Sonic.PlsIgnoreFolders
@@ -116,7 +116,7 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 
 		s.collectPlaylists(&p, fullPath)
 	}
-	beego.Debug("Processed", len(l.Playlists), "playlists.")
+	log.Debug("Processed playlists", "total", len(l.Playlists))
 
 	return len(l.Tracks), nil
 }
@@ -346,26 +346,26 @@ func artistId(t *itl.Track) string {
 func hasCoverArt(path string) bool {
 	defer func() {
 		if r := recover(); r != nil {
-			beego.Error("Reading tag for", path, "Panic:", r)
+			log.Error("Panic reading tag", "path", path, "error", r)
 		}
 	}()
 
 	if _, err := os.Stat(path); err == nil {
 		f, err := os.Open(path)
 		if err != nil {
-			beego.Warn("Error opening file", path, "-", err)
+			log.Warn("Error opening file", "path", path, err)
 			return false
 		}
 		defer f.Close()
 
 		m, err := tag.ReadFrom(f)
 		if err != nil {
-			beego.Warn("Error reading tag from file", path, "-", err)
+			log.Warn("Error reading tag from file", "path", path, err)
 			return false
 		}
 		return m.Picture() != nil
 	}
-	//beego.Warn("File not found:", path)
+	//log.Warn("File not found", "path", path)
 	return false
 }
 

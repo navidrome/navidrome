@@ -1,4 +1,5 @@
 package api_test
+
 //
 //import (
 //	"encoding/xml"
@@ -92,7 +93,7 @@ package api_test
 //
 //func TestContext(t *testing.T) {
 //	tests.Init(t, false)
-//	beego.Router("/rest/mocktest", &mockController{})
+//	log.Router(r, "/rest/mocktest", &mockController{})
 //
 //	Convey("Subject: Context", t, func() {
 //		_, w := GetWithHeader("/rest/mocktest?u=deluan&p=wordpass&c=testClient&v=1.0.0", "X-Request-Id", "123123", "TestContext")

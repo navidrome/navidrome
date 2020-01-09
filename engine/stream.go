@@ -1,41 +1,42 @@
 package engine
 
 import (
+	"context"
 	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/log"
 )
 
 // TODO Encapsulate as a io.Reader
-func Stream(path string, bitRate int, maxBitRate int, w io.Writer) error {
+func Stream(ctx context.Context, path string, bitRate int, maxBitRate int, w io.Writer) error {
 	var f io.Reader
 	var err error
 	enabled := !conf.Sonic.DisableDownsampling
 	if enabled && maxBitRate > 0 && bitRate > maxBitRate {
-		f, err = downsample(path, maxBitRate)
+		f, err = downsample(ctx, path, maxBitRate)
 	} else {
 		f, err = os.Open(path)
 	}
 	if err != nil {
-		beego.Error("Error opening file", path, ":", err)
+		log.Error(ctx, "Error opening file", "path", path, err)
 		return err
 	}
 	if _, err = io.Copy(w, f); err != nil {
-		beego.Error("Error copying file", path, ":", err)
+		log.Error(ctx, "Error copying file", "path", path, err)
 		return err
 	}
 	return err
 }
 
-func downsample(path string, maxBitRate int) (f io.Reader, err error) {
+func downsample(ctx context.Context, path string, maxBitRate int) (f io.Reader, err error) {
 	cmdLine, args := createDownsamplingCommand(path, maxBitRate)
 
-	beego.Debug("Executing cmd:", cmdLine, args)
+	log.Debug(ctx, "Executing command", "cmdLine", cmdLine, "args", args)
 	cmd := exec.Command(cmdLine, args...)
 	cmd.Stderr = os.Stderr
 	if f, err = cmd.StdoutPipe(); err != nil {

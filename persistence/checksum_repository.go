@@ -3,7 +3,7 @@ package persistence
 import (
 	"errors"
 
-	"github.com/astaxie/beego"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/siddontang/ledisdb/ledis"
 )
@@ -27,12 +27,12 @@ func (r *checkSumRepository) loadData() {
 
 	pairs, err := Db().HGetAll(checkSumKeyName)
 	if err != nil {
-		beego.Error("Error loading CheckSums:", err)
+		log.Error("Error loading CheckSums", err)
 	}
 	for _, p := range pairs {
 		r.data[string(p.Field)] = string(p.Value)
 	}
-	beego.Debug("Loaded", len(r.data), "checksums")
+	log.Debug("Loaded checksums", "total", len(r.data))
 }
 
 func (r *checkSumRepository) Put(id, sum string) error {

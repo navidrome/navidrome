@@ -1,13 +1,14 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
+	"github.com/cloudsonic/sonic-server/log"
 )
 
 const (
@@ -16,8 +17,8 @@ const (
 )
 
 type Scrobbler interface {
-	Register(playerId int, trackId string, playDate time.Time) (*domain.MediaFile, error)
-	NowPlaying(playerId int, playerName, trackId, username string) (*domain.MediaFile, error)
+	Register(ctx context.Context, playerId int, trackId string, playDate time.Time) (*domain.MediaFile, error)
+	NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*domain.MediaFile, error)
 }
 
 func NewScrobbler(itunes itunesbridge.ItunesControl, mr domain.MediaFileRepository, npr NowPlayingRepository) Scrobbler {
@@ -30,7 +31,7 @@ type scrobbler struct {
 	npRepo NowPlayingRepository
 }
 
-func (s *scrobbler) detectSkipped(playerId int, trackId string) {
+func (s *scrobbler) detectSkipped(ctx context.Context, playerId int, trackId string) {
 	size, _ := s.npRepo.Count(playerId)
 	switch size {
 	case 0:
@@ -53,22 +54,22 @@ func (s *scrobbler) detectSkipped(playerId int, trackId string) {
 			}
 			diff := np.Start.Sub(prev.Start)
 			if diff < minSkipped || diff > maxSkipped {
-				beego.Debug(fmt.Sprintf("-- Playtime for track %s was %v. Not skipping.", prev.TrackId, diff))
+				log.Debug(ctx, fmt.Sprintf("-- Playtime for track %s was %v. Not skipping.", prev.TrackId, diff))
 				prev = np
 				continue
 			}
 			err = s.itunes.MarkAsSkipped(prev.TrackId, prev.Start.Add(1*time.Minute))
 			if err != nil {
-				beego.Warn("Error skipping track", prev.TrackId)
+				log.Warn(ctx, "Error skipping track", "id", prev.TrackId)
 			} else {
-				beego.Debug("-- Skipped track", prev.TrackId)
+				log.Debug(ctx, "-- Skipped track "+prev.TrackId)
 			}
 		}
 	}
 }
 
-func (s *scrobbler) Register(playerId int, trackId string, playTime time.Time) (*domain.MediaFile, error) {
-	s.detectSkipped(playerId, trackId)
+func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, playTime time.Time) (*domain.MediaFile, error) {
+	s.detectSkipped(ctx, playerId, trackId)
 
 	mf, err := s.mfRepo.Get(trackId)
 	if err != nil {
@@ -85,7 +86,7 @@ func (s *scrobbler) Register(playerId int, trackId string, playTime time.Time) (
 	return mf, nil
 }
 
-func (s *scrobbler) NowPlaying(playerId int, playerName, trackId, username string) (*domain.MediaFile, error) {
+func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*domain.MediaFile, error) {
 	mf, err := s.mfRepo.Get(trackId)
 	if err != nil {
 		return nil, err

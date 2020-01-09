@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/log"
 )
 
 type MediaRetrievalController struct {
@@ -23,7 +23,7 @@ func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Requ
 	var f *os.File
 	f, err := os.Open("static/itunes.png")
 	if err != nil {
-		beego.Error(err, "Image not found")
+		log.Error(r, "Image not found", err)
 		return nil, NewError(responses.ErrorDataNotFound, "Avatar image not found")
 	}
 	defer f.Close()
@@ -43,10 +43,10 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 
 	switch {
 	case err == domain.ErrNotFound:
-		beego.Error(err, "Id:", id)
+		log.Error(r, err.Error(), "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Cover not found")
 	case err != nil:
-		beego.Error(err)
+		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 

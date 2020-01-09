@@ -4,14 +4,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"testing"
 
-	"github.com/astaxie/beego"
 	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/log"
 )
-
-var initSync sync.Once
 
 func Init(t *testing.T, skipOnShort bool) {
 	if skipOnShort && testing.Short() {
@@ -21,14 +18,11 @@ func Init(t *testing.T, skipOnShort bool) {
 	appPath, _ := filepath.Abs(filepath.Join(filepath.Dir(file), ".."))
 	confPath, _ := filepath.Abs(filepath.Join(appPath, "tests", "sonic-test.toml"))
 
+	os.Chdir(appPath)
 	conf.LoadFromFile(confPath)
-
-	initSync.Do(func() {
-		beego.TestBeegoInit(appPath)
-	})
 
 	noLog := os.Getenv("NOLOG")
 	if noLog != "" {
-		beego.SetLevel(beego.LevelError)
+		log.SetLevel(log.LevelError)
 	}
 }
