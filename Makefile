@@ -1,11 +1,6 @@
-BINARY=sonic-server
-
+.PHONY: build
 build:
 	go build
-
-.PHONY: clean
-clean:
-	rm -f ${BINARY}
 
 .PHONY: setup
 setup: jamstash
@@ -20,17 +15,18 @@ run:
 
 .PHONY: test
 test:
-	BEEGO_RUNMODE=test go test ./... -v
+	go test ./... -v
 
 .PHONY: convey
 convey:
-	NOLOG=1 goconvey --port 9090 -excludedDirs static,devDb,wiki,bin,tests
+	NOLOG=1 goconvey --port 9090 -excludedDirs static,devDb,wiki,bin,tests,Jamstash-master
 
 .PHONY: cloc
 cloc:
 	# cloc can be installed using brew
-	cloc --exclude-dir=devDb,.idea,.vscode,wiki,static --exclude-ext=iml,xml .
+	cloc --exclude-dir=devDb,.idea,.vscode,wiki,static,Jamstash-master --exclude-ext=iml,xml .
 
+.PHONY: jamstash
 jamstash:
 	wget -N https://github.com/tsquillario/Jamstash/archive/master.zip
 	unzip -o master.zip
