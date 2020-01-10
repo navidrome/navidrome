@@ -20,6 +20,7 @@ const (
 	LevelWarn     = Level(logrus.WarnLevel)
 	LevelInfo     = Level(logrus.InfoLevel)
 	LevelDebug    = Level(logrus.DebugLevel)
+	LevelTrace    = Level(logrus.TraceLevel)
 )
 
 var (
@@ -82,6 +83,14 @@ func Debug(args ...interface{}) {
 	}
 	logger, msg := parseArgs(args)
 	logger.Debug(msg)
+}
+
+func Trace(args ...interface{}) {
+	if currentLevel < LevelTrace {
+		return
+	}
+	logger, msg := parseArgs(args)
+	logger.Trace(msg)
 }
 
 func parseArgs(args []interface{}) (*logrus.Entry, string) {
