@@ -13,9 +13,8 @@ The project's main goals are:
 - Be fully compatible with available [Subsonic clients](http://www.subsonic.org/pages/apps.jsp)
   (actively being tested with
   [DSub](http://www.subsonic.org/pages/apps.jsp#dsub),
-  [Music Stash](https://play.google.com/store/apps/details?id=com.ghenry22.mymusicstash),
-  [Jamstash](http://www.subsonic.org/pages/apps.jsp#jamstash) and
-  [SubFire](http://www.subsonic.org/pages/apps.jsp#subfire))
+  [Music Stash](https://play.google.com/store/apps/details?id=com.ghenry22.mymusicstash) and
+  [Jamstash](http://www.subsonic.org/pages/apps.jsp#jamstash))
 - Import and use all metadata from iTunes, so that you can optionally keep using iTunes to manage your music
 - Implement Smart Playlists, as iTunes
 
