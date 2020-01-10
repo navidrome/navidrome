@@ -9,6 +9,7 @@ import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence/ledis"
+	"github.com/cloudsonic/sonic-server/persistence/storm"
 	"github.com/deluan/gomate"
 	ledis2 "github.com/deluan/gomate/ledis"
 	"github.com/google/wire"
@@ -22,10 +23,10 @@ func initSystemController() *SystemController {
 }
 
 func initBrowsingController() *BrowsingController {
-	propertyRepository := ledis.NewPropertyRepository()
+	propertyRepository := storm.NewPropertyRepository()
 	mediaFolderRepository := ledis.NewMediaFolderRepository()
 	artistIndexRepository := ledis.NewArtistIndexRepository()
-	artistRepository := ledis.NewArtistRepository()
+	artistRepository := storm.NewArtistRepository()
 	albumRepository := ledis.NewAlbumRepository()
 	mediaFileRepository := ledis.NewMediaFileRepository()
 	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistIndexRepository, artistRepository, albumRepository, mediaFileRepository)
@@ -48,7 +49,7 @@ func initMediaAnnotationController() *MediaAnnotationController {
 	nowPlayingRepository := ledis.NewNowPlayingRepository()
 	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, nowPlayingRepository)
 	albumRepository := ledis.NewAlbumRepository()
-	artistRepository := ledis.NewArtistRepository()
+	artistRepository := storm.NewArtistRepository()
 	ratings := engine.NewRatings(itunesControl, mediaFileRepository, albumRepository, artistRepository)
 	mediaAnnotationController := NewMediaAnnotationController(scrobbler, ratings)
 	return mediaAnnotationController
@@ -64,7 +65,7 @@ func initPlaylistsController() *PlaylistsController {
 }
 
 func initSearchingController() *SearchingController {
-	artistRepository := ledis.NewArtistRepository()
+	artistRepository := storm.NewArtistRepository()
 	albumRepository := ledis.NewAlbumRepository()
 	mediaFileRepository := ledis.NewMediaFileRepository()
 	db := newDB()
@@ -94,7 +95,7 @@ func initStreamController() *StreamController {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, ledis.Set, engine.Set, NewSystemController,
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, ledis.Set, storm.Set, engine.Set, NewSystemController,
 	NewBrowsingController,
 	NewAlbumListController,
 	NewMediaAnnotationController,

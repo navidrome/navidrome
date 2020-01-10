@@ -10,6 +10,7 @@ var _ = Describe("ArtistRepository", func() {
 	var repo domain.ArtistRepository
 
 	BeforeEach(func() {
+		Db().Drop(&_Artist{})
 		repo = NewArtistRepository()
 	})
 
@@ -24,18 +25,29 @@ var _ = Describe("ArtistRepository", func() {
 		Expect(repo.Get("1")).To(Equal(artist))
 	})
 
-	It("purges inactive records", func() {
-		data := domain.Artists{
-			{ID: "1", Name: "Saara Saara"},
-			{ID: "2", Name: "Kraftwerk"},
-			{ID: "3", Name: "The Beatles"},
-		}
-		active := domain.Artists{
-			{ID: "1"}, {ID: "3"},
-		}
-		for _, a := range data {
-			repo.Put(&a)
-		}
-		Expect(repo.PurgeInactive(active)).To(Equal([]string{"2"}))
+	Describe("PurgeInactive", func() {
+		var data domain.Artists
+
+		BeforeEach(func() {
+			data = domain.Artists{
+				{ID: "1", Name: "Saara Saara"},
+				{ID: "2", Name: "Kraftwerk"},
+				{ID: "3", Name: "The Beatles"},
+			}
+			for _, a := range data {
+				repo.Put(&a)
+			}
+		})
+
+		It("purges inactive records", func() {
+			active := domain.Artists{{ID: "1"}, {ID: "3"}}
+			Expect(repo.PurgeInactive(active)).To(Equal([]string{"2"}))
+		})
+
+		It("doesn't delete anything if all is active", func() {
+			active := domain.Artists{{ID: "1"}, {ID: "2"}, {ID: "3"}}
+			Expect(repo.PurgeInactive(active)).To(BeEmpty())
+		})
 	})
+
 })

@@ -34,17 +34,27 @@ func (r *stormRepository) Exists(id string) (bool, error) {
 	return err != storm.ErrNotFound, nil
 }
 
+func (r *stormRepository) getID(record interface{}) string {
+	v := reflect.ValueOf(record).Elem()
+	id := v.FieldByName("ID").String()
+	return id
+}
+
 func (r *stormRepository) purgeInactive(ids []string) (deleted []string, err error) {
 	query := Db().Select(q.Not(q.In("ID", ids)))
 
+	// Collect IDs that will be deleted
 	err = query.Each(r.bucket, func(record interface{}) error {
-		v := reflect.ValueOf(record).Elem()
-		id := v.FieldByName("ID").String()
+		id := r.getID(record)
 		deleted = append(deleted, id)
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if len(deleted) == 0 {
+		return
 	}
 
 	err = query.Delete(r.bucket)

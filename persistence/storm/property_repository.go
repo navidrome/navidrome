@@ -1,6 +1,7 @@
 package storm
 
 import (
+	"github.com/asdine/storm"
 	"github.com/cloudsonic/sonic-server/domain"
 )
 
@@ -25,7 +26,14 @@ func (r *propertyRepository) Get(id string) (string, error) {
 }
 
 func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
-	return defaultValue, nil
+	value, err := r.Get(id)
+	if err == storm.ErrNotFound {
+		return defaultValue, nil
+	}
+	if err != nil {
+		return defaultValue, err
+	}
+	return value, nil
 }
 
 var _ domain.PropertyRepository = (*propertyRepository)(nil)
