@@ -3,7 +3,7 @@ package domain
 import "github.com/cloudsonic/sonic-server/utils"
 
 type ArtistInfo struct {
-	ArtistId   string
+	ArtistID   string
 	Artist     string
 	AlbumCount int
 }

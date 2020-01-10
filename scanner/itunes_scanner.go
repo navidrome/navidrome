@@ -77,11 +77,11 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 			mf := s.collectMediaFiles(&t)
 			s.collectAlbums(&t, mf, ar)
 
-			songsPerAlbum[mf.AlbumId]++
-			if albumsPerArtist[mf.ArtistId] == nil {
-				albumsPerArtist[mf.ArtistId] = make(map[string]bool)
+			songsPerAlbum[mf.AlbumID]++
+			if albumsPerArtist[mf.ArtistID] == nil {
+				albumsPerArtist[mf.ArtistID] = make(map[string]bool)
 			}
-			albumsPerArtist[mf.ArtistId][mf.AlbumId] = true
+			albumsPerArtist[mf.ArtistID][mf.AlbumID] = true
 		}
 		i++
 		if i%1000 == 0 {
@@ -174,18 +174,18 @@ func (s *ItunesScanner) skipPlaylist(p *itl.Playlist, ignFolders bool, ignPatter
 
 func (s *ItunesScanner) collectPlaylists(p *itl.Playlist, fullPath string) {
 	pl := &domain.Playlist{}
-	pl.Id = p.PlaylistPersistentID
+	pl.ID = p.PlaylistPersistentID
 	pl.Name = unescape(p.Name)
 	pl.FullPath = fullPath
 	pl.Tracks = make([]string, 0, len(p.PlaylistItems))
 	for _, item := range p.PlaylistItems {
 		if mf, found := s.pmediaFiles[item.TrackID]; found {
-			pl.Tracks = append(pl.Tracks, mf.Id)
+			pl.Tracks = append(pl.Tracks, mf.ID)
 			pl.Duration += mf.Duration
 		}
 	}
 	if len(pl.Tracks) > 0 {
-		s.playlists[pl.Id] = pl
+		s.playlists[pl.ID] = pl
 	}
 }
 
@@ -233,10 +233,10 @@ func (s *ItunesScanner) calcCheckSum(t *itl.Track) string {
 
 func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	mf := &domain.MediaFile{}
-	mf.Id = t.PersistentID
+	mf.ID = t.PersistentID
 	mf.Album = unescape(t.Album)
-	mf.AlbumId = albumId(t)
-	mf.ArtistId = artistId(t)
+	mf.AlbumID = albumId(t)
+	mf.ArtistID = artistId(t)
 	mf.Title = unescape(t.Name)
 	mf.Artist = unescape(t.Artist)
 	if mf.Album == "" {
@@ -274,7 +274,7 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 		mf.HasCoverArt = hasCoverArt(path)
 	}
 
-	s.mediaFiles[mf.Id] = mf
+	s.mediaFiles[mf.ID] = mf
 	s.pmediaFiles[t.TrackID] = mf
 
 	return mf
@@ -288,8 +288,8 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 	}
 
 	al := s.albums[id]
-	al.Id = id
-	al.ArtistId = ar.Id
+	al.ID = id
+	al.ArtistID = ar.ID
 	al.Name = mf.Album
 	al.Year = t.Year
 	al.Compilation = t.Compilation
@@ -308,7 +308,7 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 	al.Duration += mf.Duration
 
 	if mf.HasCoverArt {
-		al.CoverArtId = mf.Id
+		al.CoverArtId = mf.ID
 		al.CoverArtPath = mf.Path
 	}
 
@@ -333,7 +333,7 @@ func (s *ItunesScanner) collectArtists(t *itl.Track) *domain.Artist {
 		s.artists[id] = &domain.Artist{}
 	}
 	ar := s.artists[id]
-	ar.Id = id
+	ar.ID = id
 	ar.Name = unescape(realArtistName(t))
 	if ar.Name == "" {
 		ar.Name = "[Unknown Artist]"

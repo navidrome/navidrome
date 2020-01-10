@@ -5,7 +5,7 @@ const (
 )
 
 type Property struct {
-	Id    string
+	ID    string
 	Value string
 }
 

@@ -38,14 +38,14 @@ func (s *scrobbler) detectSkipped(ctx context.Context, playerId int, trackId str
 		return
 	case 1:
 		np, _ := s.npRepo.Tail(playerId)
-		if np.TrackId != trackId {
+		if np.TrackID != trackId {
 			return
 		}
 		s.npRepo.Dequeue(playerId)
 	default:
 		prev, _ := s.npRepo.Dequeue(playerId)
 		for {
-			if prev.TrackId == trackId {
+			if prev.TrackID == trackId {
 				break
 			}
 			np, err := s.npRepo.Dequeue(playerId)
@@ -54,15 +54,15 @@ func (s *scrobbler) detectSkipped(ctx context.Context, playerId int, trackId str
 			}
 			diff := np.Start.Sub(prev.Start)
 			if diff < minSkipped || diff > maxSkipped {
-				log.Debug(ctx, fmt.Sprintf("-- Playtime for track %s was %v. Not skipping.", prev.TrackId, diff))
+				log.Debug(ctx, fmt.Sprintf("-- Playtime for track %s was %v. Not skipping.", prev.TrackID, diff))
 				prev = np
 				continue
 			}
-			err = s.itunes.MarkAsSkipped(prev.TrackId, prev.Start.Add(1*time.Minute))
+			err = s.itunes.MarkAsSkipped(prev.TrackID, prev.Start.Add(1*time.Minute))
 			if err != nil {
-				log.Warn(ctx, "Error skipping track", "id", prev.TrackId)
+				log.Warn(ctx, "Error skipping track", "id", prev.TrackID)
 			} else {
-				log.Debug(ctx, "-- Skipped track "+prev.TrackId)
+				log.Debug(ctx, "-- Skipped track "+prev.TrackID)
 			}
 		}
 	}
@@ -77,7 +77,7 @@ func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, 
 	}
 
 	if mf == nil {
-		return nil, errors.New(fmt.Sprintf(`Id "%s" not found`, trackId))
+		return nil, errors.New(fmt.Sprintf(`ID "%s" not found`, trackId))
 	}
 
 	if err := s.itunes.MarkAsPlayed(trackId, playTime); err != nil {
@@ -93,9 +93,9 @@ func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, tr
 	}
 
 	if mf == nil {
-		return nil, errors.New(fmt.Sprintf(`Id "%s" not found`, trackId))
+		return nil, errors.New(fmt.Sprintf(`ID "%s" not found`, trackId))
 	}
 
-	info := &domain.NowPlayingInfo{TrackId: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
+	info := &domain.NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
 	return mf, s.npRepo.Enqueue(info)
 }

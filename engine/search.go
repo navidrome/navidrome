@@ -62,15 +62,15 @@ func (s *search) ClearAll() error {
 }
 
 func (s *search) IndexArtist(ar *domain.Artist) error {
-	return s.idxArtist.Index(ar.Id, sanitize.Accents(strings.ToLower(ar.Name)))
+	return s.idxArtist.Index(ar.ID, sanitize.Accents(strings.ToLower(ar.Name)))
 }
 
 func (s *search) IndexAlbum(al *domain.Album) error {
-	return s.idxAlbum.Index(al.Id, sanitize.Accents(strings.ToLower(al.Name)))
+	return s.idxAlbum.Index(al.ID, sanitize.Accents(strings.ToLower(al.Name)))
 }
 
 func (s *search) IndexMediaFile(mf *domain.MediaFile) error {
-	return s.idxSong.Index(mf.Id, sanitize.Accents(strings.ToLower(mf.Title)))
+	return s.idxSong.Index(mf.ID, sanitize.Accents(strings.ToLower(mf.Title)))
 }
 
 func (s *search) RemoveArtist(ids ...string) error {
@@ -153,7 +153,7 @@ func criticalError(ctx context.Context, kind, id string, err error) bool {
 	case err != nil:
 		return true
 	case err == domain.ErrNotFound:
-		log.Warn(ctx, kind+"Id not in DB. Need a reindex?", "id", id)
+		log.Warn(ctx, kind+"ID not in DB. Need a reindex?", "id", id)
 	}
 	return false
 }

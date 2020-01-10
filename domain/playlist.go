@@ -1,7 +1,7 @@
 package domain
 
 type Playlist struct {
-	Id       string
+	ID       string
 	Name     string
 	Comment  string
 	FullPath string

@@ -45,7 +45,7 @@ type Entries []Entry
 
 func FromArtist(ar *domain.Artist) Entry {
 	e := Entry{}
-	e.Id = ar.Id
+	e.Id = ar.ID
 	e.Title = ar.Name
 	e.AlbumCount = ar.AlbumCount
 	e.IsDir = true
@@ -54,10 +54,10 @@ func FromArtist(ar *domain.Artist) Entry {
 
 func FromAlbum(al *domain.Album) Entry {
 	e := Entry{}
-	e.Id = al.Id
+	e.Id = al.ID
 	e.Title = al.Name
 	e.IsDir = true
-	e.Parent = al.ArtistId
+	e.Parent = al.ArtistID
 	e.Album = al.Name
 	e.Year = al.Year
 	e.Artist = al.AlbumArtist
@@ -66,8 +66,8 @@ func FromAlbum(al *domain.Album) Entry {
 	e.Starred = al.StarredAt
 	e.PlayCount = int32(al.PlayCount)
 	e.Created = al.CreatedAt
-	e.AlbumId = al.Id
-	e.ArtistId = al.ArtistId
+	e.AlbumId = al.ID
+	e.ArtistId = al.ArtistID
 	e.UserRating = al.Rating
 	e.Duration = al.Duration
 	e.SongCount = al.SongCount
@@ -76,10 +76,10 @@ func FromAlbum(al *domain.Album) Entry {
 
 func FromMediaFile(mf *domain.MediaFile) Entry {
 	e := Entry{}
-	e.Id = mf.Id
+	e.Id = mf.ID
 	e.Title = mf.Title
 	e.IsDir = false
-	e.Parent = mf.AlbumId
+	e.Parent = mf.AlbumID
 	e.Album = mf.Album
 	e.Year = mf.Year
 	e.Artist = mf.Artist
@@ -91,7 +91,7 @@ func FromMediaFile(mf *domain.MediaFile) Entry {
 	e.BitRate = mf.BitRate
 	e.Starred = mf.StarredAt
 	if mf.HasCoverArt {
-		e.CoverArt = mf.Id
+		e.CoverArt = mf.ID
 	}
 	e.ContentType = mf.ContentType()
 	// Creates a "pseudo" path, to avoid sending absolute paths to the client
@@ -101,8 +101,8 @@ func FromMediaFile(mf *domain.MediaFile) Entry {
 	e.PlayCount = int32(mf.PlayCount)
 	e.DiscNumber = mf.DiscNumber
 	e.Created = mf.CreatedAt
-	e.AlbumId = mf.AlbumId
-	e.ArtistId = mf.ArtistId
+	e.AlbumId = mf.AlbumID
+	e.ArtistId = mf.ArtistID
 	e.Type = "music" // TODO Hardcoded for now
 	e.UserRating = mf.Rating
 	return e

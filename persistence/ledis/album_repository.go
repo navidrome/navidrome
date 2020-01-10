@@ -18,10 +18,10 @@ func NewAlbumRepository() domain.AlbumRepository {
 }
 
 func (r *albumRepository) Put(m *domain.Album) error {
-	if m.Id == "" {
-		return errors.New("album Id is not set")
+	if m.ID == "" {
+		return errors.New("album ID is not set")
 	}
-	return r.saveOrUpdate(m.Id, m)
+	return r.saveOrUpdate(m.ID, m)
 }
 
 func (r *albumRepository) Get(id string) (*domain.Album, error) {
@@ -60,7 +60,7 @@ func (r *albumRepository) GetAllIds() ([]string, error) {
 
 func (r *albumRepository) PurgeInactive(active domain.Albums) ([]string, error) {
 	return r.purgeInactive(active, func(e interface{}) string {
-		return e.(domain.Album).Id
+		return e.(domain.Album).ID
 	})
 }
 

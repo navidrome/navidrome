@@ -19,10 +19,10 @@ func NewMediaFileRepository() domain.MediaFileRepository {
 }
 
 func (r *mediaFileRepository) Put(m *domain.MediaFile) error {
-	if m.Id == "" {
-		return errors.New("mediaFile Id is not set")
+	if m.ID == "" {
+		return errors.New("mediaFile ID is not set")
 	}
-	return r.saveOrUpdate(m.Id, m)
+	return r.saveOrUpdate(m.ID, m)
 }
 
 func (r *mediaFileRepository) Get(id string) (*domain.MediaFile, error) {
@@ -31,7 +31,7 @@ func (r *mediaFileRepository) Get(id string) (*domain.MediaFile, error) {
 		return nil, err
 	}
 	mf := m.(*domain.MediaFile)
-	if mf.Id != id {
+	if mf.ID != id {
 		return nil, nil
 	}
 	return mf, nil
@@ -69,7 +69,7 @@ func (r *mediaFileRepository) GetAllIds() ([]string, error) {
 
 func (r *mediaFileRepository) PurgeInactive(active domain.MediaFiles) ([]string, error) {
 	return r.purgeInactive(active, func(e interface{}) string {
-		return e.(domain.MediaFile).Id
+		return e.(domain.MediaFile).ID
 	})
 }
 

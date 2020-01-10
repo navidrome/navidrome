@@ -26,7 +26,7 @@ func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Reques
 	}
 	playlists := make([]responses.Playlist, len(allPls))
 	for i, p := range allPls {
-		playlists[i].Id = p.Id
+		playlists[i].Id = p.ID
 		playlists[i].Name = p.Name
 		playlists[i].Comment = p.Comment
 		playlists[i].SongCount = len(p.Tracks)

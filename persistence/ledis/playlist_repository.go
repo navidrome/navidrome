@@ -17,10 +17,10 @@ func NewPlaylistRepository() domain.PlaylistRepository {
 }
 
 func (r *playlistRepository) Put(m *domain.Playlist) error {
-	if m.Id == "" {
-		return errors.New("playlist Id is not set")
+	if m.ID == "" {
+		return errors.New("playlist ID is not set")
 	}
-	return r.saveOrUpdate(m.Id, m)
+	return r.saveOrUpdate(m.ID, m)
 }
 
 func (r *playlistRepository) Get(id string) (*domain.Playlist, error) {
@@ -41,7 +41,7 @@ func (r *playlistRepository) GetAll(options domain.QueryOptions) (domain.Playlis
 
 func (r *playlistRepository) PurgeInactive(active domain.Playlists) ([]string, error) {
 	return r.purgeInactive(active, func(e interface{}) string {
-		return e.(domain.Playlist).Id
+		return e.(domain.Playlist).ID
 	})
 }
 

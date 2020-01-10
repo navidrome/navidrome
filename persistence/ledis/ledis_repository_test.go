@@ -91,7 +91,7 @@ func TestBaseRepository(t *testing.T) {
 
 		Convey("When I call NewId with a name", func() {
 			Id := repo.newId("a name")
-			Convey("Then it should return a new Id", func() {
+			Convey("Then it should return a new ID", func() {
 				So(Id, ShouldNotBeEmpty)
 			})
 		})
@@ -100,7 +100,7 @@ func TestBaseRepository(t *testing.T) {
 			FirstId := repo.newId("a name")
 			SecondId := repo.newId("a name")
 
-			Convey("Then it should return the same Id each time", func() {
+			Convey("Then it should return the same ID each time", func() {
 				So(FirstId, ShouldEqual, SecondId)
 			})
 
@@ -163,7 +163,7 @@ func TestBaseRepository(t *testing.T) {
 			entity := &TestEntity{Id: "111", Name: "One Name", ParentId: "AAA"}
 			repo.saveOrUpdate(entity.Id, entity)
 
-			Convey("When I save an entity with a different Id", func() {
+			Convey("When I save an entity with a different ID", func() {
 				newEntity := &TestEntity{Id: "222", Name: "Another Name", ParentId: "AAA"}
 				repo.saveOrUpdate(newEntity.Id, newEntity)
 
@@ -174,7 +174,7 @@ func TestBaseRepository(t *testing.T) {
 
 			})
 
-			Convey("When I save an entity with the same Id", func() {
+			Convey("When I save an entity with the same ID", func() {
 				newEntity := &TestEntity{Id: "111", Name: "New Name", ParentId: "AAA"}
 				repo.saveOrUpdate(newEntity.Id, newEntity)
 

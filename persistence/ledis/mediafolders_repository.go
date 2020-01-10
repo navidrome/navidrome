@@ -14,7 +14,7 @@ func NewMediaFolderRepository() domain.MediaFolderRepository {
 }
 
 func (*mediaFolderRepository) GetAll() (domain.MediaFolders, error) {
-	mediaFolder := domain.MediaFolder{Id: "0", Name: "iTunes Library", Path: conf.Sonic.MusicFolder}
+	mediaFolder := domain.MediaFolder{ID: "0", Name: "iTunes Library", Path: conf.Sonic.MusicFolder}
 	result := make(domain.MediaFolders, 1)
 	result[0] = mediaFolder
 	return result, nil

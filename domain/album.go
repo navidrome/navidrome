@@ -3,9 +3,9 @@ package domain
 import "time"
 
 type Album struct {
-	Id           string
+	ID           string
 	Name         string
-	ArtistId     string `parent:"artist"`
+	ArtistID     string `parent:"artist"`
 	CoverArtPath string
 	CoverArtId   string
 	Artist       string

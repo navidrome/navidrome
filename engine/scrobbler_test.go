@@ -23,7 +23,7 @@ func TestScrobbler(t *testing.T) {
 	scrobbler := engine.NewScrobbler(itCtrl, mfRepo, npRepo)
 
 	Convey("Given a DB with one song", t, func() {
-		mfRepo.SetData(`[{"Id":"2","Title":"Hands Of Time"}]`, 1)
+		mfRepo.SetData(`[{"ID":"2","Title":"Hands Of Time"}]`, 1)
 
 		Convey("When I scrobble an existing song", func() {
 			now := time.Now()
@@ -63,7 +63,7 @@ func TestScrobbler(t *testing.T) {
 
 			Convey("And it saves the song as the one current playing", func() {
 				info, _ := npRepo.Head(1)
-				So(info.TrackId, ShouldEqual, "2")
+				So(info.TrackID, ShouldEqual, "2")
 				// Commenting out time sensitive test, due to flakiness
 				// So(info.Start, ShouldHappenBefore, time.Now())
 				So(info.Username, ShouldEqual, "deluan")
@@ -95,7 +95,7 @@ func TestSkipping(t *testing.T) {
 	scrobbler := engine.NewScrobbler(itCtrl, mfRepo, npRepo)
 
 	Convey("Given a DB with three songs", t, func() {
-		mfRepo.SetData(`[{"Id":"1","Title":"Femme Fatale"},{"Id":"2","Title":"Here She Comes Now"},{"Id":"3","Title":"Lady Godiva's Operation"}]`, 3)
+		mfRepo.SetData(`[{"ID":"1","Title":"Femme Fatale"},{"ID":"2","Title":"Here She Comes Now"},{"ID":"3","Title":"Lady Godiva's Operation"}]`, 3)
 		itCtrl.skipped = make(map[string]time.Time)
 		npRepo.ClearAll()
 		Convey("When I skip 2 songs", func() {
@@ -109,7 +109,7 @@ func TestSkipping(t *testing.T) {
 				np, err := npRepo.GetAll()
 				So(err, ShouldBeNil)
 				So(np, ShouldHaveLength, 1)
-				So(np[0].TrackId, ShouldEqual, "2")
+				So(np[0].TrackID, ShouldEqual, "2")
 			})
 		})
 		Convey("When I play one song", func() {
@@ -120,7 +120,7 @@ func TestSkipping(t *testing.T) {
 				scrobbler.NowPlaying(nil, 1, "DSub", "2", "deluan")
 				Convey("Then the first song should be marked as skipped", func() {
 					mf, err := scrobbler.Register(nil, 1, "2", aPointInTime.Add(3*time.Minute))
-					So(mf.Id, ShouldEqual, "2")
+					So(mf.ID, ShouldEqual, "2")
 					So(itCtrl.skipped, ShouldContainKey, "1")
 					So(err, ShouldBeNil)
 				})
@@ -130,7 +130,7 @@ func TestSkipping(t *testing.T) {
 				scrobbler.NowPlaying(nil, 1, "DSub", "2", "deluan")
 				Convey("Then the first song should be marked as skipped", func() {
 					mf, err := scrobbler.Register(nil, 1, "2", aPointInTime.Add(3*time.Minute))
-					So(mf.Id, ShouldEqual, "2")
+					So(mf.ID, ShouldEqual, "2")
 					So(itCtrl.skipped, ShouldBeEmpty)
 					So(err, ShouldBeNil)
 				})
@@ -140,7 +140,7 @@ func TestSkipping(t *testing.T) {
 				scrobbler.NowPlaying(nil, 1, "DSub", "2", "deluan")
 				Convey("Then the first song should be marked as skipped", func() {
 					mf, err := scrobbler.Register(nil, 1, "2", aPointInTime.Add(3*time.Minute))
-					So(mf.Id, ShouldEqual, "2")
+					So(mf.ID, ShouldEqual, "2")
 					So(itCtrl.skipped, ShouldBeEmpty)
 					So(err, ShouldBeNil)
 				})
@@ -148,7 +148,7 @@ func TestSkipping(t *testing.T) {
 			Convey("And I scrobble it before starting to play the other song", func() {
 				mf, err := scrobbler.Register(nil, 1, "1", time.Now())
 				Convey("Then the first song should NOT marked as skipped", func() {
-					So(mf.Id, ShouldEqual, "1")
+					So(mf.ID, ShouldEqual, "1")
 					So(itCtrl.skipped, ShouldBeEmpty)
 					So(err, ShouldBeNil)
 				})
@@ -163,7 +163,7 @@ func TestSkipping(t *testing.T) {
 			Convey("Then the NowPlaying song should be the last one", func() {
 				np, _ := npRepo.GetAll()
 				So(np, ShouldHaveLength, 1)
-				So(np[0].TrackId, ShouldEqual, "2")
+				So(np[0].TrackID, ShouldEqual, "2")
 			})
 		})
 	})

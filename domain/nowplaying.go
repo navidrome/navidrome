@@ -5,7 +5,7 @@ import "time"
 const NowPlayingExpire = 60 * time.Minute
 
 type NowPlayingInfo struct {
-	TrackId    string
+	TrackID    string
 	Start      time.Time
 	Username   string
 	PlayerId   int

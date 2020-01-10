@@ -138,7 +138,7 @@ func (g *listGenerator) GetNowPlaying() (Entries, error) {
 	}
 	entries := make(Entries, len(npInfo))
 	for i, np := range npInfo {
-		mf, err := g.mfRepository.Get(np.TrackId)
+		mf, err := g.mfRepository.Get(np.TrackID)
 		if err != nil {
 			return nil, err
 		}
