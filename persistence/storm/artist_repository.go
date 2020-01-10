@@ -28,10 +28,12 @@ func (r *artistRepository) Put(a *domain.Artist) error {
 
 func (r *artistRepository) Get(id string) (*domain.Artist, error) {
 	ta := &_Artist{}
-
-	err := Db().One("ID", id, ta)
+	err := r.getByID(id, ta)
+	if err != nil {
+		return nil, err
+	}
 	a := domain.Artist(*ta)
-	return &a, err
+	return &a, nil
 }
 
 func (r *artistRepository) PurgeInactive(active domain.Artists) ([]string, error) {
