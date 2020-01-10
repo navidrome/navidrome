@@ -21,7 +21,7 @@ import (
 func initImporter(musicFolder string) *scanner.Importer {
 	checkSumRepository := ledis.NewCheckSumRepository()
 	itunesScanner := scanner.NewItunesScanner(checkSumRepository)
-	mediaFileRepository := ledis.NewMediaFileRepository()
+	mediaFileRepository := storm.NewMediaFileRepository()
 	albumRepository := storm.NewAlbumRepository()
 	artistRepository := storm.NewArtistRepository()
 	artistIndexRepository := ledis.NewArtistIndexRepository()

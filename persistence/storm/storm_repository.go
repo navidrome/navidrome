@@ -74,7 +74,7 @@ func (r *stormRepository) purgeInactive(ids []string) (deleted []string, err err
 	return deleted, nil
 }
 
-func (r *stormRepository) execute(matcher q.Matcher, result *[]_Album, options ...*domain.QueryOptions) error {
+func (r *stormRepository) execute(matcher q.Matcher, result interface{}, options ...*domain.QueryOptions) error {
 	query := Db().Select(matcher)
 	if len(options) > 0 {
 		query = addQueryOptions(query, options[0])
@@ -84,6 +84,15 @@ func (r *stormRepository) execute(matcher q.Matcher, result *[]_Album, options .
 		return nil
 	}
 	return err
+}
+
+func (r *stormRepository) getAll(all interface{}, options *domain.QueryOptions) (err error) {
+	if options.SortBy != "" {
+		err = Db().AllByIndex(options.SortBy, all, stormOptions(options))
+	} else {
+		err = Db().All(all, stormOptions(options))
+	}
+	return
 }
 
 func stormOptions(options *domain.QueryOptions) func(*index.Options) {

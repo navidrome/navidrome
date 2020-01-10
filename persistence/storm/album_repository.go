@@ -60,18 +60,19 @@ func (r *albumRepository) FindByArtist(artistId string) (domain.Albums, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r.toDomainList(albums)
+	return r.toAlbums(albums)
 }
 
 func (r *albumRepository) GetAll(options domain.QueryOptions) (domain.Albums, error) {
-	all, err := r.getAll(&options)
+	var all []_Album
+	err := r.getAll(&all, &options)
 	if err != nil {
 		return nil, err
 	}
-	return r.toDomainList(all)
+	return r.toAlbums(all)
 }
 
-func (r *albumRepository) toDomainList(all []_Album) (domain.Albums, error) {
+func (r *albumRepository) toAlbums(all []_Album) (domain.Albums, error) {
 	result := make(domain.Albums, len(all))
 	for i, a := range all {
 		result[i] = domain.Album(a)
@@ -80,7 +81,8 @@ func (r *albumRepository) toDomainList(all []_Album) (domain.Albums, error) {
 }
 
 func (r *albumRepository) GetAllIds() ([]string, error) {
-	all, err := r.getAll(&domain.QueryOptions{})
+	var all []_Album
+	err := r.getAll(&all, &domain.QueryOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -89,15 +91,6 @@ func (r *albumRepository) GetAllIds() ([]string, error) {
 		result[i] = domain.Album(a).ID
 	}
 	return result, nil
-}
-
-func (r *albumRepository) getAll(options *domain.QueryOptions) (all []_Album, err error) {
-	if options.SortBy != "" {
-		err = Db().AllByIndex(options.SortBy, &all, stormOptions(options))
-	} else {
-		err = Db().All(&all, stormOptions(options))
-	}
-	return
 }
 
 func (r *albumRepository) PurgeInactive(active domain.Albums) ([]string, error) {
@@ -115,7 +108,7 @@ func (r *albumRepository) GetStarred(options domain.QueryOptions) (domain.Albums
 	if err != nil {
 		return nil, err
 	}
-	return r.toDomainList(starred)
+	return r.toAlbums(starred)
 }
 
 var _ domain.AlbumRepository = (*albumRepository)(nil)
