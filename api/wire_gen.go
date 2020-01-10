@@ -8,9 +8,9 @@ package api
 import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
-	"github.com/cloudsonic/sonic-server/persistence"
+	"github.com/cloudsonic/sonic-server/persistence/ledis"
 	"github.com/deluan/gomate"
-	"github.com/deluan/gomate/ledis"
+	ledis2 "github.com/deluan/gomate/ledis"
 	"github.com/google/wire"
 )
 
@@ -22,21 +22,21 @@ func initSystemController() *SystemController {
 }
 
 func initBrowsingController() *BrowsingController {
-	propertyRepository := persistence.NewPropertyRepository()
-	mediaFolderRepository := persistence.NewMediaFolderRepository()
-	artistIndexRepository := persistence.NewArtistIndexRepository()
-	artistRepository := persistence.NewArtistRepository()
-	albumRepository := persistence.NewAlbumRepository()
-	mediaFileRepository := persistence.NewMediaFileRepository()
+	propertyRepository := ledis.NewPropertyRepository()
+	mediaFolderRepository := ledis.NewMediaFolderRepository()
+	artistIndexRepository := ledis.NewArtistIndexRepository()
+	artistRepository := ledis.NewArtistRepository()
+	albumRepository := ledis.NewAlbumRepository()
+	mediaFileRepository := ledis.NewMediaFileRepository()
 	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistIndexRepository, artistRepository, albumRepository, mediaFileRepository)
 	browsingController := NewBrowsingController(browser)
 	return browsingController
 }
 
 func initAlbumListController() *AlbumListController {
-	albumRepository := persistence.NewAlbumRepository()
-	mediaFileRepository := persistence.NewMediaFileRepository()
-	nowPlayingRepository := persistence.NewNowPlayingRepository()
+	albumRepository := ledis.NewAlbumRepository()
+	mediaFileRepository := ledis.NewMediaFileRepository()
+	nowPlayingRepository := ledis.NewNowPlayingRepository()
 	listGenerator := engine.NewListGenerator(albumRepository, mediaFileRepository, nowPlayingRepository)
 	albumListController := NewAlbumListController(listGenerator)
 	return albumListController
@@ -44,11 +44,11 @@ func initAlbumListController() *AlbumListController {
 
 func initMediaAnnotationController() *MediaAnnotationController {
 	itunesControl := itunesbridge.NewItunesControl()
-	mediaFileRepository := persistence.NewMediaFileRepository()
-	nowPlayingRepository := persistence.NewNowPlayingRepository()
+	mediaFileRepository := ledis.NewMediaFileRepository()
+	nowPlayingRepository := ledis.NewNowPlayingRepository()
 	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, nowPlayingRepository)
-	albumRepository := persistence.NewAlbumRepository()
-	artistRepository := persistence.NewArtistRepository()
+	albumRepository := ledis.NewAlbumRepository()
+	artistRepository := ledis.NewArtistRepository()
 	ratings := engine.NewRatings(itunesControl, mediaFileRepository, albumRepository, artistRepository)
 	mediaAnnotationController := NewMediaAnnotationController(scrobbler, ratings)
 	return mediaAnnotationController
@@ -56,17 +56,17 @@ func initMediaAnnotationController() *MediaAnnotationController {
 
 func initPlaylistsController() *PlaylistsController {
 	itunesControl := itunesbridge.NewItunesControl()
-	playlistRepository := persistence.NewPlaylistRepository()
-	mediaFileRepository := persistence.NewMediaFileRepository()
+	playlistRepository := ledis.NewPlaylistRepository()
+	mediaFileRepository := ledis.NewMediaFileRepository()
 	playlists := engine.NewPlaylists(itunesControl, playlistRepository, mediaFileRepository)
 	playlistsController := NewPlaylistsController(playlists)
 	return playlistsController
 }
 
 func initSearchingController() *SearchingController {
-	artistRepository := persistence.NewArtistRepository()
-	albumRepository := persistence.NewAlbumRepository()
-	mediaFileRepository := persistence.NewMediaFileRepository()
+	artistRepository := ledis.NewArtistRepository()
+	albumRepository := ledis.NewAlbumRepository()
+	mediaFileRepository := ledis.NewMediaFileRepository()
 	db := newDB()
 	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
 	searchingController := NewSearchingController(search)
@@ -79,22 +79,22 @@ func initUsersController() *UsersController {
 }
 
 func initMediaRetrievalController() *MediaRetrievalController {
-	mediaFileRepository := persistence.NewMediaFileRepository()
-	albumRepository := persistence.NewAlbumRepository()
+	mediaFileRepository := ledis.NewMediaFileRepository()
+	albumRepository := ledis.NewAlbumRepository()
 	cover := engine.NewCover(mediaFileRepository, albumRepository)
 	mediaRetrievalController := NewMediaRetrievalController(cover)
 	return mediaRetrievalController
 }
 
 func initStreamController() *StreamController {
-	mediaFileRepository := persistence.NewMediaFileRepository()
+	mediaFileRepository := ledis.NewMediaFileRepository()
 	streamController := NewStreamController(mediaFileRepository)
 	return streamController
 }
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, persistence.Set, engine.Set, NewSystemController,
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, ledis.Set, engine.Set, NewSystemController,
 	NewBrowsingController,
 	NewAlbumListController,
 	NewMediaAnnotationController,
@@ -107,5 +107,5 @@ var allProviders = wire.NewSet(itunesbridge.NewItunesControl, persistence.Set, e
 )
 
 func newDB() gomate.DB {
-	return ledis.NewEmbeddedDB(persistence.Db())
+	return ledis2.NewEmbeddedDB(ledis.Db())
 }
