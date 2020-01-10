@@ -144,7 +144,7 @@ func (i *Importer) importLibrary() (err error) {
 		i.search.RemoveAlbum(deleted...)
 	}
 	if deleted, err := i.artistRepo.PurgeInactive(ars); err != nil {
-		log.Error(err)
+		log.Error("Deleting inactive artists", err)
 	} else {
 		i.search.RemoveArtist(deleted...)
 	}

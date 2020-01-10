@@ -9,6 +9,7 @@ import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence/ledis"
+	"github.com/cloudsonic/sonic-server/persistence/storm"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/deluan/gomate"
 	ledis2 "github.com/deluan/gomate/ledis"
@@ -22,10 +23,10 @@ func initImporter(musicFolder string) *scanner.Importer {
 	itunesScanner := scanner.NewItunesScanner(checkSumRepository)
 	mediaFileRepository := ledis.NewMediaFileRepository()
 	albumRepository := ledis.NewAlbumRepository()
-	artistRepository := ledis.NewArtistRepository()
+	artistRepository := storm.NewArtistRepository()
 	artistIndexRepository := ledis.NewArtistIndexRepository()
 	playlistRepository := ledis.NewPlaylistRepository()
-	propertyRepository := ledis.NewPropertyRepository()
+	propertyRepository := storm.NewPropertyRepository()
 	db := newDB()
 	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
 	importer := scanner.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository, search)
@@ -34,7 +35,7 @@ func initImporter(musicFolder string) *scanner.Importer {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, ledis.Set, engine.Set, scanner.Set, newDB)
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, ledis.Set, storm.Set, engine.Set, scanner.Set, newDB)
 
 func newDB() gomate.DB {
 	return ledis2.NewEmbeddedDB(ledis.Db())
