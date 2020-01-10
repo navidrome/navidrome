@@ -4,6 +4,9 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.0 // indirect
+	github.com/DataDog/zstd v1.4.4 // indirect
+	github.com/Sereal/Sereal v0.0.0-20190618215532-0b8ac451a863 // indirect
+	github.com/asdine/storm v2.1.2+incompatible
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cupcake/rdb v0.0.0-20161107195141-43ba34106c76 // indirect
 	github.com/deluan/gomate v0.0.0-20160327212459-3eb40643dd6f
@@ -15,7 +18,7 @@ require (
 	github.com/fatih/structs v1.0.0 // indirect
 	github.com/go-chi/chi v4.0.3+incompatible
 	github.com/go-chi/cors v1.0.0
-	github.com/golang/snappy v0.0.0-20170215233205-553a64147049 // indirect
+	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/google/wire v0.4.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/koding/multiconfig v0.0.0-20170327155832-26b6dfd3a84a
@@ -30,4 +33,8 @@ require (
 	github.com/smartystreets/goconvey v1.6.4
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/syndtr/goleveldb v0.0.0-20170302031910-3c5717caf147
+	github.com/vmihailenco/msgpack v4.0.1+incompatible // indirect
+	go.etcd.io/bbolt v1.3.3 // indirect
+	golang.org/x/sys v0.0.0-20200107162124-548cf772de50 // indirect
+	google.golang.org/appengine v1.6.5 // indirect
 )
