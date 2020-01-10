@@ -1,4 +1,4 @@
-package persistence
+package ledis
 
 import (
 	"github.com/cloudsonic/sonic-server/conf"
