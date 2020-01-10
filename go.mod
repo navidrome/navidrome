@@ -13,7 +13,7 @@ require (
 	github.com/edsrzf/mmap-go v0.0.0-20170320065105-0bce6a688712 // indirect
 	github.com/fatih/camelcase v0.0.0-20160318181535-f6a740d52f96 // indirect
 	github.com/fatih/structs v1.0.0 // indirect
-	github.com/go-chi/chi v4.0.2+incompatible
+	github.com/go-chi/chi v4.0.3+incompatible
 	github.com/go-chi/cors v1.0.0
 	github.com/golang/snappy v0.0.0-20170215233205-553a64147049 // indirect
 	github.com/google/wire v0.4.0
