@@ -1,9 +1,9 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func newRequest(queryParams string) *http.Request {
-	r := httptest.NewRequest("get", "/ping?"+queryParams, nil)
+func newTestRequest(queryParams ...string) *http.Request {
+	r := httptest.NewRequest("get", "/ping?"+strings.Join(queryParams, "&"), nil)
 	ctx := r.Context()
 	return r.WithContext(log.NewContext(ctx))
 }
@@ -28,7 +28,7 @@ var _ = Describe("Middlewares", func() {
 
 	Describe("CheckParams", func() {
 		It("passes when all required params are available", func() {
-			r := newRequest("u=user&v=1.15&c=test")
+			r := newTestRequest("u=user", "v=1.15", "c=test")
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
@@ -39,7 +39,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("fails when user is missing", func() {
-			r := newRequest("v=1.15&c=test")
+			r := newTestRequest("v=1.15", "c=test")
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
@@ -48,7 +48,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("fails when version is missing", func() {
-			r := newRequest("u=user&c=test")
+			r := newTestRequest("u=user", "c=test")
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
@@ -57,7 +57,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("fails when client is missing", func() {
-			r := newRequest("u=user&v=1.15")
+			r := newTestRequest("u=user", "v=1.15")
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
@@ -75,7 +75,7 @@ var _ = Describe("Middlewares", func() {
 
 		Context("Plaintext password", func() {
 			It("authenticates with plaintext password ", func() {
-				r := newRequest("u=admin&p=wordpass")
+				r := newTestRequest("u=admin", "p=wordpass")
 				cp := authenticate(next)
 				cp.ServeHTTP(w, r)
 
@@ -83,7 +83,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("fails authentication with wrong password", func() {
-				r := newRequest("u=admin&p=INVALID")
+				r := newTestRequest("u=admin", "p=INVALID")
 				cp := authenticate(next)
 				cp.ServeHTTP(w, r)
 
@@ -94,7 +94,7 @@ var _ = Describe("Middlewares", func() {
 
 		Context("Encoded password", func() {
 			It("authenticates with simple encoded password ", func() {
-				r := newRequest("u=admin&p=enc:776f726470617373")
+				r := newTestRequest("u=admin", "p=enc:776f726470617373")
 				cp := authenticate(next)
 				cp.ServeHTTP(w, r)
 
@@ -104,11 +104,7 @@ var _ = Describe("Middlewares", func() {
 
 		Context("Token based authentication", func() {
 			It("authenticates with token based authentication", func() {
-				token := "23b342970e25c7928831c3317edd0b67"
-				salt := "retnlmjetrymazgkt"
-				query := fmt.Sprintf("u=admin&t=%s&s=%s", token, salt)
-
-				r := newRequest(query)
+				r := newTestRequest("u=admin", "t=23b342970e25c7928831c3317edd0b67", "s=retnlmjetrymazgkt")
 				cp := authenticate(next)
 				cp.ServeHTTP(w, r)
 
@@ -116,10 +112,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("fails if salt is missing", func() {
-				token := "23b342970e25c7928831c3317edd0b67"
-				query := fmt.Sprintf("u=admin&t=%s", token)
-
-				r := newRequest(query)
+				r := newTestRequest("u=admin", "t=23b342970e25c7928831c3317edd0b67")
 				cp := authenticate(next)
 				cp.ServeHTTP(w, r)
 
