@@ -22,12 +22,15 @@ func (r *propertyRepository) Put(id string, value string) error {
 func (r *propertyRepository) Get(id string) (string, error) {
 	var value string
 	err := Db().Get(propertyBucket, id, &value)
+	if err == storm.ErrNotFound {
+		return value, domain.ErrNotFound
+	}
 	return value, err
 }
 
 func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
 	value, err := r.Get(id)
-	if err == storm.ErrNotFound {
+	if err == domain.ErrNotFound {
 		return defaultValue, nil
 	}
 	if err != nil {

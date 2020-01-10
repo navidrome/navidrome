@@ -25,6 +25,11 @@ var _ = Describe("ArtistRepository", func() {
 		Expect(repo.Get("1")).To(Equal(artist))
 	})
 
+	It("returns ErrNotFound when the ID does not exist", func() {
+		_, err := repo.Get("999")
+		Expect(err).To(MatchError(domain.ErrNotFound))
+	})
+
 	Describe("PurgeInactive", func() {
 		var data domain.Artists
 
