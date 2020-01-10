@@ -17,10 +17,10 @@ func NewArtistRepository() domain.ArtistRepository {
 }
 
 func (r *artistRepository) Put(m *domain.Artist) error {
-	if m.Id == "" {
-		return errors.New("artist Id is not set")
+	if m.ID == "" {
+		return errors.New("artist ID is not set")
 	}
-	return r.saveOrUpdate(m.Id, m)
+	return r.saveOrUpdate(m.ID, m)
 }
 
 func (r *artistRepository) Get(id string) (*domain.Artist, error) {
@@ -31,7 +31,7 @@ func (r *artistRepository) Get(id string) (*domain.Artist, error) {
 
 func (r *artistRepository) PurgeInactive(active domain.Artists) ([]string, error) {
 	return r.purgeInactive(active, func(e interface{}) string {
-		return e.(domain.Artist).Id
+		return e.(domain.Artist).ID
 	})
 }
 

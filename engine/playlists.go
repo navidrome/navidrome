@@ -67,7 +67,7 @@ func (p *playlists) Update(playlistId string, name *string, idsToAdd []string, i
 	}
 	if name != nil {
 		pl.Name = *name
-		err := p.itunes.RenamePlaylist(pl.Id, pl.Name)
+		err := p.itunes.RenamePlaylist(pl.ID, pl.Name)
 		if err != nil {
 			return err
 		}
@@ -78,7 +78,7 @@ func (p *playlists) Update(playlistId string, name *string, idsToAdd []string, i
 			pl.Tracks, pl.Tracks[len(pl.Tracks)-1] = append(pl.Tracks[:i], pl.Tracks[i+1:]...), ""
 		}
 		pl.Tracks = append(pl.Tracks, idsToAdd...)
-		err := p.itunes.UpdatePlaylist(pl.Id, pl.Tracks)
+		err := p.itunes.UpdatePlaylist(pl.ID, pl.Tracks)
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func (p *playlists) Get(id string) (*PlaylistInfo, error) {
 	}
 
 	pinfo := &PlaylistInfo{
-		Id:        pl.Id,
+		Id:        pl.ID,
 		Name:      pl.Name,
 		SongCount: len(pl.Tracks),
 		Duration:  pl.Duration,

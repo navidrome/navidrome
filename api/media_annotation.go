@@ -38,7 +38,7 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 	switch {
 	case err == domain.ErrNotFound:
 		log.Error(r, err)
-		return nil, NewError(responses.ErrorDataNotFound, "Id not found")
+		return nil, NewError(responses.ErrorDataNotFound, "ID not found")
 	case err != nil:
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -68,7 +68,7 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 	switch {
 	case err == domain.ErrNotFound:
 		log.Error(r, err)
-		return nil, NewError(responses.ErrorDataNotFound, "Id not found")
+		return nil, NewError(responses.ErrorDataNotFound, "ID not found")
 	case err != nil:
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")

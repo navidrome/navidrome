@@ -37,7 +37,7 @@ func (r *checkSumRepository) loadData() {
 
 func (r *checkSumRepository) Put(id, sum string) error {
 	if id == "" {
-		return errors.New("Id is required")
+		return errors.New("ID is required")
 	}
 	_, err := Db().HSet(checkSumKeyName, []byte(id), []byte(sum))
 	return err

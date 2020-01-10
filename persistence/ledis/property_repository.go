@@ -17,11 +17,11 @@ func NewPropertyRepository() domain.PropertyRepository {
 }
 
 func (r *propertyRepository) Put(id string, value string) error {
-	m := &domain.Property{Id: id, Value: value}
-	if m.Id == "" {
-		return errors.New("Id is required")
+	m := &domain.Property{ID: id, Value: value}
+	if m.ID == "" {
+		return errors.New("ID is required")
 	}
-	return r.saveOrUpdate(m.Id, m)
+	return r.saveOrUpdate(m.ID, m)
 }
 
 func (r *propertyRepository) Get(id string) (string, error) {

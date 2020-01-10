@@ -6,14 +6,14 @@ import (
 )
 
 type MediaFile struct {
-	Id          string
+	ID          string
 	Path        string
 	Title       string
 	Album       string
 	Artist      string
-	ArtistId    string
+	ArtistID    string
 	AlbumArtist string
-	AlbumId     string `parent:"album"`
+	AlbumID     string `parent:"album"`
 	HasCoverArt bool
 	TrackNumber int
 	DiscNumber  int

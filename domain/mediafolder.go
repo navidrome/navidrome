@@ -1,7 +1,7 @@
 package domain
 
 type MediaFolder struct {
-	Id   string
+	ID   string
 	Name string
 	Path string
 }

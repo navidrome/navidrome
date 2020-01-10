@@ -116,7 +116,7 @@ func (b *browser) GetSong(id string) (*Entry, error) {
 
 func (b *browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *DirectoryInfo {
 	dir := &DirectoryInfo{
-		Id:         a.Id,
+		Id:         a.ID,
 		Name:       a.Name,
 		AlbumCount: a.AlbumCount,
 	}
@@ -131,14 +131,14 @@ func (b *browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *Direct
 
 func (b *browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *DirectoryInfo {
 	dir := &DirectoryInfo{
-		Id:         al.Id,
+		Id:         al.ID,
 		Name:       al.Name,
-		Parent:     al.ArtistId,
+		Parent:     al.ArtistID,
 		PlayCount:  int32(al.PlayCount),
 		UserRating: al.Rating,
 		Starred:    al.StarredAt,
 		Artist:     al.Artist,
-		ArtistId:   al.ArtistId,
+		ArtistId:   al.ArtistID,
 		SongCount:  al.SongCount,
 		Duration:   al.Duration,
 		Created:    al.CreatedAt,

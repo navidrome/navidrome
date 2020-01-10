@@ -33,7 +33,7 @@ func (r ratings) SetRating(ctx context.Context, id string, rating int) error {
 		mfs, _ := r.mfRepo.FindByAlbum(id)
 		if len(mfs) > 0 {
 			log.Debug(ctx, "Set Rating", "value", rating, "album", mfs[0].Album)
-			if err := r.itunes.SetAlbumRating(mfs[0].Id, rating); err != nil {
+			if err := r.itunes.SetAlbumRating(mfs[0].ID, rating); err != nil {
 				return err
 			}
 		}
@@ -46,7 +46,7 @@ func (r ratings) SetRating(ctx context.Context, id string, rating int) error {
 	}
 	if mf != nil {
 		log.Debug(ctx, "Set Rating", "value", rating, "song", mf.Title)
-		if err := r.itunes.SetTrackRating(mf.Id, rating); err != nil {
+		if err := r.itunes.SetTrackRating(mf.ID, rating); err != nil {
 			return err
 		}
 		return nil
@@ -61,7 +61,7 @@ func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
 			mfs, _ := r.mfRepo.FindByAlbum(id)
 			if len(mfs) > 0 {
 				log.Debug(ctx, "Set Star", "value", star, "album", mfs[0].Album)
-				if err := r.itunes.SetAlbumLoved(mfs[0].Id, star); err != nil {
+				if err := r.itunes.SetAlbumLoved(mfs[0].ID, star); err != nil {
 					return err
 				}
 			}
@@ -74,7 +74,7 @@ func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
 		}
 		if mf != nil {
 			log.Debug(ctx, "Set Star", "value", star, "song", mf.Title)
-			if err := r.itunes.SetTrackLoved(mf.Id, star); err != nil {
+			if err := r.itunes.SetTrackLoved(mf.ID, star); err != nil {
 				return err
 			}
 			continue

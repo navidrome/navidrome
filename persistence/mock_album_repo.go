@@ -32,7 +32,7 @@ func (m *MockAlbum) SetData(j string, size int) {
 		fmt.Println("ERROR: ", err)
 	}
 	for _, a := range m.all {
-		m.data[a.Id] = &a
+		m.data[a.ID] = &a
 	}
 }
 
@@ -66,7 +66,7 @@ func (m *MockAlbum) FindByArtist(artistId string) (domain.Albums, error) {
 	var res = make(domain.Albums, len(m.data))
 	i := 0
 	for _, a := range m.data {
-		if a.ArtistId == artistId {
+		if a.ArtistID == artistId {
 			res[i] = *a
 			i++
 		}

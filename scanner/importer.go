@@ -184,7 +184,7 @@ func (i *Importer) importMediaFiles() (domain.MediaFiles, int) {
 			continue
 		}
 		if mf.Starred {
-			original, err := i.mfRepo.Get(mf.Id)
+			original, err := i.mfRepo.Get(mf.ID)
 			if err != nil || !original.Starred {
 				mf.StarredAt = mf.UpdatedAt
 			} else {
@@ -216,7 +216,7 @@ func (i *Importer) importAlbums() (domain.Albums, int) {
 			continue
 		}
 		if al.Starred {
-			original, err := i.albumRepo.Get(al.Id)
+			original, err := i.albumRepo.Get(al.ID)
 			if err != nil || !original.Starred {
 				al.StarredAt = al.UpdatedAt
 			} else {
@@ -294,7 +294,7 @@ func (i *Importer) collectIndex(ig utils.IndexGroups, a *domain.Artist, artistIn
 		artists = make(tempIndex)
 		artistIndex[group] = artists
 	}
-	artists[indexName] = domain.ArtistInfo{ArtistId: a.Id, Artist: a.Name, AlbumCount: a.AlbumCount}
+	artists[indexName] = domain.ArtistInfo{ArtistID: a.ID, Artist: a.Name, AlbumCount: a.AlbumCount}
 }
 
 func (i *Importer) findGroup(ig utils.IndexGroups, name string) string {

@@ -30,7 +30,7 @@ func (m *MockArtist) SetData(j string, size int) {
 		fmt.Println("ERROR: ", err)
 	}
 	for _, a := range l {
-		m.data[a.Id] = &a
+		m.data[a.ID] = &a
 	}
 }
 

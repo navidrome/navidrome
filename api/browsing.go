@@ -25,7 +25,7 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 	mediaFolderList, _ := c.browser.MediaFolders()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {
-		folders[i].Id = f.Id
+		folders[i].Id = f.ID
 		folders[i].Name = f.Name
 	}
 	response := NewEmpty()
@@ -50,7 +50,7 @@ func (c *BrowsingController) getArtistIndex(r *http.Request, ifModifiedSince tim
 		res.Index[i].Name = idx.Id
 		res.Index[i].Artists = make([]responses.Artist, len(idx.Artists))
 		for j, a := range idx.Artists {
-			res.Index[i].Artists[j].Id = a.ArtistId
+			res.Index[i].Artists[j].Id = a.ArtistID
 			res.Index[i].Artists[j].Name = a.Artist
 			res.Index[i].Artists[j].AlbumCount = a.AlbumCount
 		}
@@ -87,7 +87,7 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 	dir, err := c.browser.Directory(r.Context(), id)
 	switch {
 	case err == domain.ErrNotFound:
-		log.Error(r, "Requested Id not found ", "id", id)
+		log.Error(r, "Requested ID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
 		log.Error(err)
@@ -104,7 +104,7 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 	dir, err := c.browser.Artist(r.Context(), id)
 	switch {
 	case err == domain.ErrNotFound:
-		log.Error(r, "Requested ArtistId not found ", "id", id)
+		log.Error(r, "Requested ArtistID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Artist not found")
 	case err != nil:
 		log.Error(r, err)
@@ -121,7 +121,7 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 	dir, err := c.browser.Album(r.Context(), id)
 	switch {
 	case err == domain.ErrNotFound:
-		log.Error(r, "Requested Id not found ", "id", id)
+		log.Error(r, "Requested ID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Album not found")
 	case err != nil:
 		log.Error(r, err)
@@ -138,7 +138,7 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 	song, err := c.browser.GetSong(id)
 	switch {
 	case err == domain.ErrNotFound:
-		log.Error(r, "Requested Id not found ", "id", id)
+		log.Error(r, "Requested ID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Song not found")
 	case err != nil:
 		log.Error(r, err)

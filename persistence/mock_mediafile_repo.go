@@ -30,7 +30,7 @@ func (m *MockMediaFile) SetData(j string, size int) {
 		fmt.Println("ERROR: ", err)
 	}
 	for _, a := range l {
-		m.data[a.Id] = a
+		m.data[a.ID] = a
 	}
 }
 
@@ -59,7 +59,7 @@ func (m *MockMediaFile) FindByAlbum(artistId string) (domain.MediaFiles, error) 
 	var res = make(domain.MediaFiles, len(m.data))
 	i := 0
 	for _, a := range m.data {
-		if a.AlbumId == artistId {
+		if a.AlbumID == artistId {
 			res[i] = a
 			i++
 		}

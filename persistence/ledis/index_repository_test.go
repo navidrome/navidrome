@@ -24,7 +24,7 @@ func TestIndexRepository(t *testing.T) {
 
 			So(s, shouldBeEqual, i)
 		})
-		Convey("It should be able to check for existence of an Id", func() {
+		Convey("It should be able to check for existence of an ID", func() {
 			i := &domain.ArtistIndex{Id: "123"}
 
 			repo.Put(i)
@@ -35,7 +35,7 @@ func TestIndexRepository(t *testing.T) {
 			s, _ = repo.Exists("NOT_FOUND")
 			So(s, ShouldBeFalse)
 		})
-		Convey("Method Put() should return error if Id is not set", func() {
+		Convey("Method Put() should return error if ID is not set", func() {
 			i := &domain.ArtistIndex{}
 
 			err := repo.Put(i)

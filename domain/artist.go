@@ -1,7 +1,7 @@
 package domain
 
 type Artist struct {
-	Id         string
+	ID         string
 	Name       string
 	AlbumCount int
 }
