@@ -50,8 +50,16 @@ func (r *stormRepository) getByID(id string, ta interface{}) error {
 	return nil
 }
 
-func (r *stormRepository) purgeInactive(ids []string) (deleted []string, err error) {
-	query := Db().Select(q.Not(q.In("ID", ids)))
+func (r *stormRepository) purgeInactive(activeList interface{}) (deleted []string, err error) {
+	reflected := reflect.ValueOf(activeList)
+	totalActive := reflected.Len()
+	activeIDs := make([]string, totalActive)
+	for i := 0; i < totalActive; i++ {
+		item := reflected.Index(i)
+		activeIDs[i] = item.FieldByName("ID").String()
+	}
+
+	query := Db().Select(q.Not(q.In("ID", activeIDs)))
 
 	// Collect IDs that will be deleted
 	err = query.Each(r.bucket, func(record interface{}) error {

@@ -10,19 +10,11 @@ var _ = Describe("ArtistRepository", func() {
 	var repo domain.ArtistRepository
 
 	BeforeEach(func() {
-		Db().Drop(&_Artist{})
 		repo = NewArtistRepository()
 	})
 
 	It("saves and retrieves data", func() {
-		artist := &domain.Artist{
-			ID:         "1",
-			Name:       "Saara Saara",
-			AlbumCount: 2,
-		}
-		Expect(repo.Put(artist)).To(BeNil())
-
-		Expect(repo.Get("1")).To(Equal(artist))
+		Expect(repo.Get("1")).To(Equal(&domain.Artist{ID: "1", Name: "Saara Saara"}))
 	})
 
 	It("returns ErrNotFound when the ID does not exist", func() {
@@ -34,11 +26,6 @@ var _ = Describe("ArtistRepository", func() {
 		var data domain.Artists
 
 		BeforeEach(func() {
-			data = domain.Artists{
-				{ID: "1", Name: "Saara Saara"},
-				{ID: "2", Name: "Kraftwerk"},
-				{ID: "3", Name: "The Beatles"},
-			}
 			for _, a := range data {
 				repo.Put(&a)
 			}

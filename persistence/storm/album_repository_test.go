@@ -8,24 +8,14 @@ import (
 
 var _ = Describe("AlbumRepository", func() {
 	var repo domain.AlbumRepository
-	var data domain.Albums
 
 	BeforeEach(func() {
-		Db().Drop(&_Album{})
 		repo = NewAlbumRepository()
-		data = domain.Albums{
-			{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", ArtistID: "1"},
-			{ID: "2", Name: "Abbey Road", Artist: "The Beatles", ArtistID: "1"},
-			{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", ArtistID: "2", Starred: true},
-		}
-		for _, a := range data {
-			repo.Put(&a)
-		}
 	})
 
 	Describe("GetAll", func() {
 		It("returns all records", func() {
-			Expect(repo.GetAll(domain.QueryOptions{})).To(Equal(data))
+			Expect(repo.GetAll(domain.QueryOptions{})).To(Equal(testAlbums))
 		})
 
 		It("returns all records sorted", func() {

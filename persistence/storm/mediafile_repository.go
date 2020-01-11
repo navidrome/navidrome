@@ -99,13 +99,8 @@ func (r *mediaFileRepository) GetAllIds() ([]string, error) {
 	return result, nil
 }
 
-func (r *mediaFileRepository) PurgeInactive(active domain.MediaFiles) ([]string, error) {
-	activeIDs := make([]string, len(active))
-	for i, mediaFile := range active {
-		activeIDs[i] = mediaFile.ID
-	}
-
-	return r.purgeInactive(activeIDs)
+func (r *mediaFileRepository) PurgeInactive(activeList domain.MediaFiles) ([]string, error) {
+	return r.purgeInactive(activeList)
 }
 
 var _ domain.MediaFileRepository = (*mediaFileRepository)(nil)
