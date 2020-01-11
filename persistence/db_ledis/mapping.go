@@ -1,10 +1,10 @@
-package utils
+package db_ledis
 
 import (
 	"encoding/json"
 )
 
-func ToMap(rec interface{}) (map[string]interface{}, error) {
+func toMap(rec interface{}) (map[string]interface{}, error) {
 	// Convert to JSON...
 	b, err := json.Marshal(rec)
 	if err != nil {
@@ -17,7 +17,7 @@ func ToMap(rec interface{}) (map[string]interface{}, error) {
 	return m, err
 }
 
-func ToStruct(m map[string]interface{}, rec interface{}) error {
+func toStruct(m map[string]interface{}, rec interface{}) error {
 	// Convert to JSON...
 	b, err := json.Marshal(m)
 	if err != nil {
