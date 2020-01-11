@@ -1,6 +1,6 @@
 /sonic-server
 /iTunes*.xml
-devDb
+devDb*
 /tmp
 vendor/*/
 wiki

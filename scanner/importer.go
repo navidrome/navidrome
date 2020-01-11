@@ -89,7 +89,7 @@ func (i *Importer) scan() {
 		return
 	}
 
-	log.Debug("Found", "tracks", total,
+	log.Debug("Totals informed by the scanner", "tracks", total,
 		"songs", len(i.scanner.MediaFiles()),
 		"albums", len(i.scanner.Albums()),
 		"artists", len(i.scanner.Artists()),
@@ -127,9 +127,13 @@ func (i *Importer) importLibrary() (err error) {
 
 	log.Debug("Saving updated data")
 	mfs, mfu := i.importMediaFiles()
+	log.Debug("Imported media files", "total", len(mfs), "updated", mfu)
 	als, alu := i.importAlbums()
+	log.Debug("Imported albums", "total", len(als), "updated", alu)
 	ars := i.importArtists()
+	log.Debug("Imported artists", "total", len(ars))
 	pls := i.importPlaylists()
+	log.Debug("Imported playlists", "total", len(pls))
 	i.importArtistIndex()
 
 	log.Debug("Purging old data")
