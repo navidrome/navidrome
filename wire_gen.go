@@ -35,7 +35,7 @@ func initImporter(musicFolder string) *scanner.Importer {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_ledis.Set, db_storm.Set, engine.Set, scanner.Set, newDB)
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_storm.Set, engine.Set, scanner.Set, newDB)
 
 func newDB() gomate.DB {
 	return ledis.NewEmbeddedDB(db_ledis.Db())
