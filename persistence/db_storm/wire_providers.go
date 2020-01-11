@@ -15,4 +15,5 @@ var Set = wire.NewSet(
 	NewCheckSumRepository,
 	persistence.NewNowPlayingRepository,
 	persistence.NewMediaFolderRepository,
+	wire.Value(persistence.ProviderIdentifier("storm")),
 )

@@ -7,6 +7,7 @@ package main
 
 import (
 	"github.com/cloudsonic/sonic-server/api"
+	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence"
@@ -20,15 +21,16 @@ import (
 
 // Injectors from wire_injectors.go:
 
-func createApp(musicFolder string) *App {
-	checkSumRepository := db_storm.NewCheckSumRepository()
+func CreateApp(musicFolder string, p persistence.ProviderIdentifier) *App {
+	provider := createPersistenceProvider(p)
+	checkSumRepository := provider.CheckSumRepository
 	itunesScanner := scanner.NewItunesScanner(checkSumRepository)
-	mediaFileRepository := db_storm.NewMediaFileRepository()
-	albumRepository := db_storm.NewAlbumRepository()
-	artistRepository := db_storm.NewArtistRepository()
-	artistIndexRepository := db_storm.NewArtistIndexRepository()
-	playlistRepository := db_storm.NewPlaylistRepository()
-	propertyRepository := db_storm.NewPropertyRepository()
+	mediaFileRepository := provider.MediaFileRepository
+	albumRepository := provider.AlbumRepository
+	artistRepository := provider.ArtistRepository
+	artistIndexRepository := provider.ArtistIndexRepository
+	playlistRepository := provider.PlaylistRepository
+	propertyRepository := provider.PropertyRepository
 	db := newDB()
 	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
 	importer := scanner.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository, search)
@@ -36,19 +38,20 @@ func createApp(musicFolder string) *App {
 	return app
 }
 
-func initRouter() *api.Router {
-	propertyRepository := db_storm.NewPropertyRepository()
-	mediaFolderRepository := persistence.NewMediaFolderRepository()
-	artistIndexRepository := db_storm.NewArtistIndexRepository()
-	artistRepository := db_storm.NewArtistRepository()
-	albumRepository := db_storm.NewAlbumRepository()
-	mediaFileRepository := db_storm.NewMediaFileRepository()
+func CreateSubsonicAPIRouter(p persistence.ProviderIdentifier) *api.Router {
+	provider := createPersistenceProvider(p)
+	propertyRepository := provider.PropertyRepository
+	mediaFolderRepository := provider.MediaFolderRepository
+	artistIndexRepository := provider.ArtistIndexRepository
+	artistRepository := provider.ArtistRepository
+	albumRepository := provider.AlbumRepository
+	mediaFileRepository := provider.MediaFileRepository
 	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistIndexRepository, artistRepository, albumRepository, mediaFileRepository)
 	cover := engine.NewCover(mediaFileRepository, albumRepository)
-	nowPlayingRepository := persistence.NewNowPlayingRepository()
+	nowPlayingRepository := provider.NowPlayingRepository
 	listGenerator := engine.NewListGenerator(albumRepository, mediaFileRepository, nowPlayingRepository)
 	itunesControl := itunesbridge.NewItunesControl()
-	playlistRepository := db_storm.NewPlaylistRepository()
+	playlistRepository := provider.PlaylistRepository
 	playlists := engine.NewPlaylists(itunesControl, playlistRepository, mediaFileRepository)
 	ratings := engine.NewRatings(itunesControl, mediaFileRepository, albumRepository, artistRepository)
 	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, nowPlayingRepository)
@@ -58,9 +61,81 @@ func initRouter() *api.Router {
 	return router
 }
 
+func createLedisDBProvider() *Provider {
+	albumRepository := db_ledis.NewAlbumRepository()
+	artistRepository := db_ledis.NewArtistRepository()
+	checkSumRepository := db_ledis.NewCheckSumRepository()
+	artistIndexRepository := db_ledis.NewArtistIndexRepository()
+	mediaFileRepository := db_ledis.NewMediaFileRepository()
+	mediaFolderRepository := persistence.NewMediaFolderRepository()
+	nowPlayingRepository := db_ledis.NewNowPlayingRepository()
+	playlistRepository := db_ledis.NewPlaylistRepository()
+	propertyRepository := db_ledis.NewPropertyRepository()
+	provider := &Provider{
+		AlbumRepository:       albumRepository,
+		ArtistRepository:      artistRepository,
+		CheckSumRepository:    checkSumRepository,
+		ArtistIndexRepository: artistIndexRepository,
+		MediaFileRepository:   mediaFileRepository,
+		MediaFolderRepository: mediaFolderRepository,
+		NowPlayingRepository:  nowPlayingRepository,
+		PlaylistRepository:    playlistRepository,
+		PropertyRepository:    propertyRepository,
+	}
+	return provider
+}
+
+func createStormProvider() *Provider {
+	albumRepository := db_storm.NewAlbumRepository()
+	artistRepository := db_storm.NewArtistRepository()
+	checkSumRepository := db_storm.NewCheckSumRepository()
+	artistIndexRepository := db_storm.NewArtistIndexRepository()
+	mediaFileRepository := db_storm.NewMediaFileRepository()
+	mediaFolderRepository := persistence.NewMediaFolderRepository()
+	nowPlayingRepository := persistence.NewNowPlayingRepository()
+	playlistRepository := db_storm.NewPlaylistRepository()
+	propertyRepository := db_storm.NewPropertyRepository()
+	provider := &Provider{
+		AlbumRepository:       albumRepository,
+		ArtistRepository:      artistRepository,
+		CheckSumRepository:    checkSumRepository,
+		ArtistIndexRepository: artistIndexRepository,
+		MediaFileRepository:   mediaFileRepository,
+		MediaFolderRepository: mediaFolderRepository,
+		NowPlayingRepository:  nowPlayingRepository,
+		PlaylistRepository:    playlistRepository,
+		PropertyRepository:    propertyRepository,
+	}
+	return provider
+}
+
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_storm.Set, engine.Set, scanner.Set, newDB, api.NewRouter)
+type Provider struct {
+	AlbumRepository       domain.AlbumRepository
+	ArtistRepository      domain.ArtistRepository
+	CheckSumRepository    scanner.CheckSumRepository
+	ArtistIndexRepository domain.ArtistIndexRepository
+	MediaFileRepository   domain.MediaFileRepository
+	MediaFolderRepository domain.MediaFolderRepository
+	NowPlayingRepository  domain.NowPlayingRepository
+	PlaylistRepository    domain.PlaylistRepository
+	PropertyRepository    domain.PropertyRepository
+}
+
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner.Set, newDB, api.NewRouter, wire.FieldsOf(new(*Provider), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
+	"ArtistIndexRepository", "MediaFileRepository", "MediaFolderRepository", "NowPlayingRepository",
+	"PlaylistRepository", "PropertyRepository"), createPersistenceProvider,
+)
+
+func createPersistenceProvider(provider persistence.ProviderIdentifier) *Provider {
+	switch provider {
+	case "storm":
+		return createStormProvider()
+	default:
+		return createLedisDBProvider()
+	}
+}
 
 func newDB() gomate.DB {
 	return ledis.NewEmbeddedDB(db_ledis.Db())

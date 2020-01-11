@@ -24,8 +24,9 @@ type sonic struct {
 	PlsIgnoredPatterns  string `default:"^iCloud;\\~"`
 
 	// DevFlags
-	DevDisableAuthentication bool `default:"false"`
-	DevDisableFileCheck      bool `default:"false"`
+	DevDisableAuthentication bool   `default:"false"`
+	DevDisableFileCheck      bool   `default:"false"`
+	DevPersistenceProvider   string `default:"ledisdb"`
 }
 
 var Sonic *sonic
