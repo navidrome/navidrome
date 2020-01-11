@@ -3,10 +3,8 @@
 package api
 
 import (
-	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
-	"github.com/cloudsonic/sonic-server/persistence/db_storm"
 	"github.com/deluan/gomate"
 	"github.com/deluan/gomate/ledis"
 	"github.com/google/wire"
@@ -14,9 +12,6 @@ import (
 
 var allProviders = wire.NewSet(
 	itunesbridge.NewItunesControl,
-	//db_ledis.Set,
-	db_storm.Set,
-	engine.Set,
 	NewSystemController,
 	NewBrowsingController,
 	NewAlbumListController,
@@ -27,41 +22,42 @@ var allProviders = wire.NewSet(
 	NewMediaRetrievalController,
 	NewStreamController,
 	newDB,
+	wire.FieldsOf(new(*Router), "Browser", "Cover", "ListGenerator", "Playlists", "Ratings", "Scrobbler", "Search", "MediaFileRepository"),
 )
 
-func initSystemController() *SystemController {
+func initSystemController(router *Router) *SystemController {
 	panic(wire.Build(allProviders))
 }
 
-func initBrowsingController() *BrowsingController {
+func initBrowsingController(router *Router) *BrowsingController {
 	panic(wire.Build(allProviders))
 }
 
-func initAlbumListController() *AlbumListController {
+func initAlbumListController(router *Router) *AlbumListController {
 	panic(wire.Build(allProviders))
 }
 
-func initMediaAnnotationController() *MediaAnnotationController {
+func initMediaAnnotationController(router *Router) *MediaAnnotationController {
 	panic(wire.Build(allProviders))
 }
 
-func initPlaylistsController() *PlaylistsController {
+func initPlaylistsController(router *Router) *PlaylistsController {
 	panic(wire.Build(allProviders))
 }
 
-func initSearchingController() *SearchingController {
+func initSearchingController(router *Router) *SearchingController {
 	panic(wire.Build(allProviders))
 }
 
-func initUsersController() *UsersController {
+func initUsersController(router *Router) *UsersController {
 	panic(wire.Build(allProviders))
 }
 
-func initMediaRetrievalController() *MediaRetrievalController {
+func initMediaRetrievalController(router *Router) *MediaRetrievalController {
 	panic(wire.Build(allProviders))
 }
 
-func initStreamController() *StreamController {
+func initStreamController(router *Router) *StreamController {
 	panic(wire.Build(allProviders))
 }
 

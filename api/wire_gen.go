@@ -6,11 +6,8 @@
 package api
 
 import (
-	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
-	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
-	"github.com/cloudsonic/sonic-server/persistence/db_storm"
 	"github.com/deluan/gomate"
 	"github.com/deluan/gomate/ledis"
 	"github.com/google/wire"
@@ -18,85 +15,62 @@ import (
 
 // Injectors from wire_injectors.go:
 
-func initSystemController() *SystemController {
+func initSystemController(router *Router) *SystemController {
 	systemController := NewSystemController()
 	return systemController
 }
 
-func initBrowsingController() *BrowsingController {
-	propertyRepository := db_storm.NewPropertyRepository()
-	mediaFolderRepository := persistence.NewMediaFolderRepository()
-	artistIndexRepository := db_storm.NewArtistIndexRepository()
-	artistRepository := db_storm.NewArtistRepository()
-	albumRepository := db_storm.NewAlbumRepository()
-	mediaFileRepository := db_storm.NewMediaFileRepository()
-	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistIndexRepository, artistRepository, albumRepository, mediaFileRepository)
+func initBrowsingController(router *Router) *BrowsingController {
+	browser := router.Browser
 	browsingController := NewBrowsingController(browser)
 	return browsingController
 }
 
-func initAlbumListController() *AlbumListController {
-	albumRepository := db_storm.NewAlbumRepository()
-	mediaFileRepository := db_storm.NewMediaFileRepository()
-	nowPlayingRepository := persistence.NewNowPlayingRepository()
-	listGenerator := engine.NewListGenerator(albumRepository, mediaFileRepository, nowPlayingRepository)
+func initAlbumListController(router *Router) *AlbumListController {
+	listGenerator := router.ListGenerator
 	albumListController := NewAlbumListController(listGenerator)
 	return albumListController
 }
 
-func initMediaAnnotationController() *MediaAnnotationController {
-	itunesControl := itunesbridge.NewItunesControl()
-	mediaFileRepository := db_storm.NewMediaFileRepository()
-	nowPlayingRepository := persistence.NewNowPlayingRepository()
-	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, nowPlayingRepository)
-	albumRepository := db_storm.NewAlbumRepository()
-	artistRepository := db_storm.NewArtistRepository()
-	ratings := engine.NewRatings(itunesControl, mediaFileRepository, albumRepository, artistRepository)
+func initMediaAnnotationController(router *Router) *MediaAnnotationController {
+	scrobbler := router.Scrobbler
+	ratings := router.Ratings
 	mediaAnnotationController := NewMediaAnnotationController(scrobbler, ratings)
 	return mediaAnnotationController
 }
 
-func initPlaylistsController() *PlaylistsController {
-	itunesControl := itunesbridge.NewItunesControl()
-	playlistRepository := db_storm.NewPlaylistRepository()
-	mediaFileRepository := db_storm.NewMediaFileRepository()
-	playlists := engine.NewPlaylists(itunesControl, playlistRepository, mediaFileRepository)
+func initPlaylistsController(router *Router) *PlaylistsController {
+	playlists := router.Playlists
 	playlistsController := NewPlaylistsController(playlists)
 	return playlistsController
 }
 
-func initSearchingController() *SearchingController {
-	artistRepository := db_storm.NewArtistRepository()
-	albumRepository := db_storm.NewAlbumRepository()
-	mediaFileRepository := db_storm.NewMediaFileRepository()
-	db := newDB()
-	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
+func initSearchingController(router *Router) *SearchingController {
+	search := router.Search
 	searchingController := NewSearchingController(search)
 	return searchingController
 }
 
-func initUsersController() *UsersController {
+func initUsersController(router *Router) *UsersController {
 	usersController := NewUsersController()
 	return usersController
 }
 
-func initMediaRetrievalController() *MediaRetrievalController {
-	mediaFileRepository := db_storm.NewMediaFileRepository()
-	albumRepository := db_storm.NewAlbumRepository()
-	cover := engine.NewCover(mediaFileRepository, albumRepository)
+func initMediaRetrievalController(router *Router) *MediaRetrievalController {
+	cover := router.Cover
 	mediaRetrievalController := NewMediaRetrievalController(cover)
 	return mediaRetrievalController
 }
 
-func initStreamController() *StreamController {
-	mediaFileRepository := db_storm.NewMediaFileRepository()
+func initStreamController(router *Router) *StreamController {
+	mediaFileRepository := router.MediaFileRepository
 	streamController := NewStreamController(mediaFileRepository)
 	return streamController
 }
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_storm.Set, engine.Set, NewSystemController,
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, NewSystemController,
 	NewBrowsingController,
 	NewAlbumListController,
 	NewMediaAnnotationController,
@@ -105,7 +79,7 @@ var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_storm.Set, engi
 	NewUsersController,
 	NewMediaRetrievalController,
 	NewStreamController,
-	newDB,
+	newDB, wire.FieldsOf(new(*Router), "Browser", "Cover", "ListGenerator", "Playlists", "Ratings", "Scrobbler", "Search", "MediaFileRepository"),
 )
 
 func newDB() gomate.DB {

@@ -6,8 +6,10 @@
 package main
 
 import (
+	"github.com/cloudsonic/sonic-server/api"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
+	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
 	"github.com/cloudsonic/sonic-server/persistence/db_storm"
 	"github.com/cloudsonic/sonic-server/scanner"
@@ -17,6 +19,28 @@ import (
 )
 
 // Injectors from wire_injectors.go:
+
+func initRouter() *api.Router {
+	propertyRepository := db_storm.NewPropertyRepository()
+	mediaFolderRepository := persistence.NewMediaFolderRepository()
+	artistIndexRepository := db_storm.NewArtistIndexRepository()
+	artistRepository := db_storm.NewArtistRepository()
+	albumRepository := db_storm.NewAlbumRepository()
+	mediaFileRepository := db_storm.NewMediaFileRepository()
+	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistIndexRepository, artistRepository, albumRepository, mediaFileRepository)
+	cover := engine.NewCover(mediaFileRepository, albumRepository)
+	nowPlayingRepository := persistence.NewNowPlayingRepository()
+	listGenerator := engine.NewListGenerator(albumRepository, mediaFileRepository, nowPlayingRepository)
+	itunesControl := itunesbridge.NewItunesControl()
+	playlistRepository := db_storm.NewPlaylistRepository()
+	playlists := engine.NewPlaylists(itunesControl, playlistRepository, mediaFileRepository)
+	ratings := engine.NewRatings(itunesControl, mediaFileRepository, albumRepository, artistRepository)
+	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, nowPlayingRepository)
+	db := newDB()
+	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
+	router := api.NewRouter(browser, cover, listGenerator, playlists, ratings, scrobbler, search, mediaFileRepository)
+	return router
+}
 
 func initImporter(musicFolder string) *scanner.Importer {
 	checkSumRepository := db_storm.NewCheckSumRepository()
@@ -35,7 +59,7 @@ func initImporter(musicFolder string) *scanner.Importer {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_storm.Set, engine.Set, scanner.Set, newDB)
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_storm.Set, engine.Set, scanner.Set, newDB, api.NewRouter)
 
 func newDB() gomate.DB {
 	return ledis.NewEmbeddedDB(db_ledis.Db())

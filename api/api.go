@@ -8,6 +8,8 @@ import (
 
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/go-chi/chi"
 )
 
@@ -15,7 +17,26 @@ const ApiVersion = "1.8.0"
 
 type SubsonicHandler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
-func Router() http.Handler {
+type Router struct {
+	Browser             engine.Browser
+	Cover               engine.Cover
+	ListGenerator       engine.ListGenerator
+	Playlists           engine.Playlists
+	Ratings             engine.Ratings
+	Scrobbler           engine.Scrobbler
+	Search              engine.Search
+	MediaFileRepository domain.MediaFileRepository
+}
+
+func NewRouter(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator,
+	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search,
+	mediaFileRepository domain.MediaFileRepository) *Router {
+
+	return &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
+		Ratings: ratings, Scrobbler: scrobbler, Search: search, MediaFileRepository: mediaFileRepository}
+}
+
+func (api *Router) Routes() http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(checkRequiredParameters)
@@ -27,12 +48,12 @@ func Router() http.Handler {
 	}
 
 	r.Group(func(r chi.Router) {
-		c := initSystemController()
+		c := initSystemController(api)
 		addEndpoint(r, "ping", c.Ping)
 		addEndpoint(r, "getLicense", c.GetLicense)
 	})
 	r.Group(func(r chi.Router) {
-		c := initBrowsingController()
+		c := initBrowsingController(api)
 		addEndpoint(r, "getMusicFolders", c.GetMusicFolders)
 		addEndpoint(r, "getMusicFolders", c.GetMusicFolders)
 		addEndpoint(r, "getIndexes", c.GetIndexes)
@@ -44,7 +65,7 @@ func Router() http.Handler {
 		addEndpoint(reqParams, "getSong", c.GetSong)
 	})
 	r.Group(func(r chi.Router) {
-		c := initAlbumListController()
+		c := initAlbumListController(api)
 		addEndpoint(r, "getAlbumList", c.GetAlbumList)
 		addEndpoint(r, "getAlbumList2", c.GetAlbumList2)
 		addEndpoint(r, "getStarred", c.GetStarred)
@@ -53,14 +74,14 @@ func Router() http.Handler {
 		addEndpoint(r, "getRandomSongs", c.GetRandomSongs)
 	})
 	r.Group(func(r chi.Router) {
-		c := initMediaAnnotationController()
+		c := initMediaAnnotationController(api)
 		addEndpoint(r, "setRating", c.SetRating)
 		addEndpoint(r, "star", c.Star)
 		addEndpoint(r, "unstar", c.Unstar)
 		addEndpoint(r, "scrobble", c.Scrobble)
 	})
 	r.Group(func(r chi.Router) {
-		c := initPlaylistsController()
+		c := initPlaylistsController(api)
 		addEndpoint(r, "getPlaylists", c.GetPlaylists)
 		addEndpoint(r, "getPlaylist", c.GetPlaylist)
 		addEndpoint(r, "createPlaylist", c.CreatePlaylist)
@@ -68,21 +89,21 @@ func Router() http.Handler {
 		addEndpoint(r, "updatePlaylist", c.UpdatePlaylist)
 	})
 	r.Group(func(r chi.Router) {
-		c := initSearchingController()
+		c := initSearchingController(api)
 		addEndpoint(r, "search2", c.Search2)
 		addEndpoint(r, "search3", c.Search3)
 	})
 	r.Group(func(r chi.Router) {
-		c := initUsersController()
+		c := initUsersController(api)
 		addEndpoint(r, "getUser", c.GetUser)
 	})
 	r.Group(func(r chi.Router) {
-		c := initMediaRetrievalController()
+		c := initMediaRetrievalController(api)
 		addEndpoint(r, "getAvatar", c.GetAvatar)
 		addEndpoint(r, "getCoverArt", c.GetCoverArt)
 	})
 	r.Group(func(r chi.Router) {
-		c := initStreamController()
+		c := initStreamController(api)
 		addEndpoint(r, "stream", c.Stream)
 		addEndpoint(r, "download", c.Download)
 	})
