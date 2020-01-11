@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/cloudsonic/sonic-server/api"
 	"github.com/cloudsonic/sonic-server/conf"
 )
 
@@ -14,6 +13,6 @@ func main() {
 
 	a := App{}
 	a.Initialize()
-	a.MountRouter("/rest/", api.Router())
+	a.MountRouter("/rest/", initRouter().Routes())
 	a.Run(":" + conf.Sonic.Port)
 }

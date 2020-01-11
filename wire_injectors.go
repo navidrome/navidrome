@@ -3,6 +3,7 @@
 package main
 
 import (
+	"github.com/cloudsonic/sonic-server/api"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
@@ -20,7 +21,12 @@ var allProviders = wire.NewSet(
 	engine.Set,
 	scanner.Set,
 	newDB,
+	api.NewRouter,
 )
+
+func initRouter() *api.Router {
+	panic(wire.Build(allProviders))
+}
 
 func initImporter(musicFolder string) *scanner.Importer {
 	panic(wire.Build(allProviders))
