@@ -1,4 +1,4 @@
-package ledis
+package db_ledis
 
 import "github.com/google/wire"
 

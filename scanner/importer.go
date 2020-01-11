@@ -310,7 +310,7 @@ func (i *Importer) findGroup(ig utils.IndexGroups, name string) string {
 func (i *Importer) saveIndex(artistIndex map[string]tempIndex) error {
 	i.idxRepo.DeleteAll()
 	for k, temp := range artistIndex {
-		idx := &domain.ArtistIndex{Id: k}
+		idx := &domain.ArtistIndex{ID: k}
 		for _, v := range temp {
 			idx.Artists = append(idx.Artists, v)
 		}

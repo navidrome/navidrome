@@ -8,10 +8,10 @@ package api
 import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
-	"github.com/cloudsonic/sonic-server/persistence/ledis"
-	"github.com/cloudsonic/sonic-server/persistence/storm"
+	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
+	"github.com/cloudsonic/sonic-server/persistence/db_storm"
 	"github.com/deluan/gomate"
-	ledis2 "github.com/deluan/gomate/ledis"
+	"github.com/deluan/gomate/ledis"
 	"github.com/google/wire"
 )
 
@@ -23,21 +23,21 @@ func initSystemController() *SystemController {
 }
 
 func initBrowsingController() *BrowsingController {
-	propertyRepository := storm.NewPropertyRepository()
-	mediaFolderRepository := ledis.NewMediaFolderRepository()
-	artistIndexRepository := ledis.NewArtistIndexRepository()
-	artistRepository := storm.NewArtistRepository()
-	albumRepository := storm.NewAlbumRepository()
-	mediaFileRepository := storm.NewMediaFileRepository()
+	propertyRepository := db_storm.NewPropertyRepository()
+	mediaFolderRepository := db_ledis.NewMediaFolderRepository()
+	artistIndexRepository := db_storm.NewArtistIndexRepository()
+	artistRepository := db_storm.NewArtistRepository()
+	albumRepository := db_storm.NewAlbumRepository()
+	mediaFileRepository := db_storm.NewMediaFileRepository()
 	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistIndexRepository, artistRepository, albumRepository, mediaFileRepository)
 	browsingController := NewBrowsingController(browser)
 	return browsingController
 }
 
 func initAlbumListController() *AlbumListController {
-	albumRepository := storm.NewAlbumRepository()
-	mediaFileRepository := storm.NewMediaFileRepository()
-	nowPlayingRepository := ledis.NewNowPlayingRepository()
+	albumRepository := db_storm.NewAlbumRepository()
+	mediaFileRepository := db_storm.NewMediaFileRepository()
+	nowPlayingRepository := db_ledis.NewNowPlayingRepository()
 	listGenerator := engine.NewListGenerator(albumRepository, mediaFileRepository, nowPlayingRepository)
 	albumListController := NewAlbumListController(listGenerator)
 	return albumListController
@@ -45,11 +45,11 @@ func initAlbumListController() *AlbumListController {
 
 func initMediaAnnotationController() *MediaAnnotationController {
 	itunesControl := itunesbridge.NewItunesControl()
-	mediaFileRepository := storm.NewMediaFileRepository()
-	nowPlayingRepository := ledis.NewNowPlayingRepository()
+	mediaFileRepository := db_storm.NewMediaFileRepository()
+	nowPlayingRepository := db_ledis.NewNowPlayingRepository()
 	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, nowPlayingRepository)
-	albumRepository := storm.NewAlbumRepository()
-	artistRepository := storm.NewArtistRepository()
+	albumRepository := db_storm.NewAlbumRepository()
+	artistRepository := db_storm.NewArtistRepository()
 	ratings := engine.NewRatings(itunesControl, mediaFileRepository, albumRepository, artistRepository)
 	mediaAnnotationController := NewMediaAnnotationController(scrobbler, ratings)
 	return mediaAnnotationController
@@ -57,17 +57,17 @@ func initMediaAnnotationController() *MediaAnnotationController {
 
 func initPlaylistsController() *PlaylistsController {
 	itunesControl := itunesbridge.NewItunesControl()
-	playlistRepository := ledis.NewPlaylistRepository()
-	mediaFileRepository := storm.NewMediaFileRepository()
+	playlistRepository := db_ledis.NewPlaylistRepository()
+	mediaFileRepository := db_storm.NewMediaFileRepository()
 	playlists := engine.NewPlaylists(itunesControl, playlistRepository, mediaFileRepository)
 	playlistsController := NewPlaylistsController(playlists)
 	return playlistsController
 }
 
 func initSearchingController() *SearchingController {
-	artistRepository := storm.NewArtistRepository()
-	albumRepository := storm.NewAlbumRepository()
-	mediaFileRepository := storm.NewMediaFileRepository()
+	artistRepository := db_storm.NewArtistRepository()
+	albumRepository := db_storm.NewAlbumRepository()
+	mediaFileRepository := db_storm.NewMediaFileRepository()
 	db := newDB()
 	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
 	searchingController := NewSearchingController(search)
@@ -80,22 +80,22 @@ func initUsersController() *UsersController {
 }
 
 func initMediaRetrievalController() *MediaRetrievalController {
-	mediaFileRepository := storm.NewMediaFileRepository()
-	albumRepository := storm.NewAlbumRepository()
+	mediaFileRepository := db_storm.NewMediaFileRepository()
+	albumRepository := db_storm.NewAlbumRepository()
 	cover := engine.NewCover(mediaFileRepository, albumRepository)
 	mediaRetrievalController := NewMediaRetrievalController(cover)
 	return mediaRetrievalController
 }
 
 func initStreamController() *StreamController {
-	mediaFileRepository := storm.NewMediaFileRepository()
+	mediaFileRepository := db_storm.NewMediaFileRepository()
 	streamController := NewStreamController(mediaFileRepository)
 	return streamController
 }
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, ledis.Set, storm.Set, engine.Set, NewSystemController,
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_ledis.Set, db_storm.Set, engine.Set, NewSystemController,
 	NewBrowsingController,
 	NewAlbumListController,
 	NewMediaAnnotationController,
@@ -108,5 +108,5 @@ var allProviders = wire.NewSet(itunesbridge.NewItunesControl, ledis.Set, storm.S
 )
 
 func newDB() gomate.DB {
-	return ledis2.NewEmbeddedDB(ledis.Db())
+	return ledis.NewEmbeddedDB(db_ledis.Db())
 }

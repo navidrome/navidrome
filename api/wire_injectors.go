@@ -5,8 +5,8 @@ package api
 import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
-	ledis2 "github.com/cloudsonic/sonic-server/persistence/ledis"
-	"github.com/cloudsonic/sonic-server/persistence/storm"
+	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
+	"github.com/cloudsonic/sonic-server/persistence/db_storm"
 	"github.com/deluan/gomate"
 	"github.com/deluan/gomate/ledis"
 	"github.com/google/wire"
@@ -14,8 +14,8 @@ import (
 
 var allProviders = wire.NewSet(
 	itunesbridge.NewItunesControl,
-	ledis2.Set,
-	storm.Set,
+	db_ledis.Set,
+	db_storm.Set,
 	engine.Set,
 	NewSystemController,
 	NewBrowsingController,
@@ -66,5 +66,5 @@ func initStreamController() *StreamController {
 }
 
 func newDB() gomate.DB {
-	return ledis.NewEmbeddedDB(ledis2.Db())
+	return ledis.NewEmbeddedDB(db_ledis.Db())
 }
