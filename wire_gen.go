@@ -20,6 +20,22 @@ import (
 
 // Injectors from wire_injectors.go:
 
+func createApp(musicFolder string) *App {
+	checkSumRepository := db_storm.NewCheckSumRepository()
+	itunesScanner := scanner.NewItunesScanner(checkSumRepository)
+	mediaFileRepository := db_storm.NewMediaFileRepository()
+	albumRepository := db_storm.NewAlbumRepository()
+	artistRepository := db_storm.NewArtistRepository()
+	artistIndexRepository := db_storm.NewArtistIndexRepository()
+	playlistRepository := db_storm.NewPlaylistRepository()
+	propertyRepository := db_storm.NewPropertyRepository()
+	db := newDB()
+	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
+	importer := scanner.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository, search)
+	app := NewApp(importer)
+	return app
+}
+
 func initRouter() *api.Router {
 	propertyRepository := db_storm.NewPropertyRepository()
 	mediaFolderRepository := persistence.NewMediaFolderRepository()
@@ -40,21 +56,6 @@ func initRouter() *api.Router {
 	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
 	router := api.NewRouter(browser, cover, listGenerator, playlists, ratings, scrobbler, search, mediaFileRepository)
 	return router
-}
-
-func initImporter(musicFolder string) *scanner.Importer {
-	checkSumRepository := db_storm.NewCheckSumRepository()
-	itunesScanner := scanner.NewItunesScanner(checkSumRepository)
-	mediaFileRepository := db_storm.NewMediaFileRepository()
-	albumRepository := db_storm.NewAlbumRepository()
-	artistRepository := db_storm.NewArtistRepository()
-	artistIndexRepository := db_storm.NewArtistIndexRepository()
-	playlistRepository := db_storm.NewPlaylistRepository()
-	propertyRepository := db_storm.NewPropertyRepository()
-	db := newDB()
-	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
-	importer := scanner.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository, search)
-	return importer
 }
 
 // wire_injectors.go:
