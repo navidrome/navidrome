@@ -34,7 +34,7 @@ func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Reques
 		playlists[i].Owner = p.Owner
 		playlists[i].Public = p.Public
 	}
-	response := NewEmpty()
+	response := NewResponse()
 	response.Playlists = &responses.Playlists{Playlist: playlists}
 	return response, nil
 }
@@ -54,7 +54,7 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.Playlist = c.buildPlaylist(pinfo)
 	return response, nil
 }
@@ -73,7 +73,7 @@ func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Requ
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
-	return NewEmpty(), nil
+	return NewResponse(), nil
 }
 
 func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -86,7 +86,7 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
-	return NewEmpty(), nil
+	return NewResponse(), nil
 }
 
 func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -115,7 +115,7 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
-	return NewEmpty(), nil
+	return NewResponse(), nil
 }
 
 func (c *PlaylistsController) buildPlaylist(d *engine.PlaylistInfo) *responses.PlaylistWithSongs {

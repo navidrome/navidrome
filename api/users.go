@@ -6,7 +6,7 @@ import (
 	"github.com/cloudsonic/sonic-server/api/responses"
 )
 
-type UsersController struct{ }
+type UsersController struct{}
 
 func NewUsersController() *UsersController {
 	return &UsersController{}
@@ -18,7 +18,7 @@ func (c *UsersController) GetUser(w http.ResponseWriter, r *http.Request) (*resp
 	if err != nil {
 		return nil, err
 	}
-	response := NewEmpty()
+	response := NewResponse()
 	response.User = &responses.User{}
 	response.User.Username = user
 	response.User.StreamRole = true

@@ -68,7 +68,7 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 	}
 	mfs, als, as := c.searchAll(r, sp)
 
-	response := NewEmpty()
+	response := NewResponse()
 	searchResult2 := &responses.SearchResult2{}
 	searchResult2.Artist = make([]responses.Artist, len(as))
 	for i, e := range as {
@@ -87,7 +87,7 @@ func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*
 	}
 	mfs, als, as := c.searchAll(r, sp)
 
-	response := NewEmpty()
+	response := NewResponse()
 	searchResult3 := &responses.SearchResult3{}
 	searchResult3.Artist = make([]responses.ArtistID3, len(as))
 	for i, e := range as {

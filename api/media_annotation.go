@@ -44,7 +44,7 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	return NewEmpty(), nil
+	return NewResponse(), nil
 }
 
 func (c *MediaAnnotationController) getIds(r *http.Request) ([]string, error) {
@@ -74,7 +74,7 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	return NewEmpty(), nil
+	return NewResponse(), nil
 }
 
 func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -93,7 +93,7 @@ func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Reques
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	return NewEmpty(), nil
+	return NewResponse(), nil
 }
 
 func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -134,5 +134,5 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 			log.Info(r, "Now Playing", "id", id, "title", mf.Title, "timestamp", t)
 		}
 	}
-	return NewEmpty(), nil
+	return NewResponse(), nil
 }

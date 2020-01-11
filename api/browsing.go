@@ -28,7 +28,7 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 		folders[i].Id = f.ID
 		folders[i].Name = f.Name
 	}
-	response := NewEmpty()
+	response := NewResponse()
 	response.MusicFolders = &responses.MusicFolders{Folders: folders}
 	return response, nil
 }
@@ -66,7 +66,7 @@ func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) 
 		return nil, err
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.Indexes = res
 	return response, nil
 }
@@ -77,7 +77,7 @@ func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) 
 		return nil, err
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.Artist = res
 	return response, nil
 }
@@ -94,7 +94,7 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.Directory = c.buildDirectory(dir)
 	return response, nil
 }
@@ -111,7 +111,7 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.ArtistWithAlbumsID3 = c.buildArtist(dir)
 	return response, nil
 }
@@ -128,7 +128,7 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.AlbumWithSongsID3 = c.buildAlbum(dir)
 	return response, nil
 }
@@ -145,7 +145,7 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	child := ToChild(*song)
 	response.Song = &child
 	return response, nil

@@ -64,7 +64,7 @@ func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Reques
 		return nil, NewError(responses.ErrorGeneric, err.Error())
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.AlbumList = &responses.AlbumList{Album: ToChildren(albums)}
 	return response, nil
 }
@@ -75,7 +75,7 @@ func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Reque
 		return nil, NewError(responses.ErrorGeneric, err.Error())
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.AlbumList2 = &responses.AlbumList{Album: ToAlbums(albums)}
 	return response, nil
 }
@@ -87,7 +87,7 @@ func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.Starred = &responses.Starred{}
 	response.Starred.Album = ToChildren(albums)
 	response.Starred.Song = ToChildren(mediaFiles)
@@ -101,7 +101,7 @@ func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.Starred2 = &responses.Starred{}
 	response.Starred2.Album = ToAlbums(albums)
 	response.Starred2.Song = ToChildren(mediaFiles)
@@ -115,7 +115,7 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.NowPlaying = &responses.NowPlaying{}
 	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(npInfos))
 	for i, entry := range npInfos {
@@ -137,7 +137,7 @@ func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Requ
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewEmpty()
+	response := NewResponse()
 	response.RandomSongs = &responses.Songs{}
 	response.RandomSongs.Songs = make([]responses.Child, len(songs))
 	for i, entry := range songs {

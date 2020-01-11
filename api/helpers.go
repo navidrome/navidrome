@@ -12,7 +12,7 @@ import (
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
-func NewEmpty() *responses.Subsonic {
+func NewResponse() *responses.Subsonic {
 	return &responses.Subsonic{Status: "ok", Version: Version}
 }
 
