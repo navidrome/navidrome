@@ -1,11 +1,11 @@
-package storm
+package db_storm
 
 import (
 	"github.com/cloudsonic/sonic-server/domain"
 )
 
 type _ArtistIndex struct {
-	Id      string
+	ID      string
 	Artists domain.ArtistInfos
 }
 

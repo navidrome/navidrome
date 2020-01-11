@@ -1,4 +1,4 @@
-package ledis
+package db_ledis
 
 import (
 	"errors"
@@ -18,11 +18,11 @@ func NewArtistIndexRepository() domain.ArtistIndexRepository {
 }
 
 func (r *artistIndexRepository) Put(m *domain.ArtistIndex) error {
-	if m.Id == "" {
+	if m.ID == "" {
 		return errors.New("index ID is not set")
 	}
 	sort.Sort(m.Artists)
-	return r.saveOrUpdate(m.Id, m)
+	return r.saveOrUpdate(m.ID, m)
 }
 
 func (r *artistIndexRepository) Get(id string) (*domain.ArtistIndex, error) {
@@ -40,7 +40,7 @@ func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
 func (r *artistIndexRepository) DeleteAll() error {
 	var empty domain.ArtistIndexes
 	_, err := r.purgeInactive(empty, func(e interface{}) string {
-		return e.(domain.ArtistIndex).Id
+		return e.(domain.ArtistIndex).ID
 	})
 
 	return err

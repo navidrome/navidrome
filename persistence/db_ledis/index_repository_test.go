@@ -1,4 +1,4 @@
-package ledis
+package db_ledis
 
 import (
 	"strconv"
@@ -17,7 +17,7 @@ func TestIndexRepository(t *testing.T) {
 		repo := NewArtistIndexRepository()
 
 		Convey("It should be able to read and write to the database", func() {
-			i := &domain.ArtistIndex{Id: "123"}
+			i := &domain.ArtistIndex{ID: "123"}
 
 			repo.Put(i)
 			s, _ := repo.Get("123")
@@ -25,7 +25,7 @@ func TestIndexRepository(t *testing.T) {
 			So(s, shouldBeEqual, i)
 		})
 		Convey("It should be able to check for existence of an ID", func() {
-			i := &domain.ArtistIndex{Id: "123"}
+			i := &domain.ArtistIndex{ID: "123"}
 
 			repo.Put(i)
 
@@ -44,7 +44,7 @@ func TestIndexRepository(t *testing.T) {
 		})
 		Convey("Given that I have 4 records", func() {
 			for i := 1; i <= 4; i++ {
-				e := &domain.ArtistIndex{Id: strconv.Itoa(i)}
+				e := &domain.ArtistIndex{ID: strconv.Itoa(i)}
 				repo.Put(e)
 			}
 
@@ -58,7 +58,7 @@ func TestIndexRepository(t *testing.T) {
 				})
 				Convey("And the values should be retrieved", func() {
 					for _, e := range indices {
-						So(e.Id, ShouldBeIn, []string{"1", "2", "3", "4"})
+						So(e.ID, ShouldBeIn, []string{"1", "2", "3", "4"})
 					}
 				})
 			})

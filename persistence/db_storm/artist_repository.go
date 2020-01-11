@@ -1,4 +1,4 @@
-package storm
+package db_storm
 
 import (
 	"github.com/cloudsonic/sonic-server/domain"

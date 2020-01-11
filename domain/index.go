@@ -9,7 +9,7 @@ type ArtistInfo struct {
 }
 
 type ArtistIndex struct {
-	Id      string
+	ID      string
 	Artists ArtistInfos
 }
 

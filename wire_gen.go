@@ -8,25 +8,25 @@ package main
 import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
-	"github.com/cloudsonic/sonic-server/persistence/ledis"
-	"github.com/cloudsonic/sonic-server/persistence/storm"
+	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
+	"github.com/cloudsonic/sonic-server/persistence/db_storm"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/deluan/gomate"
-	ledis2 "github.com/deluan/gomate/ledis"
+	"github.com/deluan/gomate/ledis"
 	"github.com/google/wire"
 )
 
 // Injectors from wire_injectors.go:
 
 func initImporter(musicFolder string) *scanner.Importer {
-	checkSumRepository := ledis.NewCheckSumRepository()
+	checkSumRepository := db_ledis.NewCheckSumRepository()
 	itunesScanner := scanner.NewItunesScanner(checkSumRepository)
-	mediaFileRepository := storm.NewMediaFileRepository()
-	albumRepository := storm.NewAlbumRepository()
-	artistRepository := storm.NewArtistRepository()
-	artistIndexRepository := ledis.NewArtistIndexRepository()
-	playlistRepository := ledis.NewPlaylistRepository()
-	propertyRepository := storm.NewPropertyRepository()
+	mediaFileRepository := db_storm.NewMediaFileRepository()
+	albumRepository := db_storm.NewAlbumRepository()
+	artistRepository := db_storm.NewArtistRepository()
+	artistIndexRepository := db_storm.NewArtistIndexRepository()
+	playlistRepository := db_ledis.NewPlaylistRepository()
+	propertyRepository := db_storm.NewPropertyRepository()
 	db := newDB()
 	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
 	importer := scanner.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository, search)
@@ -35,8 +35,8 @@ func initImporter(musicFolder string) *scanner.Importer {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, ledis.Set, storm.Set, engine.Set, scanner.Set, newDB)
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_ledis.Set, db_storm.Set, engine.Set, scanner.Set, newDB)
 
 func newDB() gomate.DB {
-	return ledis2.NewEmbeddedDB(ledis.Db())
+	return ledis.NewEmbeddedDB(db_ledis.Db())
 }
