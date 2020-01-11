@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi"
 )
 
-const ApiVersion = "1.8.0"
+const Version = "1.8.0"
 
 type SubsonicHandler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
@@ -131,7 +131,7 @@ func addEndpoint(r chi.Router, path string, f SubsonicHandler) {
 }
 
 func SendError(w http.ResponseWriter, r *http.Request, err error) {
-	response := &responses.Subsonic{Version: ApiVersion, Status: "fail"}
+	response := &responses.Subsonic{Version: Version, Status: "fail"}
 	code := responses.ErrorGeneric
 	if e, ok := err.(SubsonicError); ok {
 		code = e.code

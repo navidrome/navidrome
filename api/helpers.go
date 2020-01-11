@@ -13,7 +13,7 @@ import (
 )
 
 func NewEmpty() *responses.Subsonic {
-	return &responses.Subsonic{Status: "ok", Version: ApiVersion}
+	return &responses.Subsonic{Status: "ok", Version: Version}
 }
 
 func RequiredParamString(r *http.Request, param string, msg string) (string, error) {
