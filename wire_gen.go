@@ -25,7 +25,7 @@ func initImporter(musicFolder string) *scanner.Importer {
 	albumRepository := db_storm.NewAlbumRepository()
 	artistRepository := db_storm.NewArtistRepository()
 	artistIndexRepository := db_storm.NewArtistIndexRepository()
-	playlistRepository := db_ledis.NewPlaylistRepository()
+	playlistRepository := db_storm.NewPlaylistRepository()
 	propertyRepository := db_storm.NewPropertyRepository()
 	db := newDB()
 	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
