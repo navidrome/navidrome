@@ -29,6 +29,6 @@ type NowPlayingRepository interface {
 	// Size of the queue for the playerId
 	Count(playerId int) (int64, error)
 
-	// Returns all tails from all playerIds
+	// Returns all heads from all playerIds
 	GetAll() ([]*NowPlayingInfo, error)
 }

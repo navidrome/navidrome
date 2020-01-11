@@ -38,7 +38,7 @@ func initBrowsingController() *BrowsingController {
 func initAlbumListController() *AlbumListController {
 	albumRepository := db_storm.NewAlbumRepository()
 	mediaFileRepository := db_storm.NewMediaFileRepository()
-	nowPlayingRepository := db_ledis.NewNowPlayingRepository()
+	nowPlayingRepository := persistence.NewNowPlayingRepository()
 	listGenerator := engine.NewListGenerator(albumRepository, mediaFileRepository, nowPlayingRepository)
 	albumListController := NewAlbumListController(listGenerator)
 	return albumListController
@@ -47,7 +47,7 @@ func initAlbumListController() *AlbumListController {
 func initMediaAnnotationController() *MediaAnnotationController {
 	itunesControl := itunesbridge.NewItunesControl()
 	mediaFileRepository := db_storm.NewMediaFileRepository()
-	nowPlayingRepository := db_ledis.NewNowPlayingRepository()
+	nowPlayingRepository := persistence.NewNowPlayingRepository()
 	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, nowPlayingRepository)
 	albumRepository := db_storm.NewAlbumRepository()
 	artistRepository := db_storm.NewArtistRepository()
@@ -96,7 +96,7 @@ func initStreamController() *StreamController {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_ledis.Set, db_storm.Set, engine.Set, NewSystemController,
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, db_storm.Set, engine.Set, NewSystemController,
 	NewBrowsingController,
 	NewAlbumListController,
 	NewMediaAnnotationController,

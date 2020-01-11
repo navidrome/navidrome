@@ -14,7 +14,7 @@ import (
 
 var allProviders = wire.NewSet(
 	itunesbridge.NewItunesControl,
-	db_ledis.Set,
+	//db_ledis.Set,
 	db_storm.Set,
 	engine.Set,
 	NewSystemController,
