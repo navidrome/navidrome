@@ -1,8 +1,6 @@
 package db_ledis
 
 import (
-	"errors"
-
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/siddontang/ledisdb/ledis"
@@ -33,14 +31,6 @@ func (r *checkSumRepository) loadData() {
 		r.data[string(p.Field)] = string(p.Value)
 	}
 	log.Debug("Loaded checksums", "total", len(r.data))
-}
-
-func (r *checkSumRepository) Put(id, sum string) error {
-	if id == "" {
-		return errors.New("ID is required")
-	}
-	_, err := Db().HSet(checkSumKeyName, []byte(id), []byte(sum))
-	return err
 }
 
 func (r *checkSumRepository) Get(id string) (string, error) {

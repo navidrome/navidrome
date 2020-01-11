@@ -19,7 +19,7 @@ import (
 // Injectors from wire_injectors.go:
 
 func initImporter(musicFolder string) *scanner.Importer {
-	checkSumRepository := db_ledis.NewCheckSumRepository()
+	checkSumRepository := db_storm.NewCheckSumRepository()
 	itunesScanner := scanner.NewItunesScanner(checkSumRepository)
 	mediaFileRepository := db_storm.NewMediaFileRepository()
 	albumRepository := db_storm.NewAlbumRepository()
