@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/go-chi/chi"
@@ -16,14 +15,16 @@ import (
 )
 
 type App struct {
+	Importer *scanner.Importer
 	router   *chi.Mux
-	importer *scanner.Importer
 }
 
-func (a *App) Initialize() {
+func NewApp(importer *scanner.Importer) *App {
+	a := &App{Importer: importer}
 	initMimeTypes()
 	a.initRoutes()
 	a.initImporter()
+	return a
 }
 
 func (a *App) MountRouter(path string, subRouter http.Handler) {
@@ -60,7 +61,6 @@ func (a *App) initRoutes() {
 }
 
 func (a *App) initImporter() {
-	a.importer = initImporter(conf.Sonic.MusicFolder)
 	go a.startPeriodicScans()
 }
 
@@ -68,7 +68,7 @@ func (a *App) startPeriodicScans() {
 	for {
 		select {
 		case <-time.After(5 * time.Second):
-			a.importer.CheckForUpdates(false)
+			a.Importer.CheckForUpdates(false)
 		}
 	}
 }

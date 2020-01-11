@@ -24,11 +24,14 @@ var allProviders = wire.NewSet(
 	api.NewRouter,
 )
 
-func initRouter() *api.Router {
-	panic(wire.Build(allProviders))
+func createApp(musicFolder string) *App {
+	panic(wire.Build(
+		NewApp,
+		allProviders,
+	))
 }
 
-func initImporter(musicFolder string) *scanner.Importer {
+func initRouter() *api.Router {
 	panic(wire.Build(allProviders))
 }
 
