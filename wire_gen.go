@@ -54,7 +54,7 @@ func initRouter() *api.Router {
 	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, nowPlayingRepository)
 	db := newDB()
 	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
-	router := api.NewRouter(browser, cover, listGenerator, playlists, ratings, scrobbler, search, mediaFileRepository)
+	router := api.NewRouter(browser, cover, listGenerator, playlists, ratings, scrobbler, search)
 	return router
 }
 
