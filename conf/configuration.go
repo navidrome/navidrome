@@ -23,6 +23,9 @@ type sonic struct {
 	DownsampleCommand   string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
 	PlsIgnoreFolders    bool   `default:"true"`
 	PlsIgnoredPatterns  string `default:"^iCloud;\\~"`
+
+	// DevFlags
+	DevDisableFileCheck bool `default:"false"`
 }
 
 var Sonic *sonic
