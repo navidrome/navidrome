@@ -1,6 +1,9 @@
 package db_storm
 
-import "github.com/google/wire"
+import (
+	"github.com/cloudsonic/sonic-server/persistence"
+	"github.com/google/wire"
+)
 
 var Set = wire.NewSet(
 	NewPropertyRepository,
@@ -8,4 +11,5 @@ var Set = wire.NewSet(
 	NewAlbumRepository,
 	NewMediaFileRepository,
 	NewArtistIndexRepository,
+	persistence.NewMediaFolderRepository,
 )
