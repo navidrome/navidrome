@@ -1,4 +1,4 @@
-DisableAuthentication = false
+DevDisableAuthentication = false
 User = "deluan"
 Password = "wordpass"
 DbPath = "/tmp/testDb"
