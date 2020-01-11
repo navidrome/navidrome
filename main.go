@@ -12,6 +12,6 @@ func main() {
 	fmt.Printf("\nCloudSonic Server v%s\n\n", "0.2")
 
 	a := createApp(conf.Sonic.MusicFolder)
-	a.MountRouter("/rest/", initRouter().Routes())
+	a.MountRouter("/rest/", initRouter())
 	a.Run(":" + conf.Sonic.Port)
 }
