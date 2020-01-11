@@ -1,4 +1,4 @@
-package db_ledis
+package persistence
 
 import (
 	"github.com/cloudsonic/sonic-server/conf"

@@ -8,6 +8,7 @@ package api
 import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
+	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
 	"github.com/cloudsonic/sonic-server/persistence/db_storm"
 	"github.com/deluan/gomate"
@@ -24,7 +25,7 @@ func initSystemController() *SystemController {
 
 func initBrowsingController() *BrowsingController {
 	propertyRepository := db_storm.NewPropertyRepository()
-	mediaFolderRepository := db_ledis.NewMediaFolderRepository()
+	mediaFolderRepository := persistence.NewMediaFolderRepository()
 	artistIndexRepository := db_storm.NewArtistIndexRepository()
 	artistRepository := db_storm.NewArtistRepository()
 	albumRepository := db_storm.NewAlbumRepository()
