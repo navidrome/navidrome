@@ -63,8 +63,8 @@ func initMediaRetrievalController(router *Router) *MediaRetrievalController {
 }
 
 func initStreamController(router *Router) *StreamController {
-	mediaFileRepository := router.MediaFileRepository
-	streamController := NewStreamController(mediaFileRepository)
+	browser := router.Browser
+	streamController := NewStreamController(browser)
 	return streamController
 }
 
@@ -79,7 +79,7 @@ var allProviders = wire.NewSet(itunesbridge.NewItunesControl, NewSystemControlle
 	NewUsersController,
 	NewMediaRetrievalController,
 	NewStreamController,
-	newDB, wire.FieldsOf(new(*Router), "Browser", "Cover", "ListGenerator", "Playlists", "Ratings", "Scrobbler", "Search", "MediaFileRepository"),
+	newDB, wire.FieldsOf(new(*Router), "Browser", "Cover", "ListGenerator", "Playlists", "Ratings", "Scrobbler", "Search"),
 )
 
 func newDB() gomate.DB {

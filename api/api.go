@@ -8,7 +8,6 @@ import (
 
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/go-chi/chi"
 )
@@ -18,24 +17,22 @@ const ApiVersion = "1.8.0"
 type SubsonicHandler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
 type Router struct {
-	Browser             engine.Browser
-	Cover               engine.Cover
-	ListGenerator       engine.ListGenerator
-	Playlists           engine.Playlists
-	Ratings             engine.Ratings
-	Scrobbler           engine.Scrobbler
-	Search              engine.Search
-	MediaFileRepository domain.MediaFileRepository
+	Browser       engine.Browser
+	Cover         engine.Cover
+	ListGenerator engine.ListGenerator
+	Playlists     engine.Playlists
+	Ratings       engine.Ratings
+	Scrobbler     engine.Scrobbler
+	Search        engine.Search
 
 	mux http.Handler
 }
 
 func NewRouter(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator,
-	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search,
-	mediaFileRepository domain.MediaFileRepository) *Router {
+	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search) *Router {
 
 	r := &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
-		Ratings: ratings, Scrobbler: scrobbler, Search: search, MediaFileRepository: mediaFileRepository}
+		Ratings: ratings, Scrobbler: scrobbler, Search: search}
 	r.mux = r.routes()
 	return r
 }

@@ -11,20 +11,20 @@ import (
 )
 
 type StreamController struct {
-	repo domain.MediaFileRepository
+	browser engine.Browser
 }
 
-func NewStreamController(repo domain.MediaFileRepository) *StreamController {
-	return &StreamController{repo: repo}
+func NewStreamController(browser engine.Browser) *StreamController {
+	return &StreamController{browser: browser}
 }
 
-func (c *StreamController) Prepare(r *http.Request) (id string, mf *domain.MediaFile, err error) {
+func (c *StreamController) Prepare(r *http.Request) (id string, mf *engine.Entry, err error) {
 	id, err = RequiredParamString(r, "id", "id parameter required")
 	if err != nil {
 		return "", nil, err
 	}
 
-	mf, err = c.repo.Get(id)
+	mf, err = c.browser.GetSong(id)
 	switch {
 	case err == domain.ErrNotFound:
 		log.Error(r, "Mediafile not found", "id", id)
@@ -46,7 +46,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	maxBitRate := ParamInt(r, "maxBitRate", 0)
 	maxBitRate = utils.MinInt(mf.BitRate, maxBitRate)
 
-	log.Debug(r, "Streaming file", "id", id, "path", mf.Path, "bitrate", mf.BitRate, "maxBitRate", maxBitRate)
+	log.Debug(r, "Streaming file", "id", id, "path", mf.AbsolutePath, "bitrate", mf.BitRate, "maxBitRate", maxBitRate)
 
 	// TODO Send proper estimated content-length
 	//contentLength := mf.Size
@@ -61,16 +61,16 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	h.Set("Pragma", "public")
 
 	if r.Method == "HEAD" {
-		log.Debug(r, "Just a HEAD. Not streaming", "path", mf.Path)
+		log.Debug(r, "Just a HEAD. Not streaming", "path", mf.AbsolutePath)
 		return nil, nil
 	}
 
-	err = engine.Stream(r.Context(), mf.Path, mf.BitRate, maxBitRate, w)
+	err = engine.Stream(r.Context(), mf.AbsolutePath, mf.BitRate, maxBitRate, w)
 	if err != nil {
 		log.Error(r, "Error streaming file", "id", id, err)
 	}
 
-	log.Debug(r, "Finished streaming", "path", mf.Path)
+	log.Debug(r, "Finished streaming", "path", mf.AbsolutePath)
 	return nil, nil
 }
 
@@ -79,14 +79,14 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 	if err != nil {
 		return nil, err
 	}
-	log.Debug(r, "Sending file", "path", mf.Path)
+	log.Debug(r, "Sending file", "path", mf.AbsolutePath)
 
-	err = engine.Stream(r.Context(), mf.Path, 0, 0, w)
+	err = engine.Stream(r.Context(), mf.AbsolutePath, 0, 0, w)
 	if err != nil {
-		log.Error(r, "Error downloading file", "path", mf.Path, err)
+		log.Error(r, "Error downloading file", "path", mf.AbsolutePath, err)
 	}
 
-	log.Debug(r, "Finished sending", "path", mf.Path)
+	log.Debug(r, "Finished sending", "path", mf.AbsolutePath)
 
 	return nil, nil
 }

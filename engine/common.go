@@ -39,6 +39,8 @@ type Entry struct {
 	PlayerId   int
 	PlayerName string
 	AlbumCount int
+
+	AbsolutePath string
 }
 
 type Entries []Entry
@@ -94,7 +96,8 @@ func FromMediaFile(mf *domain.MediaFile) Entry {
 		e.CoverArt = mf.ID
 	}
 	e.ContentType = mf.ContentType()
-	// Creates a "pseudo" path, to avoid sending absolute paths to the client
+	e.AbsolutePath = mf.Path
+	// Creates a "pseudo" Path, to avoid sending absolute paths to the client
 	if mf.Path != "" {
 		e.Path = fmt.Sprintf("%s/%s/%s.%s", realArtistName(mf), mf.Album, mf.Title, mf.Suffix)
 	}
