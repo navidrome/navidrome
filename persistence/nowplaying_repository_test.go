@@ -36,7 +36,7 @@ var _ = Describe("NowPlayingRepository", func() {
 		Expect(repo.Enqueue(&domain.NowPlayingInfo{PlayerId: 2, TrackID: "CCC"})).To(BeNil())
 		Expect(repo.Enqueue(&domain.NowPlayingInfo{PlayerId: 2, TrackID: "DDD"})).To(BeNil())
 
-		Expect(repo.GetAll()).To(Equal([]*domain.NowPlayingInfo{
+		Expect(repo.GetAll()).To(ConsistOf([]*domain.NowPlayingInfo{
 			{PlayerId: 1, TrackID: "BBB"},
 			{PlayerId: 2, TrackID: "DDD"},
 		}))
