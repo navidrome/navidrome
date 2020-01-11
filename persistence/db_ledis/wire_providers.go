@@ -7,5 +7,4 @@ import (
 var Set = wire.NewSet(
 	NewCheckSumRepository,
 	NewNowPlayingRepository,
-	NewPlaylistRepository,
 )

@@ -58,7 +58,7 @@ func initMediaAnnotationController() *MediaAnnotationController {
 
 func initPlaylistsController() *PlaylistsController {
 	itunesControl := itunesbridge.NewItunesControl()
-	playlistRepository := db_ledis.NewPlaylistRepository()
+	playlistRepository := db_storm.NewPlaylistRepository()
 	mediaFileRepository := db_storm.NewMediaFileRepository()
 	playlists := engine.NewPlaylists(itunesControl, playlistRepository, mediaFileRepository)
 	playlistsController := NewPlaylistsController(playlists)

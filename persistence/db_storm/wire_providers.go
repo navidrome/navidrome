@@ -11,5 +11,6 @@ var Set = wire.NewSet(
 	NewAlbumRepository,
 	NewMediaFileRepository,
 	NewArtistIndexRepository,
+	NewPlaylistRepository,
 	persistence.NewMediaFolderRepository,
 )
