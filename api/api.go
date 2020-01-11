@@ -26,17 +26,25 @@ type Router struct {
 	Scrobbler           engine.Scrobbler
 	Search              engine.Search
 	MediaFileRepository domain.MediaFileRepository
+
+	mux http.Handler
 }
 
 func NewRouter(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator,
 	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search,
 	mediaFileRepository domain.MediaFileRepository) *Router {
 
-	return &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
+	r := &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
 		Ratings: ratings, Scrobbler: scrobbler, Search: search, MediaFileRepository: mediaFileRepository}
+	r.mux = r.routes()
+	return r
 }
 
-func (api *Router) Routes() http.Handler {
+func (api *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	api.mux.ServeHTTP(w, r)
+}
+
+func (api *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(checkRequiredParameters)
