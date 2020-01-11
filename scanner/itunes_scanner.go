@@ -135,7 +135,15 @@ func (s *ItunesScanner) Playlists() map[string]*domain.Playlist {
 }
 
 func (s *ItunesScanner) skipTrack(t *itl.Track) bool {
-	if !strings.HasPrefix(t.Location, "file://") || t.Podcast {
+	if t.Podcast {
+		return true
+	}
+
+	if conf.Sonic.DevDisableFileCheck {
+		return false
+	}
+
+	if !strings.HasPrefix(t.Location, "file://") {
 		return true
 	}
 
@@ -262,7 +270,7 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	mf.CreatedAt = t.DateAdded
 	mf.UpdatedAt = s.lastChangedDate(t)
 
-	if mf.UpdatedAt.After(s.lastModifiedSince) {
+	if mf.UpdatedAt.After(s.lastModifiedSince) && !conf.Sonic.DevDisableFileCheck {
 		mf.HasCoverArt = hasCoverArt(path)
 	}
 
