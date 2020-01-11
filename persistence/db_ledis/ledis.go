@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/siddontang/ledisdb/config"
 	"github.com/siddontang/ledisdb/ledis"
 )
@@ -18,6 +19,7 @@ func Db() *ledis.DB {
 	once.Do(func() {
 		config := config.NewConfigDefault()
 		config.DataDir = conf.Sonic.DbPath
+		log.Debug("Opening LedisDB from: " + conf.Sonic.DbPath)
 		l, _ := ledis.Open(config)
 		instance, err := l.Select(0)
 		if err != nil {

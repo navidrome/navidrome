@@ -1,9 +1,12 @@
 package db_storm
 
 import (
+	"path"
 	"sync"
 
 	"github.com/asdine/storm"
+	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/log"
 )
 
 var (
@@ -13,7 +16,9 @@ var (
 
 func Db() *storm.DB {
 	once.Do(func() {
-		instance, err := storm.Open("./storm.db")
+		dbPath := path.Join(conf.Sonic.DbPath, "storm.db")
+		instance, err := storm.Open(dbPath)
+		log.Debug("Opening Storm DB from: " + dbPath)
 		if err != nil {
 			panic(err)
 		}
