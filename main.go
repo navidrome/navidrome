@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/persistence"
 )
 
 func main() {
@@ -11,7 +12,9 @@ func main() {
 
 	fmt.Printf("\nCloudSonic Server v%s\n\n", "0.2")
 
-	a := createApp(conf.Sonic.MusicFolder)
-	a.MountRouter("/rest/", initRouter())
+	provider := persistence.ProviderIdentifier(conf.Sonic.DevPersistenceProvider)
+
+	a := CreateApp(conf.Sonic.MusicFolder, provider)
+	a.MountRouter("/rest/", CreateSubsonicAPIRouter(provider))
 	a.Run(":" + conf.Sonic.Port)
 }
