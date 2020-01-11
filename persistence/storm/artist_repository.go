@@ -36,13 +36,8 @@ func (r *artistRepository) Get(id string) (*domain.Artist, error) {
 	return &a, nil
 }
 
-func (r *artistRepository) PurgeInactive(active domain.Artists) ([]string, error) {
-	activeIDs := make([]string, len(active))
-	for i, artist := range active {
-		activeIDs[i] = artist.ID
-	}
-
-	return r.purgeInactive(activeIDs)
+func (r *artistRepository) PurgeInactive(activeList domain.Artists) ([]string, error) {
+	return r.purgeInactive(activeList)
 }
 
 var _ domain.ArtistRepository = (*artistRepository)(nil)
