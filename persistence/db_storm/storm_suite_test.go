@@ -1,15 +1,19 @@
 package db_storm
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
+	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/log"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 func TestStormPersistence(t *testing.T) {
-	//log.SetLevel(log.LevelCritical)
+	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Storm Persistence Suite")
 }
@@ -27,6 +31,8 @@ var testArtists = domain.Artists{
 
 var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
+		conf.Sonic.DbPath, _ = ioutil.TempDir("", "cloudsonic_tests")
+		os.MkdirAll(conf.Sonic.DbPath, 0700)
 		Db().Drop(&_Album{})
 		albumRepo := NewAlbumRepository()
 		for _, a := range testAlbums {

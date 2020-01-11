@@ -1,10 +1,8 @@
 package db_storm
 
 import (
-	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"sync"
 
 	"github.com/asdine/storm"
@@ -24,7 +22,6 @@ func Db() *storm.DB {
 			panic(err)
 		}
 		dbPath := path.Join(conf.Sonic.DbPath, "storm.db")
-		dbPath = fmt.Sprintf(".%c%s", filepath.Separator, dbPath)
 		instance, err := storm.Open(dbPath)
 		log.Debug("Opening Storm DB from: " + dbPath)
 		if err != nil {
