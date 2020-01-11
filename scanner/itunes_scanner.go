@@ -37,7 +37,6 @@ func NewItunesScanner(checksumRepo CheckSumRepository) *ItunesScanner {
 }
 
 type CheckSumRepository interface {
-	Put(id, sum string) error
 	Get(id string) (string, error)
 	SetData(newSums map[string]string) error
 }
