@@ -70,7 +70,7 @@ var _ = Describe("Middlewares", func() {
 		BeforeEach(func() {
 			conf.Sonic.User = "admin"
 			conf.Sonic.Password = "wordpass"
-			conf.Sonic.DisableAuthentication = false
+			conf.Sonic.DevDisableAuthentication = false
 		})
 
 		Context("Plaintext password", func() {
