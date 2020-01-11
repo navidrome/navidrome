@@ -26,7 +26,7 @@ func (r *ledisRepository) init(table string, entity interface{}) {
 	r.table = table
 	r.entityType = reflect.TypeOf(entity).Elem()
 
-	h, _ := utils.ToMap(entity)
+	h, _ := toMap(entity)
 	r.fieldNames = make([]string, len(h))
 	i := 0
 	for k := range h {
@@ -160,7 +160,7 @@ func (r *ledisRepository) saveOrUpdate(id string, entity interface{}) error {
 	recordPrefix := fmt.Sprintf("%s:%s:", r.table, id)
 	allKey := r.table + "s:all"
 
-	h, err := utils.ToMap(entity)
+	h, err := toMap(entity)
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func (r *ledisRepository) toEntity(response [][]byte, entity interface{}) error 
 		}
 	}
 
-	return utils.ToStruct(record, entity)
+	return toStruct(record, entity)
 }
 
 func (r *ledisRepository) loadRange(idxName string, min interface{}, max interface{}, entities interface{}, qo ...domain.QueryOptions) error {
