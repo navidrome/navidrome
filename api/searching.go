@@ -10,7 +10,10 @@ import (
 )
 
 type SearchingController struct {
-	search       engine.Search
+	search engine.Search
+}
+
+type searchParams struct {
 	query        string
 	artistCount  int
 	artistOffset int
@@ -24,45 +27,46 @@ func NewSearchingController(search engine.Search) *SearchingController {
 	return &SearchingController{search: search}
 }
 
-func (c *SearchingController) getParams(r *http.Request) error {
+func (c *SearchingController) getParams(r *http.Request) (*searchParams, error) {
 	var err error
-	c.query, err = RequiredParamString(r, "query", "Parameter query required")
+	sp := &searchParams{}
+	sp.query, err = RequiredParamString(r, "query", "Parameter query required")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	c.artistCount = ParamInt(r, "artistCount", 20)
-	c.artistOffset = ParamInt(r, "artistOffset", 0)
-	c.albumCount = ParamInt(r, "albumCount", 20)
-	c.albumOffset = ParamInt(r, "albumOffset", 0)
-	c.songCount = ParamInt(r, "songCount", 20)
-	c.songOffset = ParamInt(r, "songOffset", 0)
-	return nil
+	sp.artistCount = ParamInt(r, "artistCount", 20)
+	sp.artistOffset = ParamInt(r, "artistOffset", 0)
+	sp.albumCount = ParamInt(r, "albumCount", 20)
+	sp.albumOffset = ParamInt(r, "albumOffset", 0)
+	sp.songCount = ParamInt(r, "songCount", 20)
+	sp.songOffset = ParamInt(r, "songOffset", 0)
+	return sp, nil
 }
 
-func (c *SearchingController) searchAll(r *http.Request) (engine.Entries, engine.Entries, engine.Entries) {
-	as, err := c.search.SearchArtist(r.Context(), c.query, c.artistOffset, c.artistCount)
+func (c *SearchingController) searchAll(r *http.Request, sp *searchParams) (engine.Entries, engine.Entries, engine.Entries) {
+	as, err := c.search.SearchArtist(r.Context(), sp.query, sp.artistOffset, sp.artistCount)
 	if err != nil {
 		log.Error(r, "Error searching for Artists", err)
 	}
-	als, err := c.search.SearchAlbum(r.Context(), c.query, c.albumOffset, c.albumCount)
+	als, err := c.search.SearchAlbum(r.Context(), sp.query, sp.albumOffset, sp.albumCount)
 	if err != nil {
 		log.Error(r, "Error searching for Albums", err)
 	}
-	mfs, err := c.search.SearchSong(r.Context(), c.query, c.songOffset, c.songCount)
+	mfs, err := c.search.SearchSong(r.Context(), sp.query, sp.songOffset, sp.songCount)
 	if err != nil {
 		log.Error(r, "Error searching for MediaFiles", err)
 	}
 
-	log.Debug(r, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists", len(mfs), len(als), len(as)), "query", c.query)
+	log.Debug(r, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists", len(mfs), len(als), len(as)), "query", sp.query)
 	return mfs, als, as
 }
 
 func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	err := c.getParams(r)
+	sp, err := c.getParams(r)
 	if err != nil {
 		return nil, err
 	}
-	mfs, als, as := c.searchAll(r)
+	mfs, als, as := c.searchAll(r, sp)
 
 	response := NewEmpty()
 	searchResult2 := &responses.SearchResult2{}
@@ -77,11 +81,11 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 }
 
 func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	err := c.getParams(r)
+	sp, err := c.getParams(r)
 	if err != nil {
 		return nil, err
 	}
-	mfs, als, as := c.searchAll(r)
+	mfs, als, as := c.searchAll(r, sp)
 
 	response := NewEmpty()
 	searchResult3 := &responses.SearchResult3{}
