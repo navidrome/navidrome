@@ -18,9 +18,6 @@ func (r *stormRepository) init(entity interface{}) {
 	if err := Db().Init(r.bucket); err != nil {
 		panic(err)
 	}
-	if err := Db().ReIndex(r.bucket); err != nil {
-		panic(err)
-	}
 }
 
 func (r *stormRepository) CountAll() (int64, error) {
