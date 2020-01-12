@@ -77,9 +77,9 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, er
 	return r.toMediaFiles(mfs)
 }
 
-func (r *mediaFileRepository) GetStarred(options domain.QueryOptions) (domain.MediaFiles, error) {
+func (r *mediaFileRepository) GetStarred(options ...domain.QueryOptions) (domain.MediaFiles, error) {
 	var starred []_MediaFile
-	err := r.execute(q.Eq("Starred", true), &starred, options)
+	err := r.execute(q.Eq("Starred", true), &starred, options...)
 	if err != nil {
 		return nil, err
 	}

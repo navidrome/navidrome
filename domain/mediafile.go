@@ -50,7 +50,7 @@ type MediaFileRepository interface {
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
 	FindByAlbum(albumId string) (MediaFiles, error)
-	GetStarred(options QueryOptions) (MediaFiles, error)
+	GetStarred(options ...QueryOptions) (MediaFiles, error)
 	PurgeInactive(active MediaFiles) ([]string, error)
 	GetAllIds() ([]string, error)
 }
