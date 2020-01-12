@@ -67,3 +67,5 @@ func (m *MockMediaFile) FindByAlbum(artistId string) (domain.MediaFiles, error) 
 
 	return res, nil
 }
+
+var _ domain.MediaFileRepository = (*MockMediaFile)(nil)

@@ -48,3 +48,5 @@ func (m *MockArtist) Get(id string) (*domain.Artist, error) {
 	}
 	return nil, domain.ErrNotFound
 }
+
+var _ domain.ArtistRepository = (*MockArtist)(nil)

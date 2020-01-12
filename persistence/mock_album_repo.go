@@ -51,8 +51,10 @@ func (m *MockAlbum) Get(id string) (*domain.Album, error) {
 	return nil, domain.ErrNotFound
 }
 
-func (m *MockAlbum) GetAll(qo domain.QueryOptions) (domain.Albums, error) {
-	m.Options = qo
+func (m *MockAlbum) GetAll(qo ...domain.QueryOptions) (domain.Albums, error) {
+	if len(qo) > 0 {
+		m.Options = qo[0]
+	}
 	if m.err {
 		return nil, errors.New("Error!")
 	}
@@ -74,3 +76,5 @@ func (m *MockAlbum) FindByArtist(artistId string) (domain.Albums, error) {
 
 	return res, nil
 }
+
+var _ domain.AlbumRepository = (*MockAlbum)(nil)

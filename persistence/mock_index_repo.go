@@ -36,3 +36,5 @@ func (m *MockArtistIndex) GetAll() (domain.ArtistIndexes, error) {
 	}
 	return m.data, nil
 }
+
+var _ domain.ArtistIndexRepository = (*MockArtistIndex)(nil)
