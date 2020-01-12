@@ -40,9 +40,9 @@ func (r *playlistRepository) Get(id string) (*domain.Playlist, error) {
 	return &a, err
 }
 
-func (r *playlistRepository) GetAll(options domain.QueryOptions) (domain.Playlists, error) {
+func (r *playlistRepository) GetAll(options ...domain.QueryOptions) (domain.Playlists, error) {
 	var all []_Playlist
-	err := r.getAll(&all)
+	err := r.getAll(&all, options...)
 	if err != nil {
 		return nil, err
 	}

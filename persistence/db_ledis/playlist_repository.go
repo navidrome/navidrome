@@ -29,13 +29,17 @@ func (r *playlistRepository) Get(id string) (*domain.Playlist, error) {
 	return rec.(*domain.Playlist), err
 }
 
-func (r *playlistRepository) GetAll(options domain.QueryOptions) (domain.Playlists, error) {
-	var as = make(domain.Playlists, 0)
-	if options.SortBy == "" {
-		options.SortBy = "Name"
-		options.Alpha = true
+func (r *playlistRepository) GetAll(options ...domain.QueryOptions) (domain.Playlists, error) {
+	o := domain.QueryOptions{}
+	if len(options) > 0 {
+		o = options[0]
 	}
-	err := r.loadAll(&as, options)
+	var as = make(domain.Playlists, 0)
+	if o.SortBy == "" {
+		o.SortBy = "Name"
+		o.Alpha = true
+	}
+	err := r.loadAll(&as, o)
 	return as, err
 }
 
