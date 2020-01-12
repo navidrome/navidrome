@@ -55,6 +55,7 @@ func WithTx(block func(orm.Ormer) error) error {
 func initORM(dbPath string) error {
 	orm.Debug = true
 	orm.RegisterModel(new(Artist))
+	orm.RegisterModel(new(Album))
 	orm.RegisterModel(new(MediaFile))
 	err := orm.RegisterDataBase("default", "sqlite3", dbPath)
 	if err != nil {

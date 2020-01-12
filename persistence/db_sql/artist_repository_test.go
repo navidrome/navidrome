@@ -27,7 +27,7 @@ var _ = Describe("ArtistRepository", func() {
 		Expect(err).To(MatchError(domain.ErrNotFound))
 	})
 
-	FDescribe("PurgeInactive", func() {
+	Describe("PurgeInactive", func() {
 		BeforeEach(func() {
 			for _, a := range testArtists {
 				repo.Put(&a)

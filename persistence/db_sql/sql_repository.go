@@ -38,6 +38,22 @@ func (r *sqlRepository) Exists(id string) (bool, error) {
 	return c == 1, err
 }
 
+// TODO This is used to generate random lists. Can be optimized in SQL: https://stackoverflow.com/a/19419
+func (r *sqlRepository) GetAllIds() ([]string, error) {
+	qs := r.newQuery(Db())
+	var values []orm.Params
+	num, err := qs.Values(&values, "id")
+	if num == 0 {
+		return nil, err
+	}
+
+	result := persistence.CollectValue(values, func(item interface{}) string {
+		return item.(orm.Params)["ID"].(string)
+	})
+
+	return result, nil
+}
+
 func (r *sqlRepository) put(id string, a interface{}) error {
 	return WithTx(func(o orm.Ormer) error {
 		c, err := r.newQuery(o).Filter("id", id).Count()
