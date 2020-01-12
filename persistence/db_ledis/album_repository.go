@@ -64,10 +64,10 @@ func (r *albumRepository) PurgeInactive(active domain.Albums) ([]string, error) 
 	})
 }
 
-func (r *albumRepository) GetStarred(options domain.QueryOptions) (domain.Albums, error) {
+func (r *albumRepository) GetStarred(options ...domain.QueryOptions) (domain.Albums, error) {
 	var as = make(domain.Albums, 0)
 	start := time.Time{}.Add(1 * time.Hour)
-	err := r.loadRange("Starred", start, time.Now(), &as, options)
+	err := r.loadRange("Starred", start, time.Now(), &as, options...)
 	return as, err
 }
 

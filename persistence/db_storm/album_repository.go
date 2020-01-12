@@ -97,9 +97,9 @@ func (r *albumRepository) PurgeInactive(activeList domain.Albums) ([]string, err
 	return r.purgeInactive(activeList)
 }
 
-func (r *albumRepository) GetStarred(options domain.QueryOptions) (domain.Albums, error) {
+func (r *albumRepository) GetStarred(options ...domain.QueryOptions) (domain.Albums, error) {
 	var starred []_Album
-	err := r.execute(q.Eq("Starred", true), &starred, &options)
+	err := r.execute(q.Eq("Starred", true), &starred, options...)
 	if err != nil {
 		return nil, err
 	}

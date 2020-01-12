@@ -79,7 +79,7 @@ func (r *stormRepository) purgeInactive(activeList interface{}) (deleted []strin
 	return deleted, nil
 }
 
-func (r *stormRepository) execute(matcher q.Matcher, result interface{}, options ...*domain.QueryOptions) error {
+func (r *stormRepository) execute(matcher q.Matcher, result interface{}, options ...domain.QueryOptions) error {
 	query := Db().Select(matcher)
 	if len(options) > 0 {
 		query = addQueryOptions(query, options[0])
@@ -118,7 +118,7 @@ func stormOptions(options ...domain.QueryOptions) func(*index.Options) {
 	}
 }
 
-func addQueryOptions(q storm.Query, o *domain.QueryOptions) storm.Query {
+func addQueryOptions(q storm.Query, o domain.QueryOptions) storm.Query {
 	if o.SortBy != "" {
 		q = q.OrderBy(o.SortBy)
 	}
