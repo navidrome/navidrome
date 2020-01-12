@@ -9,6 +9,7 @@ import (
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
+	"github.com/cloudsonic/sonic-server/persistence/db_sql"
 	"github.com/cloudsonic/sonic-server/persistence/db_storm"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/deluan/gomate"
@@ -53,11 +54,20 @@ func CreateSubsonicAPIRouter(p persistence.ProviderIdentifier) *api.Router {
 
 func createPersistenceProvider(provider persistence.ProviderIdentifier) *Provider {
 	switch provider {
+	case "sql":
+		return createSQLProvider()
 	case "storm":
 		return createStormProvider()
 	default:
 		return createLedisDBProvider()
 	}
+}
+
+func createSQLProvider() *Provider {
+	panic(wire.Build(
+		db_sql.Set,
+		wire.Struct(new(Provider), "*"),
+	))
 }
 
 func createLedisDBProvider() *Provider {

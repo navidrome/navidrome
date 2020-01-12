@@ -2,6 +2,7 @@ package db_sql
 
 import (
 	"github.com/astaxie/beego/orm"
+	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/persistence"
 )
 
@@ -9,8 +10,23 @@ type sqlRepository struct {
 	entityName string
 }
 
-func (r *sqlRepository) newQuery(o orm.Ormer) orm.QuerySeter {
-	return o.QueryTable(r.entityName)
+func (r *sqlRepository) newQuery(o orm.Ormer, options ...domain.QueryOptions) orm.QuerySeter {
+	q := o.QueryTable(r.entityName)
+	if len(options) > 0 {
+		opts := options[0]
+		q = q.Offset(opts.Offset)
+		if opts.Size > 0 {
+			q = q.Limit(opts.Size)
+		}
+		if opts.SortBy != "" {
+			if opts.Desc {
+				q = q.OrderBy("-" + opts.SortBy)
+			} else {
+				q = q.OrderBy(opts.SortBy)
+			}
+		}
+	}
+	return q
 }
 
 func (r *sqlRepository) CountAll() (int64, error) {
@@ -22,9 +38,9 @@ func (r *sqlRepository) Exists(id string) (bool, error) {
 	return c == 1, err
 }
 
-func (r *artistRepository) put(id string, a interface{}) error {
+func (r *sqlRepository) put(id string, a interface{}) error {
 	return WithTx(func(o orm.Ormer) error {
-		c, err := r.newQuery(Db()).Filter("id", id).Count()
+		c, err := r.newQuery(o).Filter("id", id).Count()
 		if err != nil {
 			return err
 		}
@@ -41,7 +57,7 @@ func (r *sqlRepository) purgeInactive(activeList interface{}, getId func(item in
 	ids := persistence.CollectValue(activeList, getId)
 	var values []orm.Params
 	err := WithTx(func(o orm.Ormer) error {
-		qs := o.QueryTable(r.entityName).Exclude("id__in", ids)
+		qs := r.newQuery(o).Exclude("id__in", ids)
 		num, err := qs.Values(&values, "id")
 		if num > 0 {
 			_, err = qs.Delete()

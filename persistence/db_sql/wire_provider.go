@@ -2,12 +2,19 @@ package db_sql
 
 import (
 	"github.com/cloudsonic/sonic-server/persistence"
+	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
 	"github.com/google/wire"
 )
 
 var Set = wire.NewSet(
 	NewArtistRepository,
+	NewMediaFileRepository,
+	db_ledis.NewPropertyRepository,
+	db_ledis.NewAlbumRepository,
+	db_ledis.NewArtistIndexRepository,
+	db_ledis.NewPlaylistRepository,
+	db_ledis.NewCheckSumRepository,
 	persistence.NewNowPlayingRepository,
 	persistence.NewMediaFolderRepository,
-	wire.Value(persistence.ProviderIdentifier("sqlite")),
+	wire.Value(persistence.ProviderIdentifier("sql")),
 )
