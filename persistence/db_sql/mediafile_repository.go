@@ -5,7 +5,6 @@ import (
 
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/domain"
-	"github.com/cloudsonic/sonic-server/persistence"
 )
 
 type MediaFile struct {
@@ -88,21 +87,6 @@ func (r *mediaFileRepository) GetStarred(options ...domain.QueryOptions) (domain
 		return nil, err
 	}
 	return r.toMediaFiles(starred)
-}
-
-func (r *mediaFileRepository) GetAllIds() ([]string, error) {
-	qs := r.newQuery(Db())
-	var values []orm.Params
-	num, err := qs.Values(&values, "id")
-	if num == 0 {
-		return nil, err
-	}
-
-	result := persistence.CollectValue(values, func(item interface{}) string {
-		return item.(orm.Params)["ID"].(string)
-	})
-
-	return result, nil
 }
 
 func (r *mediaFileRepository) PurgeInactive(activeList domain.MediaFiles) ([]string, error) {

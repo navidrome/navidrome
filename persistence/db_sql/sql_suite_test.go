@@ -38,5 +38,12 @@ var _ = Describe("Initialize test DB", func() {
 		for _, a := range testArtists {
 			artistRepo.Put(&a)
 		}
+		albumRepository := NewAlbumRepository()
+		for _, a := range testAlbums {
+			err := albumRepository.Put(&a)
+			if err != nil {
+				panic(err)
+			}
+		}
 	})
 })

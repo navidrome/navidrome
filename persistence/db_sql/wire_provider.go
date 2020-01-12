@@ -9,8 +9,8 @@ import (
 var Set = wire.NewSet(
 	NewArtistRepository,
 	NewMediaFileRepository,
+	NewAlbumRepository,
 	db_ledis.NewPropertyRepository,
-	db_ledis.NewAlbumRepository,
 	db_ledis.NewArtistIndexRepository,
 	db_ledis.NewPlaylistRepository,
 	db_ledis.NewCheckSumRepository,
