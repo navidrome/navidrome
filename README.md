@@ -3,31 +3,33 @@
 [![Build Status](https://github.com/cloudsonic/sonic-server/workflows/CI/badge.svg)](https://github.com/cloudsonic/sonic-server/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudsonic/sonic-server)](https://goreportcard.com/report/github.com/cloudsonic/sonic-server)
 
-**This is still a work in progress, and has no releases available**
+CloudSonic is a music collection server and streamer, allowing you to listen to your music collection from anywhere. 
+It relies on the huge selection of available mobile and web apps compatible with [Subsonic](http://www.subsonic.org), 
+[Airsonic](https://airsonic.github.io/) and [Madsonic](https://www.madsonic.org/)
 
-CloudSonic is a music collection server and streamer, optmized to run on cheap VPS servers. It implements the
-[Subsonic](http://www.subsonic.org) API
+While it is already functional (see [Installation](#installation) below), it is still in its early stages. 
 
-The project's main goals are:
-
+Version 1.0 main goals are:
 - Be fully compatible with available [Subsonic clients](http://www.subsonic.org/pages/apps.jsp)
   (actively being tested with
   [DSub](http://www.subsonic.org/pages/apps.jsp#dsub),
   [Music Stash](https://play.google.com/store/apps/details?id=com.ghenry22.mymusicstash) and
   [Jamstash](http://www.subsonic.org/pages/apps.jsp#jamstash))
 - Import and use all metadata from iTunes, so that you can optionally keep using iTunes to manage your music
-- Implement Smart Playlists, as iTunes
+- Implement smart/dynamic playlists (similar to iTunes)
+- Optimized ro run on cheap hardware (Raspberry Pi) and VPS 
 
 ### Supported Subsonic API version
 
 I'm currently trying to implement all functionality from API v1.8.0, with some exceptions.
 
-Check the (almost) up to date [compatibility chart](https://github.com/cloudsonic/sonic-server/wiki/Compatibility) for what is working.
+Check the (almost) up to date [compatibility chart](https://github.com/cloudsonic/sonic-server/wiki/Compatibility) 
+for what is working.
 
 ### Installation
 
-As this is a work in progress, there are no installers yet. To have the server running in your computer, follow the steps in the
-Development Environment section below, then run it with:
+As this is a work in progress, there are no installers yet. To have the server running in your computer, follow 
+the steps in the [Development Environment](#development-environment) section below, then run it with:
 
 ```
 $ export SONIC_MUSICFOLDER="/path/to/your/iTunes Library.xml"
@@ -40,7 +42,8 @@ The server should start listening for requests. The default configuration is:
 - User: `anyone`
 - Password: `wordpass`
 
-To override this or any other configuration, create a file named `sonic.toml` in the project folder. For all options see the [configuration.go](conf/configuration.go) file
+To override this or any other configuration, create a file named `sonic.toml` in the project folder.
+ For all options see the [configuration.go](conf/configuration.go) file
 
 ### Development Environment
 
