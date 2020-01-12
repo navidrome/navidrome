@@ -36,7 +36,7 @@ func (r *artistIndexRepository) Get(id string) (*domain.ArtistIndex, error) {
 
 func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
 	var all []_ArtistIndex
-	err := r.getAll(&all, &domain.QueryOptions{})
+	err := r.getAll(&all)
 	if err != nil {
 		return nil, err
 	}

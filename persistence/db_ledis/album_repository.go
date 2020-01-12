@@ -36,9 +36,9 @@ func (r *albumRepository) FindByArtist(artistId string) (domain.Albums, error) {
 	return as, err
 }
 
-func (r *albumRepository) GetAll(options domain.QueryOptions) (domain.Albums, error) {
+func (r *albumRepository) GetAll(options ...domain.QueryOptions) (domain.Albums, error) {
 	var as = make(domain.Albums, 0)
-	err := r.loadAll(&as, options)
+	err := r.loadAll(&as, options...)
 	return as, err
 }
 

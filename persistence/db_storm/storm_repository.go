@@ -91,21 +91,29 @@ func (r *stormRepository) execute(matcher q.Matcher, result interface{}, options
 	return err
 }
 
-func (r *stormRepository) getAll(all interface{}, options *domain.QueryOptions) (err error) {
-	if options.SortBy != "" {
-		err = Db().AllByIndex(options.SortBy, all, stormOptions(options))
+func (r *stormRepository) getAll(all interface{}, options ...domain.QueryOptions) (err error) {
+	o := domain.QueryOptions{}
+	if len(options) > 0 {
+		o = options[0]
+	}
+	if o.SortBy != "" {
+		err = Db().AllByIndex(o.SortBy, all, stormOptions(o))
 	} else {
-		err = Db().All(all, stormOptions(options))
+		err = Db().All(all, stormOptions(o))
 	}
 	return
 }
 
-func stormOptions(options *domain.QueryOptions) func(*index.Options) {
+func stormOptions(options ...domain.QueryOptions) func(*index.Options) {
+	o := domain.QueryOptions{}
+	if len(options) > 0 {
+		o = options[0]
+	}
 	return func(opts *index.Options) {
-		opts.Reverse = options.Desc
-		opts.Skip = options.Offset
-		if options.Size > 0 {
-			opts.Limit = options.Size
+		opts.Reverse = o.Desc
+		opts.Skip = o.Offset
+		if o.Size > 0 {
+			opts.Limit = o.Size
 		}
 	}
 }

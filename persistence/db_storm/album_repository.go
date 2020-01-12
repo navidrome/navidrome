@@ -63,9 +63,9 @@ func (r *albumRepository) FindByArtist(artistId string) (domain.Albums, error) {
 	return r.toAlbums(albums)
 }
 
-func (r *albumRepository) GetAll(options domain.QueryOptions) (domain.Albums, error) {
+func (r *albumRepository) GetAll(options ...domain.QueryOptions) (domain.Albums, error) {
 	var all []_Album
-	err := r.getAll(&all, &options)
+	err := r.getAll(&all, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (r *albumRepository) toAlbums(all []_Album) (domain.Albums, error) {
 
 func (r *albumRepository) GetAllIds() ([]string, error) {
 	var all []_Album
-	err := r.getAll(&all, &domain.QueryOptions{})
+	err := r.getAll(&all)
 	if err != nil {
 		return nil, err
 	}

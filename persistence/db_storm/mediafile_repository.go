@@ -88,7 +88,7 @@ func (r *mediaFileRepository) GetStarred(options domain.QueryOptions) (domain.Me
 
 func (r *mediaFileRepository) GetAllIds() ([]string, error) {
 	var all []_MediaFile
-	err := r.getAll(&all, &domain.QueryOptions{})
+	err := r.getAll(&all)
 	if err != nil {
 		return nil, err
 	}
