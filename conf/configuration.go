@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/koding/multiconfig"
 )
 
@@ -24,8 +25,9 @@ type sonic struct {
 	PlsIgnoredPatterns  string `default:"^iCloud;\\~"`
 
 	// DevFlags
-	DevDisableAuthentication bool `default:"false"`
-	DevDisableFileCheck      bool `default:"false"`
+	LogLevel                 string `default:"info"`
+	DevDisableAuthentication bool   `default:"false"`
+	DevDisableFileCheck      bool   `default:"false"`
 }
 
 var Sonic *sonic
@@ -55,6 +57,7 @@ func LoadFromFile(tomlFile string) {
 	if err != nil {
 		fmt.Printf("Error loading %s: %v\n", tomlFile, err)
 	}
+	log.SetLogLevelString(Sonic.LogLevel)
 }
 
 func LoadFromLocalFile() {

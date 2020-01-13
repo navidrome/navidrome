@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/go-chi/chi"
@@ -38,7 +39,7 @@ func (a *Server) MountRouter(path string, subRouter http.Handler) {
 }
 
 func (a *Server) Run(addr string) {
-	log.Info("Starting CloudSonic server", "address", addr)
+	log.Info("CloudSonic server is ready to handle requests", "address", addr)
 	log.Error(http.ListenAndServe(addr, a.router))
 }
 
@@ -68,9 +69,14 @@ func (a *Server) initImporter() {
 }
 
 func (a *Server) startPeriodicScans() {
+	first := true
 	for {
 		select {
 		case <-time.After(5 * time.Second):
+			if first {
+				log.Info("Started iTunes scanner", "xml", conf.Sonic.MusicFolder)
+				first = false
+			}
 			a.Importer.CheckForUpdates(false)
 		}
 	}

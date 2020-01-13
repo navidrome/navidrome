@@ -3,8 +3,9 @@ package log
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
-	"os"
+	"runtime"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -32,6 +33,26 @@ var (
 func SetLevel(l Level) {
 	currentLevel = l
 	logrus.SetLevel(logrus.Level(l))
+}
+
+func SetLogLevelString(l string) {
+	envLevel := strings.ToLower(l)
+	var level Level
+	switch envLevel {
+	case "critical":
+		level = LevelCritical
+	case "error":
+		level = LevelError
+	case "warn":
+		level = LevelWarn
+	case "debug":
+		level = LevelDebug
+	case "trace":
+		level = LevelTrace
+	default:
+		level = LevelInfo
+	}
+	SetLevel(level)
 }
 
 func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Context {
@@ -111,12 +132,24 @@ func parseArgs(args []interface{}) (*logrus.Entry, string) {
 		kvPairs := args[1:]
 		l = addFields(l, kvPairs)
 	}
+	if currentLevel >= LevelDebug {
+		_, file, line, ok := runtime.Caller(2)
+		if !ok {
+			file = "???"
+			line = 0
+		}
+		//_, filename := path.Split(file)
+		//l = l.WithField("filename", filename).WithField("line", line)
+		l = l.WithField(" source", fmt.Sprintf("file://%s:%d", file, line))
+	}
+
 	switch msg := args[0].(type) {
 	case error:
 		return l, msg.Error()
 	case string:
 		return l, msg
 	}
+
 	return l, ""
 }
 
@@ -149,28 +182,10 @@ func extractLogger(ctx interface{}) (*logrus.Entry, error) {
 }
 
 func createNewLogger() *logrus.Entry {
+	//logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true})
 	//l.Formatter = &logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true}
 	defaultLogger.Level = logrus.Level(currentLevel)
 	logger := logrus.NewEntry(defaultLogger)
 	logger.Level = logrus.Level(currentLevel)
 	return logger
-}
-
-func init() {
-	//logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true})
-	envLevel := strings.ToLower(os.Getenv("LOG_LEVEL"))
-	var level Level
-	switch envLevel {
-	case "critical":
-		level = LevelCritical
-	case "error":
-		level = LevelError
-	case "warn":
-		level = LevelWarn
-	case "debug":
-		level = LevelDebug
-	default:
-		level = LevelInfo
-	}
-	SetLevel(level)
 }

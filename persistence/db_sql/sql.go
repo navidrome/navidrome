@@ -60,7 +60,8 @@ func WithTx(block func(orm.Ormer) error) error {
 }
 
 func initORM(dbPath string) error {
-	orm.Debug = true
+	verbose := conf.Sonic.LogLevel == "debug"
+	orm.Debug = verbose
 	orm.RegisterModel(new(Artist))
 	orm.RegisterModel(new(Album))
 	orm.RegisterModel(new(MediaFile))
@@ -73,5 +74,5 @@ func initORM(dbPath string) error {
 	if err != nil {
 		panic(err)
 	}
-	return orm.RunSyncdb("default", false, true)
+	return orm.RunSyncdb("default", false, verbose)
 }
