@@ -13,7 +13,6 @@ import (
 	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
 	"github.com/cloudsonic/sonic-server/persistence/db_sql"
-	"github.com/cloudsonic/sonic-server/persistence/db_storm"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/deluan/gomate"
 	"github.com/deluan/gomate/ledis"
@@ -110,30 +109,6 @@ func createLedisDBProvider() *Provider {
 	return provider
 }
 
-func createStormProvider() *Provider {
-	albumRepository := db_storm.NewAlbumRepository()
-	artistRepository := db_storm.NewArtistRepository()
-	checkSumRepository := db_storm.NewCheckSumRepository()
-	artistIndexRepository := db_storm.NewArtistIndexRepository()
-	mediaFileRepository := db_storm.NewMediaFileRepository()
-	mediaFolderRepository := persistence.NewMediaFolderRepository()
-	nowPlayingRepository := persistence.NewNowPlayingRepository()
-	playlistRepository := db_storm.NewPlaylistRepository()
-	propertyRepository := db_storm.NewPropertyRepository()
-	provider := &Provider{
-		AlbumRepository:       albumRepository,
-		ArtistRepository:      artistRepository,
-		CheckSumRepository:    checkSumRepository,
-		ArtistIndexRepository: artistIndexRepository,
-		MediaFileRepository:   mediaFileRepository,
-		MediaFolderRepository: mediaFolderRepository,
-		NowPlayingRepository:  nowPlayingRepository,
-		PlaylistRepository:    playlistRepository,
-		PropertyRepository:    propertyRepository,
-	}
-	return provider
-}
-
 // wire_injectors.go:
 
 type Provider struct {
@@ -157,8 +132,6 @@ func createPersistenceProvider(provider persistence.ProviderIdentifier) *Provide
 	switch provider {
 	case "sql":
 		return createSQLProvider()
-	case "storm":
-		return createStormProvider()
 	default:
 		return createLedisDBProvider()
 	}

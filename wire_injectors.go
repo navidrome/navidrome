@@ -10,7 +10,6 @@ import (
 	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
 	"github.com/cloudsonic/sonic-server/persistence/db_sql"
-	"github.com/cloudsonic/sonic-server/persistence/db_storm"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/deluan/gomate"
 	"github.com/deluan/gomate/ledis"
@@ -56,8 +55,6 @@ func createPersistenceProvider(provider persistence.ProviderIdentifier) *Provide
 	switch provider {
 	case "sql":
 		return createSQLProvider()
-	case "storm":
-		return createStormProvider()
 	default:
 		return createLedisDBProvider()
 	}
@@ -73,13 +70,6 @@ func createSQLProvider() *Provider {
 func createLedisDBProvider() *Provider {
 	panic(wire.Build(
 		db_ledis.Set,
-		wire.Struct(new(Provider), "*"),
-	))
-}
-
-func createStormProvider() *Provider {
-	panic(wire.Build(
-		db_storm.Set,
 		wire.Struct(new(Provider), "*"),
 	))
 }
