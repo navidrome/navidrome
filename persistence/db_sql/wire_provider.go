@@ -12,7 +12,7 @@ var Set = wire.NewSet(
 	NewAlbumRepository,
 	NewArtistIndexRepository,
 	NewCheckSumRepository,
-	db_ledis.NewPropertyRepository,
+	NewPropertyRepository,
 	db_ledis.NewPlaylistRepository,
 	persistence.NewNowPlayingRepository,
 	persistence.NewMediaFolderRepository,
