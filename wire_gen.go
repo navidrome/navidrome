@@ -65,8 +65,8 @@ func CreateSubsonicAPIRouter(p persistence.ProviderIdentifier) *api.Router {
 func createSQLProvider() *Provider {
 	albumRepository := db_sql.NewAlbumRepository()
 	artistRepository := db_sql.NewArtistRepository()
-	checkSumRepository := db_ledis.NewCheckSumRepository()
-	artistIndexRepository := db_ledis.NewArtistIndexRepository()
+	checkSumRepository := db_sql.NewCheckSumRepository()
+	artistIndexRepository := db_sql.NewArtistIndexRepository()
 	mediaFileRepository := db_sql.NewMediaFileRepository()
 	mediaFolderRepository := persistence.NewMediaFolderRepository()
 	nowPlayingRepository := persistence.NewNowPlayingRepository()
