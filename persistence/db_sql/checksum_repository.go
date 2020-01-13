@@ -1,8 +1,6 @@
 package db_sql
 
 import (
-	"encoding/json"
-
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/scanner"
@@ -15,8 +13,8 @@ type checkSumRepository struct {
 const checkSumId = "1"
 
 type CheckSums struct {
-	ID   string `orm:"pk;column(id)"`
-	Data string `orm:"type(text)"`
+	ID    string `orm:"pk;column(id)"`
+	Value string
 }
 
 func NewCheckSumRepository() scanner.CheckSumRepository {
@@ -26,20 +24,20 @@ func NewCheckSumRepository() scanner.CheckSumRepository {
 
 func (r *checkSumRepository) loadData() error {
 	loadedData := make(map[string]string)
-	r.data = loadedData
 
-	cks := CheckSums{ID: checkSumId}
-	err := Db().Read(&cks)
-	if err == orm.ErrNoRows {
-		_, err = Db().Insert(&cks)
-		return err
-	}
+	var all []CheckSums
+	_, err := Db().QueryTable(&CheckSums{}).All(&all)
 	if err != nil {
 		return err
 	}
-	_ = json.Unmarshal([]byte(cks.Data), &loadedData)
+
+	for _, cks := range all {
+		loadedData[cks.ID] = cks.Value
+	}
+
+	r.data = loadedData
 	log.Debug("Loaded checksums", "total", len(loadedData))
-	return err
+	return nil
 }
 
 func (r *checkSumRepository) Get(id string) (string, error) {
@@ -53,14 +51,21 @@ func (r *checkSumRepository) Get(id string) (string, error) {
 }
 
 func (r *checkSumRepository) SetData(newSums map[string]string) error {
-	data, _ := json.Marshal(&newSums)
-	cks := CheckSums{ID: checkSumId, Data: string(data)}
-	var err error
-	if Db().QueryTable(&CheckSums{}).Filter("id", checkSumId).Exist() {
-		_, err = Db().Update(&cks)
-	} else {
-		_, err = Db().Insert(&cks)
-	}
+	err := WithTx(func(o orm.Ormer) error {
+		_, err := Db().Raw("delete from check_sums").Exec()
+		if err != nil {
+			return err
+		}
+
+		for k, v := range newSums {
+			cks := CheckSums{ID: k, Value: v}
+			_, err := Db().Insert(&cks)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}

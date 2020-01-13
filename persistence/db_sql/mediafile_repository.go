@@ -41,7 +41,7 @@ type mediaFileRepository struct {
 
 func NewMediaFileRepository() domain.MediaFileRepository {
 	r := &mediaFileRepository{}
-	r.entityName = "media_file"
+	r.tableName = "media_file"
 	return r
 }
 

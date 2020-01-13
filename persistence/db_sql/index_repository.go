@@ -21,7 +21,7 @@ type artistIndexRepository struct {
 
 func NewArtistIndexRepository() domain.ArtistIndexRepository {
 	r := &artistIndexRepository{}
-	r.entityName = "artist_info"
+	r.tableName = "artist_info"
 	return r
 }
 
@@ -106,7 +106,7 @@ func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
 }
 
 func (r *artistIndexRepository) DeleteAll() error {
-	_, err := r.newQuery(Db()).Exclude("idx", ".PHONY").Delete()
+	_, err := Db().Raw("delete from artist_info").Exec()
 	return err
 }
 

@@ -24,7 +24,7 @@ type playlistRepository struct {
 
 func NewPlaylistRepository() domain.PlaylistRepository {
 	r := &playlistRepository{}
-	r.entityName = "playlist"
+	r.tableName = "playlist"
 	return r
 }
 

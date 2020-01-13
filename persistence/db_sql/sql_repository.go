@@ -3,15 +3,16 @@ package db_sql
 import (
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/persistence"
 )
 
 type sqlRepository struct {
-	entityName string
+	tableName string
 }
 
 func (r *sqlRepository) newQuery(o orm.Ormer, options ...domain.QueryOptions) orm.QuerySeter {
-	q := o.QueryTable(r.entityName)
+	q := o.QueryTable(r.tableName)
 	if len(options) > 0 {
 		opts := options[0]
 		q = q.Offset(opts.Offset)
@@ -69,23 +70,66 @@ func (r *sqlRepository) put(id string, a interface{}) error {
 	})
 }
 
-func (r *sqlRepository) purgeInactive(activeList interface{}, getId func(item interface{}) string) ([]string, error) {
-	ids := persistence.CollectValue(activeList, getId)
-	var values []orm.Params
-	err := WithTx(func(o orm.Ormer) error {
-		qs := r.newQuery(o).Exclude("id__in", ids)
-		num, err := qs.Values(&values, "id")
-		if num > 0 {
-			_, err = qs.Delete()
+func paginateSlice(slice []string, skip int, size int) []string {
+	if skip > len(slice) {
+		skip = len(slice)
+	}
+
+	end := skip + size
+	if end > len(slice) {
+		end = len(slice)
+	}
+
+	return slice[skip:end]
+}
+
+func difference(slice1 []string, slice2 []string) []string {
+	var diffStr []string
+	m := map[string]int{}
+
+	for _, s1Val := range slice1 {
+		m[s1Val] = 1
+	}
+	for _, s2Val := range slice2 {
+		m[s2Val] = m[s2Val] + 1
+	}
+
+	for mKey, mVal := range m {
+		if mVal == 1 {
+			diffStr = append(diffStr, mKey)
 		}
-		return err
-	})
+	}
+
+	return diffStr
+}
+
+func (r *sqlRepository) purgeInactive(activeList interface{}, getId func(item interface{}) string) ([]string, error) {
+	allIds, err := r.GetAllIds()
 	if err != nil {
 		return nil, err
 	}
-	result := make([]string, len(values))
-	for i, v := range values {
-		result[i] = v["ID"].(string)
+	activeIds := persistence.CollectValue(activeList, getId)
+	idsToDelete := difference(allIds, activeIds)
+	if len(idsToDelete) == 0 {
+		return nil, nil
 	}
-	return result, nil
+	log.Debug("Purging inactive records", "table", r.tableName, "total", len(idsToDelete))
+
+	err = WithTx(func(o orm.Ormer) error {
+		var offset int
+		for {
+			var subset = paginateSlice(idsToDelete, offset, 100)
+			if len(subset) == 0 {
+				break
+			}
+			log.Trace("-- Purging inactive records", "table", r.tableName, "num", len(subset), "from", offset)
+			offset += len(subset)
+			_, err := r.newQuery(o).Filter("id__in", subset).Delete()
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return idsToDelete, err
 }

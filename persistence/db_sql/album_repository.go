@@ -35,7 +35,7 @@ type albumRepository struct {
 
 func NewAlbumRepository() domain.AlbumRepository {
 	r := &albumRepository{}
-	r.entityName = "album"
+	r.tableName = "album"
 	return r
 }
 
