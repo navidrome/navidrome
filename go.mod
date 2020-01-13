@@ -23,7 +23,6 @@ require (
 	github.com/nfnt/resize v0.0.0-20160724205520-891127d8d1b5
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.8.1
-	github.com/siddontang/ledisdb v0.0.0-20181029004158-becf5f38d373
 	github.com/sirupsen/logrus v1.4.2
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/smartystreets/goconvey v1.6.4

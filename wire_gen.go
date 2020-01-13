@@ -11,7 +11,6 @@ import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence"
-	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
 	"github.com/cloudsonic/sonic-server/persistence/db_sql"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/google/wire"
@@ -19,8 +18,8 @@ import (
 
 // Injectors from wire_injectors.go:
 
-func CreateApp(musicFolder string, p persistence.ProviderIdentifier) *App {
-	provider := createPersistenceProvider(p)
+func CreateApp(musicFolder string) *App {
+	provider := createPersistenceProvider()
 	checkSumRepository := provider.CheckSumRepository
 	itunesScanner := scanner.NewItunesScanner(checkSumRepository)
 	mediaFileRepository := provider.MediaFileRepository
@@ -34,8 +33,8 @@ func CreateApp(musicFolder string, p persistence.ProviderIdentifier) *App {
 	return app
 }
 
-func CreateSubsonicAPIRouter(p persistence.ProviderIdentifier) *api.Router {
-	provider := createPersistenceProvider(p)
+func CreateSubsonicAPIRouter() *api.Router {
+	provider := createPersistenceProvider()
 	propertyRepository := provider.PropertyRepository
 	mediaFolderRepository := provider.MediaFolderRepository
 	artistIndexRepository := provider.ArtistIndexRepository
@@ -56,7 +55,7 @@ func CreateSubsonicAPIRouter(p persistence.ProviderIdentifier) *api.Router {
 	return router
 }
 
-func createSQLProvider() *Provider {
+func createPersistenceProvider() *Provider {
 	albumRepository := db_sql.NewAlbumRepository()
 	artistRepository := db_sql.NewArtistRepository()
 	checkSumRepository := db_sql.NewCheckSumRepository()
@@ -66,30 +65,6 @@ func createSQLProvider() *Provider {
 	nowPlayingRepository := persistence.NewNowPlayingRepository()
 	playlistRepository := db_sql.NewPlaylistRepository()
 	propertyRepository := db_sql.NewPropertyRepository()
-	provider := &Provider{
-		AlbumRepository:       albumRepository,
-		ArtistRepository:      artistRepository,
-		CheckSumRepository:    checkSumRepository,
-		ArtistIndexRepository: artistIndexRepository,
-		MediaFileRepository:   mediaFileRepository,
-		MediaFolderRepository: mediaFolderRepository,
-		NowPlayingRepository:  nowPlayingRepository,
-		PlaylistRepository:    playlistRepository,
-		PropertyRepository:    propertyRepository,
-	}
-	return provider
-}
-
-func createLedisDBProvider() *Provider {
-	albumRepository := db_ledis.NewAlbumRepository()
-	artistRepository := db_ledis.NewArtistRepository()
-	checkSumRepository := db_ledis.NewCheckSumRepository()
-	artistIndexRepository := db_ledis.NewArtistIndexRepository()
-	mediaFileRepository := db_ledis.NewMediaFileRepository()
-	mediaFolderRepository := persistence.NewMediaFolderRepository()
-	nowPlayingRepository := db_ledis.NewNowPlayingRepository()
-	playlistRepository := db_ledis.NewPlaylistRepository()
-	propertyRepository := db_ledis.NewPropertyRepository()
 	provider := &Provider{
 		AlbumRepository:       albumRepository,
 		ArtistRepository:      artistRepository,
@@ -122,12 +97,3 @@ var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanne
 	"ArtistIndexRepository", "MediaFileRepository", "MediaFolderRepository", "NowPlayingRepository",
 	"PlaylistRepository", "PropertyRepository"), createPersistenceProvider,
 )
-
-func createPersistenceProvider(provider persistence.ProviderIdentifier) *Provider {
-	switch provider {
-	case "sql":
-		return createSQLProvider()
-	default:
-		return createLedisDBProvider()
-	}
-}

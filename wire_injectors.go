@@ -7,8 +7,6 @@ import (
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
-	"github.com/cloudsonic/sonic-server/persistence"
-	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
 	"github.com/cloudsonic/sonic-server/persistence/db_sql"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/google/wire"
@@ -37,36 +35,22 @@ var allProviders = wire.NewSet(
 	createPersistenceProvider,
 )
 
-func CreateApp(musicFolder string, p persistence.ProviderIdentifier) *App {
+func CreateApp(musicFolder string) *App {
 	panic(wire.Build(
 		NewApp,
 		allProviders,
 	))
 }
 
-func CreateSubsonicAPIRouter(p persistence.ProviderIdentifier) *api.Router {
+func CreateSubsonicAPIRouter() *api.Router {
 	panic(wire.Build(allProviders))
 }
 
-func createPersistenceProvider(provider persistence.ProviderIdentifier) *Provider {
-	switch provider {
-	case "sql":
-		return createSQLProvider()
-	default:
-		return createLedisDBProvider()
-	}
-}
-
-func createSQLProvider() *Provider {
+// When implementing a different persistence layer, duplicate this function (in separated files) and use build tags
+// to conditionally select which function to use
+func createPersistenceProvider() *Provider {
 	panic(wire.Build(
 		db_sql.Set,
-		wire.Struct(new(Provider), "*"),
-	))
-}
-
-func createLedisDBProvider() *Provider {
-	panic(wire.Build(
-		db_ledis.Set,
 		wire.Struct(new(Provider), "*"),
 	))
 }
