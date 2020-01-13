@@ -18,7 +18,7 @@ type artistRepository struct {
 
 func NewArtistRepository() domain.ArtistRepository {
 	r := &artistRepository{}
-	r.entityName = "artist"
+	r.tableName = "artist"
 	return r
 }
 

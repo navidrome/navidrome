@@ -16,7 +16,7 @@ type propertyRepository struct {
 
 func NewPropertyRepository() domain.PropertyRepository {
 	r := &propertyRepository{}
-	r.entityName = "property"
+	r.tableName = "property"
 	return r
 }
 
