@@ -11,8 +11,6 @@ import (
 	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
 	"github.com/cloudsonic/sonic-server/persistence/db_sql"
 	"github.com/cloudsonic/sonic-server/scanner"
-	"github.com/deluan/gomate"
-	"github.com/deluan/gomate/ledis"
 	"github.com/google/wire"
 )
 
@@ -32,7 +30,6 @@ var allProviders = wire.NewSet(
 	itunesbridge.NewItunesControl,
 	engine.Set,
 	scanner.Set,
-	newDB,
 	api.NewRouter,
 	wire.FieldsOf(new(*Provider), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
 		"ArtistIndexRepository", "MediaFileRepository", "MediaFolderRepository", "NowPlayingRepository",
@@ -72,8 +69,4 @@ func createLedisDBProvider() *Provider {
 		db_ledis.Set,
 		wire.Struct(new(Provider), "*"),
 	))
-}
-
-func newDB() gomate.DB {
-	return ledis.NewEmbeddedDB(db_ledis.Db())
 }

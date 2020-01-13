@@ -34,5 +34,8 @@ func (r *artistRepository) PurgeInactive(active domain.Artists) ([]string, error
 		return e.(domain.Artist).ID
 	})
 }
+func (r *artistRepository) Search(q string, offset int, size int) (domain.Artists, error) {
+	return nil, errors.New("not implemented")
+}
 
 var _ domain.ArtistRepository = (*artistRepository)(nil)
