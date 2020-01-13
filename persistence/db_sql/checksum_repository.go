@@ -59,6 +59,7 @@ func (r *checkSumRepository) SetData(newSums map[string]string) error {
 
 		for k, v := range newSums {
 			cks := CheckSums{ID: k, Value: v}
+			// TODO Use InsertMulti
 			_, err := Db().Insert(&cks)
 			if err != nil {
 				return err
