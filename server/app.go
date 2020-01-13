@@ -14,6 +14,8 @@ import (
 	"github.com/go-chi/cors"
 )
 
+const Version = "0.2"
+
 type Server struct {
 	Importer *scanner.Importer
 	router   *chi.Mux
@@ -21,6 +23,7 @@ type Server struct {
 
 func New(importer *scanner.Importer) *Server {
 	a := &Server{Importer: importer}
+	showBanner(Version)
 	initMimeTypes()
 	a.initRoutes()
 	a.initImporter()
@@ -35,7 +38,7 @@ func (a *Server) MountRouter(path string, subRouter http.Handler) {
 }
 
 func (a *Server) Run(addr string) {
-	log.Info("Started CloudSonic server", "address", addr)
+	log.Info("Starting CloudSonic server", "address", addr)
 	log.Error(http.ListenAndServe(addr, a.router))
 }
 
