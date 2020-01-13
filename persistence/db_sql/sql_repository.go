@@ -9,6 +9,7 @@ import (
 
 type sqlRepository struct {
 	tableName string
+	searcher  sqlSearcher
 }
 
 func (r *sqlRepository) newQuery(o orm.Ormer, options ...domain.QueryOptions) orm.QuerySeter {
@@ -55,19 +56,17 @@ func (r *sqlRepository) GetAllIds() ([]string, error) {
 	return result, nil
 }
 
-func (r *sqlRepository) put(id string, a interface{}) error {
-	return WithTx(func(o orm.Ormer) error {
-		c, err := r.newQuery(o).Filter("id", id).Count()
-		if err != nil {
-			return err
-		}
-		if c == 0 {
-			_, err = o.Insert(a)
-			return err
-		}
-		_, err = o.Update(a)
+func (r *sqlRepository) put(o orm.Ormer, id string, a interface{}) error {
+	c, err := r.newQuery(o).Filter("id", id).Count()
+	if err != nil {
 		return err
-	})
+	}
+	if c == 0 {
+		_, err = o.Insert(a)
+		return err
+	}
+	_, err = o.Update(a)
+	return err
 }
 
 func paginateSlice(slice []string, skip int, size int) []string {
@@ -104,8 +103,13 @@ func difference(slice1 []string, slice2 []string) []string {
 }
 
 func (r *sqlRepository) DeleteAll() error {
-	_, err := r.newQuery(Db()).Filter("id__isnull", false).Delete()
-	return err
+	return WithTx(func(o orm.Ormer) error {
+		_, err := r.newQuery(Db()).Filter("id__isnull", false).Delete()
+		if err != nil {
+			return err
+		}
+		return r.searcher.DeleteAll(o, r.tableName)
+	})
 }
 
 func (r *sqlRepository) purgeInactive(activeList interface{}, getId func(item interface{}) string) ([]string, error) {
@@ -123,7 +127,7 @@ func (r *sqlRepository) purgeInactive(activeList interface{}, getId func(item in
 	err = WithTx(func(o orm.Ormer) error {
 		var offset int
 		for {
-			var subset = paginateSlice(idsToDelete, offset, 100)
+			var subset = paginateSlice(idsToDelete, offset, batchSize)
 			if len(subset) == 0 {
 				break
 			}
@@ -134,7 +138,7 @@ func (r *sqlRepository) purgeInactive(activeList interface{}, getId func(item in
 				return err
 			}
 		}
-		return nil
+		return r.searcher.Remove(o, r.tableName, idsToDelete)
 	})
 	return idsToDelete, err
 }

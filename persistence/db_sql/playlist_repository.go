@@ -30,7 +30,9 @@ func NewPlaylistRepository() domain.PlaylistRepository {
 
 func (r *playlistRepository) Put(p *domain.Playlist) error {
 	tp := r.fromDomain(p)
-	return r.put(p.ID, &tp)
+	return WithTx(func(o orm.Ormer) error {
+		return r.put(o, p.ID, &tp)
+	})
 }
 
 func (r *playlistRepository) Get(id string) (*domain.Playlist, error) {

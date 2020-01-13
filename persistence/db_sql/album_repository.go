@@ -41,7 +41,9 @@ func NewAlbumRepository() domain.AlbumRepository {
 
 func (r *albumRepository) Put(a *domain.Album) error {
 	ta := Album(*a)
-	return r.put(a.ID, &ta)
+	return WithTx(func(o orm.Ormer) error {
+		return r.put(o, a.ID, &ta)
+	})
 }
 
 func (r *albumRepository) Get(id string) (*domain.Album, error) {
