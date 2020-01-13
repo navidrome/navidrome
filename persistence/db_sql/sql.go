@@ -59,6 +59,7 @@ func initORM(dbPath string) error {
 	orm.RegisterModel(new(MediaFile))
 	orm.RegisterModel(new(ArtistInfo))
 	orm.RegisterModel(new(CheckSums))
+	orm.RegisterModel(new(Property))
 	err := orm.RegisterDataBase("default", "sqlite3", dbPath)
 	if err != nil {
 		panic(err)
