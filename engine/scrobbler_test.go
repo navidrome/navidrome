@@ -1,6 +1,7 @@
 package engine_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/cloudsonic/sonic-server/persistence"
 	. "github.com/cloudsonic/sonic-server/tests"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 func TestScrobbler(t *testing.T) {
