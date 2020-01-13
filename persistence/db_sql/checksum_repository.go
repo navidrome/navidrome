@@ -52,7 +52,7 @@ func (r *checkSumRepository) Get(id string) (string, error) {
 
 func (r *checkSumRepository) SetData(newSums map[string]string) error {
 	err := WithTx(func(o orm.Ormer) error {
-		_, err := Db().QueryTable(&Checksum{}).Filter("id__isnull", false).Delete()
+		_, err := Db().Raw("delete from checksum").Exec()
 		if err != nil {
 			return err
 		}
