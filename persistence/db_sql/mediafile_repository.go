@@ -1,6 +1,7 @@
 package db_sql
 
 import (
+	"strings"
 	"time"
 
 	"github.com/astaxie/beego/orm"
@@ -63,12 +64,12 @@ func (r *mediaFileRepository) Get(id string) (*domain.MediaFile, error) {
 	return &a, nil
 }
 
-func (r *mediaFileRepository) toMediaFiles(all []MediaFile) (domain.MediaFiles, error) {
+func (r *mediaFileRepository) toMediaFiles(all []MediaFile) domain.MediaFiles {
 	result := make(domain.MediaFiles, len(all))
 	for i, m := range all {
 		result[i] = domain.MediaFile(m)
 	}
-	return result, nil
+	return result
 }
 
 func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, error) {
@@ -77,7 +78,7 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, er
 	if err != nil {
 		return nil, err
 	}
-	return r.toMediaFiles(mfs)
+	return r.toMediaFiles(mfs), nil
 }
 
 func (r *mediaFileRepository) GetStarred(options ...domain.QueryOptions) (domain.MediaFiles, error) {
@@ -86,13 +87,33 @@ func (r *mediaFileRepository) GetStarred(options ...domain.QueryOptions) (domain
 	if err != nil {
 		return nil, err
 	}
-	return r.toMediaFiles(starred)
+	return r.toMediaFiles(starred), nil
 }
 
 func (r *mediaFileRepository) PurgeInactive(activeList domain.MediaFiles) ([]string, error) {
 	return r.purgeInactive(activeList, func(item interface{}) string {
 		return item.(domain.MediaFile).ID
 	})
+}
+
+func (r *mediaFileRepository) Search(q string, offset int, size int) (domain.MediaFiles, error) {
+	parts := strings.Split(q, " ")
+	if len(parts) == 0 {
+		return nil, nil
+	}
+	qs := r.newQuery(Db(), domain.QueryOptions{Offset: offset, Size: size})
+	cond := orm.NewCondition()
+	for _, part := range parts {
+		c := orm.NewCondition()
+		cond = cond.AndCond(c.Or("title__istartswith", part).Or("title__icontains", " "+part))
+	}
+	qs = qs.SetCond(cond).OrderBy("-rating", "-starred", "-play_count")
+	var results []MediaFile
+	_, err := qs.All(&results)
+	if err != nil {
+		return nil, err
+	}
+	return r.toMediaFiles(results), nil
 }
 
 var _ domain.MediaFileRepository = (*mediaFileRepository)(nil)

@@ -73,4 +73,8 @@ func (r *mediaFileRepository) PurgeInactive(active domain.MediaFiles) ([]string,
 	})
 }
 
+func (r *mediaFileRepository) Search(q string, offset int, size int) (domain.MediaFiles, error) {
+	return nil, errors.New("not implemented")
+}
+
 var _ domain.MediaFileRepository = (*mediaFileRepository)(nil)

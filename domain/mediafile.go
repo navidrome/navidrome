@@ -53,4 +53,5 @@ type MediaFileRepository interface {
 	GetStarred(options ...QueryOptions) (MediaFiles, error)
 	PurgeInactive(active MediaFiles) ([]string, error)
 	GetAllIds() ([]string, error)
+	Search(q string, offset int, size int) (MediaFiles, error)
 }

@@ -130,19 +130,18 @@ func (s *search) SearchAlbum(ctx context.Context, q string, offset int, size int
 func (s *search) SearchSong(ctx context.Context, q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
 	min := offset
-	max := min + size - 1
-	resp, err := s.sSong.Search(q, min, max)
+	max := min + size
+	resp, err := s.mfileRepo.Search(q, min, max)
 	if err != nil {
 		return nil, nil
 	}
 	res := make(Entries, 0, len(resp))
-	for _, id := range resp {
-		mf, err := s.mfileRepo.Get(id)
-		if criticalError(ctx, "Song", id, err) {
+	for _, mf := range resp {
+		if criticalError(ctx, "Song", mf.ID, err) {
 			return nil, err
 		}
 		if err == nil {
-			res = append(res, FromMediaFile(mf))
+			res = append(res, FromMediaFile(&mf))
 		}
 	}
 	return res, nil
