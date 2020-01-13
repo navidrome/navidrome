@@ -4,13 +4,9 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/DataDog/zstd v1.4.4 // indirect
 	github.com/Masterminds/squirrel v1.1.0
-	github.com/Sereal/Sereal v0.0.0-20190618215532-0b8ac451a863 // indirect
-	github.com/asdine/storm v2.1.2+incompatible
 	github.com/astaxie/beego v1.12.0
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
-	github.com/deluan/gomate v0.0.0-20160327212459-3eb40643dd6f
 	github.com/dhowden/itl v0.0.0-20170329215456-9fbe21093131
 	github.com/dhowden/plist v0.0.0-20141002110153-5db6e0d9931a // indirect
 	github.com/dhowden/tag v0.0.0-20170128231422-9edd38ca5d10
@@ -33,8 +29,6 @@ require (
 	github.com/smartystreets/goconvey v1.6.4
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/syndtr/goleveldb v0.0.0-20181127023241-353a9fca669c
-	github.com/vmihailenco/msgpack v4.0.1+incompatible // indirect
-	go.etcd.io/bbolt v1.3.3 // indirect
 	golang.org/x/sys v0.0.0-20200107162124-548cf772de50 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect

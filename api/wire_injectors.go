@@ -4,9 +4,6 @@ package api
 
 import (
 	"github.com/cloudsonic/sonic-server/itunesbridge"
-	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
-	"github.com/deluan/gomate"
-	"github.com/deluan/gomate/ledis"
 	"github.com/google/wire"
 )
 
@@ -21,7 +18,6 @@ var allProviders = wire.NewSet(
 	NewUsersController,
 	NewMediaRetrievalController,
 	NewStreamController,
-	newDB,
 	wire.FieldsOf(new(*Router), "Browser", "Cover", "ListGenerator", "Playlists", "Ratings", "Scrobbler", "Search"),
 )
 
@@ -59,8 +55,4 @@ func initMediaRetrievalController(router *Router) *MediaRetrievalController {
 
 func initStreamController(router *Router) *StreamController {
 	panic(wire.Build(allProviders))
-}
-
-func newDB() gomate.DB {
-	return ledis.NewEmbeddedDB(db_ledis.Db())
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/domain"
-	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/utils"
 )
@@ -33,12 +32,11 @@ type Importer struct {
 	idxRepo      domain.ArtistIndexRepository
 	plsRepo      domain.PlaylistRepository
 	propertyRepo domain.PropertyRepository
-	search       engine.Search
 	lastScan     time.Time
 	lastCheck    time.Time
 }
 
-func NewImporter(mediaFolder string, scanner Scanner, mfRepo domain.MediaFileRepository, albumRepo domain.AlbumRepository, artistRepo domain.ArtistRepository, idxRepo domain.ArtistIndexRepository, plsRepo domain.PlaylistRepository, propertyRepo domain.PropertyRepository, search engine.Search) *Importer {
+func NewImporter(mediaFolder string, scanner Scanner, mfRepo domain.MediaFileRepository, albumRepo domain.AlbumRepository, artistRepo domain.ArtistRepository, idxRepo domain.ArtistIndexRepository, plsRepo domain.PlaylistRepository, propertyRepo domain.PropertyRepository) *Importer {
 	return &Importer{
 		scanner:      scanner,
 		mediaFolder:  mediaFolder,
@@ -48,7 +46,6 @@ func NewImporter(mediaFolder string, scanner Scanner, mfRepo domain.MediaFileRep
 		idxRepo:      idxRepo,
 		plsRepo:      plsRepo,
 		propertyRepo: propertyRepo,
-		search:       search,
 	}
 }
 
@@ -137,20 +134,14 @@ func (i *Importer) importLibrary() (err error) {
 	i.importArtistIndex()
 
 	log.Debug("Purging old data")
-	if deleted, err := i.mfRepo.PurgeInactive(mfs); err != nil {
+	if _, err := i.mfRepo.PurgeInactive(mfs); err != nil {
 		log.Error(err)
-	} else {
-		i.search.RemoveMediaFile(deleted...)
 	}
-	if deleted, err := i.albumRepo.PurgeInactive(als); err != nil {
+	if _, err := i.albumRepo.PurgeInactive(als); err != nil {
 		log.Error(err)
-	} else {
-		i.search.RemoveAlbum(deleted...)
 	}
-	if deleted, err := i.artistRepo.PurgeInactive(ars); err != nil {
+	if _, err := i.artistRepo.PurgeInactive(ars); err != nil {
 		log.Error("Deleting inactive artists", err)
-	} else {
-		i.search.RemoveArtist(deleted...)
 	}
 	if _, err := i.plsRepo.PurgeInactive(pls); err != nil {
 		log.Error(err)
@@ -198,9 +189,6 @@ func (i *Importer) importMediaFiles() (domain.MediaFiles, int) {
 		if err := i.mfRepo.Put(mf); err != nil {
 			log.Error(err)
 		}
-		if err := i.search.IndexMediaFile(mf); err != nil {
-			log.Error("Error indexing artist", err)
-		}
 		updates++
 		if !i.lastScan.IsZero() {
 			log.Debug(fmt.Sprintf(`-- Updated Track: "%s"`, mf.Title))
@@ -230,9 +218,6 @@ func (i *Importer) importAlbums() (domain.Albums, int) {
 		if err := i.albumRepo.Put(al); err != nil {
 			log.Error(err)
 		}
-		if err := i.search.IndexAlbum(al); err != nil {
-			log.Error("Error indexing artist", err)
-		}
 		updates++
 		if !i.lastScan.IsZero() {
 			log.Debug(fmt.Sprintf(`-- Updated Album: "%s" from "%s"`, al.Name, al.Artist))
@@ -249,9 +234,6 @@ func (i *Importer) importArtists() domain.Artists {
 		j++
 		if err := i.artistRepo.Put(ar); err != nil {
 			log.Error(err)
-		}
-		if err := i.search.IndexArtist(ar); err != nil {
-			log.Error("Error indexing artist", err)
 		}
 	}
 	return ars

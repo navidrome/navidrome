@@ -25,7 +25,11 @@ func NewArtistRepository() domain.ArtistRepository {
 func (r *artistRepository) Put(a *domain.Artist) error {
 	ta := Artist(*a)
 	return WithTx(func(o orm.Ormer) error {
-		return r.put(o, a.ID, &ta)
+		err := r.put(o, a.ID, &ta)
+		if err != nil {
+			return err
+		}
+		return r.searcher.Index(o, r.tableName, a.ID, a.Name)
 	})
 }
 
@@ -46,6 +50,28 @@ func (r *artistRepository) PurgeInactive(activeList domain.Artists) ([]string, e
 	return r.purgeInactive(activeList, func(item interface{}) string {
 		return item.(domain.Artist).ID
 	})
+}
+
+func (r *artistRepository) Search(q string, offset int, size int) (domain.Artists, error) {
+	if len(q) <= 2 {
+		return nil, nil
+	}
+
+	var results []Artist
+	err := r.searcher.Search(r.tableName, q, offset, size, &results, "name")
+	if err != nil {
+		return nil, err
+	}
+
+	return r.toArtists(results), nil
+}
+
+func (r *artistRepository) toArtists(all []Artist) domain.Artists {
+	result := make(domain.Artists, len(all))
+	for i, a := range all {
+		result[i] = domain.Artist(a)
+	}
+	return result
 }
 
 var _ domain.ArtistRepository = (*artistRepository)(nil)

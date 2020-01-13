@@ -14,8 +14,6 @@ import (
 	"github.com/cloudsonic/sonic-server/persistence/db_ledis"
 	"github.com/cloudsonic/sonic-server/persistence/db_sql"
 	"github.com/cloudsonic/sonic-server/scanner"
-	"github.com/deluan/gomate"
-	"github.com/deluan/gomate/ledis"
 	"github.com/google/wire"
 )
 
@@ -31,9 +29,7 @@ func CreateApp(musicFolder string, p persistence.ProviderIdentifier) *App {
 	artistIndexRepository := provider.ArtistIndexRepository
 	playlistRepository := provider.PlaylistRepository
 	propertyRepository := provider.PropertyRepository
-	db := newDB()
-	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
-	importer := scanner.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository, search)
+	importer := scanner.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository)
 	app := NewApp(importer)
 	return app
 }
@@ -55,8 +51,7 @@ func CreateSubsonicAPIRouter(p persistence.ProviderIdentifier) *api.Router {
 	playlists := engine.NewPlaylists(itunesControl, playlistRepository, mediaFileRepository)
 	ratings := engine.NewRatings(itunesControl, mediaFileRepository, albumRepository, artistRepository)
 	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, nowPlayingRepository)
-	db := newDB()
-	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository, db)
+	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository)
 	router := api.NewRouter(browser, cover, listGenerator, playlists, ratings, scrobbler, search)
 	return router
 }
@@ -123,7 +118,7 @@ type Provider struct {
 	PropertyRepository    domain.PropertyRepository
 }
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner.Set, newDB, api.NewRouter, wire.FieldsOf(new(*Provider), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner.Set, api.NewRouter, wire.FieldsOf(new(*Provider), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
 	"ArtistIndexRepository", "MediaFileRepository", "MediaFolderRepository", "NowPlayingRepository",
 	"PlaylistRepository", "PropertyRepository"), createPersistenceProvider,
 )
@@ -135,8 +130,4 @@ func createPersistenceProvider(provider persistence.ProviderIdentifier) *Provide
 	default:
 		return createLedisDBProvider()
 	}
-}
-
-func newDB() gomate.DB {
-	return ledis.NewEmbeddedDB(db_ledis.Db())
 }
