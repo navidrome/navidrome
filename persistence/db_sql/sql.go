@@ -11,6 +11,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+const batchSize = 100
+
 var once sync.Once
 
 func Db() orm.Ormer {
@@ -66,6 +68,7 @@ func initORM(dbPath string) error {
 	orm.RegisterModel(new(Checksum))
 	orm.RegisterModel(new(Property))
 	orm.RegisterModel(new(Playlist))
+	orm.RegisterModel(new(Search))
 	err := orm.RegisterDataBase("default", "sqlite3", dbPath)
 	if err != nil {
 		panic(err)

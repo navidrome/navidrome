@@ -24,7 +24,9 @@ func NewArtistRepository() domain.ArtistRepository {
 
 func (r *artistRepository) Put(a *domain.Artist) error {
 	ta := Artist(*a)
-	return r.put(a.ID, &ta)
+	return WithTx(func(o orm.Ormer) error {
+		return r.put(o, a.ID, &ta)
+	})
 }
 
 func (r *artistRepository) Get(id string) (*domain.Artist, error) {

@@ -1,7 +1,6 @@
 package db_sql
 
 import (
-	"strings"
 	"time"
 
 	"github.com/astaxie/beego/orm"
@@ -27,9 +26,9 @@ type MediaFile struct {
 	BitRate     int       ``
 	Genre       string    ``
 	Compilation bool      ``
-	PlayCount   int       ``
+	PlayCount   int       `orm:"index"`
 	PlayDate    time.Time `orm:"null"`
-	Rating      int       ``
+	Rating      int       `orm:"index"`
 	Starred     bool      `orm:"index"`
 	StarredAt   time.Time `orm:"null"`
 	CreatedAt   time.Time `orm:"null"`
@@ -48,7 +47,13 @@ func NewMediaFileRepository() domain.MediaFileRepository {
 
 func (r *mediaFileRepository) Put(m *domain.MediaFile) error {
 	tm := MediaFile(*m)
-	return r.put(m.ID, &tm)
+	return WithTx(func(o orm.Ormer) error {
+		err := r.put(o, m.ID, &tm)
+		if err != nil {
+			return err
+		}
+		return r.searcher.Index(o, r.tableName, m.ID, m.Title)
+	})
 }
 
 func (r *mediaFileRepository) Get(id string) (*domain.MediaFile, error) {
@@ -97,19 +102,12 @@ func (r *mediaFileRepository) PurgeInactive(activeList domain.MediaFiles) ([]str
 }
 
 func (r *mediaFileRepository) Search(q string, offset int, size int) (domain.MediaFiles, error) {
-	parts := strings.Split(q, " ")
-	if len(parts) == 0 {
+	if len(q) <= 2 {
 		return nil, nil
 	}
-	qs := r.newQuery(Db(), domain.QueryOptions{Offset: offset, Size: size})
-	cond := orm.NewCondition()
-	for _, part := range parts {
-		c := orm.NewCondition()
-		cond = cond.AndCond(c.Or("title__istartswith", part).Or("title__icontains", " "+part))
-	}
-	qs = qs.SetCond(cond).OrderBy("-rating", "-starred", "-play_count")
+
 	var results []MediaFile
-	_, err := qs.All(&results)
+	err := r.searcher.Search(r.tableName, q, offset, size, &results, "rating desc", "starred desc", "play_count desc", "title")
 	if err != nil {
 		return nil, err
 	}

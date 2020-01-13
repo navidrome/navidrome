@@ -62,7 +62,7 @@ func (r *checkSumRepository) SetData(newSums map[string]string) error {
 			cks := Checksum{ID: k, Sum: v}
 			checksums = append(checksums, cks)
 		}
-		_, err = Db().InsertMulti(100, &checksums)
+		_, err = Db().InsertMulti(batchSize, &checksums)
 		if err != nil {
 			return err
 		}

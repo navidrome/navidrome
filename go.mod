@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/DataDog/zstd v1.4.4 // indirect
+	github.com/Masterminds/squirrel v1.1.0
 	github.com/Sereal/Sereal v0.0.0-20190618215532-0b8ac451a863 // indirect
 	github.com/asdine/storm v2.1.2+incompatible
 	github.com/astaxie/beego v1.12.0
