@@ -70,7 +70,7 @@ func createSQLProvider() *Provider {
 	mediaFileRepository := db_sql.NewMediaFileRepository()
 	mediaFolderRepository := persistence.NewMediaFolderRepository()
 	nowPlayingRepository := persistence.NewNowPlayingRepository()
-	playlistRepository := db_ledis.NewPlaylistRepository()
+	playlistRepository := db_sql.NewPlaylistRepository()
 	propertyRepository := db_sql.NewPropertyRepository()
 	provider := &Provider{
 		AlbumRepository:       albumRepository,
