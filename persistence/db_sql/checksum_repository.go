@@ -12,9 +12,9 @@ type checkSumRepository struct {
 
 const checkSumId = "1"
 
-type CheckSums struct {
-	ID    string `orm:"pk;column(id)"`
-	Value string
+type Checksum struct {
+	ID  string `orm:"pk;column(id)"`
+	Sum string
 }
 
 func NewCheckSumRepository() scanner.CheckSumRepository {
@@ -25,14 +25,14 @@ func NewCheckSumRepository() scanner.CheckSumRepository {
 func (r *checkSumRepository) loadData() error {
 	loadedData := make(map[string]string)
 
-	var all []CheckSums
-	_, err := Db().QueryTable(&CheckSums{}).All(&all)
+	var all []Checksum
+	_, err := Db().QueryTable(&Checksum{}).All(&all)
 	if err != nil {
 		return err
 	}
 
 	for _, cks := range all {
-		loadedData[cks.ID] = cks.Value
+		loadedData[cks.ID] = cks.Sum
 	}
 
 	r.data = loadedData
@@ -52,19 +52,21 @@ func (r *checkSumRepository) Get(id string) (string, error) {
 
 func (r *checkSumRepository) SetData(newSums map[string]string) error {
 	err := WithTx(func(o orm.Ormer) error {
-		_, err := Db().Raw("delete from check_sums").Exec()
+		_, err := Db().Raw("delete from checksum").Exec()
 		if err != nil {
 			return err
 		}
 
+		var checksums []Checksum
 		for k, v := range newSums {
-			cks := CheckSums{ID: k, Value: v}
-			// TODO Use InsertMulti
-			_, err := Db().Insert(&cks)
-			if err != nil {
-				return err
-			}
+			cks := Checksum{ID: k, Sum: v}
+			checksums = append(checksums, cks)
 		}
+		_, err = Db().InsertMulti(100, &checksums)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {

@@ -58,7 +58,7 @@ func initORM(dbPath string) error {
 	orm.RegisterModel(new(Album))
 	orm.RegisterModel(new(MediaFile))
 	orm.RegisterModel(new(ArtistInfo))
-	orm.RegisterModel(new(CheckSums))
+	orm.RegisterModel(new(Checksum))
 	orm.RegisterModel(new(Property))
 	orm.RegisterModel(new(Playlist))
 	err := orm.RegisterDataBase("default", "sqlite3", dbPath)
