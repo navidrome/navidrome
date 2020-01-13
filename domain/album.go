@@ -35,4 +35,5 @@ type AlbumRepository interface {
 	PurgeInactive(active Albums) ([]string, error)
 	GetAllIds() ([]string, error)
 	GetStarred(...QueryOptions) (Albums, error)
+	Search(q string, offset int, size int) (Albums, error)
 }

@@ -42,7 +42,11 @@ func NewAlbumRepository() domain.AlbumRepository {
 func (r *albumRepository) Put(a *domain.Album) error {
 	ta := Album(*a)
 	return WithTx(func(o orm.Ormer) error {
-		return r.put(o, a.ID, &ta)
+		err := r.put(o, a.ID, &ta)
+		if err != nil {
+			return err
+		}
+		return r.searcher.Index(o, r.tableName, a.ID, a.Name)
 	})
 }
 
@@ -65,7 +69,7 @@ func (r *albumRepository) FindByArtist(artistId string) (domain.Albums, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r.toAlbums(albums)
+	return r.toAlbums(albums), nil
 }
 
 func (r *albumRepository) GetAll(options ...domain.QueryOptions) (domain.Albums, error) {
@@ -74,15 +78,15 @@ func (r *albumRepository) GetAll(options ...domain.QueryOptions) (domain.Albums,
 	if err != nil {
 		return nil, err
 	}
-	return r.toAlbums(all)
+	return r.toAlbums(all), nil
 }
 
-func (r *albumRepository) toAlbums(all []Album) (domain.Albums, error) {
+func (r *albumRepository) toAlbums(all []Album) domain.Albums {
 	result := make(domain.Albums, len(all))
 	for i, a := range all {
 		result[i] = domain.Album(a)
 	}
-	return result, nil
+	return result
 }
 
 func (r *albumRepository) PurgeInactive(activeList domain.Albums) ([]string, error) {
@@ -97,7 +101,20 @@ func (r *albumRepository) GetStarred(options ...domain.QueryOptions) (domain.Alb
 	if err != nil {
 		return nil, err
 	}
-	return r.toAlbums(starred)
+	return r.toAlbums(starred), nil
+}
+
+func (r *albumRepository) Search(q string, offset int, size int) (domain.Albums, error) {
+	if len(q) <= 2 {
+		return nil, nil
+	}
+
+	var results []Album
+	err := r.searcher.Search(r.tableName, q, offset, size, &results, "rating desc", "starred desc", "play_count desc", "name")
+	if err != nil {
+		return nil, err
+	}
+	return r.toAlbums(results), nil
 }
 
 var _ domain.AlbumRepository = (*albumRepository)(nil)

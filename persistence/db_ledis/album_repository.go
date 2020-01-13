@@ -71,4 +71,8 @@ func (r *albumRepository) GetStarred(options ...domain.QueryOptions) (domain.Alb
 	return as, err
 }
 
+func (r *albumRepository) Search(q string, offset int, size int) (domain.Albums, error) {
+	return nil, errors.New("not implemented")
+}
+
 var _ domain.AlbumRepository = (*albumRepository)(nil)
