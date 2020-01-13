@@ -1,8 +1,6 @@
 package db_sql
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/cloudsonic/sonic-server/conf"
@@ -31,8 +29,9 @@ var testArtists = domain.Artists{
 
 var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
-		conf.Sonic.DbPath, _ = ioutil.TempDir("", "cloudsonic_tests")
-		os.MkdirAll(conf.Sonic.DbPath, 0700)
+		//conf.Sonic.DbPath, _ = ioutil.TempDir("", "cloudsonic_tests")
+		//os.MkdirAll(conf.Sonic.DbPath, 0700)
+		conf.Sonic.DbPath = ":memory:"
 		Db()
 		artistRepo := NewArtistRepository()
 		for _, a := range testArtists {

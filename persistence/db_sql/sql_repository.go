@@ -103,6 +103,11 @@ func difference(slice1 []string, slice2 []string) []string {
 	return diffStr
 }
 
+func (r *sqlRepository) DeleteAll() error {
+	_, err := r.newQuery(Db()).Filter("id__isnull", false).Delete()
+	return err
+}
+
 func (r *sqlRepository) purgeInactive(activeList interface{}, getId func(item interface{}) string) ([]string, error) {
 	allIds, err := r.GetAllIds()
 	if err != nil {

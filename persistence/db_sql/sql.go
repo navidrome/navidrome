@@ -15,12 +15,17 @@ var once sync.Once
 
 func Db() orm.Ormer {
 	once.Do(func() {
-		err := os.MkdirAll(conf.Sonic.DbPath, 0700)
-		if err != nil {
-			panic(err)
+		dbPath := conf.Sonic.DbPath
+		if dbPath == ":memory:" {
+			dbPath = "file::memory:?cache=shared"
+		} else {
+			err := os.MkdirAll(conf.Sonic.DbPath, 0700)
+			if err != nil {
+				panic(err)
+			}
+			dbPath = path.Join(conf.Sonic.DbPath, "sqlite.db")
 		}
-		dbPath := path.Join(conf.Sonic.DbPath, "sqlite.db")
-		err = initORM(dbPath)
+		err := initORM(dbPath)
 		if err != nil {
 			panic(err)
 		}
