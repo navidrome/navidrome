@@ -10,8 +10,8 @@ var _ = Describe("PropertyRepository", func() {
 	var repo domain.PropertyRepository
 
 	BeforeEach(func() {
-		Db().Raw("delete from property").Exec()
 		repo = NewPropertyRepository()
+		repo.(*propertyRepository).DeleteAll()
 	})
 
 	It("saves and retrieves data", func() {

@@ -105,9 +105,4 @@ func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
 	return result, nil
 }
 
-func (r *artistIndexRepository) DeleteAll() error {
-	_, err := Db().Raw("delete from artist_info").Exec()
-	return err
-}
-
 var _ domain.ArtistIndexRepository = (*artistIndexRepository)(nil)
