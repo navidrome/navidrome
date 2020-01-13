@@ -13,12 +13,13 @@ import (
 	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/persistence/db_sql"
 	"github.com/cloudsonic/sonic-server/scanner"
+	"github.com/cloudsonic/sonic-server/server"
 	"github.com/google/wire"
 )
 
 // Injectors from wire_injectors.go:
 
-func CreateApp(musicFolder string) *App {
+func CreateApp(musicFolder string) *server.Server {
 	provider := createPersistenceProvider()
 	checkSumRepository := provider.CheckSumRepository
 	itunesScanner := scanner.NewItunesScanner(checkSumRepository)
@@ -29,8 +30,8 @@ func CreateApp(musicFolder string) *App {
 	playlistRepository := provider.PlaylistRepository
 	propertyRepository := provider.PropertyRepository
 	importer := scanner.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository)
-	app := NewApp(importer)
-	return app
+	serverServer := server.New(importer)
+	return serverServer
 }
 
 func CreateSubsonicAPIRouter() *api.Router {

@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"net/http"
@@ -14,32 +14,32 @@ import (
 	"github.com/go-chi/cors"
 )
 
-type App struct {
+type Server struct {
 	Importer *scanner.Importer
 	router   *chi.Mux
 }
 
-func NewApp(importer *scanner.Importer) *App {
-	a := &App{Importer: importer}
+func New(importer *scanner.Importer) *Server {
+	a := &Server{Importer: importer}
 	initMimeTypes()
 	a.initRoutes()
 	a.initImporter()
 	return a
 }
 
-func (a *App) MountRouter(path string, subRouter http.Handler) {
+func (a *Server) MountRouter(path string, subRouter http.Handler) {
 	a.router.Group(func(r chi.Router) {
 		r.Use(middleware.Logger)
 		r.Mount(path, subRouter)
 	})
 }
 
-func (a *App) Run(addr string) {
+func (a *Server) Run(addr string) {
 	log.Info("Started CloudSonic server", "address", addr)
 	log.Error(http.ListenAndServe(addr, a.router))
 }
 
-func (a *App) initRoutes() {
+func (a *Server) initRoutes() {
 	r := chi.NewRouter()
 
 	r.Use(cors.Default().Handler)
@@ -60,11 +60,11 @@ func (a *App) initRoutes() {
 	a.router = r
 }
 
-func (a *App) initImporter() {
+func (a *Server) initImporter() {
 	go a.startPeriodicScans()
 }
 
-func (a *App) startPeriodicScans() {
+func (a *Server) startPeriodicScans() {
 	for {
 		select {
 		case <-time.After(5 * time.Second):

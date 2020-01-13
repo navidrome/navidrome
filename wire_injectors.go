@@ -9,6 +9,7 @@ import (
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence/db_sql"
 	"github.com/cloudsonic/sonic-server/scanner"
+	"github.com/cloudsonic/sonic-server/server"
 	"github.com/google/wire"
 )
 
@@ -35,9 +36,9 @@ var allProviders = wire.NewSet(
 	createPersistenceProvider,
 )
 
-func CreateApp(musicFolder string) *App {
+func CreateApp(musicFolder string) *server.Server {
 	panic(wire.Build(
-		NewApp,
+		server.New,
 		allProviders,
 	))
 }
