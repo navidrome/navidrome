@@ -1,33 +1,48 @@
+GO_VERSION=1.13
+NODE_VERSION=12.14.1
+
+.PHONY: run
+run: check_go_env
+	@reflex -d none -c reflex.conf
+
+.PHONY: dev
+dev: check_env
+	@goreman -f Procfile.dev -b 4533 start
+
+.PHONY: test
+test: check_go_env
+	go test ./... -v
+	@(cd ./ui && npm test -- --watchAll=false)
+
 .PHONY: build
-build:
+build: check_go_env
 	go build
+	@(cd ./ui && npm run build)
 
 .PHONY: setup
-setup: jamstash
+setup: Jamstash-master
 	@which reflex   || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
 	@which goconvey || (echo "Installing GoConvey" && GO111MODULE=off go get -u github.com/smartystreets/goconvey)
 	@which wire     || (echo "Installing Wire"     && GO111MODULE=off go get -u go get github.com/google/wire/cmd/wire)
+	@which goreman  || (echo "Installing Goreman"  && GO111MODULE=off go get -u github.com/mattn/goreman)
 	go mod download
+	@(cd ./ui && npm ci)
 
-.PHONY: run
-run:
-	@reflex -s -d none -r "(\.go$$|sonic.toml)" -R "Jamstash-master" -- go run .
-
-.PHONY: test
-test:
-	go test ./... -v
-
-.PHONY: convey
-convey:
-	NOLOG=1 goconvey --port 9090 -excludedDirs static,devDb,wiki,bin,tests,Jamstash-master
-
-.PHONY: cloc
-cloc:
-	# cloc can be installed using brew
-	cloc --exclude-dir=devDb,.idea,.vscode,wiki,static,Jamstash-master --exclude-ext=iml,xml .
-
-.PHONY: jamstash
-jamstash:
+Jamstash-master:
 	wget -N https://github.com/tsquillario/Jamstash/archive/master.zip
 	unzip -o master.zip
 	rm master.zip
+
+.PHONE: check_env
+check_env: check_go_env check_node_env
+
+.PHONY: check_go_env
+check_go_env:
+	@(test -n "${GOPATH}" && hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
+	@go version | grep -q $(GO_VERSION) || (echo "\nERROR: Please upgrade your GO version\n"; exit 1)
+
+.PHONY: check_node_env
+check_node_env:
+	@(hash node) || (echo "\nERROR: Node environment not setup properly!\n"; exit 1)
+	@node --version | grep -q $(NODE_VERSION) || (echo "\nERROR: Please check your Node version. Should be $(NODE_VERSION)\n"; exit 1)
+
