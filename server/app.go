@@ -32,6 +32,7 @@ func New(importer *scanner.Importer) *Server {
 }
 
 func (a *Server) MountRouter(path string, subRouter http.Handler) {
+	log.Info("Mounting API", "path", path)
 	a.router.Group(func(r chi.Router) {
 		r.Use(middleware.Logger)
 		r.Mount(path, subRouter)
@@ -39,7 +40,7 @@ func (a *Server) MountRouter(path string, subRouter http.Handler) {
 }
 
 func (a *Server) Run(addr string) {
-	log.Info("CloudSonic server is ready to handle requests", "address", addr)
+	log.Info("CloudSonic server is accepting requests", "address", addr)
 	log.Error(http.ListenAndServe(addr, a.router))
 }
 

@@ -52,70 +52,77 @@ func (api *Router) routes() http.Handler {
 		// TODO Validate version
 	}
 
+	// Subsonic endpoints, grouped by controller
 	r.Group(func(r chi.Router) {
 		c := initSystemController(api)
-		addEndpoint(r, "ping", c.Ping)
-		addEndpoint(r, "getLicense", c.GetLicense)
+		H(r, "ping", c.Ping)
+		H(r, "getLicense", c.GetLicense)
 	})
 	r.Group(func(r chi.Router) {
 		c := initBrowsingController(api)
-		addEndpoint(r, "getMusicFolders", c.GetMusicFolders)
-		addEndpoint(r, "getMusicFolders", c.GetMusicFolders)
-		addEndpoint(r, "getIndexes", c.GetIndexes)
-		addEndpoint(r, "getArtists", c.GetArtists)
+		H(r, "getMusicFolders", c.GetMusicFolders)
+		H(r, "getMusicFolders", c.GetMusicFolders)
+		H(r, "getIndexes", c.GetIndexes)
+		H(r, "getArtists", c.GetArtists)
 		reqParams := r.With(requiredParams("id"))
-		addEndpoint(reqParams, "getMusicDirectory", c.GetMusicDirectory)
-		addEndpoint(reqParams, "getArtist", c.GetArtist)
-		addEndpoint(reqParams, "getAlbum", c.GetAlbum)
-		addEndpoint(reqParams, "getSong", c.GetSong)
+		H(reqParams, "getMusicDirectory", c.GetMusicDirectory)
+		H(reqParams, "getArtist", c.GetArtist)
+		H(reqParams, "getAlbum", c.GetAlbum)
+		H(reqParams, "getSong", c.GetSong)
 	})
 	r.Group(func(r chi.Router) {
 		c := initAlbumListController(api)
-		addEndpoint(r, "getAlbumList", c.GetAlbumList)
-		addEndpoint(r, "getAlbumList2", c.GetAlbumList2)
-		addEndpoint(r, "getStarred", c.GetStarred)
-		addEndpoint(r, "getStarred2", c.GetStarred2)
-		addEndpoint(r, "getNowPlaying", c.GetNowPlaying)
-		addEndpoint(r, "getRandomSongs", c.GetRandomSongs)
+		H(r, "getAlbumList", c.GetAlbumList)
+		H(r, "getAlbumList2", c.GetAlbumList2)
+		H(r, "getStarred", c.GetStarred)
+		H(r, "getStarred2", c.GetStarred2)
+		H(r, "getNowPlaying", c.GetNowPlaying)
+		H(r, "getRandomSongs", c.GetRandomSongs)
 	})
 	r.Group(func(r chi.Router) {
 		c := initMediaAnnotationController(api)
-		addEndpoint(r, "setRating", c.SetRating)
-		addEndpoint(r, "star", c.Star)
-		addEndpoint(r, "unstar", c.Unstar)
-		addEndpoint(r, "scrobble", c.Scrobble)
+		H(r, "setRating", c.SetRating)
+		H(r, "star", c.Star)
+		H(r, "unstar", c.Unstar)
+		H(r, "scrobble", c.Scrobble)
 	})
 	r.Group(func(r chi.Router) {
 		c := initPlaylistsController(api)
-		addEndpoint(r, "getPlaylists", c.GetPlaylists)
-		addEndpoint(r, "getPlaylist", c.GetPlaylist)
-		addEndpoint(r, "createPlaylist", c.CreatePlaylist)
-		addEndpoint(r, "deletePlaylist", c.DeletePlaylist)
-		addEndpoint(r, "updatePlaylist", c.UpdatePlaylist)
+		H(r, "getPlaylists", c.GetPlaylists)
+		H(r, "getPlaylist", c.GetPlaylist)
+		H(r, "createPlaylist", c.CreatePlaylist)
+		H(r, "deletePlaylist", c.DeletePlaylist)
+		H(r, "updatePlaylist", c.UpdatePlaylist)
 	})
 	r.Group(func(r chi.Router) {
 		c := initSearchingController(api)
-		addEndpoint(r, "search2", c.Search2)
-		addEndpoint(r, "search3", c.Search3)
+		H(r, "search2", c.Search2)
+		H(r, "search3", c.Search3)
 	})
 	r.Group(func(r chi.Router) {
 		c := initUsersController(api)
-		addEndpoint(r, "getUser", c.GetUser)
+		H(r, "getUser", c.GetUser)
 	})
 	r.Group(func(r chi.Router) {
 		c := initMediaRetrievalController(api)
-		addEndpoint(r, "getAvatar", c.GetAvatar)
-		addEndpoint(r, "getCoverArt", c.GetCoverArt)
+		H(r, "getAvatar", c.GetAvatar)
+		H(r, "getCoverArt", c.GetCoverArt)
 	})
 	r.Group(func(r chi.Router) {
 		c := initStreamController(api)
-		addEndpoint(r, "stream", c.Stream)
-		addEndpoint(r, "download", c.Download)
+		H(r, "stream", c.Stream)
+		H(r, "download", c.Download)
 	})
+
+	// Deprecated/Out of scope endpoints
+	HGone(r, "getChatMessages")
+	HGone(r, "addChatMessage")
 	return r
 }
 
-func addEndpoint(r chi.Router, path string, f SubsonicHandler) {
+// Add the Subsonic handler, with and without `.view` extension
+// Ex: if path = `ping` it will create the routes `/ping` and `/ping.view`
+func H(r chi.Router, path string, f SubsonicHandler) {
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)
 		if err != nil {
@@ -125,6 +132,16 @@ func addEndpoint(r chi.Router, path string, f SubsonicHandler) {
 		if res != nil {
 			SendResponse(w, r, res)
 		}
+	}
+	r.HandleFunc("/"+path, handle)
+	r.HandleFunc("/"+path+".view", handle)
+}
+
+// Add a handler that returns 410 - Gone. Used to signal that an endpoint will not be implemented
+func HGone(r chi.Router, path string) {
+	handle := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(410)
+		w.Write([]byte("This endpoint will not be implemented"))
 	}
 	r.HandleFunc("/"+path, handle)
 	r.HandleFunc("/"+path+".view", handle)
