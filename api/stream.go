@@ -18,20 +18,20 @@ func NewStreamController(browser engine.Browser) *StreamController {
 	return &StreamController{browser: browser}
 }
 
-func (c *StreamController) Prepare(r *http.Request) (id string, mf *engine.Entry, err error) {
-	id, err = RequiredParamString(r, "id", "id parameter required")
+func (c *StreamController) getMediaFile(r *http.Request) (mf *engine.Entry, err error) {
+	id, err := RequiredParamString(r, "id", "id parameter required")
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	mf, err = c.browser.GetSong(id)
 	switch {
 	case err == domain.ErrNotFound:
 		log.Error(r, "Mediafile not found", "id", id)
-		return "", nil, NewError(responses.ErrorDataNotFound)
+		return nil, NewError(responses.ErrorDataNotFound)
 	case err != nil:
 		log.Error(r, "Error reading mediafile from DB", "id", id, err)
-		return "", nil, NewError(responses.ErrorGeneric, "Internal error")
+		return nil, NewError(responses.ErrorGeneric, "Internal error")
 	}
 	return
 }
@@ -39,14 +39,14 @@ func (c *StreamController) Prepare(r *http.Request) (id string, mf *engine.Entry
 // TODO Still getting the "Conn.Write wrote more than the declared Content-Length" error.
 // Don't know if this causes any issues
 func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, mf, err := c.Prepare(r)
+	mf, err := c.getMediaFile(r)
 	if err != nil {
 		return nil, err
 	}
 	maxBitRate := ParamInt(r, "maxBitRate", 0)
 	maxBitRate = utils.MinInt(mf.BitRate, maxBitRate)
 
-	log.Debug(r, "Streaming file", "id", id, "path", mf.AbsolutePath, "bitrate", mf.BitRate, "maxBitRate", maxBitRate)
+	log.Debug(r, "Streaming file", "id", mf.Id, "path", mf.AbsolutePath, "bitrate", mf.BitRate, "maxBitRate", maxBitRate)
 
 	// TODO Send proper estimated content-length
 	//contentLength := mf.Size
@@ -67,7 +67,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 
 	err = engine.Stream(r.Context(), mf.AbsolutePath, mf.BitRate, maxBitRate, w)
 	if err != nil {
-		log.Error(r, "Error streaming file", "id", id, err)
+		log.Error(r, "Error streaming file", "id", mf.Id, err)
 	}
 
 	log.Debug(r, "Finished streaming", "path", mf.AbsolutePath)
@@ -75,7 +75,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 }
 
 func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	_, mf, err := c.Prepare(r)
+	mf, err := c.getMediaFile(r)
 	if err != nil {
 		return nil, err
 	}
