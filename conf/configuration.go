@@ -11,7 +11,7 @@ import (
 type sonic struct {
 	Port        string `default:"4533"`
 	MusicFolder string `default:"./iTunes1.xml"`
-	DbPath      string `default:"./sonic.db"`
+	DbPath      string `default:"./data/cloudsonic.db"`
 
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
 	IndexGroups     string `default:"A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)"`

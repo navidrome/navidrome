@@ -1,6 +1,7 @@
 /sonic-server
 /iTunes*.xml
 /tmp
+data/*
 vendor/*/
 wiki
 TODO.md
@@ -10,4 +11,3 @@ sonic.toml
 master.zip
 Jamstash-master
 storm.db
-sonic.db

@@ -2,11 +2,11 @@ GO_VERSION=1.13
 NODE_VERSION=12.14.1
 
 .PHONY: run
-run: check_go_env
+run: check_go_env data
 	@reflex -d none -c reflex.conf
 
 .PHONY: dev
-dev: check_env
+dev: check_env data
 	@goreman -f Procfile.dev -b 4533 start
 
 .PHONY: test
@@ -46,3 +46,5 @@ check_node_env:
 	@(hash node) || (echo "\nERROR: Node environment not setup properly!\n"; exit 1)
 	@node --version | grep -q $(NODE_VERSION) || (echo "\nERROR: Please check your Node version. Should be $(NODE_VERSION)\n"; exit 1)
 
+data:
+	mkdir data

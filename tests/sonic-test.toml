@@ -1,6 +1,6 @@
 DevDisableAuthentication = false
 User = "deluan"
 Password = "wordpass"
-DbPath = "/tmp/testDb"
+DbPath = ":memory:"
 MusicFolder = "./tests/itunes-library.xml"
 DownsampleCommand = "ffmpeg -i %s -b:a %bk mp3 -"
