@@ -1,4 +1,4 @@
-package db_sql
+package persistence
 
 import (
 	"github.com/astaxie/beego/orm"

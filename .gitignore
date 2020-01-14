@@ -1,6 +1,5 @@
 /sonic-server
 /iTunes*.xml
-devDb*
 /tmp
 vendor/*/
 wiki
@@ -11,3 +10,4 @@ sonic.toml
 master.zip
 Jamstash-master
 storm.db
+sonic.db

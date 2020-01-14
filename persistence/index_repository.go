@@ -1,4 +1,4 @@
-package db_sql
+package persistence
 
 import (
 	"sort"
@@ -35,7 +35,7 @@ func (r *artistIndexRepository) CountAll() (int64, error) {
 }
 
 func (r *artistIndexRepository) Put(idx *domain.ArtistIndex) error {
-	return WithTx(func(o orm.Ormer) error {
+	return withTx(func(o orm.Ormer) error {
 		_, err := r.newQuery(o).Filter("idx", idx.ID).Delete()
 		if err != nil {
 			return err

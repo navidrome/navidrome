@@ -1,4 +1,4 @@
-package db_sql
+package persistence
 
 import (
 	"github.com/cloudsonic/sonic-server/domain"
@@ -36,14 +36,18 @@ var _ = Describe("ArtistRepository", func() {
 
 		It("purges inactive records", func() {
 			active := domain.Artists{{ID: "1"}, {ID: "3"}}
-			Expect(repo.PurgeInactive(active)).To(Equal([]string{"2"}))
+
+			Expect(repo.PurgeInactive(active)).To(BeNil())
+
 			Expect(repo.CountAll()).To(Equal(int64(2)))
 			Expect(repo.Exists("2")).To(BeFalse())
 		})
 
 		It("doesn't delete anything if all is active", func() {
 			active := domain.Artists{{ID: "1"}, {ID: "2"}, {ID: "3"}}
-			Expect(repo.PurgeInactive(active)).To(BeEmpty())
+
+			Expect(repo.PurgeInactive(active)).To(BeNil())
+
 			Expect(repo.CountAll()).To(Equal(int64(3)))
 			Expect(repo.Exists("1")).To(BeTrue())
 		})

@@ -1,7 +1,6 @@
-package db_sql
+package persistence
 
 import (
-	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/google/wire"
 )
 
@@ -13,7 +12,6 @@ var Set = wire.NewSet(
 	NewCheckSumRepository,
 	NewPropertyRepository,
 	NewPlaylistRepository,
-	persistence.NewNowPlayingRepository,
-	persistence.NewMediaFolderRepository,
-	wire.Value(persistence.ProviderIdentifier("sql")),
+	NewNowPlayingRepository,
+	NewMediaFolderRepository,
 )

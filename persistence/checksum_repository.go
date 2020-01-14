@@ -1,4 +1,4 @@
-package db_sql
+package persistence
 
 import (
 	"github.com/astaxie/beego/orm"
@@ -51,7 +51,7 @@ func (r *checkSumRepository) Get(id string) (string, error) {
 }
 
 func (r *checkSumRepository) SetData(newSums map[string]string) error {
-	err := WithTx(func(o orm.Ormer) error {
+	err := withTx(func(o orm.Ormer) error {
 		_, err := Db().Raw("delete from checksum").Exec()
 		if err != nil {
 			return err

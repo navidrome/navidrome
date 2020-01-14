@@ -10,7 +10,7 @@ type ArtistRepository interface {
 	BaseRepository
 	Put(m *Artist) error
 	Get(id string) (*Artist, error)
-	PurgeInactive(active Artists) ([]string, error)
+	PurgeInactive(active Artists) error
 	Search(q string, offset int, size int) (Artists, error)
 }
 

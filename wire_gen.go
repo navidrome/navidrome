@@ -11,7 +11,6 @@ import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence"
-	"github.com/cloudsonic/sonic-server/persistence/db_sql"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/cloudsonic/sonic-server/server"
 	"github.com/google/wire"
@@ -57,15 +56,15 @@ func CreateSubsonicAPIRouter() *api.Router {
 }
 
 func createPersistenceProvider() *Provider {
-	albumRepository := db_sql.NewAlbumRepository()
-	artistRepository := db_sql.NewArtistRepository()
-	checkSumRepository := db_sql.NewCheckSumRepository()
-	artistIndexRepository := db_sql.NewArtistIndexRepository()
-	mediaFileRepository := db_sql.NewMediaFileRepository()
+	albumRepository := persistence.NewAlbumRepository()
+	artistRepository := persistence.NewArtistRepository()
+	checkSumRepository := persistence.NewCheckSumRepository()
+	artistIndexRepository := persistence.NewArtistIndexRepository()
+	mediaFileRepository := persistence.NewMediaFileRepository()
 	mediaFolderRepository := persistence.NewMediaFolderRepository()
 	nowPlayingRepository := persistence.NewNowPlayingRepository()
-	playlistRepository := db_sql.NewPlaylistRepository()
-	propertyRepository := db_sql.NewPropertyRepository()
+	playlistRepository := persistence.NewPlaylistRepository()
+	propertyRepository := persistence.NewPropertyRepository()
 	provider := &Provider{
 		AlbumRepository:       albumRepository,
 		ArtistRepository:      artistRepository,

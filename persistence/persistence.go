@@ -2,9 +2,7 @@ package persistence
 
 import "reflect"
 
-type ProviderIdentifier string
-
-func CollectValue(collection interface{}, getValue func(item interface{}) string) []string {
+func collectField(collection interface{}, getValue func(item interface{}) string) []string {
 	s := reflect.ValueOf(collection)
 	result := make([]string, s.Len())
 

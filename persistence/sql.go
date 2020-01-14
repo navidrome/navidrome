@@ -1,8 +1,6 @@
-package db_sql
+package persistence
 
 import (
-	"os"
-	"path"
 	"sync"
 
 	"github.com/astaxie/beego/orm"
@@ -20,12 +18,6 @@ func Db() orm.Ormer {
 		dbPath := conf.Sonic.DbPath
 		if dbPath == ":memory:" {
 			dbPath = "file::memory:?cache=shared"
-		} else {
-			err := os.MkdirAll(conf.Sonic.DbPath, 0700)
-			if err != nil {
-				panic(err)
-			}
-			dbPath = path.Join(conf.Sonic.DbPath, "sqlite.db")
 		}
 		err := initORM(dbPath)
 		if err != nil {
@@ -36,7 +28,7 @@ func Db() orm.Ormer {
 	return orm.NewOrm()
 }
 
-func WithTx(block func(orm.Ormer) error) error {
+func withTx(block func(orm.Ormer) error) error {
 	o := orm.NewOrm()
 	err := o.Begin()
 	if err != nil {

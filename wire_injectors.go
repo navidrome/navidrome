@@ -7,7 +7,7 @@ import (
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
-	"github.com/cloudsonic/sonic-server/persistence/db_sql"
+	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/cloudsonic/sonic-server/server"
 	"github.com/google/wire"
@@ -51,7 +51,7 @@ func CreateSubsonicAPIRouter() *api.Router {
 // to conditionally select which function to use
 func createPersistenceProvider() *Provider {
 	panic(wire.Build(
-		db_sql.Set,
+		persistence.Set,
 		wire.Struct(new(Provider), "*"),
 	))
 }

@@ -1,4 +1,4 @@
-package db_sql
+package persistence
 
 import (
 	"strings"
@@ -15,9 +15,45 @@ type Search struct {
 	FullText string `orm:"type(text)"`
 }
 
-type sqlSearcher struct{}
+type searchableRepository struct {
+	sqlRepository
+}
 
-func (s *sqlSearcher) Index(o orm.Ormer, table, id, text string) error {
+func (r *searchableRepository) DeleteAll() error {
+	return withTx(func(o orm.Ormer) error {
+		_, err := r.newQuery(Db()).Filter("id__isnull", false).Delete()
+		if err != nil {
+			return err
+		}
+		return r.removeAllFromIndex(o, r.tableName)
+	})
+}
+
+func (r *searchableRepository) put(o orm.Ormer, id string, textToIndex string, a interface{}) error {
+	c, err := r.newQuery(o).Filter("id", id).Count()
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		_, err = o.Insert(a)
+	} else {
+		_, err = o.Update(a)
+	}
+	if err != nil {
+		return err
+	}
+	return r.addToIndex(o, r.tableName, id, textToIndex)
+}
+
+func (r *searchableRepository) purgeInactive(o orm.Ormer, activeList interface{}, getId func(item interface{}) string) ([]string, error) {
+	idsToDelete, err := r.sqlRepository.purgeInactive(o, activeList, getId)
+	if err != nil {
+		return nil, err
+	}
+	return idsToDelete, r.removeFromIndex(o, r.tableName, idsToDelete)
+}
+
+func (r *searchableRepository) addToIndex(o orm.Ormer, table, id, text string) error {
 	item := Search{ID: id, Table: table}
 	err := o.Read(&item)
 	if err != nil && err != orm.ErrNoRows {
@@ -33,7 +69,7 @@ func (s *sqlSearcher) Index(o orm.Ormer, table, id, text string) error {
 	return err
 }
 
-func (s *sqlSearcher) Remove(o orm.Ormer, table string, ids []string) error {
+func (r *searchableRepository) removeFromIndex(o orm.Ormer, table string, ids []string) error {
 	var offset int
 	for {
 		var subset = paginateSlice(ids, offset, batchSize)
@@ -50,12 +86,12 @@ func (s *sqlSearcher) Remove(o orm.Ormer, table string, ids []string) error {
 	return nil
 }
 
-func (s *sqlSearcher) DeleteAll(o orm.Ormer, table string) error {
+func (r *searchableRepository) removeAllFromIndex(o orm.Ormer, table string) error {
 	_, err := o.QueryTable(&Search{}).Filter("table", table).Delete()
 	return err
 }
 
-func (s *sqlSearcher) Search(table string, q string, offset, size int, results interface{}, orderBys ...string) error {
+func (r *searchableRepository) doSearch(table string, q string, offset, size int, results interface{}, orderBys ...string) error {
 	q = strings.TrimSpace(sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*"))))
 	if len(q) <= 2 {
 		return nil

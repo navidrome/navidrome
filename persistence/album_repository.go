@@ -1,4 +1,4 @@
-package db_sql
+package persistence
 
 import (
 	"time"
@@ -30,7 +30,7 @@ type Album struct {
 }
 
 type albumRepository struct {
-	sqlRepository
+	searchableRepository
 }
 
 func NewAlbumRepository() domain.AlbumRepository {
@@ -41,12 +41,8 @@ func NewAlbumRepository() domain.AlbumRepository {
 
 func (r *albumRepository) Put(a *domain.Album) error {
 	ta := Album(*a)
-	return WithTx(func(o orm.Ormer) error {
-		err := r.put(o, a.ID, &ta)
-		if err != nil {
-			return err
-		}
-		return r.searcher.Index(o, r.tableName, a.ID, a.Name)
+	return withTx(func(o orm.Ormer) error {
+		return r.put(o, a.ID, a.Name, &ta)
 	})
 }
 
@@ -89,9 +85,13 @@ func (r *albumRepository) toAlbums(all []Album) domain.Albums {
 	return result
 }
 
-func (r *albumRepository) PurgeInactive(activeList domain.Albums) ([]string, error) {
-	return r.purgeInactive(activeList, func(item interface{}) string {
-		return item.(domain.Album).ID
+// TODO Remove []string from return
+func (r *albumRepository) PurgeInactive(activeList domain.Albums) error {
+	return withTx(func(o orm.Ormer) error {
+		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
+			return item.(domain.Album).ID
+		})
+		return err
 	})
 }
 
@@ -110,7 +110,7 @@ func (r *albumRepository) Search(q string, offset int, size int) (domain.Albums,
 	}
 
 	var results []Album
-	err := r.searcher.Search(r.tableName, q, offset, size, &results, "rating desc", "starred desc", "play_count desc", "name")
+	err := r.doSearch(r.tableName, q, offset, size, &results, "rating desc", "starred desc", "play_count desc", "name")
 	if err != nil {
 		return nil, err
 	}

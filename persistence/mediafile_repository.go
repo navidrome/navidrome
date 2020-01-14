@@ -1,4 +1,4 @@
-package db_sql
+package persistence
 
 import (
 	"time"
@@ -36,7 +36,7 @@ type MediaFile struct {
 }
 
 type mediaFileRepository struct {
-	sqlRepository
+	searchableRepository
 }
 
 func NewMediaFileRepository() domain.MediaFileRepository {
@@ -47,12 +47,8 @@ func NewMediaFileRepository() domain.MediaFileRepository {
 
 func (r *mediaFileRepository) Put(m *domain.MediaFile) error {
 	tm := MediaFile(*m)
-	return WithTx(func(o orm.Ormer) error {
-		err := r.put(o, m.ID, &tm)
-		if err != nil {
-			return err
-		}
-		return r.searcher.Index(o, r.tableName, m.ID, m.Title)
+	return withTx(func(o orm.Ormer) error {
+		return r.put(o, m.ID, m.Title, &tm)
 	})
 }
 
@@ -95,9 +91,12 @@ func (r *mediaFileRepository) GetStarred(options ...domain.QueryOptions) (domain
 	return r.toMediaFiles(starred), nil
 }
 
-func (r *mediaFileRepository) PurgeInactive(activeList domain.MediaFiles) ([]string, error) {
-	return r.purgeInactive(activeList, func(item interface{}) string {
-		return item.(domain.MediaFile).ID
+func (r *mediaFileRepository) PurgeInactive(activeList domain.MediaFiles) error {
+	return withTx(func(o orm.Ormer) error {
+		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
+			return item.(domain.MediaFile).ID
+		})
+		return err
 	})
 }
 
@@ -107,7 +106,7 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (domain.Med
 	}
 
 	var results []MediaFile
-	err := r.searcher.Search(r.tableName, q, offset, size, &results, "rating desc", "starred desc", "play_count desc", "title")
+	err := r.doSearch(r.tableName, q, offset, size, &results, "rating desc", "starred desc", "play_count desc", "title")
 	if err != nil {
 		return nil, err
 	}

@@ -1,15 +1,13 @@
-package db_sql
+package persistence
 
 import (
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/persistence"
 )
 
 type sqlRepository struct {
 	tableName string
-	searcher  sqlSearcher
 }
 
 func (r *sqlRepository) newQuery(o orm.Ormer, options ...domain.QueryOptions) orm.QuerySeter {
@@ -49,7 +47,7 @@ func (r *sqlRepository) GetAllIds() ([]string, error) {
 		return nil, err
 	}
 
-	result := persistence.CollectValue(values, func(item interface{}) string {
+	result := collectField(values, func(item interface{}) string {
 		return item.(orm.Params)["ID"].(string)
 	})
 
@@ -103,42 +101,36 @@ func difference(slice1 []string, slice2 []string) []string {
 }
 
 func (r *sqlRepository) DeleteAll() error {
-	return WithTx(func(o orm.Ormer) error {
+	return withTx(func(o orm.Ormer) error {
 		_, err := r.newQuery(Db()).Filter("id__isnull", false).Delete()
-		if err != nil {
-			return err
-		}
-		return r.searcher.DeleteAll(o, r.tableName)
+		return err
 	})
 }
 
-func (r *sqlRepository) purgeInactive(activeList interface{}, getId func(item interface{}) string) ([]string, error) {
+func (r *sqlRepository) purgeInactive(o orm.Ormer, activeList interface{}, getId func(item interface{}) string) ([]string, error) {
 	allIds, err := r.GetAllIds()
 	if err != nil {
 		return nil, err
 	}
-	activeIds := persistence.CollectValue(activeList, getId)
+	activeIds := collectField(activeList, getId)
 	idsToDelete := difference(allIds, activeIds)
 	if len(idsToDelete) == 0 {
 		return nil, nil
 	}
 	log.Debug("Purging inactive records", "table", r.tableName, "total", len(idsToDelete))
 
-	err = WithTx(func(o orm.Ormer) error {
-		var offset int
-		for {
-			var subset = paginateSlice(idsToDelete, offset, batchSize)
-			if len(subset) == 0 {
-				break
-			}
-			log.Trace("-- Purging inactive records", "table", r.tableName, "num", len(subset), "from", offset)
-			offset += len(subset)
-			_, err := r.newQuery(o).Filter("id__in", subset).Delete()
-			if err != nil {
-				return err
-			}
+	var offset int
+	for {
+		var subset = paginateSlice(idsToDelete, offset, batchSize)
+		if len(subset) == 0 {
+			break
 		}
-		return r.searcher.Remove(o, r.tableName, idsToDelete)
-	})
-	return idsToDelete, err
+		log.Trace("-- Purging inactive records", "table", r.tableName, "num", len(subset), "from", offset)
+		offset += len(subset)
+		_, err := r.newQuery(o).Filter("id__in", subset).Delete()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return idsToDelete, nil
 }

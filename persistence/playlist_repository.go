@@ -1,4 +1,4 @@
-package db_sql
+package persistence
 
 import (
 	"strings"
@@ -30,7 +30,7 @@ func NewPlaylistRepository() domain.PlaylistRepository {
 
 func (r *playlistRepository) Put(p *domain.Playlist) error {
 	tp := r.fromDomain(p)
-	return WithTx(func(o orm.Ormer) error {
+	return withTx(func(o orm.Ormer) error {
 		return r.put(o, p.ID, &tp)
 	})
 }
@@ -66,8 +66,11 @@ func (r *playlistRepository) toPlaylists(all []Playlist) (domain.Playlists, erro
 }
 
 func (r *playlistRepository) PurgeInactive(activeList domain.Playlists) ([]string, error) {
-	return r.purgeInactive(activeList, func(item interface{}) string {
-		return item.(domain.Playlist).ID
+	return nil, withTx(func(o orm.Ormer) error {
+		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
+			return item.(domain.Playlist).ID
+		})
+		return err
 	})
 }
 

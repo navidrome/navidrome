@@ -134,13 +134,13 @@ func (i *Importer) importLibrary() (err error) {
 	i.importArtistIndex()
 
 	log.Debug("Purging old data")
-	if _, err := i.mfRepo.PurgeInactive(mfs); err != nil {
+	if err := i.mfRepo.PurgeInactive(mfs); err != nil {
 		log.Error(err)
 	}
-	if _, err := i.albumRepo.PurgeInactive(als); err != nil {
+	if err := i.albumRepo.PurgeInactive(als); err != nil {
 		log.Error(err)
 	}
-	if _, err := i.artistRepo.PurgeInactive(ars); err != nil {
+	if err := i.artistRepo.PurgeInactive(ars); err != nil {
 		log.Error("Deleting inactive artists", err)
 	}
 	if _, err := i.plsRepo.PurgeInactive(pls); err != nil {

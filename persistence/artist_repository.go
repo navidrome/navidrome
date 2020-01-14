@@ -1,4 +1,4 @@
-package db_sql
+package persistence
 
 import (
 	"github.com/astaxie/beego/orm"
@@ -13,7 +13,7 @@ type Artist struct {
 }
 
 type artistRepository struct {
-	sqlRepository
+	searchableRepository
 }
 
 func NewArtistRepository() domain.ArtistRepository {
@@ -24,12 +24,8 @@ func NewArtistRepository() domain.ArtistRepository {
 
 func (r *artistRepository) Put(a *domain.Artist) error {
 	ta := Artist(*a)
-	return WithTx(func(o orm.Ormer) error {
-		err := r.put(o, a.ID, &ta)
-		if err != nil {
-			return err
-		}
-		return r.searcher.Index(o, r.tableName, a.ID, a.Name)
+	return withTx(func(o orm.Ormer) error {
+		return r.put(o, a.ID, a.Name, &ta)
 	})
 }
 
@@ -46,9 +42,12 @@ func (r *artistRepository) Get(id string) (*domain.Artist, error) {
 	return &a, nil
 }
 
-func (r *artistRepository) PurgeInactive(activeList domain.Artists) ([]string, error) {
-	return r.purgeInactive(activeList, func(item interface{}) string {
-		return item.(domain.Artist).ID
+func (r *artistRepository) PurgeInactive(activeList domain.Artists) error {
+	return withTx(func(o orm.Ormer) error {
+		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
+			return item.(domain.Artist).ID
+		})
+		return err
 	})
 }
 
@@ -58,7 +57,7 @@ func (r *artistRepository) Search(q string, offset int, size int) (domain.Artist
 	}
 
 	var results []Artist
-	err := r.searcher.Search(r.tableName, q, offset, size, &results, "name")
+	err := r.doSearch(r.tableName, q, offset, size, &results, "name")
 	if err != nil {
 		return nil, err
 	}
