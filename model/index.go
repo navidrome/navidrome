@@ -1,7 +1,5 @@
 package model
 
-import "github.com/cloudsonic/sonic-server/utils"
-
 type ArtistInfo struct {
 	ArtistID   string
 	Artist     string
@@ -14,13 +12,6 @@ type ArtistIndex struct {
 }
 
 type ArtistInfos []ArtistInfo
-
-func (a ArtistInfos) Len() int      { return len(a) }
-func (a ArtistInfos) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a ArtistInfos) Less(i, j int) bool {
-	return utils.NoArticle(a[i].Artist) < utils.NoArticle(a[j].Artist)
-}
-
 type ArtistIndexes []ArtistIndex
 
 type ArtistIndexRepository interface {

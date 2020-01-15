@@ -39,12 +39,6 @@ func (mf *MediaFile) ContentType() string {
 
 type MediaFiles []MediaFile
 
-func (a MediaFiles) Len() int      { return len(a) }
-func (a MediaFiles) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a MediaFiles) Less(i, j int) bool {
-	return (a[i].DiscNumber*1000 + a[i].TrackNumber) < (a[j].DiscNumber*1000 + a[j].TrackNumber)
-}
-
 type MediaFileRepository interface {
 	CountAll() (int64, error)
 	Exists(id string) (bool, error)

@@ -57,7 +57,7 @@ func withTx(block func(orm.Ormer) error) error {
 }
 
 func initORM(dbPath string) error {
-	verbose := conf.Sonic.LogLevel == "debug"
+	verbose := conf.Sonic.LogLevel == "trace"
 	orm.Debug = verbose
 	orm.RegisterModel(new(Artist))
 	orm.RegisterModel(new(Album))
