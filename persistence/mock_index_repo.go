@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 func CreateMockArtistIndexRepo() *MockArtistIndex {
@@ -13,8 +13,8 @@ func CreateMockArtistIndexRepo() *MockArtistIndex {
 }
 
 type MockArtistIndex struct {
-	domain.ArtistIndexRepository
-	data domain.ArtistIndexes
+	model.ArtistIndexRepository
+	data model.ArtistIndexes
 	err  bool
 }
 
@@ -23,18 +23,18 @@ func (m *MockArtistIndex) SetError(err bool) {
 }
 
 func (m *MockArtistIndex) SetData(j string, length int) {
-	m.data = make(domain.ArtistIndexes, length)
+	m.data = make(model.ArtistIndexes, length)
 	err := json.Unmarshal([]byte(j), &m.data)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}
 }
 
-func (m *MockArtistIndex) GetAll() (domain.ArtistIndexes, error) {
+func (m *MockArtistIndex) GetAll() (model.ArtistIndexes, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
 	return m.data, nil
 }
 
-var _ domain.ArtistIndexRepository = (*MockArtistIndex)(nil)
+var _ model.ArtistIndexRepository = (*MockArtistIndex)(nil)

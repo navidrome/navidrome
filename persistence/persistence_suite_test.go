@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -16,12 +16,12 @@ func TestPersistence(t *testing.T) {
 	RunSpecs(t, "Persistence Suite")
 }
 
-var testAlbums = domain.Albums{
+var testAlbums = model.Albums{
 	{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", ArtistID: "1"},
 	{ID: "2", Name: "Abbey Road", Artist: "The Beatles", ArtistID: "1"},
 	{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", ArtistID: "2", Starred: true},
 }
-var testArtists = domain.Artists{
+var testArtists = model.Artists{
 	{ID: "1", Name: "Saara Saara", AlbumCount: 2},
 	{ID: "2", Name: "Kraftwerk"},
 	{ID: "3", Name: "The Beatles"},

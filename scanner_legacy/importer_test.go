@@ -3,7 +3,7 @@ package scanner_legacy
 import (
 	"testing"
 
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/tests"
 	"github.com/cloudsonic/sonic-server/utils"
 	. "github.com/smartystreets/goconvey/convey"
@@ -17,7 +17,7 @@ func TestCollectIndex(t *testing.T) {
 	importer := &Importer{}
 
 	Convey("Simple Name", t, func() {
-		a := &domain.Artist{Name: "Björk"}
+		a := &model.Artist{Name: "Björk"}
 		artistIndex := make(map[string]tempIndex)
 
 		importer.collectIndex(ig, a, artistIndex)
@@ -31,7 +31,7 @@ func TestCollectIndex(t *testing.T) {
 	})
 
 	Convey("Name not in the index", t, func() {
-		a := &domain.Artist{Name: "Kraftwerk"}
+		a := &model.Artist{Name: "Kraftwerk"}
 		artistIndex := make(map[string]tempIndex)
 
 		importer.collectIndex(ig, a, artistIndex)
@@ -45,7 +45,7 @@ func TestCollectIndex(t *testing.T) {
 	})
 
 	Convey("Name starts with an article", t, func() {
-		a := &domain.Artist{Name: "The The"}
+		a := &model.Artist{Name: "The The"}
 		artistIndex := make(map[string]tempIndex)
 
 		importer.collectIndex(ig, a, artistIndex)
@@ -59,7 +59,7 @@ func TestCollectIndex(t *testing.T) {
 	})
 
 	Convey("Name match a multichar entry", t, func() {
-		a := &domain.Artist{Name: "Tom Waits"}
+		a := &model.Artist{Name: "Tom Waits"}
 		artistIndex := make(map[string]tempIndex)
 
 		importer.collectIndex(ig, a, artistIndex)

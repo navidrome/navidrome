@@ -8,35 +8,35 @@ import (
 	"time"
 
 	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
 type Scanner interface {
 	ScanLibrary(lastModifiedSince time.Time, path string) (int, error)
-	MediaFiles() map[string]*domain.MediaFile
-	Albums() map[string]*domain.Album
-	Artists() map[string]*domain.Artist
-	Playlists() map[string]*domain.Playlist
+	MediaFiles() map[string]*model.MediaFile
+	Albums() map[string]*model.Album
+	Artists() map[string]*model.Artist
+	Playlists() map[string]*model.Playlist
 }
 
-type tempIndex map[string]domain.ArtistInfo
+type tempIndex map[string]model.ArtistInfo
 
 type Importer struct {
 	scanner      Scanner
 	mediaFolder  string
-	mfRepo       domain.MediaFileRepository
-	albumRepo    domain.AlbumRepository
-	artistRepo   domain.ArtistRepository
-	idxRepo      domain.ArtistIndexRepository
-	plsRepo      domain.PlaylistRepository
-	propertyRepo domain.PropertyRepository
+	mfRepo       model.MediaFileRepository
+	albumRepo    model.AlbumRepository
+	artistRepo   model.ArtistRepository
+	idxRepo      model.ArtistIndexRepository
+	plsRepo      model.PlaylistRepository
+	propertyRepo model.PropertyRepository
 	lastScan     time.Time
 	lastCheck    time.Time
 }
 
-func NewImporter(mediaFolder string, scanner Scanner, mfRepo domain.MediaFileRepository, albumRepo domain.AlbumRepository, artistRepo domain.ArtistRepository, idxRepo domain.ArtistIndexRepository, plsRepo domain.PlaylistRepository, propertyRepo domain.PropertyRepository) *Importer {
+func NewImporter(mediaFolder string, scanner Scanner, mfRepo model.MediaFileRepository, albumRepo model.AlbumRepository, artistRepo model.ArtistRepository, idxRepo model.ArtistIndexRepository, plsRepo model.PlaylistRepository, propertyRepo model.PropertyRepository) *Importer {
 	return &Importer{
 		scanner:      scanner,
 		mediaFolder:  mediaFolder,
@@ -103,7 +103,7 @@ func (i *Importer) scan() {
 }
 
 func (i *Importer) lastModifiedSince() time.Time {
-	ms, err := i.propertyRepo.Get(domain.PropLastScan)
+	ms, err := i.propertyRepo.Get(model.PropLastScan)
 	if err != nil {
 		log.Warn("Couldn't read LastScan", err)
 		return time.Time{}
@@ -161,15 +161,15 @@ func (i *Importer) importLibrary() (err error) {
 
 	if err == nil {
 		millis := time.Now().UnixNano() / int64(time.Millisecond)
-		i.propertyRepo.Put(domain.PropLastScan, fmt.Sprint(millis))
+		i.propertyRepo.Put(model.PropLastScan, fmt.Sprint(millis))
 		log.Debug("LastScan", "timestamp", millis)
 	}
 
 	return err
 }
 
-func (i *Importer) importMediaFiles() (domain.MediaFiles, int) {
-	mfs := make(domain.MediaFiles, len(i.scanner.MediaFiles()))
+func (i *Importer) importMediaFiles() (model.MediaFiles, int) {
+	mfs := make(model.MediaFiles, len(i.scanner.MediaFiles()))
 	updates := 0
 	j := 0
 	for _, mf := range i.scanner.MediaFiles() {
@@ -197,8 +197,8 @@ func (i *Importer) importMediaFiles() (domain.MediaFiles, int) {
 	return mfs, updates
 }
 
-func (i *Importer) importAlbums() (domain.Albums, int) {
-	als := make(domain.Albums, len(i.scanner.Albums()))
+func (i *Importer) importAlbums() (model.Albums, int) {
+	als := make(model.Albums, len(i.scanner.Albums()))
 	updates := 0
 	j := 0
 	for _, al := range i.scanner.Albums() {
@@ -226,8 +226,8 @@ func (i *Importer) importAlbums() (domain.Albums, int) {
 	return als, updates
 }
 
-func (i *Importer) importArtists() domain.Artists {
-	ars := make(domain.Artists, len(i.scanner.Artists()))
+func (i *Importer) importArtists() model.Artists {
+	ars := make(model.Artists, len(i.scanner.Artists()))
 	j := 0
 	for _, ar := range i.scanner.Artists() {
 		ars[j] = *ar
@@ -252,8 +252,8 @@ func (i *Importer) importArtistIndex() {
 	}
 }
 
-func (i *Importer) importPlaylists() domain.Playlists {
-	pls := make(domain.Playlists, len(i.scanner.Playlists()))
+func (i *Importer) importPlaylists() model.Playlists {
+	pls := make(model.Playlists, len(i.scanner.Playlists()))
 	j := 0
 	for _, pl := range i.scanner.Playlists() {
 		pl.Public = true
@@ -268,7 +268,7 @@ func (i *Importer) importPlaylists() domain.Playlists {
 	return pls
 }
 
-func (i *Importer) collectIndex(ig utils.IndexGroups, a *domain.Artist, artistIndex map[string]tempIndex) {
+func (i *Importer) collectIndex(ig utils.IndexGroups, a *model.Artist, artistIndex map[string]tempIndex) {
 	name := a.Name
 	indexName := strings.ToLower(utils.NoArticle(name))
 	if indexName == "" {
@@ -280,7 +280,7 @@ func (i *Importer) collectIndex(ig utils.IndexGroups, a *domain.Artist, artistIn
 		artists = make(tempIndex)
 		artistIndex[group] = artists
 	}
-	artists[indexName] = domain.ArtistInfo{ArtistID: a.ID, Artist: a.Name, AlbumCount: a.AlbumCount}
+	artists[indexName] = model.ArtistInfo{ArtistID: a.ID, Artist: a.Name, AlbumCount: a.AlbumCount}
 }
 
 func (i *Importer) findGroup(ig utils.IndexGroups, name string) string {
@@ -296,7 +296,7 @@ func (i *Importer) findGroup(ig utils.IndexGroups, name string) string {
 func (i *Importer) saveIndex(artistIndex map[string]tempIndex) error {
 	i.idxRepo.DeleteAll()
 	for k, temp := range artistIndex {
-		idx := &domain.ArtistIndex{ID: k}
+		idx := &model.ArtistIndex{ID: k}
 		for _, v := range temp {
 			idx.Artists = append(idx.Artists, v)
 		}

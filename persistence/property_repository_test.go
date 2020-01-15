@@ -1,13 +1,13 @@
 package persistence
 
 import (
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("PropertyRepository", func() {
-	var repo domain.PropertyRepository
+	var repo model.PropertyRepository
 
 	BeforeEach(func() {
 		repo = NewPropertyRepository()

@@ -4,31 +4,31 @@ import (
 	"context"
 	"sort"
 
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type Playlists interface {
-	GetAll() (domain.Playlists, error)
+	GetAll() (model.Playlists, error)
 	Get(id string) (*PlaylistInfo, error)
 	Create(ctx context.Context, name string, ids []string) error
 	Delete(ctx context.Context, playlistId string) error
 	Update(playlistId string, name *string, idsToAdd []string, idxToRemove []int) error
 }
 
-func NewPlaylists(itunes itunesbridge.ItunesControl, pr domain.PlaylistRepository, mr domain.MediaFileRepository) Playlists {
+func NewPlaylists(itunes itunesbridge.ItunesControl, pr model.PlaylistRepository, mr model.MediaFileRepository) Playlists {
 	return &playlists{itunes, pr, mr}
 }
 
 type playlists struct {
 	itunes    itunesbridge.ItunesControl
-	plsRepo   domain.PlaylistRepository
-	mfileRepo domain.MediaFileRepository
+	plsRepo   model.PlaylistRepository
+	mfileRepo model.MediaFileRepository
 }
 
-func (p *playlists) GetAll() (domain.Playlists, error) {
-	return p.plsRepo.GetAll(domain.QueryOptions{})
+func (p *playlists) GetAll() (model.Playlists, error) {
+	return p.plsRepo.GetAll(model.QueryOptions{})
 }
 
 type PlaylistInfo struct {

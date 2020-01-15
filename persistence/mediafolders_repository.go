@@ -2,22 +2,22 @@ package persistence
 
 import (
 	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type mediaFolderRepository struct {
-	domain.MediaFolderRepository
+	model.MediaFolderRepository
 }
 
-func NewMediaFolderRepository() domain.MediaFolderRepository {
+func NewMediaFolderRepository() model.MediaFolderRepository {
 	return &mediaFolderRepository{}
 }
 
-func (*mediaFolderRepository) GetAll() (domain.MediaFolders, error) {
-	mediaFolder := domain.MediaFolder{ID: "0", Name: "iTunes Library", Path: conf.Sonic.MusicFolder}
-	result := make(domain.MediaFolders, 1)
+func (*mediaFolderRepository) GetAll() (model.MediaFolders, error) {
+	mediaFolder := model.MediaFolder{ID: "0", Name: "iTunes Library", Path: conf.Sonic.MusicFolder}
+	result := make(model.MediaFolders, 1)
 	result[0] = mediaFolder
 	return result, nil
 }
 
-var _ domain.MediaFolderRepository = (*mediaFolderRepository)(nil)
+var _ model.MediaFolderRepository = (*mediaFolderRepository)(nil)

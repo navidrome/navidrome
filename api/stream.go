@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/cloudsonic/sonic-server/api/responses"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
@@ -26,7 +26,7 @@ func (c *StreamController) getMediaFile(r *http.Request) (mf *engine.Entry, err 
 
 	mf, err = c.browser.GetSong(id)
 	switch {
-	case err == domain.ErrNotFound:
+	case err == model.ErrNotFound:
 		log.Error(r, "Mediafile not found", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound)
 	case err != nil:

@@ -3,9 +3,9 @@ package engine
 import (
 	"context"
 
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
@@ -14,15 +14,15 @@ type Ratings interface {
 	SetRating(ctx context.Context, id string, rating int) error
 }
 
-func NewRatings(itunes itunesbridge.ItunesControl, mr domain.MediaFileRepository, alr domain.AlbumRepository, ar domain.ArtistRepository) Ratings {
+func NewRatings(itunes itunesbridge.ItunesControl, mr model.MediaFileRepository, alr model.AlbumRepository, ar model.ArtistRepository) Ratings {
 	return &ratings{itunes, mr, alr, ar}
 }
 
 type ratings struct {
 	itunes     itunesbridge.ItunesControl
-	mfRepo     domain.MediaFileRepository
-	albumRepo  domain.AlbumRepository
-	artistRepo domain.ArtistRepository
+	mfRepo     model.MediaFileRepository
+	albumRepo  model.AlbumRepository
+	artistRepo model.ArtistRepository
 }
 
 func (r ratings) SetRating(ctx context.Context, id string, rating int) error {
@@ -51,7 +51,7 @@ func (r ratings) SetRating(ctx context.Context, id string, rating int) error {
 		}
 		return nil
 	}
-	return domain.ErrNotFound
+	return model.ErrNotFound
 }
 
 func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
@@ -79,7 +79,7 @@ func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
 			}
 			continue
 		}
-		return domain.ErrNotFound
+		return model.ErrNotFound
 	}
 
 	return nil

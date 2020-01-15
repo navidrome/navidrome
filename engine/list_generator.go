@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
@@ -22,17 +22,17 @@ type ListGenerator interface {
 	GetRandomSongs(size int) (Entries, error)
 }
 
-func NewListGenerator(alr domain.AlbumRepository, mfr domain.MediaFileRepository, npr domain.NowPlayingRepository) ListGenerator {
+func NewListGenerator(alr model.AlbumRepository, mfr model.MediaFileRepository, npr model.NowPlayingRepository) ListGenerator {
 	return &listGenerator{alr, mfr, npr}
 }
 
 type listGenerator struct {
-	albumRepo    domain.AlbumRepository
-	mfRepository domain.MediaFileRepository
-	npRepo       domain.NowPlayingRepository
+	albumRepo    model.AlbumRepository
+	mfRepository model.MediaFileRepository
+	npRepo       model.NowPlayingRepository
 }
 
-func (g *listGenerator) query(qo domain.QueryOptions, offset int, size int) (Entries, error) {
+func (g *listGenerator) query(qo model.QueryOptions, offset int, size int) (Entries, error) {
 	qo.Offset = offset
 	qo.Size = size
 	albums, err := g.albumRepo.GetAll(qo)
@@ -41,32 +41,32 @@ func (g *listGenerator) query(qo domain.QueryOptions, offset int, size int) (Ent
 }
 
 func (g *listGenerator) GetNewest(offset int, size int) (Entries, error) {
-	qo := domain.QueryOptions{SortBy: "CreatedAt", Desc: true, Alpha: true}
+	qo := model.QueryOptions{SortBy: "CreatedAt", Desc: true, Alpha: true}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetRecent(offset int, size int) (Entries, error) {
-	qo := domain.QueryOptions{SortBy: "PlayDate", Desc: true, Alpha: true}
+	qo := model.QueryOptions{SortBy: "PlayDate", Desc: true, Alpha: true}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetFrequent(offset int, size int) (Entries, error) {
-	qo := domain.QueryOptions{SortBy: "PlayCount", Desc: true}
+	qo := model.QueryOptions{SortBy: "PlayCount", Desc: true}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetHighest(offset int, size int) (Entries, error) {
-	qo := domain.QueryOptions{SortBy: "Rating", Desc: true}
+	qo := model.QueryOptions{SortBy: "Rating", Desc: true}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetByName(offset int, size int) (Entries, error) {
-	qo := domain.QueryOptions{SortBy: "Name", Alpha: true}
+	qo := model.QueryOptions{SortBy: "Name", Alpha: true}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetByArtist(offset int, size int) (Entries, error) {
-	qo := domain.QueryOptions{SortBy: "Artist", Alpha: true}
+	qo := model.QueryOptions{SortBy: "Artist", Alpha: true}
 	return g.query(qo, offset, size)
 }
 
@@ -111,7 +111,7 @@ func (g *listGenerator) GetRandomSongs(size int) (Entries, error) {
 }
 
 func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
-	qo := domain.QueryOptions{Offset: offset, Size: size, Desc: true}
+	qo := model.QueryOptions{Offset: offset, Size: size, Desc: true}
 	albums, err := g.albumRepo.GetStarred(qo)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (g *listGenerator) GetAllStarred() (Entries, Entries, error) {
 		return nil, nil, err
 	}
 
-	mediaFiles, err := g.mfRepository.GetStarred(domain.QueryOptions{Desc: true})
+	mediaFiles, err := g.mfRepository.GetStarred(model.QueryOptions{Desc: true})
 
 	return albums, FromMediaFiles(mediaFiles), err
 }

@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/dhowden/tag"
 	"github.com/nfnt/resize"
 )
@@ -20,11 +20,11 @@ type Cover interface {
 }
 
 type cover struct {
-	mfileRepo domain.MediaFileRepository
-	albumRepo domain.AlbumRepository
+	mfileRepo model.MediaFileRepository
+	albumRepo model.AlbumRepository
 }
 
-func NewCover(mr domain.MediaFileRepository, alr domain.AlbumRepository) Cover {
+func NewCover(mr model.MediaFileRepository, alr model.AlbumRepository) Cover {
 	return &cover{mr, alr}
 }
 
@@ -46,18 +46,18 @@ func (c *cover) getCoverPath(id string) (string, error) {
 			return mf.Path, nil
 		}
 	}
-	return "", domain.ErrNotFound
+	return "", model.ErrNotFound
 }
 
 func (c *cover) Get(id string, size int, out io.Writer) error {
 	path, err := c.getCoverPath(id)
-	if err != nil && err != domain.ErrNotFound {
+	if err != nil && err != model.ErrNotFound {
 		return err
 	}
 
 	var reader io.Reader
 
-	if err != domain.ErrNotFound {
+	if err != model.ErrNotFound {
 		reader, err = readFromTag(path)
 	} else {
 		var f *os.File
@@ -69,7 +69,7 @@ func (c *cover) Get(id string, size int, out io.Writer) error {
 	}
 
 	if err != nil {
-		return domain.ErrNotFound
+		return model.ErrNotFound
 	}
 
 	if size > 0 {

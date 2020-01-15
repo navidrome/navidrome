@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type MediaFile struct {
@@ -39,41 +39,41 @@ type mediaFileRepository struct {
 	searchableRepository
 }
 
-func NewMediaFileRepository() domain.MediaFileRepository {
+func NewMediaFileRepository() model.MediaFileRepository {
 	r := &mediaFileRepository{}
 	r.tableName = "media_file"
 	return r
 }
 
-func (r *mediaFileRepository) Put(m *domain.MediaFile) error {
+func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	tm := MediaFile(*m)
 	return withTx(func(o orm.Ormer) error {
 		return r.put(o, m.ID, m.Title, &tm)
 	})
 }
 
-func (r *mediaFileRepository) Get(id string) (*domain.MediaFile, error) {
+func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 	tm := MediaFile{ID: id}
 	err := Db().Read(&tm)
 	if err == orm.ErrNoRows {
-		return nil, domain.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	a := domain.MediaFile(tm)
+	a := model.MediaFile(tm)
 	return &a, nil
 }
 
-func (r *mediaFileRepository) toMediaFiles(all []MediaFile) domain.MediaFiles {
-	result := make(domain.MediaFiles, len(all))
+func (r *mediaFileRepository) toMediaFiles(all []MediaFile) model.MediaFiles {
+	result := make(model.MediaFiles, len(all))
 	for i, m := range all {
-		result[i] = domain.MediaFile(m)
+		result[i] = model.MediaFile(m)
 	}
 	return result
 }
 
-func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, error) {
+func (r *mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, error) {
 	var mfs []MediaFile
 	_, err := r.newQuery(Db()).Filter("album_id", albumId).OrderBy("disc_number", "track_number").All(&mfs)
 	if err != nil {
@@ -82,7 +82,7 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (domain.MediaFiles, er
 	return r.toMediaFiles(mfs), nil
 }
 
-func (r *mediaFileRepository) GetStarred(options ...domain.QueryOptions) (domain.MediaFiles, error) {
+func (r *mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
 	var starred []MediaFile
 	_, err := r.newQuery(Db(), options...).Filter("starred", true).All(&starred)
 	if err != nil {
@@ -91,16 +91,16 @@ func (r *mediaFileRepository) GetStarred(options ...domain.QueryOptions) (domain
 	return r.toMediaFiles(starred), nil
 }
 
-func (r *mediaFileRepository) PurgeInactive(activeList domain.MediaFiles) error {
+func (r *mediaFileRepository) PurgeInactive(activeList model.MediaFiles) error {
 	return withTx(func(o orm.Ormer) error {
 		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
-			return item.(domain.MediaFile).ID
+			return item.(model.MediaFile).ID
 		})
 		return err
 	})
 }
 
-func (r *mediaFileRepository) Search(q string, offset int, size int) (domain.MediaFiles, error) {
+func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
 	if len(q) <= 2 {
 		return nil, nil
 	}
@@ -113,5 +113,5 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (domain.Med
 	return r.toMediaFiles(results), nil
 }
 
-var _ domain.MediaFileRepository = (*mediaFileRepository)(nil)
-var _ = domain.MediaFile(MediaFile{})
+var _ model.MediaFileRepository = (*mediaFileRepository)(nil)
+var _ = model.MediaFile(MediaFile{})

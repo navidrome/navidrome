@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http/httptest"
 
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -58,7 +58,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		})
 
 		It("should fail when the file is not found", func() {
-			cover.err = domain.ErrNotFound
+			cover.err = model.ErrNotFound
 			r := newTestRequest("id=34", "size=128")
 			_, err := controller.GetCoverArt(w, r)
 

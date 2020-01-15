@@ -1,4 +1,4 @@
-package domain
+package model
 
 type CheckSumRepository interface {
 	Get(id string) (string, error)

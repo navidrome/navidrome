@@ -4,25 +4,25 @@ package main
 
 import (
 	"github.com/cloudsonic/sonic-server/api"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/scanner_legacy"
 	"github.com/cloudsonic/sonic-server/server"
 	"github.com/google/wire"
 )
 
-type Provider struct {
-	AlbumRepository       domain.AlbumRepository
-	ArtistRepository      domain.ArtistRepository
-	CheckSumRepository    domain.CheckSumRepository
-	ArtistIndexRepository domain.ArtistIndexRepository
-	MediaFileRepository   domain.MediaFileRepository
-	MediaFolderRepository domain.MediaFolderRepository
-	NowPlayingRepository  domain.NowPlayingRepository
-	PlaylistRepository    domain.PlaylistRepository
-	PropertyRepository    domain.PropertyRepository
+type Repositories struct {
+	AlbumRepository       model.AlbumRepository
+	ArtistRepository      model.ArtistRepository
+	CheckSumRepository    model.CheckSumRepository
+	ArtistIndexRepository model.ArtistIndexRepository
+	MediaFileRepository   model.MediaFileRepository
+	MediaFolderRepository model.MediaFolderRepository
+	NowPlayingRepository  model.NowPlayingRepository
+	PlaylistRepository    model.PlaylistRepository
+	PropertyRepository    model.PropertyRepository
 }
 
 var allProviders = wire.NewSet(
@@ -30,7 +30,7 @@ var allProviders = wire.NewSet(
 	engine.Set,
 	scanner_legacy.Set,
 	api.NewRouter,
-	wire.FieldsOf(new(*Provider), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
+	wire.FieldsOf(new(*Repositories), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
 		"ArtistIndexRepository", "MediaFileRepository", "MediaFolderRepository", "NowPlayingRepository",
 		"PlaylistRepository", "PropertyRepository"),
 	createPersistenceProvider,
@@ -49,9 +49,9 @@ func CreateSubsonicAPIRouter() *api.Router {
 
 // When implementing a different persistence layer, duplicate this function (in separated files) and use build tags
 // to conditionally select which function to use
-func createPersistenceProvider() *Provider {
+func createPersistenceProvider() *Repositories {
 	panic(wire.Build(
 		persistence.Set,
-		wire.Struct(new(Provider), "*"),
+		wire.Struct(new(Repositories), "*"),
 	))
 }

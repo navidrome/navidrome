@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type ArtistInfo struct {
@@ -19,7 +19,7 @@ type artistIndexRepository struct {
 	sqlRepository
 }
 
-func NewArtistIndexRepository() domain.ArtistIndexRepository {
+func NewArtistIndexRepository() model.ArtistIndexRepository {
 	r := &artistIndexRepository{}
 	r.tableName = "artist_info"
 	return r
@@ -34,7 +34,7 @@ func (r *artistIndexRepository) CountAll() (int64, error) {
 	return count.Count, nil
 }
 
-func (r *artistIndexRepository) Put(idx *domain.ArtistIndex) error {
+func (r *artistIndexRepository) Put(idx *model.ArtistIndex) error {
 	return withTx(func(o orm.Ormer) error {
 		_, err := r.newQuery(o).Filter("idx", idx.ID).Delete()
 		if err != nil {
@@ -56,17 +56,17 @@ func (r *artistIndexRepository) Put(idx *domain.ArtistIndex) error {
 	})
 }
 
-func (r *artistIndexRepository) Get(id string) (*domain.ArtistIndex, error) {
+func (r *artistIndexRepository) Get(id string) (*model.ArtistIndex, error) {
 	var ais []ArtistInfo
 	_, err := r.newQuery(Db()).Filter("idx", id).All(&ais)
 	if err != nil {
 		return nil, err
 	}
 
-	idx := &domain.ArtistIndex{ID: id}
-	idx.Artists = make([]domain.ArtistInfo, len(ais))
+	idx := &model.ArtistIndex{ID: id}
+	idx.Artists = make([]model.ArtistInfo, len(ais))
 	for i, a := range ais {
-		idx.Artists[i] = domain.ArtistInfo{
+		idx.Artists[i] = model.ArtistInfo{
 			ArtistID:   a.ArtistID,
 			Artist:     a.Artist,
 			AlbumCount: a.AlbumCount,
@@ -75,27 +75,27 @@ func (r *artistIndexRepository) Get(id string) (*domain.ArtistIndex, error) {
 	return idx, err
 }
 
-func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
+func (r *artistIndexRepository) GetAll() (model.ArtistIndexes, error) {
 	var all []ArtistInfo
 	_, err := r.newQuery(Db()).OrderBy("idx", "artist").All(&all)
 	if err != nil {
 		return nil, err
 	}
 
-	fullIdx := make(map[string]*domain.ArtistIndex)
+	fullIdx := make(map[string]*model.ArtistIndex)
 	for _, a := range all {
 		idx, ok := fullIdx[a.Idx]
 		if !ok {
-			idx = &domain.ArtistIndex{ID: a.Idx}
+			idx = &model.ArtistIndex{ID: a.Idx}
 			fullIdx[a.Idx] = idx
 		}
-		idx.Artists = append(idx.Artists, domain.ArtistInfo{
+		idx.Artists = append(idx.Artists, model.ArtistInfo{
 			ArtistID:   a.ArtistID,
 			Artist:     a.Artist,
 			AlbumCount: a.AlbumCount,
 		})
 	}
-	var result domain.ArtistIndexes
+	var result model.ArtistIndexes
 	for _, idx := range fullIdx {
 		result = append(result, *idx)
 	}
@@ -105,4 +105,4 @@ func (r *artistIndexRepository) GetAll() (domain.ArtistIndexes, error) {
 	return result, nil
 }
 
-var _ domain.ArtistIndexRepository = (*artistIndexRepository)(nil)
+var _ model.ArtistIndexRepository = (*artistIndexRepository)(nil)

@@ -3,7 +3,7 @@ package engine
 import (
 	"errors"
 
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 func CreateMockPropertyRepo() *MockProperty {
@@ -11,7 +11,7 @@ func CreateMockPropertyRepo() *MockProperty {
 }
 
 type MockProperty struct {
-	domain.PropertyRepository
+	model.PropertyRepository
 	data map[string]string
 	err  bool
 }

@@ -14,25 +14,25 @@ import (
 	"time"
 
 	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/dhowden/itl"
 	"github.com/dhowden/tag"
 )
 
 type ItunesScanner struct {
-	mediaFiles        map[string]*domain.MediaFile
-	albums            map[string]*domain.Album
-	artists           map[string]*domain.Artist
-	playlists         map[string]*domain.Playlist
+	mediaFiles        map[string]*model.MediaFile
+	albums            map[string]*model.Album
+	artists           map[string]*model.Artist
+	playlists         map[string]*model.Playlist
 	pplaylists        map[string]plsRelation
-	pmediaFiles       map[int]*domain.MediaFile
+	pmediaFiles       map[int]*model.MediaFile
 	lastModifiedSince time.Time
-	checksumRepo      domain.CheckSumRepository
+	checksumRepo      model.CheckSumRepository
 	newSums           map[string]string
 }
 
-func NewItunesScanner(checksumRepo domain.CheckSumRepository) *ItunesScanner {
+func NewItunesScanner(checksumRepo model.CheckSumRepository) *ItunesScanner {
 	return &ItunesScanner{checksumRepo: checksumRepo}
 }
 
@@ -52,12 +52,12 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 	log.Debug("Loaded tracks", "total", len(l.Tracks))
 
 	s.lastModifiedSince = lastModifiedSince
-	s.mediaFiles = make(map[string]*domain.MediaFile)
-	s.albums = make(map[string]*domain.Album)
-	s.artists = make(map[string]*domain.Artist)
-	s.playlists = make(map[string]*domain.Playlist)
+	s.mediaFiles = make(map[string]*model.MediaFile)
+	s.albums = make(map[string]*model.Album)
+	s.artists = make(map[string]*model.Artist)
+	s.playlists = make(map[string]*model.Playlist)
 	s.pplaylists = make(map[string]plsRelation)
-	s.pmediaFiles = make(map[int]*domain.MediaFile)
+	s.pmediaFiles = make(map[int]*model.MediaFile)
 	s.newSums = make(map[string]string)
 	songsPerAlbum := make(map[string]int)
 	albumsPerArtist := make(map[string]map[string]bool)
@@ -117,16 +117,16 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 	return len(l.Tracks), nil
 }
 
-func (s *ItunesScanner) MediaFiles() map[string]*domain.MediaFile {
+func (s *ItunesScanner) MediaFiles() map[string]*model.MediaFile {
 	return s.mediaFiles
 }
-func (s *ItunesScanner) Albums() map[string]*domain.Album {
+func (s *ItunesScanner) Albums() map[string]*model.Album {
 	return s.albums
 }
-func (s *ItunesScanner) Artists() map[string]*domain.Artist {
+func (s *ItunesScanner) Artists() map[string]*model.Artist {
 	return s.artists
 }
-func (s *ItunesScanner) Playlists() map[string]*domain.Playlist {
+func (s *ItunesScanner) Playlists() map[string]*model.Playlist {
 	return s.playlists
 }
 
@@ -169,7 +169,7 @@ func (s *ItunesScanner) skipPlaylist(p *itl.Playlist, ignFolders bool, ignPatter
 }
 
 func (s *ItunesScanner) collectPlaylists(p *itl.Playlist, fullPath string) {
-	pl := &domain.Playlist{}
+	pl := &model.Playlist{}
 	pl.ID = p.PlaylistPersistentID
 	pl.Name = unescape(p.Name)
 	pl.FullPath = fullPath
@@ -227,8 +227,8 @@ func (s *ItunesScanner) calcCheckSum(t *itl.Track) string {
 	return sum
 }
 
-func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
-	mf := &domain.MediaFile{}
+func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *model.MediaFile {
+	mf := &model.MediaFile{}
 	mf.ID = t.PersistentID
 	mf.Album = unescape(t.Album)
 	mf.AlbumID = albumId(t)
@@ -276,11 +276,11 @@ func (s *ItunesScanner) collectMediaFiles(t *itl.Track) *domain.MediaFile {
 	return mf
 }
 
-func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *domain.Artist) *domain.Album {
+func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *model.MediaFile, ar *model.Artist) *model.Album {
 	id := albumId(t)
 	_, found := s.albums[id]
 	if !found {
-		s.albums[id] = &domain.Album{}
+		s.albums[id] = &model.Album{}
 	}
 
 	al := s.albums[id]
@@ -322,11 +322,11 @@ func (s *ItunesScanner) collectAlbums(t *itl.Track, mf *domain.MediaFile, ar *do
 	return al
 }
 
-func (s *ItunesScanner) collectArtists(t *itl.Track) *domain.Artist {
+func (s *ItunesScanner) collectArtists(t *itl.Track) *model.Artist {
 	id := artistId(t)
 	_, found := s.artists[id]
 	if !found {
-		s.artists[id] = &domain.Artist{}
+		s.artists[id] = &model.Artist{}
 	}
 	ar := s.artists[id]
 	ar.ID = id

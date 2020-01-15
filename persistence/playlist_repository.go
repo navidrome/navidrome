@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type Playlist struct {
@@ -22,24 +22,24 @@ type playlistRepository struct {
 	sqlRepository
 }
 
-func NewPlaylistRepository() domain.PlaylistRepository {
+func NewPlaylistRepository() model.PlaylistRepository {
 	r := &playlistRepository{}
 	r.tableName = "playlist"
 	return r
 }
 
-func (r *playlistRepository) Put(p *domain.Playlist) error {
+func (r *playlistRepository) Put(p *model.Playlist) error {
 	tp := r.fromDomain(p)
 	return withTx(func(o orm.Ormer) error {
 		return r.put(o, p.ID, &tp)
 	})
 }
 
-func (r *playlistRepository) Get(id string) (*domain.Playlist, error) {
+func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	tp := &Playlist{ID: id}
 	err := Db().Read(tp)
 	if err == orm.ErrNoRows {
-		return nil, domain.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (r *playlistRepository) Get(id string) (*domain.Playlist, error) {
 	return &a, err
 }
 
-func (r *playlistRepository) GetAll(options ...domain.QueryOptions) (domain.Playlists, error) {
+func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
 	var all []Playlist
 	_, err := r.newQuery(Db(), options...).All(&all)
 	if err != nil {
@@ -57,25 +57,25 @@ func (r *playlistRepository) GetAll(options ...domain.QueryOptions) (domain.Play
 	return r.toPlaylists(all)
 }
 
-func (r *playlistRepository) toPlaylists(all []Playlist) (domain.Playlists, error) {
-	result := make(domain.Playlists, len(all))
+func (r *playlistRepository) toPlaylists(all []Playlist) (model.Playlists, error) {
+	result := make(model.Playlists, len(all))
 	for i, p := range all {
 		result[i] = r.toDomain(&p)
 	}
 	return result, nil
 }
 
-func (r *playlistRepository) PurgeInactive(activeList domain.Playlists) ([]string, error) {
+func (r *playlistRepository) PurgeInactive(activeList model.Playlists) ([]string, error) {
 	return nil, withTx(func(o orm.Ormer) error {
 		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
-			return item.(domain.Playlist).ID
+			return item.(model.Playlist).ID
 		})
 		return err
 	})
 }
 
-func (r *playlistRepository) toDomain(p *Playlist) domain.Playlist {
-	return domain.Playlist{
+func (r *playlistRepository) toDomain(p *Playlist) model.Playlist {
+	return model.Playlist{
 		ID:       p.ID,
 		Name:     p.Name,
 		Comment:  p.Comment,
@@ -87,7 +87,7 @@ func (r *playlistRepository) toDomain(p *Playlist) domain.Playlist {
 	}
 }
 
-func (r *playlistRepository) fromDomain(p *domain.Playlist) Playlist {
+func (r *playlistRepository) fromDomain(p *model.Playlist) Playlist {
 	return Playlist{
 		ID:       p.ID,
 		Name:     p.Name,
@@ -100,4 +100,4 @@ func (r *playlistRepository) fromDomain(p *domain.Playlist) Playlist {
 	}
 }
 
-var _ domain.PlaylistRepository = (*playlistRepository)(nil)
+var _ model.PlaylistRepository = (*playlistRepository)(nil)

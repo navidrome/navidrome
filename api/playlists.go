@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/cloudsonic/sonic-server/api/responses"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type PlaylistsController struct {
@@ -46,7 +46,7 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 	}
 	pinfo, err := c.pls.Get(id)
 	switch {
-	case err == domain.ErrNotFound:
+	case err == model.ErrNotFound:
 		log.Error(r, err.Error(), "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:

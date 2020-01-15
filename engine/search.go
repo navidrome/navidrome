@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/kennygrant/sanitize"
 )
 
@@ -15,12 +15,12 @@ type Search interface {
 }
 
 type search struct {
-	artistRepo domain.ArtistRepository
-	albumRepo  domain.AlbumRepository
-	mfileRepo  domain.MediaFileRepository
+	artistRepo model.ArtistRepository
+	albumRepo  model.AlbumRepository
+	mfileRepo  model.MediaFileRepository
 }
 
-func NewSearch(ar domain.ArtistRepository, alr domain.AlbumRepository, mr domain.MediaFileRepository) Search {
+func NewSearch(ar model.ArtistRepository, alr model.AlbumRepository, mr model.MediaFileRepository) Search {
 	s := &search{artistRepo: ar, albumRepo: alr, mfileRepo: mr}
 	return s
 }

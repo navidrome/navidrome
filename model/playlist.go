@@ -1,4 +1,4 @@
-package domain
+package model
 
 type Playlist struct {
 	ID       string

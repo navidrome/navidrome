@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type Entry struct {
@@ -45,7 +45,7 @@ type Entry struct {
 
 type Entries []Entry
 
-func FromArtist(ar *domain.Artist) Entry {
+func FromArtist(ar *model.Artist) Entry {
 	e := Entry{}
 	e.Id = ar.ID
 	e.Title = ar.Name
@@ -54,7 +54,7 @@ func FromArtist(ar *domain.Artist) Entry {
 	return e
 }
 
-func FromAlbum(al *domain.Album) Entry {
+func FromAlbum(al *model.Album) Entry {
 	e := Entry{}
 	e.Id = al.ID
 	e.Title = al.Name
@@ -76,7 +76,7 @@ func FromAlbum(al *domain.Album) Entry {
 	return e
 }
 
-func FromMediaFile(mf *domain.MediaFile) Entry {
+func FromMediaFile(mf *model.MediaFile) Entry {
 	e := Entry{}
 	e.Id = mf.ID
 	e.Title = mf.Title
@@ -111,7 +111,7 @@ func FromMediaFile(mf *domain.MediaFile) Entry {
 	return e
 }
 
-func realArtistName(mf *domain.MediaFile) string {
+func realArtistName(mf *model.MediaFile) string {
 	switch {
 	case mf.Compilation:
 		return "Various Artists"
@@ -122,7 +122,7 @@ func realArtistName(mf *domain.MediaFile) string {
 	return mf.Artist
 }
 
-func FromAlbums(albums domain.Albums) Entries {
+func FromAlbums(albums model.Albums) Entries {
 	entries := make(Entries, len(albums))
 	for i, al := range albums {
 		entries[i] = FromAlbum(&al)
@@ -130,7 +130,7 @@ func FromAlbums(albums domain.Albums) Entries {
 	return entries
 }
 
-func FromMediaFiles(mfs domain.MediaFiles) Entries {
+func FromMediaFiles(mfs model.MediaFiles) Entries {
 	entries := make(Entries, len(mfs))
 	for i, mf := range mfs {
 		entries[i] = FromMediaFile(&mf)

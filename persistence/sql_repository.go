@@ -2,15 +2,15 @@ package persistence
 
 import (
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type sqlRepository struct {
 	tableName string
 }
 
-func (r *sqlRepository) newQuery(o orm.Ormer, options ...domain.QueryOptions) orm.QuerySeter {
+func (r *sqlRepository) newQuery(o orm.Ormer, options ...model.QueryOptions) orm.QuerySeter {
 	q := o.QueryTable(r.tableName)
 	if len(options) > 0 {
 		opts := options[0]

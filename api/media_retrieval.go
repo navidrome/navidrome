@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/cloudsonic/sonic-server/api/responses"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type MediaRetrievalController struct {
@@ -42,7 +42,7 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 	err = c.cover.Get(id, size, w)
 
 	switch {
-	case err == domain.ErrNotFound:
+	case err == model.ErrNotFound:
 		log.Error(r, err.Error(), "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Cover not found")
 	case err != nil:

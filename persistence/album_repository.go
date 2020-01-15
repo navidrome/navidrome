@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type Album struct {
@@ -33,33 +33,33 @@ type albumRepository struct {
 	searchableRepository
 }
 
-func NewAlbumRepository() domain.AlbumRepository {
+func NewAlbumRepository() model.AlbumRepository {
 	r := &albumRepository{}
 	r.tableName = "album"
 	return r
 }
 
-func (r *albumRepository) Put(a *domain.Album) error {
+func (r *albumRepository) Put(a *model.Album) error {
 	ta := Album(*a)
 	return withTx(func(o orm.Ormer) error {
 		return r.put(o, a.ID, a.Name, &ta)
 	})
 }
 
-func (r *albumRepository) Get(id string) (*domain.Album, error) {
+func (r *albumRepository) Get(id string) (*model.Album, error) {
 	ta := Album{ID: id}
 	err := Db().Read(&ta)
 	if err == orm.ErrNoRows {
-		return nil, domain.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	a := domain.Album(ta)
+	a := model.Album(ta)
 	return &a, err
 }
 
-func (r *albumRepository) FindByArtist(artistId string) (domain.Albums, error) {
+func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
 	var albums []Album
 	_, err := r.newQuery(Db()).Filter("artist_id", artistId).OrderBy("year", "name").All(&albums)
 	if err != nil {
@@ -68,7 +68,7 @@ func (r *albumRepository) FindByArtist(artistId string) (domain.Albums, error) {
 	return r.toAlbums(albums), nil
 }
 
-func (r *albumRepository) GetAll(options ...domain.QueryOptions) (domain.Albums, error) {
+func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
 	var all []Album
 	_, err := r.newQuery(Db(), options...).All(&all)
 	if err != nil {
@@ -77,25 +77,25 @@ func (r *albumRepository) GetAll(options ...domain.QueryOptions) (domain.Albums,
 	return r.toAlbums(all), nil
 }
 
-func (r *albumRepository) toAlbums(all []Album) domain.Albums {
-	result := make(domain.Albums, len(all))
+func (r *albumRepository) toAlbums(all []Album) model.Albums {
+	result := make(model.Albums, len(all))
 	for i, a := range all {
-		result[i] = domain.Album(a)
+		result[i] = model.Album(a)
 	}
 	return result
 }
 
 // TODO Remove []string from return
-func (r *albumRepository) PurgeInactive(activeList domain.Albums) error {
+func (r *albumRepository) PurgeInactive(activeList model.Albums) error {
 	return withTx(func(o orm.Ormer) error {
 		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
-			return item.(domain.Album).ID
+			return item.(model.Album).ID
 		})
 		return err
 	})
 }
 
-func (r *albumRepository) GetStarred(options ...domain.QueryOptions) (domain.Albums, error) {
+func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Albums, error) {
 	var starred []Album
 	_, err := r.newQuery(Db(), options...).Filter("starred", true).All(&starred)
 	if err != nil {
@@ -104,7 +104,7 @@ func (r *albumRepository) GetStarred(options ...domain.QueryOptions) (domain.Alb
 	return r.toAlbums(starred), nil
 }
 
-func (r *albumRepository) Search(q string, offset int, size int) (domain.Albums, error) {
+func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
 	if len(q) <= 2 {
 		return nil, nil
 	}
@@ -117,5 +117,5 @@ func (r *albumRepository) Search(q string, offset int, size int) (domain.Albums,
 	return r.toAlbums(results), nil
 }
 
-var _ domain.AlbumRepository = (*albumRepository)(nil)
-var _ = domain.Album(Album{})
+var _ model.AlbumRepository = (*albumRepository)(nil)
+var _ = model.Album(Album{})

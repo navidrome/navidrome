@@ -7,9 +7,9 @@ package main
 
 import (
 	"github.com/cloudsonic/sonic-server/api"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/scanner_legacy"
 	"github.com/cloudsonic/sonic-server/server"
@@ -19,34 +19,34 @@ import (
 // Injectors from wire_injectors.go:
 
 func CreateApp(musicFolder string) *server.Server {
-	provider := createPersistenceProvider()
-	checkSumRepository := provider.CheckSumRepository
+	repositories := createPersistenceProvider()
+	checkSumRepository := repositories.CheckSumRepository
 	itunesScanner := scanner_legacy.NewItunesScanner(checkSumRepository)
-	mediaFileRepository := provider.MediaFileRepository
-	albumRepository := provider.AlbumRepository
-	artistRepository := provider.ArtistRepository
-	artistIndexRepository := provider.ArtistIndexRepository
-	playlistRepository := provider.PlaylistRepository
-	propertyRepository := provider.PropertyRepository
+	mediaFileRepository := repositories.MediaFileRepository
+	albumRepository := repositories.AlbumRepository
+	artistRepository := repositories.ArtistRepository
+	artistIndexRepository := repositories.ArtistIndexRepository
+	playlistRepository := repositories.PlaylistRepository
+	propertyRepository := repositories.PropertyRepository
 	importer := scanner_legacy.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository)
 	serverServer := server.New(importer)
 	return serverServer
 }
 
 func CreateSubsonicAPIRouter() *api.Router {
-	provider := createPersistenceProvider()
-	propertyRepository := provider.PropertyRepository
-	mediaFolderRepository := provider.MediaFolderRepository
-	artistIndexRepository := provider.ArtistIndexRepository
-	artistRepository := provider.ArtistRepository
-	albumRepository := provider.AlbumRepository
-	mediaFileRepository := provider.MediaFileRepository
+	repositories := createPersistenceProvider()
+	propertyRepository := repositories.PropertyRepository
+	mediaFolderRepository := repositories.MediaFolderRepository
+	artistIndexRepository := repositories.ArtistIndexRepository
+	artistRepository := repositories.ArtistRepository
+	albumRepository := repositories.AlbumRepository
+	mediaFileRepository := repositories.MediaFileRepository
 	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistIndexRepository, artistRepository, albumRepository, mediaFileRepository)
 	cover := engine.NewCover(mediaFileRepository, albumRepository)
-	nowPlayingRepository := provider.NowPlayingRepository
+	nowPlayingRepository := repositories.NowPlayingRepository
 	listGenerator := engine.NewListGenerator(albumRepository, mediaFileRepository, nowPlayingRepository)
 	itunesControl := itunesbridge.NewItunesControl()
-	playlistRepository := provider.PlaylistRepository
+	playlistRepository := repositories.PlaylistRepository
 	playlists := engine.NewPlaylists(itunesControl, playlistRepository, mediaFileRepository)
 	ratings := engine.NewRatings(itunesControl, mediaFileRepository, albumRepository, artistRepository)
 	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, nowPlayingRepository)
@@ -55,7 +55,7 @@ func CreateSubsonicAPIRouter() *api.Router {
 	return router
 }
 
-func createPersistenceProvider() *Provider {
+func createPersistenceProvider() *Repositories {
 	albumRepository := persistence.NewAlbumRepository()
 	artistRepository := persistence.NewArtistRepository()
 	checkSumRepository := persistence.NewCheckSumRepository()
@@ -65,7 +65,7 @@ func createPersistenceProvider() *Provider {
 	nowPlayingRepository := persistence.NewNowPlayingRepository()
 	playlistRepository := persistence.NewPlaylistRepository()
 	propertyRepository := persistence.NewPropertyRepository()
-	provider := &Provider{
+	repositories := &Repositories{
 		AlbumRepository:       albumRepository,
 		ArtistRepository:      artistRepository,
 		CheckSumRepository:    checkSumRepository,
@@ -76,24 +76,24 @@ func createPersistenceProvider() *Provider {
 		PlaylistRepository:    playlistRepository,
 		PropertyRepository:    propertyRepository,
 	}
-	return provider
+	return repositories
 }
 
 // wire_injectors.go:
 
-type Provider struct {
-	AlbumRepository       domain.AlbumRepository
-	ArtistRepository      domain.ArtistRepository
-	CheckSumRepository    domain.CheckSumRepository
-	ArtistIndexRepository domain.ArtistIndexRepository
-	MediaFileRepository   domain.MediaFileRepository
-	MediaFolderRepository domain.MediaFolderRepository
-	NowPlayingRepository  domain.NowPlayingRepository
-	PlaylistRepository    domain.PlaylistRepository
-	PropertyRepository    domain.PropertyRepository
+type Repositories struct {
+	AlbumRepository       model.AlbumRepository
+	ArtistRepository      model.ArtistRepository
+	CheckSumRepository    model.CheckSumRepository
+	ArtistIndexRepository model.ArtistIndexRepository
+	MediaFileRepository   model.MediaFileRepository
+	MediaFolderRepository model.MediaFolderRepository
+	NowPlayingRepository  model.NowPlayingRepository
+	PlaylistRepository    model.PlaylistRepository
+	PropertyRepository    model.PropertyRepository
 }
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner_legacy.Set, api.NewRouter, wire.FieldsOf(new(*Provider), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner_legacy.Set, api.NewRouter, wire.FieldsOf(new(*Repositories), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
 	"ArtistIndexRepository", "MediaFileRepository", "MediaFolderRepository", "NowPlayingRepository",
 	"PlaylistRepository", "PropertyRepository"), createPersistenceProvider,
 )

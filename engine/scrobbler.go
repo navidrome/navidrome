@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 const (
@@ -17,18 +17,18 @@ const (
 )
 
 type Scrobbler interface {
-	Register(ctx context.Context, playerId int, trackId string, playDate time.Time) (*domain.MediaFile, error)
-	NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*domain.MediaFile, error)
+	Register(ctx context.Context, playerId int, trackId string, playDate time.Time) (*model.MediaFile, error)
+	NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error)
 }
 
-func NewScrobbler(itunes itunesbridge.ItunesControl, mr domain.MediaFileRepository, npr domain.NowPlayingRepository) Scrobbler {
+func NewScrobbler(itunes itunesbridge.ItunesControl, mr model.MediaFileRepository, npr model.NowPlayingRepository) Scrobbler {
 	return &scrobbler{itunes, mr, npr}
 }
 
 type scrobbler struct {
 	itunes itunesbridge.ItunesControl
-	mfRepo domain.MediaFileRepository
-	npRepo domain.NowPlayingRepository
+	mfRepo model.MediaFileRepository
+	npRepo model.NowPlayingRepository
 }
 
 func (s *scrobbler) detectSkipped(ctx context.Context, playerId int, trackId string) {
@@ -68,7 +68,7 @@ func (s *scrobbler) detectSkipped(ctx context.Context, playerId int, trackId str
 	}
 }
 
-func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, playTime time.Time) (*domain.MediaFile, error) {
+func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, playTime time.Time) (*model.MediaFile, error) {
 	s.detectSkipped(ctx, playerId, trackId)
 
 	mf, err := s.mfRepo.Get(trackId)
@@ -86,7 +86,7 @@ func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, 
 	return mf, nil
 }
 
-func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*domain.MediaFile, error) {
+func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error) {
 	mf, err := s.mfRepo.Get(trackId)
 	if err != nil {
 		return nil, err
@@ -96,6 +96,6 @@ func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, tr
 		return nil, errors.New(fmt.Sprintf(`ID "%s" not found`, trackId))
 	}
 
-	info := &domain.NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
+	info := &model.NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
 	return mf, s.npRepo.Enqueue(info)
 }

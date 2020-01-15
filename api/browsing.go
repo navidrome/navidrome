@@ -7,9 +7,9 @@ import (
 
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
@@ -86,7 +86,7 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 	id := ParamString(r, "id")
 	dir, err := c.browser.Directory(r.Context(), id)
 	switch {
-	case err == domain.ErrNotFound:
+	case err == model.ErrNotFound:
 		log.Error(r, "Requested ID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
@@ -103,7 +103,7 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 	id := ParamString(r, "id")
 	dir, err := c.browser.Artist(r.Context(), id)
 	switch {
-	case err == domain.ErrNotFound:
+	case err == model.ErrNotFound:
 		log.Error(r, "Requested ArtistID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Artist not found")
 	case err != nil:
@@ -120,7 +120,7 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 	id := ParamString(r, "id")
 	dir, err := c.browser.Album(r.Context(), id)
 	switch {
-	case err == domain.ErrNotFound:
+	case err == model.ErrNotFound:
 		log.Error(r, "Requested ID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Album not found")
 	case err != nil:
@@ -137,7 +137,7 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 	id := ParamString(r, "id")
 	song, err := c.browser.GetSong(id)
 	switch {
-	case err == domain.ErrNotFound:
+	case err == model.ErrNotFound:
 		log.Error(r, "Requested ID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Song not found")
 	case err != nil:

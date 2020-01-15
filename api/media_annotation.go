@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/cloudsonic/sonic-server/api/responses"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type MediaAnnotationController struct {
@@ -36,7 +36,7 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 	err = c.ratings.SetRating(r.Context(), id, rating)
 
 	switch {
-	case err == domain.ErrNotFound:
+	case err == model.ErrNotFound:
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorDataNotFound, "ID not found")
 	case err != nil:
@@ -66,7 +66,7 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 	log.Debug(r, "Starring items", "ids", ids)
 	err = c.ratings.SetStar(r.Context(), true, ids...)
 	switch {
-	case err == domain.ErrNotFound:
+	case err == model.ErrNotFound:
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorDataNotFound, "ID not found")
 	case err != nil:
@@ -85,7 +85,7 @@ func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Reques
 	log.Debug(r, "Unstarring items", "ids", ids)
 	err = c.ratings.SetStar(r.Context(), false, ids...)
 	switch {
-	case err == domain.ErrNotFound:
+	case err == model.ErrNotFound:
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:

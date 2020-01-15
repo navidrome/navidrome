@@ -2,8 +2,8 @@ package persistence
 
 import (
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type checkSumRepository struct {
@@ -17,7 +17,7 @@ type Checksum struct {
 	Sum string
 }
 
-func NewCheckSumRepository() domain.CheckSumRepository {
+func NewCheckSumRepository() model.CheckSumRepository {
 	r := &checkSumRepository{}
 	return r
 }
@@ -76,4 +76,4 @@ func (r *checkSumRepository) SetData(newSums map[string]string) error {
 	return nil
 }
 
-var _ domain.CheckSumRepository = (*checkSumRepository)(nil)
+var _ model.CheckSumRepository = (*checkSumRepository)(nil)

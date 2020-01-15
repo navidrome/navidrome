@@ -6,40 +6,40 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
 type Browser interface {
-	MediaFolders() (domain.MediaFolders, error)
-	Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error)
+	MediaFolders() (model.MediaFolders, error)
+	Indexes(ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error)
 	Directory(ctx context.Context, id string) (*DirectoryInfo, error)
 	Artist(ctx context.Context, id string) (*DirectoryInfo, error)
 	Album(ctx context.Context, id string) (*DirectoryInfo, error)
 	GetSong(id string) (*Entry, error)
 }
 
-func NewBrowser(pr domain.PropertyRepository, fr domain.MediaFolderRepository, ir domain.ArtistIndexRepository,
-	ar domain.ArtistRepository, alr domain.AlbumRepository, mr domain.MediaFileRepository) Browser {
+func NewBrowser(pr model.PropertyRepository, fr model.MediaFolderRepository, ir model.ArtistIndexRepository,
+	ar model.ArtistRepository, alr model.AlbumRepository, mr model.MediaFileRepository) Browser {
 	return &browser{pr, fr, ir, ar, alr, mr}
 }
 
 type browser struct {
-	propRepo   domain.PropertyRepository
-	folderRepo domain.MediaFolderRepository
-	indexRepo  domain.ArtistIndexRepository
-	artistRepo domain.ArtistRepository
-	albumRepo  domain.AlbumRepository
-	mfileRepo  domain.MediaFileRepository
+	propRepo   model.PropertyRepository
+	folderRepo model.MediaFolderRepository
+	indexRepo  model.ArtistIndexRepository
+	artistRepo model.ArtistRepository
+	albumRepo  model.AlbumRepository
+	mfileRepo  model.MediaFileRepository
 }
 
-func (b *browser) MediaFolders() (domain.MediaFolders, error) {
+func (b *browser) MediaFolders() (model.MediaFolders, error) {
 	return b.folderRepo.GetAll()
 }
 
-func (b *browser) Indexes(ifModifiedSince time.Time) (domain.ArtistIndexes, time.Time, error) {
-	l, err := b.propRepo.DefaultGet(domain.PropLastScan, "-1")
+func (b *browser) Indexes(ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error) {
+	l, err := b.propRepo.DefaultGet(model.PropLastScan, "-1")
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
 
@@ -100,7 +100,7 @@ func (b *browser) Directory(ctx context.Context, id string) (*DirectoryInfo, err
 		return b.Album(ctx, id)
 	default:
 		log.Debug(ctx, "Directory not found", "id", id)
-		return nil, domain.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 }
 
@@ -114,7 +114,7 @@ func (b *browser) GetSong(id string) (*Entry, error) {
 	return &entry, nil
 }
 
-func (b *browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *DirectoryInfo {
+func (b *browser) buildArtistDir(a *model.Artist, albums model.Albums) *DirectoryInfo {
 	dir := &DirectoryInfo{
 		Id:         a.ID,
 		Name:       a.Name,
@@ -129,7 +129,7 @@ func (b *browser) buildArtistDir(a *domain.Artist, albums domain.Albums) *Direct
 	return dir
 }
 
-func (b *browser) buildAlbumDir(al *domain.Album, tracks domain.MediaFiles) *DirectoryInfo {
+func (b *browser) buildAlbumDir(al *model.Album, tracks model.MediaFiles) *DirectoryInfo {
 	dir := &DirectoryInfo{
 		Id:         al.ID,
 		Name:       al.Name,
@@ -172,7 +172,7 @@ func (b *browser) isAlbum(ctx context.Context, id string) bool {
 	return found
 }
 
-func (b *browser) retrieveArtist(id string) (a *domain.Artist, as domain.Albums, err error) {
+func (b *browser) retrieveArtist(id string) (a *model.Artist, as model.Albums, err error) {
 	a, err = b.artistRepo.Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Artist %s from DB: %v", id, err)
@@ -185,7 +185,7 @@ func (b *browser) retrieveArtist(id string) (a *domain.Artist, as domain.Albums,
 	return
 }
 
-func (b *browser) retrieveAlbum(id string) (al *domain.Album, mfs domain.MediaFiles, err error) {
+func (b *browser) retrieveAlbum(id string) (al *model.Album, mfs model.MediaFiles, err error) {
 	al, err = b.albumRepo.Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Album %s from DB: %v", id, err)

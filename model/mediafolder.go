@@ -1,4 +1,4 @@
-package domain
+package model
 
 type MediaFolder struct {
 	ID   string

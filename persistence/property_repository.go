@@ -2,7 +2,7 @@ package persistence
 
 import (
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 type Property struct {
@@ -14,7 +14,7 @@ type propertyRepository struct {
 	sqlRepository
 }
 
-func NewPropertyRepository() domain.PropertyRepository {
+func NewPropertyRepository() model.PropertyRepository {
 	r := &propertyRepository{}
 	r.tableName = "property"
 	return r
@@ -36,14 +36,14 @@ func (r *propertyRepository) Get(id string) (string, error) {
 	p := &Property{ID: id}
 	err := Db().Read(p)
 	if err == orm.ErrNoRows {
-		return "", domain.ErrNotFound
+		return "", model.ErrNotFound
 	}
 	return p.Value, err
 }
 
 func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
 	value, err := r.Get(id)
-	if err == domain.ErrNotFound {
+	if err == model.ErrNotFound {
 		return defaultValue, nil
 	}
 	if err != nil {
@@ -52,4 +52,4 @@ func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string,
 	return value, nil
 }
 
-var _ domain.PropertyRepository = (*propertyRepository)(nil)
+var _ model.PropertyRepository = (*propertyRepository)(nil)

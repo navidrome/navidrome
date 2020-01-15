@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 func CreateMockAlbumRepo() *MockAlbum {
@@ -13,11 +13,11 @@ func CreateMockAlbumRepo() *MockAlbum {
 }
 
 type MockAlbum struct {
-	domain.AlbumRepository
-	data    map[string]*domain.Album
-	all     domain.Albums
+	model.AlbumRepository
+	data    map[string]*model.Album
+	all     model.Albums
 	err     bool
-	Options domain.QueryOptions
+	Options model.QueryOptions
 }
 
 func (m *MockAlbum) SetError(err bool) {
@@ -25,8 +25,8 @@ func (m *MockAlbum) SetError(err bool) {
 }
 
 func (m *MockAlbum) SetData(j string, size int) {
-	m.data = make(map[string]*domain.Album)
-	m.all = make(domain.Albums, size)
+	m.data = make(map[string]*model.Album)
+	m.all = make(model.Albums, size)
 	err := json.Unmarshal([]byte(j), &m.all)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
@@ -41,17 +41,17 @@ func (m *MockAlbum) Exists(id string) (bool, error) {
 	return found, nil
 }
 
-func (m *MockAlbum) Get(id string) (*domain.Album, error) {
+func (m *MockAlbum) Get(id string) (*model.Album, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
 	if d, ok := m.data[id]; ok {
 		return d, nil
 	}
-	return nil, domain.ErrNotFound
+	return nil, model.ErrNotFound
 }
 
-func (m *MockAlbum) GetAll(qo ...domain.QueryOptions) (domain.Albums, error) {
+func (m *MockAlbum) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	if len(qo) > 0 {
 		m.Options = qo[0]
 	}
@@ -61,11 +61,11 @@ func (m *MockAlbum) GetAll(qo ...domain.QueryOptions) (domain.Albums, error) {
 	return m.all, nil
 }
 
-func (m *MockAlbum) FindByArtist(artistId string) (domain.Albums, error) {
+func (m *MockAlbum) FindByArtist(artistId string) (model.Albums, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
-	var res = make(domain.Albums, len(m.data))
+	var res = make(model.Albums, len(m.data))
 	i := 0
 	for _, a := range m.data {
 		if a.ArtistID == artistId {
@@ -77,4 +77,4 @@ func (m *MockAlbum) FindByArtist(artistId string) (domain.Albums, error) {
 	return res, nil
 }
 
-var _ domain.AlbumRepository = (*MockAlbum)(nil)
+var _ model.AlbumRepository = (*MockAlbum)(nil)

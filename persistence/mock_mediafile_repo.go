@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cloudsonic/sonic-server/domain"
+	"github.com/cloudsonic/sonic-server/model"
 )
 
 func CreateMockMediaFileRepo() *MockMediaFile {
@@ -13,8 +13,8 @@ func CreateMockMediaFileRepo() *MockMediaFile {
 }
 
 type MockMediaFile struct {
-	domain.MediaFileRepository
-	data map[string]domain.MediaFile
+	model.MediaFileRepository
+	data map[string]model.MediaFile
 	err  bool
 }
 
@@ -23,8 +23,8 @@ func (m *MockMediaFile) SetError(err bool) {
 }
 
 func (m *MockMediaFile) SetData(j string, size int) {
-	m.data = make(map[string]domain.MediaFile)
-	var l = make(domain.MediaFiles, size)
+	m.data = make(map[string]model.MediaFile)
+	var l = make(model.MediaFiles, size)
 	err := json.Unmarshal([]byte(j), &l)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
@@ -42,21 +42,21 @@ func (m *MockMediaFile) Exists(id string) (bool, error) {
 	return found, nil
 }
 
-func (m *MockMediaFile) Get(id string) (*domain.MediaFile, error) {
+func (m *MockMediaFile) Get(id string) (*model.MediaFile, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
 	if d, ok := m.data[id]; ok {
 		return &d, nil
 	}
-	return nil, domain.ErrNotFound
+	return nil, model.ErrNotFound
 }
 
-func (m *MockMediaFile) FindByAlbum(artistId string) (domain.MediaFiles, error) {
+func (m *MockMediaFile) FindByAlbum(artistId string) (model.MediaFiles, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
-	var res = make(domain.MediaFiles, len(m.data))
+	var res = make(model.MediaFiles, len(m.data))
 	i := 0
 	for _, a := range m.data {
 		if a.AlbumID == artistId {
@@ -68,4 +68,4 @@ func (m *MockMediaFile) FindByAlbum(artistId string) (domain.MediaFiles, error) 
 	return res, nil
 }
 
-var _ domain.MediaFileRepository = (*MockMediaFile)(nil)
+var _ model.MediaFileRepository = (*MockMediaFile)(nil)

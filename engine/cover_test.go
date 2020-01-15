@@ -5,8 +5,8 @@ import (
 	"image"
 	"testing"
 
-	"github.com/cloudsonic/sonic-server/domain"
 	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/persistence"
 	. "github.com/cloudsonic/sonic-server/tests"
 	. "github.com/smartystreets/goconvey/convey"
@@ -54,7 +54,7 @@ func TestCover(t *testing.T) {
 			err := cover.Get("2", 0, out)
 
 			Convey("Then it should return DatNotFound error", func() {
-				So(err, ShouldEqual, domain.ErrNotFound)
+				So(err, ShouldEqual, model.ErrNotFound)
 			})
 		})
 		Convey("When specifying a size", func() {
