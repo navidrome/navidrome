@@ -248,4 +248,36 @@ var _ = Describe("Responses", func() {
 			})
 		})
 	})
+
+	Describe("Genres", func() {
+		BeforeEach(func() {
+			response.Genres = &Genres{}
+		})
+
+		Context("without data", func() {
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				genres := make([]Genre, 3)
+				genres[0] = Genre{SongCount: 1000, AlbumCount: 100, Name: "Rock"}
+				genres[1] = Genre{SongCount: 500, AlbumCount: 50, Name: "Reggae"}
+				genres[2] = Genre{SongCount: 0, AlbumCount: 0, Name: "Pop"}
+				response.Genres.Genre = genres
+			})
+
+			It("should match XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
 })

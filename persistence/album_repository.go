@@ -23,7 +23,7 @@ type Album struct {
 	SongCount    int       ``
 	Duration     int       ``
 	Rating       int       `orm:"index"`
-	Genre        string    ``
+	Genre        string    `orm:"index"`
 	StarredAt    time.Time `orm:"null"`
 	CreatedAt    time.Time `orm:"null"`
 	UpdatedAt    time.Time `orm:"null"`

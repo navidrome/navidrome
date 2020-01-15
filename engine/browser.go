@@ -3,7 +3,9 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cloudsonic/sonic-server/log"
@@ -18,11 +20,12 @@ type Browser interface {
 	Artist(ctx context.Context, id string) (*DirectoryInfo, error)
 	Album(ctx context.Context, id string) (*DirectoryInfo, error)
 	GetSong(id string) (*Entry, error)
+	GetGenres() (model.Genres, error)
 }
 
 func NewBrowser(pr model.PropertyRepository, fr model.MediaFolderRepository, ir model.ArtistIndexRepository,
-	ar model.ArtistRepository, alr model.AlbumRepository, mr model.MediaFileRepository) Browser {
-	return &browser{pr, fr, ir, ar, alr, mr}
+	ar model.ArtistRepository, alr model.AlbumRepository, mr model.MediaFileRepository, gr model.GenreRepository) Browser {
+	return &browser{pr, fr, ir, ar, alr, mr, gr}
 }
 
 type browser struct {
@@ -32,6 +35,7 @@ type browser struct {
 	artistRepo model.ArtistRepository
 	albumRepo  model.AlbumRepository
 	mfileRepo  model.MediaFileRepository
+	genreRepo  model.GenreRepository
 }
 
 func (b *browser) MediaFolders() (model.MediaFolders, error) {
@@ -112,6 +116,19 @@ func (b *browser) GetSong(id string) (*Entry, error) {
 
 	entry := FromMediaFile(mf)
 	return &entry, nil
+}
+
+func (b *browser) GetGenres() (model.Genres, error) {
+	genres, err := b.genreRepo.GetAll()
+	for i, g := range genres {
+		if strings.TrimSpace(g.Name) == "" {
+			genres[i].Name = "<Empty>"
+		}
+	}
+	sort.Slice(genres, func(i, j int) bool {
+		return genres[i].Name < genres[j].Name
+	})
+	return genres, err
 }
 
 func (b *browser) buildArtistDir(a *model.Artist, albums model.Albums) *DirectoryInfo {

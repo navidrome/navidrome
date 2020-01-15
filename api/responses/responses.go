@@ -26,6 +26,7 @@ type Subsonic struct {
 	NowPlaying    *NowPlaying        `xml:"nowPlaying,omitempty"                          json:"nowPlaying,omitempty"`
 	Song          *Child             `xml:"song,omitempty"                                json:"song,omitempty"`
 	RandomSongs   *Songs             `xml:"randomSongs,omitempty"                         json:"randomSongs,omitempty"`
+	Genres        *Genres            `xml:"genres,omitempty"                              json:"genres,omitempty"`
 
 	// ID3
 	Artist              *Indexes             `xml:"artists,omitempty"                     json:"artists,omitempty"`
@@ -258,4 +259,14 @@ type User struct {
 	ShareRole           bool   `xml:"shareRole,attr"              json:"shareRole"`
 	VideoConversionRole bool   `xml:"videoConversionRole,attr"    json:"videoConversionRole"`
 	Folder              []int  `xml:"folder,omitempty"            json:"folder,omitempty"`
+}
+
+type Genre struct {
+	Name       string `xml:",chardata"                      json:"value,omitempty"`
+	SongCount  int    `xml:"songCount,attr"             json:"songCount"`
+	AlbumCount int    `xml:"albumCount,attr"            json:"albumCount"`
+}
+
+type Genres struct {
+	Genre []Genre `xml:"genre,omitempty"                      json:"genre,omitempty"`
 }

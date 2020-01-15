@@ -64,6 +64,7 @@ func (api *Router) routes() http.Handler {
 		H(r, "getMusicFolders", c.GetMusicFolders)
 		H(r, "getIndexes", c.GetIndexes)
 		H(r, "getArtists", c.GetArtists)
+		H(r, "getGenres", c.GetGenres)
 		reqParams := r.With(requiredParams("id"))
 		H(reqParams, "getMusicDirectory", c.GetMusicDirectory)
 		H(reqParams, "getArtist", c.GetArtist)

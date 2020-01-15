@@ -41,7 +41,8 @@ func CreateSubsonicAPIRouter() *api.Router {
 	artistRepository := repositories.ArtistRepository
 	albumRepository := repositories.AlbumRepository
 	mediaFileRepository := repositories.MediaFileRepository
-	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistIndexRepository, artistRepository, albumRepository, mediaFileRepository)
+	genreRepository := repositories.GenreRepository
+	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistIndexRepository, artistRepository, albumRepository, mediaFileRepository, genreRepository)
 	cover := engine.NewCover(mediaFileRepository, albumRepository)
 	nowPlayingRepository := repositories.NowPlayingRepository
 	listGenerator := engine.NewListGenerator(albumRepository, mediaFileRepository, nowPlayingRepository)
@@ -65,6 +66,7 @@ func createPersistenceProvider() *Repositories {
 	nowPlayingRepository := persistence.NewNowPlayingRepository()
 	playlistRepository := persistence.NewPlaylistRepository()
 	propertyRepository := persistence.NewPropertyRepository()
+	genreRepository := persistence.NewGenreRepository()
 	repositories := &Repositories{
 		AlbumRepository:       albumRepository,
 		ArtistRepository:      artistRepository,
@@ -75,6 +77,7 @@ func createPersistenceProvider() *Repositories {
 		NowPlayingRepository:  nowPlayingRepository,
 		PlaylistRepository:    playlistRepository,
 		PropertyRepository:    propertyRepository,
+		GenreRepository:       genreRepository,
 	}
 	return repositories
 }
@@ -91,9 +94,10 @@ type Repositories struct {
 	NowPlayingRepository  model.NowPlayingRepository
 	PlaylistRepository    model.PlaylistRepository
 	PropertyRepository    model.PropertyRepository
+	GenreRepository       model.GenreRepository
 }
 
 var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner_legacy.Set, api.NewRouter, wire.FieldsOf(new(*Repositories), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
 	"ArtistIndexRepository", "MediaFileRepository", "MediaFolderRepository", "NowPlayingRepository",
-	"PlaylistRepository", "PropertyRepository"), createPersistenceProvider,
+	"PlaylistRepository", "PropertyRepository", "GenreRepository"), createPersistenceProvider,
 )

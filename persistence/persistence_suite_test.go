@@ -16,19 +16,38 @@ func TestPersistence(t *testing.T) {
 	RunSpecs(t, "Persistence Suite")
 }
 
-var testAlbums = model.Albums{
-	{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", ArtistID: "1"},
-	{ID: "2", Name: "Abbey Road", Artist: "The Beatles", ArtistID: "1"},
-	{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", ArtistID: "2", Starred: true},
-}
+var artistSaaraSaara = model.Artist{ID: "1", Name: "Saara Saara", AlbumCount: 2}
+var artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk"}
+var artistBeatles = model.Artist{ID: "3", Name: "The Beatles"}
 var testArtists = model.Artists{
-	{ID: "1", Name: "Saara Saara", AlbumCount: 2},
-	{ID: "2", Name: "Kraftwerk"},
-	{ID: "3", Name: "The Beatles"},
+	artistSaaraSaara,
+	artistKraftwerk,
+	artistBeatles,
+}
+
+var albumSgtPeppers = model.Album{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", ArtistID: "1", Genre: "Rock"}
+var albumAbbeyRoad = model.Album{ID: "2", Name: "Abbey Road", Artist: "The Beatles", ArtistID: "1", Genre: "Rock"}
+var albumRadioactivity = model.Album{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", ArtistID: "2", Starred: true, Genre: "Electronic"}
+var testAlbums = model.Albums{
+	albumSgtPeppers,
+	albumAbbeyRoad,
+	albumRadioactivity,
+}
+
+var songDayInALife = model.MediaFile{ID: "1", Title: "A Day In A Life", ArtistID: "3", AlbumID: "1", Genre: "Rock"}
+var songComeTogether = model.MediaFile{ID: "2", Title: "Come Together", ArtistID: "3", AlbumID: "2", Genre: "Rock"}
+var songRadioactivity = model.MediaFile{ID: "3", Title: "Radioactivity", ArtistID: "2", AlbumID: "3", Genre: "Electronic"}
+var songAntenna = model.MediaFile{ID: "4", Title: "Antenna", ArtistID: "2", AlbumID: "3", Genre: "Electronic"}
+var testSongs = model.MediaFiles{
+	songDayInALife,
+	songComeTogether,
+	songRadioactivity,
+	songAntenna,
 }
 
 var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
+		//log.SetLevel(log.LevelTrace)
 		//conf.Sonic.DbPath, _ = ioutil.TempDir("", "cloudsonic_tests")
 		//os.MkdirAll(conf.Sonic.DbPath, 0700)
 		conf.Sonic.DbPath = ":memory:"
@@ -40,6 +59,13 @@ var _ = Describe("Initialize test DB", func() {
 		albumRepository := NewAlbumRepository()
 		for _, a := range testAlbums {
 			err := albumRepository.Put(&a)
+			if err != nil {
+				panic(err)
+			}
+		}
+		mediaFileRepository := NewMediaFileRepository()
+		for _, s := range testSongs {
+			err := mediaFileRepository.Put(&s)
 			if err != nil {
 				panic(err)
 			}

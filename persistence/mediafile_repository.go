@@ -24,7 +24,7 @@ type MediaFile struct {
 	Suffix      string    ``
 	Duration    int       ``
 	BitRate     int       ``
-	Genre       string    ``
+	Genre       string    `orm:"index"`
 	Compilation bool      ``
 	PlayCount   int       `orm:"index"`
 	PlayDate    time.Time `orm:"null"`

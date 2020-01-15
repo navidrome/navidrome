@@ -151,6 +151,18 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 	return response, nil
 }
 
+func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	genres, err := c.browser.GetGenres()
+	if err != nil {
+		log.Error(r, err)
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	response := NewResponse()
+	response.Genres = ToGenres(genres)
+	return response, nil
+}
+
 func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.Directory {
 	dir := &responses.Directory{
 		Id:         d.Id,

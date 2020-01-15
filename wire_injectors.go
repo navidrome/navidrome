@@ -13,6 +13,7 @@ import (
 	"github.com/google/wire"
 )
 
+// TODO Can we remove this indirection?
 type Repositories struct {
 	AlbumRepository       model.AlbumRepository
 	ArtistRepository      model.ArtistRepository
@@ -23,6 +24,7 @@ type Repositories struct {
 	NowPlayingRepository  model.NowPlayingRepository
 	PlaylistRepository    model.PlaylistRepository
 	PropertyRepository    model.PropertyRepository
+	GenreRepository       model.GenreRepository
 }
 
 var allProviders = wire.NewSet(
@@ -32,7 +34,7 @@ var allProviders = wire.NewSet(
 	api.NewRouter,
 	wire.FieldsOf(new(*Repositories), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
 		"ArtistIndexRepository", "MediaFileRepository", "MediaFolderRepository", "NowPlayingRepository",
-		"PlaylistRepository", "PropertyRepository"),
+		"PlaylistRepository", "PropertyRepository", "GenreRepository"),
 	createPersistenceProvider,
 )
 

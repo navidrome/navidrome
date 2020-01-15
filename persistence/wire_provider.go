@@ -14,4 +14,5 @@ var Set = wire.NewSet(
 	NewPlaylistRepository,
 	NewNowPlayingRepository,
 	NewMediaFolderRepository,
+	NewGenreRepository,
 )

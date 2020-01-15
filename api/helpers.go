@@ -9,6 +9,7 @@ import (
 
 	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
@@ -184,4 +185,12 @@ func ToChild(entry engine.Entry) responses.Child {
 	child.UserRating = entry.UserRating
 	child.SongCount = entry.SongCount
 	return child
+}
+
+func ToGenres(genres model.Genres) *responses.Genres {
+	response := make([]responses.Genre, len(genres))
+	for i, g := range genres {
+		response[i] = responses.Genre(g)
+	}
+	return &responses.Genres{Genre: response}
 }
