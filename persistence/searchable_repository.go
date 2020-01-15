@@ -35,7 +35,10 @@ func (r *searchableRepository) put(o orm.Ormer, id string, textToIndex string, a
 		return err
 	}
 	if c == 0 {
-		_, err = o.Insert(a)
+		err = r.insert(o, a)
+		if err != nil && err.Error() == "LastInsertId is not supported by this driver" {
+			err = nil
+		}
 	} else {
 		_, err = o.Update(a)
 	}
@@ -62,7 +65,7 @@ func (r *searchableRepository) addToIndex(o orm.Ormer, table, id, text string) e
 	sanitizedText := strings.TrimSpace(sanitize.Accents(strings.ToLower(text)))
 	item = Search{ID: id, Table: table, FullText: sanitizedText}
 	if err == orm.ErrNoRows {
-		_, err = o.Insert(&item)
+		err = r.insert(o, &item)
 	} else {
 		_, err = o.Update(&item)
 	}

@@ -1,17 +1,22 @@
 package persistence
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 const batchSize = 100
 
-var once sync.Once
+var (
+	once   sync.Once
+	driver = "sqlite3"
+)
 
 func Db() orm.Ormer {
 	once.Do(func() {
@@ -23,7 +28,7 @@ func Db() orm.Ormer {
 		if err != nil {
 			panic(err)
 		}
-		log.Debug("Opening SQLite DB from: " + dbPath)
+		log.Debug("Opening DB from: "+dbPath, "driver", driver)
 	})
 	return orm.NewOrm()
 }
@@ -62,7 +67,10 @@ func initORM(dbPath string) error {
 	orm.RegisterModel(new(Property))
 	orm.RegisterModel(new(Playlist))
 	orm.RegisterModel(new(Search))
-	err := orm.RegisterDataBase("default", "sqlite3", dbPath)
+	if strings.Contains(dbPath, "postgres") {
+		driver = "postgres"
+	}
+	err := orm.RegisterDataBase("default", driver, dbPath)
 	if err != nil {
 		panic(err)
 	}

@@ -54,13 +54,25 @@ func (r *sqlRepository) GetAllIds() ([]string, error) {
 	return result, nil
 }
 
+// "Hack" to bypass Postgres driver limitation
+func (r *sqlRepository) insert(o orm.Ormer, record interface{}) error {
+	_, err := o.Insert(record)
+	if err != nil && err.Error() != "LastInsertId is not supported by this driver" {
+		return err
+	}
+	return nil
+}
+
 func (r *sqlRepository) put(o orm.Ormer, id string, a interface{}) error {
 	c, err := r.newQuery(o).Filter("id", id).Count()
 	if err != nil {
 		return err
 	}
 	if c == 0 {
-		_, err = o.Insert(a)
+		err = r.insert(o, a)
+		if err != nil && err.Error() == "LastInsertId is not supported by this driver" {
+			err = nil
+		}
 		return err
 	}
 	_, err = o.Update(a)

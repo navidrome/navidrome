@@ -47,7 +47,7 @@ func (r *artistIndexRepository) Put(idx *domain.ArtistIndex) error {
 				Artist:     artist.Artist,
 				AlbumCount: artist.AlbumCount,
 			}
-			_, err := o.Insert(&a)
+			err := r.insert(o, &a)
 			if err != nil {
 				return err
 			}
