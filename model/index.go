@@ -24,7 +24,8 @@ func (a ArtistInfos) Less(i, j int) bool {
 type ArtistIndexes []ArtistIndex
 
 type ArtistIndexRepository interface {
-	BaseRepository
+	CountAll() (int64, error)
+	Exists(id string) (bool, error)
 	Put(m *ArtistIndex) error
 	Get(id string) (*ArtistIndex, error)
 	GetAll() (ArtistIndexes, error)

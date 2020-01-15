@@ -2,11 +2,6 @@ package model
 
 import "errors"
 
-type BaseRepository interface {
-	CountAll() (int64, error)
-	Exists(id string) (bool, error)
-}
-
 var (
 	ErrNotFound = errors.New("data not found")
 )

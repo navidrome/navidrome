@@ -46,7 +46,8 @@ func (a MediaFiles) Less(i, j int) bool {
 }
 
 type MediaFileRepository interface {
-	BaseRepository
+	CountAll() (int64, error)
+	Exists(id string) (bool, error)
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
 	FindByAlbum(albumId string) (MediaFiles, error)

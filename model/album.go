@@ -27,7 +27,8 @@ type Album struct {
 type Albums []Album
 
 type AlbumRepository interface {
-	BaseRepository
+	CountAll() (int64, error)
+	Exists(id string) (bool, error)
 	Put(m *Album) error
 	Get(id string) (*Album, error)
 	FindByArtist(artistId string) (Albums, error)

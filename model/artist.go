@@ -7,7 +7,8 @@ type Artist struct {
 }
 
 type ArtistRepository interface {
-	BaseRepository
+	CountAll() (int64, error)
+	Exists(id string) (bool, error)
 	Put(m *Artist) error
 	Get(id string) (*Artist, error)
 	PurgeInactive(active Artists) error
