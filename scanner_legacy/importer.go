@@ -1,4 +1,4 @@
-package scanner
+package scanner_legacy
 
 import (
 	"fmt"

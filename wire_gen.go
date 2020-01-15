@@ -11,7 +11,7 @@ import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence"
-	"github.com/cloudsonic/sonic-server/scanner"
+	"github.com/cloudsonic/sonic-server/scanner_legacy"
 	"github.com/cloudsonic/sonic-server/server"
 	"github.com/google/wire"
 )
@@ -21,14 +21,14 @@ import (
 func CreateApp(musicFolder string) *server.Server {
 	provider := createPersistenceProvider()
 	checkSumRepository := provider.CheckSumRepository
-	itunesScanner := scanner.NewItunesScanner(checkSumRepository)
+	itunesScanner := scanner_legacy.NewItunesScanner(checkSumRepository)
 	mediaFileRepository := provider.MediaFileRepository
 	albumRepository := provider.AlbumRepository
 	artistRepository := provider.ArtistRepository
 	artistIndexRepository := provider.ArtistIndexRepository
 	playlistRepository := provider.PlaylistRepository
 	propertyRepository := provider.PropertyRepository
-	importer := scanner.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository)
+	importer := scanner_legacy.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository)
 	serverServer := server.New(importer)
 	return serverServer
 }
@@ -84,7 +84,7 @@ func createPersistenceProvider() *Provider {
 type Provider struct {
 	AlbumRepository       domain.AlbumRepository
 	ArtistRepository      domain.ArtistRepository
-	CheckSumRepository    scanner.CheckSumRepository
+	CheckSumRepository    domain.CheckSumRepository
 	ArtistIndexRepository domain.ArtistIndexRepository
 	MediaFileRepository   domain.MediaFileRepository
 	MediaFolderRepository domain.MediaFolderRepository
@@ -93,7 +93,7 @@ type Provider struct {
 	PropertyRepository    domain.PropertyRepository
 }
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner.Set, api.NewRouter, wire.FieldsOf(new(*Provider), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner_legacy.Set, api.NewRouter, wire.FieldsOf(new(*Provider), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
 	"ArtistIndexRepository", "MediaFileRepository", "MediaFolderRepository", "NowPlayingRepository",
 	"PlaylistRepository", "PropertyRepository"), createPersistenceProvider,
 )

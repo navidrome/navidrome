@@ -1,13 +1,13 @@
 package persistence
 
 import (
-	"github.com/cloudsonic/sonic-server/scanner"
+	"github.com/cloudsonic/sonic-server/domain"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("ChecksumRepository", func() {
-	var repo scanner.CheckSumRepository
+	var repo domain.CheckSumRepository
 
 	BeforeEach(func() {
 		Db().Delete(&Checksum{ID: checkSumId})

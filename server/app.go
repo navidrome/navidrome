@@ -9,7 +9,7 @@ import (
 
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/scanner"
+	"github.com/cloudsonic/sonic-server/scanner_legacy"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
@@ -18,11 +18,11 @@ import (
 const Version = "0.2"
 
 type Server struct {
-	Importer *scanner.Importer
+	Importer *scanner_legacy.Importer
 	router   *chi.Mux
 }
 
-func New(importer *scanner.Importer) *Server {
+func New(importer *scanner_legacy.Importer) *Server {
 	a := &Server{Importer: importer}
 	showBanner(Version)
 	initMimeTypes()

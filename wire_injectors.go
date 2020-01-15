@@ -8,7 +8,7 @@ import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence"
-	"github.com/cloudsonic/sonic-server/scanner"
+	"github.com/cloudsonic/sonic-server/scanner_legacy"
 	"github.com/cloudsonic/sonic-server/server"
 	"github.com/google/wire"
 )
@@ -16,7 +16,7 @@ import (
 type Provider struct {
 	AlbumRepository       domain.AlbumRepository
 	ArtistRepository      domain.ArtistRepository
-	CheckSumRepository    scanner.CheckSumRepository
+	CheckSumRepository    domain.CheckSumRepository
 	ArtistIndexRepository domain.ArtistIndexRepository
 	MediaFileRepository   domain.MediaFileRepository
 	MediaFolderRepository domain.MediaFolderRepository
@@ -28,7 +28,7 @@ type Provider struct {
 var allProviders = wire.NewSet(
 	itunesbridge.NewItunesControl,
 	engine.Set,
-	scanner.Set,
+	scanner_legacy.Set,
 	api.NewRouter,
 	wire.FieldsOf(new(*Provider), "AlbumRepository", "ArtistRepository", "CheckSumRepository",
 		"ArtistIndexRepository", "MediaFileRepository", "MediaFolderRepository", "NowPlayingRepository",

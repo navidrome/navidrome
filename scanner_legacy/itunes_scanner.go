@@ -1,4 +1,4 @@
-package scanner
+package scanner_legacy
 
 import (
 	"crypto/md5"
@@ -28,17 +28,12 @@ type ItunesScanner struct {
 	pplaylists        map[string]plsRelation
 	pmediaFiles       map[int]*domain.MediaFile
 	lastModifiedSince time.Time
-	checksumRepo      CheckSumRepository
+	checksumRepo      domain.CheckSumRepository
 	newSums           map[string]string
 }
 
-func NewItunesScanner(checksumRepo CheckSumRepository) *ItunesScanner {
+func NewItunesScanner(checksumRepo domain.CheckSumRepository) *ItunesScanner {
 	return &ItunesScanner{checksumRepo: checksumRepo}
-}
-
-type CheckSumRepository interface {
-	Get(id string) (string, error)
-	SetData(newSums map[string]string) error
 }
 
 type plsRelation struct {
@@ -87,6 +82,8 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 			log.Debug(fmt.Sprintf("Processed %d tracks", i), "artists", len(s.artists), "albums", len(s.albums), "songs", len(s.mediaFiles))
 		}
 	}
+
+	log.Debug("Finished processing tracks.", "artists", len(s.artists), "albums", len(s.albums), "songs", len(s.mediaFiles))
 
 	for albumId, count := range songsPerAlbum {
 		s.albums[albumId].SongCount = count
