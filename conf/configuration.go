@@ -27,6 +27,7 @@ type sonic struct {
 	LogLevel                 string `default:"info"`
 	DevDisableAuthentication bool   `default:"false"`
 	DevDisableFileCheck      bool   `default:"false"`
+	DevDisableBanner         bool   `default:"false"`
 }
 
 var Sonic *sonic

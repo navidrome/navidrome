@@ -24,7 +24,9 @@ type Server struct {
 
 func New(importer *scanner_legacy.Importer) *Server {
 	a := &Server{Importer: importer}
-	showBanner(Version)
+	if !conf.Sonic.DevDisableBanner {
+		showBanner(Version)
+	}
 	initMimeTypes()
 	a.initRoutes()
 	a.initImporter()
