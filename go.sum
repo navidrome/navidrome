@@ -30,6 +30,8 @@ github.com/dhowden/plist v0.0.0-20141002110153-5db6e0d9931a h1:7MucP9rMAsQRcRE1s
 github.com/dhowden/plist v0.0.0-20141002110153-5db6e0d9931a/go.mod h1:sLjdR6uwx3L6/Py8F+QgAfeiuY87xuYGwCDqRFrvCzw=
 github.com/dhowden/tag v0.0.0-20170128231422-9edd38ca5d10 h1:H4waV2XHwsud7v90IfEbwwynwVlC7YU3RicLlfkfgn4=
 github.com/dhowden/tag v0.0.0-20170128231422-9edd38ca5d10/go.mod h1:SniNVYuaD1jmdEEvi+7ywb1QFR7agjeTdGKyFb0p7Rw=
+github.com/dhowden/tag v0.0.0-20191122115059-7e5c04feccd8 h1:nmFnmD8VZXkjDHIb1Gnfz50cgzUvGN72zLjPRXBW/hU=
+github.com/dhowden/tag v0.0.0-20191122115059-7e5c04feccd8/go.mod h1:SniNVYuaD1jmdEEvi+7ywb1QFR7agjeTdGKyFb0p7Rw=
 github.com/edsrzf/mmap-go v0.0.0-20170320065105-0bce6a688712 h1:aaQcKT9WumO6JEJcRyTqFVq4XUZiUcKR2/GI31TOcz8=
 github.com/edsrzf/mmap-go v0.0.0-20170320065105-0bce6a688712/go.mod h1:YO35OhQPt3KJa3ryjFM5Bs14WD66h8eGKpfaBNrHW5M=
 github.com/elazarl/go-bindata-assetfs v1.0.0/go.mod h1:v+YaWX3bdea5J/mo8dSETolEo7R71Vk1u8bnjau5yw4=
