@@ -16,7 +16,7 @@ import (
 type Repositories struct {
 	AlbumRepository       model.AlbumRepository
 	ArtistRepository      model.ArtistRepository
-	CheckSumRepository    model.CheckSumRepository
+	CheckSumRepository    model.ChecksumRepository
 	ArtistIndexRepository model.ArtistIndexRepository
 	MediaFileRepository   model.MediaFileRepository
 	MediaFolderRepository model.MediaFolderRepository

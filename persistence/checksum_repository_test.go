@@ -7,7 +7,7 @@ import (
 )
 
 var _ = Describe("ChecksumRepository", func() {
-	var repo model.CheckSumRepository
+	var repo model.ChecksumRepository
 
 	BeforeEach(func() {
 		Db().Delete(&Checksum{ID: checkSumId})
@@ -21,11 +21,15 @@ var _ = Describe("ChecksumRepository", func() {
 	})
 
 	It("can retrieve data", func() {
-		Expect(repo.Get("b")).To(Equal("BBB"))
+		sums, err := repo.GetData()
+		Expect(err).To(BeNil())
+		Expect(sums["b"]).To(Equal("BBB"))
 	})
 
 	It("persists data", func() {
 		newRepo := NewCheckSumRepository()
-		Expect(newRepo.Get("b")).To(Equal("BBB"))
+		sums, err := newRepo.GetData()
+		Expect(err).To(BeNil())
+		Expect(sums["b"]).To(Equal("BBB"))
 	})
 })

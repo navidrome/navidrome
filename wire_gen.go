@@ -20,8 +20,8 @@ import (
 
 func CreateApp(musicFolder string) *server.Server {
 	repositories := createPersistenceProvider()
-	checkSumRepository := repositories.CheckSumRepository
-	itunesScanner := scanner_legacy.NewItunesScanner(checkSumRepository)
+	checksumRepository := repositories.CheckSumRepository
+	itunesScanner := scanner_legacy.NewItunesScanner(checksumRepository)
 	mediaFileRepository := repositories.MediaFileRepository
 	albumRepository := repositories.AlbumRepository
 	artistRepository := repositories.ArtistRepository
@@ -58,7 +58,7 @@ func CreateSubsonicAPIRouter() *api.Router {
 func createPersistenceProvider() *Repositories {
 	albumRepository := persistence.NewAlbumRepository()
 	artistRepository := persistence.NewArtistRepository()
-	checkSumRepository := persistence.NewCheckSumRepository()
+	checksumRepository := persistence.NewCheckSumRepository()
 	artistIndexRepository := persistence.NewArtistIndexRepository()
 	mediaFileRepository := persistence.NewMediaFileRepository()
 	mediaFolderRepository := persistence.NewMediaFolderRepository()
@@ -68,7 +68,7 @@ func createPersistenceProvider() *Repositories {
 	repositories := &Repositories{
 		AlbumRepository:       albumRepository,
 		ArtistRepository:      artistRepository,
-		CheckSumRepository:    checkSumRepository,
+		CheckSumRepository:    checksumRepository,
 		ArtistIndexRepository: artistIndexRepository,
 		MediaFileRepository:   mediaFileRepository,
 		MediaFolderRepository: mediaFolderRepository,
@@ -84,7 +84,7 @@ func createPersistenceProvider() *Repositories {
 type Repositories struct {
 	AlbumRepository       model.AlbumRepository
 	ArtistRepository      model.ArtistRepository
-	CheckSumRepository    model.CheckSumRepository
+	CheckSumRepository    model.ChecksumRepository
 	ArtistIndexRepository model.ArtistIndexRepository
 	MediaFileRepository   model.MediaFileRepository
 	MediaFolderRepository model.MediaFolderRepository

@@ -2,12 +2,10 @@ package persistence
 
 import (
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
 )
 
 type checkSumRepository struct {
-	data map[string]string
 }
 
 const checkSumId = "1"
@@ -17,40 +15,28 @@ type Checksum struct {
 	Sum string
 }
 
-func NewCheckSumRepository() model.CheckSumRepository {
+func NewCheckSumRepository() model.ChecksumRepository {
 	r := &checkSumRepository{}
 	return r
 }
 
-func (r *checkSumRepository) loadData() error {
+func (r *checkSumRepository) GetData() (model.ChecksumMap, error) {
 	loadedData := make(map[string]string)
 
 	var all []Checksum
-	_, err := Db().QueryTable(&Checksum{}).All(&all)
+	_, err := Db().QueryTable(&Checksum{}).Limit(-1).All(&all)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, cks := range all {
 		loadedData[cks.ID] = cks.Sum
 	}
 
-	r.data = loadedData
-	log.Debug("Loaded checksums", "total", len(loadedData))
-	return nil
+	return loadedData, nil
 }
 
-func (r *checkSumRepository) Get(id string) (string, error) {
-	if r.data == nil {
-		err := r.loadData()
-		if err != nil {
-			return "", err
-		}
-	}
-	return r.data[id], nil
-}
-
-func (r *checkSumRepository) SetData(newSums map[string]string) error {
+func (r *checkSumRepository) SetData(newSums model.ChecksumMap) error {
 	err := withTx(func(o orm.Ormer) error {
 		_, err := Db().Raw("delete from checksum").Exec()
 		if err != nil {
@@ -72,8 +58,7 @@ func (r *checkSumRepository) SetData(newSums map[string]string) error {
 	if err != nil {
 		return err
 	}
-	r.data = newSums
 	return nil
 }
 
-var _ model.CheckSumRepository = (*checkSumRepository)(nil)
+var _ model.ChecksumRepository = (*checkSumRepository)(nil)

@@ -28,11 +28,12 @@ type ItunesScanner struct {
 	pplaylists        map[string]plsRelation
 	pmediaFiles       map[int]*model.MediaFile
 	lastModifiedSince time.Time
-	checksumRepo      model.CheckSumRepository
+	checksumRepo      model.ChecksumRepository
+	checksums         model.ChecksumMap
 	newSums           map[string]string
 }
 
-func NewItunesScanner(checksumRepo model.CheckSumRepository) *ItunesScanner {
+func NewItunesScanner(checksumRepo model.ChecksumRepository) *ItunesScanner {
 	return &ItunesScanner{checksumRepo: checksumRepo}
 }
 
@@ -50,6 +51,14 @@ func (s *ItunesScanner) ScanLibrary(lastModifiedSince time.Time, path string) (i
 		return 0, err
 	}
 	log.Debug("Loaded tracks", "total", len(l.Tracks))
+
+	s.checksums, err = s.checksumRepo.GetData()
+	if err != nil {
+		log.Error("Error loading checksums", err)
+		s.checksums = map[string]string{}
+	} else {
+		log.Debug("Loaded checksums", "total", len(s.checksums))
+	}
 
 	s.lastModifiedSince = lastModifiedSince
 	s.mediaFiles = make(map[string]*model.MediaFile)
@@ -212,7 +221,7 @@ func (s *ItunesScanner) lastChangedDate(t *itl.Track) time.Time {
 
 func (s *ItunesScanner) hasChanged(t *itl.Track) bool {
 	id := t.PersistentID
-	oldSum, _ := s.checksumRepo.Get(id)
+	oldSum, _ := s.checksums[id]
 	newSum := s.newSums[id]
 	return oldSum != newSum
 }
