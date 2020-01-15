@@ -22,10 +22,10 @@ var _ = Describe("Responses", func() {
 	})
 
 	Describe("EmptyResponse", func() {
-		It("should match XML", func() {
+		It("should match .XML", func() {
 			Expect(xml.Marshal(response)).To(MatchSnapshot())
 		})
-		It("should match JSON", func() {
+		It("should match .JSON", func() {
 			Expect(json.Marshal(response)).To(MatchSnapshot())
 		})
 	})
@@ -34,10 +34,10 @@ var _ = Describe("Responses", func() {
 		BeforeEach(func() {
 			response.License = &License{Valid: true}
 		})
-		It("should match XML", func() {
+		It("should match .XML", func() {
 			Expect(xml.Marshal(response)).To(MatchSnapshot())
 		})
-		It("should match JSON", func() {
+		It("should match .JSON", func() {
 			Expect(json.Marshal(response)).To(MatchSnapshot())
 		})
 	})
@@ -48,10 +48,10 @@ var _ = Describe("Responses", func() {
 		})
 
 		Context("without data", func() {
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -64,10 +64,10 @@ var _ = Describe("Responses", func() {
 				response.MusicFolders.Folders = folders
 			})
 
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -79,10 +79,10 @@ var _ = Describe("Responses", func() {
 		})
 
 		Context("without data", func() {
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -96,10 +96,10 @@ var _ = Describe("Responses", func() {
 				response.Indexes.Index = index
 			})
 
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -120,10 +120,10 @@ var _ = Describe("Responses", func() {
 				response.Directory.Child = child
 			})
 
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -135,10 +135,10 @@ var _ = Describe("Responses", func() {
 		})
 
 		Context("without data", func() {
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -150,10 +150,10 @@ var _ = Describe("Responses", func() {
 				response.Directory.Child = child
 			})
 
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -165,10 +165,10 @@ var _ = Describe("Responses", func() {
 		})
 
 		Context("without data", func() {
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -180,10 +180,10 @@ var _ = Describe("Responses", func() {
 				response.AlbumList.Album = child
 			})
 
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -195,10 +195,10 @@ var _ = Describe("Responses", func() {
 		})
 
 		Context("without data", func() {
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -209,10 +209,10 @@ var _ = Describe("Responses", func() {
 				response.User.Folder = []int{1}
 			})
 
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -224,10 +224,10 @@ var _ = Describe("Responses", func() {
 		})
 
 		Context("without data", func() {
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -240,10 +240,10 @@ var _ = Describe("Responses", func() {
 				response.Playlists.Playlist = pls
 			})
 
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -255,10 +255,10 @@ var _ = Describe("Responses", func() {
 		})
 
 		Context("without data", func() {
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
@@ -272,10 +272,10 @@ var _ = Describe("Responses", func() {
 				response.Genres.Genre = genres
 			})
 
-			It("should match XML", func() {
+			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})
-			It("should match JSON", func() {
+			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 		})
