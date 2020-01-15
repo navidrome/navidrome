@@ -1,8 +1,8 @@
 name: CI
 on: [push]
 jobs:
-  build:
-    name: Test on ${{ matrix.os }}
+  go:
+    name: Test Server on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -19,8 +19,33 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Download dependencies
-        run: |
-          go mod download
+        run: go mod download
 
       - name: Test
         run: go test -cover ./... -v
+
+  js:
+    name: Test UI
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+
+      - name: npm install dependencies
+        run: |
+          cd ui
+          npm ci
+
+# TODO: Enable when there are tests to run
+#      - name: npm test
+#        run: |
+#          cd ui
+#          CI=test npm test
+
+      - name: npm build
+        run: |
+          cd ui
+          npm run build
