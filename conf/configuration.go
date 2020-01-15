@@ -1,7 +1,6 @@
 package conf
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/cloudsonic/sonic-server/log"
@@ -55,7 +54,7 @@ func LoadFromFile(tomlFile string) {
 	l := &multiconfig.TOMLLoader{Path: tomlFile}
 	err := l.Load(Sonic)
 	if err != nil {
-		fmt.Printf("Error loading %s: %v\n", tomlFile, err)
+		log.Error("Error loading configuration file", "file", tomlFile, err)
 	}
 	log.SetLogLevelString(Sonic.LogLevel)
 }
