@@ -9,6 +9,10 @@ run: check_go_env data
 dev: check_env data
 	@goreman -f Procfile.dev -b 4533 start
 
+.PHONY: watch
+watch: check_go_env
+	ginkgo watch -notify ./...
+
 .PHONY: test
 test: check_go_env
 	go test ./... -v
@@ -25,6 +29,7 @@ setup: Jamstash-master
 	@which goconvey || (echo "Installing GoConvey" && GO111MODULE=off go get -u github.com/smartystreets/goconvey)
 	@which wire     || (echo "Installing Wire"     && GO111MODULE=off go get -u go get github.com/google/wire/cmd/wire)
 	@which goreman  || (echo "Installing Goreman"  && GO111MODULE=off go get -u github.com/mattn/goreman)
+	@which ginkgo   || (echo "Installing Ginkgo"   && GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo)
 	go mod download
 	@(cd ./ui && npm ci)
 
