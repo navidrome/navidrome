@@ -34,10 +34,10 @@ var testAlbums = model.Albums{
 	albumRadioactivity,
 }
 
-var songDayInALife = model.MediaFile{ID: "1", Title: "A Day In A Life", ArtistID: "3", AlbumID: "1", Genre: "Rock"}
-var songComeTogether = model.MediaFile{ID: "2", Title: "Come Together", ArtistID: "3", AlbumID: "2", Genre: "Rock"}
-var songRadioactivity = model.MediaFile{ID: "3", Title: "Radioactivity", ArtistID: "2", AlbumID: "3", Genre: "Electronic"}
-var songAntenna = model.MediaFile{ID: "4", Title: "Antenna", ArtistID: "2", AlbumID: "3", Genre: "Electronic"}
+var songDayInALife = model.MediaFile{ID: "1", Title: "A Day In A Life", ArtistID: "3", AlbumID: "1", Genre: "Rock", Path: "/beatles/1/sgt/a day.mp3"}
+var songComeTogether = model.MediaFile{ID: "2", Title: "Come Together", ArtistID: "3", AlbumID: "2", Genre: "Rock", Path: "/beatles/1/come together.mp3"}
+var songRadioactivity = model.MediaFile{ID: "3", Title: "Radioactivity", ArtistID: "2", AlbumID: "3", Genre: "Electronic", Path: "/kraft/radio/radio.mp3"}
+var songAntenna = model.MediaFile{ID: "4", Title: "Antenna", ArtistID: "2", AlbumID: "3", Genre: "Electronic", Path: "/kraft/radio/antenna.mp3"}
 var testSongs = model.MediaFiles{
 	songDayInALife,
 	songComeTogether,

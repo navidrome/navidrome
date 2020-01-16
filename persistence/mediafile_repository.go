@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"os"
+	"strings"
 	"time"
 
 	"github.com/astaxie/beego/orm"
@@ -9,7 +11,7 @@ import (
 
 type MediaFile struct {
 	ID          string    `orm:"pk;column(id)"`
-	Path        string    ``
+	Path        string    `orm:"index"`
 	Title       string    `orm:"index"`
 	Album       string    ``
 	Artist      string    ``
@@ -80,6 +82,24 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, err
 		return nil, err
 	}
 	return r.toMediaFiles(mfs), nil
+}
+
+func (r *mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
+	var mfs []MediaFile
+	_, err := r.newQuery(Db()).Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
+	if err != nil {
+		return nil, err
+	}
+	var filtered []MediaFile
+	path = strings.ToLower(path) + string(os.PathSeparator)
+	for _, mf := range mfs {
+		filename := strings.TrimPrefix(strings.ToLower(mf.Path), path)
+		if len(strings.Split(filename, string(os.PathSeparator))) > 1 {
+			continue
+		}
+		filtered = append(filtered, mf)
+	}
+	return r.toMediaFiles(filtered), nil
 }
 
 func (r *mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {

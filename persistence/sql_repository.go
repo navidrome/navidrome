@@ -112,6 +112,11 @@ func difference(slice1 []string, slice2 []string) []string {
 	return diffStr
 }
 
+func (r *sqlRepository) Delete(id string) error {
+	_, err := r.newQuery(Db()).Filter("id", id).Delete()
+	return err
+}
+
 func (r *sqlRepository) DeleteAll() error {
 	return withTx(func(o orm.Ormer) error {
 		_, err := r.newQuery(Db()).Filter("id__isnull", false).Delete()
