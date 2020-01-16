@@ -8,8 +8,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestPersistence(t *testing.T) {
+func TestEngine(t *testing.T) {
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Persistence Suite")
+	RunSpecs(t, "Engine Suite")
 }
