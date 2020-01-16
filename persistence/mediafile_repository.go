@@ -102,6 +102,26 @@ func (r *mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) 
 	return r.toMediaFiles(filtered), nil
 }
 
+func (r *mediaFileRepository) DeleteByPath(path string) error {
+	o := Db()
+	var mfs []MediaFile
+	_, err := r.newQuery(o).Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
+	if err != nil {
+		return err
+	}
+	var filtered []string
+	path = strings.ToLower(path) + string(os.PathSeparator)
+	for _, mf := range mfs {
+		filename := strings.TrimPrefix(strings.ToLower(mf.Path), path)
+		if len(strings.Split(filename, string(os.PathSeparator))) > 1 {
+			continue
+		}
+		filtered = append(filtered, mf.ID)
+	}
+	_, err = r.newQuery(o).Filter("id__in", filtered).Delete()
+	return err
+}
+
 func (r *mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
 	var starred []MediaFile
 	_, err := r.newQuery(Db(), options...).Filter("starred", true).All(&starred)

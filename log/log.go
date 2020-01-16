@@ -132,7 +132,7 @@ func parseArgs(args []interface{}) (*logrus.Entry, string) {
 		kvPairs := args[1:]
 		l = addFields(l, kvPairs)
 	}
-	if currentLevel >= LevelDebug {
+	if currentLevel >= LevelTrace {
 		_, file, line, ok := runtime.Caller(2)
 		if !ok {
 			file = "???"

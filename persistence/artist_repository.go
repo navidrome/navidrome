@@ -1,7 +1,11 @@
 package persistence
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/astaxie/beego/orm"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
 )
 
@@ -40,6 +44,64 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 	}
 	a := model.Artist(ta)
 	return &a, nil
+}
+
+func (r *artistRepository) Refresh(ids ...string) error {
+	type refreshArtist struct {
+		Artist
+		CurrentId   string
+		AlbumArtist string
+		Compilation bool
+	}
+	var artists []refreshArtist
+	o := Db()
+	sql := fmt.Sprintf(`
+select f.artist_id as id,
+       f.artist as name,
+       f.album_artist,
+       f.compilation,
+       count(*) as album_count,
+       a.id as current_id
+from album f
+         left outer join artist a on f.artist_id = a.id
+where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(ids, "','"))
+	_, err := o.Raw(sql).QueryRows(&artists)
+	if err != nil {
+		return err
+	}
+
+	var toInsert []Artist
+	var toUpdate []Artist
+	for _, al := range artists {
+		if al.Compilation {
+			al.AlbumArtist = "Various Artists"
+		}
+		if al.AlbumArtist != "" {
+			al.Name = al.AlbumArtist
+		}
+		if al.CurrentId != "" {
+			toUpdate = append(toUpdate, al.Artist)
+		} else {
+			toInsert = append(toInsert, al.Artist)
+		}
+	}
+	if len(toInsert) > 0 {
+		n, err := o.InsertMulti(100, toInsert)
+		if err != nil {
+			return err
+		}
+		log.Debug("Inserted new artists", "num", n)
+	}
+	if len(toUpdate) > 0 {
+		for _, al := range toUpdate {
+			_, err := o.Update(&al, "name", "album_count")
+			if err != nil {
+				return err
+			}
+		}
+		log.Debug("Updated artists", "num", len(toUpdate))
+	}
+	return err
 }
 
 func (r *artistRepository) PurgeInactive(activeList model.Artists) error {

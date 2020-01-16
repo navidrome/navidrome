@@ -21,7 +21,7 @@ test: check_go_env
 .PHONY: build
 build: check_go_env
 	go build
-	@(cd ./ui && npm run build)
+#	@(cd ./ui && npm run build)
 
 .PHONY: setup
 setup: Jamstash-master

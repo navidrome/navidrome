@@ -9,6 +9,7 @@ import (
 
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/cloudsonic/sonic-server/scanner_legacy"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -19,17 +20,24 @@ const Version = "0.2"
 
 type Server struct {
 	Importer *scanner_legacy.Importer
+	Scanner  *scanner.Scanner
 	router   *chi.Mux
 }
 
-func New(importer *scanner_legacy.Importer) *Server {
-	a := &Server{Importer: importer}
+func New(importer *scanner_legacy.Importer, scanner *scanner.Scanner) *Server {
+	a := &Server{Importer: importer, Scanner: scanner}
 	if !conf.Sonic.DevDisableBanner {
 		showBanner(Version)
 	}
 	initMimeTypes()
 	a.initRoutes()
-	a.initImporter()
+	if conf.Sonic.DevUseFileScanner {
+		log.Info("Using Folder Scanner", "folder", conf.Sonic.MusicFolder)
+		a.initScanner()
+	} else {
+		log.Info("Using iTunes Importer", "xml", conf.Sonic.MusicFolder)
+		a.initImporter()
+	}
 	return a
 }
 
@@ -67,22 +75,34 @@ func (a *Server) initRoutes() {
 	a.router = r
 }
 
-func (a *Server) initImporter() {
-	go a.startPeriodicScans()
+func (a *Server) initScanner() {
+	go func() {
+		for {
+			select {
+			case <-time.After(5 * time.Second):
+				err := a.Scanner.RescanAll(false)
+				if err != nil {
+					log.Error("Error scanning media folder", "folder", conf.Sonic.MusicFolder, err)
+				}
+			}
+		}
+	}()
 }
 
-func (a *Server) startPeriodicScans() {
-	first := true
-	for {
-		select {
-		case <-time.After(5 * time.Second):
-			if first {
-				log.Info("Started iTunes scanner", "xml", conf.Sonic.MusicFolder)
-				first = false
+func (a *Server) initImporter() {
+	go func() {
+		first := true
+		for {
+			select {
+			case <-time.After(5 * time.Second):
+				if first {
+					log.Info("Started iTunes scanner", "xml", conf.Sonic.MusicFolder)
+					first = false
+				}
+				a.Importer.CheckForUpdates(false)
 			}
-			a.Importer.CheckForUpdates(false)
 		}
-	}
+	}()
 }
 
 func FileServer(r chi.Router, path string, root http.FileSystem) {

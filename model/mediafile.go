@@ -51,4 +51,5 @@ type MediaFileRepository interface {
 	GetAllIds() ([]string, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
+	DeleteByPath(path string) error
 }

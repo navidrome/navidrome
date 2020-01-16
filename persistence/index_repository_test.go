@@ -35,11 +35,6 @@ var _ = Describe("Artist Index", func() {
 
 		Expect(repo.Put(&idx1)).To(BeNil())
 		Expect(repo.Put(&idx2)).To(BeNil())
-		Expect(repo.Get("D")).To(Equal(&idx1))
-		Expect(repo.Get("S")).To(Equal(&idx2))
 		Expect(repo.GetAll()).To(Equal(model.ArtistIndexes{idx1, idx2}))
-		Expect(repo.CountAll()).To(Equal(int64(2)))
-		Expect(repo.DeleteAll()).To(BeNil())
-		Expect(repo.CountAll()).To(Equal(int64(0)))
 	})
 })

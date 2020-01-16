@@ -10,6 +10,7 @@ import (
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence"
+	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/cloudsonic/sonic-server/scanner_legacy"
 	"github.com/cloudsonic/sonic-server/server"
 	"github.com/google/wire"
@@ -27,7 +28,9 @@ func CreateApp(musicFolder string) *server.Server {
 	playlistRepository := persistence.NewPlaylistRepository()
 	propertyRepository := persistence.NewPropertyRepository()
 	importer := scanner_legacy.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository)
-	serverServer := server.New(importer)
+	mediaFolderRepository := persistence.NewMediaFolderRepository()
+	scannerScanner := scanner.New(mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, mediaFolderRepository, propertyRepository)
+	serverServer := server.New(importer, scannerScanner)
 	return serverServer
 }
 
@@ -55,4 +58,4 @@ func CreateSubsonicAPIRouter() *api.Router {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner_legacy.Set, api.NewRouter, persistence.Set)
+var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner_legacy.Set, scanner.New, api.NewRouter, persistence.Set)

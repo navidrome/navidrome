@@ -20,6 +20,7 @@ type sonic struct {
 
 	DisableDownsampling bool   `default:"false"`
 	DownsampleCommand   string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
+	ProbeCommand        string `default:"ffprobe -v quiet -print_format json -show_format %s"`
 	PlsIgnoreFolders    bool   `default:"true"`
 	PlsIgnoredPatterns  string `default:"^iCloud;\\~"`
 
@@ -28,6 +29,7 @@ type sonic struct {
 	DevDisableAuthentication bool   `default:"false"`
 	DevDisableFileCheck      bool   `default:"false"`
 	DevDisableBanner         bool   `default:"false"`
+	DevUseFileScanner        bool   `default:"false"`
 }
 
 var Sonic *sonic

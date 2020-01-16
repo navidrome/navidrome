@@ -13,6 +13,7 @@ type ArtistRepository interface {
 	Get(id string) (*Artist, error)
 	PurgeInactive(active Artists) error
 	Search(q string, offset int, size int) (Artists, error)
+	Refresh(ids ...string) error
 }
 
 type Artists []Artist

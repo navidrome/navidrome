@@ -14,11 +14,10 @@ type ArtistIndex struct {
 type ArtistInfos []ArtistInfo
 type ArtistIndexes []ArtistIndex
 
+// TODO Combine ArtistIndex with Artist
 type ArtistIndexRepository interface {
-	CountAll() (int64, error)
-	Exists(id string) (bool, error)
 	Put(m *ArtistIndex) error
-	Get(id string) (*ArtistIndex, error)
+	Refresh() error
 	GetAll() (ArtistIndexes, error)
 	DeleteAll() error
 }

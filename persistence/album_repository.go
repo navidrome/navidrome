@@ -1,9 +1,12 @@
 package persistence
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/astaxie/beego/orm"
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
 )
 
@@ -85,7 +88,62 @@ func (r *albumRepository) toAlbums(all []Album) model.Albums {
 	return result
 }
 
-// TODO Remove []string from return
+func (r *albumRepository) Refresh(ids ...string) error {
+	type refreshAlbum struct {
+		Album
+		CurrentId   string
+		HasCoverArt bool
+	}
+	var albums []refreshAlbum
+	o := Db()
+	sql := fmt.Sprintf(`
+select album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.compilation, f.genre,  
+	max(f.year) as year, sum(f.play_count) as play_count, max(f.play_date) as play_date,  sum(f.duration) as duration,
+	max(f.updated_at) as updated_at, min(f.created_at) as created_at, count(*) as song_count, 
+	a.id as current_id, f.id as cover_art_id, f.path as cover_art_path, f.has_cover_art
+from media_file f left outer join album a on f.album_id = a.id
+where f.album_id in ('%s')
+group by album_id order by f.id`, strings.Join(ids, "','"))
+	_, err := o.Raw(sql).QueryRows(&albums)
+	if err != nil {
+		return err
+	}
+
+	var toInsert []Album
+	var toUpdate []Album
+	for _, al := range albums {
+		if !al.HasCoverArt {
+			al.CoverArtId = ""
+		}
+		if al.Compilation {
+			al.AlbumArtist = "Various Artists"
+		}
+		if al.CurrentId != "" {
+			toUpdate = append(toUpdate, al.Album)
+		} else {
+			toInsert = append(toInsert, al.Album)
+		}
+	}
+	if len(toInsert) > 0 {
+		n, err := o.InsertMulti(100, toInsert)
+		if err != nil {
+			return err
+		}
+		log.Debug("Inserted new albums", "num", n)
+	}
+	if len(toUpdate) > 0 {
+		for _, al := range toUpdate {
+			_, err := o.Update(&al, "name", "artist_id", "cover_art_path", "cover_art_id", "artist", "album_artist", "year",
+				"compilation", "play_count", "song_count", "duration", "updated_at")
+			if err != nil {
+				return err
+			}
+		}
+		log.Debug("Updated albums", "num", len(toUpdate))
+	}
+	return err
+}
+
 func (r *albumRepository) PurgeInactive(activeList model.Albums) error {
 	return withTx(func(o orm.Ormer) error {
 		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
