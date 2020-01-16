@@ -41,12 +41,12 @@ func (g *listGenerator) query(qo model.QueryOptions, offset int, size int) (Entr
 }
 
 func (g *listGenerator) GetNewest(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{SortBy: "CreatedAt", Desc: true, Alpha: true}
+	qo := model.QueryOptions{SortBy: "CreatedAt", Desc: true}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetRecent(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{SortBy: "PlayDate", Desc: true, Alpha: true}
+	qo := model.QueryOptions{SortBy: "PlayDate", Desc: true}
 	return g.query(qo, offset, size)
 }
 
@@ -61,12 +61,12 @@ func (g *listGenerator) GetHighest(offset int, size int) (Entries, error) {
 }
 
 func (g *listGenerator) GetByName(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{SortBy: "Name", Alpha: true}
+	qo := model.QueryOptions{SortBy: "Name"}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetByArtist(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{SortBy: "Artist", Alpha: true}
+	qo := model.QueryOptions{SortBy: "Artist"}
 	return g.query(qo, offset, size)
 }
 
