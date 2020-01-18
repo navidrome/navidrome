@@ -123,6 +123,10 @@ group by album_id order by f.id`, strings.Join(ids, "','"))
 		} else {
 			toInsert = append(toInsert, al.album)
 		}
+		err := r.addToIndex(o, r.tableName, al.ID, al.Name)
+		if err != nil {
+			return err
+		}
 	}
 	if len(toInsert) > 0 {
 		n, err := o.InsertMulti(100, toInsert)

@@ -12,7 +12,7 @@ import (
 type Search struct {
 	ID       string `orm:"pk;column(id)"`
 	Table    string `orm:"index"`
-	FullText string `orm:"type(text)"`
+	FullText string `orm:"index"`
 }
 
 type searchableRepository struct {

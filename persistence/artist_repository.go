@@ -127,6 +127,10 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 		} else {
 			toInsert = append(toInsert, ar.artist)
 		}
+		err := r.addToIndex(o, r.tableName, ar.ID, ar.Name)
+		if err != nil {
+			return err
+		}
 	}
 	if len(toInsert) > 0 {
 		n, err := o.InsertMulti(100, toInsert)
