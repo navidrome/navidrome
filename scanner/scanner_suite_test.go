@@ -11,13 +11,14 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestScanner(t *testing.T) {
+// TODO Fix OS dependencies
+func xTestScanner(t *testing.T) {
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Scanner Suite")
 }
 
-var _ = XDescribe("TODO: REMOVE", func() {
+var _ = Describe("TODO: REMOVE", func() {
 	conf.Sonic.DbPath = "./testDB"
 	log.SetLevel(log.LevelDebug)
 	repos := Repositories{
