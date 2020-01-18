@@ -5,7 +5,7 @@ import (
 	"github.com/cloudsonic/sonic-server/model"
 )
 
-type Property struct {
+type property struct {
 	ID    string `orm:"pk;column(id)"`
 	Value string
 }
@@ -21,7 +21,7 @@ func NewPropertyRepository() model.PropertyRepository {
 }
 
 func (r *propertyRepository) Put(id string, value string) error {
-	p := &Property{ID: id, Value: value}
+	p := &property{ID: id, Value: value}
 	num, err := Db().Update(p)
 	if err != nil {
 		return nil
@@ -33,7 +33,7 @@ func (r *propertyRepository) Put(id string, value string) error {
 }
 
 func (r *propertyRepository) Get(id string) (string, error) {
-	p := &Property{ID: id}
+	p := &property{ID: id}
 	err := Db().Read(p)
 	if err == orm.ErrNoRows {
 		return "", model.ErrNotFound

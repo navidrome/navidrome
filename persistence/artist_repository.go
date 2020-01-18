@@ -12,7 +12,7 @@ import (
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
-type Artist struct {
+type artist struct {
 	ID         string `orm:"pk;column(id)"`
 	Name       string `orm:"index"`
 	AlbumCount int    `orm:"column(album_count)"`
@@ -30,7 +30,7 @@ func NewArtistRepository() model.ArtistRepository {
 	return r
 }
 
-func (r *artistRepository) getIndexKey(a *Artist) string {
+func (r *artistRepository) getIndexKey(a *artist) string {
 	name := strings.ToLower(utils.NoArticle(a.Name))
 	for k, v := range r.indexGroups {
 		key := strings.ToLower(k)
@@ -42,14 +42,14 @@ func (r *artistRepository) getIndexKey(a *Artist) string {
 }
 
 func (r *artistRepository) Put(a *model.Artist) error {
-	ta := Artist(*a)
+	ta := artist(*a)
 	return withTx(func(o orm.Ormer) error {
 		return r.put(o, a.ID, a.Name, &ta)
 	})
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
-	ta := Artist{ID: id}
+	ta := artist{ID: id}
 	err := Db().Read(&ta)
 	if err == orm.ErrNoRows {
 		return nil, model.ErrNotFound
@@ -63,7 +63,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 
 // TODO Cache the index (recalculate when there are changes to the DB)
 func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
-	var all []Artist
+	var all []artist
 	_, err := r.newQuery(Db()).OrderBy("name").All(&all)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 
 func (r *artistRepository) Refresh(ids ...string) error {
 	type refreshArtist struct {
-		Artist
+		artist
 		CurrentId   string
 		AlbumArtist string
 		Compilation bool
@@ -113,8 +113,8 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 		return err
 	}
 
-	var toInsert []Artist
-	var toUpdate []Artist
+	var toInsert []artist
+	var toUpdate []artist
 	for _, ar := range artists {
 		if ar.Compilation {
 			ar.AlbumArtist = "Various Artists"
@@ -123,9 +123,9 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 			ar.Name = ar.AlbumArtist
 		}
 		if ar.CurrentId != "" {
-			toUpdate = append(toUpdate, ar.Artist)
+			toUpdate = append(toUpdate, ar.artist)
 		} else {
-			toInsert = append(toInsert, ar.Artist)
+			toInsert = append(toInsert, ar.artist)
 		}
 	}
 	if len(toInsert) > 0 {
@@ -161,7 +161,7 @@ func (r *artistRepository) Search(q string, offset int, size int) (model.Artists
 		return nil, nil
 	}
 
-	var results []Artist
+	var results []artist
 	err := r.doSearch(r.tableName, q, offset, size, &results, "name")
 	if err != nil {
 		return nil, err
@@ -170,7 +170,7 @@ func (r *artistRepository) Search(q string, offset int, size int) (model.Artists
 	return r.toArtists(results), nil
 }
 
-func (r *artistRepository) toArtists(all []Artist) model.Artists {
+func (r *artistRepository) toArtists(all []artist) model.Artists {
 	result := make(model.Artists, len(all))
 	for i, a := range all {
 		result[i] = model.Artist(a)
@@ -179,4 +179,4 @@ func (r *artistRepository) toArtists(all []Artist) model.Artists {
 }
 
 var _ model.ArtistRepository = (*artistRepository)(nil)
-var _ = model.Artist(Artist{})
+var _ = model.Artist(artist{})

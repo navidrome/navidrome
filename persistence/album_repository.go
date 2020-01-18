@@ -10,7 +10,7 @@ import (
 	"github.com/cloudsonic/sonic-server/model"
 )
 
-type Album struct {
+type album struct {
 	ID           string    `orm:"pk;column(id)"`
 	Name         string    `orm:"index"`
 	ArtistID     string    `orm:"column(artist_id);index"`
@@ -43,14 +43,14 @@ func NewAlbumRepository() model.AlbumRepository {
 }
 
 func (r *albumRepository) Put(a *model.Album) error {
-	ta := Album(*a)
+	ta := album(*a)
 	return withTx(func(o orm.Ormer) error {
 		return r.put(o, a.ID, a.Name, &ta)
 	})
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
-	ta := Album{ID: id}
+	ta := album{ID: id}
 	err := Db().Read(&ta)
 	if err == orm.ErrNoRows {
 		return nil, model.ErrNotFound
@@ -63,7 +63,7 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 }
 
 func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
-	var albums []Album
+	var albums []album
 	_, err := r.newQuery(Db()).Filter("artist_id", artistId).OrderBy("year", "name").All(&albums)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
-	var all []Album
+	var all []album
 	_, err := r.newQuery(Db(), options...).All(&all)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return r.toAlbums(all), nil
 }
 
-func (r *albumRepository) toAlbums(all []Album) model.Albums {
+func (r *albumRepository) toAlbums(all []album) model.Albums {
 	result := make(model.Albums, len(all))
 	for i, a := range all {
 		result[i] = model.Album(a)
@@ -90,7 +90,7 @@ func (r *albumRepository) toAlbums(all []Album) model.Albums {
 
 func (r *albumRepository) Refresh(ids ...string) error {
 	type refreshAlbum struct {
-		Album
+		album
 		CurrentId   string
 		HasCoverArt bool
 	}
@@ -109,8 +109,8 @@ group by album_id order by f.id`, strings.Join(ids, "','"))
 		return err
 	}
 
-	var toInsert []Album
-	var toUpdate []Album
+	var toInsert []album
+	var toUpdate []album
 	for _, al := range albums {
 		if !al.HasCoverArt {
 			al.CoverArtId = ""
@@ -119,9 +119,9 @@ group by album_id order by f.id`, strings.Join(ids, "','"))
 			al.AlbumArtist = "Various Artists"
 		}
 		if al.CurrentId != "" {
-			toUpdate = append(toUpdate, al.Album)
+			toUpdate = append(toUpdate, al.album)
 		} else {
-			toInsert = append(toInsert, al.Album)
+			toInsert = append(toInsert, al.album)
 		}
 	}
 	if len(toInsert) > 0 {
@@ -154,7 +154,7 @@ func (r *albumRepository) PurgeInactive(activeList model.Albums) error {
 }
 
 func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Albums, error) {
-	var starred []Album
+	var starred []album
 	_, err := r.newQuery(Db(), options...).Filter("starred", true).All(&starred)
 	if err != nil {
 		return nil, err
@@ -167,7 +167,7 @@ func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, 
 		return nil, nil
 	}
 
-	var results []Album
+	var results []album
 	err := r.doSearch(r.tableName, q, offset, size, &results, "rating desc", "starred desc", "play_count desc", "name")
 	if err != nil {
 		return nil, err
@@ -176,4 +176,4 @@ func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, 
 }
 
 var _ model.AlbumRepository = (*albumRepository)(nil)
-var _ = model.Album(Album{})
+var _ = model.Album(album{})

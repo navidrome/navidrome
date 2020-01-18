@@ -10,7 +10,7 @@ var _ = Describe("ChecksumRepository", func() {
 	var repo model.ChecksumRepository
 
 	BeforeEach(func() {
-		Db().Delete(&Checksum{ID: checkSumId})
+		Db().Delete(&checksum{ID: checkSumId})
 		repo = NewCheckSumRepository()
 		err := repo.SetData(map[string]string{
 			"a": "AAA", "b": "BBB",

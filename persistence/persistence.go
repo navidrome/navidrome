@@ -71,12 +71,12 @@ func collectField(collection interface{}, getValue func(item interface{}) string
 func initORM(dbPath string) error {
 	verbose := conf.Sonic.LogLevel == "trace"
 	orm.Debug = verbose
-	orm.RegisterModel(new(Artist))
-	orm.RegisterModel(new(Album))
-	orm.RegisterModel(new(MediaFile))
-	orm.RegisterModel(new(Checksum))
-	orm.RegisterModel(new(Property))
-	orm.RegisterModel(new(Playlist))
+	orm.RegisterModel(new(artist))
+	orm.RegisterModel(new(album))
+	orm.RegisterModel(new(mediaFile))
+	orm.RegisterModel(new(checksum))
+	orm.RegisterModel(new(property))
+	orm.RegisterModel(new(playlist))
 	orm.RegisterModel(new(Search))
 	if strings.Contains(dbPath, "postgres") {
 		driver = "postgres"

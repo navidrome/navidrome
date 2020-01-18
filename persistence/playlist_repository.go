@@ -7,7 +7,7 @@ import (
 	"github.com/cloudsonic/sonic-server/model"
 )
 
-type Playlist struct {
+type playlist struct {
 	ID       string `orm:"pk;column(id)"`
 	Name     string `orm:"index"`
 	Comment  string
@@ -36,7 +36,7 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
-	tp := &Playlist{ID: id}
+	tp := &playlist{ID: id}
 	err := Db().Read(tp)
 	if err == orm.ErrNoRows {
 		return nil, model.ErrNotFound
@@ -49,7 +49,7 @@ func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
-	var all []Playlist
+	var all []playlist
 	_, err := r.newQuery(Db(), options...).All(&all)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	return r.toPlaylists(all)
 }
 
-func (r *playlistRepository) toPlaylists(all []Playlist) (model.Playlists, error) {
+func (r *playlistRepository) toPlaylists(all []playlist) (model.Playlists, error) {
 	result := make(model.Playlists, len(all))
 	for i, p := range all {
 		result[i] = r.toDomain(&p)
@@ -74,7 +74,7 @@ func (r *playlistRepository) PurgeInactive(activeList model.Playlists) ([]string
 	})
 }
 
-func (r *playlistRepository) toDomain(p *Playlist) model.Playlist {
+func (r *playlistRepository) toDomain(p *playlist) model.Playlist {
 	return model.Playlist{
 		ID:       p.ID,
 		Name:     p.Name,
@@ -87,8 +87,8 @@ func (r *playlistRepository) toDomain(p *Playlist) model.Playlist {
 	}
 }
 
-func (r *playlistRepository) fromDomain(p *model.Playlist) Playlist {
-	return Playlist{
+func (r *playlistRepository) fromDomain(p *model.Playlist) playlist {
+	return playlist{
 		ID:       p.ID,
 		Name:     p.Name,
 		Comment:  p.Comment,

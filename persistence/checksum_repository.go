@@ -10,7 +10,7 @@ type checkSumRepository struct {
 
 const checkSumId = "1"
 
-type Checksum struct {
+type checksum struct {
 	ID  string `orm:"pk;column(id)"`
 	Sum string
 }
@@ -23,8 +23,8 @@ func NewCheckSumRepository() model.ChecksumRepository {
 func (r *checkSumRepository) GetData() (model.ChecksumMap, error) {
 	loadedData := make(map[string]string)
 
-	var all []Checksum
-	_, err := Db().QueryTable(&Checksum{}).Limit(-1).All(&all)
+	var all []checksum
+	_, err := Db().QueryTable(&checksum{}).Limit(-1).All(&all)
 	if err != nil {
 		return nil, err
 	}
@@ -43,9 +43,9 @@ func (r *checkSumRepository) SetData(newSums model.ChecksumMap) error {
 			return err
 		}
 
-		var checksums []Checksum
+		var checksums []checksum
 		for k, v := range newSums {
-			cks := Checksum{ID: k, Sum: v}
+			cks := checksum{ID: k, Sum: v}
 			checksums = append(checksums, cks)
 		}
 		_, err = Db().InsertMulti(batchSize, &checksums)

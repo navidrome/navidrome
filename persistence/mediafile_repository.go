@@ -9,7 +9,7 @@ import (
 	"github.com/cloudsonic/sonic-server/model"
 )
 
-type MediaFile struct {
+type mediaFile struct {
 	ID          string    `orm:"pk;column(id)"`
 	Path        string    `orm:"index"`
 	Title       string    `orm:"index"`
@@ -48,14 +48,14 @@ func NewMediaFileRepository() model.MediaFileRepository {
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
-	tm := MediaFile(*m)
+	tm := mediaFile(*m)
 	return withTx(func(o orm.Ormer) error {
 		return r.put(o, m.ID, m.Title, &tm)
 	})
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
-	tm := MediaFile{ID: id}
+	tm := mediaFile{ID: id}
 	err := Db().Read(&tm)
 	if err == orm.ErrNoRows {
 		return nil, model.ErrNotFound
@@ -67,7 +67,7 @@ func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 	return &a, nil
 }
 
-func (r *mediaFileRepository) toMediaFiles(all []MediaFile) model.MediaFiles {
+func (r *mediaFileRepository) toMediaFiles(all []mediaFile) model.MediaFiles {
 	result := make(model.MediaFiles, len(all))
 	for i, m := range all {
 		result[i] = model.MediaFile(m)
@@ -76,7 +76,7 @@ func (r *mediaFileRepository) toMediaFiles(all []MediaFile) model.MediaFiles {
 }
 
 func (r *mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, error) {
-	var mfs []MediaFile
+	var mfs []mediaFile
 	_, err := r.newQuery(Db()).Filter("album_id", albumId).OrderBy("disc_number", "track_number").All(&mfs)
 	if err != nil {
 		return nil, err
@@ -85,12 +85,12 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, err
 }
 
 func (r *mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
-	var mfs []MediaFile
+	var mfs []mediaFile
 	_, err := r.newQuery(Db()).Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
 	if err != nil {
 		return nil, err
 	}
-	var filtered []MediaFile
+	var filtered []mediaFile
 	path = strings.ToLower(path) + string(os.PathSeparator)
 	for _, mf := range mfs {
 		filename := strings.TrimPrefix(strings.ToLower(mf.Path), path)
@@ -104,7 +104,7 @@ func (r *mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) 
 
 func (r *mediaFileRepository) DeleteByPath(path string) error {
 	o := Db()
-	var mfs []MediaFile
+	var mfs []mediaFile
 	_, err := r.newQuery(o).Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
 	if err != nil {
 		return err
@@ -123,7 +123,7 @@ func (r *mediaFileRepository) DeleteByPath(path string) error {
 }
 
 func (r *mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
-	var starred []MediaFile
+	var starred []mediaFile
 	_, err := r.newQuery(Db(), options...).Filter("starred", true).All(&starred)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (model.Medi
 		return nil, nil
 	}
 
-	var results []MediaFile
+	var results []mediaFile
 	err := r.doSearch(r.tableName, q, offset, size, &results, "rating desc", "starred desc", "play_count desc", "title")
 	if err != nil {
 		return nil, err
@@ -154,4 +154,4 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (model.Medi
 }
 
 var _ model.MediaFileRepository = (*mediaFileRepository)(nil)
-var _ = model.MediaFile(MediaFile{})
+var _ = model.MediaFile(mediaFile{})
