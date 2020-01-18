@@ -6,7 +6,7 @@ import (
 )
 
 var _ = Describe("Metadata", func() {
-	It("correctly parses mp3 file", func() {
+	FIt("correctly parses mp3 file", func() {
 		m, err := ExtractMetadata("../tests/fixtures/test.mp3")
 		Expect(err).To(BeNil())
 		Expect(m.Title()).To(Equal("Song"))
@@ -14,7 +14,7 @@ var _ = Describe("Metadata", func() {
 		Expect(m.Artist()).To(Equal("Artist"))
 		Expect(m.AlbumArtist()).To(Equal("Album Artist"))
 		Expect(m.Composer()).To(Equal("Composer"))
-		Expect(m.Compilation()).To(BeFalse())
+		Expect(m.Compilation()).To(BeTrue())
 		Expect(m.Genre()).To(Equal("Rock"))
 		Expect(m.Year()).To(Equal(2014))
 		n, t := m.TrackNumber()
