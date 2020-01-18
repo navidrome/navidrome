@@ -18,12 +18,14 @@ import (
 type TagScanner struct {
 	rootFolder string
 	repos      Repositories
+	detector   *ChangeDetector
 }
 
 func NewTagScanner(rootFolder string, repos Repositories) *TagScanner {
 	return &TagScanner{
 		rootFolder: rootFolder,
 		repos:      repos,
+		detector:   NewChangeDetector(rootFolder),
 	}
 }
 
@@ -41,8 +43,7 @@ func NewTagScanner(rootFolder string, repos Repositories) *TagScanner {
 // Delete all empty albums, delete all empty Artists
 // Recreate ArtistIndex
 func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) error {
-	detector := NewChangeDetector(s.rootFolder, lastModifiedSince)
-	changed, deleted, err := detector.Scan()
+	changed, deleted, err := s.detector.Scan(lastModifiedSince)
 	if err != nil {
 		return err
 	}

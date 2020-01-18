@@ -118,6 +118,9 @@ func (r *mediaFileRepository) DeleteByPath(path string) error {
 		}
 		filtered = append(filtered, mf.ID)
 	}
+	if len(filtered) == 0 {
+		return nil
+	}
 	_, err = r.newQuery(o).Filter("id__in", filtered).Delete()
 	return err
 }

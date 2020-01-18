@@ -76,16 +76,16 @@ func (s *Scanner) RescanAll(fullRescan bool) error {
 
 func (s *Scanner) Status() []StatusInfo { return nil }
 
-func (i *Scanner) getLastModifiedSince(folder string) time.Time {
-	ms, err := i.repos.property.Get(model.PropLastScan + "-" + folder)
+func (s *Scanner) getLastModifiedSince(folder string) time.Time {
+	ms, err := s.repos.property.Get(model.PropLastScan + "-" + folder)
 	if err != nil {
 		return time.Time{}
 	}
 	if ms == "" {
 		return time.Time{}
 	}
-	s, _ := strconv.ParseInt(ms, 10, 64)
-	return time.Unix(0, s*int64(time.Millisecond))
+	i, _ := strconv.ParseInt(ms, 10, 64)
+	return time.Unix(0, i*int64(time.Millisecond))
 }
 
 func (s *Scanner) updateLastModifiedSince(folder string, t time.Time) {

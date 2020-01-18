@@ -11,26 +11,24 @@ import (
 
 type ChangeDetector struct {
 	rootFolder string
-	lastUpdate time.Time
 	dirMap     map[string]time.Time
 }
 
-func NewChangeDetector(rootFolder string, lastUpdate time.Time) *ChangeDetector {
+func NewChangeDetector(rootFolder string) *ChangeDetector {
 	return &ChangeDetector{
 		rootFolder: rootFolder,
-		lastUpdate: lastUpdate,
 		dirMap:     map[string]time.Time{},
 	}
 }
 
-func (s *ChangeDetector) Scan() (changed []string, deleted []string, err error) {
+func (s *ChangeDetector) Scan(lastModifiedSince time.Time) (changed []string, deleted []string, err error) {
 	start := time.Now()
 	newMap := make(map[string]time.Time)
 	err = s.loadMap(s.rootFolder, newMap)
 	if err != nil {
 		return
 	}
-	changed, deleted, err = s.checkForUpdates(s.dirMap, newMap)
+	changed, deleted, err = s.checkForUpdates(lastModifiedSince, newMap)
 	if err != nil {
 		return
 	}
@@ -95,17 +93,17 @@ func (s *ChangeDetector) getRelativePath(subfolder string) string {
 	return dir
 }
 
-func (s *ChangeDetector) checkForUpdates(oldMap map[string]time.Time, newMap map[string]time.Time) (changed []string, deleted []string, err error) {
+func (s *ChangeDetector) checkForUpdates(lastModifiedSince time.Time, newMap map[string]time.Time) (changed []string, deleted []string, err error) {
 	for dir, lastUpdated := range newMap {
-		oldLastUpdated, ok := oldMap[dir]
+		oldLastUpdated, ok := s.dirMap[dir]
 		if !ok {
-			oldLastUpdated = s.lastUpdate
+			oldLastUpdated = lastModifiedSince
 		}
 		if lastUpdated.After(oldLastUpdated) {
 			changed = append(changed, dir)
 		}
 	}
-	for dir := range oldMap {
+	for dir := range s.dirMap {
 		if _, ok := newMap[dir]; !ok {
 			deleted = append(deleted, dir)
 		}
