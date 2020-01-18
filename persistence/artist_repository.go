@@ -64,6 +64,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 // TODO Cache the index (recalculate when there are changes to the DB)
 func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 	var all []artist
+	// TODO Paginate
 	_, err := r.newQuery(Db()).OrderBy("name").All(&all)
 	if err != nil {
 		return nil, err
@@ -133,7 +134,7 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 		}
 	}
 	if len(toInsert) > 0 {
-		n, err := o.InsertMulti(100, toInsert)
+		n, err := o.InsertMulti(10, toInsert)
 		if err != nil {
 			return err
 		}

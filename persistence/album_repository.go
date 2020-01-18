@@ -129,7 +129,7 @@ group by album_id order by f.id`, strings.Join(ids, "','"))
 		}
 	}
 	if len(toInsert) > 0 {
-		n, err := o.InsertMulti(100, toInsert)
+		n, err := o.InsertMulti(10, toInsert)
 		if err != nil {
 			return err
 		}

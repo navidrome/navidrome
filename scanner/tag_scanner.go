@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -51,6 +52,9 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 
 	log.Info("Folder changes found", "changed", len(changed), "deleted", len(deleted))
 
+	sort.Strings(changed)
+	sort.Strings(deleted)
+
 	updatedArtists := map[string]bool{}
 	updatedAlbums := map[string]bool{}
 
@@ -59,11 +63,35 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		if err != nil {
 			return err
 		}
+		if len(updatedAlbums)+len(updatedArtists) > 100 {
+			err = s.refreshAlbums(updatedAlbums)
+			if err != nil {
+				return err
+			}
+			err = s.refreshArtists(updatedArtists)
+			if err != nil {
+				return err
+			}
+			updatedAlbums = map[string]bool{}
+			updatedArtists = map[string]bool{}
+		}
 	}
 	for _, c := range deleted {
 		err := s.processDeletedDir(c, updatedArtists, updatedAlbums)
 		if err != nil {
 			return err
+		}
+		if len(updatedAlbums)+len(updatedArtists) > 100 {
+			err = s.refreshAlbums(updatedAlbums)
+			if err != nil {
+				return err
+			}
+			err = s.refreshArtists(updatedArtists)
+			if err != nil {
+				return err
+			}
+			updatedAlbums = map[string]bool{}
+			updatedArtists = map[string]bool{}
 		}
 	}
 
@@ -127,6 +155,11 @@ func (s *TagScanner) processChangedDir(dir string, updatedArtists map[string]boo
 	newTracks, err := s.loadTracks(dir)
 	if err != nil {
 		return err
+	}
+
+	// If no tracks to process, return
+	if len(newTracks)+len(currentTracks) == 0 {
+		return nil
 	}
 
 	// If track from folder is newer than the one in DB, update/insert in DB and delete from the current tracks

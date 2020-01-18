@@ -105,6 +105,7 @@ func (r *mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) 
 func (r *mediaFileRepository) DeleteByPath(path string) error {
 	o := Db()
 	var mfs []mediaFile
+	// TODO Paginate this (and all other situations similar)
 	_, err := r.newQuery(o).Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
 	if err != nil {
 		return err
