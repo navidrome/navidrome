@@ -21,18 +21,16 @@ type Repositories struct {
 	mediaFile model.MediaFileRepository
 	album     model.AlbumRepository
 	artist    model.ArtistRepository
-	index     model.ArtistIndexRepository
 	playlist  model.PlaylistRepository
 	property  model.PropertyRepository
 }
 
-func New(mfRepo model.MediaFileRepository, albumRepo model.AlbumRepository, artistRepo model.ArtistRepository, idxRepo model.ArtistIndexRepository, plsRepo model.PlaylistRepository, folderRepo model.MediaFolderRepository, property model.PropertyRepository) *Scanner {
+func New(mfRepo model.MediaFileRepository, albumRepo model.AlbumRepository, artistRepo model.ArtistRepository, plsRepo model.PlaylistRepository, folderRepo model.MediaFolderRepository, property model.PropertyRepository) *Scanner {
 	repos := Repositories{
 		folder:    folderRepo,
 		mediaFile: mfRepo,
 		album:     albumRepo,
 		artist:    artistRepo,
-		index:     idxRepo,
 		playlist:  plsRepo,
 		property:  property,
 	}

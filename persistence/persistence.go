@@ -74,7 +74,6 @@ func initORM(dbPath string) error {
 	orm.RegisterModel(new(Artist))
 	orm.RegisterModel(new(Album))
 	orm.RegisterModel(new(MediaFile))
-	orm.RegisterModel(new(ArtistInfo))
 	orm.RegisterModel(new(Checksum))
 	orm.RegisterModel(new(Property))
 	orm.RegisterModel(new(Playlist))

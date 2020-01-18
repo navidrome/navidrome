@@ -24,12 +24,11 @@ func CreateApp(musicFolder string) *server.Server {
 	mediaFileRepository := persistence.NewMediaFileRepository()
 	albumRepository := persistence.NewAlbumRepository()
 	artistRepository := persistence.NewArtistRepository()
-	artistIndexRepository := persistence.NewArtistIndexRepository()
 	playlistRepository := persistence.NewPlaylistRepository()
 	propertyRepository := persistence.NewPropertyRepository()
-	importer := scanner_legacy.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, propertyRepository)
+	importer := scanner_legacy.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, playlistRepository, propertyRepository)
 	mediaFolderRepository := persistence.NewMediaFolderRepository()
-	scannerScanner := scanner.New(mediaFileRepository, albumRepository, artistRepository, artistIndexRepository, playlistRepository, mediaFolderRepository, propertyRepository)
+	scannerScanner := scanner.New(mediaFileRepository, albumRepository, artistRepository, playlistRepository, mediaFolderRepository, propertyRepository)
 	serverServer := server.New(importer, scannerScanner)
 	return serverServer
 }
@@ -37,12 +36,11 @@ func CreateApp(musicFolder string) *server.Server {
 func CreateSubsonicAPIRouter() *api.Router {
 	propertyRepository := persistence.NewPropertyRepository()
 	mediaFolderRepository := persistence.NewMediaFolderRepository()
-	artistIndexRepository := persistence.NewArtistIndexRepository()
 	artistRepository := persistence.NewArtistRepository()
 	albumRepository := persistence.NewAlbumRepository()
 	mediaFileRepository := persistence.NewMediaFileRepository()
 	genreRepository := persistence.NewGenreRepository()
-	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistIndexRepository, artistRepository, albumRepository, mediaFileRepository, genreRepository)
+	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistRepository, albumRepository, mediaFileRepository, genreRepository)
 	cover := engine.NewCover(mediaFileRepository, albumRepository)
 	nowPlayingRepository := persistence.NewNowPlayingRepository()
 	listGenerator := engine.NewListGenerator(albumRepository, mediaFileRepository, nowPlayingRepository)

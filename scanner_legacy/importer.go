@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/utils"
 )
 
 type Scanner interface {
@@ -21,29 +19,25 @@ type Scanner interface {
 	Playlists() map[string]*model.Playlist
 }
 
-type tempIndex map[string]model.ArtistInfo
-
 type Importer struct {
 	scanner      Scanner
 	mediaFolder  string
 	mfRepo       model.MediaFileRepository
 	albumRepo    model.AlbumRepository
 	artistRepo   model.ArtistRepository
-	idxRepo      model.ArtistIndexRepository
 	plsRepo      model.PlaylistRepository
 	propertyRepo model.PropertyRepository
 	lastScan     time.Time
 	lastCheck    time.Time
 }
 
-func NewImporter(mediaFolder string, scanner Scanner, mfRepo model.MediaFileRepository, albumRepo model.AlbumRepository, artistRepo model.ArtistRepository, idxRepo model.ArtistIndexRepository, plsRepo model.PlaylistRepository, propertyRepo model.PropertyRepository) *Importer {
+func NewImporter(mediaFolder string, scanner Scanner, mfRepo model.MediaFileRepository, albumRepo model.AlbumRepository, artistRepo model.ArtistRepository, plsRepo model.PlaylistRepository, propertyRepo model.PropertyRepository) *Importer {
 	return &Importer{
 		scanner:      scanner,
 		mediaFolder:  mediaFolder,
 		mfRepo:       mfRepo,
 		albumRepo:    albumRepo,
 		artistRepo:   artistRepo,
-		idxRepo:      idxRepo,
 		plsRepo:      plsRepo,
 		propertyRepo: propertyRepo,
 	}
@@ -131,7 +125,6 @@ func (i *Importer) importLibrary() (err error) {
 	log.Debug("Imported artists", "total", len(ars))
 	pls := i.importPlaylists()
 	log.Debug("Imported playlists", "total", len(pls))
-	i.importArtistIndex()
 
 	log.Debug("Purging old data")
 	if err := i.mfRepo.PurgeInactive(mfs); err != nil {
@@ -239,19 +232,6 @@ func (i *Importer) importArtists() model.Artists {
 	return ars
 }
 
-func (i *Importer) importArtistIndex() {
-	indexGroups := utils.ParseIndexGroups(conf.Sonic.IndexGroups)
-	artistIndex := make(map[string]tempIndex)
-
-	for _, ar := range i.scanner.Artists() {
-		i.collectIndex(indexGroups, ar, artistIndex)
-	}
-
-	if err := i.saveIndex(artistIndex); err != nil {
-		log.Error(err)
-	}
-}
-
 func (i *Importer) importPlaylists() model.Playlists {
 	pls := make(model.Playlists, len(i.scanner.Playlists()))
 	j := 0
@@ -266,45 +246,4 @@ func (i *Importer) importPlaylists() model.Playlists {
 		}
 	}
 	return pls
-}
-
-func (i *Importer) collectIndex(ig utils.IndexGroups, a *model.Artist, artistIndex map[string]tempIndex) {
-	name := a.Name
-	indexName := strings.ToLower(utils.NoArticle(name))
-	if indexName == "" {
-		return
-	}
-	group := i.findGroup(ig, indexName)
-	artists := artistIndex[group]
-	if artists == nil {
-		artists = make(tempIndex)
-		artistIndex[group] = artists
-	}
-	artists[indexName] = model.ArtistInfo{ArtistID: a.ID, Artist: a.Name, AlbumCount: a.AlbumCount}
-}
-
-func (i *Importer) findGroup(ig utils.IndexGroups, name string) string {
-	for k, v := range ig {
-		key := strings.ToLower(k)
-		if strings.HasPrefix(name, key) {
-			return v
-		}
-	}
-	return "#"
-}
-
-func (i *Importer) saveIndex(artistIndex map[string]tempIndex) error {
-	i.idxRepo.DeleteAll()
-	for k, temp := range artistIndex {
-		idx := &model.ArtistIndex{ID: k}
-		for _, v := range temp {
-			idx.Artists = append(idx.Artists, v)
-		}
-		err := i.idxRepo.Put(idx)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

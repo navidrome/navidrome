@@ -8,7 +8,6 @@ var Set = wire.NewSet(
 	NewArtistRepository,
 	NewMediaFileRepository,
 	NewAlbumRepository,
-	NewArtistIndexRepository,
 	NewCheckSumRepository,
 	NewPropertyRepository,
 	NewPlaylistRepository,

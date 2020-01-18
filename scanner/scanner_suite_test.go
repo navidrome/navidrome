@@ -25,7 +25,6 @@ var _ = XDescribe("TODO: REMOVE", func() {
 		mediaFile: persistence.NewMediaFileRepository(),
 		album:     persistence.NewAlbumRepository(),
 		artist:    persistence.NewArtistRepository(),
-		index:     persistence.NewArtistIndexRepository(),
 		playlist:  nil,
 	}
 	It("WORKS!", func() {

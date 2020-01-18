@@ -50,8 +50,8 @@ func (c *BrowsingController) getArtistIndex(r *http.Request, ifModifiedSince tim
 		res.Index[i].Name = idx.ID
 		res.Index[i].Artists = make([]responses.Artist, len(idx.Artists))
 		for j, a := range idx.Artists {
-			res.Index[i].Artists[j].Id = a.ArtistID
-			res.Index[i].Artists[j].Name = a.Artist
+			res.Index[i].Artists[j].Id = a.ID
+			res.Index[i].Artists[j].Name = a.Name
 			res.Index[i].Artists[j].AlbumCount = a.AlbumCount
 		}
 	}

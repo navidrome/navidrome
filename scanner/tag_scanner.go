@@ -79,11 +79,6 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		return err
 	}
 
-	err = s.repos.index.Refresh()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

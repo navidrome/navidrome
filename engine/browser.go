@@ -23,15 +23,14 @@ type Browser interface {
 	GetGenres() (model.Genres, error)
 }
 
-func NewBrowser(pr model.PropertyRepository, fr model.MediaFolderRepository, ir model.ArtistIndexRepository,
+func NewBrowser(pr model.PropertyRepository, fr model.MediaFolderRepository,
 	ar model.ArtistRepository, alr model.AlbumRepository, mr model.MediaFileRepository, gr model.GenreRepository) Browser {
-	return &browser{pr, fr, ir, ar, alr, mr, gr}
+	return &browser{pr, fr, ar, alr, mr, gr}
 }
 
 type browser struct {
 	propRepo   model.PropertyRepository
 	folderRepo model.MediaFolderRepository
-	indexRepo  model.ArtistIndexRepository
 	artistRepo model.ArtistRepository
 	albumRepo  model.AlbumRepository
 	mfileRepo  model.MediaFileRepository
@@ -52,7 +51,7 @@ func (b *browser) Indexes(ifModifiedSince time.Time) (model.ArtistIndexes, time.
 	}
 
 	if lastModified.After(ifModifiedSince) {
-		indexes, err := b.indexRepo.GetAll()
+		indexes, err := b.artistRepo.GetIndex()
 		return indexes, lastModified, err
 	}
 

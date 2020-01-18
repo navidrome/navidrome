@@ -5,6 +5,13 @@ type Artist struct {
 	Name       string
 	AlbumCount int
 }
+type Artists []Artist
+
+type ArtistIndex struct {
+	ID      string
+	Artists Artists
+}
+type ArtistIndexes []ArtistIndex
 
 type ArtistRepository interface {
 	CountAll() (int64, error)
@@ -14,6 +21,5 @@ type ArtistRepository interface {
 	PurgeInactive(active Artists) error
 	Search(q string, offset int, size int) (Artists, error)
 	Refresh(ids ...string) error
+	GetIndex() (ArtistIndexes, error)
 }
-
-type Artists []Artist
