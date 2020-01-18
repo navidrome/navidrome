@@ -43,6 +43,7 @@ func (s *ChangeDetector) Scan() (changed []string, deleted []string, err error) 
 
 func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated time.Time, err error) {
 	dir, err := os.Open(dirPath)
+	defer dir.Close()
 	if err != nil {
 		return
 	}
