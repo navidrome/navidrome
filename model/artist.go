@@ -22,4 +22,5 @@ type ArtistRepository interface {
 	Search(q string, offset int, size int) (Artists, error)
 	Refresh(ids ...string) error
 	GetIndex() (ArtistIndexes, error)
+	PurgeEmpty() error
 }

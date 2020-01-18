@@ -160,6 +160,12 @@ func (r *artistRepository) PurgeInactive(activeList model.Artists) error {
 	})
 }
 
+func (r *artistRepository) PurgeEmpty() error {
+	o := Db()
+	_, err := o.Raw("delete from artist where id not in (select distinct(artist_id) from album)").Exec()
+	return err
+}
+
 func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {
 	if len(q) <= 2 {
 		return nil, nil

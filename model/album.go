@@ -38,4 +38,5 @@ type AlbumRepository interface {
 	GetStarred(...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
 	Refresh(ids ...string) error
+	PurgeEmpty() error
 }

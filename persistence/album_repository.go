@@ -157,6 +157,12 @@ func (r *albumRepository) PurgeInactive(activeList model.Albums) error {
 	})
 }
 
+func (r *albumRepository) PurgeEmpty() error {
+	o := Db()
+	_, err := o.Raw("delete from album where id not in (select distinct(album_id) from media_file)").Exec()
+	return err
+}
+
 func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Albums, error) {
 	var starred []album
 	_, err := r.newQuery(Db(), options...).Filter("starred", true).All(&starred)

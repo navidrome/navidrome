@@ -80,6 +80,16 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		return err
 	}
 
+	err = s.repos.album.PurgeEmpty()
+	if err != nil {
+		return err
+	}
+
+	err = s.repos.artist.PurgeEmpty()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
