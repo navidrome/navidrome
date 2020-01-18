@@ -9,22 +9,28 @@ import (
 	"github.com/cloudsonic/sonic-server/log"
 )
 
+type dirInfo struct {
+	mdate time.Time
+	maybe bool
+}
+type dirInfoMap map[string]dirInfo
+
 type ChangeDetector struct {
 	rootFolder string
-	dirMap     map[string]time.Time
+	dirMap     dirInfoMap
 }
 
 func NewChangeDetector(rootFolder string) *ChangeDetector {
 	return &ChangeDetector{
 		rootFolder: rootFolder,
-		dirMap:     map[string]time.Time{},
+		dirMap:     dirInfoMap{},
 	}
 }
 
 func (s *ChangeDetector) Scan(lastModifiedSince time.Time) (changed []string, deleted []string, err error) {
 	start := time.Now()
-	newMap := make(map[string]time.Time)
-	err = s.loadMap(s.rootFolder, newMap)
+	newMap := make(dirInfoMap)
+	err = s.loadMap(newMap, s.rootFolder, lastModifiedSince, false)
 	if err != nil {
 		return
 	}
@@ -67,20 +73,21 @@ func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated
 	return
 }
 
-func (s *ChangeDetector) loadMap(rootPath string, dirMap map[string]time.Time) error {
+func (s *ChangeDetector) loadMap(dirMap dirInfoMap, rootPath string, since time.Time, maybe bool) error {
 	children, lastUpdated, err := s.loadDir(rootPath)
 	if err != nil {
 		return err
 	}
+	maybe = maybe || lastUpdated.After(since)
 	for _, c := range children {
-		err := s.loadMap(c, dirMap)
+		err := s.loadMap(dirMap, c, since, maybe)
 		if err != nil {
 			return err
 		}
 	}
 
 	dir := s.getRelativePath(rootPath)
-	dirMap[dir] = lastUpdated
+	dirMap[dir] = dirInfo{mdate: lastUpdated, maybe: maybe}
 
 	return nil
 }
@@ -93,11 +100,16 @@ func (s *ChangeDetector) getRelativePath(subfolder string) string {
 	return dir
 }
 
-func (s *ChangeDetector) checkForUpdates(lastModifiedSince time.Time, newMap map[string]time.Time) (changed []string, deleted []string, err error) {
-	for dir, lastUpdated := range newMap {
-		oldLastUpdated, ok := s.dirMap[dir]
-		if !ok {
-			oldLastUpdated = lastModifiedSince
+func (s *ChangeDetector) checkForUpdates(lastModifiedSince time.Time, newMap dirInfoMap) (changed []string, deleted []string, err error) {
+	for dir, newEntry := range newMap {
+		lastUpdated := newEntry.mdate
+		oldLastUpdated := lastModifiedSince
+		if oldEntry, ok := s.dirMap[dir]; ok {
+			oldLastUpdated = oldEntry.mdate
+		} else {
+			if newEntry.maybe {
+				oldLastUpdated = time.Time{}
+			}
 		}
 		if lastUpdated.After(oldLastUpdated) {
 			changed = append(changed, dir)

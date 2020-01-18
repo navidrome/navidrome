@@ -33,6 +33,7 @@ var _ = Describe("ChangeDetector", func() {
 		Expect(changed).To(ConsistOf("."))
 
 		// Add one subfolder
+		lastModifiedSince = time.Now()
 		err = os.MkdirAll(path.Join(testFolder, "a"), 0700)
 		if err != nil {
 			panic(err)
@@ -43,6 +44,7 @@ var _ = Describe("ChangeDetector", func() {
 		Expect(changed).To(ConsistOf(".", "/a"))
 
 		// Add more subfolders
+		lastModifiedSince = time.Now()
 		err = os.MkdirAll(path.Join(testFolder, "a", "b", "c"), 0700)
 		if err != nil {
 			panic(err)
@@ -53,12 +55,14 @@ var _ = Describe("ChangeDetector", func() {
 		Expect(changed).To(ConsistOf("/a", "/a/b", "/a/b/c"))
 
 		// Scan with no changes
+		lastModifiedSince = time.Now()
 		changed, deleted, err = scanner.Scan(lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
 		Expect(changed).To(BeEmpty())
 
 		// New file in subfolder
+		lastModifiedSince = time.Now()
 		_, err = os.Create(path.Join(testFolder, "a", "b", "empty.txt"))
 		if err != nil {
 			panic(err)
@@ -69,6 +73,7 @@ var _ = Describe("ChangeDetector", func() {
 		Expect(changed).To(ConsistOf("/a/b"))
 
 		// Delete file in subfolder
+		lastModifiedSince = time.Now()
 		err = os.Remove(path.Join(testFolder, "a", "b", "empty.txt"))
 		if err != nil {
 			panic(err)
@@ -79,6 +84,7 @@ var _ = Describe("ChangeDetector", func() {
 		Expect(changed).To(ConsistOf("/a/b"))
 
 		// Delete subfolder
+		lastModifiedSince = time.Now()
 		err = os.Remove(path.Join(testFolder, "a", "b", "c"))
 		if err != nil {
 			panic(err)
@@ -97,7 +103,8 @@ var _ = Describe("ChangeDetector", func() {
 		Expect(changed).To(BeEmpty())
 		Expect(changed).To(BeEmpty())
 
-		_, err = os.Create(path.Join(testFolder, "a", "b", "new.txt"))
+		f, err := os.Create(path.Join(testFolder, "a", "b", "new.txt"))
+		f.Close()
 		changed, deleted, err = newScanner.Scan(lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
