@@ -5,12 +5,12 @@ import "time"
 type Album struct {
 	ID           string
 	Name         string
-	ArtistID     string `parent:"artist"`
+	ArtistID     string
 	CoverArtPath string
 	CoverArtId   string
 	Artist       string
 	AlbumArtist  string
-	Year         int `idx:"Year"`
+	Year         int
 	Compilation  bool
 	Starred      bool
 	PlayCount    int
@@ -19,7 +19,7 @@ type Album struct {
 	Duration     int
 	Rating       int
 	Genre        string
-	StarredAt    time.Time `idx:"Starred"`
+	StarredAt    time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

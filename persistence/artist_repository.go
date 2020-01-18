@@ -9,7 +9,6 @@ import (
 	"github.com/cloudsonic/sonic-server/model"
 )
 
-// This is used to isolate Storm's struct tags from the domain, to keep it agnostic of persistence details
 type Artist struct {
 	ID         string `orm:"pk;column(id)"`
 	Name       string `orm:"index"`

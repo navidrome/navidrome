@@ -13,7 +13,7 @@ type MediaFile struct {
 	Artist      string
 	ArtistID    string
 	AlbumArtist string
-	AlbumID     string `parent:"album"`
+	AlbumID     string
 	HasCoverArt bool
 	TrackNumber int
 	DiscNumber  int
@@ -28,7 +28,7 @@ type MediaFile struct {
 	PlayDate    time.Time
 	Rating      int
 	Starred     bool
-	StarredAt   time.Time `idx:"Starred"`
+	StarredAt   time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

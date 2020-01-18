@@ -16,7 +16,7 @@ watch: check_go_env
 .PHONY: test
 test: check_go_env
 	go test ./... -v
-	@(cd ./ui && npm test -- --watchAll=false)
+#	@(cd ./ui && npm test -- --watchAll=false)
 
 .PHONY: build
 build: check_go_env
