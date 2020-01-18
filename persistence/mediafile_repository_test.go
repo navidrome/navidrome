@@ -1,6 +1,9 @@
 package persistence
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/cloudsonic/sonic-server/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -15,7 +18,9 @@ var _ = Describe("MediaFileRepository", func() {
 
 	Describe("FindByPath", func() {
 		It("returns all records from a given ArtistID", func() {
-			Expect(repo.FindByPath("/beatles/1")).To(Equal(model.MediaFiles{
+			path := string(os.PathSeparator) + filepath.Join("beatles", "1")
+			println("Searching path", path) // TODO Remove
+			Expect(repo.FindByPath(path)).To(Equal(model.MediaFiles{
 				songComeTogether,
 			}))
 		})
