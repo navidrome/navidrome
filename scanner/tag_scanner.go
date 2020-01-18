@@ -30,18 +30,15 @@ func NewTagScanner(rootFolder string, repos Repositories) *TagScanner {
 }
 
 // Scan algorithm overview:
-// For each changed: Get all files from DB that starts with it, scan each file:
-//		if changed or new, delete from DB and add new from the file
-// 		if not found, delete from DB
-//		scan and add the new ones
-// For each deleted: delete all files from DB that starts with it
-// Create new albums/artists, update counters (how?)
-//      collect all albumids and artistids from previous steps
-//      run something like this (for albums):
-//          select album_id, album, f.artist, f.compilation, max(f.year), count(*), sum(f.play_count), max(f.updated_at), a.id from media_file f left outer join album a on f.album_id = a.id group by album_id;
-//      when a.id is not null update, else  insert (collect all inserts and run just one InsertMulti)
+// For each changed: Get all files from DB that starts with the folder, scan each file:
+//	    if file in folder is newer, update the one in DB
+//      if file in folder does not exists in DB, add
+// 	    for each file in the DB that is not found in the folder, delete from DB
+// For each deleted folder: delete all files from DB that starts with the folder path
+// Create new albums/artists, update counters:
+//      collect all albumIDs and artistIDs from previous steps
+//	    refresh the collected albums and artists with the metadata from the mediafiles
 // Delete all empty albums, delete all empty Artists
-// Recreate ArtistIndex
 func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) error {
 	changed, deleted, err := s.detector.Scan(lastModifiedSince)
 	if err != nil {
