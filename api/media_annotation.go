@@ -50,12 +50,15 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 func (c *MediaAnnotationController) getIds(r *http.Request) ([]string, error) {
 	ids := ParamStrings(r, "id")
 	albumIds := ParamStrings(r, "albumId")
+	artistIds := ParamStrings(r, "artistId")
 
-	if len(ids) == 0 && len(albumIds) == 0 {
+	if len(ids)+len(albumIds)+len(artistIds) == 0 {
 		return nil, NewError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
 
-	return append(ids, albumIds...), nil
+	ids = append(ids, albumIds...)
+	ids = append(ids, artistIds...)
+	return ids, nil
 }
 
 func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {

@@ -50,6 +50,7 @@ func FromArtist(ar *model.Artist) Entry {
 	e.Id = ar.ID
 	e.Title = ar.Name
 	e.AlbumCount = ar.AlbumCount
+	e.Starred = ar.StarredAt
 	e.IsDir = true
 	return e
 }
@@ -134,6 +135,14 @@ func FromMediaFiles(mfs model.MediaFiles) Entries {
 	entries := make(Entries, len(mfs))
 	for i, mf := range mfs {
 		entries[i] = FromMediaFile(&mf)
+	}
+	return entries
+}
+
+func FromArtists(ars model.Artists) Entries {
+	entries := make(Entries, len(ars))
+	for i, ar := range ars {
+		entries[i] = FromArtist(&ar)
 	}
 	return entries
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/conf"
@@ -13,9 +14,11 @@ import (
 )
 
 type artist struct {
-	ID         string `orm:"pk;column(id)"`
-	Name       string `orm:"index"`
-	AlbumCount int    `orm:"column(album_count)"`
+	ID         string    `orm:"pk;column(id)"`
+	Name       string    `orm:"index"`
+	AlbumCount int       `orm:"column(album_count)"`
+	Starred    bool      `orm:"index"`
+	StarredAt  time.Time `orm:"index;null"`
 }
 
 type artistRepository struct {
@@ -149,6 +152,30 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 		}
 		log.Debug("Updated artists", "num", len(toUpdate))
 	}
+	return err
+}
+
+func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Artists, error) {
+	var starred []artist
+	_, err := r.newQuery(Db(), options...).Filter("starred", true).All(&starred)
+	if err != nil {
+		return nil, err
+	}
+	return r.toArtists(starred), nil
+}
+
+func (r *artistRepository) SetStar(starred bool, ids ...string) error {
+	if len(ids) == 0 {
+		return model.ErrNotFound
+	}
+	var starredAt time.Time
+	if starred {
+		starredAt = time.Now()
+	}
+	_, err := r.newQuery(Db()).Filter("id__in", ids).Update(orm.Params{
+		"starred":    starred,
+		"starred_at": starredAt,
+	})
 	return err
 }
 

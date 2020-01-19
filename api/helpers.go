@@ -145,6 +145,21 @@ func ToAlbum(entry engine.Entry) responses.Child {
 	return album
 }
 
+func ToArtists(entries engine.Entries) []responses.Artist {
+	artists := make([]responses.Artist, len(entries))
+	for i, entry := range entries {
+		artists[i] = responses.Artist{
+			Id:         entry.Id,
+			Name:       entry.Title,
+			AlbumCount: entry.AlbumCount,
+		}
+		if !entry.Starred.IsZero() {
+			artists[i].Starred = &entry.Starred
+		}
+	}
+	return artists
+}
+
 func ToChildren(entries engine.Entries) []responses.Child {
 	children := make([]responses.Child, len(entries))
 	for i, entry := range entries {

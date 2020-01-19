@@ -81,7 +81,7 @@ func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Reque
 }
 
 func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	albums, mediaFiles, err := c.listGen.GetAllStarred()
+	artists, albums, mediaFiles, err := c.listGen.GetAllStarred()
 	if err != nil {
 		log.Error(r, "Error retrieving starred media", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -89,13 +89,14 @@ func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request)
 
 	response := NewResponse()
 	response.Starred = &responses.Starred{}
+	response.Starred.Artist = ToArtists(artists)
 	response.Starred.Album = ToChildren(albums)
 	response.Starred.Song = ToChildren(mediaFiles)
 	return response, nil
 }
 
 func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	albums, mediaFiles, err := c.listGen.GetAllStarred()
+	artists, albums, mediaFiles, err := c.listGen.GetAllStarred()
 	if err != nil {
 		log.Error(r, "Error retrieving starred media", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -103,6 +104,7 @@ func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request
 
 	response := NewResponse()
 	response.Starred2 = &responses.Starred{}
+	response.Starred2.Artist = ToArtists(artists)
 	response.Starred2.Album = ToAlbums(albums)
 	response.Starred2.Song = ToChildren(mediaFiles)
 	return response, nil

@@ -57,11 +57,11 @@ type MusicFolders struct {
 }
 
 type Artist struct {
-	Id         string `xml:"id,attr"                           json:"id"`
-	Name       string `xml:"name,attr"                         json:"name"`
-	AlbumCount int    `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
+	Id         string     `xml:"id,attr"                           json:"id"`
+	Name       string     `xml:"name,attr"                         json:"name"`
+	AlbumCount int        `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
+	Starred    *time.Time `xml:"starred,attr,omitempty"            json:"starred,omitempty"`
 	/*
-		<xs:attribute name="starred" type="xs:dateTime" use="optional"/> <!-- Added in 1.10.1 -->
 		<xs:attribute name="userRating" type="sub:UserRating" use="optional"/>  <!-- Added in 1.13.0 -->
 		<xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/

@@ -27,7 +27,7 @@ type album struct {
 	Duration     int       ``
 	Rating       int       `orm:"index"`
 	Genre        string    `orm:"index"`
-	StarredAt    time.Time `orm:"null"`
+	StarredAt    time.Time `orm:"index;null"`
 	CreatedAt    time.Time `orm:"null"`
 	UpdatedAt    time.Time `orm:"null"`
 }
@@ -118,6 +118,9 @@ group by album_id order by f.id`, strings.Join(ids, "','"))
 		if al.Compilation {
 			al.AlbumArtist = "Various Artists"
 		}
+		if al.AlbumArtist == "" {
+			al.AlbumArtist = al.Artist
+		}
 		if al.CurrentId != "" {
 			toUpdate = append(toUpdate, al.album)
 		} else {
@@ -170,6 +173,21 @@ func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Album
 		return nil, err
 	}
 	return r.toAlbums(starred), nil
+}
+
+func (r *albumRepository) SetStar(starred bool, ids ...string) error {
+	if len(ids) == 0 {
+		return model.ErrNotFound
+	}
+	var starredAt time.Time
+	if starred {
+		starredAt = time.Now()
+	}
+	_, err := r.newQuery(Db()).Filter("id__in", ids).Update(orm.Params{
+		"starred":    starred,
+		"starred_at": starredAt,
+	})
+	return err
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {

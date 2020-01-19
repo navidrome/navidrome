@@ -52,4 +52,6 @@ type MediaFileRepository interface {
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	DeleteByPath(path string) error
+	SetStar(star bool, ids ...string) error
+	SetRating(rating int, ids ...string) error
 }

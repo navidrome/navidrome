@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 
+	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
@@ -55,6 +56,19 @@ func (r ratings) SetRating(ctx context.Context, id string, rating int) error {
 }
 
 func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
+	if conf.Sonic.DevUseFileScanner {
+		err := r.mfRepo.SetStar(star, ids...)
+		if err != nil {
+			return err
+		}
+		err = r.albumRepo.SetStar(star, ids...)
+		if err != nil {
+			return err
+		}
+		err = r.artistRepo.SetStar(star, ids...)
+		return err
+	}
+
 	for _, id := range ids {
 		isAlbum, _ := r.albumRepo.Exists(id)
 		if isAlbum {

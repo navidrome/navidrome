@@ -17,16 +17,17 @@ type ListGenerator interface {
 	GetByName(offset int, size int) (Entries, error)
 	GetByArtist(offset int, size int) (Entries, error)
 	GetStarred(offset int, size int) (Entries, error)
-	GetAllStarred() (albums Entries, mediaFiles Entries, err error)
+	GetAllStarred() (artists Entries, albums Entries, mediaFiles Entries, err error)
 	GetNowPlaying() (Entries, error)
 	GetRandomSongs(size int) (Entries, error)
 }
 
-func NewListGenerator(alr model.AlbumRepository, mfr model.MediaFileRepository, npr model.NowPlayingRepository) ListGenerator {
-	return &listGenerator{alr, mfr, npr}
+func NewListGenerator(arr model.ArtistRepository, alr model.AlbumRepository, mfr model.MediaFileRepository, npr model.NowPlayingRepository) ListGenerator {
+	return &listGenerator{arr, alr, mfr, npr}
 }
 
 type listGenerator struct {
+	artistRepo   model.ArtistRepository
 	albumRepo    model.AlbumRepository
 	mfRepository model.MediaFileRepository
 	npRepo       model.NowPlayingRepository
@@ -111,7 +112,7 @@ func (g *listGenerator) GetRandomSongs(size int) (Entries, error) {
 }
 
 func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Offset: offset, Size: size, Desc: true}
+	qo := model.QueryOptions{Offset: offset, Size: size, SortBy: "starred_at", Desc: true}
 	albums, err := g.albumRepo.GetStarred(qo)
 	if err != nil {
 		return nil, err
@@ -120,15 +121,24 @@ func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
 	return FromAlbums(albums), nil
 }
 
-func (g *listGenerator) GetAllStarred() (Entries, Entries, error) {
-	albums, err := g.GetStarred(0, -1)
+// TODO Return is confusing
+func (g *listGenerator) GetAllStarred() (Entries, Entries, Entries, error) {
+	artists, err := g.artistRepo.GetStarred(model.QueryOptions{SortBy: "starred_at", Desc: true})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	mediaFiles, err := g.mfRepository.GetStarred(model.QueryOptions{Desc: true})
+	albums, err := g.GetStarred(0, -1)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
-	return albums, FromMediaFiles(mediaFiles), err
+	mediaFiles, err := g.mfRepository.GetStarred(model.QueryOptions{SortBy: "starred_at", Desc: true})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return FromArtists(artists), albums, FromMediaFiles(mediaFiles), err
 }
 
 func (g *listGenerator) GetNowPlaying() (Entries, error) {

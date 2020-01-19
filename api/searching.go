@@ -70,10 +70,7 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 
 	response := NewResponse()
 	searchResult2 := &responses.SearchResult2{}
-	searchResult2.Artist = make([]responses.Artist, len(as))
-	for i, e := range as {
-		searchResult2.Artist[i] = responses.Artist{Id: e.Id, Name: e.Title}
-	}
+	searchResult2.Artist = ToArtists(as)
 	searchResult2.Album = ToChildren(als)
 	searchResult2.Song = ToChildren(mfs)
 	response.SearchResult2 = searchResult2
@@ -96,6 +93,9 @@ func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*
 			Name:       e.Title,
 			CoverArt:   e.CoverArt,
 			AlbumCount: e.AlbumCount,
+		}
+		if !e.Starred.IsZero() {
+			searchResult3.Artist[i].Starred = &e.Starred
 		}
 	}
 	searchResult3.Album = ToAlbums(als)
