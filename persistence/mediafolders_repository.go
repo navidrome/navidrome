@@ -14,7 +14,12 @@ func NewMediaFolderRepository() model.MediaFolderRepository {
 }
 
 func (*mediaFolderRepository) GetAll() (model.MediaFolders, error) {
-	mediaFolder := model.MediaFolder{ID: "0", Name: "iTunes Library", Path: conf.Sonic.MusicFolder}
+	mediaFolder := model.MediaFolder{ID: "0", Path: conf.Sonic.MusicFolder}
+	if conf.Sonic.DevUseFileScanner {
+		mediaFolder.Name = "Music Library"
+	} else {
+		mediaFolder.Name = "iTunes Library"
+	}
 	result := make(model.MediaFolders, 1)
 	result[0] = mediaFolder
 	return result, nil
