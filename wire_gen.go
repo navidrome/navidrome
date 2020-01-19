@@ -6,11 +6,11 @@
 package main
 
 import (
-	"github.com/cloudsonic/sonic-server/api"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/cloudsonic/sonic-server/server"
+	"github.com/cloudsonic/sonic-server/server/subsonic"
 	"github.com/google/wire"
 )
 
@@ -23,7 +23,7 @@ func CreateApp(musicFolder string) *server.Server {
 	return serverServer
 }
 
-func CreateSubsonicAPIRouter() *api.Router {
+func CreateSubsonicAPIRouter() *subsonic.Router {
 	dataStore := persistence.New()
 	browser := engine.NewBrowser(dataStore)
 	cover := engine.NewCover(dataStore)
@@ -33,10 +33,10 @@ func CreateSubsonicAPIRouter() *api.Router {
 	ratings := engine.NewRatings(dataStore)
 	scrobbler := engine.NewScrobbler(dataStore, nowPlayingRepository)
 	search := engine.NewSearch(dataStore)
-	router := api.NewRouter(browser, cover, listGenerator, playlists, ratings, scrobbler, search)
+	router := subsonic.NewRouter(browser, cover, listGenerator, playlists, ratings, scrobbler, search)
 	return router
 }
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(engine.Set, scanner.New, api.NewRouter, persistence.Set)
+var allProviders = wire.NewSet(engine.Set, scanner.New, subsonic.NewRouter, persistence.Set)

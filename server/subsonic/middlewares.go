@@ -1,4 +1,4 @@
-package api
+package subsonic
 
 import (
 	"context"
@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/server/subsonic/responses"
 )
 
 func checkRequiredParameters(next http.Handler) http.Handler {

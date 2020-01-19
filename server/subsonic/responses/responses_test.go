@@ -10,7 +10,7 @@ import (
 	"encoding/xml"
 	"time"
 
-	. "github.com/cloudsonic/sonic-server/api/responses"
+	. "github.com/cloudsonic/sonic-server/server/subsonic/responses"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

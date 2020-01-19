@@ -1,4 +1,4 @@
-package api
+package subsonic
 
 import (
 	"testing"

@@ -1,9 +1,9 @@
-package api
+package subsonic
 
 import (
 	"net/http"
 
-	"github.com/cloudsonic/sonic-server/api/responses"
+	"github.com/cloudsonic/sonic-server/server/subsonic/responses"
 )
 
 type SystemController struct{}

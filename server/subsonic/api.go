@@ -1,4 +1,4 @@
-package api
+package subsonic
 
 import (
 	"encoding/json"
@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/cloudsonic/sonic-server/server/subsonic/responses"
 	"github.com/go-chi/chi"
 )
 
 const Version = "1.8.0"
 
-type SubsonicHandler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
+type Handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
 type Router struct {
 	Browser       engine.Browser
@@ -123,7 +123,7 @@ func (api *Router) routes() http.Handler {
 
 // Add the Subsonic handler, with and without `.view` extension
 // Ex: if path = `ping` it will create the routes `/ping` and `/ping.view`
-func H(r chi.Router, path string, f SubsonicHandler) {
+func H(r chi.Router, path string, f Handler) {
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)
 		if err != nil {

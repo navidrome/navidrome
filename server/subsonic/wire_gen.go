@@ -3,7 +3,7 @@
 //go:generate wire
 //+build !wireinject
 
-package api
+package subsonic
 
 import (
 	"github.com/google/wire"

@@ -1,12 +1,12 @@
-package api
+package subsonic
 
 import (
 	"net/http"
 
-	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
+	"github.com/cloudsonic/sonic-server/server/subsonic/responses"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 

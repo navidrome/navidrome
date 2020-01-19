@@ -1,15 +1,15 @@
-package api
+package subsonic
 
 import (
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/api/responses"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
+	"github.com/cloudsonic/sonic-server/server/subsonic/responses"
 	"github.com/cloudsonic/sonic-server/utils"
 )
 
