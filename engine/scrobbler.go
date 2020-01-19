@@ -76,7 +76,10 @@ func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, 
 	if conf.Sonic.DevUseFileScanner {
 		mf, err := s.mfRepo.Get(trackId)
 		if err != nil {
-			err = s.mfRepo.MarkAsPlayed(trackId, playTime)
+			return nil, err
+		}
+		err = s.mfRepo.MarkAsPlayed(trackId, playTime)
+		if err != nil {
 			return nil, err
 		}
 		err = s.alRepo.MarkAsPlayed(mf.AlbumID, playTime)
