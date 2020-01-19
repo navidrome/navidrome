@@ -21,16 +21,10 @@ func xTestScanner(t *testing.T) {
 var _ = Describe("TODO: REMOVE", func() {
 	conf.Sonic.DbPath = "./testDB"
 	log.SetLevel(log.LevelDebug)
-	repos := Repositories{
-		folder:    persistence.NewMediaFolderRepository(),
-		mediaFile: persistence.NewMediaFileRepository(),
-		album:     persistence.NewAlbumRepository(),
-		artist:    persistence.NewArtistRepository(),
-		playlist:  nil,
-	}
+	ds := persistence.New()
 	It("WORKS!", func() {
-		t := NewTagScanner("/Users/deluan/Music/iTunes/iTunes Media/Music", repos)
-		//t := NewTagScanner("/Users/deluan/Development/cloudsonic/sonic-server/tests/fixtures", repos)
+		t := NewTagScanner("/Users/deluan/Music/iTunes/iTunes Media/Music", ds)
+		//t := NewTagScanner("/Users/deluan/Development/cloudsonic/sonic-server/tests/fixtures", ds)
 		Expect(t.Scan(nil, time.Time{})).To(BeNil())
 	})
 })

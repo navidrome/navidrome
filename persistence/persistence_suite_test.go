@@ -57,19 +57,19 @@ var _ = Describe("Initialize test DB", func() {
 		//conf.Sonic.DbPath, _ = ioutil.TempDir("", "cloudsonic_tests")
 		//os.MkdirAll(conf.Sonic.DbPath, 0700)
 		conf.Sonic.DbPath = ":memory:"
-		Db()
-		artistRepo := NewArtistRepository()
+		ds := New()
+		artistRepo := ds.Artist()
 		for _, a := range testArtists {
 			artistRepo.Put(&a)
 		}
-		albumRepository := NewAlbumRepository()
+		albumRepository := ds.Album()
 		for _, a := range testAlbums {
 			err := albumRepository.Put(&a)
 			if err != nil {
 				panic(err)
 			}
 		}
-		mediaFileRepository := NewMediaFileRepository()
+		mediaFileRepository := ds.MediaFile()
 		for _, s := range testSongs {
 			err := mediaFileRepository.Put(&s, true)
 			if err != nil {

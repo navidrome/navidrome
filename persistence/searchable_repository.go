@@ -20,59 +20,57 @@ type searchableRepository struct {
 }
 
 func (r *searchableRepository) DeleteAll() error {
-	return withTx(func(o orm.Ormer) error {
-		_, err := r.newQuery(Db()).Filter("id__isnull", false).Delete()
-		if err != nil {
-			return err
-		}
-		return r.removeAllFromIndex(o, r.tableName)
-	})
+	_, err := r.newQuery().Filter("id__isnull", false).Delete()
+	if err != nil {
+		return err
+	}
+	return r.removeAllFromIndex(r.ormer, r.tableName)
 }
 
-func (r *searchableRepository) put(o orm.Ormer, id string, textToIndex string, a interface{}, fields ...string) error {
-	c, err := r.newQuery(o).Filter("id", id).Count()
+func (r *searchableRepository) put(id string, textToIndex string, a interface{}, fields ...string) error {
+	c, err := r.newQuery().Filter("id", id).Count()
 	if err != nil {
 		return err
 	}
 	if c == 0 {
-		err = r.insert(o, a)
+		err = r.insert(a)
 		if err != nil && err.Error() == "LastInsertId is not supported by this driver" {
 			err = nil
 		}
 	} else {
-		_, err = o.Update(a, fields...)
+		_, err = r.ormer.Update(a, fields...)
 	}
 	if err != nil {
 		return err
 	}
-	return r.addToIndex(o, r.tableName, id, textToIndex)
+	return r.addToIndex(r.tableName, id, textToIndex)
 }
 
-func (r *searchableRepository) purgeInactive(o orm.Ormer, activeList interface{}, getId func(item interface{}) string) ([]string, error) {
-	idsToDelete, err := r.sqlRepository.purgeInactive(o, activeList, getId)
+func (r *searchableRepository) purgeInactive(activeList interface{}, getId func(item interface{}) string) ([]string, error) {
+	idsToDelete, err := r.sqlRepository.purgeInactive(activeList, getId)
 	if err != nil {
 		return nil, err
 	}
-	return idsToDelete, r.removeFromIndex(o, r.tableName, idsToDelete)
+	return idsToDelete, r.removeFromIndex(r.tableName, idsToDelete)
 }
 
-func (r *searchableRepository) addToIndex(o orm.Ormer, table, id, text string) error {
+func (r *searchableRepository) addToIndex(table, id, text string) error {
 	item := Search{ID: id, Table: table}
-	err := o.Read(&item)
+	err := r.ormer.Read(&item)
 	if err != nil && err != orm.ErrNoRows {
 		return err
 	}
 	sanitizedText := strings.TrimSpace(sanitize.Accents(strings.ToLower(text)))
 	item = Search{ID: id, Table: table, FullText: sanitizedText}
 	if err == orm.ErrNoRows {
-		err = r.insert(o, &item)
+		err = r.insert(&item)
 	} else {
-		_, err = o.Update(&item)
+		_, err = r.ormer.Update(&item)
 	}
 	return err
 }
 
-func (r *searchableRepository) removeFromIndex(o orm.Ormer, table string, ids []string) error {
+func (r *searchableRepository) removeFromIndex(table string, ids []string) error {
 	var offset int
 	for {
 		var subset = paginateSlice(ids, offset, batchSize)
@@ -81,7 +79,7 @@ func (r *searchableRepository) removeFromIndex(o orm.Ormer, table string, ids []
 		}
 		log.Trace("Deleting searchable items", "table", table, "num", len(subset), "from", offset)
 		offset += len(subset)
-		_, err := o.QueryTable(&Search{}).Filter("table", table).Filter("id__in", subset).Delete()
+		_, err := r.ormer.QueryTable(&Search{}).Filter("table", table).Filter("id__in", subset).Delete()
 		if err != nil {
 			return err
 		}
@@ -116,6 +114,6 @@ func (r *searchableRepository) doSearch(table string, q string, offset, size int
 	if err != nil {
 		return err
 	}
-	_, err = Db().Raw(sql, args...).QueryRows(results)
+	_, err = r.ormer.Raw(sql, args...).QueryRows(results)
 	return err
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/scanner"
-	"github.com/cloudsonic/sonic-server/scanner_legacy"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
@@ -19,25 +18,18 @@ import (
 const Version = "0.2"
 
 type Server struct {
-	Importer *scanner_legacy.Importer
-	Scanner  *scanner.Scanner
-	router   *chi.Mux
+	Scanner *scanner.Scanner
+	router  *chi.Mux
 }
 
-func New(importer *scanner_legacy.Importer, scanner *scanner.Scanner) *Server {
-	a := &Server{Importer: importer, Scanner: scanner}
+func New(scanner *scanner.Scanner) *Server {
+	a := &Server{Scanner: scanner}
 	if !conf.Sonic.DevDisableBanner {
 		showBanner(Version)
 	}
 	initMimeTypes()
 	a.initRoutes()
-	if conf.Sonic.DevUseFileScanner {
-		log.Info("Using Folder Scanner", "folder", conf.Sonic.MusicFolder)
-		a.initScanner()
-	} else {
-		log.Info("Using iTunes Importer", "xml", conf.Sonic.MusicFolder)
-		a.initImporter()
-	}
+	a.initScanner()
 	return a
 }
 
@@ -84,22 +76,6 @@ func (a *Server) initScanner() {
 				if err != nil {
 					log.Error("Error scanning media folder", "folder", conf.Sonic.MusicFolder, err)
 				}
-			}
-		}
-	}()
-}
-
-func (a *Server) initImporter() {
-	go func() {
-		first := true
-		for {
-			select {
-			case <-time.After(5 * time.Second):
-				if first {
-					log.Info("Started iTunes scanner", "xml", conf.Sonic.MusicFolder)
-					first = false
-				}
-				a.Importer.CheckForUpdates(false)
 			}
 		}
 	}()

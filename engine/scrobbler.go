@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/itunesbridge"
-	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
 )
 
@@ -22,87 +19,31 @@ type Scrobbler interface {
 	NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error)
 }
 
-func NewScrobbler(itunes itunesbridge.ItunesControl, mr model.MediaFileRepository, alr model.AlbumRepository, npr NowPlayingRepository) Scrobbler {
-	return &scrobbler{itunes: itunes, mfRepo: mr, alRepo: alr, npRepo: npr}
+func NewScrobbler(ds model.DataStore, npr NowPlayingRepository) Scrobbler {
+	return &scrobbler{ds: ds, npRepo: npr}
 }
 
 type scrobbler struct {
-	itunes itunesbridge.ItunesControl
-	mfRepo model.MediaFileRepository
-	alRepo model.AlbumRepository
+	ds     model.DataStore
 	npRepo NowPlayingRepository
 }
 
-func (s *scrobbler) detectSkipped(ctx context.Context, playerId int, trackId string) {
-	size, _ := s.npRepo.Count(playerId)
-	switch size {
-	case 0:
-		return
-	case 1:
-		np, _ := s.npRepo.Tail(playerId)
-		if np.TrackID != trackId {
-			return
-		}
-		s.npRepo.Dequeue(playerId)
-	default:
-		prev, _ := s.npRepo.Dequeue(playerId)
-		for {
-			if prev.TrackID == trackId {
-				break
-			}
-			np, err := s.npRepo.Dequeue(playerId)
-			if np == nil || err != nil {
-				break
-			}
-			diff := np.Start.Sub(prev.Start)
-			if diff < minSkipped || diff > maxSkipped {
-				log.Debug(ctx, fmt.Sprintf("-- Playtime for track %s was %v. Not skipping.", prev.TrackID, diff))
-				prev = np
-				continue
-			}
-			err = s.itunes.MarkAsSkipped(prev.TrackID, prev.Start.Add(1*time.Minute))
-			if err != nil {
-				log.Warn(ctx, "Error skipping track", "id", prev.TrackID)
-			} else {
-				log.Debug(ctx, "-- Skipped track "+prev.TrackID)
-			}
-		}
-	}
-}
-
 func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, playTime time.Time) (*model.MediaFile, error) {
-	s.detectSkipped(ctx, playerId, trackId)
-
-	if conf.Sonic.DevUseFileScanner {
-		mf, err := s.mfRepo.Get(trackId)
-		if err != nil {
-			return nil, err
-		}
-		err = s.mfRepo.MarkAsPlayed(trackId, playTime)
-		if err != nil {
-			return nil, err
-		}
-		err = s.alRepo.MarkAsPlayed(mf.AlbumID, playTime)
-		return mf, err
-	}
-
-	mf, err := s.mfRepo.Get(trackId)
+	// TODO Add transaction
+	mf, err := s.ds.MediaFile().Get(trackId)
 	if err != nil {
 		return nil, err
 	}
-
-	if mf == nil {
-		return nil, errors.New(fmt.Sprintf(`ID "%s" not found`, trackId))
-	}
-
-	if err := s.itunes.MarkAsPlayed(trackId, playTime); err != nil {
+	err = s.ds.MediaFile().MarkAsPlayed(trackId, playTime)
+	if err != nil {
 		return nil, err
 	}
-	return mf, nil
+	err = s.ds.Album().MarkAsPlayed(mf.AlbumID, playTime)
+	return mf, err
 }
 
 func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error) {
-	mf, err := s.mfRepo.Get(trackId)
+	mf, err := s.ds.MediaFile().Get(trackId)
 	if err != nil {
 		return nil, err
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/cloudsonic/sonic-server/model"
+	"github.com/cloudsonic/sonic-server/persistence"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -18,7 +19,8 @@ var _ = Describe("Browser", func() {
 			{Name: "", SongCount: 13, AlbumCount: 13},
 			{Name: "Electronic", SongCount: 4000, AlbumCount: 40},
 		}}
-		b = &browser{genreRepo: repo}
+		var ds = &persistence.MockDataStore{MockedGenre: repo}
+		b = &browser{ds: ds}
 	})
 
 	It("returns sorted data", func() {

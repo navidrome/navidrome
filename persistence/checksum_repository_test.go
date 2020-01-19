@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -10,8 +11,7 @@ var _ = Describe("ChecksumRepository", func() {
 	var repo model.ChecksumRepository
 
 	BeforeEach(func() {
-		Db().Delete(&checksum{ID: checkSumId})
-		repo = NewCheckSumRepository()
+		repo = NewCheckSumRepository(orm.NewOrm())
 		err := repo.SetData(map[string]string{
 			"a": "AAA", "b": "BBB",
 		})
@@ -27,7 +27,7 @@ var _ = Describe("ChecksumRepository", func() {
 	})
 
 	It("persists data", func() {
-		newRepo := NewCheckSumRepository()
+		newRepo := NewCheckSumRepository(orm.NewOrm())
 		sums, err := newRepo.GetData()
 		Expect(err).To(BeNil())
 		Expect(sums["b"]).To(Equal("BBB"))

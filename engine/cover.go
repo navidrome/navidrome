@@ -20,25 +20,24 @@ type Cover interface {
 }
 
 type cover struct {
-	mfileRepo model.MediaFileRepository
-	albumRepo model.AlbumRepository
+	ds model.DataStore
 }
 
-func NewCover(mr model.MediaFileRepository, alr model.AlbumRepository) Cover {
-	return &cover{mr, alr}
+func NewCover(ds model.DataStore) Cover {
+	return &cover{ds}
 }
 
 func (c *cover) getCoverPath(id string) (string, error) {
 	switch {
 	case strings.HasPrefix(id, "al-"):
 		id = id[3:]
-		al, err := c.albumRepo.Get(id)
+		al, err := c.ds.Album().Get(id)
 		if err != nil {
 			return "", err
 		}
 		return al.CoverArtPath, nil
 	default:
-		mf, err := c.mfileRepo.Get(id)
+		mf, err := c.ds.MediaFile().Get(id)
 		if err != nil {
 			return "", err
 		}

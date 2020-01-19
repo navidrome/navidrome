@@ -36,22 +36,21 @@ type albumRepository struct {
 	searchableRepository
 }
 
-func NewAlbumRepository() model.AlbumRepository {
+func NewAlbumRepository(o orm.Ormer) model.AlbumRepository {
 	r := &albumRepository{}
+	r.ormer = o
 	r.tableName = "album"
 	return r
 }
 
 func (r *albumRepository) Put(a *model.Album) error {
 	ta := album(*a)
-	return withTx(func(o orm.Ormer) error {
-		return r.put(o, a.ID, a.Name, &ta)
-	})
+	return r.put(a.ID, a.Name, &ta)
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
 	ta := album{ID: id}
-	err := Db().Read(&ta)
+	err := r.ormer.Read(&ta)
 	if err == orm.ErrNoRows {
 		return nil, model.ErrNotFound
 	}
@@ -64,7 +63,7 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 
 func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
 	var albums []album
-	_, err := r.newQuery(Db()).Filter("artist_id", artistId).OrderBy("year", "name").All(&albums)
+	_, err := r.newQuery().Filter("artist_id", artistId).OrderBy("year", "name").All(&albums)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +72,7 @@ func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
 	var all []album
-	_, err := r.newQuery(Db(), options...).All(&all)
+	_, err := r.newQuery(options...).All(&all)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +94,7 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		HasCoverArt bool
 	}
 	var albums []refreshAlbum
-	o := Db()
+	o := r.ormer
 	sql := fmt.Sprintf(`
 select album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.compilation, f.genre,  
 	max(f.year) as year, sum(f.play_count) as play_count, max(f.play_date) as play_date,  sum(f.duration) as duration,
@@ -126,7 +125,7 @@ group by album_id order by f.id`, strings.Join(ids, "','"))
 		} else {
 			toInsert = append(toInsert, al.album)
 		}
-		err := r.addToIndex(o, r.tableName, al.ID, al.Name)
+		err := r.addToIndex(r.tableName, al.ID, al.Name)
 		if err != nil {
 			return err
 		}
@@ -153,23 +152,20 @@ group by album_id order by f.id`, strings.Join(ids, "','"))
 }
 
 func (r *albumRepository) PurgeInactive(activeList model.Albums) error {
-	return withTx(func(o orm.Ormer) error {
-		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
-			return item.(model.Album).ID
-		})
-		return err
+	_, err := r.purgeInactive(activeList, func(item interface{}) string {
+		return item.(model.Album).ID
 	})
+	return err
 }
 
 func (r *albumRepository) PurgeEmpty() error {
-	o := Db()
-	_, err := o.Raw("delete from album where id not in (select distinct(album_id) from media_file)").Exec()
+	_, err := r.ormer.Raw("delete from album where id not in (select distinct(album_id) from media_file)").Exec()
 	return err
 }
 
 func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Albums, error) {
 	var starred []album
-	_, err := r.newQuery(Db(), options...).Filter("starred", true).All(&starred)
+	_, err := r.newQuery(options...).Filter("starred", true).All(&starred)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +180,7 @@ func (r *albumRepository) SetStar(starred bool, ids ...string) error {
 	if starred {
 		starredAt = time.Now()
 	}
-	_, err := r.newQuery(Db()).Filter("id__in", ids).Update(orm.Params{
+	_, err := r.newQuery().Filter("id__in", ids).Update(orm.Params{
 		"starred":    starred,
 		"starred_at": starredAt,
 	})
@@ -192,7 +188,7 @@ func (r *albumRepository) SetStar(starred bool, ids ...string) error {
 }
 
 func (r *albumRepository) MarkAsPlayed(id string, playDate time.Time) error {
-	_, err := r.newQuery(Db()).Filter("id", id).Update(orm.Params{
+	_, err := r.newQuery().Filter("id", id).Update(orm.Params{
 		"play_count": orm.ColValue(orm.ColAdd, 1),
 		"play_date":  playDate,
 	})

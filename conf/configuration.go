@@ -29,7 +29,6 @@ type sonic struct {
 	DevDisableAuthentication bool   `default:"false"`
 	DevDisableFileCheck      bool   `default:"false"`
 	DevDisableBanner         bool   `default:"false"`
-	DevUseFileScanner        bool   `default:"false"`
 }
 
 var Sonic *sonic

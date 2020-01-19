@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -10,7 +11,7 @@ var _ = Describe("GenreRepository", func() {
 	var repo model.GenreRepository
 
 	BeforeEach(func() {
-		repo = NewGenreRepository()
+		repo = NewGenreRepository(orm.NewOrm())
 	})
 
 	It("returns all records", func() {

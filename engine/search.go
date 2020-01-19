@@ -15,19 +15,17 @@ type Search interface {
 }
 
 type search struct {
-	artistRepo model.ArtistRepository
-	albumRepo  model.AlbumRepository
-	mfileRepo  model.MediaFileRepository
+	ds model.DataStore
 }
 
-func NewSearch(ar model.ArtistRepository, alr model.AlbumRepository, mr model.MediaFileRepository) Search {
-	s := &search{artistRepo: ar, albumRepo: alr, mfileRepo: mr}
+func NewSearch(ds model.DataStore) Search {
+	s := &search{ds}
 	return s
 }
 
 func (s *search) SearchArtist(ctx context.Context, q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
-	resp, err := s.artistRepo.Search(q, offset, size)
+	resp, err := s.ds.Artist().Search(q, offset, size)
 	if err != nil {
 		return nil, nil
 	}
@@ -40,7 +38,7 @@ func (s *search) SearchArtist(ctx context.Context, q string, offset int, size in
 
 func (s *search) SearchAlbum(ctx context.Context, q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
-	resp, err := s.albumRepo.Search(q, offset, size)
+	resp, err := s.ds.Album().Search(q, offset, size)
 	if err != nil {
 		return nil, nil
 	}
@@ -53,7 +51,7 @@ func (s *search) SearchAlbum(ctx context.Context, q string, offset int, size int
 
 func (s *search) SearchSong(ctx context.Context, q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
-	resp, err := s.mfileRepo.Search(q, offset, size)
+	resp, err := s.ds.MediaFile().Search(q, offset, size)
 	if err != nil {
 		return nil, nil
 	}

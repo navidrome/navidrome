@@ -26,8 +26,9 @@ type artistRepository struct {
 	indexGroups utils.IndexGroups
 }
 
-func NewArtistRepository() model.ArtistRepository {
+func NewArtistRepository(o orm.Ormer) model.ArtistRepository {
 	r := &artistRepository{}
+	r.ormer = o
 	r.indexGroups = utils.ParseIndexGroups(conf.Sonic.IndexGroups)
 	r.tableName = "artist"
 	return r
@@ -46,14 +47,12 @@ func (r *artistRepository) getIndexKey(a *artist) string {
 
 func (r *artistRepository) Put(a *model.Artist) error {
 	ta := artist(*a)
-	return withTx(func(o orm.Ormer) error {
-		return r.put(o, a.ID, a.Name, &ta)
-	})
+	return r.put(a.ID, a.Name, &ta)
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
 	ta := artist{ID: id}
-	err := Db().Read(&ta)
+	err := r.ormer.Read(&ta)
 	if err == orm.ErrNoRows {
 		return nil, model.ErrNotFound
 	}
@@ -68,7 +67,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 	var all []artist
 	// TODO Paginate
-	_, err := r.newQuery(Db()).OrderBy("name").All(&all)
+	_, err := r.newQuery().OrderBy("name").All(&all)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +100,7 @@ func (r *artistRepository) Refresh(ids ...string) error {
 		Compilation bool
 	}
 	var artists []refreshArtist
-	o := Db()
+	o := r.ormer
 	sql := fmt.Sprintf(`
 select f.artist_id as id,
        f.artist as name,
@@ -131,7 +130,7 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 		} else {
 			toInsert = append(toInsert, ar.artist)
 		}
-		err := r.addToIndex(o, r.tableName, ar.ID, ar.Name)
+		err := r.addToIndex(r.tableName, ar.ID, ar.Name)
 		if err != nil {
 			return err
 		}
@@ -158,7 +157,7 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 
 func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Artists, error) {
 	var starred []artist
-	_, err := r.newQuery(Db(), options...).Filter("starred", true).All(&starred)
+	_, err := r.newQuery(options...).Filter("starred", true).All(&starred)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +172,7 @@ func (r *artistRepository) SetStar(starred bool, ids ...string) error {
 	if starred {
 		starredAt = time.Now()
 	}
-	_, err := r.newQuery(Db()).Filter("id__in", ids).Update(orm.Params{
+	_, err := r.newQuery().Filter("id__in", ids).Update(orm.Params{
 		"starred":    starred,
 		"starred_at": starredAt,
 	})
@@ -181,17 +180,14 @@ func (r *artistRepository) SetStar(starred bool, ids ...string) error {
 }
 
 func (r *artistRepository) PurgeInactive(activeList model.Artists) error {
-	return withTx(func(o orm.Ormer) error {
-		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
-			return item.(model.Artist).ID
-		})
-		return err
+	_, err := r.purgeInactive(activeList, func(item interface{}) string {
+		return item.(model.Artist).ID
 	})
+	return err
 }
 
 func (r *artistRepository) PurgeEmpty() error {
-	o := Db()
-	_, err := o.Raw("delete from artist where id not in (select distinct(artist_id) from album)").Exec()
+	_, err := r.ormer.Raw("delete from artist where id not in (select distinct(artist_id) from album)").Exec()
 	return err
 }
 

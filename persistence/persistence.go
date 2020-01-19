@@ -8,6 +8,7 @@ import (
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -19,7 +20,11 @@ var (
 	driver = "sqlite3"
 )
 
-func Db() orm.Ormer {
+type SQLStore struct {
+	orm orm.Ormer
+}
+
+func New() model.DataStore {
 	once.Do(func() {
 		dbPath := conf.Sonic.DbPath
 		if dbPath == ":memory:" {
@@ -31,17 +36,47 @@ func Db() orm.Ormer {
 		}
 		log.Debug("Opening DB from: "+dbPath, "driver", driver)
 	})
-	return orm.NewOrm()
+	return &SQLStore{}
 }
 
-func withTx(block func(orm.Ormer) error) error {
+func (db *SQLStore) Album() model.AlbumRepository {
+	return NewAlbumRepository(db.getOrmer())
+}
+
+func (db *SQLStore) Artist() model.ArtistRepository {
+	return NewArtistRepository(db.getOrmer())
+}
+
+func (db *SQLStore) MediaFile() model.MediaFileRepository {
+	return NewMediaFileRepository(db.getOrmer())
+}
+
+func (db *SQLStore) MediaFolder() model.MediaFolderRepository {
+	return NewMediaFolderRepository(db.getOrmer())
+}
+
+func (db *SQLStore) Genre() model.GenreRepository {
+	return NewGenreRepository(db.getOrmer())
+}
+
+func (db *SQLStore) Playlist() model.PlaylistRepository {
+	return NewPlaylistRepository(db.getOrmer())
+}
+
+func (db *SQLStore) Property() model.PropertyRepository {
+	return NewPropertyRepository(db.getOrmer())
+}
+
+func (db *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 	o := orm.NewOrm()
 	err := o.Begin()
 	if err != nil {
 		return err
 	}
 
-	err = block(o)
+	newDb := &SQLStore{orm: o}
+	err = block(newDb)
+
 	if err != nil {
 		err2 := o.Rollback()
 		if err2 != nil {
@@ -57,15 +92,11 @@ func withTx(block func(orm.Ormer) error) error {
 	return nil
 }
 
-func collectField(collection interface{}, getValue func(item interface{}) string) []string {
-	s := reflect.ValueOf(collection)
-	result := make([]string, s.Len())
-
-	for i := 0; i < s.Len(); i++ {
-		result[i] = getValue(s.Index(i).Interface())
+func (db *SQLStore) getOrmer() orm.Ormer {
+	if db.orm == nil {
+		return orm.NewOrm()
 	}
-
-	return result
+	return db.orm
 }
 
 func initORM(dbPath string) error {
@@ -86,4 +117,15 @@ func initORM(dbPath string) error {
 		panic(err)
 	}
 	return orm.RunSyncdb("default", false, verbose)
+}
+
+func collectField(collection interface{}, getValue func(item interface{}) string) []string {
+	s := reflect.ValueOf(collection)
+	result := make([]string, s.Len())
+
+	for i := 0; i < s.Len(); i++ {
+		result[i] = getValue(s.Index(i).Interface())
+	}
+
+	return result
 }

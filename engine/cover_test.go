@@ -15,10 +15,11 @@ import (
 func TestCover(t *testing.T) {
 	Init(t, false)
 
-	mockMediaFileRepo := persistence.CreateMockMediaFileRepo()
-	mockAlbumRepo := persistence.CreateMockAlbumRepo()
+	ds := &persistence.MockDataStore{}
+	mockMediaFileRepo := ds.MediaFile().(*persistence.MockMediaFile)
+	mockAlbumRepo := ds.Album().(*persistence.MockAlbum)
 
-	cover := engine.NewCover(mockMediaFileRepo, mockAlbumRepo)
+	cover := engine.NewCover(ds)
 	out := new(bytes.Buffer)
 
 	Convey("Subject: GetCoverArt Endpoint", t, func() {

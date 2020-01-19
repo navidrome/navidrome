@@ -6,6 +6,7 @@ import (
 )
 
 type checkSumRepository struct {
+	ormer orm.Ormer
 }
 
 const checkSumId = "1"
@@ -15,8 +16,8 @@ type checksum struct {
 	Sum string
 }
 
-func NewCheckSumRepository() model.ChecksumRepository {
-	r := &checkSumRepository{}
+func NewCheckSumRepository(o orm.Ormer) model.ChecksumRepository {
+	r := &checkSumRepository{ormer: o}
 	return r
 }
 
@@ -24,7 +25,7 @@ func (r *checkSumRepository) GetData() (model.ChecksumMap, error) {
 	loadedData := make(map[string]string)
 
 	var all []checksum
-	_, err := Db().QueryTable(&checksum{}).Limit(-1).All(&all)
+	_, err := r.ormer.QueryTable(&checksum{}).Limit(-1).All(&all)
 	if err != nil {
 		return nil, err
 	}
@@ -37,24 +38,17 @@ func (r *checkSumRepository) GetData() (model.ChecksumMap, error) {
 }
 
 func (r *checkSumRepository) SetData(newSums model.ChecksumMap) error {
-	err := withTx(func(o orm.Ormer) error {
-		_, err := Db().Raw("delete from checksum").Exec()
-		if err != nil {
-			return err
-		}
+	_, err := r.ormer.Raw("delete from checksum").Exec()
+	if err != nil {
+		return err
+	}
 
-		var checksums []checksum
-		for k, v := range newSums {
-			cks := checksum{ID: k, Sum: v}
-			checksums = append(checksums, cks)
-		}
-		_, err = Db().InsertMulti(batchSize, &checksums)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	var checksums []checksum
+	for k, v := range newSums {
+		cks := checksum{ID: k, Sum: v}
+		checksums = append(checksums, cks)
+	}
+	_, err = r.ormer.InsertMulti(batchSize, &checksums)
 	if err != nil {
 		return err
 	}

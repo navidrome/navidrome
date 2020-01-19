@@ -14,27 +14,28 @@ type propertyRepository struct {
 	sqlRepository
 }
 
-func NewPropertyRepository() model.PropertyRepository {
+func NewPropertyRepository(o orm.Ormer) model.PropertyRepository {
 	r := &propertyRepository{}
+	r.ormer = o
 	r.tableName = "property"
 	return r
 }
 
 func (r *propertyRepository) Put(id string, value string) error {
 	p := &property{ID: id, Value: value}
-	num, err := Db().Update(p)
+	num, err := r.ormer.Update(p)
 	if err != nil {
 		return nil
 	}
 	if num == 0 {
-		_, err = Db().Insert(p)
+		_, err = r.ormer.Insert(p)
 	}
 	return err
 }
 
 func (r *propertyRepository) Get(id string) (string, error) {
 	p := &property{ID: id}
-	err := Db().Read(p)
+	err := r.ormer.Read(p)
 	if err == orm.ErrNoRows {
 		return "", model.ErrNotFound
 	}

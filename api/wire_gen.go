@@ -6,7 +6,6 @@
 package api
 
 import (
-	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/google/wire"
 )
 
@@ -67,7 +66,8 @@ func initStreamController(router *Router) *StreamController {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, NewSystemController,
+var allProviders = wire.NewSet(
+	NewSystemController,
 	NewBrowsingController,
 	NewAlbumListController,
 	NewMediaAnnotationController,

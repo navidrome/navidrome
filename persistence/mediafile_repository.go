@@ -41,28 +41,27 @@ type mediaFileRepository struct {
 	searchableRepository
 }
 
-func NewMediaFileRepository() model.MediaFileRepository {
+func NewMediaFileRepository(o orm.Ormer) model.MediaFileRepository {
 	r := &mediaFileRepository{}
+	r.ormer = o
 	r.tableName = "media_file"
 	return r
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile, overrideAnnotation bool) error {
 	tm := mediaFile(*m)
-	return withTx(func(o orm.Ormer) error {
-		if !overrideAnnotation {
-			// Don't update media annotation fields (playcount, starred, etc..)
-			return r.put(o, m.ID, m.Title, &tm, "path", "title", "album", "artist", "artist_id", "album_artist",
-				"album_id", "has_cover_art", "track_number", "disc_number", "year", "size", "suffix", "duration",
-				"bit_rate", "genre", "compilation", "updated_at")
-		}
-		return r.put(o, m.ID, m.Title, &tm)
-	})
+	if !overrideAnnotation {
+		// Don't update media annotation fields (playcount, starred, etc..)
+		return r.put(m.ID, m.Title, &tm, "path", "title", "album", "artist", "artist_id", "album_artist",
+			"album_id", "has_cover_art", "track_number", "disc_number", "year", "size", "suffix", "duration",
+			"bit_rate", "genre", "compilation", "updated_at")
+	}
+	return r.put(m.ID, m.Title, &tm)
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 	tm := mediaFile{ID: id}
-	err := Db().Read(&tm)
+	err := r.ormer.Read(&tm)
 	if err == orm.ErrNoRows {
 		return nil, model.ErrNotFound
 	}
@@ -83,7 +82,7 @@ func (r *mediaFileRepository) toMediaFiles(all []mediaFile) model.MediaFiles {
 
 func (r *mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, error) {
 	var mfs []mediaFile
-	_, err := r.newQuery(Db()).Filter("album_id", albumId).OrderBy("disc_number", "track_number").All(&mfs)
+	_, err := r.newQuery().Filter("album_id", albumId).OrderBy("disc_number", "track_number").All(&mfs)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +91,7 @@ func (r *mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, err
 
 func (r *mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
 	var mfs []mediaFile
-	_, err := r.newQuery(Db()).Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
+	_, err := r.newQuery().Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
 	if err != nil {
 		return nil, err
 	}
@@ -109,10 +108,9 @@ func (r *mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) 
 }
 
 func (r *mediaFileRepository) DeleteByPath(path string) error {
-	o := Db()
 	var mfs []mediaFile
 	// TODO Paginate this (and all other situations similar)
-	_, err := r.newQuery(o).Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
+	_, err := r.newQuery().Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
 	if err != nil {
 		return err
 	}
@@ -128,13 +126,13 @@ func (r *mediaFileRepository) DeleteByPath(path string) error {
 	if len(filtered) == 0 {
 		return nil
 	}
-	_, err = r.newQuery(o).Filter("id__in", filtered).Delete()
+	_, err = r.newQuery().Filter("id__in", filtered).Delete()
 	return err
 }
 
 func (r *mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
 	var starred []mediaFile
-	_, err := r.newQuery(Db(), options...).Filter("starred", true).All(&starred)
+	_, err := r.newQuery(options...).Filter("starred", true).All(&starred)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +147,7 @@ func (r *mediaFileRepository) SetStar(starred bool, ids ...string) error {
 	if starred {
 		starredAt = time.Now()
 	}
-	_, err := r.newQuery(Db()).Filter("id__in", ids).Update(orm.Params{
+	_, err := r.newQuery().Filter("id__in", ids).Update(orm.Params{
 		"starred":    starred,
 		"starred_at": starredAt,
 	})
@@ -160,12 +158,12 @@ func (r *mediaFileRepository) SetRating(rating int, ids ...string) error {
 	if len(ids) == 0 {
 		return model.ErrNotFound
 	}
-	_, err := r.newQuery(Db()).Filter("id__in", ids).Update(orm.Params{"rating": rating})
+	_, err := r.newQuery().Filter("id__in", ids).Update(orm.Params{"rating": rating})
 	return err
 }
 
 func (r *mediaFileRepository) MarkAsPlayed(id string, playDate time.Time) error {
-	_, err := r.newQuery(Db()).Filter("id", id).Update(orm.Params{
+	_, err := r.newQuery().Filter("id", id).Update(orm.Params{
 		"play_count": orm.ColValue(orm.ColAdd, 1),
 		"play_date":  playDate,
 	})
@@ -173,12 +171,10 @@ func (r *mediaFileRepository) MarkAsPlayed(id string, playDate time.Time) error 
 }
 
 func (r *mediaFileRepository) PurgeInactive(activeList model.MediaFiles) error {
-	return withTx(func(o orm.Ormer) error {
-		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
-			return item.(model.MediaFile).ID
-		})
-		return err
+	_, err := r.purgeInactive(activeList, func(item interface{}) string {
+		return item.(model.MediaFile).ID
 	})
+	return err
 }
 
 func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {

@@ -22,22 +22,21 @@ type playlistRepository struct {
 	sqlRepository
 }
 
-func NewPlaylistRepository() model.PlaylistRepository {
+func NewPlaylistRepository(o orm.Ormer) model.PlaylistRepository {
 	r := &playlistRepository{}
+	r.ormer = o
 	r.tableName = "playlist"
 	return r
 }
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
 	tp := r.fromDomain(p)
-	return withTx(func(o orm.Ormer) error {
-		return r.put(o, p.ID, &tp)
-	})
+	return r.put(p.ID, &tp)
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	tp := &playlist{ID: id}
-	err := Db().Read(tp)
+	err := r.ormer.Read(tp)
 	if err == orm.ErrNoRows {
 		return nil, model.ErrNotFound
 	}
@@ -50,7 +49,7 @@ func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
 	var all []playlist
-	_, err := r.newQuery(Db(), options...).All(&all)
+	_, err := r.newQuery(options...).All(&all)
 	if err != nil {
 		return nil, err
 	}
@@ -66,12 +65,10 @@ func (r *playlistRepository) toPlaylists(all []playlist) (model.Playlists, error
 }
 
 func (r *playlistRepository) PurgeInactive(activeList model.Playlists) ([]string, error) {
-	return nil, withTx(func(o orm.Ormer) error {
-		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {
-			return item.(model.Playlist).ID
-		})
-		return err
+	_, err := r.purgeInactive(activeList, func(item interface{}) string {
+		return item.(model.Playlist).ID
 	})
+	return nil, err
 }
 
 func (r *playlistRepository) toDomain(p *playlist) model.Playlist {

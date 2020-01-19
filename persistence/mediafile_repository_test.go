@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,7 +14,7 @@ var _ = Describe("MediaFileRepository", func() {
 	var repo model.MediaFileRepository
 
 	BeforeEach(func() {
-		repo = NewMediaFileRepository()
+		repo = NewMediaFileRepository(orm.NewOrm())
 	})
 
 	Describe("FindByPath", func() {

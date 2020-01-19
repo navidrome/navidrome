@@ -13,28 +13,11 @@ import (
 
 type Scanner struct {
 	folders map[string]FolderScanner
-	repos   Repositories
+	ds      model.DataStore
 }
 
-type Repositories struct {
-	folder    model.MediaFolderRepository
-	mediaFile model.MediaFileRepository
-	album     model.AlbumRepository
-	artist    model.ArtistRepository
-	playlist  model.PlaylistRepository
-	property  model.PropertyRepository
-}
-
-func New(mfRepo model.MediaFileRepository, albumRepo model.AlbumRepository, artistRepo model.ArtistRepository, plsRepo model.PlaylistRepository, folderRepo model.MediaFolderRepository, property model.PropertyRepository) *Scanner {
-	repos := Repositories{
-		folder:    folderRepo,
-		mediaFile: mfRepo,
-		album:     albumRepo,
-		artist:    artistRepo,
-		playlist:  plsRepo,
-		property:  property,
-	}
-	s := &Scanner{repos: repos, folders: map[string]FolderScanner{}}
+func New(ds model.DataStore) *Scanner {
+	s := &Scanner{ds: ds, folders: map[string]FolderScanner{}}
 	s.loadFolders()
 	return s
 }
@@ -77,7 +60,7 @@ func (s *Scanner) RescanAll(fullRescan bool) error {
 func (s *Scanner) Status() []StatusInfo { return nil }
 
 func (s *Scanner) getLastModifiedSince(folder string) time.Time {
-	ms, err := s.repos.property.Get(model.PropLastScan + "-" + folder)
+	ms, err := s.ds.Property().Get(model.PropLastScan + "-" + folder)
 	if err != nil {
 		return time.Time{}
 	}
@@ -90,14 +73,14 @@ func (s *Scanner) getLastModifiedSince(folder string) time.Time {
 
 func (s *Scanner) updateLastModifiedSince(folder string, t time.Time) {
 	millis := t.UnixNano() / int64(time.Millisecond)
-	s.repos.property.Put(model.PropLastScan+"-"+folder, fmt.Sprint(millis))
+	s.ds.Property().Put(model.PropLastScan+"-"+folder, fmt.Sprint(millis))
 }
 
 func (s *Scanner) loadFolders() {
-	fs, _ := s.repos.folder.GetAll()
+	fs, _ := s.ds.MediaFolder().GetAll()
 	for _, f := range fs {
 		log.Info("Configuring Media Folder", "name", f.Name, "path", f.Path)
-		s.folders[f.Path] = NewTagScanner(f.Path, s.repos)
+		s.folders[f.Path] = NewTagScanner(f.Path, s.ds)
 	}
 }
 

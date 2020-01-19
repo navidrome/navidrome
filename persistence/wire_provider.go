@@ -5,12 +5,13 @@ import (
 )
 
 var Set = wire.NewSet(
-	NewArtistRepository,
-	NewMediaFileRepository,
-	NewAlbumRepository,
-	NewCheckSumRepository,
-	NewPropertyRepository,
-	NewPlaylistRepository,
-	NewMediaFolderRepository,
-	NewGenreRepository,
+	//NewArtistRepository,
+	//NewMediaFileRepository,
+	//NewAlbumRepository,
+	//NewCheckSumRepository,
+	//NewPropertyRepository,
+	//NewPlaylistRepository,
+	//NewMediaFolderRepository,
+	//NewGenreRepository,
+	New,
 )

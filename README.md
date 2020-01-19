@@ -7,7 +7,7 @@ CloudSonic is a music collection server and streamer, allowing you to listen to 
 It relies on the huge selection of available mobile and web apps compatible with [Subsonic](http://www.subsonic.org), 
 [Airsonic](https://airsonic.github.io/) and [Madsonic](https://www.madsonic.org/)
 
-It is already functional (see [Installation](#installation) below), but still in its early stages. Currently it can only import iTunes libraries, but soon it will also be able to scan any folder with music files.
+It is already functional (see [Installation](#installation) below), but still in its early stages.
 
 Version 1.0 main goals are:
 - Be fully compatible with available [Subsonic clients](http://www.subsonic.org/pages/apps.jsp)
@@ -15,7 +15,6 @@ Version 1.0 main goals are:
   [DSub](http://www.subsonic.org/pages/apps.jsp#dsub),
   [Music Stash](https://play.google.com/store/apps/details?id=com.ghenry22.mymusicstash) and
   [Jamstash](http://www.subsonic.org/pages/apps.jsp#jamstash))
-- Import and use all metadata from iTunes, so that you can optionally keep using iTunes to manage your music
 - Implement smart/dynamic playlists (similar to iTunes)
 - Optimized ro run on cheap hardware (Raspberry Pi) and VPS
 
@@ -32,7 +31,7 @@ As this is a work in progress, there are no installers yet. To have the server r
 the steps in the [Development Environment](#development-environment) section below, then run it with:
 
 ```
-$ export SONIC_MUSICFOLDER="/path/to/your/iTunes Library.xml"
+$ export SONIC_MUSICFOLDER="/path/to/your/music/folder"
 $ make run
 ```
 

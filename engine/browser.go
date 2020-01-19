@@ -23,26 +23,20 @@ type Browser interface {
 	GetGenres() (model.Genres, error)
 }
 
-func NewBrowser(pr model.PropertyRepository, fr model.MediaFolderRepository,
-	ar model.ArtistRepository, alr model.AlbumRepository, mr model.MediaFileRepository, gr model.GenreRepository) Browser {
-	return &browser{pr, fr, ar, alr, mr, gr}
+func NewBrowser(ds model.DataStore) Browser {
+	return &browser{ds}
 }
 
 type browser struct {
-	propRepo   model.PropertyRepository
-	folderRepo model.MediaFolderRepository
-	artistRepo model.ArtistRepository
-	albumRepo  model.AlbumRepository
-	mfileRepo  model.MediaFileRepository
-	genreRepo  model.GenreRepository
+	ds model.DataStore
 }
 
 func (b *browser) MediaFolders() (model.MediaFolders, error) {
-	return b.folderRepo.GetAll()
+	return b.ds.MediaFolder().GetAll()
 }
 
 func (b *browser) Indexes(ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error) {
-	l, err := b.propRepo.DefaultGet(model.PropLastScan, "-1")
+	l, err := b.ds.Property().DefaultGet(model.PropLastScan, "-1")
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
 
@@ -51,7 +45,7 @@ func (b *browser) Indexes(ifModifiedSince time.Time) (model.ArtistIndexes, time.
 	}
 
 	if lastModified.After(ifModifiedSince) {
-		indexes, err := b.artistRepo.GetIndex()
+		indexes, err := b.ds.Artist().GetIndex()
 		return indexes, lastModified, err
 	}
 
@@ -108,7 +102,7 @@ func (b *browser) Directory(ctx context.Context, id string) (*DirectoryInfo, err
 }
 
 func (b *browser) GetSong(id string) (*Entry, error) {
-	mf, err := b.mfileRepo.Get(id)
+	mf, err := b.ds.MediaFile().Get(id)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +112,7 @@ func (b *browser) GetSong(id string) (*Entry, error) {
 }
 
 func (b *browser) GetGenres() (model.Genres, error) {
-	genres, err := b.genreRepo.GetAll()
+	genres, err := b.ds.Genre().GetAll()
 	for i, g := range genres {
 		if strings.TrimSpace(g.Name) == "" {
 			genres[i].Name = "<Empty>"
@@ -171,7 +165,7 @@ func (b *browser) buildAlbumDir(al *model.Album, tracks model.MediaFiles) *Direc
 }
 
 func (b *browser) isArtist(ctx context.Context, id string) bool {
-	found, err := b.artistRepo.Exists(id)
+	found, err := b.ds.Artist().Exists(id)
 	if err != nil {
 		log.Debug(ctx, "Error searching for Artist", "id", id, err)
 		return false
@@ -180,7 +174,7 @@ func (b *browser) isArtist(ctx context.Context, id string) bool {
 }
 
 func (b *browser) isAlbum(ctx context.Context, id string) bool {
-	found, err := b.albumRepo.Exists(id)
+	found, err := b.ds.Album().Exists(id)
 	if err != nil {
 		log.Debug(ctx, "Error searching for Album", "id", id, err)
 		return false
@@ -189,26 +183,26 @@ func (b *browser) isAlbum(ctx context.Context, id string) bool {
 }
 
 func (b *browser) retrieveArtist(id string) (a *model.Artist, as model.Albums, err error) {
-	a, err = b.artistRepo.Get(id)
+	a, err = b.ds.Artist().Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Artist %s from DB: %v", id, err)
 		return
 	}
 
-	if as, err = b.albumRepo.FindByArtist(id); err != nil {
+	if as, err = b.ds.Album().FindByArtist(id); err != nil {
 		err = fmt.Errorf("Error reading %s's albums from DB: %v", a.Name, err)
 	}
 	return
 }
 
 func (b *browser) retrieveAlbum(id string) (al *model.Album, mfs model.MediaFiles, err error) {
-	al, err = b.albumRepo.Get(id)
+	al, err = b.ds.Album().Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Album %s from DB: %v", id, err)
 		return
 	}
 
-	if mfs, err = b.mfileRepo.FindByAlbum(id); err != nil {
+	if mfs, err = b.ds.MediaFile().FindByAlbum(id); err != nil {
 		err = fmt.Errorf("Error reading %s's tracks from DB: %v", al.Name, err)
 	}
 	return

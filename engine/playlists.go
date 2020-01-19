@@ -2,10 +2,7 @@ package engine
 
 import (
 	"context"
-	"sort"
 
-	"github.com/cloudsonic/sonic-server/itunesbridge"
-	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
 )
 
@@ -17,18 +14,16 @@ type Playlists interface {
 	Update(playlistId string, name *string, idsToAdd []string, idxToRemove []int) error
 }
 
-func NewPlaylists(itunes itunesbridge.ItunesControl, pr model.PlaylistRepository, mr model.MediaFileRepository) Playlists {
-	return &playlists{itunes, pr, mr}
+func NewPlaylists(ds model.DataStore) Playlists {
+	return &playlists{ds}
 }
 
 type playlists struct {
-	itunes    itunesbridge.ItunesControl
-	plsRepo   model.PlaylistRepository
-	mfileRepo model.MediaFileRepository
+	ds model.DataStore
 }
 
 func (p *playlists) GetAll() (model.Playlists, error) {
-	return p.plsRepo.GetAll(model.QueryOptions{})
+	return p.ds.Playlist().GetAll(model.QueryOptions{})
 }
 
 type PlaylistInfo struct {
@@ -43,52 +38,22 @@ type PlaylistInfo struct {
 }
 
 func (p *playlists) Create(ctx context.Context, name string, ids []string) error {
-	pid, err := p.itunes.CreatePlaylist(name, ids)
-	if err != nil {
-		return err
-	}
-	log.Info(ctx, "Created playlist", "playlist", name, "id", pid)
+	// TODO
 	return nil
 }
 
 func (p *playlists) Delete(ctx context.Context, playlistId string) error {
-	err := p.itunes.DeletePlaylist(playlistId)
-	if err != nil {
-		return err
-	}
-	log.Info(ctx, "Deleted playlist", "id", playlistId)
+	// TODO
 	return nil
 }
 
 func (p *playlists) Update(playlistId string, name *string, idsToAdd []string, idxToRemove []int) error {
-	pl, err := p.plsRepo.Get(playlistId)
-	if err != nil {
-		return err
-	}
-	if name != nil {
-		pl.Name = *name
-		err := p.itunes.RenamePlaylist(pl.ID, pl.Name)
-		if err != nil {
-			return err
-		}
-	}
-	if len(idsToAdd) > 0 || len(idxToRemove) > 0 {
-		sort.Sort(sort.Reverse(sort.IntSlice(idxToRemove)))
-		for _, i := range idxToRemove {
-			pl.Tracks, pl.Tracks[len(pl.Tracks)-1] = append(pl.Tracks[:i], pl.Tracks[i+1:]...), ""
-		}
-		pl.Tracks = append(pl.Tracks, idsToAdd...)
-		err := p.itunes.UpdatePlaylist(pl.ID, pl.Tracks)
-		if err != nil {
-			return err
-		}
-	}
-	p.plsRepo.Put(pl) // Ignores errors, as any changes will be overridden in the next scan
+	// TODO
 	return nil
 }
 
 func (p *playlists) Get(id string) (*PlaylistInfo, error) {
-	pl, err := p.plsRepo.Get(id)
+	pl, err := p.ds.Playlist().Get(id)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +61,7 @@ func (p *playlists) Get(id string) (*PlaylistInfo, error) {
 	pinfo := &PlaylistInfo{
 		Id:        pl.ID,
 		Name:      pl.Name,
-		SongCount: len(pl.Tracks),
+		SongCount: len(pl.Tracks), // TODO Use model.Playlist
 		Duration:  pl.Duration,
 		Public:    pl.Public,
 		Owner:     pl.Owner,
@@ -106,7 +71,7 @@ func (p *playlists) Get(id string) (*PlaylistInfo, error) {
 
 	// TODO Optimize: Get all tracks at once
 	for i, mfId := range pl.Tracks {
-		mf, err := p.mfileRepo.Get(mfId)
+		mf, err := p.ds.MediaFile().Get(mfId)
 		if err != nil {
 			return nil, err
 		}

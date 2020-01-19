@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -10,7 +11,7 @@ var _ = Describe("ArtistRepository", func() {
 	var repo model.ArtistRepository
 
 	BeforeEach(func() {
-		repo = NewArtistRepository()
+		repo = NewArtistRepository(orm.NewOrm())
 	})
 
 	Describe("Put/Get", func() {

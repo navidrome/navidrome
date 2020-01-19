@@ -8,10 +8,8 @@ package main
 import (
 	"github.com/cloudsonic/sonic-server/api"
 	"github.com/cloudsonic/sonic-server/engine"
-	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/scanner"
-	"github.com/cloudsonic/sonic-server/scanner_legacy"
 	"github.com/cloudsonic/sonic-server/server"
 	"github.com/google/wire"
 )
@@ -19,41 +17,26 @@ import (
 // Injectors from wire_injectors.go:
 
 func CreateApp(musicFolder string) *server.Server {
-	checksumRepository := persistence.NewCheckSumRepository()
-	itunesScanner := scanner_legacy.NewItunesScanner(checksumRepository)
-	mediaFileRepository := persistence.NewMediaFileRepository()
-	albumRepository := persistence.NewAlbumRepository()
-	artistRepository := persistence.NewArtistRepository()
-	playlistRepository := persistence.NewPlaylistRepository()
-	propertyRepository := persistence.NewPropertyRepository()
-	importer := scanner_legacy.NewImporter(musicFolder, itunesScanner, mediaFileRepository, albumRepository, artistRepository, playlistRepository, propertyRepository)
-	mediaFolderRepository := persistence.NewMediaFolderRepository()
-	scannerScanner := scanner.New(mediaFileRepository, albumRepository, artistRepository, playlistRepository, mediaFolderRepository, propertyRepository)
-	serverServer := server.New(importer, scannerScanner)
+	dataStore := persistence.New()
+	scannerScanner := scanner.New(dataStore)
+	serverServer := server.New(scannerScanner)
 	return serverServer
 }
 
 func CreateSubsonicAPIRouter() *api.Router {
-	propertyRepository := persistence.NewPropertyRepository()
-	mediaFolderRepository := persistence.NewMediaFolderRepository()
-	artistRepository := persistence.NewArtistRepository()
-	albumRepository := persistence.NewAlbumRepository()
-	mediaFileRepository := persistence.NewMediaFileRepository()
-	genreRepository := persistence.NewGenreRepository()
-	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistRepository, albumRepository, mediaFileRepository, genreRepository)
-	cover := engine.NewCover(mediaFileRepository, albumRepository)
+	dataStore := persistence.New()
+	browser := engine.NewBrowser(dataStore)
+	cover := engine.NewCover(dataStore)
 	nowPlayingRepository := engine.NewNowPlayingRepository()
-	listGenerator := engine.NewListGenerator(artistRepository, albumRepository, mediaFileRepository, nowPlayingRepository)
-	itunesControl := itunesbridge.NewItunesControl()
-	playlistRepository := persistence.NewPlaylistRepository()
-	playlists := engine.NewPlaylists(itunesControl, playlistRepository, mediaFileRepository)
-	ratings := engine.NewRatings(itunesControl, mediaFileRepository, albumRepository, artistRepository)
-	scrobbler := engine.NewScrobbler(itunesControl, mediaFileRepository, albumRepository, nowPlayingRepository)
-	search := engine.NewSearch(artistRepository, albumRepository, mediaFileRepository)
+	listGenerator := engine.NewListGenerator(dataStore, nowPlayingRepository)
+	playlists := engine.NewPlaylists(dataStore)
+	ratings := engine.NewRatings(dataStore)
+	scrobbler := engine.NewScrobbler(dataStore, nowPlayingRepository)
+	search := engine.NewSearch(dataStore)
 	router := api.NewRouter(browser, cover, listGenerator, playlists, ratings, scrobbler, search)
 	return router
 }
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(itunesbridge.NewItunesControl, engine.Set, scanner_legacy.Set, scanner.New, api.NewRouter, persistence.Set)
+var allProviders = wire.NewSet(engine.Set, scanner.New, api.NewRouter, persistence.Set)

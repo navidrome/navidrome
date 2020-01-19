@@ -1,6 +1,8 @@
 package model
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrNotFound = errors.New("data not found")
@@ -18,4 +20,16 @@ type QueryOptions struct {
 	Offset  int
 	Size    int
 	Filters Filters
+}
+
+type DataStore interface {
+	Album() AlbumRepository
+	Artist() ArtistRepository
+	MediaFile() MediaFileRepository
+	MediaFolder() MediaFolderRepository
+	Genre() GenreRepository
+	Playlist() PlaylistRepository
+	Property() PropertyRepository
+
+	WithTx(func(tx DataStore) error) error
 }

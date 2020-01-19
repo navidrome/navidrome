@@ -18,14 +18,14 @@ import (
 
 type TagScanner struct {
 	rootFolder string
-	repos      Repositories
+	ds         model.DataStore
 	detector   *ChangeDetector
 }
 
-func NewTagScanner(rootFolder string, repos Repositories) *TagScanner {
+func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
 	return &TagScanner{
 		rootFolder: rootFolder,
-		repos:      repos,
+		ds:         ds,
 		detector:   NewChangeDetector(rootFolder),
 	}
 }
@@ -105,12 +105,12 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		return err
 	}
 
-	err = s.repos.album.PurgeEmpty()
+	err = s.ds.Album().PurgeEmpty()
 	if err != nil {
 		return err
 	}
 
-	err = s.repos.artist.PurgeEmpty()
+	err = s.ds.Artist().PurgeEmpty()
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (s *TagScanner) refreshAlbums(updatedAlbums map[string]bool) error {
 	for id := range updatedAlbums {
 		ids = append(ids, id)
 	}
-	return s.repos.album.Refresh(ids...)
+	return s.ds.Album().Refresh(ids...)
 }
 
 func (s *TagScanner) refreshArtists(updatedArtists map[string]bool) error {
@@ -131,7 +131,7 @@ func (s *TagScanner) refreshArtists(updatedArtists map[string]bool) error {
 	for id := range updatedArtists {
 		ids = append(ids, id)
 	}
-	return s.repos.artist.Refresh(ids...)
+	return s.ds.Artist().Refresh(ids...)
 }
 
 func (s *TagScanner) processChangedDir(dir string, updatedArtists map[string]bool, updatedAlbums map[string]bool) error {
@@ -141,7 +141,7 @@ func (s *TagScanner) processChangedDir(dir string, updatedArtists map[string]boo
 
 	// Load folder's current tracks from DB into a map
 	currentTracks := map[string]model.MediaFile{}
-	ct, err := s.repos.mediaFile.FindByPath(dir)
+	ct, err := s.ds.MediaFile().FindByPath(dir)
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (s *TagScanner) processChangedDir(dir string, updatedArtists map[string]boo
 	for _, n := range newTracks {
 		c, ok := currentTracks[n.ID]
 		if !ok || (ok && n.UpdatedAt.After(c.UpdatedAt)) {
-			err := s.repos.mediaFile.Put(&n, false)
+			err := s.ds.MediaFile().Put(&n, false)
 			updatedArtists[n.ArtistID] = true
 			updatedAlbums[n.AlbumID] = true
 			numUpdatedTracks++
@@ -183,7 +183,7 @@ func (s *TagScanner) processChangedDir(dir string, updatedArtists map[string]boo
 	// Remaining tracks from DB that are not in the folder are deleted
 	for id := range currentTracks {
 		numPurgedTracks++
-		if err := s.repos.mediaFile.Delete(id); err != nil {
+		if err := s.ds.MediaFile().Delete(id); err != nil {
 			return err
 		}
 	}
@@ -195,7 +195,7 @@ func (s *TagScanner) processChangedDir(dir string, updatedArtists map[string]boo
 func (s *TagScanner) processDeletedDir(dir string, updatedArtists map[string]bool, updatedAlbums map[string]bool) error {
 	dir = path.Join(s.rootFolder, dir)
 
-	ct, err := s.repos.mediaFile.FindByPath(dir)
+	ct, err := s.ds.MediaFile().FindByPath(dir)
 	if err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func (s *TagScanner) processDeletedDir(dir string, updatedArtists map[string]boo
 		updatedAlbums[t.AlbumID] = true
 	}
 
-	return s.repos.mediaFile.DeleteByPath(dir)
+	return s.ds.MediaFile().DeleteByPath(dir)
 }
 
 func (s *TagScanner) loadTracks(dirPath string) (model.MediaFiles, error) {

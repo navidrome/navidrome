@@ -8,10 +8,11 @@ import (
 
 type sqlRepository struct {
 	tableName string
+	ormer     orm.Ormer
 }
 
-func (r *sqlRepository) newQuery(o orm.Ormer, options ...model.QueryOptions) orm.QuerySeter {
-	q := o.QueryTable(r.tableName)
+func (r *sqlRepository) newQuery(options ...model.QueryOptions) orm.QuerySeter {
+	q := r.ormer.QueryTable(r.tableName)
 	if len(options) > 0 {
 		opts := options[0]
 		q = q.Offset(opts.Offset)
@@ -30,17 +31,17 @@ func (r *sqlRepository) newQuery(o orm.Ormer, options ...model.QueryOptions) orm
 }
 
 func (r *sqlRepository) CountAll() (int64, error) {
-	return r.newQuery(Db()).Count()
+	return r.newQuery().Count()
 }
 
 func (r *sqlRepository) Exists(id string) (bool, error) {
-	c, err := r.newQuery(Db()).Filter("id", id).Count()
+	c, err := r.newQuery().Filter("id", id).Count()
 	return c == 1, err
 }
 
 // TODO This is used to generate random lists. Can be optimized in SQL: https://stackoverflow.com/a/19419
 func (r *sqlRepository) GetAllIds() ([]string, error) {
-	qs := r.newQuery(Db())
+	qs := r.newQuery()
 	var values []orm.Params
 	num, err := qs.Values(&values, "id")
 	if num == 0 {
@@ -55,27 +56,27 @@ func (r *sqlRepository) GetAllIds() ([]string, error) {
 }
 
 // "Hack" to bypass Postgres driver limitation
-func (r *sqlRepository) insert(o orm.Ormer, record interface{}) error {
-	_, err := o.Insert(record)
+func (r *sqlRepository) insert(record interface{}) error {
+	_, err := r.ormer.Insert(record)
 	if err != nil && err.Error() != "LastInsertId is not supported by this driver" {
 		return err
 	}
 	return nil
 }
 
-func (r *sqlRepository) put(o orm.Ormer, id string, a interface{}) error {
-	c, err := r.newQuery(o).Filter("id", id).Count()
+func (r *sqlRepository) put(id string, a interface{}) error {
+	c, err := r.newQuery().Filter("id", id).Count()
 	if err != nil {
 		return err
 	}
 	if c == 0 {
-		err = r.insert(o, a)
+		err = r.insert(a)
 		if err != nil && err.Error() == "LastInsertId is not supported by this driver" {
 			err = nil
 		}
 		return err
 	}
-	_, err = o.Update(a)
+	_, err = r.ormer.Update(a)
 	return err
 }
 
@@ -113,18 +114,16 @@ func difference(slice1 []string, slice2 []string) []string {
 }
 
 func (r *sqlRepository) Delete(id string) error {
-	_, err := r.newQuery(Db()).Filter("id", id).Delete()
+	_, err := r.newQuery().Filter("id", id).Delete()
 	return err
 }
 
 func (r *sqlRepository) DeleteAll() error {
-	return withTx(func(o orm.Ormer) error {
-		_, err := r.newQuery(Db()).Filter("id__isnull", false).Delete()
-		return err
-	})
+	_, err := r.newQuery().Filter("id__isnull", false).Delete()
+	return err
 }
 
-func (r *sqlRepository) purgeInactive(o orm.Ormer, activeList interface{}, getId func(item interface{}) string) ([]string, error) {
+func (r *sqlRepository) purgeInactive(activeList interface{}, getId func(item interface{}) string) ([]string, error) {
 	allIds, err := r.GetAllIds()
 	if err != nil {
 		return nil, err
@@ -144,7 +143,7 @@ func (r *sqlRepository) purgeInactive(o orm.Ormer, activeList interface{}, getId
 		}
 		log.Trace("-- Purging inactive records", "table", r.tableName, "num", len(subset), "from", offset)
 		offset += len(subset)
-		_, err := r.newQuery(o).Filter("id__in", subset).Delete()
+		_, err := r.newQuery().Filter("id__in", subset).Delete()
 		if err != nil {
 			return nil, err
 		}

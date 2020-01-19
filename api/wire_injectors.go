@@ -3,12 +3,10 @@
 package api
 
 import (
-	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/google/wire"
 )
 
 var allProviders = wire.NewSet(
-	itunesbridge.NewItunesControl,
 	NewSystemController,
 	NewBrowsingController,
 	NewAlbumListController,

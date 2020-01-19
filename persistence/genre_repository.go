@@ -7,19 +7,20 @@ import (
 	"github.com/cloudsonic/sonic-server/model"
 )
 
-type genreRepository struct{}
+type genreRepository struct {
+	ormer orm.Ormer
+}
 
-func NewGenreRepository() model.GenreRepository {
-	return &genreRepository{}
+func NewGenreRepository(o orm.Ormer) model.GenreRepository {
+	return &genreRepository{ormer: o}
 }
 
 func (r genreRepository) GetAll() (model.Genres, error) {
-	o := Db()
 	genres := make(map[string]model.Genre)
 
 	// Collect SongCount
 	var res []orm.Params
-	_, err := o.Raw("select genre, count(*) as c from media_file group by genre").Values(&res)
+	_, err := r.ormer.Raw("select genre, count(*) as c from media_file group by genre").Values(&res)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +36,7 @@ func (r genreRepository) GetAll() (model.Genres, error) {
 	}
 
 	// Collect AlbumCount
-	_, err = o.Raw("select genre, count(*) as c from album group by genre").Values(&res)
+	_, err = r.ormer.Raw("select genre, count(*) as c from album group by genre").Values(&res)
 	if err != nil {
 		return nil, err
 	}

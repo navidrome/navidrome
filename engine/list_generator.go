@@ -22,22 +22,20 @@ type ListGenerator interface {
 	GetRandomSongs(size int) (Entries, error)
 }
 
-func NewListGenerator(arr model.ArtistRepository, alr model.AlbumRepository, mfr model.MediaFileRepository, npr NowPlayingRepository) ListGenerator {
-	return &listGenerator{arr, alr, mfr, npr}
+func NewListGenerator(ds model.DataStore, npRepo NowPlayingRepository) ListGenerator {
+	return &listGenerator{ds, npRepo}
 }
 
 type listGenerator struct {
-	artistRepo   model.ArtistRepository
-	albumRepo    model.AlbumRepository
-	mfRepository model.MediaFileRepository
-	npRepo       NowPlayingRepository
+	ds     model.DataStore
+	npRepo NowPlayingRepository
 }
 
 // TODO: Only return albums that have the SortBy field != empty
 func (g *listGenerator) query(qo model.QueryOptions, offset int, size int) (Entries, error) {
 	qo.Offset = offset
 	qo.Size = size
-	albums, err := g.albumRepo.GetAll(qo)
+	albums, err := g.ds.Album().GetAll(qo)
 
 	return FromAlbums(albums), err
 }
@@ -73,7 +71,7 @@ func (g *listGenerator) GetByArtist(offset int, size int) (Entries, error) {
 }
 
 func (g *listGenerator) GetRandom(offset int, size int) (Entries, error) {
-	ids, err := g.albumRepo.GetAllIds()
+	ids, err := g.ds.Album().GetAllIds()
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +81,7 @@ func (g *listGenerator) GetRandom(offset int, size int) (Entries, error) {
 
 	for i := 0; i < size; i++ {
 		v := perm[i]
-		al, err := g.albumRepo.Get((ids)[v])
+		al, err := g.ds.Album().Get((ids)[v])
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +91,7 @@ func (g *listGenerator) GetRandom(offset int, size int) (Entries, error) {
 }
 
 func (g *listGenerator) GetRandomSongs(size int) (Entries, error) {
-	ids, err := g.mfRepository.GetAllIds()
+	ids, err := g.ds.MediaFile().GetAllIds()
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +101,7 @@ func (g *listGenerator) GetRandomSongs(size int) (Entries, error) {
 
 	for i := 0; i < size; i++ {
 		v := perm[i]
-		mf, err := g.mfRepository.Get(ids[v])
+		mf, err := g.ds.MediaFile().Get(ids[v])
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +112,7 @@ func (g *listGenerator) GetRandomSongs(size int) (Entries, error) {
 
 func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Offset: offset, Size: size, SortBy: "starred_at", Desc: true}
-	albums, err := g.albumRepo.GetStarred(qo)
+	albums, err := g.ds.Album().GetStarred(qo)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +122,7 @@ func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
 
 // TODO Return is confusing
 func (g *listGenerator) GetAllStarred() (Entries, Entries, Entries, error) {
-	artists, err := g.artistRepo.GetStarred(model.QueryOptions{SortBy: "starred_at", Desc: true})
+	artists, err := g.ds.Artist().GetStarred(model.QueryOptions{SortBy: "starred_at", Desc: true})
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -134,7 +132,7 @@ func (g *listGenerator) GetAllStarred() (Entries, Entries, Entries, error) {
 		return nil, nil, nil, err
 	}
 
-	mediaFiles, err := g.mfRepository.GetStarred(model.QueryOptions{SortBy: "starred_at", Desc: true})
+	mediaFiles, err := g.ds.MediaFile().GetStarred(model.QueryOptions{SortBy: "starred_at", Desc: true})
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -149,7 +147,7 @@ func (g *listGenerator) GetNowPlaying() (Entries, error) {
 	}
 	entries := make(Entries, len(npInfo))
 	for i, np := range npInfo {
-		mf, err := g.mfRepository.Get(np.TrackID)
+		mf, err := g.ds.MediaFile().Get(np.TrackID)
 		if err != nil {
 			return nil, err
 		}
