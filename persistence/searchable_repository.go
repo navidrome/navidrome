@@ -29,7 +29,7 @@ func (r *searchableRepository) DeleteAll() error {
 	})
 }
 
-func (r *searchableRepository) put(o orm.Ormer, id string, textToIndex string, a interface{}) error {
+func (r *searchableRepository) put(o orm.Ormer, id string, textToIndex string, a interface{}, fields ...string) error {
 	c, err := r.newQuery(o).Filter("id", id).Count()
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func (r *searchableRepository) put(o orm.Ormer, id string, textToIndex string, a
 			err = nil
 		}
 	} else {
-		_, err = o.Update(a)
+		_, err = o.Update(a, fields...)
 	}
 	if err != nil {
 		return err

@@ -47,9 +47,15 @@ func NewMediaFileRepository() model.MediaFileRepository {
 	return r
 }
 
-func (r *mediaFileRepository) Put(m *model.MediaFile) error {
+func (r *mediaFileRepository) Put(m *model.MediaFile, overrideAnnotation bool) error {
 	tm := mediaFile(*m)
 	return withTx(func(o orm.Ormer) error {
+		if !overrideAnnotation {
+			// Don't update media annotation fields (playcount, starred, etc..)
+			return r.put(o, m.ID, m.Title, &tm, "path", "title", "album", "artist", "artist_id", "album_artist",
+				"album_id", "has_cover_art", "track_number", "disc_number", "year", "size", "suffix", "duration",
+				"bit_rate", "genre", "compilation", "updated_at")
+		}
 		return r.put(o, m.ID, m.Title, &tm)
 	})
 }

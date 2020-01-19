@@ -179,7 +179,7 @@ func (i *Importer) importMediaFiles() (model.MediaFiles, int) {
 				mf.StarredAt = original.StarredAt
 			}
 		}
-		if err := i.mfRepo.Put(mf); err != nil {
+		if err := i.mfRepo.Put(mf, true); err != nil {
 			log.Error(err)
 		}
 		updates++

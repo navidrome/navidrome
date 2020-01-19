@@ -42,7 +42,7 @@ type MediaFiles []MediaFile
 type MediaFileRepository interface {
 	CountAll() (int64, error)
 	Exists(id string) (bool, error)
-	Put(m *MediaFile) error
+	Put(m *MediaFile, overrideAnnotation bool) error
 	Get(id string) (*MediaFile, error)
 	FindByAlbum(albumId string) (MediaFiles, error)
 	FindByPath(path string) (MediaFiles, error)

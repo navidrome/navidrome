@@ -140,8 +140,9 @@ group by album_id order by f.id`, strings.Join(ids, "','"))
 	}
 	if len(toUpdate) > 0 {
 		for _, al := range toUpdate {
-			_, err := o.Update(&al, "name", "artist_id", "cover_art_path", "cover_art_id", "artist", "album_artist", "year",
-				"compilation", "play_count", "song_count", "duration", "updated_at")
+			// Don't update Starred/Rating
+			_, err := o.Update(&al, "name", "artist_id", "cover_art_path", "cover_art_id", "artist", "album_artist",
+				"year", "compilation", "play_count", "play_date", "song_count", "duration", "updated_at", "created_at")
 			if err != nil {
 				return err
 			}

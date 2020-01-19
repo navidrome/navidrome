@@ -19,7 +19,6 @@ var _ = Describe("MediaFileRepository", func() {
 	Describe("FindByPath", func() {
 		It("returns all records from a given ArtistID", func() {
 			path := string(os.PathSeparator) + filepath.Join("beatles", "1")
-			println("Searching path", path) // TODO Remove
 			Expect(repo.FindByPath(path)).To(Equal(model.MediaFiles{
 				songComeTogether,
 			}))

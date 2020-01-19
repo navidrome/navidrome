@@ -169,7 +169,7 @@ func (s *TagScanner) processChangedDir(dir string, updatedArtists map[string]boo
 	for _, n := range newTracks {
 		c, ok := currentTracks[n.ID]
 		if !ok || (ok && n.UpdatedAt.After(c.UpdatedAt)) {
-			err := s.repos.mediaFile.Put(&n)
+			err := s.repos.mediaFile.Put(&n, false)
 			updatedArtists[n.ArtistID] = true
 			updatedAlbums[n.AlbumID] = true
 			numUpdatedTracks++

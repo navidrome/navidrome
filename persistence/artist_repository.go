@@ -145,7 +145,8 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 	}
 	if len(toUpdate) > 0 {
 		for _, al := range toUpdate {
-			_, err := o.Update(&al)
+			// Don't update Starred
+			_, err := o.Update(&al, "name", "album_count")
 			if err != nil {
 				return err
 			}
