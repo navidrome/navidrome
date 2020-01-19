@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/itunesbridge"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
@@ -21,13 +22,14 @@ type Scrobbler interface {
 	NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error)
 }
 
-func NewScrobbler(itunes itunesbridge.ItunesControl, mr model.MediaFileRepository, npr NowPlayingRepository) Scrobbler {
-	return &scrobbler{itunes, mr, npr}
+func NewScrobbler(itunes itunesbridge.ItunesControl, mr model.MediaFileRepository, alr model.AlbumRepository, npr NowPlayingRepository) Scrobbler {
+	return &scrobbler{itunes: itunes, mfRepo: mr, alRepo: alr, npRepo: npr}
 }
 
 type scrobbler struct {
 	itunes itunesbridge.ItunesControl
 	mfRepo model.MediaFileRepository
+	alRepo model.AlbumRepository
 	npRepo NowPlayingRepository
 }
 
@@ -70,6 +72,16 @@ func (s *scrobbler) detectSkipped(ctx context.Context, playerId int, trackId str
 
 func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, playTime time.Time) (*model.MediaFile, error) {
 	s.detectSkipped(ctx, playerId, trackId)
+
+	if conf.Sonic.DevUseFileScanner {
+		mf, err := s.mfRepo.Get(trackId)
+		if err != nil {
+			err = s.mfRepo.MarkAsPlayed(trackId, playTime)
+			return nil, err
+		}
+		err = s.alRepo.MarkAsPlayed(mf.AlbumID, playTime)
+		return mf, err
+	}
 
 	mf, err := s.mfRepo.Get(trackId)
 	if err != nil {

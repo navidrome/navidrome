@@ -158,6 +158,14 @@ func (r *mediaFileRepository) SetRating(rating int, ids ...string) error {
 	return err
 }
 
+func (r *mediaFileRepository) MarkAsPlayed(id string, playDate time.Time) error {
+	_, err := r.newQuery(Db()).Filter("id", id).Update(orm.Params{
+		"play_count": orm.ColValue(orm.ColAdd, 1),
+		"play_date":  playDate,
+	})
+	return err
+}
+
 func (r *mediaFileRepository) PurgeInactive(activeList model.MediaFiles) error {
 	return withTx(func(o orm.Ormer) error {
 		_, err := r.purgeInactive(o, activeList, func(item interface{}) string {

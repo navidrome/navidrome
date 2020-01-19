@@ -190,6 +190,14 @@ func (r *albumRepository) SetStar(starred bool, ids ...string) error {
 	return err
 }
 
+func (r *albumRepository) MarkAsPlayed(id string, playDate time.Time) error {
+	_, err := r.newQuery(Db()).Filter("id", id).Update(orm.Params{
+		"play_count": orm.ColValue(orm.ColAdd, 1),
+		"play_date":  playDate,
+	})
+	return err
+}
+
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
 	if len(q) <= 2 {
 		return nil, nil

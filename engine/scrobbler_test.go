@@ -17,10 +17,11 @@ func TestScrobbler(t *testing.T) {
 	Init(t, false)
 
 	mfRepo := persistence.CreateMockMediaFileRepo()
+	alRepo := persistence.CreateMockAlbumRepo()
 	npRepo := engine.CreateMockNowPlayingRepo()
 	itCtrl := &mockItunesControl{}
 
-	scrobbler := engine.NewScrobbler(itCtrl, mfRepo, npRepo)
+	scrobbler := engine.NewScrobbler(itCtrl, mfRepo, alRepo, npRepo)
 
 	Convey("Given a DB with one song", t, func() {
 		mfRepo.SetData(`[{"ID":"2","Title":"Hands Of Time"}]`, 1)
@@ -89,10 +90,11 @@ func TestSkipping(t *testing.T) {
 	Init(t, false)
 
 	mfRepo := persistence.CreateMockMediaFileRepo()
+	alRepo := persistence.CreateMockAlbumRepo()
 	npRepo := engine.CreateMockNowPlayingRepo()
 	itCtrl := &mockItunesControl{}
 
-	scrobbler := engine.NewScrobbler(itCtrl, mfRepo, npRepo)
+	scrobbler := engine.NewScrobbler(itCtrl, mfRepo, alRepo, npRepo)
 
 	Convey("Given a DB with three songs", t, func() {
 		mfRepo.SetData(`[{"ID":"1","Title":"Femme Fatale"},{"ID":"2","Title":"Here She Comes Now"},{"ID":"3","Title":"Lady Godiva's Operation"}]`, 3)

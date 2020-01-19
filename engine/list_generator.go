@@ -33,6 +33,7 @@ type listGenerator struct {
 	npRepo       NowPlayingRepository
 }
 
+// TODO: Only return albums that have the SortBy field != empty
 func (g *listGenerator) query(qo model.QueryOptions, offset int, size int) (Entries, error) {
 	qo.Offset = offset
 	qo.Size = size

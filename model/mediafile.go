@@ -54,4 +54,5 @@ type MediaFileRepository interface {
 	DeleteByPath(path string) error
 	SetStar(star bool, ids ...string) error
 	SetRating(rating int, ids ...string) error
+	MarkAsPlayed(id string, playTime time.Time) error
 }
