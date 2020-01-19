@@ -3,8 +3,6 @@ package engine
 import (
 	"errors"
 	"time"
-
-	"github.com/cloudsonic/sonic-server/model"
 )
 
 func CreateMockNowPlayingRepo() *MockNowPlaying {
@@ -12,8 +10,8 @@ func CreateMockNowPlayingRepo() *MockNowPlaying {
 }
 
 type MockNowPlaying struct {
-	model.NowPlayingRepository
-	data []model.NowPlayingInfo
+	NowPlayingRepository
+	data []NowPlayingInfo
 	t    time.Time
 	err  bool
 }
@@ -22,12 +20,12 @@ func (m *MockNowPlaying) SetError(err bool) {
 	m.err = err
 }
 
-func (m *MockNowPlaying) Enqueue(info *model.NowPlayingInfo) error {
+func (m *MockNowPlaying) Enqueue(info *NowPlayingInfo) error {
 	if m.err {
 		return errors.New("Error!")
 	}
 
-	m.data = append(m.data, model.NowPlayingInfo{})
+	m.data = append(m.data, NowPlayingInfo{})
 	copy(m.data[1:], m.data[0:])
 	m.data[0] = *info
 
@@ -39,7 +37,7 @@ func (m *MockNowPlaying) Enqueue(info *model.NowPlayingInfo) error {
 	return nil
 }
 
-func (m *MockNowPlaying) Dequeue(playerId int) (*model.NowPlayingInfo, error) {
+func (m *MockNowPlaying) Dequeue(playerId int) (*NowPlayingInfo, error) {
 	if len(m.data) == 0 {
 		return nil, nil
 	}
@@ -54,15 +52,15 @@ func (m *MockNowPlaying) Count(playerId int) (int64, error) {
 	return int64(len(m.data)), nil
 }
 
-func (m *MockNowPlaying) GetAll() ([]*model.NowPlayingInfo, error) {
+func (m *MockNowPlaying) GetAll() ([]*NowPlayingInfo, error) {
 	np, err := m.Head(1)
 	if np == nil || err != nil {
 		return nil, err
 	}
-	return []*model.NowPlayingInfo{np}, err
+	return []*NowPlayingInfo{np}, err
 }
 
-func (m *MockNowPlaying) Head(playerId int) (*model.NowPlayingInfo, error) {
+func (m *MockNowPlaying) Head(playerId int) (*NowPlayingInfo, error) {
 	if len(m.data) == 0 {
 		return nil, nil
 	}
@@ -70,7 +68,7 @@ func (m *MockNowPlaying) Head(playerId int) (*model.NowPlayingInfo, error) {
 	return &info, nil
 }
 
-func (m *MockNowPlaying) Tail(playerId int) (*model.NowPlayingInfo, error) {
+func (m *MockNowPlaying) Tail(playerId int) (*NowPlayingInfo, error) {
 	if len(m.data) == 0 {
 		return nil, nil
 	}
@@ -79,7 +77,7 @@ func (m *MockNowPlaying) Tail(playerId int) (*model.NowPlayingInfo, error) {
 }
 
 func (m *MockNowPlaying) ClearAll() {
-	m.data = make([]model.NowPlayingInfo, 0)
+	m.data = make([]NowPlayingInfo, 0)
 	m.err = false
 }
 

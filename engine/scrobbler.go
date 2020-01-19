@@ -21,14 +21,14 @@ type Scrobbler interface {
 	NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error)
 }
 
-func NewScrobbler(itunes itunesbridge.ItunesControl, mr model.MediaFileRepository, npr model.NowPlayingRepository) Scrobbler {
+func NewScrobbler(itunes itunesbridge.ItunesControl, mr model.MediaFileRepository, npr NowPlayingRepository) Scrobbler {
 	return &scrobbler{itunes, mr, npr}
 }
 
 type scrobbler struct {
 	itunes itunesbridge.ItunesControl
 	mfRepo model.MediaFileRepository
-	npRepo model.NowPlayingRepository
+	npRepo NowPlayingRepository
 }
 
 func (s *scrobbler) detectSkipped(ctx context.Context, playerId int, trackId string) {
@@ -96,6 +96,6 @@ func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, tr
 		return nil, errors.New(fmt.Sprintf(`ID "%s" not found`, trackId))
 	}
 
-	info := &model.NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
+	info := &NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
 	return mf, s.npRepo.Enqueue(info)
 }

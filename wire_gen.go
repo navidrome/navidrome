@@ -42,7 +42,7 @@ func CreateSubsonicAPIRouter() *api.Router {
 	genreRepository := persistence.NewGenreRepository()
 	browser := engine.NewBrowser(propertyRepository, mediaFolderRepository, artistRepository, albumRepository, mediaFileRepository, genreRepository)
 	cover := engine.NewCover(mediaFileRepository, albumRepository)
-	nowPlayingRepository := persistence.NewNowPlayingRepository()
+	nowPlayingRepository := engine.NewNowPlayingRepository()
 	listGenerator := engine.NewListGenerator(artistRepository, albumRepository, mediaFileRepository, nowPlayingRepository)
 	itunesControl := itunesbridge.NewItunesControl()
 	playlistRepository := persistence.NewPlaylistRepository()

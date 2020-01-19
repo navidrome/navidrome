@@ -22,7 +22,7 @@ type ListGenerator interface {
 	GetRandomSongs(size int) (Entries, error)
 }
 
-func NewListGenerator(arr model.ArtistRepository, alr model.AlbumRepository, mfr model.MediaFileRepository, npr model.NowPlayingRepository) ListGenerator {
+func NewListGenerator(arr model.ArtistRepository, alr model.AlbumRepository, mfr model.MediaFileRepository, npr NowPlayingRepository) ListGenerator {
 	return &listGenerator{arr, alr, mfr, npr}
 }
 
@@ -30,7 +30,7 @@ type listGenerator struct {
 	artistRepo   model.ArtistRepository
 	albumRepo    model.AlbumRepository
 	mfRepository model.MediaFileRepository
-	npRepo       model.NowPlayingRepository
+	npRepo       NowPlayingRepository
 }
 
 func (g *listGenerator) query(qo model.QueryOptions, offset int, size int) (Entries, error) {

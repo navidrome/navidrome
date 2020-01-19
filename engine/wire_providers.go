@@ -10,4 +10,5 @@ var Set = wire.NewSet(
 	NewRatings,
 	NewScrobbler,
 	NewSearch,
+	NewNowPlayingRepository,
 )
