@@ -14,8 +14,8 @@ import (
 var allProviders = wire.NewSet(
 	engine.Set,
 	scanner.New,
-	subsonic.NewRouter,
-	persistence.Set,
+	subsonic.New,
+	persistence.New,
 )
 
 func CreateApp(musicFolder string) *server.Server {

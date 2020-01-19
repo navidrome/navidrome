@@ -33,10 +33,10 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	ratings := engine.NewRatings(dataStore)
 	scrobbler := engine.NewScrobbler(dataStore, nowPlayingRepository)
 	search := engine.NewSearch(dataStore)
-	router := subsonic.NewRouter(browser, cover, listGenerator, playlists, ratings, scrobbler, search)
+	router := subsonic.New(browser, cover, listGenerator, playlists, ratings, scrobbler, search)
 	return router
 }
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(engine.Set, scanner.New, subsonic.NewRouter, persistence.Set)
+var allProviders = wire.NewSet(engine.Set, scanner.New, subsonic.New, persistence.New)

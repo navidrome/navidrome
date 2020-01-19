@@ -28,7 +28,7 @@ type Router struct {
 	mux http.Handler
 }
 
-func NewRouter(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator,
+func New(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator,
 	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search) *Router {
 
 	r := &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
