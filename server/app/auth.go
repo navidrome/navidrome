@@ -72,6 +72,10 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 	if u.Password != password {
 		return nil, nil
 	}
+	if !u.IsAdmin {
+		log.Warn("Non-admin user tried to login", "user", userName)
+		return nil, nil
+	}
 	err = userRepo.UpdateLastLoginAt(u.ID)
 	if err != nil {
 		log.Error("Could not update LastLoginAt", "user", userName)
