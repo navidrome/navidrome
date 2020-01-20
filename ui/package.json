@@ -6,6 +6,7 @@
     "@testing-library/jest-dom": "^5.0.0",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
+    "jwt-decode": "^2.2.0",
     "prop-types": "^15.7.2",
     "ra-data-json-server": "^3.1.2",
     "react": "^16.12.0",

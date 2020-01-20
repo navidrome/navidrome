@@ -23,7 +23,7 @@ const UserList = (props) => {
   return (
     <List
       {...props}
-      sort={{ field: 'name', order: 'ASC' }}
+      sort={{ field: 'userName', order: 'ASC' }}
       exporter={false}
       filters={<UserFilter />}
     >
@@ -34,9 +34,8 @@ const UserList = (props) => {
         />
       ) : (
         <Datagrid rowClick="edit">
-          <TextField source="name" />
+          <TextField source="userName" />
           <BooleanField source="isAdmin" />
-          <DateField source="lastLoginAt" locales="pt-BR" />
           <DateField source="lastAccessAt" locales="pt-BR" />
           <DateField source="updatedAt" locales="pt-BR" />
         </Datagrid>

@@ -12,10 +12,15 @@ import (
 	"github.com/cloudsonic/sonic-server/server"
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/jwtauth"
 	"github.com/google/uuid"
 )
 
-const initialUser = "admin"
+var initialUser = model.User{
+	UserName: "admin",
+	Name:     "Admin",
+	IsAdmin:  true,
+}
 
 type Router struct {
 	ds   model.DataStore
@@ -43,8 +48,12 @@ func (app *Router) routes() http.Handler {
 	// Basic unauthenticated ping
 	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"response":"pong"}`)) })
 
+	r.Post("/login", Login(app.ds))
+
 	r.Route("/api", func(r chi.Router) {
 		// Add User resource
+		r.Use(jwtauth.Verifier(TokenAuth))
+		r.Use(Authenticator)
 		R(r, "/user", func(ctx context.Context) rest.Repository {
 			return app.ds.Resource(model.User{})
 		})
@@ -60,13 +69,10 @@ func (app *Router) createDefaultUser() {
 	if c == 0 {
 		id, _ := uuid.NewRandom()
 		initialPassword, _ := uuid.NewRandom()
-		log.Warn("Creating initial user. Please change the password!", "user", initialUser, "password", initialPassword)
-		app.ds.User().Put(&model.User{
-			ID:       id.String(),
-			Name:     initialUser,
-			Password: initialPassword.String(),
-			IsAdmin:  true,
-		})
+		log.Warn("Creating initial user. Please change the password!", "user", initialUser.UserName, "password", initialPassword)
+		initialUser.ID = id.String()
+		initialUser.Password = initialPassword.String()
+		app.ds.User().Put(&initialUser)
 	}
 }
 

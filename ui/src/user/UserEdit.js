@@ -6,6 +6,7 @@ import {
   PasswordInput,
   Edit,
   required,
+  email,
   SimpleForm
 } from 'react-admin'
 
@@ -15,7 +16,9 @@ const UserTitle = ({ record }) => {
 const UserEdit = (props) => (
   <Edit title={<UserTitle />} {...props}>
     <SimpleForm>
+      <TextInput source="userName" validate={[required()]} />
       <TextInput source="name" validate={[required()]} />
+      <TextInput source="email" validate={[required(), email()]} />
       <PasswordInput source="password" validate={[required()]} />
       <BooleanInput source="isAdmin" initialValue={false} />
       <DateField source="lastLoginAt" />
