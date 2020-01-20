@@ -18,10 +18,17 @@ test: check_go_env
 	go test ./... -v
 #	@(cd ./ui && npm test -- --watchAll=false)
 
+.PHONY: testall
+testall: check_go_env test
+	@(cd ./ui && npm test -- --watchAll=false)
+
 .PHONY: build
 build: check_go_env
 	go build
-#	@(cd ./ui && npm run build)
+
+.PHONY: build
+buildall: check_go_env build
+	@(cd ./ui && npm run build)
 
 .PHONY: setup
 setup: Jamstash-master

@@ -10,17 +10,24 @@ import (
 	"github.com/cloudsonic/sonic-server/persistence"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/cloudsonic/sonic-server/server"
+	"github.com/cloudsonic/sonic-server/server/app"
 	"github.com/cloudsonic/sonic-server/server/subsonic"
 	"github.com/google/wire"
 )
 
 // Injectors from wire_injectors.go:
 
-func CreateApp(musicFolder string) *server.Server {
+func CreateServer(musicFolder string) *server.Server {
 	dataStore := persistence.New()
 	scannerScanner := scanner.New(dataStore)
 	serverServer := server.New(scannerScanner)
 	return serverServer
+}
+
+func CreateAppRouter(path string) *app.Router {
+	dataStore := persistence.New()
+	router := app.New(dataStore, path)
+	return router
 }
 
 func CreateSubsonicAPIRouter() *subsonic.Router {
@@ -39,4 +46,4 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(engine.Set, scanner.New, subsonic.New, persistence.New)
+var allProviders = wire.NewSet(engine.Set, scanner.New, subsonic.New, app.New, persistence.New)

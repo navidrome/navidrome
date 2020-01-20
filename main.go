@@ -7,7 +7,8 @@ import (
 func main() {
 	conf.Load()
 
-	a := CreateApp(conf.Sonic.MusicFolder)
-	a.MountRouter("/rest/", CreateSubsonicAPIRouter())
+	a := CreateServer(conf.Sonic.MusicFolder)
+	a.MountRouter("/rest", CreateSubsonicAPIRouter())
+	a.MountRouter("/app", CreateAppRouter("/app"))
 	a.Run(":" + conf.Sonic.Port)
 }

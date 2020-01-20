@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/cloudsonic/sonic-server/conf"
@@ -34,7 +33,7 @@ func New(scanner *scanner.Scanner) *Server {
 }
 
 func (a *Server) MountRouter(path string, subRouter http.Handler) {
-	log.Info("Mounting API", "path", path)
+	log.Info("Mounting routes", "path", path)
 	a.router.Group(func(r chi.Router) {
 		r.Use(middleware.Logger)
 		r.Mount(path, subRouter)
@@ -58,11 +57,12 @@ func (a *Server) initRoutes() {
 	r.Use(InjectLogger)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/Jamstash", 302)
+		http.Redirect(w, r, "/app", 302)
 	})
+
 	workDir, _ := os.Getwd()
 	filesDir := filepath.Join(workDir, "Jamstash-master/dist")
-	FileServer(r, "/Jamstash", http.Dir(filesDir))
+	FileServer(r, "/Jamstash", "/Jamstash", http.Dir(filesDir))
 
 	a.router = r
 }
@@ -79,24 +79,6 @@ func (a *Server) initScanner() {
 			}
 		}
 	}()
-}
-
-func FileServer(r chi.Router, path string, root http.FileSystem) {
-	if strings.ContainsAny(path, "{}*") {
-		panic("FileServer does not permit URL parameters.")
-	}
-
-	fs := http.StripPrefix(path, http.FileServer(root))
-
-	if path != "/" && path[len(path)-1] != '/' {
-		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
-		path += "/"
-	}
-	path += "*"
-
-	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
-		fs.ServeHTTP(w, r)
-	})
 }
 
 func InjectLogger(next http.Handler) http.Handler {
