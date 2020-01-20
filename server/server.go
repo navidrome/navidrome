@@ -25,9 +25,6 @@ type Server struct {
 
 func New(scanner *scanner.Scanner, ds model.DataStore) *Server {
 	a := &Server{Scanner: scanner, ds: ds}
-	if !conf.Sonic.DevDisableBanner {
-		showBanner(Version)
-	}
 	initMimeTypes()
 	initialSetup(ds)
 	a.initRoutes()

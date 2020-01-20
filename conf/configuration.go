@@ -41,7 +41,10 @@ func LoadFromEnv() {
 		Sonic.Port = port
 	}
 	l := &multiconfig.EnvironmentLoader{}
-	l.Load(Sonic)
+	err := l.Load(Sonic)
+	if err != nil {
+		log.Error("Error parsing configuration from environment")
+	}
 }
 
 func LoadFromTags() {
@@ -55,7 +58,6 @@ func LoadFromFile(tomlFile string) {
 	if err != nil {
 		log.Error("Error loading configuration file", "file", tomlFile, err)
 	}
-	log.SetLogLevelString(Sonic.LogLevel)
 }
 
 func LoadFromLocalFile() {
@@ -68,6 +70,7 @@ func Load() {
 	LoadFromLocalFile()
 	LoadFromEnv()
 	LoadFromFlags()
+	log.SetLogLevelString(Sonic.LogLevel)
 }
 
 func init() {

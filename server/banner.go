@@ -14,6 +14,6 @@ Version %s
 
 `
 
-func showBanner(version string) {
-	fmt.Printf(banner, version)
+func ShowBanner() {
+	fmt.Printf(banner, Version)
 }
