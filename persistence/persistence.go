@@ -16,8 +16,9 @@ import (
 const batchSize = 100
 
 var (
-	once   sync.Once
-	driver = "sqlite3"
+	once         sync.Once
+	driver       = "sqlite3"
+	mappedModels map[interface{}]interface{}
 )
 
 type SQLStore struct {
@@ -30,11 +31,12 @@ func New() model.DataStore {
 		if dbPath == ":memory:" {
 			dbPath = "file::memory:?cache=shared"
 		}
+		log.Debug("Opening DB from: "+dbPath, "driver", driver)
+
 		err := initORM(dbPath)
 		if err != nil {
 			panic(err)
 		}
-		log.Debug("Opening DB from: "+dbPath, "driver", driver)
 	})
 	return &SQLStore{}
 }
@@ -65,6 +67,10 @@ func (db *SQLStore) Playlist() model.PlaylistRepository {
 
 func (db *SQLStore) Property() model.PropertyRepository {
 	return NewPropertyRepository(db.getOrmer())
+}
+
+func (db *SQLStore) Resource(model interface{}) model.ResourceRepository {
+	return NewResource(db.getOrmer(), model, mappedModels[model])
 }
 
 func (db *SQLStore) WithTx(block func(tx model.DataStore) error) error {
@@ -102,13 +108,6 @@ func (db *SQLStore) getOrmer() orm.Ormer {
 func initORM(dbPath string) error {
 	verbose := conf.Sonic.LogLevel == "trace"
 	orm.Debug = verbose
-	orm.RegisterModel(new(artist))
-	orm.RegisterModel(new(album))
-	orm.RegisterModel(new(mediaFile))
-	orm.RegisterModel(new(checksum))
-	orm.RegisterModel(new(property))
-	orm.RegisterModel(new(playlist))
-	orm.RegisterModel(new(Search))
 	if strings.Contains(dbPath, "postgres") {
 		driver = "postgres"
 	}
@@ -128,4 +127,23 @@ func collectField(collection interface{}, getValue func(item interface{}) string
 	}
 
 	return result
+}
+
+func registerModel(model interface{}, mappedModel interface{}) {
+	mappedModels[model] = mappedModel
+	orm.RegisterModel(mappedModel)
+}
+
+func init() {
+	mappedModels = map[interface{}]interface{}{}
+
+	registerModel(new(model.Artist), new(artist))
+	registerModel(new(model.Album), new(album))
+	registerModel(new(model.MediaFile), new(mediaFile))
+	registerModel(new(model.Property), new(property))
+	registerModel(new(model.Playlist), new(playlist))
+	registerModel(model.User{}, new(user))
+
+	orm.RegisterModel(new(checksum))
+	orm.RegisterModel(new(search))
 }

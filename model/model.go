@@ -2,6 +2,8 @@ package model
 
 import (
 	"errors"
+
+	"github.com/deluan/rest"
 )
 
 var (
@@ -22,6 +24,11 @@ type QueryOptions struct {
 	Filters Filters
 }
 
+type ResourceRepository interface {
+	rest.Repository
+	rest.Persistable
+}
+
 type DataStore interface {
 	Album() AlbumRepository
 	Artist() ArtistRepository
@@ -30,6 +37,8 @@ type DataStore interface {
 	Genre() GenreRepository
 	Playlist() PlaylistRepository
 	Property() PropertyRepository
+
+	Resource(model interface{}) ResourceRepository
 
 	WithTx(func(tx DataStore) error) error
 }

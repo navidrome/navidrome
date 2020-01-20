@@ -9,7 +9,7 @@ import (
 	"github.com/kennygrant/sanitize"
 )
 
-type Search struct {
+type search struct {
 	ID       string `orm:"pk;column(id)"`
 	Table    string `orm:"index"`
 	FullText string `orm:"index"`
@@ -55,13 +55,13 @@ func (r *searchableRepository) purgeInactive(activeList interface{}, getId func(
 }
 
 func (r *searchableRepository) addToIndex(table, id, text string) error {
-	item := Search{ID: id, Table: table}
+	item := search{ID: id, Table: table}
 	err := r.ormer.Read(&item)
 	if err != nil && err != orm.ErrNoRows {
 		return err
 	}
 	sanitizedText := strings.TrimSpace(sanitize.Accents(strings.ToLower(text)))
-	item = Search{ID: id, Table: table, FullText: sanitizedText}
+	item = search{ID: id, Table: table, FullText: sanitizedText}
 	if err == orm.ErrNoRows {
 		err = r.insert(&item)
 	} else {
@@ -79,7 +79,7 @@ func (r *searchableRepository) removeFromIndex(table string, ids []string) error
 		}
 		log.Trace("Deleting searchable items", "table", table, "num", len(subset), "from", offset)
 		offset += len(subset)
-		_, err := r.ormer.QueryTable(&Search{}).Filter("table", table).Filter("id__in", subset).Delete()
+		_, err := r.ormer.QueryTable(&search{}).Filter("table", table).Filter("id__in", subset).Delete()
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func (r *searchableRepository) removeFromIndex(table string, ids []string) error
 }
 
 func (r *searchableRepository) removeAllFromIndex(o orm.Ormer, table string) error {
-	_, err := o.QueryTable(&Search{}).Filter("table", table).Delete()
+	_, err := o.QueryTable(&search{}).Filter("table", table).Delete()
 	return err
 }
 

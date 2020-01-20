@@ -1,12 +1,13 @@
 // in src/App.js
 import React from 'react'
-import { Admin, ListGuesser, Resource } from 'react-admin'
+import { Admin, Resource } from 'react-admin'
 import jsonServerProvider from 'ra-data-json-server'
+import user from './user'
 
-const dataProvider = jsonServerProvider('http://jsonplaceholder.typicode.com')
+const dataProvider = jsonServerProvider('/app/api')
 const App = () => (
   <Admin dataProvider={dataProvider}>
-    <Resource name="users" list={ListGuesser} />
+    <Resource name="user" {...user} />
   </Admin>
 )
 export default App
