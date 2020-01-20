@@ -32,10 +32,10 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 		client := ParamString(r, "c")
 		version := ParamString(r, "v")
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, "user", user)
+		ctx = context.WithValue(ctx, "username", user)
 		ctx = context.WithValue(ctx, "client", client)
 		ctx = context.WithValue(ctx, "version", version)
-		log.Info(ctx, "New Subsonic API request", "user", user, "client", client, "version", version, "path", r.URL.Path)
+		log.Info(ctx, "New Subsonic API request", "username", user, "client", client, "version", version, "path", r.URL.Path)
 
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
@@ -45,23 +45,27 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 func authenticate(users engine.Users) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user := ParamString(r, "u")
+			username := ParamString(r, "u")
 			pass := ParamString(r, "p")
 			token := ParamString(r, "t")
 			salt := ParamString(r, "s")
 
-			_, err := users.Authenticate(user, pass, token, salt)
+			usr, err := users.Authenticate(username, pass, token, salt)
 			if err == model.ErrInvalidAuth {
-				log.Warn(r, "Invalid login", "user", user, err)
+				log.Warn(r, "Invalid login", "username", username, err)
 			} else if err != nil {
-				log.Error(r, "Error authenticating user", "user", user, err)
+				log.Error(r, "Error authenticating username", "username", username, err)
 			}
 
 			if err != nil {
-				log.Warn(r, "Invalid login", "user", user)
+				log.Warn(r, "Invalid login", "username", username)
 				SendError(w, r, NewError(responses.ErrorAuthenticationFail))
 				return
 			}
+
+			ctx := r.Context()
+			ctx = context.WithValue(ctx, "user", usr)
+			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)
 		})

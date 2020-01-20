@@ -33,7 +33,7 @@ var _ = Describe("Middlewares", func() {
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
-			Expect(next.req.Context().Value("user")).To(Equal("user"))
+			Expect(next.req.Context().Value("username")).To(Equal("user"))
 			Expect(next.req.Context().Value("version")).To(Equal("1.15"))
 			Expect(next.req.Context().Value("client")).To(Equal("test"))
 			Expect(next.called).To(BeTrue())
@@ -83,6 +83,8 @@ var _ = Describe("Middlewares", func() {
 			Expect(mockedUser.token).To(Equal("token"))
 			Expect(mockedUser.salt).To(Equal("salt"))
 			Expect(next.called).To(BeTrue())
+			user := next.req.Context().Value("user").(*model.User)
+			Expect(user.UserName).To(Equal("valid"))
 		})
 
 		It("fails authentication with wrong password", func() {
