@@ -31,42 +31,42 @@ type listGenerator struct {
 	npRepo NowPlayingRepository
 }
 
-// TODO: Only return albums that have the SortBy field != empty
+// TODO: Only return albums that have the Sort field != empty
 func (g *listGenerator) query(qo model.QueryOptions, offset int, size int) (Entries, error) {
 	qo.Offset = offset
-	qo.Size = size
+	qo.Max = size
 	albums, err := g.ds.Album().GetAll(qo)
 
 	return FromAlbums(albums), err
 }
 
 func (g *listGenerator) GetNewest(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{SortBy: "CreatedAt", Desc: true}
+	qo := model.QueryOptions{Sort: "CreatedAt", Order: "desc"}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetRecent(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{SortBy: "PlayDate", Desc: true}
+	qo := model.QueryOptions{Sort: "PlayDate", Order: "desc"}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetFrequent(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{SortBy: "PlayCount", Desc: true}
+	qo := model.QueryOptions{Sort: "PlayCount", Order: "desc"}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetHighest(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{SortBy: "Rating", Desc: true}
+	qo := model.QueryOptions{Sort: "Rating", Order: "desc"}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetByName(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{SortBy: "Name"}
+	qo := model.QueryOptions{Sort: "Name"}
 	return g.query(qo, offset, size)
 }
 
 func (g *listGenerator) GetByArtist(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{SortBy: "Artist"}
+	qo := model.QueryOptions{Sort: "Artist"}
 	return g.query(qo, offset, size)
 }
 
@@ -111,7 +111,7 @@ func (g *listGenerator) GetRandomSongs(size int) (Entries, error) {
 }
 
 func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Offset: offset, Size: size, SortBy: "starred_at", Desc: true}
+	qo := model.QueryOptions{Offset: offset, Max: size, Sort: "starred_at", Order: "desc"}
 	albums, err := g.ds.Album().GetStarred(qo)
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
 
 // TODO Return is confusing
 func (g *listGenerator) GetAllStarred() (Entries, Entries, Entries, error) {
-	artists, err := g.ds.Artist().GetStarred(model.QueryOptions{SortBy: "starred_at", Desc: true})
+	artists, err := g.ds.Artist().GetStarred(model.QueryOptions{Sort: "starred_at", Order: "desc"})
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -132,7 +132,7 @@ func (g *listGenerator) GetAllStarred() (Entries, Entries, Entries, error) {
 		return nil, nil, nil, err
 	}
 
-	mediaFiles, err := g.ds.MediaFile().GetStarred(model.QueryOptions{SortBy: "starred_at", Desc: true})
+	mediaFiles, err := g.ds.MediaFile().GetStarred(model.QueryOptions{Sort: "starred_at", Order: "desc"})
 	if err != nil {
 		return nil, nil, nil, err
 	}

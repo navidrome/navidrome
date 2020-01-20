@@ -16,14 +16,14 @@ func (r *sqlRepository) newQuery(options ...model.QueryOptions) orm.QuerySeter {
 	if len(options) > 0 {
 		opts := options[0]
 		q = q.Offset(opts.Offset)
-		if opts.Size > 0 {
-			q = q.Limit(opts.Size)
+		if opts.Max > 0 {
+			q = q.Limit(opts.Max)
 		}
-		if opts.SortBy != "" {
-			if opts.Desc {
-				q = q.OrderBy("-" + opts.SortBy)
+		if opts.Sort != "" {
+			if opts.Order == "desc" {
+				q = q.OrderBy("-" + opts.Sort)
 			} else {
-				q = q.OrderBy(opts.SortBy)
+				q = q.OrderBy(opts.Sort)
 			}
 		}
 	}

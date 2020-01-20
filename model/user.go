@@ -12,3 +12,9 @@ type User struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
+
+type UserRepository interface {
+	CountAll(...QueryOptions) (int64, error)
+	Get(id string) (*User, error)
+	Put(*User) error
+}

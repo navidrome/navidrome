@@ -20,7 +20,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		It("returns all records sorted", func() {
-			Expect(repo.GetAll(model.QueryOptions{SortBy: "Name"})).To(Equal(model.Albums{
+			Expect(repo.GetAll(model.QueryOptions{Sort: "Name"})).To(Equal(model.Albums{
 				albumAbbeyRoad,
 				albumRadioactivity,
 				albumSgtPeppers,
@@ -28,7 +28,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		It("returns all records sorted desc", func() {
-			Expect(repo.GetAll(model.QueryOptions{SortBy: "Name", Desc: true})).To(Equal(model.Albums{
+			Expect(repo.GetAll(model.QueryOptions{Sort: "Name", Order: "desc"})).To(Equal(model.Albums{
 				albumSgtPeppers,
 				albumRadioactivity,
 				albumAbbeyRoad,
@@ -36,7 +36,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		It("paginates the result", func() {
-			Expect(repo.GetAll(model.QueryOptions{Offset: 1, Size: 1})).To(Equal(model.Albums{
+			Expect(repo.GetAll(model.QueryOptions{Offset: 1, Max: 1})).To(Equal(model.Albums{
 				albumAbbeyRoad,
 			}))
 		})

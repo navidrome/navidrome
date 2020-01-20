@@ -49,6 +49,10 @@ func (db *MockDataStore) Property() model.PropertyRepository {
 	return struct{ model.PropertyRepository }{}
 }
 
+func (db *MockDataStore) User() model.UserRepository {
+	return struct{ model.UserRepository }{}
+}
+
 func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {
 	return block(db)
 }

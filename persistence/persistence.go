@@ -69,8 +69,12 @@ func (db *SQLStore) Property() model.PropertyRepository {
 	return NewPropertyRepository(db.getOrmer())
 }
 
+func (db *SQLStore) User() model.UserRepository {
+	return NewUserRepository(db.getOrmer())
+}
+
 func (db *SQLStore) Resource(model interface{}) model.ResourceRepository {
-	return NewResource(db.getOrmer(), model, mappedModels[model])
+	return NewResource(db.getOrmer(), model, getMappedModel(model))
 }
 
 func (db *SQLStore) WithTx(block func(tx model.DataStore) error) error {
@@ -129,19 +133,31 @@ func collectField(collection interface{}, getValue func(item interface{}) string
 	return result
 }
 
+func getType(myvar interface{}) string {
+	if t := reflect.TypeOf(myvar); t.Kind() == reflect.Ptr {
+		return t.Elem().Name()
+	} else {
+		return t.Name()
+	}
+}
+
 func registerModel(model interface{}, mappedModel interface{}) {
-	mappedModels[model] = mappedModel
+	mappedModels[getType(model)] = mappedModel
 	orm.RegisterModel(mappedModel)
+}
+
+func getMappedModel(model interface{}) interface{} {
+	return mappedModels[getType(model)]
 }
 
 func init() {
 	mappedModels = map[interface{}]interface{}{}
 
-	registerModel(new(model.Artist), new(artist))
-	registerModel(new(model.Album), new(album))
-	registerModel(new(model.MediaFile), new(mediaFile))
-	registerModel(new(model.Property), new(property))
-	registerModel(new(model.Playlist), new(playlist))
+	registerModel(model.Artist{}, new(artist))
+	registerModel(model.Album{}, new(album))
+	registerModel(model.MediaFile{}, new(mediaFile))
+	registerModel(model.Property{}, new(property))
+	registerModel(model.Playlist{}, new(playlist))
 	registerModel(model.User{}, new(user))
 
 	orm.RegisterModel(new(checksum))

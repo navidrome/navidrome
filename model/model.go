@@ -14,14 +14,12 @@ var (
 // Ex: var q = QueryOptions{Filters: Filters{"name__istartswith": "Deluan","age__gt": 25}}
 // All conditions will be ANDed together
 // TODO Implement filter in repositories' methods
-type Filters map[string]interface{}
-
 type QueryOptions struct {
-	SortBy  string
-	Desc    bool
+	Sort    string
+	Order   string
+	Max     int
 	Offset  int
-	Size    int
-	Filters Filters
+	Filters map[string]interface{}
 }
 
 type ResourceRepository interface {
@@ -37,6 +35,7 @@ type DataStore interface {
 	Genre() GenreRepository
 	Playlist() PlaylistRepository
 	Property() PropertyRepository
+	User() UserRepository
 
 	Resource(model interface{}) ResourceRepository
 
