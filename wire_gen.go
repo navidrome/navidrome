@@ -20,7 +20,7 @@ import (
 func CreateServer(musicFolder string) *server.Server {
 	dataStore := persistence.New()
 	scannerScanner := scanner.New(dataStore)
-	serverServer := server.New(scannerScanner)
+	serverServer := server.New(scannerScanner, dataStore)
 	return serverServer
 }
 

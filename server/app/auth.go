@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/cloudsonic/sonic-server/consts"
 	"github.com/cloudsonic/sonic-server/model"
 	"github.com/deluan/rest"
 	"github.com/dgrijalva/jwt-go"
@@ -16,16 +17,14 @@ import (
 )
 
 var (
-	tokenExpiration = 30 * time.Minute
-	issuer          = "CloudSonic"
-)
-
-var (
+	once      sync.Once
 	jwtSecret []byte
 	TokenAuth *jwtauth.JWTAuth
 )
 
 func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
+	initTokenAuth(ds)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := make(map[string]string)
 		decoder := json.NewDecoder(r.Body)
@@ -56,10 +55,21 @@ func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 			map[string]interface{}{
 				"message":  "User '" + username + "' authenticated successfully",
 				"token":    tokenString,
-				"user":     strings.Title(user.UserName),
+				"name":     strings.Title(user.Name),
 				"username": username,
 			})
 	}
+}
+
+func initTokenAuth(ds model.DataStore) {
+	once.Do(func() {
+		secret, err := ds.Property().DefaultGet(consts.JWTSecretKey, "not so secret")
+		if err != nil {
+			log.Error("No JWT secret found in DB. Setting a temp one, but please report this error", err)
+		}
+		jwtSecret = []byte(secret)
+		TokenAuth = jwtauth.New("HS256", jwtSecret, nil)
+	})
 }
 func validateLogin(userRepo model.UserRepository, userName, password string) (*model.User, error) {
 	u, err := userRepo.FindByUsername(userName)
@@ -86,14 +96,14 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 func createToken(u *model.User) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
-	claims["iss"] = issuer
+	claims["iss"] = consts.JWTIssuer
 	claims["sub"] = u.UserName
 
 	return touchToken(token)
 }
 
 func touchToken(token *jwt.Token) (string, error) {
-	expireIn := time.Now().Add(tokenExpiration).Unix()
+	expireIn := time.Now().Add(consts.JWTTokenExpiration).Unix()
 	claims := token.Claims.(jwt.MapClaims)
 	claims["exp"] = expireIn
 
@@ -134,15 +144,4 @@ func Authenticator(next http.Handler) http.Handler {
 		w.Header().Set("Authorization", newTokenString)
 		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
-}
-
-func init() {
-	// TODO Store jwtSecret in the DB
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		secret = "not so secret"
-		log.Warn("No JWT_SECRET env var found. Please set one.")
-	}
-	jwtSecret = []byte(secret)
-	TokenAuth = jwtauth.New("HS256", jwtSecret, nil)
 }

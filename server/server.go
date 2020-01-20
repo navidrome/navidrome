@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/scanner"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -19,14 +20,16 @@ const Version = "0.2"
 type Server struct {
 	Scanner *scanner.Scanner
 	router  *chi.Mux
+	ds      model.DataStore
 }
 
-func New(scanner *scanner.Scanner) *Server {
-	a := &Server{Scanner: scanner}
+func New(scanner *scanner.Scanner, ds model.DataStore) *Server {
+	a := &Server{Scanner: scanner, ds: ds}
 	if !conf.Sonic.DevDisableBanner {
 		showBanner(Version)
 	}
 	initMimeTypes()
+	initialSetup(ds)
 	a.initRoutes()
 	a.initScanner()
 	return a

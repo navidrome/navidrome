@@ -2,18 +2,15 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/server"
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/jwtauth"
-	"github.com/google/uuid"
 )
 
 var initialUser = model.User{
@@ -31,7 +28,6 @@ type Router struct {
 func New(ds model.DataStore, path string) *Router {
 	r := &Router{ds: ds, path: path}
 	r.mux = r.routes()
-	r.createDefaultUser()
 	return r
 }
 
@@ -59,21 +55,6 @@ func (app *Router) routes() http.Handler {
 		})
 	})
 	return r
-}
-
-func (app *Router) createDefaultUser() {
-	c, err := app.ds.User().CountAll()
-	if err != nil {
-		panic(fmt.Sprintf("Could not access User table: %s", err))
-	}
-	if c == 0 {
-		id, _ := uuid.NewRandom()
-		initialPassword, _ := uuid.NewRandom()
-		log.Warn("Creating initial user. Please change the password!", "user", initialUser.UserName, "password", initialPassword)
-		initialUser.ID = id.String()
-		initialUser.Password = initialPassword.String()
-		app.ds.User().Put(&initialUser)
-	}
 }
 
 func R(r chi.Router, pathPrefix string, newRepository rest.RepositoryConstructor) {
