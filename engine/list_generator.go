@@ -120,24 +120,29 @@ func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
 	return FromAlbums(albums), nil
 }
 
-// TODO Return is confusing
-func (g *listGenerator) GetAllStarred() (Entries, Entries, Entries, error) {
-	artists, err := g.ds.Artist().GetStarred(model.QueryOptions{Sort: "starred_at", Order: "desc"})
+func (g *listGenerator) GetAllStarred() (artists Entries, albums Entries, mediaFiles Entries, err error) {
+	options := model.QueryOptions{Sort: "starred_at", Order: "desc"}
+
+	ars, err := g.ds.Artist().GetStarred(options)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	albums, err := g.GetStarred(0, -1)
+	als, err := g.ds.Album().GetStarred(options)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	mediaFiles, err := g.ds.MediaFile().GetStarred(model.QueryOptions{Sort: "starred_at", Order: "desc"})
+	mfs, err := g.ds.MediaFile().GetStarred(options)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	return FromArtists(artists), albums, FromMediaFiles(mediaFiles), err
+	artists = FromArtists(ars)
+	albums = FromAlbums(als)
+	mediaFiles = FromMediaFiles(mfs)
+
+	return
 }
 
 func (g *listGenerator) GetNowPlaying() (Entries, error) {
