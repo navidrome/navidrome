@@ -59,7 +59,7 @@ func (r *nowPlayingRepository) Enqueue(info *NowPlayingInfo) error {
 
 func (r *nowPlayingRepository) Dequeue(playerId int) (*NowPlayingInfo, error) {
 	l := r.getList(playerId)
-	e := l.Back()
+	e := checkExpired(l, l.Back)
 	if e == nil {
 		return nil, nil
 	}
@@ -69,7 +69,7 @@ func (r *nowPlayingRepository) Dequeue(playerId int) (*NowPlayingInfo, error) {
 
 func (r *nowPlayingRepository) Head(playerId int) (*NowPlayingInfo, error) {
 	l := r.getList(playerId)
-	e := l.Front()
+	e := checkExpired(l, l.Front)
 	if e == nil {
 		return nil, nil
 	}
@@ -78,7 +78,7 @@ func (r *nowPlayingRepository) Head(playerId int) (*NowPlayingInfo, error) {
 
 func (r *nowPlayingRepository) Tail(playerId int) (*NowPlayingInfo, error) {
 	l := r.getList(playerId)
-	e := l.Back()
+	e := checkExpired(l, l.Back)
 	if e == nil {
 		return nil, nil
 	}
@@ -94,9 +94,25 @@ func (r *nowPlayingRepository) GetAll() ([]*NowPlayingInfo, error) {
 	var all []*NowPlayingInfo
 	playerMap.Range(func(playerId, l interface{}) bool {
 		ll := l.(*list.List)
-		e := ll.Front()
-		all = append(all, e.Value.(*NowPlayingInfo))
+		e := checkExpired(ll, ll.Front)
+		if e != nil {
+			all = append(all, e.Value.(*NowPlayingInfo))
+		}
 		return true
 	})
 	return all, nil
+}
+
+func checkExpired(l *list.List, f func() *list.Element) *list.Element {
+	for {
+		e := f()
+		if e == nil {
+			return nil
+		}
+		start := e.Value.(*NowPlayingInfo).Start
+		if time.Now().Sub(start) < NowPlayingExpire {
+			return e
+		}
+		l.Remove(e)
+	}
 }

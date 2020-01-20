@@ -9,11 +9,6 @@ import (
 	"github.com/cloudsonic/sonic-server/model"
 )
 
-const (
-	minSkipped = 3 * time.Second
-	maxSkipped = 20 * time.Second
-)
-
 type Scrobbler interface {
 	Register(ctx context.Context, playerId int, trackId string, playDate time.Time) (*model.MediaFile, error)
 	NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error)
@@ -29,19 +24,24 @@ type scrobbler struct {
 }
 
 func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, playTime time.Time) (*model.MediaFile, error) {
-	// TODO Add transaction
-	mf, err := s.ds.MediaFile().Get(trackId)
-	if err != nil {
-		return nil, err
-	}
-	err = s.ds.MediaFile().MarkAsPlayed(trackId, playTime)
-	if err != nil {
-		return nil, err
-	}
-	err = s.ds.Album().MarkAsPlayed(mf.AlbumID, playTime)
+	var mf *model.MediaFile
+	var err error
+	err = s.ds.WithTx(func(tx model.DataStore) error {
+		mf, err = s.ds.MediaFile().Get(trackId)
+		if err != nil {
+			return err
+		}
+		err = s.ds.MediaFile().MarkAsPlayed(trackId, playTime)
+		if err != nil {
+			return err
+		}
+		err = s.ds.Album().MarkAsPlayed(mf.AlbumID, playTime)
+		return err
+	})
 	return mf, err
 }
 
+// TODO Validate if NowPlaying still works after all refactorings
 func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error) {
 	mf, err := s.ds.MediaFile().Get(trackId)
 	if err != nil {
