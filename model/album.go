@@ -33,7 +33,6 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	FindByArtist(artistId string) (Albums, error)
 	GetAll(...QueryOptions) (Albums, error)
-	PurgeInactive(active Albums) error
 	GetAllIds() ([]string, error)
 	GetStarred(...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)

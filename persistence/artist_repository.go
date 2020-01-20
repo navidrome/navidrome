@@ -179,13 +179,6 @@ func (r *artistRepository) SetStar(starred bool, ids ...string) error {
 	return err
 }
 
-func (r *artistRepository) PurgeInactive(activeList model.Artists) error {
-	_, err := r.purgeInactive(activeList, func(item interface{}) string {
-		return item.(model.Artist).ID
-	})
-	return err
-}
-
 func (r *artistRepository) PurgeEmpty() error {
 	_, err := r.ormer.Raw("delete from artist where id not in (select distinct(artist_id) from album)").Exec()
 	return err

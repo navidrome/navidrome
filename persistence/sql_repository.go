@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
 )
 
@@ -121,32 +120,4 @@ func (r *sqlRepository) Delete(id string) error {
 func (r *sqlRepository) DeleteAll() error {
 	_, err := r.newQuery().Filter("id__isnull", false).Delete()
 	return err
-}
-
-func (r *sqlRepository) purgeInactive(activeList interface{}, getId func(item interface{}) string) ([]string, error) {
-	allIds, err := r.GetAllIds()
-	if err != nil {
-		return nil, err
-	}
-	activeIds := collectField(activeList, getId)
-	idsToDelete := difference(allIds, activeIds)
-	if len(idsToDelete) == 0 {
-		return nil, nil
-	}
-	log.Debug("Purging inactive records", "table", r.tableName, "total", len(idsToDelete))
-
-	var offset int
-	for {
-		var subset = paginateSlice(idsToDelete, offset, batchSize)
-		if len(subset) == 0 {
-			break
-		}
-		log.Trace("-- Purging inactive records", "table", r.tableName, "num", len(subset), "from", offset)
-		offset += len(subset)
-		_, err := r.newQuery().Filter("id__in", subset).Delete()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return idsToDelete, nil
 }

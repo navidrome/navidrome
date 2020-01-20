@@ -56,30 +56,4 @@ var _ = Describe("ArtistRepository", func() {
 			}))
 		})
 	})
-
-	Describe("PurgeInactive", func() {
-		BeforeEach(func() {
-			for _, a := range testArtists {
-				repo.Put(&a)
-			}
-		})
-
-		It("purges inactive records", func() {
-			active := model.Artists{{ID: "1"}, {ID: "3"}}
-
-			Expect(repo.PurgeInactive(active)).To(BeNil())
-
-			Expect(repo.CountAll()).To(Equal(int64(2)))
-			Expect(repo.Exists("2")).To(BeFalse())
-		})
-
-		It("doesn't delete anything if all is active", func() {
-			active := model.Artists{{ID: "1"}, {ID: "2"}, {ID: "3"}}
-
-			Expect(repo.PurgeInactive(active)).To(BeNil())
-
-			Expect(repo.CountAll()).To(Equal(int64(3)))
-			Expect(repo.Exists("1")).To(BeTrue())
-		})
-	})
 })

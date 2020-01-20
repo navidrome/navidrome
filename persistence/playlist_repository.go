@@ -64,13 +64,6 @@ func (r *playlistRepository) toPlaylists(all []playlist) (model.Playlists, error
 	return result, nil
 }
 
-func (r *playlistRepository) PurgeInactive(activeList model.Playlists) ([]string, error) {
-	_, err := r.purgeInactive(activeList, func(item interface{}) string {
-		return item.(model.Playlist).ID
-	})
-	return nil, err
-}
-
 func (r *playlistRepository) toDomain(p *playlist) model.Playlist {
 	return model.Playlist{
 		ID:       p.ID,

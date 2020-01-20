@@ -170,13 +170,6 @@ func (r *mediaFileRepository) MarkAsPlayed(id string, playDate time.Time) error 
 	return err
 }
 
-func (r *mediaFileRepository) PurgeInactive(activeList model.MediaFiles) error {
-	_, err := r.purgeInactive(activeList, func(item interface{}) string {
-		return item.(model.MediaFile).ID
-	})
-	return err
-}
-
 func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
 	if len(q) <= 2 {
 		return nil, nil

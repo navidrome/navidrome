@@ -46,14 +46,6 @@ func (r *searchableRepository) put(id string, textToIndex string, a interface{},
 	return r.addToIndex(r.tableName, id, textToIndex)
 }
 
-func (r *searchableRepository) purgeInactive(activeList interface{}, getId func(item interface{}) string) ([]string, error) {
-	idsToDelete, err := r.sqlRepository.purgeInactive(activeList, getId)
-	if err != nil {
-		return nil, err
-	}
-	return idsToDelete, r.removeFromIndex(r.tableName, idsToDelete)
-}
-
 func (r *searchableRepository) addToIndex(table, id, text string) error {
 	item := search{ID: id, Table: table}
 	err := r.ormer.Read(&item)

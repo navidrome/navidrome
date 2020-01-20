@@ -22,7 +22,6 @@ type ArtistRepository interface {
 	Exists(id string) (bool, error)
 	Put(m *Artist) error
 	Get(id string) (*Artist, error)
-	PurgeInactive(active Artists) error
 	GetStarred(...QueryOptions) (Artists, error)
 	SetStar(star bool, ids ...string) error
 	Search(q string, offset int, size int) (Artists, error)

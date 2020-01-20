@@ -151,13 +151,6 @@ group by album_id order by f.id`, strings.Join(ids, "','"))
 	return err
 }
 
-func (r *albumRepository) PurgeInactive(activeList model.Albums) error {
-	_, err := r.purgeInactive(activeList, func(item interface{}) string {
-		return item.(model.Album).ID
-	})
-	return err
-}
-
 func (r *albumRepository) PurgeEmpty() error {
 	_, err := r.ormer.Raw("delete from album where id not in (select distinct(album_id) from media_file)").Exec()
 	return err
