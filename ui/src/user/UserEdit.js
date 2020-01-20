@@ -9,8 +9,11 @@ import {
   SimpleForm
 } from 'react-admin'
 
+const UserTitle = ({ record }) => {
+  return <span>User {record ? record.name : ''}</span>
+}
 const UserEdit = (props) => (
-  <Edit {...props}>
+  <Edit title={<UserTitle />} {...props}>
     <SimpleForm>
       <TextInput source="name" validate={[required()]} />
       <PasswordInput source="password" validate={[required()]} />
