@@ -2,11 +2,12 @@
 import React from 'react'
 import { Admin, Resource } from 'react-admin'
 import jsonServerProvider from 'ra-data-json-server'
+import { Login } from './layout'
 import user from './user'
 
 const dataProvider = jsonServerProvider('/app/api')
 const App = () => (
-  <Admin dataProvider={dataProvider}>
+  <Admin dataProvider={dataProvider} loginPage={Login}>
     <Resource name="user" {...user} />
   </Admin>
 )
