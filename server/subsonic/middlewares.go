@@ -2,14 +2,12 @@ package subsonic
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"net/http"
-	"strings"
 
-	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/server/subsonic/responses"
 )
 
@@ -44,36 +42,30 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 	})
 }
 
-func authenticate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		password := conf.Sonic.Password
-		user := ParamString(r, "u")
-		pass := ParamString(r, "p")
-		salt := ParamString(r, "s")
-		token := ParamString(r, "t")
-		valid := false
+func authenticate(users engine.Users) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := ParamString(r, "u")
+			pass := ParamString(r, "p")
+			token := ParamString(r, "t")
+			salt := ParamString(r, "s")
 
-		switch {
-		case pass != "":
-			if strings.HasPrefix(pass, "enc:") {
-				if dec, err := hex.DecodeString(pass[4:]); err == nil {
-					pass = string(dec)
-				}
+			_, err := users.Authenticate(user, pass, token, salt)
+			if err == model.ErrInvalidAuth {
+				log.Warn(r, "Invalid login", "user", user, err)
+			} else if err != nil {
+				log.Error(r, "Error authenticating user", "user", user, err)
 			}
-			valid = pass == password
-		case token != "":
-			t := fmt.Sprintf("%x", md5.Sum([]byte(password+salt)))
-			valid = t == token
-		}
 
-		if user != conf.Sonic.User || !valid {
-			log.Warn(r, "Invalid login", "user", user)
-			SendError(w, r, NewError(responses.ErrorAuthenticationFail))
-			return
-		}
+			if err != nil {
+				log.Warn(r, "Invalid login", "user", user)
+				SendError(w, r, NewError(responses.ErrorAuthenticationFail))
+				return
+			}
 
-		next.ServeHTTP(w, r)
-	})
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func requiredParams(params ...string) func(next http.Handler) http.Handler {

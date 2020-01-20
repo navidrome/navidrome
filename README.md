@@ -35,14 +35,16 @@ $ export SONIC_MUSICFOLDER="/path/to/your/music/folder"
 $ make
 ```
 
-The server should start listening for requests. The default configuration is:
+The server should start listening for requests on the default port 4533. The first time you start the app it will 
+create a new user "admin" with a random password. Check the logs for a line like this:
+```
+Creating initial user. Please change the password!  password=be32e686-d59b-4f57-b780-d04dc5e9cf04 user=admin
+```
 
-- Port: `4533`
-- User: `admin`
-- Password: `admin`
+You can change this password using the UI. Just login in with this temporary password at http://localhost:4533 
 
-To override this or any other configuration, create a file named `sonic.toml` in the project folder.
- For all options see the [configuration.go](conf/configuration.go) file
+To change any configuration, create a file named `sonic.toml` in the project folder. For all options see the 
+[configuration.go](conf/configuration.go) file
 
 ### Development Environment
 

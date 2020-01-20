@@ -24,15 +24,16 @@ type Router struct {
 	Ratings       engine.Ratings
 	Scrobbler     engine.Scrobbler
 	Search        engine.Search
+	Users         engine.Users
 
 	mux http.Handler
 }
 
-func New(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator,
+func New(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator, users engine.Users,
 	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search) *Router {
 
 	r := &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
-		Ratings: ratings, Scrobbler: scrobbler, Search: search}
+		Ratings: ratings, Scrobbler: scrobbler, Search: search, Users: users}
 	r.mux = r.routes()
 	return r
 }
@@ -48,7 +49,7 @@ func (api *Router) routes() http.Handler {
 
 	// Add validation middleware if not disabled
 	if !conf.Sonic.DevDisableAuthentication {
-		r.Use(authenticate)
+		r.Use(authenticate(api.Users))
 		// TODO Validate version
 	}
 

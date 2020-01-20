@@ -81,5 +81,12 @@ func (r *userRepository) UpdateLastLoginAt(id string) error {
 	return err
 }
 
+func (r *userRepository) UpdateLastAccessAt(id string) error {
+	now := time.Now()
+	tu := user{ID: id, LastAccessAt: &now}
+	_, err := r.ormer.Update(&tu, "last_access_at")
+	return err
+}
+
 var _ = model.User(user{})
 var _ model.UserRepository = (*userRepository)(nil)

@@ -5,8 +5,9 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
+	"github.com/cloudsonic/sonic-server/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -67,60 +68,31 @@ var _ = Describe("Middlewares", func() {
 	})
 
 	Describe("Authenticate", func() {
+		var mockedUser *mockUsers
 		BeforeEach(func() {
-			conf.Sonic.User = "admin"
-			conf.Sonic.Password = "wordpass"
-			conf.Sonic.DevDisableAuthentication = false
+			mockedUser = &mockUsers{}
 		})
 
-		Context("Plaintext password", func() {
-			It("authenticates with plaintext password ", func() {
-				r := newTestRequest("u=admin", "p=wordpass")
-				cp := authenticate(next)
-				cp.ServeHTTP(w, r)
+		It("passes all parameters to users.Authenticate ", func() {
+			r := newTestRequest("u=valid", "p=password", "t=token", "s=salt")
+			cp := authenticate(mockedUser)(next)
+			cp.ServeHTTP(w, r)
 
-				Expect(next.called).To(BeTrue())
-			})
-
-			It("fails authentication with wrong password", func() {
-				r := newTestRequest("u=admin", "p=INVALID")
-				cp := authenticate(next)
-				cp.ServeHTTP(w, r)
-
-				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
-				Expect(next.called).To(BeFalse())
-			})
+			Expect(mockedUser.username).To(Equal("valid"))
+			Expect(mockedUser.password).To(Equal("password"))
+			Expect(mockedUser.token).To(Equal("token"))
+			Expect(mockedUser.salt).To(Equal("salt"))
+			Expect(next.called).To(BeTrue())
 		})
 
-		Context("Encoded password", func() {
-			It("authenticates with simple encoded password ", func() {
-				r := newTestRequest("u=admin", "p=enc:776f726470617373")
-				cp := authenticate(next)
-				cp.ServeHTTP(w, r)
+		It("fails authentication with wrong password", func() {
+			r := newTestRequest("u=invalid", "", "", "")
+			cp := authenticate(mockedUser)(next)
+			cp.ServeHTTP(w, r)
 
-				Expect(next.called).To(BeTrue())
-			})
+			Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+			Expect(next.called).To(BeFalse())
 		})
-
-		Context("Token based authentication", func() {
-			It("authenticates with token based authentication", func() {
-				r := newTestRequest("u=admin", "t=23b342970e25c7928831c3317edd0b67", "s=retnlmjetrymazgkt")
-				cp := authenticate(next)
-				cp.ServeHTTP(w, r)
-
-				Expect(next.called).To(BeTrue())
-			})
-
-			It("fails if salt is missing", func() {
-				r := newTestRequest("u=admin", "t=23b342970e25c7928831c3317edd0b67")
-				cp := authenticate(next)
-				cp.ServeHTTP(w, r)
-
-				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
-				Expect(next.called).To(BeFalse())
-			})
-		})
-
 	})
 })
 
@@ -132,4 +104,20 @@ type mockHandler struct {
 func (mh *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mh.req = r
 	mh.called = true
+}
+
+type mockUsers struct {
+	engine.Users
+	username, password, token, salt string
+}
+
+func (m *mockUsers) Authenticate(username, password, token, salt string) (*model.User, error) {
+	m.username = username
+	m.password = password
+	m.token = token
+	m.salt = salt
+	if username == "valid" {
+		return &model.User{UserName: username, Password: password}, nil
+	}
+	return nil, model.ErrInvalidAuth
 }

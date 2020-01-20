@@ -36,11 +36,12 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	cover := engine.NewCover(dataStore)
 	nowPlayingRepository := engine.NewNowPlayingRepository()
 	listGenerator := engine.NewListGenerator(dataStore, nowPlayingRepository)
+	users := engine.NewUsers(dataStore)
 	playlists := engine.NewPlaylists(dataStore)
 	ratings := engine.NewRatings(dataStore)
 	scrobbler := engine.NewScrobbler(dataStore, nowPlayingRepository)
 	search := engine.NewSearch(dataStore)
-	router := subsonic.New(browser, cover, listGenerator, playlists, ratings, scrobbler, search)
+	router := subsonic.New(browser, cover, listGenerator, users, playlists, ratings, scrobbler, search)
 	return router
 }
 

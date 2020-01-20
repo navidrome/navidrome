@@ -7,6 +7,7 @@ type MockDataStore struct {
 	MockedAlbum     model.AlbumRepository
 	MockedArtist    model.ArtistRepository
 	MockedMediaFile model.MediaFileRepository
+	MockedUser      model.UserRepository
 }
 
 func (db *MockDataStore) Album() model.AlbumRepository {
@@ -50,7 +51,10 @@ func (db *MockDataStore) Property() model.PropertyRepository {
 }
 
 func (db *MockDataStore) User() model.UserRepository {
-	return struct{ model.UserRepository }{}
+	if db.MockedUser == nil {
+		db.MockedUser = &mockedUserRepo{}
+	}
+	return db.MockedUser
 }
 
 func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {
@@ -59,4 +63,16 @@ func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {
 
 func (db *MockDataStore) Resource(m interface{}) model.ResourceRepository {
 	return struct{ model.ResourceRepository }{}
+}
+
+type mockedUserRepo struct {
+	model.UserRepository
+}
+
+func (u *mockedUserRepo) FindByUsername(username string) (*model.User, error) {
+	return &model.User{UserName: "admin", Password: "wordpass"}, nil
+}
+
+func (u *mockedUserRepo) UpdateLastAccessAt(id string) error {
+	return nil
 }

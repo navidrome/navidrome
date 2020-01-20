@@ -21,4 +21,5 @@ type UserRepository interface {
 	Put(*User) error
 	FindByUsername(username string) (*User, error)
 	UpdateLastLoginAt(id string) error
+	UpdateLastAccessAt(id string) error
 }
