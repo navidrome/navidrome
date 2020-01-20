@@ -48,15 +48,12 @@ func NewMediaFileRepository(o orm.Ormer) model.MediaFileRepository {
 	return r
 }
 
-func (r *mediaFileRepository) Put(m *model.MediaFile, overrideAnnotation bool) error {
+func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	tm := mediaFile(*m)
-	if !overrideAnnotation {
-		// Don't update media annotation fields (playcount, starred, etc..)
-		return r.put(m.ID, m.Title, &tm, "path", "title", "album", "artist", "artist_id", "album_artist",
-			"album_id", "has_cover_art", "track_number", "disc_number", "year", "size", "suffix", "duration",
-			"bit_rate", "genre", "compilation", "updated_at")
-	}
-	return r.put(m.ID, m.Title, &tm)
+	// Don't update media annotation fields (playcount, starred, etc..)
+	return r.put(m.ID, m.Title, &tm, "path", "title", "album", "artist", "artist_id", "album_artist",
+		"album_id", "has_cover_art", "track_number", "disc_number", "year", "size", "suffix", "duration",
+		"bit_rate", "genre", "compilation", "updated_at")
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {

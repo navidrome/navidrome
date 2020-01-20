@@ -71,7 +71,7 @@ var _ = Describe("Initialize test DB", func() {
 		}
 		mediaFileRepository := ds.MediaFile()
 		for _, s := range testSongs {
-			err := mediaFileRepository.Put(&s, true)
+			err := mediaFileRepository.Put(&s)
 			if err != nil {
 				panic(err)
 			}
