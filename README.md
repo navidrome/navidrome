@@ -32,7 +32,7 @@ the steps in the [Development Environment](#development-environment) section bel
 
 ```
 $ export SONIC_MUSICFOLDER="/path/to/your/music/folder"
-$ make run
+$ make
 ```
 
 The server should start listening for requests. The default configuration is:
@@ -58,7 +58,7 @@ Some useful commands:
 
 ```bash
 # Start local server (with hot reload)
-$ make run
+$ make
 
 # Run all tests
 $ make test

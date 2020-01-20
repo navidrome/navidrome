@@ -7,8 +7,8 @@ type User struct {
 	Name         string
 	Password     string
 	IsAdmin      bool
-	LastLoginAt  time.Time
-	LastAccessAt time.Time
+	LastLoginAt  *time.Time
+	LastAccessAt *time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

@@ -1,13 +1,13 @@
 GO_VERSION=1.13
 NODE_VERSION=12.14.1
 
-.PHONY: run
-run: check_go_env data
-	@reflex -d none -c reflex.conf
-
 .PHONY: dev
 dev: check_env data
 	@goreman -f Procfile.dev -b 4533 start
+
+.PHONY: server
+server: check_go_env data
+	@reflex -d none -c reflex.conf
 
 .PHONY: watch
 watch: check_go_env

@@ -2,8 +2,8 @@ import React from 'react'
 import {
   BooleanField,
   Datagrid,
-  DateField,
   Filter,
+  DateField,
   List,
   SearchInput,
   SimpleList,
@@ -13,7 +13,7 @@ import { useMediaQuery } from '@material-ui/core'
 
 const UserFilter = (props) => (
   <Filter {...props}>
-    <SearchInput source="q" alwaysOn />
+    <SearchInput source="name" alwaysOn />
   </Filter>
 )
 
@@ -30,10 +30,10 @@ const UserList = (props) => {
       {isXsmall ? (
         <SimpleList
           primaryText={(record) => record.name}
-          secondaryText={(record) => record.email}
+          tertiaryText={(record) => (record.isAdmin ? '[admin]️' : '')}
         />
       ) : (
-        <Datagrid>
+        <Datagrid rowClick="edit">
           <TextField source="name" />
           <BooleanField source="isAdmin" />
           <DateField source="lastLoginAt" locales="pt-BR" />

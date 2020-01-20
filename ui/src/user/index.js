@@ -1,11 +1,11 @@
-import SupervisedUserCircleIcon from '@material-ui/icons/SupervisedUserCircle'
+import SupervisedUserCircleIcon from '@material-ui/icons/Group'
 import UserList from './UserList'
-// import UserEdit from './UserEdit'
-// import UserCreate from './UserCreate'
+import UserEdit from './UserEdit'
+import UserCreate from './UserCreate'
 
 export default {
   list: UserList,
-  // edit: UserEdit,
-  // create: UserCreate,
+  edit: UserEdit,
+  create: UserCreate,
   icon: SupervisedUserCircleIcon
 }
