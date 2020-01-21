@@ -43,7 +43,7 @@ var _ = Describe("Metadata", func() {
 		Expect(m.Size()).To(Equal(4408))
 	})
 
-	It("returns error for invalid media file", func() {
+	FIt("returns error for invalid media file", func() {
 		_, err := ExtractMetadata("../tests/fixtures/itunes-library.xml")
 		Expect(err).ToNot(BeNil())
 	})

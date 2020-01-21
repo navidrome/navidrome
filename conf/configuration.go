@@ -17,9 +17,10 @@ type sonic struct {
 
 	DisableDownsampling bool   `default:"false"`
 	DownsampleCommand   string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
-	ProbeCommand        string `default:"ffprobe -v quiet -print_format json -show_format %s"`
-	PlsIgnoreFolders    bool   `default:"true"`
-	PlsIgnoredPatterns  string `default:"^iCloud;\\~"`
+	//ProbeCommand        string `default:"ffprobe -v quiet -print_format json -show_format %s"`
+	ProbeCommand       string `default:"ffmpeg -i %s -f ffmetadata"`
+	PlsIgnoreFolders   bool   `default:"true"`
+	PlsIgnoredPatterns string `default:"^iCloud;\\~"`
 
 	// DevFlags
 	LogLevel                 string `default:"info"`

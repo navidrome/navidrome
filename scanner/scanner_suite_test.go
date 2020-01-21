@@ -18,7 +18,7 @@ func xTestScanner(t *testing.T) {
 	RunSpecs(t, "Scanner Suite")
 }
 
-var _ = Describe("TODO: REMOVE", func() {
+var _ = XDescribe("TODO: REMOVE", func() {
 	conf.Sonic.DbPath = "./testDB"
 	log.SetLevel(log.LevelDebug)
 	ds := persistence.New()

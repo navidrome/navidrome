@@ -1,3 +1,5 @@
+//+build ignored
+
 package scanner
 
 import (
