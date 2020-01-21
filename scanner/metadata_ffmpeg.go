@@ -197,7 +197,7 @@ func (m *Metadata) parseTuple(tagName string) (int, int) {
 func (m *Metadata) parseBool(tagName string) bool {
 	if v, ok := m.tags[tagName]; ok {
 		i, _ := strconv.Atoi(v)
-		return i == 0
+		return i == 1
 	}
 	return false
 }
