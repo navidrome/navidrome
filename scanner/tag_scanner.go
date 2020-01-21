@@ -208,28 +208,16 @@ func (s *TagScanner) processDeletedDir(dir string, updatedArtists map[string]boo
 }
 
 func (s *TagScanner) loadTracks(dirPath string) (model.MediaFiles, error) {
-	dir, err := os.Open(dirPath)
+	mds, err := ExtractAllMetadata(dirPath)
 	if err != nil {
 		return nil, err
 	}
-	files, err := dir.Readdir(-1)
-	if err != nil {
-		return nil, err
-	}
-	var mds model.MediaFiles
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-		filePath := path.Join(dirPath, f.Name())
-		md, err := ExtractMetadata(filePath)
-		if err != nil {
-			continue
-		}
+	var mfs model.MediaFiles
+	for _, md := range mds {
 		mf := s.toMediaFile(md)
-		mds = append(mds, mf)
+		mfs = append(mfs, mf)
 	}
-	return mds, nil
+	return mfs, nil
 }
 
 func (s *TagScanner) toMediaFile(md *Metadata) model.MediaFile {

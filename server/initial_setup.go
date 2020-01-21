@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/consts"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
@@ -50,14 +51,18 @@ func createDefaultUser(ds model.DataStore) error {
 	}
 	if c == 0 {
 		id, _ := uuid.NewRandom()
-		initialPassword, _ := uuid.NewRandom()
+		random, _ := uuid.NewRandom()
+		initialPassword := random.String()
+		if conf.Sonic.DevInitialPassword != "" {
+			initialPassword = conf.Sonic.DevInitialPassword
+		}
 		log.Warn("Creating initial user. Please change the password!", "user", consts.InitialUserName, "password", initialPassword)
 		initialUser := model.User{
 			ID:       id.String(),
 			UserName: consts.InitialUserName,
 			Name:     consts.InitialName,
 			Email:    "",
-			Password: initialPassword.String(),
+			Password: initialPassword,
 			IsAdmin:  true,
 		}
 		err := ds.User().Put(&initialUser)

@@ -19,10 +19,11 @@ func xTestScanner(t *testing.T) {
 }
 
 var _ = XDescribe("TODO: REMOVE", func() {
-	conf.Sonic.DbPath = "./testDB"
-	log.SetLevel(log.LevelDebug)
-	ds := persistence.New()
 	It("WORKS!", func() {
+		conf.Sonic.DbPath = "./testDB"
+		log.SetLevel(log.LevelDebug)
+		ds := persistence.New()
+
 		t := NewTagScanner("/Users/deluan/Music/iTunes/iTunes Media/Music", ds)
 		//t := NewTagScanner("/Users/deluan/Development/cloudsonic/sonic-server/tests/fixtures", ds)
 		Expect(t.Scan(nil, time.Time{})).To(BeNil())

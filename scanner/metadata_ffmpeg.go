@@ -2,7 +2,6 @@ package scanner
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"mime"
 	"os"
@@ -24,31 +23,6 @@ type Metadata struct {
 	tags     map[string]string
 }
 
-func ExtractMetadata(filePath string) (*Metadata, error) {
-	m := &Metadata{filePath: filePath, tags: map[string]string{}}
-	extension := path.Ext(filePath)
-	if !isAudioFile(extension) {
-		return nil, errors.New("not an audio file")
-	}
-	m.suffix = strings.ToLower(strings.TrimPrefix(extension, "."))
-	fi, err := os.Stat(filePath)
-	if err != nil {
-		return nil, err
-	}
-	m.fileInfo = fi
-
-	err = m.probe(filePath)
-	if len(m.tags) == 0 {
-		return nil, errors.New("not a media file")
-	}
-	return m, err
-}
-
-func isAudioFile(extension string) bool {
-	typ := mime.TypeByExtension(extension)
-	return strings.HasPrefix(typ, "audio/")
-}
-
 func (m *Metadata) Title() string               { return m.tags["title"] }
 func (m *Metadata) Album() string               { return m.tags["album"] }
 func (m *Metadata) Artist() string              { return m.tags["artist"] }
@@ -67,40 +41,116 @@ func (m *Metadata) FilePath() string            { return m.filePath }
 func (m *Metadata) Suffix() string              { return m.suffix }
 func (m *Metadata) Size() int                   { return int(m.fileInfo.Size()) }
 
-func (m *Metadata) probe(filePath string) error {
-	cmdLine, args := createProbeCommand(filePath)
+func ExtractAllMetadata(dirPath string) (map[string]*Metadata, error) {
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		return nil, err
+	}
+	files, err := dir.Readdir(-1)
+	if err != nil {
+		return nil, err
+	}
+	var audioFiles []string
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		filePath := path.Join(dirPath, f.Name())
+		extension := path.Ext(filePath)
+		if !isAudioFile(extension) {
+			continue
+		}
+		audioFiles = append(audioFiles, filePath)
+	}
+
+	if len(audioFiles) == 0 {
+		return map[string]*Metadata{}, nil
+	}
+	return probe(audioFiles)
+}
+
+func probe(inputs []string) (map[string]*Metadata, error) {
+	cmdLine, args := createProbeCommand(inputs)
 
 	log.Trace("Executing command", "cmdLine", cmdLine, "args", args)
 	cmd := exec.Command(cmdLine, args...)
 	output, _ := cmd.CombinedOutput()
-	if len(output) == 0 || bytes.Contains(output, []byte("No such file or directory")) {
-		return errors.New("error extracting metadata from " + filePath)
+	mds := map[string]*Metadata{}
+	if len(output) == 0 {
+		return mds, errors.New("error extracting metadata files")
 	}
-	return m.parseOutput(output)
+	infos := parseOutput(string(output))
+	for file, info := range infos {
+		md, err := extractMetadata(file, info)
+		if err == nil {
+			mds[file] = md
+		}
+	}
+	return mds, nil
+}
+
+var inputRegex = regexp.MustCompile(`(?m)^Input #\d+,.*,\sfrom\s'(.*)'`)
+
+func parseOutput(output string) map[string]string {
+	split := map[string]string{}
+	all := inputRegex.FindAllStringSubmatchIndex(string(output), -1)
+	for i, loc := range all {
+		// Filename is the first captured group
+		file := output[loc[2]:loc[3]]
+
+		// File info is everything from the match, up until the beginning of the next match
+		info := ""
+		initial := loc[1]
+		if i < len(all)-1 {
+			end := all[i+1][0] - 1
+			info = output[initial:end]
+		} else {
+			// if this is the last match
+			info = output[initial:]
+		}
+		split[file] = info
+	}
+	return split
+}
+
+func extractMetadata(filePath, info string) (*Metadata, error) {
+	m := &Metadata{filePath: filePath, tags: map[string]string{}}
+	m.suffix = strings.ToLower(strings.TrimPrefix(path.Ext(filePath), "."))
+	m.parseInfo(info)
+	m.fileInfo, _ = os.Stat(filePath)
+	if len(m.tags) == 0 {
+		return nil, errors.New("not a media file")
+	}
+	return m, nil
+}
+
+func isAudioFile(extension string) bool {
+	typ := mime.TypeByExtension(extension)
+	return strings.HasPrefix(typ, "audio/")
 }
 
 var (
 	tagsRx = map[*regexp.Regexp]string{
-		regexp.MustCompile(`^\s+compilation\s+:(.*)`):     "compilation",
-		regexp.MustCompile(`^\s+genre\s+:\s(.*)`):         "genre",
-		regexp.MustCompile(`^\s+title\s+:\s(.*)`):         "title",
-		regexp.MustCompile(`^\s{4}comment\s+:\s(.*)`):     "comment",
-		regexp.MustCompile(`^\s+artist\s+:\s(.*)`):        "artist",
-		regexp.MustCompile(`^\s+album_artist\s+:\s(.*)`):  "album_artist",
-		regexp.MustCompile(`^\s+TCM\s+:\s(.*)`):           "composer",
-		regexp.MustCompile(`^\s+album\s+:\s(.*)`):         "album",
-		regexp.MustCompile(`^\s+track\s+:\s(.*)`):         "trackNum",
-		regexp.MustCompile(`^\s+disc\s+:\s(.*)`):          "discNum",
-		regexp.MustCompile(`^\s+TPA\s+:\s(.*)`):           "discNum",
-		regexp.MustCompile(`^\s+date\s+:\s(.*)`):          "year",
-		regexp.MustCompile(`^\s{4}Stream #0:1: (.+)\:\s`): "hasPicture",
+		regexp.MustCompile(`^\s+compilation\s+:(.*)`):      "compilation",
+		regexp.MustCompile(`^\s+genre\s+:\s(.*)`):          "genre",
+		regexp.MustCompile(`^\s+title\s+:\s(.*)`):          "title",
+		regexp.MustCompile(`^\s{4}comment\s+:\s(.*)`):      "comment",
+		regexp.MustCompile(`^\s+artist\s+:\s(.*)`):         "artist",
+		regexp.MustCompile(`^\s+album_artist\s+:\s(.*)`):   "album_artist",
+		regexp.MustCompile(`^\s+TCM\s+:\s(.*)`):            "composer",
+		regexp.MustCompile(`^\s+album\s+:\s(.*)`):          "album",
+		regexp.MustCompile(`^\s+track\s+:\s(.*)`):          "trackNum",
+		regexp.MustCompile(`^\s+disc\s+:\s(.*)`):           "discNum",
+		regexp.MustCompile(`^\s+TPA\s+:\s(.*)`):            "discNum",
+		regexp.MustCompile(`^\s+date\s+:\s(.*)`):           "year",
+		regexp.MustCompile(`^\s{4}Stream #\d+:1: (.+):\s`): "hasPicture",
 	}
 
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
 )
 
-func (m *Metadata) parseOutput(output []byte) error {
-	reader := strings.NewReader(string(output))
+func (m *Metadata) parseInfo(info string) {
+	reader := strings.NewReader(info)
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -120,7 +170,6 @@ func (m *Metadata) parseOutput(output []byte) error {
 			}
 		}
 	}
-	return nil
 }
 
 func (m *Metadata) parseInt(tagName string) int {
@@ -165,14 +214,20 @@ func (m *Metadata) parseDuration(tagName string) int {
 	return 0
 }
 
-func createProbeCommand(filePath string) (string, []string) {
+func createProbeCommand(inputs []string) (string, []string) {
 	cmd := conf.Sonic.ProbeCommand
 
 	split := strings.Split(cmd, " ")
-	for i, s := range split {
-		s = strings.Replace(s, "%s", filePath, -1)
-		split[i] = s
+	args := make([]string, 0)
+	for _, s := range split {
+		if s == "%s" {
+			for _, inp := range inputs {
+				args = append(args, "-i", inp)
+			}
+			continue
+		}
+		args = append(args, s)
 	}
 
-	return split[0], split[1:]
+	return args[0], args[1:]
 }

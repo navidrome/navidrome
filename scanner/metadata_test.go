@@ -6,9 +6,12 @@ import (
 )
 
 var _ = Describe("Metadata", func() {
-	FIt("correctly parses mp3 file", func() {
-		m, err := ExtractMetadata("../tests/fixtures/test.mp3")
-		Expect(err).To(BeNil())
+	It("correctly parses metadata from all files in folder", func() {
+		mds, err := ExtractAllMetadata("../tests/fixtures")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(mds).To(HaveLen(3))
+
+		m := mds["../tests/fixtures/test.mp3"]
 		Expect(m.Title()).To(Equal("Song"))
 		Expect(m.Album()).To(Equal("Album"))
 		Expect(m.Artist()).To(Equal("Artist"))
@@ -29,10 +32,8 @@ var _ = Describe("Metadata", func() {
 		Expect(m.FilePath()).To(Equal("../tests/fixtures/test.mp3"))
 		Expect(m.Suffix()).To(Equal("mp3"))
 		Expect(m.Size()).To(Equal(60845))
-	})
 
-	It("correctly parses ogg file with no tags", func() {
-		m, err := ExtractMetadata("../tests/fixtures/test.ogg")
+		m = mds["../tests/fixtures/test.ogg"]
 		Expect(err).To(BeNil())
 		Expect(m.Title()).To(BeEmpty())
 		Expect(m.HasPicture()).To(BeFalse())
@@ -43,13 +44,12 @@ var _ = Describe("Metadata", func() {
 		Expect(m.Size()).To(Equal(4408))
 	})
 
-	FIt("returns error for invalid media file", func() {
-		_, err := ExtractMetadata("../tests/fixtures/itunes-library.xml")
-		Expect(err).ToNot(BeNil())
+	It("returns error if path does not exist", func() {
+		_, err := ExtractAllMetadata("./INVALID/PATH")
+		Expect(err).To(HaveOccurred())
 	})
 
-	It("returns error for file not found", func() {
-		_, err := ExtractMetadata("../tests/fixtures/NOT-FOUND.mp3")
-		Expect(err).ToNot(BeNil())
+	It("returns empty map if there are no audio files in path", func() {
+		Expect(ExtractAllMetadata(".")).To(BeEmpty())
 	})
 })
