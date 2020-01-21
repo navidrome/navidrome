@@ -42,12 +42,6 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
-	Describe("GetAllIds", func() {
-		It("returns all records", func() {
-			Expect(repo.GetAllIds()).To(ConsistOf("1", "2", "3"))
-		})
-	})
-
 	Describe("GetStarred", func() {
 		It("returns all starred records", func() {
 			Expect(repo.GetStarred(model.QueryOptions{})).To(Equal(model.Albums{

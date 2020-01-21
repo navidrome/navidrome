@@ -47,7 +47,7 @@ type MediaFileRepository interface {
 	FindByAlbum(albumId string) (MediaFiles, error)
 	FindByPath(path string) (MediaFiles, error)
 	GetStarred(options ...QueryOptions) (MediaFiles, error)
-	GetAllIds() ([]string, error)
+	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	DeleteByPath(path string) error

@@ -32,10 +32,10 @@ CloudSonic and Subsonic:
 | _ALBUM/SONGS LISTS_    ||
 | `getAlbumList`         | `byYear` and `byGenre` are not implemented |
 | `getAlbumList2`        | `byYear` and `byGenre` are not implemented |
-| `getStarred`           | Doesn't return any artists, as iTunes does not support starred (loved) artists |
-| `getStarred2`          | Doesn't return any artists, as iTunes does not support starred (loved) artists |
+| `getStarred`           | |
+| `getStarred2`          | |
 | `getNowPlaying`        | |
-| `getRandomSongs`       | Ignores `genre` and `year` parameters |
+| `getRandomSongs`       | Ignores `year` parameter |
 | ||
 | _SEARCHING_            ||
 | `search2`              | Doesn't support Lucene queries, only simple auto complete queries |

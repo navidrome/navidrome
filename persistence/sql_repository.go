@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/model"
 )
@@ -29,6 +30,29 @@ func (r *sqlRepository) newQuery(options ...model.QueryOptions) orm.QuerySeter {
 	return q
 }
 
+func (r *sqlRepository) newRawQuery(options ...model.QueryOptions) squirrel.SelectBuilder {
+	sq := squirrel.Select("*").From(r.tableName)
+	if len(options) > 0 {
+		if options[0].Max > 0 {
+			sq = sq.Limit(uint64(options[0].Max))
+		}
+		if options[0].Offset > 0 {
+			sq = sq.Offset(uint64(options[0].Max))
+		}
+		if options[0].Sort != "" {
+			if options[0].Order == "desc" {
+				sq = sq.OrderBy(options[0].Sort + " desc")
+			} else {
+				sq = sq.OrderBy(options[0].Sort)
+			}
+		}
+		for field, value := range options[0].Filters {
+			sq = sq.Where(squirrel.Like{field: value.(string) + "%"})
+		}
+	}
+	return sq
+}
+
 func (r *sqlRepository) CountAll() (int64, error) {
 	return r.newQuery().Count()
 }
@@ -36,22 +60,6 @@ func (r *sqlRepository) CountAll() (int64, error) {
 func (r *sqlRepository) Exists(id string) (bool, error) {
 	c, err := r.newQuery().Filter("id", id).Count()
 	return c == 1, err
-}
-
-// TODO This is used to generate random lists. Can be optimized in SQL: https://stackoverflow.com/a/19419
-func (r *sqlRepository) GetAllIds() ([]string, error) {
-	qs := r.newQuery()
-	var values []orm.Params
-	num, err := qs.Values(&values, "id")
-	if num == 0 {
-		return nil, err
-	}
-
-	result := collectField(values, func(item interface{}) string {
-		return item.(orm.Params)["ID"].(string)
-	})
-
-	return result, nil
 }
 
 // "Hack" to bypass Postgres driver limitation

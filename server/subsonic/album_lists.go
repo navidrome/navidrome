@@ -132,8 +132,9 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 
 func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	size := utils.MinInt(ParamInt(r, "size", 10), 500)
+	genre := ParamString(r, "genre")
 
-	songs, err := c.listGen.GetRandomSongs(size)
+	songs, err := c.listGen.GetRandomSongs(size, genre)
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")

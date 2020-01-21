@@ -127,6 +127,23 @@ func (r *mediaFileRepository) DeleteByPath(path string) error {
 	return err
 }
 
+func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
+	sq := r.newRawQuery(options...)
+	switch r.ormer.Driver().Type() {
+	case orm.DRMySQL:
+		sq = sq.OrderBy("RAND()")
+	default:
+		sq = sq.OrderBy("RANDOM()")
+	}
+	sql, args, err := sq.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	var results []mediaFile
+	_, err = r.ormer.Raw(sql, args...).QueryRows(&results)
+	return r.toMediaFiles(results), err
+}
+
 func (r *mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
 	var starred []mediaFile
 	_, err := r.newQuery(options...).Filter("starred", true).All(&starred)

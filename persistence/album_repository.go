@@ -79,6 +79,24 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return r.toAlbums(all), nil
 }
 
+// TODO Keep order when paginating
+func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums, error) {
+	sq := r.newRawQuery(options...)
+	switch r.ormer.Driver().Type() {
+	case orm.DRMySQL:
+		sq = sq.OrderBy("RAND()")
+	default:
+		sq = sq.OrderBy("RANDOM()")
+	}
+	sql, args, err := sq.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	var results []album
+	_, err = r.ormer.Raw(sql, args...).QueryRows(&results)
+	return r.toAlbums(results), err
+}
+
 func (r *albumRepository) toAlbums(all []album) model.Albums {
 	result := make(model.Albums, len(all))
 	for i, a := range all {

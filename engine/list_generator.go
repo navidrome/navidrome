@@ -1,11 +1,9 @@
 package engine
 
 import (
-	"math/rand"
 	"time"
 
 	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/utils"
 )
 
 type ListGenerator interface {
@@ -19,7 +17,7 @@ type ListGenerator interface {
 	GetStarred(offset int, size int) (Entries, error)
 	GetAllStarred() (artists Entries, albums Entries, mediaFiles Entries, err error)
 	GetNowPlaying() (Entries, error)
-	GetRandomSongs(size int) (Entries, error)
+	GetRandomSongs(size int, genre string) (Entries, error)
 }
 
 func NewListGenerator(ds model.DataStore, npRepo NowPlayingRepository) ListGenerator {
@@ -71,41 +69,31 @@ func (g *listGenerator) GetByArtist(offset int, size int) (Entries, error) {
 }
 
 func (g *listGenerator) GetRandom(offset int, size int) (Entries, error) {
-	ids, err := g.ds.Album().GetAllIds()
+	albums, err := g.ds.Album().GetRandom(model.QueryOptions{Max: size, Offset: offset})
 	if err != nil {
 		return nil, err
 	}
-	size = utils.MinInt(size, len(ids))
-	perm := rand.Perm(size)
-	r := make(Entries, size)
 
-	for i := 0; i < size; i++ {
-		v := perm[i]
-		al, err := g.ds.Album().Get((ids)[v])
-		if err != nil {
-			return nil, err
-		}
-		r[i] = FromAlbum(al)
+	r := make(Entries, len(albums))
+	for i, al := range albums {
+		r[i] = FromAlbum(&al)
 	}
 	return r, nil
 }
 
-func (g *listGenerator) GetRandomSongs(size int) (Entries, error) {
-	ids, err := g.ds.MediaFile().GetAllIds()
+func (g *listGenerator) GetRandomSongs(size int, genre string) (Entries, error) {
+	options := model.QueryOptions{Max: size}
+	if genre != "" {
+		options.Filters = map[string]interface{}{"genre": genre}
+	}
+	mediaFiles, err := g.ds.MediaFile().GetRandom(options)
 	if err != nil {
 		return nil, err
 	}
-	size = utils.MinInt(size, len(ids))
-	perm := rand.Perm(size)
-	r := make(Entries, size)
 
-	for i := 0; i < size; i++ {
-		v := perm[i]
-		mf, err := g.ds.MediaFile().Get(ids[v])
-		if err != nil {
-			return nil, err
-		}
-		r[i] = FromMediaFile(mf)
+	r := make(Entries, len(mediaFiles))
+	for i, mf := range mediaFiles {
+		r[i] = FromMediaFile(&mf)
 	}
 	return r, nil
 }
