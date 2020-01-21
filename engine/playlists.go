@@ -119,15 +119,16 @@ type PlaylistInfo struct {
 }
 
 func (p *playlists) Get(id string) (*PlaylistInfo, error) {
-	pl, err := p.ds.Playlist().Get(id)
+	pl, err := p.ds.Playlist().GetWithTracks(id)
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO Use model.Playlist when got rid of Entries
 	pinfo := &PlaylistInfo{
 		Id:        pl.ID,
 		Name:      pl.Name,
-		SongCount: len(pl.Tracks), // TODO Use model.Playlist
+		SongCount: len(pl.Tracks),
 		Duration:  pl.Duration,
 		Public:    pl.Public,
 		Owner:     pl.Owner,
@@ -135,13 +136,8 @@ func (p *playlists) Get(id string) (*PlaylistInfo, error) {
 	}
 	pinfo.Entries = make(Entries, len(pl.Tracks))
 
-	// TODO Optimize: Get all tracks at once
 	for i, mf := range pl.Tracks {
-		mf, err := p.ds.MediaFile().Get(mf.ID)
-		if err != nil {
-			return nil, err
-		}
-		pinfo.Entries[i] = FromMediaFile(mf)
+		pinfo.Entries[i] = FromMediaFile(&mf)
 	}
 
 	return pinfo, nil

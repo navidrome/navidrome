@@ -12,7 +12,6 @@ type playlist struct {
 	ID       string `orm:"pk;column(id)"`
 	Name     string `orm:"index"`
 	Comment  string
-	FullPath string
 	Duration int
 	Owner    string
 	Public   bool
@@ -52,8 +51,27 @@ func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := r.toModel(tp)
-	return &a, err
+	pls := r.toModel(tp)
+	return &pls, err
+}
+
+func (r *playlistRepository) GetWithTracks(id string) (*model.Playlist, error) {
+	pls, err := r.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	qs := r.ormer.QueryTable(&mediaFile{})
+	pls.Duration = 0
+	var newTracks model.MediaFiles
+	for _, t := range pls.Tracks {
+		mf := &mediaFile{}
+		if err := qs.Filter("id", t.ID).One(mf); err == nil {
+			pls.Duration += mf.Duration
+			newTracks = append(newTracks, model.MediaFile(*mf))
+		}
+	}
+	pls.Tracks = newTracks
+	return pls, err
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
@@ -78,7 +96,6 @@ func (r *playlistRepository) toModel(p *playlist) model.Playlist {
 		ID:       p.ID,
 		Name:     p.Name,
 		Comment:  p.Comment,
-		FullPath: p.FullPath,
 		Duration: p.Duration,
 		Owner:    p.Owner,
 		Public:   p.Public,
@@ -97,7 +114,6 @@ func (r *playlistRepository) fromModel(p *model.Playlist) playlist {
 		ID:       p.ID,
 		Name:     p.Name,
 		Comment:  p.Comment,
-		FullPath: p.FullPath,
 		Duration: p.Duration,
 		Owner:    p.Owner,
 		Public:   p.Public,
