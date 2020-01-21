@@ -41,6 +41,13 @@ CloudSonic and Subsonic:
 | `search2`              | Doesn't support Lucene queries, only simple auto complete queries |
 | `search3`              | Doesn't support Lucene queries, only simple auto complete queries |
 | ||
+| _PLAYLISTS_            ||
+| `getPlaylists`         | `username` parameter is not implemented |
+| `getPlaylist`          | |
+| `createPlaylist`       | Return empty response on success |
+| `updatePlaylist`       | `comment` and `public` are not implemented |
+| `deletePlaylist`       | |
+| ||
 | _MEDIA RETRIEVAL_      ||
 | `stream`               | Returns wrong content-length when downsampling |
 | `download`             | |
