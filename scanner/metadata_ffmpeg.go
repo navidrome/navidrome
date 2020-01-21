@@ -131,18 +131,18 @@ func isAudioFile(extension string) bool {
 
 var (
 	tagsRx = map[*regexp.Regexp]string{
-		regexp.MustCompile(`^\s+compilation\s+:(.*)`):      "compilation",
-		regexp.MustCompile(`^\s+genre\s+:\s(.*)`):          "genre",
-		regexp.MustCompile(`^\s+title\s+:\s(.*)`):          "title",
+		regexp.MustCompile(`^\s{4}compilation\s+:(.*)`):    "compilation",
+		regexp.MustCompile(`^\s{4}genre\s+:\s(.*)`):        "genre",
+		regexp.MustCompile(`^\s{4}title\s+:\s(.*)`):        "title",
 		regexp.MustCompile(`^\s{4}comment\s+:\s(.*)`):      "comment",
-		regexp.MustCompile(`^\s+artist\s+:\s(.*)`):         "artist",
-		regexp.MustCompile(`^\s+album_artist\s+:\s(.*)`):   "album_artist",
-		regexp.MustCompile(`^\s+TCM\s+:\s(.*)`):            "composer",
-		regexp.MustCompile(`^\s+album\s+:\s(.*)`):          "album",
-		regexp.MustCompile(`^\s+track\s+:\s(.*)`):          "trackNum",
-		regexp.MustCompile(`^\s+disc\s+:\s(.*)`):           "discNum",
-		regexp.MustCompile(`^\s+TPA\s+:\s(.*)`):            "discNum",
-		regexp.MustCompile(`^\s+date\s+:\s(.*)`):           "year",
+		regexp.MustCompile(`^\s{4}artist\s+:\s(.*)`):       "artist",
+		regexp.MustCompile(`^\s{4}album_artist\s+:\s(.*)`): "album_artist",
+		regexp.MustCompile(`^\s{4}TCM\s+:\s(.*)`):          "composer",
+		regexp.MustCompile(`^\s{4}album\s+:\s(.*)`):        "album",
+		regexp.MustCompile(`^\s{4}track\s+:\s(.*)`):        "trackNum",
+		regexp.MustCompile(`^\s{4}disc\s+:\s(.*)`):         "discNum",
+		regexp.MustCompile(`^\s{4}TPA\s+:\s(.*)`):          "discNum",
+		regexp.MustCompile(`^\s{4}date\s+:\s(.*)`):         "year",
 		regexp.MustCompile(`^\s{4}Stream #\d+:1: (.+):\s`): "hasPicture",
 	}
 

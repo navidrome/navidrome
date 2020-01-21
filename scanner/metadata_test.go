@@ -52,4 +52,33 @@ var _ = Describe("Metadata", func() {
 	It("returns empty map if there are no audio files in path", func() {
 		Expect(ExtractAllMetadata(".")).To(BeEmpty())
 	})
+
+	Context("extractMetadata", func() {
+		const outputWithOverlappingTitleTag = `
+Input #0, mp3, from 'groovin.mp3':
+  Metadata:
+    title           : Groovin' (feat. Daniel Sneijers, Susanne Alt)
+    artist          : Bone 40
+    track           : 1
+    album           : Groovin'
+    album_artist    : Bone 40
+    comment         : Visit http://bone40.bandcamp.com
+    date            : 2016
+  Duration: 00:03:34.28, start: 0.025056, bitrate: 323 kb/s
+    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 320 kb/s
+    Metadata:
+      encoder         : LAME3.99r
+    Side data:
+      replaygain: track gain - -6.000000, track peak - unknown, album gain - unknown, album peak - unknown,
+    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 700x700 [SAR 72:72 DAR 1:1], 90k tbr, 90k tbn, 90k tbc
+    Metadata:
+      title           : cover
+      comment         : Cover (front)
+At least one output file must be specified`
+
+		It("parses correct the title without overlapping with the stream tag", func() {
+			md, _ := extractMetadata("groovin.mp3", outputWithOverlappingTitleTag)
+			Expect(md.Title()).To(Equal("Groovin' (feat. Daniel Sneijers, Susanne Alt)"))
+		})
+	})
 })
