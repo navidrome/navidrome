@@ -8,15 +8,16 @@ type Playlist struct {
 	Duration int
 	Owner    string
 	Public   bool
-	Tracks   []string
+	Tracks   MediaFiles
 }
 
 type PlaylistRepository interface {
 	CountAll() (int64, error)
 	Exists(id string) (bool, error)
-	Put(m *Playlist) error
+	Put(pls *Playlist) error
 	Get(id string) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
+	Delete(id string) error
 }
 
 type Playlists []Playlist

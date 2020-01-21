@@ -5,6 +5,7 @@ import (
 
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/model"
+	"github.com/google/uuid"
 )
 
 type playlist struct {
@@ -15,7 +16,7 @@ type playlist struct {
 	Duration int
 	Owner    string
 	Public   bool
-	Tracks   string
+	Tracks   string `orm:"type(text)"`
 }
 
 type playlistRepository struct {
@@ -30,8 +31,16 @@ func NewPlaylistRepository(o orm.Ormer) model.PlaylistRepository {
 }
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
+	if p.ID == "" {
+		id, _ := uuid.NewRandom()
+		p.ID = id.String()
+	}
 	tp := r.fromDomain(p)
-	return r.put(p.ID, &tp)
+	err := r.put(p.ID, &tp)
+	if err != nil {
+		return err
+	}
+	return err
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
@@ -65,7 +74,7 @@ func (r *playlistRepository) toPlaylists(all []playlist) (model.Playlists, error
 }
 
 func (r *playlistRepository) toDomain(p *playlist) model.Playlist {
-	return model.Playlist{
+	pls := model.Playlist{
 		ID:       p.ID,
 		Name:     p.Name,
 		Comment:  p.Comment,
@@ -73,12 +82,18 @@ func (r *playlistRepository) toDomain(p *playlist) model.Playlist {
 		Duration: p.Duration,
 		Owner:    p.Owner,
 		Public:   p.Public,
-		Tracks:   strings.Split(p.Tracks, ","),
 	}
+	if strings.TrimSpace(p.Tracks) != "" {
+		tracks := strings.Split(p.Tracks, ",")
+		for _, t := range tracks {
+			pls.Tracks = append(pls.Tracks, model.MediaFile{ID: t})
+		}
+	}
+	return pls
 }
 
 func (r *playlistRepository) fromDomain(p *model.Playlist) playlist {
-	return playlist{
+	pls := playlist{
 		ID:       p.ID,
 		Name:     p.Name,
 		Comment:  p.Comment,
@@ -86,8 +101,13 @@ func (r *playlistRepository) fromDomain(p *model.Playlist) playlist {
 		Duration: p.Duration,
 		Owner:    p.Owner,
 		Public:   p.Public,
-		Tracks:   strings.Join(p.Tracks, ","),
 	}
+	var newTracks []string
+	for _, t := range p.Tracks {
+		newTracks = append(newTracks, t.ID)
+	}
+	pls.Tracks = strings.Join(newTracks, ",")
+	return pls
 }
 
 var _ model.PlaylistRepository = (*playlistRepository)(nil)

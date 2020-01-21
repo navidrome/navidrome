@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -60,15 +61,13 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 }
 
 func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	songIds, err := RequiredParamStrings(r, "songId", "Required parameter songId is missing")
-	if err != nil {
-		return nil, err
+	songIds := ParamStrings(r, "songId")
+	playlistId := ParamString(r, "playlistId")
+	name := ParamString(r, "name")
+	if playlistId == "" && name == "" {
+		return nil, errors.New("Required parameter name is missing")
 	}
-	name, err := RequiredParamString(r, "name", "Required parameter name is missing")
-	if err != nil {
-		return nil, err
-	}
-	err = c.pls.Create(r.Context(), name, songIds)
+	err := c.pls.Create(r.Context(), playlistId, name, songIds)
 	if err != nil {
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -110,7 +109,7 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	log.Debug(r, fmt.Sprintf("-- Adding: '%v'", songsToAdd))
 	log.Debug(r, fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
-	err = c.pls.Update(playlistId, pname, songsToAdd, songIndexesToRemove)
+	err = c.pls.Update(r.Context(), playlistId, pname, songsToAdd, songIndexesToRemove)
 	if err != nil {
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
