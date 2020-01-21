@@ -54,7 +54,8 @@ var _ = Describe("Metadata", func() {
 	})
 
 	Context("extractMetadata", func() {
-		const outputWithOverlappingTitleTag = `
+		It("parses correct the title without overlapping with the stream tag", func() {
+			const outputWithOverlappingTitleTag = `
 Input #0, mp3, from 'groovin.mp3':
   Metadata:
     title           : Groovin' (feat. Daniel Sneijers, Susanne Alt)
@@ -75,10 +76,62 @@ Input #0, mp3, from 'groovin.mp3':
       title           : cover
       comment         : Cover (front)
 At least one output file must be specified`
-
-		It("parses correct the title without overlapping with the stream tag", func() {
 			md, _ := extractMetadata("groovin.mp3", outputWithOverlappingTitleTag)
 			Expect(md.Title()).To(Equal("Groovin' (feat. Daniel Sneijers, Susanne Alt)"))
+		})
+
+		// TODO Handle multiline tags
+		XIt("parses multiline tags", func() {
+			const outputWithMultilineComment = `
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'modulo.m4a':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: M4A mp42isom
+    creation_time   : 2014-05-10T21:11:57.000000Z
+    iTunSMPB        :  00000000 00000920 000000E0 00000000021CA200 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+    encoder         : Nero AAC codec / 1.5.4.0
+    title           : Módulo Especial
+    artist          : Saara Saara
+    comment         : https://www.mixcloud.com/codigorock/30-minutos-com-saara-saara/
+                    :
+                    : Tracklist:
+                    :
+                    : 01. Saara Saara
+                    : 02. Carta Corrente
+                    : 03. X
+                    : 04. Eclipse Lunar
+                    : 05. Vírus de Sírius
+                    : 06. Doktor Fritz
+                    : 07. Wunderbar
+                    : 08. Quarta Dimensão
+    album           : Módulo Especial
+    genre           : Electronic
+    track           : 1
+  Duration: 00:26:46.96, start: 0.052971, bitrate: 69 kb/s
+    Chapter #0:0: start 0.105941, end 1607.013149
+    Metadata:
+      title           :
+    Stream #0:0(und): Audio: aac (HE-AAC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 69 kb/s (default)
+    Metadata:
+      creation_time   : 2014-05-10T21:11:57.000000Z
+      handler_name    : Sound Media Handler
+At least one output file must be specified`
+			const expectedComment = `https://www.mixcloud.com/codigorock/30-minutos-com-saara-saara/
+
+Tracklist:
+
+01. Saara Saara
+02. Carta Corrente
+03. X
+04. Eclipse Lunar
+05. Vírus de Sírius
+06. Doktor Fritz
+07. Wunderbar
+08. Quarta Dimensão
+`
+			md, _ := extractMetadata("modulo.mp3", outputWithMultilineComment)
+			Expect(md.Comment()).To(Equal(expectedComment))
 		})
 	})
 })

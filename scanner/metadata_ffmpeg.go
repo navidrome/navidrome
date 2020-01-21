@@ -33,6 +33,7 @@ func (m *Metadata) Year() int                   { return m.parseInt("year") }
 func (m *Metadata) TrackNumber() (int, int)     { return m.parseTuple("trackNum") }
 func (m *Metadata) DiscNumber() (int, int)      { return m.parseTuple("discNum") }
 func (m *Metadata) HasPicture() bool            { return m.tags["hasPicture"] == "Video" }
+func (m *Metadata) Comment() string             { return m.tags["comment"] }
 func (m *Metadata) Compilation() bool           { return m.parseBool("compilation") }
 func (m *Metadata) Duration() int               { return m.parseDuration("duration") }
 func (m *Metadata) BitRate() int                { return m.parseInt("bitrate") }
