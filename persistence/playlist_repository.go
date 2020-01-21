@@ -35,7 +35,7 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 		id, _ := uuid.NewRandom()
 		p.ID = id.String()
 	}
-	tp := r.fromDomain(p)
+	tp := r.fromModel(p)
 	err := r.put(p.ID, &tp)
 	if err != nil {
 		return err
@@ -52,7 +52,7 @@ func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := r.toDomain(tp)
+	a := r.toModel(tp)
 	return &a, err
 }
 
@@ -62,18 +62,18 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	if err != nil {
 		return nil, err
 	}
-	return r.toPlaylists(all)
+	return r.toModels(all)
 }
 
-func (r *playlistRepository) toPlaylists(all []playlist) (model.Playlists, error) {
+func (r *playlistRepository) toModels(all []playlist) (model.Playlists, error) {
 	result := make(model.Playlists, len(all))
 	for i, p := range all {
-		result[i] = r.toDomain(&p)
+		result[i] = r.toModel(&p)
 	}
 	return result, nil
 }
 
-func (r *playlistRepository) toDomain(p *playlist) model.Playlist {
+func (r *playlistRepository) toModel(p *playlist) model.Playlist {
 	pls := model.Playlist{
 		ID:       p.ID,
 		Name:     p.Name,
@@ -92,7 +92,7 @@ func (r *playlistRepository) toDomain(p *playlist) model.Playlist {
 	return pls
 }
 
-func (r *playlistRepository) fromDomain(p *model.Playlist) playlist {
+func (r *playlistRepository) fromModel(p *model.Playlist) playlist {
 	pls := playlist{
 		ID:       p.ID,
 		Name:     p.Name,
