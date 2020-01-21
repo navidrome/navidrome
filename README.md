@@ -20,9 +20,7 @@ Version 1.0 main goals are:
 
 ### Supported Subsonic API version
 
-I'm currently trying to implement all functionality from API v1.8.0, with some exceptions.
-
-Check the (almost) up to date [compatibility chart](https://github.com/cloudsonic/sonic-server/wiki/Compatibility) 
+Check the (almost) up to date [compatibility chart](API_COMPATIBILITY.md) 
 for what is working.
 
 ### Installation
@@ -48,7 +46,7 @@ To change any configuration, create a file named `sonic.toml` in the project fol
 
 ### Development Environment
 
-You will need to install [Go 1.13](https://golang.org/dl/)
+You will need to install [Go 1.13](https://golang.org/dl/) and [Node 12.14.1](http://nodejs.org)
 
 Then install dependencies:
 
