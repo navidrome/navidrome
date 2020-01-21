@@ -43,10 +43,10 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 
 	switch {
 	case err == model.ErrNotFound:
-		log.Error(r, err.Error(), "id", id)
+		log.Error(r, "Couldn't find coverArt", "id", id, err)
 		return nil, NewError(responses.ErrorDataNotFound, "Cover not found")
 	case err != nil:
-		log.Error(r, err)
+		log.Error(r, "Error retrieving coverArt", "id", id, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 

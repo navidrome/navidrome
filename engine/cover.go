@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"errors"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
@@ -100,5 +101,9 @@ func readFromTag(path string) (io.Reader, error) {
 		return nil, err
 	}
 
-	return bytes.NewReader(m.Picture().Data), nil
+	picture := m.Picture()
+	if picture == nil {
+		return nil, errors.New("error extracting art from file " + path)
+	}
+	return bytes.NewReader(picture.Data), nil
 }
