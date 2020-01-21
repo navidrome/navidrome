@@ -89,7 +89,7 @@ func (r *searchableRepository) doSearch(table string, q string, offset, size int
 	if len(q) <= 2 {
 		return nil
 	}
-	sq := squirrel.Select("*").From(table).OrderBy()
+	sq := squirrel.Select("*").From(table)
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 	if len(orderBys) > 0 {
 		sq = sq.OrderBy(orderBys...)
