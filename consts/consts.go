@@ -3,9 +3,9 @@ package consts
 import "time"
 
 const (
-	InitialSetupFlagKey = "InitialSetupKey"
+	InitialSetupFlagKey = "InitialSetup"
 
-	JWTSecretKey       = "JWTSecretKey"
+	JWTSecretKey       = "JWTSecret"
 	JWTIssuer          = "CloudSonic"
 	JWTTokenExpiration = 30 * time.Minute
 
