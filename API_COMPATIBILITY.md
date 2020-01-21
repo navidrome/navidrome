@@ -45,7 +45,7 @@ CloudSonic and Subsonic:
 | `getPlaylists`         | `username` parameter is not implemented |
 | `getPlaylist`          | |
 | `createPlaylist`       | Return empty response on success |
-| `updatePlaylist`       | `comment` and `public` are not implemented |
+| `updatePlaylist`       | `comment` and `public` are not implemented. All playlists are public |
 | `deletePlaylist`       | |
 | ||
 | _MEDIA RETRIEVAL_      ||
