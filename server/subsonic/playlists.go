@@ -81,6 +81,9 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 		return nil, err
 	}
 	err = c.pls.Delete(r.Context(), id)
+	if err == model.ErrNotAuthorized {
+		return nil, NewError(responses.ErrorAuthorizationFail)
+	}
 	if err != nil {
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -110,6 +113,9 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	log.Debug(r, fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
 	err = c.pls.Update(r.Context(), playlistId, pname, songsToAdd, songIndexesToRemove)
+	if err == model.ErrNotAuthorized {
+		return nil, NewError(responses.ErrorAuthorizationFail)
+	}
 	if err != nil {
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")

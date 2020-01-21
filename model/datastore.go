@@ -1,14 +1,7 @@
 package model
 
 import (
-	"errors"
-
 	"github.com/deluan/rest"
-)
-
-var (
-	ErrNotFound    = errors.New("data not found")
-	ErrInvalidAuth = errors.New("invalid authentication")
 )
 
 // Filters use the same operators as Beego ORM: See https://beego.me/docs/mvc/model/query.md#operators

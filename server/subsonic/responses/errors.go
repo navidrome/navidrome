@@ -1,14 +1,14 @@
 package responses
 
 const (
-	ErrorGeneric = iota * 10
-	ErrorMissingParameter
-	ErrorClientTooOld
-	ErrorServerTooOld
-	ErrorAuthenticationFail
-	ErrorAuthorizationFail
-	ErrorTrialExpired
-	ErrorDataNotFound
+	ErrorGeneric            = 0
+	ErrorMissingParameter   = 10
+	ErrorClientTooOld       = 20
+	ErrorServerTooOld       = 30
+	ErrorAuthenticationFail = 40
+	ErrorAuthorizationFail  = 50
+	ErrorTrialExpired       = 60
+	ErrorDataNotFound       = 70
 )
 
 var errors = map[int]string{

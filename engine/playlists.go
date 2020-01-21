@@ -25,11 +25,7 @@ type playlists struct {
 }
 
 func (p *playlists) Create(ctx context.Context, playlistId, name string, ids []string) error {
-	owner := consts.InitialUserName
-	user, ok := ctx.Value("user").(*model.User)
-	if ok {
-		owner = user.UserName
-	}
+	owner := p.getUser(ctx)
 	var pls *model.Playlist
 	var err error
 	// If playlistID is present, override tracks
@@ -37,6 +33,9 @@ func (p *playlists) Create(ctx context.Context, playlistId, name string, ids []s
 		pls, err = p.ds.Playlist().Get(playlistId)
 		if err != nil {
 			return err
+		}
+		if owner != pls.Owner {
+			return model.ErrNotAuthorized
 		}
 		pls.Tracks = nil
 	} else {
@@ -52,12 +51,36 @@ func (p *playlists) Create(ctx context.Context, playlistId, name string, ids []s
 	return p.ds.Playlist().Put(pls)
 }
 
+func (p *playlists) getUser(ctx context.Context) string {
+	owner := consts.InitialUserName
+	user, ok := ctx.Value("user").(*model.User)
+	if ok {
+		owner = user.UserName
+	}
+	return owner
+}
+
 func (p *playlists) Delete(ctx context.Context, playlistId string) error {
+	pls, err := p.ds.Playlist().Get(playlistId)
+	if err != nil {
+		return err
+	}
+
+	owner := p.getUser(ctx)
+	if owner != pls.Owner {
+		return model.ErrNotAuthorized
+	}
 	return p.ds.Playlist().Delete(playlistId)
 }
 
 func (p *playlists) Update(ctx context.Context, playlistId string, name *string, idsToAdd []string, idxToRemove []int) error {
 	pls, err := p.ds.Playlist().Get(playlistId)
+
+	owner := p.getUser(ctx)
+	if owner != pls.Owner {
+		return model.ErrNotAuthorized
+	}
+
 	if err != nil {
 		return err
 	}
