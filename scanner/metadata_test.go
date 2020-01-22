@@ -54,6 +54,29 @@ var _ = Describe("Metadata", func() {
 	})
 
 	Context("extractMetadata", func() {
+		It("parses correctly the compilation tag", func() {
+			const outputWithOverlappingTitleTag = `
+Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
+  Metadata:
+    iTunSMPB        :  00000000 000002D6 00000216 0000000000CB9F94 02000003 0049D539 00000000 00000000 00000000 00000000 00000000 00000000
+    iTunNORM        :  000002FF 0000027E 00000FEF 00000C17 0002E647 00044605 00007F02 00007A92 0000273E 0000273E
+    title           : Pablo's Blues
+    artist          : Gare Du Nord
+    album           : Putumayo Presents Blues Lounge
+    TT1             : Putumayo
+    track           : 9/10
+    compilation     : 1
+    genre           : Blues
+    date            : 2004
+  Duration: 00:05:02.63, start: 0.000000, bitrate: 140 kb/s
+    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 128 kb/s
+    Stream #0:1: Video: png, rgb24(pc), 500x478 [SAR 2835:2835 DAR 250:239], 90k tbr, 90k tbn, 90k tbc
+    Metadata:
+      comment         : Other`
+			md, _ := extractMetadata("pablo's blues.mp3", outputWithOverlappingTitleTag)
+			Expect(md.Compilation()).To(BeTrue())
+		})
+
 		It("parses correct the title without overlapping with the stream tag", func() {
 			const outputWithOverlappingTitleTag = `
 Input #0, mp3, from 'groovin.mp3':
