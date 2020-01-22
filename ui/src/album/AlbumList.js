@@ -12,7 +12,7 @@ import {
   SimpleShowLayout,
   TextField
 } from 'react-admin'
-import { BitrateField, DurationField, Title } from '../common'
+import { DurationField, Title } from '../common'
 
 const AlbumFilter = (props) => (
   <Filter {...props}>
