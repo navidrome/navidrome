@@ -1,7 +1,7 @@
 
 ###  Supported Subsonic API endpoints
 
-CloudSonic is currently compatible (to some extent) with [Subsonic API](subsonic.org/pages/api.jsp) v1.8.0, with some exceptions.
+CloudSonic is currently compatible with [Subsonic API](subsonic.org/pages/api.jsp) v1.8.0, with some exceptions.
 
 This is an (almost) up to date list of all Subsonic API endpoints implemented by CloudSonic. 
 Check the "Notes" column for limitations/missing behaviour. Also keep in mind these differences between 
