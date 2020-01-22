@@ -165,6 +165,5 @@ func init() {
 	registerModel(model.User{}, new(user))
 	registerModel(model.Annotation{}, new(annotation))
 
-	orm.RegisterModel(new(checksum))
 	orm.RegisterModel(new(search))
 }
