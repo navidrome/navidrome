@@ -50,25 +50,25 @@ func (app *Router) routes() http.Handler {
 		// Add User resource
 		r.Use(jwtauth.Verifier(TokenAuth))
 		r.Use(Authenticator)
-		R(r, "/user", func(ctx context.Context) rest.Repository {
-			return app.ds.Resource(model.User{})
-		})
-		R(r, "/song", func(ctx context.Context) rest.Repository {
-			return app.ds.Resource(model.MediaFile{})
-		})
+		app.R(r, "/user", model.User{})
+		app.R(r, "/song", model.MediaFile{})
+		app.R(r, "/album", model.Album{})
 	})
 	return r
 }
 
-func R(r chi.Router, pathPrefix string, newRepository rest.RepositoryConstructor) {
+func (app *Router) R(r chi.Router, pathPrefix string, model interface{}) {
+	constructor := func(ctx context.Context) rest.Repository {
+		return app.ds.Resource(model)
+	}
 	r.Route(pathPrefix, func(r chi.Router) {
-		r.Get("/", rest.GetAll(newRepository))
-		r.Post("/", rest.Post(newRepository))
+		r.Get("/", rest.GetAll(constructor))
+		r.Post("/", rest.Post(constructor))
 		r.Route("/{id:[0-9a-f\\-]+}", func(r chi.Router) {
 			r.Use(UrlParams)
-			r.Get("/", rest.Get(newRepository))
-			r.Put("/", rest.Put(newRepository))
-			r.Delete("/", rest.Delete(newRepository))
+			r.Get("/", rest.Get(constructor))
+			r.Put("/", rest.Put(constructor))
+			r.Delete("/", rest.Delete(constructor))
 		})
 	})
 }

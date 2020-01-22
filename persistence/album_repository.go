@@ -12,20 +12,20 @@ import (
 )
 
 type album struct {
-	ID           string    `orm:"pk;column(id)"`
-	Name         string    `orm:"index"`
-	ArtistID     string    `orm:"column(artist_id);index"`
-	CoverArtPath string    ``
-	CoverArtId   string    ``
-	Artist       string    `orm:"index"`
-	AlbumArtist  string    ``
-	Year         int       `orm:"index"`
-	Compilation  bool      ``
-	SongCount    int       ``
-	Duration     int       ``
-	Genre        string    `orm:"index"`
-	CreatedAt    time.Time `orm:"null"`
-	UpdatedAt    time.Time `orm:"null"`
+	ID           string    `json:"id"            orm:"pk;column(id)"`
+	Name         string    `json:"name"          orm:"index"`
+	ArtistID     string    `json:"artistId"      orm:"column(artist_id);index"`
+	CoverArtPath string    `json:"-"`
+	CoverArtId   string    `json:"-"`
+	Artist       string    `json:"artist"        orm:"index"`
+	AlbumArtist  string    `json:"albumArtist"`
+	Year         int       `json:"year"          orm:"index"`
+	Compilation  bool      `json:"compilation"`
+	SongCount    int       `json:"songCount"`
+	Duration     int       `json:"duration"`
+	Genre        string    `json:"genre"         orm:"index"`
+	CreatedAt    time.Time `json:"createdAt"     orm:"null"`
+	UpdatedAt    time.Time `json:"updatedAt"     orm:"null"`
 }
 
 type albumRepository struct {

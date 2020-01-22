@@ -6,6 +6,7 @@ import authProvider from './authProvider'
 import { Login } from './layout'
 import user from './user'
 import song from './song'
+import album from './album'
 
 const App = () => (
   <Admin
@@ -14,6 +15,7 @@ const App = () => (
     loginPage={Login}
   >
     <Resource name="song" {...song} />
+    <Resource name="album" {...album} />
     <Resource name="user" {...user} />
   </Admin>
 )
