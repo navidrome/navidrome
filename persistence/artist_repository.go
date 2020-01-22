@@ -157,7 +157,10 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 func (r *artistRepository) GetStarred(userId string, options ...model.QueryOptions) (model.Artists, error) {
 	var starred []artist
 	sq := r.newRawQuery(options...).Join("annotation").Where("annotation.item_id = " + r.tableName + ".id")
-	sq = sq.Where(squirrel.Eq{"annotation.user_id": userId})
+	sq = sq.Where(squirrel.And{
+		squirrel.Eq{"annotation.user_id": userId},
+		squirrel.Eq{"annotation.starred": true},
+	})
 	sql, args, err := sq.ToSql()
 	if err != nil {
 		return nil, err

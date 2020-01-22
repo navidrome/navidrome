@@ -144,7 +144,10 @@ func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.Me
 func (r *mediaFileRepository) GetStarred(userId string, options ...model.QueryOptions) (model.MediaFiles, error) {
 	var starred []mediaFile
 	sq := r.newRawQuery(options...).Join("annotation").Where("annotation.item_id = " + r.tableName + ".id")
-	sq = sq.Where(squirrel.Eq{"annotation.user_id": userId})
+	sq = sq.Where(squirrel.And{
+		squirrel.Eq{"annotation.user_id": userId},
+		squirrel.Eq{"annotation.starred": true},
+	})
 	sql, args, err := sq.ToSql()
 	if err != nil {
 		return nil, err

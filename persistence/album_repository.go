@@ -188,7 +188,10 @@ func (r *albumRepository) PurgeEmpty() error {
 func (r *albumRepository) GetStarred(userId string, options ...model.QueryOptions) (model.Albums, error) {
 	var starred []album
 	sq := r.newRawQuery(options...).Join("annotation").Where("annotation.item_id = " + r.tableName + ".id")
-	sq = sq.Where(squirrel.Eq{"annotation.user_id": userId})
+	sq = sq.Where(squirrel.And{
+		squirrel.Eq{"annotation.user_id": userId},
+		squirrel.Eq{"annotation.starred": true},
+	})
 	sql, args, err := sq.ToSql()
 	if err != nil {
 		return nil, err
