@@ -15,9 +15,9 @@ import (
 )
 
 type artist struct {
-	ID         string `orm:"pk;column(id)"`
-	Name       string `orm:"index"`
-	AlbumCount int    `orm:"column(album_count)"`
+	ID         string `json:"id"         orm:"pk;column(id)"`
+	Name       string `json:"name"       orm:"index"`
+	AlbumCount int    `json:"albumCount" orm:"column(album_count)"`
 }
 
 type artistRepository struct {

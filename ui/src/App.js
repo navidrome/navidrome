@@ -7,6 +7,7 @@ import { Login, Layout } from './layout'
 import user from './user'
 import song from './song'
 import album from './album'
+import artist from './artist'
 
 const App = () => (
   <Admin
@@ -17,6 +18,7 @@ const App = () => (
   >
     <Resource name="song" {...song} options={{ subMenu: 'library' }} />
     <Resource name="album" {...album} options={{ subMenu: 'library' }} />
+    <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />
     <Resource name="user" {...user} />
   </Admin>
 )

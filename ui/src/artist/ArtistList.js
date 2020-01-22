@@ -1,0 +1,38 @@
+import React from 'react'
+import {
+  Datagrid,
+  Filter,
+  List,
+  NumberField,
+  SearchInput,
+  TextField
+} from 'react-admin'
+import { Title } from '../common'
+
+const ArtistFilter = (props) => (
+  <Filter {...props}>
+    <SearchInput source="name" alwaysOn />
+  </Filter>
+)
+
+const artistRowClick = (id, basePath, record) =>
+  `/album?filter={"artist_id":"${record.id}"}&order=ASC&sort=year`
+
+const ArtistList = (props) => (
+  <List
+    {...props}
+    title={<Title subTitle={'Artists'} />}
+    sort={{ field: 'name', order: 'ASC' }}
+    exporter={false}
+    bulkActionButtons={false}
+    filters={<ArtistFilter />}
+    perPage={15}
+  >
+    <Datagrid rowClick={artistRowClick}>
+      <TextField source="name" />
+      <NumberField source="albumCount" />
+    </Datagrid>
+  </List>
+)
+
+export default ArtistList

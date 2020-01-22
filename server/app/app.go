@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/model"
 	"github.com/cloudsonic/sonic-server/server"
 	"github.com/deluan/rest"
@@ -47,12 +48,14 @@ func (app *Router) routes() http.Handler {
 	r.Post("/login", Login(app.ds))
 
 	r.Route("/api", func(r chi.Router) {
-		// Add User resource
-		r.Use(jwtauth.Verifier(TokenAuth))
-		r.Use(Authenticator)
+		if !conf.Sonic.DevDisableAuthentication {
+			r.Use(jwtauth.Verifier(TokenAuth))
+			r.Use(Authenticator)
+		}
 		app.R(r, "/user", model.User{})
 		app.R(r, "/song", model.MediaFile{})
 		app.R(r, "/album", model.Album{})
+		app.R(r, "/artist", model.Artist{})
 	})
 	return r
 }

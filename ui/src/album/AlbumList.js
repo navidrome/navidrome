@@ -34,6 +34,9 @@ const AlbumDetails = (props) => {
   )
 }
 
+const albumRowClick = (id, basePath, record) =>
+  `/song?filter={"album_id":"${record.id}"}&order=ASC&sort=trackNumber`
+
 const AlbumList = (props) => (
   <List
     {...props}
@@ -44,7 +47,7 @@ const AlbumList = (props) => (
     filters={<AlbumFilter />}
     perPage={15}
   >
-    <Datagrid expand={<AlbumDetails />}>
+    <Datagrid expand={<AlbumDetails />} rowClick={albumRowClick}>
       <TextField source="name" />
       <TextField source="artist" />
       <NumberField source="songCount" />
