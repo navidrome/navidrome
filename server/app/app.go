@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/cloudsonic/sonic-server/assets"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/server"
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/jwtauth"
@@ -39,9 +39,6 @@ func (app *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (app *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
-	// Serve UI app assets
-	server.FileServer(r, app.path, "/", http.Dir("ui/build"))
-
 	// Basic unauthenticated ping
 	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"response":"pong"}`)) })
 
@@ -57,6 +54,10 @@ func (app *Router) routes() http.Handler {
 		app.R(r, "/album", model.Album{})
 		app.R(r, "/artist", model.Artist{})
 	})
+
+	// Serve UI app assets
+	r.Handle("/*", http.StripPrefix(app.path, http.FileServer(assets.AssetFile())))
+
 	return r
 }
 

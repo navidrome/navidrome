@@ -26,17 +26,14 @@ testall: check_go_env test
 build: check_go_env
 	go build
 
-.PHONY: build
-buildall: check_go_env build
-	@(cd ./ui && npm run build)
-
 .PHONY: setup
 setup: Jamstash-master
-	@which reflex   || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
-	@which goconvey || (echo "Installing GoConvey" && GO111MODULE=off go get -u github.com/smartystreets/goconvey)
-	@which wire     || (echo "Installing Wire"     && GO111MODULE=off go get -u go get github.com/google/wire/cmd/wire)
-	@which goreman  || (echo "Installing Goreman"  && GO111MODULE=off go get -u github.com/mattn/goreman)
-	@which ginkgo   || (echo "Installing Ginkgo"   && GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo)
+	@which reflex     || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
+	@which goconvey   || (echo "Installing GoConvey" && GO111MODULE=off go get -u github.com/smartystreets/goconvey)
+	@which wire       || (echo "Installing Wire"     && GO111MODULE=off go get -u go get github.com/google/wire/cmd/wire)
+	@which goreman    || (echo "Installing Goreman"  && GO111MODULE=off go get -u github.com/mattn/goreman)
+	@which ginkgo     || (echo "Installing Ginkgo"   && GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo)
+	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
 	go mod download
 	@(cd ./ui && npm ci)
 
@@ -60,3 +57,16 @@ check_node_env:
 
 data:
 	mkdir data
+
+UI_SRC = $(shell find ui/src -name "*.js")
+UI_PUBLIC = $(shell find ui/public -name "*.js")
+ui/build: $(UI_SRC) $(UI_PUBLIC)
+	@(cd ./ui && npm run build)
+
+assets/gen.go: ui/build
+	go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/gen.go ui/build/...
+
+.PHONY: buildall
+buildall: check_go_env assets/gen.go
+	go build -tags embed
+

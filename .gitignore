@@ -11,3 +11,5 @@ sonic.toml
 master.zip
 Jamstash-master
 testDB
+*.swp
+*_gen.go

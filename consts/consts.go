@@ -11,4 +11,6 @@ const (
 
 	InitialUserName = "admin"
 	InitialName     = "Admin"
+
+	UIAssetsLocalPath = "ui/build"
 )
