@@ -68,15 +68,21 @@ func (a *Server) initRoutes() {
 }
 
 func (a *Server) initScanner() {
+	interval, err := time.ParseDuration(conf.Sonic.ScanInterval)
+	if err != nil {
+		log.Error("Invalid interval specification. Using default of 5m", "conf", conf.Sonic.ScanInterval, err)
+		interval = 5 * time.Minute
+	} else {
+		log.Info("Starting scanner", "interval", interval.String())
+	}
 	go func() {
+		time.Sleep(2 * time.Second)
 		for {
-			select {
-			case <-time.After(5 * time.Second):
-				err := a.Scanner.RescanAll(false)
-				if err != nil {
-					log.Error("Error scanning media folder", "folder", conf.Sonic.MusicFolder, err)
-				}
+			err := a.Scanner.RescanAll(false)
+			if err != nil {
+				log.Error("Error scanning media folder", "folder", conf.Sonic.MusicFolder, err)
 			}
+			time.Sleep(interval)
 		}
 	}()
 }
