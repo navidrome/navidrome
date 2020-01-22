@@ -35,7 +35,7 @@ const AlbumDetails = (props) => {
 }
 
 const albumRowClick = (id, basePath, record) =>
-  `/song?filter={"album_id":"${record.id}"}&order=ASC&sort=trackNumber`
+  `/song?filter={"artist":"${record.artist}","album":"${record.name}","album_id":"${record.id}"}&order=ASC&sort=trackNumber`
 
 const AlbumList = (props) => (
   <List
