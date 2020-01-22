@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -11,7 +12,7 @@ import (
 )
 
 type Users interface {
-	Authenticate(username, password, token, salt string) (*model.User, error)
+	Authenticate(ctx context.Context, username, password, token, salt string) (*model.User, error)
 }
 
 func NewUsers(ds model.DataStore) Users {
@@ -22,7 +23,7 @@ type users struct {
 	ds model.DataStore
 }
 
-func (u *users) Authenticate(username, pass, token, salt string) (*model.User, error) {
+func (u *users) Authenticate(ctx context.Context, username, pass, token, salt string) (*model.User, error) {
 	user, err := u.ds.User().FindByUsername(username)
 	if err == model.ErrNotFound {
 		return nil, model.ErrInvalidAuth
@@ -51,7 +52,7 @@ func (u *users) Authenticate(username, pass, token, salt string) (*model.User, e
 	go func() {
 		err := u.ds.User().UpdateLastAccessAt(user.ID)
 		if err != nil {
-			log.Error("Could not update user's lastAccessAt", "user", user.UserName)
+			log.Error(ctx, "Could not update user's lastAccessAt", "user", user.UserName)
 		}
 	}()
 	return user, nil

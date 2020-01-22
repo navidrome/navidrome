@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"image"
 	_ "image/gif"
@@ -17,7 +18,7 @@ import (
 )
 
 type Cover interface {
-	Get(id string, size int, out io.Writer) error
+	Get(ctx context.Context, id string, size int, out io.Writer) error
 }
 
 type cover struct {
@@ -49,7 +50,7 @@ func (c *cover) getCoverPath(id string) (string, error) {
 	return "", model.ErrNotFound
 }
 
-func (c *cover) Get(id string, size int, out io.Writer) error {
+func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) error {
 	path, err := c.getCoverPath(id)
 	if err != nil && err != model.ErrNotFound {
 		return err

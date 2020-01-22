@@ -22,7 +22,7 @@ func NewBrowsingController(browser engine.Browser) *BrowsingController {
 }
 
 func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	mediaFolderList, _ := c.browser.MediaFolders()
+	mediaFolderList, _ := c.browser.MediaFolders(r.Context())
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {
 		folders[i].Id = f.ID
@@ -34,7 +34,7 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 }
 
 func (c *BrowsingController) getArtistIndex(r *http.Request, ifModifiedSince time.Time) (*responses.Indexes, error) {
-	indexes, lastModified, err := c.browser.Indexes(ifModifiedSince)
+	indexes, lastModified, err := c.browser.Indexes(r.Context(), ifModifiedSince)
 	if err != nil {
 		log.Error(r, "Error retrieving Indexes", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -152,7 +152,7 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 }
 
 func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	genres, err := c.browser.GetGenres()
+	genres, err := c.browser.GetGenres(r.Context())
 	if err != nil {
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")

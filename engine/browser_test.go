@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 
 	"github.com/cloudsonic/sonic-server/model"
@@ -24,7 +25,7 @@ var _ = Describe("Browser", func() {
 	})
 
 	It("returns sorted data", func() {
-		Expect(b.GetGenres()).To(Equal(model.Genres{
+		Expect(b.GetGenres(context.TODO())).To(Equal(model.Genres{
 			{Name: "<Empty>", SongCount: 13, AlbumCount: 13},
 			{Name: "Electronic", SongCount: 4000, AlbumCount: 40},
 			{Name: "Rock", SongCount: 1000, AlbumCount: 100},
@@ -33,7 +34,7 @@ var _ = Describe("Browser", func() {
 
 	It("bubbles up errors", func() {
 		repo.err = errors.New("generic error")
-		_, err := b.GetGenres()
+		_, err := b.GetGenres(context.TODO())
 		Expect(err).ToNot(BeNil())
 	})
 })

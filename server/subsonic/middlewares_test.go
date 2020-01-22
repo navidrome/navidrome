@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -113,7 +114,7 @@ type mockUsers struct {
 	username, password, token, salt string
 }
 
-func (m *mockUsers) Authenticate(username, password, token, salt string) (*model.User, error) {
+func (m *mockUsers) Authenticate(ctx context.Context, username, password, token, salt string) (*model.User, error) {
 	m.username = username
 	m.password = password
 	m.token = token

@@ -20,7 +20,7 @@ func NewPlaylistsController(pls engine.Playlists) *PlaylistsController {
 }
 
 func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	allPls, err := c.pls.GetAll()
+	allPls, err := c.pls.GetAll(r.Context())
 	if err != nil {
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal error")

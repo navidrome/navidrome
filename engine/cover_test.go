@@ -2,6 +2,7 @@ package engine_test
 
 import (
 	"bytes"
+	"context"
 	"image"
 	"testing"
 
@@ -25,7 +26,7 @@ func TestCover(t *testing.T) {
 	Convey("Subject: GetCoverArt Endpoint", t, func() {
 		Convey("When id is not found", func() {
 			mockMediaFileRepo.SetData(`[]`, 1)
-			err := cover.Get("1", 0, out)
+			err := cover.Get(context.TODO(), "1", 0, out)
 
 			Convey("Then return default cover", func() {
 				So(err, ShouldBeNil)
@@ -34,7 +35,7 @@ func TestCover(t *testing.T) {
 		})
 		Convey("When id is found", func() {
 			mockMediaFileRepo.SetData(`[{"ID":"2","HasCoverArt":true,"Path":"tests/fixtures/01 Invisible (RED) Edit Version.mp3"}]`, 1)
-			err := cover.Get("2", 0, out)
+			err := cover.Get(context.TODO(), "2", 0, out)
 
 			Convey("Then it should return the cover from the file", func() {
 				So(err, ShouldBeNil)
@@ -44,7 +45,7 @@ func TestCover(t *testing.T) {
 		Convey("When there is an error accessing the database", func() {
 			mockMediaFileRepo.SetData(`[{"ID":"2","HasCoverArt":true,"Path":"tests/fixtures/01 Invisible (RED) Edit Version.mp3"}]`, 1)
 			mockMediaFileRepo.SetError(true)
-			err := cover.Get("2", 0, out)
+			err := cover.Get(context.TODO(), "2", 0, out)
 
 			Convey("Then error should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -52,7 +53,7 @@ func TestCover(t *testing.T) {
 		})
 		Convey("When id is found but file is not present", func() {
 			mockMediaFileRepo.SetData(`[{"ID":"2","HasCoverArt":true,"Path":"tests/fixtures/NOT_FOUND.mp3"}]`, 1)
-			err := cover.Get("2", 0, out)
+			err := cover.Get(context.TODO(), "2", 0, out)
 
 			Convey("Then it should return DatNotFound error", func() {
 				So(err, ShouldEqual, model.ErrNotFound)
@@ -60,7 +61,7 @@ func TestCover(t *testing.T) {
 		})
 		Convey("When specifying a size", func() {
 			mockMediaFileRepo.SetData(`[{"ID":"2","HasCoverArt":true,"Path":"tests/fixtures/01 Invisible (RED) Edit Version.mp3"}]`, 1)
-			err := cover.Get("2", 100, out)
+			err := cover.Get(context.TODO(), "2", 100, out)
 
 			Convey("Then image returned should be 100x100", func() {
 				So(err, ShouldBeNil)
@@ -73,7 +74,7 @@ func TestCover(t *testing.T) {
 		})
 		Convey("When id is for an album", func() {
 			mockAlbumRepo.SetData(`[{"ID":"1","CoverArtPath":"tests/fixtures/01 Invisible (RED) Edit Version.mp3"}]`, 1)
-			err := cover.Get("al-1", 0, out)
+			err := cover.Get(context.TODO(), "al-1", 0, out)
 
 			Convey("Then it should return the cover for the album", func() {
 				So(err, ShouldBeNil)

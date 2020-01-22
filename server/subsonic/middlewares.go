@@ -50,7 +50,7 @@ func authenticate(users engine.Users) func(next http.Handler) http.Handler {
 			token := ParamString(r, "t")
 			salt := ParamString(r, "s")
 
-			usr, err := users.Authenticate(username, pass, token, salt)
+			usr, err := users.Authenticate(r.Context(), username, pass, token, salt)
 			if err == model.ErrInvalidAuth {
 				log.Warn(r, "Invalid login", "username", username, err)
 			} else if err != nil {

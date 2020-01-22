@@ -14,13 +14,13 @@ import (
 )
 
 type Browser interface {
-	MediaFolders() (model.MediaFolders, error)
-	Indexes(ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error)
+	MediaFolders(ctx context.Context) (model.MediaFolders, error)
+	Indexes(ctx context.Context, ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error)
 	Directory(ctx context.Context, id string) (*DirectoryInfo, error)
 	Artist(ctx context.Context, id string) (*DirectoryInfo, error)
 	Album(ctx context.Context, id string) (*DirectoryInfo, error)
 	GetSong(ctx context.Context, id string) (*Entry, error)
-	GetGenres() (model.Genres, error)
+	GetGenres(ctx context.Context) (model.Genres, error)
 }
 
 func NewBrowser(ds model.DataStore) Browser {
@@ -31,11 +31,11 @@ type browser struct {
 	ds model.DataStore
 }
 
-func (b *browser) MediaFolders() (model.MediaFolders, error) {
+func (b *browser) MediaFolders(ctx context.Context) (model.MediaFolders, error) {
 	return b.ds.MediaFolder().GetAll()
 }
 
-func (b *browser) Indexes(ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error) {
+func (b *browser) Indexes(ctx context.Context, ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error) {
 	l, err := b.ds.Property().DefaultGet(model.PropLastScan, "-1")
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
@@ -136,7 +136,7 @@ func (b *browser) GetSong(ctx context.Context, id string) (*Entry, error) {
 	return &entry, nil
 }
 
-func (b *browser) GetGenres() (model.Genres, error) {
+func (b *browser) GetGenres(ctx context.Context) (model.Genres, error) {
 	genres, err := b.ds.Genre().GetAll()
 	for i, g := range genres {
 		if strings.TrimSpace(g.Name) == "" {

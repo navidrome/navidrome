@@ -39,7 +39,7 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 	}
 	size := ParamInt(r, "size", 0)
 
-	err = c.cover.Get(id, size, w)
+	err = c.cover.Get(r.Context(), id, size, w)
 
 	switch {
 	case err == model.ErrNotFound:

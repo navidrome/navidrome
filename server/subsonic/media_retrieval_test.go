@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http/httptest"
@@ -17,7 +18,7 @@ type fakeCover struct {
 	recvSize int
 }
 
-func (c *fakeCover) Get(id string, size int, out io.Writer) error {
+func (c *fakeCover) Get(ctx context.Context, id string, size int, out io.Writer) error {
 	if c.err != nil {
 		return c.err
 	}

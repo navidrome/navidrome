@@ -9,7 +9,7 @@ import (
 )
 
 type Playlists interface {
-	GetAll() (model.Playlists, error)
+	GetAll(ctx context.Context) (model.Playlists, error)
 	Get(ctx context.Context, id string) (*PlaylistInfo, error)
 	Create(ctx context.Context, playlistId, name string, ids []string) error
 	Delete(ctx context.Context, playlistId string) error
@@ -103,7 +103,7 @@ func (p *playlists) Update(ctx context.Context, playlistId string, name *string,
 	return p.ds.Playlist().Put(pls)
 }
 
-func (p *playlists) GetAll() (model.Playlists, error) {
+func (p *playlists) GetAll(ctx context.Context) (model.Playlists, error) {
 	return p.ds.Playlist().GetAll(model.QueryOptions{})
 }
 

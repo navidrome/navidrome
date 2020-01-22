@@ -11,6 +11,7 @@ type sonic struct {
 	Port        string `default:"4533"`
 	MusicFolder string `default:"./music"`
 	DbPath      string `default:"./data/cloudsonic.db"`
+	LogLevel    string `default:"info"`
 
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
 	IndexGroups     string `default:"A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)"`
@@ -21,10 +22,8 @@ type sonic struct {
 	PlsIgnoreFolders    bool   `default:"true"`
 	PlsIgnoredPatterns  string `default:"^iCloud;\\~"`
 
-	// DevFlags
-	LogLevel                 string `default:"info"`
+	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevDisableAuthentication bool   `default:"false"`
-	DevDisableFileCheck      bool   `default:"false"`
 	DevDisableBanner         bool   `default:"false"`
 	DevInitialPassword       string `default:""`
 }
