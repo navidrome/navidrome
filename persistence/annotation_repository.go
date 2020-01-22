@@ -75,6 +75,24 @@ func (r *annotationRepository) GetMap(userID, itemType string, itemID []string) 
 	return m, nil
 }
 
+func (r *annotationRepository) GetAll(userID, itemType string, options ...model.QueryOptions) ([]model.Annotation, error) {
+	if userID == "" {
+		return nil, model.ErrInvalidAuth
+	}
+	q := r.newQuery(options...).Filter("user_id", userID).Filter("item_type", itemType)
+	var res []annotation
+	_, err := q.All(&res)
+	if err != nil {
+		return nil, err
+	}
+
+	all := make([]model.Annotation, len(res))
+	for i, a := range res {
+		all[i] = model.Annotation(a)
+	}
+	return all, err
+}
+
 func (r *annotationRepository) new(userID, itemType string, itemID string) *annotation {
 	id, _ := uuid.NewRandom()
 	return &annotation{

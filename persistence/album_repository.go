@@ -75,6 +75,19 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return r.toAlbums(all), nil
 }
 
+func (r *albumRepository) GetMap(ids []string) (map[string]model.Album, error) {
+	var all []album
+	_, err := r.newQuery().Filter("id__in", ids).All(&all)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]model.Album)
+	for _, a := range all {
+		res[a.ID] = model.Album(a)
+	}
+	return res, nil
+}
+
 // TODO Keep order when paginating
 func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums, error) {
 	sq := r.newRawQuery(options...)

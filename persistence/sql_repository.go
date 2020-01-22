@@ -26,6 +26,9 @@ func (r *sqlRepository) newQuery(options ...model.QueryOptions) orm.QuerySeter {
 				q = q.OrderBy(opts.Sort)
 			}
 		}
+		for field, value := range opts.Filters {
+			q = q.Filter(field, value)
+		}
 	}
 	return q
 }
@@ -45,9 +48,6 @@ func (r *sqlRepository) newRawQuery(options ...model.QueryOptions) squirrel.Sele
 			} else {
 				sq = sq.OrderBy(options[0].Sort)
 			}
-		}
-		for field, value := range options[0].Filters {
-			sq = sq.Where(squirrel.Like{field: value.(string) + "%"})
 		}
 	}
 	return sq

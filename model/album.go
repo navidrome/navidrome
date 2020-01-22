@@ -28,6 +28,7 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	FindByArtist(artistId string) (Albums, error)
 	GetAll(...QueryOptions) (Albums, error)
+	GetMap(ids []string) (map[string]Album, error)
 	GetRandom(...QueryOptions) (Albums, error)
 	GetStarred(userId string, options ...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)

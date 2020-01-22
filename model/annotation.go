@@ -24,6 +24,7 @@ type AnnotationMap map[string]Annotation
 
 type AnnotationRepository interface {
 	Get(userID, itemType string, itemID string) (*Annotation, error)
+	GetAll(userID, itemType string, options ...QueryOptions) ([]Annotation, error)
 	GetMap(userID, itemType string, itemID []string) (AnnotationMap, error)
 	Delete(userID, itemType string, itemID ...string) error
 	IncPlayCount(userID, itemType string, itemID string, ts time.Time) error

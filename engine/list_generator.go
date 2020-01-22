@@ -30,10 +30,7 @@ type listGenerator struct {
 	npRepo NowPlayingRepository
 }
 
-// TODO: Only return albums that have the Sort field != empty
-func (g *listGenerator) query(ctx context.Context, qo model.QueryOptions, offset int, size int) (Entries, error) {
-	qo.Offset = offset
-	qo.Max = size
+func (g *listGenerator) query(ctx context.Context, qo model.QueryOptions) (Entries, error) {
 	albums, err := g.ds.Album().GetAll(qo)
 	if err != nil {
 		return nil, err
@@ -49,34 +46,60 @@ func (g *listGenerator) query(ctx context.Context, qo model.QueryOptions, offset
 	return FromAlbums(albums, annMap), err
 }
 
+func (g *listGenerator) queryByAnnotation(ctx context.Context, qo model.QueryOptions) (Entries, error) {
+	annotations, err := g.ds.Annotation().GetAll(getUserID(ctx), model.AlbumItemType, qo)
+	if err != nil {
+		return nil, err
+	}
+	albumIds := make([]string, len(annotations))
+	for i, ann := range annotations {
+		albumIds[i] = ann.ItemID
+	}
+
+	albumMap, err := g.ds.Album().GetMap(albumIds)
+	if err != nil {
+		return nil, err
+	}
+
+	var albums Entries
+	for _, ann := range annotations {
+		album := albumMap[ann.ItemID]
+		albums = append(albums, FromAlbum(&album, &ann))
+	}
+	return albums, nil
+}
+
 func (g *listGenerator) GetNewest(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "CreatedAt", Order: "desc"}
-	return g.query(ctx, qo, offset, size)
+	qo := model.QueryOptions{Sort: "CreatedAt", Order: "desc", Offset: offset, Max: size}
+	return g.query(ctx, qo)
 }
 
 func (g *listGenerator) GetRecent(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "PlayDate", Order: "desc"}
-	return g.query(ctx, qo, offset, size)
+	qo := model.QueryOptions{Sort: "PlayDate", Order: "desc", Offset: offset, Max: size,
+		Filters: map[string]interface{}{"play_date__gt": time.Time{}}}
+	return g.queryByAnnotation(ctx, qo)
 }
 
 func (g *listGenerator) GetFrequent(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "PlayCount", Order: "desc"}
-	return g.query(ctx, qo, offset, size)
+	qo := model.QueryOptions{Sort: "PlayCount", Order: "desc", Offset: offset, Max: size,
+		Filters: map[string]interface{}{"play_count__gt": 0}}
+	return g.queryByAnnotation(ctx, qo)
 }
 
 func (g *listGenerator) GetHighest(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "Rating", Order: "desc"}
-	return g.query(ctx, qo, offset, size)
+	qo := model.QueryOptions{Sort: "Rating", Order: "desc", Offset: offset, Max: size,
+		Filters: map[string]interface{}{"rating__gt": 0}}
+	return g.queryByAnnotation(ctx, qo)
 }
 
 func (g *listGenerator) GetByName(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "Name"}
-	return g.query(ctx, qo, offset, size)
+	qo := model.QueryOptions{Sort: "Name", Offset: offset, Max: size}
+	return g.query(ctx, qo)
 }
 
 func (g *listGenerator) GetByArtist(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "Artist"}
-	return g.query(ctx, qo, offset, size)
+	qo := model.QueryOptions{Sort: "Artist", Offset: offset, Max: size}
+	return g.query(ctx, qo)
 }
 
 func (g *listGenerator) GetRandom(ctx context.Context, offset int, size int) (Entries, error) {
