@@ -15,8 +15,10 @@ const ArtistFilter = (props) => (
   </Filter>
 )
 
-const artistRowClick = (id, basePath, record) =>
-  `/album?filter={"artist":"${record.name}","artist_id":"${record.id}"}&order=ASC&sort=year`
+const artistRowClick = (id, basePath, record) => {
+  const filter = { artist_id: id }
+  return `/album?filter=${JSON.stringify(filter)}&order=ASC&sort=year`
+}
 
 const ArtistList = (props) => (
   <List

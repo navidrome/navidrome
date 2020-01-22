@@ -16,9 +16,9 @@ const App = () => (
     layout={Layout}
     loginPage={Login}
   >
-    <Resource name="song" {...song} options={{ subMenu: 'library' }} />
-    <Resource name="album" {...album} options={{ subMenu: 'library' }} />
     <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />
+    <Resource name="album" {...album} options={{ subMenu: 'library' }} />
+    <Resource name="song" {...song} options={{ subMenu: 'library' }} />
     <Resource name="user" {...user} />
   </Admin>
 )
