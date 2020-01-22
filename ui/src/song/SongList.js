@@ -7,6 +7,7 @@ import {
   List,
   NumberField,
   SearchInput,
+  TextInput,
   Show,
   SimpleShowLayout,
   TextField
@@ -16,6 +17,8 @@ import { BitrateField, DurationField, Title } from '../common'
 const SongFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="title" alwaysOn />
+    <TextInput source="album" />
+    <TextInput source="artist" />
   </Filter>
 )
 
@@ -44,7 +47,7 @@ const SongList = (props) => (
     filters={<SongFilter />}
     perPage={15}
   >
-    <Datagrid rowClick="expand" expand={<SongDetails />}>
+    <Datagrid expand={<SongDetails />}>
       <TextField source="title" />
       <TextField source="album" />
       <TextField source="artist" />
