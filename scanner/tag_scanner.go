@@ -8,7 +8,6 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -243,7 +242,7 @@ func (s *TagScanner) toMediaFile(md *Metadata) model.MediaFile {
 	mf.BitRate = md.BitRate()
 	mf.Path = md.FilePath()
 	mf.Suffix = md.Suffix()
-	mf.Size = strconv.Itoa(md.Size())
+	mf.Size = md.Size()
 	mf.HasCoverArt = md.HasPicture()
 
 	// TODO Get Creation time. https://github.com/djherbis/times ?

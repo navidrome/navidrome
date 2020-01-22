@@ -181,7 +181,7 @@ func ToChild(entry engine.Entry) responses.Child {
 	child.CoverArt = entry.CoverArt
 	child.Track = entry.Track
 	child.Duration = entry.Duration
-	child.Size = entry.Size
+	child.Size = strconv.Itoa(entry.Size)
 	child.Suffix = entry.Suffix
 	child.BitRate = entry.BitRate
 	child.ContentType = entry.ContentType

@@ -8,9 +8,10 @@ import {
   email,
   SimpleForm
 } from 'react-admin'
+import { Title } from '../common'
 
 const UserCreate = (props) => (
-  <Create {...props}>
+  <Create title={<Title subTitle={'Create User'} />} {...props}>
     <SimpleForm redirect="list">
       <TextInput source="userName" validate={[required()]} />
       <TextInput source="name" validate={[required()]} />

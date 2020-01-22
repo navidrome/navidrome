@@ -18,7 +18,7 @@ type MediaFile struct {
 	TrackNumber int
 	DiscNumber  int
 	Year        int
-	Size        string
+	Size        int
 	Suffix      string
 	Duration    int
 	BitRate     int

@@ -53,6 +53,9 @@ func (app *Router) routes() http.Handler {
 		R(r, "/user", func(ctx context.Context) rest.Repository {
 			return app.ds.Resource(model.User{})
 		})
+		R(r, "/song", func(ctx context.Context) rest.Repository {
+			return app.ds.Resource(model.MediaFile{})
+		})
 	})
 	return r
 }

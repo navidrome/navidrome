@@ -10,6 +10,7 @@ import {
   TextField
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
+import { Title } from '../common'
 
 const UserFilter = (props) => (
   <Filter {...props}>
@@ -23,6 +24,7 @@ const UserList = (props) => {
   return (
     <List
       {...props}
+      title={<Title subTitle={'Users'} />}
       sort={{ field: 'userName', order: 'ASC' }}
       exporter={false}
       filters={<UserFilter />}

@@ -11,26 +11,26 @@ import (
 )
 
 type mediaFile struct {
-	ID          string    `orm:"pk;column(id)"`
-	Path        string    `orm:"index"`
-	Title       string    `orm:"index"`
-	Album       string    ``
-	Artist      string    ``
-	ArtistID    string    `orm:"column(artist_id)"`
-	AlbumArtist string    ``
-	AlbumID     string    `orm:"column(album_id);index"`
-	HasCoverArt bool      ``
-	TrackNumber int       ``
-	DiscNumber  int       ``
-	Year        int       ``
-	Size        string    ``
-	Suffix      string    ``
-	Duration    int       ``
-	BitRate     int       ``
-	Genre       string    `orm:"index"`
-	Compilation bool      ``
-	CreatedAt   time.Time `orm:"null"`
-	UpdatedAt   time.Time `orm:"null"`
+	ID          string    `json:"id"            orm:"pk;column(id)"`
+	Path        string    `json:"path"          orm:"index"`
+	Title       string    `json:"title"         orm:"index"`
+	Album       string    `json:"album"`
+	Artist      string    `json:"artist"`
+	ArtistID    string    `json:"artistId"      orm:"column(artist_id)"`
+	AlbumArtist string    `json:"albumArtist"`
+	AlbumID     string    `json:"albumId"       orm:"column(album_id);index"`
+	HasCoverArt bool      `json:"-"`
+	TrackNumber int       `json:"trackNumber"`
+	DiscNumber  int       `json:"discNumber"`
+	Year        int       `json:"year"`
+	Size        int       `json:"size"`
+	Suffix      string    `json:"suffix"`
+	Duration    int       `json:"duration"`
+	BitRate     int       `json:"bitRate"`
+	Genre       string    `json:"genre"         orm:"index"`
+	Compilation bool      `json:"compilation"`
+	CreatedAt   time.Time `json:"createdAt"     orm:"null"`
+	UpdatedAt   time.Time `json:"updatedAt"     orm:"null"`
 }
 
 type mediaFileRepository struct {

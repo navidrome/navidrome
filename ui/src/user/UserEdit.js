@@ -9,9 +9,10 @@ import {
   email,
   SimpleForm
 } from 'react-admin'
+import { Title } from '../common'
 
 const UserTitle = ({ record }) => {
-  return <span>User {record ? record.name : ''}</span>
+  return <Title subTitle={`User ${record ? record.name : ''}`} />
 }
 const UserEdit = (props) => (
   <Edit title={<UserTitle />} {...props}>

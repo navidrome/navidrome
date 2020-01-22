@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/cloudsonic/sonic-server/engine"
 	"github.com/cloudsonic/sonic-server/log"
@@ -54,7 +55,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	//	contentLength = strconv.Itoa((mf.Duration + 1) * maxBitRate * 1000 / 8)
 	//}
 	h := w.Header()
-	h.Set("Content-Length", mf.Size)
+	h.Set("Content-Length", strconv.Itoa(mf.Size))
 	h.Set("Content-Type", "audio/mpeg")
 	h.Set("Expires", "0")
 	h.Set("Cache-Control", "must-revalidate")
