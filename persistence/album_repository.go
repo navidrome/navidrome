@@ -77,6 +77,9 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 
 func (r *albumRepository) GetMap(ids []string) (map[string]model.Album, error) {
 	var all []album
+	if len(ids) == 0 {
+		return nil, nil
+	}
 	_, err := r.newQuery().Filter("id__in", ids).All(&all)
 	if err != nil {
 		return nil, err
