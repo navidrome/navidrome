@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -47,53 +48,54 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 	return NewResponse(), nil
 }
 
-func (c *MediaAnnotationController) getIds(r *http.Request) ([]string, error) {
+func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ids := ParamStrings(r, "id")
 	albumIds := ParamStrings(r, "albumId")
 	artistIds := ParamStrings(r, "artistId")
-
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
 		return nil, NewError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
-
 	ids = append(ids, albumIds...)
 	ids = append(ids, artistIds...)
-	return ids, nil
-}
 
-func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	ids, err := c.getIds(r)
+	err := c.star(r.Context(), true, ids...)
 	if err != nil {
 		return nil, err
-	}
-	log.Debug(r, "Starring items", "ids", ids)
-	err = c.ratings.SetStar(r.Context(), true, ids...)
-	switch {
-	case err == model.ErrNotFound:
-		log.Error(r, err)
-		return nil, NewError(responses.ErrorDataNotFound, "ID not found")
-	case err != nil:
-		log.Error(r, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	return NewResponse(), nil
 }
 
-func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	ids, err := c.getIds(r)
-	if err != nil {
-		return nil, err
+func (c *MediaAnnotationController) star(ctx context.Context, starred bool, ids ...string) error {
+	if len(ids) == 0 {
+		return nil
 	}
-	log.Debug(r, "Unstarring items", "ids", ids)
-	err = c.ratings.SetStar(r.Context(), false, ids...)
+	log.Debug(ctx, "Changing starred", "ids", ids, "starred", starred)
+	err := c.ratings.SetStar(ctx, starred, ids...)
 	switch {
 	case err == model.ErrNotFound:
-		log.Error(r, err)
-		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
+		log.Error(ctx, err)
+		return NewError(responses.ErrorDataNotFound, "ID not found")
 	case err != nil:
-		log.Error(r, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		log.Error(ctx, err)
+		return NewError(responses.ErrorGeneric, "Internal Error")
+	}
+	return nil
+}
+
+func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	ids := ParamStrings(r, "id")
+	albumIds := ParamStrings(r, "albumId")
+	artistIds := ParamStrings(r, "artistId")
+	if len(ids)+len(albumIds)+len(artistIds) == 0 {
+		return nil, NewError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	}
+	ids = append(ids, albumIds...)
+	ids = append(ids, artistIds...)
+
+	err := c.star(r.Context(), false, ids...)
+	if err != nil {
+		return nil, err
 	}
 
 	return NewResponse(), nil

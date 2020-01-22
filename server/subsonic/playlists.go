@@ -45,7 +45,7 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		return nil, err
 	}
-	pinfo, err := c.pls.Get(id)
+	pinfo, err := c.pls.Get(r.Context(), id)
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, err.Error(), "id", id)

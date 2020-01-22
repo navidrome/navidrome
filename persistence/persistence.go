@@ -73,6 +73,10 @@ func (db *SQLStore) User() model.UserRepository {
 	return NewUserRepository(db.getOrmer())
 }
 
+func (db *SQLStore) Annotation() model.AnnotationRepository {
+	return NewAnnotationRepository(db.getOrmer())
+}
+
 func (db *SQLStore) Resource(model interface{}) model.ResourceRepository {
 	return NewResource(db.getOrmer(), model, getMappedModel(model))
 }
@@ -159,6 +163,7 @@ func init() {
 	registerModel(model.Property{}, new(property))
 	registerModel(model.Playlist{}, new(playlist))
 	registerModel(model.User{}, new(user))
+	registerModel(model.Annotation{}, new(annotation))
 
 	orm.RegisterModel(new(checksum))
 	orm.RegisterModel(new(search))

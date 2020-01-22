@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
@@ -14,11 +15,9 @@ import (
 )
 
 type artist struct {
-	ID         string    `orm:"pk;column(id)"`
-	Name       string    `orm:"index"`
-	AlbumCount int       `orm:"column(album_count)"`
-	Starred    bool      `orm:"index"`
-	StarredAt  time.Time `orm:"index;null"`
+	ID         string `orm:"pk;column(id)"`
+	Name       string `orm:"index"`
+	AlbumCount int    `orm:"column(album_count)"`
 }
 
 type artistRepository struct {
@@ -155,9 +154,15 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 	return err
 }
 
-func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Artists, error) {
+func (r *artistRepository) GetStarred(userId string, options ...model.QueryOptions) (model.Artists, error) {
 	var starred []artist
-	_, err := r.newQuery(options...).Filter("starred", true).All(&starred)
+	sq := r.newRawQuery(options...).Join("annotation").Where("annotation.item_id = " + r.tableName + ".id")
+	sq = sq.Where(squirrel.Eq{"annotation.user_id": userId})
+	sql, args, err := sq.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	_, err = r.ormer.Raw(sql, args...).QueryRows(&starred)
 	if err != nil {
 		return nil, err
 	}

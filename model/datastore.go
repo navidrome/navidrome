@@ -30,6 +30,7 @@ type DataStore interface {
 	Playlist() PlaylistRepository
 	Property() PropertyRepository
 	User() UserRepository
+	Annotation() AnnotationRepository
 
 	Resource(model interface{}) ResourceRepository
 

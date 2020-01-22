@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/conf"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
@@ -29,11 +30,16 @@ var testArtists = model.Artists{
 
 var albumSgtPeppers = model.Album{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", ArtistID: "1", Genre: "Rock"}
 var albumAbbeyRoad = model.Album{ID: "2", Name: "Abbey Road", Artist: "The Beatles", ArtistID: "1", Genre: "Rock"}
-var albumRadioactivity = model.Album{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", ArtistID: "2", Starred: true, Genre: "Electronic"}
+var albumRadioactivity = model.Album{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", ArtistID: "2", Genre: "Electronic"}
 var testAlbums = model.Albums{
 	albumSgtPeppers,
 	albumAbbeyRoad,
 	albumRadioactivity,
+}
+
+var annRadioactivity = model.Annotation{AnnotationID: "1", UserID: "userid", ItemType: model.AlbumItemType, ItemID: "3", Starred: true}
+var testAnnotations = []model.Annotation{
+	annRadioactivity,
 }
 
 var songDayInALife = model.MediaFile{ID: "1", Title: "A Day In A Life", ArtistID: "3", AlbumID: "1", Genre: "Rock", Path: P("/beatles/1/sgt/a day.mp3")}
@@ -72,6 +78,15 @@ var _ = Describe("Initialize test DB", func() {
 		mediaFileRepository := ds.MediaFile()
 		for _, s := range testSongs {
 			err := mediaFileRepository.Put(&s)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		o := orm.NewOrm()
+		for _, a := range testAnnotations {
+			ann := annotation(a)
+			_, err := o.Insert(&ann)
 			if err != nil {
 				panic(err)
 			}

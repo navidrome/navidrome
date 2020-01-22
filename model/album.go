@@ -12,14 +12,9 @@ type Album struct {
 	AlbumArtist  string
 	Year         int
 	Compilation  bool
-	Starred      bool
-	PlayCount    int
-	PlayDate     time.Time
 	SongCount    int
 	Duration     int
-	Rating       int
 	Genre        string
-	StarredAt    time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -34,10 +29,8 @@ type AlbumRepository interface {
 	FindByArtist(artistId string) (Albums, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetRandom(...QueryOptions) (Albums, error)
-	GetStarred(...QueryOptions) (Albums, error)
+	GetStarred(userId string, options ...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
 	Refresh(ids ...string) error
 	PurgeEmpty() error
-	SetStar(star bool, ids ...string) error
-	MarkAsPlayed(id string, playDate time.Time) error
 }

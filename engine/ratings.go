@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 
+	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
 )
 
@@ -20,21 +21,52 @@ type ratings struct {
 }
 
 func (r ratings) SetRating(ctx context.Context, id string, rating int) error {
-	// TODO
-	return model.ErrNotFound
+	exist, err := r.ds.Album().Exists(id)
+	if err != nil {
+		return err
+	}
+	if exist {
+		return r.ds.Annotation().SetRating(rating, getUserID(ctx), model.AlbumItemType, id)
+	}
+	return r.ds.Annotation().SetRating(rating, getUserID(ctx), model.MediaItemType, id)
 }
 
 func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
+	if len(ids) == 0 {
+		log.Warn(ctx, "Cannot star/unstar an empty list of ids")
+		return nil
+	}
+	userId := getUserID(ctx)
+
 	return r.ds.WithTx(func(tx model.DataStore) error {
-		err := tx.MediaFile().SetStar(star, ids...)
-		if err != nil {
-			return err
+		for _, id := range ids {
+			exist, err := r.ds.Album().Exists(id)
+			if err != nil {
+				return err
+			}
+			if exist {
+				err = tx.Annotation().SetStar(star, userId, model.AlbumItemType, ids...)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+			exist, err = r.ds.Artist().Exists(id)
+			if err != nil {
+				return err
+			}
+			if exist {
+				err = tx.Annotation().SetStar(star, userId, model.ArtistItemType, ids...)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+			err = tx.Annotation().SetStar(star, userId, model.MediaItemType, ids...)
+			if err != nil {
+				return err
+			}
 		}
-		err = tx.Album().SetStar(star, ids...)
-		if err != nil {
-			return err
-		}
-		err = tx.Artist().SetStar(star, ids...)
-		return err
+		return nil
 	})
 }

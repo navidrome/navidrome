@@ -24,6 +24,8 @@ type scrobbler struct {
 }
 
 func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, playTime time.Time) (*model.MediaFile, error) {
+	userId := getUserID(ctx)
+
 	var mf *model.MediaFile
 	var err error
 	err = s.ds.WithTx(func(tx model.DataStore) error {
@@ -31,11 +33,11 @@ func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, 
 		if err != nil {
 			return err
 		}
-		err = s.ds.MediaFile().MarkAsPlayed(trackId, playTime)
+		err = s.ds.Annotation().IncPlayCount(userId, model.MediaItemType, trackId, playTime)
 		if err != nil {
 			return err
 		}
-		err = s.ds.Album().MarkAsPlayed(mf.AlbumID, playTime)
+		err = s.ds.Annotation().IncPlayCount(userId, model.AlbumItemType, mf.AlbumID, playTime)
 		return err
 	})
 	return mf, err

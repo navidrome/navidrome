@@ -1,23 +1,24 @@
 package engine
 
 import (
+	"context"
 	"time"
 
 	"github.com/cloudsonic/sonic-server/model"
 )
 
 type ListGenerator interface {
-	GetNewest(offset int, size int) (Entries, error)
-	GetRecent(offset int, size int) (Entries, error)
-	GetFrequent(offset int, size int) (Entries, error)
-	GetHighest(offset int, size int) (Entries, error)
-	GetRandom(offset int, size int) (Entries, error)
-	GetByName(offset int, size int) (Entries, error)
-	GetByArtist(offset int, size int) (Entries, error)
-	GetStarred(offset int, size int) (Entries, error)
-	GetAllStarred() (artists Entries, albums Entries, mediaFiles Entries, err error)
-	GetNowPlaying() (Entries, error)
-	GetRandomSongs(size int, genre string) (Entries, error)
+	GetNewest(ctx context.Context, offset int, size int) (Entries, error)
+	GetRecent(ctx context.Context, offset int, size int) (Entries, error)
+	GetFrequent(ctx context.Context, offset int, size int) (Entries, error)
+	GetHighest(ctx context.Context, offset int, size int) (Entries, error)
+	GetRandom(ctx context.Context, offset int, size int) (Entries, error)
+	GetByName(ctx context.Context, offset int, size int) (Entries, error)
+	GetByArtist(ctx context.Context, offset int, size int) (Entries, error)
+	GetStarred(ctx context.Context, offset int, size int) (Entries, error)
+	GetAllStarred(ctx context.Context) (artists Entries, albums Entries, mediaFiles Entries, err error)
+	GetNowPlaying(ctx context.Context) (Entries, error)
+	GetRandomSongs(ctx context.Context, size int, genre string) (Entries, error)
 }
 
 func NewListGenerator(ds model.DataStore, npRepo NowPlayingRepository) ListGenerator {
@@ -30,58 +31,76 @@ type listGenerator struct {
 }
 
 // TODO: Only return albums that have the Sort field != empty
-func (g *listGenerator) query(qo model.QueryOptions, offset int, size int) (Entries, error) {
+func (g *listGenerator) query(ctx context.Context, qo model.QueryOptions, offset int, size int) (Entries, error) {
 	qo.Offset = offset
 	qo.Max = size
 	albums, err := g.ds.Album().GetAll(qo)
-
-	return FromAlbums(albums), err
+	if err != nil {
+		return nil, err
+	}
+	albumIds := make([]string, len(albums))
+	for i, al := range albums {
+		albumIds[i] = al.ID
+	}
+	annMap, err := g.ds.Annotation().GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
+	if err != nil {
+		return nil, err
+	}
+	return FromAlbums(albums, annMap), err
 }
 
-func (g *listGenerator) GetNewest(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetNewest(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Sort: "CreatedAt", Order: "desc"}
-	return g.query(qo, offset, size)
+	return g.query(ctx, qo, offset, size)
 }
 
-func (g *listGenerator) GetRecent(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetRecent(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Sort: "PlayDate", Order: "desc"}
-	return g.query(qo, offset, size)
+	return g.query(ctx, qo, offset, size)
 }
 
-func (g *listGenerator) GetFrequent(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetFrequent(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Sort: "PlayCount", Order: "desc"}
-	return g.query(qo, offset, size)
+	return g.query(ctx, qo, offset, size)
 }
 
-func (g *listGenerator) GetHighest(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetHighest(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Sort: "Rating", Order: "desc"}
-	return g.query(qo, offset, size)
+	return g.query(ctx, qo, offset, size)
 }
 
-func (g *listGenerator) GetByName(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetByName(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Sort: "Name"}
-	return g.query(qo, offset, size)
+	return g.query(ctx, qo, offset, size)
 }
 
-func (g *listGenerator) GetByArtist(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetByArtist(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Sort: "Artist"}
-	return g.query(qo, offset, size)
+	return g.query(ctx, qo, offset, size)
 }
 
-func (g *listGenerator) GetRandom(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetRandom(ctx context.Context, offset int, size int) (Entries, error) {
 	albums, err := g.ds.Album().GetRandom(model.QueryOptions{Max: size, Offset: offset})
 	if err != nil {
 		return nil, err
 	}
 
-	r := make(Entries, len(albums))
-	for i, al := range albums {
-		r[i] = FromAlbum(&al)
+	annMap, err := g.getAnnotationsForAlbums(ctx, albums)
+	if err != nil {
+		return nil, err
 	}
-	return r, nil
+	return FromAlbums(albums, annMap), nil
 }
 
-func (g *listGenerator) GetRandomSongs(size int, genre string) (Entries, error) {
+func (g *listGenerator) getAnnotationsForAlbums(ctx context.Context, albums model.Albums) (model.AnnotationMap, error) {
+	albumIds := make([]string, len(albums))
+	for i, al := range albums {
+		albumIds[i] = al.ID
+	}
+	return g.ds.Annotation().GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
+}
+
+func (g *listGenerator) GetRandomSongs(ctx context.Context, size int, genre string) (Entries, error) {
 	options := model.QueryOptions{Max: size}
 	if genre != "" {
 		options.Filters = map[string]interface{}{"genre": genre}
@@ -93,47 +112,78 @@ func (g *listGenerator) GetRandomSongs(size int, genre string) (Entries, error) 
 
 	r := make(Entries, len(mediaFiles))
 	for i, mf := range mediaFiles {
-		r[i] = FromMediaFile(&mf)
+		ann, err := g.ds.Annotation().Get(getUserID(ctx), model.MediaItemType, mf.ID)
+		if err != nil {
+			return nil, err
+		}
+		r[i] = FromMediaFile(&mf, ann)
 	}
 	return r, nil
 }
 
-func (g *listGenerator) GetStarred(offset int, size int) (Entries, error) {
+func (g *listGenerator) GetStarred(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Offset: offset, Max: size, Sort: "starred_at", Order: "desc"}
-	albums, err := g.ds.Album().GetStarred(qo)
+	albums, err := g.ds.Album().GetStarred(getUserID(ctx), qo)
 	if err != nil {
 		return nil, err
 	}
 
-	return FromAlbums(albums), nil
+	annMap, err := g.getAnnotationsForAlbums(ctx, albums)
+	if err != nil {
+		return nil, err
+	}
+	return FromAlbums(albums, annMap), nil
 }
 
-func (g *listGenerator) GetAllStarred() (artists Entries, albums Entries, mediaFiles Entries, err error) {
+func (g *listGenerator) GetAllStarred(ctx context.Context) (artists Entries, albums Entries, mediaFiles Entries, err error) {
 	options := model.QueryOptions{Sort: "starred_at", Order: "desc"}
 
-	ars, err := g.ds.Artist().GetStarred(options)
+	ars, err := g.ds.Artist().GetStarred(getUserID(ctx), options)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	als, err := g.ds.Album().GetStarred(options)
+	als, err := g.ds.Album().GetStarred(getUserID(ctx), options)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	mfs, err := g.ds.MediaFile().GetStarred(options)
+	mfs, err := g.ds.MediaFile().GetStarred(getUserID(ctx), options)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	artists = FromArtists(ars)
-	albums = FromAlbums(als)
-	mediaFiles = FromMediaFiles(mfs)
+	var mfIds []string
+	for _, mf := range mfs {
+		mfIds = append(mfIds, mf.ID)
+	}
+	trackAnnMap, err := g.ds.Annotation().GetMap(getUserID(ctx), model.MediaItemType, mfIds)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	albumAnnMap, err := g.getAnnotationsForAlbums(ctx, als)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	var artistIds []string
+	for _, ar := range ars {
+		artistIds = append(artistIds, ar.ID)
+	}
+	artistAnnMap, err := g.ds.Annotation().GetMap(getUserID(ctx), model.MediaItemType, artistIds)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	artists = FromArtists(ars, artistAnnMap)
+	albums = FromAlbums(als, albumAnnMap)
+	mediaFiles = FromMediaFiles(mfs, trackAnnMap)
 
 	return
 }
 
-func (g *listGenerator) GetNowPlaying() (Entries, error) {
+func (g *listGenerator) GetNowPlaying(ctx context.Context) (Entries, error) {
 	npInfo, err := g.npRepo.GetAll()
 	if err != nil {
 		return nil, err
@@ -144,7 +194,8 @@ func (g *listGenerator) GetNowPlaying() (Entries, error) {
 		if err != nil {
 			return nil, err
 		}
-		entries[i] = FromMediaFile(mf)
+		ann, err := g.ds.Annotation().Get(getUserID(ctx), model.MediaItemType, mf.ID)
+		entries[i] = FromMediaFile(mf, ann)
 		entries[i].UserName = np.Username
 		entries[i].MinutesAgo = int(time.Now().Sub(np.Start).Minutes())
 		entries[i].PlayerId = np.PlayerId

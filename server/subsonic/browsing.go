@@ -135,7 +135,7 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 
 func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	id := ParamString(r, "id")
-	song, err := c.browser.GetSong(id)
+	song, err := c.browser.GetSong(r.Context(), id)
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, "Requested ID not found ", "id", id)

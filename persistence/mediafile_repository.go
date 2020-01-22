@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/model"
 )
@@ -28,11 +29,6 @@ type mediaFile struct {
 	BitRate     int       ``
 	Genre       string    `orm:"index"`
 	Compilation bool      ``
-	PlayCount   int       `orm:"index"`
-	PlayDate    time.Time `orm:"null"`
-	Rating      int       `orm:"index"`
-	Starred     bool      `orm:"index"`
-	StarredAt   time.Time `orm:"index;null"`
 	CreatedAt   time.Time `orm:"null"`
 	UpdatedAt   time.Time `orm:"null"`
 }
@@ -51,6 +47,7 @@ func NewMediaFileRepository(o orm.Ormer) model.MediaFileRepository {
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	tm := mediaFile(*m)
 	// Don't update media annotation fields (playcount, starred, etc..)
+	// TODO Validate if this is still necessary, now that we don't have annotations in the mediafile model
 	return r.put(m.ID, m.Title, &tm, "path", "title", "album", "artist", "artist_id", "album_artist",
 		"album_id", "has_cover_art", "track_number", "disc_number", "year", "size", "suffix", "duration",
 		"bit_rate", "genre", "compilation", "updated_at")
@@ -144,44 +141,19 @@ func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.Me
 	return r.toMediaFiles(results), err
 }
 
-func (r *mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
+func (r *mediaFileRepository) GetStarred(userId string, options ...model.QueryOptions) (model.MediaFiles, error) {
 	var starred []mediaFile
-	_, err := r.newQuery(options...).Filter("starred", true).All(&starred)
+	sq := r.newRawQuery(options...).Join("annotation").Where("annotation.item_id = " + r.tableName + ".id")
+	sq = sq.Where(squirrel.Eq{"annotation.user_id": userId})
+	sql, args, err := sq.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	_, err = r.ormer.Raw(sql, args...).QueryRows(&starred)
 	if err != nil {
 		return nil, err
 	}
 	return r.toMediaFiles(starred), nil
-}
-
-func (r *mediaFileRepository) SetStar(starred bool, ids ...string) error {
-	if len(ids) == 0 {
-		return model.ErrNotFound
-	}
-	var starredAt time.Time
-	if starred {
-		starredAt = time.Now()
-	}
-	_, err := r.newQuery().Filter("id__in", ids).Update(orm.Params{
-		"starred":    starred,
-		"starred_at": starredAt,
-	})
-	return err
-}
-
-func (r *mediaFileRepository) SetRating(rating int, ids ...string) error {
-	if len(ids) == 0 {
-		return model.ErrNotFound
-	}
-	_, err := r.newQuery().Filter("id__in", ids).Update(orm.Params{"rating": rating})
-	return err
-}
-
-func (r *mediaFileRepository) MarkAsPlayed(id string, playDate time.Time) error {
-	_, err := r.newQuery().Filter("id", id).Update(orm.Params{
-		"play_count": orm.ColValue(orm.ColAdd, 1),
-		"play_date":  playDate,
-	})
-	return err
 }
 
 func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
@@ -190,7 +162,7 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (model.Medi
 	}
 
 	var results []mediaFile
-	err := r.doSearch(r.tableName, q, offset, size, &results, "rating desc", "starred desc", "play_count desc", "title")
+	err := r.doSearch(r.tableName, q, offset, size, &results, "title")
 	if err != nil {
 		return nil, err
 	}

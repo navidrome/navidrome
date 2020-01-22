@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/cloudsonic/sonic-server/log"
 	"github.com/cloudsonic/sonic-server/model"
@@ -20,14 +21,9 @@ type album struct {
 	AlbumArtist  string    ``
 	Year         int       `orm:"index"`
 	Compilation  bool      ``
-	Starred      bool      `orm:"index"`
-	PlayCount    int       `orm:"index"`
-	PlayDate     time.Time `orm:"null;index"`
 	SongCount    int       ``
 	Duration     int       ``
-	Rating       int       `orm:"index"`
 	Genre        string    `orm:"index"`
-	StarredAt    time.Time `orm:"index;null"`
 	CreatedAt    time.Time `orm:"null"`
 	UpdatedAt    time.Time `orm:"null"`
 }
@@ -115,9 +111,9 @@ func (r *albumRepository) Refresh(ids ...string) error {
 	o := r.ormer
 	sql := fmt.Sprintf(`
 select album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.compilation, f.genre,  
-	max(f.year) as year, sum(f.play_count) as play_count, max(f.play_date) as play_date,  sum(f.duration) as duration,
-	max(f.updated_at) as updated_at, min(f.created_at) as created_at, count(*) as song_count, 
-	a.id as current_id, f.id as cover_art_id, f.path as cover_art_path, f.has_cover_art
+	max(f.year) as year, sum(f.duration) as duration, max(f.updated_at) as updated_at, 
+	min(f.created_at) as created_at, count(*) as song_count, a.id as current_id, f.id as cover_art_id, 
+	f.path as cover_art_path, f.has_cover_art
 from media_file f left outer join album a on f.album_id = a.id
 where f.album_id in ('%s')
 group by album_id order by f.id`, strings.Join(ids, "','"))
@@ -157,9 +153,8 @@ group by album_id order by f.id`, strings.Join(ids, "','"))
 	}
 	if len(toUpdate) > 0 {
 		for _, al := range toUpdate {
-			// Don't update Starred/Rating
 			_, err := o.Update(&al, "name", "artist_id", "cover_art_path", "cover_art_id", "artist", "album_artist",
-				"year", "compilation", "play_count", "play_date", "song_count", "duration", "updated_at", "created_at")
+				"year", "compilation", "song_count", "duration", "updated_at", "created_at")
 			if err != nil {
 				return err
 			}
@@ -174,36 +169,19 @@ func (r *albumRepository) PurgeEmpty() error {
 	return err
 }
 
-func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Albums, error) {
+func (r *albumRepository) GetStarred(userId string, options ...model.QueryOptions) (model.Albums, error) {
 	var starred []album
-	_, err := r.newQuery(options...).Filter("starred", true).All(&starred)
+	sq := r.newRawQuery(options...).Join("annotation").Where("annotation.item_id = " + r.tableName + ".id")
+	sq = sq.Where(squirrel.Eq{"annotation.user_id": userId})
+	sql, args, err := sq.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	_, err = r.ormer.Raw(sql, args...).QueryRows(&starred)
 	if err != nil {
 		return nil, err
 	}
 	return r.toAlbums(starred), nil
-}
-
-func (r *albumRepository) SetStar(starred bool, ids ...string) error {
-	if len(ids) == 0 {
-		return model.ErrNotFound
-	}
-	var starredAt time.Time
-	if starred {
-		starredAt = time.Now()
-	}
-	_, err := r.newQuery().Filter("id__in", ids).Update(orm.Params{
-		"starred":    starred,
-		"starred_at": starredAt,
-	})
-	return err
-}
-
-func (r *albumRepository) MarkAsPlayed(id string, playDate time.Time) error {
-	_, err := r.newQuery().Filter("id", id).Update(orm.Params{
-		"play_count": orm.ColValue(orm.ColAdd, 1),
-		"play_date":  playDate,
-	})
-	return err
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
@@ -212,7 +190,7 @@ func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, 
 	}
 
 	var results []album
-	err := r.doSearch(r.tableName, q, offset, size, &results, "rating desc", "starred desc", "play_count desc", "name")
+	err := r.doSearch(r.tableName, q, offset, size, &results, "name")
 	if err != nil {
 		return nil, err
 	}

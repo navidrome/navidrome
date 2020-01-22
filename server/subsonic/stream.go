@@ -24,7 +24,7 @@ func (c *StreamController) getMediaFile(r *http.Request) (mf *engine.Entry, err 
 		return nil, err
 	}
 
-	mf, err = c.browser.GetSong(id)
+	mf, err = c.browser.GetSong(r.Context(), id)
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, "Mediafile not found", "id", id)

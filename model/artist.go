@@ -1,13 +1,9 @@
 package model
 
-import "time"
-
 type Artist struct {
 	ID         string
 	Name       string
 	AlbumCount int
-	Starred    bool
-	StarredAt  time.Time
 }
 type Artists []Artist
 
@@ -22,7 +18,7 @@ type ArtistRepository interface {
 	Exists(id string) (bool, error)
 	Put(m *Artist) error
 	Get(id string) (*Artist, error)
-	GetStarred(...QueryOptions) (Artists, error)
+	GetStarred(userId string, options ...QueryOptions) (Artists, error)
 	SetStar(star bool, ids ...string) error
 	Search(q string, offset int, size int) (Artists, error)
 	Refresh(ids ...string) error

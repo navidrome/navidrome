@@ -10,7 +10,7 @@ import (
 
 type Playlists interface {
 	GetAll() (model.Playlists, error)
-	Get(id string) (*PlaylistInfo, error)
+	Get(ctx context.Context, id string) (*PlaylistInfo, error)
 	Create(ctx context.Context, playlistId, name string, ids []string) error
 	Delete(ctx context.Context, playlistId string) error
 	Update(ctx context.Context, playlistId string, name *string, idsToAdd []string, idxToRemove []int) error
@@ -118,7 +118,7 @@ type PlaylistInfo struct {
 	Comment   string
 }
 
-func (p *playlists) Get(id string) (*PlaylistInfo, error) {
+func (p *playlists) Get(ctx context.Context, id string) (*PlaylistInfo, error) {
 	pl, err := p.ds.Playlist().GetWithTracks(id)
 	if err != nil {
 		return nil, err
@@ -136,8 +136,16 @@ func (p *playlists) Get(id string) (*PlaylistInfo, error) {
 	}
 	pinfo.Entries = make(Entries, len(pl.Tracks))
 
+	var mfIds []string
+	for _, mf := range pl.Tracks {
+		mfIds = append(mfIds, mf.ID)
+	}
+
+	annMap, err := p.ds.Annotation().GetMap(getUserID(ctx), model.MediaItemType, mfIds)
+
 	for i, mf := range pl.Tracks {
-		pinfo.Entries[i] = FromMediaFile(&mf)
+		ann := annMap[mf.ID]
+		pinfo.Entries[i] = FromMediaFile(&mf, &ann)
 	}
 
 	return pinfo, nil

@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -32,7 +33,7 @@ func NewAlbumListController(listGen engine.ListGenerator) *AlbumListController {
 	return c
 }
 
-type strategy func(offset int, size int) (engine.Entries, error)
+type strategy func(ctx context.Context, offset int, size int) (engine.Entries, error)
 
 func (c *AlbumListController) getAlbumList(r *http.Request) (engine.Entries, error) {
 	typ, err := RequiredParamString(r, "type", "Required string parameter 'type' is not present")
@@ -49,7 +50,7 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (engine.Entries, err
 	offset := ParamInt(r, "offset", 0)
 	size := utils.MinInt(ParamInt(r, "size", 10), 500)
 
-	albums, err := listFunc(offset, size)
+	albums, err := listFunc(r.Context(), offset, size)
 	if err != nil {
 		log.Error(r, "Error retrieving albums", "error", err)
 		return nil, errors.New("Internal Error")
@@ -81,7 +82,7 @@ func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Reque
 }
 
 func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	artists, albums, mediaFiles, err := c.listGen.GetAllStarred()
+	artists, albums, mediaFiles, err := c.listGen.GetAllStarred(r.Context())
 	if err != nil {
 		log.Error(r, "Error retrieving starred media", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -96,7 +97,7 @@ func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request)
 }
 
 func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	artists, albums, mediaFiles, err := c.listGen.GetAllStarred()
+	artists, albums, mediaFiles, err := c.listGen.GetAllStarred(r.Context())
 	if err != nil {
 		log.Error(r, "Error retrieving starred media", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -111,7 +112,7 @@ func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request
 }
 
 func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	npInfos, err := c.listGen.GetNowPlaying()
+	npInfos, err := c.listGen.GetNowPlaying(r.Context())
 	if err != nil {
 		log.Error(r, "Error retrieving now playing list", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -134,7 +135,7 @@ func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Requ
 	size := utils.MinInt(ParamInt(r, "size", 10), 500)
 	genre := ParamString(r, "genre")
 
-	songs, err := c.listGen.GetRandomSongs(size, genre)
+	songs, err := c.listGen.GetRandomSongs(r.Context(), size, genre)
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")

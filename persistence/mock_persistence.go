@@ -57,6 +57,10 @@ func (db *MockDataStore) User() model.UserRepository {
 	return db.MockedUser
 }
 
+func (db *MockDataStore) Annotation() model.AnnotationRepository {
+	return struct{ model.AnnotationRepository }{}
+}
+
 func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {
 	return block(db)
 }
