@@ -1,0 +1,16 @@
+# This is just an example. Customize it to your needs.
+
+version: "3"
+services:
+  cloudsonic:
+    build: .
+    ports:
+      - "4533:4533"
+    environment:
+      #  See all options and defaults in conf/configuration.go
+      SONIC_PORT: 4533
+      SONIC_SCANINTERVAL: 5s
+      SONIC_LOGLEVEL: debug
+    volumes:
+      - "./data:/data"
+      - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"
