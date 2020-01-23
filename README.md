@@ -1,6 +1,6 @@
 # CloudSonic Server
 
-[![Build Status](https://github.com/cloudsonic/sonic-server/workflows/CI/badge.svg)](https://github.com/cloudsonic/sonic-server/actions)
+[![Build Status](https://github.com/cloudsonic/sonic-server/workflows/Build/badge.svg)](https://github.com/cloudsonic/sonic-server/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudsonic/sonic-server)](https://goreportcard.com/report/github.com/cloudsonic/sonic-server)
 
 CloudSonic is a music collection server and streamer, allowing you to listen to your music collection from anywhere. 

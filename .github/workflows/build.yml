@@ -1,4 +1,4 @@
-name: CI
+name: Build
 on: [push]
 jobs:
   go:
