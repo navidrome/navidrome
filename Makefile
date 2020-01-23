@@ -1,5 +1,5 @@
 GO_VERSION=1.13
-NODE_VERSION=12.14.1
+NODE_VERSION=v13.7.0
 
 .PHONY: dev
 dev: check_env data
@@ -58,15 +58,14 @@ check_node_env:
 data:
 	mkdir data
 
-UI_SRC = $(shell find ui/src -name "*.js")
-UI_PUBLIC = $(shell find ui/public -name "*.js")
-ui/build: $(UI_SRC) $(UI_PUBLIC)
+UI_SRC = $(shell find ui/src ui/public -name "*.js")
+ui/build: $(UI_SRC) $(UI_PUBLIC) ui/package-lock.json
 	@(cd ./ui && npm run build)
 
-assets/gen.go: ui/build
-	go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/gen.go ui/build/...
+assets/embedded_gen.go: ui/build
+	go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
 
 .PHONY: buildall
-buildall: check_go_env assets/gen.go
+buildall: check_go_env assets/embedded_gen.go
 	go build -tags embed
 
