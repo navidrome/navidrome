@@ -14,7 +14,7 @@ import LockIcon from '@material-ui/icons/Lock'
 
 import { Notification, useLogin, useNotify, useTranslate } from 'react-admin'
 
-import { lightTheme } from './themes'
+import { LightTheme } from './Themes'
 
 const useStyles = makeStyles((theme) => ({
   main: {
@@ -171,7 +171,7 @@ Login.propTypes = {
 // Because otherwise the useStyles() hook used in Login won't get
 // the right theme
 const LoginWithTheme = (props) => (
-  <ThemeProvider theme={createMuiTheme(lightTheme)}>
+  <ThemeProvider theme={createMuiTheme(LightTheme)}>
     <Login {...props} />
   </ThemeProvider>
 )

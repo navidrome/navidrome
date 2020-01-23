@@ -1,10 +1,13 @@
-export const darkTheme = {
+// import purple from '@material-ui/core/colors/purple'
+
+export const DarkTheme = {
   palette: {
-    type: 'dark' // Switching the dark mode on is a single property value change.
+    // secondary: purple,
+    type: 'dark'
   }
 }
 
-export const lightTheme = {
+export const LightTheme = {
   palette: {
     secondary: {
       light: '#5f5fc4',
