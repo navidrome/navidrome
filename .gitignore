@@ -1,3 +1,6 @@
+.DS_Store
+.idea
+.envrc
 /sonic-server
 /iTunes*.xml
 /tmp
@@ -13,3 +16,5 @@ Jamstash-master
 testDB
 *.swp
 *_gen.go
+dist
+.goreleaser.yml
