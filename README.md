@@ -46,7 +46,7 @@ To change any configuration, create a file named `sonic.toml` in the project fol
 
 ### Development Environment
 
-You will need to install [Go 1.13](https://golang.org/dl/) and [Node 12.14.1](http://nodejs.org)
+You will need to install [Go 1.13](https://golang.org/dl/) and [Node 13.7](http://nodejs.org)
 
 Then install dependencies:
 
