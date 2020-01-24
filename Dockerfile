@@ -33,8 +33,8 @@ RUN make buildall
 # Download and unpack static ffmpeg
 ARG FFMPEG_VERSION=4.1.4
 ARG FFMPEG_URL=https://www.johnvansickle.com/ffmpeg/old-releases/ffmpeg-${FFMPEG_VERSION}-amd64-static.tar.xz
-ADD ${FFMPEG_URL} /tmp/ffmpeg.tar.xz
-RUN cd /tmp && tar xJf ffmpeg.tar.xz
+RUN wget -O /tmp/ffmpeg.tar.xz ${FFMPEG_URL}
+RUN cd /tmp && tar xJf ffmpeg.tar.xz && rm ffmpeg.tar.xz
 
 
 #####################################################
