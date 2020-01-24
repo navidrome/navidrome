@@ -22,7 +22,7 @@ type sonic struct {
 	ProbeCommand        string `default:"ffmpeg %s -f ffmetadata"`
 	PlsIgnoreFolders    bool   `default:"true"`
 	PlsIgnoredPatterns  string `default:"^iCloud;\\~"`
-	ScanInterval        string `default:"5m"`
+	ScanInterval        string `default:"1m"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevDisableAuthentication bool   `default:"false"`
