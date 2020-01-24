@@ -1,71 +1,105 @@
 # Navidrome Music Streamer
 
 [![Build Status](https://github.com/deluan/navidrome/workflows/Build/badge.svg)](https://github.com/deluan/navidrome/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/deluan/navidrome)](https://goreportcard.com/report/github.com/deluan/navidrome)
 
-Navidrome is a music collection server and streamer, allowing you to listen to your music collection from anywhere. 
-It relies on the huge selection of available mobile and web apps compatible with [Subsonic](http://www.subsonic.org), 
-[Airsonic](https://airsonic.github.io/) and [Madsonic](https://www.madsonic.org/)
+Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your 
+music collection from any browser or mobile device.
 
-It is already functional (see [Installation](#installation) below), but still in its early stages.
+## Features
 
-Version 1.0 main goals are:
-- Be fully compatible with available [Subsonic clients](http://www.subsonic.org/pages/apps.jsp)
-  (actively being tested with
-  [DSub](http://www.subsonic.org/pages/apps.jsp#dsub),
-  [Music Stash](https://play.google.com/store/apps/details?id=com.ghenry22.mymusicstash) and
-  [Jamstash](http://www.subsonic.org/pages/apps.jsp#jamstash))
-- Implement smart/dynamic playlists (similar to iTunes)
-- Optimized ro run on cheap hardware (Raspberry Pi) and VPS
+- Handles very large music collections
+- Streams virtually any audio format available
+- Reads and uses all your beautifully curated metadata (id3 tags)
+- Multi-user, each user has their own play counts, playlists, favourites, etc..
+- Very low resource usage: Ex: with a library of 300GB (~29000 songs), it uses less than 50MB of RAM
+- Multi-platform, runs on macOS, Linux and Windows. Docker images are also provided
+- Automatically monitors your library for changes, importing new files and reloading new metadata 
+- Responsive Web interface to manage users and browse your library
+- Compatible with the huge selection of clients for [Subsonic](http://www.subsonic.org), 
+   [Airsonic](https://airsonic.github.io/) and [Madsonic](https://www.madsonic.org/). 
+   See the [complete list of available mobile and web apps](https://airsonic.github.io/docs/apps/)
 
-### Supported Subsonic API version
+## Upcoming features
 
-Check the (almost) up to date [compatibility chart](API_COMPATIBILITY.md) 
-for what is working.
+This project is being actively worked on. Expect a more polished experience and new features/releases 
+on a frequent basis. Some upcoming features planned: 
 
-### Installation
+- Transcoding/Downsampling on-the-fly
+- Last.FM integration
+- Integrated music player
+- Pre-build binaries for all platforms
+- Smart/dynamic playlists (similar to iTunes)
+- Jukebox mode
+- Sharing links to albums/songs/playlists
+- Podcasts
 
-As this is a work in progress, there are no installers yet. To have the server running in your computer, follow 
-the steps in the [Development Environment](#development-environment) section below, then run it with:
+## Installation
 
+Currently there are no downloadable binaries (WIP). You current options are:
+
+#### Run it with Docker
+
+```yaml
+# This is just an example. Customize it to your needs.
+
+version: "3"
+services:
+  navidrome:
+    image: deluan/navidrome:latest
+    ports:
+      - "4533:4533"
+    environment:
+      # All options with their default values:
+      SONIC_MUSICFOLDER: /music
+      SONIC_PORT: 4533
+      SONIC_SCANINTERVAL: 10s
+      SONIC_LOGLEVEL: debug
+    volumes:
+      - "./data:/data"
+      - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"
 ```
-$ export SONIC_MUSICFOLDER="/path/to/your/music/folder"
-$ make
-```
 
-The server should start listening for requests on the default port 4533. The first time you start the app it will 
-create a new user "admin" with a random password. Check the logs for a line like this:
-```
-Creating initial user. Please change the password!  password=be32e686-d59b-4f57-b780-d04dc5e9cf04 user=admin
-```
+#### Build it yourself / Development Environment
 
-You can change this password using the UI. Just login in with this temporary password at http://localhost:4533 
+You will need to install [Go 1.13](https://golang.org/dl/) and [Node 13.7](http://nodejs.org).
+You'll also need [ffmpeg](ffmpeg.org) installed in your system
 
-To change any configuration, create a file named `navidrome.toml` in the project folder. For all options see the 
-[configuration.go](conf/configuration.go) file
-
-### Development Environment
-
-You will need to install [Go 1.13](https://golang.org/dl/) and [Node 13.7](http://nodejs.org)
-
-Then install dependencies:
+After the prerequisites above are installed, build the application with:
 
 ```
 $ make setup
+$ make buildall
 ```
 
-Some useful commands:
+This will generate the `navidrome` binary in the project's root folder. Start the server with:
+```shell script
+./navidrome
+```
+The server should start listening for requests on the default port __4533__
 
-```bash
-# Start local server (with hot reload)
-$ make
-
-# Run all tests
-$ make test
+#### First time password
+The first time you start the app it will create a new user "admin" with a random password. 
+Check the logs for a line like this:
+```
+Creating initial user. Please change the password!  password=XXXXXX user=admin
 ```
 
-### Copying
+You can change this password using the UI. Just browse to http://localhost:4533/app#/user 
+and login with this temporary password.  
 
-Navidrome - Copyright (C) 2017-2020 Deluan Cotts Quintao
+## Screenshots
 
-The source code is licensed under GNU Affero GPL v3. License is available [here](/LICENSE)
+<p align="center">
+<p float="left">
+    <img width="300" src="https://raw.githubusercontent.com/deluan/navidrome/master/static/screenshot-login-mobile.png">
+    <img width="300" src="https://raw.githubusercontent.com/deluan/navidrome/master/static/screenshot-mobile.png">
+    <img width="600"src="https://raw.githubusercontent.com/deluan/navidrome/master/static/screenshot-desktop.png">
+</p>
+</p>
+
+
+
+### Subsonic API Version Compatibility
+
+Check the up to date [compatibility table](https://github.com/deluan/navidrome/blob/master/API_COMPATIBILITY.md) 
+for the latest Subsonic features available.

@@ -12,6 +12,11 @@ Navidrome and Subsonic:
  `scrobble` is called with `submission=true`
 * Next features to be implemented: Playlists (WIP), MultiUser (WIP), Jukebox, Sharing, Podcasts, Bookmarks, Internet Radio. 
 
+Navidrome is actively being tested with:
+[DSub](http://www.subsonic.org/pages/apps.jsp#dsub),
+[Music Stash](https://play.google.com/store/apps/details?id=com.ghenry22.mymusicstash) and
+[Jamstash](http://www.subsonic.org/pages/apps.jsp#jamstash))
+
 
 | ENDPOINT               | NOTES |
 |------------------------|-------|
