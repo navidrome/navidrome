@@ -27,7 +27,7 @@ on a frequent basis. Some upcoming features planned:
 - Transcoding/Downsampling on-the-fly
 - Last.FM integration
 - Integrated music player
-- Pre-build binaries for all platforms
+- Pre-build binaries for all platforms, including Raspberry Pi
 - Smart/dynamic playlists (similar to iTunes)
 - Jukebox mode
 - Sharing links to albums/songs/playlists
@@ -35,9 +35,9 @@ on a frequent basis. Some upcoming features planned:
 
 ## Installation
 
-Currently there are no downloadable binaries (WIP). You current options are:
+Currently there are no downloadable binaries (WIP). The available options are:
 
-#### Run it with Docker
+### Run it with Docker
 
 ```yaml
 # This is just an example. Customize it to your needs.
@@ -59,7 +59,7 @@ services:
       - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"
 ```
 
-#### Build it yourself / Development Environment
+### Build it yourself / Development Environment
 
 You will need to install [Go 1.13](https://golang.org/dl/) and [Node 13.7](http://nodejs.org).
 You'll also need [ffmpeg](ffmpeg.org) installed in your system
@@ -77,7 +77,7 @@ This will generate the `navidrome` binary in the project's root folder. Start th
 ```
 The server should start listening for requests on the default port __4533__
 
-#### First time password
+### First time password
 The first time you start the app it will create a new user "admin" with a random password. 
 Check the logs for a line like this:
 ```
@@ -99,7 +99,7 @@ and login with this temporary password.
 
 
 
-### Subsonic API Version Compatibility
+## Subsonic API Version Compatibility
 
 Check the up to date [compatibility table](https://github.com/deluan/navidrome/blob/master/API_COMPATIBILITY.md) 
 for the latest Subsonic features available.
