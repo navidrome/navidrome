@@ -53,9 +53,10 @@ services:
     environment:
       # All options with their default values:
       ND_MUSICFOLDER: /music
+      ND_DBPATH: /data/navidrome.db
+      ND_SCANINTERVAL: 1m
+      ND_LOGLEVEL: info  
       ND_PORT: 4533
-      ND_SCANINTERVAL: 10s
-      ND_LOGLEVEL: debug
     volumes:
       - "./data:/data"
       - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"

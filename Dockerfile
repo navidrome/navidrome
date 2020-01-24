@@ -44,9 +44,11 @@ COPY --from=gobuilder /src/navidrome /app/
 COPY --from=gobuilder /tmp/ffmpeg*/ffmpeg /usr/bin/
 
 VOLUME ["/data", "/music"]
-ENV ND_DBPATH /data/navidrome.db
 ENV ND_MUSICFOLDER /music
+ENV ND_DBPATH /data/navidrome.db
+ENV ND_SCANINTERVAL 1m
 ENV ND_LOGLEVEL info
+ENV ND_PORT 4533
 EXPOSE 4533
 
 WORKDIR /app
