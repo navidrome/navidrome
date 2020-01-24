@@ -1,8 +1,8 @@
-// import purple from '@material-ui/core/colors/purple'
+import blue from '@material-ui/core/colors/blue'
 
 export const DarkTheme = {
   palette: {
-    // secondary: purple,
+    secondary: blue,
     type: 'dark'
   }
 }
