@@ -103,6 +103,42 @@ At least one output file must be specified`
 			Expect(md.Title()).To(Equal("Groovin' (feat. Daniel Sneijers, Susanne Alt)"))
 		})
 
+		It("ignores case in the tag name", func() {
+			const outputWithOverlappingTitleTag = `
+Input #0, flac, from '/Users/deluan/Downloads/06. Back In Black.flac':
+  Metadata:
+    ALBUM           : Back In Black
+    album_artist    : AC/DC
+    ARTIST          : AC/DC
+    COMPOSER        : Angus Young;Malcolm Young;Brian Johnson
+    DATE            : 1980.07.25
+    disc            : 1
+    GENRE           : Hard Rock
+    LANGUAGE        : EN
+    RATING          : 2
+    TITLE           : Back In Black
+    DISCTOTAL       : 1
+    TRACKTOTAL      : 10
+    track           : 6
+    REPLAYGAIN_TRACK_GAIN: -8.51 dB
+    REPLAYGAIN_TRACK_PEAK: 0.998322
+  Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s
+    Stream #0:0: Audio: flac, 44100 Hz, stereo, s16
+    Side data:
+      replaygain: track gain - -8.510000, track peak - 0.000023, album gain - unknown, album peak - unknown,`
+			md, _ := extractMetadata("groovin.mp3", outputWithOverlappingTitleTag)
+			Expect(md.Title()).To(Equal("Back In Black"))
+			Expect(md.Album()).To(Equal("Back In Black"))
+			Expect(md.Genre()).To(Equal("Hard Rock"))
+			n, t := md.TrackNumber()
+			Expect(n).To(Equal(6))
+			Expect(t).To(Equal(10))
+			n, t = md.DiscNumber()
+			Expect(n).To(Equal(1))
+			Expect(t).To(Equal(1))
+
+		})
+
 		// TODO Handle multiline tags
 		XIt("parses multiline tags", func() {
 			const outputWithMultilineComment = `

@@ -30,8 +30,8 @@ func (m *Metadata) AlbumArtist() string         { return m.tags["album_artist"] 
 func (m *Metadata) Composer() string            { return m.tags["composer"] }
 func (m *Metadata) Genre() string               { return m.tags["genre"] }
 func (m *Metadata) Year() int                   { return m.parseInt("year") }
-func (m *Metadata) TrackNumber() (int, int)     { return m.parseTuple("trackNum") }
-func (m *Metadata) DiscNumber() (int, int)      { return m.parseTuple("discNum") }
+func (m *Metadata) TrackNumber() (int, int)     { return m.parseTuple("trackNum", "trackTotal") }
+func (m *Metadata) DiscNumber() (int, int)      { return m.parseTuple("discNum", "discTotal") }
 func (m *Metadata) HasPicture() bool            { return m.tags["hasPicture"] == "Video" }
 func (m *Metadata) Comment() string             { return m.tags["comment"] }
 func (m *Metadata) Compilation() bool           { return m.parseBool("compilation") }
@@ -132,19 +132,21 @@ func isAudioFile(extension string) bool {
 
 var (
 	tagsRx = map[*regexp.Regexp]string{
-		regexp.MustCompile(`^\s{4}compilation\s+:(.*)`):    "compilation",
-		regexp.MustCompile(`^\s{4}genre\s+:\s(.*)`):        "genre",
-		regexp.MustCompile(`^\s{4}title\s+:\s(.*)`):        "title",
-		regexp.MustCompile(`^\s{4}comment\s+:\s(.*)`):      "comment",
-		regexp.MustCompile(`^\s{4}artist\s+:\s(.*)`):       "artist",
-		regexp.MustCompile(`^\s{4}album_artist\s+:\s(.*)`): "album_artist",
-		regexp.MustCompile(`^\s{4}TCM\s+:\s(.*)`):          "composer",
-		regexp.MustCompile(`^\s{4}album\s+:\s(.*)`):        "album",
-		regexp.MustCompile(`^\s{4}track\s+:\s(.*)`):        "trackNum",
-		regexp.MustCompile(`^\s{4}disc\s+:\s(.*)`):         "discNum",
-		regexp.MustCompile(`^\s{4}TPA\s+:\s(.*)`):          "discNum",
-		regexp.MustCompile(`^\s{4}date\s+:\s(.*)`):         "year",
-		regexp.MustCompile(`^\s{4}Stream #\d+:1: (.+):\s`): "hasPicture",
+		regexp.MustCompile(`(?i)^\s{4}compilation\s+:(.*)`):    "compilation",
+		regexp.MustCompile(`(?i)^\s{4}genre\s+:\s(.*)`):        "genre",
+		regexp.MustCompile(`(?i)^\s{4}title\s+:\s(.*)`):        "title",
+		regexp.MustCompile(`(?i)^\s{4}comment\s+:\s(.*)`):      "comment",
+		regexp.MustCompile(`(?i)^\s{4}artist\s+:\s(.*)`):       "artist",
+		regexp.MustCompile(`(?i)^\s{4}album_artist\s+:\s(.*)`): "album_artist",
+		regexp.MustCompile(`(?i)^\s{4}TCM\s+:\s(.*)`):          "composer",
+		regexp.MustCompile(`(?i)^\s{4}album\s+:\s(.*)`):        "album",
+		regexp.MustCompile(`(?i)^\s{4}track\s+:\s(.*)`):        "trackNum",
+		regexp.MustCompile(`(?i)^\s{4}tracktotal\s+:\s(.*)`):   "trackTotal",
+		regexp.MustCompile(`(?i)^\s{4}disc\s+:\s(.*)`):         "discNum",
+		regexp.MustCompile(`(?i)^\s{4}disctotal\s+:\s(.*)`):    "discTotal",
+		regexp.MustCompile(`(?i)^\s{4}TPA\s+:\s(.*)`):          "discNum",
+		regexp.MustCompile(`(?i)^\s{4}date\s+:\s(.*)`):         "year",
+		regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (.+):\s`):   "hasPicture",
 	}
 
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
@@ -181,13 +183,15 @@ func (m *Metadata) parseInt(tagName string) int {
 	return 0
 }
 
-func (m *Metadata) parseTuple(tagName string) (int, int) {
-	if v, ok := m.tags[tagName]; ok {
+func (m *Metadata) parseTuple(numTag string, totalTag string) (int, int) {
+	if v, ok := m.tags[numTag]; ok {
 		tuple := strings.Split(v, "/")
 		t1, t2 := 0, 0
 		t1, _ = strconv.Atoi(tuple[0])
 		if len(tuple) > 1 {
 			t2, _ = strconv.Atoi(tuple[1])
+		} else {
+			t2, _ = strconv.Atoi(m.tags[totalTag])
 		}
 		return t1, t2
 	}
