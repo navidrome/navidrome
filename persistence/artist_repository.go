@@ -28,7 +28,7 @@ type artistRepository struct {
 func NewArtistRepository(o orm.Ormer) model.ArtistRepository {
 	r := &artistRepository{}
 	r.ormer = o
-	r.indexGroups = utils.ParseIndexGroups(conf.Sonic.IndexGroups)
+	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
 	r.tableName = "artist"
 	return r
 }

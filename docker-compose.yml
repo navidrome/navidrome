@@ -8,9 +8,9 @@ services:
       - "4533:4533"
     environment:
       #  See all options and defaults in conf/configuration.go
-      SONIC_PORT: 4533
-      SONIC_SCANINTERVAL: 5s
-      SONIC_LOGLEVEL: debug
+      ND_PORT: 4533
+      ND_SCANINTERVAL: 5s
+      ND_LOGLEVEL: debug
     volumes:
       - "./data:/data"
       - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"

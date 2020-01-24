@@ -20,7 +20,7 @@ func xTestScanner(t *testing.T) {
 
 var _ = XDescribe("TODO: REMOVE", func() {
 	It("WORKS!", func() {
-		conf.Sonic.DbPath = "./testDB"
+		conf.Server.DbPath = "./testDB"
 		log.SetLevel(log.LevelDebug)
 		ds := persistence.New()
 

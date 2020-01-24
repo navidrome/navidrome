@@ -53,8 +53,8 @@ func createDefaultUser(ds model.DataStore) error {
 		id, _ := uuid.NewRandom()
 		random, _ := uuid.NewRandom()
 		initialPassword := random.String()
-		if conf.Sonic.DevInitialPassword != "" {
-			initialPassword = conf.Sonic.DevInitialPassword
+		if conf.Server.DevInitialPassword != "" {
+			initialPassword = conf.Server.DevInitialPassword
 		}
 		log.Warn("Creating initial user. Please change the password!", "user", consts.InitialUserName, "password", initialPassword)
 		initialUser := model.User{

@@ -27,7 +27,7 @@ type SQLStore struct {
 
 func New() model.DataStore {
 	once.Do(func() {
-		dbPath := conf.Sonic.DbPath
+		dbPath := conf.Server.DbPath
 		if dbPath == ":memory:" {
 			dbPath = "file::memory:?cache=shared"
 		}
@@ -114,7 +114,7 @@ func (db *SQLStore) getOrmer() orm.Ormer {
 }
 
 func initORM(dbPath string) error {
-	verbose := conf.Sonic.LogLevel == "trace"
+	verbose := conf.Server.LogLevel == "trace"
 	orm.Debug = verbose
 	if strings.Contains(dbPath, "postgres") {
 		driver = "postgres"

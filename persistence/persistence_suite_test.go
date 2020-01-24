@@ -60,9 +60,9 @@ func P(path string) string {
 var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
 		//log.SetLevel(log.LevelTrace)
-		//conf.Sonic.DbPath, _ = ioutil.TempDir("", "navidrome_tests")
-		//os.MkdirAll(conf.Sonic.DbPath, 0700)
-		conf.Sonic.DbPath = ":memory:"
+		//conf.Server.DbPath, _ = ioutil.TempDir("", "navidrome_tests")
+		//os.MkdirAll(conf.Server.DbPath, 0700)
+		conf.Server.DbPath = ":memory:"
 		ds := New()
 		artistRepo := ds.Artist()
 		for _, a := range testArtists {

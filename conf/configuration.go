@@ -8,7 +8,7 @@ import (
 	"github.com/koding/multiconfig"
 )
 
-type sonic struct {
+type nd struct {
 	Port        string `default:"4533"`
 	MusicFolder string `default:"./music"`
 	DbPath      string `default:"./data/navidrome.db"`
@@ -30,20 +30,20 @@ type sonic struct {
 	DevInitialPassword       string `default:""`
 }
 
-var Sonic *sonic
+var Server *nd
 
 func LoadFromFlags() {
 	l := &multiconfig.FlagLoader{}
-	l.Load(Sonic)
+	l.Load(Server)
 }
 
 func LoadFromEnv() {
 	port := os.Getenv("PORT")
 	if port != "" {
-		Sonic.Port = port
+		Server.Port = port
 	}
 	l := &multiconfig.EnvironmentLoader{}
-	err := l.Load(Sonic)
+	err := l.Load(Server)
 	if err != nil {
 		log.Error("Error parsing configuration from environment")
 	}
@@ -51,12 +51,12 @@ func LoadFromEnv() {
 
 func LoadFromTags() {
 	l := &multiconfig.TagLoader{}
-	l.Load(Sonic)
+	l.Load(Server)
 }
 
 func LoadFromFile(tomlFile string) {
 	l := &multiconfig.TOMLLoader{Path: tomlFile}
-	err := l.Load(Sonic)
+	err := l.Load(Server)
 	if err != nil {
 		log.Error("Error loading configuration file", "file", tomlFile, err)
 	}
@@ -72,10 +72,10 @@ func Load() {
 	LoadFromLocalFile()
 	LoadFromEnv()
 	LoadFromFlags()
-	log.SetLogLevelString(Sonic.LogLevel)
+	log.SetLogLevelString(Server.LogLevel)
 }
 
 func init() {
-	Sonic = new(sonic)
+	Server = new(nd)
 	LoadFromTags()
 }

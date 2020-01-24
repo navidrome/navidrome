@@ -16,7 +16,7 @@ import (
 func Stream(ctx context.Context, path string, bitRate int, maxBitRate int, w io.Writer) error {
 	var f io.Reader
 	var err error
-	enabled := !conf.Sonic.DisableDownsampling
+	enabled := !conf.Server.DisableDownsampling
 	if enabled && maxBitRate > 0 && bitRate > maxBitRate {
 		f, err = downsample(ctx, path, maxBitRate)
 	} else {
@@ -46,7 +46,7 @@ func downsample(ctx context.Context, path string, maxBitRate int) (f io.Reader, 
 }
 
 func createDownsamplingCommand(path string, maxBitRate int) (string, []string) {
-	cmd := conf.Sonic.DownsampleCommand
+	cmd := conf.Server.DownsampleCommand
 
 	split := strings.Split(cmd, " ")
 	for i, s := range split {

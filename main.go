@@ -8,12 +8,12 @@ import (
 func main() {
 	conf.Load()
 
-	if !conf.Sonic.DevDisableBanner {
+	if !conf.Server.DevDisableBanner {
 		server.ShowBanner()
 	}
 
-	a := CreateServer(conf.Sonic.MusicFolder)
+	a := CreateServer(conf.Server.MusicFolder)
 	a.MountRouter("/rest", CreateSubsonicAPIRouter())
 	a.MountRouter("/app", CreateAppRouter("/app"))
-	a.Run(":" + conf.Sonic.Port)
+	a.Run(":" + conf.Server.Port)
 }

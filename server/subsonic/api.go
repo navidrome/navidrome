@@ -48,7 +48,7 @@ func (api *Router) routes() http.Handler {
 	r.Use(checkRequiredParameters)
 
 	// Add validation middleware if not disabled
-	if !conf.Sonic.DevDisableAuthentication {
+	if !conf.Server.DevDisableAuthentication {
 		r.Use(authenticate(api.Users))
 		// TODO Validate version
 	}

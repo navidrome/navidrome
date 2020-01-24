@@ -45,7 +45,7 @@ func (app *Router) routes() http.Handler {
 	r.Post("/login", Login(app.ds))
 
 	r.Route("/api", func(r chi.Router) {
-		if !conf.Sonic.DevDisableAuthentication {
+		if !conf.Server.DevDisableAuthentication {
 			r.Use(jwtauth.Verifier(TokenAuth))
 			r.Use(Authenticator)
 		}

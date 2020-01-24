@@ -216,7 +216,7 @@ func (m *Metadata) parseDuration(tagName string) int {
 }
 
 func createProbeCommand(inputs []string) (string, []string) {
-	cmd := conf.Sonic.ProbeCommand
+	cmd := conf.Server.ProbeCommand
 
 	split := strings.Split(cmd, " ")
 	args := make([]string, 0)

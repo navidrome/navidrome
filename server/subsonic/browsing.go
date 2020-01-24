@@ -41,7 +41,7 @@ func (c *BrowsingController) getArtistIndex(r *http.Request, ifModifiedSince tim
 	}
 
 	res := &responses.Indexes{
-		IgnoredArticles: conf.Sonic.IgnoredArticles,
+		IgnoredArticles: conf.Server.IgnoredArticles,
 		LastModified:    fmt.Sprint(utils.ToMillis(lastModified)),
 	}
 

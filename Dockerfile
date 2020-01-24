@@ -44,9 +44,9 @@ COPY --from=gobuilder /src/navidrome /app/
 COPY --from=gobuilder /tmp/ffmpeg*/ffmpeg /usr/bin/
 
 VOLUME ["/data", "/music"]
-ENV SONIC_DBPATH /data/navidrome.db
-ENV SONIC_MUSICFOLDER /music
-ENV SONIC_LOGLEVEL info
+ENV ND_DBPATH /data/navidrome.db
+ENV ND_MUSICFOLDER /music
+ENV ND_LOGLEVEL info
 EXPOSE 4533
 
 WORKDIR /app

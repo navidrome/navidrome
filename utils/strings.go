@@ -7,7 +7,7 @@ import (
 )
 
 func NoArticle(name string) string {
-	articles := strings.Split(conf.Sonic.IgnoredArticles, " ")
+	articles := strings.Split(conf.Server.IgnoredArticles, " ")
 	for _, a := range articles {
 		n := strings.TrimPrefix(name, a+" ")
 		if n != name {

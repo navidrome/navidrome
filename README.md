@@ -50,10 +50,10 @@ services:
       - "4533:4533"
     environment:
       # All options with their default values:
-      SONIC_MUSICFOLDER: /music
-      SONIC_PORT: 4533
-      SONIC_SCANINTERVAL: 10s
-      SONIC_LOGLEVEL: debug
+      ND_MUSICFOLDER: /music
+      ND_PORT: 4533
+      ND_SCANINTERVAL: 10s
+      ND_LOGLEVEL: debug
     volumes:
       - "./data:/data"
       - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"
