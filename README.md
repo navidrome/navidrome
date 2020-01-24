@@ -14,12 +14,14 @@ music collection from any browser or mobile device.
 - Very low resource usage: Ex: with a library of 300GB (~29000 songs), it uses less than 50MB of RAM
 - Multi-platform, runs on macOS, Linux and Windows. Docker images are also provided
 - Automatically monitors your library for changes, importing new files and reloading new metadata 
-- Responsive Web interface to manage users and browse your library
+- Modern and responsive Web interface based on Material UI, to manage users and browse your library
 - Compatible with the huge selection of clients for [Subsonic](http://www.subsonic.org), 
    [Airsonic](https://airsonic.github.io/) and [Madsonic](https://www.madsonic.org/). 
    See the [complete list of available mobile and web apps](https://airsonic.github.io/docs/apps/)
 
-## Upcoming features
+This is _alpha quality_ software. Expect some changes in the feature set and the way it works
+
+## Road map
 
 This project is being actively worked on. Expect a more polished experience and new features/releases 
 on a frequent basis. Some upcoming features planned: 
