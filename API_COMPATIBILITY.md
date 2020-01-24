@@ -1,7 +1,7 @@
 
 ###  Supported Subsonic API endpoints
 
-Navidrome is currently compatible with [Subsonic API](https://www.subsonic.org/pages/api.jsp) v1.8.0, with some exceptions.
+Navidrome is currently compatible with [Subsonic API](http://www.subsonic.org/pages/api.jsp) v1.8.0, with some exceptions.
 
 This is an (almost) up to date list of all Subsonic API endpoints implemented by Navidrome. 
 Check the "Notes" column for limitations/missing behaviour. Also keep in mind these differences between 
