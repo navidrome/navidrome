@@ -71,7 +71,7 @@ func LoadFromLocalFile() {
 func Load() {
 	LoadFromLocalFile()
 	LoadFromEnv()
-	LoadFromFlags()
+	//LoadFromFlags()
 	log.SetLogLevelString(Server.LogLevel)
 }
 
