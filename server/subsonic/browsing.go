@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/engine"
-	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/server/subsonic/responses"
-	"github.com/cloudsonic/sonic-server/utils"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/engine"
+	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/server/subsonic/responses"
+	"github.com/deluan/navidrome/utils"
 )
 
 type BrowsingController struct {

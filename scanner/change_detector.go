@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/log"
+	"github.com/deluan/navidrome/log"
 )
 
 type dirInfo struct {

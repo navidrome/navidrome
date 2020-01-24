@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/persistence"
+	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/persistence"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

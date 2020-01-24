@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/model"
 )
 
 func CreateMockMediaFileRepo() *MockMediaFile {

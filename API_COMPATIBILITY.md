@@ -1,14 +1,14 @@
 
 ###  Supported Subsonic API endpoints
 
-CloudSonic is currently compatible with [Subsonic API](subsonic.org/pages/api.jsp) v1.8.0, with some exceptions.
+Navidrome is currently compatible with [Subsonic API](subsonic.org/pages/api.jsp) v1.8.0, with some exceptions.
 
-This is an (almost) up to date list of all Subsonic API endpoints implemented by CloudSonic. 
+This is an (almost) up to date list of all Subsonic API endpoints implemented by Navidrome. 
 Check the "Notes" column for limitations/missing behaviour. Also keep in mind these differences between 
-CloudSonic and Subsonic:
+Navidrome and Subsonic:
 
-* Right now, CloudSonic only works with a single Music Library (Music Folder)
-* CloudSonic does not mark songs as played by calls to `stream`, only when 
+* Right now, Navidrome only works with a single Music Library (Music Folder)
+* Navidrome does not mark songs as played by calls to `stream`, only when 
  `scrobble` is called with `submission=true`
 * Next features to be implemented: Playlists (WIP), MultiUser (WIP), Jukebox, Sharing, Podcasts, Bookmarks, Internet Radio. 
 

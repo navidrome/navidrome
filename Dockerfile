@@ -40,14 +40,14 @@ RUN cd /tmp && tar xJf ffmpeg.tar.xz
 #####################################################
 ### Build Final Image
 FROM alpine
-COPY --from=gobuilder /src/sonic-server /app/
+COPY --from=gobuilder /src/navidrome /app/
 COPY --from=gobuilder /tmp/ffmpeg*/ffmpeg /usr/bin/
 
 VOLUME ["/data", "/music"]
-ENV SONIC_DBPATH /data/cloudsonic.db
+ENV SONIC_DBPATH /data/navidrome.db
 ENV SONIC_MUSICFOLDER /music
 ENV SONIC_LOGLEVEL info
 EXPOSE 4533
 
 WORKDIR /app
-CMD "/app/sonic-server"
+CMD "/app/navidrome"

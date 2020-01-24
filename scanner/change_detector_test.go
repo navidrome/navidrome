@@ -17,7 +17,7 @@ var _ = Describe("ChangeDetector", func() {
 	lastModifiedSince := time.Time{}
 
 	BeforeEach(func() {
-		testFolder, _ = ioutil.TempDir("", "cloudsonic_tests")
+		testFolder, _ = ioutil.TempDir("", "navidrome_tests")
 		err := os.MkdirAll(testFolder, 0700)
 		if err != nil {
 			panic(err)

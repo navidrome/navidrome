@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/consts"
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/jwtauth"

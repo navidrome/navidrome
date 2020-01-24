@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/log"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/log"
 )
 
 type Metadata struct {

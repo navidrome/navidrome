@@ -2,7 +2,7 @@
 
 version: "3"
 services:
-  cloudsonic:
+  navidrome:
     build: .
     ports:
       - "4533:4533"

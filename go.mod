@@ -1,4 +1,4 @@
-module github.com/cloudsonic/sonic-server
+module github.com/deluan/navidrome
 
 go 1.13
 

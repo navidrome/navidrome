@@ -5,7 +5,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/log"
+	"github.com/deluan/navidrome/log"
 	"github.com/kennygrant/sanitize"
 )
 

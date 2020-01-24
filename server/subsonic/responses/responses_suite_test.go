@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/bradleyjkemp/cupaloy"
-	"github.com/cloudsonic/sonic-server/log"
+	"github.com/deluan/navidrome/log"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"

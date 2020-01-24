@@ -6,16 +6,16 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/scanner"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/scanner"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 )
 
-const Version = "0.2"
+const Version = "0.2.0"
 
 type Server struct {
 	Scanner *scanner.Scanner
@@ -41,7 +41,7 @@ func (a *Server) MountRouter(path string, subRouter http.Handler) {
 }
 
 func (a *Server) Run(addr string) {
-	log.Info("CloudSonic server is accepting requests", "address", addr)
+	log.Info("Navidrome server is accepting requests", "address", addr)
 	log.Error(http.ListenAndServe(addr, a.router))
 }
 

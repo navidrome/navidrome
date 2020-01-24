@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/engine"
-	"github.com/cloudsonic/sonic-server/server/subsonic/responses"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/engine"
+	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/go-chi/chi"
 )
 

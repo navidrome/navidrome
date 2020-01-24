@@ -3,14 +3,15 @@ package conf
 import (
 	"os"
 
-	"github.com/cloudsonic/sonic-server/log"
+	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/log"
 	"github.com/koding/multiconfig"
 )
 
 type sonic struct {
 	Port        string `default:"4533"`
 	MusicFolder string `default:"./music"`
-	DbPath      string `default:"./data/cloudsonic.db"`
+	DbPath      string `default:"./data/navidrome.db"`
 	LogLevel    string `default:"info"`
 
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
@@ -62,8 +63,8 @@ func LoadFromFile(tomlFile string) {
 }
 
 func LoadFromLocalFile() {
-	if _, err := os.Stat("./sonic.toml"); err == nil {
-		LoadFromFile("./sonic.toml")
+	if _, err := os.Stat(consts.LocalConfigFile); err == nil {
+		LoadFromFile(consts.LocalConfigFile)
 	}
 }
 

@@ -5,7 +5,7 @@ package assets
 import (
 	"net/http"
 
-	"github.com/cloudsonic/sonic-server/consts"
+	"github.com/deluan/navidrome/consts"
 )
 
 func AssetFile() http.FileSystem {

@@ -8,10 +8,10 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/utils"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/utils"
 )
 
 type artist struct {

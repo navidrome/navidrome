@@ -119,7 +119,7 @@ const Login = ({ location }) => {
                   <LockIcon />
                 </Avatar>
               </div>
-              <div className={classes.systemName}>CloudSonic</div>
+              <div className={classes.systemName}>Navidrome</div>
               <div className={classes.form}>
                 <div className={classes.input}>
                   <Field

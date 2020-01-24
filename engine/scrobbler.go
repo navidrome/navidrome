@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/model"
 )
 
 type Scrobbler interface {

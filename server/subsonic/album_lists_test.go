@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http/httptest"
 
-	"github.com/cloudsonic/sonic-server/engine"
+	"github.com/deluan/navidrome/engine"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

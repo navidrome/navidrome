@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/consts"
-	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model"
 	"github.com/google/uuid"
 )
 

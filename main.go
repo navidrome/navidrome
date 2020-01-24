@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/server"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/server"
 )
 
 func main() {

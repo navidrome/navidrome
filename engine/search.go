@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/model"
 	"github.com/kennygrant/sanitize"
 )
 

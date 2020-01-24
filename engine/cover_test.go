@@ -6,10 +6,10 @@ import (
 	"image"
 	"testing"
 
-	"github.com/cloudsonic/sonic-server/engine"
-	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/persistence"
-	. "github.com/cloudsonic/sonic-server/tests"
+	"github.com/deluan/navidrome/engine"
+	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/persistence"
+	. "github.com/deluan/navidrome/tests"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

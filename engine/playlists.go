@@ -3,9 +3,9 @@ package engine
 import (
 	"context"
 
-	"github.com/cloudsonic/sonic-server/consts"
-	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/utils"
+	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/utils"
 )
 
 type Playlists interface {

@@ -10,7 +10,7 @@ import (
 	"encoding/xml"
 	"time"
 
-	. "github.com/cloudsonic/sonic-server/server/subsonic/responses"
+	. "github.com/deluan/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -206,7 +206,7 @@ var _ = Describe("Responses", func() {
 
 		Context("with data", func() {
 			BeforeEach(func() {
-				response.User.Email = "cloudsonic@deluan.com"
+				response.User.Email = "navidrome@deluan.com"
 				response.User.Folder = []int{1}
 			})
 

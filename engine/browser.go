@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/utils"
+	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/utils"
 )
 
 type Browser interface {

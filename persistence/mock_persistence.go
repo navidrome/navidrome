@@ -1,6 +1,6 @@
 package persistence
 
-import "github.com/cloudsonic/sonic-server/model"
+import "github.com/deluan/navidrome/model"
 
 type MockDataStore struct {
 	MockedGenre     model.GenreRepository

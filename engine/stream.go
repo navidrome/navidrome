@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/log"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/log"
 )
 
 // TODO Encapsulate as a io.Reader

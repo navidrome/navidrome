@@ -3,12 +3,12 @@
 package main
 
 import (
-	"github.com/cloudsonic/sonic-server/engine"
-	"github.com/cloudsonic/sonic-server/persistence"
-	"github.com/cloudsonic/sonic-server/scanner"
-	"github.com/cloudsonic/sonic-server/server"
-	"github.com/cloudsonic/sonic-server/server/app"
-	"github.com/cloudsonic/sonic-server/server/subsonic"
+	"github.com/deluan/navidrome/engine"
+	"github.com/deluan/navidrome/persistence"
+	"github.com/deluan/navidrome/scanner"
+	"github.com/deluan/navidrome/server"
+	"github.com/deluan/navidrome/server/app"
+	"github.com/deluan/navidrome/server/subsonic"
 	"github.com/google/wire"
 )
 

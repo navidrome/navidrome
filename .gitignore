@@ -1,7 +1,7 @@
 .DS_Store
 .idea
 .envrc
-/sonic-server
+/navidrome
 /iTunes*.xml
 /tmp
 data/*
@@ -10,7 +10,7 @@ wiki
 TODO.md
 var
 Artwork
-sonic.toml
+navidrome.toml
 master.zip
 Jamstash-master
 testDB

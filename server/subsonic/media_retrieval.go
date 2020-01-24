@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/cloudsonic/sonic-server/engine"
-	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/model"
-	"github.com/cloudsonic/sonic-server/server/subsonic/responses"
+	"github.com/deluan/navidrome/engine"
+	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/server/subsonic/responses"
 )
 
 type MediaRetrievalController struct {

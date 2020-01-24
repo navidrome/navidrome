@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

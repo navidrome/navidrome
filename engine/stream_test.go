@@ -3,7 +3,7 @@ package engine
 import (
 	"testing"
 
-	. "github.com/cloudsonic/sonic-server/tests"
+	. "github.com/deluan/navidrome/tests"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

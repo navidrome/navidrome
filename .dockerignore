@@ -7,5 +7,5 @@ data
 *.db
 testDB
 *_test.go
-sonic-server
+navidrome
 assets/*gen.go

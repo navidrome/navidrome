@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/persistence"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/persistence"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -25,7 +25,7 @@ var _ = XDescribe("TODO: REMOVE", func() {
 		ds := persistence.New()
 
 		t := NewTagScanner("/Users/deluan/Music/iTunes/iTunes Media/Music", ds)
-		//t := NewTagScanner("/Users/deluan/Development/cloudsonic/sonic-server/tests/fixtures", ds)
+		//t := NewTagScanner("/Users/deluan/Development/navidrome/navidrome/tests/fixtures", ds)
 		Expect(t.Scan(nil, time.Time{})).To(BeNil())
 	})
 })

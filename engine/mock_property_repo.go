@@ -3,7 +3,7 @@ package engine
 import (
 	"errors"
 
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/model"
 )
 
 func CreateMockPropertyRepo() *MockProperty {

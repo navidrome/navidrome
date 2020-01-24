@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/log"
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -60,7 +60,7 @@ func P(path string) string {
 var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
 		//log.SetLevel(log.LevelTrace)
-		//conf.Sonic.DbPath, _ = ioutil.TempDir("", "cloudsonic_tests")
+		//conf.Sonic.DbPath, _ = ioutil.TempDir("", "navidrome_tests")
 		//os.MkdirAll(conf.Sonic.DbPath, 0700)
 		conf.Sonic.DbPath = ":memory:"
 		ds := New()

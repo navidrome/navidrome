@@ -1,9 +1,9 @@
-# CloudSonic Server
+# Navidrome Music Streamer
 
-[![Build Status](https://github.com/cloudsonic/sonic-server/workflows/Build/badge.svg)](https://github.com/cloudsonic/sonic-server/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/cloudsonic/sonic-server)](https://goreportcard.com/report/github.com/cloudsonic/sonic-server)
+[![Build Status](https://github.com/deluan/navidrome/workflows/Build/badge.svg)](https://github.com/deluan/navidrome/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/deluan/navidrome)](https://goreportcard.com/report/github.com/deluan/navidrome)
 
-CloudSonic is a music collection server and streamer, allowing you to listen to your music collection from anywhere. 
+Navidrome is a music collection server and streamer, allowing you to listen to your music collection from anywhere. 
 It relies on the huge selection of available mobile and web apps compatible with [Subsonic](http://www.subsonic.org), 
 [Airsonic](https://airsonic.github.io/) and [Madsonic](https://www.madsonic.org/)
 
@@ -41,7 +41,7 @@ Creating initial user. Please change the password!  password=be32e686-d59b-4f57-
 
 You can change this password using the UI. Just login in with this temporary password at http://localhost:4533 
 
-To change any configuration, create a file named `sonic.toml` in the project folder. For all options see the 
+To change any configuration, create a file named `navidrome.toml` in the project folder. For all options see the 
 [configuration.go](conf/configuration.go) file
 
 ### Development Environment
@@ -66,6 +66,6 @@ $ make test
 
 ### Copying
 
-CloudSonic - Copyright (C) 2017-2020 Deluan Cotts Quintao
+Navidrome - Copyright (C) 2017-2020 Deluan Cotts Quintao
 
 The source code is licensed under GNU Affero GPL v3. License is available [here](/LICENSE)

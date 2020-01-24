@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/model"
 	"github.com/dhowden/tag"
 	"github.com/nfnt/resize"
 )

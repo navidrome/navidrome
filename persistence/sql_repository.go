@@ -3,7 +3,7 @@ package persistence
 import (
 	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/model"
 )
 
 type sqlRepository struct {

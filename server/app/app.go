@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/cloudsonic/sonic-server/assets"
-	"github.com/cloudsonic/sonic-server/conf"
-	"github.com/cloudsonic/sonic-server/model"
+	"github.com/deluan/navidrome/assets"
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/jwtauth"

@@ -3,7 +3,7 @@ package utils
 import (
 	"strings"
 
-	"github.com/cloudsonic/sonic-server/conf"
+	"github.com/deluan/navidrome/conf"
 )
 
 func NoArticle(name string) string {

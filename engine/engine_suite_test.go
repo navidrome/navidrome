@@ -3,7 +3,7 @@ package engine
 import (
 	"testing"
 
-	"github.com/cloudsonic/sonic-server/log"
+	"github.com/deluan/navidrome/log"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
