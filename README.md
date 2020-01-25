@@ -5,6 +5,11 @@
 Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your 
 music collection from any browser or mobile device.
 
+This is _alpha quality_ software. Expect some changes in the feature set and the way it works. 
+
+__Any feedback is welcome!__ If you need/want a new feature, found a bug or think of any way to improve Navidrome, 
+please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) 
+
 ## Features
 
 - Handles very large music collections
@@ -18,8 +23,6 @@ music collection from any browser or mobile device.
 - Compatible with the huge selection of clients for [Subsonic](http://www.subsonic.org), 
    [Airsonic](https://airsonic.github.io/) and [Madsonic](https://www.madsonic.org/). 
    See the [complete list of available mobile and web apps](https://airsonic.github.io/docs/apps/)
-
-This is _alpha quality_ software. Expect some changes in the feature set and the way it works
 
 ## Road map
 
