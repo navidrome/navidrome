@@ -32,6 +32,10 @@ const UserList = (props) => {
       {isXsmall ? (
         <SimpleList
           primaryText={(record) => record.name}
+          secondaryText={(record) =>
+            record.lastAccessAt &&
+            new Date(record.lastAccessAt).toLocaleString()
+          }
           tertiaryText={(record) => (record.isAdmin ? '[admin]️' : '')}
         />
       ) : (
