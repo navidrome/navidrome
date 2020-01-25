@@ -1,6 +1,11 @@
 GO_VERSION=1.13
 NODE_VERSION=v13.7.0
 
+GIT_HASH=$(shell git rev-parse --short HEAD)
+GIT_BRANCH=$(shell git symbolic-ref --short -q HEAD)
+GIT_TAG=$(shell git describe --tags --abbrev=0 2> /dev/null)
+GIT_COUNT=$(shell git rev-list HEAD --count)
+
 .PHONY: dev
 dev: check_env data
 	@goreman -f Procfile.dev -b 4533 start
@@ -21,10 +26,6 @@ test: check_go_env
 .PHONY: testall
 testall: check_go_env test
 	@(cd ./ui && npm test -- --watchAll=false)
-
-.PHONY: build
-build: check_go_env
-	go build
 
 .PHONY: setup
 setup: Jamstash-master
@@ -69,7 +70,12 @@ ui/build: $(UI_SRC) $(UI_PUBLIC) ui/package-lock.json
 assets/embedded_gen.go: ui/build
 	go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
 
+.PHONY: build
+build: check_go_env
+	go build -ldflags="-X main.gitCount=$(GIT_COUNT) -X main.gitHash=$(GIT_HASH) -X main.gitBranch=$(GIT_BRANCH) -X main.gitTag=$(GIT_TAG)"
+
 .PHONY: buildall
 buildall: check_go_env assets/embedded_gen.go
-	go build -tags embed
+	go build -ldflags="-X main.gitCount=$(GIT_COUNT) -X main.gitHash=$(GIT_HASH) -X main.gitBranch=$(GIT_BRANCH) -X main.gitTag=$(GIT_TAG)" \
+  		-tags embed
 

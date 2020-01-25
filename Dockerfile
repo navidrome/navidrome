@@ -17,6 +17,12 @@ RUN mkdir -p /src/ui/build
 RUN apk add -U --no-cache build-base git
 RUN go get -u github.com/go-bindata/go-bindata/...
 
+# Download and unpack static ffmpeg
+ARG FFMPEG_VERSION=4.1.4
+ARG FFMPEG_URL=https://www.johnvansickle.com/ffmpeg/old-releases/ffmpeg-${FFMPEG_VERSION}-amd64-static.tar.xz
+RUN wget -O /tmp/ffmpeg.tar.xz ${FFMPEG_URL}
+RUN cd /tmp && tar xJf ffmpeg.tar.xz && rm ffmpeg.tar.xz
+
 # Download project dependencies
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -29,13 +35,6 @@ COPY --from=jsbuilder /src/build/static/css/* /src/ui/build/static/css/
 COPY --from=jsbuilder /src/build/static/js/* /src/ui/build/static/js/
 RUN rm -rf /src/build/css /src/build/js
 RUN make buildall
-
-# Download and unpack static ffmpeg
-ARG FFMPEG_VERSION=4.1.4
-ARG FFMPEG_URL=https://www.johnvansickle.com/ffmpeg/old-releases/ffmpeg-${FFMPEG_VERSION}-amd64-static.tar.xz
-RUN wget -O /tmp/ffmpeg.tar.xz ${FFMPEG_URL}
-RUN cd /tmp && tar xJf ffmpeg.tar.xz && rm ffmpeg.tar.xz
-
 
 #####################################################
 ### Build Final Image

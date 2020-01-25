@@ -150,7 +150,6 @@ var _bannerTxt = []byte(` _   _             _     _
 | . ` + "`" + ` |/ _` + "`" + ` \ \ / / |/ _` + "`" + ` | '__/ _ \| '_ ` + "`" + ` _ \ / _ \
 | |\  | (_| |\ V /| | (_| | | | (_) | | | | | |  __/
 \_| \_/\__,_| \_/ |_|\__,_|_|  \___/|_| |_| |_|\___|
-                                       Version %s
 
 `)
 
@@ -164,7 +163,7 @@ func bannerTxt() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "banner.txt", size: 317, mode: os.FileMode(420), modTime: time.Unix(1579927428, 0)}
+	info := bindataFileInfo{name: "banner.txt", size: 267, mode: os.FileMode(420), modTime: time.Unix(1579965459, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

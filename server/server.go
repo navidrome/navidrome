@@ -15,8 +15,6 @@ import (
 	"github.com/go-chi/cors"
 )
 
-const Version = "0.2.0"
-
 type Server struct {
 	Scanner *scanner.Scanner
 	router  *chi.Mux
