@@ -92,9 +92,9 @@ user.
 
 <p align="center">
 <p float="left">
-    <img width="300" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-login-mobile.png">
-    <img width="300" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-mobile.png">
-    <img width="300" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-users-mobile.png">
+    <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-login-mobile.png">
+    <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-mobile.png">
+    <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-users-mobile.png">
     <img width="900"src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-desktop.png">
 </p>
 </p>
