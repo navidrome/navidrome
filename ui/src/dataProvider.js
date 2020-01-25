@@ -13,6 +13,7 @@ const httpClient = (url, options = {}) => {
     const token = response.headers.get('authorization')
     if (token) {
       localStorage.setItem('token', token)
+      localStorage.removeItem('initialAccountCreation')
     }
     return response
   })

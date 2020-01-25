@@ -2,7 +2,11 @@ import jwtDecode from 'jwt-decode'
 
 const authProvider = {
   login: ({ username, password }) => {
-    const request = new Request('/app/login', {
+    let url = '/app/login'
+    if (localStorage.getItem('initialAccountCreation')) {
+      url = '/app/createAdmin'
+    }
+    const request = new Request(url, {
       method: 'POST',
       body: JSON.stringify({ username, password }),
       headers: new Headers({ 'Content-Type': 'application/json' })
@@ -17,6 +21,7 @@ const authProvider = {
       .then((response) => {
         // Validate token
         jwtDecode(response.token)
+        localStorage.removeItem('initialAccountCreation')
         localStorage.setItem('token', response.token)
         localStorage.setItem('name', response.name)
         localStorage.setItem('username', response.username)
@@ -39,19 +44,14 @@ const authProvider = {
     return Promise.resolve()
   },
 
-  checkAuth: () => {
-    try {
-      const expireTime = jwtDecode(localStorage.getItem('token')).exp * 1000
-      const now = new Date().getTime()
-      return now < expireTime ? Promise.resolve() : Promise.reject()
-    } catch (e) {
-      return Promise.reject()
-    }
-  },
+  checkAuth: () =>
+    localStorage.getItem('token') ? Promise.resolve() : Promise.reject(),
 
   checkError: (error) => {
-    const { status } = error
-    // TODO Remove 403?
+    const { status, message } = error
+    if (message === 'no users created') {
+      localStorage.setItem('initialAccountCreation', 'true')
+    }
     if (status === 401 || status === 403) {
       removeItems()
       return Promise.reject()

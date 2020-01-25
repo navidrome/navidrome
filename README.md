@@ -83,15 +83,10 @@ This will generate the `navidrome` binary in the project's root folder. Start th
 ```
 The server should start listening for requests on the default port __4533__
 
-### First time password
-The first time you start the app it will create a new user "admin" with a random password. 
-Check the logs for a line like this:
-```
-Creating initial user. Please change the password!  password=XXXXXX user=admin
-```
+### Running for the first time
 
-You can change this password using the UI. Just browse to http://localhost:4533/app#/user 
-and login with this temporary password.  
+After starting Navidrome for the first time, go to http://localhost:4533. It will ask you to create your first admin 
+user.
 
 ## Screenshots
 

@@ -43,11 +43,12 @@ func (app *Router) routes() http.Handler {
 	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"response":"pong"}`)) })
 
 	r.Post("/login", Login(app.ds))
+	r.Post("/createAdmin", CreateAdmin(app.ds))
 
 	r.Route("/api", func(r chi.Router) {
 		if !conf.Server.DevDisableAuthentication {
 			r.Use(jwtauth.Verifier(TokenAuth))
-			r.Use(Authenticator)
+			r.Use(Authenticator(app.ds))
 		}
 		app.R(r, "/user", model.User{})
 		app.R(r, "/song", model.MediaFile{})

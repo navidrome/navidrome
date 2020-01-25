@@ -63,7 +63,7 @@ func (r *userRepository) Put(u *model.User) error {
 
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
 	tu := user{}
-	err := r.ormer.QueryTable(user{}).Filter("user_name", username).One(&tu)
+	err := r.ormer.QueryTable(user{}).Filter("user_name__iexact", username).One(&tu)
 	if err == orm.ErrNoRows {
 		return nil, model.ErrNotFound
 	}

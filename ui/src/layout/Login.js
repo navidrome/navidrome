@@ -71,40 +71,9 @@ const renderInput = ({
   />
 )
 
-const Login = ({ location }) => {
-  const [loading, setLoading] = useState(false)
+const FormLogin = ({ loading, handleSubmit, validate }) => {
   const translate = useTranslate()
   const classes = useStyles()
-  const notify = useNotify()
-  const login = useLogin()
-
-  const handleSubmit = (auth) => {
-    setLoading(true)
-    login(auth, location.state ? location.state.nextPathname : '/').catch(
-      (error) => {
-        setLoading(false)
-        notify(
-          typeof error === 'string'
-            ? error
-            : typeof error === 'undefined' || !error.message
-            ? 'ra.auth.sign_in_error'
-            : error.message,
-          'warning'
-        )
-      }
-    )
-  }
-
-  const validate = (values) => {
-    const errors = {}
-    if (!values.username) {
-      errors.username = translate('ra.validation.required')
-    }
-    if (!values.password) {
-      errors.password = translate('ra.validation.required')
-    }
-    return errors
-  }
 
   return (
     <Form
@@ -158,6 +127,146 @@ const Login = ({ location }) => {
           </div>
         </form>
       )}
+    />
+  )
+}
+
+const FormSignUp = ({ loading, handleSubmit, validate }) => {
+  const translate = useTranslate()
+  const classes = useStyles()
+
+  return (
+    <Form
+      onSubmit={handleSubmit}
+      validate={validate}
+      render={({ handleSubmit }) => (
+        <form onSubmit={handleSubmit} noValidate>
+          <div className={classes.main}>
+            <Card className={classes.card}>
+              <div className={classes.avatar}>
+                <Avatar className={classes.icon}>
+                  <LockIcon />
+                </Avatar>
+              </div>
+              <div className={classes.systemName}>
+                Thanks for installing Navidrome!
+              </div>
+              <div className={classes.systemName}>
+                To start, create an admin user
+              </div>
+              <div className={classes.form}>
+                <div className={classes.input}>
+                  <Field
+                    autoFocus
+                    name="username"
+                    component={renderInput}
+                    label={'Admin Username'}
+                    disabled={loading}
+                  />
+                </div>
+                <div className={classes.input}>
+                  <Field
+                    name="password"
+                    component={renderInput}
+                    label={translate('ra.auth.password')}
+                    type="password"
+                    disabled={loading}
+                  />
+                </div>
+                <div className={classes.input}>
+                  <Field
+                    name="confirmPassword"
+                    component={renderInput}
+                    label={'Confirm Password'}
+                    type="password"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+              <CardActions className={classes.actions}>
+                <Button
+                  variant="contained"
+                  type="submit"
+                  color="primary"
+                  disabled={loading}
+                  className={classes.button}
+                  fullWidth
+                >
+                  {loading && <CircularProgress size={25} thickness={2} />}
+                  {translate('Create Admin')}
+                </Button>
+              </CardActions>
+            </Card>
+            <Notification />
+          </div>
+        </form>
+      )}
+    />
+  )
+}
+const Login = ({ location }) => {
+  const [loading, setLoading] = useState(false)
+  const translate = useTranslate()
+  const notify = useNotify()
+  const login = useLogin()
+
+  const handleSubmit = (auth) => {
+    setLoading(true)
+    login(auth, location.state ? location.state.nextPathname : '/').catch(
+      (error) => {
+        setLoading(false)
+        notify(
+          typeof error === 'string'
+            ? error
+            : typeof error === 'undefined' || !error.message
+            ? 'ra.auth.sign_in_error'
+            : error.message,
+          'warning'
+        )
+      }
+    )
+  }
+
+  const validateLogin = (values) => {
+    const errors = {}
+    if (!values.username) {
+      errors.username = translate('ra.validation.required')
+    }
+    if (!values.password) {
+      errors.password = translate('ra.validation.required')
+    }
+    return errors
+  }
+
+  const validateSignup = (values) => {
+    const errors = validateLogin(values)
+    const regex = /^\w+$/g
+    if (values.username && !values.username.match(regex)) {
+      errors.username = translate('Please only use letter and numbers')
+    }
+    if (!values.confirmPassword) {
+      errors.confirmPassword = translate('ra.validation.required')
+    }
+    if (values.confirmPassword !== values.password) {
+      errors.confirmPassword = 'Password does not match'
+    }
+    return errors
+  }
+
+  if (localStorage.getItem('initialAccountCreation') === 'true') {
+    return (
+      <FormSignUp
+        handleSubmit={handleSubmit}
+        validate={validateSignup}
+        loading={loading}
+      />
+    )
+  }
+  return (
+    <FormLogin
+      handleSubmit={handleSubmit}
+      validate={validateLogin}
+      loading={loading}
     />
   )
 }

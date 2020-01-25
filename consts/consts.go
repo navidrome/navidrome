@@ -7,11 +7,10 @@ const (
 	InitialSetupFlagKey = "InitialSetup"
 
 	JWTSecretKey       = "JWTSecret"
-	JWTIssuer          = "Navidrome"
+	JWTIssuer          = "ND"
 	JWTTokenExpiration = 30 * time.Minute
 
 	InitialUserName = "admin"
-	InitialName     = "Admin"
 
 	UIAssetsLocalPath = "ui/build"
 )
