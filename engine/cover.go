@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/static"
 	"github.com/dhowden/tag"
 	"github.com/nfnt/resize"
 )
@@ -61,8 +62,7 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 	if err != model.ErrNotFound {
 		reader, err = readFromTag(path)
 	} else {
-		var f *os.File
-		f, err = os.Open("static/default_cover.jpg")
+		f, err := static.AssetFile().Open("default_cover.jpg")
 		if err == nil {
 			defer f.Close()
 			reader = f

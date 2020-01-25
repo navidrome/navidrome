@@ -3,12 +3,12 @@ package subsonic
 import (
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
+	"github.com/deluan/navidrome/static"
 )
 
 type MediaRetrievalController struct {
@@ -20,8 +20,7 @@ func NewMediaRetrievalController(cover engine.Cover) *MediaRetrievalController {
 }
 
 func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	var f *os.File
-	f, err := os.Open("static/itunes.png")
+	f, err := static.AssetFile().Open("itunes.png")
 	if err != nil {
 		log.Error(r, "Image not found", err)
 		return nil, NewError(responses.ErrorDataNotFound, "Avatar image not found")

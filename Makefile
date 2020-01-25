@@ -37,6 +37,10 @@ setup: Jamstash-master
 	go mod download
 	@(cd ./ui && npm ci)
 
+.PHONY: static
+static:
+	cd static && go-bindata -fs -prefix "static" -nocompress -ignore="\\\*.go" -pkg static .
+
 Jamstash-master:
 	wget -N https://github.com/tsquillario/Jamstash/archive/master.zip
 	unzip -o master.zip

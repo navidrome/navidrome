@@ -94,9 +94,9 @@ and login with this temporary password.
 
 <p align="center">
 <p float="left">
-    <img width="300" src="https://raw.githubusercontent.com/deluan/navidrome/master/static/screenshot-login-mobile.png">
-    <img width="300" src="https://raw.githubusercontent.com/deluan/navidrome/master/static/screenshot-mobile.png">
-    <img width="600"src="https://raw.githubusercontent.com/deluan/navidrome/master/static/screenshot-desktop.png">
+    <img width="300" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-login-mobile.png">
+    <img width="300" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-mobile.png">
+    <img width="600"src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-desktop.png">
 </p>
 </p>
 
