@@ -1,15 +1,23 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/server"
+	"github.com/deluan/navidrome/static"
 )
+
+func ShowBanner() {
+	banner, _ := static.Asset("banner.txt")
+	fmt.Printf(string(banner), server.Version)
+}
 
 func main() {
 	conf.Load()
 
 	if !conf.Server.DevDisableBanner {
-		server.ShowBanner()
+		ShowBanner()
 	}
 
 	a := CreateServer(conf.Server.MusicFolder)
