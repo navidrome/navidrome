@@ -9,6 +9,7 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -62,7 +63,8 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 	if err != model.ErrNotFound {
 		reader, err = readFromTag(path)
 	} else {
-		f, err := static.AssetFile().Open("default_cover.jpg")
+		var f http.File
+		f, err = static.AssetFile().Open("default_cover.jpg")
 		if err == nil {
 			defer f.Close()
 			reader = f
