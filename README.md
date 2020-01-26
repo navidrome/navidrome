@@ -7,7 +7,7 @@ music collection from any browser or mobile device.
 
 This is _alpha quality_ software. Expect some changes in the feature set and the way it works. 
 
-__Any feedback is welcome!__ If you need/want a new feature, found a bug or think of any way to improve Navidrome, 
+__Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
 please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) 
 
 ## Features
