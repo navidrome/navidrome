@@ -1,10 +1,7 @@
 GO_VERSION=1.13
 NODE_VERSION=v13.7.0
 
-GIT_HASH=$(shell git rev-parse --short HEAD)
-GIT_BRANCH=$(shell git symbolic-ref --short -q HEAD)
-GIT_TAG=$(shell git describe --tags --abbrev=0 2> /dev/null)
-GIT_COUNT=$(shell git rev-list HEAD --count)
+GIT_SHA=$(shell git rev-parse --short HEAD)
 
 .PHONY: dev
 dev: check_env data
@@ -72,10 +69,8 @@ assets/embedded_gen.go: ui/build
 
 .PHONY: build
 build: check_go_env
-	go build -ldflags="-X main.gitCount=$(GIT_COUNT) -X main.gitHash=$(GIT_HASH) -X main.gitBranch=$(GIT_BRANCH) -X main.gitTag=$(GIT_TAG)"
+	go build -ldflags="-X main.gitSha=$(GIT_SHA) -X main.gitTag=master"
 
 .PHONY: buildall
 buildall: check_go_env assets/embedded_gen.go
-	go build -ldflags="-X main.gitCount=$(GIT_COUNT) -X main.gitHash=$(GIT_HASH) -X main.gitBranch=$(GIT_BRANCH) -X main.gitTag=$(GIT_TAG)" \
-  		-tags embed
-
+	go build -ldflags="-X main.gitSha=$(GIT_SHA) -X main.gitTag=master" -tags=embed

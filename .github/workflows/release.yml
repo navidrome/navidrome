@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  create:
+    tags:
+      - v*.*.*
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 13
+      - name: Build UI
+        run: |
+          cd ui
+          npm ci
+          npm run build
+      - name: Fetch tags
+        run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+      - name: Run GoReleaser
+        uses: docker://bepsays/ci-goreleaser:1.13-4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: goreleaser release --rm-dist

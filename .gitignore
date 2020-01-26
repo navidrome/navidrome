@@ -18,4 +18,3 @@ navidrome.db
 *.swp
 *_gen.go
 dist
-.goreleaser.yml

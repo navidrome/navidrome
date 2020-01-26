@@ -1,0 +1,86 @@
+# GoReleaser config
+
+before:
+  hooks:
+    - go get -u github.com/go-bindata/go-bindata/...
+    - go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
+    - git checkout .
+
+builds:
+  - id: navidrome_darwin
+    env:
+      - CGO_ENABLED=1
+      - CC=o64-clang
+      - CXX=o64-clang++
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    flags:
+      - -tags=embed
+    ldflags:
+      - -X main.gitSha={{.ShortCommit}} -X main.gitTag={{.Tag}}
+
+  - id: navidrome_linux
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -tags=embed
+    ldflags:
+      - "-extldflags '-static'"
+      - -X main.gitSha={{.ShortCommit}} -X main.gitTag={{.Tag}}
+
+  - id: navidrome_windows_i686
+    env:
+      - CGO_ENABLED=1
+      - CC=i686-w64-mingw32-gcc
+      - CXX=i686-w64-mingw32-g++
+    goos:
+      - windows
+    goarch:
+      - 386
+    flags:
+      - -tags=embed
+    ldflags:
+      - "-extldflags '-static'"
+      - -X main.gitSha={{.ShortCommit}} -X main.gitTag={{.Tag}}
+
+  - id: navidrome_windows_x64
+    env:
+      - CGO_ENABLED=1
+      - CC=x86_64-w64-mingw32-gcc
+      - CXX=x86_64-w64-mingw32-g++
+    goos:
+      - windows
+    goarch:
+      - amd64
+    flags:
+      - -tags=embed
+    ldflags:
+      - "-extldflags '-static'"
+      - -X main.gitSha={{.ShortCommit}} -X main.gitTag={{.Tag}}
+
+archives:
+  -
+    format_overrides:
+      - goos: windows
+        format: zip
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+release:
+  draft: true
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

@@ -9,25 +9,19 @@ import (
 
 var (
 	// This will be set in build time. If not, version will be set to "dev"
-	gitBranch string
-	gitTag    string
-	gitHash   string
-	gitCount  string
+	gitTag string
+	gitSha string
 )
 
 // Formats:
 // dev
-// v0.2.0 (596-5b84188)
-// master (600-9ed35cb)
+// v0.2.0 (5b84188)
+// master (9ed35cb)
 func getVersion() string {
-	if gitHash == "" {
+	if gitSha == "" {
 		return "dev"
 	}
-	version := fmt.Sprintf(" (%s-%s)", gitCount, gitHash)
-	if gitTag != "" {
-		return gitTag + version
-	}
-	return gitBranch + version
+	return fmt.Sprintf("%s (%s)", gitTag, gitSha)
 }
 
 func getBanner() string {

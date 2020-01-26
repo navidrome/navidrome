@@ -40,9 +40,21 @@ on a frequent basis. Some upcoming features planned:
 
 ## Installation
 
-Currently there are no downloadable binaries (WIP). The available options are:
+Various options are available:
 
-### Run it with Docker
+### Pre-build executables
+
+Just head to the [releases page](https://github.com/deluan/navidrome/releases) and download the latest version for you 
+platform. There are builds available for Linux, macOS and Windows (32 and 64 bits). 
+
+Remember to install [ffmpeg](https://ffmpeg.org/download.html) in your system, a requirement for Navidrome to work properly.
+
+If you have any issues with these binaries, or need a binary for a different platform, please 
+[open an issue](https://github.com/deluan/navidrome/issues) 
+
+### Docker
+
+Docker images are available. Example of usage:
 
 ```yaml
 # This is just an example. Customize it to your needs.
@@ -65,10 +77,10 @@ services:
       - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"
 ```
 
-### Build it yourself / Development Environment
+### Build it yourself
 
 You will need to install [Go 1.13](https://golang.org/dl/) and [Node 13.7](http://nodejs.org).
-You'll also need [ffmpeg](ffmpeg.org) installed in your system
+You'll also need [ffmpeg](https://ffmpeg.org) installed in your system
 
 After the prerequisites above are installed, build the application with:
 
@@ -77,13 +89,15 @@ $ make setup
 $ make buildall
 ```
 
-This will generate the `navidrome` binary in the project's root folder. Start the server with:
+This will generate the `navidrome` binary executable in the project's root folder. 
+
+### Running for the first time
+
+Start the server with:
 ```shell script
 ./navidrome
 ```
 The server should start listening for requests on the default port __4533__
-
-### Running for the first time
 
 After starting Navidrome for the first time, go to http://localhost:4533. It will ask you to create your first admin 
 user.
