@@ -9,11 +9,13 @@ import (
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 func TestPersistence(t *testing.T) {
+	tests.Init(t, true)
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
@@ -59,14 +61,14 @@ func P(path string) string {
 
 var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
-		//log.SetLevel(log.LevelTrace)
-		//conf.Server.DbPath, _ = ioutil.TempDir("", "navidrome_tests")
-		//os.MkdirAll(conf.Server.DbPath, 0700)
 		conf.Server.DbPath = ":memory:"
 		ds := New()
 		artistRepo := ds.Artist()
 		for _, a := range testArtists {
-			artistRepo.Put(&a)
+			err := artistRepo.Put(&a)
+			if err != nil {
+				panic(err)
+			}
 		}
 		albumRepository := ds.Album()
 		for _, a := range testAlbums {
