@@ -52,7 +52,7 @@ check_env: check_go_env check_node_env
 
 .PHONY: check_go_env
 check_go_env:
-	@(test -n "${GOPATH}" && hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
+	@(hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
 	@go version | grep -q $(GO_VERSION) || (echo "\nERROR: Please upgrade your GO version\n"; exit 1)
 
 .PHONY: check_node_env
