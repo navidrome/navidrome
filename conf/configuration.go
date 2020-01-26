@@ -40,7 +40,7 @@ func newWithPath(path string, skipFlags ...bool) *multiconfig.DefaultLoader {
 	// Read default values defined via tag fields "default"
 	loaders = append(loaders, &multiconfig.TagLoader{})
 
-	if _, err := os.Stat(consts.LocalConfigFile); err == nil {
+	if _, err := os.Stat(path); err == nil {
 		if strings.HasSuffix(path, "toml") {
 			loaders = append(loaders, &multiconfig.TOMLLoader{Path: path})
 		}
@@ -52,6 +52,8 @@ func newWithPath(path string, skipFlags ...bool) *multiconfig.DefaultLoader {
 		if strings.HasSuffix(path, "yml") || strings.HasSuffix(path, "yaml") {
 			loaders = append(loaders, &multiconfig.YAMLLoader{Path: path})
 		}
+	} else {
+		println("Skipping config file not found: ", path)
 	}
 
 	e := &multiconfig.EnvironmentLoader{}
