@@ -5,11 +5,11 @@ import (
 )
 
 func main() {
-	conf.Load()
-
 	if !conf.Server.DevDisableBanner {
 		ShowBanner()
 	}
+
+	conf.Load()
 
 	a := CreateServer(conf.Server.MusicFolder)
 	a.MountRouter("/rest", CreateSubsonicAPIRouter())

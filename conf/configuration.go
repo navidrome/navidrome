@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"flag"
 	"os"
 
 	"github.com/deluan/navidrome/consts"
@@ -20,62 +21,26 @@ type nd struct {
 	DisableDownsampling bool   `default:"false"`
 	DownsampleCommand   string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
 	ProbeCommand        string `default:"ffmpeg %s -f ffmetadata"`
-	PlsIgnoreFolders    bool   `default:"true"`
-	PlsIgnoredPatterns  string `default:"^iCloud;\\~"`
 	ScanInterval        string `default:"1m"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
-	DevDisableAuthentication bool   `default:"false"`
-	DevDisableBanner         bool   `default:"false"`
-	DevInitialPassword       string `default:""`
+	DevDisableAuthentication bool `default:"false"`
+	DevDisableBanner         bool `default:"false"`
 }
 
-var Server *nd
-
-func LoadFromFlags() {
-	l := &multiconfig.FlagLoader{}
-	l.Load(Server)
-}
-
-func LoadFromEnv() {
-	port := os.Getenv("PORT")
-	if port != "" {
-		Server.Port = port
-	}
-	l := &multiconfig.EnvironmentLoader{}
-	err := l.Load(Server)
-	if err != nil {
-		log.Error("Error parsing configuration from environment")
-	}
-}
-
-func LoadFromTags() {
-	l := &multiconfig.TagLoader{}
-	l.Load(Server)
-}
+var Server = &nd{}
 
 func LoadFromFile(tomlFile string) {
-	l := &multiconfig.TOMLLoader{Path: tomlFile}
-	err := l.Load(Server)
-	if err != nil {
-		log.Error("Error loading configuration file", "file", tomlFile, err)
+	m := multiconfig.NewWithPath(tomlFile)
+	err := m.Load(Server)
+	if err == flag.ErrHelp {
+		os.Exit(1)
 	}
-}
-
-func LoadFromLocalFile() {
-	if _, err := os.Stat(consts.LocalConfigFile); err == nil {
-		LoadFromFile(consts.LocalConfigFile)
-	}
-}
-
-func Load() {
-	LoadFromLocalFile()
-	LoadFromEnv()
-	//LoadFromFlags()
 	log.SetLogLevelString(Server.LogLevel)
 }
 
-func init() {
-	Server = new(nd)
-	LoadFromTags()
+func Load() {
+	if _, err := os.Stat(consts.LocalConfigFile); err == nil {
+		LoadFromFile(consts.LocalConfigFile)
+	}
 }
