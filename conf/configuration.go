@@ -34,8 +34,8 @@ type nd struct {
 
 var Server = &nd{}
 
-func NewWithPath(path string) *multiconfig.DefaultLoader {
-	loaders := []multiconfig.Loader{}
+func newWithPath(path string, skipFlags ...bool) *multiconfig.DefaultLoader {
+	var loaders []multiconfig.Loader
 
 	// Read default values defined via tag fields "default"
 	loaders = append(loaders, &multiconfig.TagLoader{})
@@ -55,9 +55,12 @@ func NewWithPath(path string) *multiconfig.DefaultLoader {
 	}
 
 	e := &multiconfig.EnvironmentLoader{}
-	f := &multiconfig.FlagLoader{}
+	loaders = append(loaders, e)
+	if len(skipFlags) == 0 || !skipFlags[0] {
+		f := &multiconfig.FlagLoader{}
+		loaders = append(loaders, f)
+	}
 
-	loaders = append(loaders, e, f)
 	loader := multiconfig.MultiLoader(loaders...)
 
 	d := &multiconfig.DefaultLoader{}
@@ -66,8 +69,8 @@ func NewWithPath(path string) *multiconfig.DefaultLoader {
 	return d
 }
 
-func LoadFromFile(confFile string) {
-	m := NewWithPath(confFile)
+func LoadFromFile(confFile string, skipFlags ...bool) {
+	m := newWithPath(confFile, skipFlags...)
 	err := m.Load(Server)
 	if err == flag.ErrHelp {
 		os.Exit(1)
