@@ -56,7 +56,7 @@ services:
     environment:
       # All options with their default values:
       ND_MUSICFOLDER: /music
-      ND_DBPATH: /data/navidrome.db
+      ND_DATAFOLDER: /data
       ND_SCANINTERVAL: 1m
       ND_LOGLEVEL: info  
       ND_PORT: 4533

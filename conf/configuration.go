@@ -2,7 +2,9 @@ package conf
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
@@ -12,7 +14,8 @@ import (
 type nd struct {
 	Port        string `default:"4533"`
 	MusicFolder string `default:"./music"`
-	DbPath      string `default:"./data/navidrome.db"`
+	DataFolder  string `default:"./"`
+	DbPath      string
 	LogLevel    string `default:"info"`
 
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
@@ -30,13 +33,17 @@ type nd struct {
 
 var Server = &nd{}
 
-func LoadFromFile(tomlFile string) {
-	m := multiconfig.NewWithPath(tomlFile)
+func LoadFromFile(confFile string) {
+	m := multiconfig.NewWithPath(confFile)
 	err := m.Load(Server)
 	if err == flag.ErrHelp {
 		os.Exit(1)
 	}
-	log.SetLogLevelString(Server.LogLevel)
+	if Server.DbPath == "" {
+		Server.DbPath = filepath.Join(Server.DataFolder, "navidrome.db")
+	}
+	log.SerLevelString(Server.LogLevel)
+	log.Trace("Loaded configuration", "file", confFile, "config", fmt.Sprintf("%#v", Server))
 }
 
 func Load() {

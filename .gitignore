@@ -14,6 +14,7 @@ navidrome.toml
 master.zip
 Jamstash-master
 testDB
+navidrome.db
 *.swp
 *_gen.go
 dist

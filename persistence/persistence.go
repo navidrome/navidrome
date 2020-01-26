@@ -31,7 +31,7 @@ func New() model.DataStore {
 		if dbPath == ":memory:" {
 			dbPath = "file::memory:?cache=shared"
 		}
-		log.Debug("Opening DB from: "+dbPath, "driver", driver)
+		log.Debug("Opening DataBase", "dbPath", dbPath, "driver", driver)
 
 		err := initORM(dbPath)
 		if err != nil {

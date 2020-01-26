@@ -35,7 +35,7 @@ func SetLevel(l Level) {
 	logrus.SetLevel(logrus.Level(l))
 }
 
-func SetLogLevelString(l string) {
+func SerLevelString(l string) {
 	envLevel := strings.ToLower(l)
 	var level Level
 	switch envLevel {
