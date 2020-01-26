@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
@@ -33,11 +34,47 @@ type nd struct {
 
 var Server = &nd{}
 
+func NewWithPath(path string) *multiconfig.DefaultLoader {
+	loaders := []multiconfig.Loader{}
+
+	// Read default values defined via tag fields "default"
+	loaders = append(loaders, &multiconfig.TagLoader{})
+
+	if _, err := os.Stat(consts.LocalConfigFile); err == nil {
+		if strings.HasSuffix(path, "toml") {
+			loaders = append(loaders, &multiconfig.TOMLLoader{Path: path})
+		}
+
+		if strings.HasSuffix(path, "json") {
+			loaders = append(loaders, &multiconfig.JSONLoader{Path: path})
+		}
+
+		if strings.HasSuffix(path, "yml") || strings.HasSuffix(path, "yaml") {
+			loaders = append(loaders, &multiconfig.YAMLLoader{Path: path})
+		}
+	}
+
+	e := &multiconfig.EnvironmentLoader{}
+	f := &multiconfig.FlagLoader{}
+
+	loaders = append(loaders, e, f)
+	loader := multiconfig.MultiLoader(loaders...)
+
+	d := &multiconfig.DefaultLoader{}
+	d.Loader = loader
+	d.Validator = multiconfig.MultiValidator(&multiconfig.RequiredValidator{})
+	return d
+}
+
 func LoadFromFile(confFile string) {
-	m := multiconfig.NewWithPath(confFile)
+	m := NewWithPath(confFile)
 	err := m.Load(Server)
 	if err == flag.ErrHelp {
 		os.Exit(1)
+	}
+	if err != nil {
+		fmt.Printf("Error trying to load config '%s'. Error: %v", confFile, err)
+		os.Exit(2)
 	}
 	if Server.DbPath == "" {
 		Server.DbPath = filepath.Join(Server.DataFolder, "navidrome.db")
@@ -47,7 +84,5 @@ func LoadFromFile(confFile string) {
 }
 
 func Load() {
-	if _, err := os.Stat(consts.LocalConfigFile); err == nil {
-		LoadFromFile(consts.LocalConfigFile)
-	}
+	LoadFromFile(consts.LocalConfigFile)
 }
