@@ -19,7 +19,7 @@ const UserEdit = (props) => (
     <SimpleForm>
       <TextInput source="userName" validate={[required()]} />
       <TextInput source="name" validate={[required()]} />
-      <TextInput source="email" validate={[required(), email()]} />
+      <TextInput source="email" validate={[email()]} />
       <PasswordInput source="password" validate={[required()]} />
       <BooleanInput source="isAdmin" initialValue={false} />
       <DateField source="lastLoginAt" showTime />
