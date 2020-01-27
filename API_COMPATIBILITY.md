@@ -63,7 +63,7 @@ Navidrome is actively being tested with:
 | `star`                 | |
 | `unstar`               | |
 | `setRating`            | Doesn't work with artists |
-| `scrobble`             | No Last.FM support yet. It is used to update play count, last played, skip count and last skipped |
+| `scrobble`             | No Last.FM support yet. It is used to update play count and last played |
 | ||
 | _USER MANAGEMENT_      ||
 | `getUser`              | Hardcoded all roles, ignores `username` parameter|
