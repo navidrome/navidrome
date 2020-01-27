@@ -1,6 +1,7 @@
 # Navidrome Music Streamer
 
 [![Build Status](https://github.com/deluan/navidrome/workflows/Build/badge.svg)](https://github.com/deluan/navidrome/actions)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/deluan/navidrome?label=latest)](https://github.com/deluan/navidrome/releases)
 
 Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your 
 music collection from any browser or mobile device.
