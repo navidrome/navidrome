@@ -1,7 +1,8 @@
 # Navidrome Music Streamer
 
-[![GitHub release](https://img.shields.io/github/v/release/deluan/navidrome?label=latest)](https://github.com/deluan/navidrome/releases)
-[![Build Status](https://github.com/deluan/navidrome/workflows/Build/badge.svg)](https://github.com/deluan/navidrome/actions)
+[![Build](https://img.shields.io/github/workflow/status/deluan/navidrome/Build?style=for-the-badge)](https://github.com/deluan/navidrome/actions)
+[![Last Release](https://img.shields.io/github/v/release/deluan/navidrome?label=latest&style=for-the-badge)](https://github.com/deluan/navidrome/releases)
+[![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?style=for-the-badge)](https://hub.docker.com/r/deluan/navidrome)
 
 Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your 
 music collection from any browser or mobile device.
@@ -33,7 +34,7 @@ on a frequent basis. Some upcoming features planned:
 - Transcoding/Downsampling on-the-fly
 - Last.FM integration
 - Integrated music player
-- Pre-build binaries for all platforms, including Raspberry Pi
+- Pre-build binaries for Raspberry Pi
 - Smart/dynamic playlists (similar to iTunes)
 - Jukebox mode
 - Sharing links to albums/songs/playlists
@@ -102,6 +103,8 @@ The server should start listening for requests on the default port __4533__
 
 After starting Navidrome for the first time, go to http://localhost:4533. It will ask you to create your first admin 
 user.
+
+For more options, run `navidrome --help` 
 
 ## Screenshots
 
