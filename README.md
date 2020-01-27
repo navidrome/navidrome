@@ -1,12 +1,12 @@
 # Navidrome Music Streamer
 
+[![GitHub release](https://img.shields.io/github/v/release/deluan/navidrome?label=latest)](https://github.com/deluan/navidrome/releases)
 [![Build Status](https://github.com/deluan/navidrome/workflows/Build/badge.svg)](https://github.com/deluan/navidrome/actions)
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/deluan/navidrome?label=latest)](https://github.com/deluan/navidrome/releases)
 
 Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your 
 music collection from any browser or mobile device.
 
-This is _alpha quality_ software. Expect some changes in the feature set and the way it works. 
+This is a fully functional _alpha quality_ software. Expect some changes in the feature set and the way it works. 
 
 __Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
 please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) 
@@ -55,7 +55,7 @@ If you have any issues with these binaries, or need a binary for a different pla
 
 ### Docker
 
-Docker images are available. Example of usage:
+[Docker images](https://hub.docker.com/r/deluan/navidrome) are available. They include everything needed to run Navidrome. Example of usage:
 
 ```yaml
 # This is just an example. Customize it to your needs.
@@ -113,7 +113,6 @@ user.
     <img width="900"src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-desktop.png">
 </p>
 </p>
-
 
 
 ## Subsonic API Version Compatibility
