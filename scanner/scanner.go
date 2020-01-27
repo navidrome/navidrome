@@ -60,7 +60,7 @@ func (s *Scanner) RescanAll(fullRescan bool) error {
 func (s *Scanner) Status() []StatusInfo { return nil }
 
 func (s *Scanner) getLastModifiedSince(folder string) time.Time {
-	ms, err := s.ds.Property().Get(model.PropLastScan + "-" + folder)
+	ms, err := s.ds.Property(nil).Get(model.PropLastScan + "-" + folder)
 	if err != nil {
 		return time.Time{}
 	}
@@ -73,11 +73,11 @@ func (s *Scanner) getLastModifiedSince(folder string) time.Time {
 
 func (s *Scanner) updateLastModifiedSince(folder string, t time.Time) {
 	millis := t.UnixNano() / int64(time.Millisecond)
-	s.ds.Property().Put(model.PropLastScan+"-"+folder, fmt.Sprint(millis))
+	s.ds.Property(nil).Put(model.PropLastScan+"-"+folder, fmt.Sprint(millis))
 }
 
 func (s *Scanner) loadFolders() {
-	fs, _ := s.ds.MediaFolder().GetAll()
+	fs, _ := s.ds.MediaFolder(nil).GetAll()
 	for _, f := range fs {
 		log.Info("Configuring Media Folder", "name", f.Name, "path", f.Path)
 		s.folders[f.Path] = NewTagScanner(f.Path, s.ds)

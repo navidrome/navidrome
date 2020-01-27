@@ -63,21 +63,21 @@ var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
 		conf.Server.DbPath = ":memory:"
 		ds := New()
-		artistRepo := ds.Artist()
+		artistRepo := ds.Artist(nil)
 		for _, a := range testArtists {
 			err := artistRepo.Put(&a)
 			if err != nil {
 				panic(err)
 			}
 		}
-		albumRepository := ds.Album()
+		albumRepository := ds.Album(nil)
 		for _, a := range testAlbums {
 			err := albumRepository.Put(&a)
 			if err != nil {
 				panic(err)
 			}
 		}
-		mediaFileRepository := ds.MediaFile()
+		mediaFileRepository := ds.MediaFile(nil)
 		for _, s := range testSongs {
 			err := mediaFileRepository.Put(&s)
 			if err != nil {

@@ -11,7 +11,7 @@ import (
 
 func initialSetup(ds model.DataStore) {
 	_ = ds.WithTx(func(tx model.DataStore) error {
-		_, err := ds.Property().Get(consts.InitialSetupFlagKey)
+		_, err := ds.Property(nil).Get(consts.InitialSetupFlagKey)
 		if err == nil {
 			return nil
 		}
@@ -20,19 +20,19 @@ func initialSetup(ds model.DataStore) {
 			return err
 		}
 
-		err = ds.Property().Put(consts.InitialSetupFlagKey, time.Now().String())
+		err = ds.Property(nil).Put(consts.InitialSetupFlagKey, time.Now().String())
 		return err
 	})
 }
 
 func createJWTSecret(ds model.DataStore) error {
-	_, err := ds.Property().Get(consts.JWTSecretKey)
+	_, err := ds.Property(nil).Get(consts.JWTSecretKey)
 	if err == nil {
 		return nil
 	}
 	jwtSecret, _ := uuid.NewRandom()
 	log.Warn("Creating JWT secret, used for encrypting UI sessions")
-	err = ds.Property().Put(consts.JWTSecretKey, jwtSecret.String())
+	err = ds.Property(nil).Put(consts.JWTSecretKey, jwtSecret.String())
 	if err != nil {
 		log.Error("Could not save JWT secret in DB", err)
 	}

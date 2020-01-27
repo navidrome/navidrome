@@ -31,17 +31,17 @@ func NewCover(ds model.DataStore) Cover {
 	return &cover{ds}
 }
 
-func (c *cover) getCoverPath(id string) (string, error) {
+func (c *cover) getCoverPath(ctx context.Context, id string) (string, error) {
 	switch {
 	case strings.HasPrefix(id, "al-"):
 		id = id[3:]
-		al, err := c.ds.Album().Get(id)
+		al, err := c.ds.Album(ctx).Get(id)
 		if err != nil {
 			return "", err
 		}
 		return al.CoverArtPath, nil
 	default:
-		mf, err := c.ds.MediaFile().Get(id)
+		mf, err := c.ds.MediaFile(ctx).Get(id)
 		if err != nil {
 			return "", err
 		}
@@ -53,7 +53,7 @@ func (c *cover) getCoverPath(id string) (string, error) {
 }
 
 func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) error {
-	path, err := c.getCoverPath(id)
+	path, err := c.getCoverPath(ctx, id)
 	if err != nil && err != model.ErrNotFound {
 		return err
 	}

@@ -25,7 +25,7 @@ func NewSearch(ds model.DataStore) Search {
 
 func (s *search) SearchArtist(ctx context.Context, q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
-	artists, err := s.ds.Artist().Search(q, offset, size)
+	artists, err := s.ds.Artist(ctx).Search(q, offset, size)
 	if len(artists) == 0 || err != nil {
 		return nil, nil
 	}
@@ -34,7 +34,7 @@ func (s *search) SearchArtist(ctx context.Context, q string, offset int, size in
 	for i, al := range artists {
 		artistIds[i] = al.ID
 	}
-	annMap, err := s.ds.Annotation().GetMap(getUserID(ctx), model.ArtistItemType, artistIds)
+	annMap, err := s.ds.Annotation(ctx).GetMap(getUserID(ctx), model.ArtistItemType, artistIds)
 	if err != nil {
 		return nil, nil
 	}
@@ -44,7 +44,7 @@ func (s *search) SearchArtist(ctx context.Context, q string, offset int, size in
 
 func (s *search) SearchAlbum(ctx context.Context, q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
-	albums, err := s.ds.Album().Search(q, offset, size)
+	albums, err := s.ds.Album(ctx).Search(q, offset, size)
 	if len(albums) == 0 || err != nil {
 		return nil, nil
 	}
@@ -53,7 +53,7 @@ func (s *search) SearchAlbum(ctx context.Context, q string, offset int, size int
 	for i, al := range albums {
 		albumIds[i] = al.ID
 	}
-	annMap, err := s.ds.Annotation().GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
+	annMap, err := s.ds.Annotation(ctx).GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
 	if err != nil {
 		return nil, nil
 	}
@@ -63,7 +63,7 @@ func (s *search) SearchAlbum(ctx context.Context, q string, offset int, size int
 
 func (s *search) SearchSong(ctx context.Context, q string, offset int, size int) (Entries, error) {
 	q = sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*")))
-	mediaFiles, err := s.ds.MediaFile().Search(q, offset, size)
+	mediaFiles, err := s.ds.MediaFile(ctx).Search(q, offset, size)
 	if len(mediaFiles) == 0 || err != nil {
 		return nil, nil
 	}
@@ -72,7 +72,7 @@ func (s *search) SearchSong(ctx context.Context, q string, offset int, size int)
 	for i, mf := range mediaFiles {
 		trackIds[i] = mf.ID
 	}
-	annMap, err := s.ds.Annotation().GetMap(getUserID(ctx), model.MediaItemType, trackIds)
+	annMap, err := s.ds.Annotation(ctx).GetMap(getUserID(ctx), model.MediaItemType, trackIds)
 	if err != nil {
 		return nil, nil
 	}

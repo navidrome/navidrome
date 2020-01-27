@@ -21,14 +21,14 @@ type ratings struct {
 }
 
 func (r ratings) SetRating(ctx context.Context, id string, rating int) error {
-	exist, err := r.ds.Album().Exists(id)
+	exist, err := r.ds.Album(ctx).Exists(id)
 	if err != nil {
 		return err
 	}
 	if exist {
-		return r.ds.Annotation().SetRating(rating, getUserID(ctx), model.AlbumItemType, id)
+		return r.ds.Annotation(ctx).SetRating(rating, getUserID(ctx), model.AlbumItemType, id)
 	}
-	return r.ds.Annotation().SetRating(rating, getUserID(ctx), model.MediaItemType, id)
+	return r.ds.Annotation(ctx).SetRating(rating, getUserID(ctx), model.MediaItemType, id)
 }
 
 func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
@@ -40,29 +40,29 @@ func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
 
 	return r.ds.WithTx(func(tx model.DataStore) error {
 		for _, id := range ids {
-			exist, err := r.ds.Album().Exists(id)
+			exist, err := r.ds.Album(ctx).Exists(id)
 			if err != nil {
 				return err
 			}
 			if exist {
-				err = tx.Annotation().SetStar(star, userId, model.AlbumItemType, ids...)
+				err = tx.Annotation(ctx).SetStar(star, userId, model.AlbumItemType, ids...)
 				if err != nil {
 					return err
 				}
 				continue
 			}
-			exist, err = r.ds.Artist().Exists(id)
+			exist, err = r.ds.Artist(ctx).Exists(id)
 			if err != nil {
 				return err
 			}
 			if exist {
-				err = tx.Annotation().SetStar(star, userId, model.ArtistItemType, ids...)
+				err = tx.Annotation(ctx).SetStar(star, userId, model.ArtistItemType, ids...)
 				if err != nil {
 					return err
 				}
 				continue
 			}
-			err = tx.Annotation().SetStar(star, userId, model.MediaItemType, ids...)
+			err = tx.Annotation(ctx).SetStar(star, userId, model.MediaItemType, ids...)
 			if err != nil {
 				return err
 			}

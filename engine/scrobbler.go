@@ -29,15 +29,15 @@ func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, 
 	var mf *model.MediaFile
 	var err error
 	err = s.ds.WithTx(func(tx model.DataStore) error {
-		mf, err = s.ds.MediaFile().Get(trackId)
+		mf, err = s.ds.MediaFile(ctx).Get(trackId)
 		if err != nil {
 			return err
 		}
-		err = s.ds.Annotation().IncPlayCount(userId, model.MediaItemType, trackId, playTime)
+		err = s.ds.Annotation(ctx).IncPlayCount(userId, model.MediaItemType, trackId, playTime)
 		if err != nil {
 			return err
 		}
-		err = s.ds.Annotation().IncPlayCount(userId, model.AlbumItemType, mf.AlbumID, playTime)
+		err = s.ds.Annotation(ctx).IncPlayCount(userId, model.AlbumItemType, mf.AlbumID, playTime)
 		return err
 	})
 	return mf, err
@@ -45,7 +45,7 @@ func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, 
 
 // TODO Validate if NowPlaying still works after all refactorings
 func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error) {
-	mf, err := s.ds.MediaFile().Get(trackId)
+	mf, err := s.ds.MediaFile(ctx).Get(trackId)
 	if err != nil {
 		return nil, err
 	}

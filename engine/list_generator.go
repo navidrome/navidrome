@@ -31,7 +31,7 @@ type listGenerator struct {
 }
 
 func (g *listGenerator) query(ctx context.Context, qo model.QueryOptions) (Entries, error) {
-	albums, err := g.ds.Album().GetAll(qo)
+	albums, err := g.ds.Album(ctx).GetAll(qo)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (g *listGenerator) query(ctx context.Context, qo model.QueryOptions) (Entri
 	for i, al := range albums {
 		albumIds[i] = al.ID
 	}
-	annMap, err := g.ds.Annotation().GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
+	annMap, err := g.ds.Annotation(ctx).GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (g *listGenerator) query(ctx context.Context, qo model.QueryOptions) (Entri
 }
 
 func (g *listGenerator) queryByAnnotation(ctx context.Context, qo model.QueryOptions) (Entries, error) {
-	annotations, err := g.ds.Annotation().GetAll(getUserID(ctx), model.AlbumItemType, qo)
+	annotations, err := g.ds.Annotation(ctx).GetAll(getUserID(ctx), model.AlbumItemType, qo)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (g *listGenerator) queryByAnnotation(ctx context.Context, qo model.QueryOpt
 		albumIds[i] = ann.ItemID
 	}
 
-	albumMap, err := g.ds.Album().GetMap(albumIds)
+	albumMap, err := g.ds.Album(ctx).GetMap(albumIds)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (g *listGenerator) GetByArtist(ctx context.Context, offset int, size int) (
 }
 
 func (g *listGenerator) GetRandom(ctx context.Context, offset int, size int) (Entries, error) {
-	albums, err := g.ds.Album().GetRandom(model.QueryOptions{Max: size, Offset: offset})
+	albums, err := g.ds.Album(ctx).GetRandom(model.QueryOptions{Max: size, Offset: offset})
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (g *listGenerator) getAnnotationsForAlbums(ctx context.Context, albums mode
 	for i, al := range albums {
 		albumIds[i] = al.ID
 	}
-	return g.ds.Annotation().GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
+	return g.ds.Annotation(ctx).GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
 }
 
 func (g *listGenerator) GetRandomSongs(ctx context.Context, size int, genre string) (Entries, error) {
@@ -128,14 +128,14 @@ func (g *listGenerator) GetRandomSongs(ctx context.Context, size int, genre stri
 	if genre != "" {
 		options.Filters = map[string]interface{}{"genre": genre}
 	}
-	mediaFiles, err := g.ds.MediaFile().GetRandom(options)
+	mediaFiles, err := g.ds.MediaFile(ctx).GetRandom(options)
 	if err != nil {
 		return nil, err
 	}
 
 	r := make(Entries, len(mediaFiles))
 	for i, mf := range mediaFiles {
-		ann, err := g.ds.Annotation().Get(getUserID(ctx), model.MediaItemType, mf.ID)
+		ann, err := g.ds.Annotation(ctx).Get(getUserID(ctx), model.MediaItemType, mf.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +146,7 @@ func (g *listGenerator) GetRandomSongs(ctx context.Context, size int, genre stri
 
 func (g *listGenerator) GetStarred(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Offset: offset, Max: size, Sort: "starred_at", Order: "desc"}
-	albums, err := g.ds.Album().GetStarred(getUserID(ctx), qo)
+	albums, err := g.ds.Album(ctx).GetStarred(getUserID(ctx), qo)
 	if err != nil {
 		return nil, err
 	}
@@ -161,17 +161,17 @@ func (g *listGenerator) GetStarred(ctx context.Context, offset int, size int) (E
 func (g *listGenerator) GetAllStarred(ctx context.Context) (artists Entries, albums Entries, mediaFiles Entries, err error) {
 	options := model.QueryOptions{Sort: "starred_at", Order: "desc"}
 
-	ars, err := g.ds.Artist().GetStarred(getUserID(ctx), options)
+	ars, err := g.ds.Artist(ctx).GetStarred(getUserID(ctx), options)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	als, err := g.ds.Album().GetStarred(getUserID(ctx), options)
+	als, err := g.ds.Album(ctx).GetStarred(getUserID(ctx), options)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	mfs, err := g.ds.MediaFile().GetStarred(getUserID(ctx), options)
+	mfs, err := g.ds.MediaFile(ctx).GetStarred(getUserID(ctx), options)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -180,7 +180,7 @@ func (g *listGenerator) GetAllStarred(ctx context.Context) (artists Entries, alb
 	for _, mf := range mfs {
 		mfIds = append(mfIds, mf.ID)
 	}
-	trackAnnMap, err := g.ds.Annotation().GetMap(getUserID(ctx), model.MediaItemType, mfIds)
+	trackAnnMap, err := g.ds.Annotation(ctx).GetMap(getUserID(ctx), model.MediaItemType, mfIds)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -194,7 +194,7 @@ func (g *listGenerator) GetAllStarred(ctx context.Context) (artists Entries, alb
 	for _, ar := range ars {
 		artistIds = append(artistIds, ar.ID)
 	}
-	artistAnnMap, err := g.ds.Annotation().GetMap(getUserID(ctx), model.MediaItemType, artistIds)
+	artistAnnMap, err := g.ds.Annotation(ctx).GetMap(getUserID(ctx), model.MediaItemType, artistIds)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -213,11 +213,11 @@ func (g *listGenerator) GetNowPlaying(ctx context.Context) (Entries, error) {
 	}
 	entries := make(Entries, len(npInfo))
 	for i, np := range npInfo {
-		mf, err := g.ds.MediaFile().Get(np.TrackID)
+		mf, err := g.ds.MediaFile(ctx).Get(np.TrackID)
 		if err != nil {
 			return nil, err
 		}
-		ann, err := g.ds.Annotation().Get(getUserID(ctx), model.MediaItemType, mf.ID)
+		ann, err := g.ds.Annotation(ctx).Get(getUserID(ctx), model.MediaItemType, mf.ID)
 		entries[i] = FromMediaFile(mf, ann)
 		entries[i].UserName = np.Username
 		entries[i].MinutesAgo = int(time.Now().Sub(np.Start).Minutes())

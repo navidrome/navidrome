@@ -32,11 +32,11 @@ type browser struct {
 }
 
 func (b *browser) MediaFolders(ctx context.Context) (model.MediaFolders, error) {
-	return b.ds.MediaFolder().GetAll()
+	return b.ds.MediaFolder(ctx).GetAll()
 }
 
 func (b *browser) Indexes(ctx context.Context, ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error) {
-	l, err := b.ds.Property().DefaultGet(model.PropLastScan, "-1")
+	l, err := b.ds.Property(ctx).DefaultGet(model.PropLastScan, "-1")
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
 
@@ -45,7 +45,7 @@ func (b *browser) Indexes(ctx context.Context, ifModifiedSince time.Time) (model
 	}
 
 	if lastModified.After(ifModifiedSince) {
-		indexes, err := b.ds.Artist().GetIndex()
+		indexes, err := b.ds.Artist(ctx).GetIndex()
 		return indexes, lastModified, err
 	}
 
@@ -72,7 +72,7 @@ type DirectoryInfo struct {
 }
 
 func (b *browser) Artist(ctx context.Context, id string) (*DirectoryInfo, error) {
-	a, albums, err := b.retrieveArtist(id)
+	a, albums, err := b.retrieveArtist(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +81,12 @@ func (b *browser) Artist(ctx context.Context, id string) (*DirectoryInfo, error)
 	for _, al := range albums {
 		albumIds = append(albumIds, al.ID)
 	}
-	annMap, err := b.ds.Annotation().GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
+	annMap, err := b.ds.Annotation(ctx).GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
 	return b.buildArtistDir(a, albums, annMap), nil
 }
 
 func (b *browser) Album(ctx context.Context, id string) (*DirectoryInfo, error) {
-	al, tracks, err := b.retrieveAlbum(id)
+	al, tracks, err := b.retrieveAlbum(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -97,11 +97,11 @@ func (b *browser) Album(ctx context.Context, id string) (*DirectoryInfo, error) 
 	}
 
 	userID := getUserID(ctx)
-	trackAnnMap, err := b.ds.Annotation().GetMap(userID, model.MediaItemType, mfIds)
+	trackAnnMap, err := b.ds.Annotation(ctx).GetMap(userID, model.MediaItemType, mfIds)
 	if err != nil {
 		return nil, err
 	}
-	ann, err := b.ds.Annotation().Get(userID, model.AlbumItemType, al.ID)
+	ann, err := b.ds.Annotation(ctx).Get(userID, model.AlbumItemType, al.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -121,13 +121,13 @@ func (b *browser) Directory(ctx context.Context, id string) (*DirectoryInfo, err
 }
 
 func (b *browser) GetSong(ctx context.Context, id string) (*Entry, error) {
-	mf, err := b.ds.MediaFile().Get(id)
+	mf, err := b.ds.MediaFile(ctx).Get(id)
 	if err != nil {
 		return nil, err
 	}
 
 	userId := getUserID(ctx)
-	ann, err := b.ds.Annotation().Get(userId, model.MediaItemType, id)
+	ann, err := b.ds.Annotation(ctx).Get(userId, model.MediaItemType, id)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (b *browser) GetSong(ctx context.Context, id string) (*Entry, error) {
 }
 
 func (b *browser) GetGenres(ctx context.Context) (model.Genres, error) {
-	genres, err := b.ds.Genre().GetAll()
+	genres, err := b.ds.Genre(ctx).GetAll()
 	for i, g := range genres {
 		if strings.TrimSpace(g.Name) == "" {
 			genres[i].Name = "<Empty>"
@@ -195,7 +195,7 @@ func (b *browser) buildAlbumDir(al *model.Album, albumAnn *model.Annotation, tra
 }
 
 func (b *browser) isArtist(ctx context.Context, id string) bool {
-	found, err := b.ds.Artist().Exists(id)
+	found, err := b.ds.Artist(ctx).Exists(id)
 	if err != nil {
 		log.Debug(ctx, "Error searching for Artist", "id", id, err)
 		return false
@@ -204,7 +204,7 @@ func (b *browser) isArtist(ctx context.Context, id string) bool {
 }
 
 func (b *browser) isAlbum(ctx context.Context, id string) bool {
-	found, err := b.ds.Album().Exists(id)
+	found, err := b.ds.Album(ctx).Exists(id)
 	if err != nil {
 		log.Debug(ctx, "Error searching for Album", "id", id, err)
 		return false
@@ -212,27 +212,27 @@ func (b *browser) isAlbum(ctx context.Context, id string) bool {
 	return found
 }
 
-func (b *browser) retrieveArtist(id string) (a *model.Artist, as model.Albums, err error) {
-	a, err = b.ds.Artist().Get(id)
+func (b *browser) retrieveArtist(ctx context.Context, id string) (a *model.Artist, as model.Albums, err error) {
+	a, err = b.ds.Artist(ctx).Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Artist %s from DB: %v", id, err)
 		return
 	}
 
-	if as, err = b.ds.Album().FindByArtist(id); err != nil {
+	if as, err = b.ds.Album(ctx).FindByArtist(id); err != nil {
 		err = fmt.Errorf("Error reading %s's albums from DB: %v", a.Name, err)
 	}
 	return
 }
 
-func (b *browser) retrieveAlbum(id string) (al *model.Album, mfs model.MediaFiles, err error) {
-	al, err = b.ds.Album().Get(id)
+func (b *browser) retrieveAlbum(ctx context.Context, id string) (al *model.Album, mfs model.MediaFiles, err error) {
+	al, err = b.ds.Album(ctx).Get(id)
 	if err != nil {
 		err = fmt.Errorf("Error reading Album %s from DB: %v", id, err)
 		return
 	}
 
-	if mfs, err = b.ds.MediaFile().FindByAlbum(id); err != nil {
+	if mfs, err = b.ds.MediaFile(ctx).FindByAlbum(id); err != nil {
 		err = fmt.Errorf("Error reading %s's tracks from DB: %v", al.Name, err)
 	}
 	return

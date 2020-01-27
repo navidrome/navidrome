@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"sync"
@@ -41,43 +42,43 @@ func New() model.DataStore {
 	return &SQLStore{}
 }
 
-func (db *SQLStore) Album() model.AlbumRepository {
+func (db *SQLStore) Album(context.Context) model.AlbumRepository {
 	return NewAlbumRepository(db.getOrmer())
 }
 
-func (db *SQLStore) Artist() model.ArtistRepository {
+func (db *SQLStore) Artist(context.Context) model.ArtistRepository {
 	return NewArtistRepository(db.getOrmer())
 }
 
-func (db *SQLStore) MediaFile() model.MediaFileRepository {
+func (db *SQLStore) MediaFile(context.Context) model.MediaFileRepository {
 	return NewMediaFileRepository(db.getOrmer())
 }
 
-func (db *SQLStore) MediaFolder() model.MediaFolderRepository {
+func (db *SQLStore) MediaFolder(context.Context) model.MediaFolderRepository {
 	return NewMediaFolderRepository(db.getOrmer())
 }
 
-func (db *SQLStore) Genre() model.GenreRepository {
+func (db *SQLStore) Genre(context.Context) model.GenreRepository {
 	return NewGenreRepository(db.getOrmer())
 }
 
-func (db *SQLStore) Playlist() model.PlaylistRepository {
+func (db *SQLStore) Playlist(context.Context) model.PlaylistRepository {
 	return NewPlaylistRepository(db.getOrmer())
 }
 
-func (db *SQLStore) Property() model.PropertyRepository {
+func (db *SQLStore) Property(context.Context) model.PropertyRepository {
 	return NewPropertyRepository(db.getOrmer())
 }
 
-func (db *SQLStore) User() model.UserRepository {
+func (db *SQLStore) User(context.Context) model.UserRepository {
 	return NewUserRepository(db.getOrmer())
 }
 
-func (db *SQLStore) Annotation() model.AnnotationRepository {
+func (db *SQLStore) Annotation(context.Context) model.AnnotationRepository {
 	return NewAnnotationRepository(db.getOrmer())
 }
 
-func (db *SQLStore) Resource(model interface{}) model.ResourceRepository {
+func (db *SQLStore) Resource(ctx context.Context, model interface{}) model.ResourceRepository {
 	return NewResource(db.getOrmer(), model, getMappedModel(model))
 }
 

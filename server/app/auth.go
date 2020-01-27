@@ -41,7 +41,7 @@ func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
-	user, err := validateLogin(ds.User(), username, password)
+	user, err := validateLogin(ds.User(r.Context()), username, password)
 	if err != nil {
 		rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authentication user. Please try again")
 		return
@@ -89,7 +89,7 @@ func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 			rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		c, err := ds.User().CountAll()
+		c, err := ds.User(r.Context()).CountAll()
 		if err != nil {
 			rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -98,7 +98,7 @@ func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 			rest.RespondWithError(w, http.StatusForbidden, "Cannot create another first admin")
 			return
 		}
-		err = createDefaultUser(ds, username, password)
+		err = createDefaultUser(r.Context(), ds, username, password)
 		if err != nil {
 			rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -107,7 +107,7 @@ func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func createDefaultUser(ds model.DataStore, username, password string) error {
+func createDefaultUser(ctx context.Context, ds model.DataStore, username, password string) error {
 	id, _ := uuid.NewRandom()
 	log.Warn("Creating initial user", "user", consts.InitialUserName)
 	initialUser := model.User{
@@ -118,7 +118,7 @@ func createDefaultUser(ds model.DataStore, username, password string) error {
 		Password: password,
 		IsAdmin:  true,
 	}
-	err := ds.User().Put(&initialUser)
+	err := ds.User(ctx).Put(&initialUser)
 	if err != nil {
 		log.Error("Could not create initial user", "user", initialUser, err)
 	}
@@ -127,7 +127,7 @@ func createDefaultUser(ds model.DataStore, username, password string) error {
 
 func initTokenAuth(ds model.DataStore) {
 	once.Do(func() {
-		secret, err := ds.Property().DefaultGet(consts.JWTSecretKey, "not so secret")
+		secret, err := ds.Property(nil).DefaultGet(consts.JWTSecretKey, "not so secret")
 		if err != nil {
 			log.Error("No JWT secret found in DB. Setting a temp one, but please report this error", err)
 		}
@@ -190,7 +190,7 @@ func getToken(ds model.DataStore, ctx context.Context) (*jwt.Token, error) {
 		return token, nil
 	}
 
-	c, err := ds.User().CountAll()
+	c, err := ds.User(ctx).CountAll()
 	firstTime := c == 0 && err == nil
 	if firstTime {
 		return nil, ErrFirstTime

@@ -24,7 +24,7 @@ type users struct {
 }
 
 func (u *users) Authenticate(ctx context.Context, username, pass, token, salt string) (*model.User, error) {
-	user, err := u.ds.User().FindByUsername(username)
+	user, err := u.ds.User(ctx).FindByUsername(username)
 	if err == model.ErrNotFound {
 		return nil, model.ErrInvalidAuth
 	}
@@ -50,7 +50,7 @@ func (u *users) Authenticate(ctx context.Context, username, pass, token, salt st
 		return nil, model.ErrInvalidAuth
 	}
 	go func() {
-		err := u.ds.User().UpdateLastAccessAt(user.ID)
+		err := u.ds.User(ctx).UpdateLastAccessAt(user.ID)
 		if err != nil {
 			log.Error(ctx, "Could not update user's lastAccessAt", "user", user.UserName)
 		}

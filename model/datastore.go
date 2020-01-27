@@ -1,6 +1,8 @@
 package model
 
 import (
+	"context"
+
 	"github.com/deluan/rest"
 )
 
@@ -22,17 +24,17 @@ type ResourceRepository interface {
 }
 
 type DataStore interface {
-	Album() AlbumRepository
-	Artist() ArtistRepository
-	MediaFile() MediaFileRepository
-	MediaFolder() MediaFolderRepository
-	Genre() GenreRepository
-	Playlist() PlaylistRepository
-	Property() PropertyRepository
-	User() UserRepository
-	Annotation() AnnotationRepository
+	Album(ctx context.Context) AlbumRepository
+	Artist(ctx context.Context) ArtistRepository
+	MediaFile(ctx context.Context) MediaFileRepository
+	MediaFolder(ctx context.Context) MediaFolderRepository
+	Genre(ctx context.Context) GenreRepository
+	Playlist(ctx context.Context) PlaylistRepository
+	Property(ctx context.Context) PropertyRepository
+	User(ctx context.Context) UserRepository
+	Annotation(ctx context.Context) AnnotationRepository
 
-	Resource(model interface{}) ResourceRepository
+	Resource(ctx context.Context, model interface{}) ResourceRepository
 
 	WithTx(func(tx DataStore) error) error
 }

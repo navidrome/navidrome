@@ -17,8 +17,8 @@ func TestCover(t *testing.T) {
 	Init(t, false)
 
 	ds := &persistence.MockDataStore{}
-	mockMediaFileRepo := ds.MediaFile().(*persistence.MockMediaFile)
-	mockAlbumRepo := ds.Album().(*persistence.MockAlbum)
+	mockMediaFileRepo := ds.MediaFile(nil).(*persistence.MockMediaFile)
+	mockAlbumRepo := ds.Album(nil).(*persistence.MockAlbum)
 
 	cover := engine.NewCover(ds)
 	out := new(bytes.Buffer)

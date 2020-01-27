@@ -64,7 +64,7 @@ func (app *Router) routes() http.Handler {
 
 func (app *Router) R(r chi.Router, pathPrefix string, model interface{}) {
 	constructor := func(ctx context.Context) rest.Repository {
-		return app.ds.Resource(model)
+		return app.ds.Resource(ctx, model)
 	}
 	r.Route(pathPrefix, func(r chi.Router) {
 		r.Get("/", rest.GetAll(constructor))

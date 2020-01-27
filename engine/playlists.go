@@ -30,7 +30,7 @@ func (p *playlists) Create(ctx context.Context, playlistId, name string, ids []s
 	var err error
 	// If playlistID is present, override tracks
 	if playlistId != "" {
-		pls, err = p.ds.Playlist().Get(playlistId)
+		pls, err = p.ds.Playlist(ctx).Get(playlistId)
 		if err != nil {
 			return err
 		}
@@ -48,7 +48,7 @@ func (p *playlists) Create(ctx context.Context, playlistId, name string, ids []s
 		pls.Tracks = append(pls.Tracks, model.MediaFile{ID: id})
 	}
 
-	return p.ds.Playlist().Put(pls)
+	return p.ds.Playlist(ctx).Put(pls)
 }
 
 func (p *playlists) getUser(ctx context.Context) string {
@@ -61,7 +61,7 @@ func (p *playlists) getUser(ctx context.Context) string {
 }
 
 func (p *playlists) Delete(ctx context.Context, playlistId string) error {
-	pls, err := p.ds.Playlist().Get(playlistId)
+	pls, err := p.ds.Playlist(ctx).Get(playlistId)
 	if err != nil {
 		return err
 	}
@@ -70,11 +70,11 @@ func (p *playlists) Delete(ctx context.Context, playlistId string) error {
 	if owner != pls.Owner {
 		return model.ErrNotAuthorized
 	}
-	return p.ds.Playlist().Delete(playlistId)
+	return p.ds.Playlist(nil).Delete(playlistId)
 }
 
 func (p *playlists) Update(ctx context.Context, playlistId string, name *string, idsToAdd []string, idxToRemove []int) error {
-	pls, err := p.ds.Playlist().Get(playlistId)
+	pls, err := p.ds.Playlist(ctx).Get(playlistId)
 
 	owner := p.getUser(ctx)
 	if owner != pls.Owner {
@@ -100,11 +100,11 @@ func (p *playlists) Update(ctx context.Context, playlistId string, name *string,
 	}
 	pls.Tracks = newTracks
 
-	return p.ds.Playlist().Put(pls)
+	return p.ds.Playlist(ctx).Put(pls)
 }
 
 func (p *playlists) GetAll(ctx context.Context) (model.Playlists, error) {
-	return p.ds.Playlist().GetAll(model.QueryOptions{})
+	return p.ds.Playlist(ctx).GetAll(model.QueryOptions{})
 }
 
 type PlaylistInfo struct {
@@ -119,7 +119,7 @@ type PlaylistInfo struct {
 }
 
 func (p *playlists) Get(ctx context.Context, id string) (*PlaylistInfo, error) {
-	pl, err := p.ds.Playlist().GetWithTracks(id)
+	pl, err := p.ds.Playlist(ctx).GetWithTracks(id)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (p *playlists) Get(ctx context.Context, id string) (*PlaylistInfo, error) {
 		mfIds = append(mfIds, mf.ID)
 	}
 
-	annMap, err := p.ds.Annotation().GetMap(getUserID(ctx), model.MediaItemType, mfIds)
+	annMap, err := p.ds.Annotation(ctx).GetMap(getUserID(ctx), model.MediaItemType, mfIds)
 
 	for i, mf := range pl.Tracks {
 		ann := annMap[mf.ID]
