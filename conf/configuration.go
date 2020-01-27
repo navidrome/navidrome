@@ -84,6 +84,9 @@ func LoadFromFile(confFile string, skipFlags ...bool) {
 	if Server.DbPath == "" {
 		Server.DbPath = filepath.Join(Server.DataFolder, "navidrome.db")
 	}
+	if os.Getenv("PORT") != "" {
+		Server.Port = os.Getenv("PORT")
+	}
 	log.SerLevelString(Server.LogLevel)
 	log.Trace("Loaded configuration", "file", confFile, "config", fmt.Sprintf("%#v", Server))
 }
