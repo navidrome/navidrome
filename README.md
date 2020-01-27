@@ -10,7 +10,8 @@ music collection from any browser or mobile device.
 This is a fully functional _alpha quality_ software. Expect some changes in the feature set and the way it works. 
 
 __Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
-please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) 
+please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join the chat in our [Discord server](https://discord.gg/xh7j7yF)
+
 
 ## Features
 
