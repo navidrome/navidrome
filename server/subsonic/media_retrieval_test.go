@@ -42,7 +42,7 @@ var _ = Describe("MediaRetrievalController", func() {
 	Describe("GetCoverArt", func() {
 		It("should return data for that id", func() {
 			cover.data = "image data"
-			r := newTestRequest("id=34", "size=128")
+			r := newGetRequest("id=34", "size=128")
 			_, err := controller.GetCoverArt(w, r)
 
 			Expect(err).To(BeNil())
@@ -52,7 +52,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		})
 
 		It("should fail if missing id parameter", func() {
-			r := newTestRequest()
+			r := newGetRequest()
 			_, err := controller.GetCoverArt(w, r)
 
 			Expect(err).To(MatchError("id parameter required"))
@@ -60,7 +60,7 @@ var _ = Describe("MediaRetrievalController", func() {
 
 		It("should fail when the file is not found", func() {
 			cover.err = model.ErrNotFound
-			r := newTestRequest("id=34", "size=128")
+			r := newGetRequest("id=34", "size=128")
 			_, err := controller.GetCoverArt(w, r)
 
 			Expect(err).To(MatchError("Cover not found"))
@@ -68,7 +68,7 @@ var _ = Describe("MediaRetrievalController", func() {
 
 		It("should fail when there is an unknown error", func() {
 			cover.err = errors.New("weird error")
-			r := newTestRequest("id=34", "size=128")
+			r := newGetRequest("id=34", "size=128")
 			_, err := controller.GetCoverArt(w, r)
 
 			Expect(err).To(MatchError("Internal Error"))

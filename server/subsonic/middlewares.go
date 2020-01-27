@@ -4,12 +4,32 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 )
+
+func postFormToQueryParams(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if err != nil {
+			SendError(w, r, NewError(responses.ErrorGeneric, err.Error()))
+		}
+		var parts []string
+		for key, values := range r.Form {
+			for _, v := range values {
+				parts = append(parts, url.QueryEscape(key)+"="+url.QueryEscape(v))
+			}
+		}
+		r.URL.RawQuery = strings.Join(parts, "&")
+
+		next.ServeHTTP(w, r)
+	})
+}
 
 func checkRequiredParameters(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

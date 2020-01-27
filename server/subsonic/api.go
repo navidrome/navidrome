@@ -45,6 +45,7 @@ func (api *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (api *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
+	r.Use(postFormToQueryParams)
 	r.Use(checkRequiredParameters)
 
 	// Add validation middleware if not disabled

@@ -13,8 +13,18 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func newTestRequest(queryParams ...string) *http.Request {
-	r := httptest.NewRequest("get", "/ping?"+strings.Join(queryParams, "&"), nil)
+func newGetRequest(queryParams ...string) *http.Request {
+	r := httptest.NewRequest("GET", "/ping?"+strings.Join(queryParams, "&"), nil)
+	ctx := r.Context()
+	return r.WithContext(log.NewContext(ctx))
+}
+
+func newPostRequest(queryParam string, formFields ...string) *http.Request {
+	r, err := http.NewRequest("POST", "/ping?"+queryParam, strings.NewReader(strings.Join(formFields, "&")))
+	if err != nil {
+		panic(err)
+	}
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	ctx := r.Context()
 	return r.WithContext(log.NewContext(ctx))
 }
@@ -28,9 +38,37 @@ var _ = Describe("Middlewares", func() {
 		w = httptest.NewRecorder()
 	})
 
+	Describe("ParsePostForm", func() {
+		It("converts any filed in a x-www-form-urlencoded POST into query params", func() {
+			r := newPostRequest("a=abc", "u=user", "v=1.15", "c=test")
+			cp := postFormToQueryParams(next)
+			cp.ServeHTTP(w, r)
+
+			Expect(next.req.URL.Query().Get("a")).To(Equal("abc"))
+			Expect(next.req.URL.Query().Get("u")).To(Equal("user"))
+			Expect(next.req.URL.Query().Get("v")).To(Equal("1.15"))
+			Expect(next.req.URL.Query().Get("c")).To(Equal("test"))
+		})
+		It("adds repeated params", func() {
+			r := newPostRequest("a=abc", "id=1", "id=2")
+			cp := postFormToQueryParams(next)
+			cp.ServeHTTP(w, r)
+
+			Expect(next.req.URL.Query().Get("a")).To(Equal("abc"))
+			Expect(next.req.URL.Query()["id"]).To(ConsistOf("1", "2"))
+		})
+		It("overrides query params with same key", func() {
+			r := newPostRequest("a=query", "a=body")
+			cp := postFormToQueryParams(next)
+			cp.ServeHTTP(w, r)
+
+			Expect(next.req.URL.Query().Get("a")).To(Equal("body"))
+		})
+	})
+
 	Describe("CheckParams", func() {
 		It("passes when all required params are available", func() {
-			r := newTestRequest("u=user", "v=1.15", "c=test")
+			r := newGetRequest("u=user", "v=1.15", "c=test")
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
@@ -41,7 +79,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("fails when user is missing", func() {
-			r := newTestRequest("v=1.15", "c=test")
+			r := newGetRequest("v=1.15", "c=test")
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
@@ -50,7 +88,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("fails when version is missing", func() {
-			r := newTestRequest("u=user", "c=test")
+			r := newGetRequest("u=user", "c=test")
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
@@ -59,7 +97,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("fails when client is missing", func() {
-			r := newTestRequest("u=user", "v=1.15")
+			r := newGetRequest("u=user", "v=1.15")
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
@@ -75,7 +113,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("passes all parameters to users.Authenticate ", func() {
-			r := newTestRequest("u=valid", "p=password", "t=token", "s=salt")
+			r := newGetRequest("u=valid", "p=password", "t=token", "s=salt")
 			cp := authenticate(mockedUser)(next)
 			cp.ServeHTTP(w, r)
 
@@ -89,7 +127,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("fails authentication with wrong password", func() {
-			r := newTestRequest("u=invalid", "", "", "")
+			r := newGetRequest("u=invalid", "", "", "")
 			cp := authenticate(mockedUser)(next)
 			cp.ServeHTTP(w, r)
 

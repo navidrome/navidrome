@@ -40,7 +40,7 @@ var _ = Describe("AlbumListController", func() {
 
 	Describe("GetAlbumList", func() {
 		It("should return list of the type specified", func() {
-			r := newTestRequest("type=newest", "offset=10", "size=20")
+			r := newGetRequest("type=newest", "offset=10", "size=20")
 			listGen.data = engine.Entries{
 				{Id: "1"}, {Id: "2"},
 			}
@@ -54,7 +54,7 @@ var _ = Describe("AlbumListController", func() {
 		})
 
 		It("should fail if missing type parameter", func() {
-			r := newTestRequest()
+			r := newGetRequest()
 			_, err := controller.GetAlbumList(w, r)
 
 			Expect(err).To(MatchError("Required string parameter 'type' is not present"))
@@ -62,7 +62,7 @@ var _ = Describe("AlbumListController", func() {
 
 		It("should return error if call fails", func() {
 			listGen.err = errors.New("some issue")
-			r := newTestRequest("type=newest")
+			r := newGetRequest("type=newest")
 
 			_, err := controller.GetAlbumList(w, r)
 
@@ -72,7 +72,7 @@ var _ = Describe("AlbumListController", func() {
 
 	Describe("GetAlbumList2", func() {
 		It("should return list of the type specified", func() {
-			r := newTestRequest("type=newest", "offset=10", "size=20")
+			r := newGetRequest("type=newest", "offset=10", "size=20")
 			listGen.data = engine.Entries{
 				{Id: "1"}, {Id: "2"},
 			}
@@ -86,7 +86,7 @@ var _ = Describe("AlbumListController", func() {
 		})
 
 		It("should fail if missing type parameter", func() {
-			r := newTestRequest()
+			r := newGetRequest()
 			_, err := controller.GetAlbumList2(w, r)
 
 			Expect(err).To(MatchError("Required string parameter 'type' is not present"))
@@ -94,7 +94,7 @@ var _ = Describe("AlbumListController", func() {
 
 		It("should return error if call fails", func() {
 			listGen.err = errors.New("some issue")
-			r := newTestRequest("type=newest")
+			r := newGetRequest("type=newest")
 
 			_, err := controller.GetAlbumList2(w, r)
 
