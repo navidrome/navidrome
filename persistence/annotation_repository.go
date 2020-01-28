@@ -1,8 +1,10 @@
 package persistence
 
 import (
+	"context"
 	"time"
 
+	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/model"
 	"github.com/google/uuid"
@@ -13,16 +15,16 @@ type annotation struct {
 	UserID       string    `orm:"column(user_id)"`
 	ItemID       string    `orm:"column(item_id)"`
 	ItemType     string    `orm:"column(item_type)"`
-	PlayCount    int       `orm:"index;null"`
-	PlayDate     time.Time `orm:"index;null"`
-	Rating       int       `orm:"index;null"`
+	PlayCount    int       `orm:"column(play_count);index;null"`
+	PlayDate     time.Time `orm:"column(play_date);index;null"`
+	Rating       int       `orm:"null"`
 	Starred      bool      `orm:"index"`
-	StarredAt    time.Time `orm:"null"`
+	StarredAt    time.Time `orm:"column(starred_at);null"`
 }
 
 func (u *annotation) TableUnique() [][]string {
 	return [][]string{
-		[]string{"UserID", "ItemID", "ItemType"},
+		{"UserID", "ItemID", "ItemType"},
 	}
 }
 
@@ -30,40 +32,40 @@ type annotationRepository struct {
 	sqlRepository
 }
 
-func NewAnnotationRepository(o orm.Ormer) model.AnnotationRepository {
+func NewAnnotationRepository(ctx context.Context, o orm.Ormer) model.AnnotationRepository {
 	r := &annotationRepository{}
+	r.ctx = ctx
 	r.ormer = o
 	r.tableName = "annotation"
 	return r
 }
 
 func (r *annotationRepository) Get(userID, itemType string, itemID string) (*model.Annotation, error) {
-	if userID == "" {
-		return nil, model.ErrInvalidAuth
-	}
-	q := r.newQuery().Filter("user_id", userID).Filter("item_type", itemType).Filter("item_id", itemID)
+	q := Select("*").From(r.tableName).Where(And{
+		Eq{"user_id": userId(r.ctx)},
+		Eq{"item_type": itemType},
+		Eq{"item_id": itemID},
+	})
 	var ann annotation
-	err := q.One(&ann)
-	if err == orm.ErrNoRows {
+	err := r.queryOne(q, &ann)
+	if err == model.ErrNotFound {
 		return nil, nil
-	}
-	if err != nil {
-		return nil, err
 	}
 	resp := model.Annotation(ann)
 	return &resp, nil
 }
 
-func (r *annotationRepository) GetMap(userID, itemType string, itemID []string) (model.AnnotationMap, error) {
-	if userID == "" {
-		return nil, model.ErrInvalidAuth
-	}
-	if len(itemID) == 0 {
+func (r *annotationRepository) GetMap(userID, itemType string, itemIDs []string) (model.AnnotationMap, error) {
+	if len(itemIDs) == 0 {
 		return nil, nil
 	}
-	q := r.newQuery().Filter("user_id", userID).Filter("item_type", itemType).Filter("item_id__in", itemID)
+	q := Select("*").From(r.tableName).Where(And{
+		Eq{"user_id": userId(r.ctx)},
+		Eq{"item_type": itemType},
+		Eq{"item_id": itemIDs},
+	})
 	var res []annotation
-	_, err := q.All(&res)
+	err := r.queryAll(q, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -76,12 +78,12 @@ func (r *annotationRepository) GetMap(userID, itemType string, itemID []string) 
 }
 
 func (r *annotationRepository) GetAll(userID, itemType string, options ...model.QueryOptions) ([]model.Annotation, error) {
-	if userID == "" {
-		return nil, model.ErrInvalidAuth
-	}
-	q := r.newQuery(options...).Filter("user_id", userID).Filter("item_type", itemType)
+	q := Select("*").From(r.tableName).Where(And{
+		Eq{"user_id": userId(r.ctx)},
+		Eq{"item_type": itemType},
+	})
 	var res []annotation
-	_, err := q.All(&res)
+	err := r.queryAll(q, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -104,16 +106,18 @@ func (r *annotationRepository) new(userID, itemType string, itemID string) *anno
 }
 
 func (r *annotationRepository) IncPlayCount(userID, itemType string, itemID string, ts time.Time) error {
-	if userID == "" {
-		return model.ErrInvalidAuth
-	}
-	q := r.newQuery().Filter("user_id", userID).Filter("item_type", itemType).Filter("item_id", itemID)
-	c, err := q.Update(orm.Params{
-		"play_count": orm.ColValue(orm.ColAdd, 1),
-		"play_date":  ts,
-	})
+	uid := userId(r.ctx)
+	q := Update(r.tableName).
+		Set("play_count", Expr("play_count + 1")).
+		Set("play_date", ts).
+		Where(And{
+			Eq{"user_id": uid},
+			Eq{"item_type": itemType},
+			Eq{"item_id": itemID},
+		})
+	c, err := r.executeSQL(q)
 	if c == 0 || err == orm.ErrNoRows {
-		ann := r.new(userID, itemType, itemID)
+		ann := r.new(uid, itemType, itemID)
 		ann.PlayCount = 1
 		ann.PlayDate = ts
 		_, err = r.ormer.Insert(ann)
@@ -122,26 +126,30 @@ func (r *annotationRepository) IncPlayCount(userID, itemType string, itemID stri
 }
 
 func (r *annotationRepository) SetStar(starred bool, userID, itemType string, ids ...string) error {
-	if userID == "" {
-		return model.ErrInvalidAuth
-	}
-	q := r.newQuery().Filter("user_id", userID).Filter("item_type", itemType).Filter("item_id__in", ids)
+	uid := userId(r.ctx)
 	var starredAt time.Time
 	if starred {
 		starredAt = time.Now()
 	}
-	c, err := q.Update(orm.Params{
-		"starred":    starred,
-		"starred_at": starredAt,
-	})
+	q := Update(r.tableName).
+		Set("starred", starred).
+		Set("starred_at", starredAt).
+		Where(And{
+			Eq{"user_id": uid},
+			Eq{"item_type": itemType},
+			Eq{"item_id": ids},
+		})
+	c, err := r.executeSQL(q)
 	if c == 0 || err == orm.ErrNoRows {
 		for _, id := range ids {
-			ann := r.new(userID, itemType, id)
+			ann := r.new(uid, itemType, id)
 			ann.Starred = starred
 			ann.StarredAt = starredAt
 			_, err = r.ormer.Insert(ann)
 			if err != nil {
-				return err
+				if err.Error() != "LastInsertId is not supported by this driver" {
+					return err
+				}
 			}
 		}
 	}
@@ -149,24 +157,27 @@ func (r *annotationRepository) SetStar(starred bool, userID, itemType string, id
 }
 
 func (r *annotationRepository) SetRating(rating int, userID, itemType string, itemID string) error {
-	if userID == "" {
-		return model.ErrInvalidAuth
-	}
-	q := r.newQuery().Filter("user_id", userID).Filter("item_type", itemType).Filter("item_id", itemID)
-	c, err := q.Update(orm.Params{
-		"rating": rating,
-	})
+	uid := userId(r.ctx)
+	q := Update(r.tableName).
+		Set("rating", rating).
+		Where(And{
+			Eq{"user_id": uid},
+			Eq{"item_type": itemType},
+			Eq{"item_id": itemID},
+		})
+	c, err := r.executeSQL(q)
 	if c == 0 || err == orm.ErrNoRows {
-		ann := r.new(userID, itemType, itemID)
+		ann := r.new(uid, itemType, itemID)
 		ann.Rating = rating
 		_, err = r.ormer.Insert(ann)
 	}
 	return err
-
 }
 
-func (r *annotationRepository) Delete(userID, itemType string, itemID ...string) error {
-	q := r.newQuery().Filter("user_id", userID).Filter("item_type", itemType).Filter("item_id__in", itemID)
-	_, err := q.Delete()
-	return err
+func (r *annotationRepository) Delete(userID, itemType string, ids ...string) error {
+	return r.delete(And{
+		Eq{"user_id": userId(r.ctx)},
+		Eq{"item_type": itemType},
+		Eq{"item_id": ids},
+	})
 }

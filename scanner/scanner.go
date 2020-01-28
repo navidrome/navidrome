@@ -34,7 +34,7 @@ func (s *Scanner) Rescan(mediaFolder string, fullRescan bool) error {
 		log.Debug("Scanning folder (full scan)", "folder", mediaFolder)
 	}
 
-	err := folderScanner.Scan(nil, lastModifiedSince)
+	err := folderScanner.Scan(log.NewContext(nil), lastModifiedSince)
 	if err != nil {
 		log.Error("Error importing MediaFolder", "folder", mediaFolder, err)
 	}

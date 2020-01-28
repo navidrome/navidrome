@@ -3,26 +3,33 @@ package model
 import "time"
 
 type Album struct {
-	ID           string
-	Name         string
-	ArtistID     string
-	CoverArtPath string
-	CoverArtId   string
-	Artist       string
-	AlbumArtist  string
-	Year         int
-	Compilation  bool
-	SongCount    int
-	Duration     int
-	Genre        string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID           string    `json:"id"            orm:"column(id)"`
+	Name         string    `json:"name"`
+	ArtistID     string    `json:"artistId"`
+	CoverArtPath string    `json:"-"`
+	CoverArtId   string    `json:"-"`
+	Artist       string    `json:"artist"`
+	AlbumArtist  string    `json:"albumArtist"`
+	Year         int       `json:"year"`
+	Compilation  bool      `json:"compilation"`
+	SongCount    int       `json:"songCount"`
+	Duration     int       `json:"duration"`
+	Genre        string    `json:"genre"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
+
+	// Annotations
+	PlayCount int       `orm:"-"`
+	PlayDate  time.Time `orm:"-"`
+	Rating    int       `orm:"-"`
+	Starred   bool      `orm:"-"`
+	StarredAt time.Time `orm:"-"`
 }
 
 type Albums []Album
 
 type AlbumRepository interface {
-	CountAll() (int64, error)
+	CountAll(...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(m *Album) error
 	Get(id string) (*Album, error)

@@ -1,92 +1,137 @@
 package persistence
 
 import (
+	"context"
+	"strings"
 	"time"
 
+	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
+	"github.com/google/uuid"
 )
 
-type user struct {
-	ID           string     `json:"id"             orm:"pk;column(id)"`
-	UserName     string     `json:"userName"       orm:"index;unique"`
-	Name         string     `json:"name"`
-	Email        string     `json:"email"          orm:"unique"`
-	Password     string     `json:"password"`
-	IsAdmin      bool       `json:"isAdmin"`
-	LastLoginAt  *time.Time `json:"lastLoginAt"    orm:"null"`
-	LastAccessAt *time.Time `json:"lastAccessAt"   orm:"null"`
-	CreatedAt    time.Time  `json:"createdAt"      orm:"auto_now_add;type(datetime)"`
-	UpdatedAt    time.Time  `json:"updatedAt"      orm:"auto_now;type(datetime)"`
-}
-
 type userRepository struct {
-	ormer        orm.Ormer
-	userResource model.ResourceRepository
+	sqlRepository
 }
 
-func NewUserRepository(o orm.Ormer) model.UserRepository {
-	r := &userRepository{ormer: o}
-	r.userResource = NewResource(o, model.User{}, new(user))
+func NewUserRepository(ctx context.Context, o orm.Ormer) model.UserRepository {
+	r := &userRepository{}
+	r.ctx = ctx
+	r.ormer = o
+	r.tableName = "user"
 	return r
 }
 
 func (r *userRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
-	if len(qo) > 0 {
-		return r.userResource.Count(rest.QueryOptions(qo[0]))
-	}
-	return r.userResource.Count()
+	return r.count(Select(), qo...)
 }
 
 func (r *userRepository) Get(id string) (*model.User, error) {
-	u, err := r.userResource.Read(id)
-	if err != nil {
-		return nil, err
-	}
-	res := model.User(u.(user))
-	return &res, nil
+	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
+	var res model.User
+	err := r.queryOne(sel, &res)
+	return &res, err
+}
+
+func (r *userRepository) GetAll(options ...model.QueryOptions) (model.Users, error) {
+	sel := r.newSelect(options...).Columns("*")
+	var res model.Users
+	err := r.queryAll(sel, &res)
+	return res, err
 }
 
 func (r *userRepository) Put(u *model.User) error {
-	tu := user(*u)
-	c, err := r.CountAll()
+	if u.ID == "" {
+		id, _ := uuid.NewRandom()
+		u.ID = id.String()
+	}
+	u.UserName = strings.ToLower(u.UserName)
+	values, _ := toSqlArgs(*u)
+	update := Update(r.tableName).Where(Eq{"id": u.ID}).SetMap(values)
+	count, err := r.executeSQL(update)
 	if err != nil {
 		return err
 	}
-	if c == 0 {
-		_, err = r.userResource.Save(&tu)
-		return err
+	if count > 0 {
+		return nil
 	}
-	return r.userResource.Update(&tu, "user_name", "is_admin", "password")
+	insert := Insert(r.tableName).SetMap(values)
+	_, err = r.executeSQL(insert)
+	return err
 }
 
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
-	tu := user{}
-	err := r.ormer.QueryTable(user{}).Filter("user_name__iexact", username).One(&tu)
-	if err == orm.ErrNoRows {
-		return nil, model.ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	u := model.User(tu)
-	return &u, err
+	sel := r.newSelect().Columns("*").Where(Eq{"user_name": username})
+	var usr model.User
+	err := r.queryOne(sel, &usr)
+	return &usr, err
 }
 
 func (r *userRepository) UpdateLastLoginAt(id string) error {
-	now := time.Now()
-	tu := user{ID: id, LastLoginAt: &now}
-	_, err := r.ormer.Update(&tu, "last_login_at")
+	upd := Update(r.tableName).Where(Eq{"id": id}).Set("last_login_at", time.Now())
+	_, err := r.executeSQL(upd)
 	return err
 }
 
 func (r *userRepository) UpdateLastAccessAt(id string) error {
 	now := time.Now()
-	tu := user{ID: id, LastAccessAt: &now}
-	_, err := r.ormer.Update(&tu, "last_access_at")
+	upd := Update(r.tableName).Where(Eq{"id": id}).Set("last_access_at", now)
+	_, err := r.executeSQL(upd)
 	return err
 }
 
-var _ = model.User(user{})
+func (r *userRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(options...))
+}
+
+func (r *userRepository) Read(id string) (interface{}, error) {
+	usr, err := r.Get(id)
+	if err == model.ErrNotFound {
+		return nil, rest.ErrNotFound
+	}
+	return usr, err
+}
+
+func (r *userRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	return r.GetAll(r.parseRestOptions(options...))
+}
+
+func (r *userRepository) EntityName() string {
+	return "user"
+}
+
+func (r *userRepository) NewInstance() interface{} {
+	return &model.User{}
+}
+
+func (r *userRepository) Save(entity interface{}) (string, error) {
+	usr := entity.(*model.User)
+	err := r.Put(usr)
+	if err != nil {
+		return "", err
+	}
+	return usr.ID, err
+}
+
+func (r *userRepository) Update(entity interface{}, cols ...string) error {
+	usr := entity.(*model.User)
+	err := r.Put(usr)
+	if err == model.ErrNotFound {
+		return rest.ErrNotFound
+	}
+	return err
+}
+
+func (r *userRepository) Delete(id string) error {
+	err := r.Delete(id)
+	if err == model.ErrNotFound {
+		return rest.ErrNotFound
+	}
+	return err
+}
+
 var _ model.UserRepository = (*userRepository)(nil)
+var _ rest.Repository = (*userRepository)(nil)
+var _ rest.Persistable = (*userRepository)(nil)

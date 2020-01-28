@@ -110,13 +110,15 @@ func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 func createDefaultUser(ctx context.Context, ds model.DataStore, username, password string) error {
 	id, _ := uuid.NewRandom()
 	log.Warn("Creating initial user", "user", username)
+	now := time.Now()
 	initialUser := model.User{
-		ID:       id.String(),
-		UserName: username,
-		Name:     strings.Title(username),
-		Email:    "",
-		Password: password,
-		IsAdmin:  true,
+		ID:          id.String(),
+		UserName:    username,
+		Name:        strings.Title(username),
+		Email:       "",
+		Password:    password,
+		IsAdmin:     true,
+		LastLoginAt: &now,
 	}
 	err := ds.User(ctx).Put(&initialUser)
 	if err != nil {

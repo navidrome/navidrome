@@ -1,6 +1,9 @@
 package persistence
 
 import (
+	"context"
+
+	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/model"
 )
@@ -14,35 +17,41 @@ type propertyRepository struct {
 	sqlRepository
 }
 
-func NewPropertyRepository(o orm.Ormer) model.PropertyRepository {
+func NewPropertyRepository(ctx context.Context, o orm.Ormer) model.PropertyRepository {
 	r := &propertyRepository{}
+	r.ctx = ctx
 	r.ormer = o
 	r.tableName = "property"
 	return r
 }
 
-func (r *propertyRepository) Put(id string, value string) error {
-	p := &property{ID: id, Value: value}
-	num, err := r.ormer.Update(p)
+func (r propertyRepository) Put(id string, value string) error {
+	update := squirrel.Update(r.tableName).Set("value", value).Where(squirrel.Eq{"id": id})
+	count, err := r.executeSQL(update)
 	if err != nil {
 		return nil
 	}
-	if num == 0 {
-		_, err = r.ormer.Insert(p)
+	if count > 0 {
+		return nil
 	}
+	insert := squirrel.Insert(r.tableName).Columns("id", "value").Values(id, value)
+	_, err = r.executeSQL(insert)
 	return err
 }
 
-func (r *propertyRepository) Get(id string) (string, error) {
-	p := &property{ID: id}
-	err := r.ormer.Read(p)
-	if err == orm.ErrNoRows {
-		return "", model.ErrNotFound
+func (r propertyRepository) Get(id string) (string, error) {
+	sel := squirrel.Select("value").From(r.tableName).Where(squirrel.Eq{"id": id})
+	resp := struct {
+		Value string
+	}{}
+	err := r.queryOne(sel, &resp)
+	if err != nil {
+		return "", err
 	}
-	return p.Value, err
+	return resp.Value, nil
 }
 
-func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
+func (r propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
 	value, err := r.Get(id)
 	if err == model.ErrNotFound {
 		return defaultValue, nil
@@ -52,5 +61,3 @@ func (r *propertyRepository) DefaultGet(id string, defaultValue string) (string,
 	}
 	return value, nil
 }
-
-var _ model.PropertyRepository = (*propertyRepository)(nil)

@@ -5,7 +5,7 @@ import "time"
 const (
 	ArtistItemType = "artist"
 	AlbumItemType  = "album"
-	MediaItemType  = "mediaFile"
+	MediaItemType  = "media_file"
 )
 
 type Annotation struct {
