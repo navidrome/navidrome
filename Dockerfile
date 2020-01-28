@@ -33,8 +33,10 @@ COPY --from=jsbuilder /src/build/* /src/ui/build/
 COPY --from=jsbuilder /src/build/static/css/* /src/ui/build/static/css/
 COPY --from=jsbuilder /src/build/static/js/* /src/ui/build/static/js/
 RUN rm -rf /src/build/css /src/build/js
-RUN GIT_SHA=$(git rev-parse --short HEAD) && \
-    GIT_TAG=$(git describe --tags --abbrev=0 2> /dev/null) && \
+RUN GIT_TAG=$(git name-rev --name-only HEAD) && \
+    GIT_TAG=${GIT_TAG#"tags/"} && \
+    GIT_SHA=$(git rev-parse --short HEAD) && \
+    echo "Building version: ${GIT_TAG} (${GIT_SHA})" && \
     go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/... && \
     go build -ldflags="-X main.gitSha=${GIT_SHA} -X main.gitTag=${GIT_TAG}" -tags=embed
 
