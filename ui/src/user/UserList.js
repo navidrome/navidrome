@@ -33,8 +33,7 @@ const UserList = (props) => {
         <SimpleList
           primaryText={(record) => record.name}
           secondaryText={(record) =>
-            record.lastAccessAt &&
-            new Date(record.lastAccessAt).toLocaleString()
+            record.lastLoginAt && new Date(record.lastLoginAt).toLocaleString()
           }
           tertiaryText={(record) => (record.isAdmin ? '[admin]️' : '')}
         />
@@ -42,7 +41,7 @@ const UserList = (props) => {
         <Datagrid rowClick="edit">
           <TextField source="userName" />
           <BooleanField source="isAdmin" />
-          <DateField source="lastAccessAt" locales="pt-BR" />
+          <DateField source="lastLoginAt" locales="pt-BR" />
           <DateField source="updatedAt" locales="pt-BR" />
         </Datagrid>
       )}

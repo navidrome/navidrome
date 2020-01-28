@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 )
 
@@ -49,11 +48,12 @@ func (u *users) Authenticate(ctx context.Context, username, pass, token, salt st
 	if !valid {
 		return nil, model.ErrInvalidAuth
 	}
-	go func() {
-		err := u.ds.User(ctx).UpdateLastAccessAt(user.ID)
-		if err != nil {
-			log.Error(ctx, "Could not update user's lastAccessAt", "user", user.UserName)
-		}
-	}()
+	// TODO: Find a way to update LastAccessAt without causing too much retention in the DB
+	//go func() {
+	//	err := u.ds.User(ctx).UpdateLastAccessAt(user.ID)
+	//	if err != nil {
+	//		log.Error(ctx, "Could not update user's lastAccessAt", "user", user.UserName)
+	//	}
+	//}()
 	return user, nil
 }
