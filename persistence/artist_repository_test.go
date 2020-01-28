@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/model"
 	. "github.com/onsi/ginkgo"
@@ -11,22 +13,27 @@ var _ = Describe("ArtistRepository", func() {
 	var repo model.ArtistRepository
 
 	BeforeEach(func() {
-		repo = NewArtistRepository(orm.NewOrm())
+		repo = NewArtistRepository(context.Background(), orm.NewOrm())
 	})
 
-	Describe("Put/Get", func() {
+	Describe("Count", func() {
+		It("returns the number of artists in the DB", func() {
+			Expect(repo.CountAll()).To(Equal(int64(2)))
+		})
+	})
+
+	Describe("Exist", func() {
+		It("returns true for an artist that is in the DB", func() {
+			Expect(repo.Exists("3")).To(BeTrue())
+		})
+		It("returns false for an artist that is in the DB", func() {
+			Expect(repo.Exists("666")).To(BeFalse())
+		})
+	})
+
+	Describe("Get", func() {
 		It("saves and retrieves data", func() {
-			Expect(repo.Get("1")).To(Equal(&artistSaaraSaara))
-		})
-
-		It("overrides data if ID already exists", func() {
-			Expect(repo.Put(&model.Artist{ID: "1", Name: "Saara Saara is The Best!", AlbumCount: 3})).To(BeNil())
-			Expect(repo.Get("1")).To(Equal(&model.Artist{ID: "1", Name: "Saara Saara is The Best!", AlbumCount: 3}))
-		})
-
-		It("returns ErrNotFound when the ID does not exist", func() {
-			_, err := repo.Get("999")
-			Expect(err).To(MatchError(model.ErrNotFound))
+			Expect(repo.Get("2")).To(Equal(&artistKraftwerk))
 		})
 	})
 
@@ -45,12 +52,6 @@ var _ = Describe("ArtistRepository", func() {
 					ID: "K",
 					Artists: model.Artists{
 						artistKraftwerk,
-					},
-				},
-				{
-					ID: "S",
-					Artists: model.Artists{
-						{ID: "1", Name: "Saara Saara is The Best!", AlbumCount: 3},
 					},
 				},
 			}))

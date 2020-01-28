@@ -30,6 +30,12 @@ func TestLog(t *testing.T) {
 			So(hook.LastEntry().Data, ShouldBeEmpty)
 		})
 
+		SkipConvey("Empty context", func() {
+			Error(context.Background(), "Simple Message")
+			So(hook.LastEntry().Message, ShouldEqual, "Simple Message")
+			So(hook.LastEntry().Data, ShouldBeEmpty)
+		})
+
 		Convey("Message with two kv pairs", func() {
 			Error("Simple Message", "key1", "value1", "key2", "value2")
 			So(hook.LastEntry().Message, ShouldEqual, "Simple Message")

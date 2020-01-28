@@ -1,176 +1,161 @@
 package persistence
 
 import (
-	"os"
+	"context"
 	"strings"
-	"time"
 
-	"github.com/Masterminds/squirrel"
+	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/rest"
+	"github.com/kennygrant/sanitize"
 )
 
-type mediaFile struct {
-	ID          string    `json:"id"            orm:"pk;column(id)"`
-	Path        string    `json:"path"          orm:"index"`
-	Title       string    `json:"title"         orm:"index"`
-	Album       string    `json:"album"`
-	Artist      string    `json:"artist"`
-	ArtistID    string    `json:"artistId"      orm:"column(artist_id)"`
-	AlbumArtist string    `json:"albumArtist"`
-	AlbumID     string    `json:"albumId"       orm:"column(album_id);index"`
-	HasCoverArt bool      `json:"-"`
-	TrackNumber int       `json:"trackNumber"`
-	DiscNumber  int       `json:"discNumber"`
-	Year        int       `json:"year"`
-	Size        int       `json:"size"`
-	Suffix      string    `json:"suffix"`
-	Duration    int       `json:"duration"`
-	BitRate     int       `json:"bitRate"`
-	Genre       string    `json:"genre"         orm:"index"`
-	Compilation bool      `json:"compilation"`
-	CreatedAt   time.Time `json:"createdAt"     orm:"null"`
-	UpdatedAt   time.Time `json:"updatedAt"     orm:"null"`
-}
-
 type mediaFileRepository struct {
-	searchableRepository
+	sqlRepository
 }
 
-func NewMediaFileRepository(o orm.Ormer) model.MediaFileRepository {
+func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileRepository {
 	r := &mediaFileRepository{}
+	r.ctx = ctx
 	r.ormer = o
 	r.tableName = "media_file"
 	return r
 }
 
-func (r *mediaFileRepository) Put(m *model.MediaFile) error {
-	tm := mediaFile(*m)
-	// Don't update media annotation fields (playcount, starred, etc..)
-	// TODO Validate if this is still necessary, now that we don't have annotations in the mediafile model
-	return r.put(m.ID, m.Title, &tm, "path", "title", "album", "artist", "artist_id", "album_artist",
-		"album_id", "has_cover_art", "track_number", "disc_number", "year", "size", "suffix", "duration",
-		"bit_rate", "genre", "compilation", "updated_at")
+func (r mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
+	return r.count(Select(), options...)
 }
 
-func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
-	tm := mediaFile{ID: id}
-	err := r.ormer.Read(&tm)
-	if err == orm.ErrNoRows {
-		return nil, model.ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	a := model.MediaFile(tm)
-	return &a, nil
+func (r mediaFileRepository) Exists(id string) (bool, error) {
+	return r.exists(Select().Where(Eq{"id": id}))
 }
 
-func (r *mediaFileRepository) toMediaFiles(all []mediaFile) model.MediaFiles {
-	result := make(model.MediaFiles, len(all))
-	for i, m := range all {
-		result[i] = model.MediaFile(m)
-	}
-	return result
-}
-
-func (r *mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, error) {
-	var mfs []mediaFile
-	_, err := r.newQuery().Filter("album_id", albumId).OrderBy("disc_number", "track_number").All(&mfs)
-	if err != nil {
-		return nil, err
-	}
-	return r.toMediaFiles(mfs), nil
-}
-
-func (r *mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
-	var mfs []mediaFile
-	_, err := r.newQuery().Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
-	if err != nil {
-		return nil, err
-	}
-	var filtered []mediaFile
-	path = strings.ToLower(path) + string(os.PathSeparator)
-	for _, mf := range mfs {
-		filename := strings.TrimPrefix(strings.ToLower(mf.Path), path)
-		if len(strings.Split(filename, string(os.PathSeparator))) > 1 {
-			continue
-		}
-		filtered = append(filtered, mf)
-	}
-	return r.toMediaFiles(filtered), nil
-}
-
-func (r *mediaFileRepository) DeleteByPath(path string) error {
-	var mfs []mediaFile
-	// TODO Paginate this (and all other situations similar)
-	_, err := r.newQuery().Filter("path__istartswith", path).OrderBy("disc_number", "track_number").All(&mfs)
+func (r mediaFileRepository) Put(m *model.MediaFile) error {
+	values, _ := toSqlArgs(*m)
+	update := Update(r.tableName).Where(Eq{"id": m.ID}).SetMap(values)
+	count, err := r.executeSQL(update)
 	if err != nil {
 		return err
 	}
-	var filtered []string
-	path = strings.ToLower(path) + string(os.PathSeparator)
-	for _, mf := range mfs {
-		filename := strings.TrimPrefix(strings.ToLower(mf.Path), path)
-		if len(strings.Split(filename, string(os.PathSeparator))) > 1 {
-			continue
-		}
-		filtered = append(filtered, mf.ID)
-	}
-	if len(filtered) == 0 {
+	if count > 0 {
 		return nil
 	}
-	_, err = r.newQuery().Filter("id__in", filtered).Delete()
+	insert := Insert(r.tableName).SetMap(values)
+	_, err = r.executeSQL(insert)
 	return err
 }
 
-func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
-	sq := r.newRawQuery(options...)
+func (r mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
+	return r.newSelectWithAnnotation(model.MediaItemType, "media_file.id", options...).Columns("media_file.*")
+}
+
+func (r mediaFileRepository) Get(id string) (*model.MediaFile, error) {
+	sel := r.selectMediaFile().Where(Eq{"id": id})
+	var res model.MediaFile
+	err := r.queryOne(sel, &res)
+	return &res, err
+}
+
+func (r mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+	sq := r.selectMediaFile(options...)
+	var res model.MediaFiles
+	err := r.queryAll(sq, &res)
+	return res, err
+}
+
+func (r mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, error) {
+	sel := r.selectMediaFile().Where(Eq{"album_id": albumId})
+	var res model.MediaFiles
+	err := r.queryAll(sel, &res)
+	return res, err
+}
+
+func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
+	sel := r.selectMediaFile().Where(Like{"path": path + "%"})
+	var res model.MediaFiles
+	err := r.queryAll(sel, &res)
+	return res, err
+}
+
+func (r mediaFileRepository) GetStarred(userId string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	sq := r.selectMediaFile(options...).Where("starred = true")
+	var starred model.MediaFiles
+	err := r.queryAll(sq, &starred)
+	return starred, err
+}
+
+// TODO Keep order when paginating
+func (r mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
+	sq := r.selectMediaFile(options...)
 	switch r.ormer.Driver().Type() {
 	case orm.DRMySQL:
 		sq = sq.OrderBy("RAND()")
 	default:
 		sq = sq.OrderBy("RANDOM()")
 	}
-	sql, args, err := sq.ToSql()
+	sql, args, err := r.toSql(sq)
 	if err != nil {
 		return nil, err
 	}
-	var results []mediaFile
+	var results model.MediaFiles
 	_, err = r.ormer.Raw(sql, args...).QueryRows(&results)
-	return r.toMediaFiles(results), err
+	return results, err
 }
 
-func (r *mediaFileRepository) GetStarred(userId string, options ...model.QueryOptions) (model.MediaFiles, error) {
-	var starred []mediaFile
-	sq := r.newRawQuery(options...).Join("annotation").Where("annotation.item_id = " + r.tableName + ".id")
-	sq = sq.Where(squirrel.And{
-		squirrel.Eq{"annotation.user_id": userId},
-		squirrel.Eq{"annotation.starred": true},
-	})
-	sql, args, err := sq.ToSql()
-	if err != nil {
-		return nil, err
-	}
-	_, err = r.ormer.Raw(sql, args...).QueryRows(&starred)
-	if err != nil {
-		return nil, err
-	}
-	return r.toMediaFiles(starred), nil
+func (r mediaFileRepository) Delete(id string) error {
+	return r.delete(Eq{"id": id})
 }
 
-func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
+func (r mediaFileRepository) DeleteByPath(path string) error {
+	del := Delete(r.tableName).Where(Like{"path": path + "%"})
+	_, err := r.executeSQL(del)
+	return err
+}
+
+func (r mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
+	q = strings.TrimSpace(sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*"))))
 	if len(q) <= 2 {
-		return nil, nil
+		return model.MediaFiles{}, nil
 	}
-
-	var results []mediaFile
-	err := r.doSearch(r.tableName, q, offset, size, &results, "title")
+	sq := Select("*").From(r.tableName)
+	sq = sq.Limit(uint64(size)).Offset(uint64(offset)).OrderBy("title")
+	sq = sq.Join("search").Where("search.id = " + r.tableName + ".id")
+	parts := strings.Split(q, " ")
+	for _, part := range parts {
+		sq = sq.Where(Or{
+			Like{"full_text": part + "%"},
+			Like{"full_text": "%" + part + "%"},
+		})
+	}
+	sql, args, err := r.toSql(sq)
 	if err != nil {
 		return nil, err
 	}
-	return r.toMediaFiles(results), nil
+	var results model.MediaFiles
+	_, err = r.ormer.Raw(sql, args...).QueryRows(results)
+	return results, err
+}
+
+func (r mediaFileRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(options...))
+}
+
+func (r mediaFileRepository) Read(id string) (interface{}, error) {
+	return r.Get(id)
+}
+
+func (r mediaFileRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	return r.GetAll(r.parseRestOptions(options...))
+}
+
+func (r mediaFileRepository) EntityName() string {
+	return "mediafile"
+}
+
+func (r mediaFileRepository) NewInstance() interface{} {
+	return model.MediaFile{}
 }
 
 var _ model.MediaFileRepository = (*mediaFileRepository)(nil)
-var _ = model.MediaFile(mediaFile{})
+var _ model.ResourceRepository = (*mediaFileRepository)(nil)

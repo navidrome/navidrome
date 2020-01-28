@@ -1,220 +1,136 @@
 package persistence
 
 import (
-	"fmt"
-	"strings"
-	"time"
+	"context"
 
-	"github.com/Masterminds/squirrel"
+	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
-	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/rest"
 )
 
-type album struct {
-	ID           string    `json:"id"            orm:"pk;column(id)"`
-	Name         string    `json:"name"          orm:"index"`
-	ArtistID     string    `json:"artistId"      orm:"column(artist_id);index"`
-	CoverArtPath string    `json:"-"`
-	CoverArtId   string    `json:"-"`
-	Artist       string    `json:"artist"        orm:"index"`
-	AlbumArtist  string    `json:"albumArtist"`
-	Year         int       `json:"year"          orm:"index"`
-	Compilation  bool      `json:"compilation"`
-	SongCount    int       `json:"songCount"`
-	Duration     int       `json:"duration"`
-	Genre        string    `json:"genre"         orm:"index"`
-	CreatedAt    time.Time `json:"createdAt"     orm:"null"`
-	UpdatedAt    time.Time `json:"updatedAt"     orm:"null"`
-}
-
 type albumRepository struct {
-	searchableRepository
+	sqlRepository
 }
 
-func NewAlbumRepository(o orm.Ormer) model.AlbumRepository {
+func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository {
 	r := &albumRepository{}
+	r.ctx = ctx
 	r.ormer = o
-	r.tableName = "album"
+	r.tableName = "media_file"
 	return r
 }
 
+func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
+	sel := r.selectAlbum(options...)
+	return r.count(sel, options...)
+}
+
+func (r *albumRepository) Exists(id string) (bool, error) {
+	return r.exists(Select().Where(Eq{"album_id": id}))
+}
+
 func (r *albumRepository) Put(a *model.Album) error {
-	ta := album(*a)
-	return r.put(a.ID, a.Name, &ta)
+	return nil
+}
+
+func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
+	//select album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.compilation, f.genre,
+	//	max(f.year) as year, sum(f.duration) as duration, max(f.updated_at) as updated_at,
+	//	min(f.created_at) as created_at, count(*) as song_count, a.id as current_id, f.id as cover_art_id,
+	//	f.path as cover_art_path, f.has_cover_art
+	//	group by album_id
+	return r.newSelectWithAnnotation(model.AlbumItemType, "album_id", options...).
+		Columns("album_id as id", "album as name", "artist", "album_artist", "artist", "artist_id",
+			"compilation", "genre", "id as cover_art_id", "path as cover_art_path", "has_cover_art",
+			"max(year) as year", "sum(duration) as duration", "max(updated_at) as updated_at",
+			"min(created_at) as created_at", "count(*) as song_count").GroupBy("album_id")
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
-	ta := album{ID: id}
-	err := r.ormer.Read(&ta)
-	if err == orm.ErrNoRows {
-		return nil, model.ErrNotFound
-	}
+	sq := r.selectAlbum().Where(Eq{"album_id": id})
+	var res model.Album
+	err := r.queryOne(sq, &res)
 	if err != nil {
 		return nil, err
 	}
-	a := model.Album(ta)
-	return &a, err
+	return &res, nil
 }
 
 func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
-	var albums []album
-	_, err := r.newQuery().Filter("artist_id", artistId).OrderBy("year", "name").All(&albums)
-	if err != nil {
-		return nil, err
-	}
-	return r.toAlbums(albums), nil
+	sq := r.selectAlbum().Where(Eq{"artist_id": artistId}).OrderBy("album")
+	var res model.Albums
+	err := r.queryAll(sq, &res)
+	return res, err
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
-	var all []album
-	_, err := r.newQuery(options...).All(&all)
-	if err != nil {
-		return nil, err
-	}
-	return r.toAlbums(all), nil
+	sq := r.selectAlbum(options...)
+	var res model.Albums
+	err := r.queryAll(sq, &res)
+	return res, err
 }
 
 func (r *albumRepository) GetMap(ids []string) (map[string]model.Album, error) {
-	var all []album
-	if len(ids) == 0 {
-		return nil, nil
-	}
-	_, err := r.newQuery().Filter("id__in", ids).All(&all)
-	if err != nil {
-		return nil, err
-	}
-	res := make(map[string]model.Album)
-	for _, a := range all {
-		res[a.ID] = model.Album(a)
-	}
-	return res, nil
+	return nil, nil
 }
 
 // TODO Keep order when paginating
 func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums, error) {
-	sq := r.newRawQuery(options...)
+	sq := r.selectAlbum(options...)
 	switch r.ormer.Driver().Type() {
 	case orm.DRMySQL:
 		sq = sq.OrderBy("RAND()")
 	default:
 		sq = sq.OrderBy("RANDOM()")
 	}
-	sql, args, err := sq.ToSql()
+	sql, args, err := r.toSql(sq)
 	if err != nil {
 		return nil, err
 	}
-	var results []album
+	var results model.Albums
 	_, err = r.ormer.Raw(sql, args...).QueryRows(&results)
-	return r.toAlbums(results), err
-}
-
-func (r *albumRepository) toAlbums(all []album) model.Albums {
-	result := make(model.Albums, len(all))
-	for i, a := range all {
-		result[i] = model.Album(a)
-	}
-	return result
+	return results, err
 }
 
 func (r *albumRepository) Refresh(ids ...string) error {
-	type refreshAlbum struct {
-		album
-		CurrentId   string
-		HasCoverArt bool
-	}
-	var albums []refreshAlbum
-	o := r.ormer
-	sql := fmt.Sprintf(`
-select album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.compilation, f.genre,  
-	max(f.year) as year, sum(f.duration) as duration, max(f.updated_at) as updated_at, 
-	min(f.created_at) as created_at, count(*) as song_count, a.id as current_id, f.id as cover_art_id, 
-	f.path as cover_art_path, f.has_cover_art
-from media_file f left outer join album a on f.album_id = a.id
-where f.album_id in ('%s')
-group by album_id order by f.id`, strings.Join(ids, "','"))
-	_, err := o.Raw(sql).QueryRows(&albums)
-	if err != nil {
-		return err
-	}
-
-	var toInsert []album
-	var toUpdate []album
-	for _, al := range albums {
-		if !al.HasCoverArt {
-			al.CoverArtId = ""
-		}
-		if al.Compilation {
-			al.AlbumArtist = "Various Artists"
-		}
-		if al.AlbumArtist == "" {
-			al.AlbumArtist = al.Artist
-		}
-		if al.CurrentId != "" {
-			toUpdate = append(toUpdate, al.album)
-		} else {
-			toInsert = append(toInsert, al.album)
-		}
-		err := r.addToIndex(r.tableName, al.ID, al.Name)
-		if err != nil {
-			return err
-		}
-	}
-	if len(toInsert) > 0 {
-		n, err := o.InsertMulti(10, toInsert)
-		if err != nil {
-			return err
-		}
-		log.Debug("Inserted new albums", "num", n)
-	}
-	if len(toUpdate) > 0 {
-		for _, al := range toUpdate {
-			_, err := o.Update(&al, "name", "artist_id", "cover_art_path", "cover_art_id", "artist", "album_artist",
-				"year", "compilation", "song_count", "duration", "updated_at", "created_at")
-			if err != nil {
-				return err
-			}
-		}
-		log.Debug("Updated albums", "num", len(toUpdate))
-	}
-	return err
+	return nil
 }
 
 func (r *albumRepository) PurgeEmpty() error {
-	_, err := r.ormer.Raw("delete from album where id not in (select distinct(album_id) from media_file)").Exec()
-	return err
+	return nil
 }
 
 func (r *albumRepository) GetStarred(userId string, options ...model.QueryOptions) (model.Albums, error) {
-	var starred []album
-	sq := r.newRawQuery(options...).Join("annotation").Where("annotation.item_id = " + r.tableName + ".id")
-	sq = sq.Where(squirrel.And{
-		squirrel.Eq{"annotation.user_id": userId},
-		squirrel.Eq{"annotation.starred": true},
-	})
-	sql, args, err := sq.ToSql()
-	if err != nil {
-		return nil, err
-	}
-	_, err = r.ormer.Raw(sql, args...).QueryRows(&starred)
-	if err != nil {
-		return nil, err
-	}
-	return r.toAlbums(starred), nil
+	sq := r.selectAlbum(options...).Where("starred = true")
+	var starred model.Albums
+	err := r.queryAll(sq, &starred)
+	return starred, err
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
-	if len(q) <= 2 {
-		return nil, nil
-	}
+	return nil, nil
+}
 
-	var results []album
-	err := r.doSearch(r.tableName, q, offset, size, &results, "name")
-	if err != nil {
-		return nil, err
-	}
-	return r.toAlbums(results), nil
+func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(options...))
+}
+
+func (r *albumRepository) Read(id string) (interface{}, error) {
+	return r.Get(id)
+}
+
+func (r *albumRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	return r.GetAll(r.parseRestOptions(options...))
+}
+
+func (r *albumRepository) EntityName() string {
+	return "album"
+}
+
+func (r *albumRepository) NewInstance() interface{} {
+	return &model.Album{}
 }
 
 var _ model.AlbumRepository = (*albumRepository)(nil)
-var _ = model.Album(album{})
+var _ model.ResourceRepository = (*albumRepository)(nil)

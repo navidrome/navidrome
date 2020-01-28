@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/model"
 	. "github.com/onsi/ginkgo"
@@ -11,7 +13,18 @@ var _ = Describe("AlbumRepository", func() {
 	var repo model.AlbumRepository
 
 	BeforeEach(func() {
-		repo = NewAlbumRepository(orm.NewOrm())
+		ctx := context.WithValue(context.Background(), "user", &model.User{ID: "userid"})
+		repo = NewAlbumRepository(ctx, orm.NewOrm())
+	})
+
+	Describe("Get", func() {
+		It("returns an existent album", func() {
+			Expect(repo.Get("3")).To(Equal(&albumRadioactivity))
+		})
+		It("returns ErrNotFound when the album does not exist", func() {
+			_, err := repo.Get("666")
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
 	})
 
 	Describe("GetAll", func() {
@@ -20,7 +33,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		It("returns all records sorted", func() {
-			Expect(repo.GetAll(model.QueryOptions{Sort: "Name"})).To(Equal(model.Albums{
+			Expect(repo.GetAll(model.QueryOptions{Sort: "name"})).To(Equal(model.Albums{
 				albumAbbeyRoad,
 				albumRadioactivity,
 				albumSgtPeppers,
@@ -28,7 +41,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		It("returns all records sorted desc", func() {
-			Expect(repo.GetAll(model.QueryOptions{Sort: "Name", Order: "desc"})).To(Equal(model.Albums{
+			Expect(repo.GetAll(model.QueryOptions{Sort: "name", Order: "desc"})).To(Equal(model.Albums{
 				albumSgtPeppers,
 				albumRadioactivity,
 				albumAbbeyRoad,
@@ -52,7 +65,7 @@ var _ = Describe("AlbumRepository", func() {
 
 	Describe("FindByArtist", func() {
 		It("returns all records from a given ArtistID", func() {
-			Expect(repo.FindByArtist("1")).To(Equal(model.Albums{
+			Expect(repo.FindByArtist("3")).To(Equal(model.Albums{
 				albumAbbeyRoad,
 				albumSgtPeppers,
 			}))

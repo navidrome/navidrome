@@ -52,9 +52,9 @@ func FromArtist(ar *model.Artist, ann *model.Annotation) Entry {
 	e.Title = ar.Name
 	e.AlbumCount = ar.AlbumCount
 	e.IsDir = true
-	if ann != nil {
-		e.Starred = ann.StarredAt
-	}
+	//if ann != nil {
+	e.Starred = ar.StarredAt
+	//}
 	return e
 }
 
@@ -74,11 +74,11 @@ func FromAlbum(al *model.Album, ann *model.Annotation) Entry {
 	e.ArtistId = al.ArtistID
 	e.Duration = al.Duration
 	e.SongCount = al.SongCount
-	if ann != nil {
-		e.Starred = ann.StarredAt
-		e.PlayCount = int32(ann.PlayCount)
-		e.UserRating = ann.Rating
-	}
+	//if ann != nil {
+	e.Starred = al.StarredAt
+	e.PlayCount = int32(al.PlayCount)
+	e.UserRating = al.Rating
+	//}
 	return e
 }
 
@@ -111,11 +111,11 @@ func FromMediaFile(mf *model.MediaFile, ann *model.Annotation) Entry {
 	e.AlbumId = mf.AlbumID
 	e.ArtistId = mf.ArtistID
 	e.Type = "music" // TODO Hardcoded for now
-	if ann != nil {
-		e.PlayCount = int32(ann.PlayCount)
-		e.Starred = ann.StarredAt
-		e.UserRating = ann.Rating
-	}
+	//if ann != nil {
+	e.PlayCount = int32(mf.PlayCount)
+	e.Starred = mf.StarredAt
+	e.UserRating = mf.Rating
+	//}
 	return e
 }
 

@@ -10,19 +10,14 @@ import (
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
 )
-
-const batchSize = 100
 
 var (
-	once         sync.Once
-	driver       = "sqlite3"
-	mappedModels map[interface{}]interface{}
+	once   sync.Once
+	driver = "sqlite3"
 )
 
-type SQLStore struct {
+type NewSQLStore struct {
 	orm orm.Ormer
 }
 
@@ -39,57 +34,72 @@ func New() model.DataStore {
 			panic(err)
 		}
 	})
-	return &SQLStore{}
+	return &NewSQLStore{}
 }
 
-func (db *SQLStore) Album(context.Context) model.AlbumRepository {
-	return NewAlbumRepository(db.getOrmer())
+func (db *NewSQLStore) Album(ctx context.Context) model.AlbumRepository {
+	return NewAlbumRepository(ctx, db.getOrmer())
 }
 
-func (db *SQLStore) Artist(context.Context) model.ArtistRepository {
-	return NewArtistRepository(db.getOrmer())
+func (db *NewSQLStore) Artist(ctx context.Context) model.ArtistRepository {
+	return NewArtistRepository(ctx, db.getOrmer())
 }
 
-func (db *SQLStore) MediaFile(context.Context) model.MediaFileRepository {
-	return NewMediaFileRepository(db.getOrmer())
+func (db *NewSQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+	return NewMediaFileRepository(ctx, db.getOrmer())
 }
 
-func (db *SQLStore) MediaFolder(context.Context) model.MediaFolderRepository {
-	return NewMediaFolderRepository(db.getOrmer())
+func (db *NewSQLStore) MediaFolder(ctx context.Context) model.MediaFolderRepository {
+	return NewMediaFolderRepository(ctx, db.getOrmer())
 }
 
-func (db *SQLStore) Genre(context.Context) model.GenreRepository {
-	return NewGenreRepository(db.getOrmer())
+func (db *NewSQLStore) Genre(ctx context.Context) model.GenreRepository {
+	return NewGenreRepository(ctx, db.getOrmer())
 }
 
-func (db *SQLStore) Playlist(context.Context) model.PlaylistRepository {
-	return NewPlaylistRepository(db.getOrmer())
+func (db *NewSQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
+	return NewPlaylistRepository(ctx, db.getOrmer())
 }
 
-func (db *SQLStore) Property(context.Context) model.PropertyRepository {
-	return NewPropertyRepository(db.getOrmer())
+func (db *NewSQLStore) Property(ctx context.Context) model.PropertyRepository {
+	return NewPropertyRepository(ctx, db.getOrmer())
 }
 
-func (db *SQLStore) User(context.Context) model.UserRepository {
-	return NewUserRepository(db.getOrmer())
+func (db *NewSQLStore) User(ctx context.Context) model.UserRepository {
+	return NewUserRepository(ctx, db.getOrmer())
 }
 
-func (db *SQLStore) Annotation(context.Context) model.AnnotationRepository {
-	return NewAnnotationRepository(db.getOrmer())
+func (db *NewSQLStore) Annotation(ctx context.Context) model.AnnotationRepository {
+	return NewAnnotationRepository(ctx, db.getOrmer())
 }
 
-func (db *SQLStore) Resource(ctx context.Context, model interface{}) model.ResourceRepository {
-	return NewResource(db.getOrmer(), model, getMappedModel(model))
+func getTypeName(model interface{}) string {
+	return reflect.TypeOf(model).Name()
 }
 
-func (db *SQLStore) WithTx(block func(tx model.DataStore) error) error {
+func (db *NewSQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
+	switch m.(type) {
+	case model.User:
+		return db.User(ctx).(model.ResourceRepository)
+	case model.Artist:
+		return db.Artist(ctx).(model.ResourceRepository)
+	case model.Album:
+		return db.Album(ctx).(model.ResourceRepository)
+	case model.MediaFile:
+		return db.MediaFile(ctx).(model.ResourceRepository)
+	}
+	log.Error("Resource no implemented", "model", getTypeName(m))
+	return nil
+}
+
+func (db *NewSQLStore) WithTx(block func(tx model.DataStore) error) error {
 	o := orm.NewOrm()
 	err := o.Begin()
 	if err != nil {
 		return err
 	}
 
-	newDb := &SQLStore{orm: o}
+	newDb := &NewSQLStore{orm: o}
 	err = block(newDb)
 
 	if err != nil {
@@ -107,7 +117,7 @@ func (db *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 	return nil
 }
 
-func (db *SQLStore) getOrmer() orm.Ormer {
+func (db *NewSQLStore) getOrmer() orm.Ormer {
 	if db.orm == nil {
 		return orm.NewOrm()
 	}
@@ -115,56 +125,17 @@ func (db *SQLStore) getOrmer() orm.Ormer {
 }
 
 func initORM(dbPath string) error {
-	verbose := conf.Server.LogLevel == "trace"
-	orm.Debug = verbose
+	//verbose := conf.Server.LogLevel == "trace"
+	//orm.Debug = verbose
 	if strings.Contains(dbPath, "postgres") {
 		driver = "postgres"
 	}
 	err := orm.RegisterDataBase("default", driver, dbPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	return orm.RunSyncdb("default", false, verbose)
-}
+	// TODO Remove all RegisterModels (i.e. don't use orm.Insert/Update)
+	orm.RegisterModel(new(annotation))
 
-func collectField(collection interface{}, getValue func(item interface{}) string) []string {
-	s := reflect.ValueOf(collection)
-	result := make([]string, s.Len())
-
-	for i := 0; i < s.Len(); i++ {
-		result[i] = getValue(s.Index(i).Interface())
-	}
-
-	return result
-}
-
-func getType(myvar interface{}) string {
-	if t := reflect.TypeOf(myvar); t.Kind() == reflect.Ptr {
-		return t.Elem().Name()
-	} else {
-		return t.Name()
-	}
-}
-
-func registerModel(model interface{}, mappedModel interface{}) {
-	mappedModels[getType(model)] = mappedModel
-	orm.RegisterModel(mappedModel)
-}
-
-func getMappedModel(model interface{}) interface{} {
-	return mappedModels[getType(model)]
-}
-
-func init() {
-	mappedModels = map[interface{}]interface{}{}
-
-	registerModel(model.Artist{}, new(artist))
-	registerModel(model.Album{}, new(album))
-	registerModel(model.MediaFile{}, new(mediaFile))
-	registerModel(model.Property{}, new(property))
-	registerModel(model.Playlist{}, new(playlist))
-	registerModel(model.User{}, new(user))
-	registerModel(model.Annotation{}, new(annotation))
-
-	orm.RegisterModel(new(search))
+	return nil
 }

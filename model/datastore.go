@@ -20,7 +20,6 @@ type QueryOptions struct {
 
 type ResourceRepository interface {
 	rest.Repository
-	rest.Persistable
 }
 
 type DataStore interface {

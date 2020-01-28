@@ -6,26 +6,33 @@ import (
 )
 
 type MediaFile struct {
-	ID          string
-	Path        string
-	Title       string
-	Album       string
-	Artist      string
-	ArtistID    string
-	AlbumArtist string
-	AlbumID     string
-	HasCoverArt bool
-	TrackNumber int
-	DiscNumber  int
-	Year        int
-	Size        int
-	Suffix      string
-	Duration    int
-	BitRate     int
-	Genre       string
-	Compilation bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          string    `json:"id"            orm:"pk;column(id)"`
+	Path        string    `json:"path"`
+	Title       string    `json:"title"`
+	Album       string    `json:"album"`
+	Artist      string    `json:"artist"`
+	ArtistID    string    `json:"artistId"`
+	AlbumArtist string    `json:"albumArtist"`
+	AlbumID     string    `json:"albumId"`
+	HasCoverArt bool      `json:"hasCoverArt"`
+	TrackNumber int       `json:"trackNumber"`
+	DiscNumber  int       `json:"discNumber"`
+	Year        int       `json:"year"`
+	Size        int       `json:"size"`
+	Suffix      string    `json:"suffix"`
+	Duration    int       `json:"duration"`
+	BitRate     int       `json:"bitRate"`
+	Genre       string    `json:"genre"`
+	Compilation bool      `json:"compilation"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+
+	// Annotations
+	PlayCount int       `json:"-" orm:"-"`
+	PlayDate  time.Time `json:"-" orm:"-"`
+	Rating    int       `json:"-" orm:"-"`
+	Starred   bool      `json:"-" orm:"-"`
+	StarredAt time.Time `json:"-" orm:"-"`
 }
 
 func (mf *MediaFile) ContentType() string {
@@ -35,12 +42,13 @@ func (mf *MediaFile) ContentType() string {
 type MediaFiles []MediaFile
 
 type MediaFileRepository interface {
-	CountAll() (int64, error)
+	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
 	FindByAlbum(albumId string) (MediaFiles, error)
 	FindByPath(path string) (MediaFiles, error)
+	// TODO Remove userId
 	GetStarred(userId string, options ...QueryOptions) (MediaFiles, error)
 	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)

@@ -1,17 +1,19 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/model"
 )
 
 type mediaFolderRepository struct {
-	model.MediaFolderRepository
+	ctx context.Context
 }
 
-func NewMediaFolderRepository(o orm.Ormer) model.MediaFolderRepository {
-	return &mediaFolderRepository{}
+func NewMediaFolderRepository(ctx context.Context, o orm.Ormer) model.MediaFolderRepository {
+	return &mediaFolderRepository{ctx}
 }
 
 func (*mediaFolderRepository) GetAll() (model.MediaFolders, error) {

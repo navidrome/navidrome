@@ -1,60 +1,33 @@
 package persistence
 
 import (
-	"strconv"
+	"context"
 
+	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/model"
 )
 
 type genreRepository struct {
-	ormer orm.Ormer
+	sqlRepository
 }
 
-func NewGenreRepository(o orm.Ormer) model.GenreRepository {
-	return &genreRepository{ormer: o}
+func NewGenreRepository(ctx context.Context, o orm.Ormer) model.GenreRepository {
+	r := &genreRepository{}
+	r.ctx = ctx
+	r.ormer = o
+	r.tableName = "media_file"
+	return r
 }
 
 func (r genreRepository) GetAll() (model.Genres, error) {
-	genres := make(map[string]model.Genre)
-
-	// Collect SongCount
-	var res []orm.Params
-	_, err := r.ormer.Raw("select genre, count(*) as c from media_file group by genre").Values(&res)
+	sq := Select("genre as name", "count(distinct album_id) as album_count", "count(distinct id) as song_count").
+		From("media_file").GroupBy("genre")
+	sql, args, err := r.toSql(sq)
 	if err != nil {
 		return nil, err
 	}
-	for _, r := range res {
-		name := r["genre"].(string)
-		count := r["c"].(string)
-		g, ok := genres[name]
-		if !ok {
-			g = model.Genre{Name: name}
-		}
-		g.SongCount, _ = strconv.Atoi(count)
-		genres[name] = g
-	}
-
-	// Collect AlbumCount
-	_, err = r.ormer.Raw("select genre, count(*) as c from album group by genre").Values(&res)
-	if err != nil {
-		return nil, err
-	}
-	for _, r := range res {
-		name := r["genre"].(string)
-		count := r["c"].(string)
-		g, ok := genres[name]
-		if !ok {
-			g = model.Genre{Name: name}
-		}
-		g.AlbumCount, _ = strconv.Atoi(count)
-		genres[name] = g
-	}
-
-	// Build response
-	result := model.Genres{}
-	for _, g := range genres {
-		result = append(result, g)
-	}
-	return result, err
+	var res model.Genres
+	_, err = r.ormer.Raw(sql, args).QueryRows(&res)
+	return res, err
 }

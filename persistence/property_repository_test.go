@@ -1,31 +1,34 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("PropertyRepository", func() {
-	var repo model.PropertyRepository
+var _ = Describe("Property Repository", func() {
+	var pr model.PropertyRepository
 
 	BeforeEach(func() {
-		repo = NewPropertyRepository(orm.NewOrm())
-		repo.(*propertyRepository).DeleteAll()
+		pr = NewPropertyRepository(context.Background(), orm.NewOrm())
 	})
 
-	It("saves and retrieves data", func() {
-		Expect(repo.Put("1", "test")).To(BeNil())
-		Expect(repo.Get("1")).To(Equal("test"))
+	It("saves and restore a new property", func() {
+		id := "1"
+		value := "a_value"
+		Expect(pr.Put(id, value)).To(BeNil())
+		Expect(pr.Get(id)).To(Equal("a_value"))
 	})
 
-	It("returns default if data is not found", func() {
-		Expect(repo.DefaultGet("2", "default")).To(Equal("default"))
+	It("updates a property", func() {
+		Expect(pr.Put("1", "another_value")).To(BeNil())
+		Expect(pr.Get("1")).To(Equal("another_value"))
 	})
 
-	It("returns value if found", func() {
-		Expect(repo.Put("3", "test")).To(BeNil())
-		Expect(repo.DefaultGet("3", "default")).To(Equal("test"))
+	It("returns a default value if property does not exist", func() {
+		Expect(pr.DefaultGet("2", "default")).To(Equal("default"))
 	})
 })
