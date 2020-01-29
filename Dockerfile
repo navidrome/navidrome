@@ -27,8 +27,11 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source and UI bundle, build executable
+# Copy source, test it
 COPY . .
+RUN go test ./...
+
+# Copy UI bundle, build executable
 COPY --from=jsbuilder /src/build/* /src/ui/build/
 COPY --from=jsbuilder /src/build/static/css/* /src/ui/build/static/css/
 COPY --from=jsbuilder /src/build/static/js/* /src/ui/build/static/js/
