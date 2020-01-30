@@ -4,11 +4,11 @@ NODE_VERSION=v13.7.0
 GIT_SHA=$(shell git rev-parse --short HEAD)
 
 .PHONY: dev
-dev: check_env data
+dev: check_env
 	@goreman -f Procfile.dev -b 4533 start
 
 .PHONY: server
-server: check_go_env data
+server: check_go_env
 	@reflex -d none -c reflex.conf
 
 .PHONY: watch
@@ -26,12 +26,13 @@ testall: check_go_env test
 
 .PHONY: setup
 setup: Jamstash-master
-	@which reflex     || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
 	@which goconvey   || (echo "Installing GoConvey" && GO111MODULE=off go get -u github.com/smartystreets/goconvey)
 	@which wire       || (echo "Installing Wire"     && GO111MODULE=off go get -u github.com/google/wire/cmd/wire)
+	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
+	@which reflex     || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
 	@which goreman    || (echo "Installing Goreman"  && GO111MODULE=off go get -u github.com/mattn/goreman)
 	@which ginkgo     || (echo "Installing Ginkgo"   && GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo)
-	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
+	@which goose      || (echo "Installing Goose"    && GO111MODULE=off go get -u github.com/pressly/goose/cmd/goose)
 	go mod download
 	@(cd ./ui && npm ci)
 
@@ -57,9 +58,6 @@ check_node_env:
 	@(hash node) || (echo "\nERROR: Node environment not setup properly!\n"; exit 1)
 	@node --version | grep -q $(NODE_VERSION) || (echo "\nERROR: Please check your Node version. Should be $(NODE_VERSION)\n"; exit 1)
 
-data:
-	mkdir data
-
 UI_SRC = $(shell find ui/src ui/public -name "*.js")
 ui/build: $(UI_SRC) $(UI_PUBLIC) ui/package-lock.json
 	@(cd ./ui && npm run build)
@@ -72,5 +70,5 @@ build: check_go_env
 	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=master"
 
 .PHONY: buildall
-buildall: check_go_env assets/embedded_gen.go
+buildall: check_env assets/embedded_gen.go
 	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=master" -tags=embed
