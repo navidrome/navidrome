@@ -9,6 +9,8 @@ type Subsonic struct {
 	XMLName       xml.Name           `xml:"http://subsonic.org/restapi subsonic-response" json:"-"`
 	Status        string             `xml:"status,attr"                                   json:"status"`
 	Version       string             `xml:"version,attr"                                  json:"version"`
+	Type          string             `xml:"type,attr"                                     json:"type"`
+	ServerVersion string             `xml:"serverVersion,attr"                            json:"serverVersion"`
 	Error         *Error             `xml:"error,omitempty"                               json:"error,omitempty"`
 	License       *License           `xml:"license,omitempty"                             json:"license,omitempty"`
 	MusicFolders  *MusicFolders      `xml:"musicFolders,omitempty"                        json:"musicFolders,omitempty"`

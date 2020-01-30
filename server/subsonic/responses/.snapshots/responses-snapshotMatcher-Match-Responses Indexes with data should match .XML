@@ -1,1 +1,1 @@
-<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0"><indexes lastModified="1" ignoredArticles="A"><index name="A"><artist id="111" name="aaa" starred="2016-03-02T20:30:00Z"></artist></index></indexes></subsonic-response>
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0"><indexes lastModified="1" ignoredArticles="A"><index name="A"><artist id="111" name="aaa" starred="2016-03-02T20:30:00Z"></artist></index></indexes></subsonic-response>

@@ -69,8 +69,8 @@ assets/embedded_gen.go: ui/build
 
 .PHONY: build
 build: check_go_env
-	go build -ldflags="-X main.gitSha=$(GIT_SHA) -X main.gitTag=master"
+	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=master"
 
 .PHONY: buildall
 buildall: check_go_env assets/embedded_gen.go
-	go build -ldflags="-X main.gitSha=$(GIT_SHA) -X main.gitTag=master" -tags=embed
+	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=master" -tags=embed

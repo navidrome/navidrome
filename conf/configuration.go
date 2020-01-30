@@ -52,8 +52,6 @@ func newWithPath(path string, skipFlags ...bool) *multiconfig.DefaultLoader {
 		if strings.HasSuffix(path, "yml") || strings.HasSuffix(path, "yaml") {
 			loaders = append(loaders, &multiconfig.YAMLLoader{Path: path})
 		}
-	} else {
-		println("Skipping config file not found: ", path)
 	}
 
 	e := &multiconfig.EnvironmentLoader{}

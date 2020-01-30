@@ -109,7 +109,7 @@ func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 
 func createDefaultUser(ctx context.Context, ds model.DataStore, username, password string) error {
 	id, _ := uuid.NewRandom()
-	log.Warn("Creating initial user", "user", consts.InitialUserName)
+	log.Warn("Creating initial user", "user", username)
 	initialUser := model.User{
 		ID:       id.String(),
 		UserName: username,

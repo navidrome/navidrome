@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 
-	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
 )
@@ -52,12 +51,11 @@ func (p *playlists) Create(ctx context.Context, playlistId, name string, ids []s
 }
 
 func (p *playlists) getUser(ctx context.Context) string {
-	owner := consts.InitialUserName
 	user, ok := ctx.Value("user").(*model.User)
 	if ok {
-		owner = user.UserName
+		return user.UserName
 	}
-	return owner
+	return ""
 }
 
 func (p *playlists) Delete(ctx context.Context, playlistId string) error {

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
@@ -14,7 +15,7 @@ import (
 )
 
 func NewResponse() *responses.Subsonic {
-	return &responses.Subsonic{Status: "ok", Version: Version}
+	return &responses.Subsonic{Status: "ok", Version: Version, Type: consts.AppName, ServerVersion: consts.Version()}
 }
 
 func RequiredParamString(r *http.Request, param string, msg string) (string, error) {
