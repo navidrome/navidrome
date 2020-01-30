@@ -80,16 +80,19 @@ services:
       - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"
 ```
 
-### Build it yourself
+### Build from source
 
-You will need to install [Go 1.13](https://golang.org/dl/) and [Node 13.7](http://nodejs.org).
-You'll also need [ffmpeg](https://ffmpeg.org) installed in your system
+You will need to install [Go 1.13](https://golang.org/dl/) and [Node 13.7.0](http://nodejs.org).
+You'll also need [ffmpeg](https://ffmpeg.org) installed in your system. The setup is very strict, and 
+the steps bellow only work with these specific versions (enforced in the Makefile) 
 
-After the prerequisites above are installed, build the application with:
+After the prerequisites above are installed, clone this repository and build the application with:
 
-```
-$ make setup
-$ make buildall
+```shell script
+$ git clone https://github.com/deluan/navidrome
+$ cd navidrome
+$ make setup        # Install tools required for Navidrome's development 
+$ make buildall     # Build UI and server, generates a single executable
 ```
 
 This will generate the `navidrome` binary executable in the project's root folder. 
