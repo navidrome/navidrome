@@ -72,3 +72,17 @@ build: check_go_env
 .PHONY: buildall
 buildall: check_env assets/embedded_gen.go
 	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=master" -tags=embed
+
+.PHONY: release
+release:
+	@if [[ ! "${V}" =~ ^[0-9]+\.[0-9]+\.[0-9]+.*$$ ]]; then echo "Usage: make release V=X.X.X"; exit 1; fi
+	go mod tidy
+	make test
+	@if [ -n "`git status -s`" ]; then echo "\n\nThere are pending changes. Please commit or stash first"; exit 1; fi
+	git tag v${V}
+	git push origin v${V}
+	git push origin master
+
+.PHONY: dist
+dist:
+	 docker run -it -v $(PWD):/github/workspace -w /github/workspace bepsays/ci-goreleaser:1.13-4 goreleaser release --rm-dist --skip-publish --snapshot
