@@ -197,7 +197,7 @@ func (r sqlRepository) parseRestOptions(options ...rest.QueryOptions) model.Quer
 		if len(options[0].Filters) > 0 {
 			filters := And{}
 			for f, v := range options[0].Filters {
-				qo.Filters = append(filters, Like{f: fmt.Sprintf("%s%%", v)})
+				filters = append(filters, Like{f: fmt.Sprintf("%s%%", v)})
 			}
 			qo.Filters = filters
 		}

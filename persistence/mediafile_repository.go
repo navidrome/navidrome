@@ -50,28 +50,28 @@ func (r mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 
 func (r mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
 	sq := r.selectMediaFile(options...)
-	var res model.MediaFiles
+	res := model.MediaFiles{}
 	err := r.queryAll(sq, &res)
 	return res, err
 }
 
 func (r mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, error) {
 	sel := r.selectMediaFile().Where(Eq{"album_id": albumId}).OrderBy("disc_number", "track_number")
-	var res model.MediaFiles
+	res := model.MediaFiles{}
 	err := r.queryAll(sel, &res)
 	return res, err
 }
 
 func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
 	sel := r.selectMediaFile().Where(Like{"path": path + "%"})
-	var res model.MediaFiles
+	res := model.MediaFiles{}
 	err := r.queryAll(sel, &res)
 	return res, err
 }
 
 func (r mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
 	sq := r.selectMediaFile(options...).Where("starred = true")
-	var starred model.MediaFiles
+	starred := model.MediaFiles{}
 	err := r.queryAll(sq, &starred)
 	return starred, err
 }
@@ -89,7 +89,7 @@ func (r mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.Med
 	if err != nil {
 		return nil, err
 	}
-	var results model.MediaFiles
+	results := model.MediaFiles{}
 	_, err = r.ormer.Raw(sql, args...).QueryRows(&results)
 	return results, err
 }
@@ -105,7 +105,7 @@ func (r mediaFileRepository) DeleteByPath(path string) error {
 }
 
 func (r mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
-	var results model.MediaFiles
+	results := model.MediaFiles{}
 	err := r.doSearch(q, offset, size, &results, "title")
 	return results, err
 }

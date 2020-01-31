@@ -37,7 +37,7 @@ func (r *userRepository) Get(id string) (*model.User, error) {
 
 func (r *userRepository) GetAll(options ...model.QueryOptions) (model.Users, error) {
 	sel := r.newSelect(options...).Columns("*")
-	var res model.Users
+	res := model.Users{}
 	err := r.queryAll(sel, &res)
 	return res, err
 }

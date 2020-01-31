@@ -56,14 +56,14 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 
 func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
 	sq := r.selectAlbum().Where(Eq{"artist_id": artistId}).OrderBy("year")
-	var res model.Albums
+	res := model.Albums{}
 	err := r.queryAll(sq, &res)
 	return res, err
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
 	sq := r.selectAlbum(options...)
-	var res model.Albums
+	res := model.Albums{}
 	err := r.queryAll(sq, &res)
 	return res, err
 }
@@ -81,7 +81,7 @@ func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums
 	if err != nil {
 		return nil, err
 	}
-	var results model.Albums
+	results := model.Albums{}
 	_, err = r.ormer.Raw(sql, args...).QueryRows(&results)
 	return results, err
 }
@@ -151,13 +151,13 @@ func (r *albumRepository) PurgeEmpty() error {
 
 func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Albums, error) {
 	sq := r.selectAlbum(options...).Where("starred = true")
-	var starred model.Albums
+	starred := model.Albums{}
 	err := r.queryAll(sq, &starred)
 	return starred, err
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
-	var results model.Albums
+	results := model.Albums{}
 	err := r.doSearch(q, offset, size, &results, "name")
 	return results, err
 }
