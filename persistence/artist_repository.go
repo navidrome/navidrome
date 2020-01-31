@@ -54,7 +54,10 @@ func (r *artistRepository) getIndexKey(a *model.Artist) string {
 
 func (r *artistRepository) Put(a *model.Artist) error {
 	_, err := r.put(a.ID, a)
-	return err
+	if err != nil {
+		return err
+	}
+	return r.index(a.ID, a.Name)
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
@@ -140,7 +143,6 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 		} else {
 			toInsert++
 		}
-		//err := r.addToIndex(r.tableName, ar.ID, ar.Name)
 		err := r.Put(&ar.Artist)
 		if err != nil {
 			return err
@@ -165,11 +167,13 @@ func (r *artistRepository) PurgeEmpty() error {
 }
 
 func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {
-	return nil, nil // TODO
+	var results model.Artists
+	err := r.doSearch(q, offset, size, &results, "name")
+	return results, err
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(options...)) // TODO Don't apply pagination!
+	return r.CountAll(r.parseRestOptions(options...))
 }
 
 func (r *artistRepository) Read(id string) (interface{}, error) {
