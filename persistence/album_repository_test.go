@@ -57,7 +57,7 @@ var _ = Describe("AlbumRepository", func() {
 
 	Describe("GetStarred", func() {
 		It("returns all starred records", func() {
-			Expect(repo.GetStarred("userid", model.QueryOptions{})).To(Equal(model.Albums{
+			Expect(repo.GetStarred(model.QueryOptions{})).To(Equal(model.Albums{
 				albumRadioactivity,
 			}))
 		})

@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -46,19 +45,17 @@ type Entry struct {
 
 type Entries []Entry
 
-func FromArtist(ar *model.Artist, ann *model.Annotation) Entry {
+func FromArtist(ar *model.Artist) Entry {
 	e := Entry{}
 	e.Id = ar.ID
 	e.Title = ar.Name
 	e.AlbumCount = ar.AlbumCount
 	e.IsDir = true
-	//if ann != nil {
 	e.Starred = ar.StarredAt
-	//}
 	return e
 }
 
-func FromAlbum(al *model.Album, ann *model.Annotation) Entry {
+func FromAlbum(al *model.Album) Entry {
 	e := Entry{}
 	e.Id = al.ID
 	e.Title = al.Name
@@ -74,15 +71,13 @@ func FromAlbum(al *model.Album, ann *model.Annotation) Entry {
 	e.ArtistId = al.ArtistID
 	e.Duration = al.Duration
 	e.SongCount = al.SongCount
-	//if ann != nil {
 	e.Starred = al.StarredAt
 	e.PlayCount = int32(al.PlayCount)
 	e.UserRating = al.Rating
-	//}
 	return e
 }
 
-func FromMediaFile(mf *model.MediaFile, ann *model.Annotation) Entry {
+func FromMediaFile(mf *model.MediaFile) Entry {
 	e := Entry{}
 	e.Id = mf.ID
 	e.Title = mf.Title
@@ -111,11 +106,9 @@ func FromMediaFile(mf *model.MediaFile, ann *model.Annotation) Entry {
 	e.AlbumId = mf.AlbumID
 	e.ArtistId = mf.ArtistID
 	e.Type = "music" // TODO Hardcoded for now
-	//if ann != nil {
 	e.PlayCount = int32(mf.PlayCount)
 	e.Starred = mf.StarredAt
 	e.UserRating = mf.Rating
-	//}
 	return e
 }
 
@@ -130,37 +123,26 @@ func realArtistName(mf *model.MediaFile) string {
 	return mf.Artist
 }
 
-func FromAlbums(albums model.Albums, annMap model.AnnotationMap) Entries {
+func FromAlbums(albums model.Albums) Entries {
 	entries := make(Entries, len(albums))
 	for i, al := range albums {
-		ann := annMap[al.ID]
-		entries[i] = FromAlbum(&al, &ann)
+		entries[i] = FromAlbum(&al)
 	}
 	return entries
 }
 
-func FromMediaFiles(mfs model.MediaFiles, annMap model.AnnotationMap) Entries {
+func FromMediaFiles(mfs model.MediaFiles) Entries {
 	entries := make(Entries, len(mfs))
 	for i, mf := range mfs {
-		ann := annMap[mf.ID]
-		entries[i] = FromMediaFile(&mf, &ann)
+		entries[i] = FromMediaFile(&mf)
 	}
 	return entries
 }
 
-func FromArtists(ars model.Artists, annMap model.AnnotationMap) Entries {
+func FromArtists(ars model.Artists) Entries {
 	entries := make(Entries, len(ars))
 	for i, ar := range ars {
-		ann := annMap[ar.ID]
-		entries[i] = FromArtist(&ar, &ann)
+		entries[i] = FromArtist(&ar)
 	}
 	return entries
-}
-
-func getUserID(ctx context.Context) string {
-	user, ok := ctx.Value("user").(*model.User)
-	if ok {
-		return user.ID
-	}
-	return ""
 }

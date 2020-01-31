@@ -123,7 +123,7 @@ func (p *playlists) Get(ctx context.Context, id string) (*PlaylistInfo, error) {
 	}
 
 	// TODO Use model.Playlist when got rid of Entries
-	pinfo := &PlaylistInfo{
+	plsInfo := &PlaylistInfo{
 		Id:        pl.ID,
 		Name:      pl.Name,
 		SongCount: len(pl.Tracks),
@@ -132,19 +132,7 @@ func (p *playlists) Get(ctx context.Context, id string) (*PlaylistInfo, error) {
 		Owner:     pl.Owner,
 		Comment:   pl.Comment,
 	}
-	pinfo.Entries = make(Entries, len(pl.Tracks))
 
-	var mfIds []string
-	for _, mf := range pl.Tracks {
-		mfIds = append(mfIds, mf.ID)
-	}
-
-	annMap, err := p.ds.Annotation(ctx).GetMap(getUserID(ctx), model.MediaItemType, mfIds)
-
-	for i, mf := range pl.Tracks {
-		ann := annMap[mf.ID]
-		pinfo.Entries[i] = FromMediaFile(&mf, &ann)
-	}
-
-	return pinfo, nil
+	plsInfo.Entries = FromMediaFiles(pl.Tracks)
+	return plsInfo, nil
 }

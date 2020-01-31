@@ -81,8 +81,7 @@ func (b *browser) Artist(ctx context.Context, id string) (*DirectoryInfo, error)
 	for _, al := range albums {
 		albumIds = append(albumIds, al.ID)
 	}
-	annMap, err := b.ds.Annotation(ctx).GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
-	return b.buildArtistDir(a, albums, annMap), nil
+	return b.buildArtistDir(a, albums), nil
 }
 
 func (b *browser) Album(ctx context.Context, id string) (*DirectoryInfo, error) {
@@ -96,16 +95,7 @@ func (b *browser) Album(ctx context.Context, id string) (*DirectoryInfo, error) 
 		mfIds = append(mfIds, mf.ID)
 	}
 
-	userID := getUserID(ctx)
-	trackAnnMap, err := b.ds.Annotation(ctx).GetMap(userID, model.MediaItemType, mfIds)
-	if err != nil {
-		return nil, err
-	}
-	ann, err := b.ds.Annotation(ctx).Get(userID, model.AlbumItemType, al.ID)
-	if err != nil {
-		return nil, err
-	}
-	return b.buildAlbumDir(al, ann, tracks, trackAnnMap), nil
+	return b.buildAlbumDir(al, tracks), nil
 }
 
 func (b *browser) Directory(ctx context.Context, id string) (*DirectoryInfo, error) {
@@ -126,13 +116,7 @@ func (b *browser) GetSong(ctx context.Context, id string) (*Entry, error) {
 		return nil, err
 	}
 
-	userId := getUserID(ctx)
-	ann, err := b.ds.Annotation(ctx).Get(userId, model.MediaItemType, id)
-	if err != nil {
-		return nil, err
-	}
-
-	entry := FromMediaFile(mf, ann)
+	entry := FromMediaFile(mf)
 	return &entry, nil
 }
 
@@ -149,7 +133,7 @@ func (b *browser) GetGenres(ctx context.Context) (model.Genres, error) {
 	return genres, err
 }
 
-func (b *browser) buildArtistDir(a *model.Artist, albums model.Albums, albumAnnMap model.AnnotationMap) *DirectoryInfo {
+func (b *browser) buildArtistDir(a *model.Artist, albums model.Albums) *DirectoryInfo {
 	dir := &DirectoryInfo{
 		Id:         a.ID,
 		Name:       a.Name,
@@ -158,39 +142,31 @@ func (b *browser) buildArtistDir(a *model.Artist, albums model.Albums, albumAnnM
 
 	dir.Entries = make(Entries, len(albums))
 	for i, al := range albums {
-		ann := albumAnnMap[al.ID]
-		dir.Entries[i] = FromAlbum(&al, &ann)
-		dir.PlayCount += int32(ann.PlayCount)
+		dir.Entries[i] = FromAlbum(&al)
+		dir.PlayCount += int32(al.PlayCount)
 	}
 	return dir
 }
 
-func (b *browser) buildAlbumDir(al *model.Album, albumAnn *model.Annotation, tracks model.MediaFiles, trackAnnMap model.AnnotationMap) *DirectoryInfo {
+func (b *browser) buildAlbumDir(al *model.Album, tracks model.MediaFiles) *DirectoryInfo {
 	dir := &DirectoryInfo{
-		Id:        al.ID,
-		Name:      al.Name,
-		Parent:    al.ArtistID,
-		Artist:    al.Artist,
-		ArtistId:  al.ArtistID,
-		SongCount: al.SongCount,
-		Duration:  al.Duration,
-		Created:   al.CreatedAt,
-		Year:      al.Year,
-		Genre:     al.Genre,
-		CoverArt:  al.CoverArtId,
-	}
-	if albumAnn != nil {
-		dir.PlayCount = int32(albumAnn.PlayCount)
-		dir.Starred = albumAnn.StarredAt
-		dir.UserRating = albumAnn.Rating
+		Id:         al.ID,
+		Name:       al.Name,
+		Parent:     al.ArtistID,
+		Artist:     al.Artist,
+		ArtistId:   al.ArtistID,
+		SongCount:  al.SongCount,
+		Duration:   al.Duration,
+		Created:    al.CreatedAt,
+		Year:       al.Year,
+		Genre:      al.Genre,
+		CoverArt:   al.CoverArtId,
+		PlayCount:  int32(al.PlayCount),
+		Starred:    al.StarredAt,
+		UserRating: al.Rating,
 	}
 
-	dir.Entries = make(Entries, len(tracks))
-	for i, mf := range tracks {
-		mfId := mf.ID
-		ann := trackAnnMap[mfId]
-		dir.Entries[i] = FromMediaFile(&mf, &ann)
-	}
+	dir.Entries = FromMediaFiles(tracks)
 	return dir
 }
 

@@ -5,7 +5,7 @@ import "time"
 type Album struct {
 	ID           string    `json:"id"            orm:"column(id)"`
 	Name         string    `json:"name"`
-	ArtistID     string    `json:"artistId"`
+	ArtistID     string    `json:"artistId"      orm:"pk;column(artist_id)"`
 	CoverArtPath string    `json:"-"`
 	CoverArtId   string    `json:"-"`
 	Artist       string    `json:"artist"`
@@ -37,7 +37,7 @@ type AlbumRepository interface {
 	GetAll(...QueryOptions) (Albums, error)
 	GetMap(ids []string) (map[string]Album, error)
 	GetRandom(...QueryOptions) (Albums, error)
-	GetStarred(userId string, options ...QueryOptions) (Albums, error)
+	GetStarred(options ...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
 	Refresh(ids ...string) error
 	PurgeEmpty() error

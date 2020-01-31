@@ -11,9 +11,9 @@ type MediaFile struct {
 	Title       string    `json:"title"`
 	Album       string    `json:"album"`
 	Artist      string    `json:"artist"`
-	ArtistID    string    `json:"artistId"`
+	ArtistID    string    `json:"artistId"      orm:"pk;column(artist_id)"`
 	AlbumArtist string    `json:"albumArtist"`
-	AlbumID     string    `json:"albumId"`
+	AlbumID     string    `json:"albumId"       orm:"pk;column(album_id)"`
 	HasCoverArt bool      `json:"hasCoverArt"`
 	TrackNumber int       `json:"trackNumber"`
 	DiscNumber  int       `json:"discNumber"`
@@ -48,8 +48,7 @@ type MediaFileRepository interface {
 	Get(id string) (*MediaFile, error)
 	FindByAlbum(albumId string) (MediaFiles, error)
 	FindByPath(path string) (MediaFiles, error)
-	// TODO Remove userId
-	GetStarred(userId string, options ...QueryOptions) (MediaFiles, error)
+	GetStarred(options ...QueryOptions) (MediaFiles, error)
 	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error

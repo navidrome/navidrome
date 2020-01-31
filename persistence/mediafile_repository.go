@@ -78,7 +78,7 @@ func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
 	return res, err
 }
 
-func (r mediaFileRepository) GetStarred(userId string, options ...model.QueryOptions) (model.MediaFiles, error) {
+func (r mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
 	sq := r.selectMediaFile(options...).Where("starred = true")
 	var starred model.MediaFiles
 	err := r.queryAll(sq, &starred)

@@ -26,9 +26,9 @@ func (r ratings) SetRating(ctx context.Context, id string, rating int) error {
 		return err
 	}
 	if exist {
-		return r.ds.Annotation(ctx).SetRating(rating, getUserID(ctx), model.AlbumItemType, id)
+		return r.ds.Annotation(ctx).SetRating(rating, model.AlbumItemType, id)
 	}
-	return r.ds.Annotation(ctx).SetRating(rating, getUserID(ctx), model.MediaItemType, id)
+	return r.ds.Annotation(ctx).SetRating(rating, model.MediaItemType, id)
 }
 
 func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
@@ -36,7 +36,6 @@ func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
 		log.Warn(ctx, "Cannot star/unstar an empty list of ids")
 		return nil
 	}
-	userId := getUserID(ctx)
 
 	return r.ds.WithTx(func(tx model.DataStore) error {
 		for _, id := range ids {
@@ -45,7 +44,7 @@ func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
 				return err
 			}
 			if exist {
-				err = tx.Annotation(ctx).SetStar(star, userId, model.AlbumItemType, ids...)
+				err = tx.Annotation(ctx).SetStar(star, model.AlbumItemType, ids...)
 				if err != nil {
 					return err
 				}
@@ -56,13 +55,13 @@ func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
 				return err
 			}
 			if exist {
-				err = tx.Annotation(ctx).SetStar(star, userId, model.ArtistItemType, ids...)
+				err = tx.Annotation(ctx).SetStar(star, model.ArtistItemType, ids...)
 				if err != nil {
 					return err
 				}
 				continue
 			}
-			err = tx.Annotation(ctx).SetStar(star, userId, model.MediaItemType, ids...)
+			err = tx.Annotation(ctx).SetStar(star, model.MediaItemType, ids...)
 			if err != nil {
 				return err
 			}

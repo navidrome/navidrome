@@ -108,7 +108,7 @@ func (r *artistRepository) Refresh(ids ...string) error {
 	return nil
 }
 
-func (r *artistRepository) GetStarred(userId string, options ...model.QueryOptions) (model.Artists, error) {
+func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Artists, error) {
 	return nil, nil // TODO
 }
 
@@ -121,7 +121,7 @@ func (r *artistRepository) Search(q string, offset int, size int) (model.Artists
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(options...))
+	return r.CountAll(r.parseRestOptions(options...)) // TODO Don't apply pagination!
 }
 
 func (r *artistRepository) Read(id string) (interface{}, error) {
