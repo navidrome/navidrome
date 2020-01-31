@@ -148,10 +148,10 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 		}
 	}
 	if toInsert > 0 {
-		log.Debug(r.ctx, "Inserted new artists", "num", toInsert)
+		log.Debug(r.ctx, "Inserted new artists", "totalInserted", toInsert)
 	}
 	if toUpdate > 0 {
-		log.Debug(r.ctx, "Updated artists", "num", toUpdate)
+		log.Debug(r.ctx, "Updated artists", "totalUpdated", toUpdate)
 	}
 	return err
 }
@@ -164,7 +164,13 @@ func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Arti
 }
 
 func (r *artistRepository) PurgeEmpty() error {
-	_, err := r.ormer.Raw("delete from artist where id not in (select distinct(artist_id) from album)").Exec()
+	del := Delete(r.tableName).Where("id not in (select distinct(artist_id) from album)")
+	c, err := r.executeSQL(del)
+	if err == nil {
+		if c > 0 {
+			log.Debug(r.ctx, "Purged empty artists", "totalDeleted", c)
+		}
+	}
 	return err
 }
 

@@ -130,20 +130,20 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		}
 	}
 	if toInsert > 0 {
-		log.Debug(r.ctx, "Inserted new albums", "num", toInsert)
+		log.Debug(r.ctx, "Inserted new albums", "totalInserted", toInsert)
 	}
 	if toUpdate > 0 {
-		log.Debug(r.ctx, "Updated albums", "num", toUpdate)
+		log.Debug(r.ctx, "Updated albums", "totalUpdated", toUpdate)
 	}
 	return err
 }
 
 func (r *albumRepository) PurgeEmpty() error {
-	rs, err := r.ormer.Raw("delete from album where id not in (select distinct(album_id) from media_file)").Exec()
+	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
+	c, err := r.executeSQL(del)
 	if err == nil {
-		c, _ := rs.RowsAffected()
 		if c > 0 {
-			log.Debug(r.ctx, "Purged empty albums", "num", c)
+			log.Debug(r.ctx, "Purged empty albums", "totalDeleted", c)
 		}
 	}
 	return err
