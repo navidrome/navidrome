@@ -143,7 +143,18 @@ func (r sqlRepository) delete(cond Sqlizer) error {
 func (r sqlRepository) toSql(sq Sqlizer) (string, []interface{}, error) {
 	sql, args, err := sq.ToSql()
 	if err == nil {
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", strings.TrimPrefix(fmt.Sprintf("%#v", args), "[]interface {}"))
+		var fmtArgs []string
+		for i := range args {
+			var f string
+			switch a := args[i].(type) {
+			case string:
+				f = `'` + a + `'`
+			default:
+				f = fmt.Sprintf("%v", a)
+			}
+			fmtArgs = append(fmtArgs, f)
+		}
+		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`)
 	}
 	return sql, args, err
 }
