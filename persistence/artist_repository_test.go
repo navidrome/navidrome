@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -12,7 +14,8 @@ var _ = Describe("ArtistRepository", func() {
 	var repo model.ArtistRepository
 
 	BeforeEach(func() {
-		repo = NewArtistRepository(log.NewContext(nil), orm.NewOrm())
+		ctx := context.WithValue(log.NewContext(nil), "user", &model.User{ID: "userid"})
+		repo = NewArtistRepository(ctx, orm.NewOrm())
 	})
 
 	Describe("Count", func() {
@@ -33,6 +36,14 @@ var _ = Describe("ArtistRepository", func() {
 	Describe("Get", func() {
 		It("saves and retrieves data", func() {
 			Expect(repo.Get("2")).To(Equal(&artistKraftwerk))
+		})
+	})
+
+	Describe("GetStarred", func() {
+		It("returns all starred records", func() {
+			Expect(repo.GetStarred(model.QueryOptions{})).To(Equal(model.Artists{
+				artistBeatles,
+			}))
 		})
 	})
 
