@@ -34,7 +34,10 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 
 func (r *albumRepository) Put(a *model.Album) error {
 	_, err := r.put(a.ID, a)
-	return err
+	if err != nil {
+		return err
+	}
+	return r.index(a.ID, a.Name)
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
@@ -121,7 +124,6 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		} else {
 			toInsert++
 		}
-		//err := r.addToIndex(r.tableName, al.ID, al.Name) TODO: Search
 		err := r.Put(&al.Album)
 		if err != nil {
 			return err
@@ -155,7 +157,9 @@ func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Album
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
-	return nil, nil // TODO
+	var results model.Albums
+	err := r.doSearch(q, offset, size, &results, "name")
+	return results, err
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {
