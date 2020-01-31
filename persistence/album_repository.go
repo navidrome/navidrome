@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
@@ -96,9 +97,8 @@ func (r *albumRepository) Refresh(ids ...string) error {
 	o := r.ormer
 	sql := fmt.Sprintf(`
 	select album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.compilation, f.genre,
-		max(f.year) as year, sum(f.duration) as duration, max(f.updated_at) as updated_at,
-		min(f.created_at) as created_at, count(*) as song_count, a.id as current_id, f.id as cover_art_id,
-		f.path as cover_art_path, f.has_cover_art
+		max(f.year) as year, sum(f.duration) as duration, count(*) as song_count, a.id as current_id, 
+		f.id as cover_art_id, f.path as cover_art_path, f.has_cover_art
 	from media_file f left outer join album a on f.album_id = a.id
 	where f.album_id in ('%s')
 	group by album_id order by f.id`, strings.Join(ids, "','"))
@@ -119,10 +119,12 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		if al.AlbumArtist == "" {
 			al.AlbumArtist = al.Artist
 		}
+		al.UpdatedAt = time.Now()
 		if al.CurrentId != "" {
 			toUpdate++
 		} else {
 			toInsert++
+			al.CreatedAt = time.Now()
 		}
 		err := r.Put(&al.Album)
 		if err != nil {
