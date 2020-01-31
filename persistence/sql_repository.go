@@ -137,26 +137,27 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	return res.Count, nil
 }
 
-func (r *sqlRepository) put(id string, m interface{}) error {
+func (r *sqlRepository) put(id string, m interface{}) (newId string, err error) {
 	values, _ := toSqlArgs(m)
 	if id != "" {
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(values)
 		count, err := r.executeSQL(update)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if count > 0 {
-			return nil
+			return id, nil
 		}
 	}
 	// if does not have an id OR could not update (new record with predefined id)
 	if id == "" {
 		rand, _ := uuid.NewRandom()
-		values["id"] = rand.String()
+		id = rand.String()
+		values["id"] = id
 	}
 	insert := Insert(r.tableName).SetMap(values)
-	_, err := r.executeSQL(insert)
-	return err
+	_, err = r.executeSQL(insert)
+	return id, err
 }
 
 func (r sqlRepository) delete(cond Sqlizer) error {

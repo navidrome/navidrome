@@ -7,7 +7,6 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/model"
-	"github.com/google/uuid"
 )
 
 type playlist struct {
@@ -45,12 +44,9 @@ func (r *playlistRepository) Delete(id string) error {
 }
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
-	if p.ID == "" {
-		id, _ := uuid.NewRandom()
-		p.ID = id.String()
-	}
 	pls := r.fromModel(p)
-	return r.put(p.ID, &pls)
+	_, err := r.put(pls.ID, pls)
+	return err
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
