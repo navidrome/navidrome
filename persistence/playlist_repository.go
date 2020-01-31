@@ -49,18 +49,8 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 		id, _ := uuid.NewRandom()
 		p.ID = id.String()
 	}
-	values, _ := toSqlArgs(r.fromModel(p))
-	update := Update(r.tableName).Where(Eq{"id": p.ID}).SetMap(values)
-	count, err := r.executeSQL(update)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil
-	}
-	insert := Insert(r.tableName).SetMap(values)
-	_, err = r.executeSQL(insert)
-	return err
+	pls := r.fromModel(p)
+	return r.put(p.ID, &pls)
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {

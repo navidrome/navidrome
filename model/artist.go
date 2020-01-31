@@ -8,11 +8,11 @@ type Artist struct {
 	AlbumCount int    `json:"albumCount"  orm:"column(album_count)"`
 
 	// Annotations
-	PlayCount int       `json:"playCount"`
-	PlayDate  time.Time `json:"playDate"`
-	Rating    int       `json:"rating"`
-	Starred   bool      `json:"starred"`
-	StarredAt time.Time `json:"starredAt"`
+	PlayCount int       `json:"-"   orm:"-"`
+	PlayDate  time.Time `json:"-"   orm:"-"`
+	Rating    int       `json:"-"   orm:"-"`
+	Starred   bool      `json:"-"   orm:"-"`
+	StarredAt time.Time `json:"-"   orm:"-"`
 }
 
 type Artists []Artist

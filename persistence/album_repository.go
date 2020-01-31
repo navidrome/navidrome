@@ -2,9 +2,12 @@ package persistence
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
 )
@@ -17,7 +20,7 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 	r := &albumRepository{}
 	r.ctx = ctx
 	r.ormer = o
-	r.tableName = "media_file"
+	r.tableName = "album"
 	return r
 }
 
@@ -27,28 +30,19 @@ func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"album_id": id}))
+	return r.exists(Select().Where(Eq{"id": id}))
 }
 
 func (r *albumRepository) Put(a *model.Album) error {
-	return nil
+	return r.put(a.ID, a)
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	//select album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.compilation, f.genre,
-	//	max(f.year) as year, sum(f.duration) as duration, max(f.updated_at) as updated_at,
-	//	min(f.created_at) as created_at, count(*) as song_count, a.id as current_id, f.id as cover_art_id,
-	//	f.path as cover_art_path, f.has_cover_art
-	//	group by album_id
-	return r.newSelectWithAnnotation(model.AlbumItemType, "album_id", options...).
-		Columns("album_id as id", "album as name", "artist", "album_artist", "artist", "artist_id",
-			"compilation", "genre", "id as cover_art_id", "path as cover_art_path", "has_cover_art",
-			"max(year) as year", "sum(duration) as duration", "max(updated_at) as updated_at",
-			"min(created_at) as created_at", "count(*) as song_count").GroupBy("album_id")
+	return r.newSelectWithAnnotation(model.AlbumItemType, "id", options...).Columns("*")
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
-	sq := r.selectAlbum().Where(Eq{"album_id": id})
+	sq := r.selectAlbum().Where(Eq{"id": id})
 	var res model.Album
 	err := r.queryOne(sq, &res)
 	if err != nil {
@@ -58,7 +52,7 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 }
 
 func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
-	sq := r.selectAlbum().Where(Eq{"artist_id": artistId}).OrderBy("album")
+	sq := r.selectAlbum().Where(Eq{"artist_id": artistId}).OrderBy("year")
 	var res model.Albums
 	err := r.queryAll(sq, &res)
 	return res, err
@@ -69,10 +63,6 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	var res model.Albums
 	err := r.queryAll(sq, &res)
 	return res, err
-}
-
-func (r *albumRepository) GetMap(ids []string) (map[string]model.Album, error) {
-	return nil, nil
 }
 
 // TODO Keep order when paginating
@@ -94,11 +84,67 @@ func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums
 }
 
 func (r *albumRepository) Refresh(ids ...string) error {
-	return nil
+	type refreshAlbum struct {
+		model.Album
+		CurrentId   string
+		HasCoverArt bool
+	}
+	var albums []refreshAlbum
+	o := r.ormer
+	sql := fmt.Sprintf(`
+	select album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.compilation, f.genre,
+		max(f.year) as year, sum(f.duration) as duration, max(f.updated_at) as updated_at,
+		min(f.created_at) as created_at, count(*) as song_count, a.id as current_id, f.id as cover_art_id,
+		f.path as cover_art_path, f.has_cover_art
+	from media_file f left outer join album a on f.album_id = a.id
+	where f.album_id in ('%s')
+	group by album_id order by f.id`, strings.Join(ids, "','"))
+	_, err := o.Raw(sql).QueryRows(&albums)
+	if err != nil {
+		return err
+	}
+
+	toInsert := 0
+	toUpdate := 0
+	for _, al := range albums {
+		if !al.HasCoverArt {
+			al.CoverArtId = ""
+		}
+		if al.Compilation {
+			al.AlbumArtist = "Various Artists"
+		}
+		if al.AlbumArtist == "" {
+			al.AlbumArtist = al.Artist
+		}
+		if al.CurrentId != "" {
+			toUpdate++
+		} else {
+			toInsert++
+		}
+		//err := r.addToIndex(r.tableName, al.ID, al.Name) TODO: Search
+		err := r.Put(&al.Album)
+		if err != nil {
+			return err
+		}
+	}
+	if toInsert > 0 {
+		log.Debug(r.ctx, "Inserted new albums", "num", toInsert)
+	}
+	if toUpdate > 0 {
+		log.Debug(r.ctx, "Updated albums", "num", toUpdate)
+	}
+	return err
 }
 
 func (r *albumRepository) PurgeEmpty() error {
-	return nil
+	rs, err := r.ormer.Raw("delete from album where id not in (select distinct(album_id) from media_file)").Exec()
+	if err == nil {
+		c, _ := rs.RowsAffected()
+		if c > 0 {
+			log.Debug(r.ctx, "Purged empty albums", "num", c)
+		}
+	}
+	return err
 }
 
 func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Albums, error) {
@@ -109,7 +155,7 @@ func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Album
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
-	return nil, nil
+	return nil, nil // TODO
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {

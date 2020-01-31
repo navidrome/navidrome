@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/astaxie/beego/orm"
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo"
@@ -14,7 +15,7 @@ var _ = Describe("MediaRepository", func() {
 	var mr model.MediaFileRepository
 
 	BeforeEach(func() {
-		ctx := context.WithValue(context.Background(), "user", &model.User{ID: "userid"})
+		ctx := context.WithValue(log.NewContext(nil), "user", &model.User{ID: "userid"})
 		mr = NewMediaFileRepository(ctx, orm.NewOrm())
 	})
 

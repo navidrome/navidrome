@@ -2,12 +2,14 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
 	"github.com/deluan/rest"
@@ -23,24 +25,21 @@ func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepositor
 	r.ctx = ctx
 	r.ormer = o
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
-	r.tableName = "media_file"
+	r.tableName = "artist"
 	return r
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
-	// FIXME Handle AlbumArtist/Various Artists...
-	return r.newSelectWithAnnotation(model.ArtistItemType, "album_id", options...).
-		Columns("artist_id as id", "artist as name", "count(distinct album_id) as album_count").
-		GroupBy("artist_id").Where(Eq{"compilation": false})
+	return r.newSelectWithAnnotation(model.ArtistItemType, "id", options...).Columns("*")
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sel := r.selectArtist(options...).Where(Eq{"compilation": false})
+	sel := r.selectArtist(options...)
 	return r.count(sel, options...)
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"artist_id": id}))
+	return r.exists(Select().Where(Eq{"id": id}))
 }
 
 func (r *artistRepository) getIndexKey(a *model.Artist) string {
@@ -55,12 +54,11 @@ func (r *artistRepository) getIndexKey(a *model.Artist) string {
 }
 
 func (r *artistRepository) Put(a *model.Artist) error {
-	return nil
+	return r.put(a.ID, a)
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
-	sel := Select("artist_id as id", "artist as name", "count(distinct album_id) as album_count").
-		From("media_file").GroupBy("artist_id").Where(Eq{"artist_id": id})
+	sel := r.selectArtist().Where(Eq{"id": id})
 	var res model.Artist
 	err := r.queryOne(sel, &res)
 	return &res, err
@@ -105,7 +103,56 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 }
 
 func (r *artistRepository) Refresh(ids ...string) error {
-	return nil
+	type refreshArtist struct {
+		model.Artist
+		CurrentId   string
+		AlbumArtist string
+		Compilation bool
+	}
+	var artists []refreshArtist
+	o := r.ormer
+	sql := fmt.Sprintf(`
+select f.artist_id as id,
+       f.artist as name,
+       f.album_artist,
+       f.compilation,
+       count(*) as album_count,
+       a.id as current_id
+from album f
+         left outer join artist a on f.artist_id = a.id
+where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(ids, "','"))
+	_, err := o.Raw(sql).QueryRows(&artists)
+	if err != nil {
+		return err
+	}
+
+	toInsert := 0
+	toUpdate := 0
+	for _, ar := range artists {
+		if ar.Compilation {
+			ar.AlbumArtist = "Various Artists"
+		}
+		if ar.AlbumArtist != "" {
+			ar.Name = ar.AlbumArtist
+		}
+		if ar.CurrentId != "" {
+			toUpdate++
+		} else {
+			toInsert++
+		}
+		//err := r.addToIndex(r.tableName, ar.ID, ar.Name)
+		err := r.Put(&ar.Artist)
+		if err != nil {
+			return err
+		}
+	}
+	if toInsert > 0 {
+		log.Debug(r.ctx, "Inserted new artists", "num", toInsert)
+	}
+	if toUpdate > 0 {
+		log.Debug(r.ctx, "Updated artists", "num", toUpdate)
+	}
+	return err
 }
 
 func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Artists, error) {
@@ -113,7 +160,8 @@ func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Arti
 }
 
 func (r *artistRepository) PurgeEmpty() error {
-	return nil
+	_, err := r.ormer.Raw("delete from artist where id not in (select distinct(artist_id) from album)").Exec()
+	return err
 }
 
 func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {

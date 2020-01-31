@@ -10,6 +10,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
+	"github.com/google/uuid"
 )
 
 type sqlRepository struct {
@@ -131,6 +132,28 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	return res.Count, nil
 }
 
+func (r *sqlRepository) put(id string, m interface{}) error {
+	values, _ := toSqlArgs(m)
+	if id != "" {
+		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(values)
+		count, err := r.executeSQL(update)
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			return nil
+		}
+	}
+	// if does not have an id OR could not update (new record with predefined id)
+	if id == "" {
+		rand, _ := uuid.NewRandom()
+		values["id"] = rand.String()
+	}
+	insert := Insert(r.tableName).SetMap(values)
+	_, err := r.executeSQL(insert)
+	return err
+}
+
 func (r sqlRepository) delete(cond Sqlizer) error {
 	del := Delete(r.tableName).Where(cond)
 	_, err := r.executeSQL(del)
@@ -167,9 +190,11 @@ func (r sqlRepository) parseRestOptions(options ...rest.QueryOptions) model.Quer
 		qo.Max = options[0].Max
 		qo.Offset = options[0].Offset
 		if len(options[0].Filters) > 0 {
+			filters := And{}
 			for f, v := range options[0].Filters {
-				qo.Filters = Like{f: fmt.Sprintf("%s%%", v)}
+				qo.Filters = append(filters, Like{f: fmt.Sprintf("%s%%", v)})
 			}
+			qo.Filters = filters
 		}
 	}
 	return qo
