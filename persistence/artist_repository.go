@@ -34,8 +34,7 @@ func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBui
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sel := r.selectArtist(options...)
-	return r.count(sel, options...)
+	return r.count(Select(), options...)
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {

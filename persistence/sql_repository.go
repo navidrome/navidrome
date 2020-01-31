@@ -43,6 +43,7 @@ func (r *sqlRepository) newSelectWithAnnotation(itemType, idField string, option
 func (r *sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
 	sq := Select().From(r.tableName)
 	sq = r.applyOptions(sq, options...)
+	sq = r.applyFilters(sq, options...)
 	return sq
 }
 
@@ -52,7 +53,7 @@ func (r *sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpt
 			sq = sq.Limit(uint64(options[0].Max))
 		}
 		if options[0].Offset > 0 {
-			sq = sq.Offset(uint64(options[0].Max))
+			sq = sq.Offset(uint64(options[0].Offset))
 		}
 		if options[0].Sort != "" {
 			if options[0].Order == "desc" {
@@ -61,9 +62,13 @@ func (r *sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpt
 				sq = sq.OrderBy(toSnakeCase(options[0].Sort))
 			}
 		}
-		if options[0].Filters != nil {
-			sq = sq.Where(options[0].Filters)
-		}
+	}
+	return sq
+}
+
+func (r *sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOptions) SelectBuilder {
+	if len(options) > 0 && options[0].Filters != nil {
+		sq = sq.Where(options[0].Filters)
 	}
 	return sq
 }
@@ -119,7 +124,7 @@ func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
 	countQuery = countQuery.Columns("count(*) as count").From(r.tableName)
-	countQuery = r.applyOptions(countQuery, options...)
+	countQuery = r.applyFilters(countQuery, options...)
 	query, args, err := r.toSql(countQuery)
 	if err != nil {
 		return 0, err
