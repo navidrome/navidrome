@@ -27,7 +27,7 @@ func (r genreRepository) GetAll() (model.Genres, error) {
 	if err != nil {
 		return nil, err
 	}
-	var res model.Genres
+	res := model.Genres{}
 	_, err = r.ormer.Raw(sql, args).QueryRows(&res)
 	return res, err
 }

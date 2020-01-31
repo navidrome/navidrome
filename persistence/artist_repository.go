@@ -69,7 +69,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 
 func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists, error) {
 	sel := r.selectArtist(options...)
-	var res model.Artists
+	res := model.Artists{}
 	err := r.queryAll(sel, &res)
 	return res, err
 }
@@ -158,7 +158,7 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 
 func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Artists, error) {
 	sq := r.selectArtist(options...).Where("starred = true")
-	var starred model.Artists
+	starred := model.Artists{}
 	err := r.queryAll(sq, &starred)
 	return starred, err
 }
@@ -169,7 +169,7 @@ func (r *artistRepository) PurgeEmpty() error {
 }
 
 func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {
-	var results model.Artists
+	results := model.Artists{}
 	err := r.doSearch(q, offset, size, &results, "name")
 	return results, err
 }

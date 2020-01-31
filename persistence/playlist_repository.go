@@ -64,7 +64,7 @@ func (r *playlistRepository) GetWithTracks(id string) (*model.Playlist, error) {
 	}
 	mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
 	pls.Duration = 0
-	var newTracks model.MediaFiles
+	newTracks := model.MediaFiles{}
 	for _, t := range pls.Tracks {
 		mf, err := mfRepo.Get(t.ID)
 		if err != nil {
