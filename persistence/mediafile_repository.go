@@ -2,9 +2,12 @@ package persistence
 
 import (
 	"context"
+	"os"
+	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
 )
@@ -66,7 +69,21 @@ func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
 	sel := r.selectMediaFile().Where(Like{"path": path + "%"})
 	res := model.MediaFiles{}
 	err := r.queryAll(sel, &res)
-	return res, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Only return mediafiles that are direct child of requested path
+	filtered := model.MediaFiles{}
+	path = strings.ToLower(path) + string(os.PathSeparator)
+	for _, mf := range res {
+		filename := strings.TrimPrefix(strings.ToLower(mf.Path), path)
+		if len(strings.Split(filename, string(os.PathSeparator))) > 1 {
+			continue
+		}
+		filtered = append(filtered, mf)
+	}
+	return filtered, nil
 }
 
 func (r mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
@@ -99,8 +116,20 @@ func (r mediaFileRepository) Delete(id string) error {
 }
 
 func (r mediaFileRepository) DeleteByPath(path string) error {
-	del := Delete(r.tableName).Where(Like{"path": path + "%"})
-	_, err := r.executeSQL(del)
+	filtered, err := r.FindByPath(path)
+	if err != nil {
+		return err
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+	ids := make([]string, len(filtered))
+	for i, mf := range filtered {
+		ids[i] = mf.ID
+	}
+	log.Debug(r.ctx, "Deleting mediafiles by path", "path", path, "totalDeleted", len(ids))
+	del := Delete(r.tableName).Where(Eq{"id": ids})
+	_, err = r.executeSQL(del)
 	return err
 }
 
