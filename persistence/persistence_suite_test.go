@@ -20,9 +20,9 @@ import (
 func TestPersistence(t *testing.T) {
 	tests.Init(t, true)
 
-	//os.Remove("./test-123.db")
-	//conf.Server.DbPath = "./test-123.db"
-	conf.Server.DbPath = "file::memory:?cache=shared"
+	os.Remove("./test-123.db")
+	conf.Server.DbPath = "./test-123.db"
+	//conf.Server.DbPath = "file::memory:?cache=shared"
 	New()
 	db.EnsureDB()
 	log.SetLevel(log.LevelCritical)
@@ -31,7 +31,7 @@ func TestPersistence(t *testing.T) {
 }
 
 var artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", AlbumCount: 1}
-var artistBeatles = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2}
+var artistBeatles = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2, Starred: true}
 var testArtists = model.Artists{
 	artistKraftwerk,
 	artistBeatles,
@@ -57,9 +57,11 @@ var testSongs = model.MediaFiles{
 	songAntenna,
 }
 
-var annAlbumRadioactivity = model.Annotation{AnnID: "1", UserID: "userid", ItemType: model.AlbumItemType, ItemID: "3", Starred: true}
-var annSongComeTogether = model.Annotation{AnnID: "2", UserID: "userid", ItemType: model.MediaItemType, ItemID: "2", Starred: true}
+var annArtistBeatles = model.Annotation{AnnID: "3", UserID: "userid", ItemType: model.ArtistItemType, ItemID: artistBeatles.ID, Starred: true}
+var annAlbumRadioactivity = model.Annotation{AnnID: "1", UserID: "userid", ItemType: model.AlbumItemType, ItemID: albumRadioactivity.ID, Starred: true}
+var annSongComeTogether = model.Annotation{AnnID: "2", UserID: "userid", ItemType: model.MediaItemType, ItemID: songComeTogether.ID, Starred: true}
 var testAnnotations = []model.Annotation{
+	annArtistBeatles,
 	annAlbumRadioactivity,
 	annSongComeTogether,
 }

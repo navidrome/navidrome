@@ -76,8 +76,7 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 
 // TODO Cache the index (recalculate when there are changes to the DB)
 func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
-	sq := Select("artist_id as id", "artist as name", "count(distinct album_id) as album_count").
-		From("media_file").GroupBy("artist_id").OrderBy("name")
+	sq := r.selectArtist().OrderBy("name")
 	var all model.Artists
 	// TODO Paginate
 	err := r.queryAll(sq, &all)
@@ -93,7 +92,7 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 			idx = &model.ArtistIndex{ID: ax}
 			fullIdx[ax] = idx
 		}
-		idx.Artists = append(idx.Artists, model.Artist(a))
+		idx.Artists = append(idx.Artists, a)
 	}
 	var result model.ArtistIndexes
 	for _, idx := range fullIdx {
@@ -158,7 +157,10 @@ where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(id
 }
 
 func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Artists, error) {
-	return nil, nil // TODO
+	sq := r.selectArtist(options...).Where("starred = true")
+	var starred model.Artists
+	err := r.queryAll(sq, &starred)
+	return starred, err
 }
 
 func (r *artistRepository) PurgeEmpty() error {
