@@ -33,7 +33,8 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 }
 
 func (r *albumRepository) Put(a *model.Album) error {
-	return r.put(a.ID, a)
+	_, err := r.put(a.ID, a)
+	return err
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {

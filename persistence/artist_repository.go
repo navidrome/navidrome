@@ -53,7 +53,8 @@ func (r *artistRepository) getIndexKey(a *model.Artist) string {
 }
 
 func (r *artistRepository) Put(a *model.Artist) error {
-	return r.put(a.ID, a)
+	_, err := r.put(a.ID, a)
+	return err
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {

@@ -2,13 +2,11 @@ package persistence
 
 import (
 	"context"
-	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
-	"github.com/kennygrant/sanitize"
 )
 
 type mediaFileRepository struct {
@@ -32,7 +30,12 @@ func (r mediaFileRepository) Exists(id string) (bool, error) {
 }
 
 func (r mediaFileRepository) Put(m *model.MediaFile) error {
-	return r.put(m.ID, m)
+	_, err := r.put(m.ID, m)
+	if err != nil {
+		return err
+	}
+	r.index(m.ID, m.Title)
+	return nil
 }
 
 func (r mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
@@ -103,26 +106,8 @@ func (r mediaFileRepository) DeleteByPath(path string) error {
 }
 
 func (r mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
-	q = strings.TrimSpace(sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*"))))
-	if len(q) <= 2 {
-		return model.MediaFiles{}, nil
-	}
-	sq := Select("*").From(r.tableName)
-	sq = sq.Limit(uint64(size)).Offset(uint64(offset)).OrderBy("title")
-	sq = sq.Join("search").Where("search.id = " + r.tableName + ".id")
-	parts := strings.Split(q, " ")
-	for _, part := range parts {
-		sq = sq.Where(Or{
-			Like{"full_text": part + "%"},
-			Like{"full_text": "%" + part + "%"},
-		})
-	}
-	sql, args, err := r.toSql(sq)
-	if err != nil {
-		return nil, err
-	}
 	var results model.MediaFiles
-	_, err = r.ormer.Raw(sql, args...).QueryRows(results)
+	err := r.doSearch(q, offset, size, &results, "title")
 	return results, err
 }
 
