@@ -14,10 +14,9 @@ import (
 )
 
 type sqlRepository struct {
-	ctx        context.Context
-	tableName  string
-	fieldNames []string
-	ormer      orm.Ormer
+	ctx       context.Context
+	tableName string
+	ormer     orm.Ormer
 }
 
 const invalidUserId = "-1"
@@ -31,7 +30,7 @@ func userId(ctx context.Context) string {
 	return usr.ID
 }
 
-func (r *sqlRepository) newSelectWithAnnotation(itemType, idField string, options ...model.QueryOptions) SelectBuilder {
+func (r sqlRepository) newSelectWithAnnotation(itemType, idField string, options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).
 		LeftJoin("annotation on ("+
 			"annotation.item_id = "+idField+
@@ -40,14 +39,14 @@ func (r *sqlRepository) newSelectWithAnnotation(itemType, idField string, option
 		Columns("starred", "starred_at", "play_count", "play_date", "rating")
 }
 
-func (r *sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
+func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
 	sq := Select().From(r.tableName)
 	sq = r.applyOptions(sq, options...)
 	sq = r.applyFilters(sq, options...)
 	return sq
 }
 
-func (r *sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOptions) SelectBuilder {
+func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOptions) SelectBuilder {
 	if len(options) > 0 {
 		if options[0].Max > 0 {
 			sq = sq.Limit(uint64(options[0].Max))
@@ -66,7 +65,7 @@ func (r *sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpt
 	return sq
 }
 
-func (r *sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOptions) SelectBuilder {
+func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOptions) SelectBuilder {
 	if len(options) > 0 && options[0].Filters != nil {
 		sq = sq.Where(options[0].Filters)
 	}
@@ -137,7 +136,7 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	return res.Count, nil
 }
 
-func (r *sqlRepository) put(id string, m interface{}) (newId string, err error) {
+func (r sqlRepository) put(id string, m interface{}) (newId string, err error) {
 	values, _ := toSqlArgs(m)
 	if id != "" {
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(values)
