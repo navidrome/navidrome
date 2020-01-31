@@ -28,8 +28,8 @@ type nd struct {
 	ScanInterval        string `default:"1m"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
-	DevDisableAuthentication bool `default:"false"`
-	DevDisableBanner         bool `default:"false"`
+	DevDisableBanner bool `default:"false"`
+	DevLogSourceLine bool `default:"false"`
 }
 
 var Server = &nd{}
@@ -85,7 +85,8 @@ func LoadFromFile(confFile string, skipFlags ...bool) {
 	if os.Getenv("PORT") != "" {
 		Server.Port = os.Getenv("PORT")
 	}
-	log.SerLevelString(Server.LogLevel)
+	log.SetLevelString(Server.LogLevel)
+	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.Trace("Loaded configuration", "file", confFile, "config", fmt.Sprintf("%#v", Server))
 }
 

@@ -27,6 +27,7 @@ const (
 var (
 	currentLevel  Level
 	defaultLogger = logrus.New()
+	logSourceLine = false
 )
 
 // SetLevel sets the global log level used by the simple logger.
@@ -35,7 +36,7 @@ func SetLevel(l Level) {
 	logrus.SetLevel(logrus.Level(l))
 }
 
-func SerLevelString(l string) {
+func SetLevelString(l string) {
 	envLevel := strings.ToLower(l)
 	var level Level
 	switch envLevel {
@@ -53,6 +54,10 @@ func SerLevelString(l string) {
 		level = LevelInfo
 	}
 	SetLevel(level)
+}
+
+func SetLogSourceLine(enabled bool) {
+	logSourceLine = enabled
 }
 
 func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Context {
@@ -132,7 +137,7 @@ func parseArgs(args []interface{}) (*logrus.Entry, string) {
 		kvPairs := args[1:]
 		l = addFields(l, kvPairs)
 	}
-	if currentLevel >= LevelTrace {
+	if logSourceLine {
 		_, file, line, ok := runtime.Caller(2)
 		if !ok {
 			file = "???"

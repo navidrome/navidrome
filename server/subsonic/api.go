@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/go-chi/chi"
@@ -48,11 +47,9 @@ func (api *Router) routes() http.Handler {
 	r.Use(postFormToQueryParams)
 	r.Use(checkRequiredParameters)
 
-	// Add validation middleware if not disabled
-	if !conf.Server.DevDisableAuthentication {
-		r.Use(authenticate(api.Users))
-		// TODO Validate version
-	}
+	// Add validation middleware
+	r.Use(authenticate(api.Users))
+	// TODO Validate version
 
 	// Subsonic endpoints, grouped by controller
 	r.Group(func(r chi.Router) {
