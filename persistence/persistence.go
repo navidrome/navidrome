@@ -73,10 +73,6 @@ func (db *NewSQLStore) Annotation(ctx context.Context) model.AnnotationRepositor
 	return NewAnnotationRepository(ctx, db.getOrmer())
 }
 
-func getTypeName(model interface{}) string {
-	return reflect.TypeOf(model).Name()
-}
-
 func (db *NewSQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
@@ -88,7 +84,7 @@ func (db *NewSQLStore) Resource(ctx context.Context, m interface{}) model.Resour
 	case model.MediaFile:
 		return db.MediaFile(ctx).(model.ResourceRepository)
 	}
-	log.Error("Resource no implemented", "model", getTypeName(m))
+	log.Error("Resource no implemented", "model", reflect.TypeOf(m).Name())
 	return nil
 }
 
