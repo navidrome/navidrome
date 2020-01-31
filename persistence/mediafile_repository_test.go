@@ -44,7 +44,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("returns empty array when no tracks are found", func() {
-		Expect(mr.FindByAlbum("67")).To(Equal(model.MediaFiles{}))
+		Expect(mr.FindByAlbum("67")).To(Equal(model.MediaFiles(nil)))
 	})
 
 	It("finds tracks by path", func() {
@@ -54,7 +54,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("returns starred tracks", func() {
-		Expect(mr.GetStarred("userid")).To(Equal(model.MediaFiles{
+		Expect(mr.GetStarred()).To(Equal(model.MediaFiles{
 			songComeTogether,
 		}))
 	})

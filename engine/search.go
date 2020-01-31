@@ -34,12 +34,7 @@ func (s *search) SearchArtist(ctx context.Context, q string, offset int, size in
 	for i, al := range artists {
 		artistIds[i] = al.ID
 	}
-	annMap, err := s.ds.Annotation(ctx).GetMap(getUserID(ctx), model.ArtistItemType, artistIds)
-	if err != nil {
-		return nil, nil
-	}
-
-	return FromArtists(artists, annMap), nil
+	return FromArtists(artists), nil
 }
 
 func (s *search) SearchAlbum(ctx context.Context, q string, offset int, size int) (Entries, error) {
@@ -53,12 +48,8 @@ func (s *search) SearchAlbum(ctx context.Context, q string, offset int, size int
 	for i, al := range albums {
 		albumIds[i] = al.ID
 	}
-	annMap, err := s.ds.Annotation(ctx).GetMap(getUserID(ctx), model.AlbumItemType, albumIds)
-	if err != nil {
-		return nil, nil
-	}
 
-	return FromAlbums(albums, annMap), nil
+	return FromAlbums(albums), nil
 }
 
 func (s *search) SearchSong(ctx context.Context, q string, offset int, size int) (Entries, error) {
@@ -72,10 +63,6 @@ func (s *search) SearchSong(ctx context.Context, q string, offset int, size int)
 	for i, mf := range mediaFiles {
 		trackIds[i] = mf.ID
 	}
-	annMap, err := s.ds.Annotation(ctx).GetMap(getUserID(ctx), model.MediaItemType, trackIds)
-	if err != nil {
-		return nil, nil
-	}
 
-	return FromMediaFiles(mediaFiles, annMap), nil
+	return FromMediaFiles(mediaFiles), nil
 }

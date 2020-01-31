@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/db"
@@ -52,8 +53,8 @@ var testSongs = model.MediaFiles{
 	songAntenna,
 }
 
-var annAlbumRadioactivity = model.Annotation{AnnotationID: "1", UserID: "userid", ItemType: model.AlbumItemType, ItemID: "3", Starred: true}
-var annSongComeTogether = model.Annotation{AnnotationID: "2", UserID: "userid", ItemType: model.MediaItemType, ItemID: "2", Starred: true}
+var annAlbumRadioactivity = model.Annotation{AnnID: "1", UserID: "userid", ItemType: model.AlbumItemType, ItemID: "3", Starred: true}
+var annSongComeTogether = model.Annotation{AnnID: "2", UserID: "userid", ItemType: model.MediaItemType, ItemID: "2", Starred: true}
 var testAnnotations = []model.Annotation{
 	annAlbumRadioactivity,
 	annSongComeTogether,
@@ -81,7 +82,6 @@ var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
 		o := orm.NewOrm()
 		mr := NewMediaFileRepository(nil, o)
-
 		for _, s := range testSongs {
 			err := mr.Put(&s)
 			if err != nil {
@@ -90,8 +90,13 @@ var _ = Describe("Initialize test DB", func() {
 		}
 
 		for _, a := range testAnnotations {
-			ann := annotation(a)
-			_, err := o.Insert(&ann)
+			values, _ := toSqlArgs(a)
+			ins := squirrel.Insert("annotation").SetMap(values)
+			query, args, err := ins.ToSql()
+			if err != nil {
+				panic(err)
+			}
+			_, err = o.Raw(query, args...).Exec()
 			if err != nil {
 				panic(err)
 			}

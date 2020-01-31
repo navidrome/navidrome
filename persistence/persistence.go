@@ -125,17 +125,8 @@ func (db *NewSQLStore) getOrmer() orm.Ormer {
 }
 
 func initORM(dbPath string) error {
-	//verbose := conf.Server.LogLevel == "trace"
-	//orm.Debug = verbose
 	if strings.Contains(dbPath, "postgres") {
 		driver = "postgres"
 	}
-	err := orm.RegisterDataBase("default", driver, dbPath)
-	if err != nil {
-		return err
-	}
-	// TODO Remove all RegisterModels (i.e. don't use orm.Insert/Update)
-	orm.RegisterModel(new(annotation))
-
-	return nil
+	return orm.RegisterDataBase("default", driver, dbPath)
 }

@@ -55,9 +55,9 @@ func (r *sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpt
 		}
 		if options[0].Sort != "" {
 			if options[0].Order == "desc" {
-				sq = sq.OrderBy(options[0].Sort + " desc")
+				sq = sq.OrderBy(toSnakeCase(options[0].Sort + " desc"))
 			} else {
-				sq = sq.OrderBy(options[0].Sort)
+				sq = sq.OrderBy(toSnakeCase(options[0].Sort))
 			}
 		}
 		if options[0].Filters != nil {
@@ -151,7 +151,7 @@ func (r sqlRepository) toSql(sq Sqlizer) (string, []interface{}, error) {
 func (r sqlRepository) parseRestOptions(options ...rest.QueryOptions) model.QueryOptions {
 	qo := model.QueryOptions{}
 	if len(options) > 0 {
-		qo.Sort = toSnakeCase(options[0].Sort)
+		qo.Sort = options[0].Sort
 		qo.Order = options[0].Order
 		qo.Max = options[0].Max
 		qo.Offset = options[0].Offset

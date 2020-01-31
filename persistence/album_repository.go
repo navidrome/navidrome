@@ -101,7 +101,7 @@ func (r *albumRepository) PurgeEmpty() error {
 	return nil
 }
 
-func (r *albumRepository) GetStarred(userId string, options ...model.QueryOptions) (model.Albums, error) {
+func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Albums, error) {
 	sq := r.selectAlbum(options...).Where("starred = true")
 	var starred model.Albums
 	err := r.queryAll(sq, &starred)
