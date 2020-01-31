@@ -32,18 +32,7 @@ func (r mediaFileRepository) Exists(id string) (bool, error) {
 }
 
 func (r mediaFileRepository) Put(m *model.MediaFile) error {
-	values, _ := toSqlArgs(*m)
-	update := Update(r.tableName).Where(Eq{"id": m.ID}).SetMap(values)
-	count, err := r.executeSQL(update)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil
-	}
-	insert := Insert(r.tableName).SetMap(values)
-	_, err = r.executeSQL(insert)
-	return err
+	return r.put(m.ID, m)
 }
 
 func (r mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
@@ -65,7 +54,7 @@ func (r mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaF
 }
 
 func (r mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, error) {
-	sel := r.selectMediaFile().Where(Eq{"album_id": albumId})
+	sel := r.selectMediaFile().Where(Eq{"album_id": albumId}).OrderBy("disc_number", "track_number")
 	var res model.MediaFiles
 	err := r.queryAll(sel, &res)
 	return res, err

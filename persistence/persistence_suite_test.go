@@ -32,9 +32,13 @@ func TestPersistence(t *testing.T) {
 
 var artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", AlbumCount: 1}
 var artistBeatles = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2}
+var testArtists = model.Artists{
+	artistKraftwerk,
+	artistBeatles,
+}
 
-var albumSgtPeppers = model.Album{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", ArtistID: "3", Genre: "Rock", CoverArtId: "1", CoverArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1}
-var albumAbbeyRoad = model.Album{ID: "2", Name: "Abbey Road", Artist: "The Beatles", ArtistID: "3", Genre: "Rock", CoverArtId: "2", CoverArtPath: P("/beatles/1/come together.mp3"), SongCount: 1}
+var albumSgtPeppers = model.Album{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", ArtistID: "3", Genre: "Rock", CoverArtId: "1", CoverArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, Year: 1967}
+var albumAbbeyRoad = model.Album{ID: "2", Name: "Abbey Road", Artist: "The Beatles", ArtistID: "3", Genre: "Rock", CoverArtId: "2", CoverArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, Year: 1969}
 var albumRadioactivity = model.Album{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", ArtistID: "2", Genre: "Electronic", CoverArtId: "3", CoverArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, Starred: true}
 var testAlbums = model.Albums{
 	albumSgtPeppers,
@@ -81,9 +85,26 @@ func P(path string) string {
 var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
 		o := orm.NewOrm()
-		mr := NewMediaFileRepository(nil, o)
+		ctx := log.NewContext(nil)
+		mr := NewMediaFileRepository(ctx, o)
 		for _, s := range testSongs {
 			err := mr.Put(&s)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		alr := NewAlbumRepository(ctx, o)
+		for _, a := range testAlbums {
+			err := alr.Put(&a)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		arr := NewArtistRepository(ctx, o)
+		for _, a := range testArtists {
+			err := arr.Put(&a)
 			if err != nil {
 				panic(err)
 			}
@@ -102,7 +123,7 @@ var _ = Describe("Initialize test DB", func() {
 			}
 		}
 
-		pr := NewPlaylistRepository(nil, o)
+		pr := NewPlaylistRepository(ctx, o)
 		for _, pls := range testPlaylists {
 			err := pr.Put(&pls)
 			if err != nil {

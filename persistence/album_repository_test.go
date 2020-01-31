@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/astaxie/beego/orm"
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,7 +14,7 @@ var _ = Describe("AlbumRepository", func() {
 	var repo model.AlbumRepository
 
 	BeforeEach(func() {
-		ctx := context.WithValue(context.Background(), "user", &model.User{ID: "userid"})
+		ctx := context.WithValue(log.NewContext(nil), "user", &model.User{ID: "userid"})
 		repo = NewAlbumRepository(ctx, orm.NewOrm())
 	})
 
@@ -66,8 +67,8 @@ var _ = Describe("AlbumRepository", func() {
 	Describe("FindByArtist", func() {
 		It("returns all records from a given ArtistID", func() {
 			Expect(repo.FindByArtist("3")).To(Equal(model.Albums{
-				albumAbbeyRoad,
 				albumSgtPeppers,
+				albumAbbeyRoad,
 			}))
 		})
 	})

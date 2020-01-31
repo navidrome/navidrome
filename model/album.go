@@ -6,8 +6,8 @@ type Album struct {
 	ID           string    `json:"id"            orm:"column(id)"`
 	Name         string    `json:"name"`
 	ArtistID     string    `json:"artistId"      orm:"pk;column(artist_id)"`
-	CoverArtPath string    `json:"-"`
-	CoverArtId   string    `json:"-"`
+	CoverArtPath string    `json:"coverArtPath"`
+	CoverArtId   string    `json:"coverArtId"`
 	Artist       string    `json:"artist"`
 	AlbumArtist  string    `json:"albumArtist"`
 	Year         int       `json:"year"`
@@ -19,11 +19,11 @@ type Album struct {
 	UpdatedAt    time.Time `json:"updatedAt"`
 
 	// Annotations
-	PlayCount int       `orm:"-"`
-	PlayDate  time.Time `orm:"-"`
-	Rating    int       `orm:"-"`
-	Starred   bool      `orm:"-"`
-	StarredAt time.Time `orm:"-"`
+	PlayCount int       `json:"-"   orm:"-"`
+	PlayDate  time.Time `json:"-"   orm:"-"`
+	Rating    int       `json:"-"   orm:"-"`
+	Starred   bool      `json:"-"   orm:"-"`
+	StarredAt time.Time `json:"-"   orm:"-"`
 }
 
 type Albums []Album
@@ -35,7 +35,6 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	FindByArtist(artistId string) (Albums, error)
 	GetAll(...QueryOptions) (Albums, error)
-	GetMap(ids []string) (map[string]Album, error)
 	GetRandom(...QueryOptions) (Albums, error)
 	GetStarred(options ...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
