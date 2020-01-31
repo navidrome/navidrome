@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/deluan/navidrome/model"
 )
 
@@ -76,19 +77,19 @@ func (g *listGenerator) GetNewest(ctx context.Context, offset int, size int) (En
 
 func (g *listGenerator) GetRecent(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Sort: "PlayDate", Order: "desc", Offset: offset, Max: size,
-		Filters: map[string]interface{}{"play_date__gt": time.Time{}}}
+		Filters: squirrel.Gt{"play_date": time.Time{}}}
 	return g.queryByAnnotation(ctx, qo)
 }
 
 func (g *listGenerator) GetFrequent(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Sort: "PlayCount", Order: "desc", Offset: offset, Max: size,
-		Filters: map[string]interface{}{"play_count__gt": 0}}
+		Filters: squirrel.Gt{"play_count": 0}}
 	return g.queryByAnnotation(ctx, qo)
 }
 
 func (g *listGenerator) GetHighest(ctx context.Context, offset int, size int) (Entries, error) {
 	qo := model.QueryOptions{Sort: "Rating", Order: "desc", Offset: offset, Max: size,
-		Filters: map[string]interface{}{"rating__gt": 0}}
+		Filters: squirrel.Gt{"rating__gt": 0}}
 	return g.queryByAnnotation(ctx, qo)
 }
 
@@ -126,7 +127,7 @@ func (g *listGenerator) getAnnotationsForAlbums(ctx context.Context, albums mode
 func (g *listGenerator) GetRandomSongs(ctx context.Context, size int, genre string) (Entries, error) {
 	options := model.QueryOptions{Max: size}
 	if genre != "" {
-		options.Filters = map[string]interface{}{"genre": genre}
+		options.Filters = squirrel.Eq{"genre": genre}
 	}
 	mediaFiles, err := g.ds.MediaFile(ctx).GetRandom(options)
 	if err != nil {

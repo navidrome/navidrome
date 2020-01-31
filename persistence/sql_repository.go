@@ -60,10 +60,8 @@ func (r *sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpt
 				sq = sq.OrderBy(options[0].Sort)
 			}
 		}
-		if len(options[0].Filters) > 0 {
-			for f, v := range options[0].Filters {
-				sq = sq.Where(Eq{f: v})
-			}
+		if options[0].Filters != nil {
+			sq = sq.Where(options[0].Filters)
 		}
 	}
 	return sq
