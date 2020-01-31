@@ -25,8 +25,7 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sel := r.selectAlbum(options...)
-	return r.count(sel, options...)
+	return r.count(Select(), options...)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
