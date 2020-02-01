@@ -25,7 +25,7 @@ Navidrome is actively being tested with:
 | `getLicense`           | Always valid ;) |    
 | ||
 | _BROWSING_             ||
-| `getMusicFolders`      | Hardcoded to just one, configured in `app.conf` |
+| `getMusicFolders`      | Hardcoded to just one, set with ND_MUSICFOLDER configuration |
 | `getIndexes`           | Doesn't support shortcuts, nor direct children |
 | `getMusicDirectory`    | |
 | `getSong`              | |
@@ -40,7 +40,7 @@ Navidrome is actively being tested with:
 | `getStarred`           | |
 | `getStarred2`          | |
 | `getNowPlaying`        | |
-| `getRandomSongs`       | Ignores `year` parameter |
+| `getRandomSongs`       | Ignores `fromYear` and `toYear` parameters |
 | ||
 | _SEARCHING_            ||
 | `search2`              | Doesn't support Lucene queries, only simple auto complete queries |
