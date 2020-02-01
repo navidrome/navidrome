@@ -73,6 +73,10 @@ func (db *MockDataStore) Resource(ctx context.Context, m interface{}) model.Reso
 	return struct{ model.ResourceRepository }{}
 }
 
+func (db *MockDataStore) GC(ctx context.Context) error {
+	return nil
+}
+
 type mockedUserRepo struct {
 	model.UserRepository
 }

@@ -104,17 +104,11 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		return err
 	}
 
-	err = s.ds.Album(ctx).PurgeEmpty()
-	if err != nil {
-		return err
+	if len(changed)+len(deleted) == 0 {
+		return nil
 	}
 
-	err = s.ds.Artist(ctx).PurgeEmpty()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.ds.GC(log.NewContext(nil))
 }
 
 func (s *TagScanner) refreshAlbums(ctx context.Context, updatedAlbums map[string]bool) error {
