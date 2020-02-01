@@ -15,7 +15,7 @@ import (
 
 type Browser interface {
 	MediaFolders(ctx context.Context) (model.MediaFolders, error)
-	Indexes(ctx context.Context, ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error)
+	Indexes(ctx context.Context, mediaFolderId string, ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error)
 	Directory(ctx context.Context, id string) (*DirectoryInfo, error)
 	Artist(ctx context.Context, id string) (*DirectoryInfo, error)
 	Album(ctx context.Context, id string) (*DirectoryInfo, error)
@@ -35,8 +35,11 @@ func (b *browser) MediaFolders(ctx context.Context) (model.MediaFolders, error) 
 	return b.ds.MediaFolder(ctx).GetAll()
 }
 
-func (b *browser) Indexes(ctx context.Context, ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error) {
-	l, err := b.ds.Property(ctx).DefaultGet(model.PropLastScan, "-1")
+func (b *browser) Indexes(ctx context.Context, mediaFolderId string, ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error) {
+	// TODO Proper handling of mediaFolderId param
+	folder, err := b.ds.MediaFolder(ctx).Get(mediaFolderId)
+
+	l, err := b.ds.Property(ctx).DefaultGet(model.PropLastScan+"-"+folder.Path, "-1")
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
 

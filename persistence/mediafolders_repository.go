@@ -16,12 +16,22 @@ func NewMediaFolderRepository(ctx context.Context, o orm.Ormer) model.MediaFolde
 	return &mediaFolderRepository{ctx}
 }
 
+func (r *mediaFolderRepository) Get(id string) (*model.MediaFolder, error) {
+	mediaFolder := hardCoded()
+	return &mediaFolder, nil
+}
+
 func (*mediaFolderRepository) GetAll() (model.MediaFolders, error) {
-	mediaFolder := model.MediaFolder{ID: "0", Path: conf.Server.MusicFolder}
-	mediaFolder.Name = "Music Library"
+	mediaFolder := hardCoded()
 	result := make(model.MediaFolders, 1)
 	result[0] = mediaFolder
 	return result, nil
+}
+
+func hardCoded() model.MediaFolder {
+	mediaFolder := model.MediaFolder{ID: "0", Path: conf.Server.MusicFolder}
+	mediaFolder.Name = "Music Library"
+	return mediaFolder
 }
 
 var _ model.MediaFolderRepository = (*mediaFolderRepository)(nil)

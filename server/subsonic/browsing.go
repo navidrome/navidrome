@@ -33,8 +33,8 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 	return response, nil
 }
 
-func (c *BrowsingController) getArtistIndex(r *http.Request, ifModifiedSince time.Time) (*responses.Indexes, error) {
-	indexes, lastModified, err := c.browser.Indexes(r.Context(), ifModifiedSince)
+func (c *BrowsingController) getArtistIndex(r *http.Request, musicFolderId string, ifModifiedSince time.Time) (*responses.Indexes, error) {
+	indexes, lastModified, err := c.browser.Indexes(r.Context(), musicFolderId, ifModifiedSince)
 	if err != nil {
 		log.Error(r, "Error retrieving Indexes", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -59,9 +59,10 @@ func (c *BrowsingController) getArtistIndex(r *http.Request, ifModifiedSince tim
 }
 
 func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	musicFolderId := ParamString(r, "musicFolderId")
 	ifModifiedSince := ParamTime(r, "ifModifiedSince", time.Time{})
 
-	res, err := c.getArtistIndex(r, ifModifiedSince)
+	res, err := c.getArtistIndex(r, musicFolderId, ifModifiedSince)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,8 @@ func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) 
 }
 
 func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	res, err := c.getArtistIndex(r, time.Time{})
+	musicFolderId := ParamString(r, "musicFolderId")
+	res, err := c.getArtistIndex(r, musicFolderId, time.Time{})
 	if err != nil {
 		return nil, err
 	}
