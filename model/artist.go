@@ -33,4 +33,5 @@ type ArtistRepository interface {
 	Refresh(ids ...string) error
 	GetIndex() (ArtistIndexes, error)
 	PurgeEmpty() error
+	AnnotatedRepository
 }

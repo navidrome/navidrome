@@ -28,11 +28,11 @@ type MediaFile struct {
 	UpdatedAt   time.Time `json:"updatedAt"`
 
 	// Annotations
-	PlayCount int       `json:"-" orm:"-"`
-	PlayDate  time.Time `json:"-" orm:"-"`
-	Rating    int       `json:"-" orm:"-"`
-	Starred   bool      `json:"-" orm:"-"`
-	StarredAt time.Time `json:"-" orm:"-"`
+	PlayCount int       `json:"-"   orm:"-"`
+	PlayDate  time.Time `json:"-"   orm:"-"`
+	Rating    int       `json:"-"   orm:"-"`
+	Starred   bool      `json:"-"   orm:"-"`
+	StarredAt time.Time `json:"-"   orm:"-"`
 }
 
 func (mf *MediaFile) ContentType() string {
@@ -53,4 +53,6 @@ type MediaFileRepository interface {
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	DeleteByPath(path string) error
+
+	AnnotatedRepository
 }

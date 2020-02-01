@@ -30,15 +30,6 @@ func userId(ctx context.Context) string {
 	return usr.ID
 }
 
-func (r sqlRepository) newSelectWithAnnotation(itemType, idField string, options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).
-		LeftJoin("annotation on ("+
-			"annotation.item_id = "+idField+
-			" AND annotation.item_type = '"+itemType+"'"+
-			" AND annotation.user_id = '"+userId(r.ctx)+"')").
-		Columns("starred", "starred_at", "play_count", "play_date", "rating")
-}
-
 func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
 	sq := Select().From(r.tableName)
 	sq = r.applyOptions(sq, options...)

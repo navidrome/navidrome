@@ -26,9 +26,9 @@ func (r ratings) SetRating(ctx context.Context, id string, rating int) error {
 		return err
 	}
 	if exist {
-		return r.ds.Annotation(ctx).SetRating(rating, model.AlbumItemType, id)
+		return r.ds.Album(ctx).SetRating(rating, id)
 	}
-	return r.ds.Annotation(ctx).SetRating(rating, model.MediaItemType, id)
+	return r.ds.MediaFile(ctx).SetRating(rating, id)
 }
 
 func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
@@ -44,7 +44,7 @@ func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
 				return err
 			}
 			if exist {
-				err = tx.Annotation(ctx).SetStar(star, model.AlbumItemType, ids...)
+				err = tx.Album(ctx).SetStar(star, ids...)
 				if err != nil {
 					return err
 				}
@@ -55,13 +55,13 @@ func (r ratings) SetStar(ctx context.Context, star bool, ids ...string) error {
 				return err
 			}
 			if exist {
-				err = tx.Annotation(ctx).SetStar(star, model.ArtistItemType, ids...)
+				err = tx.Artist(ctx).SetStar(star, ids...)
 				if err != nil {
 					return err
 				}
 				continue
 			}
-			err = tx.Annotation(ctx).SetStar(star, model.MediaItemType, ids...)
+			err = tx.MediaFile(ctx).SetStar(star, ids...)
 			if err != nil {
 				return err
 			}

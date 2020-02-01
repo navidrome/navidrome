@@ -69,10 +69,6 @@ func (db *NewSQLStore) User(ctx context.Context) model.UserRepository {
 	return NewUserRepository(ctx, db.getOrmer())
 }
 
-func (db *NewSQLStore) Annotation(ctx context.Context) model.AnnotationRepository {
-	return NewAnnotationRepository(ctx, db.getOrmer())
-}
-
 func (db *NewSQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
