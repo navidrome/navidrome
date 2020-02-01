@@ -17,7 +17,7 @@ var (
 	driver = "sqlite3"
 )
 
-type NewSQLStore struct {
+type SQLStore struct {
 	orm orm.Ormer
 }
 
@@ -34,42 +34,42 @@ func New() model.DataStore {
 			panic(err)
 		}
 	})
-	return &NewSQLStore{}
+	return &SQLStore{}
 }
 
-func (db *NewSQLStore) Album(ctx context.Context) model.AlbumRepository {
+func (db *SQLStore) Album(ctx context.Context) model.AlbumRepository {
 	return NewAlbumRepository(ctx, db.getOrmer())
 }
 
-func (db *NewSQLStore) Artist(ctx context.Context) model.ArtistRepository {
+func (db *SQLStore) Artist(ctx context.Context) model.ArtistRepository {
 	return NewArtistRepository(ctx, db.getOrmer())
 }
 
-func (db *NewSQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+func (db *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
 	return NewMediaFileRepository(ctx, db.getOrmer())
 }
 
-func (db *NewSQLStore) MediaFolder(ctx context.Context) model.MediaFolderRepository {
+func (db *SQLStore) MediaFolder(ctx context.Context) model.MediaFolderRepository {
 	return NewMediaFolderRepository(ctx, db.getOrmer())
 }
 
-func (db *NewSQLStore) Genre(ctx context.Context) model.GenreRepository {
+func (db *SQLStore) Genre(ctx context.Context) model.GenreRepository {
 	return NewGenreRepository(ctx, db.getOrmer())
 }
 
-func (db *NewSQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
+func (db *SQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
 	return NewPlaylistRepository(ctx, db.getOrmer())
 }
 
-func (db *NewSQLStore) Property(ctx context.Context) model.PropertyRepository {
+func (db *SQLStore) Property(ctx context.Context) model.PropertyRepository {
 	return NewPropertyRepository(ctx, db.getOrmer())
 }
 
-func (db *NewSQLStore) User(ctx context.Context) model.UserRepository {
+func (db *SQLStore) User(ctx context.Context) model.UserRepository {
 	return NewUserRepository(ctx, db.getOrmer())
 }
 
-func (db *NewSQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
+func (db *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
 		return db.User(ctx).(model.ResourceRepository)
@@ -84,14 +84,14 @@ func (db *NewSQLStore) Resource(ctx context.Context, m interface{}) model.Resour
 	return nil
 }
 
-func (db *NewSQLStore) WithTx(block func(tx model.DataStore) error) error {
+func (db *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 	o := orm.NewOrm()
 	err := o.Begin()
 	if err != nil {
 		return err
 	}
 
-	newDb := &NewSQLStore{orm: o}
+	newDb := &SQLStore{orm: o}
 	err = block(newDb)
 
 	if err != nil {
@@ -109,7 +109,7 @@ func (db *NewSQLStore) WithTx(block func(tx model.DataStore) error) error {
 	return nil
 }
 
-func (db *NewSQLStore) GC(ctx context.Context) error {
+func (db *SQLStore) GC(ctx context.Context) error {
 	err := db.Album(ctx).PurgeEmpty()
 	if err != nil {
 		return err
@@ -141,7 +141,7 @@ func (db *NewSQLStore) GC(ctx context.Context) error {
 	return db.Artist(ctx).(*artistRepository).cleanAnnotations()
 }
 
-func (db *NewSQLStore) getOrmer() orm.Ormer {
+func (db *SQLStore) getOrmer() orm.Ormer {
 	if db.orm == nil {
 		return orm.NewOrm()
 	}
