@@ -64,11 +64,13 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 }
 
 func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
-	query, args, err := r.toSql(sq)
+	query, args, err := sq.ToSql()
 	if err != nil {
 		return 0, err
 	}
 	res, err := r.ormer.Raw(query, args...).Exec()
+	c, _ := res.RowsAffected()
+	r.logSQL(query, args, err, c)
 	if err != nil {
 		if err.Error() != "LastInsertId is not supported by this driver" {
 			return 0, err
@@ -78,11 +80,12 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 }
 
 func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
-	query, args, err := r.toSql(sq)
+	query, args, err := sq.ToSql()
 	if err != nil {
 		return err
 	}
 	err = r.ormer.Raw(query, args...).QueryRow(response)
+	r.logSQL(query, args, err, 1)
 	if err == orm.ErrNoRows {
 		return model.ErrNotFound
 	}
@@ -90,11 +93,12 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 }
 
 func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
-	query, args, err := r.toSql(sq)
+	query, args, err := sq.ToSql()
 	if err != nil {
 		return err
 	}
-	_, err = r.ormer.Raw(query, args...).QueryRows(response)
+	c, err := r.ormer.Raw(query, args...).QueryRows(response)
+	r.logSQL(query, args, err, c)
 	if err == orm.ErrNoRows {
 		return model.ErrNotFound
 	}
@@ -104,7 +108,15 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
 	existsQuery = existsQuery.Columns("count(*) as count").From(r.tableName)
 	var res struct{ Count int64 }
-	err := r.queryOne(existsQuery, &res)
+	query, args, err := existsQuery.ToSql()
+	if err != nil {
+		return false, err
+	}
+	err = r.ormer.Raw(query, args...).QueryRow(&res)
+	if err == orm.ErrNoRows {
+		err = nil
+	}
+	r.logSQL(query, args, err, res.Count)
 	return res.Count > 0, err
 }
 
@@ -148,23 +160,23 @@ func (r sqlRepository) delete(cond Sqlizer) error {
 	return err
 }
 
-func (r sqlRepository) toSql(sq Sqlizer) (string, []interface{}, error) {
-	sql, args, err := sq.ToSql()
-	if err == nil {
-		var fmtArgs []string
-		for i := range args {
-			var f string
-			switch a := args[i].(type) {
-			case string:
-				f = `'` + a + `'`
-			default:
-				f = fmt.Sprintf("%v", a)
-			}
-			fmtArgs = append(fmtArgs, f)
+func (r sqlRepository) logSQL(sql string, args []interface{}, err error, rowsAffected int64) {
+	var fmtArgs []string
+	for i := range args {
+		var f string
+		switch a := args[i].(type) {
+		case string:
+			f = `'` + a + `'`
+		default:
+			f = fmt.Sprintf("%v", a)
 		}
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`)
+		fmtArgs = append(fmtArgs, f)
 	}
-	return sql, args, err
+	if err != nil {
+		log.Error(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, err)
+	} else {
+		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected)
+	}
 }
 
 func (r sqlRepository) parseRestOptions(options ...rest.QueryOptions) model.QueryOptions {
