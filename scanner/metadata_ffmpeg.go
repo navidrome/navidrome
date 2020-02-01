@@ -83,6 +83,7 @@ func probe(inputs []string) (map[string]*Metadata, error) {
 	infos := parseOutput(string(output))
 	for file, info := range infos {
 		md, err := extractMetadata(file, info)
+		// Skip files with errors
 		if err == nil {
 			mds[file] = md
 		}
@@ -117,9 +118,16 @@ func parseOutput(output string) map[string]string {
 func extractMetadata(filePath, info string) (*Metadata, error) {
 	m := &Metadata{filePath: filePath, tags: map[string]string{}}
 	m.suffix = strings.ToLower(strings.TrimPrefix(path.Ext(filePath), "."))
+	var err error
+	m.fileInfo, err = os.Stat(filePath)
+	if err != nil {
+		log.Warn("Error stating file. Skipping", "filePath", filePath, err)
+		return nil, errors.New("error stating file")
+	}
+
 	m.parseInfo(info)
-	m.fileInfo, _ = os.Stat(filePath)
 	if len(m.tags) == 0 {
+		log.Trace("Not a media file. Skipping", "filePath", filePath)
 		return nil, errors.New("not a media file")
 	}
 	return m, nil
