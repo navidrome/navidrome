@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/navidrome/log"
 	"github.com/kennygrant/sanitize"
 )
 
@@ -14,6 +15,7 @@ func (r sqlRepository) index(id string, text string) error {
 
 	values := map[string]interface{}{
 		"id":        id,
+		"item_type": r.tableName,
 		"full_text": sanitizedText,
 	}
 	update := Update(searchTable).Where(Eq{"id": id}).SetMap(values)
@@ -53,4 +55,16 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 	}
 	_, err = r.ormer.Raw(sql, args...).QueryRows(results)
 	return err
+}
+
+func (r sqlRepository) cleanSearchIndex() error {
+	del := Delete(searchTable).Where(Eq{"item_type": r.tableName}).Where("id not in (select id from " + r.tableName + ")")
+	c, err := r.executeSQL(del)
+	if err != nil {
+		return err
+	}
+	if c > 0 {
+		log.Debug(r.ctx, "Clean-up search index", "table", r.tableName, "totalDeleted", c)
+	}
+	return nil
 }

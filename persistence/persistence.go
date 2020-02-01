@@ -113,6 +113,26 @@ func (db *NewSQLStore) WithTx(block func(tx model.DataStore) error) error {
 	return nil
 }
 
+func (db *NewSQLStore) GC(ctx context.Context) error {
+	err := db.Album(ctx).PurgeEmpty()
+	if err != nil {
+		return err
+	}
+	err = db.Artist(ctx).PurgeEmpty()
+	if err != nil {
+		return err
+	}
+	err = db.MediaFile(ctx).(*mediaFileRepository).cleanSearchIndex()
+	if err != nil {
+		return err
+	}
+	err = db.Album(ctx).(*albumRepository).cleanSearchIndex()
+	if err != nil {
+		return err
+	}
+	return db.Artist(ctx).(*artistRepository).cleanSearchIndex()
+}
+
 func (db *NewSQLStore) getOrmer() orm.Ormer {
 	if db.orm == nil {
 		return orm.NewOrm()
