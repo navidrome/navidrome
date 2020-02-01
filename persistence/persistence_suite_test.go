@@ -1,11 +1,11 @@
 package persistence
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/db"
@@ -30,41 +30,38 @@ func TestPersistence(t *testing.T) {
 	RunSpecs(t, "Persistence Suite")
 }
 
-var artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", AlbumCount: 1}
-var artistBeatles = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2, Starred: true}
-var testArtists = model.Artists{
-	artistKraftwerk,
-	artistBeatles,
-}
+var (
+	artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", AlbumCount: 1}
+	artistBeatles   = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2}
+	testArtists     = model.Artists{
+		artistKraftwerk,
+		artistBeatles,
+	}
+)
 
-var albumSgtPeppers = model.Album{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", ArtistID: "3", Genre: "Rock", CoverArtId: "1", CoverArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, Year: 1967}
-var albumAbbeyRoad = model.Album{ID: "2", Name: "Abbey Road", Artist: "The Beatles", ArtistID: "3", Genre: "Rock", CoverArtId: "2", CoverArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, Year: 1969}
-var albumRadioactivity = model.Album{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", ArtistID: "2", Genre: "Electronic", CoverArtId: "3", CoverArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, Starred: true}
-var testAlbums = model.Albums{
-	albumSgtPeppers,
-	albumAbbeyRoad,
-	albumRadioactivity,
-}
+var (
+	albumSgtPeppers    = model.Album{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", ArtistID: "3", Genre: "Rock", CoverArtId: "1", CoverArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, Year: 1967}
+	albumAbbeyRoad     = model.Album{ID: "2", Name: "Abbey Road", Artist: "The Beatles", ArtistID: "3", Genre: "Rock", CoverArtId: "2", CoverArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, Year: 1969}
+	albumRadioactivity = model.Album{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", ArtistID: "2", Genre: "Electronic", CoverArtId: "3", CoverArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2}
+	testAlbums         = model.Albums{
+		albumSgtPeppers,
+		albumAbbeyRoad,
+		albumRadioactivity,
+	}
+)
 
-var songDayInALife = model.MediaFile{ID: "1", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "1", Album: "Sgt Peppers", Genre: "Rock", Path: P("/beatles/1/sgt/a day.mp3")}
-var songComeTogether = model.MediaFile{ID: "2", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "2", Album: "Abbey Road", Genre: "Rock", Path: P("/beatles/1/come together.mp3"), Starred: true}
-var songRadioactivity = model.MediaFile{ID: "3", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "3", Album: "Radioactivity", Genre: "Electronic", Path: P("/kraft/radio/radio.mp3")}
-var songAntenna = model.MediaFile{ID: "4", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "3", Genre: "Electronic", Path: P("/kraft/radio/antenna.mp3")}
-var testSongs = model.MediaFiles{
-	songDayInALife,
-	songComeTogether,
-	songRadioactivity,
-	songAntenna,
-}
-
-var annArtistBeatles = model.Annotation{AnnID: "3", UserID: "userid", ItemType: model.ArtistItemType, ItemID: artistBeatles.ID, Starred: true}
-var annAlbumRadioactivity = model.Annotation{AnnID: "1", UserID: "userid", ItemType: model.AlbumItemType, ItemID: albumRadioactivity.ID, Starred: true}
-var annSongComeTogether = model.Annotation{AnnID: "2", UserID: "userid", ItemType: model.MediaItemType, ItemID: songComeTogether.ID, Starred: true}
-var testAnnotations = []model.Annotation{
-	annArtistBeatles,
-	annAlbumRadioactivity,
-	annSongComeTogether,
-}
+var (
+	songDayInALife    = model.MediaFile{ID: "1", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "1", Album: "Sgt Peppers", Genre: "Rock", Path: P("/beatles/1/sgt/a day.mp3")}
+	songComeTogether  = model.MediaFile{ID: "2", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "2", Album: "Abbey Road", Genre: "Rock", Path: P("/beatles/1/come together.mp3")}
+	songRadioactivity = model.MediaFile{ID: "3", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "3", Album: "Radioactivity", Genre: "Electronic", Path: P("/kraft/radio/radio.mp3")}
+	songAntenna       = model.MediaFile{ID: "4", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "3", Genre: "Electronic", Path: P("/kraft/radio/antenna.mp3")}
+	testSongs         = model.MediaFiles{
+		songDayInALife,
+		songComeTogether,
+		songRadioactivity,
+		songAntenna,
+	}
+)
 
 var (
 	plsBest = model.Playlist{
@@ -85,9 +82,11 @@ func P(path string) string {
 }
 
 var _ = Describe("Initialize test DB", func() {
+
+	// TODO Load this data setup from file(s)
 	BeforeSuite(func() {
 		o := orm.NewOrm()
-		ctx := log.NewContext(nil)
+		ctx := context.WithValue(log.NewContext(nil), "user", &model.User{ID: "userid"})
 		mr := NewMediaFileRepository(ctx, o)
 		for _, s := range testSongs {
 			err := mr.Put(&s)
@@ -112,19 +111,6 @@ var _ = Describe("Initialize test DB", func() {
 			}
 		}
 
-		for _, a := range testAnnotations {
-			values, _ := toSqlArgs(a)
-			ins := squirrel.Insert("annotation").SetMap(values)
-			query, args, err := ins.ToSql()
-			if err != nil {
-				panic(err)
-			}
-			_, err = o.Raw(query, args...).Exec()
-			if err != nil {
-				panic(err)
-			}
-		}
-
 		pr := NewPlaylistRepository(ctx, o)
 		for _, pls := range testPlaylists {
 			err := pr.Put(&pls)
@@ -132,5 +118,31 @@ var _ = Describe("Initialize test DB", func() {
 				panic(err)
 			}
 		}
+
+		// Prepare annotations
+		if err := arr.SetStar(true, artistBeatles.ID); err != nil {
+			panic(err)
+		}
+		ar, _ := arr.Get(artistBeatles.ID)
+		artistBeatles.Starred = true
+		artistBeatles.StarredAt = ar.StarredAt
+		testArtists[1] = artistBeatles
+
+		if err := alr.SetStar(true, albumRadioactivity.ID); err != nil {
+			panic(err)
+		}
+		al, _ := alr.Get(albumRadioactivity.ID)
+		albumRadioactivity.Starred = true
+		albumRadioactivity.StarredAt = al.StarredAt
+		testAlbums[2] = albumRadioactivity
+
+		if err := mr.SetStar(true, songComeTogether.ID); err != nil {
+			panic(err)
+		}
+		mf, _ := mr.Get(songComeTogether.ID)
+		songComeTogether.Starred = true
+		songComeTogether.StarredAt = mf.StarredAt
+		testSongs[1] = songComeTogether
+
 	})
 })

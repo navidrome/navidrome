@@ -31,11 +31,15 @@ func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, 
 		if err != nil {
 			return err
 		}
-		err = s.ds.Annotation(ctx).IncPlayCount(model.MediaItemType, trackId, playTime)
+		err = s.ds.MediaFile(ctx).IncPlayCount(trackId, playTime)
 		if err != nil {
 			return err
 		}
-		err = s.ds.Annotation(ctx).IncPlayCount(model.AlbumItemType, mf.AlbumID, playTime)
+		err = s.ds.Album(ctx).IncPlayCount(mf.AlbumID, playTime)
+		if err != nil {
+			return err
+		}
+		err = s.ds.Artist(ctx).IncPlayCount(mf.ArtistID, playTime)
 		return err
 	})
 	return mf, err

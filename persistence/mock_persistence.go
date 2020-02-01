@@ -61,10 +61,6 @@ func (db *MockDataStore) User(context.Context) model.UserRepository {
 	return db.MockedUser
 }
 
-func (db *MockDataStore) Annotation(context.Context) model.AnnotationRepository {
-	return struct{ model.AnnotationRepository }{}
-}
-
 func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {
 	return block(db)
 }
