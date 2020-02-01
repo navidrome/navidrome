@@ -126,7 +126,19 @@ func (db *NewSQLStore) GC(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return db.Artist(ctx).(*artistRepository).cleanSearchIndex()
+	err = db.Artist(ctx).(*artistRepository).cleanSearchIndex()
+	if err != nil {
+		return err
+	}
+	err = db.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations()
+	if err != nil {
+		return err
+	}
+	err = db.Album(ctx).(*albumRepository).cleanAnnotations()
+	if err != nil {
+		return err
+	}
+	return db.Artist(ctx).(*artistRepository).cleanAnnotations()
 }
 
 func (db *NewSQLStore) getOrmer() orm.Ormer {
