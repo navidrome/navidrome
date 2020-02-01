@@ -21,10 +21,11 @@ func TestPersistence(t *testing.T) {
 	tests.Init(t, true)
 
 	//os.Remove("./test-123.db")
-	//conf.Server.DbPath = "./test-123.db"
-	conf.Server.DbPath = "file::memory:?cache=shared"
+	//conf.Server.Path = "./test-123.db"
+	conf.Server.DbPath = ":memory:"
+	db.Init()
 	New()
-	db.EnsureDB()
+	db.EnsureLatestVersion()
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")

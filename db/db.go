@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"os"
+	"sync"
 
 	"github.com/deluan/navidrome/conf"
 	_ "github.com/deluan/navidrome/db/migrations"
@@ -11,19 +12,35 @@ import (
 	"github.com/pressly/goose"
 )
 
-const driver = "sqlite3"
+var (
+	once   sync.Once
+	Driver = "sqlite3"
+	Path   string
+)
 
-func EnsureDB() {
-	db, err := sql.Open(driver, conf.Server.DbPath)
+func Init() {
+	once.Do(func() {
+		Path = conf.Server.DbPath
+		if Path == ":memory:" {
+			Path = "file::memory:?cache=shared"
+			conf.Server.DbPath = Path
+		}
+		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
+	})
+}
+
+func EnsureLatestVersion() {
+	Init()
+	db, err := sql.Open(Driver, Path)
 	defer db.Close()
 	if err != nil {
 		log.Error("Failed to open DB", err)
 		os.Exit(1)
 	}
 
-	err = goose.SetDialect(driver)
+	err = goose.SetDialect(Driver)
 	if err != nil {
-		log.Error("Invalid DB driver", "driver", driver, err)
+		log.Error("Invalid DB driver", "driver", Driver, err)
 		os.Exit(1)
 	}
 	err = goose.Run("up", db, "./")

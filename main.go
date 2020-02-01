@@ -11,7 +11,7 @@ func main() {
 	}
 
 	conf.Load()
-	db.EnsureDB()
+	db.EnsureLatestVersion()
 
 	a := CreateServer(conf.Server.MusicFolder)
 	a.MountRouter("/rest", CreateSubsonicAPIRouter())
