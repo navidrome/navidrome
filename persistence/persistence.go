@@ -3,18 +3,16 @@ package persistence
 import (
 	"context"
 	"reflect"
-	"strings"
 	"sync"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/db"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 )
 
 var (
-	once   sync.Once
-	driver = "sqlite3"
+	once sync.Once
 )
 
 type SQLStore struct {
@@ -23,13 +21,7 @@ type SQLStore struct {
 
 func New() model.DataStore {
 	once.Do(func() {
-		dbPath := conf.Server.DbPath
-		if dbPath == ":memory:" {
-			dbPath = "file::memory:?cache=shared"
-		}
-		log.Debug("Opening DataBase", "dbPath", dbPath, "driver", driver)
-
-		err := initORM(dbPath)
+		err := orm.RegisterDataBase("default", db.Driver, db.Path)
 		if err != nil {
 			panic(err)
 		}
@@ -146,11 +138,4 @@ func (db *SQLStore) getOrmer() orm.Ormer {
 		return orm.NewOrm()
 	}
 	return db.orm
-}
-
-func initORM(dbPath string) error {
-	if strings.Contains(dbPath, "postgres") {
-		driver = "postgres"
-	}
-	return orm.RegisterDataBase("default", driver, dbPath)
 }
