@@ -9,5 +9,6 @@ type MediaFolder struct {
 type MediaFolders []MediaFolder
 
 type MediaFolderRepository interface {
+	Get(id string) (*MediaFolder, error)
 	GetAll() (MediaFolders, error)
 }
