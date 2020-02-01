@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -112,18 +111,13 @@ func (r *artistRepository) Refresh(ids ...string) error {
 		Compilation bool
 	}
 	var artists []refreshArtist
-	o := r.ormer
-	sql := fmt.Sprintf(`
-select f.artist_id as id,
-       f.artist as name,
-       f.album_artist,
-       f.compilation,
-       count(*) as album_count,
-       a.id as current_id
-from album f
-         left outer join artist a on f.artist_id = a.id
-where f.artist_id in ('%s') group by f.artist_id order by f.id`, strings.Join(ids, "','"))
-	_, err := o.Raw(sql).QueryRows(&artists)
+	sel := Select("f.artist_id as id", "f.artist as name", "f.album_artist", "f.compilation",
+		"count(*) as album_count", "a.id as current_id").
+		From("album f").
+		LeftJoin("artist a on f.artist_id = a.id").
+		Where(Eq{"f.artist_id": ids}).
+		GroupBy("f.artist_id").OrderBy("f.id")
+	err := r.queryAll(sel, &artists)
 	if err != nil {
 		return err
 	}

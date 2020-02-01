@@ -103,28 +103,17 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 
 func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
 	existsQuery = existsQuery.Columns("count(*) as count").From(r.tableName)
-	query, args, err := r.toSql(existsQuery)
-	if err != nil {
-		return false, err
-	}
 	var res struct{ Count int64 }
-	err = r.ormer.Raw(query, args...).QueryRow(&res)
+	err := r.queryOne(existsQuery, &res)
 	return res.Count > 0, err
 }
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
 	countQuery = countQuery.Columns("count(*) as count").From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
-	query, args, err := r.toSql(countQuery)
-	if err != nil {
-		return 0, err
-	}
 	var res struct{ Count int64 }
-	err = r.ormer.Raw(query, args...).QueryRow(&res)
-	if err == orm.ErrNoRows {
-		return 0, model.ErrNotFound
-	}
-	return res.Count, nil
+	err := r.queryOne(countQuery, &res)
+	return res.Count, err
 }
 
 func (r sqlRepository) put(id string, m interface{}) (newId string, err error) {
