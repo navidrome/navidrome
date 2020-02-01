@@ -49,11 +49,7 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 			Like{"full_text": "%" + part + "%"},
 		})
 	}
-	sql, args, err := r.toSql(sq)
-	if err != nil {
-		return err
-	}
-	_, err = r.ormer.Raw(sql, args...).QueryRows(results)
+	err := r.queryAll(sq, results)
 	return err
 }
 

@@ -102,12 +102,8 @@ func (r mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.Med
 	default:
 		sq = sq.OrderBy("RANDOM()")
 	}
-	sql, args, err := r.toSql(sq)
-	if err != nil {
-		return nil, err
-	}
 	results := model.MediaFiles{}
-	_, err = r.ormer.Raw(sql, args...).QueryRows(&results)
+	err := r.queryAll(sq, &results)
 	return results, err
 }
 

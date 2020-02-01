@@ -2,8 +2,6 @@ package persistence
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -78,12 +76,8 @@ func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums
 	default:
 		sq = sq.OrderBy("RANDOM()")
 	}
-	sql, args, err := r.toSql(sq)
-	if err != nil {
-		return nil, err
-	}
 	results := model.Albums{}
-	_, err = r.ormer.Raw(sql, args...).QueryRows(&results)
+	err := r.queryAll(sq, &results)
 	return results, err
 }
 
@@ -94,15 +88,13 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		HasCoverArt bool
 	}
 	var albums []refreshAlbum
-	o := r.ormer
-	sql := fmt.Sprintf(`
-	select album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.compilation, f.genre,
+	sel := Select(`album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.compilation, f.genre,
 		max(f.year) as year, sum(f.duration) as duration, count(*) as song_count, a.id as current_id, 
-		f.id as cover_art_id, f.path as cover_art_path, f.has_cover_art
-	from media_file f left outer join album a on f.album_id = a.id
-	where f.album_id in ('%s')
-	group by album_id order by f.id`, strings.Join(ids, "','"))
-	_, err := o.Raw(sql).QueryRows(&albums)
+		f.id as cover_art_id, f.path as cover_art_path, f.has_cover_art`).
+		From("media_file f").
+		LeftJoin("album a on f.album_id = a.id").
+		Where(Eq{"f.album_id": ids}).GroupBy("album_id").OrderBy("f.id")
+	err := r.queryAll(sel, &albums)
 	if err != nil {
 		return err
 	}
