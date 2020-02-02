@@ -33,7 +33,7 @@ func New(scanner *scanner.Scanner, ds model.DataStore) *Server {
 func (a *Server) MountRouter(path string, subRouter http.Handler) {
 	log.Info("Mounting routes", "path", path)
 	a.router.Group(func(r chi.Router) {
-		r.Use(middleware.Logger)
+		r.Use(RequestLogger)
 		r.Mount(path, subRouter)
 	})
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/deluan/navidrome/engine"
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/go-chi/chi"
 )
@@ -176,6 +177,15 @@ func SendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	default:
 		w.Header().Set("Content-Type", "application/xml")
 		response, _ = xml.Marshal(payload)
+	}
+	if payload.Status == "ok" {
+		if log.CurrentLevel() >= log.LevelTrace {
+			log.Info(r.Context(), "API: Successful response", "status", "OK", "body", string(response))
+		} else {
+			log.Info(r.Context(), "API: Successful response", "status", "OK")
+		}
+	} else {
+		log.Warn(r.Context(), "API: Failed response", "error", payload.Error.Code, "message", payload.Error.Message)
 	}
 	w.Write(response)
 }
