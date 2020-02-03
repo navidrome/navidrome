@@ -54,7 +54,7 @@ Navidrome is actively being tested with:
 | `deletePlaylist`       | |
 | ||
 | _MEDIA RETRIEVAL_      ||
-| `stream`               | Returns wrong content-length when downsampling |
+| `stream`               | No Transcoding/Downsampling support (for now)|
 | `download`             | |
 | `getCoverArt`          | Only gets embedded artwork |
 | `getAvatar`            | Always returns the same image |
