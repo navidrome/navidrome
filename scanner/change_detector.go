@@ -2,7 +2,7 @@ package scanner
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -63,7 +63,7 @@ func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated
 	}
 	for _, f := range files {
 		if f.IsDir() {
-			children = append(children, path.Join(dirPath, f.Name()))
+			children = append(children, filepath.Join(dirPath, f.Name()))
 		} else {
 			if f.ModTime().After(lastUpdated) {
 				lastUpdated = f.ModTime()

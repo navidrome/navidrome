@@ -3,7 +3,7 @@ package scanner
 import (
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -34,25 +34,25 @@ var _ = Describe("ChangeDetector", func() {
 
 		// Add one subfolder
 		lastModifiedSince = time.Now()
-		err = os.MkdirAll(path.Join(testFolder, "a"), 0700)
+		err = os.MkdirAll(filepath.Join(testFolder, "a"), 0700)
 		if err != nil {
 			panic(err)
 		}
 		changed, deleted, err = scanner.Scan(lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
-		Expect(changed).To(ConsistOf(".", "/a"))
+		Expect(changed).To(ConsistOf(".", P("/a")))
 
 		// Add more subfolders
 		lastModifiedSince = time.Now()
-		err = os.MkdirAll(path.Join(testFolder, "a", "b", "c"), 0700)
+		err = os.MkdirAll(filepath.Join(testFolder, "a", "b", "c"), 0700)
 		if err != nil {
 			panic(err)
 		}
 		changed, deleted, err = scanner.Scan(lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
-		Expect(changed).To(ConsistOf("/a", "/a/b", "/a/b/c"))
+		Expect(changed).To(ConsistOf(P("/a"), P("/a/b"), P("/a/b/c")))
 
 		// Scan with no changes
 		lastModifiedSince = time.Now()
@@ -63,36 +63,36 @@ var _ = Describe("ChangeDetector", func() {
 
 		// New file in subfolder
 		lastModifiedSince = time.Now()
-		_, err = os.Create(path.Join(testFolder, "a", "b", "empty.txt"))
+		_, err = os.Create(filepath.Join(testFolder, "a", "b", "empty.txt"))
 		if err != nil {
 			panic(err)
 		}
 		changed, deleted, err = scanner.Scan(lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
-		Expect(changed).To(ConsistOf("/a/b"))
+		Expect(changed).To(ConsistOf(P("/a/b")))
 
 		// Delete file in subfolder
 		lastModifiedSince = time.Now()
-		err = os.Remove(path.Join(testFolder, "a", "b", "empty.txt"))
+		err = os.Remove(filepath.Join(testFolder, "a", "b", "empty.txt"))
 		if err != nil {
 			panic(err)
 		}
 		changed, deleted, err = scanner.Scan(lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
-		Expect(changed).To(ConsistOf("/a/b"))
+		Expect(changed).To(ConsistOf(P("/a/b")))
 
 		// Delete subfolder
 		lastModifiedSince = time.Now()
-		err = os.Remove(path.Join(testFolder, "a", "b", "c"))
+		err = os.Remove(filepath.Join(testFolder, "a", "b", "c"))
 		if err != nil {
 			panic(err)
 		}
 		changed, deleted, err = scanner.Scan(lastModifiedSince)
 		Expect(err).To(BeNil())
-		Expect(deleted).To(ConsistOf("/a/b/c"))
-		Expect(changed).To(ConsistOf("/a/b"))
+		Expect(deleted).To(ConsistOf(P("/a/b/c")))
+		Expect(changed).To(ConsistOf(P("/a/b")))
 
 		// Only returns changes after lastModifiedSince
 		lastModifiedSince = time.Now()
@@ -103,11 +103,11 @@ var _ = Describe("ChangeDetector", func() {
 		Expect(changed).To(BeEmpty())
 		Expect(changed).To(BeEmpty())
 
-		f, err := os.Create(path.Join(testFolder, "a", "b", "new.txt"))
+		f, err := os.Create(filepath.Join(testFolder, "a", "b", "new.txt"))
 		f.Close()
 		changed, deleted, err = newScanner.Scan(lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
-		Expect(changed).To(ConsistOf("/a/b"))
+		Expect(changed).To(ConsistOf(P("/a/b")))
 	})
 })

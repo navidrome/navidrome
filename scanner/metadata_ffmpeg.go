@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -56,7 +57,7 @@ func ExtractAllMetadata(dirPath string) (map[string]*Metadata, error) {
 		if f.IsDir() {
 			continue
 		}
-		filePath := path.Join(dirPath, f.Name())
+		filePath := filepath.Join(dirPath, f.Name())
 		extension := path.Ext(filePath)
 		if !isAudioFile(extension) {
 			continue
@@ -95,7 +96,7 @@ var inputRegex = regexp.MustCompile(`(?m)^Input #\d+,.*,\sfrom\s'(.*)'`)
 
 func parseOutput(output string) map[string]string {
 	split := map[string]string{}
-	all := inputRegex.FindAllStringSubmatchIndex(string(output), -1)
+	all := inputRegex.FindAllStringSubmatchIndex(output, -1)
 	for i, loc := range all {
 		// Filename is the first captured group
 		file := output[loc[2]:loc[3]]

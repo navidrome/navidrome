@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -49,7 +48,11 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		return nil
 	}
 
-	log.Info("Folder changes found", "changed", len(changed), "deleted", len(deleted))
+	if log.CurrentLevel() >= log.LevelTrace {
+		log.Info(ctx, "Folder changes found", "numChanged", len(changed), "numDeleted", len(deleted), "changed", changed, "deleted", deleted)
+	} else {
+		log.Info(ctx, "Folder changes found", "numChanged", len(changed), "numDeleted", len(deleted))
+	}
 
 	sort.Strings(changed)
 	sort.Strings(deleted)
@@ -128,7 +131,7 @@ func (s *TagScanner) refreshArtists(ctx context.Context, updatedArtists map[stri
 }
 
 func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedArtists map[string]bool, updatedAlbums map[string]bool) error {
-	dir = path.Join(s.rootFolder, dir)
+	dir = filepath.Join(s.rootFolder, dir)
 
 	start := time.Now()
 
@@ -186,7 +189,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 }
 
 func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedArtists map[string]bool, updatedAlbums map[string]bool) error {
-	dir = path.Join(s.rootFolder, dir)
+	dir = filepath.Join(s.rootFolder, dir)
 
 	ct, err := s.ds.MediaFile(ctx).FindByPath(dir)
 	if err != nil {
