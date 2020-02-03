@@ -85,10 +85,11 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 		return err
 	}
 	err = r.ormer.Raw(query, args...).QueryRow(response)
-	r.logSQL(query, args, err, 1)
 	if err == orm.ErrNoRows {
+		r.logSQL(query, args, nil, 1)
 		return model.ErrNotFound
 	}
+	r.logSQL(query, args, err, 1)
 	return err
 }
 
@@ -98,26 +99,19 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 		return err
 	}
 	c, err := r.ormer.Raw(query, args...).QueryRows(response)
-	r.logSQL(query, args, err, c)
 	if err == orm.ErrNoRows {
+		r.logSQL(query, args, nil, c)
 		return model.ErrNotFound
 	}
+	r.logSQL(query, args, nil, c)
 	return err
 }
 
 func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
-	existsQuery = existsQuery.Columns("count(*) as count").From(r.tableName)
-	var res struct{ Count int64 }
-	query, args, err := existsQuery.ToSql()
-	if err != nil {
-		return false, err
-	}
-	err = r.ormer.Raw(query, args...).QueryRow(&res)
-	if err == orm.ErrNoRows {
-		err = nil
-	}
-	r.logSQL(query, args, err, res.Count)
-	return res.Count > 0, err
+	existsQuery = existsQuery.Columns("count(*) as exist").From(r.tableName)
+	var res struct{ Exist int64 }
+	err := r.queryOne(existsQuery, &res)
+	return res.Exist > 0, err
 }
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
