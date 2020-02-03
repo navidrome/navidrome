@@ -2,8 +2,7 @@ package persistence
 
 import (
 	"context"
-	"os"
-	"strings"
+	"path/filepath"
 	"testing"
 
 	"github.com/astaxie/beego/orm"
@@ -79,7 +78,7 @@ var (
 )
 
 func P(path string) string {
-	return strings.ReplaceAll(path, "/", string(os.PathSeparator))
+	return filepath.FromSlash(path)
 }
 
 var _ = Describe("Initialize test DB", func() {
