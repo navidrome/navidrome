@@ -18,3 +18,4 @@ navidrome.db
 *.swp
 *_gen.go
 dist
+music

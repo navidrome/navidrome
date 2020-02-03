@@ -3,7 +3,6 @@ package scanner
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/deluan/navidrome/log"
@@ -73,8 +72,8 @@ func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated
 	return
 }
 
-func (s *ChangeDetector) loadMap(dirMap dirInfoMap, rootPath string, since time.Time, maybe bool) error {
-	children, lastUpdated, err := s.loadDir(rootPath)
+func (s *ChangeDetector) loadMap(dirMap dirInfoMap, path string, since time.Time, maybe bool) error {
+	children, lastUpdated, err := s.loadDir(path)
 	if err != nil {
 		return err
 	}
@@ -86,14 +85,14 @@ func (s *ChangeDetector) loadMap(dirMap dirInfoMap, rootPath string, since time.
 		}
 	}
 
-	dir := s.getRelativePath(rootPath)
+	dir := s.getRelativePath(path)
 	dirMap[dir] = dirInfo{mdate: lastUpdated, maybe: maybe}
 
 	return nil
 }
 
-func (s *ChangeDetector) getRelativePath(subfolder string) string {
-	dir := strings.TrimPrefix(subfolder, s.rootFolder)
+func (s *ChangeDetector) getRelativePath(subFolder string) string {
+	dir, _ := filepath.Rel(s.rootFolder, subFolder)
 	if dir == "" {
 		dir = "."
 	}
@@ -111,6 +110,7 @@ func (s *ChangeDetector) checkForUpdates(lastModifiedSince time.Time, newMap dir
 				oldLastUpdated = time.Time{}
 			}
 		}
+
 		if lastUpdated.After(oldLastUpdated) {
 			changed = append(changed, dir)
 		}
