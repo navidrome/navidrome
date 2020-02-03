@@ -1,8 +1,7 @@
 package scanner
 
 import (
-	"os"
-	"strings"
+	"path/filepath"
 	"testing"
 
 	"github.com/deluan/navidrome/log"
@@ -19,5 +18,5 @@ func TestScanner(t *testing.T) {
 }
 
 func P(path string) string {
-	return strings.ReplaceAll(path, "/", string(os.PathSeparator))
+	return filepath.FromSlash(path)
 }
