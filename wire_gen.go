@@ -41,7 +41,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	ratings := engine.NewRatings(dataStore)
 	scrobbler := engine.NewScrobbler(dataStore, nowPlayingRepository)
 	search := engine.NewSearch(dataStore)
-	router := subsonic.New(browser, cover, listGenerator, users, playlists, ratings, scrobbler, search)
+	mediaStreamer := engine.NewMediaStreamer(dataStore)
+	router := subsonic.New(browser, cover, listGenerator, users, playlists, ratings, scrobbler, search, mediaStreamer)
 	return router
 }
 

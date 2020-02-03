@@ -25,15 +25,17 @@ type Router struct {
 	Scrobbler     engine.Scrobbler
 	Search        engine.Search
 	Users         engine.Users
+	Streamer      engine.MediaStreamer
 
 	mux http.Handler
 }
 
 func New(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator, users engine.Users,
-	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search) *Router {
+	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search,
+	streamer engine.MediaStreamer) *Router {
 
 	r := &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
-		Ratings: ratings, Scrobbler: scrobbler, Search: search, Users: users}
+		Ratings: ratings, Scrobbler: scrobbler, Search: search, Users: users, Streamer: streamer}
 	r.mux = r.routes()
 	return r
 }
