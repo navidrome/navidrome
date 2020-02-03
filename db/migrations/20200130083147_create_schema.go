@@ -14,7 +14,7 @@ func init() {
 func Up20200130083147(tx *sql.Tx) error {
 	log.Info("Creating DB Schema")
 	_, err := tx.Exec(`
-create table album
+create table if not exists album
 (
 	id varchar(255) not null
 		primary key,
@@ -33,22 +33,22 @@ create table album
 	updated_at datetime
 );
 
-create index album_artist
+create index if not exists album_artist
 	on album (artist);
 
-create index album_artist_id
+create index if not exists album_artist_id
 	on album (artist_id);
 
-create index album_genre
+create index if not exists album_genre
 	on album (genre);
 
-create index album_name
+create index if not exists album_name
 	on album (name);
 
-create index album_year
+create index if not exists album_year
 	on album (year);
 
-create table annotation
+create table if not exists annotation
 (
 	ann_id varchar(255) not null
 		primary key,
@@ -63,19 +63,19 @@ create table annotation
 	unique (user_id, item_id, item_type)
 );
 
-create index annotation_play_count
+create index if not exists annotation_play_count
 	on annotation (play_count);
 
-create index annotation_play_date
+create index if not exists annotation_play_date
 	on annotation (play_date);
 
-create index annotation_rating
+create index if not exists annotation_rating
 	on annotation (rating);
 
-create index annotation_starred
+create index if not exists annotation_starred
 	on annotation (starred);
 
-create table artist
+create table if not exists artist
 (
 	id varchar(255) not null
 		primary key,
@@ -83,10 +83,10 @@ create table artist
 	album_count integer default 0 not null
 );
 
-create index artist_name
+create index if not exists artist_name
 	on artist (name);
 
-create table media_file
+create table if not exists media_file
 (
 	id varchar(255) not null
 		primary key,
@@ -111,19 +111,19 @@ create table media_file
 	updated_at datetime
 );
 
-create index media_file_album_id
+create index if not exists media_file_album_id
 	on media_file (album_id);
 
-create index media_file_genre
+create index if not exists media_file_genre
 	on media_file (genre);
 
-create index media_file_path
+create index if not exists media_file_path
 	on media_file (path);
 
-create index media_file_title
+create index if not exists media_file_title
 	on media_file (title);
 
-create table playlist
+create table if not exists playlist
 (
 	id varchar(255) not null
 		primary key,
@@ -135,17 +135,17 @@ create table playlist
 	tracks text not null
 );
 
-create index playlist_name
+create index if not exists playlist_name
 	on playlist (name);
 
-create table property
+create table if not exists property
 (
 	id varchar(255) not null
 		primary key,
 	value varchar(255) default '' not null
 );
 
-create table search
+create table if not exists search
 (
 	id varchar(255) not null
 		primary key,
@@ -153,13 +153,13 @@ create table search
 	full_text varchar(255) default '' not null
 );
 
-create index search_full_text
+create index if not exists search_full_text
 	on search (full_text);
 
-create index search_table
+create index if not exists search_table
 	on search ("table");
 
-create table user
+create table if not exists user
 (
 	id varchar(255) not null
 		primary key,
