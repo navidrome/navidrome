@@ -26,7 +26,7 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/nfnt/resize v0.0.0-20160724205520-891127d8d1b5
 	github.com/onsi/ginkgo v1.11.0
-	github.com/onsi/gomega v1.8.1
+	github.com/onsi/gomega v1.9.0
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pressly/goose v2.6.0+incompatible
 	github.com/sirupsen/logrus v1.4.2
