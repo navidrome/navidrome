@@ -25,16 +25,18 @@ require (
 	github.com/lib/pq v1.3.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/nfnt/resize v0.0.0-20160724205520-891127d8d1b5
-	github.com/onsi/ginkgo v1.11.0
-	github.com/onsi/gomega v1.8.1
+	github.com/onsi/ginkgo v1.12.0
+	github.com/onsi/gomega v1.9.0
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pressly/goose v2.6.0+incompatible
 	github.com/sirupsen/logrus v1.4.2
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/smartystreets/goconvey v1.6.4
 	github.com/stretchr/testify v1.4.0 // indirect
-	golang.org/x/net v0.0.0-20190603091049-60506f45cf65 // indirect
-	golang.org/x/sys v0.0.0-20200107162124-548cf772de50 // indirect
+	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
+	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
 	golang.org/x/text v0.3.2 // indirect
+	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
+	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
