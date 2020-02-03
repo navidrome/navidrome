@@ -49,7 +49,8 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 	}
 
 	if log.CurrentLevel() >= log.LevelTrace {
-		log.Info(ctx, "Folder changes found", "numChanged", len(changed), "numDeleted", len(deleted), "changed", changed, "deleted", deleted)
+		log.Info(ctx, "Folder changes found", "numChanged", len(changed), "numDeleted", len(deleted),
+			"changed", strings.Join(changed, ";"), "deleted", strings.Join(deleted, ";"))
 	} else {
 		log.Info(ctx, "Folder changes found", "numChanged", len(changed), "numDeleted", len(deleted))
 	}
