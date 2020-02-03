@@ -58,19 +58,14 @@ check_node_env:
 	@(hash node) || (echo "\nERROR: Node environment not setup properly!\n"; exit 1)
 	@node --version | grep -q $(NODE_VERSION) || (echo "\nERROR: Please check your Node version. Should be $(NODE_VERSION)\n"; exit 1)
 
-UI_SRC = $(shell find ui/src ui/public -name "*.js")
-ui/build: $(UI_SRC) $(UI_PUBLIC) ui/package-lock.json
-	@(cd ./ui && npm run build)
-
-assets/embedded_gen.go: ui/build
-	go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
-
 .PHONY: build
 build: check_go_env
 	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=master"
 
 .PHONY: buildall
 buildall: check_env assets/embedded_gen.go
+	@(cd ./ui && npm run build)
+	go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
 	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=master" -tags=embed
 
 .PHONY: release
