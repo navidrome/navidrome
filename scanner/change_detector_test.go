@@ -18,7 +18,7 @@ var _ = Describe("ChangeDetector", func() {
 
 	BeforeEach(func() {
 		testFolder, _ = ioutil.TempDir("", "navidrome_tests")
-		err := os.MkdirAll(testFolder, 0700)
+		err := os.MkdirAll(testFolder, 0777)
 		if err != nil {
 			panic(err)
 		}
@@ -34,7 +34,7 @@ var _ = Describe("ChangeDetector", func() {
 
 		// Add one subfolder
 		lastModifiedSince = time.Now()
-		err = os.MkdirAll(filepath.Join(testFolder, "a"), 0700)
+		err = os.MkdirAll(filepath.Join(testFolder, "a"), 0777)
 		if err != nil {
 			panic(err)
 		}
@@ -45,7 +45,7 @@ var _ = Describe("ChangeDetector", func() {
 
 		// Add more subfolders
 		lastModifiedSince = time.Now()
-		err = os.MkdirAll(filepath.Join(testFolder, "a", "b", "c"), 0700)
+		err = os.MkdirAll(filepath.Join(testFolder, "a", "b", "c"), 0777)
 		if err != nil {
 			panic(err)
 		}
