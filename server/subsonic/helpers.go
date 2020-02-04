@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"fmt"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -200,6 +201,9 @@ func ToChild(entry engine.Entry) responses.Child {
 	child.Type = entry.Type
 	child.UserRating = entry.UserRating
 	child.SongCount = entry.SongCount
+	// TODO Must be dynamic, based on player/transcoding config
+	child.TranscodedSuffix = "mp3"
+	child.TranscodedContentType = mime.TypeByExtension(".mp3")
 	return child
 }
 
