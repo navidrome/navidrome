@@ -1,10 +1,9 @@
-package main
+package consts
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/static"
 )
 
@@ -13,8 +12,8 @@ func getBanner() string {
 	return strings.TrimSuffix(string(data), "\n")
 }
 
-func ShowBanner() {
-	version := "Version: " + consts.Version()
+func Banner() string {
+	version := "Version: " + Version()
 	padding := strings.Repeat(" ", 52-len(version))
-	fmt.Printf("%s%s%s\n\n", getBanner(), padding, version)
+	return fmt.Sprintf("%s%s%s\n", getBanner(), padding, version)
 }

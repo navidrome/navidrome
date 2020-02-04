@@ -2,12 +2,13 @@ package main
 
 import (
 	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/db"
 )
 
 func main() {
 	if !conf.Server.DevDisableBanner {
-		ShowBanner()
+		println(consts.Banner())
 	}
 
 	conf.Load()
