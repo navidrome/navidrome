@@ -26,13 +26,13 @@ please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join
 - Compatible with the huge selection of clients for [Subsonic](http://www.subsonic.org), 
    [Airsonic](https://airsonic.github.io/) and [Madsonic](https://www.madsonic.org/). 
    See the [complete list of available mobile and web apps](https://airsonic.github.io/docs/apps/)
+- Transcoding/Downsampling on-the-fly (WIP. Experimental support is available)
 
 ## Road map
 
 This project is being actively worked on. Expect a more polished experience and new features/releases 
 on a frequent basis. Some upcoming features planned: 
 
-- Transcoding/Downsampling on-the-fly
 - Last.FM integration
 - Integrated music player
 - Pre-build binaries for Raspberry Pi
