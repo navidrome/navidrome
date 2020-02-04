@@ -120,9 +120,11 @@ type transcodedMediaStream struct {
 	bitRate int
 	format  string
 	skip    int64
+	pos     int64
 }
 
 func (m *transcodedMediaStream) Read(p []byte) (n int, err error) {
+	// Open the pipe and optionally skip a initial chunk of the stream (to simulate a Seek)
 	if m.pipe == nil {
 		m.pipe, err = newTranscode(m.ctx, m.mf.Path, m.bitRate, m.format)
 		if err != nil {
@@ -130,32 +132,44 @@ func (m *transcodedMediaStream) Read(p []byte) (n int, err error) {
 		}
 		if m.skip > 0 {
 			_, err := io.CopyN(ioutil.Discard, m.pipe, m.skip)
+			m.pos = m.skip
 			if err != nil {
 				return 0, err
 			}
 		}
 	}
 	n, err = m.pipe.Read(p)
+	m.pos += int64(n)
 	if err == io.EOF {
 		m.Close()
 	}
 	return
 }
 
-// This Seek function assumes internal details of http.ServeContent's implementation
-// A better approach would be to implement a http.FileSystem and use http.FileServer
+// This is an attempt to make a pipe seekable. It is very wasteful, restarting the stream every time
+// a Seek happens. This is ok-ish for audio, but would kill the server for video.
 func (m *transcodedMediaStream) Seek(offset int64, whence int) (int64, error) {
-	if whence == io.SeekEnd {
-		if offset == 0 {
-			size := (m.mf.Duration) * m.bitRate * 1000
-			return int64(size / 8), nil
-		}
-		panic("seeking stream backwards not supported")
+	size := int64((m.mf.Duration)*m.bitRate*1000) / 8
+	log.Trace(m.ctx, "Seeking file", "path", m.mf.Path, "offset", offset, "whence", whence, "size", size)
+
+	switch whence {
+	case io.SeekEnd:
+		m.skip = size - offset
+		offset = size
+	case io.SeekStart:
+		m.skip = offset
+	case io.SeekCurrent:
+		io.CopyN(ioutil.Discard, m.pipe, offset)
+		m.pos += offset
+		offset = m.pos
 	}
-	m.skip = offset
+
+	// If need to Seek to a previous position, close the pipe (will be restarted on next Read)
 	var err error
-	if m.pipe != nil {
-		err = m.Close()
+	if whence != io.SeekCurrent {
+		if m.pipe != nil {
+			err = m.Close()
+		}
 	}
 	return offset, err
 }
@@ -176,6 +190,7 @@ func (m *transcodedMediaStream) Close() error {
 	log.Trace(m.ctx, "Closing stream", "id", m.mf.ID, "path", m.mf.Path)
 	err := m.pipe.Close()
 	m.pipe = nil
+	m.pos = 0
 	return err
 }
 
