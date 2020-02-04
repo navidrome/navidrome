@@ -74,7 +74,7 @@ func ExtractAllMetadata(dirPath string) (map[string]*Metadata, error) {
 func probe(inputs []string) (map[string]*Metadata, error) {
 	cmdLine, args := createProbeCommand(inputs)
 
-	log.Trace("Executing command", "cmdLine", cmdLine, "args", args)
+	log.Trace("Executing command", "arg0", cmdLine, "args", args)
 	cmd := exec.Command(cmdLine, args...)
 	output, _ := cmd.CombinedOutput()
 	mds := map[string]*Metadata{}
@@ -233,10 +233,15 @@ func createProbeCommand(inputs []string) (string, []string) {
 
 	split := strings.Split(cmd, " ")
 	args := make([]string, 0)
+	first := true
 	for _, s := range split {
 		if s == "%s" {
 			for _, inp := range inputs {
-				args = append(args, "-i", inp)
+				if !first {
+					args = append(args, "-i")
+				}
+				args = append(args, inp)
+				first = false
 			}
 			continue
 		}

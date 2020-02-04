@@ -25,7 +25,7 @@ type nd struct {
 	EnableDownsampling bool   `default:"false"`
 	MaxBitRate         int    `default:"0"`
 	DownsampleCommand  string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
-	ProbeCommand       string `default:"ffmpeg %s -f ffmetadata"`
+	ProbeCommand       string `default:"ffmpeg -i %s -f ffmetadata"`
 	ScanInterval       string `default:"1m"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
