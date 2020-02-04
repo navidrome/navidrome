@@ -65,4 +65,16 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(rawStream.ModTime()).To(Equal(modTime))
 		})
 	})
+
+	Context("createTranscodeCommand", func() {
+		BeforeEach(func() {
+			conf.Server.DownsampleCommand = "ffmpeg -i %s -b:a %bk mp3 -"
+		})
+		It("creates a valid command line", func() {
+			cmd, args := createTranscodeCommand("/music library/file.mp3", 123, "")
+			Expect(cmd).To(Equal("ffmpeg"))
+			Expect(args).To(Equal([]string{"-i", "/music library/file.mp3", "-b:a", "123k", "mp3", "-"}))
+		})
+
+	})
 })
