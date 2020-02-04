@@ -96,7 +96,7 @@ $ make setup        # Install tools required for Navidrome's development
 $ make buildall     # Build UI and server, generates a single executable
 ```
 
-This will generate the `navidrome` binary executable in the project's root folder. 
+This will generate the `navidrome` executable binary in the project's root folder. 
 
 ### Running for the first time
 
