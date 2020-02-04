@@ -83,6 +83,3 @@ changelog:
   filters:
     exclude:
       - '^docs:'
-      - '^test:'
-      - '^chore:'
-      - '^ci:'
