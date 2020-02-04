@@ -1,4 +1,3 @@
-// in src/Menu.js
 import React, { useState, createElement } from 'react'
 import { useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'

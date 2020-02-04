@@ -150,7 +150,7 @@ func (m *transcodedMediaStream) Read(p []byte) (n int, err error) {
 // a Seek happens. This is ok-ish for audio, but would kill the server for video.
 func (m *transcodedMediaStream) Seek(offset int64, whence int) (int64, error) {
 	size := int64((m.mf.Duration)*m.bitRate*1000) / 8
-	log.Trace(m.ctx, "Seeking file", "path", m.mf.Path, "offset", offset, "whence", whence, "size", size)
+	log.Trace(m.ctx, "Seeking transcoded stream", "path", m.mf.Path, "offset", offset, "whence", whence, "size", size)
 
 	switch whence {
 	case io.SeekEnd:

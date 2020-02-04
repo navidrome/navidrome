@@ -28,7 +28,6 @@ const ArtistList = (props) => (
     exporter={false}
     bulkActionButtons={false}
     filters={<ArtistFilter />}
-    perPage={15}
   >
     <Datagrid rowClick={artistRowClick}>
       <TextField source="name" />

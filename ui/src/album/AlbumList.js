@@ -50,7 +50,6 @@ const AlbumList = (props) => (
     exporter={false}
     bulkActionButtons={false}
     filters={<AlbumFilter />}
-    perPage={15}
   >
     <Datagrid expand={<AlbumDetails />} rowClick={albumRowClick}>
       <TextField source="name" />
