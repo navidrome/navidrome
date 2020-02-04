@@ -51,6 +51,7 @@ Just head to the [releases page](https://github.com/deluan/navidrome/releases) a
 platform. There are builds available for Linux, macOS and Windows (32 and 64 bits). 
 
 Remember to install [ffmpeg](https://ffmpeg.org/download.html) in your system, a requirement for Navidrome to work properly.
+You may find the latest static build for your platform here: https://johnvansickle.com/ffmpeg/ 
 
 If you have any issues with these binaries, or need a binary for a different platform, please 
 [open an issue](https://github.com/deluan/navidrome/issues) 
