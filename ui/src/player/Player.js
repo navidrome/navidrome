@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchUtils, useAuthState, useDataProvider } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
-import { markScrobbled, syncQueue } from './queue'
+import { scrobble, syncQueue } from './queue'
 
 const defaultOptions = {
   bounds: 'body',
@@ -55,7 +55,7 @@ const Player = () => {
     }
     const item = queue.queue.find((item) => item.id === info.id)
     if (item && !item.scrobbled) {
-      dispatch(markScrobbled(info.id, true))
+      dispatch(scrobble(info.id))
       fetchUtils.fetchJson(
         `/rest/scrobble?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&id=${info.id}&submission=true`
       )
@@ -63,13 +63,10 @@ const Player = () => {
   }
 
   const OnAudioPlay = (info) => {
-    console.log('AUDIOPLAY: ', info)
     if (info.duration) {
-      dispatch(markScrobbled(info.id, false))
       fetchUtils.fetchJson(
         `/rest/scrobble?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&id=${info.id}&submission=false`
       )
-      //
       dataProvider.getOne('keepalive', { id: info.id })
     }
   }

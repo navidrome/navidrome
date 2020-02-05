@@ -30,9 +30,9 @@ const syncQueue = (data) => ({
   data
 })
 
-const markScrobbled = (id, submission = false) => ({
+const scrobble = (id) => ({
   type: PLAYER_SCROBBLE,
-  data: { id, submission }
+  data: id
 })
 
 const playQueueReducer = (
@@ -52,7 +52,7 @@ const playQueueReducer = (
       const newQueue = previousState.queue.map((item) => {
         return {
           ...item,
-          scrobbled: item.scrobbled || (item.id === data.id && data.submission)
+          scrobbled: item.scrobbled || (item.id === data)
         }
       })
       return { queue: newQueue, clear: false }
@@ -61,4 +61,4 @@ const playQueueReducer = (
   }
 }
 
-export { addTrack, setTrack, syncQueue, markScrobbled, playQueueReducer }
+export { addTrack, setTrack, syncQueue, scrobble, playQueueReducer }
