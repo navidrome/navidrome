@@ -32,9 +32,6 @@ func (app *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (app *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
-	// Basic unauthenticated ping
-	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"response":"pong"}`)) })
-
 	r.Post("/login", Login(app.ds))
 	r.Post("/createAdmin", CreateAdmin(app.ds))
 
@@ -45,6 +42,9 @@ func (app *Router) routes() http.Handler {
 		app.R(r, "/song", model.MediaFile{})
 		app.R(r, "/album", model.Album{})
 		app.R(r, "/artist", model.Artist{})
+
+		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
+		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"response":"ok"}`)) })
 	})
 
 	// Serve UI app assets

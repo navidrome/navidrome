@@ -1,6 +1,6 @@
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchUtils, useAuthState } from 'react-admin'
+import { fetchUtils, useAuthState, useDataProvider } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import { markScrobbled, syncQueue } from './queue'
@@ -38,6 +38,7 @@ const addQueueToOptions = (queue) => {
 }
 
 const Player = () => {
+  const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const queue = useSelector((state) => state.queue)
   const options = addQueueToOptions(queue)
@@ -68,6 +69,8 @@ const Player = () => {
       fetchUtils.fetchJson(
         `/rest/scrobble?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&id=${info.id}&submission=false`
       )
+      //
+      dataProvider.getOne('keepalive', { id: info.id })
     }
   }
 
