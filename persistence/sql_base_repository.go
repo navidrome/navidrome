@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"text/scanner"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -15,9 +16,10 @@ import (
 )
 
 type sqlRepository struct {
-	ctx       context.Context
-	tableName string
-	ormer     orm.Ormer
+	ctx          context.Context
+	tableName    string
+	ormer        orm.Ormer
+	sortMappings map[string]string
 }
 
 const invalidUserId = "-1"
@@ -55,11 +57,30 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 			sq = sq.Offset(uint64(options[0].Offset))
 		}
 		if options[0].Sort != "" {
-			if options[0].Order == "desc" {
-				sq = sq.OrderBy(toSnakeCase(options[0].Sort + " desc"))
-			} else {
-				sq = sq.OrderBy(toSnakeCase(options[0].Sort))
+			sort := toSnakeCase(options[0].Sort)
+			if mapping, ok := r.sortMappings[sort]; ok {
+				sort = mapping
 			}
+			if !strings.Contains(sort, "asc") && !strings.Contains(sort, "desc") {
+				sort = sort + " asc"
+			}
+			if options[0].Order == "desc" {
+				var s scanner.Scanner
+				s.Init(strings.NewReader(sort))
+				var newSort string
+				for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
+					switch s.TokenText() {
+					case "asc":
+						newSort += " " + "desc"
+					case "desc":
+						newSort += " " + "asc"
+					default:
+						newSort += " " + s.TokenText()
+					}
+				}
+				sort = newSort
+			}
+			sq = sq.OrderBy(sort)
 		}
 	}
 	return sq
@@ -190,7 +211,7 @@ func (r sqlRepository) parseRestOptions(options ...rest.QueryOptions) model.Quer
 	qo := model.QueryOptions{}
 	if len(options) > 0 {
 		qo.Sort = options[0].Sort
-		qo.Order = options[0].Order
+		qo.Order = strings.ToLower(options[0].Order)
 		qo.Max = options[0].Max
 		qo.Offset = options[0].Offset
 		if len(options[0].Filters) > 0 {

@@ -21,6 +21,10 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 	r.ctx = ctx
 	r.ormer = o
 	r.tableName = "media_file"
+	r.sortMappings = map[string]string{
+		"artist": "artist asc, album asc, disc_number asc, track_number asc",
+		"album":  "album asc, disc_number asc, track_number asc",
+	}
 	return r
 }
 
