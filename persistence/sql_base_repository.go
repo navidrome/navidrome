@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
@@ -68,9 +69,10 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	start := time.Now()
 	res, err := r.ormer.Raw(query, args...).Exec()
 	c, _ := res.RowsAffected()
-	r.logSQL(query, args, err, c)
+	r.logSQL(query, args, err, c, start)
 	if err != nil {
 		if err.Error() != "LastInsertId is not supported by this driver" {
 			return 0, err
@@ -84,12 +86,13 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	if err != nil {
 		return err
 	}
+	start := time.Now()
 	err = r.ormer.Raw(query, args...).QueryRow(response)
 	if err == orm.ErrNoRows {
-		r.logSQL(query, args, nil, 1)
+		r.logSQL(query, args, nil, 1, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, err, 1)
+	r.logSQL(query, args, err, 1, start)
 	return err
 }
 
@@ -98,12 +101,13 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 	if err != nil {
 		return err
 	}
+	start := time.Now()
 	c, err := r.ormer.Raw(query, args...).QueryRows(response)
 	if err == orm.ErrNoRows {
-		r.logSQL(query, args, nil, c)
+		r.logSQL(query, args, nil, c, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, nil, c)
+	r.logSQL(query, args, nil, c, start)
 	return err
 }
 
@@ -154,7 +158,8 @@ func (r sqlRepository) delete(cond Sqlizer) error {
 	return err
 }
 
-func (r sqlRepository) logSQL(sql string, args []interface{}, err error, rowsAffected int64) {
+func (r sqlRepository) logSQL(sql string, args []interface{}, err error, rowsAffected int64, start time.Time) {
+	lapsed := time.Since(start)
 	var fmtArgs []string
 	for i := range args {
 		var f string
@@ -167,9 +172,9 @@ func (r sqlRepository) logSQL(sql string, args []interface{}, err error, rowsAff
 		fmtArgs = append(fmtArgs, f)
 	}
 	if err != nil {
-		log.Error(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, err)
+		log.Error(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, "lapsedTime", lapsed, err)
 	} else {
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected)
+		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, "lapsedTime", lapsed)
 	}
 }
 
