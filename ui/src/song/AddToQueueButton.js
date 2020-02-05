@@ -10,7 +10,6 @@ const AddToQueueButton = ({ selectedIds }) => {
   const addToQueue = () => {
     selectedIds.forEach((id) => {
       dataProvider.getOne('song', { id }).then((response) => {
-        console.log(response.data)
         dispatch(addTrack(response.data))
       })
     })

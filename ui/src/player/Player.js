@@ -1,9 +1,9 @@
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useAuthState } from 'react-admin'
+import { fetchUtils, useAuthState } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
-import { syncQueue } from './queue'
+import { markScrobbled, syncQueue } from './queue'
 
 const defaultOptions = {
   bounds: 'body',
@@ -49,6 +49,26 @@ const Player = () => {
 
   const OnAudioProgress = (info) => {
     const progress = (info.currentTime / info.duration) * 100
+    if (isNaN(info.duration) || progress < 90) {
+      return
+    }
+    const item = queue.queue.find((item) => item.id === info.id)
+    if (item && !item.scrobbled) {
+      dispatch(markScrobbled(info.id, true))
+      fetchUtils.fetchJson(
+        `/rest/scrobble?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&id=${info.id}&submission=true`
+      )
+    }
+  }
+
+  const OnAudioPlay = (info) => {
+    console.log('AUDIOPLAY: ', info)
+    if (info.duration) {
+      dispatch(markScrobbled(info.id, false))
+      fetchUtils.fetchJson(
+        `/rest/scrobble?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&id=${info.id}&submission=false`
+      )
+    }
   }
 
   if (authenticated && options.audioLists.length > 0) {
@@ -57,6 +77,7 @@ const Player = () => {
         {...options}
         onAudioListsChange={OnAudioListsChange}
         onAudioProgress={OnAudioProgress}
+        onAudioPlay={OnAudioPlay}
       />
     )
   }
