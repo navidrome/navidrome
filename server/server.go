@@ -23,7 +23,6 @@ type Server struct {
 
 func New(scanner *scanner.Scanner, ds model.DataStore) *Server {
 	a := &Server{Scanner: scanner, ds: ds}
-	initMimeTypes()
 	initialSetup(ds)
 	a.initRoutes()
 	a.initScanner()

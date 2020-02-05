@@ -1,8 +1,8 @@
-package server
+package consts
 
 import "mime"
 
-func initMimeTypes() {
+func init() {
 	mt := map[string]string{
 		".mp3":  "audio/mpeg",
 		".ogg":  "audio/ogg",
