@@ -16,7 +16,11 @@ const PlayButton = ({
   const dispatch = useDispatch()
 
   return (
-    <IconButton onClick={() => dispatch(action(record))} {...rest}>
+    <IconButton
+      onClick={() => dispatch(action(record))}
+      {...rest}
+      size={'small'}
+    >
       {icon}
     </IconButton>
   )
