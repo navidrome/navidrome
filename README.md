@@ -6,9 +6,7 @@
 [![Join the Chat](https://img.shields.io/discord/671335427726114836?style=for-the-badge)](https://discord.gg/xh7j7yF)
 
 Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your 
-music collection from any browser or mobile device.
-
-This is a fully functional _alpha quality_ software. Expect some changes in the feature set and the way it works. 
+music collection from any browser or mobile device. It's like your personal Spotify!
 
 __Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
 please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join the chat in our [Discord server](https://discord.gg/xh7j7yF)
@@ -29,18 +27,21 @@ please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join
    See the [complete list of available mobile and web apps](https://airsonic.github.io/docs/apps/)
 - Transcoding/Downsampling on-the-fly (WIP. Experimental support is available)
 
+
 ## Road map
 
 This project is being actively worked on. Expect a more polished experience and new features/releases 
 on a frequent basis. Some upcoming features planned: 
 
-- Last.FM integration
 - Integrated music player
+- Last.FM integration
 - Pre-build binaries for Raspberry Pi
 - Smart/dynamic playlists (similar to iTunes)
+- Support for audiobooks (bookmarking)
 - Jukebox mode
 - Sharing links to albums/songs/playlists
 - Podcasts
+
 
 ## Installation
 
@@ -81,6 +82,8 @@ services:
       - "./data:/data"
       - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"
 ```
+
+To get the cutting-edge, latest version from master, use the image `deluan/navidrome:develop`
 
 ### Build from source
 
