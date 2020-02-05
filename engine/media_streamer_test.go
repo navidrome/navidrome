@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"os"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
@@ -50,11 +49,7 @@ var _ = Describe("MediaStreamer", func() {
 		BeforeEach(func() {
 			modTime = time.Now()
 			mf := &model.MediaFile{ID: "123", Path: "test.mp3", UpdatedAt: modTime, Suffix: "mp3"}
-			file, err := os.Open("tests/fixtures/test.mp3")
-			if err != nil {
-				panic(err)
-			}
-			rawStream = &rawMediaStream{mf: mf, file: file, ctx: ctx}
+			rawStream = &rawMediaStream{mf: mf, ctx: ctx}
 		})
 
 		It("returns the ContentType", func() {

@@ -6,7 +6,6 @@ Dockerfile
 data
 *.db
 testDB
-*_test.go
 navidrome
 navidrome.db
 navidrome.toml
