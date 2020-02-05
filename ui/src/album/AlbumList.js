@@ -12,7 +12,7 @@ import {
   SimpleShowLayout,
   TextField
 } from 'react-admin'
-import { DurationField, Title } from '../common'
+import { DurationField, Pagination, Title } from '../common'
 
 const AlbumFilter = (props) => (
   <Filter {...props}>
@@ -50,6 +50,8 @@ const AlbumList = (props) => (
     exporter={false}
     bulkActionButtons={false}
     filters={<AlbumFilter />}
+    perPage={15}
+    pagination={<Pagination />}
   >
     <Datagrid expand={<AlbumDetails />} rowClick={albumRowClick}>
       <TextField source="name" />

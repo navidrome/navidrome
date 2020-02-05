@@ -12,7 +12,7 @@ import {
   TextField,
   TextInput
 } from 'react-admin'
-import { BitrateField, DurationField, Title } from '../common'
+import { BitrateField, DurationField, Pagination, Title } from '../common'
 import AddToQueueButton from './AddToQueueButton'
 import PlayButton from './PlayButton'
 
@@ -54,6 +54,8 @@ const SongList = (props) => {
       exporter={false}
       bulkActionButtons={<SongBulkActionButtons />}
       filters={<SongFilter />}
+      perPage={15}
+      pagination={<Pagination />}
     >
       <Datagrid expand={<SongDetails />}>
         <PlayButton {...props} />

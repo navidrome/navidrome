@@ -7,7 +7,7 @@ import {
   SearchInput,
   TextField
 } from 'react-admin'
-import { Title } from '../common'
+import { Pagination, Title } from '../common'
 
 const ArtistFilter = (props) => (
   <Filter {...props}>
@@ -28,6 +28,8 @@ const ArtistList = (props) => (
     exporter={false}
     bulkActionButtons={false}
     filters={<ArtistFilter />}
+    perPage={15}
+    pagination={<Pagination />}
   >
     <Datagrid rowClick={artistRowClick}>
       <TextField source="name" />
