@@ -9,6 +9,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
+	"github.com/deluan/navidrome/utils"
 )
 
 type MediaAnnotationController struct {
@@ -49,9 +50,9 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 }
 
 func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	ids := ParamStrings(r, "id")
-	albumIds := ParamStrings(r, "albumId")
-	artistIds := ParamStrings(r, "artistId")
+	ids := utils.ParamStrings(r, "id")
+	albumIds := utils.ParamStrings(r, "albumId")
+	artistIds := utils.ParamStrings(r, "artistId")
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
 		return nil, NewError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
@@ -84,9 +85,9 @@ func (c *MediaAnnotationController) star(ctx context.Context, starred bool, ids 
 }
 
 func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	ids := ParamStrings(r, "id")
-	albumIds := ParamStrings(r, "albumId")
-	artistIds := ParamStrings(r, "artistId")
+	ids := utils.ParamStrings(r, "id")
+	albumIds := utils.ParamStrings(r, "albumId")
+	artistIds := utils.ParamStrings(r, "artistId")
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
 		return nil, NewError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
@@ -106,14 +107,14 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return nil, err
 	}
-	times := ParamTimes(r, "time")
+	times := utils.ParamTimes(r, "time")
 	if len(times) > 0 && len(times) != len(ids) {
 		return nil, NewError(responses.ErrorGeneric, "Wrong number of timestamps: %d, should be %d", len(times), len(ids))
 	}
-	submission := ParamBool(r, "submission", true)
+	submission := utils.ParamBool(r, "submission", true)
 	playerId := 1 // TODO Multiple players, based on playerName/username/clientIP(?)
-	playerName := ParamString(r, "c")
-	username := ParamString(r, "u")
+	playerName := utils.ParamString(r, "c")
+	username := utils.ParamString(r, "u")
 
 	log.Debug(r, "Scrobbling tracks", "ids", ids, "times", times, "submission", submission)
 	for i, id := range ids {

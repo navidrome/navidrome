@@ -9,6 +9,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
+	"github.com/deluan/navidrome/utils"
 )
 
 type PlaylistsController struct {
@@ -61,9 +62,9 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 }
 
 func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	songIds := ParamStrings(r, "songId")
-	playlistId := ParamString(r, "playlistId")
-	name := ParamString(r, "name")
+	songIds := utils.ParamStrings(r, "songId")
+	playlistId := utils.ParamString(r, "playlistId")
+	name := utils.ParamString(r, "name")
 	if playlistId == "" && name == "" {
 		return nil, errors.New("Required parameter name is missing")
 	}
@@ -96,8 +97,8 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return nil, err
 	}
-	songsToAdd := ParamStrings(r, "songIdToAdd")
-	songIndexesToRemove := ParamInts(r, "songIndexToRemove")
+	songsToAdd := utils.ParamStrings(r, "songIdToAdd")
+	songIndexesToRemove := utils.ParamInts(r, "songIndexToRemove")
 
 	var pname *string
 	if len(r.URL.Query()["name"]) > 0 {

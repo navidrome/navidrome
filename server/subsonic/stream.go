@@ -5,6 +5,7 @@ import (
 
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
+	"github.com/deluan/navidrome/utils"
 )
 
 type StreamController struct {
@@ -20,8 +21,8 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	if err != nil {
 		return nil, err
 	}
-	maxBitRate := ParamInt(r, "maxBitRate", 0)
-	format := ParamString(r, "format")
+	maxBitRate := utils.ParamInt(r, "maxBitRate", 0)
+	format := utils.ParamString(r, "format")
 
 	ms, err := c.streamer.NewStream(r.Context(), id, maxBitRate, format)
 	if err != nil {

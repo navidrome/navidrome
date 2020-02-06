@@ -59,8 +59,8 @@ func (c *BrowsingController) getArtistIndex(r *http.Request, musicFolderId strin
 }
 
 func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	musicFolderId := ParamString(r, "musicFolderId")
-	ifModifiedSince := ParamTime(r, "ifModifiedSince", time.Time{})
+	musicFolderId := utils.ParamString(r, "musicFolderId")
+	ifModifiedSince := utils.ParamTime(r, "ifModifiedSince", time.Time{})
 
 	res, err := c.getArtistIndex(r, musicFolderId, ifModifiedSince)
 	if err != nil {
@@ -73,7 +73,7 @@ func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) 
 }
 
 func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	musicFolderId := ParamString(r, "musicFolderId")
+	musicFolderId := utils.ParamString(r, "musicFolderId")
 	res, err := c.getArtistIndex(r, musicFolderId, time.Time{})
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) 
 }
 
 func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id := ParamString(r, "id")
+	id := utils.ParamString(r, "id")
 	dir, err := c.browser.Directory(r.Context(), id)
 	switch {
 	case err == model.ErrNotFound:
@@ -102,7 +102,7 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 }
 
 func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id := ParamString(r, "id")
+	id := utils.ParamString(r, "id")
 	dir, err := c.browser.Artist(r.Context(), id)
 	switch {
 	case err == model.ErrNotFound:
@@ -119,7 +119,7 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 }
 
 func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id := ParamString(r, "id")
+	id := utils.ParamString(r, "id")
 	dir, err := c.browser.Album(r.Context(), id)
 	switch {
 	case err == model.ErrNotFound:
@@ -136,7 +136,7 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 }
 
 func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id := ParamString(r, "id")
+	id := utils.ParamString(r, "id")
 	song, err := c.browser.GetSong(r.Context(), id)
 	switch {
 	case err == model.ErrNotFound:

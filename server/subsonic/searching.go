@@ -7,6 +7,7 @@ import (
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/server/subsonic/responses"
+	"github.com/deluan/navidrome/utils"
 )
 
 type SearchingController struct {
@@ -34,12 +35,12 @@ func (c *SearchingController) getParams(r *http.Request) (*searchParams, error) 
 	if err != nil {
 		return nil, err
 	}
-	sp.artistCount = ParamInt(r, "artistCount", 20)
-	sp.artistOffset = ParamInt(r, "artistOffset", 0)
-	sp.albumCount = ParamInt(r, "albumCount", 20)
-	sp.albumOffset = ParamInt(r, "albumOffset", 0)
-	sp.songCount = ParamInt(r, "songCount", 20)
-	sp.songOffset = ParamInt(r, "songOffset", 0)
+	sp.artistCount = utils.ParamInt(r, "artistCount", 20)
+	sp.artistOffset = utils.ParamInt(r, "artistOffset", 0)
+	sp.albumCount = utils.ParamInt(r, "albumCount", 20)
+	sp.albumOffset = utils.ParamInt(r, "albumOffset", 0)
+	sp.songCount = utils.ParamInt(r, "songCount", 20)
+	sp.songOffset = utils.ParamInt(r, "songOffset", 0)
 	return sp, nil
 }
 

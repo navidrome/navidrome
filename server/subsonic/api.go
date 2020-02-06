@@ -9,6 +9,7 @@ import (
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/server/subsonic/responses"
+	"github.com/deluan/navidrome/utils"
 	"github.com/go-chi/chi"
 )
 
@@ -163,7 +164,7 @@ func SendError(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func SendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Subsonic) {
-	f := ParamString(r, "f")
+	f := utils.ParamString(r, "f")
 	var response []byte
 	switch f {
 	case "json":
@@ -172,7 +173,7 @@ func SendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		response, _ = json.Marshal(wrapper)
 	case "jsonp":
 		w.Header().Set("Content-Type", "application/javascript")
-		callback := ParamString(r, "callback")
+		callback := utils.ParamString(r, "callback")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		data, _ := json.Marshal(wrapper)
 		response = []byte(fmt.Sprintf("%s(%s)", callback, data))

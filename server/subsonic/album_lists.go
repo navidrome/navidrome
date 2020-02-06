@@ -47,8 +47,8 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (engine.Entries, err
 		return nil, errors.New("Not implemented!")
 	}
 
-	offset := ParamInt(r, "offset", 0)
-	size := utils.MinInt(ParamInt(r, "size", 10), 500)
+	offset := utils.ParamInt(r, "offset", 0)
+	size := utils.MinInt(utils.ParamInt(r, "size", 10), 500)
 
 	albums, err := listFunc(r.Context(), offset, size)
 	if err != nil {
@@ -132,8 +132,8 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 }
 
 func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	size := utils.MinInt(ParamInt(r, "size", 10), 500)
-	genre := ParamString(r, "genre")
+	size := utils.MinInt(utils.ParamInt(r, "size", 10), 500)
+	genre := utils.ParamString(r, "genre")
 
 	songs, err := c.listGen.GetRandomSongs(r.Context(), size, genre)
 	if err != nil {

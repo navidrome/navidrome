@@ -9,6 +9,7 @@ import (
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/static"
+	"github.com/deluan/navidrome/utils"
 )
 
 type MediaRetrievalController struct {
@@ -36,7 +37,7 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		return nil, err
 	}
-	size := ParamInt(r, "size", 0)
+	size := utils.ParamInt(r, "size", 0)
 
 	err = c.cover.Get(r.Context(), id, size, w)
 

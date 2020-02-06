@@ -11,6 +11,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
+	"github.com/deluan/navidrome/utils"
 )
 
 func postFormToQueryParams(next http.Handler) http.Handler {
@@ -36,7 +37,7 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 		requiredParameters := []string{"u", "v", "c"}
 
 		for _, p := range requiredParameters {
-			if ParamString(r, p) == "" {
+			if utils.ParamString(r, p) == "" {
 				msg := fmt.Sprintf(`Missing required parameter "%s"`, p)
 				log.Warn(r, msg)
 				SendError(w, r, NewError(responses.ErrorMissingParameter, msg))
@@ -44,9 +45,9 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 			}
 		}
 
-		user := ParamString(r, "u")
-		client := ParamString(r, "c")
-		version := ParamString(r, "v")
+		user := utils.ParamString(r, "u")
+		client := utils.ParamString(r, "c")
+		version := utils.ParamString(r, "v")
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, "username", user)
 		ctx = context.WithValue(ctx, "client", client)
@@ -61,11 +62,11 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 func authenticate(users engine.Users) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			username := ParamString(r, "u")
-			pass := ParamString(r, "p")
-			token := ParamString(r, "t")
-			salt := ParamString(r, "s")
-			jwt := ParamString(r, "jwt")
+			username := utils.ParamString(r, "u")
+			pass := utils.ParamString(r, "p")
+			token := utils.ParamString(r, "t")
+			salt := utils.ParamString(r, "s")
+			jwt := utils.ParamString(r, "jwt")
 
 			usr, err := users.Authenticate(r.Context(), username, pass, token, salt, jwt)
 			if err == model.ErrInvalidAuth {
