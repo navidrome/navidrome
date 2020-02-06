@@ -25,6 +25,7 @@ const authProvider = {
         localStorage.setItem('token', response.token)
         localStorage.setItem('name', response.name)
         localStorage.setItem('username', response.username)
+        localStorage.setItem('role', response.isAdmin ? 'admin' : 'regular')
         return response
       })
       .catch((error) => {
@@ -59,13 +60,17 @@ const authProvider = {
     return Promise.resolve()
   },
 
-  getPermissions: (params) => Promise.resolve()
+  getPermissions: () => {
+    const role = localStorage.getItem('role')
+    return role ? Promise.resolve(role) : Promise.reject()
+  }
 }
 
 const removeItems = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('name')
   localStorage.removeItem('username')
+  localStorage.removeItem('role')
 }
 
 export default authProvider

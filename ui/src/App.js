@@ -20,10 +20,12 @@ const App = () => (
     layout={Layout}
     loginPage={Login}
   >
-    <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />
-    <Resource name="album" {...album} options={{ subMenu: 'library' }} />
-    <Resource name="song" {...song} options={{ subMenu: 'library' }} />
-    <Resource name="user" {...user} />
+    {(permissions) => [
+      <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
+      <Resource name="album" {...album} options={{ subMenu: 'library' }} />,
+      <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
+      permissions === 'admin' ? <Resource name="user" {...user} /> : null
+    ]}
   </Admin>
 )
 export default App

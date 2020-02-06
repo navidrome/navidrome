@@ -85,10 +85,18 @@ func (r *userRepository) UpdateLastAccessAt(id string) error {
 }
 
 func (r *userRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	usr := loggedUser(r.ctx)
+	if !usr.IsAdmin {
+		return 0, rest.ErrPermissionDenied
+	}
 	return r.CountAll(r.parseRestOptions(options...))
 }
 
 func (r *userRepository) Read(id string) (interface{}, error) {
+	usr := loggedUser(r.ctx)
+	if !usr.IsAdmin && usr.ID != id {
+		return nil, rest.ErrPermissionDenied
+	}
 	usr, err := r.Get(id)
 	if err == model.ErrNotFound {
 		return nil, rest.ErrNotFound
@@ -97,6 +105,10 @@ func (r *userRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *userRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	usr := loggedUser(r.ctx)
+	if !usr.IsAdmin {
+		return nil, rest.ErrPermissionDenied
+	}
 	return r.GetAll(r.parseRestOptions(options...))
 }
 
@@ -109,17 +121,25 @@ func (r *userRepository) NewInstance() interface{} {
 }
 
 func (r *userRepository) Save(entity interface{}) (string, error) {
-	usr := entity.(*model.User)
-	err := r.Put(usr)
+	usr := loggedUser(r.ctx)
+	if !usr.IsAdmin {
+		return "", rest.ErrPermissionDenied
+	}
+	u := entity.(*model.User)
+	err := r.Put(u)
 	if err != nil {
 		return "", err
 	}
-	return usr.ID, err
+	return u.ID, err
 }
 
 func (r *userRepository) Update(entity interface{}, cols ...string) error {
-	usr := entity.(*model.User)
-	err := r.Put(usr)
+	u := entity.(*model.User)
+	usr := loggedUser(r.ctx)
+	if !usr.IsAdmin && usr.ID != u.ID {
+		return rest.ErrPermissionDenied
+	}
+	err := r.Put(u)
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
 	}
@@ -127,7 +147,11 @@ func (r *userRepository) Update(entity interface{}, cols ...string) error {
 }
 
 func (r *userRepository) Delete(id string) error {
-	err := r.Delete(id)
+	usr := loggedUser(r.ctx)
+	if !usr.IsAdmin && usr.ID != id {
+		return rest.ErrPermissionDenied
+	}
+	err := r.delete(Eq{"id": id})
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
 	}

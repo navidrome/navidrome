@@ -31,6 +31,14 @@ func userId(ctx context.Context) string {
 	return usr.ID
 }
 
+func loggedUser(ctx context.Context) *model.User {
+	user := ctx.Value("user")
+	if user == nil {
+		return &model.User{}
+	}
+	return user.(*model.User)
+}
+
 func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
 	sq := Select().From(r.tableName)
 	sq = r.applyOptions(sq, options...)

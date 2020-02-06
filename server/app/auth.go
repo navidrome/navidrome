@@ -63,6 +63,7 @@ func handleLogin(ds model.DataStore, username string, password string, w http.Re
 			"token":    tokenString,
 			"name":     user.Name,
 			"username": username,
+			"isAdmin":  user.IsAdmin,
 		})
 }
 
@@ -148,10 +149,6 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 	if u.Password != password {
 		return nil, nil
 	}
-	if !u.IsAdmin {
-		log.Warn("Non-admin user tried to login", "user", userName)
-		return nil, nil
-	}
 	err = userRepo.UpdateLastLoginAt(u.ID)
 	if err != nil {
 		log.Error("Could not update LastLoginAt", "user", userName)
@@ -164,6 +161,7 @@ func createToken(u *model.User) (string, error) {
 	claims := token.Claims.(jwt.MapClaims)
 	claims["iss"] = consts.JWTIssuer
 	claims["sub"] = u.UserName
+	claims["adm"] = u.IsAdmin
 
 	return touchToken(token)
 }
@@ -176,11 +174,10 @@ func touchToken(token *jwt.Token) (string, error) {
 	return token.SignedString(jwtSecret)
 }
 
-func userFrom(claims jwt.MapClaims) *model.User {
-	user := &model.User{
-		UserName: claims["sub"].(string),
-	}
-	return user
+func contextWithUser(ctx context.Context, ds model.DataStore, claims jwt.MapClaims) context.Context {
+	userName := claims["sub"].(string)
+	user, _ := ds.User(ctx).FindByUsername(userName)
+	return context.WithValue(ctx, "user", user)
 }
 
 func getToken(ds model.DataStore, ctx context.Context) (*jwt.Token, error) {
@@ -217,7 +214,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 
 			claims := token.Claims.(jwt.MapClaims)
 
-			newCtx := context.WithValue(r.Context(), "loggedUser", userFrom(claims))
+			newCtx := contextWithUser(r.Context(), ds, claims)
 			newTokenString, err := touchToken(token)
 			if err != nil {
 				log.Error(r, "signing new token", err)
