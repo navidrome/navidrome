@@ -13,12 +13,6 @@ import (
 	"github.com/go-chi/jwtauth"
 )
 
-var initialUser = model.User{
-	UserName: "admin",
-	Name:     "Admin",
-	IsAdmin:  true,
-}
-
 type Router struct {
 	ds   model.DataStore
 	mux  http.Handler
