@@ -17,6 +17,9 @@ import { useMediaQuery } from '@material-ui/core'
 import { BitrateField, DurationField, Pagination, Title } from '../common'
 import AddToQueueButton from './AddToQueueButton'
 import PlayButton from './PlayButton'
+import { useDispatch } from 'react-redux'
+import { setTrack, addTrack } from '../player'
+import AddIcon from '@material-ui/icons/Add'
 
 const SongFilter = (props) => (
   <Filter {...props}>
@@ -48,7 +51,9 @@ const SongDetails = (props) => {
 }
 
 const SongList = (props) => {
+  const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   return (
     <List
       {...props}
@@ -57,7 +62,7 @@ const SongList = (props) => {
       exporter={false}
       bulkActionButtons={<SongBulkActionButtons />}
       filters={<SongFilter />}
-      perPage={15}
+      perPage={isXsmall ? 50 : 15}
       pagination={<Pagination />}
     >
       {isXsmall ? (
@@ -65,24 +70,32 @@ const SongList = (props) => {
           primaryText={(record) => (
             <>
               <PlayButton record={record} />
+              <PlayButton
+                record={record}
+                action={addTrack}
+                icon={<AddIcon />}
+              />
               {record.title}
             </>
           )}
           secondaryText={(record) => record.artist}
           tertiaryText={(record) => (
-            <DurationField record={record} source={'duration'} />
+            <>
+              <DurationField record={record} source={'duration'} />
+            </>
           )}
           linkType={false}
         />
       ) : (
-        <Datagrid expand={<SongDetails />}>
-          <PlayButton {...props} />
+        <Datagrid
+          expand={<SongDetails />}
+          rowClick={(id, basePath, record) => dispatch(setTrack(record))}
+        >
           <TextField source="title" />
-          <TextField source="album" />
+          {isDesktop && <TextField source="album" />}
           <TextField source="artist" />
-          <NumberField label="Track #" source="trackNumber" />
-          <NumberField label="Disc #" source="discNumber" />
-          <TextField source="year" />
+          {isDesktop && <NumberField label="Track #" source="trackNumber" />}
+          {isDesktop && <TextField source="year" />}
           <DurationField label="Time" source="duration" />
         </Datagrid>
       )}

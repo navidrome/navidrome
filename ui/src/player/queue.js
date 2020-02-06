@@ -12,7 +12,7 @@ const mapToAudioLists = (item) => ({
   cover: `/rest/getCoverArt?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&size=300&id=${item.id}`,
   musicSrc: `/rest/stream?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&id=${
     item.id
-  }&ts=${new Date().getTime()}`
+  }&_=${new Date().getTime()}`
 })
 
 const addTrack = (data) => ({
@@ -52,7 +52,7 @@ const playQueueReducer = (
       const newQueue = previousState.queue.map((item) => {
         return {
           ...item,
-          scrobbled: item.scrobbled || (item.id === data)
+          scrobbled: item.scrobbled || item.id === data
         }
       })
       return { queue: newQueue, clear: false }
