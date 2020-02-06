@@ -44,10 +44,6 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 			}
 		}
 
-		if ParamString(r, "p") == "" && (ParamString(r, "s") == "" || ParamString(r, "t") == "") {
-			log.Warn(r, "Missing authentication information")
-		}
-
 		user := ParamString(r, "u")
 		client := ParamString(r, "c")
 		version := ParamString(r, "v")
@@ -69,8 +65,9 @@ func authenticate(users engine.Users) func(next http.Handler) http.Handler {
 			pass := ParamString(r, "p")
 			token := ParamString(r, "t")
 			salt := ParamString(r, "s")
+			jwt := ParamString(r, "jwt")
 
-			usr, err := users.Authenticate(r.Context(), username, pass, token, salt)
+			usr, err := users.Authenticate(r.Context(), username, pass, token, salt, jwt)
 			if err == model.ErrInvalidAuth {
 				log.Warn(r, "Invalid login", "username", username, err)
 			} else if err != nil {

@@ -9,10 +9,12 @@ const mapToAudioLists = (item) => ({
   id: item.id,
   name: item.title,
   singer: item.artist,
-  cover: `/rest/getCoverArt?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&size=300&id=${item.id}`,
-  musicSrc: `/rest/stream?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&id=${
+  cover: `/rest/getCoverArt?u=admin&f=json&v=1.8.0&c=NavidromeUI&size=300&id=${
     item.id
-  }&_=${new Date().getTime()}`
+  }&jwt=${localStorage.getItem('token')}`,
+  musicSrc: `/rest/stream?u=admin&f=json&v=1.8.0&c=NavidromeUI&jwt=${localStorage.getItem(
+    'token'
+  )}&id=${item.id}&_=${new Date().getTime()}`
 })
 
 const addTrack = (data) => ({

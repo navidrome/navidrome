@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/deluan/navidrome/assets"
+	"github.com/deluan/navidrome/engine/auth"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi"
@@ -36,7 +37,7 @@ func (app *Router) routes() http.Handler {
 	r.Post("/createAdmin", CreateAdmin(app.ds))
 
 	r.Route("/api", func(r chi.Router) {
-		r.Use(jwtauth.Verifier(TokenAuth))
+		r.Use(jwtauth.Verifier(auth.TokenAuth))
 		r.Use(Authenticator(app.ds))
 		app.R(r, "/user", model.User{})
 		app.R(r, "/song", model.MediaFile{})

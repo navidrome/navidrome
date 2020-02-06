@@ -57,7 +57,9 @@ const Player = () => {
     if (item && !item.scrobbled) {
       dispatch(scrobble(info.id))
       fetchUtils.fetchJson(
-        `/rest/scrobble?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&id=${info.id}&submission=true`
+        `/rest/scrobble?u=admin&jwt=${localStorage.getItem(
+          'token'
+        )}&f=json&v=1.8.0&c=NavidromeUI&id=${info.id}&submission=true`
       )
     }
   }
@@ -65,7 +67,9 @@ const Player = () => {
   const OnAudioPlay = (info) => {
     if (info.duration) {
       fetchUtils.fetchJson(
-        `/rest/scrobble?u=admin&p=enc:73756e6461&f=json&v=1.8.0&c=NavidromeUI&id=${info.id}&submission=false`
+        `/rest/scrobble?u=admin&jwt=${localStorage.getItem(
+          'token'
+        )}&f=json&v=1.8.0&c=NavidromeUI&id=${info.id}&submission=false`
       )
       dataProvider.getOne('keepalive', { id: info.id })
     }

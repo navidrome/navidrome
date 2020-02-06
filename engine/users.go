@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/deluan/navidrome/engine/auth"
 	"github.com/deluan/navidrome/model"
 )
 
 type Users interface {
-	Authenticate(ctx context.Context, username, password, token, salt string) (*model.User, error)
+	Authenticate(ctx context.Context, username, password, token, salt, jwt string) (*model.User, error)
 }
 
 func NewUsers(ds model.DataStore) Users {
@@ -22,7 +23,7 @@ type users struct {
 	ds model.DataStore
 }
 
-func (u *users) Authenticate(ctx context.Context, username, pass, token, salt string) (*model.User, error) {
+func (u *users) Authenticate(ctx context.Context, username, pass, token, salt, jwt string) (*model.User, error) {
 	user, err := u.ds.User(ctx).FindByUsername(username)
 	if err == model.ErrNotFound {
 		return nil, model.ErrInvalidAuth
@@ -33,6 +34,9 @@ func (u *users) Authenticate(ctx context.Context, username, pass, token, salt st
 	valid := false
 
 	switch {
+	case jwt != "":
+		claims, err := auth.Validate(jwt)
+		valid = err == nil && claims["sub"] == username
 	case pass != "":
 		if strings.HasPrefix(pass, "enc:") {
 			if dec, err := hex.DecodeString(pass[4:]); err == nil {

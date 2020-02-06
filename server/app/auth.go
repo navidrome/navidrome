@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/engine/auth"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
@@ -20,13 +21,11 @@ import (
 
 var (
 	once         sync.Once
-	jwtSecret    []byte
-	TokenAuth    *jwtauth.JWTAuth
 	ErrFirstTime = errors.New("no users created")
 )
 
 func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
-	initTokenAuth(ds)
+	auth.InitTokenAuth(ds)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
@@ -52,7 +51,7 @@ func handleLogin(ds model.DataStore, username string, password string, w http.Re
 		return
 	}
 
-	tokenString, err := createToken(user)
+	tokenString, err := auth.CreateToken(user)
 	if err != nil {
 		rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authenticating user. Please try again")
 		return
@@ -82,7 +81,7 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 }
 
 func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
-	initTokenAuth(ds)
+	auth.InitTokenAuth(ds)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
@@ -129,16 +128,6 @@ func createDefaultUser(ctx context.Context, ds model.DataStore, username, passwo
 	return nil
 }
 
-func initTokenAuth(ds model.DataStore) {
-	once.Do(func() {
-		secret, err := ds.Property(nil).DefaultGet(consts.JWTSecretKey, "not so secret")
-		if err != nil {
-			log.Error("No JWT secret found in DB. Setting a temp one, but please report this error", err)
-		}
-		jwtSecret = []byte(secret)
-		TokenAuth = jwtauth.New("HS256", jwtSecret, nil)
-	})
-}
 func validateLogin(userRepo model.UserRepository, userName, password string) (*model.User, error) {
 	u, err := userRepo.FindByUsername(userName)
 	if err == model.ErrNotFound {
@@ -155,24 +144,6 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 		log.Error("Could not update LastLoginAt", "user", userName)
 	}
 	return u, nil
-}
-
-func createToken(u *model.User) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
-	claims := token.Claims.(jwt.MapClaims)
-	claims["iss"] = consts.JWTIssuer
-	claims["sub"] = u.UserName
-	claims["adm"] = u.IsAdmin
-
-	return touchToken(token)
-}
-
-func touchToken(token *jwt.Token) (string, error) {
-	expireIn := time.Now().Add(consts.JWTTokenExpiration).Unix()
-	claims := token.Claims.(jwt.MapClaims)
-	claims["exp"] = expireIn
-
-	return token.SignedString(jwtSecret)
 }
 
 func contextWithUser(ctx context.Context, ds model.DataStore, claims jwt.MapClaims) context.Context {
@@ -199,7 +170,7 @@ func getToken(ds model.DataStore, ctx context.Context) (*jwt.Token, error) {
 }
 
 func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
-	initTokenAuth(ds)
+	auth.InitTokenAuth(ds)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -216,7 +187,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 			claims := token.Claims.(jwt.MapClaims)
 
 			newCtx := contextWithUser(r.Context(), ds, claims)
-			newTokenString, err := touchToken(token)
+			newTokenString, err := auth.TouchToken(token)
 			if err != nil {
 				log.Error(r, "signing new token", err)
 				rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")

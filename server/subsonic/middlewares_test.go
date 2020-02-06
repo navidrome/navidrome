@@ -113,7 +113,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("passes all parameters to users.Authenticate ", func() {
-			r := newGetRequest("u=valid", "p=password", "t=token", "s=salt")
+			r := newGetRequest("u=valid", "p=password", "t=token", "s=salt", "jwt=jwt")
 			cp := authenticate(mockedUser)(next)
 			cp.ServeHTTP(w, r)
 
@@ -121,6 +121,7 @@ var _ = Describe("Middlewares", func() {
 			Expect(mockedUser.password).To(Equal("password"))
 			Expect(mockedUser.token).To(Equal("token"))
 			Expect(mockedUser.salt).To(Equal("salt"))
+			Expect(mockedUser.jwt).To(Equal("jwt"))
 			Expect(next.called).To(BeTrue())
 			user := next.req.Context().Value("user").(*model.User)
 			Expect(user.UserName).To(Equal("valid"))
@@ -149,14 +150,15 @@ func (mh *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type mockUsers struct {
 	engine.Users
-	username, password, token, salt string
+	username, password, token, salt, jwt string
 }
 
-func (m *mockUsers) Authenticate(ctx context.Context, username, password, token, salt string) (*model.User, error) {
+func (m *mockUsers) Authenticate(ctx context.Context, username, password, token, salt, jwt string) (*model.User, error) {
 	m.username = username
 	m.password = password
 	m.token = token
 	m.salt = salt
+	m.jwt = jwt
 	if username == "valid" {
 		return &model.User{UserName: username, Password: password}, nil
 	}
