@@ -61,21 +61,8 @@ var _ = Describe("Metadata", func() {
 			const outputWithOverlappingTitleTag = `
 Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
   Metadata:
-    iTunSMPB        :  00000000 000002D6 00000216 0000000000CB9F94 02000003 0049D539 00000000 00000000 00000000 00000000 00000000 00000000
-    iTunNORM        :  000002FF 0000027E 00000FEF 00000C17 0002E647 00044605 00007F02 00007A92 0000273E 0000273E
-    title           : Pablo's Blues
-    artist          : Gare Du Nord
-    album           : Putumayo Presents Blues Lounge
-    TT1             : Putumayo
-    track           : 9/10
     compilation     : 1
-    genre           : Blues
-    date            : 2004
-  Duration: 00:05:02.63, start: 0.000000, bitrate: 140 kb/s
-    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 128 kb/s
-    Stream #0:1: Video: png, rgb24(pc), 500x478 [SAR 2835:2835 DAR 250:239], 90k tbr, 90k tbn, 90k tbc
-    Metadata:
-      comment         : Other`
+  Duration: 00:05:02.63, start: 0.000000, bitrate: 140 kb/s`
 			md, _ := extractMetadata("tests/fixtures/test.mp3", outputWithOverlappingTitleTag)
 			Expect(md.Compilation()).To(BeTrue())
 		})
@@ -85,22 +72,9 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 Input #0, mp3, from 'groovin.mp3':
   Metadata:
     title           : Groovin' (feat. Daniel Sneijers, Susanne Alt)
-    artist          : Bone 40
-    track           : 1
-    album           : Groovin'
-    album_artist    : Bone 40
-    comment         : Visit http://bone40.bandcamp.com
-    date            : 2016
   Duration: 00:03:34.28, start: 0.025056, bitrate: 323 kb/s
-    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 320 kb/s
-    Metadata:
-      encoder         : LAME3.99r
-    Side data:
-      replaygain: track gain - -6.000000, track peak - unknown, album gain - unknown, album peak - unknown,
-    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 700x700 [SAR 72:72 DAR 1:1], 90k tbr, 90k tbn, 90k tbc
     Metadata:
       title           : cover
-      comment         : Cover (front)
 At least one output file must be specified`
 			md, _ := extractMetadata("tests/fixtures/test.mp3", outputWithOverlappingTitleTag)
 			Expect(md.Title()).To(Equal("Groovin' (feat. Daniel Sneijers, Susanne Alt)"))
@@ -111,24 +85,14 @@ At least one output file must be specified`
 Input #0, flac, from '/Users/deluan/Downloads/06. Back In Black.flac':
   Metadata:
     ALBUM           : Back In Black
-    album_artist    : AC/DC
-    ARTIST          : AC/DC
-    COMPOSER        : Angus Young;Malcolm Young;Brian Johnson
     DATE            : 1980.07.25
     disc            : 1
     GENRE           : Hard Rock
-    LANGUAGE        : EN
-    RATING          : 2
     TITLE           : Back In Black
     DISCTOTAL       : 1
     TRACKTOTAL      : 10
     track           : 6
-    REPLAYGAIN_TRACK_GAIN: -8.51 dB
-    REPLAYGAIN_TRACK_PEAK: 0.998322
-  Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s
-    Stream #0:0: Audio: flac, 44100 Hz, stereo, s16
-    Side data:
-      replaygain: track gain - -8.510000, track peak - 0.000023, album gain - unknown, album peak - unknown,`
+  Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s`
 			md, _ := extractMetadata("tests/fixtures/test.mp3", outputWithOverlappingTitleTag)
 			Expect(md.Title()).To(Equal("Back In Black"))
 			Expect(md.Album()).To(Equal("Back In Black"))
@@ -139,7 +103,7 @@ Input #0, flac, from '/Users/deluan/Downloads/06. Back In Black.flac':
 			n, t = md.DiscNumber()
 			Expect(n).To(Equal(1))
 			Expect(t).To(Equal(1))
-
+			Expect(md.Year()).To(Equal(1980))
 		})
 
 		// TODO Handle multiline tags
@@ -147,14 +111,6 @@ Input #0, flac, from '/Users/deluan/Downloads/06. Back In Black.flac':
 			const outputWithMultilineComment = `
 Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'modulo.m4a':
   Metadata:
-    major_brand     : mp42
-    minor_version   : 0
-    compatible_brands: M4A mp42isom
-    creation_time   : 2014-05-10T21:11:57.000000Z
-    iTunSMPB        :  00000000 00000920 000000E0 00000000021CA200 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
-    encoder         : Nero AAC codec / 1.5.4.0
-    title           : Módulo Especial
-    artist          : Saara Saara
     comment         : https://www.mixcloud.com/codigorock/30-minutos-com-saara-saara/
                     :
                     : Tracklist:
@@ -167,18 +123,7 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'modulo.m4a':
                     : 06. Doktor Fritz
                     : 07. Wunderbar
                     : 08. Quarta Dimensão
-    album           : Módulo Especial
-    genre           : Electronic
-    track           : 1
-  Duration: 00:26:46.96, start: 0.052971, bitrate: 69 kb/s
-    Chapter #0:0: start 0.105941, end 1607.013149
-    Metadata:
-      title           :
-    Stream #0:0(und): Audio: aac (HE-AAC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 69 kb/s (default)
-    Metadata:
-      creation_time   : 2014-05-10T21:11:57.000000Z
-      handler_name    : Sound Media Handler
-At least one output file must be specified`
+  Duration: 00:26:46.96, start: 0.052971, bitrate: 69 kb/s`
 			const expectedComment = `https://www.mixcloud.com/codigorock/30-minutos-com-saara-saara/
 
 Tracklist:
@@ -194,6 +139,26 @@ Tracklist:
 `
 			md, _ := extractMetadata("tests/fixtures/test.mp3", outputWithMultilineComment)
 			Expect(md.Comment()).To(Equal(expectedComment))
+		})
+	})
+
+	Context("parseYear", func() {
+		It("parses the year correctly", func() {
+			var examples = map[string]int{
+				"1985":       1985,
+				"2002-01":    2002,
+				"1969.06":    1969,
+				"1980.07.25": 1980,
+			}
+			for tag, expected := range examples {
+				md := &Metadata{tags: map[string]string{"year": tag}}
+				Expect(md.Year()).To(Equal(expected))
+			}
+		})
+
+		It("returns 0 if year is invalid", func() {
+			md := &Metadata{tags: map[string]string{"year": "invalid"}}
+			Expect(md.Year()).To(Equal(0))
 		})
 	})
 })

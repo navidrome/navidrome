@@ -30,7 +30,7 @@ func (m *Metadata) Artist() string              { return m.tags["artist"] }
 func (m *Metadata) AlbumArtist() string         { return m.tags["album_artist"] }
 func (m *Metadata) Composer() string            { return m.tags["composer"] }
 func (m *Metadata) Genre() string               { return m.tags["genre"] }
-func (m *Metadata) Year() int                   { return m.parseInt("year") }
+func (m *Metadata) Year() int                   { return m.parseYear("year") }
 func (m *Metadata) TrackNumber() (int, int)     { return m.parseTuple("trackNum", "trackTotal") }
 func (m *Metadata) DiscNumber() (int, int)      { return m.parseTuple("discNum", "discTotal") }
 func (m *Metadata) HasPicture() bool            { return m.tags["hasPicture"] == "Video" }
@@ -188,6 +188,33 @@ func (m *Metadata) parseInt(tagName string) int {
 	if v, ok := m.tags[tagName]; ok {
 		i, _ := strconv.Atoi(v)
 		return i
+	}
+	return 0
+}
+
+var tagYearFormats = []string{
+	"2006",
+	"2006.01",
+	"2006.01.02",
+	"2006-01",
+	"2006-01-02",
+	time.RFC3339,
+}
+
+func (m *Metadata) parseYear(tagName string) int {
+	if v, ok := m.tags[tagName]; ok {
+		var y time.Time
+		var err error
+		for _, fmt := range tagYearFormats {
+			if y, err = time.Parse(fmt, v); err == nil {
+				break
+			}
+		}
+		if err != nil {
+			log.Error("Error parsing year from ffmpeg date field. Please report this issue", "file", m.filePath, "date", v)
+			return 0
+		}
+		return y.Year()
 	}
 	return 0
 }
