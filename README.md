@@ -47,7 +47,7 @@ on a frequent basis. Some upcoming features planned:
 
 Various options are available:
 
-### Pre-build executables
+### Pre-built executables
 
 Just head to the [releases page](https://github.com/deluan/navidrome/releases) and download the latest version for you 
 platform. There are builds available for Linux, macOS and Windows (32 and 64 bits). 
