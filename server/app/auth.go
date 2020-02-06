@@ -64,6 +64,7 @@ func handleLogin(ds model.DataStore, username string, password string, w http.Re
 			"name":     user.Name,
 			"username": username,
 			"isAdmin":  user.IsAdmin,
+			"version":  consts.Version(),
 		})
 }
 
