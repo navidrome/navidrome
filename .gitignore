@@ -19,3 +19,4 @@ navidrome.db
 *_gen.go
 dist
 music
+docker-compose.override.yml

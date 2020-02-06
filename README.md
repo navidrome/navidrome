@@ -80,7 +80,7 @@ services:
       ND_PORT: 4533
     volumes:
       - "./data:/data"
-      - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"
+      - "/path/to/your/music/folder:/music"
 ```
 
 To get the cutting-edge, latest version from master, use the image `deluan/navidrome:develop`

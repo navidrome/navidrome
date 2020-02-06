@@ -1,0 +1,13 @@
+# This is just an example. Customize it to your needs.
+
+version: "3"
+services:
+  navidrome:
+    build: .
+    environment:
+      #  See all options and defaults in conf/configuration.go
+      ND_SCANINTERVAL: 5s
+      ND_LOGLEVEL: debug
+    volumes:
+      - "./data:/data"
+      - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"

@@ -3,14 +3,16 @@
 version: "3"
 services:
   navidrome:
-    build: .
+    image: deluan/navidrome:latest
     ports:
       - "4533:4533"
     environment:
-      #  See all options and defaults in conf/configuration.go
+      # All options with their default values:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_SCANINTERVAL: 1m
+      ND_LOGLEVEL: info
       ND_PORT: 4533
-      ND_SCANINTERVAL: 5s
-      ND_LOGLEVEL: debug
     volumes:
       - "./data:/data"
-      - "/Users/deluan/Music/iTunes/iTunes Media/Music:/music"
+      - "./music:/music"
