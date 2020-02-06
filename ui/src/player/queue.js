@@ -14,7 +14,11 @@ const mapToAudioLists = (item) => ({
   }&jwt=${localStorage.getItem('token')}`,
   musicSrc: `/rest/stream?u=admin&f=json&v=1.8.0&c=NavidromeUI&jwt=${localStorage.getItem(
     'token'
-  )}&id=${item.id}&_=${new Date().getTime()}`
+  )}&id=${item.id}&_=${new Date().getTime()}`,
+  scrobble: (submit) =>
+    `/rest/scrobble?u=admin&jwt=${localStorage.getItem(
+      'token'
+    )}&f=json&v=1.8.0&c=NavidromeUI&id=${item.id}&submission=${submit}`
 })
 
 const addTrack = (data) => ({
