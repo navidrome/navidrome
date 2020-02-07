@@ -4,7 +4,7 @@ import { DurationField, PlayButton } from '../common'
 import { addTrack } from '../player'
 import AddIcon from '@material-ui/icons/Add'
 
-export const AlbumSongList = (props) => {
+const AlbumSongList = (props) => {
   const { record } = props
   const { data, total, loading, error } = useGetList(
     'song',
@@ -43,3 +43,5 @@ export const AlbumSongList = (props) => {
     />
   )
 }
+
+export default AlbumSongList

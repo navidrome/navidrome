@@ -1,9 +1,9 @@
+import React, { Fragment } from 'react'
 import { Loading, useGetOne } from 'react-admin'
 import { Card, CardContent, CardMedia, Typography } from '@material-ui/core'
 import { subsonicUrl } from '../subsonic'
-import React from 'react'
 
-export const AlbumDetails = ({ id, children, classes }) => {
+const AlbumDetails = ({ id, classes }) => {
   const { data, loading, error } = useGetOne('album', id)
 
   if (loading) {
@@ -38,9 +38,10 @@ export const AlbumDetails = ({ id, children, classes }) => {
         <Typography component="h6">
           {data.albumArtist || data.artist}
         </Typography>
-        <Typography variant="h7">{genreYear(data)}</Typography>
+        <Typography component="p">{genreYear(data)}</Typography>
       </CardContent>
-      {children}
     </Card>
   )
 }
+
+export default AlbumDetails
