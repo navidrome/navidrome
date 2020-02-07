@@ -1,21 +1,10 @@
 import 'react-jinke-music-player/assets/index.css'
+import { subsonicUrl } from '../subsonic'
 
 const PLAYER_ADD_TRACK = 'PLAYER_ADD_TRACK'
 const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
 const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
 const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
-
-const subsonicUrl = (command, id, options) => {
-  const username = localStorage.getItem('username')
-  const token = localStorage.getItem('subsonic-token')
-  const salt = localStorage.getItem('subsonic-salt')
-  const timeStamp = new Date().getTime()
-  const url = `rest/${command}?u=${username}&f=json&v=1.8.0&c=NavidromeUI&t=${token}&s=${salt}&id=${id}&_=${timeStamp}`
-  if (options) {
-    return url + '&' + options
-  }
-  return url
-}
 
 const mapToAudioLists = (item) => ({
   id: item.id,

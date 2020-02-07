@@ -6,6 +6,7 @@ import {
   Filter,
   List,
   NumberField,
+  FunctionField,
   SearchInput,
   TextInput,
   Show,
@@ -13,6 +14,7 @@ import {
   TextField
 } from 'react-admin'
 import { DurationField, Pagination, Title } from '../common'
+import { useMediaQuery } from '@material-ui/core'
 
 const AlbumFilter = (props) => (
   <Filter {...props}>
@@ -34,33 +36,30 @@ const AlbumDetails = (props) => {
   )
 }
 
-// const albumRowClick = (id, basePath, record) => {
-//   const filter = { album: record.name, album_id: id }
-//   if (!record.compilation) {
-//     filter.artist = record.artist
-//   }
-//   return `/song?filter=${JSON.stringify(filter)}&order=ASC&sort=trackNumber`
-// }
-
-const AlbumList = (props) => (
-  <List
-    {...props}
-    title={<Title subTitle={'Albums'} />}
-    sort={{ field: 'name', order: 'ASC' }}
-    exporter={false}
-    bulkActionButtons={false}
-    filters={<AlbumFilter />}
-    perPage={15}
-    pagination={<Pagination />}
-  >
-    <Datagrid expand={<AlbumDetails />} rowClick={'show'}>
-      <TextField source="name" />
-      <TextField source="artist" />
-      <NumberField source="songCount" />
-      <TextField source="year" />
-      <DurationField source="duration" />
-    </Datagrid>
-  </List>
-)
-
+const AlbumList = (props) => {
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  return (
+    <List
+      {...props}
+      title={<Title subTitle={'Albums'} />}
+      sort={{ field: 'name', order: 'ASC' }}
+      exporter={false}
+      bulkActionButtons={false}
+      filters={<AlbumFilter />}
+      perPage={15}
+      pagination={<Pagination />}
+    >
+      <Datagrid expand={<AlbumDetails />} rowClick={'show'}>
+        <TextField source="name" />
+        <FunctionField
+          source="artist"
+          render={(r) => (r.albumArtist ? r.albumArtist : r.artist)}
+        />
+        {isDesktop && <NumberField source="songCount" />}
+        <TextField source="year" />
+        {isDesktop && <DurationField source="duration" />}
+      </Datagrid>
+    </List>
+  )
+}
 export default AlbumList
