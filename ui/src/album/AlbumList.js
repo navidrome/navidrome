@@ -25,7 +25,7 @@ const AlbumDetails = (props) => {
   return (
     <Show {...props} title=" ">
       <SimpleShowLayout>
-        <TextField label="Album Artist" source="albumArtist" />
+        <TextField source="albumArtist" />
         <TextField source="genre" />
         <BooleanField source="compilation" />
         <DateField source="updatedAt" showTime />
@@ -58,7 +58,7 @@ const AlbumList = (props) => (
       <TextField source="artist" />
       <NumberField source="songCount" />
       <TextField source="year" />
-      <DurationField label="Time" source="duration" />
+      <DurationField source="duration" />
     </Datagrid>
   </List>
 )

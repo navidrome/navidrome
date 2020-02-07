@@ -57,7 +57,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         handleToggle={() => handleToggle('menuLibrary')}
         isOpen={state.menuLibrary}
         sidebarIsOpen={open}
-        name="Library"
+        name="menu.library"
         icon={<LibraryMusicIcon />}
         dense={dense}
       >

@@ -149,10 +149,10 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                 </Avatar>
               </div>
               <div className={classes.systemName}>
-                Thanks for installing Navidrome!
+                {translate('ra.auth.welcome1')}
               </div>
               <div className={classes.systemName}>
-                To start, create an admin user
+                {translate('ra.auth.welcome2')}
               </div>
               <div className={classes.form}>
                 <div className={classes.input}>
@@ -160,7 +160,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                     autoFocus
                     name="username"
                     component={renderInput}
-                    label={'Admin Username'}
+                    label={translate('ra.auth.username')}
                     disabled={loading}
                   />
                 </div>
@@ -177,7 +177,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                   <Field
                     name="confirmPassword"
                     component={renderInput}
-                    label={'Confirm Password'}
+                    label={translate('ra.auth.confirmPassword')}
                     type="password"
                     disabled={loading}
                   />
@@ -193,7 +193,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                   fullWidth
                 >
                   {loading && <CircularProgress size={25} thickness={2} />}
-                  {translate('Create Admin')}
+                  {translate('ra.auth.buttonCreateAdmin')}
                 </Button>
               </CardActions>
             </Card>
@@ -242,13 +242,13 @@ const Login = ({ location }) => {
     const errors = validateLogin(values)
     const regex = /^\w+$/g
     if (values.username && !values.username.match(regex)) {
-      errors.username = translate('Please only use letter and numbers')
+      errors.username = translate('ra.validation.invalidChars')
     }
     if (!values.confirmPassword) {
       errors.confirmPassword = translate('ra.validation.required')
     }
     if (values.confirmPassword !== values.password) {
-      errors.confirmPassword = 'Password does not match'
+      errors.confirmPassword = translate('ra.validation.passwordDoesNotMatch')
     }
     return errors
   }

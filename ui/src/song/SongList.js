@@ -40,7 +40,7 @@ const SongDetails = (props) => {
     <Show {...props} title=" ">
       <SimpleShowLayout>
         <TextField source="path" />
-        <TextField label="Album Artist" source="albumArtist" />
+        <TextField source="albumArtist" />
         <TextField source="genre" />
         <BooleanField source="compilation" />
         <BitrateField source="bitRate" />
@@ -80,9 +80,7 @@ const SongList = (props) => {
           )}
           secondaryText={(record) => record.artist}
           tertiaryText={(record) => (
-            <>
-              <DurationField record={record} source={'duration'} />
-            </>
+            <DurationField record={record} source={'duration'} />
           )}
           linkType={false}
         />
@@ -94,9 +92,9 @@ const SongList = (props) => {
           <TextField source="title" />
           {isDesktop && <TextField source="album" />}
           <TextField source="artist" />
-          {isDesktop && <NumberField label="Track #" source="trackNumber" />}
+          {isDesktop && <NumberField source="trackNumber" />}
           {isDesktop && <TextField source="year" />}
-          <DurationField label="Time" source="duration" />
+          <DurationField source="duration" />
         </Datagrid>
       )}
     </List>

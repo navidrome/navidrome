@@ -1,5 +1,10 @@
 import React from 'react'
-import { Button, useDataProvider, useUnselectAll } from 'react-admin'
+import {
+  Button,
+  useDataProvider,
+  useUnselectAll,
+  useTranslate
+} from 'react-admin'
 import { useDispatch } from 'react-redux'
 import { addTrack } from '../player'
 import AddToQueueIcon from '@material-ui/icons/AddToQueue'
@@ -8,6 +13,7 @@ import Tooltip from '@material-ui/core/Tooltip'
 
 const AddToQueueButton = ({ selectedIds }) => {
   const dispatch = useDispatch()
+  const translate = useTranslate()
   const dataProvider = useDataProvider()
   const unselectAll = useUnselectAll()
   const addToQueue = () => {
@@ -23,7 +29,10 @@ const AddToQueueButton = ({ selectedIds }) => {
     <Button
       color="secondary"
       label={
-        <Tooltip title={'Play Later'} placement="right">
+        <Tooltip
+          title={translate('resources.song.bulk.addToQueue')}
+          placement="right"
+        >
           <AddToQueueIcon />
         </Tooltip>
       }

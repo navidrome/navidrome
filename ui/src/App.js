@@ -1,7 +1,9 @@
 import React from 'react'
-import { Admin, Resource } from 'react-admin'
+import { Admin, Resource, resolveBrowserLocale } from 'react-admin'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
+import polyglotI18nProvider from 'ra-i18n-polyglot'
+import messages from './i18n'
 import { DarkTheme, Layout, Login } from './layout'
 import user from './user'
 import song from './song'
@@ -12,6 +14,11 @@ import { Player, playQueueReducer } from './player'
 
 const theme = createMuiTheme(DarkTheme)
 
+const i18nProvider = polyglotI18nProvider(
+  (locale) => (messages[locale] ? messages[locale] : messages.en),
+  resolveBrowserLocale()
+)
+
 const App = () => (
   <>
     <div>
@@ -20,6 +27,7 @@ const App = () => (
         customReducers={{ queue: playQueueReducer }}
         dataProvider={dataProvider}
         authProvider={authProvider}
+        i18nProvider={i18nProvider}
         layout={Layout}
         loginPage={Login}
       >

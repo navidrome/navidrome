@@ -6,6 +6,7 @@
     "@testing-library/jest-dom": "^5.0.2",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^8.0.4",
+    "deepmerge": "^4.2.2",
     "jwt-decode": "^2.2.0",
     "md5-hex": "^3.0.1",
     "prop-types": "^15.7.2",
