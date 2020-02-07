@@ -5,20 +5,25 @@ const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
 const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
 const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 
+const subsonicUrl = (command, id, options) => {
+  const username = localStorage.getItem('username')
+  const token = localStorage.getItem('subsonic-token')
+  const salt = localStorage.getItem('subsonic-salt')
+  const timeStamp = new Date().getTime()
+  const url = `rest/${command}?u=${username}&f=json&v=1.8.0&c=NavidromeUI&t=${token}&s=${salt}&id=${id}&_=${timeStamp}`
+  if (options) {
+    return url + '&' + options
+  }
+  return url
+}
+
 const mapToAudioLists = (item) => ({
   id: item.id,
   name: item.title,
   singer: item.artist,
-  cover: `/rest/getCoverArt?u=admin&f=json&v=1.8.0&c=NavidromeUI&size=300&id=${
-    item.id
-  }&jwt=${localStorage.getItem('token')}`,
-  musicSrc: `/rest/stream?u=admin&f=json&v=1.8.0&c=NavidromeUI&jwt=${localStorage.getItem(
-    'token'
-  )}&id=${item.id}&_=${new Date().getTime()}`,
-  scrobble: (submit) =>
-    `/rest/scrobble?u=admin&jwt=${localStorage.getItem(
-      'token'
-    )}&f=json&v=1.8.0&c=NavidromeUI&id=${item.id}&submission=${submit}`
+  cover: subsonicUrl('getCoverArt', item.id),
+  musicSrc: subsonicUrl('stream', item.id),
+  scrobble: (submit) => subsonicUrl('scrobble', item.id, `submission=${submit}`)
 })
 
 const addTrack = (data) => ({

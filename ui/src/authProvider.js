@@ -1,4 +1,5 @@
 import jwtDecode from 'jwt-decode'
+import md5 from 'md5-hex'
 
 const authProvider = {
   login: ({ username, password }) => {
@@ -27,6 +28,12 @@ const authProvider = {
         localStorage.setItem('name', response.name)
         localStorage.setItem('username', response.username)
         localStorage.setItem('role', response.isAdmin ? 'admin' : 'regular')
+        const salt = new Date().getTime().toString()
+        localStorage.setItem('subsonic-salt', salt)
+        localStorage.setItem(
+          'subsonic-token',
+          generateSubsonicToken(password, salt)
+        )
         return response
       })
       .catch((error) => {
@@ -73,6 +80,12 @@ const removeItems = () => {
   localStorage.removeItem('username')
   localStorage.removeItem('role')
   localStorage.removeItem('version')
+  localStorage.removeItem('subsonic-salt')
+  localStorage.removeItem('subsonic-token')
+}
+
+const generateSubsonicToken = (password, salt) => {
+  return md5(password + salt)
 }
 
 export default authProvider
