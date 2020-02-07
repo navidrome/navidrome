@@ -10,13 +10,12 @@ import {
   Show,
   SimpleShowLayout,
   TextField,
-  TextInput,
-  SimpleList
+  TextInput
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import { BitrateField, DurationField, Pagination, Title } from '../common'
 import AddToQueueButton from './AddToQueueButton'
-import { PlayButton } from '../common'
+import { PlayButton, SimpleList } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack, addTrack } from '../player'
 import AddIcon from '@material-ui/icons/Add'
@@ -82,7 +81,7 @@ const SongList = (props) => {
           tertiaryText={(record) => (
             <DurationField record={record} source={'duration'} />
           )}
-          linkType={false}
+          linkType={(id, basePath, record) => dispatch(setTrack(record))}
         />
       ) : (
         <Datagrid

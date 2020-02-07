@@ -1,10 +1,12 @@
 import React from 'react'
-import { SimpleList, useGetList } from 'react-admin'
-import { DurationField, PlayButton } from '../common'
-import { addTrack } from '../player'
+import { useGetList } from 'react-admin'
+import { DurationField, PlayButton, SimpleList } from '../common'
+import { addTrack, setTrack } from '../player'
 import AddIcon from '@material-ui/icons/Add'
+import { useDispatch } from 'react-redux'
 
 const AlbumSongList = (props) => {
+  const dispatch = useDispatch()
   const { record } = props
   const { data, total, loading, error } = useGetList(
     'song',
@@ -39,7 +41,7 @@ const AlbumSongList = (props) => {
         r.albumArtist && r.artist !== r.albumArtist ? r.artist : ''
       }
       tertiaryText={(r) => <DurationField record={r} source={'duration'} />}
-      linkType={false}
+      linkType={(id, basePath, record) => dispatch(setTrack(record))}
     />
   )
 }

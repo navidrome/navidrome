@@ -17,7 +17,10 @@ const PlayButton = ({
 
   return (
     <IconButton
-      onClick={() => dispatch(action(record))}
+      onClick={(e) => {
+        e.stopPropagation()
+        dispatch(action(record))
+      }}
       {...rest}
       size={'small'}
     >
