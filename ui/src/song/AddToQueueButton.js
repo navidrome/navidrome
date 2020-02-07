@@ -26,18 +26,14 @@ const AddToQueueButton = ({ selectedIds }) => {
   }
 
   return (
-    <Button
-      color="secondary"
-      label={
-        <Tooltip
-          title={translate('resources.song.bulk.addToQueue')}
-          placement="right"
-        >
-          <AddToQueueIcon />
-        </Tooltip>
-      }
-      onClick={addToQueue}
-    />
+    <Button color="secondary" onClick={addToQueue}>
+      <Tooltip
+        title={translate('resources.song.bulk.addToQueue')}
+        placement="right"
+      >
+        <AddToQueueIcon />
+      </Tooltip>
+    </Button>
   )
 }
 

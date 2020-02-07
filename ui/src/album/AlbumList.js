@@ -34,13 +34,13 @@ const AlbumDetails = (props) => {
   )
 }
 
-const albumRowClick = (id, basePath, record) => {
-  const filter = { album: record.name, album_id: id }
-  if (!record.compilation) {
-    filter.artist = record.artist
-  }
-  return `/song?filter=${JSON.stringify(filter)}&order=ASC&sort=trackNumber`
-}
+// const albumRowClick = (id, basePath, record) => {
+//   const filter = { album: record.name, album_id: id }
+//   if (!record.compilation) {
+//     filter.artist = record.artist
+//   }
+//   return `/song?filter=${JSON.stringify(filter)}&order=ASC&sort=trackNumber`
+// }
 
 const AlbumList = (props) => (
   <List
@@ -53,7 +53,7 @@ const AlbumList = (props) => (
     perPage={15}
     pagination={<Pagination />}
   >
-    <Datagrid expand={<AlbumDetails />} rowClick={albumRowClick}>
+    <Datagrid expand={<AlbumDetails />} rowClick={'show'}>
       <TextField source="name" />
       <TextField source="artist" />
       <NumberField source="songCount" />

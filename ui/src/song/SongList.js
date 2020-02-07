@@ -16,7 +16,7 @@ import {
 import { useMediaQuery } from '@material-ui/core'
 import { BitrateField, DurationField, Pagination, Title } from '../common'
 import AddToQueueButton from './AddToQueueButton'
-import PlayButton from './PlayButton'
+import { PlayButton } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack, addTrack } from '../player'
 import AddIcon from '@material-ui/icons/Add'
