@@ -28,7 +28,11 @@ const AlbumDetails = ({ id, classes }) => {
   return (
     <Card className={classes.container}>
       <CardMedia
-        image={subsonicUrl('getCoverArt', data.coverArtId || 'not_found')}
+        image={subsonicUrl(
+          'getCoverArt',
+          data.coverArtId || 'not_found',
+          'size=500'
+        )}
         className={classes.albumCover}
       />
       <CardContent className={classes.albumDetails}>

@@ -10,7 +10,7 @@ const mapToAudioLists = (item) => ({
   id: item.id,
   name: item.title,
   singer: item.artist,
-  cover: subsonicUrl('getCoverArt', item.id),
+  cover: subsonicUrl('getCoverArt', item.id, 'size=300'),
   musicSrc: subsonicUrl('stream', item.id),
   scrobble: (submit) => subsonicUrl('scrobble', item.id, `submission=${submit}`)
 })
