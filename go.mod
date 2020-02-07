@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/Masterminds/squirrel v1.2.0
-	github.com/astaxie/beego v1.12.0
+	github.com/astaxie/beego v1.12.1
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/deluan/rest v0.0.0-20200114062534-0653ffe9eab4
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
