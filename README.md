@@ -118,10 +118,10 @@ For more options, run `navidrome --help`
 
 <p align="center">
 <p float="left">
-    <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-login-mobile.png">
-    <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-mobile.png">
-    <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-users-mobile.png">
-    <img width="900"src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/screenshot-desktop.png">
+    <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-login.png">
+    <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-player.png">
+    <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-album-view.png">
+    <img width="900"src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-desktop-player.png">
 </p>
 </p>
 
