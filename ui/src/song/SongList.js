@@ -66,21 +66,15 @@ const SongList = (props) => {
     >
       {isXsmall ? (
         <SimpleList
-          primaryText={(record) => (
+          primaryText={(r) => (
             <>
-              <PlayButton record={record} />
-              <PlayButton
-                record={record}
-                action={addTrack}
-                icon={<AddIcon />}
-              />
-              {record.title}
+              <PlayButton action={setTrack(r)} />
+              <PlayButton action={addTrack(r)} icon={<AddIcon />} />
+              {r.title}
             </>
           )}
-          secondaryText={(record) => record.artist}
-          tertiaryText={(record) => (
-            <DurationField record={record} source={'duration'} />
-          )}
+          secondaryText={(r) => r.artist}
+          tertiaryText={(r) => <DurationField record={r} source={'duration'} />}
           linkType={(id, basePath, record) => dispatch(setTrack(record))}
         />
       ) : (

@@ -32,8 +32,8 @@ const AlbumSongList = (props) => {
       total={total}
       primaryText={(r) => (
         <>
-          <PlayButton record={r} />
-          <PlayButton record={r} action={addTrack} icon={<AddIcon />} />
+          <PlayButton action={setTrack(r)} />
+          <PlayButton action={addTrack(r)} icon={<AddIcon />} />
           {trackName(r)}
         </>
       )}

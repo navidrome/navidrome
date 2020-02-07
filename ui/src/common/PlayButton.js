@@ -3,23 +3,17 @@ import PropTypes from 'prop-types'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import { IconButton } from '@material-ui/core'
 import { useDispatch } from 'react-redux'
-import { setTrack } from '../player'
 
 const defaultIcon = <PlayArrowIcon fontSize="small" />
 
-const PlayButton = ({
-  record,
-  icon = defaultIcon,
-  action = setTrack,
-  ...rest
-}) => {
+const PlayButton = ({ icon = defaultIcon, action, ...rest }) => {
   const dispatch = useDispatch()
 
   return (
     <IconButton
       onClick={(e) => {
         e.stopPropagation()
-        dispatch(action(record))
+        dispatch(action)
       }}
       {...rest}
       size={'small'}
@@ -30,8 +24,7 @@ const PlayButton = ({
 }
 
 PlayButton.propTypes = {
-  record: PropTypes.any,
   icon: PropTypes.element,
-  action: PropTypes.func
+  action: PropTypes.object
 }
 export default PlayButton

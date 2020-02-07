@@ -1,4 +1,4 @@
-import React, { Fragment } from 'react'
+import React from 'react'
 import { Loading, useGetOne } from 'react-admin'
 import { Card, CardContent, CardMedia, Typography } from '@material-ui/core'
 import { subsonicUrl } from '../subsonic'
