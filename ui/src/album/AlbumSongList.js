@@ -1,7 +1,7 @@
 import React from 'react'
 import { useGetList } from 'react-admin'
 import { DurationField, PlayButton, SimpleList } from '../common'
-import { addTrack, setTrack } from '../player'
+import { addTrack } from '../player'
 import AddIcon from '@material-ui/icons/Add'
 import { useDispatch } from 'react-redux'
 import { playAlbum } from '../player/queue'
