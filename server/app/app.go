@@ -49,6 +49,7 @@ func (app *Router) routes() http.Handler {
 	})
 
 	// Serve UI app assets
+	r.Handle("/", ServeIndex(app.ds))
 	r.Handle("/*", http.StripPrefix(app.path, http.FileServer(assets.AssetFile())))
 
 	return r

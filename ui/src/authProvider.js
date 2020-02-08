@@ -56,11 +56,7 @@ const authProvider = {
   checkAuth: () =>
     localStorage.getItem('token') ? Promise.resolve() : Promise.reject(),
 
-  checkError: (error) => {
-    const { status, message } = error
-    if (message === 'no users created') {
-      localStorage.setItem('initialAccountCreation', 'true')
-    }
+  checkError: ({ status }) => {
     if (status === 401 || status === 403) {
       removeItems()
       return Promise.reject()
