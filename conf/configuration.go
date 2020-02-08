@@ -29,8 +29,9 @@ type nd struct {
 	ScanInterval       string `default:"1m"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
-	DevDisableBanner bool `default:"false"`
-	DevLogSourceLine bool `default:"false"`
+	DevDisableBanner           bool   `default:"false"`
+	DevLogSourceLine           bool   `default:"false"`
+	DevAutoCreateAdminPassword string `default:""`
 }
 
 var Server = &nd{}
