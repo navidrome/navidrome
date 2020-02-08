@@ -24,7 +24,7 @@ const AlbumSongList = (props) => {
   const trackName = (r) => {
     const name = r.title
     if (r.trackNumber) {
-      return r.trackNumber + '. ' + name
+      return r.trackNumber.toString().padStart(2, '0') + ' ' + name
     }
     return name
   }
