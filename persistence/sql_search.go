@@ -33,7 +33,7 @@ func (r sqlRepository) index(id string, text string) error {
 
 func (r sqlRepository) doSearch(q string, offset, size int, results interface{}, orderBys ...string) error {
 	q = strings.TrimSpace(sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*"))))
-	if len(q) <= 2 {
+	if len(q) < 2 {
 		return nil
 	}
 	sq := Select("*").From(r.tableName)
