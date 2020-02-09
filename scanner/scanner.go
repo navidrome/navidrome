@@ -40,7 +40,6 @@ func (s *Scanner) Rescan(mediaFolder string, fullRescan bool) error {
 	}
 
 	s.updateLastModifiedSince(mediaFolder, start)
-	log.Debug("Finished scanning folder", "folder", mediaFolder, "elapsed", time.Since(start))
 	return err
 }
 

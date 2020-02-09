@@ -39,12 +39,14 @@ func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
 //	    refresh the collected albums and artists with the metadata from the mediafiles
 // Delete all empty albums, delete all empty Artists
 func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) error {
+	start := time.Now()
 	changed, deleted, err := s.detector.Scan(lastModifiedSince)
 	if err != nil {
 		return err
 	}
 
 	if len(changed)+len(deleted) == 0 {
+		log.Debug(ctx, "No changes found in Music Folder", "folder", s.rootFolder)
 		return nil
 	}
 
@@ -108,11 +110,10 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		return err
 	}
 
-	if len(changed)+len(deleted) == 0 {
-		return nil
-	}
+	err = s.ds.GC(log.NewContext(nil))
+	log.Info("Finished Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start))
 
-	return s.ds.GC(log.NewContext(nil))
+	return err
 }
 
 func (s *TagScanner) refreshAlbums(ctx context.Context, updatedAlbums map[string]bool) error {
@@ -133,7 +134,6 @@ func (s *TagScanner) refreshArtists(ctx context.Context, updatedArtists map[stri
 
 func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedArtists map[string]bool, updatedAlbums map[string]bool) error {
 	dir = filepath.Join(s.rootFolder, dir)
-
 	start := time.Now()
 
 	// Load folder's current tracks from DB into a map
@@ -185,12 +185,13 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 		}
 	}
 
-	log.Debug("Finished processing changed folder", "dir", dir, "updated", numUpdatedTracks, "purged", numPurgedTracks, "elapsed", time.Since(start))
+	log.Info("Finished processing changed folder", "dir", dir, "updated", numUpdatedTracks, "purged", numPurgedTracks, "elapsed", time.Since(start))
 	return nil
 }
 
 func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedArtists map[string]bool, updatedAlbums map[string]bool) error {
 	dir = filepath.Join(s.rootFolder, dir)
+	start := time.Now()
 
 	ct, err := s.ds.MediaFile(ctx).FindByPath(dir)
 	if err != nil {
@@ -201,6 +202,7 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedA
 		updatedAlbums[t.AlbumID] = true
 	}
 
+	log.Info("Finished processing deleted folder", "dir", dir, "deleted", len(ct), "elapsed", time.Since(start))
 	return s.ds.MediaFile(ctx).DeleteByPath(dir)
 }
 
