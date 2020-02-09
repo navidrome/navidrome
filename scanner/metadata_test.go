@@ -145,10 +145,13 @@ Tracklist:
 	Context("parseYear", func() {
 		It("parses the year correctly", func() {
 			var examples = map[string]int{
-				"1985":       1985,
-				"2002-01":    2002,
-				"1969.06":    1969,
-				"1980.07.25": 1980,
+				"1985":         1985,
+				"2002-01":      2002,
+				"1969.06":      1969,
+				"1980.07.25":   1980,
+				"2004-00-00":   2004,
+				"2013-May-12":  2013,
+				"May 12, 2016": 0,
 			}
 			for tag, expected := range examples {
 				md := &Metadata{tags: map[string]string{"year": tag}}

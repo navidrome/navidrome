@@ -201,20 +201,17 @@ var tagYearFormats = []string{
 	time.RFC3339,
 }
 
+var dateRegex = regexp.MustCompile(`^([12]\d\d\d)`)
+
 func (m *Metadata) parseYear(tagName string) int {
 	if v, ok := m.tags[tagName]; ok {
-		var y time.Time
-		var err error
-		for _, fmt := range tagYearFormats {
-			if y, err = time.Parse(fmt, v); err == nil {
-				break
-			}
-		}
-		if err != nil {
+		match := dateRegex.FindStringSubmatch(v)
+		if len(match) == 0 {
 			log.Error("Error parsing year from ffmpeg date field. Please report this issue", "file", m.filePath, "date", v)
 			return 0
 		}
-		return y.Year()
+		year, _ := strconv.Atoi(match[1])
+		return year
 	}
 	return 0
 }
