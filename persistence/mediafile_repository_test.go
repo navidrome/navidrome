@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"time"
 
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
@@ -85,5 +86,34 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.Get(id2)).ToNot(BeNil())
 		_, err := mr.Get(id3)
 		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	Context("Annotations", func() {
+		It("increments play count when the tracks does not have annotations", func() {
+			id := "incplay.firsttime"
+			Expect(mr.Put(&model.MediaFile{ID: id})).To(BeNil())
+			playDate := time.Now()
+			Expect(mr.IncPlayCount(id, playDate)).To(BeNil())
+
+			mf, err := mr.Get(id)
+			Expect(err).To(BeNil())
+
+			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
+			Expect(mf.PlayCount).To(Equal(1))
+		})
+
+		It("increments play count on newly starred items", func() {
+			id := "star.incplay"
+			Expect(mr.Put(&model.MediaFile{ID: id})).To(BeNil())
+			Expect(mr.SetStar(true, id)).To(BeNil())
+			playDate := time.Now()
+			Expect(mr.IncPlayCount(id, playDate)).To(BeNil())
+
+			mf, err := mr.Get(id)
+			Expect(err).To(BeNil())
+
+			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
+			Expect(mf.PlayCount).To(Equal(1))
+		})
 	})
 })

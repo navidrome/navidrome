@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/deluan/navidrome/conf"
-	_ "github.com/deluan/navidrome/db/migrations"
+	_ "github.com/deluan/navidrome/db/migration"
 	"github.com/deluan/navidrome/log"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pressly/goose"

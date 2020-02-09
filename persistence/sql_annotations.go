@@ -33,6 +33,14 @@ func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.
 		Columns("starred", "starred_at", "play_count", "play_date", "rating")
 }
 
+func (r sqlRepository) annId(itemID ...string) And {
+	return And{
+		Eq{"user_id": userId(r.ctx)},
+		Eq{"item_type": r.tableName},
+		Eq{"item_id": itemID},
+	}
+}
+
 func (r sqlRepository) annUpsert(values map[string]interface{}, itemIDs ...string) error {
 	upd := Update(annotationTable).Where(r.annId(itemIDs...))
 	for f, v := range values {
@@ -56,12 +64,13 @@ func (r sqlRepository) annUpsert(values map[string]interface{}, itemIDs ...strin
 	return err
 }
 
-func (r sqlRepository) annId(itemID ...string) And {
-	return And{
-		Eq{"user_id": userId(r.ctx)},
-		Eq{"item_type": r.tableName},
-		Eq{"item_id": itemID},
-	}
+func (r sqlRepository) SetStar(starred bool, ids ...string) error {
+	starredAt := time.Now()
+	return r.annUpsert(map[string]interface{}{"starred": starred, "starred_at": starredAt}, ids...)
+}
+
+func (r sqlRepository) SetRating(rating int, itemID string) error {
+	return r.annUpsert(map[string]interface{}{"rating": rating}, itemID)
 }
 
 func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
@@ -86,15 +95,6 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 		}
 	}
 	return err
-}
-
-func (r sqlRepository) SetStar(starred bool, ids ...string) error {
-	starredAt := time.Now()
-	return r.annUpsert(map[string]interface{}{"starred": starred, "starred_at": starredAt}, ids...)
-}
-
-func (r sqlRepository) SetRating(rating int, itemID string) error {
-	return r.annUpsert(map[string]interface{}{"rating": rating}, itemID)
 }
 
 func (r sqlRepository) cleanAnnotations() error {
