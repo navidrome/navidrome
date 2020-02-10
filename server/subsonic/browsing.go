@@ -165,6 +165,30 @@ func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (
 	return response, nil
 }
 
+const noImageAvailableUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/1024px-No_image_available.svg.png"
+
+// TODO Integrate with Last.FM
+func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	response := NewResponse()
+	response.ArtistInfo = &responses.ArtistInfo{}
+	response.ArtistInfo.Biography = "Biography not available"
+	response.ArtistInfo.SmallImageUrl = noImageAvailableUrl
+	response.ArtistInfo.MediumImageUrl = noImageAvailableUrl
+	response.ArtistInfo.LargeImageUrl = noImageAvailableUrl
+	return response, nil
+}
+
+// TODO Integrate with Last.FM
+func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	response := NewResponse()
+	response.ArtistInfo2 = &responses.ArtistInfo2{}
+	response.ArtistInfo2.Biography = "Biography not available"
+	response.ArtistInfo2.SmallImageUrl = noImageAvailableUrl
+	response.ArtistInfo2.MediumImageUrl = noImageAvailableUrl
+	response.ArtistInfo2.LargeImageUrl = noImageAvailableUrl
+	return response, nil
+}
+
 func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.Directory {
 	dir := &responses.Directory{
 		Id:         d.Id,

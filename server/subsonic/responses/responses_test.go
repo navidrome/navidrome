@@ -282,4 +282,42 @@ var _ = Describe("Responses", func() {
 			})
 		})
 	})
+
+	Describe("ArtistInfo", func() {
+		BeforeEach(func() {
+			response.ArtistInfo = &ArtistInfo{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.ArtistInfo.Biography = `Black Sabbath is an English <a target='_blank' href="http://www.last.fm/tag/heavy%20metal" class="bbcode_tag" rel="tag">heavy metal</a> band`
+				response.ArtistInfo.MusicBrainzID = "5182c1d9-c7d2-4dad-afa0-ccfeada921a8"
+				response.ArtistInfo.LastFmUrl = "http://www.last.fm/music/Black+Sabbath"
+				response.ArtistInfo.SmallImageUrl = "http://userserve-ak.last.fm/serve/64/27904353.jpg"
+				response.ArtistInfo.MediumImageUrl = "http://userserve-ak.last.fm/serve/126/27904353.jpg"
+				response.ArtistInfo.LargeImageUrl = "http://userserve-ak.last.fm/serve/_/27904353/Black+Sabbath+sabbath+1970.jpg"
+				response.ArtistInfo.SimilarArtist = []Artist{
+					{Id: "22", Name: "Accept"},
+					{Id: "101", Name: "Bruce Dickinson"},
+					{Id: "26", Name: "Aerosmith"},
+				}
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+
+		})
+	})
 })
