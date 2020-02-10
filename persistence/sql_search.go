@@ -10,13 +10,16 @@ import (
 
 const searchTable = "search"
 
-func (r sqlRepository) index(id string, text string) error {
-	sanitizedText := strings.TrimSpace(sanitize.Accents(strings.ToLower(text)))
+func (r sqlRepository) index(id string, text ...string) error {
+	sanitizedText := strings.Builder{}
+	for _, txt := range text {
+		sanitizedText.WriteString(strings.TrimSpace(sanitize.Accents(strings.ToLower(txt))) + " ")
+	}
 
 	values := map[string]interface{}{
 		"id":        id,
 		"item_type": r.tableName,
-		"full_text": sanitizedText,
+		"full_text": strings.TrimSpace(sanitizedText.String()),
 	}
 	update := Update(searchTable).Where(Eq{"id": id}).SetMap(values)
 	count, err := r.executeSQL(update)

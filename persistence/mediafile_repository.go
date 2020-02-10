@@ -41,7 +41,7 @@ func (r mediaFileRepository) Put(m *model.MediaFile) error {
 	if err != nil {
 		return err
 	}
-	return r.index(m.ID, m.Title)
+	return r.index(m.ID, m.Title, m.Album, m.Artist, m.AlbumArtist)
 }
 
 func (r mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {

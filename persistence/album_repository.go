@@ -9,6 +9,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
+	"github.com/dhowden/tag/mbz"
 )
 
 type albumRepository struct {
@@ -36,7 +37,7 @@ func (r *albumRepository) Put(a *model.Album) error {
 	if err != nil {
 		return err
 	}
-	return r.index(a.ID, a.Name)
+	return r.index(a.ID, a.Name, a.Artist, mbz.AlbumArtist)
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
