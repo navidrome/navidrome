@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
@@ -31,6 +32,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 
 	// Override Content-Type detected by http.FileServer
 	w.Header().Set("Content-Type", ms.ContentType())
+	w.Header().Set("X-Content-Duration", strconv.Itoa(ms.Duration()))
 	http.ServeContent(w, r, ms.Name(), ms.ModTime(), ms)
 	return nil, nil
 }

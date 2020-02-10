@@ -31,6 +31,7 @@ type mediaStream interface {
 	Name() string
 	ModTime() time.Time
 	Close() error
+	Duration() int
 }
 
 type mediaStreamer struct {
@@ -106,6 +107,10 @@ func (m *rawMediaStream) Name() string {
 
 func (m *rawMediaStream) ModTime() time.Time {
 	return m.mf.UpdatedAt
+}
+
+func (m *rawMediaStream) Duration() int {
+	return m.mf.Duration
 }
 
 func (m *rawMediaStream) Close() error {
@@ -184,6 +189,10 @@ func (m *transcodedMediaStream) Name() string {
 
 func (m *transcodedMediaStream) ModTime() time.Time {
 	return m.mf.UpdatedAt
+}
+
+func (m *transcodedMediaStream) Duration() int {
+	return m.mf.Duration
 }
 
 func (m *transcodedMediaStream) Close() error {
