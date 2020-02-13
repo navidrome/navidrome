@@ -144,8 +144,6 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 	}
 	for _, t := range ct {
 		currentTracks[t.ID] = t
-		updatedArtists[t.ArtistID] = true
-		updatedAlbums[t.AlbumID] = true
 	}
 
 	// Load tracks from the folder
@@ -178,8 +176,10 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 	}
 
 	// Remaining tracks from DB that are not in the folder are deleted
-	for id := range currentTracks {
+	for id, ct := range currentTracks {
 		numPurgedTracks++
+		updatedArtists[ct.ArtistID] = true
+		updatedAlbums[ct.AlbumID] = true
 		if err := s.ds.MediaFile(ctx).Delete(id); err != nil {
 			return err
 		}
