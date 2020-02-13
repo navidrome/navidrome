@@ -207,10 +207,21 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedA
 }
 
 func (s *TagScanner) loadTracks(dirPath string) (model.MediaFiles, error) {
-	mds, err := ExtractAllMetadata(dirPath)
+	audioFiles, err := LoadAllAudioFiles(dirPath)
 	if err != nil {
 		return nil, err
 	}
+
+	filePaths := make([]string, len(audioFiles))
+	for i, _ := range audioFiles {
+		filePaths[i] = filepath.Join(dirPath, audioFiles[i].Name())
+	}
+
+	mds, err := ExtractAllMetadata(filePaths)
+	if err != nil {
+		return nil, err
+	}
+
 	var mfs model.MediaFiles
 	for _, md := range mds {
 		mf := s.toMediaFile(md)

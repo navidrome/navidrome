@@ -9,9 +9,9 @@ var _ = Describe("Metadata", func() {
 	// TODO Need to mock `ffmpeg`
 	XContext("ExtractAllMetadata", func() {
 		It("correctly parses metadata from all files in folder", func() {
-			mds, err := ExtractAllMetadata("tests/fixtures")
+			mds, err := ExtractAllMetadata([]string{"tests/fixtures/test.mp3", "tests/fixtures/test.ogg"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mds).To(HaveLen(3))
+			Expect(mds).To(HaveLen(2))
 
 			m := mds["tests/fixtures/test.mp3"]
 			Expect(m.Title()).To(Equal("Song"))
@@ -45,14 +45,21 @@ var _ = Describe("Metadata", func() {
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.ogg"))
 			Expect(m.Size()).To(Equal(4408))
 		})
+	})
 
+	Context("LoadAllAudioFiles", func() {
+		It("return all audiofiles from the folder", func() {
+			files, err := LoadAllAudioFiles("tests/fixtures")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(files).To(HaveLen(3))
+		})
 		It("returns error if path does not exist", func() {
-			_, err := ExtractAllMetadata("./INVALID/PATH")
+			_, err := LoadAllAudioFiles("./INVALID/PATH")
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns empty map if there are no audio files in path", func() {
-			Expect(ExtractAllMetadata(".")).To(BeEmpty())
+			Expect(LoadAllAudioFiles(".")).To(BeEmpty())
 		})
 	})
 

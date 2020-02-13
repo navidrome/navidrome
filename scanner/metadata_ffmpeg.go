@@ -43,7 +43,7 @@ func (m *Metadata) FilePath() string            { return m.filePath }
 func (m *Metadata) Suffix() string              { return m.suffix }
 func (m *Metadata) Size() int                   { return int(m.fileInfo.Size()) }
 
-func ExtractAllMetadata(dirPath string) (map[string]*Metadata, error) {
+func LoadAllAudioFiles(dirPath string) ([]os.FileInfo, error) {
 	dir, err := os.Open(dirPath)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func ExtractAllMetadata(dirPath string) (map[string]*Metadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	var audioFiles []string
+	var audioFiles []os.FileInfo
 	for _, f := range files {
 		if f.IsDir() {
 			continue
@@ -62,16 +62,18 @@ func ExtractAllMetadata(dirPath string) (map[string]*Metadata, error) {
 		if !isAudioFile(extension) {
 			continue
 		}
-		audioFiles = append(audioFiles, filePath)
+		fi, err := os.Stat(filePath)
+		if err != nil {
+			log.Error("Could not stat file", "filePath", filePath, err)
+		} else {
+			audioFiles = append(audioFiles, fi)
+		}
 	}
 
-	if len(audioFiles) == 0 {
-		return map[string]*Metadata{}, nil
-	}
-	return probe(audioFiles)
+	return audioFiles, nil
 }
 
-func probe(inputs []string) (map[string]*Metadata, error) {
+func ExtractAllMetadata(inputs []string) (map[string]*Metadata, error) {
 	cmdLine, args := createProbeCommand(inputs)
 
 	log.Trace("Executing command", "arg0", cmdLine, "args", args)
