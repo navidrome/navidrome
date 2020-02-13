@@ -1,68 +1,75 @@
 import React from 'react'
-import { Show } from 'react-admin'
-import { Title } from '../common'
-import { makeStyles } from '@material-ui/core/styles'
-import AlbumSongList from './AlbumSongList'
+import {
+  Datagrid,
+  FunctionField,
+  List,
+  Loading,
+  TextField,
+  useGetOne
+} from 'react-admin'
 import AlbumDetails from './AlbumDetails'
-
-const AlbumTitle = ({ record }) => {
-  return <Title subTitle={record ? record.name : ''} />
-}
-
-const useStyles = makeStyles((theme) => ({
-  container: {
-    [theme.breakpoints.down('xs')]: {
-      padding: '0.7em',
-      minWidth: '24em'
-    },
-    [theme.breakpoints.up('sm')]: {
-      padding: '1em',
-      minWidth: '32em'
-    }
-  },
-  albumCover: {
-    display: 'inline-block',
-    [theme.breakpoints.down('xs')]: {
-      height: '8em',
-      width: '8em'
-    },
-    [theme.breakpoints.up('sm')]: {
-      height: '15em',
-      width: '15em'
-    },
-    [theme.breakpoints.up('lg')]: {
-      height: '20em',
-      width: '20em'
-    }
-  },
-  albumDetails: {
-    display: 'inline-block',
-    verticalAlign: 'top',
-    [theme.breakpoints.down('xs')]: {
-      width: '14em'
-    },
-    [theme.breakpoints.up('sm')]: {
-      width: '26em'
-    },
-    [theme.breakpoints.up('lg')]: {
-      width: '38em'
-    }
-  },
-  albumTitle: {
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis'
-  }
-}))
+import { DurationField, Title } from '../common'
+import { useStyles } from './styles'
+import { SongBulkActions } from '../song/SongBulkActions'
+import { AlbumActions } from './AlbumActions'
+import { useMediaQuery } from '@material-ui/core'
+import { setTrack } from '../player'
+import { useDispatch } from 'react-redux'
 
 const AlbumShow = (props) => {
+  const dispatch = useDispatch()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles()
+  const { data: record, loading, error } = useGetOne('album', props.id)
+
+  if (loading) {
+    return <Loading />
+  }
+
+  if (error) {
+    return <p>ERROR: {error}</p>
+  }
+
+  const trackName = (r) => {
+    const name = r.title
+    if (r.trackNumber) {
+      return r.trackNumber.toString().padStart(2, '0') + ' ' + name
+    }
+    return name
+  }
+
   return (
     <>
-      <AlbumDetails classes={classes} {...props} />
-      <Show title={<AlbumTitle />} {...props}>
-        <AlbumSongList {...props} />
-      </Show>
+      <AlbumDetails {...props} classes={classes} record={record} />
+      <List
+        {...props}
+        title={<Title subTitle={record.name} />}
+        actions={<AlbumActions />}
+        filter={{ album_id: props.id }}
+        resource={'song'}
+        exporter={false}
+        basePath={'/song'}
+        perPage={1000}
+        pagination={null}
+        sort={{ field: 'discNumber asc, trackNumber asc', order: 'ASC' }}
+        bulkActionButtons={<SongBulkActions />}
+      >
+        <Datagrid
+          rowClick={(id, basePath, record) => dispatch(setTrack(record))}
+        >
+          {isDesktop && (
+            <TextField
+              source="trackNumber"
+              sortBy="discNumber asc, trackNumber asc"
+              label="#"
+            />
+          )}
+          {isDesktop && <TextField source="title" />}
+          {!isDesktop && <FunctionField source="title" render={trackName} />}
+          {record.compilation && <TextField source="artist" />}
+          <DurationField source="duration" />
+        </Datagrid>
+      </List>
     </>
   )
 }

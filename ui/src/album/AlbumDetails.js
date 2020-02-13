@@ -1,26 +1,15 @@
 import React from 'react'
-import { Loading, useGetOne } from 'react-admin'
 import { Card, CardContent, CardMedia, Typography } from '@material-ui/core'
 import { subsonicUrl } from '../subsonic'
 
-const AlbumDetails = ({ id, classes }) => {
-  const { data, loading, error } = useGetOne('album', id)
-
-  if (loading) {
-    return <Loading />
-  }
-
-  if (error) {
-    return <p>ERROR: {error}</p>
-  }
-
-  const genreYear = (data) => {
+const AlbumDetails = ({ classes, record }) => {
+  const genreYear = (record) => {
     let genreDateLine = []
-    if (data.genre) {
-      genreDateLine.push(data.genre)
+    if (record.genre) {
+      genreDateLine.push(record.genre)
     }
-    if (data.year) {
-      genreDateLine.push(data.year)
+    if (record.year) {
+      genreDateLine.push(record.year)
     }
     return genreDateLine.join(' - ')
   }
@@ -30,19 +19,19 @@ const AlbumDetails = ({ id, classes }) => {
       <CardMedia
         image={subsonicUrl(
           'getCoverArt',
-          data.coverArtId || 'not_found',
+          record.coverArtId || 'not_found',
           'size=500'
         )}
         className={classes.albumCover}
       />
       <CardContent className={classes.albumDetails}>
         <Typography variant="h5" className={classes.albumTitle}>
-          {data.name}
+          {record.name}
         </Typography>
         <Typography component="h6">
-          {data.albumArtist || data.artist}
+          {record.albumArtist || record.artist}
         </Typography>
-        <Typography component="p">{genreYear(data)}</Typography>
+        <Typography component="p">{genreYear(record)}</Typography>
       </CardContent>
     </Card>
   )

@@ -17,6 +17,12 @@ export default deepmerge(englishMessages, {
       fields: {
         albumArtist: 'Album Artist',
         duration: 'Time'
+      },
+      actions: {
+        playAll: 'Play',
+        playNext: 'Play Next',
+        addToQueue: 'Play Later',
+        shuffle: 'Shuffle'
       }
     }
   },

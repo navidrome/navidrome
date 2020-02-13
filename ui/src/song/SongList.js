@@ -1,4 +1,4 @@
-import React, { Fragment } from 'react'
+import React from 'react'
 import {
   BooleanField,
   Datagrid,
@@ -13,12 +13,18 @@ import {
   TextInput
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { BitrateField, DurationField, Pagination, Title } from '../common'
-import AddToQueueButton from './AddToQueueButton'
-import { PlayButton, SimpleList } from '../common'
+import {
+  BitrateField,
+  DurationField,
+  Pagination,
+  PlayButton,
+  SimpleList,
+  Title
+} from '../common'
 import { useDispatch } from 'react-redux'
-import { setTrack, addTrack } from '../player'
+import { addTrack, setTrack } from '../player'
 import AddIcon from '@material-ui/icons/Add'
+import { SongBulkActions } from './SongBulkActions'
 
 const SongFilter = (props) => (
   <Filter {...props}>
@@ -26,12 +32,6 @@ const SongFilter = (props) => (
     <TextInput source="album" />
     <TextInput source="artist" />
   </Filter>
-)
-
-const SongBulkActionButtons = (props) => (
-  <Fragment>
-    <AddToQueueButton {...props} />
-  </Fragment>
 )
 
 const SongDetails = (props) => {
@@ -59,7 +59,7 @@ const SongList = (props) => {
       title={<Title subTitle={'Songs'} />}
       sort={{ field: 'title', order: 'ASC' }}
       exporter={false}
-      bulkActionButtons={<SongBulkActionButtons />}
+      bulkActionButtons={<SongBulkActions />}
       filters={<SongFilter />}
       perPage={isXsmall ? 50 : 15}
       pagination={<Pagination />}
