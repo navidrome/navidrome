@@ -10,8 +10,8 @@ import {
 import AlbumDetails from './AlbumDetails'
 import { DurationField, Title } from '../common'
 import { useStyles } from './styles'
-import { SongBulkActions } from '../song/SongBulkActions'
 import { AlbumActions } from './AlbumActions'
+import { AlbumSongBulkActions } from './AlbumSongBulkActions'
 import { useMediaQuery } from '@material-ui/core'
 import { setTrack } from '../player'
 import { useDispatch } from 'react-redux'
@@ -46,13 +46,12 @@ const AlbumShow = (props) => {
         title={<Title subTitle={record.name} />}
         actions={<AlbumActions />}
         filter={{ album_id: props.id }}
-        resource={'song'}
+        resource={'albumSong'}
         exporter={false}
-        basePath={'/song'}
         perPage={1000}
         pagination={null}
         sort={{ field: 'discNumber asc, trackNumber asc', order: 'ASC' }}
-        bulkActionButtons={<SongBulkActions />}
+        bulkActionButtons={<AlbumSongBulkActions />}
       >
         <Datagrid
           rowClick={(id, basePath, record) => dispatch(setTrack(record))}

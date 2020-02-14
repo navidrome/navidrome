@@ -43,6 +43,7 @@ const App = () => {
         <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
         <Resource name="album" {...album} options={{ subMenu: 'library' }} />,
         <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
+        <Resource name="albumSong" />,
         permissions === 'admin' ? <Resource name="user" {...user} /> : null,
         <Player />
       ]}
