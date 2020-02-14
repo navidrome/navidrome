@@ -7,7 +7,7 @@ import (
 
 var _ = Describe("Metadata", func() {
 	// TODO Need to mock `ffmpeg`
-	XContext("ExtractAllMetadata", func() {
+	Context("ExtractAllMetadata", func() {
 		It("correctly parses metadata from all files in folder", func() {
 			mds, err := ExtractAllMetadata([]string{"tests/fixtures/test.mp3", "tests/fixtures/test.ogg"})
 			Expect(err).NotTo(HaveOccurred())
@@ -52,6 +52,9 @@ var _ = Describe("Metadata", func() {
 			files, err := LoadAllAudioFiles("tests/fixtures")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(files).To(HaveLen(3))
+			Expect(files).To(HaveKey("tests/fixtures/test.ogg"))
+			Expect(files).To(HaveKey("tests/fixtures/test.mp3"))
+			Expect(files).To(HaveKey("tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
 		})
 		It("returns error if path does not exist", func() {
 			_, err := LoadAllAudioFiles("./INVALID/PATH")

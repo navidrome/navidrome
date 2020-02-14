@@ -43,7 +43,7 @@ func (m *Metadata) FilePath() string            { return m.filePath }
 func (m *Metadata) Suffix() string              { return m.suffix }
 func (m *Metadata) Size() int                   { return int(m.fileInfo.Size()) }
 
-func LoadAllAudioFiles(dirPath string) ([]os.FileInfo, error) {
+func LoadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {
 	dir, err := os.Open(dirPath)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func LoadAllAudioFiles(dirPath string) ([]os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	var audioFiles []os.FileInfo
+	audioFiles := make(map[string]os.FileInfo)
 	for _, f := range files {
 		if f.IsDir() {
 			continue
@@ -66,7 +66,7 @@ func LoadAllAudioFiles(dirPath string) ([]os.FileInfo, error) {
 		if err != nil {
 			log.Error("Could not stat file", "filePath", filePath, err)
 		} else {
-			audioFiles = append(audioFiles, fi)
+			audioFiles[filePath] = fi
 		}
 	}
 
