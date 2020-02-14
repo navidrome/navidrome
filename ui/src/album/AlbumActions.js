@@ -19,7 +19,7 @@ export const AlbumActions = ({
   ...rest
 }) => {
   const dispatch = useDispatch()
-  const translation = useTranslate()
+  const translate = useTranslate()
 
   const shuffle = (data) => {
     const ids = Object.keys(data)
@@ -39,7 +39,7 @@ export const AlbumActions = ({
         onClick={() => {
           dispatch(playAlbum(ids[0], data))
         }}
-        label={translation('resources.album.actions.playAll')}
+        label={translate('resources.album.actions.playAll')}
       >
         <PlayArrowIcon />
       </Button>
@@ -50,7 +50,7 @@ export const AlbumActions = ({
           const firstId = Object.keys(shuffled)[0]
           dispatch(playAlbum(firstId, shuffled))
         }}
-        label={translation('resources.album.actions.shuffle')}
+        label={translate('resources.album.actions.shuffle')}
       >
         <ShuffleIcon />
       </Button>

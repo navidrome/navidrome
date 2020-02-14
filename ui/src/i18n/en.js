@@ -4,6 +4,7 @@ import englishMessages from 'ra-language-english'
 export default deepmerge(englishMessages, {
   resources: {
     song: {
+      name: 'Song |||| Songs',
       fields: {
         albumArtist: 'Album Artist',
         duration: 'Time',

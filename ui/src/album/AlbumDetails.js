@@ -1,8 +1,11 @@
 import React from 'react'
 import { Card, CardContent, CardMedia, Typography } from '@material-ui/core'
+import { useTranslate } from 'react-admin'
 import { subsonicUrl } from '../subsonic'
+import { DurationField } from '../common'
 
 const AlbumDetails = ({ classes, record }) => {
+  const translate = useTranslate()
   const genreYear = (record) => {
     let genreDateLine = []
     if (record.genre) {
@@ -11,7 +14,7 @@ const AlbumDetails = ({ classes, record }) => {
     if (record.year) {
       genreDateLine.push(record.year)
     }
-    return genreDateLine.join(' - ')
+    return genreDateLine.join(' · ')
   }
 
   return (
@@ -32,6 +35,11 @@ const AlbumDetails = ({ classes, record }) => {
           {record.albumArtist || record.artist}
         </Typography>
         <Typography component="p">{genreYear(record)}</Typography>
+        <Typography component="p">
+          {record.songCount}{' '}
+          {translate('resources.song.name', { smart_count: record.songCount })}{' '}
+          · <DurationField record={record} source={'duration'} />
+        </Typography>
       </CardContent>
     </Card>
   )
