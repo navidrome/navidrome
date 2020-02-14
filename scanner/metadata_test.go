@@ -7,7 +7,7 @@ import (
 
 var _ = Describe("Metadata", func() {
 	// TODO Need to mock `ffmpeg`
-	Context("ExtractAllMetadata", func() {
+	XContext("ExtractAllMetadata", func() {
 		It("correctly parses metadata from all files in folder", func() {
 			mds, err := ExtractAllMetadata([]string{"tests/fixtures/test.mp3", "tests/fixtures/test.ogg"})
 			Expect(err).NotTo(HaveOccurred())
