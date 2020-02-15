@@ -39,6 +39,7 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 	}
 	size := utils.ParamInt(r, "size", 0)
 
+	w.Header().Set("cache-control", "public, max-age=300")
 	err = c.cover.Get(r.Context(), id, size, w)
 
 	switch {

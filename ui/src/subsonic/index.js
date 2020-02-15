@@ -1,13 +1,22 @@
 const subsonicUrl = (command, id, options) => {
-  const username = localStorage.getItem('username')
-  const token = localStorage.getItem('subsonic-token')
-  const salt = localStorage.getItem('subsonic-salt')
-  const timeStamp = new Date().getTime()
-  const url = `rest/${command}?u=${username}&f=json&v=1.8.0&c=NavidromeUI&t=${token}&s=${salt}&id=${id}&_=${timeStamp}`
+  const params = new URLSearchParams()
+  params.append('u', localStorage.getItem('username'))
+  params.append('t', localStorage.getItem('subsonic-token'))
+  params.append('s', localStorage.getItem('subsonic-salt'))
+  params.append('f', 'json')
+  params.append('v', '1.8.0')
+  params.append('c', 'NavidromeUI')
+  params.append('id', id)
   if (options) {
-    return url + '&' + options
+    if (options.ts) {
+      options['_'] = new Date().getTime()
+      delete options.ts
+    }
+    Object.keys(options).forEach((k) => {
+      params.append(k, options[k])
+    })
   }
-  return url
+  return `rest/${command}?${params.toString()}`
 }
 
 export { subsonicUrl }

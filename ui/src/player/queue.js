@@ -10,9 +10,9 @@ const PLAYER_PLAY_ALBUM = 'PLAYER_PLAY_ALBUM'
 const mapToAudioLists = (item) => ({
   name: item.title,
   singer: item.artist,
-  cover: subsonicUrl('getCoverArt', item.id, 'size=300'),
-  musicSrc: subsonicUrl('stream', item.id),
-  scrobble: (submit) => subsonicUrl('scrobble', item.id, `submission=${submit}`)
+  cover: subsonicUrl('getCoverArt', item.id, { size: 300 }),
+  musicSrc: subsonicUrl('stream', item.id, { ts: true }),
+  scrobble: (submit) => subsonicUrl('scrobble', item.id, { submission: submit })
 })
 
 const addTrack = (data) => ({
