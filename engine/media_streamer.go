@@ -212,7 +212,11 @@ func newTranscode(ctx context.Context, path string, maxBitRate int, format strin
 	if f, err = cmd.StdoutPipe(); err != nil {
 		return f, err
 	}
-	return f, cmd.Start()
+	if err = cmd.Start(); err != nil {
+		return f, err
+	}
+	go cmd.Wait() // prevent zombies
+	return f, err
 }
 
 func createTranscodeCommand(path string, maxBitRate int, format string) (string, []string) {
