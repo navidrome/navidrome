@@ -48,6 +48,11 @@ RUN GIT_TAG=$(git name-rev --name-only HEAD) && \
 FROM alpine as release
 MAINTAINER  Deluan Quintao <navidrome@deluan.com>
 
+# Download Tini
+ENV TINI_VERSION v0.18.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-static /tini
+RUN chmod +x /tini
+
 COPY --from=gobuilder /src/navidrome /app/
 COPY --from=gobuilder /tmp/ffmpeg*/ffmpeg /usr/bin/
 
@@ -64,4 +69,5 @@ ENV ND_PORT 4533
 EXPOSE 4533
 WORKDIR /app
 
-ENTRYPOINT "/app/navidrome"
+ENTRYPOINT ["/tini", "--"]
+CMD ["/app/navidrome"]
