@@ -68,42 +68,30 @@ var _ = Describe("Metadata", func() {
 
 	Context("extractMetadata", func() {
 		It("parses correctly the compilation tag", func() {
-			const output = `
+			const outputWithOverlappingTitleTag = `
 Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
   Metadata:
     compilation     : 1
   Duration: 00:05:02.63, start: 0.000000, bitrate: 140 kb/s`
-			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
+			md, _ := extractMetadata("tests/fixtures/test.mp3", outputWithOverlappingTitleTag)
 			Expect(md.Compilation()).To(BeTrue())
 		})
 
-		It("parses stream level tags", func() {
-			const output = `
-Input #0, ogg, from './01-02 Drive (Teku).opus':
-  Metadata:
-    ALBUM           : Hot Wheels Acceleracers Soundtrack
-  Duration: 00:03:37.37, start: 0.007500, bitrate: 135 kb/s
-    Stream #0:0(eng): Audio: opus, 48000 Hz, stereo, fltp
-    Metadata:
-      TITLE           : Drive (Teku)`
-			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.Title()).To(Equal("Drive (Teku)"))
-		})
-
-		It("does not overlap top level tags with the stream level tags", func() {
-			const output = `
+		It("parses correct the title without overlapping with the stream tag", func() {
+			const outputWithOverlappingTitleTag = `
 Input #0, mp3, from 'groovin.mp3':
   Metadata:
     title           : Groovin' (feat. Daniel Sneijers, Susanne Alt)
   Duration: 00:03:34.28, start: 0.025056, bitrate: 323 kb/s
     Metadata:
-      title           : garbage`
-			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
+      title           : cover
+At least one output file must be specified`
+			md, _ := extractMetadata("tests/fixtures/test.mp3", outputWithOverlappingTitleTag)
 			Expect(md.Title()).To(Equal("Groovin' (feat. Daniel Sneijers, Susanne Alt)"))
 		})
 
 		It("ignores case in the tag name", func() {
-			const output = `
+			const outputWithOverlappingTitleTag = `
 Input #0, flac, from '/Users/deluan/Downloads/06. Back In Black.flac':
   Metadata:
     ALBUM           : Back In Black
@@ -115,7 +103,7 @@ Input #0, flac, from '/Users/deluan/Downloads/06. Back In Black.flac':
     TRACKTOTAL      : 10
     track           : 6
   Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s`
-			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
+			md, _ := extractMetadata("tests/fixtures/test.mp3", outputWithOverlappingTitleTag)
 			Expect(md.Title()).To(Equal("Back In Black"))
 			Expect(md.Album()).To(Equal("Back In Black"))
 			Expect(md.Genre()).To(Equal("Hard Rock"))

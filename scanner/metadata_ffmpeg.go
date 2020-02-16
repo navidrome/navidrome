@@ -143,21 +143,21 @@ func isAudioFile(extension string) bool {
 
 var (
 	tagsRx = map[*regexp.Regexp]string{
-		regexp.MustCompile(`(?i)^\s{4,6}compilation\s+:(.*)`):    "compilation",
-		regexp.MustCompile(`(?i)^\s{4,6}genre\s+:\s(.*)`):        "genre",
-		regexp.MustCompile(`(?i)^\s{4,6}title\s+:\s(.*)`):        "title",
-		regexp.MustCompile(`(?i)^\s{4,6}comment\s+:\s(.*)`):      "comment",
-		regexp.MustCompile(`(?i)^\s{4,6}artist\s+:\s(.*)`):       "artist",
-		regexp.MustCompile(`(?i)^\s{4,6}album_artist\s+:\s(.*)`): "album_artist",
-		regexp.MustCompile(`(?i)^\s{4,6}TCM\s+:\s(.*)`):          "composer",
-		regexp.MustCompile(`(?i)^\s{4,6}album\s+:\s(.*)`):        "album",
-		regexp.MustCompile(`(?i)^\s{4,6}track\s+:\s(.*)`):        "trackNum",
-		regexp.MustCompile(`(?i)^\s{4,6}tracktotal\s+:\s(.*)`):   "trackTotal",
-		regexp.MustCompile(`(?i)^\s{4,6}disc\s+:\s(.*)`):         "discNum",
-		regexp.MustCompile(`(?i)^\s{4,6}disctotal\s+:\s(.*)`):    "discTotal",
-		regexp.MustCompile(`(?i)^\s{4,6}TPA\s+:\s(.*)`):          "discNum",
-		regexp.MustCompile(`(?i)^\s{4,6}date\s+:\s(.*)`):         "year",
-		regexp.MustCompile(`^\s{4,6}Stream #\d+:\d+: (.+):\s`):   "hasPicture",
+		regexp.MustCompile(`(?i)^\s{4}compilation\s+:(.*)`):    "compilation",
+		regexp.MustCompile(`(?i)^\s{4}genre\s+:\s(.*)`):        "genre",
+		regexp.MustCompile(`(?i)^\s{4}title\s+:\s(.*)`):        "title",
+		regexp.MustCompile(`(?i)^\s{4}comment\s+:\s(.*)`):      "comment",
+		regexp.MustCompile(`(?i)^\s{4}artist\s+:\s(.*)`):       "artist",
+		regexp.MustCompile(`(?i)^\s{4}album_artist\s+:\s(.*)`): "album_artist",
+		regexp.MustCompile(`(?i)^\s{4}TCM\s+:\s(.*)`):          "composer",
+		regexp.MustCompile(`(?i)^\s{4}album\s+:\s(.*)`):        "album",
+		regexp.MustCompile(`(?i)^\s{4}track\s+:\s(.*)`):        "trackNum",
+		regexp.MustCompile(`(?i)^\s{4}tracktotal\s+:\s(.*)`):   "trackTotal",
+		regexp.MustCompile(`(?i)^\s{4}disc\s+:\s(.*)`):         "discNum",
+		regexp.MustCompile(`(?i)^\s{4}disctotal\s+:\s(.*)`):    "discTotal",
+		regexp.MustCompile(`(?i)^\s{4}TPA\s+:\s(.*)`):          "discNum",
+		regexp.MustCompile(`(?i)^\s{4}date\s+:\s(.*)`):         "year",
+		regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (.+):\s`):   "hasPicture",
 	}
 
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
@@ -168,14 +168,7 @@ func (m *Metadata) parseInfo(info string) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if len(line) == 0 {
-			continue
-		}
 		for rx, tag := range tagsRx {
-			// Skip when the tag was previously found
-			if _, ok := m.tags[tag]; ok {
-				continue
-			}
 			match := rx.FindStringSubmatch(line)
 			if len(match) > 0 {
 				m.tags[tag] = match[1]
