@@ -74,7 +74,7 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
     compilation     : 1
   Duration: 00:00:01.02, start: 0.000000, bitrate: 477 kb/s
     Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
-    Stream #0:1: Video: mjpeg (Baseline), gray(bt470bg/unknown/unknown), 600x600 [SAR 72:72 DAR 1:1], 90k tbr, 90k tbn, 90k tbc (attached pic)`
+    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 600x600 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc`
 			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
 			Expect(md.HasPicture()).To(BeTrue())
 		})

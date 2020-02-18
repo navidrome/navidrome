@@ -143,21 +143,21 @@ func isAudioFile(extension string) bool {
 
 var (
 	tagsRx = map[*regexp.Regexp]string{
-		regexp.MustCompile(`(?i)^\s{4,6}compilation\s+:(.*)`):         "compilation",
-		regexp.MustCompile(`(?i)^\s{4,6}genre\s+:\s(.*)`):             "genre",
-		regexp.MustCompile(`(?i)^\s{4,6}title\s+:\s(.*)`):             "title",
-		regexp.MustCompile(`(?i)^\s{4,6}comment\s+:\s(.*)`):           "comment",
-		regexp.MustCompile(`(?i)^\s{4,6}artist\s+:\s(.*)`):            "artist",
-		regexp.MustCompile(`(?i)^\s{4,6}album_artist\s+:\s(.*)`):      "album_artist",
-		regexp.MustCompile(`(?i)^\s{4,6}TCM\s+:\s(.*)`):               "composer",
-		regexp.MustCompile(`(?i)^\s{4,6}album\s+:\s(.*)`):             "album",
-		regexp.MustCompile(`(?i)^\s{4,6}track\s+:\s(.*)`):             "trackNum",
-		regexp.MustCompile(`(?i)^\s{4,6}tracktotal\s+:\s(.*)`):        "trackTotal",
-		regexp.MustCompile(`(?i)^\s{4,6}disc\s+:\s(.*)`):              "discNum",
-		regexp.MustCompile(`(?i)^\s{4,6}disctotal\s+:\s(.*)`):         "discTotal",
-		regexp.MustCompile(`(?i)^\s{4,6}TPA\s+:\s(.*)`):               "discNum",
-		regexp.MustCompile(`(?i)^\s{4,6}date\s+:\s(.*)`):              "year",
-		regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (Video):.*pic\)$`): "hasPicture",
+		regexp.MustCompile(`(?i)^\s{4,6}compilation\s+:(.*)`):    "compilation",
+		regexp.MustCompile(`(?i)^\s{4,6}genre\s+:\s(.*)`):        "genre",
+		regexp.MustCompile(`(?i)^\s{4,6}title\s+:\s(.*)`):        "title",
+		regexp.MustCompile(`(?i)^\s{4,6}comment\s+:\s(.*)`):      "comment",
+		regexp.MustCompile(`(?i)^\s{4,6}artist\s+:\s(.*)`):       "artist",
+		regexp.MustCompile(`(?i)^\s{4,6}album_artist\s+:\s(.*)`): "album_artist",
+		regexp.MustCompile(`(?i)^\s{4,6}TCM\s+:\s(.*)`):          "composer",
+		regexp.MustCompile(`(?i)^\s{4,6}album\s+:\s(.*)`):        "album",
+		regexp.MustCompile(`(?i)^\s{4,6}track\s+:\s(.*)`):        "trackNum",
+		regexp.MustCompile(`(?i)^\s{4,6}tracktotal\s+:\s(.*)`):   "trackTotal",
+		regexp.MustCompile(`(?i)^\s{4,6}disc\s+:\s(.*)`):         "discNum",
+		regexp.MustCompile(`(?i)^\s{4,6}disctotal\s+:\s(.*)`):    "discTotal",
+		regexp.MustCompile(`(?i)^\s{4,6}TPA\s+:\s(.*)`):          "discNum",
+		regexp.MustCompile(`(?i)^\s{4,6}date\s+:\s(.*)`):         "year",
+		regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (Video):.*`):  "hasPicture",
 	}
 
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
