@@ -201,15 +201,6 @@ func (m *Metadata) parseInt(tagName string) int {
 	return 0
 }
 
-var tagYearFormats = []string{
-	"2006",
-	"2006.01",
-	"2006.01.02",
-	"2006-01",
-	"2006-01-02",
-	time.RFC3339,
-}
-
 var dateRegex = regexp.MustCompile(`^([12]\d\d\d)`)
 
 func (m *Metadata) parseYear(tagName string) int {
