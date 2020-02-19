@@ -2,232 +2,207 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"io"
-	"io/ioutil"
-	"mime"
+	"net/http"
 	"os"
-	"os/exec"
-	"strconv"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/engine/ffmpeg"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
 )
 
 type MediaStreamer interface {
-	NewStream(ctx context.Context, id string, maxBitRate int, format string) (mediaStream, error)
+	NewFileSystem(ctx context.Context, maxBitRate int, format string) (http.FileSystem, error)
 }
 
-func NewMediaStreamer(ds model.DataStore) MediaStreamer {
-	return &mediaStreamer{ds: ds}
-}
-
-type mediaStream interface {
-	io.ReadSeeker
-	ContentType() string
-	Name() string
-	ModTime() time.Time
-	Close() error
-	Duration() int
+func NewMediaStreamer(ds model.DataStore, ffm ffmpeg.FFmpeg) MediaStreamer {
+	return &mediaStreamer{ds: ds, ffm: ffm}
 }
 
 type mediaStreamer struct {
-	ds model.DataStore
+	ds  model.DataStore
+	ffm ffmpeg.FFmpeg
 }
 
-func (ms *mediaStreamer) NewStream(ctx context.Context, id string, maxBitRate int, format string) (mediaStream, error) {
-	mf, err := ms.ds.MediaFile(ctx).Get(id)
+func (ms *mediaStreamer) NewFileSystem(ctx context.Context, maxBitRate int, format string) (http.FileSystem, error) {
+	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.CacheDir)
+	err := os.MkdirAll(cacheFolder, 0755)
 	if err != nil {
+		log.Error("Could not create cache folder", "folder", cacheFolder, err)
 		return nil, err
 	}
+	return &mediaFileSystem{ctx: ctx, ds: ms.ds, ffm: ms.ffm, maxBitRate: maxBitRate, format: format, cacheFolder: cacheFolder}, nil
+}
 
+type mediaFileSystem struct {
+	ctx         context.Context
+	ds          model.DataStore
+	maxBitRate  int
+	format      string
+	cacheFolder string
+	ffm         ffmpeg.FFmpeg
+}
+
+func (fs *mediaFileSystem) selectTranscodingOptions(mf *model.MediaFile) (string, int) {
 	var bitRate int
+	var format string
 
-	if format == "raw" || !conf.Server.EnableDownsampling {
-		bitRate = mf.BitRate
-		format = mf.Suffix
+	if fs.format == "raw" || !conf.Server.EnableDownsampling {
+		return "raw", bitRate
 	} else {
-		if maxBitRate == 0 {
+		if fs.maxBitRate == 0 {
 			bitRate = mf.BitRate
 		} else {
-			bitRate = utils.MinInt(mf.BitRate, maxBitRate)
+			bitRate = utils.MinInt(mf.BitRate, fs.maxBitRate)
 		}
-		format = mf.Suffix
+		format = "mp3" //mf.Suffix
 	}
 	if conf.Server.MaxBitRate != 0 {
 		bitRate = utils.MinInt(bitRate, conf.Server.MaxBitRate)
 	}
 
-	var stream mediaStream
+	if bitRate == mf.BitRate {
+		return "raw", bitRate
+	}
+	return format, bitRate
+}
 
-	if bitRate == mf.BitRate && mime.TypeByExtension("."+format) == mf.ContentType() {
-		log.Debug(ctx, "Streaming raw file", "id", mf.ID, "path", mf.Path,
-			"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix)
-
-		f, err := os.Open(mf.Path)
-		if err != nil {
-			return nil, err
-		}
-		stream = &rawMediaStream{ctx: ctx, mf: mf, file: f}
-		return stream, nil
+func (fs *mediaFileSystem) Open(name string) (http.File, error) {
+	id := strings.Trim(name, "/")
+	mf, err := fs.ds.MediaFile(fs.ctx).Get(id)
+	if err == model.ErrNotFound {
+		return nil, os.ErrNotExist
+	}
+	if err != nil {
+		log.Error("Error opening mediaFile", "id", id, err)
+		return nil, os.ErrInvalid
 	}
 
-	log.Debug(ctx, "Streaming transcoded file", "id", mf.ID, "path", mf.Path,
+	format, bitRate := fs.selectTranscodingOptions(mf)
+	if format == "raw" {
+		log.Debug(fs.ctx, "Streaming raw file", "id", mf.ID, "path", mf.Path,
+			"requestBitrate", bitRate, "requestFormat", format,
+			"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix)
+		return os.Open(mf.Path)
+	}
+
+	cachedFile := fs.cacheFilePath(mf, bitRate, format)
+	if _, err := os.Stat(cachedFile); !os.IsNotExist(err) {
+		log.Debug(fs.ctx, "Streaming cached transcoded", "id", mf.ID, "path", mf.Path,
+			"requestBitrate", bitRate, "requestFormat", format,
+			"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix)
+		return os.Open(cachedFile)
+	}
+
+	log.Debug(fs.ctx, "Streaming transcoded file", "id", mf.ID, "path", mf.Path,
 		"requestBitrate", bitRate, "requestFormat", format,
 		"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix)
 
-	f := &transcodedMediaStream{ctx: ctx, mf: mf, bitRate: bitRate, format: format}
-	return f, err
+	return fs.transcodeFile(mf, bitRate, format, cachedFile)
 }
 
-type rawMediaStream struct {
-	file *os.File
-	ctx  context.Context
-	mf   *model.MediaFile
+func (fs *mediaFileSystem) cacheFilePath(mf *model.MediaFile, bitRate int, format string) string {
+	subDir := strings.ToLower(mf.ID[:2])
+	subDir = filepath.Join(fs.cacheFolder, subDir)
+	if err := os.Mkdir(subDir, 0755); err != nil {
+		log.Error("Error creating cache folder. Bad things will happen", "folder", subDir, err)
+	}
+
+	return filepath.Join(subDir, fmt.Sprintf("%s.%d.%s", mf.ID, bitRate, format))
 }
 
-func (m *rawMediaStream) Read(p []byte) (n int, err error) {
-	return m.file.Read(p)
+func (fs *mediaFileSystem) transcodeFile(mf *model.MediaFile, bitRate int, format, cacheFile string) (*transcodingFile, error) {
+	out, err := fs.ffm.StartTranscoding(fs.ctx, mf.Path, bitRate, format)
+	if err != nil {
+		log.Error("Error starting transcoder", "id", mf.ID, err)
+		return nil, os.ErrInvalid
+	}
+	buf, err := newStreamBuffer(cacheFile)
+	if err != nil {
+		log.Error("Error creating stream buffer", "id", mf.ID, err)
+		return nil, os.ErrInvalid
+	}
+	r, err := buf.NewReader()
+	if err != nil {
+		log.Error("Error opening stream reader", "id", mf.ID, err)
+		return nil, os.ErrInvalid
+	}
+	go func() {
+		io.Copy(buf, out)
+		out.Close()
+		buf.Sync()
+		buf.Close()
+	}()
+	s := &transcodingFile{
+		ctx:     fs.ctx,
+		mf:      mf,
+		bitRate: bitRate,
+	}
+	s.File = r
+	return s, nil
 }
 
-func (m *rawMediaStream) Seek(offset int64, whence int) (int64, error) {
-	return m.file.Seek(offset, whence)
-}
-
-func (m *rawMediaStream) ContentType() string {
-	return m.mf.ContentType()
-}
-
-func (m *rawMediaStream) Name() string {
-	return m.mf.Path
-}
-
-func (m *rawMediaStream) ModTime() time.Time {
-	return m.mf.UpdatedAt
-}
-
-func (m *rawMediaStream) Duration() int {
-	return m.mf.Duration
-}
-
-func (m *rawMediaStream) Close() error {
-	log.Trace(m.ctx, "Closing file", "id", m.mf.ID, "path", m.mf.Path)
-	return m.file.Close()
-}
-
-type transcodedMediaStream struct {
+type transcodingFile struct {
 	ctx     context.Context
 	mf      *model.MediaFile
-	pipe    io.ReadCloser
 	bitRate int
-	format  string
-	skip    int64
-	pos     int64
+	http.File
 }
 
-func (m *transcodedMediaStream) Read(p []byte) (n int, err error) {
-	// Open the pipe and optionally skip a initial chunk of the stream (to simulate a Seek)
-	if m.pipe == nil {
-		m.pipe, err = newTranscode(m.ctx, m.mf.Path, m.bitRate, m.format)
-		if err != nil {
-			return 0, err
+func (h *transcodingFile) Stat() (os.FileInfo, error) {
+	return &streamHandlerFileInfo{mf: h.mf, bitRate: h.bitRate}, nil
+}
+
+// Don't return EOF, just wait for more data. When the request ends, this "File" will be closed, and then
+// the Read will be interrupted
+func (h *transcodingFile) Read(b []byte) (int, error) {
+	for {
+		n, err := h.File.Read(b)
+		if n > 0 {
+			return n, nil
+		} else if err != io.EOF {
+			return n, err
 		}
-		if m.skip > 0 {
-			_, err := io.CopyN(ioutil.Discard, m.pipe, m.skip)
-			m.pos = m.skip
-			if err != nil {
-				return 0, err
-			}
-		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	n, err = m.pipe.Read(p)
-	m.pos += int64(n)
-	if err == io.EOF {
-		m.Close()
+}
+
+type streamHandlerFileInfo struct {
+	mf      *model.MediaFile
+	bitRate int
+}
+
+func (f *streamHandlerFileInfo) Name() string       { return f.mf.Title }
+func (f *streamHandlerFileInfo) Size() int64        { return int64((f.mf.Duration)*f.bitRate*1000) / 8 }
+func (f *streamHandlerFileInfo) Mode() os.FileMode  { return os.FileMode(0777) }
+func (f *streamHandlerFileInfo) ModTime() time.Time { return f.mf.UpdatedAt }
+func (f *streamHandlerFileInfo) IsDir() bool        { return false }
+func (f *streamHandlerFileInfo) Sys() interface{}   { return nil }
+
+// From: https://stackoverflow.com/a/44322300
+type streamBuffer struct {
+	*os.File
+}
+
+func (mb *streamBuffer) NewReader() (http.File, error) {
+	f, err := os.Open(mb.Name())
+	if err != nil {
+		return nil, err
 	}
-	return
+	return f, nil
 }
 
-// This is an attempt to make a pipe seekable. It is very wasteful, restarting the stream every time
-// a Seek happens. This is ok-ish for audio, but would kill the server for video.
-func (m *transcodedMediaStream) Seek(offset int64, whence int) (int64, error) {
-	size := int64((m.mf.Duration)*m.bitRate*1000) / 8
-	log.Trace(m.ctx, "Seeking transcoded stream", "path", m.mf.Path, "offset", offset, "whence", whence, "size", size)
-
-	switch whence {
-	case io.SeekEnd:
-		m.skip = size - offset
-		offset = size
-	case io.SeekStart:
-		m.skip = offset
-	case io.SeekCurrent:
-		io.CopyN(ioutil.Discard, m.pipe, offset)
-		m.pos += offset
-		offset = m.pos
+func newStreamBuffer(name string) (*streamBuffer, error) {
+	f, err := os.Create(name)
+	if err != nil {
+		return nil, err
 	}
-
-	// If need to Seek to a previous position, close the pipe (will be restarted on next Read)
-	var err error
-	if whence != io.SeekCurrent {
-		if m.pipe != nil {
-			err = m.Close()
-		}
-	}
-	return offset, err
-}
-
-func (m *transcodedMediaStream) ContentType() string {
-	return mime.TypeByExtension(".mp3")
-}
-
-func (m *transcodedMediaStream) Name() string {
-	return m.mf.Path
-}
-
-func (m *transcodedMediaStream) ModTime() time.Time {
-	return m.mf.UpdatedAt
-}
-
-func (m *transcodedMediaStream) Duration() int {
-	return m.mf.Duration
-}
-
-func (m *transcodedMediaStream) Close() error {
-	log.Trace(m.ctx, "Closing stream", "id", m.mf.ID, "path", m.mf.Path)
-	err := m.pipe.Close()
-	m.pipe = nil
-	m.pos = 0
-	return err
-}
-
-func newTranscode(ctx context.Context, path string, maxBitRate int, format string) (f io.ReadCloser, err error) {
-	cmdLine, args := createTranscodeCommand(path, maxBitRate, format)
-
-	log.Trace(ctx, "Executing ffmpeg command", "arg0", cmdLine, "args", args)
-	cmd := exec.Command(cmdLine, args...)
-	cmd.Stderr = os.Stderr
-	if f, err = cmd.StdoutPipe(); err != nil {
-		return f, err
-	}
-	if err = cmd.Start(); err != nil {
-		return f, err
-	}
-	go cmd.Wait() // prevent zombies
-	return f, err
-}
-
-func createTranscodeCommand(path string, maxBitRate int, format string) (string, []string) {
-	cmd := conf.Server.DownsampleCommand
-
-	split := strings.Split(cmd, " ")
-	for i, s := range split {
-		s = strings.Replace(s, "%s", path, -1)
-		s = strings.Replace(s, "%b", strconv.Itoa(maxBitRate), -1)
-		split[i] = s
-	}
-
-	return split[0], split[1:]
+	return &streamBuffer{File: f}, nil
 }

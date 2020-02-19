@@ -14,7 +14,7 @@ var _ = Describe("Browser", func() {
 	var repo *mockGenreRepository
 	var b Browser
 
-	BeforeSuite(func() {
+	BeforeEach(func() {
 		repo = &mockGenreRepository{data: model.Genres{
 			{Name: "Rock", SongCount: 1000, AlbumCount: 100},
 			{Name: "", SongCount: 13, AlbumCount: 13},

@@ -14,6 +14,8 @@ const (
 
 	UIAssetsLocalPath = "ui/build"
 
+	CacheDir = "cache"
+
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 )

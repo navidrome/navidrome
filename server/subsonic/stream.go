@@ -2,7 +2,6 @@ package subsonic
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
@@ -25,15 +24,15 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	maxBitRate := utils.ParamInt(r, "maxBitRate", 0)
 	format := utils.ParamString(r, "format")
 
-	ms, err := c.streamer.NewStream(r.Context(), id, maxBitRate, format)
+	fs, err := c.streamer.NewFileSystem(r.Context(), maxBitRate, format)
 	if err != nil {
 		return nil, err
 	}
 
-	// Override Content-Type detected by http.FileServer
-	w.Header().Set("Content-Type", ms.ContentType())
-	w.Header().Set("X-Content-Duration", strconv.Itoa(ms.Duration()))
-	http.ServeContent(w, r, ms.Name(), ms.ModTime(), ms)
+	// To be able to use a http.FileSystem, we need to change the URL structure
+	r.URL.Path = id
+
+	http.FileServer(fs).ServeHTTP(w, r)
 	return nil, nil
 }
 
@@ -43,13 +42,14 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 		return nil, err
 	}
 
-	ms, err := c.streamer.NewStream(r.Context(), id, 0, "raw")
+	fs, err := c.streamer.NewFileSystem(r.Context(), 0, "raw")
 	if err != nil {
 		return nil, err
 	}
 
-	// Override Content-Type detected by http.FileServer
-	w.Header().Set("Content-Type", ms.ContentType())
-	http.ServeContent(w, r, ms.Name(), ms.ModTime(), ms)
+	// To be able to use a http.FileSystem, we need to change the URL structure
+	r.URL.Path = id
+
+	http.FileServer(fs).ServeHTTP(w, r)
 	return nil, nil
 }

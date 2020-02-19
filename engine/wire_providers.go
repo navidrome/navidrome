@@ -1,6 +1,9 @@
 package engine
 
-import "github.com/google/wire"
+import (
+	"github.com/deluan/navidrome/engine/ffmpeg"
+	"github.com/google/wire"
+)
 
 var Set = wire.NewSet(
 	NewBrowser,
@@ -13,4 +16,5 @@ var Set = wire.NewSet(
 	NewNowPlayingRepository,
 	NewUsers,
 	NewMediaStreamer,
+	ffmpeg.New,
 )
