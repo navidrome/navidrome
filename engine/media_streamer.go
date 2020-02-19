@@ -109,12 +109,11 @@ func (fs *mediaFileSystem) Open(name string) (http.File, error) {
 }
 
 func (fs *mediaFileSystem) cacheFilePath(mf *model.MediaFile, bitRate int, format string) string {
+	// Break the cache in subfolders, to avoid too many files in the same folder
 	subDir := strings.ToLower(mf.ID[:2])
 	subDir = filepath.Join(fs.cacheFolder, subDir)
-	if err := os.Mkdir(subDir, 0755); err != nil {
-		log.Error("Error creating cache folder. Bad things will happen", "folder", subDir, err)
-	}
-
+	// Make sure the subfolder to exist
+	os.Mkdir(subDir, 0755)
 	return filepath.Join(subDir, fmt.Sprintf("%s.%d.%s", mf.ID, bitRate, format))
 }
 
