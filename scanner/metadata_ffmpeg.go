@@ -104,6 +104,9 @@ var (
 	//  Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s`
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
 
+	//    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
+	bitRateRx = regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (Audio):.*, (\d+) kb/s`)
+
 	//    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 600x600 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc`
 	coverRx = regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (Video):.*`)
 )
@@ -163,9 +166,10 @@ func (m *Metadata) parseInfo(info string) {
 		}
 		match := tagsRx.FindStringSubmatch(line)
 		if len(match) > 0 {
-			// Skip when the tag was previously found
 			tagName := strings.ToLower(match[1])
 			tagValue := strings.TrimSpace(match[2])
+
+			// Skip when the tag was previously found
 			if _, ok := m.tags[tagName]; !ok {
 				m.tags[tagName] = tagValue
 			}
@@ -184,6 +188,12 @@ func (m *Metadata) parseInfo(info string) {
 			if len(match) > 1 {
 				m.tags["bitrate"] = match[2]
 			}
+			continue
+		}
+
+		match = bitRateRx.FindStringSubmatch(line)
+		if len(match) > 0 {
+			m.tags["bitrate"] = match[2]
 		}
 	}
 }

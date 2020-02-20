@@ -79,6 +79,15 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 			Expect(md.HasPicture()).To(BeTrue())
 		})
 
+		It("gets bitrate from the stream, if available", func() {
+			const output = `
+Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 477 kb/s
+    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s`
+			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md.BitRate()).To(Equal(192))
+		})
+
 		It("parses correctly the compilation tag", func() {
 			const output = `
 Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
