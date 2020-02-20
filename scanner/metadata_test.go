@@ -188,13 +188,13 @@ Tracklist:
 				"May 12, 2016": 0,
 			}
 			for tag, expected := range examples {
-				md := &Metadata{tags: map[string]string{"year": tag}}
+				md := &Metadata{tags: map[string]string{"date": tag}}
 				Expect(md.Year()).To(Equal(expected))
 			}
 		})
 
 		It("returns 0 if year is invalid", func() {
-			md := &Metadata{tags: map[string]string{"year": "invalid"}}
+			md := &Metadata{tags: map[string]string{"date": "invalid"}}
 			Expect(md.Year()).To(Equal(0))
 		})
 	})

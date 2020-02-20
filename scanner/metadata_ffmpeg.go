@@ -24,17 +24,17 @@ type Metadata struct {
 	tags     map[string]string
 }
 
-func (m *Metadata) Title() string               { return m.tags["title"] }
-func (m *Metadata) Album() string               { return m.tags["album"] }
-func (m *Metadata) Artist() string              { return m.tags["artist"] }
-func (m *Metadata) AlbumArtist() string         { return m.tags["album_artist"] }
-func (m *Metadata) Composer() string            { return m.tags["composer"] }
-func (m *Metadata) Genre() string               { return m.tags["genre"] }
-func (m *Metadata) Year() int                   { return m.parseYear("year") }
-func (m *Metadata) TrackNumber() (int, int)     { return m.parseTuple("trackNum", "trackTotal") }
-func (m *Metadata) DiscNumber() (int, int)      { return m.parseTuple("discNum", "discTotal") }
-func (m *Metadata) HasPicture() bool            { return m.tags["hasPicture"] == "Video" }
-func (m *Metadata) Comment() string             { return m.tags["comment"] }
+func (m *Metadata) Title() string               { return m.getTag("title", "sort_name") }
+func (m *Metadata) Album() string               { return m.getTag("album", "sort_album") }
+func (m *Metadata) Artist() string              { return m.getTag("artist", "sort_artist") }
+func (m *Metadata) AlbumArtist() string         { return m.getTag("album_artist") }
+func (m *Metadata) Composer() string            { return m.getTag("composer", "tcm", "sort_composer") }
+func (m *Metadata) Genre() string               { return m.getTag("genre") }
+func (m *Metadata) Year() int                   { return m.parseYear("date") }
+func (m *Metadata) TrackNumber() (int, int)     { return m.parseTuple("track") }
+func (m *Metadata) DiscNumber() (int, int)      { return m.parseTuple("tpa", "disc") }
+func (m *Metadata) HasPicture() bool            { return m.getTag("has_picture") == "true" }
+func (m *Metadata) Comment() string             { return m.getTag("comment") }
 func (m *Metadata) Compilation() bool           { return m.parseBool("compilation") }
 func (m *Metadata) Duration() int               { return m.parseDuration("duration") }
 func (m *Metadata) BitRate() int                { return m.parseInt("bitrate") }
@@ -94,7 +94,19 @@ func ExtractAllMetadata(inputs []string) (map[string]*Metadata, error) {
 	return mds, nil
 }
 
-var inputRegex = regexp.MustCompile(`(?m)^Input #\d+,.*,\sfrom\s'(.*)'`)
+var (
+	// Input #0, mp3, from 'groovin.mp3':
+	inputRegex = regexp.MustCompile(`(?m)^Input #\d+,.*,\sfrom\s'(.*)'`)
+
+	//    TITLE           : Back In Black
+	tagsRx = regexp.MustCompile(`(?i)^\s{4,6}(\w+)\s+:(.*)`)
+
+	//  Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s`
+	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
+
+	//    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 600x600 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc`
+	coverRx = regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (Video):.*`)
+)
 
 func parseOutput(output string) map[string]string {
 	split := map[string]string{}
@@ -141,28 +153,6 @@ func isAudioFile(extension string) bool {
 	return strings.HasPrefix(typ, "audio/")
 }
 
-var (
-	tagsRx = map[*regexp.Regexp]string{
-		regexp.MustCompile(`(?i)^\s{4,6}compilation\s+:(.*)`):    "compilation",
-		regexp.MustCompile(`(?i)^\s{4,6}genre\s+:\s(.*)`):        "genre",
-		regexp.MustCompile(`(?i)^\s{4,6}title\s+:\s(.*)`):        "title",
-		regexp.MustCompile(`(?i)^\s{4,6}comment\s+:\s(.*)`):      "comment",
-		regexp.MustCompile(`(?i)^\s{4,6}artist\s+:\s(.*)`):       "artist",
-		regexp.MustCompile(`(?i)^\s{4,6}album_artist\s+:\s(.*)`): "album_artist",
-		regexp.MustCompile(`(?i)^\s{4,6}TCM\s+:\s(.*)`):          "composer",
-		regexp.MustCompile(`(?i)^\s{4,6}album\s+:\s(.*)`):        "album",
-		regexp.MustCompile(`(?i)^\s{4,6}track\s+:\s(.*)`):        "trackNum",
-		regexp.MustCompile(`(?i)^\s{4,6}tracktotal\s+:\s(.*)`):   "trackTotal",
-		regexp.MustCompile(`(?i)^\s{4,6}disc\s+:\s(.*)`):         "discNum",
-		regexp.MustCompile(`(?i)^\s{4,6}disctotal\s+:\s(.*)`):    "discTotal",
-		regexp.MustCompile(`(?i)^\s{4,6}TPA\s+:\s(.*)`):          "discNum",
-		regexp.MustCompile(`(?i)^\s{4,6}date\s+:\s(.*)`):         "year",
-		regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (Video):.*`):  "hasPicture",
-	}
-
-	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
-)
-
 func (m *Metadata) parseInfo(info string) {
 	reader := strings.NewReader(info)
 	scanner := bufio.NewScanner(reader)
@@ -171,20 +161,25 @@ func (m *Metadata) parseInfo(info string) {
 		if len(line) == 0 {
 			continue
 		}
-		for rx, tag := range tagsRx {
+		match := tagsRx.FindStringSubmatch(line)
+		if len(match) > 0 {
 			// Skip when the tag was previously found
-			if _, ok := m.tags[tag]; ok {
-				continue
+			tagName := strings.ToLower(match[1])
+			tagValue := strings.TrimSpace(match[2])
+			if _, ok := m.tags[tagName]; !ok {
+				m.tags[tagName] = tagValue
 			}
-			match := rx.FindStringSubmatch(line)
-			if len(match) > 0 {
-				m.tags[tag] = match[1]
-				break
-			}
-			match = durationRx.FindStringSubmatch(line)
-			if len(match) == 0 {
-				continue
-			}
+			continue
+		}
+
+		match = coverRx.FindStringSubmatch(line)
+		if len(match) > 0 {
+			m.tags["has_picture"] = "true"
+			continue
+		}
+
+		match = durationRx.FindStringSubmatch(line)
+		if len(match) > 0 {
 			m.tags["duration"] = match[1]
 			if len(match) > 1 {
 				m.tags["bitrate"] = match[2]
@@ -216,17 +211,28 @@ func (m *Metadata) parseYear(tagName string) int {
 	return 0
 }
 
-func (m *Metadata) parseTuple(numTag string, totalTag string) (int, int) {
-	if v, ok := m.tags[numTag]; ok {
-		tuple := strings.Split(v, "/")
-		t1, t2 := 0, 0
-		t1, _ = strconv.Atoi(tuple[0])
-		if len(tuple) > 1 {
-			t2, _ = strconv.Atoi(tuple[1])
-		} else {
-			t2, _ = strconv.Atoi(m.tags[totalTag])
+func (m *Metadata) getTag(tags ...string) string {
+	for _, t := range tags {
+		if v, ok := m.tags[t]; ok {
+			return v
 		}
-		return t1, t2
+	}
+	return ""
+}
+
+func (m *Metadata) parseTuple(tags ...string) (int, int) {
+	for _, tagName := range tags {
+		if v, ok := m.tags[tagName]; ok {
+			tuple := strings.Split(v, "/")
+			t1, t2 := 0, 0
+			t1, _ = strconv.Atoi(tuple[0])
+			if len(tuple) > 1 {
+				t2, _ = strconv.Atoi(tuple[1])
+			} else {
+				t2, _ = strconv.Atoi(m.tags[tagName+"total"])
+			}
+			return t1, t2
+		}
 	}
 	return 0, 0
 }
