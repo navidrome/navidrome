@@ -20,7 +20,7 @@ type MediaFile struct {
 	Year        int       `json:"year"`
 	Size        int       `json:"size"`
 	Suffix      string    `json:"suffix"`
-	Duration    int       `json:"duration"`
+	Duration    float32   `json:"duration"`
 	BitRate     int       `json:"bitRate"`
 	Genre       string    `json:"genre"`
 	Compilation bool      `json:"compilation"`

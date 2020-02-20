@@ -36,7 +36,7 @@ func (m *Metadata) DiscNumber() (int, int)      { return m.parseTuple("tpa", "di
 func (m *Metadata) HasPicture() bool            { return m.getTag("has_picture") == "true" }
 func (m *Metadata) Comment() string             { return m.getTag("comment") }
 func (m *Metadata) Compilation() bool           { return m.parseBool("compilation") }
-func (m *Metadata) Duration() int               { return m.parseDuration("duration") }
+func (m *Metadata) Duration() float32           { return m.parseDuration("duration") }
 func (m *Metadata) BitRate() int                { return m.parseInt("bitrate") }
 func (m *Metadata) ModificationTime() time.Time { return m.fileInfo.ModTime() }
 func (m *Metadata) FilePath() string            { return m.filePath }
@@ -257,13 +257,13 @@ func (m *Metadata) parseBool(tagName string) bool {
 
 var zeroTime = time.Date(0000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-func (m *Metadata) parseDuration(tagName string) int {
+func (m *Metadata) parseDuration(tagName string) float32 {
 	if v, ok := m.tags[tagName]; ok {
 		d, err := time.Parse("15:04:05", v)
 		if err != nil {
 			return 0
 		}
-		return int(d.Sub(zeroTime).Seconds())
+		return float32(d.Sub(zeroTime).Seconds())
 	}
 	return 0
 }

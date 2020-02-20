@@ -179,7 +179,7 @@ type streamHandlerFileInfo struct {
 }
 
 func (f *streamHandlerFileInfo) Name() string       { return f.mf.Title }
-func (f *streamHandlerFileInfo) Size() int64        { return int64((f.mf.Duration)*f.bitRate*1000) / 8 }
+func (f *streamHandlerFileInfo) Size() int64        { return int64(f.mf.Duration*float32(f.bitRate*1000)) / 8 }
 func (f *streamHandlerFileInfo) Mode() os.FileMode  { return os.FileMode(0777) }
 func (f *streamHandlerFileInfo) ModTime() time.Time { return f.mf.UpdatedAt }
 func (f *streamHandlerFileInfo) IsDir() bool        { return false }

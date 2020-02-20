@@ -127,7 +127,7 @@ func (p *playlists) Get(ctx context.Context, id string) (*PlaylistInfo, error) {
 		Id:        pl.ID,
 		Name:      pl.Name,
 		SongCount: len(pl.Tracks),
-		Duration:  pl.Duration,
+		Duration:  int(pl.Duration),
 		Public:    pl.Public,
 		Owner:     pl.Owner,
 		Comment:   pl.Comment,

@@ -13,7 +13,7 @@ type playlist struct {
 	ID       string `orm:"column(id)"`
 	Name     string
 	Comment  string
-	Duration int
+	Duration float32
 	Owner    string
 	Public   bool
 	Tracks   string

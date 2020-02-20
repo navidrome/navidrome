@@ -98,6 +98,14 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 			Expect(md.Compilation()).To(BeTrue())
 		})
 
+		It("parses duration with milliseconds", func() {
+			const output = `
+Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
+  Duration: 00:05:02.63, start: 0.000000, bitrate: 140 kb/s`
+			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md.Duration()).To(BeNumerically("~", 302.63, 0.001))
+		})
+
 		It("parses stream level tags", func() {
 			const output = `
 Input #0, ogg, from './01-02 Drive (Teku).opus':

@@ -32,7 +32,7 @@ func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Reques
 		playlists[i].Name = p.Name
 		playlists[i].Comment = p.Comment
 		playlists[i].SongCount = len(p.Tracks)
-		playlists[i].Duration = p.Duration
+		playlists[i].Duration = int(p.Duration)
 		playlists[i].Owner = p.Owner
 		playlists[i].Public = p.Public
 	}

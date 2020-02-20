@@ -159,7 +159,7 @@ func (b *browser) buildAlbumDir(al *model.Album, tracks model.MediaFiles) *Direc
 		Artist:     al.Artist,
 		ArtistId:   al.ArtistID,
 		SongCount:  al.SongCount,
-		Duration:   al.Duration,
+		Duration:   int(al.Duration),
 		Created:    al.CreatedAt,
 		Year:       al.Year,
 		Genre:      al.Genre,

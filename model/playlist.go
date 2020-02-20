@@ -4,7 +4,7 @@ type Playlist struct {
 	ID       string
 	Name     string
 	Comment  string
-	Duration int
+	Duration float32
 	Owner    string
 	Public   bool
 	Tracks   MediaFiles

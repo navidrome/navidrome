@@ -13,7 +13,7 @@ type Album struct {
 	Year         int       `json:"year"`
 	Compilation  bool      `json:"compilation"`
 	SongCount    int       `json:"songCount"`
-	Duration     int       `json:"duration"`
+	Duration     float32   `json:"duration"`
 	Genre        string    `json:"genre"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`

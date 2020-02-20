@@ -69,7 +69,7 @@ func FromAlbum(al *model.Album) Entry {
 	e.Created = al.CreatedAt
 	e.AlbumId = al.ID
 	e.ArtistId = al.ArtistID
-	e.Duration = al.Duration
+	e.Duration = int(al.Duration)
 	e.SongCount = al.SongCount
 	e.Starred = al.StarredAt
 	e.PlayCount = int32(al.PlayCount)
@@ -88,7 +88,7 @@ func FromMediaFile(mf *model.MediaFile) Entry {
 	e.Artist = mf.Artist
 	e.Genre = mf.Genre
 	e.Track = mf.TrackNumber
-	e.Duration = mf.Duration
+	e.Duration = int(mf.Duration)
 	e.Size = mf.Size
 	e.Suffix = mf.Suffix
 	e.BitRate = mf.BitRate
