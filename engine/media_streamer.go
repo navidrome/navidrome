@@ -6,10 +6,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/engine/ffmpeg"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -171,3 +173,14 @@ func (fi *streamHandlerFileInfo) Size() int64        { return fi.f.size }
 func (fi *streamHandlerFileInfo) Mode() os.FileMode  { return os.FileMode(0777) }
 func (fi *streamHandlerFileInfo) IsDir() bool        { return false }
 func (fi *streamHandlerFileInfo) Sys() interface{}   { return nil }
+
+func NewTranscodingCache() (fscache.Cache, error) {
+	lru := fscache.NewLRUHaunter(0, conf.Server.MaxTranscodingCacheSize, 10*time.Minute)
+	h := fscache.NewLRUHaunterStrategy(lru)
+	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.CacheDir)
+	fs, err := fscache.NewFs(cacheFolder, 0755)
+	if err != nil {
+		return nil, err
+	}
+	return fscache.NewCacheWithHaunter(fs, h)
+}
