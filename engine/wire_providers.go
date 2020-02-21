@@ -27,7 +27,7 @@ var Set = wire.NewSet(
 )
 
 func NewTranscodingCache() (fscache.Cache, error) {
-	lru := fscache.NewLRUHaunter(0, conf.Server.MaxTranscodingCacheSize, 30*time.Second)
+	lru := fscache.NewLRUHaunter(0, conf.Server.MaxTranscodingCacheSize, 10*time.Minute)
 	h := fscache.NewLRUHaunterStrategy(lru)
 	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.CacheDir)
 	fs, err := fscache.NewFs(cacheFolder, 0755)
