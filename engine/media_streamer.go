@@ -6,48 +6,42 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/engine/ffmpeg"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
+	"gopkg.in/djherbis/fscache.v0"
 )
 
 type MediaStreamer interface {
 	NewFileSystem(ctx context.Context, maxBitRate int, format string) (http.FileSystem, error)
 }
 
-func NewMediaStreamer(ds model.DataStore, ffm ffmpeg.FFmpeg) MediaStreamer {
-	return &mediaStreamer{ds: ds, ffm: ffm}
+func NewMediaStreamer(ds model.DataStore, ffm ffmpeg.FFmpeg, cache fscache.Cache) MediaStreamer {
+	return &mediaStreamer{ds: ds, ffm: ffm, cache: cache}
 }
 
 type mediaStreamer struct {
-	ds  model.DataStore
-	ffm ffmpeg.FFmpeg
+	ds    model.DataStore
+	ffm   ffmpeg.FFmpeg
+	cache fscache.Cache
 }
 
 func (ms *mediaStreamer) NewFileSystem(ctx context.Context, maxBitRate int, format string) (http.FileSystem, error) {
-	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.CacheDir)
-	err := os.MkdirAll(cacheFolder, 0755)
-	if err != nil {
-		log.Error("Could not create cache folder", "folder", cacheFolder, err)
-		return nil, err
-	}
-	return &mediaFileSystem{ctx: ctx, ds: ms.ds, ffm: ms.ffm, maxBitRate: maxBitRate, format: format, cacheFolder: cacheFolder}, nil
+	return &mediaFileSystem{ctx: ctx, ds: ms.ds, ffm: ms.ffm, cache: ms.cache, maxBitRate: maxBitRate, format: format}, nil
 }
 
 type mediaFileSystem struct {
-	ctx         context.Context
-	ds          model.DataStore
-	maxBitRate  int
-	format      string
-	cacheFolder string
-	ffm         ffmpeg.FFmpeg
+	ctx        context.Context
+	ds         model.DataStore
+	maxBitRate int
+	format     string
+	ffm        ffmpeg.FFmpeg
+	cache      fscache.Cache
 }
 
 func (fs *mediaFileSystem) selectTranscodingOptions(mf *model.MediaFile) (string, int) {
@@ -93,115 +87,87 @@ func (fs *mediaFileSystem) Open(name string) (http.File, error) {
 		return os.Open(mf.Path)
 	}
 
-	cachedFile := fs.cacheFilePath(mf, bitRate, format)
-	if _, err := os.Stat(cachedFile); !os.IsNotExist(err) {
-		log.Debug(fs.ctx, "Streaming cached transcoded", "id", mf.ID, "path", mf.Path,
-			"requestBitrate", bitRate, "requestFormat", format,
-			"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix)
-		return os.Open(cachedFile)
-	}
-
 	log.Debug(fs.ctx, "Streaming transcoded file", "id", mf.ID, "path", mf.Path,
 		"requestBitrate", bitRate, "requestFormat", format,
 		"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix)
 
-	return fs.transcodeFile(mf, bitRate, format, cachedFile)
+	return fs.transcodeFile(mf, bitRate, format)
 }
 
-func (fs *mediaFileSystem) cacheFilePath(mf *model.MediaFile, bitRate int, format string) string {
-	// Break the cache in subfolders, to avoid too many files in the same folder
-	subDir := strings.ToLower(mf.ID[:2])
-	subDir = filepath.Join(fs.cacheFolder, subDir)
-	// Make sure the subfolder to exist
-	os.Mkdir(subDir, 0755)
-	return filepath.Join(subDir, fmt.Sprintf("%s.%d.%s", mf.ID, bitRate, format))
+func (fs *mediaFileSystem) transcodeFile(mf *model.MediaFile, bitRate int, format string) (*transcodingFile, error) {
+	key := fmt.Sprintf("%s.%d.%s", mf.ID, bitRate, format)
+	r, w, err := fs.cache.Get(key)
+	if err != nil {
+		log.Error("Error creating stream caching buffer", "id", mf.ID, err)
+		return nil, os.ErrInvalid
+	}
+
+	// If it is a new file (not found in the cached), start a new transcoding session
+	if w != nil {
+		log.Debug("File not found in cache. Starting new transcoding session", "id", mf.ID)
+		out, err := fs.ffm.StartTranscoding(fs.ctx, mf.Path, bitRate, format)
+		if err != nil {
+			log.Error("Error starting transcoder", "id", mf.ID, err)
+			return nil, os.ErrInvalid
+		}
+		go func() {
+			io.Copy(w, out)
+			out.Close()
+			w.Close()
+		}()
+	} else {
+		log.Debug("Reading transcoded file from cache", "id", mf.ID)
+	}
+
+	return newTranscodingFile(fs.ctx, r, mf, bitRate), nil
 }
 
-func (fs *mediaFileSystem) transcodeFile(mf *model.MediaFile, bitRate int, format, cacheFile string) (*transcodingFile, error) {
-	out, err := fs.ffm.StartTranscoding(fs.ctx, mf.Path, bitRate, format)
-	if err != nil {
-		log.Error("Error starting transcoder", "id", mf.ID, err)
-		return nil, os.ErrInvalid
+// transcodingFile Implements http.File interface, required for the FileSystem. It needs a Closer, a Reader and
+// a Seeker for the same stream. Because the fscache package only provides a ReaderAtCloser (without the Seek()
+// method), we wrap that reader with a SectionReader, which provides a Seek(). But we still need the original
+// reader, as we need to close the stream when the transfer is complete
+func newTranscodingFile(ctx context.Context, reader fscache.ReadAtCloser,
+	mf *model.MediaFile, bitRate int) *transcodingFile {
+
+	size := int64(mf.Duration*float32(bitRate*1000)) / 8
+	return &transcodingFile{
+		ctx:        ctx,
+		mf:         mf,
+		bitRate:    bitRate,
+		size:       size,
+		closer:     reader,
+		ReadSeeker: io.NewSectionReader(reader, 0, size),
 	}
-	buf, err := newStreamBuffer(cacheFile)
-	if err != nil {
-		log.Error("Error creating stream buffer", "id", mf.ID, err)
-		return nil, os.ErrInvalid
-	}
-	r, err := buf.NewReader()
-	if err != nil {
-		log.Error("Error opening stream reader", "id", mf.ID, err)
-		return nil, os.ErrInvalid
-	}
-	go func() {
-		io.Copy(buf, out)
-		out.Close()
-		buf.Sync()
-		buf.Close()
-	}()
-	s := &transcodingFile{
-		ctx:     fs.ctx,
-		mf:      mf,
-		bitRate: bitRate,
-	}
-	s.File = r
-	return s, nil
 }
 
 type transcodingFile struct {
 	ctx     context.Context
 	mf      *model.MediaFile
 	bitRate int
-	http.File
+	size    int64
+	closer  io.Closer
+	io.ReadSeeker
 }
 
-func (h *transcodingFile) Stat() (os.FileInfo, error) {
-	return &streamHandlerFileInfo{mf: h.mf, bitRate: h.bitRate}, nil
+func (tf *transcodingFile) Stat() (os.FileInfo, error) {
+	return &streamHandlerFileInfo{f: tf}, nil
 }
 
-// Don't return EOF, just wait for more data. When the request ends, this "File" will be closed, and then
-// the Read will be interrupted
-func (h *transcodingFile) Read(b []byte) (int, error) {
-	for {
-		n, err := h.File.Read(b)
-		if n > 0 {
-			return n, nil
-		} else if err != io.EOF {
-			return n, err
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+func (tf *transcodingFile) Close() error {
+	return tf.closer.Close()
+}
+
+func (tf *transcodingFile) Readdir(count int) ([]os.FileInfo, error) {
+	return nil, nil
 }
 
 type streamHandlerFileInfo struct {
-	mf      *model.MediaFile
-	bitRate int
+	f *transcodingFile
 }
 
-func (f *streamHandlerFileInfo) Name() string       { return f.mf.Title }
-func (f *streamHandlerFileInfo) Size() int64        { return int64(f.mf.Duration*float32(f.bitRate*1000)) / 8 }
-func (f *streamHandlerFileInfo) Mode() os.FileMode  { return os.FileMode(0777) }
-func (f *streamHandlerFileInfo) ModTime() time.Time { return f.mf.UpdatedAt }
-func (f *streamHandlerFileInfo) IsDir() bool        { return false }
-func (f *streamHandlerFileInfo) Sys() interface{}   { return nil }
-
-// From: https://stackoverflow.com/a/44322300
-type streamBuffer struct {
-	*os.File
-}
-
-func (mb *streamBuffer) NewReader() (http.File, error) {
-	f, err := os.Open(mb.Name())
-	if err != nil {
-		return nil, err
-	}
-	return f, nil
-}
-
-func newStreamBuffer(name string) (*streamBuffer, error) {
-	f, err := os.Create(name)
-	if err != nil {
-		return nil, err
-	}
-	return &streamBuffer{File: f}, nil
-}
+func (fi *streamHandlerFileInfo) Name() string       { return fi.f.mf.Title }
+func (fi *streamHandlerFileInfo) ModTime() time.Time { return fi.f.mf.UpdatedAt }
+func (fi *streamHandlerFileInfo) Size() int64        { return fi.f.size }
+func (fi *streamHandlerFileInfo) Mode() os.FileMode  { return os.FileMode(0777) }
+func (fi *streamHandlerFileInfo) IsDir() bool        { return false }
+func (fi *streamHandlerFileInfo) Sys() interface{}   { return nil }

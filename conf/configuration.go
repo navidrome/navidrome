@@ -13,20 +13,21 @@ import (
 )
 
 type nd struct {
-	Port        string `default:"4533"`
-	MusicFolder string `default:"./music"`
-	DataFolder  string `default:"./"`
-	DbPath      string
-	LogLevel    string `default:"info"`
+	Port         string `default:"4533"`
+	MusicFolder  string `default:"./music"`
+	DataFolder   string `default:"./"`
+	ScanInterval string `default:"1m"`
+	DbPath       string
+	LogLevel     string `default:"info"`
 
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
 	IndexGroups     string `default:"A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)"`
 
-	EnableDownsampling bool   `default:"false"`
-	MaxBitRate         int    `default:"0"`
-	DownsampleCommand  string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
-	ProbeCommand       string `default:"ffmpeg -i %s -f ffmetadata"`
-	ScanInterval       string `default:"1m"`
+	EnableDownsampling      bool   `default:"false"`
+	MaxBitRate              int    `default:"0"`
+	MaxTranscodingCacheSize int64  `default:"100000000"` // 100MB
+	DownsampleCommand       string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
+	ProbeCommand            string `default:"ffmpeg -i %s -f ffmetadata"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevDisableBanner           bool   `default:"false"`

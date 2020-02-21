@@ -31,7 +31,7 @@ func CreateAppRouter(path string) *app.Router {
 	return router
 }
 
-func CreateSubsonicAPIRouter() *subsonic.Router {
+func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
 	dataStore := persistence.New()
 	browser := engine.NewBrowser(dataStore)
 	cover := engine.NewCover(dataStore)
@@ -43,9 +43,13 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	scrobbler := engine.NewScrobbler(dataStore, nowPlayingRepository)
 	search := engine.NewSearch(dataStore)
 	fFmpeg := ffmpeg.New()
-	mediaStreamer := engine.NewMediaStreamer(dataStore, fFmpeg)
+	cache, err := engine.NewTranscodingCache()
+	if err != nil {
+		return nil, err
+	}
+	mediaStreamer := engine.NewMediaStreamer(dataStore, fFmpeg, cache)
 	router := subsonic.New(browser, cover, listGenerator, users, playlists, ratings, scrobbler, search, mediaStreamer)
-	return router
+	return router, nil
 }
 
 // wire_injectors.go:

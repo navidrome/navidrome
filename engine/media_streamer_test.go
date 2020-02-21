@@ -14,32 +14,22 @@ import (
 	"github.com/deluan/navidrome/persistence"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gopkg.in/djherbis/fscache.v0"
 )
 
 var _ = Describe("MediaStreamer", func() {
 
 	var streamer MediaStreamer
 	var ds model.DataStore
-	var tempDir string
 	ctx := log.NewContext(nil)
 
-	BeforeSuite(func() {
-		conf.Server.EnableDownsampling = true
-		tempDir, err := ioutil.TempDir("", "stream_tests")
-		if err != nil {
-			panic(err)
-		}
-		conf.Server.DataFolder = tempDir
-	})
-
 	BeforeEach(func() {
+		conf.Server.EnableDownsampling = true
+		fs := fscache.NewMemFs()
+		cache, _ := fscache.NewCache(fs, nil)
 		ds = &persistence.MockDataStore{}
 		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(`[{"id": "123", "path": "tests/fixtures/test.mp3", "bitRate": 128}]`, 1)
-		streamer = NewMediaStreamer(ds, &fakeFFmpeg{})
-	})
-
-	AfterSuite(func() {
-		os.RemoveAll(tempDir)
+		streamer = NewMediaStreamer(ds, &fakeFFmpeg{}, cache)
 	})
 
 	getFile := func(id string, maxBitRate int, format string) (http.File, error) {
@@ -62,9 +52,6 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(err).To(BeNil())
 			Expect(s).To(BeAssignableToTypeOf(&transcodingFile{}))
 			Expect(s.(*transcodingFile).bitRate).To(Equal(64))
-		})
-		It("returns a File if the transcoding is cached", func() {
-			Expect(getFile("123", 64, "mp3")).To(BeAssignableToTypeOf(&os.File{}))
 		})
 	})
 })
