@@ -26,7 +26,7 @@ func RequestLogger(next http.Handler) http.Handler {
 			r.Context(),
 			message,
 			"remoteAddr", r.RemoteAddr,
-			"lapsedTime", time.Since(start),
+			"elapsedTime", time.Since(start),
 			"httpStatus", ww.Status(),
 			"responseSize", ww.BytesWritten(),
 		}

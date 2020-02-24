@@ -188,7 +188,7 @@ func (r sqlRepository) delete(cond Sqlizer) error {
 }
 
 func (r sqlRepository) logSQL(sql string, args []interface{}, err error, rowsAffected int64, start time.Time) {
-	lapsed := time.Since(start)
+	elapsed := time.Since(start)
 	var fmtArgs []string
 	for i := range args {
 		var f string
@@ -201,9 +201,9 @@ func (r sqlRepository) logSQL(sql string, args []interface{}, err error, rowsAff
 		fmtArgs = append(fmtArgs, f)
 	}
 	if err != nil {
-		log.Error(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, "lapsedTime", lapsed, err)
+		log.Error(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
 	} else {
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, "lapsedTime", lapsed)
+		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, "elapsedTime", elapsed)
 	}
 }
 
