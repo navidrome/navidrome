@@ -21,7 +21,7 @@ var _ = Describe("MediaStreamer", func() {
 	var ds model.DataStore
 	var cache fscache.Cache
 	var tempDir string
-	ffmpeg := &fakeFFmpeg{}
+	ffmpeg := &fakeFFmpeg{Data: "fake data"}
 	ctx := log.NewContext(nil)
 
 	BeforeSuite(func() {
@@ -41,7 +41,7 @@ var _ = Describe("MediaStreamer", func() {
 		os.RemoveAll(tempDir)
 	})
 
-	Context("NewFileSystem", func() {
+	Context("NewStream", func() {
 		It("returns a seekable stream if format is 'raw'", func() {
 			s, err := streamer.NewStream(ctx, "123", 0, "raw")
 			Expect(err).ToNot(HaveOccurred())
@@ -73,12 +73,13 @@ var _ = Describe("MediaStreamer", func() {
 })
 
 type fakeFFmpeg struct {
+	Data   string
 	r      io.Reader
 	closed bool
 }
 
 func (ff *fakeFFmpeg) StartTranscoding(ctx context.Context, path string, maxBitRate int, format string) (f io.ReadCloser, err error) {
-	ff.r = strings.NewReader("fake data")
+	ff.r = strings.NewReader(ff.Data)
 	return ff, nil
 }
 
