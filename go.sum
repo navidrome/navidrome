@@ -176,6 +176,8 @@ gopkg.in/djherbis/atime.v1 v1.0.0 h1:eMRqB/JrLKocla2PBPKgQYg/p5UG4L6AUAs92aP7F60
 gopkg.in/djherbis/atime.v1 v1.0.0/go.mod h1:hQIUStKmJfvf7xdh/wtK84qe+DsTV5LnA9lzxxtPpJ8=
 gopkg.in/djherbis/fscache.v0 v0.9.0 h1:CBmOlHQKg99q0xATpQpSNAR970UN4vECB5SjzkuyLe0=
 gopkg.in/djherbis/fscache.v0 v0.9.0/go.mod h1:izqJMuO+STCEMBEGFiwW5zPlamuiUOxMRpNzHT5cQHc=
+gopkg.in/djherbis/fscache.v0 v0.10.0 h1:wJJkCz2MzdCyMix8MvauD6QztzDECZMfPdz5e736/4g=
+gopkg.in/djherbis/fscache.v0 v0.10.0/go.mod h1:izqJMuO+STCEMBEGFiwW5zPlamuiUOxMRpNzHT5cQHc=
 gopkg.in/djherbis/stream.v1 v1.2.0 h1:3tZuXO+RK8opjw8/BJr780h+eAPwOFfLHCKRKyYxk3s=
 gopkg.in/djherbis/stream.v1 v1.2.0/go.mod h1:aEV8CBVRmSpLamVJfM903Npic1IKmb2qS30VAZ+sssg=
 gopkg.in/fsnotify.v1 v1.4.7 h1:xOHLXZwVvI9hhs+cLKq5+I5onOuwQLhQwiu63xxlHs4=
