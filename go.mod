@@ -10,6 +10,7 @@ require (
 	github.com/deluan/rest v0.0.0-20200114062534-0653ffe9eab4
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dhowden/tag v0.0.0-20191122115059-7e5c04feccd8
+	github.com/djherbis/fscache v0.10.0
 	github.com/fatih/camelcase v0.0.0-20160318181535-f6a740d52f96 // indirect
 	github.com/fatih/structs v1.0.0 // indirect
 	github.com/go-chi/chi v4.0.3+incompatible
@@ -39,7 +40,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
-	gopkg.in/djherbis/fscache.v0 v0.9.0
 	gopkg.in/djherbis/stream.v1 v1.2.0 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )

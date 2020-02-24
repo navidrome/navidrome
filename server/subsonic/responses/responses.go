@@ -112,8 +112,8 @@ type Child struct {
 	Type                  string     `xml:"type,attr,omitempty"                     json:"type,omitempty"`
 	UserRating            int        `xml:"userRating,attr,omitempty"               json:"userRating,omitempty"`
 	SongCount             int        `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
+	IsVideo               bool       `xml:"isVideo,attr"                            json:"isVideo"`
 	/*
-	   <xs:attribute name="isVideo" type="xs:boolean" use="optional"/>  <!-- Added in 1.4.1 -->
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
 	   <xs:attribute name="bookmarkPosition" type="xs:long" use="optional"/>  <!-- In millis. Added in 1.10.1 -->
 	   <xs:attribute name="originalWidth" type="xs:int" use="optional"/>  <!-- Added in 1.13.0 -->

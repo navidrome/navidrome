@@ -105,7 +105,7 @@ func FromMediaFile(mf *model.MediaFile) Entry {
 	e.Created = mf.CreatedAt
 	e.AlbumId = mf.AlbumID
 	e.ArtistId = mf.ArtistID
-	e.Type = "music" // TODO Hardcoded for now
+	e.Type = "music"
 	e.PlayCount = int32(mf.PlayCount)
 	e.Starred = mf.StarredAt
 	e.UserRating = mf.Rating

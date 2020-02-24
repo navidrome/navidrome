@@ -133,6 +133,7 @@ func ToChild(entry engine.Entry) responses.Child {
 	child.AlbumId = entry.AlbumId
 	child.ArtistId = entry.ArtistId
 	child.Type = entry.Type
+	child.IsVideo = false
 	child.UserRating = entry.UserRating
 	child.SongCount = entry.SongCount
 	// TODO Must be dynamic, based on player/transcoding config
