@@ -39,7 +39,7 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 	if len(q) < 2 {
 		return nil
 	}
-	sq := Select("*").From(r.tableName)
+	sq := r.newSelectWithAnnotation(r.tableName + ".id").Columns("*")
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 	if len(orderBys) > 0 {
 		sq = sq.OrderBy(orderBys...)

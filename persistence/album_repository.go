@@ -41,7 +41,7 @@ func (r *albumRepository) Put(a *model.Album) error {
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelectWithAnnotation("id", options...).Columns("*")
+	return r.newSelectWithAnnotation("album.id", options...).Columns("*")
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {

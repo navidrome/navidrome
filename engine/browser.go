@@ -165,8 +165,11 @@ func (b *browser) buildAlbumDir(al *model.Album, tracks model.MediaFiles) *Direc
 		Genre:      al.Genre,
 		CoverArt:   al.CoverArtId,
 		PlayCount:  int32(al.PlayCount),
-		Starred:    al.StarredAt,
 		UserRating: al.Rating,
+	}
+
+	if al.Starred {
+		dir.Starred = al.StarredAt
 	}
 
 	dir.Entries = FromMediaFiles(tracks)

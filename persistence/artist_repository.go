@@ -29,7 +29,7 @@ func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepositor
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelectWithAnnotation("id", options...).Columns("*")
+	return r.newSelectWithAnnotation("artist.id", options...).Columns("*")
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
