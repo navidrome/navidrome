@@ -1,4 +1,4 @@
-package ffmpeg
+package transcoder
 
 import (
 	"testing"
@@ -10,11 +10,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestFFmpeg(t *testing.T) {
+func TestTranscoder(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "FFmpeg Suite")
+	RunSpecs(t, "Transcoder Suite")
 }
 
 var _ = Describe("createTranscodeCommand", func() {

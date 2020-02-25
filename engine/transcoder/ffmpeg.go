@@ -1,4 +1,4 @@
-package ffmpeg
+package transcoder
 
 import (
 	"context"
@@ -12,30 +12,30 @@ import (
 	"github.com/deluan/navidrome/log"
 )
 
-type FFmpeg interface {
-	StartTranscoding(ctx context.Context, path string, maxBitRate int, format string) (f io.ReadCloser, err error)
+type Transcoder interface {
+	Start(ctx context.Context, path string, maxBitRate int, format string) (f io.ReadCloser, err error)
 }
 
-func New() FFmpeg {
+func New() Transcoder {
 	return &ffmpeg{}
 }
 
 type ffmpeg struct{}
 
-func (ff *ffmpeg) StartTranscoding(ctx context.Context, path string, maxBitRate int, format string) (f io.ReadCloser, err error) {
-	cmdLine, args := createTranscodeCommand(path, maxBitRate, format)
+func (ff *ffmpeg) Start(ctx context.Context, path string, maxBitRate int, format string) (f io.ReadCloser, err error) {
+	arg0, args := createTranscodeCommand(path, maxBitRate, format)
 
-	log.Trace(ctx, "Executing ffmpeg command", "arg0", cmdLine, "args", args)
-	cmd := exec.Command(cmdLine, args...)
+	log.Trace(ctx, "Executing ffmpeg command", "cmd", arg0, "args", args)
+	cmd := exec.Command(arg0, args...)
 	cmd.Stderr = os.Stderr
 	if f, err = cmd.StdoutPipe(); err != nil {
-		return f, err
+		return
 	}
 	if err = cmd.Start(); err != nil {
-		return f, err
+		return
 	}
 	go cmd.Wait() // prevent zombies
-	return f, err
+	return
 }
 
 func createTranscodeCommand(path string, maxBitRate int, format string) (string, []string) {

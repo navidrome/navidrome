@@ -7,7 +7,7 @@ package main
 
 import (
 	"github.com/deluan/navidrome/engine"
-	"github.com/deluan/navidrome/engine/ffmpeg"
+	"github.com/deluan/navidrome/engine/transcoder"
 	"github.com/deluan/navidrome/persistence"
 	"github.com/deluan/navidrome/scanner"
 	"github.com/deluan/navidrome/server"
@@ -42,12 +42,12 @@ func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
 	ratings := engine.NewRatings(dataStore)
 	scrobbler := engine.NewScrobbler(dataStore, nowPlayingRepository)
 	search := engine.NewSearch(dataStore)
-	fFmpeg := ffmpeg.New()
+	transcoderTranscoder := transcoder.New()
 	cache, err := engine.NewTranscodingCache()
 	if err != nil {
 		return nil, err
 	}
-	mediaStreamer := engine.NewMediaStreamer(dataStore, fFmpeg, cache)
+	mediaStreamer := engine.NewMediaStreamer(dataStore, transcoderTranscoder, cache)
 	router := subsonic.New(browser, cover, listGenerator, users, playlists, ratings, scrobbler, search, mediaStreamer)
 	return router, nil
 }

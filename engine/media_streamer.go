@@ -11,7 +11,7 @@ import (
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/engine/ffmpeg"
+	"github.com/deluan/navidrome/engine/transcoder"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
@@ -22,13 +22,13 @@ type MediaStreamer interface {
 	NewStream(ctx context.Context, id string, maxBitRate int, format string) (*Stream, error)
 }
 
-func NewMediaStreamer(ds model.DataStore, ffm ffmpeg.FFmpeg, cache fscache.Cache) MediaStreamer {
+func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache fscache.Cache) MediaStreamer {
 	return &mediaStreamer{ds: ds, ffm: ffm, cache: cache}
 }
 
 type mediaStreamer struct {
 	ds    model.DataStore
-	ffm   ffmpeg.FFmpeg
+	ffm   transcoder.Transcoder
 	cache fscache.Cache
 }
 
@@ -66,7 +66,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, maxBitRate in
 	// If this is a brand new transcoding request, not in the cache, start transcoding
 	if w != nil {
 		log.Trace(ctx, "Cache miss. Starting new transcoding session", "id", mf.ID)
-		out, err := ms.ffm.StartTranscoding(ctx, mf.Path, bitRate, format)
+		out, err := ms.ffm.Start(ctx, mf.Path, bitRate, format)
 		if err != nil {
 			log.Error(ctx, "Error starting transcoder", "id", mf.ID, err)
 			return nil, os.ErrInvalid

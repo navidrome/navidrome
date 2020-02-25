@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"github.com/deluan/navidrome/engine/ffmpeg"
+	"github.com/deluan/navidrome/engine/transcoder"
 	"github.com/google/wire"
 )
 
@@ -16,6 +16,6 @@ var Set = wire.NewSet(
 	NewNowPlayingRepository,
 	NewUsers,
 	NewMediaStreamer,
-	ffmpeg.New,
+	transcoder.New,
 	NewTranscodingCache,
 )

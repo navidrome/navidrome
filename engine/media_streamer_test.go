@@ -78,7 +78,7 @@ type fakeFFmpeg struct {
 	closed bool
 }
 
-func (ff *fakeFFmpeg) StartTranscoding(ctx context.Context, path string, maxBitRate int, format string) (f io.ReadCloser, err error) {
+func (ff *fakeFFmpeg) Start(ctx context.Context, path string, maxBitRate int, format string) (f io.ReadCloser, err error) {
 	ff.r = strings.NewReader(ff.Data)
 	return ff, nil
 }
