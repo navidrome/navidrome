@@ -38,7 +38,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, maxBitRate in
 		return nil, err
 	}
 
-	format, bitRate := selectTranscodingOptions(mf, maxBitRate, reqFormat)
+	bitRate, format := selectTranscodingOptions(mf, maxBitRate, reqFormat)
 	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
 
 	if format == "raw" {
@@ -133,11 +133,11 @@ func (s *Stream) ContentType() string { return mime.TypeByExtension("." + s.form
 func (s *Stream) Name() string        { return s.mf.Path }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
 
-func selectTranscodingOptions(mf *model.MediaFile, maxBitRate int, format string) (string, int) {
+func selectTranscodingOptions(mf *model.MediaFile, maxBitRate int, format string) (int, string) {
 	var bitRate int
 
 	if format == "raw" || !conf.Server.EnableDownsampling {
-		return "raw", bitRate
+		return bitRate, "raw"
 	} else {
 		if maxBitRate == 0 {
 			bitRate = mf.BitRate
@@ -151,9 +151,9 @@ func selectTranscodingOptions(mf *model.MediaFile, maxBitRate int, format string
 	}
 
 	if bitRate == mf.BitRate {
-		return "raw", bitRate
+		return bitRate, "raw"
 	}
-	return format, bitRate
+	return bitRate, format
 }
 
 func cacheKey(id string, bitRate int, format string) string {
