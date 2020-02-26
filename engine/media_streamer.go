@@ -172,7 +172,7 @@ func getFinalCachedSize(r fscache.ReadAtCloser) int64 {
 }
 
 func NewTranscodingCache() (fscache.Cache, error) {
-	lru := fscache.NewLRUHaunter(0, conf.Server.MaxTranscodingCacheSize, 10*time.Minute)
+	lru := fscache.NewLRUHaunter(0, conf.Server.MaxTranscodingCacheSize*1024*1024, 10*time.Minute)
 	h := fscache.NewLRUHaunterStrategy(lru)
 	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.CacheDir)
 	fs, err := fscache.NewFs(cacheFolder, 0755)

@@ -25,7 +25,7 @@ type nd struct {
 
 	EnableDownsampling      bool   `default:"false"`
 	MaxBitRate              int    `default:"0"`
-	MaxTranscodingCacheSize int64  `default:"100000000"` // 100MB
+	MaxTranscodingCacheSize int64  `default:"100"` // in MB
 	DownsampleCommand       string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
 	ProbeCommand            string `default:"ffmpeg -i %s -f ffmetadata"`
 
