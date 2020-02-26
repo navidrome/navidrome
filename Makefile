@@ -1,5 +1,5 @@
 GO_VERSION=1.14
-NODE_VERSION=v13.7.0
+NODE_VERSION=v13.9.0
 
 GIT_SHA=$(shell git rev-parse --short HEAD)
 
