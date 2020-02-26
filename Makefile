@@ -1,4 +1,4 @@
-GO_VERSION=1.13
+GO_VERSION=1.14
 NODE_VERSION=v13.7.0
 
 GIT_SHA=$(shell git rev-parse --short HEAD)
@@ -51,7 +51,7 @@ check_env: check_go_env check_node_env
 .PHONY: check_go_env
 check_go_env:
 	@(hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
-	@go version | grep -q $(GO_VERSION) || (echo "\nERROR: Please upgrade your GO version\n"; exit 1)
+	@go version | grep -q $(GO_VERSION) || (echo "\nERROR: Please upgrade your GO version\nThis project requires version $(GO_VERSION)"; exit 1)
 
 .PHONY: check_node_env
 check_node_env:
@@ -79,4 +79,4 @@ release:
 
 .PHONY: dist
 dist:
-	 docker run -it -v $(PWD):/github/workspace -w /github/workspace bepsays/ci-goreleaser:1.13-4 goreleaser release --rm-dist --skip-publish --snapshot
+	 docker run -it -v $(PWD):/github/workspace -w /github/workspace bepsays/ci-goreleaser:1.14-1 goreleaser release --rm-dist --skip-publish --snapshot

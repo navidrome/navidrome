@@ -24,7 +24,7 @@ jobs:
       - name: Fetch tags
         run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       - name: Run GoReleaser
-        uses: docker://bepsays/ci-goreleaser:latest
+        uses: docker://bepsays/ci-goreleaser:1.14-1
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
