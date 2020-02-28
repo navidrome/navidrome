@@ -83,7 +83,7 @@ func LoadFromFile(confFile string, skipFlags ...bool) {
 		os.Exit(2)
 	}
 	if Server.DbPath == "" {
-		Server.DbPath = filepath.Join(Server.DataFolder, "navidrome.db")
+		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
 	}
 	if os.Getenv("PORT") != "" {
 		Server.Port = os.Getenv("PORT")
