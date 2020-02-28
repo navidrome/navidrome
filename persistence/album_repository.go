@@ -71,12 +71,7 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 // TODO Keep order when paginating
 func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums, error) {
 	sq := r.selectAlbum(options...)
-	switch r.ormer.Driver().Type() {
-	case orm.DRMySQL:
-		sq = sq.OrderBy("RAND()")
-	default:
-		sq = sq.OrderBy("RANDOM()")
-	}
+	sq = sq.OrderBy("RANDOM()")
 	results := model.Albums{}
 	err := r.queryAll(sq, &results)
 	return results, err
