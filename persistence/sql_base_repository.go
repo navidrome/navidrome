@@ -160,6 +160,8 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 
 func (r sqlRepository) put(id string, m interface{}) (newId string, err error) {
 	values, _ := toSqlArgs(m)
+	createdAt := values["created_at"]
+	delete(values, "created_at")
 	if id != "" {
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(values)
 		count, err := r.executeSQL(update)
@@ -175,6 +177,9 @@ func (r sqlRepository) put(id string, m interface{}) (newId string, err error) {
 		rand, _ := uuid.NewRandom()
 		id = rand.String()
 		values["id"] = id
+	}
+	if createdAt != nil {
+		values["created_at"] = createdAt
 	}
 	insert := Insert(r.tableName).SetMap(values)
 	_, err = r.executeSQL(insert)
