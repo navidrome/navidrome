@@ -99,8 +99,11 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 		return 0, err
 	}
 	start := time.Now()
+	var c int64
 	res, err := r.ormer.Raw(query, args...).Exec()
-	c, _ := res.RowsAffected()
+	if res != nil {
+		c, _ = res.RowsAffected()
+	}
 	r.logSQL(query, args, err, c, start)
 	if err != nil {
 		if err.Error() != "LastInsertId is not supported by this driver" {
