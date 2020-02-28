@@ -2,7 +2,7 @@ package migration
 
 import (
 	"database/sql"
-	"github.com/deluan/navidrome/log"
+
 	"github.com/pressly/goose"
 )
 
@@ -11,7 +11,7 @@ func init() {
 }
 
 func Up20200220143731(tx *sql.Tx) error {
-	log.Warn("This migration will force the next scan to be a full rescan!")
+	notice(tx, "This migration will force the next scan to be a full rescan!")
 	_, err := tx.Exec(`
 create table media_file_dg_tmp
 (
