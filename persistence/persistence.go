@@ -20,65 +20,62 @@ type SQLStore struct {
 }
 
 func New() model.DataStore {
-	once.Do(func() {
-		err := orm.RegisterDataBase("default", db.Driver, db.Path)
-		if err != nil {
-			panic(err)
-		}
-	})
 	return &SQLStore{}
 }
 
-func (db *SQLStore) Album(ctx context.Context) model.AlbumRepository {
-	return NewAlbumRepository(ctx, db.getOrmer())
+func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
+	return NewAlbumRepository(ctx, s.getOrmer())
 }
 
-func (db *SQLStore) Artist(ctx context.Context) model.ArtistRepository {
-	return NewArtistRepository(ctx, db.getOrmer())
+func (s *SQLStore) Artist(ctx context.Context) model.ArtistRepository {
+	return NewArtistRepository(ctx, s.getOrmer())
 }
 
-func (db *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
-	return NewMediaFileRepository(ctx, db.getOrmer())
+func (s *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+	return NewMediaFileRepository(ctx, s.getOrmer())
 }
 
-func (db *SQLStore) MediaFolder(ctx context.Context) model.MediaFolderRepository {
-	return NewMediaFolderRepository(ctx, db.getOrmer())
+func (s *SQLStore) MediaFolder(ctx context.Context) model.MediaFolderRepository {
+	return NewMediaFolderRepository(ctx, s.getOrmer())
 }
 
-func (db *SQLStore) Genre(ctx context.Context) model.GenreRepository {
-	return NewGenreRepository(ctx, db.getOrmer())
+func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
+	return NewGenreRepository(ctx, s.getOrmer())
 }
 
-func (db *SQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
-	return NewPlaylistRepository(ctx, db.getOrmer())
+func (s *SQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
+	return NewPlaylistRepository(ctx, s.getOrmer())
 }
 
-func (db *SQLStore) Property(ctx context.Context) model.PropertyRepository {
-	return NewPropertyRepository(ctx, db.getOrmer())
+func (s *SQLStore) Property(ctx context.Context) model.PropertyRepository {
+	return NewPropertyRepository(ctx, s.getOrmer())
 }
 
-func (db *SQLStore) User(ctx context.Context) model.UserRepository {
-	return NewUserRepository(ctx, db.getOrmer())
+func (s *SQLStore) User(ctx context.Context) model.UserRepository {
+	return NewUserRepository(ctx, s.getOrmer())
 }
 
-func (db *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
+func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
-		return db.User(ctx).(model.ResourceRepository)
+		return s.User(ctx).(model.ResourceRepository)
 	case model.Artist:
-		return db.Artist(ctx).(model.ResourceRepository)
+		return s.Artist(ctx).(model.ResourceRepository)
 	case model.Album:
-		return db.Album(ctx).(model.ResourceRepository)
+		return s.Album(ctx).(model.ResourceRepository)
 	case model.MediaFile:
-		return db.MediaFile(ctx).(model.ResourceRepository)
+		return s.MediaFile(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource no implemented", "model", reflect.TypeOf(m).Name())
 	return nil
 }
 
-func (db *SQLStore) WithTx(block func(tx model.DataStore) error) error {
-	o := orm.NewOrm()
-	err := o.Begin()
+func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
+	o, err := orm.NewOrmWithDB(db.Driver, "default", db.Db())
+	if err != nil {
+		return err
+	}
+	err = o.Begin()
 	if err != nil {
 		return err
 	}
@@ -101,41 +98,45 @@ func (db *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 	return nil
 }
 
-func (db *SQLStore) GC(ctx context.Context) error {
-	err := db.Album(ctx).PurgeEmpty()
+func (s *SQLStore) GC(ctx context.Context) error {
+	err := s.Album(ctx).PurgeEmpty()
 	if err != nil {
 		return err
 	}
-	err = db.Artist(ctx).PurgeEmpty()
+	err = s.Artist(ctx).PurgeEmpty()
 	if err != nil {
 		return err
 	}
-	err = db.MediaFile(ctx).(*mediaFileRepository).cleanSearchIndex()
+	err = s.MediaFile(ctx).(*mediaFileRepository).cleanSearchIndex()
 	if err != nil {
 		return err
 	}
-	err = db.Album(ctx).(*albumRepository).cleanSearchIndex()
+	err = s.Album(ctx).(*albumRepository).cleanSearchIndex()
 	if err != nil {
 		return err
 	}
-	err = db.Artist(ctx).(*artistRepository).cleanSearchIndex()
+	err = s.Artist(ctx).(*artistRepository).cleanSearchIndex()
 	if err != nil {
 		return err
 	}
-	err = db.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations()
+	err = s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations()
 	if err != nil {
 		return err
 	}
-	err = db.Album(ctx).(*albumRepository).cleanAnnotations()
+	err = s.Album(ctx).(*albumRepository).cleanAnnotations()
 	if err != nil {
 		return err
 	}
-	return db.Artist(ctx).(*artistRepository).cleanAnnotations()
+	return s.Artist(ctx).(*artistRepository).cleanAnnotations()
 }
 
-func (db *SQLStore) getOrmer() orm.Ormer {
-	if db.orm == nil {
-		return orm.NewOrm()
+func (s *SQLStore) getOrmer() orm.Ormer {
+	if s.orm == nil {
+		o, err := orm.NewOrmWithDB(db.Driver, "default", db.Db())
+		if err != nil {
+			log.Error("Error obtaining new orm instance", err)
+		}
+		return o
 	}
-	return db.orm
+	return s.orm
 }

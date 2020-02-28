@@ -13,32 +13,36 @@ import (
 )
 
 var (
-	once   sync.Once
 	Driver = "sqlite3"
 	Path   string
 )
 
-func Init() {
+var (
+	once sync.Once
+	db   *sql.DB
+)
+
+func Db() *sql.DB {
 	once.Do(func() {
+		var err error
 		Path = conf.Server.DbPath
 		if Path == ":memory:" {
 			Path = "file::memory:?cache=shared"
 			conf.Server.DbPath = Path
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
+		db, err = sql.Open(Driver, Path)
+		if err != nil {
+			panic(err)
+		}
 	})
+	return db
 }
 
 func EnsureLatestVersion() {
-	Init()
-	db, err := sql.Open(Driver, Path)
-	defer db.Close()
-	if err != nil {
-		log.Error("Failed to open DB", err)
-		os.Exit(1)
-	}
+	db := Db()
 
-	err = goose.SetDialect(Driver)
+	err := goose.SetDialect(Driver)
 	if err != nil {
 		log.Error("Invalid DB driver", "driver", Driver, err)
 		os.Exit(1)
