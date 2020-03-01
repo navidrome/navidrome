@@ -22,6 +22,7 @@ type UserRepository interface {
 	CountAll(...QueryOptions) (int64, error)
 	Get(id string) (*User, error)
 	Put(*User) error
+	// FindByUsername must be case-insensitive
 	FindByUsername(username string) (*User, error)
 	UpdateLastLoginAt(id string) error
 	UpdateLastAccessAt(id string) error
