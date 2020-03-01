@@ -5,6 +5,7 @@ import authProvider from './authProvider'
 import polyglotI18nProvider from 'ra-i18n-polyglot'
 import messages from './i18n'
 import { DarkTheme, Layout, Login } from './layout'
+import transcoding from './transcoding'
 import user from './user'
 import song from './song'
 import album from './album'
@@ -44,7 +45,16 @@ const App = () => {
         <Resource name="album" {...album} options={{ subMenu: 'library' }} />,
         <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
         <Resource name="albumSong" />,
-        permissions === 'admin' ? <Resource name="user" {...user} /> : null,
+        permissions === 'admin' ? (
+          <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
+        ) : null,
+        permissions === 'admin' ? (
+          <Resource
+            name="transcoding"
+            {...transcoding}
+            options={{ subMenu: 'settings' }}
+          />
+        ) : null,
         <Player />
       ]}
     </Admin>

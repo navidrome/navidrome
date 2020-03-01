@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,6 +13,10 @@ import (
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
+)
+
+const (
+	cookieExpiry = 365 * 24 * 3600 // One year
 )
 
 func postFormToQueryParams(next http.Handler) http.Handler {
@@ -82,10 +87,54 @@ func authenticate(users engine.Users) func(next http.Handler) http.Handler {
 			}
 
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, "user", usr)
+			ctx = context.WithValue(ctx, "user", *usr)
 			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func getPlayer(players engine.Players) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			userName := ctx.Value("username").(string)
+			client := ctx.Value("client").(string)
+			playerId := playerIDFromCookie(r, userName)
+			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+			player, err := players.Register(ctx, playerId, client, r.Header.Get("user-agent"), ip)
+			if err != nil {
+				log.Error("Could not register player", "userName", userName, "client", client)
+			}
+
+			ctx = context.WithValue(ctx, "player", *player)
+			r = r.WithContext(ctx)
+
+			cookie := &http.Cookie{
+				Name:     playerIDCookieName(userName),
+				Value:    player.ID,
+				MaxAge:   cookieExpiry,
+				HttpOnly: true,
+				Path:     "/",
+			}
+			http.SetCookie(w, cookie)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func playerIDFromCookie(r *http.Request, userName string) string {
+	cookieName := playerIDCookieName(userName)
+	var playerId string
+	if c, err := r.Cookie(cookieName); err == nil {
+		playerId = c.Value
+		log.Trace(r, "playerId found in cookies", "playerId", playerId)
+	}
+	return playerId
+}
+
+func playerIDCookieName(userName string) string {
+	cookieName := fmt.Sprintf("nd-player-%x", userName)
+	return cookieName
 }

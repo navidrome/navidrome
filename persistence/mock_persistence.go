@@ -12,6 +12,7 @@ type MockDataStore struct {
 	MockedArtist    model.ArtistRepository
 	MockedMediaFile model.MediaFileRepository
 	MockedUser      model.UserRepository
+	MockedPlayer    model.PlayerRepository
 }
 
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {
@@ -59,6 +60,17 @@ func (db *MockDataStore) User(context.Context) model.UserRepository {
 		db.MockedUser = &mockedUserRepo{}
 	}
 	return db.MockedUser
+}
+
+func (db *MockDataStore) Transcoding(context.Context) model.TranscodingRepository {
+	return struct{ model.TranscodingRepository }{}
+}
+
+func (db *MockDataStore) Player(context.Context) model.PlayerRepository {
+	if db.MockedPlayer != nil {
+		return db.MockedPlayer
+	}
+	return struct{ model.PlayerRepository }{}
 }
 
 func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {

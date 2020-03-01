@@ -107,33 +107,78 @@ var _ = Describe("Middlewares", func() {
 	})
 
 	Describe("Authenticate", func() {
-		var mockedUser *mockUsers
+		var mockedUsers *mockUsers
 		BeforeEach(func() {
-			mockedUser = &mockUsers{}
+			mockedUsers = &mockUsers{}
 		})
 
 		It("passes all parameters to users.Authenticate ", func() {
 			r := newGetRequest("u=valid", "p=password", "t=token", "s=salt", "jwt=jwt")
-			cp := authenticate(mockedUser)(next)
+			cp := authenticate(mockedUsers)(next)
 			cp.ServeHTTP(w, r)
 
-			Expect(mockedUser.username).To(Equal("valid"))
-			Expect(mockedUser.password).To(Equal("password"))
-			Expect(mockedUser.token).To(Equal("token"))
-			Expect(mockedUser.salt).To(Equal("salt"))
-			Expect(mockedUser.jwt).To(Equal("jwt"))
+			Expect(mockedUsers.username).To(Equal("valid"))
+			Expect(mockedUsers.password).To(Equal("password"))
+			Expect(mockedUsers.token).To(Equal("token"))
+			Expect(mockedUsers.salt).To(Equal("salt"))
+			Expect(mockedUsers.jwt).To(Equal("jwt"))
 			Expect(next.called).To(BeTrue())
-			user := next.req.Context().Value("user").(*model.User)
+			user := next.req.Context().Value("user").(model.User)
 			Expect(user.UserName).To(Equal("valid"))
 		})
 
 		It("fails authentication with wrong password", func() {
 			r := newGetRequest("u=invalid", "", "", "")
-			cp := authenticate(mockedUser)(next)
+			cp := authenticate(mockedUsers)(next)
 			cp.ServeHTTP(w, r)
 
 			Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
 			Expect(next.called).To(BeFalse())
+		})
+	})
+
+	Describe("GetPlayer", func() {
+		var mockedPlayers *mockPlayers
+		var r *http.Request
+		BeforeEach(func() {
+			mockedPlayers = &mockPlayers{}
+			r = newGetRequest()
+			ctx := context.WithValue(r.Context(), "username", "someone")
+			ctx = context.WithValue(ctx, "client", "client")
+			r = r.WithContext(ctx)
+		})
+
+		It("returns a new player in the cookies when none is specified", func() {
+			gp := getPlayer(mockedPlayers)(next)
+			gp.ServeHTTP(w, r)
+
+			cookieStr := w.Header().Get("Set-Cookie")
+			Expect(cookieStr).To(ContainSubstring(playerIDCookieName("someone")))
+		})
+
+		Context("PlayerId specified in Cookies", func() {
+			BeforeEach(func() {
+				cookie := &http.Cookie{
+					Name:   playerIDCookieName("someone"),
+					Value:  "123",
+					MaxAge: cookieExpiry,
+				}
+				r.AddCookie(cookie)
+
+				gp := getPlayer(mockedPlayers)(next)
+				gp.ServeHTTP(w, r)
+			})
+
+			It("stores the player in the context", func() {
+				Expect(next.called).To(BeTrue())
+				player := next.req.Context().Value("player").(model.Player)
+				Expect(player.ID).To(Equal("123"))
+			})
+
+			It("returns the playerId in the cookie", func() {
+				cookieStr := w.Header().Get("Set-Cookie")
+				Expect(cookieStr).To(ContainSubstring(playerIDCookieName("someone") + "=123"))
+			})
 		})
 	})
 })
@@ -163,4 +208,16 @@ func (m *mockUsers) Authenticate(ctx context.Context, username, password, token,
 		return &model.User{UserName: username, Password: password}, nil
 	}
 	return nil, model.ErrInvalidAuth
+}
+
+type mockPlayers struct {
+	engine.Players
+}
+
+func (mp *mockPlayers) Get(ctx context.Context, playerId string) (*model.Player, error) {
+	return &model.Player{ID: playerId}, nil
+}
+
+func (mp *mockPlayers) Register(ctx context.Context, id, client, typ, ip string) (*model.Player, error) {
+	return &model.Player{ID: id}, nil
 }

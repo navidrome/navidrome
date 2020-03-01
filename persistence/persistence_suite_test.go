@@ -86,7 +86,7 @@ var _ = Describe("Initialize test DB", func() {
 	// TODO Load this data setup from file(s)
 	BeforeSuite(func() {
 		o := orm.NewOrm()
-		ctx := context.WithValue(log.NewContext(nil), "user", &model.User{ID: "userid"})
+		ctx := context.WithValue(log.NewContext(nil), "user", model.User{ID: "userid"})
 		mr := NewMediaFileRepository(ctx, o)
 		for _, s := range testSongs {
 			err := mr.Put(&s)

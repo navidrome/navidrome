@@ -29,7 +29,7 @@ func userId(ctx context.Context) string {
 	if user == nil {
 		return invalidUserId
 	}
-	usr := user.(*model.User)
+	usr := user.(model.User)
 	return usr.ID
 }
 
@@ -38,7 +38,8 @@ func loggedUser(ctx context.Context) *model.User {
 	if user == nil {
 		return &model.User{}
 	}
-	return user.(*model.User)
+	u := user.(model.User)
+	return &u
 }
 
 func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
