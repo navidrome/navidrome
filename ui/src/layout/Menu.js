@@ -4,6 +4,7 @@ import { useMediaQuery } from '@material-ui/core'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
+import SettingsIcon from '@material-ui/icons/Settings'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import SubMenu from './SubMenu'
 import inflection from 'inflection'
@@ -27,7 +28,8 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const resources = useSelector(getResources)
 
   const [state, setState] = useState({
-    menuLibrary: true
+    menuLibrary: true,
+    menuSettings: false
   })
 
   const handleToggle = (menu) => {
@@ -62,6 +64,16 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         dense={dense}
       >
         {resources.filter(subItems('library')).map(renderMenuItemLink)}
+      </SubMenu>
+      <SubMenu
+        handleToggle={() => handleToggle('menuSettings')}
+        isOpen={state.menuSettings}
+        sidebarIsOpen={open}
+        name="menu.settings"
+        icon={<SettingsIcon />}
+        dense={dense}
+      >
+        {resources.filter(subItems('settings')).map(renderMenuItemLink)}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderMenuItemLink)}
       {isXsmall && logout}

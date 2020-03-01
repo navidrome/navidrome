@@ -27,16 +27,17 @@ type Router struct {
 	Search        engine.Search
 	Users         engine.Users
 	Streamer      engine.MediaStreamer
+	Players       engine.Players
 
 	mux http.Handler
 }
 
 func New(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator, users engine.Users,
 	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search,
-	streamer engine.MediaStreamer) *Router {
+	streamer engine.MediaStreamer, players engine.Players) *Router {
 
 	r := &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
-		Ratings: ratings, Scrobbler: scrobbler, Search: search, Users: users, Streamer: streamer}
+		Ratings: ratings, Scrobbler: scrobbler, Search: search, Users: users, Streamer: streamer, Players: players}
 	r.mux = r.routes()
 	return r
 }
@@ -50,6 +51,7 @@ func (api *Router) routes() http.Handler {
 
 	r.Use(postFormToQueryParams)
 	r.Use(checkRequiredParameters)
+	r.Use(getPlayer(api.Players))
 
 	// Add validation middleware
 	r.Use(authenticate(api.Users))

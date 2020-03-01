@@ -40,7 +40,8 @@ export default deepmerge(englishMessages, {
     }
   },
   menu: {
-    library: 'Library'
+    library: 'Library',
+    settings: 'Settings'
   },
   player: {
     panelTitle: 'Play Queue',

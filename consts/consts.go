@@ -20,3 +20,20 @@ const (
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 )
+
+var (
+	DefaultTranscodings = []map[string]interface{}{
+		{
+			"name":           "mp3 audio",
+			"targetFormat":   "mp3",
+			"defaultBitRate": 192,
+			"command":        "ffmpeg -i %s -ab %bk -v 0 -f mp3 -",
+		},
+		{
+			"name":           "opus audio",
+			"targetFormat":   "oga",
+			"defaultBitRate": 128,
+			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+		},
+	}
+)

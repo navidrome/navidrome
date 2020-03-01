@@ -55,10 +55,22 @@ func (s *SQLStore) User(ctx context.Context) model.UserRepository {
 	return NewUserRepository(ctx, s.getOrmer())
 }
 
+func (s *SQLStore) Transcoding(ctx context.Context) model.TranscodingRepository {
+	return NewTranscodingRepository(ctx, s.getOrmer())
+}
+
+func (s *SQLStore) Player(ctx context.Context) model.PlayerRepository {
+	return NewPlayerRepository(ctx, s.getOrmer())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
 		return s.User(ctx).(model.ResourceRepository)
+	case model.Transcoding:
+		return s.Transcoding(ctx).(model.ResourceRepository)
+	case model.Player:
+		return s.Player(ctx).(model.ResourceRepository)
 	case model.Artist:
 		return s.Artist(ctx).(model.ResourceRepository)
 	case model.Album:
