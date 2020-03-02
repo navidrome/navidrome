@@ -21,6 +21,13 @@ export const AlbumActions = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
 
+  // TODO Not sure why data is accumulating tracks from previous plays... Needs investigation. For now, filter out
+  // the unwanted tracks
+  const filteredData = ids.reduce((acc, id) => {
+    acc[id] = data[id]
+    return acc
+  }, {})
+
   const shuffle = (data) => {
     const ids = Object.keys(data)
     for (let i = ids.length - 1; i > 0; i--) {
@@ -37,7 +44,7 @@ export const AlbumActions = ({
       <Button
         color={'secondary'}
         onClick={() => {
-          dispatch(playAlbum(ids[0], data))
+          dispatch(playAlbum(ids[0], filteredData))
         }}
         label={translate('resources.album.actions.playAll')}
       >
@@ -46,7 +53,7 @@ export const AlbumActions = ({
       <Button
         color={'secondary'}
         onClick={() => {
-          const shuffled = shuffle(data)
+          const shuffled = shuffle(filteredData)
           const firstId = Object.keys(shuffled)[0]
           dispatch(playAlbum(firstId, shuffled))
         }}
