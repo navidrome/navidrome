@@ -89,18 +89,3 @@ func authenticate(users engine.Users) func(next http.Handler) http.Handler {
 		})
 	}
 }
-
-func requiredParams(params ...string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			for _, p := range params {
-				_, err := RequiredParamString(r, p, fmt.Sprintf("%s parameter is required", p))
-				if err != nil {
-					SendError(w, r, err)
-					return
-				}
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
