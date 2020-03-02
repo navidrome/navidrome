@@ -10,7 +10,7 @@ Navidrome and Subsonic:
 * Right now, Navidrome only works with a single Music Library (Music Folder)
 * Navidrome does not mark songs as played by calls to `stream`, only when 
  `scrobble` is called with `submission=true`
-* Next features to be implemented: Playlists (WIP), MultiUser (WIP), Jukebox, Sharing, Podcasts, Bookmarks, Internet Radio. 
+* Next features to be implemented: Last.FM integration, Jukebox, Sharing, Bookmarks, Podcasts, Internet Radio. 
 
 Navidrome is actively being tested with:
 [DSub](http://www.subsonic.org/pages/apps.jsp#dsub),
@@ -54,7 +54,7 @@ Navidrome is actively being tested with:
 | `deletePlaylist`       | |
 | ||
 | _MEDIA RETRIEVAL_      ||
-| `stream`               | No Transcoding/Downsampling support (for now)|
+| `stream`               | Experimental Transcoding/Downsampling support available |
 | `download`             | |
 | `getCoverArt`          | Only gets embedded artwork |
 | `getAvatar`            | Always returns the same image |
@@ -62,7 +62,7 @@ Navidrome is actively being tested with:
 | _MEDIA ANNOTATION_     ||
 | `star`                 | |
 | `unstar`               | |
-| `setRating`            | Doesn't work with artists |
+| `setRating`            | |
 | `scrobble`             | No Last.FM support yet. It is used to update play count and last played |
 | ||
 | _USER MANAGEMENT_      ||
