@@ -11,11 +11,11 @@
     "md5-hex": "^3.0.1",
     "prop-types": "^15.7.2",
     "ra-data-json-server": "^3.2.3",
-    "react": "^16.12.0",
+    "react": "^16.13.0",
     "react-admin": "^3.2.3",
-    "react-dom": "^16.12.0",
+    "react-dom": "^16.13.0",
     "react-jinke-music-player": "^4.7.2",
-    "react-redux": "^7.1.0",
+    "react-redux": "^7.2.0",
     "react-scripts": "^3.4.0"
   },
   "scripts": {
