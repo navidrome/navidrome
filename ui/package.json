@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@testing-library/jest-dom": "^5.0.2",
-    "@testing-library/react": "^9.3.2",
-    "@testing-library/user-event": "^8.0.4",
+    "@testing-library/jest-dom": "^5.1.1",
+    "@testing-library/react": "^9.4.1",
+    "@testing-library/user-event": "^8.1.3",
     "deepmerge": "^4.2.2",
     "jwt-decode": "^2.2.0",
     "md5-hex": "^3.0.1",
@@ -16,7 +16,7 @@
     "react-dom": "^16.12.0",
     "react-jinke-music-player": "^4.7.2",
     "react-redux": "^7.1.0",
-    "react-scripts": "3.3.0"
+    "react-scripts": "^3.4.0"
   },
   "scripts": {
     "start": "react-scripts start",
