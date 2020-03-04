@@ -8,7 +8,7 @@ const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 const PLAYER_PLAY_ALBUM = 'PLAYER_PLAY_ALBUM'
 
 const mapToAudioLists = (item) => ({
-  // id: item.id,
+  id: item.id,
   name: item.title,
   singer: item.artist,
   cover: subsonicUrl('getCoverArt', item.id, { size: 300 }),
