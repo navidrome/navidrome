@@ -20,6 +20,7 @@ const Player = () => {
     preload: true,
     autoPlayInitLoadPlayList: true,
     clearPriorAudioLists: false,
+    showDestroy: false,
     showDownload: false,
     showReload: false,
     glassBg: false,

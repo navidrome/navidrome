@@ -14,7 +14,7 @@
     "react": "^16.13.0",
     "react-admin": "^3.2.3",
     "react-dom": "^16.13.0",
-    "react-jinke-music-player": "^4.7.2",
+    "react-jinke-music-player": "^4.10.1",
     "react-redux": "^7.2.0",
     "react-scripts": "^3.4.0"
   },
