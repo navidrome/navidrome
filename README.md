@@ -86,7 +86,7 @@ To get the cutting-edge, latest version from master, use the image `deluan/navid
 
 ### Build from source
 
-You will need to install [Go 1.14](https://golang.org/dl/) and [Node 13.9.0](http://nodejs.org).
+You will need to install [Go 1.14](https://golang.org/dl/) and [Node 13.10.1](http://nodejs.org).
 You'll also need [ffmpeg](https://ffmpeg.org) installed in your system. The setup is very strict, and 
 the steps bellow only work with these specific versions (enforced in the Makefile) 
 
