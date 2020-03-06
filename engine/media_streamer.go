@@ -71,7 +71,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, maxBitRate in
 			log.Error(ctx, "Error starting transcoder", "id", mf.ID, err)
 			return nil, os.ErrInvalid
 		}
-		go copyAndClose(ctx, w, out)()
+		go copyAndClose(ctx, w, out)
 	}
 
 	// If it is in the cache, check if the stream is done being written. If so, return a ReaderSeeker
@@ -100,20 +100,18 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, maxBitRate in
 	return s, nil
 }
 
-func copyAndClose(ctx context.Context, w io.WriteCloser, r io.ReadCloser) func() {
-	return func() {
-		_, err := io.Copy(w, r)
-		if err != nil {
-			log.Error(ctx, "Error copying data to cache", err)
-		}
-		err = r.Close()
-		if err != nil {
-			log.Error(ctx, "Error closing transcode output", err)
-		}
-		err = w.Close()
-		if err != nil {
-			log.Error(ctx, "Error closing cache", err)
-		}
+func copyAndClose(ctx context.Context, w io.WriteCloser, r io.ReadCloser) {
+	_, err := io.Copy(w, r)
+	if err != nil {
+		log.Error(ctx, "Error copying data to cache", err)
+	}
+	err = r.Close()
+	if err != nil {
+		log.Error(ctx, "Error closing transcode output", err)
+	}
+	err = w.Close()
+	if err != nil {
+		log.Error(ctx, "Error closing cache", err)
 	}
 }
 
