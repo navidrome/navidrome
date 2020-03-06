@@ -1,5 +1,5 @@
-GO_VERSION=1.14
-NODE_VERSION=v13.10.1
+GO_VERSION=$(shell grep -e "^go " go.mod | cut -f 2 -d ' ')
+NODE_VERSION=$(shell cat .nvmrc)
 
 GIT_SHA=$(shell git rev-parse --short HEAD)
 
