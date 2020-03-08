@@ -2,6 +2,9 @@ import blue from '@material-ui/core/colors/blue'
 
 export const DarkTheme = {
   palette: {
+    primary: {
+      main: '#90caf9'
+    },
     secondary: blue,
     type: 'dark'
   }
