@@ -20,6 +20,15 @@ NOTICE: %s
 	}
 }
 
+// Call this in migrations that requires a full rescan
+func forceFullRescan(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+delete from property where id like 'LastScan%';
+update media_file set updated_at = '0001-01-01';
+`)
+	return err
+}
+
 var once sync.Once
 
 func isDBInitialized(tx *sql.Tx) (initialized bool) {
