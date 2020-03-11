@@ -22,7 +22,7 @@ import {
   Title
 } from '../common'
 import { useDispatch } from 'react-redux'
-import { addTrack, setTrack } from '../player'
+import { addTrack, setTrack } from '../audioplayer'
 import AddIcon from '@material-ui/icons/Add'
 import { SongBulkActions } from './SongBulkActions'
 

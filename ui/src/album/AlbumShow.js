@@ -13,7 +13,7 @@ import { useStyles } from './styles'
 import { AlbumActions } from './AlbumActions'
 import { AlbumSongBulkActions } from './AlbumSongBulkActions'
 import { useMediaQuery } from '@material-ui/core'
-import { setTrack } from '../player'
+import { setTrack } from '../audioplayer'
 import { useDispatch } from 'react-redux'
 
 const AlbumShow = (props) => {

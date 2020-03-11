@@ -8,7 +8,7 @@ import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import React from 'react'
 import { useDispatch } from 'react-redux'
-import { playAlbum } from '../player'
+import { playAlbum } from '../audioplayer'
 
 export const AlbumActions = ({
   className,
