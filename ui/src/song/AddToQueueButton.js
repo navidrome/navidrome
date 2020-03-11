@@ -6,7 +6,7 @@ import {
   useUnselectAll
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
-import { addTrack } from '../player'
+import { addTrack } from '../audioplayer'
 import AddToQueueIcon from '@material-ui/icons/AddToQueue'
 
 const AddToQueueButton = ({ selectedIds }) => {

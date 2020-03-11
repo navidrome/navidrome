@@ -11,7 +11,7 @@ import song from './song'
 import album from './album'
 import artist from './artist'
 import { createMuiTheme } from '@material-ui/core/styles'
-import { Player, playQueueReducer } from './player'
+import { Player, playQueueReducer } from './audioplayer'
 
 const theme = createMuiTheme(DarkTheme)
 
