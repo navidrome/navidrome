@@ -106,10 +106,10 @@ func getPlayer(players engine.Players) func(next http.Handler) http.Handler {
 			player, err := players.Register(ctx, playerId, client, r.Header.Get("user-agent"), ip)
 			if err != nil {
 				log.Error("Could not register player", "userName", userName, "client", client)
+			} else {
+				ctx = context.WithValue(ctx, "player", *player)
+				r = r.WithContext(ctx)
 			}
-
-			ctx = context.WithValue(ctx, "player", *player)
-			r = r.WithContext(ctx)
 
 			cookie := &http.Cookie{
 				Name:     playerIDCookieName(userName),
