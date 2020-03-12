@@ -32,9 +32,13 @@ create table player
     client varchar not null, 
     ip_address varchar,
     last_seen timestamp,
-    transcoding_id varchar, -- todo foreign key 
     max_bit_rate int default 0,
-	unique (name)
+    transcoding_id varchar,
+	unique (name),
+	foreign key (transcoding_id)
+	   references transcoding(id)
+		  on update restrict 
+		  on delete restrict
 );
 `)
 	return err
