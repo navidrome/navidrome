@@ -25,7 +25,7 @@ please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join
 - Compatible with the huge selection of clients for [Subsonic](http://www.subsonic.org), 
    [Airsonic](https://airsonic.github.io/) and [Madsonic](https://www.madsonic.org/). 
    See the [complete list of available mobile and web apps](https://airsonic.github.io/docs/apps/)
-- Transcoding/Downsampling on-the-fly (WIP. Experimental support is available)
+- Transcoding/Downsampling on-the-fly (WIP. [Experimental support is available](https://github.com/deluan/navidrome/issues/11#issuecomment-598753796))
 - Integrated music player (WIP)
 
 ## Road map
