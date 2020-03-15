@@ -9,7 +9,8 @@ Navidrome is an open source web-based music collection server and streamer. It g
 music collection from any browser or mobile device. It's like your personal Spotify!
 
 __Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
-please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join the chat in our [Discord server](https://discord.gg/xh7j7yF)
+please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join the chat in 
+our [Discord server](https://discord.gg/xh7j7yF)
 
 
 ## Features
@@ -20,14 +21,30 @@ please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join
 - Multi-user, each user has their own play counts, playlists, favourites, etc..
 - Very low resource usage: Ex: with a library of 300GB (~29000 songs), it uses less than 50MB of RAM
 - Multi-platform, runs on macOS, Linux and Windows. Docker images are also provided
+- Ready to use Raspberry Pi binaries available
 - Automatically monitors your library for changes, importing new files and reloading new metadata 
 - Modern and responsive Web interface based on Material UI, to manage users and browse your library
-- Compatible with the huge selection of clients for [Subsonic](http://www.subsonic.org), 
-   [Airsonic](https://airsonic.github.io/) and [Madsonic](https://www.madsonic.org/). 
-   See the [complete list of available mobile and web apps](https://airsonic.github.io/docs/apps/)
-- Transcoding/Downsampling on-the-fly (WIP. [Experimental support is available](https://github.com/deluan/navidrome/issues/11#issuecomment-598753796))
+- Compatible with all Subsonic/Madsonic/Airsonic clients. See bellow for a list of tested clients
+- Transcoding/Downsampling on-the-fly 
+    (WIP. [Experimental support is available](https://github.com/deluan/navidrome/issues/11#issuecomment-598753796))
 - Integrated music player (WIP)
 
+Navidrome is compatible with all Subsonic clients. The following clients are tested and confirmed to work properly:
+- Android:
+    - [DSub](https://play.google.com/store/apps/details?id=github.daneren2005.dsub)
+    - [Ultrasonic](https://play.google.com/store/apps/details?id=org.moire.ultrasonic)
+    - [Music Stash](https://play.google.com/store/apps/details?id=com.ghenry22.mymusicstash)
+- iOS:
+    - [play:Sub](http://michaelsapps.dk/playsubapp/)
+- Web:
+    - [Jamstash](http://jamstash.com)
+    - [Aurial](http://shrimpza.github.io/aurial/)
+    - [Subfire](http://p.subfireplayer.net/)
+    - [Subplayer](https://github.com/peguerosdc/subplayer)
+    
+For more options, look at the [list of clients](https://airsonic.github.io/docs/apps/) maintained by 
+the Airsonic project
+    
 ## Road map
 
 This project is being actively worked on. Expect a more polished experience and new features/releases 
@@ -51,15 +68,16 @@ Just head to the [releases page](https://github.com/deluan/navidrome/releases) a
 platform. There are builds available for Linux (amd64 and arm), macOS and Windows (32 and 64 bits). 
 For Raspberry Pi (tested with Raspbian Buster on Pi 4), use the Linux arm builds.
 
-Remember to install [ffmpeg](https://ffmpeg.org/download.html) in your system, a requirement for Navidrome to work properly.
-You may find the latest static build for your platform here: https://johnvansickle.com/ffmpeg/ 
+Remember to install [ffmpeg](https://ffmpeg.org/download.html) in your system, a requirement for Navidrome to work 
+properly. You may find the latest static build for your platform here: https://johnvansickle.com/ffmpeg/ 
 
 If you have any issues with these binaries, or need a binary for a different platform, please 
 [open an issue](https://github.com/deluan/navidrome/issues) 
 
 ### Docker
 
-[Docker images](https://hub.docker.com/r/deluan/navidrome) are available. They include everything needed to run Navidrome. Example of usage:
+[Docker images](https://hub.docker.com/r/deluan/navidrome) are available. They include everything needed 
+to run Navidrome. Example of usage:
 
 ```yaml
 # This is just an example. Customize it to your needs.
