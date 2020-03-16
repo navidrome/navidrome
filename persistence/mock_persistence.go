@@ -7,12 +7,13 @@ import (
 )
 
 type MockDataStore struct {
-	MockedGenre     model.GenreRepository
-	MockedAlbum     model.AlbumRepository
-	MockedArtist    model.ArtistRepository
-	MockedMediaFile model.MediaFileRepository
-	MockedUser      model.UserRepository
-	MockedPlayer    model.PlayerRepository
+	MockedGenre       model.GenreRepository
+	MockedAlbum       model.AlbumRepository
+	MockedArtist      model.ArtistRepository
+	MockedMediaFile   model.MediaFileRepository
+	MockedUser        model.UserRepository
+	MockedPlayer      model.PlayerRepository
+	MockedTranscoding model.TranscodingRepository
 }
 
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {
@@ -63,6 +64,9 @@ func (db *MockDataStore) User(context.Context) model.UserRepository {
 }
 
 func (db *MockDataStore) Transcoding(context.Context) model.TranscodingRepository {
+	if db.MockedTranscoding != nil {
+		return db.MockedTranscoding
+	}
 	return struct{ model.TranscodingRepository }{}
 }
 

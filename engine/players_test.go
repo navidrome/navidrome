@@ -20,14 +20,14 @@ var _ = Describe("Players", func() {
 
 	BeforeEach(func() {
 		repo = &mockPlayerRepository{}
-		ds := &persistence.MockDataStore{MockedPlayer: repo}
+		ds := &persistence.MockDataStore{MockedPlayer: repo, MockedTranscoding: &mockTranscodingRepository{}}
 		players = NewPlayers(ds)
 		beforeRegister = time.Now()
 	})
 
 	Describe("Register", func() {
 		It("creates a new player when no ID is specified", func() {
-			p, err := players.Register(ctx, "", "client", "chrome", "1.2.3.4")
+			p, trc, err := players.Register(ctx, "", "client", "chrome", "1.2.3.4")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p.ID).ToNot(BeEmpty())
 			Expect(p.LastSeen).To(BeTemporally(">=", beforeRegister))
@@ -35,30 +35,33 @@ var _ = Describe("Players", func() {
 			Expect(p.UserName).To(Equal("johndoe"))
 			Expect(p.Type).To(Equal("chrome"))
 			Expect(repo.lastSaved).To(Equal(p))
+			Expect(trc).To(BeNil())
 		})
 
 		It("creates a new player if it cannot find any matching player", func() {
-			p, err := players.Register(ctx, "123", "client", "chrome", "1.2.3.4")
+			p, trc, err := players.Register(ctx, "123", "client", "chrome", "1.2.3.4")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p.ID).ToNot(BeEmpty())
 			Expect(p.LastSeen).To(BeTemporally(">=", beforeRegister))
 			Expect(repo.lastSaved).To(Equal(p))
+			Expect(trc).To(BeNil())
 		})
 
 		It("finds players by ID", func() {
 			plr := &model.Player{ID: "123", Name: "A Player", LastSeen: time.Time{}}
 			repo.add(plr)
-			p, err := players.Register(ctx, "123", "client", "chrome", "1.2.3.4")
+			p, trc, err := players.Register(ctx, "123", "client", "chrome", "1.2.3.4")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p.ID).To(Equal("123"))
 			Expect(p.LastSeen).To(BeTemporally(">=", beforeRegister))
 			Expect(repo.lastSaved).To(Equal(p))
+			Expect(trc).To(BeNil())
 		})
 
 		It("finds player by client and user names when ID is not found", func() {
 			plr := &model.Player{ID: "123", Name: "A Player", Client: "client", UserName: "johndoe", LastSeen: time.Time{}}
 			repo.add(plr)
-			p, err := players.Register(ctx, "999", "client", "chrome", "1.2.3.4")
+			p, _, err := players.Register(ctx, "999", "client", "chrome", "1.2.3.4")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p.ID).To(Equal("123"))
 			Expect(p.LastSeen).To(BeTemporally(">=", beforeRegister))
@@ -68,14 +71,33 @@ var _ = Describe("Players", func() {
 		It("finds player by client and user names when not ID is provided", func() {
 			plr := &model.Player{ID: "123", Name: "A Player", Client: "client", UserName: "johndoe", LastSeen: time.Time{}}
 			repo.add(plr)
-			p, err := players.Register(ctx, "", "client", "chrome", "1.2.3.4")
+			p, _, err := players.Register(ctx, "", "client", "chrome", "1.2.3.4")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p.ID).To(Equal("123"))
 			Expect(p.LastSeen).To(BeTemporally(">=", beforeRegister))
 			Expect(repo.lastSaved).To(Equal(p))
 		})
+
+		It("finds player by ID and return its transcoding", func() {
+			plr := &model.Player{ID: "123", Name: "A Player", LastSeen: time.Time{}, TranscodingId: "1"}
+			repo.add(plr)
+			p, trc, err := players.Register(ctx, "123", "client", "chrome", "1.2.3.4")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.ID).To(Equal("123"))
+			Expect(p.LastSeen).To(BeTemporally(">=", beforeRegister))
+			Expect(repo.lastSaved).To(Equal(p))
+			Expect(trc.ID).To(Equal("1"))
+		})
 	})
 })
+
+type mockTranscodingRepository struct {
+	model.TranscodingRepository
+}
+
+func (m *mockTranscodingRepository) Get(id string) (*model.Transcoding, error) {
+	return &model.Transcoding{ID: id, TargetFormat: "mp3"}, nil
+}
 
 type mockPlayerRepository struct {
 	model.PlayerRepository

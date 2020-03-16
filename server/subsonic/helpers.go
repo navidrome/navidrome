@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"fmt"
 	"mime"
 	"net/http"
@@ -63,16 +64,16 @@ func (e SubsonicError) Error() string {
 	return msg
 }
 
-func ToAlbums(entries engine.Entries) []responses.Child {
+func ToAlbums(ctx context.Context, entries engine.Entries) []responses.Child {
 	children := make([]responses.Child, len(entries))
 	for i, entry := range entries {
-		children[i] = ToAlbum(entry)
+		children[i] = ToAlbum(ctx, entry)
 	}
 	return children
 }
 
-func ToAlbum(entry engine.Entry) responses.Child {
-	album := ToChild(entry)
+func ToAlbum(ctx context.Context, entry engine.Entry) responses.Child {
+	album := ToChild(ctx, entry)
 	album.Name = album.Title
 	album.Title = ""
 	album.Parent = ""
@@ -96,15 +97,15 @@ func ToArtists(entries engine.Entries) []responses.Artist {
 	return artists
 }
 
-func ToChildren(entries engine.Entries) []responses.Child {
+func ToChildren(ctx context.Context, entries engine.Entries) []responses.Child {
 	children := make([]responses.Child, len(entries))
 	for i, entry := range entries {
-		children[i] = ToChild(entry)
+		children[i] = ToChild(ctx, entry)
 	}
 	return children
 }
 
-func ToChild(entry engine.Entry) responses.Child {
+func ToChild(ctx context.Context, entry engine.Entry) responses.Child {
 	child := responses.Child{}
 	child.Id = entry.Id
 	child.Title = entry.Title
@@ -136,9 +137,11 @@ func ToChild(entry engine.Entry) responses.Child {
 	child.IsVideo = false
 	child.UserRating = entry.UserRating
 	child.SongCount = entry.SongCount
-	// TODO Must be dynamic, based on player/transcoding config
-	child.TranscodedSuffix = "mp3"
-	child.TranscodedContentType = mime.TypeByExtension(".mp3")
+	format, _ := getTranscoding(ctx)
+	if entry.Suffix != "" && format != "" && entry.Suffix != format {
+		child.TranscodedSuffix = format
+		child.TranscodedContentType = mime.TypeByExtension("." + format)
+	}
 	return child
 }
 
@@ -148,4 +151,14 @@ func ToGenres(genres model.Genres) *responses.Genres {
 		response[i] = responses.Genre(g)
 	}
 	return &responses.Genres{Genre: response}
+}
+
+func getTranscoding(ctx context.Context) (format string, bitRate int) {
+	if trc, ok := ctx.Value("transcoding").(model.Transcoding); ok {
+		format = trc.TargetFormat
+	}
+	if plr, ok := ctx.Value("player").(model.Player); ok {
+		bitRate = plr.MaxBitRate
+	}
+	return
 }

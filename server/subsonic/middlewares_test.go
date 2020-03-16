@@ -173,11 +173,33 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeTrue())
 				player := next.req.Context().Value("player").(model.Player)
 				Expect(player.ID).To(Equal("123"))
+				Expect(next.req.Context().Value("transcoding")).To(BeNil())
 			})
 
 			It("returns the playerId in the cookie", func() {
 				cookieStr := w.Header().Get("Set-Cookie")
 				Expect(cookieStr).To(ContainSubstring(playerIDCookieName("someone") + "=123"))
+			})
+		})
+
+		Context("Player has transcoding configured", func() {
+			BeforeEach(func() {
+				cookie := &http.Cookie{
+					Name:   playerIDCookieName("someone"),
+					Value:  "123",
+					MaxAge: cookieExpiry,
+				}
+				r.AddCookie(cookie)
+				mockedPlayers.transcoding = &model.Transcoding{ID: "12"}
+				gp := getPlayer(mockedPlayers)(next)
+				gp.ServeHTTP(w, r)
+			})
+
+			It("stores the player in the context", func() {
+				player := next.req.Context().Value("player").(model.Player)
+				Expect(player.ID).To(Equal("123"))
+				transcoding := next.req.Context().Value("transcoding").(model.Transcoding)
+				Expect(transcoding.ID).To(Equal("12"))
 			})
 		})
 	})
@@ -212,12 +234,13 @@ func (m *mockUsers) Authenticate(ctx context.Context, username, password, token,
 
 type mockPlayers struct {
 	engine.Players
+	transcoding *model.Transcoding
 }
 
 func (mp *mockPlayers) Get(ctx context.Context, playerId string) (*model.Player, error) {
 	return &model.Player{ID: playerId}, nil
 }
 
-func (mp *mockPlayers) Register(ctx context.Context, id, client, typ, ip string) (*model.Player, error) {
-	return &model.Player{ID: id}, nil
+func (mp *mockPlayers) Register(ctx context.Context, id, client, typ, ip string) (*model.Player, *model.Transcoding, error) {
+	return &model.Player{ID: id}, mp.transcoding, nil
 }
