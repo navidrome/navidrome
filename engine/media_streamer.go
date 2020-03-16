@@ -14,12 +14,11 @@ import (
 	"github.com/deluan/navidrome/engine/transcoder"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/utils"
 	"github.com/djherbis/fscache"
 )
 
 type MediaStreamer interface {
-	NewStream(ctx context.Context, id string, maxBitRate int, format string) (*Stream, error)
+	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int) (*Stream, error)
 }
 
 func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache fscache.Cache) MediaStreamer {
@@ -32,18 +31,23 @@ type mediaStreamer struct {
 	cache fscache.Cache
 }
 
-func (ms *mediaStreamer) NewStream(ctx context.Context, id string, maxBitRate int, reqFormat string) (*Stream, error) {
+func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int) (*Stream, error) {
 	mf, err := ms.ds.MediaFile(ctx).Get(id)
 	if err != nil {
 		return nil, err
 	}
 
-	bitRate, format := selectTranscodingOptions(mf, maxBitRate, reqFormat)
+	format, bitRate := selectTranscodingOptions(ctx, ms.ds, mf, reqFormat, reqBitRate)
+	log.Trace(ctx, "Selected transcoding options",
+		"requestBitrate", reqBitRate, "requestFormat", reqFormat,
+		"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
+		"selectedBitrate", bitRate, "selectedFormat", format,
+	)
 	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
 
 	if format == "raw" {
 		log.Debug(ctx, "Streaming raw file", "id", mf.ID, "path", mf.Path,
-			"requestBitrate", maxBitRate, "requestFormat", reqFormat,
+			"requestBitrate", reqBitRate, "requestFormat", reqFormat,
 			"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix)
 		f, err := os.Open(mf.Path)
 		if err != nil {
@@ -66,7 +70,12 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, maxBitRate in
 	// If this is a brand new transcoding request, not in the cache, start transcoding
 	if w != nil {
 		log.Trace(ctx, "Cache miss. Starting new transcoding session", "id", mf.ID)
-		out, err := ms.ffm.Start(ctx, mf.Path, bitRate, format)
+		t, err := ms.ds.Transcoding(ctx).FindByFormat(format)
+		if err != nil {
+			log.Error(ctx, "Error loading transcoding command", "format", format, err)
+			return nil, os.ErrInvalid
+		}
+		out, err := ms.ffm.Start(ctx, t.Command, mf.Path, bitRate, format)
 		if err != nil {
 			log.Error(ctx, "Error starting transcoder", "id", mf.ID, err)
 			return nil, os.ErrInvalid
@@ -79,7 +88,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, maxBitRate in
 		size := getFinalCachedSize(r)
 		if size > 0 {
 			log.Debug(ctx, "Streaming cached file", "id", mf.ID, "path", mf.Path,
-				"requestBitrate", maxBitRate, "requestFormat", reqFormat,
+				"requestBitrate", reqBitRate, "requestFormat", reqFormat,
 				"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix, "size", size)
 			sr := io.NewSectionReader(r, 0, size)
 			s.Reader = sr
@@ -91,7 +100,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, maxBitRate in
 	}
 
 	log.Debug(ctx, "Streaming transcoded file", "id", mf.ID, "path", mf.Path,
-		"requestBitrate", maxBitRate, "requestFormat", reqFormat,
+		"requestBitrate", reqBitRate, "requestFormat", reqFormat,
 		"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix)
 	// All other cases, just return a ReadCloser, without Seek capabilities
 	s.Reader = r
@@ -131,27 +140,46 @@ func (s *Stream) ContentType() string { return mime.TypeByExtension("." + s.form
 func (s *Stream) Name() string        { return s.mf.Path }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
 
-func selectTranscodingOptions(mf *model.MediaFile, maxBitRate int, format string) (int, string) {
-	var bitRate int
-
-	if format == "raw" || !conf.Server.EnableDownsampling {
-		return bitRate, "raw"
+// TODO This function deserves some love (refactoring)
+func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model.MediaFile, reqFormat string, reqBitRate int) (format string, bitRate int) {
+	format = "raw"
+	if reqFormat == "raw" {
+		return
+	}
+	trc, hasDefault := ctx.Value("transcoding").(model.Transcoding)
+	var cFormat string
+	var cBitRate int
+	if reqFormat != "" {
+		cFormat = reqFormat
 	} else {
-		if maxBitRate == 0 {
-			bitRate = mf.BitRate
-		} else {
-			bitRate = utils.MinInt(mf.BitRate, maxBitRate)
+		if hasDefault {
+			cFormat = trc.TargetFormat
+			cBitRate = trc.DefaultBitRate
+			if p, ok := ctx.Value("player").(model.Player); ok {
+				cBitRate = p.MaxBitRate
+			}
 		}
-		format = "mp3" //mf.Suffix
 	}
-	if conf.Server.MaxBitRate != 0 {
-		bitRate = utils.MinInt(bitRate, conf.Server.MaxBitRate)
+	if reqBitRate > 0 {
+		cBitRate = reqBitRate
 	}
-
-	if bitRate == mf.BitRate {
-		return bitRate, "raw"
+	if cBitRate == 0 && cFormat == "" {
+		return
 	}
-	return bitRate, format
+	t, err := ds.Transcoding(ctx).FindByFormat(cFormat)
+	if err == nil {
+		format = t.TargetFormat
+		if cBitRate != 0 {
+			bitRate = cBitRate
+		} else {
+			bitRate = t.DefaultBitRate
+		}
+	}
+	if format == mf.Suffix && bitRate > mf.BitRate {
+		format = "raw"
+		bitRate = 0
+	}
+	return
 }
 
 func cacheKey(id string, bitRate int, format string) string {

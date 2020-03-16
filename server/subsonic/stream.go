@@ -27,7 +27,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	maxBitRate := utils.ParamInt(r, "maxBitRate", 0)
 	format := utils.ParamString(r, "format")
 
-	stream, err := c.streamer.NewStream(r.Context(), id, maxBitRate, format)
+	stream, err := c.streamer.NewStream(r.Context(), id, format, maxBitRate)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 		return nil, err
 	}
 
-	stream, err := c.streamer.NewStream(r.Context(), id, 0, "raw")
+	stream, err := c.streamer.NewStream(r.Context(), id, "raw", 0)
 	if err != nil {
 		return nil, err
 	}

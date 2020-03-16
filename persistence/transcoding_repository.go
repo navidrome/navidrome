@@ -28,6 +28,13 @@ func (r *transcodingRepository) Get(id string) (*model.Transcoding, error) {
 	return &res, err
 }
 
+func (r *transcodingRepository) FindByFormat(format string) (*model.Transcoding, error) {
+	sel := r.newSelect().Columns("*").Where(Eq{"target_format": format})
+	var res model.Transcoding
+	err := r.queryOne(sel, &res)
+	return &res, err
+}
+
 func (r *transcodingRepository) Put(t *model.Transcoding) error {
 	_, err := r.put(t.ID, t)
 	return err
