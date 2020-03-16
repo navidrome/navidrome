@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -97,7 +98,7 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 	}
 
 	response := NewResponse()
-	response.Directory = c.buildDirectory(dir)
+	response.Directory = c.buildDirectory(r.Context(), dir)
 	return response, nil
 }
 
@@ -114,7 +115,7 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 	}
 
 	response := NewResponse()
-	response.ArtistWithAlbumsID3 = c.buildArtist(dir)
+	response.ArtistWithAlbumsID3 = c.buildArtist(r.Context(), dir)
 	return response, nil
 }
 
@@ -131,7 +132,7 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 	}
 
 	response := NewResponse()
-	response.AlbumWithSongsID3 = c.buildAlbum(dir)
+	response.AlbumWithSongsID3 = c.buildAlbum(r.Context(), dir)
 	return response, nil
 }
 
@@ -148,7 +149,7 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 	}
 
 	response := NewResponse()
-	child := ToChild(*song)
+	child := ToChild(r.Context(), *song)
 	response.Song = &child
 	return response, nil
 }
@@ -189,7 +190,7 @@ func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Reque
 	return response, nil
 }
 
-func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.Directory {
+func (c *BrowsingController) buildDirectory(ctx context.Context, d *engine.DirectoryInfo) *responses.Directory {
 	dir := &responses.Directory{
 		Id:         d.Id,
 		Name:       d.Name,
@@ -202,11 +203,11 @@ func (c *BrowsingController) buildDirectory(d *engine.DirectoryInfo) *responses.
 		dir.Starred = &d.Starred
 	}
 
-	dir.Child = ToChildren(d.Entries)
+	dir.Child = ToChildren(ctx, d.Entries)
 	return dir
 }
 
-func (c *BrowsingController) buildArtist(d *engine.DirectoryInfo) *responses.ArtistWithAlbumsID3 {
+func (c *BrowsingController) buildArtist(ctx context.Context, d *engine.DirectoryInfo) *responses.ArtistWithAlbumsID3 {
 	dir := &responses.ArtistWithAlbumsID3{}
 	dir.Id = d.Id
 	dir.Name = d.Name
@@ -216,11 +217,11 @@ func (c *BrowsingController) buildArtist(d *engine.DirectoryInfo) *responses.Art
 		dir.Starred = &d.Starred
 	}
 
-	dir.Album = ToAlbums(d.Entries)
+	dir.Album = ToAlbums(ctx, d.Entries)
 	return dir
 }
 
-func (c *BrowsingController) buildAlbum(d *engine.DirectoryInfo) *responses.AlbumWithSongsID3 {
+func (c *BrowsingController) buildAlbum(ctx context.Context, d *engine.DirectoryInfo) *responses.AlbumWithSongsID3 {
 	dir := &responses.AlbumWithSongsID3{}
 	dir.Id = d.Id
 	dir.Name = d.Name
@@ -239,6 +240,6 @@ func (c *BrowsingController) buildAlbum(d *engine.DirectoryInfo) *responses.Albu
 		dir.Starred = &d.Starred
 	}
 
-	dir.Song = ToChildren(d.Entries)
+	dir.Song = ToChildren(ctx, d.Entries)
 	return dir
 }

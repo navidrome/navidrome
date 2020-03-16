@@ -103,11 +103,14 @@ func getPlayer(players engine.Players) func(next http.Handler) http.Handler {
 			client := ctx.Value("client").(string)
 			playerId := playerIDFromCookie(r, userName)
 			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-			player, err := players.Register(ctx, playerId, client, r.Header.Get("user-agent"), ip)
+			player, trc, err := players.Register(ctx, playerId, client, r.Header.Get("user-agent"), ip)
 			if err != nil {
 				log.Error("Could not register player", "userName", userName, "client", client)
 			} else {
 				ctx = context.WithValue(ctx, "player", *player)
+				if trc != nil {
+					ctx = context.WithValue(ctx, "transcoding", *trc)
+				}
 				r = r.WithContext(ctx)
 			}
 

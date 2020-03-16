@@ -66,7 +66,7 @@ func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Reques
 	}
 
 	response := NewResponse()
-	response.AlbumList = &responses.AlbumList{Album: ToChildren(albums)}
+	response.AlbumList = &responses.AlbumList{Album: ToChildren(r.Context(), albums)}
 	return response, nil
 }
 
@@ -77,7 +77,7 @@ func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Reque
 	}
 
 	response := NewResponse()
-	response.AlbumList2 = &responses.AlbumList{Album: ToAlbums(albums)}
+	response.AlbumList2 = &responses.AlbumList{Album: ToAlbums(r.Context(), albums)}
 	return response, nil
 }
 
@@ -91,8 +91,8 @@ func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request)
 	response := NewResponse()
 	response.Starred = &responses.Starred{}
 	response.Starred.Artist = ToArtists(artists)
-	response.Starred.Album = ToChildren(albums)
-	response.Starred.Song = ToChildren(mediaFiles)
+	response.Starred.Album = ToChildren(r.Context(), albums)
+	response.Starred.Song = ToChildren(r.Context(), mediaFiles)
 	return response, nil
 }
 
@@ -106,8 +106,8 @@ func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request
 	response := NewResponse()
 	response.Starred2 = &responses.Starred{}
 	response.Starred2.Artist = ToArtists(artists)
-	response.Starred2.Album = ToAlbums(albums)
-	response.Starred2.Song = ToChildren(mediaFiles)
+	response.Starred2.Album = ToAlbums(r.Context(), albums)
+	response.Starred2.Song = ToChildren(r.Context(), mediaFiles)
 	return response, nil
 }
 
@@ -122,7 +122,7 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 	response.NowPlaying = &responses.NowPlaying{}
 	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(npInfos))
 	for i, entry := range npInfos {
-		response.NowPlaying.Entry[i].Child = ToChild(entry)
+		response.NowPlaying.Entry[i].Child = ToChild(r.Context(), entry)
 		response.NowPlaying.Entry[i].UserName = entry.UserName
 		response.NowPlaying.Entry[i].MinutesAgo = entry.MinutesAgo
 		response.NowPlaying.Entry[i].PlayerId = entry.PlayerId
@@ -143,9 +143,6 @@ func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Requ
 
 	response := NewResponse()
 	response.RandomSongs = &responses.Songs{}
-	response.RandomSongs.Songs = make([]responses.Child, len(songs))
-	for i, entry := range songs {
-		response.RandomSongs.Songs[i] = ToChild(entry)
-	}
+	response.RandomSongs.Songs = ToChildren(r.Context(), songs)
 	return response, nil
 }

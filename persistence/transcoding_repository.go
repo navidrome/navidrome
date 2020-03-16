@@ -21,6 +21,13 @@ func NewTranscodingRepository(ctx context.Context, o orm.Ormer) model.Transcodin
 	return r
 }
 
+func (r *transcodingRepository) Get(id string) (*model.Transcoding, error) {
+	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
+	var res model.Transcoding
+	err := r.queryOne(sel, &res)
+	return &res, err
+}
+
 func (r *transcodingRepository) Put(t *model.Transcoding) error {
 	_, err := r.put(t.ID, t)
 	return err
@@ -31,11 +38,7 @@ func (r *transcodingRepository) Count(options ...rest.QueryOptions) (int64, erro
 }
 
 func (r *transcodingRepository) Read(id string) (interface{}, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
-	var res model.Transcoding
-	err := r.queryOne(sel, &res)
-	return &res, err
-
+	return r.Get(id)
 }
 
 func (r *transcodingRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {

@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -57,7 +58,7 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 	}
 
 	response := NewResponse()
-	response.Playlist = c.buildPlaylist(pinfo)
+	response.Playlist = c.buildPlaylist(r.Context(), pinfo)
 	return response, nil
 }
 
@@ -124,7 +125,7 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	return NewResponse(), nil
 }
 
-func (c *PlaylistsController) buildPlaylist(d *engine.PlaylistInfo) *responses.PlaylistWithSongs {
+func (c *PlaylistsController) buildPlaylist(ctx context.Context, d *engine.PlaylistInfo) *responses.PlaylistWithSongs {
 	pls := &responses.PlaylistWithSongs{}
 	pls.Id = d.Id
 	pls.Name = d.Name
@@ -133,6 +134,6 @@ func (c *PlaylistsController) buildPlaylist(d *engine.PlaylistInfo) *responses.P
 	pls.Duration = d.Duration
 	pls.Public = d.Public
 
-	pls.Entry = ToChildren(d.Entries)
+	pls.Entry = ToChildren(ctx, d.Entries)
 	return pls
 }
