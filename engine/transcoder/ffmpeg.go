@@ -8,12 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 )
 
 type Transcoder interface {
-	Start(ctx context.Context, path string, maxBitRate int, format string) (f io.ReadCloser, err error)
+	Start(ctx context.Context, command, path string, maxBitRate int, format string) (f io.ReadCloser, err error)
 }
 
 func New() Transcoder {
@@ -22,8 +21,8 @@ func New() Transcoder {
 
 type ffmpeg struct{}
 
-func (ff *ffmpeg) Start(ctx context.Context, path string, maxBitRate int, format string) (f io.ReadCloser, err error) {
-	arg0, args := createTranscodeCommand(path, maxBitRate, format)
+func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate int, format string) (f io.ReadCloser, err error) {
+	arg0, args := createTranscodeCommand(command, path, maxBitRate, format)
 
 	log.Trace(ctx, "Executing ffmpeg command", "cmd", arg0, "args", args)
 	cmd := exec.Command(arg0, args...)
@@ -38,9 +37,7 @@ func (ff *ffmpeg) Start(ctx context.Context, path string, maxBitRate int, format
 	return
 }
 
-func createTranscodeCommand(path string, maxBitRate int, format string) (string, []string) {
-	cmd := conf.Server.DownsampleCommand
-
+func createTranscodeCommand(cmd, path string, maxBitRate int, format string) (string, []string) {
 	split := strings.Split(cmd, " ")
 	for i, s := range split {
 		s = strings.Replace(s, "%s", path, -1)

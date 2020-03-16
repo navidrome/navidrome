@@ -91,14 +91,6 @@ var _ = Describe("Players", func() {
 	})
 })
 
-type mockTranscodingRepository struct {
-	model.TranscodingRepository
-}
-
-func (m *mockTranscodingRepository) Get(id string) (*model.Transcoding, error) {
-	return &model.Transcoding{ID: id, TargetFormat: "mp3"}, nil
-}
-
 type mockPlayerRepository struct {
 	model.PlayerRepository
 	lastSaved *model.Player
