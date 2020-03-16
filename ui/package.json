@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.1.1",
-    "@testing-library/react": "^9.5.0",
+    "@testing-library/react": "^10.0.1",
     "@testing-library/user-event": "^10.0.0",
     "deepmerge": "^4.2.2",
     "jwt-decode": "^2.2.0",
