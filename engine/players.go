@@ -30,11 +30,14 @@ func (p *players) Register(ctx context.Context, id, client, typ, ip string) (*mo
 	userName := ctx.Value("username").(string)
 	if id != "" {
 		plr, err = p.ds.Player(ctx).Get(id)
+		if err == nil && plr.Client != client {
+			id = ""
+		}
 	}
 	if err != nil || id == "" {
 		plr, err = p.ds.Player(ctx).FindByName(client, userName)
 		if err == nil {
-			log.Trace("Found player by name", "id", plr.ID, "client", client, "userName", userName)
+			log.Debug("Found player by name", "id", plr.ID, "client", client, "userName", userName)
 		} else {
 			r, _ := uuid.NewRandom()
 			plr = &model.Player{
@@ -43,7 +46,7 @@ func (p *players) Register(ctx context.Context, id, client, typ, ip string) (*mo
 				UserName: userName,
 				Client:   client,
 			}
-			log.Trace("Create new player", "id", plr.ID, "client", client, "userName", userName)
+			log.Info("Registering new player", "id", plr.ID, "client", client, "userName", userName)
 		}
 	}
 	plr.LastSeen = time.Now()

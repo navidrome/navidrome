@@ -47,8 +47,20 @@ var _ = Describe("Players", func() {
 			Expect(trc).To(BeNil())
 		})
 
+		It("creates a new player if client does not match the one in DB", func() {
+			plr := &model.Player{ID: "123", Name: "A Player", Client: "client1111", LastSeen: time.Time{}}
+			repo.add(plr)
+			p, trc, err := players.Register(ctx, "123", "client2222", "chrome", "1.2.3.4")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.ID).ToNot(BeEmpty())
+			Expect(p.ID).ToNot(Equal("123"))
+			Expect(p.LastSeen).To(BeTemporally(">=", beforeRegister))
+			Expect(p.Client).To(Equal("client2222"))
+			Expect(trc).To(BeNil())
+		})
+
 		It("finds players by ID", func() {
-			plr := &model.Player{ID: "123", Name: "A Player", LastSeen: time.Time{}}
+			plr := &model.Player{ID: "123", Name: "A Player", Client: "client", LastSeen: time.Time{}}
 			repo.add(plr)
 			p, trc, err := players.Register(ctx, "123", "client", "chrome", "1.2.3.4")
 			Expect(err).ToNot(HaveOccurred())
@@ -79,7 +91,7 @@ var _ = Describe("Players", func() {
 		})
 
 		It("finds player by ID and return its transcoding", func() {
-			plr := &model.Player{ID: "123", Name: "A Player", LastSeen: time.Time{}, TranscodingId: "1"}
+			plr := &model.Player{ID: "123", Name: "A Player", Client: "client", LastSeen: time.Time{}, TranscodingId: "1"}
 			repo.add(plr)
 			p, trc, err := players.Register(ctx, "123", "client", "chrome", "1.2.3.4")
 			Expect(err).ToNot(HaveOccurred())
