@@ -43,7 +43,7 @@ Navidrome should be compatible with all Subsonic clients. The following clients 
     
 For more options, look at the [list of clients](https://airsonic.github.io/docs/apps/) maintained by 
 the Airsonic project. Please open an [issue](https://github.com/deluan/navidrome/issues) if you have any 
-issues with the client of your choice.
+trouble with the client of your choice.
     
 ## Road map
 
