@@ -49,20 +49,20 @@ const App = () => {
         permissions === 'admin' ? (
           <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
         ) : null,
-        permissions === 'admin' ? (
-          <Resource
-            name="player"
-            {...player}
-            options={{ subMenu: 'settings' }}
-          />
-        ) : null,
+        <Resource
+          name="player"
+          {...player}
+          options={{ subMenu: 'settings' }}
+        />,
         permissions === 'admin' ? (
           <Resource
             name="transcoding"
             {...transcoding}
             options={{ subMenu: 'settings' }}
           />
-        ) : null,
+        ) : (
+          <Resource name="transcoding" />
+        ),
         <Player />
       ]}
     </Admin>

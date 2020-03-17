@@ -40,16 +40,28 @@ func (r *playerRepository) FindByName(client, userName string) (*model.Player, e
 	return &res, err
 }
 
+func (r *playerRepository) newRestSelect(options ...model.QueryOptions) SelectBuilder {
+	s := r.newSelect(options...)
+	u := loggedUser(r.ctx)
+	if u.IsAdmin {
+		return s
+	}
+	return s.Where(Eq{"user_name": u.UserName})
+}
+
 func (r *playerRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(Select(), r.parseRestOptions(options...))
+	return r.count(r.newRestSelect(), r.parseRestOptions(options...))
 }
 
 func (r *playerRepository) Read(id string) (interface{}, error) {
-	return r.Get(id)
+	sel := r.newRestSelect().Columns("*").Where(Eq{"id": id})
+	var res model.Player
+	err := r.queryOne(sel, &res)
+	return &res, err
 }
 
 func (r *playerRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	sel := r.newSelect(r.parseRestOptions(options...)).Columns("*")
+	sel := r.newRestSelect(r.parseRestOptions(options...)).Columns("*")
 	res := model.Players{}
 	err := r.queryAll(sel, &res)
 	return res, err
@@ -63,8 +75,16 @@ func (r *playerRepository) NewInstance() interface{} {
 	return &model.Player{}
 }
 
+func (r *playerRepository) isPermitted(p *model.Player) bool {
+	u := loggedUser(r.ctx)
+	return u.IsAdmin || p.UserName == u.UserName
+}
+
 func (r *playerRepository) Save(entity interface{}) (string, error) {
 	t := entity.(*model.Player)
+	if !r.isPermitted(t) {
+		return "", rest.ErrPermissionDenied
+	}
 	id, err := r.put(t.ID, t)
 	if err == model.ErrNotFound {
 		return "", rest.ErrNotFound
@@ -74,6 +94,9 @@ func (r *playerRepository) Save(entity interface{}) (string, error) {
 
 func (r *playerRepository) Update(entity interface{}, cols ...string) error {
 	t := entity.(*model.Player)
+	if !r.isPermitted(t) {
+		return rest.ErrPermissionDenied
+	}
 	_, err := r.put(t.ID, t)
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
@@ -82,7 +105,7 @@ func (r *playerRepository) Update(entity interface{}, cols ...string) error {
 }
 
 func (r *playerRepository) Delete(id string) error {
-	err := r.delete(Eq{"id": id})
+	err := r.delete(And{Eq{"id": id}, Eq{"user_name": loggedUser(r.ctx).UserName}})
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
 	}
