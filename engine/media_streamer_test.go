@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/persistence"
@@ -31,7 +30,6 @@ var _ = Describe("MediaStreamer", func() {
 	})
 
 	BeforeEach(func() {
-		conf.Server.EnableDownsampling = true
 		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}
 		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(`[{"id": "123", "path": "tests/fixtures/test.mp3", "suffix": "mp3", "bitRate": 128, "duration": 257.0}]`, 1)
 		streamer = NewMediaStreamer(ds, ffmpeg, cache)
