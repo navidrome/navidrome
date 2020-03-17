@@ -23,11 +23,8 @@ type nd struct {
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
 	IndexGroups     string `default:"A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)"`
 
-	EnableDownsampling      bool   `default:"false"`
-	MaxBitRate              int    `default:"0"`
-	MaxTranscodingCacheSize int64  `default:"100"` // in MB
-	DownsampleCommand       string `default:"ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -"`
-	ProbeCommand            string `default:"ffmpeg -i %s -f ffmetadata"`
+	TranscodingCacheSize int64  `default:"100"` // in MB
+	ProbeCommand         string `default:"ffmpeg -i %s -f ffmetadata"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevDisableBanner           bool   `default:"false"`
