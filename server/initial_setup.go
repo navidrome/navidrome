@@ -14,6 +14,10 @@ import (
 
 func initialSetup(ds model.DataStore) {
 	_ = ds.WithTx(func(tx model.DataStore) error {
+		if err := createDefaultTranscodings(ds); err != nil {
+			return err
+		}
+
 		_, err := ds.Property(nil).Get(consts.InitialSetupFlagKey)
 		if err == nil {
 			return nil
@@ -27,10 +31,6 @@ func initialSetup(ds model.DataStore) {
 			if err = createInitialAdminUser(ds); err != nil {
 				return err
 			}
-		}
-
-		if err = createDefaultTranscodings(ds); err != nil {
-			return err
 		}
 
 		err = ds.Property(nil).Put(consts.InitialSetupFlagKey, time.Now().String())
@@ -83,6 +83,10 @@ func createJWTSecret(ds model.DataStore) error {
 
 func createDefaultTranscodings(ds model.DataStore) error {
 	repo := ds.Transcoding(nil)
+	c, _ := repo.CountAll()
+	if c != 0 {
+		return nil
+	}
 	for _, d := range consts.DefaultTranscodings {
 		var j []byte
 		var err error
