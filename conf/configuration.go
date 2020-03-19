@@ -13,12 +13,13 @@ import (
 )
 
 type nd struct {
-	Port         string `default:"4533"`
-	MusicFolder  string `default:"./music"`
-	DataFolder   string `default:"./"`
-	ScanInterval string `default:"1m"`
-	DbPath       string
-	LogLevel     string `default:"info"`
+	Port           string `default:"4533"`
+	MusicFolder    string `default:"./music"`
+	DataFolder     string `default:"./"`
+	ScanInterval   string `default:"1m"`
+	DbPath         string ``
+	LogLevel       string `default:"info"`
+	SessionTimeout string `default:"30s"`
 
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
 	IndexGroups     string `default:"A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)"`

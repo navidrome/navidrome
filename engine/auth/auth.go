@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -13,9 +14,10 @@ import (
 )
 
 var (
-	once      sync.Once
-	JwtSecret []byte
-	TokenAuth *jwtauth.JWTAuth
+	once           sync.Once
+	JwtSecret      []byte
+	TokenAuth      *jwtauth.JWTAuth
+	sessionTimeOut time.Duration
 )
 
 func InitTokenAuth(ds model.DataStore) {
@@ -39,8 +41,21 @@ func CreateToken(u *model.User) (string, error) {
 	return TouchToken(token)
 }
 
+func getSessionTimeOut() time.Duration {
+	if sessionTimeOut == 0 {
+		if to, err := time.ParseDuration(conf.Server.SessionTimeout); err != nil {
+			sessionTimeOut = consts.DefaultSessionTimeout
+		} else {
+			sessionTimeOut = to
+		}
+		log.Info("Setting Session Timeout", "value", sessionTimeOut)
+	}
+	return sessionTimeOut
+}
+
 func TouchToken(token *jwt.Token) (string, error) {
-	expireIn := time.Now().Add(consts.JWTTokenExpiration).Unix()
+	timeout := getSessionTimeOut()
+	expireIn := time.Now().Add(timeout).Unix()
 	claims := token.Claims.(jwt.MapClaims)
 	claims["exp"] = expireIn
 
