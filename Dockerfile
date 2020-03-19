@@ -36,7 +36,7 @@ COPY --from=jsbuilder /src/build/* /src/ui/build/
 COPY --from=jsbuilder /src/build/static/css/* /src/ui/build/static/css/
 COPY --from=jsbuilder /src/build/static/js/* /src/ui/build/static/js/
 RUN rm -rf /src/build/css /src/build/js
-RUN GIT_TAG=$(git name-rev --name-only HEAD) && \
+RUN GIT_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) && \
     GIT_TAG=${GIT_TAG#"tags/"} && \
     GIT_SHA=$(git rev-parse --short HEAD) && \
     echo "Building version: ${GIT_TAG} (${GIT_SHA})" && \

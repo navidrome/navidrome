@@ -9,6 +9,20 @@ before:
     - git checkout .
 
 builds:
+  - id: navidrome_darwin
+    env:
+      - CGO_ENABLED=1
+      - CC=o64-clang
+      - CXX=o64-clang++
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    flags:
+      - -tags=embed
+    ldflags:
+      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
+
   - id: navidrome_linux_amd64
     env:
       - CGO_ENABLED=1
@@ -52,20 +66,6 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
-
-  - id: navidrome_darwin
-    env:
-      - CGO_ENABLED=1
-      - CC=o64-clang
-      - CXX=o64-clang++
-    goos:
-      - darwin
-    goarch:
-      - amd64
-    flags:
-      - -tags=embed
-    ldflags:
       - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
 
   - id: navidrome_windows_i686
