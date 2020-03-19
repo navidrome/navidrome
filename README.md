@@ -25,7 +25,7 @@ our [Discord server](https://discord.gg/xh7j7yF)
 - Automatically monitors your library for changes, importing new files and reloading new metadata 
 - Modern and responsive Web interface based on Material UI, to manage users and browse your library
 - Compatible with all Subsonic/Madsonic/Airsonic clients. See bellow for a list of tested clients
-- Transcoding/Downsampling on-the-fly. Can be set per user/player
+- Transcoding/Downsampling on-the-fly. Can be set per user/player. Opus encoding is supported
 - Integrated music player (WIP)
 
 Navidrome should be compatible with all Subsonic clients. The following clients are tested and confirmed to work properly:
@@ -44,7 +44,8 @@ Navidrome should be compatible with all Subsonic clients. The following clients 
 For more options, look at the [list of clients](https://airsonic.github.io/docs/apps/) maintained by 
 the Airsonic project. Please open an [issue](https://github.com/deluan/navidrome/issues) if you have any 
 trouble with the client of your choice.
-    
+
+
 ## Road map
 
 This project is being actively worked on. Expect a more polished experience and new features/releases 
@@ -95,7 +96,8 @@ services:
       ND_SCANINTERVAL: 1m
       ND_LOGLEVEL: info  
       ND_PORT: 4533
-      ND_TRANSCODINGCACHESIZE: 100 # MB
+      ND_TRANSCODINGCACHESIZE: 100MB
+      ND_SESSIONTIMEOUT: 30m
     volumes:
       - "./data:/data"
       - "/path/to/your/music/folder:/music:ro"
