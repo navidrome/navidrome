@@ -20,7 +20,7 @@ import { useMediaQuery } from '@material-ui/core'
 const AlbumFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="name" alwaysOn />
-    <BooleanInput source="compilation" options={{ color: 'primary' }} />
+    <BooleanInput source="compilation" />
     <NumberInput source="year" />
   </Filter>
 )
