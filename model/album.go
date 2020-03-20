@@ -15,6 +15,7 @@ type Album struct {
 	SongCount    int       `json:"songCount"`
 	Duration     float32   `json:"duration"`
 	Genre        string    `json:"genre"`
+	FullText     string    `json:"fullText"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 

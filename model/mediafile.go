@@ -23,6 +23,7 @@ type MediaFile struct {
 	Duration    float32   `json:"duration"`
 	BitRate     int       `json:"bitRate"`
 	Genre       string    `json:"genre"`
+	FullText    string    `json:"fullText"`
 	Compilation bool      `json:"compilation"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`

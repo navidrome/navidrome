@@ -52,11 +52,9 @@ func (r *artistRepository) getIndexKey(a *model.Artist) string {
 }
 
 func (r *artistRepository) Put(a *model.Artist) error {
+	a.FullText = r.getFullText(a.Name)
 	_, err := r.put(a.ID, a)
-	if err != nil {
-		return err
-	}
-	return r.index(a.ID, a.Name)
+	return err
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {

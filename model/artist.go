@@ -6,6 +6,7 @@ type Artist struct {
 	ID         string `json:"id"          orm:"column(id)"`
 	Name       string `json:"name"`
 	AlbumCount int    `json:"albumCount"  orm:"column(album_count)"`
+	FullText   string `json:"fullText"`
 
 	// Annotations
 	PlayCount int       `json:"-"   orm:"-"`

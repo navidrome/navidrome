@@ -39,11 +39,9 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 }
 
 func (r *albumRepository) Put(a *model.Album) error {
+	a.FullText = r.getFullText(a.Name, a.Artist, a.AlbumArtist)
 	_, err := r.put(a.ID, a)
-	if err != nil {
-		return err
-	}
-	return r.index(a.ID, a.Name, a.Artist, a.AlbumArtist)
+	return err
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {

@@ -4,34 +4,15 @@ import (
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/deluan/navidrome/log"
 	"github.com/kennygrant/sanitize"
 )
 
-const searchTable = "search"
-
-func (r sqlRepository) index(id string, text ...string) error {
+func (r sqlRepository) getFullText(text ...string) string {
 	sanitizedText := strings.Builder{}
 	for _, txt := range text {
 		sanitizedText.WriteString(strings.TrimSpace(sanitize.Accents(strings.ToLower(txt))) + " ")
 	}
-
-	values := map[string]interface{}{
-		"id":        id,
-		"item_type": r.tableName,
-		"full_text": strings.TrimSpace(sanitizedText.String()),
-	}
-	update := Update(searchTable).Where(Eq{"id": id}).SetMap(values)
-	count, err := r.executeSQL(update)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil
-	}
-	insert := Insert(searchTable).SetMap(values)
-	_, err = r.executeSQL(insert)
-	return err
+	return strings.TrimSpace(sanitizedText.String())
 }
 
 func (r sqlRepository) doSearch(q string, offset, size int, results interface{}, orderBys ...string) error {
@@ -44,7 +25,6 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 	if len(orderBys) > 0 {
 		sq = sq.OrderBy(orderBys...)
 	}
-	sq = sq.Join("search").Where("search.id = " + r.tableName + ".id")
 	parts := strings.Split(q, " ")
 	for _, part := range parts {
 		sq = sq.Where(Or{
@@ -54,16 +34,4 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 	}
 	err := r.queryAll(sq, results)
 	return err
-}
-
-func (r sqlRepository) cleanSearchIndex() error {
-	del := Delete(searchTable).Where(Eq{"item_type": r.tableName}).Where("id not in (select id from " + r.tableName + ")")
-	c, err := r.executeSQL(del)
-	if err != nil {
-		return err
-	}
-	if c > 0 {
-		log.Debug(r.ctx, "Clean-up search index", "table", r.tableName, "totalDeleted", c)
-	}
-	return nil
 }

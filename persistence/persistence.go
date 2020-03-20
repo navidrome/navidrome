@@ -119,18 +119,6 @@ func (s *SQLStore) GC(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = s.MediaFile(ctx).(*mediaFileRepository).cleanSearchIndex()
-	if err != nil {
-		return err
-	}
-	err = s.Album(ctx).(*albumRepository).cleanSearchIndex()
-	if err != nil {
-		return err
-	}
-	err = s.Artist(ctx).(*artistRepository).cleanSearchIndex()
-	if err != nil {
-		return err
-	}
 	err = s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations()
 	if err != nil {
 		return err
