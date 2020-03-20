@@ -9,8 +9,7 @@ import {
   SearchInput,
   Show,
   SimpleShowLayout,
-  TextField,
-  TextInput
+  TextField
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import {
@@ -29,8 +28,6 @@ import { SongBulkActions } from './SongBulkActions'
 const SongFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="title" alwaysOn />
-    <TextInput source="album" />
-    <TextInput source="artist" />
   </Filter>
 )
 

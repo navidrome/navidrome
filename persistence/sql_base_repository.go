@@ -13,6 +13,7 @@ import (
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
+	"github.com/kennygrant/sanitize"
 )
 
 type filterFunc = func(field string, value interface{}) Sqlizer
@@ -248,4 +249,18 @@ func startsWithFilter(field string, value interface{}) Like {
 func booleanFilter(field string, value interface{}) Sqlizer {
 	v := strings.ToLower(value.(string))
 	return Eq{field: strings.ToLower(v) == "true"}
+}
+
+func fullTextFilter(field string, value interface{}) Sqlizer {
+	q := value.(string)
+	q = strings.TrimSpace(sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*"))))
+	parts := strings.Split(q, " ")
+	filters := And{}
+	for _, part := range parts {
+		filters = append(filters, Or{
+			Like{"full_text": part + "%"},
+			Like{"full_text": "%" + part + "%"},
+		})
+	}
+	return filters
 }

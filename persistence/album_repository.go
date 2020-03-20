@@ -24,6 +24,7 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 		"artist": "compilation asc, album_artist asc, name asc",
 	}
 	r.filterMappings = map[string]filterFunc{
+		"name":        fullTextFilter,
 		"compilation": booleanFilter,
 	}
 

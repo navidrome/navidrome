@@ -25,6 +25,9 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 		"artist": "artist asc, album asc, disc_number asc, track_number asc",
 		"album":  "album asc, disc_number asc, track_number asc",
 	}
+	r.filterMappings = map[string]filterFunc{
+		"title": fullTextFilter,
+	}
 	return r
 }
 

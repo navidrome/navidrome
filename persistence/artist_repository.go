@@ -25,6 +25,9 @@ func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepositor
 	r.ormer = o
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
 	r.tableName = "artist"
+	r.filterMappings = map[string]filterFunc{
+		"name": fullTextFilter,
+	}
 	return r
 }
 

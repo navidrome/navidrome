@@ -8,7 +8,7 @@ import {
   NumberField,
   FunctionField,
   SearchInput,
-  TextInput,
+  NumberInput,
   Show,
   SimpleShowLayout,
   TextField
@@ -19,7 +19,7 @@ import { useMediaQuery } from '@material-ui/core'
 const AlbumFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="name" alwaysOn />
-    <TextInput source="artist" />
+    <NumberInput source="year" />
   </Filter>
 )
 
