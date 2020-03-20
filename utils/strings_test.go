@@ -6,13 +6,13 @@ import (
 
 func TestLongestCommonPrefix(t *testing.T) {
 	expected := "/Music/iTunes 1/iTunes Media/Music/"
-	actual := LongestCommonPrefix(test_strings)
+	actual := LongestCommonPrefix(testStrings)
 	if actual != expected {
 		t.Errorf("Couldn't find longest common prefix: want '%s', got '%s'", expected, actual)
 	}
 }
 
-var test_strings = []string{
+var testStrings = []string{
 	"/Music/iTunes 1/iTunes Media/Music/ABBA/Gold_ Greatest Hits/Dancing Queen.m4a",
 	"/Music/iTunes 1/iTunes Media/Music/ABBA/Gold_ Greatest Hits/Mamma Mia.m4a",
 	"/Music/iTunes 1/iTunes Media/Music/Art Blakey/A Night At Birdland, Vol. 1/01 Annoucement By Pee Wee Marquette.m4a",

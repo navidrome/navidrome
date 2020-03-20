@@ -3,16 +3,11 @@ package persistence
 import (
 	"context"
 	"reflect"
-	"sync"
 
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/db"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-)
-
-var (
-	once sync.Once
 )
 
 type SQLStore struct {

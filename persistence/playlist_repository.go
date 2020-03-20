@@ -71,7 +71,7 @@ func (r *playlistRepository) GetWithTracks(id string) (*model.Playlist, error) {
 			continue
 		}
 		pls.Duration += mf.Duration
-		newTracks = append(newTracks, model.MediaFile(*mf))
+		newTracks = append(newTracks, *mf)
 	}
 	pls.Tracks = newTracks
 	return pls, err

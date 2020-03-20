@@ -73,15 +73,15 @@ func (p *playlists) Delete(ctx context.Context, playlistId string) error {
 
 func (p *playlists) Update(ctx context.Context, playlistId string, name *string, idsToAdd []string, idxToRemove []int) error {
 	pls, err := p.ds.Playlist(ctx).Get(playlistId)
+	if err != nil {
+		return err
+	}
 
 	owner := p.getUser(ctx)
 	if owner != pls.Owner {
 		return model.ErrNotAuthorized
 	}
 
-	if err != nil {
-		return err
-	}
 	if name != nil {
 		pls.Name = *name
 	}

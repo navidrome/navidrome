@@ -8,11 +8,6 @@ import (
 	"github.com/deluan/navidrome/model"
 )
 
-type property struct {
-	ID    string `orm:"pk;column(id)"`
-	Value string
-}
-
 type propertyRepository struct {
 	sqlRepository
 }

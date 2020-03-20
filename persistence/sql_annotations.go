@@ -10,18 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type annotation struct {
-	AnnID     string    `json:"annID"        orm:"pk;column(ann_id)"`
-	UserID    string    `json:"userID"       orm:"pk;column(user_id)"`
-	ItemID    string    `json:"itemID"       orm:"pk;column(item_id)"`
-	ItemType  string    `json:"itemType"`
-	PlayCount int       `json:"playCount"`
-	PlayDate  time.Time `json:"playDate"`
-	Rating    int       `json:"rating"`
-	Starred   bool      `json:"starred"`
-	StarredAt time.Time `json:"starredAt"`
-}
-
 const annotationTable = "annotation"
 
 func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.QueryOptions) SelectBuilder {
