@@ -15,11 +15,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type filterFunc = func(field string, value interface{}) Sqlizer
+
 type sqlRepository struct {
-	ctx          context.Context
-	tableName    string
-	ormer        orm.Ormer
-	sortMappings map[string]string
+	ctx            context.Context
+	tableName      string
+	ormer          orm.Ormer
+	sortMappings   map[string]string
+	filterMappings map[string]filterFunc
 }
 
 const invalidUserId = "-1"
@@ -226,10 +229,23 @@ func (r sqlRepository) parseRestOptions(options ...rest.QueryOptions) model.Quer
 		if len(options[0].Filters) > 0 {
 			filters := And{}
 			for f, v := range options[0].Filters {
-				filters = append(filters, Like{f: fmt.Sprintf("%s%%", v)})
+				if ff, ok := r.filterMappings[f]; ok {
+					filters = append(filters, ff(f, v))
+				} else {
+					filters = append(filters, startsWithFilter(f, v))
+				}
 			}
 			qo.Filters = filters
 		}
 	}
 	return qo
+}
+
+func startsWithFilter(field string, value interface{}) Like {
+	return Like{field: fmt.Sprintf("%s%%", value)}
+}
+
+func booleanFilter(field string, value interface{}) Sqlizer {
+	v := strings.ToLower(value.(string))
+	return Eq{field: strings.ToLower(v) == "true"}
 }
