@@ -7,6 +7,13 @@ export const DarkTheme = {
     },
     secondary: blue,
     type: 'dark'
+  },
+  overrides: {
+    MuiFormGroup: {
+      root: {
+        color: 'white'
+      }
+    }
   }
 }
 
