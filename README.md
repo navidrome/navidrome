@@ -29,17 +29,14 @@ our [Discord server](https://discord.gg/xh7j7yF)
 - Integrated music player (WIP)
 
 Navidrome should be compatible with all Subsonic clients. The following clients are tested and confirmed to work properly:
-- Android:
-    - [DSub](https://play.google.com/store/apps/details?id=github.daneren2005.dsub)
-    - [Ultrasonic](https://play.google.com/store/apps/details?id=org.moire.ultrasonic)
-    - [Music Stash](https://play.google.com/store/apps/details?id=com.ghenry22.mymusicstash)
-- iOS:
-    - [play:Sub](http://michaelsapps.dk/playsubapp/)
-- Web:
-    - [Jamstash](http://jamstash.com)
-    - [Aurial](http://shrimpza.github.io/aurial/)
-    - [Subfire](http://p.subfireplayer.net/)
-    - [Subplayer](https://github.com/peguerosdc/subplayer)
+- Android: [DSub](https://play.google.com/store/apps/details?id=github.daneren2005.dsub),
+[Ultrasonic](https://play.google.com/store/apps/details?id=org.moire.ultrasonic) and
+[Music Stash](https://play.google.com/store/apps/details?id=com.ghenry22.mymusicstash)
+- iOS: [play:Sub](http://michaelsapps.dk/playsubapp/)
+- Web: [Jamstash](http://jamstash.com),
+[Aurial](http://shrimpza.github.io/aurial/),
+[Subfire](http://p.subfireplayer.net/) and 
+[Subplayer](https://github.com/peguerosdc/subplayer)
     
 For more options, look at the [list of clients](https://airsonic.github.io/docs/apps/) maintained by 
 the Airsonic project. Please open an [issue](https://github.com/deluan/navidrome/issues) if you have any 
@@ -148,7 +145,7 @@ folder for startup files for your init system.
     <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-login.png">
     <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-player.png">
     <img width="270" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-album-view.png">
-    <img width="900"src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-desktop-player.png">
+    <img width="900" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-desktop-player.png">
 </p>
 </p>
 
