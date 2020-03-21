@@ -135,6 +135,12 @@ user.
 
 For more options, run `navidrome --help` 
 
+### Running as a service
+
+Check the [contrib](https://github.com/deluan/navidrome/tree/master/contrib)
+folder for startup files for your init system.
+
+
 ## Screenshots
 
 <p align="center">
