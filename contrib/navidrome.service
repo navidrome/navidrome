@@ -1,0 +1,38 @@
+# This file ususaly goes in /etc/systemd/system
+
+[Unit]
+Description=Navidrome Daemon
+After=network.target
+
+[Service]
+User=navidrome
+Group=navidrome
+Type=simple
+ExecStart=/opt/navidrome/navidrome
+WorkingDirectory=/opt/navidrome
+TimeoutStopSec=20
+KillMode=process
+Restart=on-failure
+
+# See https://www.freedesktop.org/software/systemd/man/systemd.exec.html
+DevicePolicy=closed
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateUsers=yes
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+SystemCallFilter=~@clock @debug @module @mount @obsolete @privileged @reboot @setuid @swap
+ReadWritePaths=/opt/navidrome/
+PrivateDevices=yes
+ProtectSystem=full
+ProtectHome=true
+
+MemoryDenyWriteExecute=yes
+
+
+[Install]
+WantedBy=multi-user.target
