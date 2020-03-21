@@ -40,11 +40,7 @@ func RequestLogger(next http.Handler) http.Handler {
 		case status >= 400:
 			log.Warn(logArgs...)
 		default:
-			if log.CurrentLevel() >= log.LevelDebug {
-				log.Debug(logArgs...)
-			} else {
-				log.Info(logArgs...)
-			}
+			log.Debug(logArgs...)
 		}
 	})
 }
