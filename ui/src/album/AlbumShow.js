@@ -65,7 +65,7 @@ const AlbumShow = (props) => {
           )}
           {isDesktop && <TextField source="title" />}
           {!isDesktop && <FunctionField source="title" render={trackName} />}
-          {record.compilation && <TextField source="artist" />}
+          {isDesktop && <TextField source="artist" />}
           <DurationField source="duration" />
         </Datagrid>
       </List>
