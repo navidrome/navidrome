@@ -14,6 +14,7 @@ import (
 
 type userRepository struct {
 	sqlRepository
+	sqlRestful
 }
 
 func NewUserRepository(ctx context.Context, o orm.Ormer) model.UserRepository {

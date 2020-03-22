@@ -14,6 +14,7 @@ import (
 
 type mediaFileRepository struct {
 	sqlRepository
+	sqlRestful
 }
 
 func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileRepository {

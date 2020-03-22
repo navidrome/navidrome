@@ -16,6 +16,7 @@ import (
 
 type artistRepository struct {
 	sqlRepository
+	sqlRestful
 	indexGroups utils.IndexGroups
 }
 

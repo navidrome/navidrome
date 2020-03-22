@@ -13,6 +13,7 @@ import (
 
 type albumRepository struct {
 	sqlRepository
+	sqlRestful
 }
 
 func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository {

@@ -11,6 +11,7 @@ import (
 
 type playerRepository struct {
 	sqlRepository
+	sqlRestful
 }
 
 func NewPlayerRepository(ctx context.Context, o orm.Ormer) model.PlayerRepository {

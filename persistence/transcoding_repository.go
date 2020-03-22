@@ -11,6 +11,7 @@ import (
 
 type transcodingRepository struct {
 	sqlRepository
+	sqlRestful
 }
 
 func NewTranscodingRepository(ctx context.Context, o orm.Ormer) model.TranscodingRepository {
