@@ -28,7 +28,6 @@ type nd struct {
 	ProbeCommand         string `default:"ffmpeg -i %s -f ffmetadata"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
-	DevDisableBanner           bool   `default:"false"`
 	DevLogSourceLine           bool   `default:"false"`
 	DevAutoCreateAdminPassword string `default:""`
 }

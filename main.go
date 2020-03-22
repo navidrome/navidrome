@@ -9,9 +9,7 @@ import (
 )
 
 func main() {
-	if !conf.Server.DevDisableBanner {
-		println(consts.Banner())
-	}
+	println(consts.Banner())
 
 	conf.Load()
 	db.EnsureLatestVersion()
