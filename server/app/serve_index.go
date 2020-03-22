@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/deluan/navidrome/assets"
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 )
@@ -34,6 +35,7 @@ func ServeIndex(ds model.DataStore) http.HandlerFunc {
 		j, _ := json.Marshal(appConfig)
 		data := map[string]interface{}{
 			"AppConfig": string(j),
+			"Version":   consts.Version(),
 		}
 		err = t.Execute(w, data)
 		if err != nil {
