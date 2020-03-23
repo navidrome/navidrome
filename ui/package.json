@@ -16,7 +16,7 @@
     "react-dom": "^16.13.0",
     "react-jinke-music-player": "^4.10.1",
     "react-redux": "^7.2.0",
-    "react-scripts": "^3.4.0"
+    "react-scripts": "^3.4.1"
   },
   "scripts": {
     "start": "react-scripts start",
