@@ -6,6 +6,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
@@ -108,7 +109,7 @@ func (r *albumRepository) Refresh(ids ...string) error {
 			al.CoverArtId = ""
 		}
 		if al.Compilation {
-			al.AlbumArtist = "Various Artists"
+			al.AlbumArtist = consts.VariousArtists
 		}
 		if al.AlbumArtist == "" {
 			al.AlbumArtist = al.Artist

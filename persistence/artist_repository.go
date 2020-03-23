@@ -8,6 +8,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
@@ -128,7 +129,7 @@ func (r *artistRepository) Refresh(ids ...string) error {
 	toUpdate := 0
 	for _, ar := range artists {
 		if ar.Compilation {
-			ar.AlbumArtist = "Various Artists"
+			ar.AlbumArtist = consts.VariousArtists
 		}
 		if ar.AlbumArtist != "" {
 			ar.Name = ar.AlbumArtist

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 )
@@ -241,7 +242,7 @@ func (s *TagScanner) toMediaFile(md *Metadata) model.MediaFile {
 	mf.AlbumID = s.albumID(md)
 	mf.Album = s.mapAlbumName(md)
 	if md.Artist() == "" {
-		mf.Artist = "[Unknown Artist]"
+		mf.Artist = consts.UnknownArtist
 	} else {
 		mf.Artist = md.Artist()
 	}
@@ -278,13 +279,13 @@ func (s *TagScanner) mapTrackTitle(md *Metadata) string {
 func (s *TagScanner) mapArtistName(md *Metadata) string {
 	switch {
 	case md.Compilation():
-		return "Various Artists"
+		return consts.VariousArtists
 	case md.AlbumArtist() != "":
 		return md.AlbumArtist()
 	case md.Artist() != "":
 		return md.Artist()
 	default:
-		return "[Unknown Artist]"
+		return consts.UnknownArtist
 	}
 }
 

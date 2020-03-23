@@ -1,6 +1,8 @@
 package consts
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	AppName = "navidrome"
@@ -39,4 +41,9 @@ var (
 			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
 	}
+)
+
+const (
+	VariousArtists = "Various Artists"
+	UnknownArtist  = "[Unknown Artist]"
 )

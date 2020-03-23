@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/model"
 )
 
@@ -121,7 +122,7 @@ func FromMediaFile(mf *model.MediaFile) Entry {
 func realArtistName(mf *model.MediaFile) string {
 	switch {
 	case mf.Compilation:
-		return "Various Artists"
+		return consts.VariousArtists
 	case mf.AlbumArtist != "":
 		return mf.AlbumArtist
 	}
