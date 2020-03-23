@@ -12,7 +12,7 @@
     "prop-types": "^15.7.2",
     "ra-data-json-server": "^3.3.1",
     "react": "^16.13.1",
-    "react-admin": "^3.3.1",
+    "react-admin": "^3.3.2",
     "react-dom": "^16.13.0",
     "react-jinke-music-player": "^4.10.1",
     "react-redux": "^7.2.0",
