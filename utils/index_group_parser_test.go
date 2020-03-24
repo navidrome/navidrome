@@ -1,43 +1,38 @@
 package utils
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	"testing"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestParseIndexGroup(t *testing.T) {
+var _ = Describe("ParseIndexGroup", func() {
+	Context("Two simple entries", func() {
+		It("returns the entries", func() {
+			parsed := ParseIndexGroups("A The")
 
-	Convey("Two simple entries", t, func() {
-		parsed := ParseIndexGroups("A The")
-
-		So(parsed, ShouldContainKey, "A")
-		So(parsed["A"], ShouldEqual, "A")
-
-		So(parsed, ShouldContainKey, "The")
-		So(parsed["The"], ShouldEqual, "The")
+			Expect(parsed).To(HaveLen(2))
+			Expect(parsed["A"]).To(Equal("A"))
+			Expect(parsed["The"]).To(Equal("The"))
+		})
 	})
-
-	Convey("An entry with a group", t, func() {
+	Context("An entry with a group", func() {
 		parsed := ParseIndexGroups("A-C(ABC) Z")
 
-		So(parsed, ShouldContainKey, "A")
-		So(parsed["A"], ShouldEqual, "A-C")
-		So(parsed, ShouldContainKey, "B")
-		So(parsed["B"], ShouldEqual, "A-C")
-		So(parsed, ShouldContainKey, "C")
-		So(parsed["C"], ShouldEqual, "A-C")
-
-		So(parsed["Z"], ShouldEqual, "Z")
-
+		It("parses the groups correctly", func() {
+			Expect(parsed).To(HaveLen(4))
+			Expect(parsed["A"]).To(Equal("A-C"))
+			Expect(parsed["B"]).To(Equal("A-C"))
+			Expect(parsed["C"]).To(Equal("A-C"))
+			Expect(parsed["Z"]).To(Equal("Z"))
+		})
 	})
-	Convey("Correctly parses UTF-8", t, func() {
+	Context("Correctly parses UTF-8", func() {
 		parsed := ParseIndexGroups("UTF8(宇A海)")
-
-		So(parsed, ShouldContainKey, "宇")
-		So(parsed["宇"], ShouldEqual, "UTF8")
-		So(parsed, ShouldContainKey, "A")
-		So(parsed["A"], ShouldEqual, "UTF8")
-		So(parsed, ShouldContainKey, "海")
-		So(parsed["海"], ShouldEqual, "UTF8")
+		It("parses the groups correctly", func() {
+			Expect(parsed).To(HaveLen(3))
+			Expect(parsed["宇"]).To(Equal("UTF8"))
+			Expect(parsed["A"]).To(Equal("UTF8"))
+			Expect(parsed["海"]).To(Equal("UTF8"))
+		})
 	})
-}
+})

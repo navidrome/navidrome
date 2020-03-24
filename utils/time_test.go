@@ -1,17 +1,16 @@
 package utils
 
 import (
-	"testing"
 	"time"
 
-	. "github.com/smartystreets/goconvey/convey"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestTimeConversion(t *testing.T) {
-
-	Convey("Conversion should work both ways", t, func() {
-		now := time.Date(2002, 8, 9, 12, 11, 13, 1000000, time.Local)
-		milli := ToMillis(now)
-		So(ToTime(milli).String(), ShouldEqual, now.String())
+var _ = Describe("Time Conversion", func() {
+	It("converts from Date to Millis and back to Date", func() {
+		date := time.Date(2002, 8, 9, 12, 11, 13, 1000000, time.Local)
+		milli := ToMillis(date)
+		Expect(ToTime(milli)).To(Equal(date))
 	})
-}
+})
