@@ -13,6 +13,8 @@ services:
       ND_SCANINTERVAL: 1m
       ND_LOGLEVEL: info
       ND_PORT: 4533
+      ND_TRANSCODINGCACHESIZE: 100MB
+      ND_SESSIONTIMEOUT: 30m
     volumes:
       - "./data:/data"
       - "./music:/music"
