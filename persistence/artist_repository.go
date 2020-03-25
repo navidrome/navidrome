@@ -114,12 +114,12 @@ func (r *artistRepository) Refresh(ids ...string) error {
 		Compilation bool
 	}
 	var artists []refreshArtist
-	sel := Select("f.artist_id as id", "f.artist as name", "f.album_artist", "f.compilation",
+	sel := Select("f.album_artist_id as id", "f.artist as name", "f.album_artist", "f.compilation",
 		"count(*) as album_count", "a.id as current_id").
 		From("album f").
-		LeftJoin("artist a on f.artist_id = a.id").
-		Where(Eq{"f.artist_id": ids}).
-		GroupBy("f.artist_id").OrderBy("f.id")
+		LeftJoin("artist a on f.album_artist_id = a.id").
+		Where(Eq{"f.album_artist_id": ids}).
+		GroupBy("f.album_artist_id").OrderBy("f.id")
 	err := r.queryAll(sel, &artists)
 	if err != nil {
 		return err

@@ -60,3 +60,10 @@ func toCamelCase(str string) string {
 		return strings.ToUpper(strings.Replace(s, "_", "", -1))
 	})
 }
+
+type exist string
+
+func (e exist) ToSql() (string, []interface{}, error) {
+	sql := fmt.Sprintf("exists (select 1 %s)", e)
+	return sql, nil, nil
+}
