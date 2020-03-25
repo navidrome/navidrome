@@ -17,7 +17,9 @@ const ArtistFilter = (props) => (
 
 const artistRowClick = (id, basePath, record) => {
   const filter = { artist_id: id }
-  return `/album?filter=${JSON.stringify(filter)}&order=ASC&sort=year`
+  return `/album?filter=${JSON.stringify(
+    filter
+  )}&order=ASC&sort=year&displayedFilters={"compilation":true}`
 }
 
 const ArtistList = (props) => (

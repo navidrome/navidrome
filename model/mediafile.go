@@ -6,27 +6,28 @@ import (
 )
 
 type MediaFile struct {
-	ID          string    `json:"id"            orm:"pk;column(id)"`
-	Path        string    `json:"path"`
-	Title       string    `json:"title"`
-	Album       string    `json:"album"`
-	Artist      string    `json:"artist"`
-	ArtistID    string    `json:"artistId"      orm:"pk;column(artist_id)"`
-	AlbumArtist string    `json:"albumArtist"`
-	AlbumID     string    `json:"albumId"       orm:"pk;column(album_id)"`
-	HasCoverArt bool      `json:"hasCoverArt"`
-	TrackNumber int       `json:"trackNumber"`
-	DiscNumber  int       `json:"discNumber"`
-	Year        int       `json:"year"`
-	Size        int       `json:"size"`
-	Suffix      string    `json:"suffix"`
-	Duration    float32   `json:"duration"`
-	BitRate     int       `json:"bitRate"`
-	Genre       string    `json:"genre"`
-	FullText    string    `json:"fullText"`
-	Compilation bool      `json:"compilation"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID            string    `json:"id"            orm:"pk;column(id)"`
+	Path          string    `json:"path"`
+	Title         string    `json:"title"`
+	Album         string    `json:"album"`
+	ArtistID      string    `json:"artistId"      orm:"pk;column(artist_id)"`
+	Artist        string    `json:"artist"`
+	AlbumArtistID string    `json:"albumArtistId"`
+	AlbumArtist   string    `json:"albumArtist"`
+	AlbumID       string    `json:"albumId"       orm:"pk;column(album_id)"`
+	HasCoverArt   bool      `json:"hasCoverArt"`
+	TrackNumber   int       `json:"trackNumber"`
+	DiscNumber    int       `json:"discNumber"`
+	Year          int       `json:"year"`
+	Size          int       `json:"size"`
+	Suffix        string    `json:"suffix"`
+	Duration      float32   `json:"duration"`
+	BitRate       int       `json:"bitRate"`
+	Genre         string    `json:"genre"`
+	FullText      string    `json:"fullText"`
+	Compilation   bool      `json:"compilation"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 
 	// Annotations
 	PlayCount int       `json:"-"   orm:"-"`

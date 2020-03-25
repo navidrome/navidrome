@@ -68,7 +68,7 @@ func (m *MockAlbum) FindByArtist(artistId string) (model.Albums, error) {
 	var res = make(model.Albums, len(m.data))
 	i := 0
 	for _, a := range m.data {
-		if a.ArtistID == artistId {
+		if a.AlbumArtistID == artistId {
 			res[i] = *a
 			i++
 		}

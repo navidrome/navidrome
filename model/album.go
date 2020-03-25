@@ -3,21 +3,22 @@ package model
 import "time"
 
 type Album struct {
-	ID           string    `json:"id"            orm:"column(id)"`
-	Name         string    `json:"name"`
-	ArtistID     string    `json:"artistId"      orm:"pk;column(artist_id)"`
-	CoverArtPath string    `json:"coverArtPath"`
-	CoverArtId   string    `json:"coverArtId"`
-	Artist       string    `json:"artist"`
-	AlbumArtist  string    `json:"albumArtist"`
-	Year         int       `json:"year"`
-	Compilation  bool      `json:"compilation"`
-	SongCount    int       `json:"songCount"`
-	Duration     float32   `json:"duration"`
-	Genre        string    `json:"genre"`
-	FullText     string    `json:"fullText"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID            string    `json:"id"            orm:"column(id)"`
+	Name          string    `json:"name"`
+	CoverArtPath  string    `json:"coverArtPath"`
+	CoverArtId    string    `json:"coverArtId"`
+	ArtistID      string    `json:"artistId"      orm:"pk;column(artist_id)"`
+	Artist        string    `json:"artist"`
+	AlbumArtistID string    `json:"albumArtistId" orm:"pk;column(album_artist_id)"`
+	AlbumArtist   string    `json:"albumArtist"`
+	Year          int       `json:"year"`
+	Compilation   bool      `json:"compilation"`
+	SongCount     int       `json:"songCount"`
+	Duration      float32   `json:"duration"`
+	Genre         string    `json:"genre"`
+	FullText      string    `json:"fullText"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 
 	// Annotations
 	PlayCount int       `json:"-"   orm:"-"`
@@ -34,7 +35,7 @@ type AlbumRepository interface {
 	Exists(id string) (bool, error)
 	Put(m *Album) error
 	Get(id string) (*Album, error)
-	FindByArtist(artistId string) (Albums, error)
+	FindByArtist(albumArtistId string) (Albums, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetRandom(...QueryOptions) (Albums, error)
 	GetStarred(options ...QueryOptions) (Albums, error)

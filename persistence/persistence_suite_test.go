@@ -40,9 +40,9 @@ var (
 )
 
 var (
-	albumSgtPeppers    = model.Album{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", ArtistID: "3", Genre: "Rock", CoverArtId: "1", CoverArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, Year: 1967, FullText: "sgt peppers the beatles"}
-	albumAbbeyRoad     = model.Album{ID: "2", Name: "Abbey Road", Artist: "The Beatles", ArtistID: "3", Genre: "Rock", CoverArtId: "2", CoverArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, Year: 1969, FullText: "abbey road the beatles"}
-	albumRadioactivity = model.Album{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", ArtistID: "2", Genre: "Electronic", CoverArtId: "3", CoverArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, FullText: "radioactivity kraftwerk"}
+	albumSgtPeppers    = model.Album{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", AlbumArtistID: "3", Genre: "Rock", CoverArtId: "1", CoverArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, Year: 1967, FullText: "sgt peppers the beatles"}
+	albumAbbeyRoad     = model.Album{ID: "2", Name: "Abbey Road", Artist: "The Beatles", AlbumArtistID: "3", Genre: "Rock", CoverArtId: "2", CoverArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, Year: 1969, FullText: "abbey road the beatles"}
+	albumRadioactivity = model.Album{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", AlbumArtistID: "2", Genre: "Electronic", CoverArtId: "3", CoverArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, FullText: "radioactivity kraftwerk"}
 	testAlbums         = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,

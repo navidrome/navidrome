@@ -241,13 +241,10 @@ func (s *TagScanner) toMediaFile(md *Metadata) model.MediaFile {
 	mf.Album = md.Album()
 	mf.AlbumID = s.albumID(md)
 	mf.Album = s.mapAlbumName(md)
-	if md.Artist() == "" {
-		mf.Artist = consts.UnknownArtist
-	} else {
-		mf.Artist = md.Artist()
-	}
 	mf.ArtistID = s.artistID(md)
-	mf.AlbumArtist = md.AlbumArtist()
+	mf.Artist = s.mapArtistName(md)
+	mf.AlbumArtistID = s.albumArtistID(md)
+	mf.AlbumArtist = s.mapAlbumArtistName(md)
 	mf.Genre = md.Genre()
 	mf.Compilation = md.Compilation()
 	mf.Year = md.Year()
@@ -276,7 +273,7 @@ func (s *TagScanner) mapTrackTitle(md *Metadata) string {
 	return md.Title()
 }
 
-func (s *TagScanner) mapArtistName(md *Metadata) string {
+func (s *TagScanner) mapAlbumArtistName(md *Metadata) string {
 	switch {
 	case md.Compilation():
 		return consts.VariousArtists
@@ -287,6 +284,13 @@ func (s *TagScanner) mapArtistName(md *Metadata) string {
 	default:
 		return consts.UnknownArtist
 	}
+}
+
+func (s *TagScanner) mapArtistName(md *Metadata) string {
+	if md.Artist() != "" {
+		return md.Artist()
+	}
+	return consts.UnknownArtist
 }
 
 func (s *TagScanner) mapAlbumName(md *Metadata) string {
@@ -302,10 +306,14 @@ func (s *TagScanner) trackID(md *Metadata) string {
 }
 
 func (s *TagScanner) albumID(md *Metadata) string {
-	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapArtistName(md), s.mapAlbumName(md)))
+	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
 }
 
 func (s *TagScanner) artistID(md *Metadata) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapArtistName(md)))))
+}
+
+func (s *TagScanner) albumArtistID(md *Metadata) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapAlbumArtistName(md)))))
 }

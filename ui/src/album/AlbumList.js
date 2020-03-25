@@ -9,9 +9,11 @@ import {
   FunctionField,
   SearchInput,
   NumberInput,
-  BooleanInput,
+  NullableBooleanInput,
   Show,
   SimpleShowLayout,
+  ReferenceInput,
+  AutocompleteInput,
   TextField
 } from 'react-admin'
 import { DurationField, Pagination, Title } from '../common'
@@ -20,7 +22,15 @@ import { useMediaQuery } from '@material-ui/core'
 const AlbumFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="name" alwaysOn />
-    <BooleanInput source="compilation" />
+    <ReferenceInput
+      source="artist_id"
+      reference="artist"
+      sort={{ field: 'name', order: 'ASC' }}
+      filterToQuery={(searchText) => ({ name: [searchText] })}
+    >
+      <AutocompleteInput emptyText="-- None --" />
+    </ReferenceInput>
+    <NullableBooleanInput source="compilation" />
     <NumberInput source="year" />
   </Filter>
 )
