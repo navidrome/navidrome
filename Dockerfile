@@ -69,7 +69,7 @@ ENV ND_LOGLEVEL info
 ENV ND_PORT 4533
 
 EXPOSE ${ND_PORT}
-HEALTHCHECK CMD wget -O- http://localhost:4533/ping || exit 1
+HEALTHCHECK CMD wget -O- http://localhost:${ND_PORT}/ping || exit 1
 WORKDIR /app
 
 ENTRYPOINT ["/tini", "--"]
