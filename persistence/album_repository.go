@@ -35,10 +35,13 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 }
 
 func artistFilter(field string, value interface{}) Sqlizer {
-	return Or{
-		exist("from media_file where album.id = media_file.album_id and media_file.artist_id='" + value.(string) + "'"),
-		exist("from media_file where album.id = media_file.album_id and media_file.album_artist_id='" + value.(string) + "'"),
-	}
+	return Exists("media_file", And{
+		ConcatExpr("album_id=album.id"),
+		Or{
+			Eq{"artist_id": value},
+			Eq{"album_artist_id": value},
+		},
+	})
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {

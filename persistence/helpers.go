@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/Masterminds/squirrel"
 )
 
 func toSqlArgs(rec interface{}) (map[string]interface{}, error) {
@@ -33,9 +35,17 @@ func toSnakeCase(str string) string {
 	return strings.ToLower(snake)
 }
 
-type exist string
+func Exists(subTable string, cond squirrel.Sqlizer) exists {
+	return exists{subTable: subTable, cond: cond}
+}
 
-func (e exist) ToSql() (string, []interface{}, error) {
-	sql := fmt.Sprintf("exists (select 1 %s)", e)
-	return sql, nil, nil
+type exists struct {
+	subTable string
+	cond     squirrel.Sqlizer
+}
+
+func (e exists) ToSql() (string, []interface{}, error) {
+	sql, args, err := e.cond.ToSql()
+	sql = fmt.Sprintf("exists (select 1 from %s where %s)", e.subTable, sql)
+	return sql, args, err
 }

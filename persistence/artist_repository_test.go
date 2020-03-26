@@ -24,7 +24,7 @@ var _ = Describe("ArtistRepository", func() {
 		})
 	})
 
-	Describe("Exist", func() {
+	Describe("Exists", func() {
 		It("returns true for an artist that is in the DB", func() {
 			Expect(repo.Exists("3")).To(BeTrue())
 		})
