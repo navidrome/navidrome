@@ -33,34 +33,6 @@ func toSnakeCase(str string) string {
 	return strings.ToLower(snake)
 }
 
-func ToStruct(m map[string]interface{}, rec interface{}, fieldNames []string) error {
-	var r = make(map[string]interface{}, len(m))
-	for _, f := range fieldNames {
-		v, ok := m[f]
-		if !ok {
-			return fmt.Errorf("invalid field '%s'", f)
-		}
-		r[toCamelCase(f)] = v
-	}
-	// Convert to JSON...
-	b, err := json.Marshal(r)
-	if err != nil {
-		return err
-	}
-
-	// ... then convert to struct
-	err = json.Unmarshal(b, &rec)
-	return err
-}
-
-var matchUnderscore = regexp.MustCompile("_([A-Za-z])")
-
-func toCamelCase(str string) string {
-	return matchUnderscore.ReplaceAllStringFunc(str, func(s string) string {
-		return strings.ToUpper(strings.Replace(s, "_", "", -1))
-	})
-}
-
 type exist string
 
 func (e exist) ToSql() (string, []interface{}, error) {
