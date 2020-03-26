@@ -181,7 +181,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 	numPurgedTracks := 0
 	for _, n := range newTracks {
 		err := s.ds.MediaFile(ctx).Put(&n)
-		updatedArtists[n.ArtistID] = true
+		updatedArtists[n.AlbumArtistID] = true
 		updatedAlbums[n.AlbumID] = true
 		numUpdatedTracks++
 		if err != nil {
@@ -192,7 +192,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 	// Remaining tracks from DB that are not in the folder are deleted
 	for _, ct := range currentTracks {
 		numPurgedTracks++
-		updatedArtists[ct.ArtistID] = true
+		updatedArtists[ct.AlbumArtistID] = true
 		updatedAlbums[ct.AlbumID] = true
 		if err := s.ds.MediaFile(ctx).Delete(ct.ID); err != nil {
 			return err
@@ -212,7 +212,7 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedA
 		return err
 	}
 	for _, t := range ct {
-		updatedArtists[t.ArtistID] = true
+		updatedArtists[t.AlbumArtistID] = true
 		updatedAlbums[t.AlbumID] = true
 	}
 

@@ -155,9 +155,9 @@ func (b *browser) buildAlbumDir(al *model.Album, tracks model.MediaFiles) *Direc
 	dir := &DirectoryInfo{
 		Id:         al.ID,
 		Name:       al.Name,
-		Parent:     al.ArtistID,
-		Artist:     al.Artist,
-		ArtistId:   al.ArtistID,
+		Parent:     al.AlbumArtistID,
+		Artist:     al.AlbumArtist,
+		ArtistId:   al.AlbumArtistID,
 		SongCount:  al.SongCount,
 		Duration:   int(al.Duration),
 		Created:    al.CreatedAt,

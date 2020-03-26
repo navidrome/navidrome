@@ -63,7 +63,7 @@ func FromAlbum(al *model.Album) Entry {
 	e.Id = al.ID
 	e.Title = al.Name
 	e.IsDir = true
-	e.Parent = al.ArtistID
+	e.Parent = al.AlbumArtistID
 	e.Album = al.Name
 	e.Year = al.Year
 	e.Artist = al.AlbumArtist
@@ -71,7 +71,7 @@ func FromAlbum(al *model.Album) Entry {
 	e.CoverArt = al.CoverArtId
 	e.Created = al.CreatedAt
 	e.AlbumId = al.ID
-	e.ArtistId = al.ArtistID
+	e.ArtistId = al.AlbumArtistID
 	e.Duration = int(al.Duration)
 	e.SongCount = al.SongCount
 	if al.Starred {

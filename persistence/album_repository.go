@@ -121,9 +121,11 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		}
 		if al.Compilation {
 			al.AlbumArtist = consts.VariousArtists
+			al.AlbumArtistID = consts.VariousArtistsID
 		}
 		if al.AlbumArtist == "" {
 			al.AlbumArtist = al.Artist
+			al.AlbumArtistID = al.ArtistID
 		}
 		al.UpdatedAt = time.Now()
 		if al.CurrentId != "" {

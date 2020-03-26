@@ -8,7 +8,6 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
@@ -109,13 +108,10 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 func (r *artistRepository) Refresh(ids ...string) error {
 	type refreshArtist struct {
 		model.Artist
-		CurrentId   string
-		AlbumArtist string
-		Compilation bool
+		CurrentId string
 	}
 	var artists []refreshArtist
-	sel := Select("f.album_artist_id as id", "f.artist as name", "f.album_artist", "f.compilation",
-		"count(*) as album_count", "a.id as current_id").
+	sel := Select("f.album_artist_id as id", "f.album_artist as name", "count(*) as album_count", "a.id as current_id").
 		From("album f").
 		LeftJoin("artist a on f.album_artist_id = a.id").
 		Where(Eq{"f.album_artist_id": ids}).
@@ -128,12 +124,6 @@ func (r *artistRepository) Refresh(ids ...string) error {
 	toInsert := 0
 	toUpdate := 0
 	for _, ar := range artists {
-		if ar.Compilation {
-			ar.AlbumArtist = consts.VariousArtists
-		}
-		if ar.AlbumArtist != "" {
-			ar.Name = ar.AlbumArtist
-		}
 		if ar.CurrentId != "" {
 			toUpdate++
 		} else {
@@ -161,7 +151,7 @@ func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Arti
 }
 
 func (r *artistRepository) PurgeEmpty() error {
-	del := Delete(r.tableName).Where("id not in (select distinct(artist_id) from album)")
+	del := Delete(r.tableName).Where("id not in (select distinct(album_artist_id) from album)")
 	c, err := r.executeSQL(del)
 	if err == nil {
 		if c > 0 {
