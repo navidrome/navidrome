@@ -3,6 +3,7 @@ ui/node_modules
 ui/build
 Jamstash-master
 Dockerfile
+docker-compose*.yml
 data
 *.db
 testDB
