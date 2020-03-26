@@ -21,7 +21,7 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
-	Describe("Exist", func() {
+	Describe("Exists", func() {
 		It("returns true for an existing playlist", func() {
 			Expect(repo.Exists("11")).To(BeTrue())
 		})
