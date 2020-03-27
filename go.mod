@@ -7,7 +7,7 @@ require (
 	github.com/Masterminds/squirrel v1.2.0
 	github.com/astaxie/beego v1.12.1
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
-	github.com/deluan/rest v0.0.0-20200114062534-0653ffe9eab4
+	github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dhowden/tag v0.0.0-20191122115059-7e5c04feccd8
 	github.com/djherbis/fscache v0.10.0

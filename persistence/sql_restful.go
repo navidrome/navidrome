@@ -16,6 +16,23 @@ type sqlRestful struct {
 	filterMappings map[string]filterFunc
 }
 
+func (r sqlRestful) parseRestFilters(options rest.QueryOptions) Sqlizer {
+	if len(options.Filters) == 0 {
+		return nil
+	}
+	filters := And{}
+	for f, v := range options.Filters {
+		if ff, ok := r.filterMappings[f]; ok {
+			filters = append(filters, ff(f, v))
+		} else if f == "id" {
+			filters = append(filters, eqFilter(f, v))
+		} else {
+			filters = append(filters, startsWithFilter(f, v))
+		}
+	}
+	return filters
+}
+
 func (r sqlRestful) parseRestOptions(options ...rest.QueryOptions) model.QueryOptions {
 	qo := model.QueryOptions{}
 	if len(options) > 0 {
@@ -23,22 +40,16 @@ func (r sqlRestful) parseRestOptions(options ...rest.QueryOptions) model.QueryOp
 		qo.Order = strings.ToLower(options[0].Order)
 		qo.Max = options[0].Max
 		qo.Offset = options[0].Offset
-		if len(options[0].Filters) > 0 {
-			filters := And{}
-			for f, v := range options[0].Filters {
-				if ff, ok := r.filterMappings[f]; ok {
-					filters = append(filters, ff(f, v))
-				} else {
-					filters = append(filters, startsWithFilter(f, v))
-				}
-			}
-			qo.Filters = filters
-		}
+		qo.Filters = r.parseRestFilters(options[0])
 	}
 	return qo
 }
 
-func startsWithFilter(field string, value interface{}) Like {
+func eqFilter(field string, value interface{}) Sqlizer {
+	return Eq{field: value}
+}
+
+func startsWithFilter(field string, value interface{}) Sqlizer {
 	return Like{field: fmt.Sprintf("%s%%", value)}
 }
 
