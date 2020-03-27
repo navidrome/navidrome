@@ -15,7 +15,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v1
         with:
-          node-version: 13.10
+          node-version: 13.11
       - name: Build UI
         run: |
           cd ui
