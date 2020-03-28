@@ -13,6 +13,7 @@ import album from './album'
 import artist from './artist'
 import { createMuiTheme } from '@material-ui/core/styles'
 import { Player, playQueueReducer } from './audioplayer'
+import { albumViewReducer } from './album/albumState'
 
 const theme = createMuiTheme(DarkTheme)
 
@@ -34,7 +35,10 @@ const App = () => {
   return (
     <Admin
       theme={theme}
-      customReducers={{ queue: playQueueReducer }}
+      customReducers={{
+        queue: playQueueReducer,
+        albumView: albumViewReducer
+      }}
       dataProvider={dataProvider}
       authProvider={authProvider}
       i18nProvider={i18nProvider}

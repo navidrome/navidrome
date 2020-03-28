@@ -1,23 +1,21 @@
 import React from 'react'
+import { useSelector } from 'react-redux'
 import {
-  BooleanField,
-  Datagrid,
-  DateField,
+  AutocompleteInput,
   Filter,
   List,
-  NumberField,
-  FunctionField,
-  SearchInput,
-  NumberInput,
   NullableBooleanInput,
-  Show,
-  SimpleShowLayout,
+  NumberInput,
   ReferenceInput,
-  AutocompleteInput,
-  TextField
+  SearchInput,
+  Pagination
 } from 'react-admin'
-import { DurationField, Pagination, Title, RangeField } from '../common'
-import { useMediaQuery } from '@material-ui/core'
+import { Title } from '../common'
+import { withWidth } from '@material-ui/core'
+import AlbumListActions from './AlbumListActions'
+import AlbumListView from './AlbumListView'
+import AlbumGridView from './AlbumGridView'
+import { ALBUM_LIST_MODE } from './albumState'
 
 const AlbumFilter = (props) => (
   <Filter {...props}>
@@ -35,21 +33,27 @@ const AlbumFilter = (props) => (
   </Filter>
 )
 
-const AlbumDetails = (props) => {
-  return (
-    <Show {...props} title=" ">
-      <SimpleShowLayout>
-        <TextField source="albumArtist" />
-        <TextField source="genre" />
-        <BooleanField source="compilation" />
-        <DateField source="updatedAt" showTime />
-      </SimpleShowLayout>
-    </Show>
-  )
+const getPerPage = (width) => {
+  if (width === 'xs') return 12
+  if (width === 'sm') return 12
+  if (width === 'md') return 15
+  if (width === 'lg') return 18
+  return 21
+}
+
+const getPerPageOptions = (width) => {
+  const options = [3, 6, 12]
+  if (width === 'xs') return [12]
+  if (width === 'sm') return [12]
+  if (width === 'md') return options.map((v) => v * 5)
+  if (width === 'lg') return options.map((v) => v * 6)
+  return options.map((v) => v * 7)
 }
 
 const AlbumList = (props) => {
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const { width } = props
+  const albumView = useSelector((state) => state.albumView)
+
   return (
     <List
       {...props}
@@ -57,21 +61,20 @@ const AlbumList = (props) => {
       sort={{ field: 'name', order: 'ASC' }}
       exporter={false}
       bulkActionButtons={false}
+      actions={<AlbumListActions />}
       filters={<AlbumFilter />}
-      perPage={15}
-      pagination={<Pagination />}
+      perPage={getPerPage(width)}
+      pagination={
+        <Pagination rowsPerPageOptions={getPerPageOptions(width)} {...props} />
+      }
     >
-      <Datagrid expand={<AlbumDetails />} rowClick={'show'}>
-        <TextField source="name" />
-        <FunctionField
-          source="artist"
-          render={(r) => (r.albumArtist ? r.albumArtist : r.artist)}
-        />
-        {isDesktop && <NumberField source="songCount" />}
-        <RangeField source={'year'} sortBy={'maxYear'} />
-        {isDesktop && <DurationField source="duration" />}
-      </Datagrid>
+      {albumView.mode === ALBUM_LIST_MODE ? (
+        <AlbumListView {...props} />
+      ) : (
+        <AlbumGridView {...props} />
+      )}
     </List>
   )
 }
-export default AlbumList
+
+export default withWidth()(AlbumList)
