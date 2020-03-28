@@ -16,7 +16,7 @@ import {
   AutocompleteInput,
   TextField
 } from 'react-admin'
-import { DurationField, Pagination, Title } from '../common'
+import { DurationField, Pagination, Title, RangeField } from '../common'
 import { useMediaQuery } from '@material-ui/core'
 
 const AlbumFilter = (props) => (
@@ -31,7 +31,7 @@ const AlbumFilter = (props) => (
       <AutocompleteInput emptyText="-- None --" />
     </ReferenceInput>
     <NullableBooleanInput source="compilation" />
-    <NumberInput source="max_year" />
+    <NumberInput source="year" />
   </Filter>
 )
 
@@ -68,7 +68,7 @@ const AlbumList = (props) => {
           render={(r) => (r.albumArtist ? r.albumArtist : r.artist)}
         />
         {isDesktop && <NumberField source="songCount" />}
-        <TextField source="maxYear" />
+        <RangeField source={'year'} sortBy={'maxYear'} />
         {isDesktop && <DurationField source="duration" />}
       </Datagrid>
     </List>

@@ -2,7 +2,7 @@ import React from 'react'
 import { Card, CardContent, CardMedia, Typography } from '@material-ui/core'
 import { useTranslate } from 'react-admin'
 import { subsonicUrl } from '../subsonic'
-import { DurationField } from '../common'
+import { DurationField, formatRange } from '../common'
 
 const AlbumDetails = ({ classes, record }) => {
   const translate = useTranslate()
@@ -11,8 +11,9 @@ const AlbumDetails = ({ classes, record }) => {
     if (record.genre) {
       genreDateLine.push(record.genre)
     }
-    if (record.maxYear) {
-      genreDateLine.push(record.maxYear)
+    const year = formatRange(record, 'year')
+    if (year) {
+      genreDateLine.push(year)
     }
     return genreDateLine.join(' · ')
   }

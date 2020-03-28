@@ -4,6 +4,7 @@ import BitrateField from './BitrateField'
 import Pagination from './Pagination'
 import PlayButton from './PlayButton'
 import SimpleList from './SimpleList'
+import RangeField, { formatRange } from './RangeField'
 
 export {
   Title,
@@ -11,5 +12,7 @@ export {
   BitrateField,
   Pagination,
   PlayButton,
-  SimpleList
+  SimpleList,
+  RangeField,
+  formatRange
 }
