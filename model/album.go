@@ -11,7 +11,8 @@ type Album struct {
 	Artist        string    `json:"artist"`
 	AlbumArtistID string    `json:"albumArtistId" orm:"pk;column(album_artist_id)"`
 	AlbumArtist   string    `json:"albumArtist"`
-	Year          int       `json:"year"`
+	MaxYear       int       `json:"maxYear"`
+	MinYear       int       `json:"minYear"`
 	Compilation   bool      `json:"compilation"`
 	SongCount     int       `json:"songCount"`
 	Duration      float32   `json:"duration"`

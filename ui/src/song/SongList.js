@@ -83,7 +83,7 @@ const SongList = (props) => {
           {isDesktop && <TextField source="album" />}
           <TextField source="artist" />
           {isDesktop && <NumberField source="trackNumber" />}
-          {isDesktop && <TextField source="year" />}
+          {isDesktop && <TextField source="maxYear" />}
           <DurationField source="duration" />
         </Datagrid>
       )}

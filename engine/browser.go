@@ -161,7 +161,7 @@ func (b *browser) buildAlbumDir(al *model.Album, tracks model.MediaFiles) *Direc
 		SongCount:  al.SongCount,
 		Duration:   int(al.Duration),
 		Created:    al.CreatedAt,
-		Year:       al.Year,
+		Year:       al.MaxYear,
 		Genre:      al.Genre,
 		CoverArt:   al.CoverArtId,
 		PlayCount:  int32(al.PlayCount),

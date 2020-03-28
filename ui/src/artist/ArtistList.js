@@ -19,7 +19,7 @@ const artistRowClick = (id, basePath, record) => {
   const filter = { artist_id: id }
   return `/album?filter=${JSON.stringify(
     filter
-  )}&order=ASC&sort=year&displayedFilters={"compilation":true}`
+  )}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}`
 }
 
 const ArtistList = (props) => (

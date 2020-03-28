@@ -73,7 +73,7 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 }
 
 func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
-	sq := r.selectAlbum().Where(Eq{"album_artist_id": artistId}).OrderBy("year")
+	sq := r.selectAlbum().Where(Eq{"album_artist_id": artistId}).OrderBy("max_year")
 	res := model.Albums{}
 	err := r.queryAll(sq, &res)
 	return res, err
@@ -103,8 +103,8 @@ func (r *albumRepository) Refresh(ids ...string) error {
 	}
 	var albums []refreshAlbum
 	sel := Select(`album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
-		f.compilation, f.genre, max(f.year) as year, sum(f.duration) as duration, count(*) as song_count, a.id as current_id, 
-		f.id as cover_art_id, f.path as cover_art_path, f.has_cover_art`).
+		f.compilation, f.genre, max(f.year) as max_year, min(f.year) as min_year, sum(f.duration) as duration, 
+		count(*) as song_count, a.id as current_id, f.id as cover_art_id, f.path as cover_art_path, f.has_cover_art`).
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
 		Where(Eq{"f.album_id": ids}).GroupBy("album_id").OrderBy("f.id")

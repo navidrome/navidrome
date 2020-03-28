@@ -11,8 +11,8 @@ const AlbumDetails = ({ classes, record }) => {
     if (record.genre) {
       genreDateLine.push(record.genre)
     }
-    if (record.year) {
-      genreDateLine.push(record.year)
+    if (record.maxYear) {
+      genreDateLine.push(record.maxYear)
     }
     return genreDateLine.join(' · ')
   }

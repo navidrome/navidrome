@@ -31,7 +31,7 @@ const AlbumFilter = (props) => (
       <AutocompleteInput emptyText="-- None --" />
     </ReferenceInput>
     <NullableBooleanInput source="compilation" />
-    <NumberInput source="year" />
+    <NumberInput source="max_year" />
   </Filter>
 )
 
@@ -68,7 +68,7 @@ const AlbumList = (props) => {
           render={(r) => (r.albumArtist ? r.albumArtist : r.artist)}
         />
         {isDesktop && <NumberField source="songCount" />}
-        <TextField source="year" />
+        <TextField source="maxYear" />
         {isDesktop && <DurationField source="duration" />}
       </Datagrid>
     </List>

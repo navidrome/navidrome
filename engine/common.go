@@ -65,7 +65,7 @@ func FromAlbum(al *model.Album) Entry {
 	e.IsDir = true
 	e.Parent = al.AlbumArtistID
 	e.Album = al.Name
-	e.Year = al.Year
+	e.Year = al.MaxYear
 	e.Artist = al.AlbumArtist
 	e.Genre = al.Genre
 	e.CoverArt = al.CoverArtId
