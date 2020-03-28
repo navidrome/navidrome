@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/utils"
 )
 
 func toSqlArgs(rec interface{}) (map[string]interface{}, error) {
@@ -21,7 +23,9 @@ func toSqlArgs(rec interface{}) (map[string]interface{}, error) {
 	err = json.Unmarshal(b, &m)
 	r := make(map[string]interface{}, len(m))
 	for f, v := range m {
-		r[toSnakeCase(f)] = v
+		if !utils.StringInSlice(f, model.AnnotationFields) {
+			r[toSnakeCase(f)] = v
+		}
 	}
 	return r, err
 }

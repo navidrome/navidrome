@@ -22,11 +22,11 @@ type Album struct {
 	UpdatedAt     time.Time `json:"updatedAt"`
 
 	// Annotations
-	PlayCount int       `json:"-"   orm:"-"`
-	PlayDate  time.Time `json:"-"   orm:"-"`
-	Rating    int       `json:"-"   orm:"-"`
-	Starred   bool      `json:"-"   orm:"-"`
-	StarredAt time.Time `json:"-"   orm:"-"`
+	PlayCount int       `json:"playCount"   orm:"-"`
+	PlayDate  time.Time `json:"playDate"    orm:"-"`
+	Rating    int       `json:"rating"      orm:"-"`
+	Starred   bool      `json:"starred"     orm:"-"`
+	StarredAt time.Time `json:"starredAt"   orm:"-"`
 }
 
 type Albums []Album
