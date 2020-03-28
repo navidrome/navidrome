@@ -1,9 +1,10 @@
 # Navidrome Music Streamer
 
-[![Build](https://img.shields.io/github/workflow/status/deluan/navidrome/Build?style=for-the-badge)](https://github.com/deluan/navidrome/actions)
-[![Last Release](https://img.shields.io/github/v/release/deluan/navidrome?label=latest&style=for-the-badge)](https://github.com/deluan/navidrome/releases)
-[![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?style=for-the-badge)](https://hub.docker.com/r/deluan/navidrome)
-[![Join the Chat](https://img.shields.io/discord/671335427726114836?style=for-the-badge)](https://discord.gg/xh7j7yF)
+[![Last Release](https://img.shields.io/github/v/release/deluan/navidrome?label=latest&style=flat-square)](https://github.com/deluan/navidrome/releases)
+[![Build](https://img.shields.io/github/workflow/status/deluan/navidrome/Build?style=flat-square)](https://github.com/deluan/navidrome/actions)
+[![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
+[![Dev Chat](https://img.shields.io/discord/671335427726114836?label=chat&style=flat-square)](https://discord.gg/xh7j7yF)
+[![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?style=flat-square)](https://www.reddit.com/r/navidrome/)
 
 Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your 
 music collection from any browser or mobile device. It's like your personal Spotify!
