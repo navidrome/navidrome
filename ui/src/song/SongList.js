@@ -6,6 +6,7 @@ import {
   Filter,
   List,
   NumberField,
+  ReferenceField,
   SearchInput,
   Show,
   SimpleShowLayout,
@@ -80,7 +81,16 @@ const SongList = (props) => {
           rowClick={(id, basePath, record) => dispatch(setTrack(record))}
         >
           <TextField source="title" />
-          {isDesktop && <TextField source="album" />}
+          {isDesktop && (
+            <ReferenceField
+              label="Album"
+              source="albumId"
+              reference="album"
+              link="show"
+            >
+              <TextField source="name" />
+            </ReferenceField>
+          )}
           <TextField source="artist" />
           {isDesktop && <NumberField source="trackNumber" />}
           {isDesktop && <TextField source="maxYear" />}
