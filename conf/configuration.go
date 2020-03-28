@@ -25,7 +25,7 @@ type nd struct {
 	IndexGroups     string `default:"A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)"`
 
 	TranscodingCacheSize string `default:"100MB"` // in MB
-	ProbeCommand         string `default:"ffmpeg -i %s -f ffmetadata"`
+	ProbeCommand         []string `default:"[\"ffmpeg\", \"-\", \"ffmetadata\", \"-i\"]"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool   `default:"false"`
