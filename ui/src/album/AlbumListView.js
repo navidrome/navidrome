@@ -35,6 +35,7 @@ const AlbumListView = (props) => {
         render={(r) => (r.albumArtist ? r.albumArtist : r.artist)}
       />
       {isDesktop && <NumberField source="songCount" />}
+      {isDesktop && <NumberField source="playCount" />}
       <RangeField source={'year'} sortBy={'maxYear'} />
       {isDesktop && <DurationField source="duration" />}
     </Datagrid>

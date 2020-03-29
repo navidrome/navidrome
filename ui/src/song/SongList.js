@@ -10,7 +10,8 @@ import {
   SearchInput,
   Show,
   SimpleShowLayout,
-  TextField
+  TextField,
+  FunctionField
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import {
@@ -93,7 +94,10 @@ const SongList = (props) => {
           )}
           <TextField source="artist" />
           {isDesktop && <NumberField source="trackNumber" />}
-          {isDesktop && <TextField source="maxYear" />}
+          {isDesktop && <NumberField source="playCount" />}
+          {isDesktop && (
+            <FunctionField source="year" render={(r) => r.year || ''} />
+          )}
           <DurationField source="duration" />
         </Datagrid>
       )}

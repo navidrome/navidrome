@@ -8,7 +8,8 @@ export default deepmerge(englishMessages, {
       fields: {
         albumArtist: 'Album Artist',
         duration: 'Time',
-        trackNumber: 'Track #'
+        trackNumber: 'Track #',
+        playCount: 'Plays'
       },
       bulk: {
         addToQueue: 'Play Later'
@@ -17,7 +18,9 @@ export default deepmerge(englishMessages, {
     album: {
       fields: {
         albumArtist: 'Album Artist',
-        duration: 'Time'
+        duration: 'Time',
+        songCount: 'Songs',
+        playCount: 'Plays'
       },
       actions: {
         playAll: 'Play',
