@@ -15,7 +15,7 @@ import { withWidth } from '@material-ui/core'
 import AlbumListActions from './AlbumListActions'
 import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
-import { ALBUM_LIST_MODE } from './albumState'
+import { ALBUM_MODE_LIST } from './albumState'
 
 const AlbumFilter = (props) => (
   <Filter {...props}>
@@ -58,17 +58,15 @@ const AlbumList = (props) => {
     <List
       {...props}
       title={<Title subTitle={'Albums'} />}
-      sort={{ field: 'name', order: 'ASC' }}
+      sort={albumView.params.sort}
       exporter={false}
       bulkActionButtons={false}
       actions={<AlbumListActions />}
       filters={<AlbumFilter />}
       perPage={getPerPage(width)}
-      pagination={
-        <Pagination rowsPerPageOptions={getPerPageOptions(width)} {...props} />
-      }
+      pagination={<Pagination rowsPerPageOptions={getPerPageOptions(width)} />}
     >
-      {albumView.mode === ALBUM_LIST_MODE ? (
+      {albumView.mode === ALBUM_MODE_LIST ? (
         <AlbumListView {...props} />
       ) : (
         <AlbumGridView {...props} />

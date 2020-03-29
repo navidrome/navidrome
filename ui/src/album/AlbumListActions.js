@@ -4,7 +4,7 @@ import { ButtonGroup } from '@material-ui/core'
 import ViewHeadlineIcon from '@material-ui/icons/ViewHeadline'
 import ViewModuleIcon from '@material-ui/icons/ViewModule'
 import { useDispatch, useSelector } from 'react-redux'
-import { ALBUM_GRID_MODE, ALBUM_LIST_MODE, selectViewMode } from './albumState'
+import { ALBUM_MODE_GRID, ALBUM_MODE_LIST, selectViewMode } from './albumState'
 
 const AlbumListActions = ({
   currentSort,
@@ -44,15 +44,15 @@ const AlbumListActions = ({
       >
         <Button
           size="small"
-          color={albumView.mode === ALBUM_LIST_MODE ? 'primary' : 'secondary'}
-          onClick={() => dispatch(selectViewMode(ALBUM_LIST_MODE))}
+          color={albumView.mode === ALBUM_MODE_LIST ? 'primary' : 'secondary'}
+          onClick={() => dispatch(selectViewMode(ALBUM_MODE_LIST))}
         >
           <ViewHeadlineIcon fontSize="inherit" />
         </Button>
         <Button
           size="small"
-          color={albumView.mode === ALBUM_GRID_MODE ? 'primary' : 'secondary'}
-          onClick={() => dispatch(selectViewMode(ALBUM_GRID_MODE))}
+          color={albumView.mode === ALBUM_MODE_GRID ? 'primary' : 'secondary'}
+          onClick={() => dispatch(selectViewMode(ALBUM_MODE_GRID))}
         >
           <ViewModuleIcon fontSize="inherit" />
         </Button>
