@@ -4,14 +4,13 @@ import {
   Datagrid,
   DateField,
   Filter,
+  FunctionField,
   List,
   NumberField,
-  ReferenceField,
   SearchInput,
   Show,
   SimpleShowLayout,
-  TextField,
-  FunctionField
+  TextField
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import {
@@ -26,6 +25,7 @@ import { useDispatch } from 'react-redux'
 import { addTrack, setTrack } from '../audioplayer'
 import AddIcon from '@material-ui/icons/Add'
 import { SongBulkActions } from './SongBulkActions'
+import { AlbumLinkField } from './AlbumLinkField'
 
 const SongFilter = (props) => (
   <Filter {...props}>
@@ -82,16 +82,7 @@ const SongList = (props) => {
           rowClick={(id, basePath, record) => dispatch(setTrack(record))}
         >
           <TextField source="title" />
-          {isDesktop && (
-            <ReferenceField
-              label="Album"
-              source="albumId"
-              reference="album"
-              link="show"
-            >
-              <TextField source="name" />
-            </ReferenceField>
-          )}
+          {isDesktop && <AlbumLinkField source="albumId" sortBy="album" />}
           <TextField source="artist" />
           {isDesktop && <NumberField source="trackNumber" />}
           {isDesktop && <NumberField source="playCount" />}
