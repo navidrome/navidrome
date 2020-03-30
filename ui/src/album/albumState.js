@@ -13,7 +13,7 @@ const albumListParams = {
   ALBUM_LIST_RANDOM: { sort: { field: 'random' } },
   ALBUM_LIST_NEWEST: { sort: { field: 'created_at', order: 'DESC' } },
   ALBUM_LIST_RECENT: {
-    sort: { field: 'starred_at', order: 'DESC' },
+    sort: { field: 'play_date', order: 'DESC' },
     filter: { starred: true }
   }
 }
