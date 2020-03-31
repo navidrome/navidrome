@@ -26,6 +26,7 @@ const ConfigurationMenu = forwardRef(({ onClick }, ref) => {
       leftIcon={<TuneIcon />}
       onClick={onClick}
       className={classes.menuItem}
+      sidebarIsOpen={true}
     />
   )
 })
@@ -40,6 +41,7 @@ const VersionMenu = forwardRef(({ onClick }, ref) => {
       leftIcon={<InfoIcon />}
       onClick={onClick}
       className={classes.menuItem}
+      sidebarIsOpen={true}
     />
   )
 })
