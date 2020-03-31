@@ -5,11 +5,19 @@ import {
   MenuItemLink,
   useTranslate
 } from 'react-admin'
+import { makeStyles } from '@material-ui/core'
 import InfoIcon from '@material-ui/icons/Info'
 import TuneIcon from '@material-ui/icons/Tune'
 
+const useStyles = makeStyles((theme) => ({
+  menuItem: {
+    color: theme.palette.text.secondary
+  }
+}))
+
 const ConfigurationMenu = forwardRef(({ onClick }, ref) => {
   const translate = useTranslate()
+  const classes = useStyles()
   return (
     <MenuItemLink
       ref={ref}
@@ -17,19 +25,24 @@ const ConfigurationMenu = forwardRef(({ onClick }, ref) => {
       primaryText={translate('menu.configuration')}
       leftIcon={<TuneIcon />}
       onClick={onClick}
+      className={classes.menuItem}
     />
   )
 })
 
-const VersionMenu = forwardRef(({ onClick }, ref) => (
-  <MenuItemLink
-    ref={ref}
-    to=""
-    primaryText={'Version ' + localStorage.getItem('version')}
-    leftIcon={<InfoIcon />}
-    onClick={onClick}
-  />
-))
+const VersionMenu = forwardRef(({ onClick }, ref) => {
+  const classes = useStyles()
+  return (
+    <MenuItemLink
+      ref={ref}
+      to=""
+      primaryText={'Version ' + localStorage.getItem('version')}
+      leftIcon={<InfoIcon />}
+      onClick={onClick}
+      className={classes.menuItem}
+    />
+  )
+})
 
 const CustomUserMenu = (props) => (
   <UserMenu {...props}>
