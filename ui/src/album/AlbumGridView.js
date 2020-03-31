@@ -12,12 +12,12 @@ import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
 import { linkToRecord } from 'ra-core'
 import { Loading } from 'react-admin'
-import { subsonicUrl } from '../subsonic'
 import AllInclusiveIcon from '@material-ui/icons/AllInclusive'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import StarIcon from '@material-ui/icons/Star'
 import LibraryAddIcon from '@material-ui/icons/LibraryAdd'
 import VideoLibraryIcon from '@material-ui/icons/VideoLibrary'
+import subsonic from '../subsonic'
 import {
   ALBUM_LIST_ALL,
   ALBUM_LIST_NEWEST,
@@ -104,7 +104,7 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
             to={linkToRecord(basePath, data[id].id, 'show')}
           >
             <img
-              src={subsonicUrl(
+              src={subsonic.url(
                 'getCoverArt',
                 data[id].coverArtId || 'not_found',
                 { size: 300 }

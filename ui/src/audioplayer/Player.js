@@ -1,14 +1,10 @@
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import {
-  fetchUtils,
-  useAuthState,
-  useDataProvider,
-  useTranslate
-} from 'react-admin'
+import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
-import { scrobble, syncQueue } from './queue'
+import subsonic from '../subsonic'
+import { scrobbled, syncQueue } from './queue'
 
 const Player = () => {
   const translate = useTranslate()
@@ -64,14 +60,14 @@ const Player = () => {
     }
     const item = queue.queue.find((item) => item.id === info.id)
     if (item && !item.scrobbled) {
-      dispatch(scrobble(info.id))
-      fetchUtils.fetchJson(info.scrobble(true))
+      dispatch(scrobbled(info.id))
+      subsonic.scrobble(info.id, true)
     }
   }
 
   const OnAudioPlay = (info) => {
     if (info.duration) {
-      fetchUtils.fetchJson(info.scrobble(false))
+      subsonic.scrobble(info.id, false)
       dataProvider.getOne('keepalive', { id: info.id })
     }
   }

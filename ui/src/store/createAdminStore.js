@@ -47,7 +47,7 @@ export default ({
       const state = store.getState()
       saveState({
         theme: state.theme,
-        // queue: state.queue, TODO: Need to make queue serializable (remove functions from it)
+        queue: state.queue,
         albumView: state.albumView
       })
     }),

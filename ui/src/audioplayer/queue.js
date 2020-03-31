@@ -1,5 +1,5 @@
 import 'react-jinke-music-player/assets/index.css'
-import { subsonicUrl } from '../subsonic'
+import subsonic from '../subsonic'
 
 const PLAYER_ADD_TRACK = 'PLAYER_ADD_TRACK'
 const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
@@ -11,9 +11,8 @@ const mapToAudioLists = (item) => ({
   id: item.id,
   name: item.title,
   singer: item.artist,
-  cover: subsonicUrl('getCoverArt', item.id, { size: 300 }),
-  musicSrc: subsonicUrl('stream', item.id, { ts: true }),
-  scrobble: (submit) => subsonicUrl('scrobble', item.id, { submission: submit })
+  cover: subsonic.url('getCoverArt', item.id, { size: 300 }),
+  musicSrc: subsonic.url('stream', item.id, { ts: true })
 })
 
 const addTrack = (data) => ({
@@ -37,7 +36,7 @@ const syncQueue = (data) => ({
   data
 })
 
-const scrobble = (id) => ({
+const scrobbled = (id) => ({
   type: PLAYER_SCROBBLE,
   data: id
 })
@@ -82,4 +81,4 @@ const playQueueReducer = (
   }
 }
 
-export { addTrack, setTrack, playAlbum, syncQueue, scrobble, playQueueReducer }
+export { addTrack, setTrack, playAlbum, syncQueue, scrobbled, playQueueReducer }

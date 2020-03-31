@@ -1,4 +1,6 @@
-const subsonicUrl = (command, id, options) => {
+import { fetchUtils } from 'react-admin'
+
+const url = (command, id, options) => {
   const params = new URLSearchParams()
   params.append('u', localStorage.getItem('username'))
   params.append('t', localStorage.getItem('subsonic-token'))
@@ -19,4 +21,8 @@ const subsonicUrl = (command, id, options) => {
   return `rest/${command}?${params.toString()}`
 }
 
-export { subsonicUrl }
+const scrobble = (id, submit) => {
+  return fetchUtils.fetchJson(url('scrobble', id, { submission: submit }))
+}
+
+export default { url, scrobble }

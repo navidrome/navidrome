@@ -1,7 +1,7 @@
 import React from 'react'
 import { Card, CardContent, CardMedia, Typography } from '@material-ui/core'
 import { useTranslate } from 'react-admin'
-import { subsonicUrl } from '../subsonic'
+import subsonic from '../subsonic'
 import { DurationField, formatRange } from '../common'
 
 const AlbumDetails = ({ classes, record }) => {
@@ -21,8 +21,8 @@ const AlbumDetails = ({ classes, record }) => {
   return (
     <Card className={classes.container}>
       <CardMedia
-        image={subsonicUrl('getCoverArt', record.coverArtId || 'not_found', {
-          size: 500
+        image={subsonic.url('getCoverArt', record.coverArtId || 'not_found', {
+          size: 300
         })}
         className={classes.albumCover}
       />
