@@ -10,8 +10,9 @@ Navidrome is an open source web-based music collection server and streamer. It g
 music collection from any browser or mobile device. It's like your personal Spotify!
 
 __Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
-please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join the chat in 
-our [Discord server](https://discord.gg/xh7j7yF)
+please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join the discussion in our 
+[Subreddit](https://www.reddit.com/r/navidrome/). If you want to contribute to the project in any other way 
+(ui/backend dev, translations, themes), please join the chat in our [Discord server](https://discord.gg/xh7j7yF). 
 
 
 ## Features
