@@ -8,7 +8,7 @@ import themes from '../themes'
 
 const useStyles = makeStyles({
   label: { width: '10em', display: 'inline-block' },
-  button: { margin: '1em' }
+  select: { minWidth: 200 }
 })
 
 const Configuration = () => {
@@ -24,6 +24,7 @@ const Configuration = () => {
       <CardContent>
         <div className={classes.label}>{translate('menu.theme')}</div>
         <Select
+          className={classes.select}
           value={theme}
           variant="filled"
           onChange={(event) => {
