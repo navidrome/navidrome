@@ -32,7 +32,7 @@ const Configuration = () => {
           }}
         >
           {themeNames.map((t) => (
-            <MenuItem value={t}>{themes[t].name}</MenuItem>
+            <MenuItem value={t}>{themes[t].themeName}</MenuItem>
           ))}
         </Select>
       </CardContent>
