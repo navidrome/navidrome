@@ -1,4 +1,5 @@
 export default {
+  name: 'Light',
   palette: {
     secondary: {
       light: '#5f5fc4',

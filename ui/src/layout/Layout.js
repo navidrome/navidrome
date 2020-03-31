@@ -4,7 +4,7 @@ import { Layout } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import Menu from './Menu'
 import AppBar from './AppBar'
-import { DarkTheme, LightTheme } from '../themes'
+import themes from '../themes'
 
 const useStyles = makeStyles({
   root: { paddingBottom: '80px' }
@@ -12,19 +12,15 @@ const useStyles = makeStyles({
 
 export default (props) => {
   const classes = useStyles()
-  const theme = useSelector((state) =>
-    state.theme === 'dark' ? DarkTheme : LightTheme
-  )
+  const theme = useSelector((state) => themes[state.theme] || themes.DarkTheme)
 
   return (
-    <>
-      <Layout
-        {...props}
-        className={classes.root}
-        menu={Menu}
-        appBar={AppBar}
-        theme={theme}
-      />
-    </>
+    <Layout
+      {...props}
+      className={classes.root}
+      menu={Menu}
+      appBar={AppBar}
+      theme={theme}
+    />
   )
 }

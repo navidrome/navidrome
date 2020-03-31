@@ -1,6 +1,7 @@
 import blue from '@material-ui/core/colors/blue'
 
 export default {
+  name: 'Dark (default)',
   palette: {
     primary: {
       main: '#90caf9'

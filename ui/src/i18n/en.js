@@ -47,13 +47,7 @@ export default deepmerge(englishMessages, {
     settings: 'Settings',
     configuration: 'Configuration',
     version: 'Version %{version}',
-    theme: {
-      name: 'Theme'
-    }
-  },
-  theme: {
-    dark: 'Dark',
-    light: 'Light'
+    theme: 'Theme'
   },
   player: {
     panelTitle: 'Play Queue',
