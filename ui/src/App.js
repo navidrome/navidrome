@@ -5,18 +5,16 @@ import authProvider from './authProvider'
 import polyglotI18nProvider from 'ra-i18n-polyglot'
 import messages from './i18n'
 import { Layout, Login } from './layout'
-import { DarkTheme } from './themes'
 import transcoding from './transcoding'
 import player from './player'
 import user from './user'
 import song from './song'
 import album from './album'
 import artist from './artist'
-import { createMuiTheme } from '@material-ui/core/styles'
 import { Player, playQueueReducer } from './audioplayer'
 import { albumViewReducer } from './album/albumState'
-
-const theme = createMuiTheme(DarkTheme)
+import customRoutes from './routes'
+import themeReducer from './configuration/themeReducer'
 
 const i18nProvider = polyglotI18nProvider(
   (locale) => (messages[locale] ? messages[locale] : messages.en),
@@ -35,14 +33,15 @@ const App = () => {
 
   return (
     <Admin
-      theme={theme}
       customReducers={{
         queue: playQueueReducer,
-        albumView: albumViewReducer
+        albumView: albumViewReducer,
+        theme: themeReducer
       }}
       dataProvider={dataProvider}
       authProvider={authProvider}
       i18nProvider={i18nProvider}
+      customRoutes={customRoutes}
       layout={Layout}
       loginPage={Login}
     >
