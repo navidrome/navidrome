@@ -1,4 +1,6 @@
 import React from 'react'
+import { Provider } from 'react-redux'
+import { createHashHistory } from 'history'
 import { Admin, resolveBrowserLocale, Resource } from 'react-admin'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
@@ -15,11 +17,14 @@ import { Player, playQueueReducer } from './audioplayer'
 import { albumViewReducer } from './album/albumState'
 import customRoutes from './routes'
 import themeReducer from './configuration/themeReducer'
+import createAdminStore from './store/createAdminStore'
 
 const i18nProvider = polyglotI18nProvider(
   (locale) => (messages[locale] ? messages[locale] : messages.en),
   resolveBrowserLocale()
 )
+
+const history = createHashHistory()
 
 const App = () => {
   try {
@@ -32,44 +37,57 @@ const App = () => {
   } catch (e) {}
 
   return (
-    <Admin
-      customReducers={{
-        queue: playQueueReducer,
-        albumView: albumViewReducer,
-        theme: themeReducer
-      }}
-      dataProvider={dataProvider}
-      authProvider={authProvider}
-      i18nProvider={i18nProvider}
-      customRoutes={customRoutes}
-      layout={Layout}
-      loginPage={Login}
+    <Provider
+      store={createAdminStore({
+        authProvider,
+        dataProvider,
+        history,
+        customReducers: {
+          queue: playQueueReducer,
+          albumView: albumViewReducer,
+          theme: themeReducer
+        }
+      })}
     >
-      {(permissions) => [
-        <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
-        <Resource name="album" {...album} options={{ subMenu: 'library' }} />,
-        <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
-        <Resource name="albumSong" />,
-        permissions === 'admin' ? (
-          <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
-        ) : null,
-        <Resource
-          name="player"
-          {...player}
-          options={{ subMenu: 'settings' }}
-        />,
-        permissions === 'admin' ? (
+      <Admin
+        dataProvider={dataProvider}
+        authProvider={authProvider}
+        i18nProvider={i18nProvider}
+        customRoutes={customRoutes}
+        history={history}
+        layout={Layout}
+        loginPage={Login}
+      >
+        {(permissions) => [
           <Resource
-            name="transcoding"
-            {...transcoding}
+            name="artist"
+            {...artist}
+            options={{ subMenu: 'library' }}
+          />,
+          <Resource name="album" {...album} options={{ subMenu: 'library' }} />,
+          <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
+          <Resource name="albumSong" />,
+          permissions === 'admin' ? (
+            <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
+          ) : null,
+          <Resource
+            name="player"
+            {...player}
             options={{ subMenu: 'settings' }}
-          />
-        ) : (
-          <Resource name="transcoding" />
-        ),
-        <Player />
-      ]}
-    </Admin>
+          />,
+          permissions === 'admin' ? (
+            <Resource
+              name="transcoding"
+              {...transcoding}
+              options={{ subMenu: 'settings' }}
+            />
+          ) : (
+            <Resource name="transcoding" />
+          ),
+          <Player />
+        ]}
+      </Admin>
+    </Provider>
   )
 }
 

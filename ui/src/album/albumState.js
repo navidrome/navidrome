@@ -22,8 +22,8 @@ const selectAlbumList = (mode) => ({ type: mode })
 
 const albumViewReducer = (
   previousState = {
-    mode: localStorage.getItem('albumViewMode') || ALBUM_MODE_LIST,
-    list: localStorage.getItem('albumListType') || ALBUM_LIST_ALL,
+    mode: ALBUM_MODE_LIST,
+    list: ALBUM_LIST_ALL,
     params: { sort: {}, filter: {} }
   },
   payload
@@ -32,14 +32,12 @@ const albumViewReducer = (
   switch (type) {
     case ALBUM_MODE_GRID:
     case ALBUM_MODE_LIST:
-      localStorage.setItem('albumViewMode', type)
       return { ...previousState, mode: type }
     case ALBUM_LIST_ALL:
     case ALBUM_LIST_RANDOM:
     case ALBUM_LIST_NEWEST:
     case ALBUM_LIST_RECENT:
     case ALBUM_LIST_STARRED:
-      localStorage.setItem('albumListType', type)
       return { ...previousState, list: type, params: albumListParams[type] }
     default:
       return previousState
