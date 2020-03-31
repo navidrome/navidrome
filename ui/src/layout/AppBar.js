@@ -32,12 +32,16 @@ const ConfigurationMenu = forwardRef(({ onClick }, ref) => {
 })
 
 const VersionMenu = forwardRef(({ onClick }, ref) => {
+  const translate = useTranslate()
   const classes = useStyles()
+
   return (
     <MenuItemLink
       ref={ref}
       to=""
-      primaryText={'Version ' + localStorage.getItem('version')}
+      primaryText={translate('menu.version', {
+        version: localStorage.getItem('version')
+      })}
       leftIcon={<InfoIcon />}
       onClick={onClick}
       className={classes.menuItem}
