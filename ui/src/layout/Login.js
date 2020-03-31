@@ -14,7 +14,7 @@ import LockIcon from '@material-ui/icons/Lock'
 
 import { Notification, useLogin, useNotify, useTranslate } from 'react-admin'
 
-import { LightTheme } from './Themes'
+import { LightTheme } from '../themes'
 
 const useStyles = makeStyles((theme) => ({
   main: {
