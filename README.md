@@ -26,7 +26,8 @@ please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join
 - Multi-platform, runs on macOS, Linux and Windows. Docker images are also provided
 - Ready to use Raspberry Pi binaries available
 - Automatically monitors your library for changes, importing new files and reloading new metadata 
-- Modern and responsive Web interface based on Material UI, to manage users and browse your library
+- [Themeable](ui/src/themes/README.md), modern and responsive Web interface based on Material UI, to manage users and 
+  browse your library
 - Compatible with all Subsonic/Madsonic/Airsonic clients. See bellow for a list of tested clients
 - Transcoding/Downsampling on-the-fly. Can be set per user/player. Opus encoding is supported
 - Integrated music player (WIP)
@@ -51,6 +52,7 @@ trouble with the client of your choice.
 This project is being actively worked on. Expect a more polished experience and new features/releases 
 on a frequent basis. Some upcoming features planned: 
 
+- Complete WebUI, to browse and listen to your library
 - Last.FM integration
 - Smart/dynamic playlists (similar to iTunes)
 - Support for audiobooks (bookmarking)
