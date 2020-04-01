@@ -19,6 +19,7 @@ const Player = () => {
     showDestroy: false,
     showDownload: false,
     showReload: false,
+    spaceBar: true,
     glassBg: false,
     showThemeSwitch: false,
     playModeText: {
