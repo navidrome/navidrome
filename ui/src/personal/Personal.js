@@ -11,7 +11,7 @@ const useStyles = makeStyles({
   select: { minWidth: 200 }
 })
 
-const Configuration = () => {
+const Personal = () => {
   const translate = useTranslate()
   const classes = useStyles()
   const theme = useSelector((state) => state.theme)
@@ -40,4 +40,4 @@ const Configuration = () => {
   )
 }
 
-export default Configuration
+export default Personal

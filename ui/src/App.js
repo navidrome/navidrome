@@ -16,7 +16,7 @@ import artist from './artist'
 import { Player, playQueueReducer } from './audioplayer'
 import { albumViewReducer } from './album/albumState'
 import customRoutes from './routes'
-import themeReducer from './configuration/themeReducer'
+import themeReducer from './personal/themeReducer'
 import createAdminStore from './store/createAdminStore'
 
 const i18nProvider = polyglotI18nProvider(

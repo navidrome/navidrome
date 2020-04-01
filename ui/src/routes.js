@@ -1,7 +1,5 @@
 import React from 'react'
 import { Route } from 'react-router-dom'
-import Configuration from './configuration/Configuration'
+import Personal from './personal/Personal'
 
-export default [
-  <Route exact path="/configuration" render={() => <Configuration />} />
-]
+export default [<Route exact path="/personal" render={() => <Personal />} />]

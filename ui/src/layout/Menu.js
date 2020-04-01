@@ -8,6 +8,7 @@ import SettingsIcon from '@material-ui/icons/Settings'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import SubMenu from './SubMenu'
 import inflection from 'inflection'
+import PersonalMenu from './PersonalMenu'
 
 const translatedResourceName = (resource, translate) =>
   translate(`resources.${resource.name}.name`, {
@@ -74,6 +75,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         dense={dense}
       >
         {resources.filter(subItems('settings')).map(renderMenuItemLink)}
+        <PersonalMenu dense={dense} sidebarIsOpen={open} />
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderMenuItemLink)}
       {isXsmall && logout}

@@ -45,7 +45,7 @@ export default deepmerge(englishMessages, {
   menu: {
     library: 'Library',
     settings: 'Settings',
-    configuration: 'Configuration',
+    personal: 'Personal',
     version: 'Version %{version}',
     theme: 'Theme'
   },
