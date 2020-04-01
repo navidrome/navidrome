@@ -31,8 +31,5 @@ PrivateDevices=yes
 ProtectSystem=full
 ProtectHome=true
 
-MemoryDenyWriteExecute=yes
-
-
 [Install]
 WantedBy=multi-user.target
