@@ -1,7 +1,7 @@
 ## Creating New Themes
 
 Themes in Navidrome are simple [Material-UI themes](https://material-ui.com/customization/theming/). They are basic JS 
-objects, that allow you to override almost every aspect of Navidrome's UI.
+objects, that allow you to override almost every visual aspect of Navidrome's UI.
 
 #### Steps to create a new theme:
 
