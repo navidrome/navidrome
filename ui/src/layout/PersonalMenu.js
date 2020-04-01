@@ -9,7 +9,7 @@ const useStyles = makeStyles((theme) => ({
   }
 }))
 
-const PersonalMenu = forwardRef(({ onClick, open, dense }, ref) => {
+const PersonalMenu = forwardRef(({ onClick, sidebarIsOpen, dense }, ref) => {
   const translate = useTranslate()
   const classes = useStyles()
   return (
@@ -20,7 +20,7 @@ const PersonalMenu = forwardRef(({ onClick, open, dense }, ref) => {
       leftIcon={<TuneIcon />}
       onClick={onClick}
       className={classes.menuItem}
-      sidebarIsOpen={open}
+      sidebarIsOpen={sidebarIsOpen}
       dense={dense}
     />
   )

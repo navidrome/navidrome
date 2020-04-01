@@ -20,7 +20,7 @@ const Personal = () => {
 
   return (
     <Card>
-      <Title title={translate('menu.configuration')} />
+      <Title title={'Navidrome - ' + translate('menu.personal')} />
       <CardContent>
         <div className={classes.label}>{translate('menu.theme')}</div>
         <Select
