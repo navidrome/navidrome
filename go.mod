@@ -10,6 +10,7 @@ require (
 	github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dhowden/tag v0.0.0-20191122115059-7e5c04feccd8
+	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/fscache v0.10.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/camelcase v0.0.0-20160318181535-f6a740d52f96 // indirect
@@ -26,7 +27,6 @@ require (
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lib/pq v1.3.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
-	github.com/nfnt/resize v0.0.0-20160724205520-891127d8d1b5
 	github.com/onsi/ginkgo v1.12.0
 	github.com/onsi/gomega v1.9.0
 	github.com/pkg/errors v0.9.1 // indirect

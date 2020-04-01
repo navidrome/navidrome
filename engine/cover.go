@@ -16,7 +16,7 @@ import (
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/static"
 	"github.com/dhowden/tag"
-	"github.com/nfnt/resize"
+	"github.com/disintegration/imaging"
 )
 
 type Cover interface {
@@ -88,7 +88,7 @@ func resizeImage(reader io.Reader, size int, out io.Writer) error {
 		return err
 	}
 
-	m := resize.Resize(uint(size), 0, img, resize.NearestNeighbor)
+	m := imaging.Resize(img, size, size, imaging.Lanczos)
 	return jpeg.Encode(out, m, &jpeg.Options{Quality: 75})
 }
 
