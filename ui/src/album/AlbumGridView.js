@@ -29,7 +29,7 @@ import {
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    margin: '5px'
+    margin: '20px'
   },
   cover: {
     display: 'inline-block',
@@ -58,22 +58,14 @@ const getColsForWidth = (width) => {
   return 7
 }
 
-const tabOrder = [
-  ALBUM_LIST_ALL,
-  ALBUM_LIST_RANDOM,
-  ALBUM_LIST_NEWEST,
-  ALBUM_LIST_RECENT,
-  ALBUM_LIST_STARRED
-]
-
 const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
   const dispatch = useDispatch()
   const albumView = useSelector((state) => state.albumView)
-  const tabSelected = tabOrder.indexOf(albumView.list)
+  const tabSelected = albumView.list
 
   const handleChange = (event, newValue) => {
-    dispatch(selectAlbumList(tabOrder[newValue]))
+    dispatch(selectAlbumList(newValue))
   }
 
   return (
@@ -85,11 +77,24 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
         aria-label="disabled tabs example"
         onChange={handleChange}
       >
-        <Tab label="All" icon={<AllInclusiveIcon />} />
-        <Tab label="Random" icon={<ShuffleIcon />} />
-        <Tab label="Newest" icon={<LibraryAddIcon />} />
-        <Tab label="Recently Played" icon={<VideoLibraryIcon />} />
-        <Tab label="Starred" icon={<StarIcon />} disabled={true} />
+        <Tab label="All" value={ALBUM_LIST_ALL} icon={<AllInclusiveIcon />} />
+        <Tab label="Random" value={ALBUM_LIST_RANDOM} icon={<ShuffleIcon />} />
+        <Tab
+          label="Newest"
+          value={ALBUM_LIST_NEWEST}
+          icon={<LibraryAddIcon />}
+        />
+        <Tab
+          label="Recently Played"
+          value={ALBUM_LIST_RECENT}
+          icon={<VideoLibraryIcon />}
+        />
+        <Tab
+          label="Starred"
+          value={ALBUM_LIST_STARRED}
+          icon={<StarIcon />}
+          disabled={true}
+        />
       </Tabs>
       <GridList
         cellHeight={'auto'}
