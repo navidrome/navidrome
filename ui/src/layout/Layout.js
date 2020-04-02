@@ -7,12 +7,13 @@ import AppBar from './AppBar'
 import themes from '../themes'
 
 const useStyles = makeStyles({
-  root: { paddingBottom: '80px' }
+  root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) }
 })
 
 export default (props) => {
-  const classes = useStyles()
   const theme = useSelector((state) => themes[state.theme] || themes.DarkTheme)
+  const queue = useSelector((state) => state.queue)
+  const classes = useStyles({ addPadding: queue.queue.length > 0 })
 
   return (
     <Layout
