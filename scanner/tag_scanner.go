@@ -169,33 +169,39 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 		delete(currentTracks, filePath)
 	}
 
-	// Load tracks Metadata from the folder
-	newTracks, err := s.loadTracks(filesToUpdate)
-	if err != nil {
-		return err
-	}
-
-	// If track from folder is newer than the one in DB, update/insert in DB and delete from the current tracks
-	log.Trace("Updating mediaFiles in DB", "dir", dir, "files", filesToUpdate, "numFiles", len(filesToUpdate))
 	numUpdatedTracks := 0
 	numPurgedTracks := 0
-	for _, n := range newTracks {
-		err := s.ds.MediaFile(ctx).Put(&n)
-		updatedArtists[n.AlbumArtistID] = true
-		updatedAlbums[n.AlbumID] = true
-		numUpdatedTracks++
+
+	if len(filesToUpdate) > 0 {
+		// Load tracks Metadata from the folder
+		newTracks, err := s.loadTracks(filesToUpdate)
 		if err != nil {
 			return err
 		}
+
+		// If track from folder is newer than the one in DB, update/insert in DB and delete from the current tracks
+		log.Trace("Updating mediaFiles in DB", "dir", dir, "files", filesToUpdate, "numFiles", len(filesToUpdate))
+		for _, n := range newTracks {
+			err := s.ds.MediaFile(ctx).Put(&n)
+			updatedArtists[n.AlbumArtistID] = true
+			updatedAlbums[n.AlbumID] = true
+			numUpdatedTracks++
+			if err != nil {
+				return err
+			}
+		}
 	}
 
-	// Remaining tracks from DB that are not in the folder are deleted
-	for _, ct := range currentTracks {
-		numPurgedTracks++
-		updatedArtists[ct.AlbumArtistID] = true
-		updatedAlbums[ct.AlbumID] = true
-		if err := s.ds.MediaFile(ctx).Delete(ct.ID); err != nil {
-			return err
+	if len(currentTracks) > 0 {
+		log.Trace("Deleting dangling tracks from DB", "dir", dir, "numTracks", len(currentTracks))
+		// Remaining tracks from DB that are not in the folder are deleted
+		for _, ct := range currentTracks {
+			numPurgedTracks++
+			updatedArtists[ct.AlbumArtistID] = true
+			updatedAlbums[ct.AlbumID] = true
+			if err := s.ds.MediaFile(ctx).Delete(ct.ID); err != nil {
+				return err
+			}
 		}
 	}
 
