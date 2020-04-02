@@ -58,7 +58,6 @@ const AlbumList = (props) => {
     <List
       {...props}
       title={<Title subTitle={'Albums'} />}
-      sort={albumView.params.sort}
       exporter={false}
       bulkActionButtons={false}
       actions={<AlbumListActions />}

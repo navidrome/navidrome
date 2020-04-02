@@ -1,31 +1,11 @@
 import React from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import {
-  GridList,
-  GridListTile,
-  GridListTileBar,
-  Tabs,
-  Tab
-} from '@material-ui/core'
+import { GridList, GridListTile, GridListTileBar } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
 import { linkToRecord } from 'ra-core'
 import { Loading } from 'react-admin'
-import AllInclusiveIcon from '@material-ui/icons/AllInclusive'
-import ShuffleIcon from '@material-ui/icons/Shuffle'
-import StarIcon from '@material-ui/icons/Star'
-import LibraryAddIcon from '@material-ui/icons/LibraryAdd'
-import VideoLibraryIcon from '@material-ui/icons/VideoLibrary'
 import subsonic from '../subsonic'
-import {
-  ALBUM_LIST_ALL,
-  ALBUM_LIST_NEWEST,
-  ALBUM_LIST_RANDOM,
-  ALBUM_LIST_RECENT,
-  ALBUM_LIST_STARRED,
-  selectAlbumList
-} from './albumState'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -60,42 +40,9 @@ const getColsForWidth = (width) => {
 
 const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
-  const dispatch = useDispatch()
-  const albumView = useSelector((state) => state.albumView)
-  const tabSelected = albumView.list
-
-  const handleChange = (event, newValue) => {
-    dispatch(selectAlbumList(newValue))
-  }
 
   return (
     <div className={classes.root}>
-      <Tabs
-        value={tabSelected}
-        indicatorColor="primary"
-        textColor="primary"
-        aria-label="disabled tabs example"
-        onChange={handleChange}
-      >
-        <Tab label="All" value={ALBUM_LIST_ALL} icon={<AllInclusiveIcon />} />
-        <Tab label="Random" value={ALBUM_LIST_RANDOM} icon={<ShuffleIcon />} />
-        <Tab
-          label="Newest"
-          value={ALBUM_LIST_NEWEST}
-          icon={<LibraryAddIcon />}
-        />
-        <Tab
-          label="Recently Played"
-          value={ALBUM_LIST_RECENT}
-          icon={<VideoLibraryIcon />}
-        />
-        <Tab
-          label="Starred"
-          value={ALBUM_LIST_STARRED}
-          icon={<StarIcon />}
-          disabled={true}
-        />
-      </Tabs>
       <GridList
         cellHeight={'auto'}
         cols={getColsForWidth(width)}
