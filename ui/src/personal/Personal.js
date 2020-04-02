@@ -1,41 +1,37 @@
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Card, CardContent, MenuItem, Select } from '@material-ui/core'
-import { Title, useTranslate } from 'react-admin'
+import { Card } from '@material-ui/core'
+import { Title, SimpleForm, SelectInput, useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { changeTheme } from './actions'
 import themes from '../themes'
 
 const useStyles = makeStyles({
-  label: { width: '10em', display: 'inline-block' },
-  select: { minWidth: 200 }
+  root: { marginTop: '1em' }
 })
 
 const Personal = () => {
   const translate = useTranslate()
   const classes = useStyles()
-  const theme = useSelector((state) => state.theme)
+  const currentTheme = useSelector((state) => state.theme)
   const dispatch = useDispatch()
-  const themeNames = Object.keys(themes).sort()
+  const themeChoices = Object.keys(themes).map((key) => {
+    return { id: key, name: themes[key].themeName }
+  })
 
   return (
-    <Card>
+    <Card className={classes.root}>
       <Title title={'Navidrome - ' + translate('menu.personal')} />
-      <CardContent>
-        <div className={classes.label}>{translate('menu.theme')}</div>
-        <Select
-          className={classes.select}
-          value={theme}
-          variant="filled"
+      <SimpleForm toolbar={false}>
+        <SelectInput
+          source="theme"
+          initialValue={currentTheme}
+          choices={themeChoices}
           onChange={(event) => {
             dispatch(changeTheme(event.target.value))
           }}
-        >
-          {themeNames.map((t) => (
-            <MenuItem value={t}>{themes[t].themeName}</MenuItem>
-          ))}
-        </Select>
-      </CardContent>
+        />
+      </SimpleForm>
     </Card>
   )
 }
