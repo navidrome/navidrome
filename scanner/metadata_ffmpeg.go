@@ -269,18 +269,21 @@ func (m *Metadata) parseDuration(tagName string) float32 {
 }
 
 func createProbeCommand(inputs []string) (string, []string) {
+	cmd := conf.Server.ProbeCommand
+	split := strings.Split(cmd, " ")
 	args := make([]string, 0)
-	args = append(args, conf.Server.ProbeCommand...)
-	args = append(args, "-i")
-	for _, inp := range inputs {
-		// This is the easiest way to avoid flag injections
-		fpath, err := filepath.Abs(inp)
-		if err != nil {
-			log.Warn("Unable to get the path of %s", inp)
-			continue
-		}
-		args = append(args, fpath)
-	}
 
+	for _, s := range split {
+		if s == "%s" {
+			for _, inp := range inputs {
+			   // This is the easiest way to avoid flag injections
+			   if fpath, err := filepath.Abs(inp); err != nil{
+				   args = append(args, "-i", fpath)
+			   }
+			}
+		} else {
+			args = append(args, s)
+		}
+	}
 	return args[0], args[1:]
 }
