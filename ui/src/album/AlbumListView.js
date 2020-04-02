@@ -25,10 +25,10 @@ const AlbumDetails = (props) => {
   )
 }
 
-const AlbumListView = (props) => {
+const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   return (
-    <Datagrid {...props} expand={<AlbumDetails />} rowClick={'show'}>
+    <Datagrid expand={<AlbumDetails />} rowClick={'show'} {...rest}>
       <TextField source="name" />
       <FunctionField
         source="artist"
