@@ -37,6 +37,7 @@ func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate in
 	return
 }
 
+// Path will always be an absolute path
 func createTranscodeCommand(cmd, path string, maxBitRate int, format string) (string, []string) {
 	split := strings.Split(cmd, " ")
 	for i, s := range split {

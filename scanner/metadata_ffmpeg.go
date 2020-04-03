@@ -268,6 +268,7 @@ func (m *Metadata) parseDuration(tagName string) float32 {
 	return 0
 }
 
+// Inputs will always be absolute paths
 func createProbeCommand(inputs []string) (string, []string) {
 	cmd := conf.Server.ProbeCommand
 
