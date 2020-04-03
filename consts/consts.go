@@ -35,7 +35,7 @@ var (
 			"name":           "mp3 audio",
 			"targetFormat":   "mp3",
 			"defaultBitRate": 192,
-			"command":        "ffmpeg -i %s -ab %bk -v 0 -f mp3 -",
+			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -",
 		},
 		{
 			"name":           "opus audio",
