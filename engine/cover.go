@@ -32,27 +32,33 @@ func NewCover(ds model.DataStore) Cover {
 }
 
 func (c *cover) getCoverPath(ctx context.Context, id string) (string, error) {
-	switch {
-	case strings.HasPrefix(id, "al-"):
-		id = id[3:]
+	var found bool
+	var err error
+	if found, err = c.ds.Album(ctx).Exists(id); err != nil {
+		return "", err
+	}
+	if found {
 		al, err := c.ds.Album(ctx).Get(id)
 		if err != nil {
 			return "", err
 		}
+		if al.CoverArtId == "" {
+			return "", model.ErrNotFound
+		}
 		return al.CoverArtPath, nil
-	default:
-		mf, err := c.ds.MediaFile(ctx).Get(id)
-		if err != nil {
-			return "", err
-		}
-		if mf.HasCoverArt {
-			return mf.Path, nil
-		}
+	}
+	mf, err := c.ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return "", err
+	}
+	if mf.HasCoverArt {
+		return mf.Path, nil
 	}
 	return "", model.ErrNotFound
 }
 
 func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) error {
+	id = strings.TrimPrefix(id, "al-")
 	path, err := c.getCoverPath(ctx, id)
 	if err != nil && err != model.ErrNotFound {
 		return err
