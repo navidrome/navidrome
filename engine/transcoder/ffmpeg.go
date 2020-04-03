@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -38,12 +39,14 @@ func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate in
 }
 
 func createTranscodeCommand(cmd, path string, maxBitRate int, format string) (string, []string) {
-	split := strings.Split(cmd, " ")
-	for i, s := range split {
-		s = strings.Replace(s, "%s", path, -1)
+	args := strings.Split(cmd, " ")
+	for i, s := range args {
+		if fpath, err := filepath.Abs(path); err != nil{
+			s = strings.Replace(s, "%s", fpath, -1)
+		}
 		s = strings.Replace(s, "%b", strconv.Itoa(maxBitRate), -1)
-		split[i] = s
+		args[i] = s
 	}
 
-	return split[0], split[1:]
+	return args[0], args[1:]
 }
