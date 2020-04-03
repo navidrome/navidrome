@@ -42,6 +42,8 @@ func New(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGe
 	return r
 }
 
+func (api *Router) Setup(path string) {}
+
 func (api *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	api.mux.ServeHTTP(w, r)
 }

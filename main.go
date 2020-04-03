@@ -19,7 +19,7 @@ func main() {
 		panic(fmt.Sprintf("Could not create the Subsonic API router. Aborting! err=%v", err))
 	}
 	a := CreateServer(conf.Server.MusicFolder)
-	a.MountRouter("/rest", subsonic)
-	a.MountRouter("/app", CreateAppRouter("/app"))
+	a.MountRouter(consts.URLPathSubsonicAPI, subsonic)
+	a.MountRouter(consts.URLPathUI, CreateAppRouter())
 	a.Run(":" + conf.Server.Port)
 }

@@ -5,8 +5,10 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/deluan/navidrome/assets"
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -31,6 +33,7 @@ func ServeIndex(ds model.DataStore) http.HandlerFunc {
 		t, _ = t.Parse(string(indexStr))
 		appConfig := map[string]interface{}{
 			"firstTime": firstTime,
+			"baseURL":   strings.TrimSuffix(conf.Server.BaseURL, "/"),
 		}
 		j, _ := json.Marshal(appConfig)
 		data := map[string]interface{}{

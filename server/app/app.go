@@ -15,22 +15,23 @@ import (
 )
 
 type Router struct {
-	ds   model.DataStore
-	mux  http.Handler
-	path string
+	ds  model.DataStore
+	mux http.Handler
 }
 
-func New(ds model.DataStore, path string) *Router {
-	r := &Router{ds: ds, path: path}
-	r.mux = r.routes()
-	return r
+func New(ds model.DataStore) *Router {
+	return &Router{ds: ds}
+}
+
+func (app *Router) Setup(path string) {
+	app.mux = app.routes(path)
 }
 
 func (app *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	app.mux.ServeHTTP(w, r)
 }
 
-func (app *Router) routes() http.Handler {
+func (app *Router) routes(path string) http.Handler {
 	r := chi.NewRouter()
 
 	r.Post("/login", Login(app.ds))
@@ -52,7 +53,7 @@ func (app *Router) routes() http.Handler {
 
 	// Serve UI app assets
 	r.Handle("/", ServeIndex(app.ds))
-	r.Handle("/*", http.StripPrefix(app.path, http.FileServer(assets.AssetFile())))
+	r.Handle("/*", http.StripPrefix(path, http.FileServer(assets.AssetFile())))
 
 	return r
 }

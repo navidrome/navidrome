@@ -100,6 +100,7 @@ services:
       ND_PORT: 4533
       ND_TRANSCODINGCACHESIZE: 100MB
       ND_SESSIONTIMEOUT: 30m
+      ND_BASEURL: ""
     volumes:
       - "./data:/data"
       - "/path/to/your/music/folder:/music:ro"

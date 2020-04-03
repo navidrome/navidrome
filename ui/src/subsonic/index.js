@@ -1,4 +1,5 @@
 import { fetchUtils } from 'react-admin'
+import baseUrl from "../utils/baseUrl"
 
 const url = (command, id, options) => {
   const params = new URLSearchParams()
@@ -18,7 +19,8 @@ const url = (command, id, options) => {
       params.append(k, options[k])
     })
   }
-  return `rest/${command}?${params.toString()}`
+  const url = `/rest/${command}?${params.toString()}`
+  return baseUrl(url)
 }
 
 const scrobble = (id, submit) => {

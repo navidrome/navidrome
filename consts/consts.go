@@ -27,6 +27,9 @@ const (
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
+
+	URLPathUI          = "/app"
+	URLPathSubsonicAPI = "/rest"
 )
 
 var (

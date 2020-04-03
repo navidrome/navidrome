@@ -27,7 +27,7 @@ func CreateServer(musicFolder string) *server.Server {
 	))
 }
 
-func CreateAppRouter(path string) *app.Router {
+func CreateAppRouter() *app.Router {
 	panic(wire.Build(allProviders))
 }
 

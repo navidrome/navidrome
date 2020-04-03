@@ -1,11 +1,12 @@
 import jwtDecode from 'jwt-decode'
 import md5 from 'md5-hex'
+import baseUrl from './utils/baseUrl'
 
 const authProvider = {
   login: ({ username, password }) => {
-    let url = '/app/login'
+    let url = baseUrl('/app/login')
     if (localStorage.getItem('initialAccountCreation')) {
-      url = '/app/createAdmin'
+      url = baseUrl('/app/createAdmin')
     }
     const request = new Request(url, {
       method: 'POST',

@@ -3,10 +3,12 @@ package server
 import (
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/scanner"
@@ -14,6 +16,11 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 )
+
+type Handler interface {
+	http.Handler
+	Setup(path string)
+}
 
 type Server struct {
 	Scanner *scanner.Scanner
@@ -29,11 +36,13 @@ func New(scanner *scanner.Scanner, ds model.DataStore) *Server {
 	return a
 }
 
-func (a *Server) MountRouter(path string, subRouter http.Handler) {
-	log.Info("Mounting routes", "path", path)
+func (a *Server) MountRouter(urlPath string, subRouter Handler) {
+	urlPath = path.Join(conf.Server.BaseURL, urlPath)
+	log.Info("Mounting routes", "path", urlPath)
+	subRouter.Setup(urlPath)
 	a.router.Group(func(r chi.Router) {
 		r.Use(RequestLogger)
-		r.Mount(path, subRouter)
+		r.Mount(urlPath, subRouter)
 	})
 }
 
@@ -53,8 +62,9 @@ func (a *Server) initRoutes() {
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(InjectLogger)
 
+	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI, "index.html")
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/app", 302)
+		http.Redirect(w, r, indexHtml, 302)
 	})
 
 	workDir, _ := os.Getwd()

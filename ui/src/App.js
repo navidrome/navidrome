@@ -34,6 +34,7 @@ const App = () => {
     if (appConfig.firstTime) {
       localStorage.setItem('initialAccountCreation', 'true')
     }
+    localStorage.setItem('baseURL', appConfig.baseURL)
   } catch (e) {}
 
   return (

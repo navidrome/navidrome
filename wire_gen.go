@@ -25,9 +25,9 @@ func CreateServer(musicFolder string) *server.Server {
 	return serverServer
 }
 
-func CreateAppRouter(path string) *app.Router {
+func CreateAppRouter() *app.Router {
 	dataStore := persistence.New()
-	router := app.New(dataStore, path)
+	router := app.New(dataStore)
 	return router
 }
 
