@@ -26,6 +26,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	}
 	maxBitRate := utils.ParamInt(r, "maxBitRate", 0)
 	format := utils.ParamString(r, "format")
+	estimateContentLength := utils.ParamBool(r, "estimateContentLength", false)
 
 	stream, err := c.streamer.NewStream(r.Context(), id, format, maxBitRate)
 	if err != nil {
@@ -46,6 +47,14 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 		// If the stream doesn't provide a size (i.e. is not seekable), we can't support ranges/content-length
 		w.Header().Set("Accept-Ranges", "none")
 		w.Header().Set("Content-Type", stream.ContentType())
+
+		// if Client requests the estimated content-length, send it
+		if estimateContentLength {
+			length := strconv.Itoa(stream.EstimatedContentLength())
+			log.Trace(r.Context(), "Estimated content-length", "contentLength", length)
+			w.Header().Set("Content-Length", length)
+		}
+
 		if c, err := io.Copy(w, stream); err != nil {
 			log.Error(r.Context(), "Error sending transcoded file", "id", id, err)
 		} else {

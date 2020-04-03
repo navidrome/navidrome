@@ -138,8 +138,11 @@ type Stream struct {
 func (s *Stream) Seekable() bool      { return s.Seeker != nil }
 func (s *Stream) Duration() float32   { return s.mf.Duration }
 func (s *Stream) ContentType() string { return mime.TypeByExtension("." + s.format) }
-func (s *Stream) Name() string        { return s.mf.Path }
+func (s *Stream) Name() string        { return s.mf.Title + "." + s.format }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
+func (s *Stream) EstimatedContentLength() int {
+	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1024)
+}
 
 // TODO This function deserves some love (refactoring)
 func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model.MediaFile, reqFormat string, reqBitRate int) (format string, bitRate int) {
