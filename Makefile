@@ -39,8 +39,6 @@ setup: Jamstash-master
 	@which goose      || (echo "Installing Goose"    && GO111MODULE=off go get -u github.com/pressly/goose/cmd/goose)
 	@which lefthook   || (echo "Installing Lefthook" && GO111MODULE=off go get -u github.com/Arkweid/lefthook)
 	@lefthook install
-	@lefthook add pre-commit
-	@lefthook add pre-push
 	go mod download
 	@(cd ./ui && npm ci)
 .PHONY: setup
@@ -56,6 +54,11 @@ Jamstash-master:
 
 check_env: check_go_env check_node_env
 .PHONE: check_env
+
+check_hooks:
+	@lefthook add pre-commit
+	@lefthook add pre-push
+.PHONE: check_hooks
 
 check_go_env:
 	@(hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
