@@ -37,6 +37,10 @@ setup: Jamstash-master
 	@which goreman    || (echo "Installing Goreman"  && GO111MODULE=off go get -u github.com/mattn/goreman)
 	@which ginkgo     || (echo "Installing Ginkgo"   && GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo)
 	@which goose      || (echo "Installing Goose"    && GO111MODULE=off go get -u github.com/pressly/goose/cmd/goose)
+	@which lefthook   || (echo "Installing Lefthook" && GO111MODULE=off go get -u github.com/Arkweid/lefthook)
+	@lefthook install
+	@lefthook add pre-commit
+	@lefthook add pre-push
 	go mod download
 	@(cd ./ui && npm ci)
 .PHONY: setup
