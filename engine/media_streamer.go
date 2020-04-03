@@ -147,6 +147,10 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 	if reqFormat == "raw" {
 		return
 	}
+	if reqFormat == mf.Suffix && reqBitRate == 0 {
+		bitRate = mf.BitRate
+		return
+	}
 	trc, hasDefault := ctx.Value("transcoding").(model.Transcoding)
 	var cFormat string
 	var cBitRate int

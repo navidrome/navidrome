@@ -104,6 +104,13 @@ var _ = Describe("MediaStreamer", func() {
 				Expect(format).To(Equal("mp3"))
 				Expect(bitRate).To(Equal(192))
 			})
+			It("returns raw if requested format is the same as the original, but requested BitRate is 0", func() {
+				mf.Suffix = "mp3"
+				mf.BitRate = 320
+				format, bitRate := selectTranscodingOptions(ctx, ds, mf, "mp3", 0)
+				Expect(format).To(Equal("raw"))
+				Expect(bitRate).To(Equal(320))
+			})
 		})
 
 		Context("player has format configured", func() {
