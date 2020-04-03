@@ -63,7 +63,7 @@ func (a *Server) initRoutes() {
 	r.Use(InjectLogger)
 
 	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI, "index.html")
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, indexHtml, 302)
 	})
 
