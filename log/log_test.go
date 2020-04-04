@@ -86,6 +86,40 @@ var _ = Describe("Logger", func() {
 			Info("Simple Message")
 			Expect(hook.LastEntry()).To(BeNil())
 		})
+
+		It("logs source file and line number, if requested", func() {
+			SetLogSourceLine(true)
+			Error("A crash happened")
+			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
+			// NOTE: This assertions breaks if the line number changes
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("log_test.go:92"))
+		})
+	})
+
+	Context("Levels", func() {
+		BeforeEach(func() {
+			SetLevel(LevelTrace)
+		})
+		It("logs error messages", func() {
+			Error("msg")
+			Expect(hook.LastEntry().Level).To(Equal(logrus.ErrorLevel))
+		})
+		It("logs warn messages", func() {
+			Warn("msg")
+			Expect(hook.LastEntry().Level).To(Equal(logrus.WarnLevel))
+		})
+		It("logs info messages", func() {
+			Info("msg")
+			Expect(hook.LastEntry().Level).To(Equal(logrus.InfoLevel))
+		})
+		It("logs debug messages", func() {
+			Debug("msg")
+			Expect(hook.LastEntry().Level).To(Equal(logrus.DebugLevel))
+		})
+		It("logs info messages", func() {
+			Trace("msg")
+			Expect(hook.LastEntry().Level).To(Equal(logrus.TraceLevel))
+		})
 	})
 
 	Context("extractLogger", func() {
@@ -114,6 +148,33 @@ var _ = Describe("Logger", func() {
 			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
 
 			Expect(extractLogger(req)).To(Equal(logger))
+		})
+	})
+
+	Context("SetLevelString", func() {
+		It("converts Critical level", func() {
+			SetLevelString("Critical")
+			Expect(CurrentLevel()).To(Equal(LevelCritical))
+		})
+		It("converts Error level", func() {
+			SetLevelString("ERROR")
+			Expect(CurrentLevel()).To(Equal(LevelError))
+		})
+		It("converts Warn level", func() {
+			SetLevelString("warn")
+			Expect(CurrentLevel()).To(Equal(LevelWarn))
+		})
+		It("converts Info level", func() {
+			SetLevelString("info")
+			Expect(CurrentLevel()).To(Equal(LevelInfo))
+		})
+		It("converts Debug level", func() {
+			SetLevelString("debug")
+			Expect(CurrentLevel()).To(Equal(LevelDebug))
+		})
+		It("converts Trace level", func() {
+			SetLevelString("trace")
+			Expect(CurrentLevel()).To(Equal(LevelTrace))
 		})
 	})
 })
