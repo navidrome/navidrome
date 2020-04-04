@@ -6,105 +6,114 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestLog(t *testing.T) {
+	SetLevel(LevelInfo)
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Log Suite")
+}
 
-	Convey("Test Logger", t, func() {
-		l, hook := test.NewNullLogger()
+var _ = Describe("Logger", func() {
+	var l *logrus.Logger
+	var hook *test.Hook
+
+	BeforeEach(func() {
+		l, hook = test.NewNullLogger()
 		SetLevel(LevelInfo)
 		SetDefaultLogger(l)
+	})
 
-		Convey("Plain message", func() {
+	Context("Logging", func() {
+		It("logs a simple message", func() {
 			Error("Simple Message")
-			So(hook.LastEntry().Message, ShouldEqual, "Simple Message")
-			So(hook.LastEntry().Data, ShouldBeEmpty)
+			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
+			Expect(hook.LastEntry().Data).To(BeEmpty())
 		})
 
-		Convey("Passing nil as context", func() {
+		It("logs a message when context is nil", func() {
 			Error(nil, "Simple Message")
-			So(hook.LastEntry().Message, ShouldEqual, "Simple Message")
-			So(hook.LastEntry().Data, ShouldBeEmpty)
+			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
+			Expect(hook.LastEntry().Data).To(BeEmpty())
 		})
 
-		SkipConvey("Empty context", func() {
+		XIt("Empty context", func() {
 			Error(context.Background(), "Simple Message")
-			So(hook.LastEntry().Message, ShouldEqual, "Simple Message")
-			So(hook.LastEntry().Data, ShouldBeEmpty)
+			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
+			Expect(hook.LastEntry().Data).To(BeEmpty())
 		})
 
-		Convey("Message with two kv pairs", func() {
+		It("logs messages with two kv pairs", func() {
 			Error("Simple Message", "key1", "value1", "key2", "value2")
-			So(hook.LastEntry().Message, ShouldEqual, "Simple Message")
-			So(hook.LastEntry().Data["key1"], ShouldEqual, "value1")
-			So(hook.LastEntry().Data["key2"], ShouldEqual, "value2")
-			So(hook.LastEntry().Data, ShouldHaveLength, 2)
+			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
+			Expect(hook.LastEntry().Data["key1"]).To(Equal("value1"))
+			Expect(hook.LastEntry().Data["key2"]).To(Equal("value2"))
+			Expect(hook.LastEntry().Data).To(HaveLen(2))
 		})
 
-		Convey("Only error", func() {
+		It("logs error objects as simple messages", func() {
 			Error(errors.New("error test"))
-			So(hook.LastEntry().Message, ShouldEqual, "error test")
-			So(hook.LastEntry().Data, ShouldBeEmpty)
+			Expect(hook.LastEntry().Message).To(Equal("error test"))
+			Expect(hook.LastEntry().Data).To(BeEmpty())
 		})
 
-		Convey("Error as last argument", func() {
+		It("logs errors passed as last argument", func() {
 			Error("Error scrobbling track", "id", 1, errors.New("some issue"))
-			So(hook.LastEntry().Message, ShouldEqual, "Error scrobbling track")
-			So(hook.LastEntry().Data["id"], ShouldEqual, 1)
-			So(hook.LastEntry().Data["error"], ShouldEqual, "some issue")
-			So(hook.LastEntry().Data, ShouldHaveLength, 2)
+			Expect(hook.LastEntry().Message).To(Equal("Error scrobbling track"))
+			Expect(hook.LastEntry().Data["id"]).To(Equal(1))
+			Expect(hook.LastEntry().Data["error"]).To(Equal("some issue"))
+			Expect(hook.LastEntry().Data).To(HaveLen(2))
 		})
 
-		Convey("Passing a request", func() {
+		It("can get data from the request's context", func() {
 			ctx := NewContext(nil, "foo", "bar")
 			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
 
 			Error(req, "Simple Message", "key1", "value1")
-			So(hook.LastEntry().Message, ShouldEqual, "Simple Message")
-			So(hook.LastEntry().Data["foo"], ShouldEqual, "bar")
-			So(hook.LastEntry().Data["key1"], ShouldEqual, "value1")
-			So(hook.LastEntry().Data, ShouldHaveLength, 2)
+
+			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
+			Expect(hook.LastEntry().Data["foo"]).To(Equal("bar"))
+			Expect(hook.LastEntry().Data["key1"]).To(Equal("value1"))
+			Expect(hook.LastEntry().Data).To(HaveLen(2))
 		})
 
-		Convey("Skip if level is lower", func() {
+		It("does not log anything if level is lower", func() {
 			SetLevel(LevelError)
 			Info("Simple Message")
-			So(hook.LastEntry(), ShouldBeNil)
+			Expect(hook.LastEntry()).To(BeNil())
 		})
 	})
 
-	Convey("Test extractLogger", t, func() {
-		Convey("It returns an error if the context is nil", func() {
+	Context("extractLogger", func() {
+		It("returns an error if the context is nil", func() {
 			_, err := extractLogger(nil)
-			So(err, ShouldNotBeNil)
+			Expect(err).ToNot(BeNil())
 		})
 
-		Convey("It returns an error if the context is a string", func() {
+		It("returns an error if the context is a string", func() {
 			_, err := extractLogger("any msg")
-			So(err, ShouldNotBeNil)
+			Expect(err).ToNot(BeNil())
 		})
 
-		Convey("It returns the logger from context if it has one", func() {
+		It("returns the logger from context if it has one", func() {
 			logger := logrus.NewEntry(logrus.New())
 			ctx := context.Background()
 			ctx = context.WithValue(ctx, "logger", logger)
 
-			l, err := extractLogger(ctx)
-			So(err, ShouldBeNil)
-			So(l, ShouldEqual, logger)
+			Expect(extractLogger(ctx)).To(Equal(logger))
 		})
 
-		Convey("It returns the logger from request's context if it has one", func() {
+		It("returns the logger from request's context if it has one", func() {
 			logger := logrus.NewEntry(logrus.New())
 			ctx := context.Background()
 			ctx = context.WithValue(ctx, "logger", logger)
 			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
-			l, err := extractLogger(req)
-			So(err, ShouldBeNil)
-			So(l, ShouldEqual, logger)
+
+			Expect(extractLogger(req)).To(Equal(logger))
 		})
 	})
-}
+})
