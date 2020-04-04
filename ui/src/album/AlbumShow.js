@@ -48,7 +48,7 @@ const AlbumShow = (props) => {
         filter={{ album_id: props.id }}
         resource={'albumSong'}
         exporter={false}
-        perPage={1000}
+        perPage={-1}
         pagination={null}
         sort={{ field: 'discNumber asc, trackNumber asc', order: 'ASC' }}
         bulkActionButtons={<AlbumSongBulkActions />}

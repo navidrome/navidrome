@@ -42,7 +42,6 @@ export const AlbumActions = ({
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <Button
-        color={'secondary'}
         onClick={() => {
           dispatch(playAlbum(ids[0], filteredData))
         }}
@@ -51,7 +50,6 @@ export const AlbumActions = ({
         <PlayArrowIcon />
       </Button>
       <Button
-        color={'secondary'}
         onClick={() => {
           const shuffled = shuffle(filteredData)
           const firstId = Object.keys(shuffled)[0]
