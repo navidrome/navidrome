@@ -3,6 +3,7 @@ import { Card, CardContent, CardMedia, Typography } from '@material-ui/core'
 import { useTranslate } from 'react-admin'
 import subsonic from '../subsonic'
 import { DurationField, formatRange } from '../common'
+import { ArtistLinkField } from './ArtistLinkField'
 
 const AlbumDetails = ({ classes, record }) => {
   const translate = useTranslate()
@@ -29,7 +30,7 @@ const AlbumDetails = ({ classes, record }) => {
           {record.name}
         </Typography>
         <Typography component="h6">
-          {record.albumArtist || record.artist}
+          <ArtistLinkField record={record} />
         </Typography>
         <Typography component="p">{genreYear(record)}</Typography>
         <Typography component="p">
