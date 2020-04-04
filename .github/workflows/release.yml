@@ -1,9 +1,8 @@
 name: Release
-
 on:
-  create:
+  push:
     tags:
-      - v*.*.*
+      - '*'
 jobs:
   release:
     name: Release
