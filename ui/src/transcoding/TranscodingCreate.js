@@ -32,7 +32,7 @@ const TranscodingCreate = (props) => (
           { id: 256, name: '256' },
           { id: 320, name: '320' }
         ]}
-        initialValue={192}
+        defaultValue={192}
       />
       <TextInput
         source="command"

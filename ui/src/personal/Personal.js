@@ -22,10 +22,10 @@ const Personal = () => {
   return (
     <Card className={classes.root}>
       <Title title={'Navidrome - ' + translate('menu.personal')} />
-      <SimpleForm toolbar={false}>
+      <SimpleForm toolbar={null}>
         <SelectInput
           source="theme"
-          initialValue={currentTheme}
+          defaultValue={currentTheme}
           choices={themeChoices}
           onChange={(event) => {
             dispatch(changeTheme(event.target.value))
