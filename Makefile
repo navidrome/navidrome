@@ -89,6 +89,6 @@ release:
 	git push origin v${V}
 .PHONY: release
 
-dist:
-	 docker run -it -v $(PWD):/github/workspace -w /github/workspace bepsays/ci-goreleaser:1.14-1 goreleaser release --rm-dist --skip-publish --snapshot
-.PHONY: dist
+snapshot:
+	 docker run -it -v $(PWD):/workspace -w /workspace bepsays/ci-goreleaser:1.14-1 goreleaser release --rm-dist --skip-publish --snapshot
+.PHONY: snapshot
