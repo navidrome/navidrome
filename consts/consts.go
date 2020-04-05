@@ -20,10 +20,15 @@ const (
 
 	UIAssetsLocalPath = "ui/build"
 
-	CacheDir                             = "cache"
+	TranscodingCacheDir                  = "cache/transcoding"
 	DefaultTranscodingCacheSize          = 100 * 1024 * 1024 // 100MB
 	DefaultTranscodingCacheMaxItems      = 0                 // Unlimited
 	DefaultTranscodingCachePurgeInterval = 10 * time.Minute
+
+	ImageCacheDir                  = "cache/images"
+	DefaultImageCacheSize          = 100 * 1024 * 1024 // 100MB
+	DefaultImageCacheMaxItems      = 0                 // Unlimited
+	DefaultImageCachePurgeInterval = 10 * time.Minute
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
