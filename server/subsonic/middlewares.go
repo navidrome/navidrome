@@ -112,16 +112,17 @@ func getPlayer(players engine.Players) func(next http.Handler) http.Handler {
 					ctx = context.WithValue(ctx, "transcoding", *trc)
 				}
 				r = r.WithContext(ctx)
+
+				cookie := &http.Cookie{
+					Name:     playerIDCookieName(userName),
+					Value:    player.ID,
+					MaxAge:   cookieExpiry,
+					HttpOnly: true,
+					Path:     "/",
+				}
+				http.SetCookie(w, cookie)
 			}
 
-			cookie := &http.Cookie{
-				Name:     playerIDCookieName(userName),
-				Value:    player.ID,
-				MaxAge:   cookieExpiry,
-				HttpOnly: true,
-				Path:     "/",
-			}
-			http.SetCookie(w, cookie)
 			next.ServeHTTP(w, r)
 		})
 	}

@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -156,6 +157,17 @@ var _ = Describe("Middlewares", func() {
 			Expect(cookieStr).To(ContainSubstring(playerIDCookieName("someone")))
 		})
 
+		It("does not add the cookie if there was an error", func() {
+			ctx := context.WithValue(r.Context(), "client", "error")
+			r = r.WithContext(ctx)
+
+			gp := getPlayer(mockedPlayers)(next)
+			gp.ServeHTTP(w, r)
+
+			cookieStr := w.Header().Get("Set-Cookie")
+			Expect(cookieStr).To(BeEmpty())
+		})
+
 		Context("PlayerId specified in Cookies", func() {
 			BeforeEach(func() {
 				cookie := &http.Cookie{
@@ -242,5 +254,8 @@ func (mp *mockPlayers) Get(ctx context.Context, playerId string) (*model.Player,
 }
 
 func (mp *mockPlayers) Register(ctx context.Context, id, client, typ, ip string) (*model.Player, *model.Transcoding, error) {
+	if client == "error" {
+		return nil, nil, errors.New(client)
+	}
 	return &model.Player{ID: id}, mp.transcoding, nil
 }

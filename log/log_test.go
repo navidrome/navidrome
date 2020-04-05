@@ -92,7 +92,7 @@ var _ = Describe("Logger", func() {
 			Error("A crash happened")
 			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
 			// NOTE: This assertions breaks if the line number changes
-			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("log_test.go:92"))
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:92"))
 		})
 	})
 
