@@ -21,7 +21,7 @@ func NewMediaRetrievalController(cover engine.Cover) *MediaRetrievalController {
 }
 
 func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	f, err := static.AssetFile().Open("navidrone-310x310.png")
+	f, err := static.AssetFile().Open("navidrome-310x310.png")
 	if err != nil {
 		log.Error(r, "Image not found", err)
 		return nil, NewError(responses.ErrorDataNotFound, "Avatar image not found")
