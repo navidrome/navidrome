@@ -1,0 +1,30 @@
+package migration
+
+import (
+	"database/sql"
+
+	"github.com/pressly/goose"
+)
+
+func init() {
+	goose.AddMigration(Up20200404214704, Down20200404214704)
+}
+
+func Up20200404214704(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+create index if not exists media_file_year
+	on media_file (year);
+
+create index if not exists media_file_duration
+	on media_file (duration);
+
+create index if not exists media_file_track_number
+	on media_file (disc_number, track_number);
+`)
+	return err
+}
+
+func Down20200404214704(tx *sql.Tx) error {
+	// This code is executed when the migration is rolled back.
+	return nil
+}
