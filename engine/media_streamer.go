@@ -22,7 +22,9 @@ type MediaStreamer interface {
 	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int) (*Stream, error)
 }
 
-func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache fscache.Cache) MediaStreamer {
+type TranscodingCache fscache.Cache
+
+func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache TranscodingCache) MediaStreamer {
 	return &mediaStreamer{ds: ds, ffm: ffm, cache: cache}
 }
 
@@ -205,14 +207,14 @@ func getFinalCachedSize(r fscache.ReadAtCloser) int64 {
 	return -1
 }
 
-func NewTranscodingCache() (fscache.Cache, error) {
+func NewTranscodingCache() (TranscodingCache, error) {
 	cacheSize, err := humanize.ParseBytes(conf.Server.TranscodingCacheSize)
 	if err != nil {
 		cacheSize = consts.DefaultTranscodingCacheSize
 	}
 	lru := fscache.NewLRUHaunter(consts.DefaultTranscodingCacheMaxItems, int64(cacheSize), consts.DefaultTranscodingCachePurgeInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
-	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.CacheDir)
+	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.TranscodingCacheDir)
 	log.Info("Creating transcoding cache", "path", cacheFolder, "maxSize", humanize.Bytes(cacheSize),
 		"cleanUpInterval", consts.DefaultTranscodingCachePurgeInterval)
 	fs, err := fscache.NewFs(cacheFolder, 0755)

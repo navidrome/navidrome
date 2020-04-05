@@ -11,24 +11,33 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/static"
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
+	"github.com/djherbis/fscache"
+	"github.com/dustin/go-humanize"
 )
 
 type Cover interface {
 	Get(ctx context.Context, id string, size int, out io.Writer) error
 }
 
-type cover struct {
-	ds model.DataStore
+type ImageCache fscache.Cache
+
+func NewCover(ds model.DataStore, cache ImageCache) Cover {
+	return &cover{ds: ds, cache: cache}
 }
 
-func NewCover(ds model.DataStore) Cover {
-	return &cover{ds}
+type cover struct {
+	ds    model.DataStore
+	cache fscache.Cache
 }
 
 func (c *cover) getCoverPath(ctx context.Context, id string) (string, error) {
@@ -115,4 +124,21 @@ func readFromTag(path string) (io.Reader, error) {
 		return nil, errors.New("error extracting art from file " + path)
 	}
 	return bytes.NewReader(picture.Data), nil
+}
+
+func NewImageCache() (ImageCache, error) {
+	cacheSize, err := humanize.ParseBytes(conf.Server.ImageCacheSize)
+	if err != nil {
+		cacheSize = consts.DefaultImageCacheSize
+	}
+	lru := fscache.NewLRUHaunter(consts.DefaultImageCacheMaxItems, int64(cacheSize), consts.DefaultImageCachePurgeInterval)
+	h := fscache.NewLRUHaunterStrategy(lru)
+	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.ImageCacheDir)
+	log.Info("Creating image cache", "path", cacheFolder, "maxSize", humanize.Bytes(cacheSize),
+		"cleanUpInterval", consts.DefaultImageCachePurgeInterval)
+	fs, err := fscache.NewFs(cacheFolder, 0755)
+	if err != nil {
+		return nil, err
+	}
+	return fscache.NewCacheWithHaunter(fs, h)
 }

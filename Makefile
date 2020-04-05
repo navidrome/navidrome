@@ -16,6 +16,10 @@ server: check_go_env
 	@reflex -d none -c reflex.conf
 .PHONY: server
 
+wire: check_go_env
+	wire ./...
+.PHONY: wire
+
 watch: check_go_env
 	ginkgo watch -notify ./...
 .PHONY: watch
