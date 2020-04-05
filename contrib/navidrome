@@ -1,0 +1,21 @@
+#!/sbin/openrc-run
+  
+name=$RC_SVCNAME
+command="/opt/navidrome/navidrome"
+command_args="-datafolder=/opt/navidrome"
+command_user="navidrome"
+pidfile="/var/run/$RC_SVCNAME.pid"
+command_background="yes"
+
+depend() {
+        need net
+}
+
+start_pre() {
+        checkpath --directory --owner $command_user:$command_user --mode 0775 \
+                /run/$RC_SVCNAME /var/log/$RC_SVCNAME
+}
+
+stop() {
+        kill `cat /var/run/$RC_SVCNAME.pid`
+
