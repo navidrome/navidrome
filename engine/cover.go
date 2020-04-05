@@ -9,10 +9,10 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
@@ -40,74 +40,82 @@ type cover struct {
 	cache fscache.Cache
 }
 
-func (c *cover) getCoverPath(ctx context.Context, id string) (string, error) {
+func (c *cover) getCoverPath(ctx context.Context, id string) (string, *time.Time, error) {
 	var found bool
 	var err error
 	if found, err = c.ds.Album(ctx).Exists(id); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if found {
 		al, err := c.ds.Album(ctx).Get(id)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 		if al.CoverArtId == "" {
-			return "", model.ErrNotFound
+			return "", nil, model.ErrNotFound
 		}
-		return al.CoverArtPath, nil
+		id = al.CoverArtId
 	}
 	mf, err := c.ds.MediaFile(ctx).Get(id)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if mf.HasCoverArt {
-		return mf.Path, nil
+		return mf.Path, &mf.UpdatedAt, nil
 	}
-	return "", model.ErrNotFound
+	return "", nil, model.ErrNotFound
 }
 
 func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) error {
 	id = strings.TrimPrefix(id, "al-")
-	path, err := c.getCoverPath(ctx, id)
+	path, _, err := c.getCoverPath(ctx, id)
 	if err != nil && err != model.ErrNotFound {
 		return err
 	}
 
-	var reader io.Reader
-
-	if err != model.ErrNotFound {
-		reader, err = readFromTag(path)
-	} else {
-		var f http.File
-		f, err = static.AssetFile().Open("default_cover.jpg")
-		if err == nil {
-			defer f.Close()
-			reader = f
-		}
-	}
-
+	reader, err := c.getCover(ctx, path, size)
 	if err != nil {
-		return model.ErrNotFound
-	}
-
-	if size > 0 {
-		return resizeImage(reader, size, out)
+		return err
 	}
 	_, err = io.Copy(out, reader)
 	return err
 }
 
-func resizeImage(reader io.Reader, size int, out io.Writer) error {
-	img, _, err := image.Decode(reader)
-	if err != nil {
-		return err
+func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.Reader, err error) {
+	defer func() {
+		if err != nil {
+			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
+			reader, err = static.AssetFile().Open("navidrome-310x310.png")
+		}
+	}()
+	var data []byte
+	data, err = readFromTag(path)
+
+	if err == nil && size > 0 {
+		data, err = resizeImage(bytes.NewReader(data), size)
 	}
 
-	m := imaging.Resize(img, size, size, imaging.Lanczos)
-	return jpeg.Encode(out, m, &jpeg.Options{Quality: 75})
+	// Confirm the image is valid. Costly, but necessary
+	_, _, err = image.Decode(bytes.NewReader(data))
+	if err == nil {
+		reader = bytes.NewReader(data)
+	}
+
+	return
 }
 
-func readFromTag(path string) (io.Reader, error) {
+func resizeImage(reader io.Reader, size int) ([]byte, error) {
+	img, _, err := image.Decode(reader)
+	if err != nil {
+		return nil, err
+	}
+	m := imaging.Resize(img, size, size, imaging.Lanczos)
+	buf := new(bytes.Buffer)
+	err = jpeg.Encode(buf, m, &jpeg.Options{Quality: 75})
+	return buf.Bytes(), err
+}
+
+func readFromTag(path string) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -121,9 +129,9 @@ func readFromTag(path string) (io.Reader, error) {
 
 	picture := m.Picture()
 	if picture == nil {
-		return nil, errors.New("error extracting art from file " + path)
+		return nil, errors.New("file does not contain embedded art")
 	}
-	return bytes.NewReader(picture.Data), nil
+	return picture.Data, nil
 }
 
 func NewImageCache() (ImageCache, error) {
