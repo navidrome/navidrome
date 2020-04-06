@@ -40,7 +40,14 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 		return nil, err
 	}
 
-	format, bitRate := selectTranscodingOptions(ctx, ms.ds, mf, reqFormat, reqBitRate)
+	var format string
+	var bitRate int
+	defer func() {
+		log.Info("Streaming file", "title", mf.Title, "artist", mf.Artist, "format", format,
+			"bitRate", bitRate, "user", userName(ctx), "transcoding", format != "raw", "originalFormat", mf.Suffix)
+	}()
+
+	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, reqFormat, reqBitRate)
 	log.Trace(ctx, "Selected transcoding options",
 		"requestBitrate", reqBitRate, "requestFormat", reqFormat,
 		"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,

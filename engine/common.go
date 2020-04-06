@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -152,4 +153,13 @@ func FromArtists(ars model.Artists) Entries {
 		entries[i] = FromArtist(&ar)
 	}
 	return entries
+}
+
+func userName(ctx context.Context) string {
+	user := ctx.Value("user")
+	if user == nil {
+		return "UNKNOWN"
+	}
+	usr := user.(model.User)
+	return usr.UserName
 }
