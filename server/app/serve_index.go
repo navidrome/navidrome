@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/deluan/navidrome/assets"
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
@@ -15,13 +14,12 @@ import (
 )
 
 // Injects the `firstTime` config in the `index.html` template
-func ServeIndex(ds model.DataStore) http.HandlerFunc {
+func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := ds.User(r.Context()).CountAll()
 		firstTime := c == 0 && err == nil
 
 		t := template.New("initial state")
-		fs := assets.AssetFile()
 		indexHtml, err := fs.Open("index.html")
 		if err != nil {
 			log.Error(r, "Could not find `index.html` template", err)

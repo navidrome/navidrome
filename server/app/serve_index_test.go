@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 var _ = Describe("ServeIndex", func() {
 	var ds model.DataStore
 	mockUser := &mockedUserRepo{}
+	fs := http.Dir("tests/fixtures")
 
 	BeforeEach(func() {
 		ds = &persistence.MockDataStore{MockedUser: mockUser}
@@ -26,7 +28,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds)(w, r)
+		ServeIndex(ds, fs)(w, r)
 
 		Expect(w.Code).To(Equal(200))
 		config := extractAppConfig(w.Body.String())
@@ -38,7 +40,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds)(w, r)
+		ServeIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("firstTime", true))
@@ -49,7 +51,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds)(w, r)
+		ServeIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("firstTime", false))
@@ -60,7 +62,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds)(w, r)
+		ServeIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("baseURL", "base_url_test"))
