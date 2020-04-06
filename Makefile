@@ -54,6 +54,8 @@ Jamstash-master:
 	wget -N https://github.com/tsquillario/Jamstash/archive/master.zip
 	unzip -o master.zip
 	rm master.zip
+	(cd Jamstash-master && npm ci && npx bower install && npx grunt build)
+	rm -rf Jamstash-master/node_modules Jamstash-master/bower_components
 
 check_env: check_go_env check_node_env
 .PHONE: check_env
