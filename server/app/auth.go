@@ -169,7 +169,18 @@ func getToken(ds model.DataStore, ctx context.Context) (*jwt.Token, error) {
 	return nil, errors.New("invalid authentication")
 }
 
-func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
+// This method maps the custom authorization header to the default 'Authorization', used by the jwtauth library
+func mapAuthHeader() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			bearer := r.Header.Get(consts.UIAuthorizationHeader)
+			r.Header.Set("Authorization", bearer)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	auth.InitTokenAuth(ds)
 
 	return func(next http.Handler) http.Handler {
@@ -194,7 +205,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 				return
 			}
 
-			w.Header().Set("Authorization", newTokenString)
+			w.Header().Set(consts.UIAuthorizationHeader, newTokenString)
 			next.ServeHTTP(w, r.WithContext(newCtx))
 		})
 	}

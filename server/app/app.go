@@ -38,8 +38,9 @@ func (app *Router) routes(path string) http.Handler {
 	r.Post("/createAdmin", CreateAdmin(app.ds))
 
 	r.Route("/api", func(r chi.Router) {
+		r.Use(mapAuthHeader())
 		r.Use(jwtauth.Verifier(auth.TokenAuth))
-		r.Use(Authenticator(app.ds))
+		r.Use(authenticator(app.ds))
 		app.R(r, "/user", model.User{})
 		app.R(r, "/song", model.MediaFile{})
 		app.R(r, "/album", model.Album{})

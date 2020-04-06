@@ -14,6 +14,7 @@ const (
 	DefaultDbPath       = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL"
 	InitialSetupFlagKey = "InitialSetup"
 
+	UIAuthorizationHeader = "X-ND-Authorization"
 	JWTSecretKey          = "JWTSecret"
 	JWTIssuer             = "ND"
 	DefaultSessionTimeout = 30 * time.Minute

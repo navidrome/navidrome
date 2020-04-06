@@ -12,7 +12,7 @@ const httpClient = (url, options = {}) => {
   }
   const token = localStorage.getItem('token')
   if (token) {
-    options.headers.set('Authorization', `Bearer ${token}`)
+    options.headers.set('X-ND-Authorization', `Bearer ${token}`)
   }
   return fetchUtils.fetchJson(url, options).then((response) => {
     const token = response.headers.get('authorization')
