@@ -55,6 +55,7 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 	}
 	defer r.Close()
 	if w != nil {
+		log.Trace(ctx, "Image cache miss", "path", path, "size", size, "lastUpdate", lastUpdate)
 		go func() {
 			defer w.Close()
 			reader, err := c.getCover(ctx, path, size)
@@ -64,6 +65,8 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 			}
 			io.Copy(w, reader)
 		}()
+	} else {
+		log.Trace(ctx, "Loading image from cache", "path", path, "size", size, "lastUpdate", lastUpdate)
 	}
 
 	_, err = io.Copy(out, r)
