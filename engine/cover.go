@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
@@ -40,45 +41,65 @@ type cover struct {
 	cache fscache.Cache
 }
 
-func (c *cover) getCoverPath(ctx context.Context, id string) (string, *time.Time, error) {
-	var found bool
-	var err error
-	if found, err = c.ds.Album(ctx).Exists(id); err != nil {
-		return "", nil, err
-	}
-	if found {
-		al, err := c.ds.Album(ctx).Get(id)
-		if err != nil {
-			return "", nil, err
-		}
-		if al.CoverArtId == "" {
-			return "", nil, model.ErrNotFound
-		}
-		id = al.CoverArtId
-	}
-	mf, err := c.ds.MediaFile(ctx).Get(id)
-	if err != nil {
-		return "", nil, err
-	}
-	if mf.HasCoverArt {
-		return mf.Path, &mf.UpdatedAt, nil
-	}
-	return "", nil, model.ErrNotFound
-}
-
 func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) error {
 	id = strings.TrimPrefix(id, "al-")
-	path, _, err := c.getCoverPath(ctx, id)
+	path, lastUpdate, err := c.getCoverPath(ctx, id)
 	if err != nil && err != model.ErrNotFound {
 		return err
 	}
 
-	reader, err := c.getCover(ctx, path, size)
+	cacheKey := imageCacheKey(path, size, lastUpdate)
+	r, w, err := c.cache.Get(cacheKey)
 	if err != nil {
-		return err
+		log.Error(ctx, "Error reading from image cache", "path", path, "size", size, err)
 	}
-	_, err = io.Copy(out, reader)
+	defer r.Close()
+	if w != nil {
+		go func() {
+			defer w.Close()
+			reader, err := c.getCover(ctx, path, size)
+			if err != nil {
+				log.Error(ctx, "Error loading cover art", "path", path, "size", size, err)
+				return
+			}
+			io.Copy(w, reader)
+		}()
+	}
+
+	_, err = io.Copy(out, r)
 	return err
+}
+
+func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastUpdated time.Time, err error) {
+	var found bool
+	if found, err = c.ds.Album(ctx).Exists(id); err != nil {
+		return
+	}
+	if found {
+		var al *model.Album
+		al, err = c.ds.Album(ctx).Get(id)
+		if err != nil {
+			return
+		}
+		if al.CoverArtId == "" {
+			err = model.ErrNotFound
+			return
+		}
+		id = al.CoverArtId
+	}
+	var mf *model.MediaFile
+	mf, err = c.ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return
+	}
+	if mf.HasCoverArt {
+		return mf.Path, mf.UpdatedAt, nil
+	}
+	return "", time.Time{}, model.ErrNotFound
+}
+
+func imageCacheKey(path string, size int, lastUpdate time.Time) string {
+	return fmt.Sprintf("%s.%d.%s", path, size, lastUpdate.Format(time.RFC3339Nano))
 }
 
 func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.Reader, err error) {
@@ -139,11 +160,11 @@ func NewImageCache() (ImageCache, error) {
 	if err != nil {
 		cacheSize = consts.DefaultImageCacheSize
 	}
-	lru := fscache.NewLRUHaunter(consts.DefaultImageCacheMaxItems, int64(cacheSize), consts.DefaultImageCachePurgeInterval)
+	lru := fscache.NewLRUHaunter(consts.DefaultImageCacheMaxItems, int64(cacheSize), consts.DefaultImageCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
 	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.ImageCacheDir)
 	log.Info("Creating image cache", "path", cacheFolder, "maxSize", humanize.Bytes(cacheSize),
-		"cleanUpInterval", consts.DefaultImageCachePurgeInterval)
+		"cleanUpInterval", consts.DefaultImageCacheCleanUpInterval)
 	fs, err := fscache.NewFs(cacheFolder, 0755)
 	if err != nil {
 		return nil, err

@@ -212,11 +212,11 @@ func NewTranscodingCache() (TranscodingCache, error) {
 	if err != nil {
 		cacheSize = consts.DefaultTranscodingCacheSize
 	}
-	lru := fscache.NewLRUHaunter(consts.DefaultTranscodingCacheMaxItems, int64(cacheSize), consts.DefaultTranscodingCachePurgeInterval)
+	lru := fscache.NewLRUHaunter(consts.DefaultTranscodingCacheMaxItems, int64(cacheSize), consts.DefaultTranscodingCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
 	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.TranscodingCacheDir)
 	log.Info("Creating transcoding cache", "path", cacheFolder, "maxSize", humanize.Bytes(cacheSize),
-		"cleanUpInterval", consts.DefaultTranscodingCachePurgeInterval)
+		"cleanUpInterval", consts.DefaultTranscodingCacheCleanUpInterval)
 	fs, err := fscache.NewFs(cacheFolder, 0755)
 	if err != nil {
 		return nil, err
