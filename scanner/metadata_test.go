@@ -79,6 +79,19 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 			Expect(md.HasPicture()).To(BeTrue())
 		})
 
+		It("detects embedded cover art in ogg containers", func() {
+			const output = `
+Input #0, ogg, from '/Users/deluan/Music/iTunes/iTunes Media/Music/_Testes/Jamaican In New York/01-02 Jamaican In New York (Album Version).opus':
+  Duration: 00:04:28.69, start: 0.007500, bitrate: 139 kb/s
+    Stream #0:0(eng): Audio: opus, 48000 Hz, stereo, fltp
+    Metadata:
+      ALBUM           : Jamaican In New York
+      metadata_block_picture: AAAAAwAAAAppbWFnZS9qcGVnAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4Id/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQ
+      TITLE           : Jamaican In New York (Album Version)`
+			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md.HasPicture()).To(BeTrue())
+		})
+
 		It("gets bitrate from the stream, if available", func() {
 			const output = `
 Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':

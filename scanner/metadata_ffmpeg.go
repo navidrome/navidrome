@@ -33,7 +33,7 @@ func (m *Metadata) Genre() string               { return m.getTag("genre") }
 func (m *Metadata) Year() int                   { return m.parseYear("date") }
 func (m *Metadata) TrackNumber() (int, int)     { return m.parseTuple("track") }
 func (m *Metadata) DiscNumber() (int, int)      { return m.parseTuple("tpa", "disc") }
-func (m *Metadata) HasPicture() bool            { return m.getTag("has_picture") == "true" }
+func (m *Metadata) HasPicture() bool            { return m.getTag("has_picture", "metadata_block_picture") != "" }
 func (m *Metadata) Comment() string             { return m.getTag("comment") }
 func (m *Metadata) Compilation() bool           { return m.parseBool("compilation") }
 func (m *Metadata) Duration() float32           { return m.parseDuration("duration") }
@@ -99,7 +99,7 @@ var (
 	inputRegex = regexp.MustCompile(`(?m)^Input #\d+,.*,\sfrom\s'(.*)'`)
 
 	//    TITLE           : Back In Black
-	tagsRx = regexp.MustCompile(`(?i)^\s{4,6}(\w+)\s+:(.*)`)
+	tagsRx = regexp.MustCompile(`(?i)^\s{4,6}(\w+)\s*:(.*)`)
 
 	//  Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s`
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
