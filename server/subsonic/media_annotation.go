@@ -125,19 +125,17 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 			t = time.Now()
 		}
 		if submission {
-			mf, err := c.scrobbler.Register(r.Context(), playerId, id, t)
+			_, err := c.scrobbler.Register(r.Context(), playerId, id, t)
 			if err != nil {
 				log.Error(r, "Error scrobbling track", "id", id, err)
 				continue
 			}
-			log.Info(r, "Scrobbled", "id", id, "title", mf.Title, "timestamp", t)
 		} else {
-			mf, err := c.scrobbler.NowPlaying(r.Context(), playerId, playerName, id, username)
+			_, err := c.scrobbler.NowPlaying(r.Context(), playerId, playerName, id, username)
 			if err != nil {
 				log.Error(r, "Error setting current song", "id", id, err)
 				continue
 			}
-			log.Info(r, "Now Playing", "id", id, "title", mf.Title, "timestamp", t)
 		}
 	}
 	return NewResponse(), nil

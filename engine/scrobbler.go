@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 )
 
@@ -42,6 +43,9 @@ func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, 
 		err = s.ds.Artist(ctx).IncPlayCount(mf.ArtistID, playTime)
 		return err
 	})
+
+	log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", userName(ctx))
+
 	return mf, err
 }
 
@@ -55,6 +59,8 @@ func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, tr
 	if mf == nil {
 		return nil, errors.New(fmt.Sprintf(`ID "%s" not found`, trackId))
 	}
+
+	log.Info("Now Playing", "title", mf.Title, "artist", mf.Artist, "user", userName(ctx))
 
 	info := &NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
 	return mf, s.npRepo.Enqueue(info)
