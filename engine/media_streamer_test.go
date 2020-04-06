@@ -3,14 +3,11 @@ package engine
 import (
 	"context"
 	"io"
-	"io/ioutil"
-	"os"
 	"strings"
 
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/persistence"
-	"github.com/djherbis/fscache"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -18,25 +15,13 @@ import (
 var _ = Describe("MediaStreamer", func() {
 	var streamer MediaStreamer
 	var ds model.DataStore
-	var cache fscache.Cache
-	var tempDir string
 	ffmpeg := &fakeFFmpeg{Data: "fake data"}
 	ctx := log.NewContext(nil)
-
-	BeforeSuite(func() {
-		tempDir, _ = ioutil.TempDir("", "stream_tests")
-		fs, _ := fscache.NewFs(tempDir, 0755)
-		cache, _ = fscache.NewCache(fs, nil)
-	})
 
 	BeforeEach(func() {
 		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}
 		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(`[{"id": "123", "path": "tests/fixtures/test.mp3", "suffix": "mp3", "bitRate": 128, "duration": 257.0}]`, 1)
-		streamer = NewMediaStreamer(ds, ffmpeg, cache)
-	})
-
-	AfterSuite(func() {
-		os.RemoveAll(tempDir)
+		streamer = NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 
 	Context("NewStream", func() {
