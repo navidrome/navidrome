@@ -222,7 +222,7 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedA
 		updatedAlbums[t.AlbumID] = true
 	}
 
-	log.Info("Finished processing deleted folder", "dir", dir, "deleted", len(ct), "elapsed", time.Since(start))
+	log.Info("Finished processing deleted folder", "dir", dir, "purged", len(ct), "elapsed", time.Since(start))
 	return s.ds.MediaFile(ctx).DeleteByPath(dir)
 }
 
