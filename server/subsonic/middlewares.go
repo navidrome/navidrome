@@ -57,7 +57,7 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, "username", user)
 		ctx = context.WithValue(ctx, "client", client)
 		ctx = context.WithValue(ctx, "version", version)
-		log.Info(ctx, "API: New request "+r.URL.Path, "username", user, "client", client, "version", version)
+		log.Debug(ctx, "API: New request "+r.URL.Path, "username", user, "client", client, "version", version)
 
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)

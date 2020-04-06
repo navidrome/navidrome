@@ -190,9 +190,9 @@ func SendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	}
 	if payload.Status == "ok" {
 		if log.CurrentLevel() >= log.LevelTrace {
-			log.Info(r.Context(), "API: Successful response", "status", "OK", "body", string(response))
+			log.Debug(r.Context(), "API: Successful response", "status", "OK", "body", string(response))
 		} else {
-			log.Info(r.Context(), "API: Successful response", "status", "OK")
+			log.Debug(r.Context(), "API: Successful response", "status", "OK")
 		}
 	} else {
 		log.Warn(r.Context(), "API: Failed response", "error", payload.Error.Code, "message", payload.Error.Message)
