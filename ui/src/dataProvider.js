@@ -3,6 +3,7 @@ import jsonServerProvider from 'ra-data-json-server'
 import baseUrl from './utils/baseUrl'
 
 const restUrl = '/app/api'
+const customAuthorizationHeader = 'X-ND-Authorization'
 
 const httpClient = (url, options = {}) => {
   url = baseUrl(url)
@@ -12,10 +13,10 @@ const httpClient = (url, options = {}) => {
   }
   const token = localStorage.getItem('token')
   if (token) {
-    options.headers.set('X-ND-Authorization', `Bearer ${token}`)
+    options.headers.set(customAuthorizationHeader, `Bearer ${token}`)
   }
   return fetchUtils.fetchJson(url, options).then((response) => {
-    const token = response.headers.get('authorization')
+    const token = response.headers.get(customAuthorizationHeader)
     if (token) {
       localStorage.setItem('token', token)
       localStorage.removeItem('initialAccountCreation')
