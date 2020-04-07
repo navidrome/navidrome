@@ -22,6 +22,7 @@ var _ = Describe("ServeIndex", func() {
 
 	BeforeEach(func() {
 		ds = &persistence.MockDataStore{MockedUser: mockUser}
+		conf.Server.UILoginBackgroundURL = ""
 	})
 
 	It("adds app_config to index.html", func() {
@@ -57,7 +58,7 @@ var _ = Describe("ServeIndex", func() {
 		Expect(config).To(HaveKeyWithValue("firstTime", false))
 	})
 
-	It("sets baseURL ", func() {
+	It("sets baseURL", func() {
 		conf.Server.BaseURL = "base_url_test"
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
@@ -66,6 +67,17 @@ var _ = Describe("ServeIndex", func() {
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("baseURL", "base_url_test"))
+	})
+
+	It("sets the uiLoginBackgroundURL", func() {
+		conf.Server.UILoginBackgroundURL = "my_background_url"
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		ServeIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "my_background_url"))
 	})
 })
 

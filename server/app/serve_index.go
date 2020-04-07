@@ -30,8 +30,9 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 		}
 		t, _ = t.Parse(string(indexStr))
 		appConfig := map[string]interface{}{
-			"firstTime": firstTime,
-			"baseURL":   strings.TrimSuffix(conf.Server.BaseURL, "/"),
+			"firstTime":          firstTime,
+			"baseURL":            strings.TrimSuffix(conf.Server.BaseURL, "/"),
+			"loginBackgroundURL": conf.Server.UILoginBackgroundURL,
 		}
 		j, _ := json.Marshal(appConfig)
 		data := map[string]interface{}{

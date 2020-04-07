@@ -22,6 +22,8 @@ type nd struct {
 	SessionTimeout string `default:"30m"`
 	BaseURL        string `default:""`
 
+	UILoginBackgroundURL string `default:"https://source.unsplash.com/random/1600x900?music"`
+
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
 	IndexGroups     string `default:"A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)"`
 
