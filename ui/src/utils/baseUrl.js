@@ -1,5 +1,7 @@
+import config from '../config'
+
 const baseUrl = (path) => {
-  const base = localStorage.getItem('baseURL') || ''
+  const base = config.baseURL || ''
   const parts = [base]
   parts.push(path.replace(/^\//, ''))
   return parts.join('/')

@@ -15,6 +15,7 @@ import LockIcon from '@material-ui/icons/Lock'
 import { Notification, useLogin, useNotify, useTranslate } from 'react-admin'
 
 import LightTheme from '../themes/light'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   main: {
@@ -23,7 +24,7 @@ const useStyles = makeStyles((theme) => ({
     minHeight: '100vh',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    background: 'url(https://source.unsplash.com/random/1600x900?music)',
+    background: `url(${config.loginBackgroundURL})`,
     backgroundRepeat: 'no-repeat',
     backgroundSize: 'cover',
     backgroundPosition: 'center'
@@ -253,7 +254,7 @@ const Login = ({ location }) => {
     return errors
   }
 
-  if (localStorage.getItem('initialAccountCreation') === 'true') {
+  if (config.firstTime) {
     return (
       <FormSignUp
         handleSubmit={handleSubmit}
