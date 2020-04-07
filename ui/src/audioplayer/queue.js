@@ -9,6 +9,7 @@ const PLAYER_PLAY_ALBUM = 'PLAYER_PLAY_ALBUM'
 
 const mapToAudioLists = (item) => ({
   id: item.id,
+  trackId: item.id,
   name: item.title,
   singer: item.artist,
   cover: subsonic.url('getCoverArt', item.id, { size: 300 }),
@@ -60,7 +61,7 @@ const playQueueReducer = (
       const newQueue = previousState.queue.map((item) => {
         return {
           ...item,
-          scrobbled: item.scrobbled || item.id === data
+          scrobbled: item.scrobbled || item.trackId === data
         }
       })
       return { queue: newQueue, clear: false }

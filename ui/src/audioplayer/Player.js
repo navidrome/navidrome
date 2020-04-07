@@ -58,17 +58,17 @@ const Player = () => {
     if (isNaN(info.duration) || progress < 90) {
       return
     }
-    const item = queue.queue.find((item) => item.id === info.id)
+    const item = queue.queue.find((item) => item.trackId === info.trackId)
     if (item && !item.scrobbled) {
-      dispatch(scrobbled(info.id))
-      subsonic.scrobble(info.id, true)
+      dispatch(scrobbled(info.trackId))
+      subsonic.scrobble(info.trackId, true)
     }
   }
 
   const OnAudioPlay = (info) => {
     if (info.duration) {
-      subsonic.scrobble(info.id, false)
-      dataProvider.getOne('keepalive', { id: info.id })
+      subsonic.scrobble(info.trackId, false)
+      dataProvider.getOne('keepalive', { id: info.trackId })
     }
   }
 
