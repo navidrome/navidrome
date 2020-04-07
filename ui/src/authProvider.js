@@ -1,11 +1,12 @@
 import jwtDecode from 'jwt-decode'
 import md5 from 'md5-hex'
 import baseUrl from './utils/baseUrl'
+import config from './config'
 
 const authProvider = {
   login: ({ username, password }) => {
     let url = baseUrl('/app/login')
-    if (localStorage.getItem('initialAccountCreation')) {
+    if (config.firstTime) {
       url = baseUrl('/app/createAdmin')
     }
     const request = new Request(url, {
