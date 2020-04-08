@@ -130,6 +130,13 @@ var _ = Describe("MediaStreamer", func() {
 				Expect(format).To(Equal("oga"))
 				Expect(bitRate).To(Equal(80))
 			})
+			It("returns raw if selected bitrate and format is the same as original", func() {
+				mf.Suffix = "mp3"
+				mf.BitRate = 192
+				format, bitRate := selectTranscodingOptions(ctx, ds, mf, "mp3", 192)
+				Expect(format).To(Equal("raw"))
+				Expect(bitRate).To(Equal(0))
+			})
 		})
 		Context("player has maxBitRate configured", func() {
 			BeforeEach(func() {
