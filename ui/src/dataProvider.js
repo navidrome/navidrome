@@ -1,6 +1,7 @@
 import { fetchUtils } from 'react-admin'
 import jsonServerProvider from 'ra-data-json-server'
 import baseUrl from './utils/baseUrl'
+import config from './config'
 
 const restUrl = '/app/api'
 const customAuthorizationHeader = 'X-ND-Authorization'
@@ -19,7 +20,8 @@ const httpClient = (url, options = {}) => {
     const token = response.headers.get(customAuthorizationHeader)
     if (token) {
       localStorage.setItem('token', token)
-      localStorage.removeItem('initialAccountCreation')
+      // Avoid going to create admin dialog after logout/login without a refresh
+      config.firstTime = false
     }
     return response
   })

@@ -26,70 +26,54 @@ const i18nProvider = polyglotI18nProvider(
 
 const history = createHashHistory()
 
-const App = () => {
-  try {
-    const appConfig = JSON.parse(window.__APP_CONFIG__)
-
-    // This flags to the login process that it should create the first account instead
-    if (appConfig.firstTime) {
-      localStorage.setItem('initialAccountCreation', 'true')
-    }
-    localStorage.setItem('baseURL', appConfig.baseURL)
-  } catch (e) {}
-
-  return (
-    <Provider
-      store={createAdminStore({
-        authProvider,
-        dataProvider,
-        history,
-        customReducers: {
-          queue: playQueueReducer,
-          albumView: albumViewReducer,
-          theme: themeReducer
-        }
-      })}
+const App = () => (
+  <Provider
+    store={createAdminStore({
+      authProvider,
+      dataProvider,
+      history,
+      customReducers: {
+        queue: playQueueReducer,
+        albumView: albumViewReducer,
+        theme: themeReducer
+      }
+    })}
+  >
+    <Admin
+      dataProvider={dataProvider}
+      authProvider={authProvider}
+      i18nProvider={i18nProvider}
+      customRoutes={customRoutes}
+      history={history}
+      layout={Layout}
+      loginPage={Login}
     >
-      <Admin
-        dataProvider={dataProvider}
-        authProvider={authProvider}
-        i18nProvider={i18nProvider}
-        customRoutes={customRoutes}
-        history={history}
-        layout={Layout}
-        loginPage={Login}
-      >
-        {(permissions) => [
+      {(permissions) => [
+        <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
+        <Resource name="album" {...album} options={{ subMenu: 'library' }} />,
+        <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
+        <Resource name="albumSong" />,
+        permissions === 'admin' ? (
+          <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
+        ) : null,
+        <Resource
+          name="player"
+          {...player}
+          options={{ subMenu: 'settings' }}
+        />,
+        permissions === 'admin' ? (
           <Resource
-            name="artist"
-            {...artist}
-            options={{ subMenu: 'library' }}
-          />,
-          <Resource name="album" {...album} options={{ subMenu: 'library' }} />,
-          <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
-          <Resource name="albumSong" />,
-          permissions === 'admin' ? (
-            <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
-          ) : null,
-          <Resource
-            name="player"
-            {...player}
+            name="transcoding"
+            {...transcoding}
             options={{ subMenu: 'settings' }}
-          />,
-          permissions === 'admin' ? (
-            <Resource
-              name="transcoding"
-              {...transcoding}
-              options={{ subMenu: 'settings' }}
-            />
-          ) : (
-            <Resource name="transcoding" />
-          ),
-          <Player />
-        ]}
-      </Admin>
-    </Provider>
-  )
-}
+          />
+        ) : (
+          <Resource name="transcoding" />
+        ),
+        <Player />
+      ]}
+    </Admin>
+  </Provider>
+)
 
 export default App

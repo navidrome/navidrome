@@ -24,7 +24,6 @@ const authProvider = {
       .then((response) => {
         // Validate token
         jwtDecode(response.token)
-        localStorage.removeItem('initialAccountCreation')
         localStorage.setItem('token', response.token)
         localStorage.setItem('name', response.name)
         localStorage.setItem('username', response.username)
@@ -35,6 +34,8 @@ const authProvider = {
           'subsonic-token',
           generateSubsonicToken(password, salt)
         )
+        // Avoid going to create admin dialog after logout/login without a refresh
+        config.firstTime = false
         return response
       })
       .catch((error) => {
