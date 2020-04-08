@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/persistence"
 	. "github.com/onsi/ginkgo"
@@ -78,6 +79,16 @@ var _ = Describe("ServeIndex", func() {
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "my_background_url"))
+	})
+
+	It("sets the version", func() {
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		ServeIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("version", consts.Version()))
 	})
 })
 

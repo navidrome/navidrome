@@ -19,22 +19,16 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 		c, err := ds.User(r.Context()).CountAll()
 		firstTime := c == 0 && err == nil
 
-		t := template.New("initial state")
-		indexHtml, err := fs.Open("index.html")
-		if err != nil {
-			log.Error(r, "Could not find `index.html` template", err)
-		}
-		indexStr, err := ioutil.ReadAll(indexHtml)
-		if err != nil {
-			log.Error(r, "Could not read from `index.html`", err)
-		}
-		t, _ = t.Parse(string(indexStr))
+		t := getIndexTemplate(r, fs)
+
 		appConfig := map[string]interface{}{
+			"version":            consts.Version(),
 			"firstTime":          firstTime,
 			"baseURL":            strings.TrimSuffix(conf.Server.BaseURL, "/"),
 			"loginBackgroundURL": conf.Server.UILoginBackgroundURL,
 		}
 		j, _ := json.Marshal(appConfig)
+
 		data := map[string]interface{}{
 			"AppConfig": string(j),
 			"Version":   consts.Version(),
@@ -44,4 +38,21 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 			log.Error(r, "Could not execute `index.html` template", err)
 		}
 	}
+}
+
+func getIndexTemplate(r *http.Request, fs http.FileSystem) *template.Template {
+	t := template.New("initial state")
+	indexHtml, err := fs.Open("index.html")
+	if err != nil {
+		log.Error(r, "Could not find `index.html` template", err)
+	}
+	indexStr, err := ioutil.ReadAll(indexHtml)
+	if err != nil {
+		log.Error(r, "Could not read from `index.html`", err)
+	}
+	t, err = t.Parse(string(indexStr))
+	if err != nil {
+		log.Error(r, "Error parsing `index.html`", err)
+	}
+	return t
 }

@@ -7,6 +7,7 @@ import {
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core'
 import InfoIcon from '@material-ui/icons/Info'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   menuItem: {
@@ -22,7 +23,7 @@ const VersionMenu = forwardRef((props, ref) => {
       ref={ref}
       to="#"
       primaryText={translate('menu.version', {
-        version: localStorage.getItem('version')
+        version: config.version
       })}
       leftIcon={<InfoIcon />}
       className={classes.menuItem}

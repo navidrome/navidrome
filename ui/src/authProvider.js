@@ -26,7 +26,6 @@ const authProvider = {
         jwtDecode(response.token)
         localStorage.removeItem('initialAccountCreation')
         localStorage.setItem('token', response.token)
-        localStorage.setItem('version', response.version)
         localStorage.setItem('name', response.name)
         localStorage.setItem('username', response.username)
         localStorage.setItem('role', response.isAdmin ? 'admin' : 'regular')
@@ -77,7 +76,6 @@ const removeItems = () => {
   localStorage.removeItem('name')
   localStorage.removeItem('username')
   localStorage.removeItem('role')
-  localStorage.removeItem('version')
   localStorage.removeItem('subsonic-salt')
   localStorage.removeItem('subsonic-token')
 }
