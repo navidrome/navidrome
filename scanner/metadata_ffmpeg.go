@@ -3,6 +3,7 @@ package scanner
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"mime"
 	"os"
 	"os/exec"
@@ -74,14 +75,17 @@ func LoadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {
 }
 
 func ExtractAllMetadata(inputs []string) (map[string]*Metadata, error) {
+	mds := map[string]*Metadata{}
 	cmdLine, args := createProbeCommand(inputs)
 
 	log.Trace("Executing command", "arg0", cmdLine, "args", args)
 	cmd := exec.Command(cmdLine, args...)
-	output, _ := cmd.CombinedOutput()
-	mds := map[string]*Metadata{}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return mds, fmt.Errorf("error extracting metadata files: %s", err)
+	}
 	if len(output) == 0 {
-		return mds, errors.New("error extracting metadata files")
+		return mds, errors.New("error extracting metadata files: no output")
 	}
 	infos := parseOutput(string(output))
 	for file, info := range infos {
