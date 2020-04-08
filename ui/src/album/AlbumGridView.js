@@ -11,6 +11,10 @@ const useStyles = makeStyles((theme) => ({
   root: {
     margin: '20px'
   },
+  gridListTile: {
+    minHeight: '200px',
+    minWidth: '200px'
+  },
   cover: {
     display: 'inline-block',
     width: '100%',
@@ -32,7 +36,7 @@ const useStyles = makeStyles((theme) => ({
 
 const getColsForWidth = (width) => {
   if (width === 'xs') return 2
-  if (width === 'sm') return 3
+  if (width === 'sm') return 4
   if (width === 'md') return 5
   if (width === 'lg') return 6
   return 7
@@ -43,14 +47,10 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
 
   return (
     <div className={classes.root}>
-      <GridList
-        cellHeight={'auto'}
-        cols={getColsForWidth(width)}
-        className={classes.gridList}
-        spacing={20}
-      >
+      <GridList cellHeight={'auto'} cols={getColsForWidth(width)} spacing={20}>
         {ids.map((id) => (
           <GridListTile
+            className={classes.gridListTile}
             component={Link}
             key={id}
             to={linkToRecord(basePath, data[id].id, 'show')}
@@ -68,11 +68,9 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
               className={classes.tileBar}
               title={data[id].name}
               subtitle={
-                <>
-                  <div className={classes.albumArtistName}>
-                    {data[id].albumArtist}
-                  </div>
-                </>
+                <div className={classes.albumArtistName}>
+                  {data[id].albumArtist}
+                </div>
               }
             />
           </GridListTile>
