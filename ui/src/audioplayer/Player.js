@@ -5,11 +5,16 @@ import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import subsonic from '../subsonic'
 import { scrobbled, syncQueue } from './queue'
+import themes from '../themes'
 
 const Player = () => {
   const translate = useTranslate()
+  const currentTheme = useSelector((state) => state.theme)
+  const theme = themes[currentTheme] || themes.DarkTheme
+  const playerTheme = (theme.player && theme.player.theme) || 'dark'
 
   const defaultOptions = {
+    theme: playerTheme,
     bounds: 'body',
     mode: 'full',
     autoPlay: true,

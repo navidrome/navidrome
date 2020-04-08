@@ -15,5 +15,8 @@ export default {
         color: 'white'
       }
     }
+  },
+  player: {
+    theme: 'dark'
   }
 }

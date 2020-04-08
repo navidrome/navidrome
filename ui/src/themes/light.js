@@ -3,8 +3,8 @@ export default {
   palette: {
     secondary: {
       light: '#5f5fc4',
-      main: '#283593',
       dark: '#001064',
+      main: '#283593',
       contrastText: '#fff'
     }
   },
@@ -17,5 +17,8 @@ export default {
         }
       }
     }
+  },
+  player: {
+    theme: 'light'
   }
 }
