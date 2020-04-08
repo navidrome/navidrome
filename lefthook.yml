@@ -10,4 +10,4 @@ pre-commit:
     gofmt:
       tags: style
       glob: "*.go"
-      run: gofmt -w {staged_files}
+      run: gofmt -w {staged_files}; git add {staged_files}
