@@ -21,21 +21,23 @@ const (
 
 	UIAssetsLocalPath = "ui/build"
 
-	TranscodingCacheDir                    = "cache/transcoding"
-	DefaultTranscodingCacheSize            = 100 * 1024 * 1024 // 100MB
-	DefaultTranscodingCacheMaxItems        = 0                 // Unlimited
-	DefaultTranscodingCacheCleanUpInterval = 10 * time.Minute
-
-	ImageCacheDir                    = "cache/images"
-	DefaultImageCacheSize            = 100 * 1024 * 1024 // 100MB
-	DefaultImageCacheMaxItems        = 0                 // Unlimited
-	DefaultImageCacheCleanUpInterval = 10 * time.Minute
-
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 
 	URLPathUI          = "/app"
 	URLPathSubsonicAPI = "/rest"
+)
+
+// Cache options
+const (
+	TranscodingCacheDir             = "cache/transcoding"
+	DefaultTranscodingCacheMaxItems = 0 // Unlimited
+
+	ImageCacheDir             = "cache/images"
+	DefaultImageCacheMaxItems = 0 // Unlimited
+
+	DefaultCacheSize            = 100 * 1024 * 1024 // 100MB
+	DefaultCacheCleanUpInterval = 10 * time.Minute
 )
 
 var (

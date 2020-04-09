@@ -6,7 +6,6 @@ import (
 	"io"
 	"mime"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
@@ -15,7 +14,6 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/djherbis/fscache"
-	"github.com/dustin/go-humanize"
 )
 
 type MediaStreamer interface {
@@ -215,18 +213,5 @@ func getFinalCachedSize(r fscache.ReadAtCloser) int64 {
 }
 
 func NewTranscodingCache() (TranscodingCache, error) {
-	cacheSize, err := humanize.ParseBytes(conf.Server.TranscodingCacheSize)
-	if err != nil {
-		cacheSize = consts.DefaultTranscodingCacheSize
-	}
-	lru := fscache.NewLRUHaunter(consts.DefaultTranscodingCacheMaxItems, int64(cacheSize), consts.DefaultTranscodingCacheCleanUpInterval)
-	h := fscache.NewLRUHaunterStrategy(lru)
-	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.TranscodingCacheDir)
-	log.Info("Creating transcoding cache", "path", cacheFolder, "maxSize", humanize.Bytes(cacheSize),
-		"cleanUpInterval", consts.DefaultTranscodingCacheCleanUpInterval)
-	fs, err := fscache.NewFs(cacheFolder, 0755)
-	if err != nil {
-		return nil, err
-	}
-	return fscache.NewCacheWithHaunter(fs, h)
+	return newFileCache("transcoding", conf.Server.TranscodingCacheSize, consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems)
 }

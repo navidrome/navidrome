@@ -11,7 +11,6 @@ import (
 	_ "image/png"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -23,7 +22,6 @@ import (
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
 	"github.com/djherbis/fscache"
-	"github.com/dustin/go-humanize"
 )
 
 type Cover interface {
@@ -52,6 +50,7 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 	r, w, err := c.cache.Get(cacheKey)
 	if err != nil {
 		log.Error(ctx, "Error reading from image cache", "path", path, "size", size, err)
+		return err
 	}
 	defer r.Close()
 	if w != nil {
@@ -159,18 +158,5 @@ func readFromTag(path string) ([]byte, error) {
 }
 
 func NewImageCache() (ImageCache, error) {
-	cacheSize, err := humanize.ParseBytes(conf.Server.ImageCacheSize)
-	if err != nil {
-		cacheSize = consts.DefaultImageCacheSize
-	}
-	lru := fscache.NewLRUHaunter(consts.DefaultImageCacheMaxItems, int64(cacheSize), consts.DefaultImageCacheCleanUpInterval)
-	h := fscache.NewLRUHaunterStrategy(lru)
-	cacheFolder := filepath.Join(conf.Server.DataFolder, consts.ImageCacheDir)
-	log.Info("Creating image cache", "path", cacheFolder, "maxSize", humanize.Bytes(cacheSize),
-		"cleanUpInterval", consts.DefaultImageCacheCleanUpInterval)
-	fs, err := fscache.NewFs(cacheFolder, 0755)
-	if err != nil {
-		return nil, err
-	}
-	return fscache.NewCacheWithHaunter(fs, h)
+	return newFileCache("image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems)
 }

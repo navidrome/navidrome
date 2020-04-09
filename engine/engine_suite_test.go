@@ -24,7 +24,7 @@ var testCacheDir string
 
 var _ = Describe("Engine Suite Setup", func() {
 	BeforeSuite(func() {
-		testCacheDir, _ = ioutil.TempDir("", "test_cache")
+		testCacheDir, _ = ioutil.TempDir("", "engine_test_cache")
 		fs, _ := fscache.NewFs(testCacheDir, 0755)
 		testCache, _ = fscache.NewCache(fs, nil)
 	})
