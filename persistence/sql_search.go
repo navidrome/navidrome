@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"sort"
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
@@ -12,7 +13,16 @@ func (r sqlRepository) getFullText(text ...string) string {
 	for _, txt := range text {
 		sanitizedText.WriteString(strings.TrimSpace(sanitize.Accents(strings.ToLower(txt))) + " ")
 	}
-	return strings.TrimSpace(sanitizedText.String())
+	words := make(map[string]struct{})
+	for _, w := range strings.Fields(sanitizedText.String()) {
+		words[w] = struct{}{}
+	}
+	var fullText []string
+	for w := range words {
+		fullText = append(fullText, w)
+	}
+	sort.Strings(fullText)
+	return strings.Join(fullText, " ")
 }
 
 func (r sqlRepository) doSearch(q string, offset, size int, results interface{}, orderBys ...string) error {
