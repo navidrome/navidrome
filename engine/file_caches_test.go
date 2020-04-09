@@ -20,11 +20,14 @@ var _ = Describe("File Caches", func() {
 
 	Describe("newFileCache", func() {
 		It("creates the cache folder", func() {
-			_, err := newFileCache("test", "1kb", "test", 10)
-			Expect(err).To(BeNil())
+			Expect(newFileCache("test", "1k", "test", 10)).ToNot(BeNil())
 
-			_, err = os.Stat(filepath.Join(conf.Server.DataFolder, "test"))
+			_, err := os.Stat(filepath.Join(conf.Server.DataFolder, "test"))
 			Expect(os.IsNotExist(err)).To(BeFalse())
+		})
+
+		It("creates the cache folder with invalid size", func() {
+			Expect(newFileCache("test", "abc", "test", 10)).ToNot(BeNil())
 		})
 	})
 })
