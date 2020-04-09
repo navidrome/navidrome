@@ -58,12 +58,16 @@ const AlbumSongs = (props) => {
   const dispatch = useDispatch()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
-  const { bulkActionButtons } = props
-  const { loading, version } = controllerProps
+  const { bulkActionButtons, albumId } = props
+  const { loading, data, ids, version } = controllerProps
 
   if (loading) {
-    return null
+    const anySong = data[ids[0]]
+    if (!anySong || anySong.albumId !== albumId) {
+      return null
+    }
   }
+
   return (
     <>
       <ListToolbar

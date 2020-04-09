@@ -24,6 +24,7 @@ const AlbumShow = (props) => {
       <AlbumDetails {...props} classes={classes} record={record} />
       <AlbumSongs
         {...props}
+        albumId={props.id}
         title={<Title subTitle={record.name} />}
         actions={<AlbumActions />}
         filter={{ album_id: props.id }}
