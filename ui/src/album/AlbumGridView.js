@@ -12,8 +12,8 @@ const useStyles = makeStyles((theme) => ({
     margin: '20px'
   },
   gridListTile: {
-    minHeight: '200px',
-    minWidth: '200px'
+    minHeight: '180px',
+    minWidth: '180px'
   },
   cover: {
     display: 'inline-block',
