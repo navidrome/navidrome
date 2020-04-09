@@ -14,7 +14,7 @@ func CreateMockAlbumRepo() *MockAlbum {
 
 type MockAlbum struct {
 	model.AlbumRepository
-	data    map[string]*model.Album
+	data    map[string]model.Album
 	all     model.Albums
 	err     bool
 	Options model.QueryOptions
@@ -24,19 +24,22 @@ func (m *MockAlbum) SetError(err bool) {
 	m.err = err
 }
 
-func (m *MockAlbum) SetData(j string, size int) {
-	m.data = make(map[string]*model.Album)
-	m.all = make(model.Albums, size)
+func (m *MockAlbum) SetData(j string) {
+	m.data = make(map[string]model.Album)
+	m.all = model.Albums{}
 	err := json.Unmarshal([]byte(j), &m.all)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}
 	for _, a := range m.all {
-		m.data[a.ID] = &a
+		m.data[a.ID] = a
 	}
 }
 
 func (m *MockAlbum) Exists(id string) (bool, error) {
+	if m.err {
+		return false, errors.New("Error!")
+	}
 	_, found := m.data[id]
 	return found, nil
 }
@@ -46,7 +49,7 @@ func (m *MockAlbum) Get(id string) (*model.Album, error) {
 		return nil, errors.New("Error!")
 	}
 	if d, ok := m.data[id]; ok {
-		return d, nil
+		return &d, nil
 	}
 	return nil, model.ErrNotFound
 }
@@ -69,7 +72,7 @@ func (m *MockAlbum) FindByArtist(artistId string) (model.Albums, error) {
 	i := 0
 	for _, a := range m.data {
 		if a.AlbumArtistID == artistId {
-			res[i] = *a
+			res[i] = a
 			i++
 		}
 	}

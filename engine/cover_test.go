@@ -18,8 +18,8 @@ var _ = Describe("Cover", func() {
 
 	BeforeEach(func() {
 		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}
-		ds.Album(ctx).(*persistence.MockAlbum).SetData(`[{"id": "222", "CoverArtId": "222"}, {"id": "333", "CoverArtId": ""}]`, 1)
-		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(`[{"id": "123", "path": "tests/fixtures/test.mp3", "hasCoverArt": true, "updatedAt":"2020-04-02T21:29:31.6377Z"}]`, 1)
+		ds.Album(ctx).(*persistence.MockAlbum).SetData(`[{"id": "222", "coverArtId": "123"}, {"id": "333", "coverArtId": ""}]`)
+		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(`[{"id": "123", "path": "tests/fixtures/test.mp3", "hasCoverArt": true, "updatedAt":"2020-04-02T21:29:31.6377Z"}]`)
 		cover = NewCover(ds, testCache)
 	})
 
@@ -30,7 +30,7 @@ var _ = Describe("Cover", func() {
 
 		_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 		Expect(err).To(BeNil())
-		Expect(format).To(Equal("png"))
+		Expect(format).To(Equal("jpeg"))
 	})
 
 	It("accepts albumIds with 'al-' prefix", func() {
@@ -38,8 +38,9 @@ var _ = Describe("Cover", func() {
 
 		Expect(cover.Get(ctx, "al-222", 0, buf)).To(BeNil())
 
-		_, _, err := image.Decode(bytes.NewReader(buf.Bytes()))
+		_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 		Expect(err).To(BeNil())
+		Expect(format).To(Equal("jpeg"))
 	})
 
 	It("returns the default cover if album does not have cover", func() {
@@ -79,10 +80,26 @@ var _ = Describe("Cover", func() {
 
 		Expect(cover.Get(ctx, "123", 200, buf)).To(BeNil())
 
-		img, _, err := image.Decode(bytes.NewReader(buf.Bytes()))
+		img, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 		Expect(err).To(BeNil())
+		Expect(format).To(Equal("jpeg"))
 		Expect(img.Bounds().Size().X).To(Equal(200))
 		Expect(img.Bounds().Size().Y).To(Equal(200))
 	})
 
+	Context("Errors", func() {
+		It("returns err if gets error from album table", func() {
+			ds.Album(ctx).(*persistence.MockAlbum).SetError(true)
+			buf := new(bytes.Buffer)
+
+			Expect(cover.Get(ctx, "222", 0, buf)).To(MatchError("Error!"))
+		})
+
+		It("returns err if gets error from media_file table", func() {
+			ds.MediaFile(ctx).(*persistence.MockMediaFile).SetError(true)
+			buf := new(bytes.Buffer)
+
+			Expect(cover.Get(ctx, "123", 0, buf)).To(MatchError("Error!"))
+		})
+	})
 })

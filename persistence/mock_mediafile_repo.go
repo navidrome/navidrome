@@ -22,9 +22,9 @@ func (m *MockMediaFile) SetError(err bool) {
 	m.err = err
 }
 
-func (m *MockMediaFile) SetData(j string, size int) {
+func (m *MockMediaFile) SetData(j string) {
 	m.data = make(map[string]model.MediaFile)
-	var l = make(model.MediaFiles, size)
+	var l = model.MediaFiles{}
 	err := json.Unmarshal([]byte(j), &l)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
