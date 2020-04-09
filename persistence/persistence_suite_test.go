@@ -95,9 +95,9 @@ var _ = Describe("Initialize test DB", func() {
 			}
 		}
 
-		alr := NewAlbumRepository(ctx, o)
+		alr := NewAlbumRepository(ctx, o).(*albumRepository)
 		for _, a := range testAlbums {
-			err := alr.Put(&a)
+			_, err := alr.put(a.ID, &a)
 			if err != nil {
 				panic(err)
 			}

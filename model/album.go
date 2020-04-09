@@ -34,7 +34,6 @@ type Albums []Album
 type AlbumRepository interface {
 	CountAll(...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
-	Put(m *Album) error
 	Get(id string) (*Album, error)
 	FindByArtist(albumArtistId string) (Albums, error)
 	GetAll(...QueryOptions) (Albums, error)
