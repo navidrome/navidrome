@@ -1,5 +1,5 @@
 import React from 'react'
-import { Loading, useGetOne } from 'react-admin'
+import { useGetOne } from 'react-admin'
 import AlbumDetails from './AlbumDetails'
 import { Title } from '../common'
 import { useStyles } from './styles'
