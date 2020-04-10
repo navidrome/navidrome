@@ -83,7 +83,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 			log.Error(ctx, "Error loading transcoding command", "format", format, err)
 			return nil, os.ErrInvalid
 		}
-		out, err := ms.ffm.Start(ctx, t.Command, mf.Path, bitRate, format)
+		out, err := ms.ffm.Start(ctx, t.Command, mf.Path, bitRate)
 		if err != nil {
 			log.Error(ctx, "Error starting transcoder", "id", mf.ID, err)
 			return nil, os.ErrInvalid

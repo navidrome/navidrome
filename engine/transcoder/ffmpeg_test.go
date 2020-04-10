@@ -18,8 +18,7 @@ func TestTranscoder(t *testing.T) {
 
 var _ = Describe("createTranscodeCommand", func() {
 	It("creates a valid command line", func() {
-		cmd, args := createTranscodeCommand("ffmpeg -i %s -b:a %bk mp3 -", "/music library/file.mp3", 123, "")
-		Expect(cmd).To(Equal("ffmpeg"))
-		Expect(args).To(Equal([]string{"-i", "/music library/file.mp3", "-b:a", "123k", "mp3", "-"}))
+		args := createTranscodeCommand("ffmpeg -i %s -b:a %bk mp3 -", "/music library/file.mp3", 123)
+		Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/file.mp3", "-b:a", "123k", "mp3", "-"}))
 	})
 })
