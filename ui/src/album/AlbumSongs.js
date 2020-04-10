@@ -5,7 +5,8 @@ import {
   FunctionField,
   ListToolbar,
   TextField,
-  useListController
+  useListController,
+  DatagridLoading
 } from 'react-admin'
 import classnames from 'classnames'
 import { useDispatch } from 'react-redux'
@@ -58,16 +59,13 @@ const AlbumSongs = (props) => {
   const dispatch = useDispatch()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
-  const { bulkActionButtons, albumId } = props
-  const { loading, data, ids, version } = controllerProps
+  const { bulkActionButtons, albumId, expand, className } = props
+  const { data, ids, version } = controllerProps
 
-  if (loading) {
-    const anySong = data[ids[0]]
-    if (!anySong || anySong.albumId !== albumId) {
-      return null
-    }
-  }
+  const anySong = data[ids[0]]
+  const showPlaceholder = !anySong || anySong.albumId !== albumId
 
+  const hasBulkActions = props.bulkActionButtons !== false
   return (
     <>
       <ListToolbar
@@ -84,28 +82,41 @@ const AlbumSongs = (props) => {
           })}
           key={version}
         >
-          {/*{bulkActionButtons !== false && bulkActionButtons && (*/}
-          <BulkActionsToolbar {...controllerProps}>
-            {bulkActionButtons}
-          </BulkActionsToolbar>
-          {/*)}*/}
-          <Datagrid
-            rowClick={(id, basePath, record) => dispatch(setTrack(record))}
-            {...controllerProps}
-            hasBulkActions={props.bulkActionButtons !== false}
-          >
-            {isDesktop && (
-              <TextField
-                source="trackNumber"
-                sortBy="discNumber asc, trackNumber asc"
-                label="#"
-              />
-            )}
-            {isDesktop && <TextField source="title" />}
-            {!isDesktop && <FunctionField source="title" render={trackName} />}
-            {isDesktop && <TextField source="artist" />}
-            <DurationField source="duration" />
-          </Datagrid>
+          {bulkActionButtons !== false && bulkActionButtons && (
+            <BulkActionsToolbar {...controllerProps}>
+              {bulkActionButtons}
+            </BulkActionsToolbar>
+          )}
+          {showPlaceholder ? (
+            <DatagridLoading
+              classes={classes}
+              className={className}
+              expand={expand}
+              hasBulkActions={hasBulkActions}
+              nbChildren={3}
+              size={'small'}
+            />
+          ) : (
+            <Datagrid
+              rowClick={(id, basePath, record) => dispatch(setTrack(record))}
+              {...controllerProps}
+              hasBulkActions={hasBulkActions}
+            >
+              {isDesktop && (
+                <TextField
+                  source="trackNumber"
+                  sortBy="discNumber asc, trackNumber asc"
+                  label="#"
+                />
+              )}
+              {isDesktop && <TextField source="title" />}
+              {!isDesktop && (
+                <FunctionField source="title" render={trackName} />
+              )}
+              {isDesktop && <TextField source="artist" />}
+              <DurationField source="duration" />
+            </Datagrid>
+          )}
         </Card>
       </div>
     </>
