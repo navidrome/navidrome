@@ -12,7 +12,7 @@ import (
 )
 
 type Transcoder interface {
-	Start(ctx context.Context, command, path string, maxBitRate int, format string) (f io.ReadCloser, err error)
+	Start(ctx context.Context, command, path string, maxBitRate int) (f io.ReadCloser, err error)
 }
 
 func New() Transcoder {
@@ -26,11 +26,11 @@ func New() Transcoder {
 
 type ffmpeg struct{}
 
-func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate int, format string) (f io.ReadCloser, err error) {
-	arg0, args := createTranscodeCommand(command, path, maxBitRate, format)
+func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate int) (f io.ReadCloser, err error) {
+	args := createTranscodeCommand(command, path, maxBitRate)
 
-	log.Trace(ctx, "Executing ffmpeg command", "cmd", arg0, "args", args)
-	cmd := exec.Command(arg0, args...)
+	log.Trace(ctx, "Executing ffmpeg command", "cmd", args)
+	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stderr = os.Stderr
 	if f, err = cmd.StdoutPipe(); err != nil {
 		return
@@ -43,7 +43,7 @@ func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate in
 }
 
 // Path will always be an absolute path
-func createTranscodeCommand(cmd, path string, maxBitRate int, format string) (string, []string) {
+func createTranscodeCommand(cmd, path string, maxBitRate int) []string {
 	split := strings.Split(cmd, " ")
 	for i, s := range split {
 		s = strings.Replace(s, "%s", path, -1)
@@ -51,5 +51,5 @@ func createTranscodeCommand(cmd, path string, maxBitRate int, format string) (st
 		split[i] = s
 	}
 
-	return split[0], split[1:]
+	return split
 }
