@@ -9,7 +9,7 @@ require (
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/dhowden/tag v0.0.0-20191122115059-7e5c04feccd8
+	github.com/dhowden/tag v0.0.0-20200411022004-869a70545f82
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/fscache v0.10.0
 	github.com/dustin/go-humanize v1.0.0
