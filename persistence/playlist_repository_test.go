@@ -32,7 +32,18 @@ var _ = Describe("PlaylistRepository", func() {
 
 	Describe("Get", func() {
 		It("returns an existing playlist", func() {
-			Expect(repo.Get("10")).To(Equal(&plsBest))
+			p, err := repo.Get("10")
+			Expect(err).To(BeNil())
+			// Compare all but Tracks and timestamps
+			p2 := *p
+			p2.Tracks = plsBest.Tracks
+			p2.UpdatedAt = plsBest.UpdatedAt
+			p2.CreatedAt = plsBest.CreatedAt
+			Expect(p2).To(Equal(plsBest))
+			// Compare tracks
+			for i := range p.Tracks {
+				Expect(p.Tracks[i].ID).To(Equal(plsBest.Tracks[i].ID))
+			}
 		})
 		It("returns ErrNotFound for a non-existing playlist", func() {
 			_, err := repo.Get("666")
@@ -40,20 +51,22 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
-	Describe("Put/Get/Delete", func() {
-		newPls := model.Playlist{ID: "22", Name: "Great!", Tracks: model.MediaFiles{{ID: "4"}}}
+	Describe("Put/Exists/Delete", func() {
+		var newPls model.Playlist
+		BeforeEach(func() {
+			newPls = model.Playlist{ID: "22", Name: "Great!", Tracks: model.MediaFiles{{ID: "4"}}}
+		})
 		It("saves the playlist to the DB", func() {
 			Expect(repo.Put(&newPls)).To(BeNil())
 		})
 		It("returns the newly created playlist", func() {
-			Expect(repo.Get("22")).To(Equal(&newPls))
+			Expect(repo.Exists("22")).To(BeTrue())
 		})
 		It("returns deletes the playlist", func() {
 			Expect(repo.Delete("22")).To(BeNil())
 		})
 		It("returns error if tries to retrieve the deleted playlist", func() {
-			_, err := repo.Get("22")
-			Expect(err).To(MatchError(model.ErrNotFound))
+			Expect(repo.Exists("22")).To(BeFalse())
 		})
 	})
 
@@ -71,7 +84,10 @@ var _ = Describe("PlaylistRepository", func() {
 
 	Describe("GetAll", func() {
 		It("returns all playlists from DB", func() {
-			Expect(repo.GetAll()).To(Equal(model.Playlists{plsBest, plsCool}))
+			all, err := repo.GetAll()
+			Expect(err).To(BeNil())
+			Expect(all[0].ID).To(Equal(plsBest.ID))
+			Expect(all[1].ID).To(Equal(plsCool.ID))
 		})
 	})
 })

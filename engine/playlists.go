@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"time"
 
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
@@ -118,6 +119,8 @@ type PlaylistInfo struct {
 	Public    bool
 	Owner     string
 	Comment   string
+	Created   time.Time
+	Changed   time.Time
 }
 
 func (p *playlists) Get(ctx context.Context, id string) (*PlaylistInfo, error) {
@@ -135,6 +138,8 @@ func (p *playlists) Get(ctx context.Context, id string) (*PlaylistInfo, error) {
 		Public:    pl.Public,
 		Owner:     pl.Owner,
 		Comment:   pl.Comment,
+		Changed:   pl.UpdatedAt,
+		Created:   pl.CreatedAt,
 	}
 
 	plsInfo.Entries = FromMediaFiles(pl.Tracks)

@@ -188,22 +188,20 @@ type AlbumList struct {
 }
 
 type Playlist struct {
-	Id        string `xml:"id,attr"                                 json:"id"`
-	Name      string `xml:"name,attr"                               json:"name"`
-	Comment   string `xml:"comment,attr,omitempty"                  json:"comment,omitempty"`
-	SongCount int    `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
-	Duration  int    `xml:"duration,attr,omitempty"                 json:"duration,omitempty"`
-	Public    bool   `xml:"public,attr,omitempty"                   json:"public,omitempty"`
-	Owner     string `xml:"owner,attr,omitempty"                    json:"owner,omitempty"`
+	Id        string     `xml:"id,attr"                                 json:"id"`
+	Name      string     `xml:"name,attr"                               json:"name"`
+	Comment   string     `xml:"comment,attr,omitempty"                  json:"comment,omitempty"`
+	SongCount int        `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
+	Duration  int        `xml:"duration,attr,omitempty"                 json:"duration,omitempty"`
+	Public    bool       `xml:"public,attr,omitempty"                   json:"public,omitempty"`
+	Owner     string     `xml:"owner,attr,omitempty"                    json:"owner,omitempty"`
+	Created   *time.Time `xml:"created,attr,omitempty"                  json:"created,omitempty"`
+	Changed   *time.Time `xml:"changed,attr,omitempty"                  json:"changed,omitempty"`
 	/*
 		<xs:sequence>
 		    <xs:element name="allowedUser" type="xs:string" minOccurs="0" maxOccurs="unbounded"/> <!--Added in 1.8.0-->
 		</xs:sequence>
-		<xs:attribute name="comment" type="xs:string" use="optional"/>   <!--Added in 1.8.0-->
-		<xs:attribute name="created" type="xs:dateTime" use="required"/> <!--Added in 1.8.0-->
-		<xs:attribute name="changed" type="xs:dateTime" use="required"/> <!--Added in 1.13.0-->
 		<xs:attribute name="coverArt" type="xs:string" use="optional"/>  <!--Added in 1.11.0-->
-
 	*/
 }
 

@@ -36,6 +36,8 @@ func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Reques
 		playlists[i].Duration = int(p.Duration)
 		playlists[i].Owner = p.Owner
 		playlists[i].Public = p.Public
+		playlists[i].Created = &p.CreatedAt
+		playlists[i].Changed = &p.UpdatedAt
 	}
 	response := NewResponse()
 	response.Playlists = &responses.Playlists{Playlist: playlists}
@@ -58,7 +60,7 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 	}
 
 	response := NewResponse()
-	response.Playlist = c.buildPlaylist(r.Context(), pinfo)
+	response.Playlist = c.buildPlaylistWithSongs(r.Context(), pinfo)
 	return response, nil
 }
 
@@ -125,15 +127,24 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	return NewResponse(), nil
 }
 
-func (c *PlaylistsController) buildPlaylist(ctx context.Context, d *engine.PlaylistInfo) *responses.PlaylistWithSongs {
-	pls := &responses.PlaylistWithSongs{}
+func (c *PlaylistsController) buildPlaylistWithSongs(ctx context.Context, d *engine.PlaylistInfo) *responses.PlaylistWithSongs {
+	pls := &responses.PlaylistWithSongs{
+		Playlist: *c.buildPlaylist(d),
+	}
+	pls.Entry = ToChildren(ctx, d.Entries)
+	return pls
+}
+
+func (c *PlaylistsController) buildPlaylist(d *engine.PlaylistInfo) *responses.Playlist {
+	pls := &responses.Playlist{}
 	pls.Id = d.Id
 	pls.Name = d.Name
+	pls.Comment = d.Comment
 	pls.SongCount = d.SongCount
 	pls.Owner = d.Owner
 	pls.Duration = d.Duration
 	pls.Public = d.Public
-
-	pls.Entry = ToChildren(ctx, d.Entries)
+	pls.Created = &d.Created
+	pls.Changed = &d.Changed
 	return pls
 }

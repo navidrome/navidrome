@@ -160,6 +160,7 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 
 func (r sqlRepository) put(id string, m interface{}) (newId string, err error) {
 	values, _ := toSqlArgs(m)
+	// Remove created_at from args and save it for later, if needed fo insert
 	createdAt := values["created_at"]
 	delete(values, "created_at")
 	if id != "" {
@@ -178,6 +179,7 @@ func (r sqlRepository) put(id string, m interface{}) (newId string, err error) {
 		id = rand.String()
 		values["id"] = id
 	}
+	// It is a insert, if there was a created_at, add it back to args
 	if createdAt != nil {
 		values["created_at"] = createdAt
 	}
