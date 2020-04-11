@@ -124,7 +124,7 @@ type PlaylistInfo struct {
 }
 
 func (p *playlists) Get(ctx context.Context, id string) (*PlaylistInfo, error) {
-	pl, err := p.ds.Playlist(ctx).GetWithTracks(id)
+	pl, err := p.ds.Playlist(ctx).Get(id)
 	if err != nil {
 		return nil, err
 	}

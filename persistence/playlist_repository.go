@@ -65,19 +65,6 @@ func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	return &pls, err
 }
 
-func (r *playlistRepository) GetWithTracks(id string) (*model.Playlist, error) {
-	pls, err := r.Get(id)
-	if err != nil {
-		return nil, err
-	}
-	pls.Duration = 0
-	pls.Tracks = r.loadTracks(pls)
-	for _, t := range pls.Tracks {
-		pls.Duration += t.Duration
-	}
-	return pls, err
-}
-
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
 	sel := r.newSelect(options...).Columns("*")
 	var res []playlist

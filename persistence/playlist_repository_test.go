@@ -49,6 +49,15 @@ var _ = Describe("PlaylistRepository", func() {
 			_, err := repo.Get("666")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
+		It("returns all tracks", func() {
+			pls, err := repo.Get("10")
+			Expect(err).To(BeNil())
+			Expect(pls.Name).To(Equal(plsBest.Name))
+			Expect(pls.Tracks).To(Equal(model.MediaFiles{
+				songDayInALife,
+				songRadioactivity,
+			}))
+		})
 	})
 
 	Describe("Put/Exists/Delete", func() {
@@ -67,18 +76,6 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 		It("returns error if tries to retrieve the deleted playlist", func() {
 			Expect(repo.Exists("22")).To(BeFalse())
-		})
-	})
-
-	Describe("GetWithTracks", func() {
-		It("returns an existing playlist", func() {
-			pls, err := repo.GetWithTracks("10")
-			Expect(err).To(BeNil())
-			Expect(pls.Name).To(Equal(plsBest.Name))
-			Expect(pls.Tracks).To(Equal(model.MediaFiles{
-				songDayInALife,
-				songRadioactivity,
-			}))
 		})
 	})
 

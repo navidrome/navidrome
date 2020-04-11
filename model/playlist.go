@@ -19,7 +19,6 @@ type PlaylistRepository interface {
 	Exists(id string) (bool, error)
 	Put(pls *Playlist) error
 	Get(id string) (*Playlist, error)
-	GetWithTracks(id string) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	Delete(id string) error
 }
