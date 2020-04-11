@@ -29,7 +29,7 @@ type nd struct {
 
 	TranscodingCacheSize string `default:"100MB"` // in MB
 	ImageCacheSize       string `default:"100MB"` // in MB
-	ProbeCommand         string `default:"ffmpeg -i %s -f ffmetadata"`
+	ProbeCommand         string `default:"ffmpeg %s -f ffmetadata"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool   `default:"false"`
