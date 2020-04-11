@@ -74,10 +74,10 @@ func LoadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {
 }
 
 func ExtractAllMetadata(inputs []string) (map[string]*Metadata, error) {
-	cmdLine, args := createProbeCommand(inputs)
+	args := createProbeCommand(inputs)
 
-	log.Trace("Executing command", "arg0", cmdLine, "args", args)
-	cmd := exec.Command(cmdLine, args...)
+	log.Trace("Executing command", "args", args)
+	cmd := exec.Command(args[0], args[1:]...)
 	output, _ := cmd.CombinedOutput()
 	mds := map[string]*Metadata{}
 	if len(output) == 0 {
@@ -269,25 +269,18 @@ func (m *Metadata) parseDuration(tagName string) float32 {
 }
 
 // Inputs will always be absolute paths
-func createProbeCommand(inputs []string) (string, []string) {
-	cmd := conf.Server.ProbeCommand
-
-	split := strings.Split(cmd, " ")
+func createProbeCommand(inputs []string) []string {
+	split := strings.Split(conf.Server.ProbeCommand, " ")
 	args := make([]string, 0)
-	first := true
+
 	for _, s := range split {
 		if s == "%s" {
 			for _, inp := range inputs {
-				if !first {
-					args = append(args, "-i")
-				}
-				args = append(args, inp)
-				first = false
+				args = append(args, "-i", inp)
 			}
-			continue
+		} else {
+			args = append(args, s)
 		}
-		args = append(args, s)
 	}
-
-	return args[0], args[1:]
+	return args
 }
