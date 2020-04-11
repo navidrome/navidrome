@@ -36,8 +36,8 @@ func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Reques
 		playlists[i].Duration = int(p.Duration)
 		playlists[i].Owner = p.Owner
 		playlists[i].Public = p.Public
-		playlists[i].Created = &p.CreatedAt
-		playlists[i].Changed = &p.UpdatedAt
+		playlists[i].Created = p.CreatedAt
+		playlists[i].Changed = p.UpdatedAt
 	}
 	response := NewResponse()
 	response.Playlists = &responses.Playlists{Playlist: playlists}
@@ -144,7 +144,7 @@ func (c *PlaylistsController) buildPlaylist(d *engine.PlaylistInfo) *responses.P
 	pls.Owner = d.Owner
 	pls.Duration = d.Duration
 	pls.Public = d.Public
-	pls.Created = &d.Created
-	pls.Changed = &d.Changed
+	pls.Created = d.Created
+	pls.Changed = d.Changed
 	return pls
 }

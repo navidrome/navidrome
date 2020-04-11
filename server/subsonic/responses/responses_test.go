@@ -246,8 +246,8 @@ var _ = Describe("Responses", func() {
 					Duration:  120,
 					Public:    true,
 					Owner:     "admin",
-					Created:   &timestamp,
-					Changed:   &timestamp,
+					Created:   timestamp,
+					Changed:   timestamp,
 				}
 				pls[1] = Playlist{Id: "222", Name: "bbb"}
 				response.Playlists.Playlist = pls
