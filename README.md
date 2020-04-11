@@ -158,5 +158,5 @@ folder for startup files for your init system.
 
 ## Subsonic API Version Compatibility
 
-Check the up to date [compatibility table](https://github.com/deluan/navidrome/blob/master/API_COMPATIBILITY.md) 
+Check the up to date [compatibility table](https://www.navidrome.org/docs/developers/subsonic-api) 
 for the latest Subsonic features available.
