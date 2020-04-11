@@ -228,4 +228,10 @@ Tracklist:
 			Expect(md.Year()).To(Equal(0))
 		})
 	})
+
+	It("creates a valid command line", func() {
+		args := createProbeCommand([]string{"/music library/one.mp3", "/music library/two.mp3"})
+		Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/one.mp3", "-i", "/music library/two.mp3", "-f", "ffmetadata" }))
+	})
+
 })
