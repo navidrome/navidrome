@@ -26,8 +26,8 @@ github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0 h1:qHX6TTBIsrpg0JkYNko
 github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0/go.mod h1:tSgDythFsl0QgS/PFWfIZqcJKnkADWneY80jaVRlqK8=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
-github.com/dhowden/tag v0.0.0-20200411022004-869a70545f82 h1:OuzI/Mwb6h/Rom8eamIDw+fkUbhtLHNF+rmGEULY6pQ=
-github.com/dhowden/tag v0.0.0-20200411022004-869a70545f82/go.mod h1:SniNVYuaD1jmdEEvi+7ywb1QFR7agjeTdGKyFb0p7Rw=
+github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27 h1:Z6xaGRBbqfLR797upHuzQ6w4zg33BLKfAKtVCcmMDgg=
+github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27/go.mod h1:SniNVYuaD1jmdEEvi+7ywb1QFR7agjeTdGKyFb0p7Rw=
 github.com/disintegration/imaging v1.6.2 h1:w1LecBlG2Lnp8B3jk5zSuNqd7b4DXhcjwek1ei82L+c=
 github.com/disintegration/imaging v1.6.2/go.mod h1:44/5580QXChDfwIclfc/PCwrr44amcmDAg8hxG0Ewe4=
 github.com/djherbis/fscache v0.10.0 h1:+O3s3LwKL1Jfz7txRHpgKOz8/krh9w+NzfzxtFdbsQg=
