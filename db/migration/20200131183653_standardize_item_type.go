@@ -37,7 +37,7 @@ update annotation set item_type = 'media_file' where item_type = 'mediaFile';
 }
 
 func Down20200131183653(tx *sql.Tx) error {
-	tx.Exec(`
+	_, err := tx.Exec(`
 create table search_dg_tmp
 (
 	id varchar(255) not null
@@ -59,5 +59,5 @@ create index search_table
 
 update annotation set item_type = 'mediaFile' where item_type = 'media_file';
 `)
-	return nil
+	return err
 }
