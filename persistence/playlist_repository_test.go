@@ -63,10 +63,19 @@ var _ = Describe("PlaylistRepository", func() {
 	Describe("Put/Exists/Delete", func() {
 		var newPls model.Playlist
 		BeforeEach(func() {
-			newPls = model.Playlist{ID: "22", Name: "Great!", Tracks: model.MediaFiles{{ID: "4"}}}
+			newPls = model.Playlist{ID: "22", Name: "Great!", Tracks: model.MediaFiles{{ID: "4"}, {ID: "3"}}}
 		})
 		It("saves the playlist to the DB", func() {
 			Expect(repo.Put(&newPls)).To(BeNil())
+		})
+		It("adds repeated songs to a playlist and keeps the order", func() {
+			newPls.Tracks = append(newPls.Tracks, model.MediaFile{ID: "4"})
+			Expect(repo.Put(&newPls)).To(BeNil())
+			saved, _ := repo.Get("22")
+			Expect(saved.Tracks).To(HaveLen(3))
+			Expect(saved.Tracks[0].ID).To(Equal("4"))
+			Expect(saved.Tracks[1].ID).To(Equal("3"))
+			Expect(saved.Tracks[2].ID).To(Equal("4"))
 		})
 		It("returns the newly created playlist", func() {
 			Expect(repo.Exists("22")).To(BeTrue())

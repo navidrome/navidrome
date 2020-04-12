@@ -121,20 +121,50 @@ func (r *playlistRepository) fromModel(p *model.Playlist) playlist {
 	return pls
 }
 
+// TODO: Introduce a relation table for Playlist <-> MediaFiles, and rewrite this method in pure SQL
 func (r *playlistRepository) loadTracks(p *model.Playlist) model.MediaFiles {
+	if len(p.Tracks) == 0 {
+		return nil
+	}
+
+	// Collect all ids
+	ids := make([]string, len(p.Tracks))
+	for i, t := range p.Tracks {
+		ids[i] = t.ID
+	}
+
+	// Break the list in chunks, up to 50 items, to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
+	const chunkSize = 50
+	var chunks [][]string
+	for i := 0; i < len(ids); i += chunkSize {
+		end := i + chunkSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+
+		chunks = append(chunks, ids[i:end])
+	}
+
+	// Query each chunk of media_file ids and store results in a map
 	mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
-	var ids []string
-	for _, t := range p.Tracks {
-		ids = append(ids, t.ID)
+	trackMap := map[string]model.MediaFile{}
+	for i := range chunks {
+		idsFilter := Eq{"id": chunks[i]}
+		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: idsFilter})
+		if err != nil {
+			log.Error(r.ctx, "Could not load playlist's tracks", "playlistName", p.Name, "playlistId", p.ID, err)
+		}
+		for _, t := range tracks {
+			trackMap[t.ID] = t
+		}
 	}
-	idsFilter := Eq{"id": ids}
-	tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: idsFilter})
-	if err == nil {
-		return tracks
-	} else {
-		log.Error(r.ctx, "Could not load playlist's tracks", "playlistName", p.Name, "playlistId", p.ID, err)
+
+	// Create a new list of tracks with the same order as the original
+	newTracks := make(model.MediaFiles, len(p.Tracks))
+	for i, t := range p.Tracks {
+		newTracks[i] = trackMap[t.ID]
 	}
-	return nil
+	return newTracks
 }
 
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
