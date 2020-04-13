@@ -21,16 +21,19 @@ const Player = () => {
     showReload: false,
     glassBg: false,
     showThemeSwitch: false,
-    playModeText: {
-      order: translate('player.playModeText.order'),
-      orderLoop: translate('player.playModeText.orderLoop'),
-      singleLoop: translate('player.playModeText.singleLoop'),
-      shufflePlay: translate('player.playModeText.shufflePlay')
-    },
+    showMediaSession: true,
     panelTitle: translate('player.panelTitle'),
     defaultPosition: {
       top: 300,
       left: 120
+    },
+    locale: {
+      playModeText: {
+        order: translate('player.playModeText.order'),
+        orderLoop: translate('player.playModeText.orderLoop'),
+        singleLoop: translate('player.playModeText.singleLoop'),
+        shufflePlay: translate('player.playModeText.shufflePlay')
+      }
     }
   }
 
