@@ -128,6 +128,9 @@ func (api *Router) routes() http.Handler {
 	// Deprecated/Out of scope endpoints
 	HGone(r, "getChatMessages")
 	HGone(r, "addChatMessage")
+	HGone(r, "getVideos")
+	HGone(r, "getVideoInfo")
+	HGone(r, "getCaptions")
 	return r
 }
 
