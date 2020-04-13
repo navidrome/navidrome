@@ -46,6 +46,12 @@ const useStyles = makeStyles(
   { name: 'RaList' }
 )
 
+const useStylesListToolbar = makeStyles({
+  toolbar: {
+    justifyContent: 'flex-start'
+  }
+})
+
 const trackName = (r) => {
   const name = r.title
   if (r.trackNumber) {
@@ -56,6 +62,7 @@ const trackName = (r) => {
 
 const AlbumSongs = (props) => {
   const classes = useStyles(props)
+  const classesToolbar = useStylesListToolbar(props)
   const dispatch = useDispatch()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
@@ -69,6 +76,7 @@ const AlbumSongs = (props) => {
   return (
     <>
       <ListToolbar
+        classes={classesToolbar}
         filters={props.filters}
         {...controllerProps}
         actions={props.actions}
