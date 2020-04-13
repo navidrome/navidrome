@@ -8,7 +8,8 @@ import {
   NumberInput,
   ReferenceInput,
   SearchInput,
-  Pagination
+  Pagination,
+  useTranslate
 } from 'react-admin'
 import { Title } from '../common'
 import { withWidth } from '@material-ui/core'
@@ -17,21 +18,25 @@ import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
 import { ALBUM_MODE_LIST } from './albumState'
 
-const AlbumFilter = (props) => (
-  <Filter {...props}>
-    <SearchInput source="name" alwaysOn />
-    <ReferenceInput
-      source="artist_id"
-      reference="artist"
-      sort={{ field: 'name', order: 'ASC' }}
-      filterToQuery={(searchText) => ({ name: [searchText] })}
-    >
-      <AutocompleteInput emptyText="-- None --" />
-    </ReferenceInput>
-    <NullableBooleanInput source="compilation" />
-    <NumberInput source="year" />
-  </Filter>
-)
+const AlbumFilter = (props) => {
+  const translate = useTranslate()
+  return (
+    <Filter {...props}>
+      <SearchInput source="name" alwaysOn />
+      <ReferenceInput
+        label={translate('resources.album.fields.artist')}
+        source="artist_id"
+        reference="artist"
+        sort={{ field: 'name', order: 'ASC' }}
+        filterToQuery={(searchText) => ({ name: [searchText] })}
+      >
+        <AutocompleteInput emptyText="-- None --" />
+      </ReferenceInput>
+      <NullableBooleanInput source="compilation" />
+      <NumberInput source="year" />
+    </Filter>
+  )
+}
 
 const getPerPage = (width) => {
   if (width === 'xs') return 12

@@ -12,6 +12,7 @@
     "md5-hex": "^3.0.1",
     "prop-types": "^15.7.2",
     "ra-data-json-server": "^3.3.3",
+    "ra-language-portuguese": "^1.6.0",
     "react": "^16.13.1",
     "react-admin": "^3.3.3",
     "react-dom": "^16.13.1",

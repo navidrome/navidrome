@@ -21,10 +21,11 @@ const Personal = () => {
 
   return (
     <Card className={classes.root}>
-      <Title title={'Navidrome - ' + translate('menu.personal')} />
+      <Title title={'Navidrome - ' + translate('menu.personal.name')} />
       <SimpleForm toolbar={null}>
         <SelectInput
           source="theme"
+          label={translate('menu.personal.options.theme')}
           defaultValue={currentTheme}
           choices={themeChoices}
           onChange={(event) => {

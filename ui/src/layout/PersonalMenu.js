@@ -16,7 +16,7 @@ const PersonalMenu = forwardRef(({ onClick, sidebarIsOpen, dense }, ref) => {
     <MenuItemLink
       ref={ref}
       to="/personal"
-      primaryText={translate('menu.personal')}
+      primaryText={translate('menu.personal.name')}
       leftIcon={<TuneIcon />}
       onClick={onClick}
       className={classes.menuItem}
