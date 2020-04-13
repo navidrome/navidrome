@@ -2,6 +2,7 @@ import deepmerge from 'deepmerge'
 import englishMessages from 'ra-language-english'
 
 export default deepmerge(englishMessages, {
+  languageName: 'English',
   resources: {
     song: {
       name: 'Song |||| Songs',
@@ -45,12 +46,34 @@ export default deepmerge(englishMessages, {
   menu: {
     library: 'Library',
     settings: 'Settings',
-    personal: 'Personal',
     version: 'Version %{version}',
-    theme: 'Theme'
+    theme: 'Theme',
+    personal: {
+      name: 'Personal',
+      options: {
+        theme: 'Theme'
+      }
+    }
   },
   player: {
-    panelTitle: 'Play Queue',
+    playListsText: 'Play Queue',
+    openText: 'Open',
+    closeText: 'Close',
+    notContentText: 'No music',
+    clickToPlayText: 'Click to play',
+    clickToPauseText: 'Click to pause',
+    nextTrackText: 'Next track',
+    previousTrackText: 'Previous track',
+    reloadText: 'Reload',
+    volumeText: 'Volume',
+    toggleLyricText: 'Toggle lyric',
+    toggleMiniModeText: 'Minimize',
+    destroyText: 'Destroy',
+    downloadText: 'Download',
+    removeAudioListsText: 'Delete audio lists',
+    controllerTitle: '',
+    clickToDeleteText: `Click to delete %{name}`,
+    emptyLyricText: 'No lyric',
     playModeText: {
       order: 'In order',
       orderLoop: 'Repeat',

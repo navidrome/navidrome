@@ -6,7 +6,8 @@ import {
   List,
   NumberField,
   SearchInput,
-  TextField
+  TextField,
+  useTranslate
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import {
@@ -30,6 +31,7 @@ const SongFilter = (props) => (
 )
 
 const SongList = (props) => {
+  const translate = useTranslate()
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -63,7 +65,13 @@ const SongList = (props) => {
           rowClick={(id, basePath, record) => dispatch(setTrack(record))}
         >
           <TextField source="title" />
-          {isDesktop && <AlbumLinkField source="albumId" sortBy="album" />}
+          {isDesktop && (
+            <AlbumLinkField
+              source="albumId"
+              label={translate('resources.song.fields.album')}
+              sortBy="album"
+            />
+          )}
           <TextField source="artist" />
           {isDesktop && <NumberField source="trackNumber" />}
           {isDesktop && <NumberField source="playCount" />}
