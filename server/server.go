@@ -54,7 +54,7 @@ func (a *Server) Run(addr string) {
 func (a *Server) initRoutes() {
 	r := chi.NewRouter()
 
-	r.Use(cors.Default().Handler)
+	r.Use(cors.AllowAll().Handler)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
