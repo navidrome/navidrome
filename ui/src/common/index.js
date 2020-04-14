@@ -6,10 +6,12 @@ import PlayButton from './PlayButton'
 import SimpleList from './SimpleList'
 import RangeField, { formatRange } from './RangeField'
 import SongDetails from './SongDetails'
+import SizeField from './SizeField'
 
 export {
   Title,
   DurationField,
+  SizeField,
   BitrateField,
   Pagination,
   PlayButton,

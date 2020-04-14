@@ -6,9 +6,10 @@ import {
   DateField,
   TextField
 } from 'react-admin'
-import { BitrateField } from './index'
+import { BitrateField, SizeField } from './index'
 
 const SongDetails = (props) => {
+  const { record } = props
   return (
     <Show {...props} title=" ">
       <SimpleShowLayout>
@@ -18,6 +19,9 @@ const SongDetails = (props) => {
         <BooleanField source="compilation" />
         <BitrateField source="bitRate" />
         <DateField source="updatedAt" showTime />
+        <SizeField source="size" />
+        <TextField source="playCount" />
+        {record.playCount > 0 && <DateField source="playDate" showTime />}
       </SimpleShowLayout>
     </Show>
   )
