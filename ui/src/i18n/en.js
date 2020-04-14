@@ -19,6 +19,7 @@ export default deepmerge(englishMessages, {
     album: {
       fields: {
         albumArtist: 'Album Artist',
+        artist: 'Artist',
         duration: 'Time',
         songCount: 'Songs',
         playCount: 'Plays'
@@ -51,7 +52,8 @@ export default deepmerge(englishMessages, {
     personal: {
       name: 'Personal',
       options: {
-        theme: 'Theme'
+        theme: 'Theme',
+        language: 'Language'
       }
     }
   },

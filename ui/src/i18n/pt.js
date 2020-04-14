@@ -88,7 +88,8 @@ export default deepmerge.all([
       personal: {
         name: 'Pessoal',
         options: {
-          theme: 'Tema'
+          theme: 'Tema',
+          language: 'Língua'
         }
       }
     },
