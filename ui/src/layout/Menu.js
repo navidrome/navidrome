@@ -28,6 +28,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const translate = useTranslate()
   const resources = useSelector(getResources)
 
+  // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
     menuLibrary: true,
     menuSettings: false
@@ -75,7 +76,11 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         dense={dense}
       >
         {resources.filter(subItems('settings')).map(renderMenuItemLink)}
-        <PersonalMenu dense={dense} sidebarIsOpen={open} />
+        <PersonalMenu
+          dense={dense}
+          sidebarIsOpen={open}
+          onClick={onMenuClick}
+        />
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderMenuItemLink)}
       {isXsmall && logout}
