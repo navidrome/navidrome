@@ -27,7 +27,7 @@ const SongDetails = (props) => {
   }
   return (
     <TableContainer component={Paper}>
-      <Table aria-label="simple table">
+      <Table aria-label="song details" size="small">
         <TableBody>
           {Object.keys(data).map((key) => {
             return (
