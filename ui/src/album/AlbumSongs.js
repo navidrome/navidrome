@@ -14,6 +14,7 @@ import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { setTrack } from '../audioplayer'
 import { DurationField } from '../common'
+import { SongDetails } from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -64,6 +65,7 @@ const AlbumSongs = (props) => {
   const classes = useStyles(props)
   const classesToolbar = useStylesListToolbar(props)
   const dispatch = useDispatch()
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
   const { bulkActionButtons, albumId, expand, className } = props
@@ -106,6 +108,7 @@ const AlbumSongs = (props) => {
             />
           ) : (
             <Datagrid
+              expand={!isXsmall && <SongDetails />}
               rowClick={(id, basePath, record) => dispatch(setTrack(record))}
               {...controllerProps}
               hasBulkActions={hasBulkActions}

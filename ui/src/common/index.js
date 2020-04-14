@@ -5,6 +5,7 @@ import Pagination from './Pagination'
 import PlayButton from './PlayButton'
 import SimpleList from './SimpleList'
 import RangeField, { formatRange } from './RangeField'
+import SongDetails from './SongDetails'
 
 export {
   Title,
@@ -14,5 +15,6 @@ export {
   PlayButton,
   SimpleList,
   RangeField,
+  SongDetails,
   formatRange
 }

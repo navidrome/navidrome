@@ -1,20 +1,15 @@
 import React from 'react'
 import {
-  BooleanField,
   Datagrid,
-  DateField,
   Filter,
   FunctionField,
   List,
   NumberField,
   SearchInput,
-  Show,
-  SimpleShowLayout,
   TextField
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import {
-  BitrateField,
   DurationField,
   Pagination,
   PlayButton,
@@ -26,27 +21,13 @@ import { addTrack, setTrack } from '../audioplayer'
 import AddIcon from '@material-ui/icons/Add'
 import { SongBulkActions } from './SongBulkActions'
 import { AlbumLinkField } from './AlbumLinkField'
+import { SongDetails } from '../common'
 
 const SongFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="title" alwaysOn />
   </Filter>
 )
-
-const SongDetails = (props) => {
-  return (
-    <Show {...props} title=" ">
-      <SimpleShowLayout>
-        <TextField source="path" />
-        <TextField source="albumArtist" />
-        <TextField source="genre" />
-        <BooleanField source="compilation" />
-        <BitrateField source="bitRate" />
-        <DateField source="updatedAt" showTime />
-      </SimpleShowLayout>
-    </Show>
-  )
-}
 
 const SongList = (props) => {
   const dispatch = useDispatch()
