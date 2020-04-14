@@ -46,6 +46,18 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 		return err
 	}
 
+	// If cache is disabled, just read the coverart directly from file
+	if c.cache == nil {
+		log.Trace(ctx, "Retrieving cover art from file", "path", path, "size", size, err)
+		reader, err := c.getCover(ctx, path, size)
+		if err != nil {
+			log.Error(ctx, "Error loading cover art", "path", path, "size", size, err)
+		} else {
+			_, err = io.Copy(out, reader)
+		}
+		return err
+	}
+
 	cacheKey := imageCacheKey(path, size, lastUpdate)
 	r, w, err := c.cache.Get(cacheKey)
 	if err != nil {
@@ -158,5 +170,5 @@ func readFromTag(path string) ([]byte, error) {
 }
 
 func NewImageCache() (ImageCache, error) {
-	return newFileCache("image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems)
+	return newFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems)
 }

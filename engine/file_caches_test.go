@@ -29,5 +29,9 @@ var _ = Describe("File Caches", func() {
 		It("creates the cache folder with invalid size", func() {
 			Expect(newFileCache("test", "abc", "test", 10)).ToNot(BeNil())
 		})
+
+		It("returns empty if cache size is '0'", func() {
+			Expect(newFileCache("test", "0", "test", 10)).To(BeNil())
+		})
 	})
 })

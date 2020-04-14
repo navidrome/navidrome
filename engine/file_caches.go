@@ -12,6 +12,10 @@ import (
 )
 
 func newFileCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cache, error) {
+	if cacheSize == "0" {
+		log.Warn(fmt.Sprintf("%s cache disabled", name))
+		return nil, nil
+	}
 	size, err := humanize.ParseBytes(cacheSize)
 	if err != nil {
 		size = consts.DefaultCacheSize

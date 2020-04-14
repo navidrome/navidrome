@@ -213,5 +213,5 @@ func getFinalCachedSize(r fscache.ReadAtCloser) int64 {
 }
 
 func NewTranscodingCache() (TranscodingCache, error) {
-	return newFileCache("transcoding", conf.Server.TranscodingCacheSize, consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems)
+	return newFileCache("Transcoding", conf.Server.TranscodingCacheSize, consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems)
 }
