@@ -3,7 +3,7 @@
 before:
   hooks:
     - apt-get update
-    - apt-get install -y gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu
+    - apt-get install -y gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu musl-tools
     - go get -u github.com/go-bindata/go-bindata/...
     - go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
     - git checkout .
@@ -26,6 +26,20 @@ builds:
   - id: navidrome_linux_amd64
     env:
       - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -tags=embed
+    ldflags:
+      - "-extldflags '-static'"
+      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
+
+  - id: navidrome_linux_musl_amd64
+    env:
+      - CGO_ENABLED=1
+      - CC=musl-gcc
     goos:
       - linux
     goarch:
@@ -99,7 +113,21 @@ builds:
       - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
 
 archives:
-  -
+  - id: musl
+    builds:
+      - navidrome_linux_musl_amd64
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_musl_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    replacements:
+      linux: Linux
+      amd64: x86_64
+  - id: default
+    builds:
+      - navidrome_darwin
+      - navidrome_linux_amd64
+      - navidrome_linux_arm
+      - navidrome_linux_arm64
+      - navidrome_windows_i686
+      - navidrome_windows_x64
     format_overrides:
       - goos: windows
         format: zip
