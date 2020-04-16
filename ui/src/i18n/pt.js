@@ -113,6 +113,9 @@ export default deepmerge(portugueseMessages, {
     clickToPauseText: 'Clique para pausar',
     nextTrackText: 'Próxima faixa',
     previousTrackText: 'Faixa anterior',
+    volumeText: 'Volume',
+    toggleMiniModeText: 'Minimizar',
+    removeAudioListsText: 'Limpar fila de execução',
     clickToDeleteText: `Clique para remover %{name}`,
     playModeText: {
       order: 'Em ordem',
