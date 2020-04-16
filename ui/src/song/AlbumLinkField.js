@@ -11,6 +11,5 @@ export const AlbumLinkField = (props) => (
 )
 
 AlbumLinkField.defaultProps = {
-  source: 'albumId',
   addLabel: true
 }
