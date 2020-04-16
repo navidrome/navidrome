@@ -1,13 +1,18 @@
+import deepmerge from 'deepmerge'
 import en from './en'
 import pt from './pt'
 
-// When adding a new translation, import it above and add it to the list bellow
+const addLanguages = (lang) => {
+  Object.keys(lang).forEach((l) => (languages[l] = deepmerge(en, lang[l])))
+}
+const languages = { en }
 
-const allLanguages = { en, pt }
+// Add new languages to the object bellow
+addLanguages({ pt })
 
 // "Hack" to make "albumSongs" resource use the same translations as "song"
-Object.keys(allLanguages).forEach(
-  (k) => (allLanguages[k].resources.albumSong = allLanguages[k].resources.song)
+Object.keys(languages).forEach(
+  (k) => (languages[k].resources.albumSong = languages[k].resources.song)
 )
 
-export default allLanguages
+export default languages

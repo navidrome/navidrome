@@ -1,7 +1,7 @@
 import React from 'react'
 import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
-import { Admin, resolveBrowserLocale, Resource } from 'react-admin'
+import { Admin, Resource } from 'react-admin'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
 import polyglotI18nProvider from 'ra-i18n-polyglot'
@@ -21,7 +21,7 @@ import createAdminStore from './store/createAdminStore'
 
 const i18nProvider = polyglotI18nProvider(
   (locale) => (messages[locale] ? messages[locale] : messages.en),
-  localStorage.getItem('locale') || resolveBrowserLocale()
+  localStorage.getItem('locale') || 'en'
 )
 
 const history = createHashHistory()
