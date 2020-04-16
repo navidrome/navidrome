@@ -19,7 +19,6 @@ const PlayerEdit = (props) => (
     <SimpleForm>
       <TextInput source="name" validate={[required()]} />
       <ReferenceInput
-        label="Transcoding"
         source="transcodingId"
         reference="transcoding"
         sort={{ field: 'name', order: 'ASC' }}

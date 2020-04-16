@@ -53,32 +53,44 @@ export default deepmerge(portugueseMessages, {
     user: {
       name: 'Usuário |||| Usuários',
       fields: {
-        name: 'Nome'
-      }
-    },
-    transcoding: {
-      name: 'Conversão |||| Conversões',
-      fields: {
+        userName: 'Usuário',
+        isAdmin: 'Admin?',
+        lastLoginAt: 'Últ. Login',
+        updatedAt: 'Últ. Atualização',
         name: 'Nome'
       }
     },
     player: {
       name: 'Tocador |||| Tocadores',
       fields: {
-        name: 'Nome'
+        name: 'Nome',
+        transcodingId: 'Conversão',
+        maxBitRate: 'Bitrate máx',
+        client: 'Cliente',
+        userName: 'Usuário',
+        lastSeen: 'Últ. acesso'
+      }
+    },
+    transcoding: {
+      name: 'Conversão |||| Conversões',
+      fields: {
+        name: 'Nome',
+        targetFormat: 'Formato',
+        defaultBitRate: 'Bitrate padrão',
+        command: 'Comando'
       }
     }
   },
   ra: {
     auth: {
-      welcome1: 'Thanks for installing Navidrome!',
-      welcome2: 'To start, create an admin user',
-      confirmPassword: 'Confirm Password',
-      buttonCreateAdmin: 'Create Admin'
+      welcome1: 'Obrigado por instalar Navidrome!',
+      welcome2: 'Para iniciar, crie um usuário admin',
+      confirmPassword: 'Confirme a senha',
+      buttonCreateAdmin: 'Criar Admin'
     },
     validation: {
-      invalidChars: 'Please only use letter and numbers',
-      passwordDoesNotMatch: 'Password does not match'
+      invalidChars: 'Somente use letras e numeros',
+      passwordDoesNotMatch: 'Senha não confere'
     }
   },
   menu: {
