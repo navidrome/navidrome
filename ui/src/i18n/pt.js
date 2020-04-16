@@ -1,113 +1,112 @@
 import deepmerge from 'deepmerge'
-import en from './en'
 import portugueseMessages from 'ra-language-portuguese'
 
-export default deepmerge.all([
-  en,
-  portugueseMessages,
-  {
-    languageName: 'Português',
-    resources: {
-      song: {
-        name: 'Música |||| Músicas',
-        fields: {
-          title: 'Título',
-          artist: 'Artista',
-          album: 'Álbum',
-          path: 'Caminho',
-          genre: 'Gênero',
-          compilation: 'Coletânea',
-          duration: 'Duração',
-          year: 'Ano',
-          trackNumber: '#'
-        },
-        bulk: {
-          addToQueue: 'Play Later'
-        }
+export default deepmerge(portugueseMessages, {
+  languageName: 'Português',
+  resources: {
+    song: {
+      name: 'Música |||| Músicas',
+      fields: {
+        title: 'Título',
+        artist: 'Artista',
+        album: 'Álbum',
+        path: 'Arquivo',
+        genre: 'Gênero',
+        compilation: 'Coletânea',
+        duration: 'Duração',
+        year: 'Ano',
+        playCount: 'Execuções',
+        trackNumber: '#',
+        size: 'Tamanho',
+        updatedAt: 'Últ. Atualização'
       },
-      album: {
-        name: 'Álbum |||| Álbuns',
-        fields: {
-          name: 'Nome',
-          artist: 'Artista',
-          songCount: 'Songs',
-          genre: 'Gênero',
-          playCount: 'Plays',
-          compilation: 'Coletânea',
-          duration: 'Duração',
-          year: 'Ano'
-        },
-        actions: {
-          playAll: 'Play',
-          playNext: 'Play Next',
-          addToQueue: 'Play Later',
-          shuffle: 'Shuffle'
-        }
-      },
-      artist: {
-        name: 'Artista |||| Artistas',
-        fields: {
-          name: 'Nome'
-        }
-      },
-      user: {
-        name: 'Usuário |||| Usuários',
-        fields: {
-          name: 'Nome'
-        }
-      },
-      transcoding: {
-        name: 'Conversão |||| Conversões',
-        fields: {
-          name: 'Nome'
-        }
-      },
-      player: {
-        name: 'Tocador |||| Tocadores',
-        fields: {
-          name: 'Nome'
-        }
+      bulk: {
+        addToQueue: 'Play Later'
       }
     },
-    ra: {
-      auth: {
-        welcome1: 'Thanks for installing Navidrome!',
-        welcome2: 'To start, create an admin user',
-        confirmPassword: 'Confirm Password',
-        buttonCreateAdmin: 'Create Admin'
+    album: {
+      name: 'Álbum |||| Álbuns',
+      fields: {
+        name: 'Nome',
+        artist: 'Artista',
+        songCount: 'Músicas',
+        genre: 'Gênero',
+        playCount: 'Execuções',
+        compilation: 'Coletânea',
+        duration: 'Duração',
+        year: 'Ano'
       },
-      validation: {
-        invalidChars: 'Please only use letter and numbers',
-        passwordDoesNotMatch: 'Password does not match'
+      actions: {
+        playAll: 'Play',
+        playNext: 'Play Next',
+        addToQueue: 'Play Later',
+        shuffle: 'Shuffle'
       }
     },
-    menu: {
-      library: 'Biblioteca',
-      settings: 'Configurações',
-      version: 'Versão %{version}',
-      personal: {
-        name: 'Pessoal',
-        options: {
-          theme: 'Tema',
-          language: 'Língua'
-        }
+    artist: {
+      name: 'Artista |||| Artistas',
+      fields: {
+        name: 'Nome',
+        albumCount: 'Total de Álbuns'
+      }
+    },
+    user: {
+      name: 'Usuário |||| Usuários',
+      fields: {
+        name: 'Nome'
+      }
+    },
+    transcoding: {
+      name: 'Conversão |||| Conversões',
+      fields: {
+        name: 'Nome'
       }
     },
     player: {
-      playListsText: 'Fila de Execução',
-      openText: 'Abrir',
-      closeText: 'Fechar',
-      clickToPlayText: 'Clique para tocar',
-      clickToPauseText: 'Clique para pausar',
-      nextTrackText: 'Próxima faixa',
-      previousTrackText: 'Faixa anterior',
-      clickToDeleteText: `Clique para remover %{name}`,
-      playModeText: {
-        order: 'Em ordem',
-        orderLoop: 'Repetir tudo',
-        singleLoop: 'Repetir',
-        shufflePlay: 'Aleatório'
+      name: 'Tocador |||| Tocadores',
+      fields: {
+        name: 'Nome'
       }
     }
+  },
+  ra: {
+    auth: {
+      welcome1: 'Thanks for installing Navidrome!',
+      welcome2: 'To start, create an admin user',
+      confirmPassword: 'Confirm Password',
+      buttonCreateAdmin: 'Create Admin'
+    },
+    validation: {
+      invalidChars: 'Please only use letter and numbers',
+      passwordDoesNotMatch: 'Password does not match'
+    }
+  },
+  menu: {
+    library: 'Biblioteca',
+    settings: 'Configurações',
+    version: 'Versão %{version}',
+    personal: {
+      name: 'Pessoal',
+      options: {
+        theme: 'Tema',
+        language: 'Língua'
+      }
+    }
+  },
+  player: {
+    playListsText: 'Fila de Execução',
+    openText: 'Abrir',
+    closeText: 'Fechar',
+    clickToPlayText: 'Clique para tocar',
+    clickToPauseText: 'Clique para pausar',
+    nextTrackText: 'Próxima faixa',
+    previousTrackText: 'Faixa anterior',
+    clickToDeleteText: `Clique para remover %{name}`,
+    playModeText: {
+      order: 'Em ordem',
+      orderLoop: 'Repetir tudo',
+      singleLoop: 'Repetir',
+      shufflePlay: 'Aleatório'
+    }
   }
-])
+})
