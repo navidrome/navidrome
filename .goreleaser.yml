@@ -2,11 +2,7 @@
 
 before:
   hooks:
-    - apt-get update
-    - apt-get install -y gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu musl-tools
-    - go get -u github.com/go-bindata/go-bindata/...
     - go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
-    - git checkout .
 
 builds:
   - id: navidrome_darwin
@@ -65,7 +61,6 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - "-extld=$CC"
       - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
 
   - id: navidrome_linux_arm64
