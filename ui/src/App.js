@@ -21,7 +21,7 @@ import createAdminStore from './store/createAdminStore'
 
 const i18nProvider = polyglotI18nProvider(
   (locale) => (messages[locale] ? messages[locale] : messages.en),
-  resolveBrowserLocale()
+  localStorage.getItem('locale') || resolveBrowserLocale()
 )
 
 const history = createHashHistory()

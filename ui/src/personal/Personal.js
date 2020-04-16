@@ -34,6 +34,7 @@ const SelectLanguage = (props) => {
       choices={langChoices}
       onChange={(event) => {
         setLocale(event.target.value)
+        localStorage.setItem('locale', event.target.value)
       }}
     />
   )
