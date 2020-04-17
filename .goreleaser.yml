@@ -17,7 +17,7 @@ builds:
     flags:
       - -tags=embed
     ldflags:
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
+      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_amd64
     env:
@@ -30,7 +30,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
+      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_musl_amd64
     env:
@@ -44,7 +44,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
+      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_arm
     env:
@@ -61,7 +61,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
+      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_arm64
     env:
@@ -75,7 +75,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
+      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_windows_i686
     env:
@@ -90,7 +90,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
+      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_windows_x64
     env:
@@ -105,7 +105,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Tag}}
+      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
 archives:
   - id: musl
@@ -134,10 +134,10 @@ archives:
       amd64: x86_64
 
 checksum:
-  name_template: '{{ .ProjectName }}_checksums.txt'
+  name_template: "{{ .ProjectName }}_checksums.txt"
 
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  name_template: "{{ .Tag }}-SNAPSHOT"
 
 release:
   draft: true
@@ -146,4 +146,4 @@ changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
+      - "^docs:"
