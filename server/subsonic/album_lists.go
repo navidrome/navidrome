@@ -59,8 +59,36 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (engine.Entries, err
 	return albums, nil
 }
 
+func (c *AlbumListController) getNewAlbumList(r *http.Request) (engine.Entries, error) {
+	typ, err := RequiredParamString(r, "type", "Required string parameter 'type' is not present")
+	if err != nil {
+		return nil, err
+	}
+
+	var filter engine.AlbumFilter
+	switch typ {
+	case "byGenre":
+		filter = engine.ByGenre(utils.ParamString(r, "genre"))
+	case "byYear":
+		filter = engine.ByYear(utils.ParamInt(r, "fromYear", 0), utils.ParamInt(r, "toYear", 0))
+	default:
+		return c.getAlbumList(r)
+	}
+
+	offset := utils.ParamInt(r, "offset", 0)
+	size := utils.MinInt(utils.ParamInt(r, "size", 10), 500)
+
+	albums, err := c.listGen.GetAlbums(r.Context(), offset, size, filter)
+	if err != nil {
+		log.Error(r, "Error retrieving albums", "error", err)
+		return nil, errors.New("Internal Error")
+	}
+
+	return albums, nil
+}
+
 func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	albums, err := c.getAlbumList(r)
+	albums, err := c.getNewAlbumList(r)
 	if err != nil {
 		return nil, NewError(responses.ErrorGeneric, err.Error())
 	}
@@ -71,7 +99,7 @@ func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Reques
 }
 
 func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	albums, err := c.getAlbumList(r)
+	albums, err := c.getNewAlbumList(r)
 	if err != nil {
 		return nil, NewError(responses.ErrorGeneric, err.Error())
 	}
