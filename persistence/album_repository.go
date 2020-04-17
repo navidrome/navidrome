@@ -2,6 +2,9 @@ package persistence
 
 import (
 	"context"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -108,12 +111,13 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		CurrentId   string
 		HasCoverArt bool
 		SongArtists string
+		Years       string
 	}
 	var albums []refreshAlbum
 	sel := Select(`album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
-		f.compilation, f.genre, max(f.year) as max_year, min(f.year) as min_year, sum(f.duration) as duration, 
-		count(*) as song_count, a.id as current_id, f.id as cover_art_id, f.path as cover_art_path, 
-		group_concat(f.artist, ' ') as song_artists, f.has_cover_art`).
+		f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
+		count(*) as song_count, a.id as current_id, f.id as cover_art_id, f.path as cover_art_path, f.has_cover_art, 
+		group_concat(f.artist, ' ') as song_artists, group_concat(f.year, ' ') as years`).
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
 		Where(Eq{"f.album_id": ids}).GroupBy("album_id").OrderBy("f.id")
@@ -136,6 +140,7 @@ func (r *albumRepository) Refresh(ids ...string) error {
 			al.AlbumArtist = al.Artist
 			al.AlbumArtistID = al.ArtistID
 		}
+		al.MinYear = getMinYear(al.Years)
 		al.UpdatedAt = time.Now()
 		if al.CurrentId != "" {
 			toUpdate++
@@ -156,6 +161,18 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		log.Debug(r.ctx, "Updated albums", "totalUpdated", toUpdate)
 	}
 	return err
+}
+
+func getMinYear(years string) int {
+	ys := strings.Fields(years)
+	sort.Strings(ys)
+	for _, y := range ys {
+		if y != "0" {
+			r, _ := strconv.Atoi(y)
+			return r
+		}
+	}
+	return 0
 }
 
 func (r *albumRepository) PurgeEmpty() error {
