@@ -1,5 +1,10 @@
 name: Build
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+    types: [closed]
+    branches:
+      - master
 jobs:
   go:
     name: Test Server on ${{ matrix.os }}
@@ -38,7 +43,6 @@ jobs:
   js:
     name: Test UI
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
@@ -68,3 +72,40 @@ jobs:
         run: |
           cd ui
           npm run build
+
+      - uses: actions/upload-artifact@v1
+        with:
+          name: js-bundle
+          path: ui/build
+
+  build:
+    name: Build snapshot binaries
+    if: github.event.pull_request.merged || github.event_name == 'push'
+    needs: [js]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+
+      - uses: actions/download-artifact@v1
+        with:
+          name: js-bundle
+          path: ui/build
+
+      - name: Run GoReleaser
+        uses: docker://deluan/ci-goreleaser:1.14.1-1
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: goreleaser release --rm-dist --skip-publish --snapshot
+
+      - uses: actions/upload-artifact@v1
+        with:
+          name: binaries
+          path: dist
