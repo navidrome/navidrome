@@ -73,4 +73,16 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("getMinYear", func() {
+		It("returns 0 when there's no valid year", func() {
+			Expect(getMinYear("a b c")).To(Equal(0))
+			Expect(getMinYear("")).To(Equal(0))
+		})
+		It("returns 0 when all values are 0", func() {
+			Expect(getMinYear("0 0 0 ")).To(Equal(0))
+		})
+		It("returns the smallest value from the list", func() {
+			Expect(getMinYear("2000 0 1800")).To(Equal(1800))
+		})
+	})
 })
