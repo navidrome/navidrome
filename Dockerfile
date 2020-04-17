@@ -17,11 +17,6 @@ RUN mkdir -p /src/ui/build
 RUN apk add -U --no-cache build-base git
 RUN go get -u github.com/go-bindata/go-bindata/...
 
-# Download and unpack static ffmpeg
-ARG FFMPEG_URL=https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-RUN wget -O /tmp/ffmpeg.tar.xz ${FFMPEG_URL}
-RUN cd /tmp && tar xJf ffmpeg.tar.xz && rm ffmpeg.tar.xz
-
 # Download project dependencies
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -46,17 +41,12 @@ RUN GIT_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) && \
 #####################################################
 ### Build Final Image
 FROM alpine as release
-MAINTAINER  Deluan Quintao <navidrome@deluan.com>
-
-# Download Tini
-ENV TINI_VERSION v0.18.0
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-static /tini
-RUN chmod +x /tini
+LABEL maintainer="deluan@navidrome.org"
 
 COPY --from=gobuilder /src/navidrome /app/
-COPY --from=gobuilder /tmp/ffmpeg*/ffmpeg /usr/bin/
 
-# Check if ffmpeg runs properly
+# Install ffmpeg and output build config
+RUN apk add --no-cache ffmpeg
 RUN ffmpeg -buildconf
 
 VOLUME ["/data", "/music"]
@@ -72,5 +62,4 @@ EXPOSE ${ND_PORT}
 HEALTHCHECK CMD wget -O- http://localhost:${ND_PORT}/ping || exit 1
 WORKDIR /app
 
-ENTRYPOINT ["/tini", "--"]
-CMD ["/app/navidrome"]
+ENTRYPOINT ["/app/navidrome"]
