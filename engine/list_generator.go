@@ -8,6 +8,31 @@ import (
 	"github.com/deluan/navidrome/model"
 )
 
+type AlbumFilter model.QueryOptions
+
+func ByGenre(genre string) AlbumFilter {
+	return AlbumFilter{
+		Sort:    "genre asc, name asc",
+		Filters: squirrel.Eq{"genre": genre},
+	}
+}
+
+func ByYear(fromYear, toYear int) AlbumFilter {
+	return AlbumFilter{
+		Sort: "max_year",
+		Filters: squirrel.Or{
+			squirrel.And{
+				squirrel.LtOrEq{"min_year": toYear},
+				squirrel.GtOrEq{"max_year": toYear},
+			},
+			squirrel.And{
+				squirrel.LtOrEq{"min_year": fromYear},
+				squirrel.GtOrEq{"max_year": fromYear},
+			},
+		},
+	}
+}
+
 type ListGenerator interface {
 	GetNewest(ctx context.Context, offset int, size int) (Entries, error)
 	GetRecent(ctx context.Context, offset int, size int) (Entries, error)
@@ -20,6 +45,7 @@ type ListGenerator interface {
 	GetAllStarred(ctx context.Context) (artists Entries, albums Entries, mediaFiles Entries, err error)
 	GetNowPlaying(ctx context.Context) (Entries, error)
 	GetRandomSongs(ctx context.Context, size int, genre string) (Entries, error)
+	GetAlbums(ctx context.Context, offset, size int, filter AlbumFilter) (Entries, error)
 }
 
 func NewListGenerator(ds model.DataStore, npRepo NowPlayingRepository) ListGenerator {
@@ -96,6 +122,18 @@ func (g *listGenerator) GetRandomSongs(ctx context.Context, size int, genre stri
 	}
 
 	return FromMediaFiles(mediaFiles), nil
+}
+
+func (g *listGenerator) GetAlbums(ctx context.Context, offset, size int, filter AlbumFilter) (Entries, error) {
+	qo := model.QueryOptions(filter)
+	qo.Offset = offset
+	qo.Max = size
+	albums, err := g.ds.Album(ctx).GetAll(qo)
+	if err != nil {
+		return nil, err
+	}
+
+	return FromAlbums(albums), nil
 }
 
 func (g *listGenerator) GetStarred(ctx context.Context, offset int, size int) (Entries, error) {
