@@ -15,7 +15,7 @@
     "ra-language-italian": "^3.0.0",
     "ra-language-portuguese": "^1.6.0",
     "react": "^16.13.1",
-    "react-admin": "^3.3.3",
+    "react-admin": "^3.4.1",
     "react-dom": "^16.13.1",
     "react-jinke-music-player": "^4.11.2",
     "react-redux": "^7.2.0",
