@@ -6,8 +6,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-# TODO Fix tests in Windows
-#        os: [macOS-latest, ubuntu-latest, windows-latest]
+        # TODO Fix tests in Windows
+        #        os: [macOS-latest, ubuntu-latest, windows-latest]
         os: [macOS-latest, ubuntu-latest]
 
     steps:
@@ -20,7 +20,16 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v1
 
+      - uses: actions/cache@v1
+        id: cache-go
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
       - name: Download dependencies
+        if: steps.cache-go.outputs.cache-hit != 'true'
         run: go mod download
 
       - name: Test
@@ -36,16 +45,24 @@ jobs:
         with:
           node-version: 13
 
+      - uses: actions/cache@v1
+        id: cache-npm
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('ui/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: npm install dependencies
         run: |
           cd ui
           npm ci
 
-# TODO: Enable when there are tests to run
-#      - name: npm test
-#        run: |
-#          cd ui
-#          CI=test npm test
+      # TODO: Enable when there are tests to run
+      #      - name: npm test
+      #        run: |
+      #          cd ui
+      #          CI=test npm test
 
       - name: npm build
         run: |
