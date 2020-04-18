@@ -12,6 +12,7 @@ type ListGenerator interface {
 	GetAllStarred(ctx context.Context) (artists Entries, albums Entries, mediaFiles Entries, err error)
 	GetNowPlaying(ctx context.Context) (Entries, error)
 	GetRandomSongs(ctx context.Context, size int, genre string) (Entries, error)
+	GetSongsByGenre(ctx context.Context, offset int, count int, genre string) (Entries, error)
 	GetAlbums(ctx context.Context, offset, size int, filter AlbumFilter) (Entries, error)
 }
 
@@ -99,6 +100,19 @@ func (g *listGenerator) GetRandomSongs(ctx context.Context, size int, genre stri
 		options.Filters = squirrel.Eq{"genre": genre}
 	}
 	mediaFiles, err := g.ds.MediaFile(ctx).GetRandom(options)
+	if err != nil {
+		return nil, err
+	}
+
+	return FromMediaFiles(mediaFiles), nil
+}
+
+func (g *listGenerator) GetSongsByGenre(ctx context.Context, offset int, count int, genre string) (Entries, error) {
+	options := model.QueryOptions{Offset: offset, Max: count}
+	if genre != "" {
+		options.Filters = squirrel.Eq{"genre": genre}
+	}
+	mediaFiles, err := g.ds.MediaFile(ctx).GetAll(options)
 	if err != nil {
 		return nil, err
 	}
