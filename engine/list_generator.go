@@ -8,7 +8,50 @@ import (
 	"github.com/deluan/navidrome/model"
 )
 
+type ListGenerator interface {
+	GetAllStarred(ctx context.Context) (artists Entries, albums Entries, mediaFiles Entries, err error)
+	GetNowPlaying(ctx context.Context) (Entries, error)
+	GetRandomSongs(ctx context.Context, size int, genre string) (Entries, error)
+	GetAlbums(ctx context.Context, offset, size int, filter AlbumFilter) (Entries, error)
+}
+
+func NewListGenerator(ds model.DataStore, npRepo NowPlayingRepository) ListGenerator {
+	return &listGenerator{ds, npRepo}
+}
+
 type AlbumFilter model.QueryOptions
+
+func ByNewest() AlbumFilter {
+	return AlbumFilter{Sort: "createdAt", Order: "desc"}
+}
+
+func ByRecent() AlbumFilter {
+	return AlbumFilter{Sort: "playDate", Order: "desc", Filters: squirrel.Gt{"play_date": time.Time{}}}
+}
+
+func ByFrequent() AlbumFilter {
+	return AlbumFilter{Sort: "playCount", Order: "desc", Filters: squirrel.Gt{"play_count": 0}}
+}
+
+func ByRandom() AlbumFilter {
+	return AlbumFilter{Sort: "random()"}
+}
+
+func ByName() AlbumFilter {
+	return AlbumFilter{Sort: "name"}
+}
+
+func ByArtist() AlbumFilter {
+	return AlbumFilter{Sort: "artist"}
+}
+
+func ByStarred() AlbumFilter {
+	return AlbumFilter{Sort: "starred_at", Order: "desc", Filters: squirrel.Eq{"starred": true}}
+}
+
+func ByRating() AlbumFilter {
+	return AlbumFilter{Sort: "Rating", Order: "desc", Filters: squirrel.Gt{"rating": 0}}
+}
 
 func ByGenre(genre string) AlbumFilter {
 	return AlbumFilter{
@@ -19,7 +62,7 @@ func ByGenre(genre string) AlbumFilter {
 
 func ByYear(fromYear, toYear int) AlbumFilter {
 	return AlbumFilter{
-		Sort: "max_year",
+		Sort: "max_year, name",
 		Filters: squirrel.Or{
 			squirrel.And{
 				squirrel.LtOrEq{"min_year": toYear},
@@ -31,25 +74,6 @@ func ByYear(fromYear, toYear int) AlbumFilter {
 			},
 		},
 	}
-}
-
-type ListGenerator interface {
-	GetNewest(ctx context.Context, offset int, size int) (Entries, error)
-	GetRecent(ctx context.Context, offset int, size int) (Entries, error)
-	GetFrequent(ctx context.Context, offset int, size int) (Entries, error)
-	GetHighest(ctx context.Context, offset int, size int) (Entries, error)
-	GetRandom(ctx context.Context, offset int, size int) (Entries, error)
-	GetByName(ctx context.Context, offset int, size int) (Entries, error)
-	GetByArtist(ctx context.Context, offset int, size int) (Entries, error)
-	GetStarred(ctx context.Context, offset int, size int) (Entries, error)
-	GetAllStarred(ctx context.Context) (artists Entries, albums Entries, mediaFiles Entries, err error)
-	GetNowPlaying(ctx context.Context) (Entries, error)
-	GetRandomSongs(ctx context.Context, size int, genre string) (Entries, error)
-	GetAlbums(ctx context.Context, offset, size int, filter AlbumFilter) (Entries, error)
-}
-
-func NewListGenerator(ds model.DataStore, npRepo NowPlayingRepository) ListGenerator {
-	return &listGenerator{ds, npRepo}
 }
 
 type listGenerator struct {
@@ -67,48 +91,6 @@ func (g *listGenerator) query(ctx context.Context, qo model.QueryOptions) (Entri
 		albumIds[i] = al.ID
 	}
 	return FromAlbums(albums), err
-}
-
-func (g *listGenerator) GetNewest(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "CreatedAt", Order: "desc", Offset: offset, Max: size}
-	return g.query(ctx, qo)
-}
-
-func (g *listGenerator) GetRecent(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "PlayDate", Order: "desc", Offset: offset, Max: size,
-		Filters: squirrel.Gt{"play_date": time.Time{}}}
-	return g.query(ctx, qo)
-}
-
-func (g *listGenerator) GetFrequent(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "PlayCount", Order: "desc", Offset: offset, Max: size,
-		Filters: squirrel.Gt{"play_count": 0}}
-	return g.query(ctx, qo)
-}
-
-func (g *listGenerator) GetHighest(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "Rating", Order: "desc", Offset: offset, Max: size,
-		Filters: squirrel.Gt{"rating": 0}}
-	return g.query(ctx, qo)
-}
-
-func (g *listGenerator) GetByName(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "Name", Offset: offset, Max: size}
-	return g.query(ctx, qo)
-}
-
-func (g *listGenerator) GetByArtist(ctx context.Context, offset int, size int) (Entries, error) {
-	qo := model.QueryOptions{Sort: "Artist", Offset: offset, Max: size}
-	return g.query(ctx, qo)
-}
-
-func (g *listGenerator) GetRandom(ctx context.Context, offset int, size int) (Entries, error) {
-	albums, err := g.ds.Album(ctx).GetRandom(model.QueryOptions{Max: size, Offset: offset})
-	if err != nil {
-		return nil, err
-	}
-
-	return FromAlbums(albums), nil
 }
 
 func (g *listGenerator) GetRandomSongs(ctx context.Context, size int, genre string) (Entries, error) {

@@ -1,7 +1,6 @@
 package subsonic
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -12,51 +11,14 @@ import (
 )
 
 type AlbumListController struct {
-	listGen       engine.ListGenerator
-	listFunctions map[string]strategy
+	listGen engine.ListGenerator
 }
 
 func NewAlbumListController(listGen engine.ListGenerator) *AlbumListController {
 	c := &AlbumListController{
 		listGen: listGen,
 	}
-	c.listFunctions = map[string]strategy{
-		"random":               c.listGen.GetRandom,
-		"newest":               c.listGen.GetNewest,
-		"recent":               c.listGen.GetRecent,
-		"frequent":             c.listGen.GetFrequent,
-		"highest":              c.listGen.GetHighest,
-		"alphabeticalByName":   c.listGen.GetByName,
-		"alphabeticalByArtist": c.listGen.GetByArtist,
-		"starred":              c.listGen.GetStarred,
-	}
 	return c
-}
-
-type strategy func(ctx context.Context, offset int, size int) (engine.Entries, error)
-
-func (c *AlbumListController) getAlbumList(r *http.Request) (engine.Entries, error) {
-	typ, err := RequiredParamString(r, "type", "Required string parameter 'type' is not present")
-	if err != nil {
-		return nil, err
-	}
-	listFunc, found := c.listFunctions[typ]
-
-	if !found {
-		log.Error(r, "albumList type not implemented", "type", typ)
-		return nil, errors.New("Not implemented!")
-	}
-
-	offset := utils.ParamInt(r, "offset", 0)
-	size := utils.MinInt(utils.ParamInt(r, "size", 10), 500)
-
-	albums, err := listFunc(r.Context(), offset, size)
-	if err != nil {
-		log.Error(r, "Error retrieving albums", "error", err)
-		return nil, errors.New("Internal Error")
-	}
-
-	return albums, nil
 }
 
 func (c *AlbumListController) getNewAlbumList(r *http.Request) (engine.Entries, error) {
@@ -67,12 +29,29 @@ func (c *AlbumListController) getNewAlbumList(r *http.Request) (engine.Entries, 
 
 	var filter engine.AlbumFilter
 	switch typ {
+	case "newest":
+		filter = engine.ByNewest()
+	case "recent":
+		filter = engine.ByRecent()
+	case "random":
+		filter = engine.ByRandom()
+	case "alphabeticalByName":
+		filter = engine.ByName()
+	case "alphabeticalByArtist":
+		filter = engine.ByArtist()
+	case "frequent":
+		filter = engine.ByFrequent()
+	case "starred":
+		filter = engine.ByStarred()
+	case "highest":
+		filter = engine.ByRating()
 	case "byGenre":
 		filter = engine.ByGenre(utils.ParamString(r, "genre"))
 	case "byYear":
 		filter = engine.ByYear(utils.ParamInt(r, "fromYear", 0), utils.ParamInt(r, "toYear", 0))
 	default:
-		return c.getAlbumList(r)
+		log.Error(r, "albumList type not implemented", "type", typ)
+		return nil, errors.New("Not implemented!")
 	}
 
 	offset := utils.ParamInt(r, "offset", 0)
