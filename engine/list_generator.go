@@ -65,12 +65,12 @@ func ByYear(fromYear, toYear int) ListFilter {
 		Sort: "max_year, name",
 		Filters: squirrel.Or{
 			squirrel.And{
+				squirrel.GtOrEq{"min_year": fromYear},
 				squirrel.LtOrEq{"min_year": toYear},
-				squirrel.GtOrEq{"max_year": toYear},
 			},
 			squirrel.And{
-				squirrel.LtOrEq{"min_year": fromYear},
 				squirrel.GtOrEq{"max_year": fromYear},
+				squirrel.LtOrEq{"max_year": toYear},
 			},
 		},
 	}
