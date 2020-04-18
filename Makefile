@@ -33,7 +33,7 @@ testall: check_go_env test
 	@(cd ./ui && npm test -- --watchAll=false)
 .PHONY: testall
 
-setup: Jamstash-master
+setup:
 	@which wire       || (echo "Installing Wire"     && GO111MODULE=off go get -u github.com/google/wire/cmd/wire)
 	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
 	@which reflex     || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
