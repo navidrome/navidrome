@@ -144,7 +144,7 @@ func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Requ
 	fromYear := utils.ParamInt(r, "fromYear", 0)
 	toYear := utils.ParamInt(r, "toYear", 0)
 
-	songs, err := c.listGen.GetSongs(r.Context(), 0, size, engine.RandomSongs(genre, fromYear, toYear))
+	songs, err := c.listGen.GetSongs(r.Context(), 0, size, engine.SongsByRandom(genre, fromYear, toYear))
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
@@ -161,7 +161,7 @@ func (c *AlbumListController) GetSongsByGenre(w http.ResponseWriter, r *http.Req
 	offset := utils.MinInt(utils.ParamInt(r, "offset", 0), 500)
 	genre := utils.ParamString(r, "genre")
 
-	songs, err := c.listGen.GetSongsByGenre(r.Context(), offset, count, genre)
+	songs, err := c.listGen.GetSongs(r.Context(), offset, count, engine.SongsByGenre(genre))
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")

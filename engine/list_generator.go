@@ -11,7 +11,6 @@ import (
 type ListGenerator interface {
 	GetAllStarred(ctx context.Context) (artists Entries, albums Entries, mediaFiles Entries, err error)
 	GetNowPlaying(ctx context.Context) (Entries, error)
-	GetSongsByGenre(ctx context.Context, offset int, count int, genre string) (Entries, error)
 	GetSongs(ctx context.Context, offset, size int, filter ListFilter) (Entries, error)
 	GetAlbums(ctx context.Context, offset, size int, filter ListFilter) (Entries, error)
 }
@@ -77,7 +76,14 @@ func ByYear(fromYear, toYear int) ListFilter {
 	}
 }
 
-func RandomSongs(genre string, fromYear, toYear int) ListFilter {
+func SongsByGenre(genre string) ListFilter {
+	return ListFilter{
+		Sort:    "genre asc, title asc",
+		Filters: squirrel.Eq{"genre": genre},
+	}
+}
+
+func SongsByRandom(genre string, fromYear, toYear int) ListFilter {
 	options := ListFilter{
 		Sort: "random()",
 	}
@@ -110,19 +116,6 @@ func (g *listGenerator) query(ctx context.Context, qo model.QueryOptions) (Entri
 		albumIds[i] = al.ID
 	}
 	return FromAlbums(albums), err
-}
-
-func (g *listGenerator) GetSongsByGenre(ctx context.Context, offset int, count int, genre string) (Entries, error) {
-	options := model.QueryOptions{Offset: offset, Max: count}
-	if genre != "" {
-		options.Filters = squirrel.Eq{"genre": genre}
-	}
-	mediaFiles, err := g.ds.MediaFile(ctx).GetAll(options)
-	if err != nil {
-		return nil, err
-	}
-
-	return FromMediaFiles(mediaFiles), nil
 }
 
 func (g *listGenerator) GetSongs(ctx context.Context, offset, size int, filter ListFilter) (Entries, error) {
