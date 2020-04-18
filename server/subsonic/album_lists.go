@@ -153,3 +153,20 @@ func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Requ
 	response.RandomSongs.Songs = ToChildren(r.Context(), songs)
 	return response, nil
 }
+
+func (c *AlbumListController) GetSongsByGenre(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	count := utils.MinInt(utils.ParamInt(r, "count", 10), 500)
+	offset := utils.MinInt(utils.ParamInt(r, "offset", 0), 500)
+	genre := utils.ParamString(r, "genre")
+
+	songs, err := c.listGen.GetSongsByGenre(r.Context(), offset, count, genre)
+	if err != nil {
+		log.Error(r, "Error retrieving random songs", "error", err)
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	response := NewResponse()
+	response.RandomSongs = &responses.Songs{}
+	response.RandomSongs.Songs = ToChildren(r.Context(), songs)
+	return response, nil
+}

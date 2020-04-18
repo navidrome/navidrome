@@ -86,6 +86,7 @@ func (api *Router) routes() http.Handler {
 		H(withPlayer, "getStarred2", c.GetStarred2)
 		H(withPlayer, "getNowPlaying", c.GetNowPlaying)
 		H(withPlayer, "getRandomSongs", c.GetRandomSongs)
+		H(withPlayer, "getSongsByGenre", c.GetSongsByGenre)
 	})
 	r.Group(func(r chi.Router) {
 		c := initMediaAnnotationController(api)

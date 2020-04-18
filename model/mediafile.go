@@ -48,6 +48,7 @@ type MediaFileRepository interface {
 	Exists(id string) (bool, error)
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
+	GetAll(options ...QueryOptions) (MediaFiles, error)
 	FindByAlbum(albumId string) (MediaFiles, error)
 	FindByPath(path string) (MediaFiles, error)
 	GetStarred(options ...QueryOptions) (MediaFiles, error)
