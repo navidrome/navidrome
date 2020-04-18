@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi"
 )
 
-const Version = "1.10.1"
+const Version = "1.10.2"
 
 type Handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
