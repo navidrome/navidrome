@@ -18,7 +18,7 @@ type fakeListGen struct {
 	recvSize   int
 }
 
-func (lg *fakeListGen) GetAlbums(ctx context.Context, offset int, size int, filter engine.AlbumFilter) (engine.Entries, error) {
+func (lg *fakeListGen) GetAlbums(ctx context.Context, offset int, size int, filter engine.ListFilter) (engine.Entries, error) {
 	if lg.err != nil {
 		return nil, lg.err
 	}

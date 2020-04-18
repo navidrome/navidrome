@@ -27,7 +27,7 @@ func (c *AlbumListController) getNewAlbumList(r *http.Request) (engine.Entries, 
 		return nil, err
 	}
 
-	var filter engine.AlbumFilter
+	var filter engine.ListFilter
 	switch typ {
 	case "newest":
 		filter = engine.ByNewest()
@@ -141,8 +141,10 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	size := utils.MinInt(utils.ParamInt(r, "size", 10), 500)
 	genre := utils.ParamString(r, "genre")
+	fromYear := utils.ParamInt(r, "fromYear", 0)
+	toYear := utils.ParamInt(r, "toYear", 0)
 
-	songs, err := c.listGen.GetRandomSongs(r.Context(), size, genre)
+	songs, err := c.listGen.GetSongs(r.Context(), 0, size, engine.RandomSongs(genre, fromYear, toYear))
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", "error", err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
