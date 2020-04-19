@@ -89,13 +89,13 @@ func SongsByRandom(genre string, fromYear, toYear int) ListFilter {
 	}
 	ff := squirrel.And{}
 	if genre != "" {
-		options.Filters = append(ff, squirrel.Eq{"genre": genre})
+		ff = append(ff, squirrel.Eq{"genre": genre})
 	}
 	if fromYear != 0 {
-		options.Filters = append(ff, squirrel.GtOrEq{"year": fromYear})
+		ff = append(ff, squirrel.GtOrEq{"year": fromYear})
 	}
 	if toYear != 0 {
-		options.Filters = append(ff, squirrel.LtOrEq{"year": toYear})
+		ff = append(ff, squirrel.LtOrEq{"year": toYear})
 	}
 	options.Filters = ff
 	return options
