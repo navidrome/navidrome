@@ -26,6 +26,9 @@ const (
 
 	URLPathUI          = "/app"
 	URLPathSubsonicAPI = "/rest"
+
+	RequestThrottleBacklogLimit   = 100
+	RequestThrottleBacklogTimeout = time.Minute
 )
 
 // Cache options

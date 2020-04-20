@@ -1,10 +1,12 @@
 package server
 
 import (
+	"math"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
@@ -61,6 +63,10 @@ func (a *Server) initRoutes() {
 	r.Use(middleware.Compress(5, "application/xml", "application/json", "application/javascript"))
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(InjectLogger)
+
+	// configure request throttling
+	maxRequests := math.Max(2, float64(runtime.NumCPU()))
+	r.Use(middleware.ThrottleBacklog(int(maxRequests), consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
 
 	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI, "index.html")
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
