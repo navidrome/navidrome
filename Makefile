@@ -2,6 +2,7 @@ GO_VERSION=$(shell grep -e "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
 
 GIT_SHA=$(shell git rev-parse --short HEAD)
+GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
 
 ## Default target just build the Go project.
 default:
@@ -76,13 +77,13 @@ check_node_env:
 .PHONY: check_node_env
 
 build: check_go_env
-	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=master"
+	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)"
 .PHONY: build
 
 buildall: check_env
 	@(cd ./ui && npm run build)
 	go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
-	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=master" -tags=embed
+	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)" -tags=embed
 .PHONY: buildall
 
 release:
