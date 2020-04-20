@@ -51,6 +51,5 @@ create index annotation_starred
 }
 
 func Down20200208222418(tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back.
 	return nil
 }

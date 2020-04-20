@@ -75,6 +75,5 @@ create index album_max_year
 }
 
 func Down20200327193744(tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back.
 	return nil
 }

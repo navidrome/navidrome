@@ -15,6 +15,5 @@ func Up20200418110522(tx *sql.Tx) error {
 }
 
 func Down20200418110522(tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back.
 	return nil
 }

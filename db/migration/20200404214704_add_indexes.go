@@ -25,6 +25,5 @@ create index if not exists media_file_track_number
 }
 
 func Down20200404214704(tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back.
 	return nil
 }

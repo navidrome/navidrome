@@ -37,6 +37,5 @@ drop table if exists search;
 }
 
 func Down20200319211049(tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back.
 	return nil
 }
