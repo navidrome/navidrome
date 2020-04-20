@@ -15,11 +15,11 @@ const format = (d) => {
 DurationField.propTypes = {
   label: PropTypes.string,
   record: PropTypes.object,
-  source: PropTypes.string.isRequired
+  source: PropTypes.string.isRequired,
 }
 
 DurationField.defaultProps = {
-  addLabel: true
+  addLabel: true,
 }
 
 export default DurationField

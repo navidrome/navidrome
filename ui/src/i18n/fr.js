@@ -15,14 +15,14 @@ export default deepmerge(frenchMessages, {
         compilation: 'Compilation',
         duration: 'Durée',
         year: 'Année',
-        playCount: 'Nombre d\'écoutes',
+        playCount: "Nombre d'écoutes",
         trackNumber: '#',
         size: 'Taille',
-        updatedAt: 'Mise à jour'
+        updatedAt: 'Mise à jour',
       },
       bulk: {
-        addToQueue: 'Ajouter à la file'
-      }
+        addToQueue: 'Ajouter à la file',
+      },
     },
     album: {
       name: 'Album |||| Albums',
@@ -31,55 +31,55 @@ export default deepmerge(frenchMessages, {
         artist: 'Artiste',
         songCount: 'Numéro de piste',
         genre: 'Genre',
-        playCount: 'Numbre d\'écoutes',
+        playCount: "Numbre d'écoutes",
         compilation: 'Compilation',
         duration: 'Durée',
-        year: 'Année'
+        year: 'Année',
       },
       actions: {
         playAll: 'Lire',
         playNext: 'Lire ensuite',
         addToQueue: 'Ajouter à la file',
-        shuffle: 'Mélanger'
-      }
+        shuffle: 'Mélanger',
+      },
     },
     artist: {
       name: 'Artiste |||| Artistes',
       fields: {
         name: 'Nom',
-        albumCount: 'Nombre d\'albums'
-      }
+        albumCount: "Nombre d'albums",
+      },
     },
     user: {
       name: 'Utilisateur |||| Utilisateurs',
       fields: {
-        name: 'Nom'
-      }
+        name: 'Nom',
+      },
     },
     transcoding: {
       name: 'Conversion |||| Conversions',
       fields: {
-        name: 'Nom'
-      }
+        name: 'Nom',
+      },
     },
     player: {
       name: 'Lecteur |||| Lecteurs',
       fields: {
-        name: 'Nom'
-      }
-    }
+        name: 'Nom',
+      },
+    },
   },
   ra: {
     auth: {
-      welcome1: 'Merci d\'avoir installé Navidrome !',
+      welcome1: "Merci d'avoir installé Navidrome !",
       welcome2: 'Pour commencer, créez un compte administrateur',
       confirmPassword: 'Confirmer votre mot de passe',
-      buttonCreateAdmin: 'Créer un compte administrateur'
+      buttonCreateAdmin: 'Créer un compte administrateur',
     },
     validation: {
-      invalidChars: 'Merci d\'utiliser uniquement des chiffres et des lettres',
-      passwordDoesNotMatch: 'Les mots de passes ne correspondent pas'
-    }
+      invalidChars: "Merci d'utiliser uniquement des chiffres et des lettres",
+      passwordDoesNotMatch: 'Les mots de passes ne correspondent pas',
+    },
   },
   menu: {
     library: 'Bibliothèque',
@@ -89,9 +89,9 @@ export default deepmerge(frenchMessages, {
       name: 'Paramètres personel',
       options: {
         theme: 'Thème',
-        language: 'Langue'
-      }
-    }
+        language: 'Langue',
+      },
+    },
   },
   player: {
     playListsText: 'File de lecture',
@@ -106,7 +106,7 @@ export default deepmerge(frenchMessages, {
       order: 'Ordonner',
       orderLoop: 'Tout répéter',
       singleLoop: 'Repéter',
-      shufflePlay: 'Aleatoire'
-    }
-  }
+      shufflePlay: 'Aleatoire',
+    },
+  },
 })

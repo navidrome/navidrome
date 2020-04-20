@@ -13,33 +13,33 @@ const mapToAudioLists = (item) => ({
   name: item.title,
   singer: item.artist,
   cover: subsonic.url('getCoverArt', item.id, { size: 300 }),
-  musicSrc: subsonic.url('stream', item.id, { ts: true })
+  musicSrc: subsonic.url('stream', item.id, { ts: true }),
 })
 
 const addTrack = (data) => ({
   type: PLAYER_ADD_TRACK,
-  data
+  data,
 })
 
 const setTrack = (data) => ({
   type: PLAYER_SET_TRACK,
-  data
+  data,
 })
 
 const playAlbum = (id, data) => ({
   type: PLAYER_PLAY_ALBUM,
   data,
-  id
+  id,
 })
 
 const syncQueue = (data) => ({
   type: PLAYER_SYNC_QUEUE,
-  data
+  data,
 })
 
 const scrobbled = (id) => ({
   type: PLAYER_SCROBBLE,
-  data: id
+  data: id,
 })
 
 const playQueueReducer = (
@@ -61,7 +61,7 @@ const playQueueReducer = (
       const newQueue = previousState.queue.map((item) => {
         return {
           ...item,
-          scrobbled: item.scrobbled || item.trackId === data
+          scrobbled: item.scrobbled || item.trackId === data,
         }
       })
       return { queue: newQueue, clear: false }

@@ -18,11 +18,11 @@ export default deepmerge(portugueseMessages, {
         playCount: 'Execuções',
         trackNumber: '#',
         size: 'Tamanho',
-        updatedAt: 'Últ. Atualização'
+        updatedAt: 'Últ. Atualização',
       },
       bulk: {
-        addToQueue: 'Play Later'
-      }
+        addToQueue: 'Play Later',
+      },
     },
     album: {
       name: 'Álbum |||| Álbuns',
@@ -34,21 +34,21 @@ export default deepmerge(portugueseMessages, {
         playCount: 'Execuções',
         compilation: 'Coletânea',
         duration: 'Duração',
-        year: 'Ano'
+        year: 'Ano',
       },
       actions: {
         playAll: 'Play',
         playNext: 'Play Next',
         addToQueue: 'Play Later',
-        shuffle: 'Shuffle'
-      }
+        shuffle: 'Shuffle',
+      },
     },
     artist: {
       name: 'Artista |||| Artistas',
       fields: {
         name: 'Nome',
-        albumCount: 'Total de Álbuns'
-      }
+        albumCount: 'Total de Álbuns',
+      },
     },
     user: {
       name: 'Usuário |||| Usuários',
@@ -57,8 +57,8 @@ export default deepmerge(portugueseMessages, {
         isAdmin: 'Admin?',
         lastLoginAt: 'Últ. Login',
         updatedAt: 'Últ. Atualização',
-        name: 'Nome'
-      }
+        name: 'Nome',
+      },
     },
     player: {
       name: 'Tocador |||| Tocadores',
@@ -68,8 +68,8 @@ export default deepmerge(portugueseMessages, {
         maxBitRate: 'Bitrate máx',
         client: 'Cliente',
         userName: 'Usuário',
-        lastSeen: 'Últ. acesso'
-      }
+        lastSeen: 'Últ. acesso',
+      },
     },
     transcoding: {
       name: 'Conversão |||| Conversões',
@@ -77,21 +77,21 @@ export default deepmerge(portugueseMessages, {
         name: 'Nome',
         targetFormat: 'Formato',
         defaultBitRate: 'Bitrate padrão',
-        command: 'Comando'
-      }
-    }
+        command: 'Comando',
+      },
+    },
   },
   ra: {
     auth: {
       welcome1: 'Obrigado por instalar Navidrome!',
       welcome2: 'Para iniciar, crie um usuário admin',
       confirmPassword: 'Confirme a senha',
-      buttonCreateAdmin: 'Criar Admin'
+      buttonCreateAdmin: 'Criar Admin',
     },
     validation: {
       invalidChars: 'Somente use letras e numeros',
-      passwordDoesNotMatch: 'Senha não confere'
-    }
+      passwordDoesNotMatch: 'Senha não confere',
+    },
   },
   menu: {
     library: 'Biblioteca',
@@ -101,9 +101,9 @@ export default deepmerge(portugueseMessages, {
       name: 'Pessoal',
       options: {
         theme: 'Tema',
-        language: 'Língua'
-      }
-    }
+        language: 'Língua',
+      },
+    },
   },
   player: {
     playListsText: 'Fila de Execução',
@@ -121,7 +121,7 @@ export default deepmerge(portugueseMessages, {
       order: 'Em ordem',
       orderLoop: 'Repetir tudo',
       singleLoop: 'Repetir',
-      shufflePlay: 'Aleatório'
-    }
-  }
+      shufflePlay: 'Aleatório',
+    },
+  },
 })

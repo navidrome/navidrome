@@ -17,9 +17,9 @@ const translatedResourceName = (resource, translate) =>
       resource.options && resource.options.label
         ? translate(resource.options.label, {
             smart_count: 2,
-            _: resource.options.label
+            _: resource.options.label,
           })
-        : inflection.humanize(inflection.pluralize(resource.name))
+        : inflection.humanize(inflection.pluralize(resource.name)),
   })
 
 const Menu = ({ onMenuClick, dense, logout }) => {
@@ -31,7 +31,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
     menuLibrary: true,
-    menuSettings: false
+    menuSettings: false,
   })
 
   const handleToggle = (menu) => {

@@ -3,5 +3,5 @@ import ArtistList from './ArtistList'
 
 export default {
   list: ArtistList,
-  icon: MicIcon
+  icon: MicIcon,
 }

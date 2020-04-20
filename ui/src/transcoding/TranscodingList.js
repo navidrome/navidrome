@@ -6,7 +6,11 @@ import { SimpleList, Title } from '../common'
 const TranscodingList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return (
-    <List title={<Title subTitle={'Transcodings'} />} exporter={false} {...props}>
+    <List
+      title={<Title subTitle={'Transcodings'} />}
+      exporter={false}
+      {...props}
+    >
       {isXsmall ? (
         <SimpleList
           primaryText={(r) => r.name}
@@ -14,13 +18,13 @@ const TranscodingList = (props) => {
           tertiaryText={(r) => r.defaultBitRate}
         />
       ) : (
-      <Datagrid rowClick="edit">
-        <TextField source="name" />
-        <TextField source="targetFormat" />
-        <TextField source="defaultBitRate" />
-        <TextField source="command" />
-      </Datagrid>
-        )}
+        <Datagrid rowClick="edit">
+          <TextField source="name" />
+          <TextField source="targetFormat" />
+          <TextField source="defaultBitRate" />
+          <TextField source="command" />
+        </Datagrid>
+      )}
     </List>
   )
 }

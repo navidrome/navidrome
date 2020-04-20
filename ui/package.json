@@ -21,10 +21,10 @@
     "react-scripts": "^3.4.1"
   },
   "devDependencies": {
-    "prettier": "^1.19.1",
     "@testing-library/jest-dom": "^5.5.0",
     "@testing-library/react": "^10.0.2",
-    "@testing-library/user-event": "^10.0.2"
+    "@testing-library/user-event": "^10.0.2",
+    "prettier": "^2.0.4"
   },
   "scripts": {
     "start": "react-scripts start",

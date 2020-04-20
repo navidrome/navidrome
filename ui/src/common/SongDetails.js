@@ -20,7 +20,7 @@ const SongDetails = (props) => {
     bitRate: <BitrateField record={record} source="bitRate" />,
     size: <SizeField record={record} source="size" />,
     updatedAt: <DateField record={record} source="updatedAt" showTime />,
-    playCount: <TextField record={record} source="playCount" />
+    playCount: <TextField record={record} source="playCount" />,
   }
   if (record.playCount > 0) {
     data.playDate = <DateField record={record} source="playDate" showTime />
@@ -34,7 +34,7 @@ const SongDetails = (props) => {
               <TableRow key={record.id}>
                 <TableCell component="th" scope="row">
                   {translate(`resources.song.fields.${key}`, {
-                    _: inflection.humanize(inflection.underscore(key))
+                    _: inflection.humanize(inflection.underscore(key)),
                   })}
                   :
                 </TableCell>

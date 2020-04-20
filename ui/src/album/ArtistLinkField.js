@@ -15,5 +15,5 @@ export const ArtistLinkField = (props) => {
 
 ArtistLinkField.defaultProps = {
   source: 'artistId',
-  addLabel: true
+  addLabel: true,
 }

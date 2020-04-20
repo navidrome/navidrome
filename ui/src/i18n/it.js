@@ -18,11 +18,11 @@ export default deepmerge(italianMessages, {
         playCount: 'Riproduzioni',
         trackNumber: '#',
         size: 'Dimensioni',
-        updatedAt: 'Ultimo aggiornamento'
+        updatedAt: 'Ultimo aggiornamento',
       },
       bulk: {
-        addToQueue: 'Aggiungi alla coda'
-      }
+        addToQueue: 'Aggiungi alla coda',
+      },
     },
     album: {
       name: 'Album |||| Album',
@@ -34,21 +34,21 @@ export default deepmerge(italianMessages, {
         playCount: 'Riproduzioni',
         compilation: 'Compilation',
         duration: 'Durata',
-        year: 'Anno'
+        year: 'Anno',
       },
       actions: {
         playAll: 'Riproduci',
         playNext: 'Riproduci come successivo',
         addToQueue: 'Aggiungi alla coda',
-        shuffle: 'Riprodici casualmente'
-      }
+        shuffle: 'Riprodici casualmente',
+      },
     },
     artist: {
       name: 'Artista |||| Artisti',
       fields: {
         name: 'Nome',
-        albumCount: 'Album'
-      }
+        albumCount: 'Album',
+      },
     },
     user: {
       name: 'Utente |||| Utenti',
@@ -57,8 +57,8 @@ export default deepmerge(italianMessages, {
         isAdmin: 'Amministratore',
         lastLoginAt: 'Ultimo accesso',
         updatedAt: 'Ultima modifica',
-        name: 'Nome'
-      }
+        name: 'Nome',
+      },
     },
     player: {
       name: 'Client |||| Client',
@@ -68,8 +68,8 @@ export default deepmerge(italianMessages, {
         maxBitRate: 'Bitrate massimo',
         client: 'Applicazione',
         userName: 'Utente',
-        lastSeen: 'Ultimo acesso'
-      }
+        lastSeen: 'Ultimo acesso',
+      },
     },
     transcoding: {
       name: 'Transcodifica |||| Transcodifiche',
@@ -77,21 +77,21 @@ export default deepmerge(italianMessages, {
         name: 'Nome',
         targetFormat: 'Formato',
         defaultBitRate: 'Bitrate predefinito',
-        command: 'Comando'
-      }
-    }
+        command: 'Comando',
+      },
+    },
   },
   ra: {
     auth: {
       welcome1: 'Grazie per aver installato Navidrome!',
       welcome2: 'Per iniziare, crea un amministratore',
       confirmPassword: 'Conferma la password',
-      buttonCreateAdmin: 'Crea amministratore'
+      buttonCreateAdmin: 'Crea amministratore',
     },
     validation: {
       invalidChars: 'Per favore usa solo lettere e numeri',
-      passwordDoesNotMatch: 'Le password non coincidono'
-    }
+      passwordDoesNotMatch: 'Le password non coincidono',
+    },
   },
   menu: {
     library: 'Libreria',
@@ -101,9 +101,9 @@ export default deepmerge(italianMessages, {
       name: 'Personale',
       options: {
         theme: 'Tema',
-        language: 'Lingua'
-      }
-    }
+        language: 'Lingua',
+      },
+    },
   },
   player: {
     playListsText: 'Coda',
@@ -121,7 +121,7 @@ export default deepmerge(italianMessages, {
       order: 'In ordine',
       orderLoop: 'Ripeti',
       singleLoop: 'Ripeti una volta',
-      shufflePlay: 'Casuale'
-    }
-  }
+      shufflePlay: 'Casuale',
+    },
+  },
 })

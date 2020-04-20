@@ -7,7 +7,7 @@ import {
   FunctionField,
   Show,
   SimpleShowLayout,
-  TextField
+  TextField,
 } from 'react-admin'
 import { DurationField, RangeField } from '../common'
 import { useMediaQuery } from '@material-ui/core'

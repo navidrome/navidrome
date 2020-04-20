@@ -7,5 +7,5 @@ export default {
   list: TranscodingList,
   edit: TranscodingEdit,
   create: TranscodingCreate,
-  icon: TransformIcon
+  icon: TransformIcon,
 }

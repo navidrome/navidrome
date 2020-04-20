@@ -20,11 +20,11 @@ function formatBytes(bytes, decimals = 2) {
 SizeField.propTypes = {
   label: PropTypes.string,
   record: PropTypes.object,
-  source: PropTypes.string.isRequired
+  source: PropTypes.string.isRequired,
 }
 
 SizeField.defaultProps = {
-  addLabel: true
+  addLabel: true,
 }
 
 export default SizeField

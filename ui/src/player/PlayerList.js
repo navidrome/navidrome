@@ -5,7 +5,7 @@ import {
   TextField,
   DateField,
   FunctionField,
-  ReferenceField
+  ReferenceField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import { SimpleList, Title } from '../common'
@@ -21,18 +21,18 @@ const PlayerList = (props) => {
           tertiaryText={(r) => (r.maxBitRate ? r.maxBitRate : 'Unlimited')}
         />
       ) : (
-      <Datagrid rowClick="edit">
-        <TextField source="name" />
-        <ReferenceField source="transcodingId" reference="transcoding">
+        <Datagrid rowClick="edit">
           <TextField source="name" />
-        </ReferenceField>
-        <FunctionField
-          source="maxBitRate"
-          render={(r) => (r.maxBitRate ? r.maxBitRate : 'Unlimited')}
-        />
-        <DateField source="lastSeen" showTime />
-      </Datagrid>
-        )}
+          <ReferenceField source="transcodingId" reference="transcoding">
+            <TextField source="name" />
+          </ReferenceField>
+          <FunctionField
+            source="maxBitRate"
+            render={(r) => (r.maxBitRate ? r.maxBitRate : 'Unlimited')}
+          />
+          <DateField source="lastSeen" showTime />
+        </Datagrid>
+      )}
     </List>
   )
 }

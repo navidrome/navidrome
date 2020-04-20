@@ -5,8 +5,8 @@ import TuneIcon from '@material-ui/icons/Tune'
 
 const useStyles = makeStyles((theme) => ({
   menuItem: {
-    color: theme.palette.text.secondary
-  }
+    color: theme.palette.text.secondary,
+  },
 }))
 
 const PersonalMenu = forwardRef(({ onClick, sidebarIsOpen, dense }, ref) => {

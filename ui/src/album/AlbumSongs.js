@@ -6,7 +6,7 @@ import {
   ListToolbar,
   TextField,
   useListController,
-  DatagridLoading
+  DatagridLoading,
 } from 'react-admin'
 import classnames from 'classnames'
 import { useDispatch } from 'react-redux'
@@ -20,7 +20,7 @@ const useStyles = makeStyles(
   (theme) => ({
     root: {},
     main: {
-      display: 'flex'
+      display: 'flex',
     },
     content: {
       marginTop: 0,
@@ -28,29 +28,29 @@ const useStyles = makeStyles(
       position: 'relative',
       flex: '1 1 auto',
       [theme.breakpoints.down('xs')]: {
-        boxShadow: 'none'
+        boxShadow: 'none',
       },
-      overflow: 'inherit'
+      overflow: 'inherit',
     },
     bulkActionsDisplayed: {
       marginTop: -theme.spacing(8),
-      transition: theme.transitions.create('margin-top')
+      transition: theme.transitions.create('margin-top'),
     },
     actions: {
       zIndex: 2,
       display: 'flex',
       justifyContent: 'flex-end',
-      flexWrap: 'wrap'
+      flexWrap: 'wrap',
     },
-    noResults: { padding: 20 }
+    noResults: { padding: 20 },
   }),
   { name: 'RaList' }
 )
 
 const useStylesListToolbar = makeStyles({
   toolbar: {
-    justifyContent: 'flex-start'
-  }
+    justifyContent: 'flex-start',
+  },
 })
 
 const trackName = (r) => {
@@ -88,7 +88,7 @@ const AlbumSongs = (props) => {
         <Card
           className={classnames(classes.content, {
             [classes.bulkActionsDisplayed]:
-              controllerProps.selectedIds.length > 0
+              controllerProps.selectedIds.length > 0,
           })}
           key={version}
         >

@@ -6,7 +6,7 @@ import {
   List,
   NumberField,
   SearchInput,
-  TextField
+  TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import {
@@ -14,7 +14,7 @@ import {
   Pagination,
   PlayButton,
   SimpleList,
-  Title
+  Title,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { addTrack, setTrack } from '../audioplayer'

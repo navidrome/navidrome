@@ -3,7 +3,7 @@ import {
   Button,
   useDataProvider,
   useTranslate,
-  useUnselectAll
+  useUnselectAll,
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import { addTrack } from '../audioplayer'

@@ -7,5 +7,5 @@ export default {
   list: UserList,
   edit: UserEdit,
   create: UserCreate,
-  icon: Group
+  icon: Group,
 }

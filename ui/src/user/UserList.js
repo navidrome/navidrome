@@ -7,7 +7,7 @@ import {
   List,
   SearchInput,
   SimpleList,
-  TextField
+  TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import { Title } from '../common'

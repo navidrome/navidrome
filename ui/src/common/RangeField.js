@@ -22,11 +22,11 @@ const RangeField = ({ record = {}, source }) => {
 RangeField.propTypes = {
   label: PropTypes.string,
   record: PropTypes.object,
-  source: PropTypes.string.isRequired
+  source: PropTypes.string.isRequired,
 }
 
 RangeField.defaultProps = {
-  addLabel: true
+  addLabel: true,
 }
 
 export { formatRange }

@@ -5,5 +5,5 @@ import PlayerEdit from './PlayerEdit'
 export default {
   list: PlayerList,
   edit: PlayerEdit,
-  icon: RadioIcon
+  icon: RadioIcon,
 }

@@ -10,12 +10,12 @@ export default ({
   authProvider,
   dataProvider,
   history,
-  customReducers = {}
+  customReducers = {},
 }) => {
   const reducer = combineReducers({
     admin: adminReducer,
     router: connectRouter(history),
-    ...customReducers
+    ...customReducers,
   })
   const resettableAppReducer = (state, action) =>
     reducer(action.type !== USER_LOGOUT ? state : undefined, action)
@@ -31,7 +31,7 @@ export default ({
       window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ &&
       window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
         trace: true,
-        traceLimit: 25
+        traceLimit: 25,
       })) ||
     compose
 
@@ -48,7 +48,7 @@ export default ({
       saveState({
         theme: state.theme,
         queue: state.queue,
-        albumView: state.albumView
+        albumView: state.albumView,
       })
     }),
     1000

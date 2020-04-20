@@ -8,11 +8,11 @@ const BitrateField = ({ record = {}, source }) => {
 BitrateField.propTypes = {
   label: PropTypes.string,
   record: PropTypes.object,
-  source: PropTypes.string.isRequired
+  source: PropTypes.string.isRequired,
 }
 
 BitrateField.defaultProps = {
-  addLabel: true
+  addLabel: true,
 }
 
 export default BitrateField

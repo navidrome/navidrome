@@ -3,5 +3,5 @@ import SongList from './SongList'
 
 export default {
   list: SongList,
-  icon: MusicNoteIcon
+  icon: MusicNoteIcon,
 }

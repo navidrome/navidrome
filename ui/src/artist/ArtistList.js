@@ -5,7 +5,7 @@ import {
   List,
   NumberField,
   SearchInput,
-  TextField
+  TextField,
 } from 'react-admin'
 import { Pagination, Title } from '../common'
 
@@ -15,7 +15,7 @@ const ArtistFilter = (props) => (
   </Filter>
 )
 
-const artistRowClick = (id, basePath, record) => {
+const artistRowClick = (id) => {
   const filter = { artist_id: id }
   return `/album?filter=${JSON.stringify(
     filter

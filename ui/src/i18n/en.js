@@ -10,11 +10,11 @@ export default deepmerge(englishMessages, {
         albumArtist: 'Album Artist',
         duration: 'Time',
         trackNumber: 'Track #',
-        playCount: 'Plays'
+        playCount: 'Plays',
       },
       bulk: {
-        addToQueue: 'Play Later'
-      }
+        addToQueue: 'Play Later',
+      },
     },
     album: {
       fields: {
@@ -22,27 +22,27 @@ export default deepmerge(englishMessages, {
         artist: 'Artist',
         duration: 'Time',
         songCount: 'Songs',
-        playCount: 'Plays'
+        playCount: 'Plays',
       },
       actions: {
         playAll: 'Play',
         playNext: 'Play Next',
         addToQueue: 'Play Later',
-        shuffle: 'Shuffle'
-      }
-    }
+        shuffle: 'Shuffle',
+      },
+    },
   },
   ra: {
     auth: {
       welcome1: 'Thanks for installing Navidrome!',
       welcome2: 'To start, create an admin user',
       confirmPassword: 'Confirm Password',
-      buttonCreateAdmin: 'Create Admin'
+      buttonCreateAdmin: 'Create Admin',
     },
     validation: {
       invalidChars: 'Please only use letter and numbers',
-      passwordDoesNotMatch: 'Password does not match'
-    }
+      passwordDoesNotMatch: 'Password does not match',
+    },
   },
   menu: {
     library: 'Library',
@@ -53,9 +53,9 @@ export default deepmerge(englishMessages, {
       name: 'Personal',
       options: {
         theme: 'Theme',
-        language: 'Language'
-      }
-    }
+        language: 'Language',
+      },
+    },
   },
   player: {
     playListsText: 'Play Queue',
@@ -80,7 +80,7 @@ export default deepmerge(englishMessages, {
       order: 'In order',
       orderLoop: 'Repeat',
       singleLoop: 'Repeat One',
-      shufflePlay: 'Shuffle'
-    }
-  }
+      shufflePlay: 'Shuffle',
+    },
+  },
 })

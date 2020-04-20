@@ -29,7 +29,7 @@ const Player = () => {
     showMediaSession: true,
     defaultPosition: {
       top: 300,
-      left: 120
+      left: 120,
     },
     locale: {
       playListsText: translate('player.playListsText'),
@@ -55,9 +55,9 @@ const Player = () => {
         order: translate('player.playModeText.order'),
         orderLoop: translate('player.playModeText.orderLoop'),
         singleLoop: translate('player.playModeText.singleLoop'),
-        shufflePlay: translate('player.playModeText.shufflePlay')
-      }
-    }
+        shufflePlay: translate('player.playModeText.shufflePlay'),
+      },
+    },
   }
 
   const addQueueToOptions = (queue) => {
@@ -65,7 +65,7 @@ const Player = () => {
       ...defaultOptions,
       autoPlay: true,
       clearPriorAudioLists: queue.clear,
-      audioLists: queue.queue.map((item) => item)
+      audioLists: queue.queue.map((item) => item),
     }
   }
 

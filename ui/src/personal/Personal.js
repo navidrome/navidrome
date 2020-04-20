@@ -7,7 +7,7 @@ import {
   SelectInput,
   useTranslate,
   useSetLocale,
-  useLocale
+  useLocale,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { changeTheme } from './actions'
@@ -15,7 +15,7 @@ import themes from '../themes'
 import i18n from '../i18n'
 
 const useStyles = makeStyles({
-  root: { marginTop: '1em' }
+  root: { marginTop: '1em' },
 })
 
 const SelectLanguage = (props) => {

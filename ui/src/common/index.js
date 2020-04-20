@@ -18,5 +18,5 @@ export {
   SimpleList,
   RangeField,
   SongDetails,
-  formatRange
+  formatRange,
 }

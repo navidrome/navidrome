@@ -19,11 +19,11 @@ export default deepmerge(chineseMessages, {
         playCount: '播放次数',
         trackNumber: '音轨 #',
         size: '大小',
-        updatedAt: '上次更新'
+        updatedAt: '上次更新',
       },
       bulk: {
-        addToQueue: '稍后播放'
-      }
+        addToQueue: '稍后播放',
+      },
     },
     album: {
       name: '专辑 |||| 专辑',
@@ -35,21 +35,21 @@ export default deepmerge(chineseMessages, {
         songCount: '曲目数',
         playCount: '播放次数',
         compilation: '合辑',
-        year: '年份'
+        year: '年份',
       },
       actions: {
         playAll: '播放',
         playNext: '播放下一首',
         addToQueue: '稍后播放',
-        shuffle: '刷新'
-      }
+        shuffle: '刷新',
+      },
     },
     artist: {
       name: '歌手 |||| 歌手',
       fields: {
         name: '名称',
-        albumCount: '歌手数'
-      }
+        albumCount: '歌手数',
+      },
     },
     user: {
       name: '用户 |||| 用户',
@@ -58,8 +58,8 @@ export default deepmerge(chineseMessages, {
         isAdmin: '管理员',
         lastLoginAt: '最后一次访问',
         updatedAt: '上次修改',
-        name: '名称'
-      }
+        name: '名称',
+      },
     },
     player: {
       name: '用户 |||| 用户',
@@ -69,8 +69,8 @@ export default deepmerge(chineseMessages, {
         maxBitRate: '最大比特率',
         client: '应用程序',
         userName: '用户',
-        lastSeen: '最后一次访问'
-      }
+        lastSeen: '最后一次访问',
+      },
     },
     transcoding: {
       name: '转码 |||| 转码',
@@ -78,21 +78,21 @@ export default deepmerge(chineseMessages, {
         name: '名称',
         targetFormat: '格式',
         defaultBitRate: '默认比特率',
-        command: '命令'
-      }
-    }
+        command: '命令',
+      },
+    },
   },
   ra: {
     auth: {
       welcome1: '感谢您安装Navidrome!',
       welcome2: '为了开始使用,请创建一个管理员账户',
       confirmPassword: '确认密码',
-      buttonCreateAdmin: '创建管理员'
+      buttonCreateAdmin: '创建管理员',
     },
     validation: {
       invalidChars: '请只使用字母和数字',
-      passwordDoesNotMatch: '密码不匹配'
-    }
+      passwordDoesNotMatch: '密码不匹配',
+    },
   },
   menu: {
     library: '曲库',
@@ -103,9 +103,9 @@ export default deepmerge(chineseMessages, {
       name: '个性化',
       options: {
         theme: '主题',
-        language: '语言'
-      }
-    }
+        language: '语言',
+      },
+    },
   },
   player: {
     playListsText: '播放队列',
@@ -130,7 +130,7 @@ export default deepmerge(chineseMessages, {
       order: '顺序播放',
       orderLoop: '列表循环',
       singleLoop: '单曲循环',
-      shufflePlay: '随机播放'
-    }
-  }
+      shufflePlay: '随机播放',
+    },
+  },
 })

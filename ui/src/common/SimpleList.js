@@ -15,9 +15,9 @@ const useStyles = makeStyles(
   {
     link: {
       textDecoration: 'none',
-      color: 'inherit'
+      color: 'inherit',
     },
-    tertiary: { float: 'right', opacity: 0.541176 }
+    tertiary: { float: 'right', opacity: 0.541176 },
   },
   { name: 'RaSimpleList' }
 )
@@ -28,7 +28,7 @@ const LinkOrNot = ({
   basePath,
   id,
   record,
-  children
+  children,
 }) => {
   const classes = useStyles({ classes: classesOverride })
   return linkType === 'edit' || linkType === true ? (
@@ -129,7 +129,7 @@ SimpleList.propTypes = {
   linkType: PropTypes.oneOfType([
     PropTypes.string,
     PropTypes.bool,
-    PropTypes.func
+    PropTypes.func,
   ]).isRequired,
   onToggleItem: PropTypes.func,
   primaryText: PropTypes.func,
@@ -137,13 +137,13 @@ SimpleList.propTypes = {
   rightIcon: PropTypes.func,
   secondaryText: PropTypes.func,
   selectedIds: PropTypes.arrayOf(PropTypes.any).isRequired,
-  tertiaryText: PropTypes.func
+  tertiaryText: PropTypes.func,
 }
 
 SimpleList.defaultProps = {
   linkType: 'edit',
   hasBulkActions: false,
-  selectedIds: []
+  selectedIds: [],
 }
 
 export default SimpleList

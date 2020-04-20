@@ -5,5 +5,5 @@ import AlbumShow from './AlbumShow'
 export default {
   list: AlbumList,
   show: AlbumShow,
-  icon: AlbumIcon
+  icon: AlbumIcon,
 }

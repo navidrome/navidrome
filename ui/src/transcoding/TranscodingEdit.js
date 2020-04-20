@@ -24,7 +24,7 @@ const TranscodingEdit = (props) => (
           { id: 160, name: '160' },
           { id: 192, name: '192' },
           { id: 256, name: '256' },
-          { id: 320, name: '320' }
+          { id: 320, name: '320' },
         ]}
       />
       <TextInput source="command" fullWidth validate={[required()]} />

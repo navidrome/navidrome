@@ -27,35 +27,35 @@ const useStyles = makeStyles((theme) => ({
     background: `url(${config.loginBackgroundURL})`,
     backgroundRepeat: 'no-repeat',
     backgroundSize: 'cover',
-    backgroundPosition: 'center'
+    backgroundPosition: 'center',
   },
   card: {
     minWidth: 300,
-    marginTop: '6em'
+    marginTop: '6em',
   },
   avatar: {
     margin: '1em',
     display: 'flex',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
   icon: {
-    backgroundColor: theme.palette.secondary.main
+    backgroundColor: theme.palette.secondary.main,
   },
   systemName: {
     marginTop: '1em',
     display: 'flex',
     justifyContent: 'center',
-    color: 'blue' //theme.palette.grey[500]
+    color: 'blue', //theme.palette.grey[500]
   },
   form: {
-    padding: '0 1em 1em 1em'
+    padding: '0 1em 1em 1em',
   },
   input: {
-    marginTop: '1em'
+    marginTop: '1em',
   },
   actions: {
-    padding: '0 1em 1em 1em'
-  }
+    padding: '0 1em 1em 1em',
+  },
 }))
 
 const renderInput = ({
@@ -274,7 +274,7 @@ const Login = ({ location }) => {
 
 Login.propTypes = {
   authProvider: PropTypes.func,
-  previousRoute: PropTypes.string
+  previousRoute: PropTypes.string,
 }
 
 // We need to put the ThemeProvider decoration in another component

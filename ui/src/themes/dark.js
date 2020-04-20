@@ -4,19 +4,19 @@ export default {
   themeName: 'Dark (default)',
   palette: {
     primary: {
-      main: '#90caf9'
+      main: '#90caf9',
     },
     secondary: blue,
-    type: 'dark'
+    type: 'dark',
   },
   overrides: {
     MuiFormGroup: {
       root: {
-        color: 'white'
-      }
-    }
+        color: 'white',
+      },
+    },
   },
   player: {
-    theme: 'dark'
-  }
+    theme: 'dark',
+  },
 }

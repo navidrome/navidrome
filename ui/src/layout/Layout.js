@@ -7,7 +7,7 @@ import AppBar from './AppBar'
 import themes from '../themes'
 
 const useStyles = makeStyles({
-  root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) }
+  root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
 })
 
 export default (props) => {

@@ -25,6 +25,6 @@ const PlayButton = ({ icon = defaultIcon, action, ...rest }) => {
 
 PlayButton.propTypes = {
   icon: PropTypes.element,
-  action: PropTypes.object
+  action: PropTypes.object,
 }
 export default PlayButton

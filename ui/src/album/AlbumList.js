@@ -9,7 +9,7 @@ import {
   ReferenceInput,
   SearchInput,
   Pagination,
-  useTranslate
+  useTranslate,
 } from 'react-admin'
 import { Title } from '../common'
 import { withWidth } from '@material-ui/core'

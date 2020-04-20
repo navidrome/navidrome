@@ -35,7 +35,7 @@ const AlbumListActions = ({
           showFilter,
           displayedFilters,
           filterValues,
-          context: 'button'
+          context: 'button',
         })}
       <ButtonGroup
         variant="text"
@@ -63,7 +63,7 @@ const AlbumListActions = ({
 
 AlbumListActions.defaultProps = {
   selectedIds: [],
-  onUnselectItems: () => null
+  onUnselectItems: () => null,
 }
 
 export default AlbumListActions

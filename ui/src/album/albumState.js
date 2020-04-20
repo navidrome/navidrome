@@ -14,8 +14,8 @@ const albumListParams = {
   ALBUM_LIST_NEWEST: { sort: { field: 'created_at', order: 'DESC' } },
   ALBUM_LIST_RECENT: {
     sort: { field: 'play_date', order: 'DESC' },
-    filter: { starred: true }
-  }
+    filter: { starred: true },
+  },
 }
 
 const selectAlbumList = (mode) => ({ type: mode })
@@ -24,7 +24,7 @@ const albumViewReducer = (
   previousState = {
     mode: ALBUM_MODE_LIST,
     list: ALBUM_LIST_ALL,
-    params: { sort: {}, filter: {} }
+    params: { sort: {}, filter: {} },
   },
   payload
 ) => {
@@ -54,5 +54,5 @@ export {
   ALBUM_LIST_STARRED,
   albumViewReducer,
   selectViewMode,
-  selectAlbumList
+  selectAlbumList,
 }

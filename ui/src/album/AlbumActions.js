@@ -2,7 +2,7 @@ import {
   Button,
   sanitizeListRestProps,
   TopToolbar,
-  useTranslate
+  useTranslate,
 } from 'react-admin'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
@@ -65,5 +65,5 @@ export const AlbumActions = ({
 
 AlbumActions.defaultProps = {
   selectedIds: [],
-  onUnselectItems: () => null
+  onUnselectItems: () => null,
 }

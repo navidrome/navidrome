@@ -11,5 +11,5 @@ export const AlbumLinkField = (props) => (
 )
 
 AlbumLinkField.defaultProps = {
-  addLabel: true
+  addLabel: true,
 }

@@ -5,20 +5,20 @@ export default {
       light: '#5f5fc4',
       dark: '#001064',
       main: '#283593',
-      contrastText: '#fff'
-    }
+      contrastText: '#fff',
+    },
   },
   overrides: {
     MuiFilledInput: {
       root: {
         backgroundColor: 'rgba(0, 0, 0, 0.04)',
         '&$disabled': {
-          backgroundColor: 'rgba(0, 0, 0, 0.04)'
-        }
-      }
-    }
+          backgroundColor: 'rgba(0, 0, 0, 0.04)',
+        },
+      },
+    },
   },
   player: {
-    theme: 'light'
-  }
+    theme: 'light',
+  },
 }

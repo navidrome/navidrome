@@ -6,7 +6,7 @@ import {
   PasswordInput,
   required,
   email,
-  SimpleForm
+  SimpleForm,
 } from 'react-admin'
 import { Title } from '../common'
 

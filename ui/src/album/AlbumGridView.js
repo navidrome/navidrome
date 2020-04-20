@@ -9,29 +9,29 @@ import subsonic from '../subsonic'
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    margin: '20px'
+    margin: '20px',
   },
   gridListTile: {
     minHeight: '180px',
-    minWidth: '180px'
+    minWidth: '180px',
   },
   cover: {
     display: 'inline-block',
     width: '100%',
-    height: '100%'
+    height: '100%',
   },
   tileBar: {
     textAlign: 'center',
     background:
-      'linear-gradient(to top, rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)'
+      'linear-gradient(to top, rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
   },
   albumArtistName: {
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     textAlign: 'center',
-    fontSize: '1em'
-  }
+    fontSize: '1em',
+  },
 }))
 
 const getColsForWidth = (width) => {

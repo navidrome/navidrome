@@ -3,7 +3,7 @@ import {
   AppBar as RAAppBar,
   MenuItemLink,
   UserMenu,
-  useTranslate
+  useTranslate,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core'
 import InfoIcon from '@material-ui/icons/Info'
@@ -11,8 +11,8 @@ import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   menuItem: {
-    color: theme.palette.text.secondary
-  }
+    color: theme.palette.text.secondary,
+  },
 }))
 
 const VersionMenu = forwardRef((props, ref) => {
@@ -23,7 +23,7 @@ const VersionMenu = forwardRef((props, ref) => {
       ref={ref}
       to="#"
       primaryText={translate('menu.version', {
-        version: config.version
+        version: config.version,
       })}
       leftIcon={<InfoIcon />}
       className={classes.menuItem}
