@@ -148,7 +148,7 @@ func (r *albumRepository) Refresh(ids ...string) error {
 			toInsert++
 			al.CreatedAt = time.Now()
 		}
-		al.FullText = r.getFullText(al.Name, al.Artist, al.AlbumArtist, al.SongArtists)
+		al.FullText = getFullText(al.Name, al.Artist, al.AlbumArtist, al.SongArtists)
 		_, err := r.put(al.ID, al.Album)
 		if err != nil {
 			return err

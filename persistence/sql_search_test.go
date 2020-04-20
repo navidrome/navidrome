@@ -6,23 +6,25 @@ import (
 )
 
 var _ = Describe("sqlRepository", func() {
-	var sqlRepository = &sqlRepository{}
-
 	Describe("getFullText", func() {
 		It("returns all lowercase chars", func() {
-			Expect(sqlRepository.getFullText("Some Text")).To(Equal("some text"))
+			Expect(getFullText("Some Text")).To(Equal(" some text"))
 		})
 
 		It("removes accents", func() {
-			Expect(sqlRepository.getFullText("Quintão")).To(Equal("quintao"))
+			Expect(getFullText("Quintão")).To(Equal(" quintao"))
 		})
 
 		It("remove extra spaces", func() {
-			Expect(sqlRepository.getFullText(" some  text  ")).To(Equal("some text"))
+			Expect(getFullText(" some  text  ")).To(Equal(" some text"))
 		})
 
 		It("remove duplicated words", func() {
-			Expect(sqlRepository.getFullText("legião urbana urbana legiÃo")).To(Equal("legiao urbana"))
+			Expect(getFullText("legião urbana urbana legiÃo")).To(Equal(" legiao urbana"))
+		})
+
+		It("remove symbols", func() {
+			Expect(getFullText("Tom’s Diner ' “40” ‘A’")).To(Equal(" 40 a diner toms"))
 		})
 	})
 })

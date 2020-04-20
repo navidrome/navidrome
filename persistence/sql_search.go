@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 
@@ -8,7 +9,14 @@ import (
 	"github.com/kennygrant/sanitize"
 )
 
-func (r sqlRepository) getFullText(text ...string) string {
+var quotesRegex = regexp.MustCompile("[“”‘’'\"]")
+
+func getFullText(text ...string) string {
+	fullText := sanitizeStrings(text...)
+	return " " + fullText
+}
+
+func sanitizeStrings(text ...string) string {
 	sanitizedText := strings.Builder{}
 	for _, txt := range text {
 		sanitizedText.WriteString(strings.TrimSpace(sanitize.Accents(strings.ToLower(txt))) + " ")
@@ -19,14 +27,18 @@ func (r sqlRepository) getFullText(text ...string) string {
 	}
 	var fullText []string
 	for w := range words {
-		fullText = append(fullText, w)
+		w = quotesRegex.ReplaceAllString(w, "")
+		if w != "" {
+			fullText = append(fullText, w)
+		}
 	}
 	sort.Strings(fullText)
 	return strings.Join(fullText, " ")
 }
 
 func (r sqlRepository) doSearch(q string, offset, size int, results interface{}, orderBys ...string) error {
-	q = strings.TrimSpace(sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*"))))
+	q = strings.TrimSuffix(q, "*")
+	q = sanitizeStrings(q)
 	if len(q) < 2 {
 		return nil
 	}
@@ -37,10 +49,7 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 	}
 	parts := strings.Split(q, " ")
 	for _, part := range parts {
-		sq = sq.Where(Or{
-			Like{"full_text": part + "%"},
-			Like{"full_text": "%" + part + "%"},
-		})
+		sq = sq.Where(Like{"full_text": "% " + part + "%"})
 	}
 	err := r.queryAll(sq, results)
 	return err

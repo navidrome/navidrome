@@ -7,7 +7,6 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
-	"github.com/kennygrant/sanitize"
 )
 
 type filterFunc = func(field string, value interface{}) Sqlizer
@@ -59,15 +58,11 @@ func booleanFilter(field string, value interface{}) Sqlizer {
 }
 
 func fullTextFilter(field string, value interface{}) Sqlizer {
-	q := value.(string)
-	q = strings.TrimSpace(sanitize.Accents(strings.ToLower(strings.TrimSuffix(q, "*"))))
+	q := sanitizeStrings(value.(string))
 	parts := strings.Split(q, " ")
 	filters := And{}
 	for _, part := range parts {
-		filters = append(filters, Or{
-			Like{"full_text": part + "%"},
-			Like{"full_text": "%" + part + "%"},
-		})
+		filters = append(filters, Like{"full_text": "% " + part + "%"})
 	}
 	return filters
 }

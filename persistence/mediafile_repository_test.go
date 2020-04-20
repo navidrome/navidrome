@@ -21,7 +21,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("gets mediafile from the DB", func() {
-		Expect(mr.Get("4")).To(Equal(&songAntenna))
+		Expect(mr.Get("1004")).To(Equal(&songAntenna))
 	})
 
 	It("returns ErrNotFound", func() {
@@ -39,7 +39,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("find mediafiles by album", func() {
-		Expect(mr.FindByAlbum("3")).To(Equal(model.MediaFiles{
+		Expect(mr.FindByAlbum("103")).To(Equal(model.MediaFiles{
 			songRadioactivity,
 			songAntenna,
 		}))

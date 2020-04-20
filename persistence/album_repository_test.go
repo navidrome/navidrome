@@ -20,7 +20,7 @@ var _ = Describe("AlbumRepository", func() {
 
 	Describe("Get", func() {
 		It("returns an existent album", func() {
-			Expect(repo.Get("3")).To(Equal(&albumRadioactivity))
+			Expect(repo.Get("103")).To(Equal(&albumRadioactivity))
 		})
 		It("returns ErrNotFound when the album does not exist", func() {
 			_, err := repo.Get("666")

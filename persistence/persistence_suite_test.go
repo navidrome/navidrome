@@ -31,8 +31,8 @@ func TestPersistence(t *testing.T) {
 }
 
 var (
-	artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", AlbumCount: 1, FullText: "kraftwerk"}
-	artistBeatles   = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2, FullText: "beatles the"}
+	artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", AlbumCount: 1, FullText: " kraftwerk"}
+	artistBeatles   = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2, FullText: " beatles the"}
 	testArtists     = model.Artists{
 		artistKraftwerk,
 		artistBeatles,
@@ -40,9 +40,9 @@ var (
 )
 
 var (
-	albumSgtPeppers    = model.Album{ID: "1", Name: "Sgt Peppers", Artist: "The Beatles", AlbumArtistID: "3", Genre: "Rock", CoverArtId: "1", CoverArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967, FullText: "beatles peppers sgt the"}
-	albumAbbeyRoad     = model.Album{ID: "2", Name: "Abbey Road", Artist: "The Beatles", AlbumArtistID: "3", Genre: "Rock", CoverArtId: "2", CoverArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969, FullText: "abbey beatles road the"}
-	albumRadioactivity = model.Album{ID: "3", Name: "Radioactivity", Artist: "Kraftwerk", AlbumArtistID: "2", Genre: "Electronic", CoverArtId: "3", CoverArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, FullText: "kraftwerk radioactivity"}
+	albumSgtPeppers    = model.Album{ID: "101", Name: "Sgt Peppers", Artist: "The Beatles", AlbumArtistID: "3", Genre: "Rock", CoverArtId: "1", CoverArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967, FullText: " beatles peppers sgt the"}
+	albumAbbeyRoad     = model.Album{ID: "102", Name: "Abbey Road", Artist: "The Beatles", AlbumArtistID: "3", Genre: "Rock", CoverArtId: "2", CoverArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969, FullText: " abbey beatles road the"}
+	albumRadioactivity = model.Album{ID: "103", Name: "Radioactivity", Artist: "Kraftwerk", AlbumArtistID: "2", Genre: "Electronic", CoverArtId: "3", CoverArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, FullText: " kraftwerk radioactivity"}
 	testAlbums         = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,
@@ -51,10 +51,10 @@ var (
 )
 
 var (
-	songDayInALife    = model.MediaFile{ID: "1", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "1", Album: "Sgt Peppers", Genre: "Rock", Path: P("/beatles/1/sgt/a day.mp3"), FullText: "a beatles day in life peppers sgt the"}
-	songComeTogether  = model.MediaFile{ID: "2", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "2", Album: "Abbey Road", Genre: "Rock", Path: P("/beatles/1/come together.mp3"), FullText: "abbey beatles come road the together"}
-	songRadioactivity = model.MediaFile{ID: "3", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "3", Album: "Radioactivity", Genre: "Electronic", Path: P("/kraft/radio/radio.mp3"), FullText: "kraftwerk radioactivity"}
-	songAntenna       = model.MediaFile{ID: "4", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "3", Genre: "Electronic", Path: P("/kraft/radio/antenna.mp3"), FullText: "antenna kraftwerk"}
+	songDayInALife    = model.MediaFile{ID: "1001", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "101", Album: "Sgt Peppers", Genre: "Rock", Path: P("/beatles/1/sgt/a day.mp3"), FullText: " a beatles day in life peppers sgt the"}
+	songComeTogether  = model.MediaFile{ID: "1002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "102", Album: "Abbey Road", Genre: "Rock", Path: P("/beatles/1/come together.mp3"), FullText: " abbey beatles come road the together"}
+	songRadioactivity = model.MediaFile{ID: "1003", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Album: "Radioactivity", Genre: "Electronic", Path: P("/kraft/radio/radio.mp3"), FullText: " kraftwerk radioactivity"}
+	songAntenna       = model.MediaFile{ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Genre: "Electronic", Path: P("/kraft/radio/antenna.mp3"), FullText: " antenna kraftwerk"}
 	testSongs         = model.MediaFiles{
 		songDayInALife,
 		songComeTogether,
@@ -70,9 +70,9 @@ var (
 		Comment: "No Comments",
 		Owner:   "userid",
 		Public:  true,
-		Tracks:  model.MediaFiles{{ID: "1"}, {ID: "3"}},
+		Tracks:  model.MediaFiles{{ID: "1001"}, {ID: "1003"}},
 	}
-	plsCool       = model.Playlist{ID: "11", Name: "Cool", Tracks: model.MediaFiles{{ID: "4"}}}
+	plsCool       = model.Playlist{ID: "11", Name: "Cool", Tracks: model.MediaFiles{{ID: "1004"}}}
 	testPlaylists = model.Playlists{plsBest, plsCool}
 )
 
