@@ -5,7 +5,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
@@ -13,7 +12,6 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/scanner"
-	"github.com/deluan/navidrome/utils"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
@@ -63,10 +61,6 @@ func (a *Server) initRoutes() {
 	r.Use(middleware.Compress(5, "application/xml", "application/json", "application/javascript"))
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(InjectLogger)
-
-	// configure request throttling
-	maxRequests := utils.MaxInt(2, runtime.NumCPU())
-	r.Use(middleware.ThrottleBacklog(maxRequests, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
 
 	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI, "index.html")
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
