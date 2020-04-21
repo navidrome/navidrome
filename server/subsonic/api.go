@@ -4,17 +4,16 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/deluan/navidrome/consts"
-	"github.com/go-chi/chi/middleware"
-	"math"
 	"net/http"
 	"runtime"
 
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 )
 
 const Version = "1.10.2"
@@ -121,8 +120,8 @@ func (api *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		c := initMediaRetrievalController(api)
 		// configure request throttling
-		maxRequests := math.Max(2, float64(runtime.NumCPU()))
-		withThrottle := r.With(middleware.ThrottleBacklog(int(maxRequests), consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
+		maxRequests := utils.MaxInt(2, runtime.NumCPU())
+		withThrottle := r.With(middleware.ThrottleBacklog(maxRequests, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
 		H(withThrottle, "getAvatar", c.GetAvatar)
 		H(withThrottle, "getCoverArt", c.GetCoverArt)
 	})
