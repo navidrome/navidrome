@@ -1,14 +1,41 @@
 name: Release
-on:
-  push:
-    branches:
-      - master
-    tags:
-      - "v*"
+on: push
 jobs:
+  go:
+    name: Test Server on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # TODO Fix tests in Windows
+        #        os: [macOS-latest, ubuntu-latest, windows-latest]
+        os: [macOS-latest, ubuntu-latest]
+
+    steps:
+      - name: Set up Go 1.14
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.14
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - uses: actions/cache@v1
+        id: cache-go
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        if: steps.cache-go.outputs.cache-hit != 'true'
+        run: go mod download
+
+      - name: Test
+        run: go test -cover ./... -v
   js:
     name: Build JS bundle
-    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -41,8 +68,7 @@ jobs:
 
   binaries:
     name: Binaries
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [js]
+    needs: [js, go]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -56,17 +82,30 @@ jobs:
           name: js-bundle
           path: ui/build
 
-      - name: Run GoReleaser
+      - name: Run GoReleaser - SNAPSHOT
+        if: startsWith(github.ref, 'refs/tags/') != true
+        uses: docker://deluan/ci-goreleaser:1.14.1-1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: goreleaser release --rm-dist --skip-publish --snapshot
+
+      - name: Run GoReleaser - RELEASE
+        if: startsWith(github.ref, 'refs/tags/')
         uses: docker://deluan/ci-goreleaser:1.14.1-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: goreleaser release --rm-dist
 
+      - uses: actions/upload-artifact@v1
+        with:
+          name: binaries
+          path: dist
+
   docker:
     name: Docker images
-    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'
-    needs: [js]
+    needs: [binaries]
     runs-on: ubuntu-latest
     steps:
       - name: Set up Docker Buildx
@@ -79,8 +118,8 @@ jobs:
 
       - uses: actions/download-artifact@v1
         with:
-          name: js-bundle
-          path: ui/build
+          name: binaries
+          path: dist
 
       - name: Build the Docker image and push
         env:
@@ -88,4 +127,4 @@ jobs:
           DOCKER_PLATFORM: linux/amd64,linux/arm/v7,linux/arm64
         run: |
           echo ${{secrets.DOCKER_PASSWORD}} | docker login -u ${{secrets.DOCKER_USERNAME}} --password-stdin
-          docker buildx build --platform ${DOCKER_PLATFORM} `.github/workflows/docker-tags.sh` -f .github/workflows/Dockerfile.pipeline --push .
+          docker buildx build --platform ${DOCKER_PLATFORM} `.github/workflows/docker-tags.sh` -f .github/workflows/pipeline.dockerfile --push .

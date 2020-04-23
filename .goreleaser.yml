@@ -1,4 +1,5 @@
 # GoReleaser config
+project_name: navidrome
 
 before:
   hooks:

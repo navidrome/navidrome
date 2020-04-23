@@ -10,4 +10,4 @@ navidrome
 navidrome.db
 navidrome.toml
 assets/*gen.go
-dist
+
