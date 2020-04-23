@@ -10,6 +10,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ];  then cp navidrome_linux_musl_amd6
 RUN if [ "$TARGETPLATFORM" = "linux/arm64" ];  then cp navidrome_linux_arm64_linux_arm64/navidrome /navidrome; fi
 RUN if [ "$TARGETPLATFORM" = "linux/arm/v6" ]; then cp navidrome_linux_arm_linux_arm_6/navidrome /navidrome; fi
 RUN if [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then cp navidrome_linux_arm_linux_arm_7/navidrome /navidrome; fi
+RUN chmod +x /navidrome
 
 
 #####################################################
@@ -22,7 +23,6 @@ RUN apk add --no-cache ffmpeg
 RUN ffmpeg -buildconf
 
 COPY --from=copy-binary /navidrome /app/
-RUN chmod +x /app/navidrome
 
 VOLUME ["/data", "/music"]
 ENV ND_MUSICFOLDER /music
