@@ -13,6 +13,8 @@ import (
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/utils"
+	"github.com/kennygrant/sanitize"
 )
 
 type TagScanner struct {
@@ -241,7 +243,7 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 }
 
 func (s *TagScanner) toMediaFile(md *Metadata) model.MediaFile {
-	mf := model.MediaFile{}
+	mf := &model.MediaFile{}
 	mf.ID = s.trackID(md)
 	mf.Title = s.mapTrackTitle(md)
 	mf.Album = md.Album()
@@ -266,12 +268,21 @@ func (s *TagScanner) toMediaFile(md *Metadata) model.MediaFile {
 	mf.SortAlbumName = md.SortAlbum()
 	mf.SortArtistName = md.SortArtist()
 	mf.SortAlbumArtistName = md.SortAlbumArtist()
+	mf.OrderAlbumName = sanitizeFieldForSorting(mf.Album)
+	mf.OrderArtistName = sanitizeFieldForSorting(mf.Artist)
+	mf.OrderAlbumArtistName = sanitizeFieldForSorting(mf.AlbumArtist)
 
 	// TODO Get Creation time. https://github.com/djherbis/times ?
 	mf.CreatedAt = md.ModificationTime()
 	mf.UpdatedAt = md.ModificationTime()
 
-	return mf
+	return *mf
+}
+
+func sanitizeFieldForSorting(originalValue string) string {
+	v := utils.NoArticle(originalValue)
+	v = strings.TrimSpace(sanitize.Accents(v))
+	return utils.NoArticle(v)
 }
 
 func (s *TagScanner) mapTrackTitle(md *Metadata) string {
