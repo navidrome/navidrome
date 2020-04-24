@@ -3,6 +3,7 @@ package scanner
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"mime"
 	"os"
 	"os/exec"
@@ -27,7 +28,11 @@ type Metadata struct {
 func (m *Metadata) Title() string               { return m.getTag("title", "sort_name") }
 func (m *Metadata) Album() string               { return m.getTag("album", "sort_album") }
 func (m *Metadata) Artist() string              { return m.getTag("artist", "sort_artist") }
-func (m *Metadata) AlbumArtist() string         { return m.getTag("album_artist") }
+func (m *Metadata) AlbumArtist() string         { return m.getTag("album_artist", "albumartist") }
+func (m *Metadata) SortTitle() string           { return m.getSortTag("title", "name") }
+func (m *Metadata) SortAlbum() string           { return m.getSortTag("album") }
+func (m *Metadata) SortArtist() string          { return m.getSortTag("artist") }
+func (m *Metadata) SortAlbumArtist() string     { return m.getSortTag("albumartist", "album_artist") }
 func (m *Metadata) Composer() string            { return m.getTag("composer", "tcm", "sort_composer") }
 func (m *Metadata) Genre() string               { return m.getTag("genre") }
 func (m *Metadata) Year() int                   { return m.parseYear("date") }
@@ -99,7 +104,7 @@ var (
 	inputRegex = regexp.MustCompile(`(?m)^Input #\d+,.*,\sfrom\s'(.*)'`)
 
 	//    TITLE           : Back In Black
-	tagsRx = regexp.MustCompile(`(?i)^\s{4,6}(\w+)\s*:(.*)`)
+	tagsRx = regexp.MustCompile(`(?i)^\s{4,6}([\w-]+)\s*:(.*)`)
 
 	//  Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s`
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
@@ -228,6 +233,18 @@ func (m *Metadata) getTag(tags ...string) string {
 		}
 	}
 	return ""
+}
+
+func (m *Metadata) getSortTag(tags ...string) string {
+	formats := []string{"sort%s", "sort_%s", "sort-%s", "%ssort", "%s_sort", "%s-sort"}
+	var all []string
+	for _, tag := range tags {
+		for _, format := range formats {
+			name := fmt.Sprintf(format, tag)
+			all = append(all, name)
+		}
+	}
+	return m.getTag(all...)
 }
 
 func (m *Metadata) parseTuple(tags ...string) (int, int) {

@@ -262,6 +262,10 @@ func (s *TagScanner) toMediaFile(md *Metadata) model.MediaFile {
 	mf.Suffix = md.Suffix()
 	mf.Size = md.Size()
 	mf.HasCoverArt = md.HasPicture()
+	mf.SortTitle = md.SortTitle()
+	mf.SortAlbumName = md.SortAlbum()
+	mf.SortArtistName = md.SortArtist()
+	mf.SortAlbumArtistName = md.SortAlbumArtist()
 
 	// TODO Get Creation time. https://github.com/djherbis/times ?
 	mf.CreatedAt = md.ModificationTime()

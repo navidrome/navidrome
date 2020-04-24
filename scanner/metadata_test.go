@@ -204,6 +204,30 @@ Tracklist:
 			md, _ := extractMetadata("tests/fixtures/test.mp3", outputWithMultilineComment)
 			Expect(md.Comment()).To(Equal(expectedComment))
 		})
+
+		It("parses sort tags correctly", func() {
+			const output = `
+Input #0, mp3, from '/Users/deluan/Downloads/椎名林檎 - 加爾基 精液 栗ノ花 - 2003/02 - ドツペルゲンガー.mp3':
+  Metadata:
+    title-sort      : Dopperugengā
+    album           : 加爾基 精液 栗ノ花
+    artist          : 椎名林檎
+    album_artist    : 椎名林檎
+    title           : ドツペルゲンガー
+    albumsort       : Kalk Samen Kuri No Hana
+    artist_sort     : Shiina, Ringo
+    ALBUMARTISTSORT : Shiina, Ringo
+`
+			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md.Title()).To(Equal("ドツペルゲンガー"))
+			Expect(md.Album()).To(Equal("加爾基 精液 栗ノ花"))
+			Expect(md.Artist()).To(Equal("椎名林檎"))
+			Expect(md.AlbumArtist()).To(Equal("椎名林檎"))
+			Expect(md.SortTitle()).To(Equal("Dopperugengā"))
+			Expect(md.SortAlbum()).To(Equal("Kalk Samen Kuri No Hana"))
+			Expect(md.SortArtist()).To(Equal("Shiina, Ringo"))
+			Expect(md.SortAlbumArtist()).To(Equal("Shiina, Ringo"))
+		})
 	})
 
 	Context("parseYear", func() {

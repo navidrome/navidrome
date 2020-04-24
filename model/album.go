@@ -3,23 +3,28 @@ package model
 import "time"
 
 type Album struct {
-	ID            string    `json:"id"            orm:"column(id)"`
-	Name          string    `json:"name"`
-	CoverArtPath  string    `json:"coverArtPath"`
-	CoverArtId    string    `json:"coverArtId"`
-	ArtistID      string    `json:"artistId"      orm:"pk;column(artist_id)"`
-	Artist        string    `json:"artist"`
-	AlbumArtistID string    `json:"albumArtistId" orm:"pk;column(album_artist_id)"`
-	AlbumArtist   string    `json:"albumArtist"`
-	MaxYear       int       `json:"maxYear"`
-	MinYear       int       `json:"minYear"`
-	Compilation   bool      `json:"compilation"`
-	SongCount     int       `json:"songCount"`
-	Duration      float32   `json:"duration"`
-	Genre         string    `json:"genre"`
-	FullText      string    `json:"fullText"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ID                   string    `json:"id"            orm:"column(id)"`
+	Name                 string    `json:"name"`
+	CoverArtPath         string    `json:"coverArtPath"`
+	CoverArtId           string    `json:"coverArtId"`
+	ArtistID             string    `json:"artistId"      orm:"pk;column(artist_id)"`
+	Artist               string    `json:"artist"`
+	AlbumArtistID        string    `json:"albumArtistId" orm:"pk;column(album_artist_id)"`
+	AlbumArtist          string    `json:"albumArtist"`
+	MaxYear              int       `json:"maxYear"`
+	MinYear              int       `json:"minYear"`
+	Compilation          bool      `json:"compilation"`
+	SongCount            int       `json:"songCount"`
+	Duration             float32   `json:"duration"`
+	Genre                string    `json:"genre"`
+	FullText             string    `json:"fullText"`
+	SortAlbumName        string    `json:"sortAlbumName"`
+	SortArtistName       string    `json:"sortArtistName"`
+	SortAlbumArtistName  string    `json:"sortAlbumArtistName"`
+	OrderAlbumName       string    `json:"orderAlbumName"`
+	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
+	CreatedAt            time.Time `json:"createdAt"`
+	UpdatedAt            time.Time `json:"updatedAt"`
 
 	// Annotations
 	PlayCount int       `json:"playCount"   orm:"-"`

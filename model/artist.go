@@ -3,10 +3,12 @@ package model
 import "time"
 
 type Artist struct {
-	ID         string `json:"id"          orm:"column(id)"`
-	Name       string `json:"name"`
-	AlbumCount int    `json:"albumCount"  orm:"column(album_count)"`
-	FullText   string `json:"fullText"`
+	ID              string `json:"id"          orm:"column(id)"`
+	Name            string `json:"name"`
+	AlbumCount      int    `json:"albumCount"  orm:"column(album_count)"`
+	FullText        string `json:"fullText"`
+	SortArtistName  string `json:"sortArtistName"`
+	OrderArtistName string `json:"orderArtistName"`
 
 	// Annotations
 	PlayCount int       `json:"playCount"   orm:"-"`
