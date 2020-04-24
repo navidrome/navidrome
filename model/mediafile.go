@@ -30,6 +30,7 @@ type MediaFile struct {
 	SortArtistName       string    `json:"sortArtistName"`
 	SortAlbumArtistName  string    `json:"sortAlbumArtistName"`
 	OrderAlbumName       string    `json:"orderAlbumName"`
+	OrderArtistName      string    `json:"orderArtistName"`
 	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
 	Compilation          bool      `json:"compilation"`
 	CreatedAt            time.Time `json:"createdAt"`
