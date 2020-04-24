@@ -1,18 +1,21 @@
 # This file ususaly goes in /etc/systemd/system
 
 [Unit]
-Description=Navidrome Daemon
-After=network.target
+Description=Navidrome Music Server and Streamer compatible with Subsonic/Airsonic
+After=remote-fs.target network.target
+AssertPathExists=/var/lib/navidrome
 
 [Service]
 User=navidrome
 Group=navidrome
 Type=simple
-ExecStart=/opt/navidrome/navidrome
-WorkingDirectory=/opt/navidrome
+ExecStart=/usr/bin/navidrome
+WorkingDirectory=/var/lib/navidrome
 TimeoutStopSec=20
 KillMode=process
 Restart=on-failure
+
+EnvironmentFile=-/etc/sysconfig/navidrome
 
 # See https://www.freedesktop.org/software/systemd/man/systemd.exec.html
 DevicePolicy=closed
@@ -28,8 +31,3 @@ RestrictRealtime=yes
 SystemCallFilter=~@clock @debug @module @mount @obsolete @privileged @reboot @setuid @swap
 ReadWritePaths=/opt/navidrome/
 PrivateDevices=yes
-ProtectSystem=full
-ProtectHome=true
-
-[Install]
-WantedBy=multi-user.target
