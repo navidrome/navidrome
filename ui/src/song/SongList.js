@@ -63,10 +63,8 @@ const SongList = (props) => {
           rowClick={(id, basePath, record) => dispatch(setTrack(record))}
         >
           <TextField source="title" />
-          {isDesktop && (
-            <AlbumLinkField source="album" sortBy={'orderAlbumName'} />
-          )}
-          <TextField source="artist" sortBy={'orderArtistName'} />
+          {isDesktop && <AlbumLinkField source="album" />}
+          <TextField source="artist" />
           {isDesktop && <NumberField source="trackNumber" />}
           {isDesktop && <NumberField source="playCount" />}
           {isDesktop && (

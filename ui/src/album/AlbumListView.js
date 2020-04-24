@@ -29,11 +29,10 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   return (
     <Datagrid expand={<AlbumDetails />} rowClick={'show'} {...rest}>
-      <TextField source="name" sortBy={'orderAlbumName'} />
+      <TextField source="name" />
       <FunctionField
         source="artist"
         render={(r) => (r.albumArtist ? r.albumArtist : r.artist)}
-        sortBy={'orderAlbumArtistName'}
       />
       {isDesktop && <NumberField source="songCount" />}
       {isDesktop && <NumberField source="playCount" />}

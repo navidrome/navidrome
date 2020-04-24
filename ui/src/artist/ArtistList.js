@@ -26,7 +26,7 @@ const ArtistList = (props) => (
   <List
     {...props}
     title={<Title subTitle={'Artists'} />}
-    sort={{ field: 'orderArtistName', order: 'ASC' }}
+    sort={{ field: 'name', order: 'ASC' }}
     exporter={false}
     bulkActionButtons={false}
     filters={<ArtistFilter />}
@@ -34,7 +34,7 @@ const ArtistList = (props) => (
     pagination={<Pagination />}
   >
     <Datagrid rowClick={artistRowClick}>
-      <TextField source="name" sortBy={'orderArtistName'} />
+      <TextField source="name" />
       <NumberField source="albumCount" />
     </Datagrid>
   </List>
