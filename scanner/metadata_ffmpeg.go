@@ -25,14 +25,16 @@ type Metadata struct {
 	tags     map[string]string
 }
 
-func (m *Metadata) Title() string               { return m.getTag("title", "sort_name") }
-func (m *Metadata) Album() string               { return m.getTag("album", "sort_album") }
-func (m *Metadata) Artist() string              { return m.getTag("artist", "sort_artist") }
-func (m *Metadata) AlbumArtist() string         { return m.getTag("album_artist", "albumartist") }
-func (m *Metadata) SortTitle() string           { return m.getSortTag("title", "name") }
-func (m *Metadata) SortAlbum() string           { return m.getSortTag("album") }
-func (m *Metadata) SortArtist() string          { return m.getSortTag("artist") }
-func (m *Metadata) SortAlbumArtist() string     { return m.getSortTag("albumartist", "album_artist") }
+func (m *Metadata) Title() string       { return m.getTag("title", "sort_name") }
+func (m *Metadata) Album() string       { return m.getTag("album", "sort_album") }
+func (m *Metadata) Artist() string      { return m.getTag("artist", "sort_artist") }
+func (m *Metadata) AlbumArtist() string { return m.getTag("album_artist", "albumartist") }
+func (m *Metadata) SortTitle() string   { return m.getSortTag("", "title", "name") }
+func (m *Metadata) SortAlbum() string   { return m.getSortTag("", "album") }
+func (m *Metadata) SortArtist() string  { return m.getSortTag("", "artist") }
+func (m *Metadata) SortAlbumArtist() string {
+	return m.getSortTag("tso2", "albumartist", "album_artist")
+}
 func (m *Metadata) Composer() string            { return m.getTag("composer", "tcm", "sort_composer") }
 func (m *Metadata) Genre() string               { return m.getTag("genre") }
 func (m *Metadata) Year() int                   { return m.parseYear("date") }
@@ -235,9 +237,9 @@ func (m *Metadata) getTag(tags ...string) string {
 	return ""
 }
 
-func (m *Metadata) getSortTag(tags ...string) string {
+func (m *Metadata) getSortTag(originalTag string, tags ...string) string {
 	formats := []string{"sort%s", "sort_%s", "sort-%s", "%ssort", "%s_sort", "%s-sort"}
-	var all []string
+	all := []string{originalTag}
 	for _, tag := range tags {
 		for _, format := range formats {
 			name := fmt.Sprintf(format, tag)
