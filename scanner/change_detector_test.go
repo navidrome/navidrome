@@ -110,6 +110,25 @@ var _ = Describe("ChangeDetector", func() {
 		Expect(deleted).To(BeEmpty())
 		Expect(changed).To(ConsistOf(P("a/b")))
 	})
+
+	Describe("IsDirOrSymlinkToDir", func() {
+		It("returns true for normal dirs", func() {
+			dir, _ := os.Stat("tests/fixtures")
+			Expect(IsDirOrSymlinkToDir("tests", dir)).To(BeTrue())
+		})
+		It("returns true for symlinks to dirs", func() {
+			dir, _ := os.Stat("tests/fixtures/symlink2dir")
+			Expect(IsDirOrSymlinkToDir("tests/fixtures", dir)).To(BeTrue())
+		})
+		It("returns false for files", func() {
+			dir, _ := os.Stat("tests/fixtures/test.mp3")
+			Expect(IsDirOrSymlinkToDir("tests/fixtures", dir)).To(BeFalse())
+		})
+		It("returns false for symlinks to files", func() {
+			dir, _ := os.Stat("tests/fixtures/symlink")
+			Expect(IsDirOrSymlinkToDir("tests/fixtures", dir)).To(BeFalse())
+		})
+	})
 })
 
 // I hate time-based tests....
