@@ -44,17 +44,6 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 	return r.exists(Select().Where(Eq{"id": id}))
 }
 
-func (r *artistRepository) getIndexKey(a *model.Artist) string {
-	name := strings.ToLower(utils.NoArticle(a.Name))
-	for k, v := range r.indexGroups {
-		key := strings.ToLower(k)
-		if strings.HasPrefix(name, key) {
-			return v
-		}
-	}
-	return "#"
-}
-
 func (r *artistRepository) Put(a *model.Artist) error {
 	a.FullText = getFullText(a.Name, a.SortArtistName)
 	_, err := r.put(a.ID, a)
@@ -75,11 +64,21 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 	return res, err
 }
 
+func (r *artistRepository) getIndexKey(a *model.Artist) string {
+	name := strings.ToLower(utils.NoArticle(a.Name))
+	for k, v := range r.indexGroups {
+		key := strings.ToLower(k)
+		if strings.HasPrefix(name, key) {
+			return v
+		}
+	}
+	return "#"
+}
+
 // TODO Cache the index (recalculate when there are changes to the DB)
 func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
-	sq := r.selectArtist().OrderBy("name")
+	sq := r.selectArtist().OrderBy("order_artist_name")
 	var all model.Artists
-	// TODO Paginate
 	err := r.queryAll(sq, &all)
 	if err != nil {
 		return nil, err
