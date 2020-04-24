@@ -29,5 +29,17 @@ RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 RestrictNamespaces=yes
 RestrictRealtime=yes
 SystemCallFilter=~@clock @debug @module @mount @obsolete @privileged @reboot @setuid @swap
-ReadWritePaths=/opt/navidrome/
-PrivateDevices=yes
+ReadWritePaths=/var/lib/navidrome
+
+# You can uncomment the following line if you're not using the jukebox This
+# will prevent navidrome from accessing any real (physical) devices
+#PrivateDevices=yes
+
+# You can change the following line to `strict` instead of `full` if you don't
+# want navidrome to be able to write anything on your filesystem outside of
+# /var/lib/navidrome.
+ProtectSystem=full
+
+# You can comment the following line if you don't have any media in /home/*.
+# This will prevent navidrome from ever reading/writing anything there.
+ProtectHome=true
