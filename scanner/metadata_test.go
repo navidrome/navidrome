@@ -62,7 +62,7 @@ var _ = Describe("Metadata", func() {
 		})
 
 		It("returns empty map if there are no audio files in path", func() {
-			Expect(LoadAllAudioFiles(".")).To(BeEmpty())
+			Expect(LoadAllAudioFiles("tests/empty_folder")).To(BeEmpty())
 		})
 	})
 
@@ -231,7 +231,7 @@ Tracklist:
 
 	It("creates a valid command line", func() {
 		args := createProbeCommand([]string{"/music library/one.mp3", "/music library/two.mp3"})
-		Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/one.mp3", "-i", "/music library/two.mp3", "-f", "ffmetadata" }))
+		Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/one.mp3", "-i", "/music library/two.mp3", "-f", "ffmetadata"}))
 	})
 
 })
