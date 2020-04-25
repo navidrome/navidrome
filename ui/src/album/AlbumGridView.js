@@ -3,11 +3,11 @@ import { GridList, GridListTile, GridListTileBar } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
-import { linkToRecord } from 'ra-core'
-import { Loading } from 'react-admin'
+import { linkToRecord, Loading } from 'react-admin'
 import subsonic from '../subsonic'
+import { ArtistLinkField } from './ArtistLinkField'
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles({
   root: {
     margin: '20px',
   },
@@ -32,7 +32,7 @@ const useStyles = makeStyles((theme) => ({
     textAlign: 'center',
     fontSize: '1em',
   },
-}))
+})
 
 const getColsForWidth = (width) => {
   if (width === 'xs') return 2
@@ -69,7 +69,9 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
               title={data[id].name}
               subtitle={
                 <div className={classes.albumArtistName}>
-                  {data[id].albumArtist}
+                  <ArtistLinkField record={data[id]}>
+                    {data[id].albumArtist}
+                  </ArtistLinkField>
                 </div>
               }
             />
