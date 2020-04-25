@@ -53,12 +53,10 @@ export default deepmerge(frenchMessages, {
     user: {
       name: 'Utilisateur |||| Utilisateurs',
       fields: {
-        name: 'Nom',
-      },
-    },
-    transcoding: {
-      name: 'Conversion |||| Conversions',
-      fields: {
+        userName: 'Nom d\'utilisateur',
+        isAdmin: 'Administrateur',
+        lastLoginAt: 'Dernière connexion',
+        updatedAt: 'Dernière mise à jour',
         name: 'Nom',
       },
     },
@@ -66,6 +64,20 @@ export default deepmerge(frenchMessages, {
       name: 'Lecteur |||| Lecteurs',
       fields: {
         name: 'Nom',
+        transcodingId: 'Transcodage',
+        maxBitRate: 'Bitrate maximum',
+        client: 'Client',
+        userName: 'Nom d\'utilisateur',
+        lastSeen: 'Vu pour la dernière fois',
+      },
+    },
+    transcoding: {
+      name: 'Conversion |||| Conversions',
+      fields: {
+        name: 'Nom',
+        targetFormat: 'Format',
+        defaultBitRate: 'Bitrate  par défaut',
+        command: 'Commande',
       },
     },
   },
@@ -101,6 +113,9 @@ export default deepmerge(frenchMessages, {
     clickToPauseText: 'Cliquer pour mettre en pause',
     nextTrackText: 'Morceau suivant',
     previousTrackText: 'Morceau précédent',
+    volumeText: 'Volume',
+    toggleMiniModeText: 'Minimiser',
+    removeAudioListsText: 'Vider la liste de lecture',
     clickToDeleteText: `Cliquer pour supprimer %{name}`,
     playModeText: {
       order: 'Ordonner',
