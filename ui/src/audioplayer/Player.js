@@ -17,7 +17,7 @@ const Player = () => {
     theme: playerTheme,
     bounds: 'body',
     mode: 'full',
-    autoPlay: true,
+    autoPlay: false,
     preload: true,
     autoPlayInitLoadPlayList: true,
     clearPriorAudioLists: false,
@@ -63,7 +63,7 @@ const Player = () => {
   const addQueueToOptions = (queue) => {
     return {
       ...defaultOptions,
-      autoPlay: true,
+      autoPlay: queue.playing,
       clearPriorAudioLists: queue.clear,
       audioLists: queue.queue.map((item) => item),
     }
@@ -108,7 +108,7 @@ const Player = () => {
       />
     )
   }
-  return <div />
+  return null
 }
 
 export default Player
