@@ -28,18 +28,20 @@ const setTrack = (data) => ({
 
 const playAlbum = (id, data) => ({
   type: PLAYER_PLAY_ALBUM,
-  data,
   id,
-})
-
-const syncQueue = (data) => ({
-  type: PLAYER_SYNC_QUEUE,
   data,
 })
 
-const scrobbled = (id) => ({
+const syncQueue = (id, data) => ({
+  type: PLAYER_SYNC_QUEUE,
+  id,
+  data,
+})
+
+const scrobble = (id, submit) => ({
   type: PLAYER_SCROBBLE,
-  data: id,
+  id,
+  submit,
 })
 
 const playQueueReducer = (
@@ -59,17 +61,31 @@ const playQueueReducer = (
         queue: [mapToAudioLists(data)],
         clear: true,
         playing: true,
+        current: data.id,
       }
     case PLAYER_SYNC_QUEUE:
-      return { ...previousState, queue: data, clear: false }
+      const currentTrack = data.find((item) => item.id === data.id) || {}
+      return {
+        ...previousState,
+        queue: data,
+        clear: false,
+        current: currentTrack.id,
+      }
     case PLAYER_SCROBBLE:
       const newQueue = previousState.queue.map((item) => {
         return {
           ...item,
-          scrobbled: item.scrobbled || item.trackId === data,
+          scrobbled:
+            item.scrobbled || (item.trackId === payload.id && payload.submit),
         }
       })
-      return { ...previousState, queue: newQueue, clear: false, playing: true }
+      return {
+        ...previousState,
+        queue: newQueue,
+        clear: false,
+        playing: true,
+        current: payload.id,
+      }
     case PLAYER_PLAY_ALBUM:
       queue = []
       let match = false
@@ -81,10 +97,16 @@ const playQueueReducer = (
           queue.push(mapToAudioLists(data[id]))
         }
       })
-      return { ...previousState, queue, clear: true, playing: true }
+      return {
+        ...previousState,
+        queue,
+        clear: true,
+        playing: true,
+        current: payload.id,
+      }
     default:
       return previousState
   }
 }
 
-export { addTrack, setTrack, playAlbum, syncQueue, scrobbled, playQueueReducer }
+export { addTrack, setTrack, playAlbum, syncQueue, scrobble, playQueueReducer }

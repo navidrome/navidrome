@@ -4,7 +4,7 @@ import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import subsonic from '../subsonic'
-import { scrobbled, syncQueue } from './queue'
+import { scrobble, syncQueue } from './queue'
 import themes from '../themes'
 
 const Player = () => {
@@ -76,7 +76,7 @@ const Player = () => {
   const { authenticated } = useAuthState()
 
   const OnAudioListsChange = (currentPlayIndex, audioLists) => {
-    dispatch(syncQueue(audioLists))
+    dispatch(syncQueue(currentPlayIndex, audioLists))
   }
 
   const OnAudioProgress = (info) => {
@@ -86,13 +86,14 @@ const Player = () => {
     }
     const item = queue.queue.find((item) => item.trackId === info.trackId)
     if (item && !item.scrobbled) {
-      dispatch(scrobbled(info.trackId))
+      dispatch(scrobble(info.trackId, true))
       subsonic.scrobble(info.trackId, true)
     }
   }
 
   const OnAudioPlay = (info) => {
     if (info.duration) {
+      dispatch(scrobble(info.trackId, false))
       subsonic.scrobble(info.trackId, false)
       dataProvider.getOne('keepalive', { id: info.trackId })
     }

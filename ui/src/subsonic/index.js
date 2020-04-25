@@ -23,8 +23,7 @@ const url = (command, id, options) => {
   return baseUrl(url)
 }
 
-const scrobble = (id, submit) => {
-  return fetchUtils.fetchJson(url('scrobble', id, { submission: submit }))
-}
+const scrobble = (id, submit) =>
+  fetchUtils.fetchJson(url('scrobble', id, { submission: submit }))
 
 export default { url, scrobble }
