@@ -43,7 +43,7 @@ const scrobbled = (id) => ({
 })
 
 const playQueueReducer = (
-  previousState = { queue: [], clear: true },
+  previousState = { queue: [], clear: true, playing: false },
   payload
 ) => {
   let queue
@@ -52,11 +52,16 @@ const playQueueReducer = (
     case PLAYER_ADD_TRACK:
       queue = previousState.queue
       queue.push(mapToAudioLists(data))
-      return { queue, clear: false }
+      return { ...previousState, queue, clear: false }
     case PLAYER_SET_TRACK:
-      return { queue: [mapToAudioLists(data)], clear: true }
+      return {
+        ...previousState,
+        queue: [mapToAudioLists(data)],
+        clear: true,
+        playing: true,
+      }
     case PLAYER_SYNC_QUEUE:
-      return { queue: data, clear: false }
+      return { ...previousState, queue: data, clear: false }
     case PLAYER_SCROBBLE:
       const newQueue = previousState.queue.map((item) => {
         return {
@@ -64,7 +69,7 @@ const playQueueReducer = (
           scrobbled: item.scrobbled || item.trackId === data,
         }
       })
-      return { queue: newQueue, clear: false }
+      return { ...previousState, queue: newQueue, clear: false, playing: true }
     case PLAYER_PLAY_ALBUM:
       queue = []
       let match = false
@@ -76,7 +81,7 @@ const playQueueReducer = (
           queue.push(mapToAudioLists(data[id]))
         }
       })
-      return { queue, clear: true }
+      return { ...previousState, queue, clear: true, playing: true }
     default:
       return previousState
   }
