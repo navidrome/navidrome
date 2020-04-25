@@ -1,4 +1,5 @@
 name: Pipeline
+on:
   push:
     branches:
       - master
