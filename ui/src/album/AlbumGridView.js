@@ -7,7 +7,7 @@ import { linkToRecord, Loading } from 'react-admin'
 import subsonic from '../subsonic'
 import { ArtistLinkField } from './ArtistLinkField'
 
-const useStyles = makeStyles({
+const useStyles = makeStyles((theme) => ({
   root: {
     margin: '20px',
   },
@@ -23,7 +23,7 @@ const useStyles = makeStyles({
   tileBar: {
     textAlign: 'center',
     background:
-      'linear-gradient(to top, rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
+      'linear-gradient(to top, rgba(0,0,0,1) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
   },
   albumArtistName: {
     whiteSpace: 'nowrap',
@@ -32,7 +32,10 @@ const useStyles = makeStyles({
     textAlign: 'center',
     fontSize: '1em',
   },
-})
+  artistLink: {
+    color: theme.palette.primary.light,
+  },
+}))
 
 const getColsForWidth = (width) => {
   if (width === 'xs') return 2
@@ -69,7 +72,10 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
               title={data[id].name}
               subtitle={
                 <div className={classes.albumArtistName}>
-                  <ArtistLinkField record={data[id]}>
+                  <ArtistLinkField
+                    record={data[id]}
+                    className={classes.artistLink}
+                  >
                     {data[id].albumArtist}
                   </ArtistLinkField>
                 </div>
