@@ -37,7 +37,9 @@ export default ({
 
   const persistedState = loadState()
   // TODO Better encapsulate state in general
-  persistedState.queue.playing = false
+  if (persistedState && persistedState.queue) {
+    persistedState.queue.playing = false
+  }
   const store = createStore(
     resettableAppReducer,
     persistedState,
