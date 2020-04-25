@@ -1,6 +1,6 @@
 #####################################################
 ### Build UI bundles
-FROM node:13-alpine AS jsbuilder
+FROM node:14-alpine AS jsbuilder
 WORKDIR /src
 COPY ui/package.json ui/package-lock.json ./
 RUN npm ci
