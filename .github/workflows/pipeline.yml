@@ -1,5 +1,10 @@
 name: Pipeline
-on: push
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 jobs:
   go:
     name: Test Server on ${{ matrix.os }}
