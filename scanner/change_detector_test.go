@@ -103,8 +103,8 @@ var _ = Describe("ChangeDetector", func() {
 		Expect(changed).To(BeEmpty())
 		Expect(changed).To(BeEmpty())
 
-		f, err := os.Create(filepath.Join(testFolder, "a", "b", "new.txt"))
-		f.Close()
+		f, _ := os.Create(filepath.Join(testFolder, "a", "b", "new.txt"))
+		_ = f.Close()
 		changed, deleted, err = newScanner.Scan(lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())

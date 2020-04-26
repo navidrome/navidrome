@@ -74,7 +74,9 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 				log.Error(ctx, "Error loading cover art", "path", path, "size", size, err)
 				return
 			}
-			io.Copy(w, reader)
+			if _, err := io.Copy(w, reader); err != nil {
+				log.Error(ctx, "Error saving covert art to cache", "path", path, "size", size, err)
+			}
 		}()
 	} else {
 		log.Trace(ctx, "Loading image from cache", "path", path, "size", size, "lastUpdate", lastUpdate)

@@ -27,7 +27,7 @@ func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Requ
 		return nil, NewError(responses.ErrorDataNotFound, "Avatar image not found")
 	}
 	defer f.Close()
-	io.Copy(w, f)
+	_, _ = io.Copy(w, f)
 
 	return nil, nil
 }

@@ -22,7 +22,7 @@ func Init(t *testing.T, skipOnShort bool) {
 		appPath, _ := filepath.Abs(filepath.Join(filepath.Dir(file), ".."))
 		confPath, _ := filepath.Abs(filepath.Join(appPath, "tests", "navidrome-test.toml"))
 		println("Loading test configuration file from " + confPath)
-		os.Chdir(appPath)
+		_ = os.Chdir(appPath)
 		conf.LoadFromFile("tests/navidrome-test.toml", true)
 
 		noLog := os.Getenv("NOLOG")

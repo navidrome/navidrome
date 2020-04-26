@@ -24,8 +24,8 @@ func (c *fakeCover) Get(ctx context.Context, id string, size int, out io.Writer)
 	}
 	c.recvId = id
 	c.recvSize = size
-	out.Write([]byte(c.data))
-	return nil
+	_, err := out.Write([]byte(c.data))
+	return err
 }
 
 var _ = Describe("MediaRetrievalController", func() {

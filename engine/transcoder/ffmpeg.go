@@ -38,7 +38,9 @@ func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate in
 	if err = cmd.Start(); err != nil {
 		return
 	}
-	go cmd.Wait() // prevent zombies
+
+	go func() { _ = cmd.Wait() }() // prevent zombies
+
 	return
 }
 

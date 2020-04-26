@@ -162,7 +162,7 @@ func H(r chi.Router, path string, f Handler) {
 func HGone(r chi.Router, path string) {
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(410)
-		w.Write([]byte("This endpoint will not be implemented"))
+		_, _ = w.Write([]byte("This endpoint will not be implemented"))
 	}
 	r.HandleFunc("/"+path, handle)
 	r.HandleFunc("/"+path+".view", handle)
@@ -207,5 +207,7 @@ func SendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	} else {
 		log.Warn(r.Context(), "API: Failed response", "error", payload.Error.Code, "message", payload.Error.Message)
 	}
-	w.Write(response)
+	if _, err := w.Write(response); err != nil {
+		log.Error(r, "Error sending response to client", "payload", string(response), err)
+	}
 }
