@@ -70,7 +70,7 @@ var _ = Describe("Logger", func() {
 		})
 
 		It("can get data from the request's context", func() {
-			ctx := NewContext(nil, "foo", "bar")
+			ctx := NewContext(context.TODO(), "foo", "bar")
 			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
 
 			Error(req, "Simple Message", "key1", "value1")

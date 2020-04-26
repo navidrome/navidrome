@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -18,7 +19,8 @@ func initialSetup(ds model.DataStore) {
 			return err
 		}
 
-		_, err := ds.Property(nil).Get(consts.InitialSetupFlagKey)
+		properties := ds.Property(context.TODO())
+		_, err := properties.Get(consts.InitialSetupFlagKey)
 		if err == nil {
 			return nil
 		}
@@ -33,13 +35,14 @@ func initialSetup(ds model.DataStore) {
 			}
 		}
 
-		err = ds.Property(nil).Put(consts.InitialSetupFlagKey, time.Now().String())
+		err = properties.Put(consts.InitialSetupFlagKey, time.Now().String())
 		return err
 	})
 }
 
 func createInitialAdminUser(ds model.DataStore) error {
-	c, err := ds.User(nil).CountAll()
+	users := ds.User(context.TODO())
+	c, err := users.CountAll()
 	if err != nil {
 		panic(fmt.Sprintf("Could not access User table: %s", err))
 	}
@@ -59,7 +62,7 @@ func createInitialAdminUser(ds model.DataStore) error {
 			Password: initialPassword,
 			IsAdmin:  true,
 		}
-		err := ds.User(nil).Put(&initialUser)
+		err := users.Put(&initialUser)
 		if err != nil {
 			log.Error("Could not create initial admin user", "user", initialUser, err)
 		}
@@ -68,13 +71,14 @@ func createInitialAdminUser(ds model.DataStore) error {
 }
 
 func createJWTSecret(ds model.DataStore) error {
-	_, err := ds.Property(nil).Get(consts.JWTSecretKey)
+	properties := ds.Property(context.TODO())
+	_, err := properties.Get(consts.JWTSecretKey)
 	if err == nil {
 		return nil
 	}
 	jwtSecret, _ := uuid.NewRandom()
 	log.Warn("Creating JWT secret, used for encrypting UI sessions")
-	err = ds.Property(nil).Put(consts.JWTSecretKey, jwtSecret.String())
+	err = properties.Put(consts.JWTSecretKey, jwtSecret.String())
 	if err != nil {
 		log.Error("Could not save JWT secret in DB", err)
 	}
@@ -82,8 +86,8 @@ func createJWTSecret(ds model.DataStore) error {
 }
 
 func createDefaultTranscodings(ds model.DataStore) error {
-	repo := ds.Transcoding(nil)
-	c, _ := repo.CountAll()
+	transcodings := ds.Transcoding(context.TODO())
+	c, _ := transcodings.CountAll()
 	if c != 0 {
 		return nil
 	}
@@ -98,7 +102,7 @@ func createDefaultTranscodings(ds model.DataStore) error {
 			return err
 		}
 		log.Info("Creating default transcoding config", "name", t.Name)
-		if err = repo.Put(&t); err != nil {
+		if err = transcodings.Put(&t); err != nil {
 			return err
 		}
 	}

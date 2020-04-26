@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"context"
 	"image"
 
 	"github.com/deluan/navidrome/log"
@@ -14,7 +15,7 @@ import (
 var _ = Describe("Cover", func() {
 	var cover Cover
 	var ds model.DataStore
-	ctx := log.NewContext(nil)
+	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
 		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}
