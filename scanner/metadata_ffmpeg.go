@@ -84,7 +84,7 @@ func ExtractAllMetadata(inputs []string) (map[string]*Metadata, error) {
 	args := createProbeCommand(inputs)
 
 	log.Trace("Executing command", "args", args)
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.Command(args[0], args[1:]...) // #nosec
 	output, _ := cmd.CombinedOutput()
 	mds := map[string]*Metadata{}
 	if len(output) == 0 {
