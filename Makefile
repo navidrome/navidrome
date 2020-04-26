@@ -35,15 +35,18 @@ testall: check_go_env test
 .PHONY: testall
 
 setup:
-	@which wire       || (echo "Installing Wire"     && GO111MODULE=off go get -u github.com/google/wire/cmd/wire)
 	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
 	@which reflex     || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
 	@which goreman    || (echo "Installing Goreman"  && GO111MODULE=off go get -u github.com/mattn/goreman)
+	go mod download
+.PHONY: setup
+
+setup-dev: setup
+	@which wire       || (echo "Installing Wire"     && GO111MODULE=off go get -u github.com/google/wire/cmd/wire)
 	@which ginkgo     || (echo "Installing Ginkgo"   && GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo)
 	@which goose      || (echo "Installing Goose"    && GO111MODULE=off go get -u github.com/pressly/goose/cmd/goose)
 	@which lefthook   || (echo "Installing Lefthook" && GO111MODULE=off go get -u github.com/Arkweid/lefthook)
 	@lefthook install
-	go mod download
 	@(cd ./ui && npm ci)
 .PHONY: setup
 
