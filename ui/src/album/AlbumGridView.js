@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { linkToRecord, Loading } from 'react-admin'
 import subsonic from '../subsonic'
 import { ArtistLinkField } from './ArtistLinkField'
+import GridButton from './GridButton.js'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -80,6 +81,9 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
                   </ArtistLinkField>
                 </div>
               }
+			  actionIcon={
+				<GridButton id={id}/>
+			  }
             />
           </GridListTile>
         ))}
