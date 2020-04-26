@@ -78,6 +78,11 @@ jobs:
           cd ui
           npm ci
 
+      - name: npm check-formatting
+        run: |
+          cd ui
+          npm run check-formatting
+
       - name: npm build
         run: |
           cd ui
