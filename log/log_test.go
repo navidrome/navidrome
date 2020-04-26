@@ -41,8 +41,8 @@ var _ = Describe("Logger", func() {
 			Expect(hook.LastEntry().Data).To(BeEmpty())
 		})
 
-		XIt("Empty context", func() {
-			Error(context.Background(), "Simple Message")
+		It("Empty context", func() {
+			Error(context.TODO(), "Simple Message")
 			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
 			Expect(hook.LastEntry().Data).To(BeEmpty())
 		})
