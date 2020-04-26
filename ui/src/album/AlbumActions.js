@@ -8,7 +8,7 @@ import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import React from 'react'
 import { useDispatch } from 'react-redux'
-import { playAlbum } from '../audioplayer'
+import { playAlbum, shuffleAlbum } from '../audioplayer'
 
 export const AlbumActions = ({
   className,
@@ -28,17 +28,6 @@ export const AlbumActions = ({
     return acc
   }, {})
 
-  const shuffle = (data) => {
-    const ids = Object.keys(data)
-    for (let i = ids.length - 1; i > 0; i--) {
-      let j = Math.floor(Math.random() * (i + 1))
-      ;[ids[i], ids[j]] = [ids[j], ids[i]]
-    }
-    const shuffled = {}
-    ids.forEach((id) => (shuffled[id] = data[id]))
-    return shuffled
-  }
-
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <Button
@@ -51,9 +40,7 @@ export const AlbumActions = ({
       </Button>
       <Button
         onClick={() => {
-          const shuffled = shuffle(filteredData)
-          const firstId = Object.keys(shuffled)[0]
-          dispatch(playAlbum(firstId, shuffled))
+          dispatch(shuffleAlbum(filteredData))
         }}
         label={translate('resources.album.actions.shuffle')}
       >
