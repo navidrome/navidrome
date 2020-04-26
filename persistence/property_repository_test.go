@@ -1,8 +1,10 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/astaxie/beego/orm"
-	. "github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,7 +14,7 @@ var _ = Describe("Property Repository", func() {
 	var pr model.PropertyRepository
 
 	BeforeEach(func() {
-		pr = NewPropertyRepository(NewContext(nil), orm.NewOrm())
+		pr = NewPropertyRepository(log.NewContext(context.TODO()), orm.NewOrm())
 	})
 
 	It("saves and restore a new property", func() {

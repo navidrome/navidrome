@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -12,7 +14,7 @@ var _ = Describe("PlaylistRepository", func() {
 	var repo model.PlaylistRepository
 
 	BeforeEach(func() {
-		repo = NewPlaylistRepository(log.NewContext(nil), orm.NewOrm())
+		repo = NewPlaylistRepository(log.NewContext(context.TODO()), orm.NewOrm())
 	})
 
 	Describe("Count", func() {

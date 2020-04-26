@@ -113,7 +113,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		return err
 	}
 
-	err = s.ds.GC(log.NewContext(nil))
+	err = s.ds.GC(log.NewContext(context.TODO()))
 	log.Info("Finished Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start))
 
 	return err

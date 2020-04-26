@@ -16,7 +16,7 @@ var _ = Describe("MediaRepository", func() {
 	var mr model.MediaFileRepository
 
 	BeforeEach(func() {
-		ctx := context.WithValue(log.NewContext(nil), "user", model.User{ID: "userid"})
+		ctx := context.WithValue(log.NewContext(context.TODO()), "user", model.User{ID: "userid"})
 		mr = NewMediaFileRepository(ctx, orm.NewOrm())
 	})
 

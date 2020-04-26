@@ -16,7 +16,7 @@ var _ = Describe("MediaStreamer", func() {
 	var streamer MediaStreamer
 	var ds model.DataStore
 	ffmpeg := &fakeFFmpeg{Data: "fake data"}
-	ctx := log.NewContext(nil)
+	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
 		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}

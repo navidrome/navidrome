@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -12,7 +14,7 @@ var _ = Describe("UserRepository", func() {
 	var repo model.UserRepository
 
 	BeforeEach(func() {
-		repo = NewUserRepository(log.NewContext(nil), orm.NewOrm())
+		repo = NewUserRepository(log.NewContext(context.TODO()), orm.NewOrm())
 	})
 
 	Describe("Put/Get/FindByUsername", func() {

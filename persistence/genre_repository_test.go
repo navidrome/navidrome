@@ -1,6 +1,8 @@
 package persistence_test
 
 import (
+	"context"
+
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -13,7 +15,7 @@ var _ = Describe("GenreRepository", func() {
 	var repo model.GenreRepository
 
 	BeforeEach(func() {
-		repo = persistence.NewGenreRepository(log.NewContext(nil), orm.NewOrm())
+		repo = persistence.NewGenreRepository(log.NewContext(context.TODO()), orm.NewOrm())
 	})
 
 	It("returns all records", func() {

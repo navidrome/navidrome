@@ -14,7 +14,7 @@ var _ = Describe("AlbumRepository", func() {
 	var repo model.AlbumRepository
 
 	BeforeEach(func() {
-		ctx := context.WithValue(log.NewContext(nil), "user", model.User{ID: "userid"})
+		ctx := context.WithValue(log.NewContext(context.TODO()), "user", model.User{ID: "userid"})
 		repo = NewAlbumRepository(ctx, orm.NewOrm())
 	})
 
