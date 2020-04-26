@@ -134,21 +134,27 @@ jobs:
     name: Docker images
     needs: [binaries]
     runs-on: ubuntu-latest
+    env:
+      DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
     steps:
       - name: Set up Docker Buildx
         id: buildx
         uses: crazy-max/ghaction-docker-buildx@v1
+        if: ${{env.DOCKER_IMAGE}} != ''
         with:
           version: latest
 
       - uses: actions/checkout@v1
+        if: ${{env.DOCKER_IMAGE}} != ''
 
       - uses: actions/download-artifact@v1
+        if: ${{env.DOCKER_IMAGE}} != ''
         with:
           name: binaries
           path: dist
 
       - name: Build the Docker image and push
+        if: ${{env.DOCKER_IMAGE}} != ''
         env:
           DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
           DOCKER_PLATFORM: linux/amd64,linux/arm/v7,linux/arm64
