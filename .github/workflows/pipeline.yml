@@ -9,6 +9,20 @@ on:
     branches:
       - master
 jobs:
+  golangci-lint:
+    name: Lint Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Run golangci-lint
+        uses: actions-contrib/golangci-lint@v1
+        with:
+          golangci_lint_version: v1.25.0
+#          TODO Enable github actions output format: https://github.com/actions-contrib/golangci-lint/issues/11
+#          args: run --out-format github-actions
+
   go:
     name: Test Server on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -76,7 +90,7 @@ jobs:
 
   binaries:
     name: Binaries
-    needs: [js, go]
+    needs: [js, go, golangci-lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code

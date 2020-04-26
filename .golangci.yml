@@ -1,0 +1,11 @@
+linters:
+  enable:
+    - goimports
+    - unconvert
+    - gosec
+
+issues:
+  exclude-rules:
+    - linters:
+        - gosec
+      text: "(G501|G401):"
