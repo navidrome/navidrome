@@ -72,7 +72,9 @@ func (s *Scanner) getLastModifiedSince(folder string) time.Time {
 
 func (s *Scanner) updateLastModifiedSince(folder string, t time.Time) {
 	millis := t.UnixNano() / int64(time.Millisecond)
-	s.ds.Property(nil).Put(model.PropLastScan+"-"+folder, fmt.Sprint(millis))
+	if err := s.ds.Property(context.TODO()).Put(model.PropLastScan+"-"+folder, fmt.Sprint(millis)); err != nil {
+		log.Error("Error updating DB after scan", err)
+	}
 }
 
 func (s *Scanner) loadFolders() {
@@ -84,12 +86,6 @@ func (s *Scanner) loadFolders() {
 }
 
 type Status int
-
-const (
-	StatusComplete Status = iota
-	StatusInProgress
-	StatusError
-)
 
 type StatusInfo struct {
 	MediaFolder string

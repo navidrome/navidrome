@@ -110,7 +110,7 @@ func checkExpired(l *list.List, f func() *list.Element) *list.Element {
 			return nil
 		}
 		start := e.Value.(*NowPlayingInfo).Start
-		if time.Now().Sub(start) < NowPlayingExpire {
+		if time.Since(start) < NowPlayingExpire {
 			return e
 		}
 		l.Remove(e)

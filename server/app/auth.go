@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/deluan/navidrome/consts"
@@ -20,7 +19,6 @@ import (
 )
 
 var (
-	once         sync.Once
 	ErrFirstTime = errors.New("no users created")
 )
 
@@ -31,7 +29,7 @@ func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
 		if err != nil {
 			log.Error(r, "Parsing request body", err)
-			rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
+			_ = rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
 
@@ -42,21 +40,21 @@ func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 func handleLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
 	user, err := validateLogin(ds.User(r.Context()), username, password)
 	if err != nil {
-		rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authentication user. Please try again")
+		_ = rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authentication user. Please try again")
 		return
 	}
 	if user == nil {
 		log.Warn(r, "Unsuccessful login", "username", username, "request", r.Header)
-		rest.RespondWithError(w, http.StatusUnauthorized, "Invalid username or password")
+		_ = rest.RespondWithError(w, http.StatusUnauthorized, "Invalid username or password")
 		return
 	}
 
 	tokenString, err := auth.CreateToken(user)
 	if err != nil {
-		rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authenticating user. Please try again")
+		_ = rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authenticating user. Please try again")
 		return
 	}
-	rest.RespondWithJSON(w, http.StatusOK,
+	_ = rest.RespondWithJSON(w, http.StatusOK,
 		map[string]interface{}{
 			"message":  "User '" + username + "' authenticated successfully",
 			"token":    tokenString,
@@ -71,7 +69,7 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 	decoder := json.NewDecoder(r.Body)
 	if err = decoder.Decode(&data); err != nil {
 		log.Error(r, "parsing request body", err)
-		err = errors.New("Invalid request payload")
+		err = errors.New("invalid request payload")
 		return
 	}
 	username = data["username"]
@@ -86,21 +84,21 @@ func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 		username, password, err := getCredentialsFromBody(r)
 		if err != nil {
 			log.Error(r, "parsing request body", err)
-			rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
+			_ = rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
 		c, err := ds.User(r.Context()).CountAll()
 		if err != nil {
-			rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		if c > 0 {
-			rest.RespondWithError(w, http.StatusForbidden, "Cannot create another first admin")
+			_ = rest.RespondWithError(w, http.StatusForbidden, "Cannot create another first admin")
 			return
 		}
 		err = createDefaultUser(r.Context(), ds, username, password)
 		if err != nil {
-			rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		handleLogin(ds, username, password, w, r)
@@ -186,11 +184,11 @@ func authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, err := getToken(ds, r.Context())
 			if err == ErrFirstTime {
-				rest.RespondWithJSON(w, http.StatusUnauthorized, map[string]string{"message": ErrFirstTime.Error()})
+				_ = rest.RespondWithJSON(w, http.StatusUnauthorized, map[string]string{"message": ErrFirstTime.Error()})
 				return
 			}
 			if err != nil {
-				rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
+				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return
 			}
 
@@ -200,7 +198,7 @@ func authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 			newTokenString, err := auth.TouchToken(token)
 			if err != nil {
 				log.Error(r, "signing new token", err)
-				rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
+				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return
 			}
 

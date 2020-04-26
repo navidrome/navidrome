@@ -49,7 +49,7 @@ func (app *Router) routes(path string) http.Handler {
 		app.R(r, "/player", model.Player{})
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
-		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"response":"ok"}`)) })
+		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"response":"ok"}`)) })
 	})
 
 	// Serve UI app assets
