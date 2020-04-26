@@ -35,8 +35,8 @@ const App = () => (
       customReducers: {
         queue: playQueueReducer,
         albumView: albumViewReducer,
-        theme: themeReducer
-      }
+        theme: themeReducer,
+      },
     })}
   >
     <Admin
@@ -70,7 +70,7 @@ const App = () => (
         ) : (
           <Resource name="transcoding" />
         ),
-        <Player />
+        <Player />,
       ]}
     </Admin>
   </Provider>

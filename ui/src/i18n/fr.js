@@ -53,7 +53,7 @@ export default deepmerge(frenchMessages, {
     user: {
       name: 'Utilisateur |||| Utilisateurs',
       fields: {
-        userName: 'Nom d\'utilisateur',
+        userName: "Nom d'utilisateur",
         isAdmin: 'Administrateur',
         lastLoginAt: 'Dernière connexion',
         updatedAt: 'Dernière mise à jour',
@@ -67,7 +67,7 @@ export default deepmerge(frenchMessages, {
         transcodingId: 'Transcodage',
         maxBitRate: 'Bitrate maximum',
         client: 'Client',
-        userName: 'Nom d\'utilisateur',
+        userName: "Nom d'utilisateur",
         lastSeen: 'Vu pour la dernière fois',
       },
     },
