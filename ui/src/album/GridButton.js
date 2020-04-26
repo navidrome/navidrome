@@ -1,7 +1,7 @@
-import React, { useCallback } from 'react'
+import React from 'react'
 import { useDispatch } from 'react-redux'
 import { playAlbum } from '../audioplayer'
-import { Loading, useGetList} from 'react-admin'
+import { useGetList} from 'react-admin'
 import IconButton from '@material-ui/core/IconButton'
 import PlayIcon from '@material-ui/icons/PlayCircleFilled'
 
