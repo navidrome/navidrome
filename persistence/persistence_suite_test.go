@@ -22,8 +22,7 @@ func TestPersistence(t *testing.T) {
 	//os.Remove("./test-123.db")
 	//conf.Server.Path = "./test-123.db"
 	conf.Server.DbPath = "file::memory:?cache=shared"
-	orm.RegisterDataBase("default", db.Driver, conf.Server.DbPath)
-	New()
+	_ = orm.RegisterDataBase("default", db.Driver, conf.Server.DbPath)
 	db.EnsureLatestVersion()
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
@@ -85,7 +84,7 @@ var _ = Describe("Initialize test DB", func() {
 	// TODO Load this data setup from file(s)
 	BeforeSuite(func() {
 		o := orm.NewOrm()
-		ctx := context.WithValue(log.NewContext(nil), "user", model.User{ID: "userid"})
+		ctx := context.WithValue(log.NewContext(context.TODO()), "user", model.User{ID: "userid"})
 		mr := NewMediaFileRepository(ctx, o)
 		for _, s := range testSongs {
 			err := mr.Put(&s)

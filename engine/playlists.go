@@ -69,7 +69,7 @@ func (p *playlists) Delete(ctx context.Context, playlistId string) error {
 	if owner != pls.Owner {
 		return model.ErrNotAuthorized
 	}
-	return p.ds.Playlist(nil).Delete(playlistId)
+	return p.ds.Playlist(ctx).Delete(playlistId)
 }
 
 func (p *playlists) Update(ctx context.Context, playlistId string, name *string, idsToAdd []string, idxToRemove []int) error {

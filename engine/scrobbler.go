@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -57,7 +56,7 @@ func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName, tr
 	}
 
 	if mf == nil {
-		return nil, errors.New(fmt.Sprintf(`ID "%s" not found`, trackId))
+		return nil, fmt.Errorf(`ID "%s" not found`, trackId)
 	}
 
 	log.Info("Now Playing", "title", mf.Title, "artist", mf.Artist, "user", userName(ctx))

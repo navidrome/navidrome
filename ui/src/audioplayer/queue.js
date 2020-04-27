@@ -26,6 +26,27 @@ const setTrack = (data) => ({
   data,
 })
 
+const shuffle = (data) => {
+  const ids = Object.keys(data)
+  for (let i = ids.length - 1; i > 0; i--) {
+    let j = Math.floor(Math.random() * (i + 1))
+    ;[ids[i], ids[j]] = [ids[j], ids[i]]
+  }
+  const shuffled = {}
+  ids.forEach((id) => (shuffled[id] = data[id]))
+  return shuffled
+}
+
+const shuffleAlbum = (data) => {
+  const shuffled = shuffle(data)
+  const firstId = Object.keys(shuffled)[0]
+  return {
+    type: PLAYER_PLAY_ALBUM,
+    id: firstId,
+    data: shuffled,
+  }
+}
+
 const playAlbum = (id, data) => ({
   type: PLAYER_PLAY_ALBUM,
   id,
@@ -109,4 +130,12 @@ const playQueueReducer = (
   }
 }
 
-export { addTrack, setTrack, playAlbum, syncQueue, scrobble, playQueueReducer }
+export {
+  addTrack,
+  setTrack,
+  playAlbum,
+  syncQueue,
+  scrobble,
+  shuffleAlbum,
+  playQueueReducer,
+}

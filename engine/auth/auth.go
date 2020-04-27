@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -22,7 +23,7 @@ var (
 
 func InitTokenAuth(ds model.DataStore) {
 	once.Do(func() {
-		secret, err := ds.Property(nil).DefaultGet(consts.JWTSecretKey, "not so secret")
+		secret, err := ds.Property(context.TODO()).DefaultGet(consts.JWTSecretKey, "not so secret")
 		if err != nil {
 			log.Error("No JWT secret found in DB. Setting a temp one, but please report this error", err)
 		}

@@ -80,10 +80,6 @@ func (b *browser) Artist(ctx context.Context, id string) (*DirectoryInfo, error)
 		return nil, err
 	}
 	log.Debug(ctx, "Found Artist", "id", id, "name", a.Name)
-	var albumIds []string
-	for _, al := range albums {
-		albumIds = append(albumIds, al.ID)
-	}
 	return b.buildArtistDir(a, albums), nil
 }
 
@@ -93,11 +89,6 @@ func (b *browser) Album(ctx context.Context, id string) (*DirectoryInfo, error) 
 		return nil, err
 	}
 	log.Debug(ctx, "Found Album", "id", id, "name", al.Name)
-	var mfIds []string
-	for _, mf := range tracks {
-		mfIds = append(mfIds, mf.ID)
-	}
-
 	return b.buildAlbumDir(al, tracks), nil
 }
 

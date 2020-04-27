@@ -9,6 +9,20 @@ on:
     branches:
       - master
 jobs:
+  golangci-lint:
+    name: Lint Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Run golangci-lint
+        uses: actions-contrib/golangci-lint@v1
+        with:
+          golangci_lint_version: v1.25.0
+#          TODO Enable github actions output format: https://github.com/actions-contrib/golangci-lint/issues/11
+#          args: run --out-format github-actions
+
   go:
     name: Test Server on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -64,6 +78,11 @@ jobs:
           cd ui
           npm ci
 
+      - name: npm check-formatting
+        run: |
+          cd ui
+          npm run check-formatting
+
       - name: npm build
         run: |
           cd ui
@@ -76,7 +95,7 @@ jobs:
 
   binaries:
     name: Binaries
-    needs: [js, go]
+    needs: [js, go, golangci-lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -115,21 +134,27 @@ jobs:
     name: Docker images
     needs: [binaries]
     runs-on: ubuntu-latest
+    env:
+      DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
     steps:
       - name: Set up Docker Buildx
         id: buildx
         uses: crazy-max/ghaction-docker-buildx@v1
+        if: ${{env.DOCKER_IMAGE}} != ''
         with:
           version: latest
 
       - uses: actions/checkout@v1
+        if: ${{env.DOCKER_IMAGE}} != ''
 
       - uses: actions/download-artifact@v1
+        if: ${{env.DOCKER_IMAGE}} != ''
         with:
           name: binaries
           path: dist
 
       - name: Build the Docker image and push
+        if: ${{env.DOCKER_IMAGE}} != ''
         env:
           DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
           DOCKER_PLATFORM: linux/amd64,linux/arm/v7,linux/arm64

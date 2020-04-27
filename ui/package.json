@@ -10,6 +10,7 @@
     "prop-types": "^15.7.2",
     "ra-data-json-server": "^3.4.1",
     "ra-language-chinese": "^2.0.5",
+    "ra-language-dutch": "^3.4.1",
     "ra-language-french": "^3.4.1",
     "ra-language-italian": "^3.0.0",
     "ra-language-portuguese": "^1.6.0",
@@ -31,7 +32,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "prettier": "prettier --write src/**/*.js"
+    "prettier": "prettier --write src/*.js src/**/*.js",
+    "check-formatting": "prettier -c src/*.js src/**/*.js"
   },
   "homepage": ".",
   "proxy": "http://localhost:4633/",

@@ -2,7 +2,7 @@ const defaultConfig = {
   version: 'dev',
   firstTime: false,
   baseURL: '',
-  loginBackgroundURL: 'https://source.unsplash.com/random/1600x900?music'
+  loginBackgroundURL: 'https://source.unsplash.com/random/1600x900?music',
 }
 
 let config
@@ -12,7 +12,7 @@ try {
 
   config = {
     ...defaultConfig,
-    ...appConfig
+    ...appConfig,
   }
 } catch (e) {
   config = defaultConfig

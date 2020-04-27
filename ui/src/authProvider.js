@@ -12,7 +12,7 @@ const authProvider = {
     const request = new Request(url, {
       method: 'POST',
       body: JSON.stringify({ username, password }),
-      headers: new Headers({ 'Content-Type': 'application/json' })
+      headers: new Headers({ 'Content-Type': 'application/json' }),
     })
     return fetch(request)
       .then((response) => {
@@ -69,7 +69,7 @@ const authProvider = {
   getPermissions: () => {
     const role = localStorage.getItem('role')
     return role ? Promise.resolve(role) : Promise.reject()
-  }
+  },
 }
 
 const removeItems = () => {

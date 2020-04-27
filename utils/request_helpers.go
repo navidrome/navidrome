@@ -68,5 +68,5 @@ func ParamBool(r *http.Request, param string, def bool) bool {
 	if p == "" {
 		return def
 	}
-	return strings.Index("/true/on/1/", "/"+p+"/") != -1
+	return strings.Contains("/true/on/1/", "/"+p+"/")
 }

@@ -180,6 +180,7 @@ func extractLogger(ctx interface{}) (*logrus.Entry, error) {
 		if logger != nil {
 			return logger.(*logrus.Entry), nil
 		}
+		return extractLogger(NewContext(ctx))
 	case *http.Request:
 		return extractLogger(ctx.Context())
 	}

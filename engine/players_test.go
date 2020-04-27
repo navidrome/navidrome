@@ -14,7 +14,7 @@ import (
 var _ = Describe("Players", func() {
 	var players Players
 	var repo *mockPlayerRepository
-	ctx := context.WithValue(log.NewContext(nil), "user", model.User{ID: "userid", UserName: "johndoe"})
+	ctx := context.WithValue(log.NewContext(context.TODO()), "user", model.User{ID: "userid", UserName: "johndoe"})
 	ctx = context.WithValue(ctx, "username", "johndoe")
 	var beforeRegister time.Time
 

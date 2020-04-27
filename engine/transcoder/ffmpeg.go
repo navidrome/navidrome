@@ -30,7 +30,7 @@ func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate in
 	args := createTranscodeCommand(command, path, maxBitRate)
 
 	log.Trace(ctx, "Executing ffmpeg command", "cmd", args)
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.Command(args[0], args[1:]...) // #nosec
 	cmd.Stderr = os.Stderr
 	if f, err = cmd.StdoutPipe(); err != nil {
 		return
@@ -38,7 +38,9 @@ func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate in
 	if err = cmd.Start(); err != nil {
 		return
 	}
-	go cmd.Wait() // prevent zombies
+
+	go func() { _ = cmd.Wait() }() // prevent zombies
+
 	return
 }
 

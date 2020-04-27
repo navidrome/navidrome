@@ -2,6 +2,7 @@ package migration
 
 import (
 	"database/sql"
+
 	"github.com/pressly/goose"
 )
 
