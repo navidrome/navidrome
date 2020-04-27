@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 import { linkToRecord, Loading } from 'react-admin'
 import subsonic from '../subsonic'
 import { ArtistLinkField } from './ArtistLinkField'
-import GridButton from './GridButton.js'
+import GridMenu from './GridMenu.js'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -22,7 +22,7 @@ const useStyles = makeStyles((theme) => ({
     height: '100%',
   },
   tileBar: {
-    textAlign: 'center',
+    textAlign: 'left',
     background:
       'linear-gradient(to top, rgba(0,0,0,1) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
   },
@@ -30,7 +30,7 @@ const useStyles = makeStyles((theme) => ({
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    textAlign: 'center',
+    textAlign: 'left',
     fontSize: '1em',
   },
   artistLink: {
@@ -81,9 +81,7 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
                   </ArtistLinkField>
                 </div>
               }
-			  actionIcon={
-				<GridButton id={id}/>
-			  }
+              actionIcon={<GridMenu id={id} />}
             />
           </GridListTile>
         ))}
