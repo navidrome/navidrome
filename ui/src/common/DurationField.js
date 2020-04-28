@@ -2,7 +2,12 @@ import React from 'react'
 import PropTypes from 'prop-types'
 
 const DurationField = ({ record = {}, source }) => {
-  return <span>{format(record[source])}</span>
+  try {
+    return <span>{format(record[source])}</span>
+  } catch (e) {
+    console.log('Error in DurationField !!! record=', record)
+    throw e
+  }
 }
 
 const format = (d) => {
