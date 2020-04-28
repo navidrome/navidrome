@@ -45,7 +45,7 @@ const useStyles = makeStyles((theme) => ({
     marginTop: '1em',
     display: 'flex',
     justifyContent: 'center',
-    color: 'blue', //theme.palette.grey[500]
+    color: '#3f51b5', //theme.palette.grey[500]
   },
   form: {
     padding: '0 1em 1em 1em',
