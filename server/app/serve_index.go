@@ -22,10 +22,11 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 		t := getIndexTemplate(r, fs)
 
 		appConfig := map[string]interface{}{
-			"version":            consts.Version(),
-			"firstTime":          firstTime,
-			"baseURL":            strings.TrimSuffix(conf.Server.BaseURL, "/"),
-			"loginBackgroundURL": conf.Server.UILoginBackgroundURL,
+			"version":                 consts.Version(),
+			"firstTime":               firstTime,
+			"baseURL":                 strings.TrimSuffix(conf.Server.BaseURL, "/"),
+			"loginBackgroundURL":      conf.Server.UILoginBackgroundURL,
+			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,
 		}
 		j, _ := json.Marshal(appConfig)
 

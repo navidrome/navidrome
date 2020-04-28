@@ -14,6 +14,7 @@ import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import { changeTheme } from './actions'
 import themes from '../themes'
 import i18n from '../i18n'
+import { docsUrl } from '../utils/docsUrl'
 
 const useStyles = makeStyles({
   root: { marginTop: '1em' },
@@ -53,9 +54,7 @@ const SelectLanguage = (props) => {
       choices={langChoices}
       onChange={(event) => {
         if (event.target.value === helpKey) {
-          openInNewTab(
-            'https://www.navidrome.org/docs/developers/translations/'
-          )
+          openInNewTab(docsUrl('/docs/developers/translations/'))
           return
         }
         setLocale(event.target.value)
@@ -85,9 +84,7 @@ const SelectTheme = (props) => {
       choices={themeChoices}
       onChange={(event) => {
         if (event.target.value === helpKey) {
-          openInNewTab(
-            'https://www.navidrome.org/docs/developers/creating-themes/'
-          )
+          openInNewTab(docsUrl('/docs/developers/creating-themes/'))
           return
         }
         dispatch(changeTheme(event.target.value))

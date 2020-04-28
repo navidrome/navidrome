@@ -7,6 +7,7 @@ import SimpleList from './SimpleList'
 import RangeField, { formatRange } from './RangeField'
 import SongDetails from './SongDetails'
 import SizeField from './SizeField'
+import DocLink from './DocLink'
 
 export {
   Title,
@@ -18,5 +19,6 @@ export {
   SimpleList,
   RangeField,
   SongDetails,
+  DocLink,
   formatRange,
 }

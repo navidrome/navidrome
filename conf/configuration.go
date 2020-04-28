@@ -27,9 +27,10 @@ type nd struct {
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
 	IndexGroups     string `default:"A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)"`
 
-	TranscodingCacheSize string `default:"100MB"` // in MB
-	ImageCacheSize       string `default:"100MB"` // in MB
-	ProbeCommand         string `default:"ffmpeg %s -f ffmetadata"`
+	EnableTranscodingConfig bool   `default:"false"`
+	TranscodingCacheSize    string `default:"100MB"` // in MB
+	ImageCacheSize          string `default:"100MB"` // in MB
+	ProbeCommand            string `default:"ffmpeg %s -f ffmetadata"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool   `default:"false"`
