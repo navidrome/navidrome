@@ -2,6 +2,7 @@ import React from 'react'
 import { Datagrid, List, TextField } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import { SimpleList, Title } from '../common'
+import config from '../config'
 
 const TranscodingList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -23,7 +24,7 @@ const TranscodingList = (props) => {
           tertiaryText={(r) => r.defaultBitRate}
         />
       ) : (
-        <Datagrid rowClick="edit">
+        <Datagrid rowClick={config.enableTranscodingConfig ? 'edit' : 'show'}>
           <TextField source="name" />
           <TextField source="targetFormat" />
           <TextField source="defaultBitRate" />
