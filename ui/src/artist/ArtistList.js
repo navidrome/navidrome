@@ -25,7 +25,9 @@ const artistRowClick = (id) => {
 const ArtistList = (props) => (
   <List
     {...props}
-    title={<Title subTitle={'Artists'} />}
+    title={
+      <Title subTitle={'resources.artist.name'} args={{ smart_count: 2 }} />
+    }
     sort={{ field: 'name', order: 'ASC' }}
     exporter={false}
     bulkActionButtons={false}

@@ -7,7 +7,12 @@ const TranscodingList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return (
     <List
-      title={<Title subTitle={'Transcodings'} />}
+      title={
+        <Title
+          subTitle={'resources.transcoding.name'}
+          args={{ smart_count: 2 }}
+        />
+      }
       exporter={false}
       {...props}
     >

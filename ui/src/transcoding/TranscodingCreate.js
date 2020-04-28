@@ -5,11 +5,19 @@ import {
   Create,
   required,
   SimpleForm,
+  useTranslate,
 } from 'react-admin'
 import { Title } from '../common'
 
-const TranscodingTitle = ({ record }) => {
-  return <Title subTitle={`Transcoding ${record ? record.name : ''}`} />
+const TranscodingTitle = () => {
+  const translate = useTranslate()
+  const resourceName = translate('resources.transcoding.name', {
+    smart_count: 1,
+  })
+  const title = translate('ra.page.create', {
+    name: `${resourceName}`,
+  })
+  return <Title subTitle={title} />
 }
 
 const TranscodingCreate = (props) => (

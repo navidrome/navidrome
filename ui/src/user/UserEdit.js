@@ -8,11 +8,14 @@ import {
   required,
   email,
   SimpleForm,
+  useTranslate,
 } from 'react-admin'
 import { Title } from '../common'
 
 const UserTitle = ({ record }) => {
-  return <Title subTitle={`User ${record ? record.name : ''}`} />
+  const translate = useTranslate()
+  const resourceName = translate('resources.user.name', { smart_count: 1 })
+  return <Title subTitle={`${resourceName} ${record ? record.name : ''}`} />
 }
 const UserEdit = (props) => (
   <Edit title={<UserTitle />} {...props}>

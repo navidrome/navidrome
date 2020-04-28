@@ -92,6 +92,9 @@ export default deepmerge(portugueseMessages, {
       invalidChars: 'Somente use letras e numeros',
       passwordDoesNotMatch: 'Senha não confere',
     },
+    page: {
+      create: 'Criar %{name}',
+    },
   },
   menu: {
     library: 'Biblioteca',

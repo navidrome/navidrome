@@ -67,7 +67,9 @@ const AlbumList = (props) => {
   return (
     <List
       {...props}
-      title={<Title subTitle={'Albums'} />}
+      title={
+        <Title subTitle={'resources.album.name'} args={{ smart_count: 2 }} />
+      }
       exporter={false}
       bulkActionButtons={false}
       actions={<AlbumListActions />}

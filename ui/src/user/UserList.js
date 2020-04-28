@@ -24,7 +24,9 @@ const UserList = (props) => {
   return (
     <List
       {...props}
-      title={<Title subTitle={'Users'} />}
+      title={
+        <Title subTitle={'resources.user.name'} args={{ smart_count: 2 }} />
+      }
       sort={{ field: 'userName', order: 'ASC' }}
       exporter={false}
       filters={<UserFilter />}

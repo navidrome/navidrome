@@ -13,7 +13,13 @@ import { SimpleList, Title } from '../common'
 const PlayerList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return (
-    <List title={<Title subTitle={'Players'} />} exporter={false} {...props}>
+    <List
+      title={
+        <Title subTitle={'resources.player.name'} args={{ smart_count: 2 }} />
+      }
+      exporter={false}
+      {...props}
+    >
       {isXsmall ? (
         <SimpleList
           primaryText={(r) => r.client}

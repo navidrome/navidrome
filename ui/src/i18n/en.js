@@ -17,6 +17,7 @@ export default deepmerge(englishMessages, {
       },
     },
     album: {
+      name: 'Album |||| Albums',
       fields: {
         albumArtist: 'Album Artist',
         artist: 'Artist',
@@ -30,6 +31,18 @@ export default deepmerge(englishMessages, {
         addToQueue: 'Play Later',
         shuffle: 'Shuffle',
       },
+    },
+    artist: {
+      name: 'Artist |||| Artists',
+    },
+    user: {
+      name: 'User |||| Users',
+    },
+    player: {
+      name: 'Player |||| Players',
+    },
+    transcoding: {
+      name: 'Transcoding |||| Transcodings',
     },
   },
   ra: {

@@ -36,7 +36,9 @@ const SongList = (props) => {
   return (
     <List
       {...props}
-      title={<Title subTitle={'Songs'} />}
+      title={
+        <Title subTitle={'resources.song.name'} args={{ smart_count: 2 }} />
+      }
       sort={{ field: 'title', order: 'ASC' }}
       exporter={false}
       bulkActionButtons={<SongBulkActions />}

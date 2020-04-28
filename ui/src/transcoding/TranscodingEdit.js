@@ -1,9 +1,20 @@
 import React from 'react'
-import { TextInput, SelectInput, Edit, required, SimpleForm } from 'react-admin'
+import {
+  TextInput,
+  SelectInput,
+  Edit,
+  required,
+  SimpleForm,
+  useTranslate,
+} from 'react-admin'
 import { Title } from '../common'
 
 const TranscodingTitle = ({ record }) => {
-  return <Title subTitle={`Transcoding ${record ? record.name : ''}`} />
+  const translate = useTranslate()
+  const resourceName = translate('resources.transcoding.name', {
+    smart_count: 1,
+  })
+  return <Title subTitle={`${resourceName} ${record ? record.name : ''}`} />
 }
 
 const TranscodingEdit = (props) => (
