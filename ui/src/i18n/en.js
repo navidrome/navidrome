@@ -37,6 +37,9 @@ export default deepmerge(englishMessages, {
     },
     user: {
       name: 'User |||| Users',
+      fields: {
+        userName: 'Username',
+      },
     },
     player: {
       name: 'Player |||| Players',
