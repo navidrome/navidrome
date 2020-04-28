@@ -62,7 +62,7 @@ var _ = Describe("Metadata", func() {
 		})
 
 		It("returns empty map if there are no audio files in path", func() {
-			Expect(LoadAllAudioFiles("tests/empty_folder")).To(BeEmpty())
+			Expect(LoadAllAudioFiles("tests/fixtures/empty_folder")).To(BeEmpty())
 		})
 	})
 
