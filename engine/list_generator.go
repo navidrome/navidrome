@@ -181,7 +181,6 @@ func (g *listGenerator) GetNowPlaying(ctx context.Context) (Entries, error) {
 		entries[i].MinutesAgo = int(time.Since(np.Start).Minutes())
 		entries[i].PlayerId = np.PlayerId
 		entries[i].PlayerName = np.PlayerName
-
 	}
 	return entries, nil
 }
