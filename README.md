@@ -28,7 +28,7 @@ please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join
 - Automatically monitors your library for changes, importing new files and reloading new metadata 
 - [Themeable](ui/src/themes/README.md), modern and responsive Web interface based on Material UI, to manage users and 
   browse your library
-- Compatible with all Subsonic/Madsonic/Airsonic clients. See bellow for a list of tested clients
+- Compatible with all Subsonic/Madsonic/Airsonic clients. See below for a list of tested clients
 - Transcoding/Downsampling on-the-fly. Can be set per user/player. Opus encoding is supported
 - Integrated music player (WIP)
 
@@ -112,7 +112,7 @@ To get the cutting-edge, latest version from master, use the image `deluan/navid
 
 You will need to install [Go 1.14](https://golang.org/dl/) and [Node 13](http://nodejs.org).
 You'll also need [ffmpeg](https://ffmpeg.org) installed in your system. The setup is very strict, and 
-the steps bellow only work with these specific versions (enforced in the Makefile) 
+the steps below only work with these specific versions (enforced in the Makefile) 
 
 After the prerequisites above are installed, clone this repository and build the application with:
 

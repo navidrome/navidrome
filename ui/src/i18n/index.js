@@ -11,7 +11,7 @@ const addLanguages = (lang) => {
 }
 const languages = { en }
 
-// Add new languages to the object bellow (please keep alphabetic sort)
+// Add new languages to the object below (please keep alphabetic sort)
 addLanguages({ cn, fr, it, nl, pt })
 
 // "Hack" to make "albumSongs" resource use the same translations as "song"
