@@ -10,7 +10,7 @@ default:
 .PHONY: default
 
 dev: check_env
-	@goreman -f Procfile.dev -b 4533 start
+	npx foreman -j Procfile.dev -p 4533 start
 .PHONY: dev
 
 server: check_go_env
@@ -37,7 +37,6 @@ testall: check_go_env test
 setup:
 	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
 	@which reflex     || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
-	@which goreman    || (echo "Installing Goreman"  && GO111MODULE=off go get -u github.com/mattn/goreman)
 	go mod download
 .PHONY: setup
 
