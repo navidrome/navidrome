@@ -1,8 +1,14 @@
 linters:
   enable:
+    - bodyclose
     - goimports
-    - unconvert
+    - goprintffuncname
     - gosec
+    - interfacer
+    - misspell
+    - rowserrcheck
+    - unconvert
+    - whitespace
 
 issues:
   exclude-rules:

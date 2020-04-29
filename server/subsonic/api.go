@@ -38,7 +38,6 @@ type Router struct {
 func New(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator, users engine.Users,
 	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search,
 	streamer engine.MediaStreamer, players engine.Players) *Router {
-
 	r := &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
 		Ratings: ratings, Scrobbler: scrobbler, Search: search, Users: users, Streamer: streamer, Players: players}
 	r.mux = r.routes()
