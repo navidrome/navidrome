@@ -60,6 +60,17 @@ export default deepmerge(englishMessages, {
       passwordDoesNotMatch: 'Password does not match',
     },
   },
+  message: {
+    note: 'NOTE',
+    transcodingDisabled:
+      'Changing the transcoding configuration through the web interface is disabled for security ' +
+      'reasons. If you would like to change (edit or add) transcoding options, restart the server with ' +
+      'the %{config} configuration option.',
+    transcodingEnabled:
+      'Navidrome is currently running with %{config}, making it possible to run system ' +
+      'commands from the transcoding settings using the web interface. We recommend to disable it for security reasons ' +
+      'and only enable it when configuring Transcoding options.',
+  },
   menu: {
     library: 'Library',
     settings: 'Settings',
