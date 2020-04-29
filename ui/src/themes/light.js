@@ -4,7 +4,7 @@ export default {
     secondary: {
       light: '#5f5fc4',
       dark: '#001064',
-      main: '#283593',
+      main: '#3f51b5',
       contrastText: '#fff',
     },
   },
