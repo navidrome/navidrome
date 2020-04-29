@@ -38,6 +38,7 @@ setup:
 	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
 	@which reflex     || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
 	go mod download
+	@(cd ./ui && npm ci)
 .PHONY: setup
 
 setup-dev: setup
@@ -46,7 +47,6 @@ setup-dev: setup
 	@which goose      || (echo "Installing Goose"    && GO111MODULE=off go get -u github.com/pressly/goose/cmd/goose)
 	@which lefthook   || (echo "Installing Lefthook" && GO111MODULE=off go get -u github.com/Arkweid/lefthook)
 	@lefthook install
-	@(cd ./ui && npm ci)
 .PHONY: setup
 
 static:
