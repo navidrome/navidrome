@@ -1,13 +1,25 @@
 linters:
   enable:
     - bodyclose
+    - deadcode
+    - dogsled
+    - errcheck
+    - gocyclo
     - goimports
     - goprintffuncname
     - gosec
+    - gosimple
+    - govet
+    - ineffassign
     - interfacer
     - misspell
     - rowserrcheck
+    - staticcheck
+    - structcheck
+    - typecheck
     - unconvert
+    - unused
+    - varcheck
     - whitespace
 
 issues:
