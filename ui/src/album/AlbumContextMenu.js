@@ -3,11 +3,19 @@ import IconButton from '@material-ui/core/IconButton'
 import Menu from '@material-ui/core/Menu'
 import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
+import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, useTranslate } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import { playAlbum, shuffleAlbum } from '../audioplayer'
 
+const useStyles = makeStyles({
+  icon: {
+    color: 'white',
+  },
+})
+
 const AlbumContextMenu = (props) => {
+  const classes = useStyles()
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const translate = useTranslate()
@@ -59,6 +67,7 @@ const AlbumContextMenu = (props) => {
         aria-label="more"
         aria-controls="context-menu"
         aria-haspopup="true"
+        className={classes.icon}
         onClick={handleClick}
       >
         <MoreVertIcon />
