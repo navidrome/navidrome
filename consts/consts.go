@@ -19,8 +19,6 @@ const (
 	JWTIssuer             = "ND"
 	DefaultSessionTimeout = 30 * time.Minute
 
-	UIAssetsLocalPath = "ui/build"
-
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 

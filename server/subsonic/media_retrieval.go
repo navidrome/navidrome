@@ -7,8 +7,8 @@ import (
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/resources"
 	"github.com/deluan/navidrome/server/subsonic/responses"
-	"github.com/deluan/navidrome/static"
 	"github.com/deluan/navidrome/utils"
 )
 
@@ -21,7 +21,7 @@ func NewMediaRetrievalController(cover engine.Cover) *MediaRetrievalController {
 }
 
 func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	f, err := static.AssetFile().Open("navidrome-310x310.png")
+	f, err := resources.AssetFile().Open("navidrome-310x310.png")
 	if err != nil {
 		log.Error(r, "Image not found", err)
 		return nil, NewError(responses.ErrorDataNotFound, "Avatar image not found")

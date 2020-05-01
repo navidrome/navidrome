@@ -35,6 +35,7 @@ RUN GIT_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) && \
     GIT_TAG=${GIT_TAG#"tags/"} && \
     GIT_SHA=$(git rev-parse --short HEAD) && \
     echo "Building version: ${GIT_TAG} (${GIT_SHA})" && \
+    go-bindata -fs -prefix resources -tags embed -ignore="\\\*.go" -pkg resources -o resources/embedded_gen.go resources/...
     go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/... && \
     go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=${GIT_SHA} -X github.com/deluan/navidrome/consts.gitTag=${GIT_TAG}" -tags=embed
 
