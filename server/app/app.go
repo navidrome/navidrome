@@ -48,6 +48,7 @@ func (app *Router) routes(path string) http.Handler {
 		app.R(r, "/artist", model.Artist{}, true)
 		app.R(r, "/player", model.Player{}, true)
 		app.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
+		app.addResource(r, "/translation", newTranslationRepository, false)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"response":"ok"}`)) })
@@ -64,12 +65,16 @@ func (app *Router) R(r chi.Router, pathPrefix string, model interface{}, persist
 	constructor := func(ctx context.Context) rest.Repository {
 		return app.ds.Resource(ctx, model)
 	}
+	app.addResource(r, pathPrefix, constructor, persistable)
+}
+
+func (app *Router) addResource(r chi.Router, pathPrefix string, constructor rest.RepositoryConstructor, persistable bool) {
 	r.Route(pathPrefix, func(r chi.Router) {
 		r.Get("/", rest.GetAll(constructor))
 		if persistable {
 			r.Post("/", rest.Post(constructor))
 		}
-		r.Route("/{id:[0-9a-f\\-]+}", func(r chi.Router) {
+		r.Route("/{id}", func(r chi.Router) {
 			r.Use(UrlParams)
 			r.Get("/", rest.Get(constructor))
 			if persistable {

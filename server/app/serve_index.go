@@ -13,7 +13,7 @@ import (
 	"github.com/deluan/navidrome/model"
 )
 
-// Injects the `firstTime` config in the `index.html` template
+// Injects the config in the `index.html` template
 func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := ds.User(r.Context()).CountAll()
@@ -21,6 +21,9 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 
 		t := getIndexTemplate(r, fs)
 
+		if err != nil {
+			log.Error("Error loading default English translation file", err)
+		}
 		appConfig := map[string]interface{}{
 			"version":                 consts.Version(),
 			"firstTime":               firstTime,

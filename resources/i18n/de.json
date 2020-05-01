@@ -1,0 +1,258 @@
+{
+    "languageName": "Deutsch",
+    "resources": {
+        "song": {
+            "name": "Song |||| Songs",
+            "fields": {
+                "albumArtist": "Album Künstler",
+                "duration": "Dauer",
+                "trackNumber": "Titel #",
+                "playCount": "Aufrufe",
+                "title": "Titel",
+                "artist": "Künstler",
+                "album": "Album",
+                "path": "Dateipfad",
+                "genre": "Genre",
+                "compilation": "Kompilation",
+                "year": "Jahr",
+                "size": "Dateigröße",
+                "updatedAt": "Hochgeladen um"
+            },
+            "actions": {
+                "addToQueue": "Später abspielen"
+            },
+            "action": {
+                "playNow": "Jetzt abspielen"
+            }
+        },
+        "album": {
+            "name": "Album |||| Alben",
+            "fields": {
+                "albumArtist": "Album Künstler",
+                "artist": "Künstler",
+                "duration": "Dauer",
+                "songCount": "Songs",
+                "playCount": "Aufrufe",
+                "name": "Name",
+                "genre": "Genre",
+                "compilation": "Kompilation",
+                "year": "Jahr"
+            },
+            "actions": {
+                "playAll": "Abspielen",
+                "playNext": "Als nächstes abspielen",
+                "addToQueue": "Später abspielen",
+                "shuffle": "Zufallswiedergabe"
+            }
+        },
+        "artist": {
+            "name": "Künstler |||| Künstler",
+            "fields": {
+                "name": "Name",
+                "albumCount": "Albumanzahl"
+            }
+        },
+        "user": {
+            "name": "Nutzer |||| Nutzer",
+            "fields": {
+                "userName": "Nutzername",
+                "isAdmin": "Ist Admin",
+                "lastLoginAt": "Letzer Login um ",
+                "updatedAt": "Aktualisiert am",
+                "name": "Name"
+            }
+        },
+        "player": {
+            "name": "Player |||| Players",
+            "fields": {
+                "name": "Name",
+                "transcodingId": "Transkodierungs-ID",
+                "maxBitRate": "Max. Bitrate",
+                "client": "Client",
+                "userName": "Nutzername",
+                "lastSeen": "Zuletzt gesehen um"
+            }
+        },
+        "transcoding": {
+            "name": "Transcodierung |||| Transcodierungen",
+            "fields": {
+                "name": "Name",
+                "targetFormat": "Zielformat",
+                "defaultBitRate": "Standardbitrate",
+                "command": "Befehl"
+            }
+        }
+    },
+    "ra": {
+        "auth": {
+            "welcome1": "Vielen Dank für die Installation von Navidrome!",
+            "welcome2": "Als erstes erstelle einen Admin-Benutzer",
+            "confirmPassword": "Passwort bestätigen",
+            "buttonCreateAdmin": "Admin erstellen",
+            "auth_check_error": "Bitte einloggen um  fortzufahren",
+            "user_menu": "Profil",
+            "username": "Nutzername",
+            "password": "Passwort",
+            "sign_in": "Anmelden",
+            "sign_in_error": "Fehler bei der Anmeldung",
+            "logout": "Abmelden"
+        },
+        "validation": {
+            "invalidChars": "Bitte nur Buchstaben und Zahlen verwenden",
+            "passwordDoesNotMatch": "Passwort stimmt nicht überein",
+            "required": "Benötigt",
+            "minLength": "Muss mindestens %{min} Zeichen lang sein",
+            "maxLength": "Darf maximal %{max} Zeichen lang sein",
+            "minValue": "Muss mindestens %{min} sein",
+            "maxValue": "Muss %{max} oder weniger sein",
+            "number": "Muss eine Nummer sein",
+            "email": "Muss eine gültige E-Mail sein",
+            "oneOf": "Es muss einer sein von: %{options}",
+            "regex": "Es muss folgendem regulären Ausdruck entsprechen: %{pattern}"
+        },
+        "action": {
+            "add_filter": "Filter hinzufügen",
+            "add": "Neu",
+            "back": "Zurück",
+            "bulk_actions": "Ein Element ausgewählt |||| %{smart_count} Elemente ausgewählt",
+            "cancel": "Abbrechen",
+            "clear_input_value": "Eingabe löschen",
+            "clone": "Klonen",
+            "confirm": "Bestätigen",
+            "create": "Erstellen",
+            "delete": "Löschen",
+            "edit": "Bearbeiten",
+            "export": "Exportieren",
+            "list": "Liste",
+            "refresh": "Aktualisieren",
+            "remove_filter": "Filter entfernen",
+            "remove": "Entfernen",
+            "save": "Speichern",
+            "search": "Suchen",
+            "show": "Anzeigen",
+            "sort": "Sortieren",
+            "undo": "Zurücksetzen",
+            "expand": "Expandieren",
+            "close": "Schließen",
+            "open_menu": "Menü öffnen",
+            "close_menu": "Menü schließen"
+        },
+        "boolean": {
+            "true": "Ja",
+            "false": "Nein"
+        },
+        "page": {
+            "create": "%{name} erstellen",
+            "dashboard": "Dashboard",
+            "edit": "%{name} #%{id}",
+            "error": "Etwas ist schief gelaufen",
+            "list": "%{name}",
+            "loading": "Laden",
+            "not_found": "Nicht gefunden",
+            "show": "%{name} #%{id}",
+            "empty": "Noch kein %{name}.\n",
+            "invite": "Möchten du eine hinzufügen?"
+        },
+        "input": {
+            "file": {
+                "upload_several": "Zum Hochladen Dateien hineinziehen oder hier klicken, um Dateien auszuwählen.",
+                "upload_single": "Zum Hochladen Datei hineinziehen oder hier klicken, um eine Datei auszuwählen."
+            },
+            "image": {
+                "upload_several": "Zum Hochladen Bilder hineinziehen oder hier klicken, um Bilder auszuwählen.",
+                "upload_single": "Zum Hochladen Bild hineinziehen oder hier klicken, um ein Bild auszuwählen."
+            },
+            "references": {
+                "all_missing": "Die zugehörigen Referenzen konnten nicht gefunden werden.",
+                "many_missing": "Mindestens eine der zugehörigen Referenzen scheint nicht mehr verfügbar zu sein.",
+                "single_missing": "Eine zugehörige Referenz scheint nicht mehr verfügbar zu sein."
+            },
+            "password": {
+                "toggle_visible": "Passwort verbergen",
+                "toggle_hidden": "Passwort anzeigen"
+            }
+        },
+        "message": {
+            "about": "Über",
+            "are_you_sure": "Bist du sicher?",
+            "bulk_delete_content": "Möchtest du \"%{name}\" wirklich löschen? |||| Möchtest du diese %{smart_count} Elemente wirklich löschen?",
+            "bulk_delete_title": "Lösche %{name} |||| Lösche %{smart_count} %{name} Elemente",
+            "delete_content": "Möchtest du diesen Inhalt wirklich löschen?",
+            "delete_title": "Lösche %{name} #%{id}",
+            "details": "Details",
+            "error": "Ein Fehler ist aufgetreten und ihre Anfrage konnte nicht abgeschlossen werden.",
+            "invalid_form": "Das Formular ist ungültig. Bitte überprüfe deine Eingaben.",
+            "loading": "Die Seite wird geladen.",
+            "no": "Nein",
+            "not_found": "Die Seite konnte nicht gefunden werden.",
+            "yes": "Ja",
+            "unsaved_changes": "Einige deiner Änderungen wurden nicht gespeichert. Bist du sicher, dass du sie ignorieren möchtest?"
+        },
+        "navigation": {
+            "no_results": "Keine Resultate gefunden",
+            "no_more_results": "Die Seite %{page} enthält keine Inhalte.",
+            "page_out_of_boundaries": "Die Seite %{page} liegt ausserhalb des gültigen Bereichs",
+            "page_out_from_end": "Letzte Seite",
+            "page_out_from_begin": "Erste Seite",
+            "page_range_info": "%{offsetBegin}-%{offsetEnd} von %{total}",
+            "page_rows_per_page": "Zeilen pro Seite:",
+            "next": "Weiter",
+            "prev": "Zurück"
+        },
+        "notification": {
+            "updated": "Element wurde aktualisiert |||| %{smart_count} Elemente wurden aktualisiert",
+            "created": "Element wurde erstellt",
+            "deleted": "Element wurde gelöscht |||| %{smart_count} Elemente wurden gelöscht",
+            "bad_item": "Fehlerhaftes Elemente",
+            "item_doesnt_exist": "Das Element existiert nicht",
+            "http_error": "Fehler beim Kommunizieren mit dem Server",
+            "data_provider_error": "dataProvider Fehler. Prüfe die Konsole für Details.",
+            "i18n_error": "Die Übersetzungen für die angegebene Sprache können nicht geladen werden",
+            "canceled": "Aktion abgebrochen",
+            "logged_out": "Ihr Session wurde beendet. Bitte erneut verbinden."
+        }
+    },
+    "message": {
+        "note": "Hinweis",
+        "transcodingDisabled": "Die Änderung der Transcodierungskonfiguration über die Webschnittstelle ist aus Sicherheitsgründen deaktiviert. Wenn du die Transcodierungsoptionen ändern (bearbeiten oder hinzufügen) möchtest, starte den Server mit der Konfigurationsoption %{config} neu.",
+        "transcodingEnabled": "Navidrome läuft derzeit mit %{config}, wodurch es möglich ist, Systembefehle aus den Transkodierungseinstellungen über die Webschnittstelle auszuführen. Wir empfehlen, es aus Sicherheitsgründen zu deaktivieren und nur bei der Konfiguration von Transkodierungsoptionen zu aktivieren."
+    },
+    "menu": {
+        "library": "Bibliothek",
+        "settings": "Einstellungen",
+        "version": "Version %{version}",
+        "theme": "Design",
+        "personal": {
+            "name": "Persönlich",
+            "options": {
+                "theme": "Thema",
+                "language": "Sprache"
+            }
+        }
+    },
+    "player": {
+        "playListsText": "Warteschlange abspielen",
+        "openText": "Öffnen",
+        "closeText": "Schließen",
+        "notContentText": "Keine Musik",
+        "clickToPlayText": "Anklicken um abzuspielen",
+        "clickToPauseText": "Zum Pausieren anklicken",
+        "nextTrackText": "Nächster Titel",
+        "previousTrackText": "Vorheriger Titel",
+        "reloadText": "Neu laden",
+        "volumeText": "Lautstärke",
+        "toggleLyricText": "Liedtext umschalten",
+        "toggleMiniModeText": "Minimieren",
+        "destroyText": "Zerstören",
+        "downloadText": "Herunterladen",
+        "removeAudioListsText": "Audiolisten löschen",
+        "clickToDeleteText": "Klicken um %{Name} zu Löschen",
+        "emptyLyricText": "Kein Liedtext",
+        "playModeText": {
+            "order": "Der Reihe nach",
+            "orderLoop": "Wiederholen",
+            "singleLoop": "Eins wiederholen",
+            "shufflePlay": "Zufallswiedergabe"
+        }
+    }
+}

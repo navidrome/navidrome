@@ -47,7 +47,6 @@ const Player = () => {
       destroyText: translate('player.destroyText'),
       downloadText: translate('player.downloadText'),
       removeAudioListsText: translate('player.removeAudioListsText'),
-      controllerTitle: translate('player.controllerTitle'),
       clickToDeleteText: (name) =>
         translate('player.clickToDeleteText', { name }),
       emptyLyricText: translate('player.emptyLyricText'),
