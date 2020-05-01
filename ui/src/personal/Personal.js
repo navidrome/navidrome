@@ -2,18 +2,18 @@ import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Card } from '@material-ui/core'
 import {
-  Title,
-  SimpleForm,
   SelectInput,
-  useTranslate,
-  useSetLocale,
+  SimpleForm,
+  Title,
+  useGetList,
   useLocale,
+  useSetLocale,
+  useTranslate,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import { changeTheme } from './actions'
 import themes from '../themes'
-import i18n from '../i18n'
 import { docsUrl } from '../utils/docsUrl'
 
 const useStyles = makeStyles({
@@ -35,23 +35,35 @@ const HelpMsg = ({ caption }) => (
 )
 
 const SelectLanguage = (props) => {
+  const { ids, data, loaded } = useGetList(
+    'translation',
+    { page: 1, perPage: -1 },
+    { field: '', order: '' },
+    {}
+  )
+
   const translate = useTranslate()
-  const locale = useLocale()
   const setLocale = useSetLocale()
-  const langChoices = Object.keys(i18n).map((key) => {
-    return { id: key, name: i18n[key].languageName }
-  })
+  const locale = useLocale()
+
+  const langChoices = [{ id: 'en', name: 'English' }]
+  if (loaded) {
+    ids.forEach((id) => langChoices.push({ id: id, name: data[id].name }))
+  }
+  langChoices.sort((a, b) => a.name.localeCompare(b.name))
   langChoices.push({
     id: helpKey,
     name: <HelpMsg caption={'Help to translate'} />,
   })
+
   return (
     <SelectInput
       {...props}
-      source="lamguage"
+      source="language"
       label={translate('menu.personal.options.language')}
       defaultValue={locale}
       choices={langChoices}
+      translateChoice={false}
       onChange={(event) => {
         if (event.target.value === helpKey) {
           openInNewTab(docsUrl('/docs/developers/translations/'))
@@ -81,6 +93,7 @@ const SelectTheme = (props) => {
       source="theme"
       label={translate('menu.personal.options.theme')}
       defaultValue={currentTheme}
+      translateChoice={false}
       choices={themeChoices}
       onChange={(event) => {
         if (event.target.value === helpKey) {

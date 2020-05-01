@@ -1,0 +1,258 @@
+{
+    "languageName": "Português",
+    "resources": {
+        "song": {
+            "name": "Música |||| Músicas",
+            "fields": {
+                "albumArtist": "",
+                "duration": "Duração",
+                "trackNumber": "#",
+                "playCount": "Execuções",
+                "title": "Título",
+                "artist": "Artista",
+                "album": "Álbum",
+                "path": "Arquivo",
+                "genre": "Gênero",
+                "compilation": "Coletânea",
+                "year": "Ano",
+                "size": "Tamanho",
+                "updatedAt": "Últ. Atualização"
+            },
+            "actions": {
+                "addToQueue": "Tocar por último"
+            },
+            "action": {
+                "playNow": ""
+            }
+        },
+        "album": {
+            "name": "Álbum |||| Álbuns",
+            "fields": {
+                "albumArtist": "",
+                "artist": "Artista",
+                "duration": "Duração",
+                "songCount": "Músicas",
+                "playCount": "Execuções",
+                "name": "Nome",
+                "genre": "Gênero",
+                "compilation": "Coletânea",
+                "year": "Ano"
+            },
+            "actions": {
+                "playAll": "Play",
+                "playNext": "Play Next",
+                "addToQueue": "Tocar por último",
+                "shuffle": "Shuffle"
+            }
+        },
+        "artist": {
+            "name": "Artista |||| Artistas",
+            "fields": {
+                "name": "Nome",
+                "albumCount": "Total de Álbuns"
+            }
+        },
+        "user": {
+            "name": "Usuário |||| Usuários",
+            "fields": {
+                "userName": "Usuário",
+                "isAdmin": "Admin?",
+                "lastLoginAt": "Últ. Login",
+                "updatedAt": "Últ. Atualização",
+                "name": "Nome"
+            }
+        },
+        "player": {
+            "name": "Tocador |||| Tocadores",
+            "fields": {
+                "name": "Nome",
+                "transcodingId": "Conversão",
+                "maxBitRate": "Bitrate máx",
+                "client": "Cliente",
+                "userName": "Usuário",
+                "lastSeen": "Últ. acesso"
+            }
+        },
+        "transcoding": {
+            "name": "Conversão |||| Conversões",
+            "fields": {
+                "name": "Nome",
+                "targetFormat": "Formato",
+                "defaultBitRate": "Bitrate padrão",
+                "command": "Comando"
+            }
+        }
+    },
+    "ra": {
+        "auth": {
+            "welcome1": "Obrigado por instalar Navidrome!",
+            "welcome2": "Para iniciar, crie um usuário admin",
+            "confirmPassword": "Confirme a senha",
+            "buttonCreateAdmin": "Criar Admin",
+            "auth_check_error": "Por favor, faça login para continuar",
+            "user_menu": "Perfil",
+            "username": "Usuário",
+            "password": "Senha",
+            "sign_in": "Entrar",
+            "sign_in_error": "Erro na autenticação, tente novamente.",
+            "logout": "Sair"
+        },
+        "validation": {
+            "invalidChars": "Somente use letras e numeros",
+            "passwordDoesNotMatch": "Senha não confere",
+            "required": "Obrigatório",
+            "minLength": "Deve ser ter no mínimo %{min} caracteres",
+            "maxLength": "Deve ter no máximo %{max} caracteres",
+            "minValue": "Deve ser %{min} ou maior",
+            "maxValue": "Deve ser %{max} ou menor",
+            "number": "Deve ser um número",
+            "email": "Deve ser um email válido",
+            "oneOf": "Deve ser uma das seguintes opções: %{options}",
+            "regex": "Deve ter o formato específico (regexp): %{pattern}"
+        },
+        "action": {
+            "add_filter": "Adicionar Filtro",
+            "add": "Adicionar",
+            "back": "Voltar",
+            "bulk_actions": "1 item selecionado |||| %{smart_count} itens selecionados",
+            "cancel": "Cancelar",
+            "clear_input_value": "Limpar campo",
+            "clone": "Duplicar",
+            "confirm": "Confirmar",
+            "create": "Novo",
+            "delete": "Deletar",
+            "edit": "Editar",
+            "export": "Exportar",
+            "list": "Listar",
+            "refresh": "Atualizar",
+            "remove_filter": "Cancelar filtro",
+            "remove": "Excluir",
+            "save": "Salvar",
+            "search": "Buscar",
+            "show": "Exibir",
+            "sort": "Ordenar",
+            "undo": "Desfazer",
+            "expand": "Expandir",
+            "close": "Fechar",
+            "open_menu": "",
+            "close_menu": ""
+        },
+        "boolean": {
+            "true": "Sim",
+            "false": "Não"
+        },
+        "page": {
+            "create": "Novo %{name}",
+            "dashboard": "Painel de Controle",
+            "edit": "%{name} #%{id}",
+            "error": "Um erro ocorreu",
+            "list": "Listar %{name}",
+            "loading": "Carregando",
+            "not_found": "Não encontrado",
+            "show": "%{name} #%{id}",
+            "empty": "",
+            "invite": ""
+        },
+        "input": {
+            "file": {
+                "upload_several": "Arraste alguns arquivos para fazer o upload, ou clique para selecioná-los.",
+                "upload_single": "Arraste o arquivo para fazer o upload, ou clique para selecioná-lo."
+            },
+            "image": {
+                "upload_several": "Arraste algumas imagens para fazer o upload ou clique para selecioná-las",
+                "upload_single": "Arraste um arquivo para upload ou clique em selecionar arquivo."
+            },
+            "references": {
+                "all_missing": "Não foi possível encontrar os dados das referencias.",
+                "many_missing": "Pelo menos uma das referências passadas não está mais disponível.",
+                "single_missing": "A referência passada aparenta não estar mais disponível."
+            },
+            "password": {
+                "toggle_visible": "",
+                "toggle_hidden": ""
+            }
+        },
+        "message": {
+            "about": "Sobre",
+            "are_you_sure": "Tem certeza?",
+            "bulk_delete_content": "Você tem certeza que deseja excluir %{name}? |||| Você tem certeza que deseja excluir estes %{smart_count} itens?",
+            "bulk_delete_title": "Excluir %{name} |||| Excluir %{smart_count} %{name} itens",
+            "delete_content": "Você tem certeza que deseja excluir?",
+            "delete_title": "Excluir %{name} #%{id}",
+            "details": "Detalhes",
+            "error": "Um erro ocorreu e a sua requisição não pôde ser completada.",
+            "invalid_form": "Este formulário não está valido. Certifique-se de corrigir os erros",
+            "loading": "A página está carregando. Um momento, por favor",
+            "no": "Não",
+            "not_found": "Foi digitada uma URL inválida, ou o link pode estar quebrado.",
+            "yes": "Sim",
+            "unsaved_changes": ""
+        },
+        "navigation": {
+            "no_results": "Nenhum resultado encontrado",
+            "no_more_results": "A página numero %{page} está fora dos limites. Tente a página anterior.",
+            "page_out_of_boundaries": "Página %{page} fora o limite",
+            "page_out_from_end": "Não é possível ir após a última página",
+            "page_out_from_begin": "Não é possível ir antes da primeira página",
+            "page_range_info": "%{offsetBegin}-%{offsetEnd} de %{total}",
+            "page_rows_per_page": "Resultados por página:",
+            "next": "Próximo",
+            "prev": "Anterior"
+        },
+        "notification": {
+            "updated": "Item atualizado com sucesso |||| %{smart_count} itens foram atualizados com sucesso",
+            "created": "Item criado com sucesso",
+            "deleted": "Item removido com sucesso! |||| %{smart_count} itens foram removidos com sucesso",
+            "bad_item": "Item incorreto",
+            "item_doesnt_exist": "Esse item não existe mais",
+            "http_error": "Erro na comunicação com servidor",
+            "data_provider_error": "Erro interno do servidor. Entre em contato",
+            "i18n_error": "Não foi possível carregar as traduções para o idioma especificado",
+            "canceled": "Ação cancelada",
+            "logged_out": "Sua sessão foi encerrada. Por favor, reconecte"
+        }
+    },
+    "message": {
+        "note": "",
+        "transcodingDisabled": "",
+        "transcodingEnabled": ""
+    },
+    "menu": {
+        "library": "Biblioteca",
+        "settings": "Configurações",
+        "version": "Versão %{version}",
+        "theme": "",
+        "personal": {
+            "name": "Pessoal",
+            "options": {
+                "theme": "Tema",
+                "language": "Língua"
+            }
+        }
+    },
+    "player": {
+        "playListsText": "Fila de Execução",
+        "openText": "Abrir",
+        "closeText": "Fechar",
+        "notContentText": "",
+        "clickToPlayText": "Clique para tocar",
+        "clickToPauseText": "Clique para pausar",
+        "nextTrackText": "Próxima faixa",
+        "previousTrackText": "Faixa anterior",
+        "reloadText": "",
+        "volumeText": "Volume",
+        "toggleLyricText": "",
+        "toggleMiniModeText": "Minimizar",
+        "destroyText": "",
+        "downloadText": "",
+        "removeAudioListsText": "Limpar fila de execução",
+        "clickToDeleteText": "Clique para remover %{name}",
+        "emptyLyricText": "",
+        "playModeText": {
+            "order": "Em ordem",
+            "orderLoop": "Repetir tudo",
+            "singleLoop": "Repetir",
+            "shufflePlay": "Aleatório"
+        }
+    }
+}

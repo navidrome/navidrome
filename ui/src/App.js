@@ -4,8 +4,6 @@ import { createHashHistory } from 'history'
 import { Admin, Resource } from 'react-admin'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
-import polyglotI18nProvider from 'ra-i18n-polyglot'
-import messages from './i18n'
 import { Layout, Login } from './layout'
 import transcoding from './transcoding'
 import player from './player'
@@ -18,11 +16,7 @@ import { albumViewReducer } from './album/albumState'
 import customRoutes from './routes'
 import themeReducer from './personal/themeReducer'
 import createAdminStore from './store/createAdminStore'
-
-const i18nProvider = polyglotI18nProvider(
-  (locale) => (messages[locale] ? messages[locale] : messages.en),
-  localStorage.getItem('locale') || 'en'
-)
+import i18nProvider from './i18nProvider'
 
 const history = createHashHistory()
 
@@ -52,7 +46,6 @@ const App = () => (
         <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
         <Resource name="album" {...album} options={{ subMenu: 'library' }} />,
         <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
-        <Resource name="albumSong" />,
         permissions === 'admin' ? (
           <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
         ) : null,
@@ -70,6 +63,8 @@ const App = () => (
         ) : (
           <Resource name="transcoding" />
         ),
+        <Resource name="albumSong" />,
+        <Resource name="translation" />,
         <Player />,
       ]}
     </Admin>
