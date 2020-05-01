@@ -51,7 +51,7 @@ func yearFilter(field string, value interface{}) Sqlizer {
 }
 
 func artistFilter(field string, value interface{}) Sqlizer {
-	return Exists("media_file", And{
+	return exists("media_file", And{
 		ConcatExpr("album_id=album.id"),
 		Or{
 			Eq{"artist_id": value},

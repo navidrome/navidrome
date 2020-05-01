@@ -9,7 +9,7 @@ import (
 var _ = Describe("Helpers", func() {
 	Describe("Exists", func() {
 		It("constructs the correct EXISTS query", func() {
-			e := Exists("album", squirrel.Eq{"id": 1})
+			e := exists("album", squirrel.Eq{"id": 1})
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("exists (select 1 from album where id = ?)"))
 			Expect(args).To(Equal([]interface{}{1}))
