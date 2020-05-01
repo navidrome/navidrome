@@ -27,7 +27,7 @@ const AddToQueueButton = ({ selectedIds }) => {
     <Button
       color="secondary"
       onClick={addToQueue}
-      label={translate('resources.song.bulk.addToQueue')}
+      label={translate('resources.song.actions.addToQueue')}
     >
       <AddToQueueIcon />
     </Button>

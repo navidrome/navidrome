@@ -20,7 +20,8 @@ export default deepmerge(italianMessages, {
         size: 'Dimensioni',
         updatedAt: 'Ultimo aggiornamento',
       },
-      bulk: {
+      actions: {
+        playNow: 'Riproduci',
         addToQueue: 'Aggiungi alla coda',
       },
     },

@@ -12,9 +12,6 @@ export default deepmerge(englishMessages, {
         trackNumber: 'Track #',
         playCount: 'Plays',
       },
-      bulk: {
-        addToQueue: 'Play Later',
-      },
       actions: {
         playNow: 'Play Now',
         addToQueue: 'Play Later',

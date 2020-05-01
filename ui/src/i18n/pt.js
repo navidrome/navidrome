@@ -20,12 +20,9 @@ export default deepmerge(portugueseMessages, {
         size: 'Tamanho',
         updatedAt: 'Últ. Atualização',
       },
-      bulk: {
-        addToQueue: 'Tocar no fim',
-      },
       actions: {
         playNow: 'Tocar agora',
-        addToQueue: 'Tocar no fim',
+        addToQueue: 'Tocar por último',
       },
     },
     album: {

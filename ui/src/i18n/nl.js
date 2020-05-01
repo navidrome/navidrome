@@ -12,7 +12,7 @@ export default deepmerge(englishMessages, {
         trackNumber: 'Nummer #',
         playCount: 'Aantal keren afgespeeld',
       },
-      bulk: {
+      actions: {
         addToQueue: 'Toevoegen aan afspeellijst',
       },
     },

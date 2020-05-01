@@ -20,7 +20,7 @@ export default deepmerge(frenchMessages, {
         size: 'Taille',
         updatedAt: 'Mise à jour',
       },
-      bulk: {
+      actions: {
         addToQueue: 'Ajouter à la file',
       },
     },

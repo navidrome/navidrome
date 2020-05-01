@@ -21,7 +21,7 @@ export default deepmerge(chineseMessages, {
         size: '大小',
         updatedAt: '上次更新',
       },
-      bulk: {
+      actions: {
         addToQueue: '稍后播放',
       },
     },
