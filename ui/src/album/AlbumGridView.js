@@ -4,6 +4,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
 import { linkToRecord, Loading } from 'react-admin'
+import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
 import { ArtistLinkField } from './ArtistLinkField'
 import AlbumContextMenu from './AlbumContextMenu.js'
@@ -15,11 +16,6 @@ const useStyles = makeStyles((theme) => ({
   gridListTile: {
     minHeight: '180px',
     minWidth: '180px',
-  },
-  cover: {
-    display: 'inline-block',
-    width: '100%',
-    height: '100%',
   },
   tileBar: {
     textAlign: 'left',
@@ -38,13 +34,39 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
+const useCoverStyles = makeStyles({
+  cover: {
+    display: 'inline-block',
+    width: '100%',
+    height: (props) => props.height,
+  },
+})
+
 const getColsForWidth = (width) => {
   if (width === 'xs') return 2
   if (width === 'sm') return 4
   if (width === 'md') return 5
-  if (width === 'lg') return 6
-  return 7
+  return 6
 }
+
+const Cover = withContentRect('bounds')(
+  ({ album, measureRef, contentRect }) => {
+    // Force height to be the same as the width determined by the GridList
+    // noinspection JSSuspiciousNameCombination
+    const classes = useCoverStyles({ height: contentRect.bounds.width })
+    return (
+      <div ref={measureRef}>
+        <img
+          src={subsonic.url('getCoverArt', album.coverArtId || 'not_found', {
+            size: 300,
+          })}
+          alt={album.album}
+          className={classes.cover}
+        />
+      </div>
+    )
+  }
+)
 
 const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
@@ -59,15 +81,7 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
             key={id}
             to={linkToRecord(basePath, data[id].id, 'show')}
           >
-            <img
-              src={subsonic.url(
-                'getCoverArt',
-                data[id].coverArtId || 'not_found',
-                { size: 300 }
-              )}
-              alt={data[id].album}
-              className={classes.cover}
-            />
+            <Cover album={data[id]} />
             <GridListTileBar
               className={classes.tileBar}
               title={data[id].name}
