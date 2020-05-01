@@ -5,6 +5,7 @@ import fr from './fr'
 import it from './it'
 import nl from './nl'
 import pt from './pt'
+import de from './de'
 
 const addLanguages = (lang) => {
   Object.keys(lang).forEach((l) => (languages[l] = deepmerge(en, lang[l])))
@@ -12,7 +13,7 @@ const addLanguages = (lang) => {
 const languages = { en }
 
 // Add new languages to the object below (please keep alphabetic sort)
-addLanguages({ fr, it, nl, pt, zh })
+addLanguages({ de, fr, it, nl, pt, zh })
 
 // "Hack" to make "albumSongs" resource use the same translations as "song"
 Object.keys(languages).forEach(

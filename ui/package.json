@@ -12,6 +12,7 @@
     "ra-language-chinese": "^2.0.5",
     "ra-language-dutch": "^3.4.1",
     "ra-language-french": "^3.4.1",
+    "ra-language-german": "^2.1.2",
     "ra-language-italian": "^3.0.0",
     "ra-language-portuguese": "^1.6.0",
     "react": "^16.13.1",
