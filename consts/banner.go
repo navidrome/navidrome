@@ -5,11 +5,11 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/deluan/navidrome/static"
+	"github.com/deluan/navidrome/resources"
 )
 
 func getBanner() string {
-	data, _ := static.Asset("banner.txt")
+	data, _ := resources.Asset("banner.txt")
 	return strings.TrimRightFunc(string(data), unicode.IsSpace)
 }
 

@@ -18,7 +18,7 @@ import (
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/static"
+	"github.com/deluan/navidrome/resources"
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
 	"github.com/djherbis/fscache"
@@ -122,7 +122,7 @@ func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
-			reader, err = static.AssetFile().Open("navidrome-310x310.png")
+			reader, err = resources.AssetFile().Open("navidrome-310x310.png")
 		}
 	}()
 	var data []byte
