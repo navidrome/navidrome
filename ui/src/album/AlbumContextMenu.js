@@ -48,7 +48,7 @@ const AlbumContextMenu = (props) => {
     const key = e.target.getAttribute('value')
     dataProvider
       .getList('albumSong', {
-        pagination: { page: 0, perPage: 1000 },
+        pagination: { page: 1, perPage: -1 },
         sort: { field: 'trackNumber', order: 'ASC' },
         filter: { album_id: props.id },
       })
