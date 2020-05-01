@@ -15,6 +15,10 @@ export default deepmerge(englishMessages, {
       bulk: {
         addToQueue: 'Play Later',
       },
+      actions: {
+        playNow: 'Play Now',
+        addToQueue: 'Play Later',
+      },
     },
     album: {
       name: 'Album |||| Albums',
@@ -26,7 +30,7 @@ export default deepmerge(englishMessages, {
         playCount: 'Plays',
       },
       actions: {
-        playAll: 'Play',
+        playAll: 'Play Now',
         playNext: 'Play Next',
         addToQueue: 'Play Later',
         shuffle: 'Shuffle',

@@ -9,19 +9,13 @@ import {
   TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import {
-  DurationField,
-  Pagination,
-  PlayButton,
-  SimpleList,
-  Title,
-} from '../common'
+import { DurationField, Pagination, SimpleList, Title } from '../common'
 import { useDispatch } from 'react-redux'
-import { addTrack, setTrack } from '../audioplayer'
-import AddIcon from '@material-ui/icons/Add'
+import { setTrack } from '../audioplayer'
 import { SongBulkActions } from './SongBulkActions'
 import { AlbumLinkField } from './AlbumLinkField'
 import { SongDetails } from '../common'
+import { SongContextMenu } from './SongContextMenu'
 
 const SongFilter = (props) => (
   <Filter {...props}>
@@ -48,16 +42,16 @@ const SongList = (props) => {
     >
       {isXsmall ? (
         <SimpleList
-          primaryText={(r) => (
+          primaryText={(r) => r.title}
+          secondaryText={(r) => r.artist}
+          tertiaryText={(r) => (
             <>
-              <PlayButton action={setTrack(r)} />
-              <PlayButton action={addTrack(r)} icon={<AddIcon />} />
-              {r.title}
+              <DurationField record={r} source={'duration'} />
+              &nbsp;&nbsp;&nbsp;
             </>
           )}
-          secondaryText={(r) => r.artist}
-          tertiaryText={(r) => <DurationField record={r} source={'duration'} />}
           linkType={(id, basePath, record) => dispatch(setTrack(record))}
+          rightIcon={(r) => <SongContextMenu record={r} />}
         />
       ) : (
         <Datagrid
@@ -73,6 +67,7 @@ const SongList = (props) => {
             <FunctionField source="year" render={(r) => r.year || ''} />
           )}
           <DurationField source="duration" />
+          <SongContextMenu />
         </Datagrid>
       )}
     </List>

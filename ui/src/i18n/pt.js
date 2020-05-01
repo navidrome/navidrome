@@ -21,7 +21,11 @@ export default deepmerge(portugueseMessages, {
         updatedAt: 'Últ. Atualização',
       },
       bulk: {
-        addToQueue: 'Play Later',
+        addToQueue: 'Tocar no fim',
+      },
+      actions: {
+        playNow: 'Tocar agora',
+        addToQueue: 'Tocar no fim',
       },
     },
     album: {
@@ -37,10 +41,10 @@ export default deepmerge(portugueseMessages, {
         year: 'Ano',
       },
       actions: {
-        playAll: 'Play',
-        playNext: 'Play Next',
-        addToQueue: 'Play Later',
-        shuffle: 'Shuffle',
+        playAll: 'Tocar',
+        playNext: 'Tocar em seguida',
+        addToQueue: 'Tocar no fim',
+        shuffle: 'Aleatório',
       },
     },
     artist: {
