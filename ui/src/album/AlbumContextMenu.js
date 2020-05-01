@@ -10,12 +10,12 @@ import { playAlbum, shuffleAlbum } from '../audioplayer'
 
 const useStyles = makeStyles({
   icon: {
-    color: 'white',
+    color: (props) => props.color,
   },
 })
 
-const AlbumContextMenu = ({ record }) => {
-  const classes = useStyles()
+const AlbumContextMenu = ({ record, color }) => {
+  const classes = useStyles({ color })
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const translate = useTranslate()
