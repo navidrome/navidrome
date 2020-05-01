@@ -14,7 +14,7 @@ const useStyles = makeStyles({
   },
 })
 
-const AlbumContextMenu = (props) => {
+const AlbumContextMenu = ({ record }) => {
   const classes = useStyles()
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
@@ -35,22 +35,23 @@ const AlbumContextMenu = (props) => {
   const handleClick = (e) => {
     e.preventDefault()
     setAnchorEl(e.currentTarget)
+    e.stopPropagation()
   }
 
   const handleOnClose = (e) => {
     e.preventDefault()
     setAnchorEl(null)
+    e.stopPropagation()
   }
 
   const handleItemClick = (e) => {
-    e.preventDefault()
     setAnchorEl(null)
     const key = e.target.getAttribute('value')
     dataProvider
       .getList('albumSong', {
         pagination: { page: 1, perPage: -1 },
         sort: { field: 'trackNumber', order: 'ASC' },
-        filter: { album_id: props.id },
+        filter: { album_id: record.id },
       })
       .then((response) => {
         const adata = response.data.reduce(
@@ -59,6 +60,7 @@ const AlbumContextMenu = (props) => {
         )
         dispatch(options[key].action(adata, response.data[0].id))
       })
+    e.stopPropagation()
   }
 
   return (

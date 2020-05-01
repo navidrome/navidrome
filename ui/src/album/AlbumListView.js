@@ -11,6 +11,7 @@ import {
 } from 'react-admin'
 import { DurationField, RangeField } from '../common'
 import { useMediaQuery } from '@material-ui/core'
+import AlbumContextMenu from './AlbumContextMenu'
 
 const AlbumDetails = (props) => {
   return (
@@ -36,8 +37,9 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
       />
       {isDesktop && <NumberField source="songCount" />}
       {isDesktop && <NumberField source="playCount" />}
-      <RangeField source={'year'} sortBy={'maxYear'} />
+      {isDesktop && <RangeField source={'year'} sortBy={'maxYear'} />}
       {isDesktop && <DurationField source="duration" />}
+      <AlbumContextMenu />
     </Datagrid>
   )
 }

@@ -95,7 +95,7 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
                   </ArtistLinkField>
                 </div>
               }
-              actionIcon={<AlbumContextMenu id={id} />}
+              actionIcon={<AlbumContextMenu record={data[id]} />}
             />
           </GridListTile>
         ))}
