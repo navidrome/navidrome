@@ -7,10 +7,18 @@ export default deepmerge(englishMessages, {
     song: {
       name: 'Song |||| Songs',
       fields: {
-        albumArtist: 'Album Artist',
+        title: 'Title',
+        artist: 'Artist',
+        album: 'Album',
+        path: 'File Path',
+        genre: 'Genre',
+        compilation: 'Compilation',
         duration: 'Time',
-        trackNumber: 'Track #',
+        year: 'Year',
+        trackNumber: '#',
         playCount: 'Plays',
+        size: 'File Size',
+        updatedAt: 'Updated At',
       },
       actions: {
         playNow: 'Play Now',
@@ -21,10 +29,14 @@ export default deepmerge(englishMessages, {
       name: 'Album |||| Albums',
       fields: {
         albumArtist: 'Album Artist',
+        name: 'Name',
         artist: 'Artist',
-        duration: 'Time',
         songCount: 'Songs',
         playCount: 'Plays',
+        genre: 'Genre',
+        compilation: 'Compilation',
+        duration: 'Duration',
+        year: 'Year',
       },
       actions: {
         playAll: 'Play Now',
@@ -35,18 +47,40 @@ export default deepmerge(englishMessages, {
     },
     artist: {
       name: 'Artist |||| Artists',
+      fields: {
+        name: 'Nome',
+        albumCount: 'Album Count',
+      },
     },
     user: {
       name: 'User |||| Users',
       fields: {
         userName: 'Username',
+        name: 'Name',
+        isAdmin: 'Is Admin?',
+        lastLoginAt: 'Last Login',
+        updatedAt: 'Updated At',
       },
     },
     player: {
       name: 'Player |||| Players',
+      fields: {
+        name: 'Name',
+        transcodingId: 'Transcoding',
+        maxBitRate: 'Max BitRate',
+        client: 'Client',
+        userName: 'Username',
+        lastSeen: 'Last Seen',
+      },
     },
     transcoding: {
       name: 'Transcoding |||| Transcodings',
+      fields: {
+        name: 'Name',
+        targetFormat: 'Target Format',
+        defaultBitRate: 'Default BitRate',
+        command: 'Command',
+      },
     },
   },
   ra: {
