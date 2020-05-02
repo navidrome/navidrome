@@ -1,0 +1,256 @@
+{
+    "languageName": "Français",
+    "resources": {
+        "song": {
+            "name": "Piste |||| Pistes",
+            "fields": {
+                "albumArtist": "",
+                "duration": "Durée",
+                "trackNumber": "#",
+                "playCount": "Nombre d'écoutes",
+                "title": "Titre",
+                "artist": "Artiste",
+                "album": "Album",
+                "path": "Chemin",
+                "genre": "Genre",
+                "compilation": "Compilation",
+                "year": "Année",
+                "size": "Taille",
+                "updatedAt": "Mise à jour"
+            },
+            "actions": {
+                "addToQueue": "Ajouter à la file",
+                "playNow": "Lire"
+            }
+        },
+        "album": {
+            "name": "Album |||| Albums",
+            "fields": {
+                "albumArtist": "",
+                "artist": "Artiste",
+                "duration": "Durée",
+                "songCount": "Numéro de piste",
+                "playCount": "Numbre d'écoutes",
+                "name": "Nom",
+                "genre": "Genre",
+                "compilation": "Compilation",
+                "year": "Année"
+            },
+            "actions": {
+                "playAll": "Lire",
+                "playNext": "Lire ensuite",
+                "addToQueue": "Ajouter à la file",
+                "shuffle": "Mélanger"
+            }
+        },
+        "artist": {
+            "name": "Artiste |||| Artistes",
+            "fields": {
+                "name": "Nom",
+                "albumCount": "Nombre d'albums"
+            }
+        },
+        "user": {
+            "name": "Utilisateur |||| Utilisateurs",
+            "fields": {
+                "userName": "Nom d'utilisateur",
+                "isAdmin": "Administrateur",
+                "lastLoginAt": "Dernière connexion",
+                "updatedAt": "Dernière mise à jour",
+                "name": "Nom"
+            }
+        },
+        "player": {
+            "name": "Lecteur |||| Lecteurs",
+            "fields": {
+                "name": "Nom",
+                "transcodingId": "Transcodage",
+                "maxBitRate": "Bitrate maximum",
+                "client": "Client",
+                "userName": "Nom d'utilisateur",
+                "lastSeen": "Vu pour la dernière fois"
+            }
+        },
+        "transcoding": {
+            "name": "Conversion |||| Conversions",
+            "fields": {
+                "name": "Nom",
+                "targetFormat": "Format",
+                "defaultBitRate": "Bitrate  par défaut",
+                "command": "Commande"
+            }
+        }
+    },
+    "ra": {
+        "auth": {
+            "welcome1": "Merci d'avoir installé Navidrome !",
+            "welcome2": "Pour commencer, créez un compte administrateur",
+            "confirmPassword": "Confirmer votre mot de passe",
+            "buttonCreateAdmin": "Créer un compte administrateur",
+            "auth_check_error": "Merci de vous connecter pour continuer",
+            "user_menu": "Profil",
+            "username": "Identifiant",
+            "password": "Mot de passe",
+            "sign_in": "Connexion",
+            "sign_in_error": "Échec de l'authentification, merci de réessayer",
+            "logout": "Déconnexion"
+        },
+        "validation": {
+            "invalidChars": "Merci d'utiliser uniquement des chiffres et des lettres",
+            "passwordDoesNotMatch": "Les mots de passes ne correspondent pas",
+            "required": "Ce champ est requis",
+            "minLength": "Minimum %{min} caractères",
+            "maxLength": "Maximum %{max} caractères",
+            "minValue": "Minimum %{min}",
+            "maxValue": "Maximum %{max}",
+            "number": "Doit être un nombre",
+            "email": "Doit être un email",
+            "oneOf": "Doit être au choix: %{options}",
+            "regex": "Doit respecter un format spécifique (regexp): %{pattern}"
+        },
+        "action": {
+            "add_filter": "Ajouter un filtre",
+            "add": "Ajouter",
+            "back": "Retour",
+            "bulk_actions": "%{smart_count} selectionné |||| %{smart_count} selectionnés",
+            "cancel": "Annuler",
+            "clear_input_value": "Vider le champ",
+            "clone": "Dupliquer",
+            "confirm": "Confirmer",
+            "create": "Créer",
+            "delete": "Supprimer",
+            "edit": "Éditer",
+            "export": "Exporter",
+            "list": "Liste",
+            "refresh": "Actualiser",
+            "remove_filter": "Supprimer ce filtre",
+            "remove": "Supprimer",
+            "save": "Enregistrer",
+            "search": "Rechercher",
+            "show": "Afficher",
+            "sort": "Trier",
+            "undo": "Annuler",
+            "expand": "Étendre",
+            "close": "Fermer",
+            "open_menu": "Ouvrir le menu",
+            "close_menu": "Fermer le menu"
+        },
+        "boolean": {
+            "true": "Oui",
+            "false": "Non"
+        },
+        "page": {
+            "create": "Créer %{name}",
+            "dashboard": "Tableau de bord",
+            "edit": "%{name} #%{id}",
+            "error": "Un problème est survenu",
+            "list": "%{name}",
+            "loading": "Chargement",
+            "not_found": "Page manquante",
+            "show": "%{name} #%{id}",
+            "empty": "Pas encore de %{name}.",
+            "invite": "Voulez-vous en créer un ?"
+        },
+        "input": {
+            "file": {
+                "upload_several": "Déposez les fichiers à uploader, ou cliquez pour en sélectionner.",
+                "upload_single": "Déposez le fichier à uploader, ou cliquez pour le sélectionner."
+            },
+            "image": {
+                "upload_several": "Déposez les images à uploader, ou cliquez pour en sélectionner.",
+                "upload_single": "Déposez l'image à uploader, ou cliquez pour la sélectionner."
+            },
+            "references": {
+                "all_missing": "Impossible de trouver des données de références.",
+                "many_missing": "Au moins une des références associées semble ne plus être disponible.",
+                "single_missing": "La référence associée ne semble plus disponible."
+            },
+            "password": {
+                "toggle_visible": "Cacher le mot de passe",
+                "toggle_hidden": "Montrer le mot de passe"
+            }
+        },
+        "message": {
+            "about": "Au sujet de",
+            "are_you_sure": "Êtes-vous sûr ?",
+            "bulk_delete_content": "Êtes-vous sûr(e) de vouloir supprimer cet élément ? |||| Êtes-vous sûr(e) de vouloir supprimer ces %{smart_count} éléments ?",
+            "bulk_delete_title": "Supprimer %{name} |||| Supprimer %{smart_count} %{name}",
+            "delete_content": "Êtes-vous sûr(e) de vouloir supprimer cet élément ?",
+            "delete_title": "Supprimer %{name} #%{id}",
+            "details": "Détails",
+            "error": "En raison d'une erreur côté navigateur, votre requête n'a pas pu aboutir.",
+            "invalid_form": "Le formulaire n'est pas valide.",
+            "loading": "La page est en cours de chargement, merci de bien vouloir patienter.",
+            "no": "Non",
+            "not_found": "L'URL saisie est incorrecte, ou vous avez suivi un mauvais lien.",
+            "yes": "Oui",
+            "unsaved_changes": "Certains changements n'ont pas été enregistrés. Êtes-vous sûr(e) de vouloir quitter cette page ?"
+        },
+        "navigation": {
+            "no_results": "Aucun résultat",
+            "no_more_results": "La page numéro %{page} est en dehors des limites. Essayez la page précédente.",
+            "page_out_of_boundaries": "La page %{page} est en dehors des limites",
+            "page_out_from_end": "Fin de la pagination",
+            "page_out_from_begin": "La page doit être supérieure à 1",
+            "page_range_info": "%{offsetBegin}-%{offsetEnd} sur %{total}",
+            "page_rows_per_page": "Lignes par page :",
+            "next": "Suivant",
+            "prev": "Précédent"
+        },
+        "notification": {
+            "updated": "Élément mis à jour |||| %{smart_count} élements mis à jour",
+            "created": "Élément créé",
+            "deleted": "Élément supprimé |||| %{smart_count} élements supprimés",
+            "bad_item": "Élément inconnu",
+            "item_doesnt_exist": "L'élément n'existe pas",
+            "http_error": "Erreur de communication avec le serveur",
+            "data_provider_error": "Erreur dans le dataProvider. Plus de détails dans la console.",
+            "i18n_error": "Erreur de chargement des traductions pour la langue sélectionnée",
+            "canceled": "Action annulée",
+            "logged_out": "Votre session a pris fin, veuillez vous reconnecter."
+        }
+    },
+    "message": {
+        "note": "",
+        "transcodingDisabled": "",
+        "transcodingEnabled": ""
+    },
+    "menu": {
+        "library": "Bibliothèque",
+        "settings": "Paramètres",
+        "version": "Version%{version}",
+        "theme": "",
+        "personal": {
+            "name": "Paramètres personel",
+            "options": {
+                "theme": "Thème",
+                "language": "Langue"
+            }
+        }
+    },
+    "player": {
+        "playListsText": "File de lecture",
+        "openText": "Ouvrir",
+        "closeText": "Fermer",
+        "notContentText": "",
+        "clickToPlayText": "Cliquer pour lire",
+        "clickToPauseText": "Cliquer pour mettre en pause",
+        "nextTrackText": "Morceau suivant",
+        "previousTrackText": "Morceau précédent",
+        "reloadText": "",
+        "volumeText": "Volume",
+        "toggleLyricText": "",
+        "toggleMiniModeText": "Minimiser",
+        "destroyText": "",
+        "downloadText": "",
+        "removeAudioListsText": "Vider la liste de lecture",
+        "clickToDeleteText": "Cliquer pour supprimer %{name}",
+        "emptyLyricText": "",
+        "playModeText": {
+            "order": "Ordonner",
+            "orderLoop": "Tout répéter",
+            "singleLoop": "Repéter",
+            "shufflePlay": "Aleatoire"
+        }
+    }
+}
