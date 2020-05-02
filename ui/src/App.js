@@ -16,7 +16,7 @@ import { albumViewReducer } from './album/albumState'
 import customRoutes from './routes'
 import themeReducer from './personal/themeReducer'
 import createAdminStore from './store/createAdminStore'
-import i18nProvider from './i18nProvider'
+import { i18nProvider } from './i18n'
 
 const history = createHashHistory()
 

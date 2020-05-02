@@ -1,5 +1,4 @@
 import polyglotI18nProvider from 'ra-i18n-polyglot'
-import { useGetList } from 'react-admin'
 import deepmerge from 'deepmerge'
 import dataProvider from '../dataProvider'
 import en from './en.json'
@@ -36,7 +35,7 @@ const prepareLanguage = (lang) => {
   return deepmerge(en, lang)
 }
 
-const i18nProvider = polyglotI18nProvider((locale) => {
+export default polyglotI18nProvider((locale) => {
   // English is bundled
   if (locale === 'en') {
     return prepareLanguage(en)
@@ -52,23 +51,3 @@ const i18nProvider = polyglotI18nProvider((locale) => {
     return prepareLanguage(JSON.parse(res.data.data))
   })
 }, defaultLocale())
-
-export default i18nProvider
-
-// React Hook to get a list of all languages available. English is hardcoded
-export const useGetLanguageChoices = () => {
-  const { ids, data, loaded, loading } = useGetList(
-    'translation',
-    { page: 1, perPage: -1 },
-    { field: '', order: '' },
-    {}
-  )
-
-  const choices = [{ id: 'en', name: 'English' }]
-  if (loaded) {
-    ids.forEach((id) => choices.push({ id: id, name: data[id].name }))
-  }
-  choices.sort((a, b) => a.name.localeCompare(b.name))
-
-  return { choices, loaded, loading }
-}
