@@ -4,7 +4,7 @@
         "song": {
             "name": "Song |||| Songs",
             "fields": {
-                "albumArtist": "Album Künstler",
+                "albumArtist": "Albuminterpret",
                 "duration": "Dauer",
                 "trackNumber": "Titel #",
                 "playCount": "Aufrufe",
@@ -19,19 +19,17 @@
                 "updatedAt": "Hochgeladen um"
             },
             "actions": {
-                "addToQueue": "Später abspielen"
-            },
-            "action": {
+                "addToQueue": "Später abspielen",
                 "playNow": "Jetzt abspielen"
             }
         },
         "album": {
             "name": "Album |||| Alben",
             "fields": {
-                "albumArtist": "Album Künstler",
-                "artist": "Künstler",
+                "albumArtist": "Albuminterpret",
+                "artist": "Interpret",
                 "duration": "Dauer",
-                "songCount": "Songs",
+                "songCount": "Songanzahl",
                 "playCount": "Aufrufe",
                 "name": "Name",
                 "genre": "Genre",
@@ -46,7 +44,7 @@
             }
         },
         "artist": {
-            "name": "Künstler |||| Künstler",
+            "name": "Interpret |||| Interpreten",
             "fields": {
                 "name": "Name",
                 "albumCount": "Albumanzahl"
@@ -57,8 +55,8 @@
             "fields": {
                 "userName": "Nutzername",
                 "isAdmin": "Ist Admin",
-                "lastLoginAt": "Letzer Login um ",
-                "updatedAt": "Aktualisiert am",
+                "lastLoginAt": "Letzer Login um",
+                "updatedAt": "Aktualisiert um",
                 "name": "Name"
             }
         },
@@ -213,8 +211,8 @@
         }
     },
     "message": {
-        "note": "Hinweis",
-        "transcodingDisabled": "Die Änderung der Transcodierungskonfiguration über die Webschnittstelle ist aus Sicherheitsgründen deaktiviert. Wenn du die Transcodierungsoptionen ändern (bearbeiten oder hinzufügen) möchtest, starte den Server mit der Konfigurationsoption %{config} neu.",
+        "note": "HINWEIS",
+        "transcodingDisabled": "Die Änderung der Transcodierungskonfiguration über die Web-UI ist aus Sicherheitsgründen deaktiviert. Wenn du die Transcodierungsoptionen ändern (bearbeiten oder hinzufügen) möchtest, starte den Server mit der Konfigurationsoption %{config} neu.",
         "transcodingEnabled": "Navidrome läuft derzeit mit %{config}, wodurch es möglich ist, Systembefehle aus den Transkodierungseinstellungen über die Webschnittstelle auszuführen. Wir empfehlen, es aus Sicherheitsgründen zu deaktivieren und nur bei der Konfiguration von Transkodierungsoptionen zu aktivieren."
     },
     "menu": {
@@ -225,18 +223,18 @@
         "personal": {
             "name": "Persönlich",
             "options": {
-                "theme": "Thema",
+                "theme": "Design",
                 "language": "Sprache"
             }
         }
     },
     "player": {
-        "playListsText": "Warteschlange abspielen",
+        "playListsText": "Wiedergabeliste abspielen",
         "openText": "Öffnen",
         "closeText": "Schließen",
         "notContentText": "Keine Musik",
-        "clickToPlayText": "Anklicken um abzuspielen",
-        "clickToPauseText": "Zum Pausieren anklicken",
+        "clickToPlayText": "Anklicken zum Abzuspielen",
+        "clickToPauseText": "Anklicken zum Pausieren",
         "nextTrackText": "Nächster Titel",
         "previousTrackText": "Vorheriger Titel",
         "reloadText": "Neu laden",
