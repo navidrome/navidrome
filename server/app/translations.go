@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"path/filepath"
@@ -81,6 +82,7 @@ func loadTranslations() (loadError error) {
 			loadError = err
 			return
 		}
+		var languages []string
 		for _, f := range files {
 			t, err := loadTranslation(f.Name())
 			if err != nil {
@@ -88,26 +90,38 @@ func loadTranslations() (loadError error) {
 				continue
 			}
 			translations[t.ID] = t
+			languages = append(languages, t.ID)
 		}
+		log.Info("Loading translations", "languages", languages)
 	})
 	return
 }
 
-func loadTranslation(fileName string) (trans translation, err error) {
-	id := strings.TrimSuffix(fileName, filepath.Ext(fileName))
-	filePath := filepath.Join(i18nFolder, fileName)
+func loadTranslation(fileName string) (translation translation, err error) {
+	// Get id and full path
+	name := filepath.Base(fileName)
+	id := strings.TrimSuffix(name, filepath.Ext(name))
+	filePath := filepath.Join(i18nFolder, name)
+
+	// Load translation from json file
 	data, err := resources.Asset(filePath)
-	trans.Data = string(data)
 	if err != nil {
 		return
 	}
 	var out map[string]interface{}
-	err = json.Unmarshal(data, &out)
-	if err != nil {
+	if err = json.Unmarshal(data, &out); err != nil {
 		return
 	}
-	trans.Name = out["languageName"].(string)
-	trans.ID = id
+
+	// Compress JSON
+	buf := new(bytes.Buffer)
+	if err = json.Compact(buf, data); err != nil {
+		return
+	}
+
+	translation.Data = buf.String()
+	translation.Name = out["languageName"].(string)
+	translation.ID = id
 	return
 }
 
