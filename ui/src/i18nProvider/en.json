@@ -6,7 +6,7 @@
             "fields": {
                 "albumArtist": "Album Artist",
                 "duration": "Time",
-                "trackNumber": "Track #",
+                "trackNumber": "#",
                 "playCount": "Plays",
                 "title": "Title",
                 "artist": "Artist",
@@ -19,9 +19,7 @@
                 "updatedAt": "Uploaded at"
             },
             "actions": {
-                "addToQueue": "Play Later"
-            },
-            "action": {
+                "addToQueue": "Play Later",
                 "playNow": "Play Now"
             }
         },
