@@ -4,7 +4,7 @@
         "song": {
             "name": "Música |||| Músicas",
             "fields": {
-                "albumArtist": "",
+                "albumArtist": "Artista",
                 "duration": "Duração",
                 "trackNumber": "#",
                 "playCount": "Execuções",
@@ -20,13 +20,13 @@
             },
             "actions": {
                 "addToQueue": "Tocar por último",
-                "playNow": ""
+                "playNow": "Tocar agora"
             }
         },
         "album": {
             "name": "Álbum |||| Álbuns",
             "fields": {
-                "albumArtist": "",
+                "albumArtist": "Artista",
                 "artist": "Artista",
                 "duration": "Duração",
                 "songCount": "Músicas",
@@ -37,10 +37,10 @@
                 "year": "Ano"
             },
             "actions": {
-                "playAll": "Play",
-                "playNext": "Play Next",
-                "addToQueue": "Tocar por último",
-                "shuffle": "Shuffle"
+                "playAll": "Tocar",
+                "playNext": "Tocar em seguida",
+                "addToQueue": "Tocar no fim",
+                "shuffle": "Aleatório"
             }
         },
         "artist": {
@@ -132,15 +132,15 @@
             "undo": "Desfazer",
             "expand": "Expandir",
             "close": "Fechar",
-            "open_menu": "",
-            "close_menu": ""
+            "open_menu": "Abrir menu",
+            "close_menu": "Fechar menu"
         },
         "boolean": {
             "true": "Sim",
             "false": "Não"
         },
         "page": {
-            "create": "Novo %{name}",
+            "create": "Criar %{name}",
             "dashboard": "Painel de Controle",
             "edit": "%{name} #%{id}",
             "error": "Um erro ocorreu",
@@ -148,8 +148,8 @@
             "loading": "Carregando",
             "not_found": "Não encontrado",
             "show": "%{name} #%{id}",
-            "empty": "",
-            "invite": ""
+            "empty": "Ainda não há nenhum registro em %{name}",
+            "invite": "Gostaria de criar um novo?"
         },
         "input": {
             "file": {
@@ -166,8 +166,8 @@
                 "single_missing": "A referência passada aparenta não estar mais disponível."
             },
             "password": {
-                "toggle_visible": "",
-                "toggle_hidden": ""
+                "toggle_visible": "Esconder senha",
+                "toggle_hidden": "Mostrar senha"
             }
         },
         "message": {
@@ -184,12 +184,12 @@
             "no": "Não",
             "not_found": "Foi digitada uma URL inválida, ou o link pode estar quebrado.",
             "yes": "Sim",
-            "unsaved_changes": ""
+            "unsaved_changes": "Algumas das suas mudanças não foram salvas, deseja realmente ignorá-las?"
         },
         "navigation": {
             "no_results": "Nenhum resultado encontrado",
             "no_more_results": "A página numero %{page} está fora dos limites. Tente a página anterior.",
-            "page_out_of_boundaries": "Página %{page} fora o limite",
+            "page_out_of_boundaries": "Página %{page} fora do limite",
             "page_out_from_end": "Não é possível ir após a última página",
             "page_out_from_begin": "Não é possível ir antes da primeira página",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} de %{total}",
@@ -211,7 +211,7 @@
         }
     },
     "message": {
-        "note": "",
+        "note": "ATENÇÃO",
         "transcodingDisabled": "",
         "transcodingEnabled": ""
     },
@@ -219,7 +219,7 @@
         "library": "Biblioteca",
         "settings": "Configurações",
         "version": "Versão %{version}",
-        "theme": "",
+        "theme": "Tema",
         "personal": {
             "name": "Pessoal",
             "options": {
@@ -237,15 +237,15 @@
         "clickToPauseText": "Clique para pausar",
         "nextTrackText": "Próxima faixa",
         "previousTrackText": "Faixa anterior",
-        "reloadText": "",
+        "reloadText": "Recarregar",
         "volumeText": "Volume",
         "toggleLyricText": "",
         "toggleMiniModeText": "Minimizar",
         "destroyText": "",
-        "downloadText": "",
+        "downloadText": "Baixar",
         "removeAudioListsText": "Limpar fila de execução",
         "clickToDeleteText": "Clique para remover %{name}",
-        "emptyLyricText": "",
+        "emptyLyricText": "Letra não disponível",
         "playModeText": {
             "order": "Em ordem",
             "orderLoop": "Repetir tudo",
