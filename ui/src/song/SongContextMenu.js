@@ -40,7 +40,7 @@ export const SongContextMenu = ({ record }) => {
 
   return (
     <>
-      <IconButton onClick={handleClick}>
+      <IconButton onClick={handleClick} size={'small'}>
         <MoreVertIcon />
       </IconButton>
       <Menu

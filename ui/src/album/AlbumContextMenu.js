@@ -71,6 +71,7 @@ const AlbumContextMenu = ({ record, color }) => {
         aria-haspopup="true"
         className={classes.icon}
         onClick={handleClick}
+        size={'small'}
       >
         <MoreVertIcon />
       </IconButton>
