@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 
@@ -48,16 +47,13 @@ func (r *translationRepository) Count(options ...rest.QueryOptions) (int64, erro
 	return int64(len(translations)), nil
 }
 
-// Simple ReadAll implementation, only returns IDs. Does not support any `options`, always sort by name asc
+// Simple ReadAll implementation, only returns IDs. Does not support any `options`
 func (r *translationRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
 	var result []translation
 	for _, t := range translations {
 		t.Data = ""
 		result = append(result, t)
 	}
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].Name < result[j].Name
-	})
 	return result, nil
 }
 
