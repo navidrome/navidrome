@@ -5,7 +5,6 @@ import {
   SelectInput,
   SimpleForm,
   Title,
-  useGetList,
   useLocale,
   useSetLocale,
   useTranslate,
@@ -15,6 +14,7 @@ import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import { changeTheme } from './actions'
 import themes from '../themes'
 import { docsUrl } from '../utils/docsUrl'
+import { useGetLanguageChoices } from '../i18nProvider'
 
 const useStyles = makeStyles({
   root: { marginTop: '1em' },
@@ -35,23 +35,12 @@ const HelpMsg = ({ caption }) => (
 )
 
 const SelectLanguage = (props) => {
-  const { ids, data, loaded } = useGetList(
-    'translation',
-    { page: 1, perPage: -1 },
-    { field: '', order: '' },
-    {}
-  )
-
   const translate = useTranslate()
   const setLocale = useSetLocale()
   const locale = useLocale()
+  const { choices } = useGetLanguageChoices()
 
-  const langChoices = [{ id: 'en', name: 'English' }]
-  if (loaded) {
-    ids.forEach((id) => langChoices.push({ id: id, name: data[id].name }))
-  }
-  langChoices.sort((a, b) => a.name.localeCompare(b.name))
-  langChoices.push({
+  choices.push({
     id: helpKey,
     name: <HelpMsg caption={'Help to translate'} />,
   })
@@ -62,7 +51,7 @@ const SelectLanguage = (props) => {
       source="language"
       label={translate('menu.personal.options.language')}
       defaultValue={locale}
-      choices={langChoices}
+      choices={choices}
       translateChoice={false}
       onChange={(event) => {
         if (event.target.value === helpKey) {
