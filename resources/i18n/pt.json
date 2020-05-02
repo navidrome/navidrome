@@ -19,9 +19,7 @@
                 "updatedAt": "Últ. Atualização"
             },
             "actions": {
-                "addToQueue": "Tocar por último"
-            },
-            "action": {
+                "addToQueue": "Tocar por último",
                 "playNow": ""
             }
         },
