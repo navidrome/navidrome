@@ -28,7 +28,12 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 			"loginBackgroundURL":      conf.Server.UILoginBackgroundURL,
 			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,
 		}
-		j, _ := json.Marshal(appConfig)
+		j, err := json.Marshal(appConfig)
+		if err != nil {
+			log.Error(r, "Error converting config to JSON", "config", appConfig, err)
+		} else {
+			log.Trace(r, "Injecting config in index.html", "config", string(j))
+		}
 
 		data := map[string]interface{}{
 			"AppConfig": string(j),
