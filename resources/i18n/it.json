@@ -4,7 +4,7 @@
         "song": {
             "name": "Traccia |||| Tracce",
             "fields": {
-                "albumArtist": "",
+                "albumArtist": "Artista Album",
                 "duration": "Durata",
                 "trackNumber": "#",
                 "playCount": "Riproduzioni",
@@ -20,13 +20,13 @@
             },
             "actions": {
                 "addToQueue": "Aggiungi alla coda",
-                "playNow": "Riproduci"
+                "playNow": "Riproduci adesso"
             }
         },
         "album": {
             "name": "Album |||| Album",
             "fields": {
-                "albumArtist": "",
+                "albumArtist": "Artista Album",
                 "artist": "Artista",
                 "duration": "Durata",
                 "songCount": "Tracce",
@@ -53,7 +53,7 @@
         "user": {
             "name": "Utente |||| Utenti",
             "fields": {
-                "userName": "Utente",
+                "userName": "Nome utente",
                 "isAdmin": "Amministratore",
                 "lastLoginAt": "Ultimo accesso",
                 "updatedAt": "Ultima modifica",
@@ -67,7 +67,7 @@
                 "transcodingId": "Transcodifica",
                 "maxBitRate": "Bitrate massimo",
                 "client": "Applicazione",
-                "userName": "Utente",
+                "userName": "Nome utente",
                 "lastSeen": "Ultimo acesso"
             }
         },
@@ -87,24 +87,24 @@
             "welcome2": "Per iniziare, crea un amministratore",
             "confirmPassword": "Conferma la password",
             "buttonCreateAdmin": "Crea amministratore",
-            "auth_check_error": "",
+            "auth_check_error": "Per favore accedi per continuare",
             "user_menu": "Profile",
             "username": "Nome utente",
             "password": "Password",
-            "sign_in": "Login",
-            "sign_in_error": "Autenticazione fallita, riprovare.",
-            "logout": "Disconnessione"
+            "sign_in": "Accedi",
+            "sign_in_error": "Autenticazione fallita, per favore riprova",
+            "logout": "Disconnetti"
         },
         "validation": {
             "invalidChars": "Per favore usa solo lettere e numeri",
             "passwordDoesNotMatch": "Le password non coincidono",
             "required": "Campo obbligatorio",
-            "minLength": "Deve essere lungo %{min} caratteri almeno",
-            "maxLength": "Deve essere lungo %{max} caratteri al massimo",
+            "minLength": "Deve essere lungo almeno %{min} caratteri",
+            "maxLength": "Deve essere lungo al massimo %{max} caratteri",
             "minValue": "Deve essere almeno %{min}",
             "maxValue": "Deve essere al massimo %{max}",
             "number": "Deve essere un numero",
-            "email": "Deve essere un valido indirizzo email",
+            "email": "Deve essere un indirizzo email valido",
             "oneOf": "Deve essere uno di: %{options}",
             "regex": "Deve rispettare il formato (espressione regolare): %{pattern}"
         },
@@ -112,13 +112,13 @@
             "add_filter": "Aggiungi un filtro",
             "add": "Aggiungi",
             "back": "Indietro",
-            "bulk_actions": "%{smart_count} selezionati",
+            "bulk_actions": "Un elemento selezionato ||| %{smart_count} elementi selezionati",
             "cancel": "Annulla",
-            "clear_input_value": "Svuota il modulo",
+            "clear_input_value": "Cancella",
             "clone": "Duplica",
             "confirm": "Conferma",
             "create": "Crea",
-            "delete": "Cancella",
+            "delete": "Rimuovi",
             "edit": "Modifica",
             "export": "Esporta",
             "list": "Elenco",
@@ -126,14 +126,14 @@
             "remove_filter": "Rimuovi questo filtro",
             "remove": "Remove",
             "save": "Salva",
-            "search": "Ricerca",
+            "search": "Cerca",
             "show": "Mostra",
             "sort": "Ordina",
             "undo": "Annulla",
             "expand": "Espandi",
             "close": "Chiudi",
-            "open_menu": "",
-            "close_menu": ""
+            "open_menu": "Apri menù",
+            "close_menu": "Chiudi menù"
         },
         "boolean": {
             "true": "Si",
@@ -141,19 +141,19 @@
         },
         "page": {
             "create": "Aggiungi %{name}",
-            "dashboard": "Cruscotto",
-            "edit": "%{name} %{id}",
-            "error": "Qualcosa non ha funzionato",
-            "list": "Lista %{name}",
+            "dashboard": "Pannello di controllo",
+            "edit": "%{name} #%{id}",
+            "error": "Qualcosa è andato storto",
+            "list": "%{name}",
             "loading": "Caricamento in corso",
             "not_found": "Non trovato",
-            "show": "%{name} %{id}",
-            "empty": "",
-            "invite": ""
+            "show": "%{name} #%{id}",
+            "empty": "Nessun %{name} per adesso.",
+            "invite": "Vuoi invitare un amico?"
         },
         "input": {
             "file": {
-                "upload_several": "Trascina i files da caricare, oppure clicca per selezionare.",
+                "upload_several": "Trascina i file da caricare, oppure clicca per selezionarli.",
                 "upload_single": "Trascina il file da caricare, oppure clicca per selezionarlo."
             },
             "image": {
@@ -162,64 +162,64 @@
             },
             "references": {
                 "all_missing": "Impossibile trovare i riferimenti associati.",
-                "many_missing": "Almeno uno dei riferimenti associati non sembra più disponibile.",
-                "single_missing": "Il riferimento associato non sembra più disponibile."
+                "many_missing": "Almeno uno dei riferimenti associati sembra non essere più disponibile.",
+                "single_missing": "Il riferimento associato sembra non essere più disponibile."
             },
             "password": {
-                "toggle_visible": "",
-                "toggle_hidden": ""
+                "toggle_visible": "Nascondi password",
+                "toggle_hidden": "Mostra password"
             }
         },
         "message": {
             "about": "Informazioni",
             "are_you_sure": "Sei sicuro ?",
-            "bulk_delete_content": "Sei sicuro di voler cancellare questo %{name}? |||| Sei sicuro di voler eliminare questi %{smart_count}?",
-            "bulk_delete_title": "Delete %{name} |||| Delete %{smart_count} %{name} items",
-            "delete_content": "Are you sure you want to delete this item?",
-            "delete_title": "Cancella %{name} #%{id}",
+            "bulk_delete_content": "Sei sicuro di voler rimuovere questo %{name}? |||| Sei sicuro di voler rimuovere questi %{smart_count} elementi?",
+            "bulk_delete_title": "Rimuovi %{name} |||| Rimuovi %{smart_count} %{name}",
+            "delete_content": "Sei sicuro di voler eliminare questo elemento?",
+            "delete_title": "Rimuovi %{name} #%{id}",
             "details": "Dettagli",
-            "error": "Un errore locale è occorso e la tua richiesta non è stata completata.",
-            "invalid_form": "Il modulo non è valido. Si prega di verificare la presenza di errori.",
+            "error": "Un errore dal lato client ha impedito il completamento della tua richiesta.",
+            "invalid_form": "Il modulo non è valido. Per favore controlla la presenza di errori.",
             "loading": "La pagina si sta caricando, solo un momento per favore",
             "no": "No",
-            "not_found": "Hai inserito un URL errato, oppure hai cliccato un link errato",
+            "not_found": "Hai inserito un URL inesistente, oppure hai cliccato un link errato.",
             "yes": "Si",
-            "unsaved_changes": ""
+            "unsaved_changes": "Alcune modifiche non sono state salvate. Vuoi ripristinarle?"
         },
         "navigation": {
             "no_results": "Nessun risultato trovato",
-            "no_more_results": "La pagina numero %{page} è fuori dell'intervallo. Prova la pagina precedente.",
-            "page_out_of_boundaries": "Il numero di pagina %{page} è fuori dei limiti",
-            "page_out_from_end": "Fine della paginazione",
-            "page_out_from_begin": "Il numero di pagina deve essere maggiore di 1",
+            "no_more_results": "La pagina numero %{page} è fuori dall'intervallo. Prova la pagina precedente.",
+            "page_out_of_boundaries": "Il numero di pagina %{page} è fuori dall’intervallo",
+            "page_out_from_end": "Non è possibile andare oltre l’ultima pagina",
+            "page_out_from_begin": "Non è possibile andare prima della prima pagina",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} di %{total}",
-            "page_rows_per_page": "Righe per pagina",
+            "page_rows_per_page": "Righe per pagina:",
             "next": "Successivo",
             "prev": "Precedente"
         },
         "notification": {
-            "updated": "Record aggiornato |||| %{smart_count} records aggiornati",
-            "created": "Record creato",
-            "deleted": "Record eliminato |||| %{smart_count} records eliminati",
-            "bad_item": "Record errato",
-            "item_doesnt_exist": "Record inesistente",
-            "http_error": "Errore di comunicazione con il server dati",
-            "data_provider_error": "Errore del data provider. Controlla la console per i dettagli.",
-            "i18n_error": "",
+            "updated": "Elemento aggiornato |||| %{smart_count} elementi aggiornati",
+            "created": "Elemento creato",
+            "deleted": "Elemento rimosso |||| %{smart_count} elementi rimossi",
+            "bad_item": "Elemento errato",
+            "item_doesnt_exist": "Elemento inesistente",
+            "http_error": "Errore di comunicazione con il server",
+            "data_provider_error": "Errore del dataProvider. Controlla la console per i dettagli.",
+            "i18n_error": "Impossibile caricare la traduzione per la lingua selezionata",
             "canceled": "Azione annullata",
-            "logged_out": "La sessione è scaduta. Effettua nuovamente l'accesso."
+            "logged_out": "La sessione è scaduta, per favore accedi di nuovo."
         }
     },
     "message": {
-        "note": "",
-        "transcodingDisabled": "",
-        "transcodingEnabled": ""
+        "note": "Note",
+        "transcodingDisabled": "La possibilità di modificare le opzioni di transcodifica attraverso l’interfaccia web è disabilitata per ragioni di sicurezza. Se desideri cambiare (modificare o aggiungere) opzioni di transcodifica, riavvia il server con l’opzione %{config}.",
+        "transcodingEnabled": "Navidrome è al momento attivo con %{config}, rendendo possibile eseguire comandi remoti attraverso l’interfaccia web. Si raccomanda di disabilitare questa opzione per ragioni di sicurezza e di abilitarla solo per configurare le opzioni di transcodifica."
     },
     "menu": {
         "library": "Libreria",
         "settings": "Impostazioni",
         "version": "Versione %{version}",
-        "theme": "",
+        "theme": "Tema",
         "personal": {
             "name": "Personale",
             "options": {
@@ -232,20 +232,20 @@
         "playListsText": "Coda",
         "openText": "Apri",
         "closeText": "Chiudi",
-        "notContentText": "",
+        "notContentText": "Nessuna traccia",
         "clickToPlayText": "Clicca per riprodurre",
         "clickToPauseText": "Clicca per mettere in pausa",
         "nextTrackText": "Traccia successiva",
         "previousTrackText": "Traccia precedente",
-        "reloadText": "",
+        "reloadText": "Ricarica",
         "volumeText": "Volume",
-        "toggleLyricText": "",
+        "toggleLyricText": "Mostra testo",
         "toggleMiniModeText": "Minimizza",
-        "destroyText": "",
-        "downloadText": "",
+        "destroyText": "Distruggi",
+        "downloadText": "Scarica",
         "removeAudioListsText": "Cancella coda",
         "clickToDeleteText": "Clicca per rimuovere %{name}",
-        "emptyLyricText": "",
+        "emptyLyricText": "Nessun testo",
         "playModeText": {
             "order": "In ordine",
             "orderLoop": "Ripeti",
