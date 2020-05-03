@@ -35,5 +35,5 @@ Here are some useful direct links:
     <img height="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-login.png">
     <img height="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-player.png">
     <img height="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-album-view.png">
-    <img height="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-desktop-player.png">
+    <img width="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-desktop-player.png">
 </p>
