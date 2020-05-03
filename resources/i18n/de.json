@@ -7,7 +7,7 @@
                 "albumArtist": "Albuminterpret",
                 "duration": "Dauer",
                 "trackNumber": "Titel #",
-                "playCount": "Aufrufe",
+                "playCount": "Wiedergaben",
                 "title": "Titel",
                 "artist": "Künstler",
                 "album": "Album",
@@ -16,7 +16,8 @@
                 "compilation": "Kompilation",
                 "year": "Jahr",
                 "size": "Dateigröße",
-                "updatedAt": "Hochgeladen um"
+                "updatedAt": "Hochgeladen um",
+                "bitRate": "Bitrate"
             },
             "actions": {
                 "addToQueue": "Später abspielen",
@@ -30,11 +31,12 @@
                 "artist": "Interpret",
                 "duration": "Dauer",
                 "songCount": "Songanzahl",
-                "playCount": "Aufrufe",
+                "playCount": "Wiedergaben",
                 "name": "Name",
                 "genre": "Genre",
                 "compilation": "Kompilation",
-                "year": "Jahr"
+                "year": "Jahr",
+                "updatedAt": "Aktualisiert um"
             },
             "actions": {
                 "playAll": "Abspielen",
@@ -57,7 +59,9 @@
                 "isAdmin": "Ist Admin",
                 "lastLoginAt": "Letzer Login um",
                 "updatedAt": "Aktualisiert um",
-                "name": "Name"
+                "name": "Name",
+                "password": "Passwort",
+                "createdAt": "Hergestellt um"
             }
         },
         "player": {
@@ -87,7 +91,7 @@
             "welcome2": "Als erstes erstelle einen Admin-Benutzer",
             "confirmPassword": "Passwort bestätigen",
             "buttonCreateAdmin": "Admin erstellen",
-            "auth_check_error": "Bitte einloggen um  fortzufahren",
+            "auth_check_error": "Bitte einloggen um fortzufahren",
             "user_menu": "Profil",
             "username": "Nutzername",
             "password": "Passwort",
@@ -149,7 +153,7 @@
             "not_found": "Nicht gefunden",
             "show": "%{name} #%{id}",
             "empty": "Noch kein %{name}.\n",
-            "invite": "Möchten du eine hinzufügen?"
+            "invite": "Möchten du einen hinzufügen?"
         },
         "input": {
             "file": {
@@ -178,7 +182,7 @@
             "delete_content": "Möchtest du diesen Inhalt wirklich löschen?",
             "delete_title": "Lösche %{name} #%{id}",
             "details": "Details",
-            "error": "Ein Fehler ist aufgetreten und ihre Anfrage konnte nicht abgeschlossen werden.",
+            "error": "Ein Fehler ist aufgetreten und deine Anfrage konnte nicht abgeschlossen werden.",
             "invalid_form": "Das Formular ist ungültig. Bitte überprüfe deine Eingaben.",
             "loading": "Die Seite wird geladen.",
             "no": "Nein",
@@ -201,13 +205,13 @@
             "updated": "Element wurde aktualisiert |||| %{smart_count} Elemente wurden aktualisiert",
             "created": "Element wurde erstellt",
             "deleted": "Element wurde gelöscht |||| %{smart_count} Elemente wurden gelöscht",
-            "bad_item": "Fehlerhaftes Elemente",
+            "bad_item": "Fehlerhaftes Element",
             "item_doesnt_exist": "Das Element existiert nicht",
             "http_error": "Fehler beim Kommunizieren mit dem Server",
             "data_provider_error": "dataProvider Fehler. Prüfe die Konsole für Details.",
             "i18n_error": "Die Übersetzungen für die angegebene Sprache können nicht geladen werden",
             "canceled": "Aktion abgebrochen",
-            "logged_out": "Ihr Session wurde beendet. Bitte erneut verbinden."
+            "logged_out": "Deine Session wurde beendet. Bitte erneut verbinden."
         }
     },
     "message": {
