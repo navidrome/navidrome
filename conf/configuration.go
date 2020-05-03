@@ -13,6 +13,7 @@ import (
 )
 
 type nd struct {
+	ConfigFile     string `default:"./navidrome.toml"`
 	Port           string `default:"4533"`
 	MusicFolder    string `default:"./music"`
 	DataFolder     string `default:"./"`
@@ -38,6 +39,28 @@ type nd struct {
 }
 
 var Server = &nd{}
+
+// TODO refactor configuration and use something different. Maybe https://github.com/spf13/cobra
+// This function loads the config just load the ConfigFile. This is very cumbersome, but doesn't
+// seem there's a simpler way to do thiswith multiconfig. Time to replace this library?
+func configFile() string {
+	conf := &nd{}
+	loader := multiconfig.MultiLoader(
+		&multiconfig.TagLoader{},
+		&multiconfig.EnvironmentLoader{},
+		&multiconfig.FlagLoader{},
+	)
+	d := &multiconfig.DefaultLoader{}
+	d.Loader = loader
+	d.Validator = multiconfig.MultiValidator(&multiconfig.RequiredValidator{})
+	if err := d.Load(conf); err != nil {
+		return consts.LocalConfigFile
+	}
+	if _, err := os.Stat(conf.ConfigFile); err == nil {
+		return conf.ConfigFile
+	}
+	return consts.LocalConfigFile
+}
 
 func newWithPath(path string, skipFlags ...bool) *multiconfig.DefaultLoader {
 	var loaders []multiconfig.Loader
@@ -96,5 +119,5 @@ func LoadFromFile(confFile string, skipFlags ...bool) {
 }
 
 func Load() {
-	LoadFromFile(consts.LocalConfigFile)
+	LoadFromFile(configFile())
 }
