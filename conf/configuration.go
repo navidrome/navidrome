@@ -56,10 +56,10 @@ func configFile() string {
 	if err := d.Load(conf); err != nil {
 		return consts.LocalConfigFile
 	}
-	if _, err := os.Stat(conf.ConfigFile); err == nil {
-		return conf.ConfigFile
+	if _, err := os.Stat(conf.ConfigFile); err != nil {
+		return consts.LocalConfigFile
 	}
-	return consts.LocalConfigFile
+	return conf.ConfigFile
 }
 
 func newWithPath(path string, skipFlags ...bool) *multiconfig.DefaultLoader {
@@ -115,7 +115,7 @@ func LoadFromFile(confFile string, skipFlags ...bool) {
 	}
 	log.SetLevelString(Server.LogLevel)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
-	log.Trace("Loaded configuration", "file", confFile, "config", fmt.Sprintf("%#v", Server))
+	log.Debug("Loaded configuration", "file", confFile, "config", fmt.Sprintf("%#v", Server))
 }
 
 func Load() {
