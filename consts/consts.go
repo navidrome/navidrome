@@ -27,6 +27,8 @@ const (
 
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
+
+	I18nFolder = "i18n"
 )
 
 // Cache options
@@ -62,5 +64,4 @@ var (
 	VariousArtists   = "Various Artists"
 	VariousArtistsID = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(VariousArtists))))
 	UnknownArtist    = "[Unknown Artist]"
-	UnknownArtistID  = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(UnknownArtist))))
 )

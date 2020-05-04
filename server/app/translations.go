@@ -4,16 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/resources"
 	"github.com/deluan/rest"
 )
-
-const i18nFolder = "i18n"
 
 type translation struct {
 	ID   string `json:"id"`
@@ -27,7 +28,8 @@ var (
 )
 
 func newTranslationRepository(context.Context) rest.Repository {
-	if err := loadTranslations(); err != nil {
+	dir := resources.AssetFile()
+	if err := loadTranslations(dir); err != nil {
 		log.Error("Error loading translation files", err)
 	}
 	return &translationRepository{}
@@ -65,10 +67,10 @@ func (r *translationRepository) NewInstance() interface{} {
 	return &translation{}
 }
 
-func loadTranslations() (loadError error) {
+func loadTranslations(fs http.FileSystem) (loadError error) {
 	once.Do(func() {
 		translations = make(map[string]translation)
-		dir, err := resources.AssetFile().Open(i18nFolder)
+		dir, err := fs.Open(consts.I18nFolder)
 		if err != nil {
 			loadError = err
 			return
@@ -80,7 +82,7 @@ func loadTranslations() (loadError error) {
 		}
 		var languages []string
 		for _, f := range files {
-			t, err := loadTranslation(f.Name())
+			t, err := loadTranslation(fs, f.Name())
 			if err != nil {
 				log.Error("Error loading translation file", "file", f.Name(), err)
 				continue
@@ -93,17 +95,18 @@ func loadTranslations() (loadError error) {
 	return
 }
 
-func loadTranslation(fileName string) (translation translation, err error) {
+func loadTranslation(fs http.FileSystem, fileName string) (translation translation, err error) {
 	// Get id and full path
 	name := filepath.Base(fileName)
 	id := strings.TrimSuffix(name, filepath.Ext(name))
-	filePath := filepath.Join(i18nFolder, name)
+	filePath := filepath.Join(consts.I18nFolder, name)
 
 	// Load translation from json file
-	data, err := resources.Asset(filePath)
+	file, err := fs.Open(filePath)
 	if err != nil {
 		return
 	}
+	data, err := ioutil.ReadAll(file)
 	var out map[string]interface{}
 	if err = json.Unmarshal(data, &out); err != nil {
 		return
