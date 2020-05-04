@@ -15,7 +15,7 @@ type Playlist struct {
 }
 
 type PlaylistRepository interface {
-	CountAll() (int64, error)
+	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(pls *Playlist) error
 	Get(id string) (*Playlist, error)
