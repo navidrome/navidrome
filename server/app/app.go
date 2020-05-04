@@ -47,6 +47,7 @@ func (app *Router) routes(path string) http.Handler {
 		app.R(r, "/album", model.Album{}, true)
 		app.R(r, "/artist", model.Artist{}, true)
 		app.R(r, "/player", model.Player{}, true)
+		app.R(r, "/playlist", model.Playlist{}, true)
 		app.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
 		app.addResource(r, "/translation", newTranslationRepository, false)
 

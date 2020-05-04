@@ -9,6 +9,7 @@ import (
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/rest"
 )
 
 type playlist struct {
@@ -25,6 +26,7 @@ type playlist struct {
 
 type playlistRepository struct {
 	sqlRepository
+	sqlRestful
 }
 
 func NewPlaylistRepository(ctx context.Context, o orm.Ormer) model.PlaylistRepository {
@@ -35,8 +37,8 @@ func NewPlaylistRepository(ctx context.Context, o orm.Ormer) model.PlaylistRepos
 	return r
 }
 
-func (r *playlistRepository) CountAll() (int64, error) {
-	return r.count(Select())
+func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
+	return r.count(Select(), options...)
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
@@ -112,6 +114,7 @@ func (r *playlistRepository) fromModel(p *model.Playlist) playlist {
 		CreatedAt: p.CreatedAt,
 		UpdatedAt: p.UpdatedAt,
 	}
+	// TODO Update duration with a SQL query, instead of loading all tracks
 	p.Tracks = r.loadTracks(p)
 	var newTracks []string
 	for _, t := range p.Tracks {
@@ -168,4 +171,25 @@ func (r *playlistRepository) loadTracks(p *model.Playlist) model.MediaFiles {
 	return newTracks
 }
 
+func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(options...))
+}
+
+func (r *playlistRepository) Read(id string) (interface{}, error) {
+	return r.Get(id)
+}
+
+func (r *playlistRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	return r.GetAll(r.parseRestOptions(options...))
+}
+
+func (r *playlistRepository) EntityName() string {
+	return "playlist"
+}
+
+func (r *playlistRepository) NewInstance() interface{} {
+	return &model.Playlist{}
+}
+
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
+var _ model.ResourceRepository = (*playlistRepository)(nil)

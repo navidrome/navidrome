@@ -72,6 +72,8 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.Album(ctx).(model.ResourceRepository)
 	case model.MediaFile:
 		return s.MediaFile(ctx).(model.ResourceRepository)
+	case model.Playlist:
+		return s.Playlist(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil
