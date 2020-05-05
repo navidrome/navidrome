@@ -6,7 +6,7 @@ import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { useDispatch } from 'react-redux'
-import { playAlbum, shuffleAlbum } from '../audioplayer'
+import { addTracks, playAlbum, shuffleAlbum } from '../audioplayer'
 
 const useStyles = makeStyles({
   icon: {
@@ -26,6 +26,10 @@ const AlbumContextMenu = ({ record, color }) => {
     play: {
       label: translate('resources.album.actions.playAll'),
       action: (data, id) => playAlbum(id, data),
+    },
+    addToQueue: {
+      label: translate('resources.album.actions.addToQueue'),
+      action: (data) => addTracks(Object.values(data)),
     },
     shuffle: {
       label: translate('resources.album.actions.shuffle'),
