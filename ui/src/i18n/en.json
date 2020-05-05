@@ -54,6 +54,17 @@
                 "songCount": "Song Count"
             }
         },
+        "playlist": {
+            "name": "Playlist |||| Playlists",
+            "fields": {
+                "name": "Name",
+                "duration": "Duration",
+                "owner": "Owner",
+                "public": "Public",
+                "updatedAt":"Updated at",
+                "createdAt": "Created at"
+            }
+        },
         "user": {
             "name": "User |||| Users",
             "fields": {
