@@ -58,12 +58,6 @@ const getPerPageOptions = (width) => {
 const AlbumList = (props) => {
   const { width } = props
   const albumView = useSelector((state) => state.albumView)
-  let sort
-  if (albumView.mode === ALBUM_MODE_LIST) {
-    sort = { field: 'name', order: 'ASC' }
-  } else {
-    sort = { field: 'created_at', order: 'DESC' }
-  }
   return (
     <List
       {...props}
@@ -73,7 +67,7 @@ const AlbumList = (props) => {
       exporter={false}
       bulkActionButtons={false}
       actions={<AlbumListActions />}
-      sort={sort}
+      sort={{ field: 'created_at', order: 'DESC' }}
       filters={<AlbumFilter />}
       perPage={getPerPage(width)}
       pagination={<Pagination rowsPerPageOptions={getPerPageOptions(width)} />}

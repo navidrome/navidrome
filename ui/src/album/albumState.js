@@ -22,7 +22,7 @@ const selectAlbumList = (mode) => ({ type: mode })
 
 const albumViewReducer = (
   previousState = {
-    mode: ALBUM_MODE_LIST,
+    mode: ALBUM_MODE_GRID,
     list: ALBUM_LIST_ALL,
     params: { sort: {}, filter: {} },
   },

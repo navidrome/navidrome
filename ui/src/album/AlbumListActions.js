@@ -44,17 +44,17 @@ const AlbumListActions = ({
       >
         <Button
           size="small"
-          color={albumView.mode === ALBUM_MODE_LIST ? 'primary' : 'secondary'}
-          onClick={() => dispatch(selectViewMode(ALBUM_MODE_LIST))}
-        >
-          <ViewHeadlineIcon fontSize="inherit" />
-        </Button>
-        <Button
-          size="small"
           color={albumView.mode === ALBUM_MODE_GRID ? 'primary' : 'secondary'}
           onClick={() => dispatch(selectViewMode(ALBUM_MODE_GRID))}
         >
           <ViewModuleIcon fontSize="inherit" />
+        </Button>
+        <Button
+          size="small"
+          color={albumView.mode === ALBUM_MODE_LIST ? 'primary' : 'secondary'}
+          onClick={() => dispatch(selectViewMode(ALBUM_MODE_LIST))}
+        >
+          <ViewHeadlineIcon fontSize="inherit" />
         </Button>
       </ButtonGroup>
     </TopToolbar>
