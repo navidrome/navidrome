@@ -25,6 +25,7 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 	r.sortMappings = map[string]string{
 		"artist": "order_artist_name asc, album asc, disc_number asc, track_number asc",
 		"album":  "order_album_name asc, disc_number asc, track_number asc",
+		"random": "RANDOM()",
 	}
 	r.filterMappings = map[string]filterFunc{
 		"title": fullTextFilter,
