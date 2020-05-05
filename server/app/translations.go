@@ -107,6 +107,9 @@ func loadTranslation(fs http.FileSystem, fileName string) (translation translati
 		return
 	}
 	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		return
+	}
 	var out map[string]interface{}
 	if err = json.Unmarshal(data, &out); err != nil {
 		return
