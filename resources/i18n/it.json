@@ -16,7 +16,8 @@
                 "compilation": "Compilation",
                 "year": "Anno",
                 "size": "Dimensioni",
-                "updatedAt": "Ultimo aggiornamento"
+                "updatedAt": "Ultimo aggiornamento",
+                "bitRate": "Bitrate"
             },
             "actions": {
                 "addToQueue": "Aggiungi alla coda",
@@ -34,7 +35,8 @@
                 "name": "Nome",
                 "genre": "Genere",
                 "compilation": "Compilation",
-                "year": "Anno"
+                "year": "Anno",
+                "updatedAt": "Ultimo aggiornamento"
             },
             "actions": {
                 "playAll": "Riproduci",
@@ -56,8 +58,10 @@
                 "userName": "Nome utente",
                 "isAdmin": "Amministratore",
                 "lastLoginAt": "Ultimo accesso",
-                "updatedAt": "Ultima modifica",
-                "name": "Nome"
+                "updatedAt": "Ultimo aggiornamento",
+                "name": "Nome",
+                "password": "Password",
+                "createdAt": "Creato a"
             }
         },
         "player": {
