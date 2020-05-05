@@ -21,12 +21,8 @@ export const AlbumActions = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
 
-  // TODO Not sure why data is accumulating tracks from previous plays... Needs investigation. For now, filter out
-  // the unwanted tracks
-  const filteredData = ids.reduce((acc, id) => {
-    acc[id] = data[id]
-    return acc
-  }, {})
+  // Filter out tracks from other albums (cached by ReactAdmin)
+  const filteredData = ids.reduce((acc, id) => ({ ...acc, [id]: data[id] }), {})
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
