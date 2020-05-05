@@ -12,12 +12,12 @@ import (
 )
 
 type playlist struct {
+	Public    bool
+	Duration  float32
 	ID        string `orm:"column(id)"`
 	Name      string
 	Comment   string
-	Duration  float32
 	Owner     string
-	Public    bool
 	Tracks    string
 	CreatedAt time.Time
 	UpdatedAt time.Time

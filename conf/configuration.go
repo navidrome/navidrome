@@ -13,6 +13,17 @@ import (
 )
 
 type nd struct {
+	// Transcoding
+	EnableTranscodingConfig bool   `default:"false"`
+	TranscodingCacheSize    string `default:"100MB"` // in MB
+	ImageCacheSize          string `default:"100MB"` // in MB
+	ProbeCommand            string `default:"ffmpeg %s -f ffmetadata"`
+
+	// DevFlags. These are used to enable/disable debugging and incomplete features
+	DevLogSourceLine           bool   `default:"false"`
+	DevAutoCreateAdminPassword string `default:""`
+
+	// General
 	ConfigFile     string `default:"./navidrome.toml"`
 	Port           string `default:"4533"`
 	MusicFolder    string `default:"./music"`
@@ -27,15 +38,6 @@ type nd struct {
 
 	IgnoredArticles string `default:"The El La Los Las Le Les Os As O A"`
 	IndexGroups     string `default:"A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)"`
-
-	EnableTranscodingConfig bool   `default:"false"`
-	TranscodingCacheSize    string `default:"100MB"` // in MB
-	ImageCacheSize          string `default:"100MB"` // in MB
-	ProbeCommand            string `default:"ffmpeg %s -f ffmetadata"`
-
-	// DevFlags. These are used to enable/disable debugging and incomplete features
-	DevLogSourceLine           bool   `default:"false"`
-	DevAutoCreateAdminPassword string `default:""`
 }
 
 var Server = &nd{}

@@ -3,15 +3,15 @@ package model
 import "time"
 
 type Playlist struct {
+	Public    bool
+	Duration  float32
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	ID        string
 	Name      string
 	Comment   string
-	Duration  float32
 	Owner     string
-	Public    bool
 	Tracks    MediaFiles
-	CreatedAt time.Time
-	UpdatedAt time.Time
 }
 
 type PlaylistRepository interface {

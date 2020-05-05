@@ -12,6 +12,7 @@ linters:
     - govet
     - ineffassign
     - interfacer
+    - maligned
     - misspell
     - rowserrcheck
     - staticcheck
@@ -27,3 +28,7 @@ issues:
     - linters:
         - gosec
       text: "(G501|G401):"
+    - linters:
+        - maligned
+      path: "^(conf/configuration|model/album|model/mediafile|server/subsonic/responses/responses)\\.go$"
+

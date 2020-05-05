@@ -4,6 +4,11 @@ import "time"
 
 type Album struct {
 	ID                   string    `json:"id"            orm:"column(id)"`
+	Compilation          bool      `json:"compilation"`
+	MaxYear              int       `json:"maxYear"`
+	MinYear              int       `json:"minYear"`
+	SongCount            int       `json:"songCount"`
+	Duration             float32   `json:"duration"`
 	Name                 string    `json:"name"`
 	CoverArtPath         string    `json:"coverArtPath"`
 	CoverArtId           string    `json:"coverArtId"`
@@ -11,11 +16,6 @@ type Album struct {
 	Artist               string    `json:"artist"`
 	AlbumArtistID        string    `json:"albumArtistId" orm:"pk;column(album_artist_id)"`
 	AlbumArtist          string    `json:"albumArtist"`
-	MaxYear              int       `json:"maxYear"`
-	MinYear              int       `json:"minYear"`
-	Compilation          bool      `json:"compilation"`
-	SongCount            int       `json:"songCount"`
-	Duration             float32   `json:"duration"`
 	Genre                string    `json:"genre"`
 	FullText             string    `json:"fullText"`
 	SortAlbumName        string    `json:"sortAlbumName"`
@@ -27,10 +27,10 @@ type Album struct {
 	UpdatedAt            time.Time `json:"updatedAt"`
 
 	// Annotations
-	PlayCount int       `json:"playCount"   orm:"-"`
-	PlayDate  time.Time `json:"playDate"    orm:"-"`
-	Rating    int       `json:"rating"      orm:"-"`
 	Starred   bool      `json:"starred"     orm:"-"`
+	PlayCount int       `json:"playCount"   orm:"-"`
+	Rating    int       `json:"rating"      orm:"-"`
+	PlayDate  time.Time `json:"playDate"    orm:"-"`
 	StarredAt time.Time `json:"starredAt"   orm:"-"`
 }
 

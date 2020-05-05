@@ -10,37 +10,36 @@ import (
 )
 
 type Entry struct {
-	Id          string
-	Title       string
 	IsDir       bool
-	Parent      string
-	Album       string
+	PlayCount   int32
 	Year        int
-	Artist      string
-	Genre       string
-	CoverArt    string
-	Starred     time.Time
 	Track       int
 	Duration    int
 	Size        int
-	Suffix      string
 	BitRate     int
+	DiscNumber  int
+	UserRating  int
+	SongCount   int
+	MinutesAgo  int
+	PlayerId    int
+	AlbumCount  int
+	Starred     time.Time
+	Created     time.Time
+	Id          string
+	Title       string
+	Parent      string
+	Album       string
+	Artist      string
+	Genre       string
+	CoverArt    string
+	Suffix      string
 	ContentType string
 	Path        string
-	PlayCount   int32
-	DiscNumber  int
-	Created     time.Time
 	AlbumId     string
 	ArtistId    string
 	Type        string
-	UserRating  int
-	SongCount   int
-
-	UserName   string
-	MinutesAgo int
-	PlayerId   int
-	PlayerName string
-	AlbumCount int
+	PlayerName  string
+	UserName    string
 
 	AbsolutePath string
 }
