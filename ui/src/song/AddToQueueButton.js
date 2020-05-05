@@ -10,7 +10,7 @@ import { useDispatch } from 'react-redux'
 import { addTracks } from '../audioplayer'
 import AddToQueueIcon from '@material-ui/icons/AddToQueue'
 
-const AddToQueueButton = ({ selectedIds }) => {
+const AddToQueueButton = ({ resource, selectedIds }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const dataProvider = useDataProvider()
@@ -19,7 +19,7 @@ const AddToQueueButton = ({ selectedIds }) => {
 
   const addToQueue = () => {
     dataProvider
-      .getMany('song', { ids: selectedIds })
+      .getMany(resource, { ids: selectedIds })
       .then((response) => {
         // Add tracks to a map for easy lookup by ID, needed for the next step
         const tracks = response.data.reduce(
@@ -32,7 +32,7 @@ const AddToQueueButton = ({ selectedIds }) => {
       .catch(() => {
         notify('ra.page.error', 'warning')
       })
-    unselectAll('song')
+    unselectAll(resource)
   }
 
   return (
