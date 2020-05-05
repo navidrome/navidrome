@@ -68,7 +68,7 @@
             "name": "Player |||| Players",
             "fields": {
                 "name": "Name",
-                "transcodingId": "Transcoding ID",
+                "transcodingId": "Transcoding",
                 "maxBitRate": "Max. Bit Rate",
                 "client": "Client",
                 "userName": "Username",

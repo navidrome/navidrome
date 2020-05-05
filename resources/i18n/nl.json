@@ -16,7 +16,8 @@
                 "compilation": "Compilatie",
                 "year": "Jaar",
                 "size": "Bestandsgrootte",
-                "updatedAt": "Laatst bijgewerkt op"
+                "updatedAt": "Laatst bijgewerkt op",
+                "bitRate": "Bitrate"
             },
             "actions": {
                 "addToQueue": "Toevoegen aan afspeellijst",
@@ -34,7 +35,8 @@
                 "name": "Naam",
                 "genre": "Genre",
                 "compilation": "Compilatie",
-                "year": "Jaar"
+                "year": "Jaar",
+                "updatedAt": "Bijgewerkt op"
             },
             "actions": {
                 "playAll": "Afspelen",
@@ -57,7 +59,9 @@
                 "isAdmin": "Is beheerder",
                 "lastLoginAt": "Laatst ingelogd op",
                 "updatedAt": "Laatst gewijzigd op",
-                "name": "Naam"
+                "name": "Naam",
+                "password": "Wachtwoord",
+                "createdAt": "Aangemaakt op"
             }
         },
         "player": {

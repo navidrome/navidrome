@@ -16,7 +16,8 @@
                 "compilation": "Coletânea",
                 "year": "Ano",
                 "size": "Tamanho",
-                "updatedAt": "Últ. Atualização"
+                "updatedAt": "Últ. Atualização",
+                "bitRate": "Bitrate"
             },
             "actions": {
                 "addToQueue": "Tocar por último",
@@ -34,7 +35,8 @@
                 "name": "Nome",
                 "genre": "Gênero",
                 "compilation": "Coletânea",
-                "year": "Ano"
+                "year": "Ano",
+                "updatedAt": "Últ. Atualização"
             },
             "actions": {
                 "playAll": "Tocar",
@@ -57,7 +59,9 @@
                 "isAdmin": "Admin?",
                 "lastLoginAt": "Últ. Login",
                 "updatedAt": "Últ. Atualização",
-                "name": "Nome"
+                "name": "Nome",
+                "password": "Senha",
+                "createdAt": "Data de Criação"
             }
         },
         "player": {
@@ -212,8 +216,8 @@
     },
     "message": {
         "note": "ATENÇÃO",
-        "transcodingDisabled": "",
-        "transcodingEnabled": ""
+        "transcodingDisabled": "Por questão de segurança, esta tela de configuração está desabilitada. Se você quiser alterar estas configurações, reinicie o servidor com a opção %{config}",
+        "transcodingEnabled": "Navidrome está sendo executado com a opção %{config}. Isto permite que potencialmente se execute comandos do sistema pela interface Web. É recomendado que vc mantenha esta opção desabilitada, e só a habilite quando precisar configurar opções de Conversão"
     },
     "menu": {
         "library": "Biblioteca",
@@ -232,16 +236,16 @@
         "playListsText": "Fila de Execução",
         "openText": "Abrir",
         "closeText": "Fechar",
-        "notContentText": "",
+        "notContentText": "Nenhum música",
         "clickToPlayText": "Clique para tocar",
         "clickToPauseText": "Clique para pausar",
         "nextTrackText": "Próxima faixa",
         "previousTrackText": "Faixa anterior",
         "reloadText": "Recarregar",
         "volumeText": "Volume",
-        "toggleLyricText": "",
+        "toggleLyricText": "Letra",
         "toggleMiniModeText": "Minimizar",
-        "destroyText": "",
+        "destroyText": "Destruir",
         "downloadText": "Baixar",
         "removeAudioListsText": "Limpar fila de execução",
         "clickToDeleteText": "Clique para remover %{name}",

@@ -4,7 +4,7 @@
         "song": {
             "name": "Piste |||| Pistes",
             "fields": {
-                "albumArtist": "",
+                "albumArtist": "Artiste",
                 "duration": "Durée",
                 "trackNumber": "#",
                 "playCount": "Nombre d'écoutes",
@@ -16,7 +16,8 @@
                 "compilation": "Compilation",
                 "year": "Année",
                 "size": "Taille",
-                "updatedAt": "Mise à jour"
+                "updatedAt": "Mise à jour",
+                "bitRate": "Bitrate"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -26,7 +27,7 @@
         "album": {
             "name": "Album |||| Albums",
             "fields": {
-                "albumArtist": "",
+                "albumArtist": "Artiste",
                 "artist": "Artiste",
                 "duration": "Durée",
                 "songCount": "Numéro de piste",
@@ -34,7 +35,8 @@
                 "name": "Nom",
                 "genre": "Genre",
                 "compilation": "Compilation",
-                "year": "Année"
+                "year": "Année",
+                "updatedAt": "Mise à jour le"
             },
             "actions": {
                 "playAll": "Lire",
@@ -57,7 +59,9 @@
                 "isAdmin": "Administrateur",
                 "lastLoginAt": "Dernière connexion",
                 "updatedAt": "Dernière mise à jour",
-                "name": "Nom"
+                "name": "Nom",
+                "password": "Mot de passe",
+                "createdAt": "Crée le"
             }
         },
         "player": {
@@ -211,15 +215,15 @@
         }
     },
     "message": {
-        "note": "",
-        "transcodingDisabled": "",
-        "transcodingEnabled": ""
+        "note": "NOTE",
+        "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancer le serveur avec l'option %{config} activée.",
+        "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé de n'activer cette fonctionnalité uniquement lors de la configuration du Transcodage."
     },
     "menu": {
         "library": "Bibliothèque",
         "settings": "Paramètres",
         "version": "Version%{version}",
-        "theme": "",
+        "theme": "Thème",
         "personal": {
             "name": "Paramètres personel",
             "options": {
@@ -232,20 +236,20 @@
         "playListsText": "File de lecture",
         "openText": "Ouvrir",
         "closeText": "Fermer",
-        "notContentText": "",
+        "notContentText": "Absence de musique",
         "clickToPlayText": "Cliquer pour lire",
         "clickToPauseText": "Cliquer pour mettre en pause",
         "nextTrackText": "Morceau suivant",
         "previousTrackText": "Morceau précédent",
-        "reloadText": "",
+        "reloadText": "Recharger",
         "volumeText": "Volume",
-        "toggleLyricText": "",
+        "toggleLyricText": "Afficher/masquer les paroles",
         "toggleMiniModeText": "Minimiser",
-        "destroyText": "",
-        "downloadText": "",
+        "destroyText": "Détruire",
+        "downloadText": "Télécharger",
         "removeAudioListsText": "Vider la liste de lecture",
         "clickToDeleteText": "Cliquer pour supprimer %{name}",
-        "emptyLyricText": "",
+        "emptyLyricText": "Absence de paroles",
         "playModeText": {
             "order": "Ordonner",
             "orderLoop": "Tout répéter",
