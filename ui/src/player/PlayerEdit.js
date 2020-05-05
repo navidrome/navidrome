@@ -42,7 +42,7 @@ const PlayerEdit = (props) => (
           { id: 192, name: '192' },
           { id: 256, name: '256' },
           { id: 320, name: '320' },
-          { id: 0, name: 'Unlimited' },
+          { id: 0, name: '-' },
         ]}
       />
       <TextField source="client" />

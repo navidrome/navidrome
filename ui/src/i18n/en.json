@@ -16,6 +16,7 @@
                 "compilation": "Compilation",
                 "year": "Year",
                 "size": "File size",
+                "bitRate": "Bit rate",
                 "updatedAt": "Uploaded at"
             },
             "actions": {
@@ -34,7 +35,8 @@
                 "name": "Name",
                 "genre": "Genre",
                 "compilation": "Compilation",
-                "year": "Year"
+                "year": "Year",
+                "updatedAt":"Updated at"
             },
             "actions": {
                 "playAll": "Play",
@@ -54,10 +56,12 @@
             "name": "User |||| Users",
             "fields": {
                 "userName": "Username",
+                "name": "Name",
+                "password": "Password",
                 "isAdmin": "Is Admin",
                 "lastLoginAt": "Last Login At",
-                "updatedAt": "Updated At",
-                "name": "Name"
+                "updatedAt": "Updated at",
+                "createdAt": "Created at"
             }
         },
         "player": {

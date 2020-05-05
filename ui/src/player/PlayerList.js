@@ -24,7 +24,7 @@ const PlayerList = (props) => {
         <SimpleList
           primaryText={(r) => r.client}
           secondaryText={(r) => r.userName}
-          tertiaryText={(r) => (r.maxBitRate ? r.maxBitRate : 'Unlimited')}
+          tertiaryText={(r) => (r.maxBitRate ? r.maxBitRate : '-')}
         />
       ) : (
         <Datagrid rowClick="edit">
@@ -34,7 +34,7 @@ const PlayerList = (props) => {
           </ReferenceField>
           <FunctionField
             source="maxBitRate"
-            render={(r) => (r.maxBitRate ? r.maxBitRate : 'Unlimited')}
+            render={(r) => (r.maxBitRate ? r.maxBitRate : '-')}
           />
           <DateField source="lastSeen" showTime />
         </Datagrid>
