@@ -4,7 +4,7 @@ import Menu from '@material-ui/core/Menu'
 import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { makeStyles } from '@material-ui/core/styles'
-import { useDataProvider, useTranslate } from 'react-admin'
+import { useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import { playAlbum, shuffleAlbum } from '../audioplayer'
 
@@ -19,6 +19,7 @@ const AlbumContextMenu = ({ record, color }) => {
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
   const options = {
@@ -60,6 +61,10 @@ const AlbumContextMenu = ({ record, color }) => {
         )
         dispatch(options[key].action(adata, response.data[0].id))
       })
+      .catch(() => {
+        notify('ra.page.error', 'warning')
+      })
+
     e.stopPropagation()
   }
 

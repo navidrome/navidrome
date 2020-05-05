@@ -4,6 +4,7 @@ import {
   useDataProvider,
   useTranslate,
   useUnselectAll,
+  useNotify,
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import { addTrack } from '../audioplayer'
@@ -14,12 +15,24 @@ const AddToQueueButton = ({ selectedIds }) => {
   const translate = useTranslate()
   const dataProvider = useDataProvider()
   const unselectAll = useUnselectAll()
+  const notify = useNotify()
+
   const addToQueue = () => {
-    selectedIds.forEach((id) => {
-      dataProvider.getOne('song', { id }).then((response) => {
-        dispatch(addTrack(response.data))
+    dataProvider
+      .getMany('song', { ids: selectedIds })
+      .then((response) => {
+        // Add the tracks to the queue in the selection order
+        const tracks = response.data.reduce((acc, cur) => {
+          acc[cur.id] = cur
+          return acc
+        }, {})
+        selectedIds.forEach((id) => {
+          dispatch(addTrack(tracks[id]))
+        })
       })
-    })
+      .catch(() => {
+        notify('ra.page.error', 'warning')
+      })
     unselectAll('song')
   }
 
