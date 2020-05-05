@@ -16,13 +16,13 @@ const mapToAudioLists = (item) => ({
   musicSrc: subsonic.url('stream', item.id, { ts: true }),
 })
 
-const addTrack = (data) => ({
-  type: PLAYER_ADD_TRACK,
+const setTrack = (data) => ({
+  type: PLAYER_SET_TRACK,
   data,
 })
 
-const setTrack = (data) => ({
-  type: PLAYER_SET_TRACK,
+const addTracks = (data) => ({
+  type: PLAYER_ADD_TRACK,
   data,
 })
 
@@ -74,7 +74,9 @@ const playQueueReducer = (
   switch (type) {
     case PLAYER_ADD_TRACK:
       queue = previousState.queue
-      queue.push(mapToAudioLists(data))
+      data.forEach((item) => {
+        queue.push(mapToAudioLists(item))
+      })
       return { ...previousState, queue, clear: false }
     case PLAYER_SET_TRACK:
       return {
@@ -131,7 +133,7 @@ const playQueueReducer = (
 }
 
 export {
-  addTrack,
+  addTracks,
   setTrack,
   playAlbum,
   syncQueue,

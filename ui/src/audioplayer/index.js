@@ -1,10 +1,17 @@
 import Player from './Player'
 import {
-  addTrack,
+  addTracks,
   setTrack,
   playQueueReducer,
   playAlbum,
   shuffleAlbum,
 } from './queue'
 
-export { Player, addTrack, setTrack, playAlbum, playQueueReducer, shuffleAlbum }
+export {
+  Player,
+  addTracks,
+  setTrack,
+  playAlbum,
+  playQueueReducer,
+  shuffleAlbum,
+}

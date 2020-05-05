@@ -7,7 +7,7 @@ import {
   useNotify,
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
-import { addTrack } from '../audioplayer'
+import { addTracks } from '../audioplayer'
 import AddToQueueIcon from '@material-ui/icons/AddToQueue'
 
 const AddToQueueButton = ({ selectedIds }) => {
@@ -21,14 +21,13 @@ const AddToQueueButton = ({ selectedIds }) => {
     dataProvider
       .getMany('song', { ids: selectedIds })
       .then((response) => {
-        // Add the tracks to the queue in the selection order
+        // Add tracks to a map for easy lookup by ID, needed for the next step
         const tracks = response.data.reduce((acc, cur) => {
           acc[cur.id] = cur
           return acc
         }, {})
-        selectedIds.forEach((id) => {
-          dispatch(addTrack(tracks[id]))
-        })
+        // Add the tracks to the queue in the selection order
+        dispatch(addTracks(selectedIds.map((id) => tracks[id])))
       })
       .catch(() => {
         notify('ra.page.error', 'warning')

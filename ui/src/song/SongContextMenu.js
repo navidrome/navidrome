@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux'
 import { useTranslate } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
-import { addTrack, setTrack } from '../audioplayer'
+import { addTracks, setTrack } from '../audioplayer'
 
 export const SongContextMenu = ({ record }) => {
   const dispatch = useDispatch()
@@ -16,7 +16,7 @@ export const SongContextMenu = ({ record }) => {
     },
     addToQueue: {
       label: translate('resources.song.actions.addToQueue'),
-      action: (record) => addTrack(record),
+      action: (record) => addTracks([record]),
     },
   }
 
