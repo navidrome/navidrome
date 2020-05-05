@@ -16,7 +16,8 @@
                 "compilation": "Kompilace",
                 "year": "Rok",
                 "size": "Velikost souboru",
-                "updatedAt": "Nahráno"
+                "updatedAt": "Nahráno",
+                "bitRate": "Přenosová rychlost"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -34,7 +35,8 @@
                 "name": "Název",
                 "genre": "Žánr",
                 "compilation": "Kompilace",
-                "year": "Rok"
+                "year": "Rok",
+                "updatedAt": "Aktualizováno"
             },
             "actions": {
                 "playAll": "Přehrát",
@@ -57,7 +59,9 @@
                 "isAdmin": "Správcem",
                 "lastLoginAt": "Naposledy přihlášen",
                 "updatedAt": "Upraven",
-                "name": "Jméno"
+                "name": "Jméno",
+                "password": "Heslo",
+                "createdAt": "Vytvořen"
             }
         },
         "player": {
@@ -86,7 +90,7 @@
             "welcome1": "Děkujeme, že jste si nainstalovali Navidrome!",
             "welcome2": "Nejdříve vytvořte účet správce",
             "confirmPassword": "Potvrďte heslo",
-            "buttonCreateAdmin": "Vytvořte správce",
+            "buttonCreateAdmin": "Vytvořit správce",
             "auth_check_error": "Pro pokračování se prosím přihlašte",
             "user_menu": "Profil",
             "username": "Uživatelské jméno",
@@ -236,7 +240,7 @@
         "clickToPlayText": "Klikněte pro přehrání",
         "clickToPauseText": "Klikněte pro pozastavní",
         "nextTrackText": "Další skladba",
-        "previousTrackText": "Předchozí skladby",
+        "previousTrackText": "Předchozí skladba",
         "reloadText": "Znovu načíst",
         "volumeText": "Hlasitost",
         "toggleLyricText": "Přepnout text",
