@@ -16,7 +16,8 @@
                 "compilation": "Derleme",
                 "year": "Yıl",
                 "size": "Dosya boyutu",
-                "updatedAt": "Yüklendiği zaman"
+                "updatedAt": "Yüklendiği zaman",
+                "bitRate": "Bir sayısı"
             },
             "actions": {
                 "addToQueue": "Sonra çal",
@@ -34,7 +35,8 @@
                 "name": "Ad",
                 "genre": "Tür",
                 "compilation": "Derleme",
-                "year": "Yıl"
+                "year": "Yıl",
+                "updatedAt": "Güncellendi "
             },
             "actions": {
                 "playAll": "Çaldır",
@@ -47,7 +49,8 @@
             "name": "Sanatçı |||| Sanatçılar",
             "fields": {
                 "name": "Ad",
-                "albumCount": "Albüm Sayısı"
+                "albumCount": "Albüm Sayısı",
+                "songCount": "Şarkı sayısı"
             }
         },
         "user": {
@@ -57,7 +60,9 @@
                 "isAdmin": "Yönetici mi",
                 "lastLoginAt": "Son Giriş Tarihi",
                 "updatedAt": "Güncelleme Tarihi",
-                "name": "Ad"
+                "name": "Ad",
+                "password": "Şifre",
+                "createdAt": "Oluşturuldu"
             }
         },
         "player": {
