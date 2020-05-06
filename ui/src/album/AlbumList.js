@@ -50,9 +50,8 @@ const getPerPageOptions = (width) => {
   const options = [3, 6, 12]
   if (width === 'xs') return [12]
   if (width === 'sm') return [12]
-  if (width === 'md') return options.map((v) => v * 5)
-  if (width === 'lg') return options.map((v) => v * 6)
-  return options.map((v) => v * 7)
+  if (width === 'md') return options.map((v) => v * 4)
+  return options.map((v) => v * 6)
 }
 
 const AlbumList = (props) => {
