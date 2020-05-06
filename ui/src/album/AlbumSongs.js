@@ -30,7 +30,6 @@ const useStyles = makeStyles(
       [theme.breakpoints.down('xs')]: {
         boxShadow: 'none',
       },
-      overflow: 'inherit',
     },
     bulkActionsDisplayed: {
       marginTop: -theme.spacing(8),
