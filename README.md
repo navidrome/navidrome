@@ -27,7 +27,7 @@ Here are some useful direct links:
   - [Binaries](https://www.navidrome.org/docs/installation/pre-built-binaries/)
   - [Build from source](https://www.navidrome.org/docs/installation/build-from-source/)
 - [Development](https://www.navidrome.org/docs/developers/)
-- [Subsonic API Version Compatibility](https://www.navidrome.org/docs/developers/subsonic-api/)
+- [Subsonic API Compatibility](https://www.navidrome.org/docs/developers/subsonic-api/)
 
 ## Screenshots
 
