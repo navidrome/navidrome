@@ -12,7 +12,7 @@ import classnames from 'classnames'
 import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import { setTrack } from '../audioplayer'
+import { playAlbum } from '../audioplayer'
 import { DurationField } from '../common'
 import { SongDetails } from '../common'
 
@@ -108,7 +108,7 @@ const AlbumSongs = (props) => {
           ) : (
             <Datagrid
               expand={!isXsmall && <SongDetails />}
-              rowClick={(id, basePath, record) => dispatch(setTrack(record))}
+              rowClick={(id) => dispatch(playAlbum(id, data))}
               {...controllerProps}
               hasBulkActions={hasBulkActions}
             >
