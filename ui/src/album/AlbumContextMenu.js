@@ -25,11 +25,11 @@ const AlbumContextMenu = ({ record, color }) => {
   const options = {
     play: {
       label: translate('resources.album.actions.playAll'),
-      action: (data, id) => playAlbum(id, data),
+      action: (data) => playAlbum(data),
     },
     addToQueue: {
       label: translate('resources.album.actions.addToQueue'),
-      action: (data) => addTracks(Object.values(data)),
+      action: (data) => addTracks(data),
     },
     shuffle: {
       label: translate('resources.album.actions.shuffle'),
@@ -63,7 +63,7 @@ const AlbumContextMenu = ({ record, color }) => {
           (acc, cur) => ({ ...acc, [cur.id]: cur }),
           {}
         )
-        dispatch(options[key].action(adata, response.data[0].id))
+        dispatch(options[key].action(adata))
       })
       .catch(() => {
         notify('ra.page.error', 'warning')

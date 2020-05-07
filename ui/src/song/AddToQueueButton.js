@@ -27,7 +27,7 @@ const AddToQueueButton = ({ resource, selectedIds }) => {
           {}
         )
         // Add the tracks to the queue in the selection order
-        dispatch(addTracks(selectedIds.map((id) => tracks[id])))
+        dispatch(addTracks(tracks, selectedIds))
       })
       .catch(() => {
         notify('ra.page.error', 'warning')

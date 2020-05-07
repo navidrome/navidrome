@@ -16,7 +16,7 @@ export const SongContextMenu = ({ record }) => {
     },
     addToQueue: {
       label: translate('resources.song.actions.addToQueue'),
-      action: (record) => addTracks([record]),
+      action: (record) => addTracks({ [record.id]: record }),
     },
   }
 

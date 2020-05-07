@@ -22,10 +22,20 @@ const setTrack = (data) => ({
   data,
 })
 
-const addTracks = (data) => ({
-  type: PLAYER_ADD_TRACK,
-  data,
-})
+let filterAlbumSongs = function (data, ids) {
+  if (!ids) {
+    return data
+  }
+  return ids.reduce((acc, id) => ({ ...acc, [id]: data[id] }), {})
+}
+
+const addTracks = (data, ids) => {
+  const songs = filterAlbumSongs(data, ids)
+  return {
+    type: PLAYER_ADD_TRACK,
+    data: songs,
+  }
+}
 
 const shuffle = (data) => {
   const ids = Object.keys(data)
@@ -38,8 +48,9 @@ const shuffle = (data) => {
   return shuffled
 }
 
-const shuffleAlbum = (data) => {
-  const shuffled = shuffle(data)
+const shuffleAlbum = (data, ids) => {
+  const songs = filterAlbumSongs(data, ids)
+  const shuffled = shuffle(songs)
   const firstId = Object.keys(shuffled)[0]
   return {
     type: PLAYER_PLAY_ALBUM,
@@ -48,11 +59,14 @@ const shuffleAlbum = (data) => {
   }
 }
 
-const playAlbum = (id, data) => ({
-  type: PLAYER_PLAY_ALBUM,
-  id,
-  data,
-})
+const playAlbum = (data, ids, selectedId) => {
+  const songs = filterAlbumSongs(data, ids)
+  return {
+    type: PLAYER_PLAY_ALBUM,
+    id: selectedId || Object.keys(songs)[0],
+    data: songs,
+  }
+}
 
 const syncQueue = (id, data) => ({
   type: PLAYER_SYNC_QUEUE,
@@ -75,8 +89,8 @@ const playQueueReducer = (
   switch (type) {
     case PLAYER_ADD_TRACK:
       queue = previousState.queue
-      data.forEach((item) => {
-        queue.push(mapToAudioLists(item))
+      Object.keys(data).forEach((id) => {
+        queue.push(mapToAudioLists(data[id]))
       })
       return { ...previousState, queue, clear: false }
     case PLAYER_SET_TRACK:

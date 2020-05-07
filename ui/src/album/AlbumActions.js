@@ -21,14 +21,11 @@ export const AlbumActions = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
 
-  // Filter out tracks from other albums (cached by ReactAdmin)
-  const filteredData = ids.reduce((acc, id) => ({ ...acc, [id]: data[id] }), {})
-
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <Button
         onClick={() => {
-          dispatch(playAlbum(ids[0], filteredData))
+          dispatch(playAlbum(data, ids))
         }}
         label={translate('resources.album.actions.playAll')}
       >
@@ -36,7 +33,7 @@ export const AlbumActions = ({
       </Button>
       <Button
         onClick={() => {
-          dispatch(shuffleAlbum(filteredData))
+          dispatch(shuffleAlbum(data, ids))
         }}
         label={translate('resources.album.actions.shuffle')}
       >
