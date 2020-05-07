@@ -14,6 +14,7 @@ const mapToAudioLists = (item) => ({
   singer: item.artist,
   cover: subsonic.url('getCoverArt', item.id, { size: 300 }),
   musicSrc: subsonic.url('stream', item.id, { ts: true }),
+  scrobbled: false,
 })
 
 const setTrack = (data) => ({
@@ -84,15 +85,12 @@ const playQueueReducer = (
         queue: [mapToAudioLists(data)],
         clear: true,
         playing: true,
-        current: data.id,
       }
     case PLAYER_SYNC_QUEUE:
-      const currentTrack = data.find((item) => item.id === data.id) || {}
       return {
         ...previousState,
         queue: data,
         clear: false,
-        current: currentTrack.id,
       }
     case PLAYER_SCROBBLE:
       const newQueue = previousState.queue.map((item) => {
@@ -107,7 +105,6 @@ const playQueueReducer = (
         queue: newQueue,
         clear: false,
         playing: true,
-        current: payload.id,
       }
     case PLAYER_PLAY_ALBUM:
       queue = []
@@ -125,7 +122,6 @@ const playQueueReducer = (
         queue,
         clear: true,
         playing: true,
-        current: payload.id,
       }
     default:
       return previousState
