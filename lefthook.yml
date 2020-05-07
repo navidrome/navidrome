@@ -3,6 +3,9 @@ pre-push:
     unit-tests:
       tags: tests
       run: go test ./...
+    lint:
+      tags: tests
+      run: golangci-lint run
 
 pre-commit:
   parallel: false

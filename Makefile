@@ -41,11 +41,12 @@ setup:
 .PHONY: setup
 
 setup-dev: setup
-	@which wire       || (echo "Installing Wire"     && GO111MODULE=off go get -u github.com/google/wire/cmd/wire)
-	@which ginkgo     || (echo "Installing Ginkgo"   && GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo)
-	@which goose      || (echo "Installing Goose"    && GO111MODULE=off go get -u github.com/pressly/goose/cmd/goose)
-	@which reflex     || (echo "Installing Reflex"   && GO111MODULE=off go get -u github.com/cespare/reflex)
-	@which lefthook   || (echo "Installing Lefthook" && GO111MODULE=off go get -u github.com/Arkweid/lefthook)
+	@which wire          || (echo "Installing Wire"          && GO111MODULE=off go get -u github.com/google/wire/cmd/wire)
+	@which ginkgo        || (echo "Installing Ginkgo"        && GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo)
+	@which goose         || (echo "Installing Goose"         && GO111MODULE=off go get -u github.com/pressly/goose/cmd/goose)
+	@which reflex        || (echo "Installing Reflex"        && GO111MODULE=off go get -u github.com/cespare/reflex)
+	@which golangci-lint || (echo "Installing GolangCI-Lint" && GO111MODULE=off go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.23.0)
+	@which lefthook      || (echo "Installing Lefthook"      && GO111MODULE=off go get -u github.com/Arkweid/lefthook)
 	@lefthook install
 .PHONY: setup
 
