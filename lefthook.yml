@@ -1,4 +1,5 @@
 pre-push:
+  parallel: true
   commands:
     unit-tests:
       tags: tests
