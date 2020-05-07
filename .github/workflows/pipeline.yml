@@ -142,7 +142,8 @@ jobs:
         uses: crazy-max/ghaction-docker-buildx@v1
         if: env.DOCKER_IMAGE != ''
         with:
-          version: latest
+          buildx-version: latest
+          qemu-version: latest
 
       - uses: actions/checkout@v1
         if: env.DOCKER_IMAGE != ''
