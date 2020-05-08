@@ -1,5 +1,12 @@
 import React from 'react'
-import { List, Datagrid, TextField, BooleanField, DateField } from 'react-admin'
+import {
+  List,
+  Datagrid,
+  TextField,
+  BooleanField,
+  FunctionField,
+  DateField,
+} from 'react-admin'
 import { DurationField, Title } from '../common'
 
 const PlaylistList = (props) => (
@@ -11,11 +18,16 @@ const PlaylistList = (props) => (
     exporter={false}
   >
     <Datagrid rowClick="edit">
-      <TextField source="Name" />
-      <TextField source="Owner" />
-      <BooleanField source="Public" />
-      <DateField source="UpdatedAt" />
-      <DurationField source="Duration" />
+      <TextField source="name" />
+      <TextField source="owner" />
+      <BooleanField source="public" />
+      <FunctionField
+        sortable={false} // TODO Make playlist.songCount sortable
+        source="songCount"
+        render={(r) => r.tracks && r.tracks.length}
+      />
+      <DurationField source="duration" />
+      <DateField source="updatedAt" />
     </Datagrid>
   </List>
 )
