@@ -38,6 +38,7 @@ const ArtistList = (props) => (
     <Datagrid rowClick={artistRowClick}>
       <TextField source="name" />
       <NumberField source="albumCount" />
+      <NumberField source="songCount" />
     </Datagrid>
   </List>
 )

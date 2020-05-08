@@ -5,7 +5,8 @@ import "time"
 type Artist struct {
 	ID              string `json:"id"          orm:"column(id)"`
 	Name            string `json:"name"`
-	AlbumCount      int    `json:"albumCount"  orm:"column(album_count)"`
+	AlbumCount      int    `json:"albumCount"`
+	SongCount       int    `json:"songCount"`
 	FullText        string `json:"fullText"`
 	SortArtistName  string `json:"sortArtistName"`
 	OrderArtistName string `json:"orderArtistName"`
