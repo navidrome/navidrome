@@ -65,12 +65,13 @@ var (
 
 var (
 	plsBest = model.Playlist{
-		ID:      "10",
-		Name:    "Best",
-		Comment: "No Comments",
-		Owner:   "userid",
-		Public:  true,
-		Tracks:  model.MediaFiles{{ID: "1001"}, {ID: "1003"}},
+		ID:        "10",
+		Name:      "Best",
+		Comment:   "No Comments",
+		Owner:     "userid",
+		Public:    true,
+		SongCount: 2,
+		Tracks:    model.MediaFiles{{ID: "1001"}, {ID: "1003"}},
 	}
 	plsCool       = model.Playlist{ID: "11", Name: "Cool", Tracks: model.MediaFiles{{ID: "1004"}}}
 	testPlaylists = model.Playlists{plsBest, plsCool}

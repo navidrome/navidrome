@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -11,18 +10,6 @@ import (
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
 )
-
-type playlist struct {
-	ID        string `orm:"column(id)"`
-	Name      string
-	Comment   string
-	Duration  float32
-	Owner     string
-	Public    bool
-	Tracks    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
 
 type playlistRepository struct {
 	sqlRepository
@@ -46,6 +33,11 @@ func (r *playlistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *playlistRepository) Delete(id string) error {
+	del := Delete("playlist_tracks").Where(Eq{"playlist_id": id})
+	_, err := r.executeSQL(del)
+	if err != nil {
+		return err
+	}
 	return r.delete(Eq{"id": id})
 }
 
@@ -54,121 +46,96 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 		p.CreatedAt = time.Now()
 	}
 	p.UpdatedAt = time.Now()
-	pls := r.fromModel(p)
-	_, err := r.put(pls.ID, pls)
+
+	// Save tracks for later and set it to nil, to avoid trying to save it to the DB
+	tracks := p.Tracks
+	p.Tracks = nil
+
+	id, err := r.put(p.ID, p)
+	if err != nil {
+		return err
+	}
+	err = r.updateTracks(id, tracks)
 	return err
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
-	var res playlist
-	err := r.queryOne(sel, &res)
-	pls := r.toModel(&res)
+	var pls model.Playlist
+	err := r.queryOne(sel, &pls)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadTracks(&pls)
 	return &pls, err
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
 	sel := r.newSelect(options...).Columns("*")
-	var res []playlist
+	var res model.Playlists
 	err := r.queryAll(sel, &res)
-	return r.toModels(res), err
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadAllTracks(res)
+	return res, err
 }
 
-func (r *playlistRepository) toModels(all []playlist) model.Playlists {
-	result := make(model.Playlists, len(all))
-	for i := range all {
-		p := all[i]
-		result[i] = r.toModel(&p)
-	}
-	return result
-}
-
-func (r *playlistRepository) toModel(p *playlist) model.Playlist {
-	pls := model.Playlist{
-		ID:        p.ID,
-		Name:      p.Name,
-		Comment:   p.Comment,
-		Duration:  p.Duration,
-		Owner:     p.Owner,
-		Public:    p.Public,
-		CreatedAt: p.CreatedAt,
-		UpdatedAt: p.UpdatedAt,
-	}
-	if strings.TrimSpace(p.Tracks) != "" {
-		tracks := strings.Split(p.Tracks, ",")
-		for _, t := range tracks {
-			pls.Tracks = append(pls.Tracks, model.MediaFile{ID: t})
-		}
-	}
-	pls.Tracks = r.loadTracks(&pls)
-	return pls
-}
-
-func (r *playlistRepository) fromModel(p *model.Playlist) playlist {
-	pls := playlist{
-		ID:        p.ID,
-		Name:      p.Name,
-		Comment:   p.Comment,
-		Owner:     p.Owner,
-		Public:    p.Public,
-		CreatedAt: p.CreatedAt,
-		UpdatedAt: p.UpdatedAt,
-	}
-	// TODO Update duration with a SQL query, instead of loading all tracks
-	p.Tracks = r.loadTracks(p)
-	var newTracks []string
-	for _, t := range p.Tracks {
-		newTracks = append(newTracks, t.ID)
-		pls.Duration += t.Duration
-	}
-	pls.Tracks = strings.Join(newTracks, ",")
-	return pls
-}
-
-// TODO: Introduce a relation table for Playlist <-> MediaFiles, and rewrite this method in pure SQL
-func (r *playlistRepository) loadTracks(p *model.Playlist) model.MediaFiles {
-	if len(p.Tracks) == 0 {
-		return nil
+func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {
+	// Remove old tracks
+	del := Delete("playlist_tracks").Where(Eq{"playlist_id": id})
+	_, err := r.executeSQL(del)
+	if err != nil {
+		return err
 	}
 
-	// Collect all ids
-	ids := make([]string, len(p.Tracks))
-	for i, t := range p.Tracks {
-		ids[i] = t.ID
-	}
-
-	// Break the list in chunks, up to 50 items, to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
-	const chunkSize = 50
-	var chunks [][]string
-	for i := 0; i < len(ids); i += chunkSize {
-		end := i + chunkSize
-		if end > len(ids) {
-			end = len(ids)
-		}
-
-		chunks = append(chunks, ids[i:end])
-	}
-
-	// Query each chunk of media_file ids and store results in a map
-	mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
-	trackMap := map[string]model.MediaFile{}
-	for i := range chunks {
-		idsFilter := Eq{"id": chunks[i]}
-		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: idsFilter})
+	// Add new tracks
+	for i, t := range tracks {
+		ins := Insert("playlist_tracks").Columns("playlist_id", "media_file_id", "id").
+			Values(id, t.ID, i)
+		_, err = r.executeSQL(ins)
 		if err != nil {
-			log.Error(r.ctx, "Could not load playlist's tracks", "playlistName", p.Name, "playlistId", p.ID, err)
-		}
-		for _, t := range tracks {
-			trackMap[t.ID] = t
+			return err
 		}
 	}
 
-	// Create a new list of tracks with the same order as the original
-	newTracks := make(model.MediaFiles, len(p.Tracks))
-	for i, t := range p.Tracks {
-		newTracks[i] = trackMap[t.ID]
+	// Get total playlist duration and count
+	statsSql := Select("sum(duration) as duration", "count(*) as count").From("media_file").
+		Join("playlist_tracks f on f.media_file_id = media_file.id").
+		Where(Eq{"playlist_id": id})
+	var res struct{ Duration, Count float32 }
+	err = r.queryOne(statsSql, &res)
+	if err != nil {
+		return err
 	}
-	return newTracks
+
+	// Update total playlist duration and count
+	upd := Update(r.tableName).
+		Set("duration", res.Duration).
+		Set("song_count", res.Count).
+		Where(Eq{"id": id})
+	_, err = r.executeSQL(upd)
+	return err
+}
+
+func (r *playlistRepository) loadAllTracks(all model.Playlists) error {
+	for i := range all {
+		if err := r.loadTracks(&all[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *playlistRepository) loadTracks(pls *model.Playlist) (err error) {
+	tracksQuery := Select("media_file.*").From("media_file").
+		Join("playlist_tracks f on f.media_file_id = media_file.id").
+		Where(Eq{"f.playlist_id": pls.ID}).OrderBy("f.id")
+	err = r.queryAll(tracksQuery, &pls.Tracks)
+	if err != nil {
+		log.Error("Error loading playlist tracks", "playlist", pls.Name, "id", pls.ID)
+	}
+	return
 }
 
 func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {
