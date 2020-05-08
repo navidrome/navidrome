@@ -13,15 +13,12 @@ jobs:
     name: Lint Server
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-
-      - name: Run golangci-lint
-        uses: actions-contrib/golangci-lint@v1
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v0.1.7
         with:
-          golangci_lint_version: v1.25.0
-#          TODO Enable github actions output format: https://github.com/actions-contrib/golangci-lint/issues/11
-#          args: run --out-format github-actions
+          version: v1.26
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   go:
     name: Test Server on ${{ matrix.os }}
