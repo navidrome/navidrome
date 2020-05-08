@@ -114,8 +114,8 @@ func (r *artistRepository) Refresh(ids ...string) error {
 	}
 	var artists []refreshArtist
 	sel := Select("f.album_artist_id as id", "f.album_artist as name", "count(*) as album_count", "a.id as current_id",
-		"f.sort_album_artist_name as sort_artist_name",
-		"f.order_album_artist_name as order_artist_name").
+		"f.sort_album_artist_name as sort_artist_name", "f.order_album_artist_name as order_artist_name",
+		"sum(f.song_count) as song_count").
 		From("album f").
 		LeftJoin("artist a on f.album_artist_id = a.id").
 		Where(Eq{"f.album_artist_id": ids}).
