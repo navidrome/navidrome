@@ -26,30 +26,33 @@ type playlists struct {
 }
 
 func (p *playlists) Create(ctx context.Context, playlistId, name string, ids []string) error {
-	owner := p.getUser(ctx)
-	var pls *model.Playlist
-	var err error
-	// If playlistID is present, override tracks
-	if playlistId != "" {
-		pls, err = p.ds.Playlist(ctx).Get(playlistId)
-		if err != nil {
-			return err
-		}
-		if owner != pls.Owner {
-			return model.ErrNotAuthorized
-		}
-		pls.Tracks = nil
-	} else {
-		pls = &model.Playlist{
-			Name:  name,
-			Owner: owner,
-		}
-	}
-	for _, id := range ids {
-		pls.Tracks = append(pls.Tracks, model.MediaFile{ID: id})
-	}
+	return p.ds.WithTx(func(tx model.DataStore) error {
+		owner := p.getUser(ctx)
+		var pls *model.Playlist
+		var err error
 
-	return p.ds.Playlist(ctx).Put(pls)
+		// If playlistID is present, override tracks
+		if playlistId != "" {
+			pls, err = tx.Playlist(ctx).Get(playlistId)
+			if err != nil {
+				return err
+			}
+			if owner != pls.Owner {
+				return model.ErrNotAuthorized
+			}
+			pls.Tracks = nil
+		} else {
+			pls = &model.Playlist{
+				Name:  name,
+				Owner: owner,
+			}
+		}
+		for _, id := range ids {
+			pls.Tracks = append(pls.Tracks, model.MediaFile{ID: id})
+		}
+
+		return tx.Playlist(ctx).Put(pls)
+	})
 }
 
 func (p *playlists) getUser(ctx context.Context) string {
@@ -61,46 +64,50 @@ func (p *playlists) getUser(ctx context.Context) string {
 }
 
 func (p *playlists) Delete(ctx context.Context, playlistId string) error {
-	pls, err := p.ds.Playlist(ctx).Get(playlistId)
-	if err != nil {
-		return err
-	}
+	return p.ds.WithTx(func(tx model.DataStore) error {
+		pls, err := tx.Playlist(ctx).Get(playlistId)
+		if err != nil {
+			return err
+		}
 
-	owner := p.getUser(ctx)
-	if owner != pls.Owner {
-		return model.ErrNotAuthorized
-	}
-	return p.ds.Playlist(ctx).Delete(playlistId)
+		owner := p.getUser(ctx)
+		if owner != pls.Owner {
+			return model.ErrNotAuthorized
+		}
+		return tx.Playlist(ctx).Delete(playlistId)
+	})
 }
 
 func (p *playlists) Update(ctx context.Context, playlistId string, name *string, idsToAdd []string, idxToRemove []int) error {
-	pls, err := p.ds.Playlist(ctx).Get(playlistId)
-	if err != nil {
-		return err
-	}
-
-	owner := p.getUser(ctx)
-	if owner != pls.Owner {
-		return model.ErrNotAuthorized
-	}
-
-	if name != nil {
-		pls.Name = *name
-	}
-	newTracks := model.MediaFiles{}
-	for i, t := range pls.Tracks {
-		if utils.IntInSlice(i, idxToRemove) {
-			continue
+	return p.ds.WithTx(func(tx model.DataStore) error {
+		pls, err := tx.Playlist(ctx).Get(playlistId)
+		if err != nil {
+			return err
 		}
-		newTracks = append(newTracks, t)
-	}
 
-	for _, id := range idsToAdd {
-		newTracks = append(newTracks, model.MediaFile{ID: id})
-	}
-	pls.Tracks = newTracks
+		owner := p.getUser(ctx)
+		if owner != pls.Owner {
+			return model.ErrNotAuthorized
+		}
 
-	return p.ds.Playlist(ctx).Put(pls)
+		if name != nil {
+			pls.Name = *name
+		}
+		newTracks := model.MediaFiles{}
+		for i, t := range pls.Tracks {
+			if utils.IntInSlice(i, idxToRemove) {
+				continue
+			}
+			newTracks = append(newTracks, t)
+		}
+
+		for _, id := range idsToAdd {
+			newTracks = append(newTracks, model.MediaFile{ID: id})
+		}
+		pls.Tracks = newTracks
+
+		return tx.Playlist(ctx).Put(pls)
+	})
 }
 
 func (p *playlists) GetAll(ctx context.Context) (model.Playlists, error) {
@@ -134,7 +141,7 @@ func (p *playlists) Get(ctx context.Context, id string) (*PlaylistInfo, error) {
 	plsInfo := &PlaylistInfo{
 		Id:        pl.ID,
 		Name:      pl.Name,
-		SongCount: len(pl.Tracks),
+		SongCount: pl.SongCount,
 		Duration:  int(pl.Duration),
 		Public:    pl.Public,
 		Owner:     pl.Owner,

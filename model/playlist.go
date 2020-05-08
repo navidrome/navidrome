@@ -3,10 +3,11 @@ package model
 import "time"
 
 type Playlist struct {
-	ID        string     `json:"id"`
+	ID        string     `json:"id"          orm:"column(id)"`
 	Name      string     `json:"name"`
 	Comment   string     `json:"comment"`
 	Duration  float32    `json:"duration"`
+	SongCount int        `json:"songCount"`
 	Owner     string     `json:"owner"`
 	Public    bool       `json:"public"`
 	Tracks    MediaFiles `json:"tracks"`
