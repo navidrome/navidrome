@@ -49,7 +49,8 @@
             "name": "Interpret |||| Interpreten",
             "fields": {
                 "name": "Name",
-                "albumCount": "Albumanzahl"
+                "albumCount": "Albumanzahl",
+                "songCount": "Songanzahl"
             }
         },
         "user": {
