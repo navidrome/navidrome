@@ -20,6 +20,7 @@ const Player = () => {
     autoPlay: false,
     preload: true,
     autoPlayInitLoadPlayList: true,
+    loadAudioErrorPlayNext: false,
     clearPriorAudioLists: false,
     showDestroy: false,
     showDownload: false,
