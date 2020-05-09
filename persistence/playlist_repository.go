@@ -77,8 +77,18 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	if err != nil {
 		return nil, err
 	}
+	// TODO Maybe the tracks are not required when retrieving all playlists?
 	err = r.loadAllTracks(res)
 	return res, err
+}
+
+func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTracksRepository {
+	p := &playlistTracksRepository{}
+	p.playlistId = playlistId
+	p.ctx = r.ctx
+	p.ormer = r.ormer
+	p.tableName = "playlist_tracks"
+	return p
 }
 
 func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {
@@ -128,9 +138,14 @@ func (r *playlistRepository) loadAllTracks(all model.Playlists) error {
 }
 
 func (r *playlistRepository) loadTracks(pls *model.Playlist) (err error) {
-	tracksQuery := Select("media_file.*").From("media_file").
-		Join("playlist_tracks f on f.media_file_id = media_file.id").
-		Where(Eq{"f.playlist_id": pls.ID}).OrderBy("f.id")
+	tracksQuery := Select().From("playlist_tracks").
+		LeftJoin("annotation on ("+
+			"annotation.item_id = media_file_id"+
+			" AND annotation.item_type = 'media_file'"+
+			" AND annotation.user_id = '"+userId(r.ctx)+"')").
+		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*").
+		Join("media_file f on f.id = media_file_id").
+		Where(Eq{"playlist_id": pls.ID}).OrderBy("playlist_tracks.id")
 	err = r.queryAll(tracksQuery, &pls.Tracks)
 	if err != nil {
 		log.Error("Error loading playlist tracks", "playlist", pls.Name, "id", pls.ID)
