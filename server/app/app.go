@@ -49,7 +49,9 @@ func (app *Router) routes(path string) http.Handler {
 		app.R(r, "/player", model.Player{}, true)
 		app.R(r, "/playlist", model.Playlist{}, true)
 		app.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
-		app.addResource(r, "/translation", newTranslationRepository, false)
+		app.RX(r, "/translation", newTranslationRepository, false)
+
+		app.addPlaylistTracksRoute(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"response":"ok"}`)) })
@@ -66,10 +68,10 @@ func (app *Router) R(r chi.Router, pathPrefix string, model interface{}, persist
 	constructor := func(ctx context.Context) rest.Repository {
 		return app.ds.Resource(ctx, model)
 	}
-	app.addResource(r, pathPrefix, constructor, persistable)
+	app.RX(r, pathPrefix, constructor, persistable)
 }
 
-func (app *Router) addResource(r chi.Router, pathPrefix string, constructor rest.RepositoryConstructor, persistable bool) {
+func (app *Router) RX(r chi.Router, pathPrefix string, constructor rest.RepositoryConstructor, persistable bool) {
 	r.Route(pathPrefix, func(r chi.Router) {
 		r.Get("/", rest.GetAll(constructor))
 		if persistable {
@@ -82,6 +84,31 @@ func (app *Router) addResource(r chi.Router, pathPrefix string, constructor rest
 				r.Put("/", rest.Put(constructor))
 				r.Delete("/", rest.Delete(constructor))
 			}
+		})
+	})
+}
+
+type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
+
+func (app *Router) addPlaylistTracksRoute(r chi.Router) {
+	// Add a middleware to capture the playlisId
+	wrapper := func(f restHandler) http.HandlerFunc {
+		return func(res http.ResponseWriter, req *http.Request) {
+			c := func(ctx context.Context) rest.Repository {
+				plsRepo := app.ds.Resource(ctx, model.Playlist{})
+				plsId := chi.URLParam(req, "playlistId")
+				return plsRepo.(model.PlaylistRepository).Tracks(plsId)
+			}
+
+			f(c).ServeHTTP(res, req)
+		}
+	}
+
+	r.Route("/playlist/{playlistId}/tracks", func(r chi.Router) {
+		r.Get("/", wrapper(rest.GetAll))
+		r.Route("/{id}", func(r chi.Router) {
+			r.Use(UrlParams)
+			r.Get("/", wrapper(rest.Get))
 		})
 	})
 }

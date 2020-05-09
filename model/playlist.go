@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/deluan/rest"
+)
 
 type Playlist struct {
 	ID        string     `json:"id"          orm:"column(id)"`
@@ -22,6 +26,18 @@ type PlaylistRepository interface {
 	Get(id string) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	Delete(id string) error
+	Tracks(playlistId string) PlaylistTracksRepository
+}
+
+type PlaylistTracks struct {
+	ID          string `json:"id"          orm:"column(id)"`
+	MediaFileID string `json:"mediaFileId" orm:"column(media_file_id)"`
+	MediaFile
+}
+
+type PlaylistTracksRepository interface {
+	rest.Repository
+	//rest.Persistable
 }
 
 type Playlists []Playlist
