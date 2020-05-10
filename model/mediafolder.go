@@ -1,8 +1,7 @@
 package model
 
 type MediaFolder struct {
-	// TODO Change to int
-	ID   string
+	ID   int32
 	Name string
 	Path string
 }

@@ -3,7 +3,6 @@ package subsonic
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
@@ -26,9 +25,7 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 	mediaFolderList, _ := c.browser.MediaFolders(r.Context())
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {
-		// TODO Change model.MediaFolder.ID to int
-		id, _ := strconv.ParseInt(f.ID, 10, 32)
-		folders[i].Id = int32(id)
+		folders[i].Id = f.ID
 		folders[i].Name = f.Name
 	}
 	response := NewResponse()

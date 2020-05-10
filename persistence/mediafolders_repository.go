@@ -29,7 +29,7 @@ func (*mediaFolderRepository) GetAll() (model.MediaFolders, error) {
 }
 
 func hardCoded() model.MediaFolder {
-	mediaFolder := model.MediaFolder{ID: "0", Path: conf.Server.MusicFolder}
+	mediaFolder := model.MediaFolder{ID: 0, Path: conf.Server.MusicFolder}
 	mediaFolder.Name = "Music Library"
 	return mediaFolder
 }
