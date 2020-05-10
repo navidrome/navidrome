@@ -27,12 +27,15 @@ watch: check_go_env
 
 test: check_go_env
 	go test ./... -v
-#	@(cd ./ui && npm test -- --watchAll=false)
 .PHONY: test
 
 testall: check_go_env test
 	@(cd ./ui && npm test -- --watchAll=false)
 .PHONY: testall
+
+update-snapshots: check_go_env
+	UPDATE_SNAPSHOTS=true ginkgo ./server/subsonic/...
+.PHONY: update-snapshots
 
 setup:
 	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)

@@ -2,8 +2,8 @@ package subsonic
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
@@ -26,7 +26,9 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 	mediaFolderList, _ := c.browser.MediaFolders(r.Context())
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {
-		folders[i].Id = f.ID
+		// TODO Change model.MediaFolder.ID to int
+		id, _ := strconv.ParseInt(f.ID, 10, 32)
+		folders[i].Id = int32(id)
 		folders[i].Name = f.Name
 	}
 	response := NewResponse()
@@ -43,7 +45,7 @@ func (c *BrowsingController) getArtistIndex(r *http.Request, musicFolderId strin
 
 	res := &responses.Indexes{
 		IgnoredArticles: conf.Server.IgnoredArticles,
-		LastModified:    fmt.Sprint(utils.ToMillis(lastModified)),
+		LastModified:    utils.ToMillis(lastModified),
 	}
 
 	res.Index = make([]responses.Index, len(indexes))
@@ -230,7 +232,7 @@ func (c *BrowsingController) buildAlbum(ctx context.Context, d *engine.Directory
 	dir.CoverArt = d.CoverArt
 	dir.SongCount = d.SongCount
 	dir.Duration = d.Duration
-	dir.PlayCount = d.PlayCount
+	dir.PlayCount = int64(d.PlayCount)
 	dir.Year = d.Year
 	dir.Genre = d.Genre
 	if !d.Created.IsZero() {

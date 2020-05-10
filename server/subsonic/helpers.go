@@ -126,7 +126,7 @@ func ToChild(ctx context.Context, entry engine.Entry) responses.Child {
 		child.Starred = &entry.Starred
 	}
 	child.Path = entry.Path
-	child.PlayCount = entry.PlayCount
+	child.PlayCount = int64(entry.PlayCount)
 	child.DiscNumber = entry.DiscNumber
 	if !entry.Created.IsZero() {
 		child.Created = &entry.Created

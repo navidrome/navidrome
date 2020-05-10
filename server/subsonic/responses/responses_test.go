@@ -60,8 +60,8 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				folders := make([]MusicFolder, 2)
-				folders[0] = MusicFolder{Id: "111", Name: "aaa"}
-				folders[1] = MusicFolder{Id: "222", Name: "bbb"}
+				folders[0] = MusicFolder{Id: 111, Name: "aaa"}
+				folders[1] = MusicFolder{Id: 222, Name: "bbb"}
 				response.MusicFolders.Folders = folders
 			})
 
@@ -76,7 +76,7 @@ var _ = Describe("Responses", func() {
 
 	Describe("Indexes", func() {
 		BeforeEach(func() {
-			response.Indexes = &Indexes{LastModified: "1", IgnoredArticles: "A"}
+			response.Indexes = &Indexes{LastModified: 1, IgnoredArticles: "A"}
 		})
 
 		Context("without data", func() {

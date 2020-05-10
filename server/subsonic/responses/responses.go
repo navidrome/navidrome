@@ -54,7 +54,7 @@ type License struct {
 }
 
 type MusicFolder struct {
-	Id   string `xml:"id,attr"                           json:"id"`
+	Id   int32  `xml:"id,attr"                           json:"id"`
 	Name string `xml:"name,attr"                         json:"name"`
 }
 
@@ -80,7 +80,7 @@ type Index struct {
 
 type Indexes struct {
 	Index           []Index `xml:"index"                  json:"index,omitempty"`
-	LastModified    string  `xml:"lastModified,attr"      json:"lastModified"`
+	LastModified    int64   `xml:"lastModified,attr"      json:"lastModified"`
 	IgnoredArticles string  `xml:"ignoredArticles,attr"   json:"ignoredArticles"`
 }
 
@@ -105,7 +105,7 @@ type Child struct {
 	Duration              int        `xml:"duration,attr,omitempty"                 json:"duration,omitempty"`
 	BitRate               int        `xml:"bitRate,attr,omitempty"                  json:"bitRate,omitempty"`
 	Path                  string     `xml:"path,attr,omitempty"                     json:"path,omitempty"`
-	PlayCount             int32      `xml:"playCount,attr,omitempty"                json:"playcount,omitempty"`
+	PlayCount             int64      `xml:"playCount,attr,omitempty"                json:"playcount,omitempty"`
 	DiscNumber            int        `xml:"discNumber,attr,omitempty"               json:"discNumber,omitempty"`
 	Created               *time.Time `xml:"created,attr,omitempty"                  json:"created,omitempty"`
 	AlbumId               string     `xml:"albumId,attr,omitempty"                  json:"albumId,omitempty"`
@@ -167,7 +167,7 @@ type AlbumID3 struct {
 	CoverArt  string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
 	SongCount int        `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
 	Duration  int        `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
-	PlayCount int32      `xml:"playCount,attr,omitempty"           json:"playcount,omitempty"`
+	PlayCount int64      `xml:"playCount,attr,omitempty"           json:"playcount,omitempty"`
 	Created   *time.Time `xml:"created,attr,omitempty"             json:"created,omitempty"`
 	Starred   *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	Year      int        `xml:"year,attr,omitempty"                json:"year,omitempty"`
