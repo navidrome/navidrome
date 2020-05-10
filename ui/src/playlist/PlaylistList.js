@@ -4,7 +4,7 @@ import {
   Datagrid,
   TextField,
   BooleanField,
-  FunctionField,
+  NumberField,
   DateField,
 } from 'react-admin'
 import { DurationField, Title } from '../common'
@@ -21,11 +21,7 @@ const PlaylistList = (props) => (
       <TextField source="name" />
       <TextField source="owner" />
       <BooleanField source="public" />
-      <FunctionField
-        sortable={false} // TODO Make playlist.songCount sortable
-        source="songCount"
-        render={(r) => r.tracks && r.tracks.length}
-      />
+      <NumberField source="songCount" />
       <DurationField source="duration" />
       <DateField source="updatedAt" />
     </Datagrid>
