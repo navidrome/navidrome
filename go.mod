@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/Masterminds/squirrel v1.3.0
+	github.com/Masterminds/squirrel v1.4.0
 	github.com/astaxie/beego v1.12.1
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0
