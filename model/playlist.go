@@ -14,7 +14,7 @@ type Playlist struct {
 	SongCount int        `json:"songCount"`
 	Owner     string     `json:"owner"`
 	Public    bool       `json:"public"`
-	Tracks    MediaFiles `json:"tracks"`
+	Tracks    MediaFiles `json:"tracks,omitempty"`
 	CreatedAt time.Time  `json:"createdAt"`
 	UpdatedAt time.Time  `json:"updatedAt"`
 }

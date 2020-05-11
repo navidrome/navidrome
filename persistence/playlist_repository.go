@@ -74,11 +74,6 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	sel := r.newSelect(options...).Columns("*")
 	var res model.Playlists
 	err := r.queryAll(sel, &res)
-	if err != nil {
-		return nil, err
-	}
-	// TODO Maybe the tracks are not required when retrieving all playlists?
-	err = r.loadAllTracks(res)
 	return res, err
 }
 
@@ -126,15 +121,6 @@ func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) er
 		Where(Eq{"id": id})
 	_, err = r.executeSQL(upd)
 	return err
-}
-
-func (r *playlistRepository) loadAllTracks(all model.Playlists) error {
-	for i := range all {
-		if err := r.loadTracks(&all[i]); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (r *playlistRepository) loadTracks(pls *model.Playlist) (err error) {
