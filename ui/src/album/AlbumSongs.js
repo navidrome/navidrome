@@ -6,6 +6,7 @@ import {
   ListToolbar,
   TextField,
   useListController,
+  useTranslate,
   DatagridLoading,
   DatagridBody,
   DatagridRow,
@@ -71,6 +72,7 @@ const trackName = (r) => {
 const AlbumSongs = (props) => {
   const classes = useStyles(props)
   const classesToolbar = useStylesListToolbar(props)
+  const translate = useTranslate()
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -100,8 +102,13 @@ const AlbumSongs = (props) => {
               <TableCell colSpan={children.length + 1}>
                 <Typography variant="h6">
                   {record.discSubtitle
-                    ? `${record.discSubtitle} (disc ${record.discNumber})`
-                    : `Disc ${record.discNumber}`}
+                    ? translate('message.discSubtitle', {
+                        subtitle: record.discSubtitle,
+                        number: record.discNumber,
+                      })
+                    : translate('message.discWithoutSubtitle', {
+                        number: record.discNumber,
+                      })}
                 </Typography>
               </TableCell>
             )}
