@@ -163,14 +163,19 @@ const AlbumSongs = (props) => {
                   source="trackNumber"
                   sortBy="discNumber asc, trackNumber asc"
                   label="#"
+                  sortable={false}
                 />
               )}
-              {isDesktop && <TextField source="title" />}
+              {isDesktop && <TextField source="title" sortable={false} />}
               {!isDesktop && (
-                <FunctionField source="title" render={trackName} />
+                <FunctionField
+                  source="title"
+                  render={trackName}
+                  sortable={false}
+                />
               )}
-              {isDesktop && <TextField source="artist" />}
-              <DurationField source="duration" />
+              {isDesktop && <TextField source="artist" sortable={false} />}
+              <DurationField source="duration" sortable={false} />
             </SongsDatagrid>
           )}
         </Card>
