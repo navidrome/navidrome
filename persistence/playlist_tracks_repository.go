@@ -12,6 +12,18 @@ type playlistTracksRepository struct {
 	playlistId string
 }
 
+func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTracksRepository {
+	p := &playlistTracksRepository{}
+	p.playlistId = playlistId
+	p.ctx = r.ctx
+	p.ormer = r.ormer
+	p.tableName = "playlist_tracks"
+	p.sortMappings = map[string]string{
+		"id": "playlist_tracks.id",
+	}
+	return p
+}
+
 func (r *playlistTracksRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.count(Select().Where(Eq{"playlist_id": r.playlistId}), r.parseRestOptions(options...))
 }

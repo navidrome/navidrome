@@ -1,22 +1,15 @@
 import React from 'react'
 import {
-  List,
   Datagrid,
   TextField,
   BooleanField,
   NumberField,
   DateField,
 } from 'react-admin'
-import { DurationField, Title } from '../common'
+import { DurationField, List } from '../common'
 
 const PlaylistList = (props) => (
-  <List
-    {...props}
-    title={
-      <Title subTitle={'resources.playlist.name'} args={{ smart_count: 2 }} />
-    }
-    exporter={false}
-  >
+  <List {...props} exporter={false}>
     <Datagrid rowClick="edit">
       <TextField source="name" />
       <TextField source="owner" />

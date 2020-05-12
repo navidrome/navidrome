@@ -71,6 +71,7 @@ const App = () => (
         ),
         <Resource name="albumSong" />,
         <Resource name="translation" />,
+        <Resource name="playlistTrack" />,
         <Player />,
       ]}
     </Admin>
