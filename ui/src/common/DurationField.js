@@ -5,8 +5,8 @@ const DurationField = ({ record = {}, source }) => {
   try {
     return <span>{format(record[source])}</span>
   } catch (e) {
-    console.log('Error in DurationField !!! record=', record)
-    throw e
+    console.log('Error in DurationField! Record:', record)
+    return <span>00:00</span>
   }
 }
 
