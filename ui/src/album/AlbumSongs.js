@@ -85,7 +85,6 @@ const AlbumSongs = (props) => {
     const discSet = new Set()
     ids.forEach((id) => discSet.add(data[id].discNumber))
     multiDisc = discSet.size > 1
-    console.log(multiDisc, discSet.size)
   }
 
   const anySong = data[ids[0]]
