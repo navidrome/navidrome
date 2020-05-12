@@ -7,10 +7,18 @@ import {
   TextField,
   useListController,
   DatagridLoading,
+  DatagridBody,
+  DatagridRow,
 } from 'react-admin'
 import classnames from 'classnames'
 import { useDispatch } from 'react-redux'
-import { Card, useMediaQuery } from '@material-ui/core'
+import {
+  Card,
+  useMediaQuery,
+  TableRow,
+  TableCell,
+  Typography,
+} from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { playAlbum } from '../audioplayer'
 import { DurationField } from '../common'
@@ -60,6 +68,31 @@ const trackName = (r) => {
   return name
 }
 
+const SongDatagridRow = (props) => {
+  const { record, children } = props
+  return (
+    <>
+      {record.discSubtitle && record.trackNumber === 1 && (
+        <TableRow>
+          <TableCell colSpan={children.length + 1}>
+            <Typography variant="h6">
+              {record.discSubtitle} (disc {record.discNumber})
+            </Typography>
+          </TableCell>
+        </TableRow>
+      )}
+      <DatagridRow {...props} />
+    </>
+  )
+}
+
+const SongsDatagridBody = (props) => (
+  <DatagridBody {...props} row={<SongDatagridRow />} />
+)
+const SongsDatagrid = (props) => (
+  <Datagrid {...props} body={<SongsDatagridBody />} />
+)
+
 const AlbumSongs = (props) => {
   const classes = useStyles(props)
   const classesToolbar = useStylesListToolbar(props)
@@ -106,7 +139,7 @@ const AlbumSongs = (props) => {
               size={'small'}
             />
           ) : (
-            <Datagrid
+            <SongsDatagrid
               expand={!isXsmall && <SongDetails />}
               rowClick={(id) => dispatch(playAlbum(data, ids, id))}
               {...controllerProps}
@@ -125,7 +158,7 @@ const AlbumSongs = (props) => {
               )}
               {isDesktop && <TextField source="artist" />}
               <DurationField source="duration" />
-            </Datagrid>
+            </SongsDatagrid>
           )}
         </Card>
       </div>
