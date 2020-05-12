@@ -17,7 +17,8 @@
                 "year": "Ano",
                 "size": "Tamanho",
                 "updatedAt": "Últ. Atualização",
-                "bitRate": "Bitrate"
+                "bitRate": "Bitrate",
+                "discSubtitle": "Sub-título do disco"
             },
             "actions": {
                 "addToQueue": "Tocar por último",
@@ -218,7 +219,9 @@
     "message": {
         "note": "ATENÇÃO",
         "transcodingDisabled": "Por questão de segurança, esta tela de configuração está desabilitada. Se você quiser alterar estas configurações, reinicie o servidor com a opção %{config}",
-        "transcodingEnabled": "Navidrome está sendo executado com a opção %{config}. Isto permite que potencialmente se execute comandos do sistema pela interface Web. É recomendado que vc mantenha esta opção desabilitada, e só a habilite quando precisar configurar opções de Conversão"
+        "transcodingEnabled": "Navidrome está sendo executado com a opção %{config}. Isto permite que potencialmente se execute comandos do sistema pela interface Web. É recomendado que vc mantenha esta opção desabilitada, e só a habilite quando precisar configurar opções de Conversão",
+        "discSubtitle": "%{subtitle} (disco %{number})",
+        "discWithoutSubtitle": "Disco %{number}"
     },
     "menu": {
         "library": "Biblioteca",
