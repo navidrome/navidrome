@@ -77,15 +77,6 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	return res, err
 }
 
-func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTracksRepository {
-	p := &playlistTracksRepository{}
-	p.playlistId = playlistId
-	p.ctx = r.ctx
-	p.ormer = r.ormer
-	p.tableName = "playlist_tracks"
-	return p
-}
-
 func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {
 	// Remove old tracks
 	del := Delete("playlist_tracks").Where(Eq{"playlist_id": id})
@@ -94,10 +85,27 @@ func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) er
 		return err
 	}
 
-	// Add new tracks
-	for i, t := range tracks {
-		ins := Insert("playlist_tracks").Columns("playlist_id", "media_file_id", "id").
-			Values(id, t.ID, i)
+	// Break the track list in chunks to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
+	numTracks := len(tracks)
+	const chunkSize = 50
+	var chunks [][]model.MediaFile
+	for i := 0; i < numTracks; i += chunkSize {
+		end := i + chunkSize
+		if end > numTracks {
+			end = numTracks
+		}
+
+		chunks = append(chunks, tracks[i:end])
+	}
+
+	// Add new tracks, chunk by chunk
+	pos := 0
+	for i := range chunks {
+		ins := Insert("playlist_tracks").Columns("playlist_id", "media_file_id", "id")
+		for _, t := range chunks[i] {
+			ins = ins.Values(id, t.ID, pos)
+			pos++
+		}
 		_, err = r.executeSQL(ins)
 		if err != nil {
 			return err
@@ -159,5 +167,25 @@ func (r *playlistRepository) NewInstance() interface{} {
 	return &model.Playlist{}
 }
 
+func (r *playlistRepository) Save(entity interface{}) (string, error) {
+	pls := entity.(*model.Playlist)
+	pls.Owner = loggedUser(r.ctx).UserName
+	err := r.Put(pls)
+	if err != nil {
+		return "", err
+	}
+	return pls.ID, err
+}
+
+func (r *playlistRepository) Update(entity interface{}, cols ...string) error {
+	pls := entity.(*model.Playlist)
+	err := r.Put(pls)
+	if err == model.ErrNotFound {
+		return rest.ErrNotFound
+	}
+	return err
+}
+
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
-var _ model.ResourceRepository = (*playlistRepository)(nil)
+var _ rest.Repository = (*playlistRepository)(nil)
+var _ rest.Persistable = (*playlistRepository)(nil)

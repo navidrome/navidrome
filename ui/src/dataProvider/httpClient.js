@@ -1,14 +1,11 @@
 import { fetchUtils } from 'react-admin'
-import jsonServerProvider from 'ra-data-json-server'
-import baseUrl from './utils/baseUrl'
-import config from './config'
+import baseUrl from '../utils/baseUrl'
+import config from '../config'
 
-const restUrl = '/app/api'
 const customAuthorizationHeader = 'X-ND-Authorization'
 
 const httpClient = (url, options = {}) => {
   url = baseUrl(url)
-  url = url.replace(restUrl + '/albumSong', restUrl + '/song')
   if (!options.headers) {
     options.headers = new Headers({ Accept: 'application/json' })
   }
@@ -27,6 +24,4 @@ const httpClient = (url, options = {}) => {
   })
 }
 
-const dataProvider = jsonServerProvider(restUrl, httpClient)
-
-export default dataProvider
+export default httpClient
