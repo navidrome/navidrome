@@ -68,31 +68,6 @@ const trackName = (r) => {
   return name
 }
 
-const SongDatagridRow = (props) => {
-  const { record, children } = props
-  return (
-    <>
-      {record.discSubtitle && record.trackNumber === 1 && (
-        <TableRow>
-          <TableCell colSpan={children.length + 1}>
-            <Typography variant="h6">
-              {record.discSubtitle} (disc {record.discNumber})
-            </Typography>
-          </TableCell>
-        </TableRow>
-      )}
-      <DatagridRow {...props} />
-    </>
-  )
-}
-
-const SongsDatagridBody = (props) => (
-  <DatagridBody {...props} row={<SongDatagridRow />} />
-)
-const SongsDatagrid = (props) => (
-  <Datagrid {...props} body={<SongsDatagridBody />} />
-)
-
 const AlbumSongs = (props) => {
   const classes = useStyles(props)
   const classesToolbar = useStylesListToolbar(props)
@@ -101,12 +76,49 @@ const AlbumSongs = (props) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
   const { bulkActionButtons, albumId, expand, className } = props
-  const { data, ids, version } = controllerProps
+  const { data, ids, version, loaded } = controllerProps
+
+  let multiDisc = false
+  if (loaded) {
+    const discSet = new Set()
+    ids.forEach((id) => discSet.add(data[id].discNumber))
+    multiDisc = discSet.size > 1
+    console.log(multiDisc, discSet.size)
+  }
 
   const anySong = data[ids[0]]
   const showPlaceholder = !anySong || anySong.albumId !== albumId
-
   const hasBulkActions = props.bulkActionButtons !== false
+
+  const SongDatagridRow = (props) => {
+    const { record, children } = props
+    return (
+      <>
+        {multiDisc && (
+          <TableRow>
+            {record.trackNumber === 1 && (
+              <TableCell colSpan={children.length + 1}>
+                <Typography variant="h6">
+                  {record.discSubtitle
+                    ? `${record.discSubtitle} (disc ${record.discNumber})`
+                    : `Disc ${record.discNumber}`}
+                </Typography>
+              </TableCell>
+            )}
+          </TableRow>
+        )}
+        <DatagridRow {...props} />
+      </>
+    )
+  }
+
+  const SongsDatagridBody = (props) => (
+    <DatagridBody {...props} row={<SongDatagridRow />} />
+  )
+  const SongsDatagrid = (props) => (
+    <Datagrid {...props} body={<SongsDatagridBody />} />
+  )
+
   return (
     <>
       <ListToolbar
@@ -144,6 +156,7 @@ const AlbumSongs = (props) => {
               rowClick={(id) => dispatch(playAlbum(data, ids, id))}
               {...controllerProps}
               hasBulkActions={hasBulkActions}
+              multiDisc={multiDisc}
             >
               {isDesktop && (
                 <TextField
