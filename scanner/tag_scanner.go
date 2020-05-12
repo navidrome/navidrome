@@ -258,6 +258,7 @@ func (s *TagScanner) toMediaFile(md *Metadata) model.MediaFile {
 	mf.Year = md.Year()
 	mf.TrackNumber, _ = md.TrackNumber()
 	mf.DiscNumber, _ = md.DiscNumber()
+	mf.DiscSubtitle = md.DiscSubtitle()
 	mf.Duration = md.Duration()
 	mf.BitRate = md.BitRate()
 	mf.Path = md.FilePath()

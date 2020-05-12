@@ -18,6 +18,7 @@ type MediaFile struct {
 	HasCoverArt          bool      `json:"hasCoverArt"`
 	TrackNumber          int       `json:"trackNumber"`
 	DiscNumber           int       `json:"discNumber"`
+	DiscSubtitle         string    `json:"discSubtitle"`
 	Year                 int       `json:"year"`
 	Size                 int       `json:"size"`
 	Suffix               string    `json:"suffix"`

@@ -40,6 +40,7 @@ func (m *Metadata) Genre() string               { return m.getTag("genre") }
 func (m *Metadata) Year() int                   { return m.parseYear("date") }
 func (m *Metadata) TrackNumber() (int, int)     { return m.parseTuple("track") }
 func (m *Metadata) DiscNumber() (int, int)      { return m.parseTuple("tpa", "disc") }
+func (m *Metadata) DiscSubtitle() string        { return m.getTag("tsst", "discsubtitle", "setsubtitle") }
 func (m *Metadata) HasPicture() bool            { return m.getTag("has_picture", "metadata_block_picture") != "" }
 func (m *Metadata) Comment() string             { return m.getTag("comment") }
 func (m *Metadata) Compilation() bool           { return m.parseBool("compilation") }

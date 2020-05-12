@@ -108,10 +108,11 @@ func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums
 func (r *albumRepository) Refresh(ids ...string) error {
 	type refreshAlbum struct {
 		model.Album
-		CurrentId   string
-		HasCoverArt bool
-		SongArtists string
-		Years       string
+		CurrentId     string
+		HasCoverArt   bool
+		SongArtists   string
+		Years         string
+		DiscSubtitles string
 	}
 	var albums []refreshAlbum
 	sel := Select(`album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
@@ -119,6 +120,7 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		f.order_album_name, f.order_album_artist_name,
 		f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
 		count(*) as song_count, a.id as current_id, f.id as cover_art_id, f.path as cover_art_path, f.has_cover_art, 
+		group_concat(f.disc_subtitle, ' ') as disc_subtitles,
 		group_concat(f.artist, ' ') as song_artists, group_concat(f.year, ' ') as years`).
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
@@ -151,7 +153,7 @@ func (r *albumRepository) Refresh(ids ...string) error {
 			al.CreatedAt = time.Now()
 		}
 		al.FullText = getFullText(al.Name, al.Artist, al.AlbumArtist, al.SongArtists,
-			al.SortAlbumName, al.SortArtistName, al.SortAlbumArtistName)
+			al.SortAlbumName, al.SortArtistName, al.SortAlbumArtistName, al.DiscSubtitles)
 		_, err := r.put(al.ID, al.Album)
 		if err != nil {
 			return err
