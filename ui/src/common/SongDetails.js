@@ -14,6 +14,7 @@ const SongDetails = (props) => {
   const { record } = props
   const data = {
     path: <TextField record={record} source="path" />,
+    discSubtitle: <TextField record={record} source="discSubtitle" />,
     albumArtist: <TextField record={record} source="albumArtist" />,
     genre: <TextField record={record} source="genre" />,
     compilation: <BooleanField record={record} source="compilation" />,
@@ -21,6 +22,9 @@ const SongDetails = (props) => {
     size: <SizeField record={record} source="size" />,
     updatedAt: <DateField record={record} source="updatedAt" showTime />,
     playCount: <TextField record={record} source="playCount" />,
+  }
+  if (!record.discSubtitle) {
+    delete data.discSubtitle
   }
   if (record.playCount > 0) {
     data.playDate = <DateField record={record} source="playDate" showTime />
