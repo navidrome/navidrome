@@ -183,7 +183,8 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 
 		// If track from folder is newer than the one in DB, update/insert in DB and delete from the current tracks
 		log.Trace("Updating mediaFiles in DB", "dir", dir, "files", filesToUpdate, "numFiles", len(filesToUpdate))
-		for _, n := range newTracks {
+		for i := range newTracks {
+			n := newTracks[i]
 			err := s.ds.MediaFile(ctx).Put(&n)
 			updatedArtists[n.AlbumArtistID] = true
 			updatedAlbums[n.AlbumID] = true

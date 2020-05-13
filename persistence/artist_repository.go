@@ -88,7 +88,8 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 	}
 
 	fullIdx := make(map[string]*model.ArtistIndex)
-	for _, a := range all {
+	for i := range all {
+		a := all[i]
 		ax := r.getIndexKey(&a)
 		idx, ok := fullIdx[ax]
 		if !ok {

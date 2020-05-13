@@ -74,7 +74,8 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 
 func (r *playlistRepository) toModels(all []playlist) model.Playlists {
 	result := make(model.Playlists, len(all))
-	for i, p := range all {
+	for i := range all {
+		p := all[i]
 		result[i] = r.toModel(&p)
 	}
 	return result

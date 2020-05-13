@@ -133,7 +133,8 @@ func realArtistName(mf *model.MediaFile) string {
 
 func FromAlbums(albums model.Albums) Entries {
 	entries := make(Entries, len(albums))
-	for i, al := range albums {
+	for i := range albums {
+		al := albums[i]
 		entries[i] = FromAlbum(&al)
 	}
 	return entries
@@ -141,7 +142,8 @@ func FromAlbums(albums model.Albums) Entries {
 
 func FromMediaFiles(mfs model.MediaFiles) Entries {
 	entries := make(Entries, len(mfs))
-	for i, mf := range mfs {
+	for i := range mfs {
+		mf := mfs[i]
 		entries[i] = FromMediaFile(&mf)
 	}
 	return entries
@@ -149,7 +151,8 @@ func FromMediaFiles(mfs model.MediaFiles) Entries {
 
 func FromArtists(ars model.Artists) Entries {
 	entries := make(Entries, len(ars))
-	for i, ar := range ars {
+	for i := range ars {
+		ar := ars[i]
 		entries[i] = FromArtist(&ar)
 	}
 	return entries

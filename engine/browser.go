@@ -135,7 +135,8 @@ func (b *browser) buildArtistDir(a *model.Artist, albums model.Albums) *Director
 	}
 
 	dir.Entries = make(Entries, len(albums))
-	for i, al := range albums {
+	for i := range albums {
+		al := albums[i]
 		dir.Entries[i] = FromAlbum(&al)
 		dir.PlayCount += int32(al.PlayCount)
 	}

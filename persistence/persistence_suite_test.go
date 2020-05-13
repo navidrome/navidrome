@@ -86,7 +86,8 @@ var _ = Describe("Initialize test DB", func() {
 		o := orm.NewOrm()
 		ctx := context.WithValue(log.NewContext(context.TODO()), "user", model.User{ID: "userid"})
 		mr := NewMediaFileRepository(ctx, o)
-		for _, s := range testSongs {
+		for i := range testSongs {
+			s := testSongs[i]
 			err := mr.Put(&s)
 			if err != nil {
 				panic(err)
@@ -94,7 +95,8 @@ var _ = Describe("Initialize test DB", func() {
 		}
 
 		alr := NewAlbumRepository(ctx, o).(*albumRepository)
-		for _, a := range testAlbums {
+		for i := range testAlbums {
+			a := testAlbums[i]
 			_, err := alr.put(a.ID, &a)
 			if err != nil {
 				panic(err)
@@ -102,7 +104,8 @@ var _ = Describe("Initialize test DB", func() {
 		}
 
 		arr := NewArtistRepository(ctx, o)
-		for _, a := range testArtists {
+		for i := range testArtists {
+			a := testArtists[i]
 			err := arr.Put(&a)
 			if err != nil {
 				panic(err)
@@ -110,7 +113,8 @@ var _ = Describe("Initialize test DB", func() {
 		}
 
 		pr := NewPlaylistRepository(ctx, o)
-		for _, pls := range testPlaylists {
+		for i := range testPlaylists {
+			pls := testPlaylists[i]
 			err := pr.Put(&pls)
 			if err != nil {
 				panic(err)
