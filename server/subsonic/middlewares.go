@@ -1,7 +1,6 @@
 package subsonic
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
@@ -50,14 +50,14 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 			}
 		}
 
-		user := utils.ParamString(r, "u")
+		username := utils.ParamString(r, "u")
 		client := utils.ParamString(r, "c")
 		version := utils.ParamString(r, "v")
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, "username", user)
-		ctx = context.WithValue(ctx, "client", client)
-		ctx = context.WithValue(ctx, "version", version)
-		log.Debug(ctx, "API: New request "+r.URL.Path, "username", user, "client", client, "version", version)
+		ctx = request.WithUsername(ctx, username)
+		ctx = request.WithClient(ctx, client)
+		ctx = request.WithVersion(ctx, version)
+		log.Debug(ctx, "API: New request "+r.URL.Path, "username", username, "client", client, "version", version)
 
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
@@ -87,7 +87,7 @@ func authenticate(users engine.Users) func(next http.Handler) http.Handler {
 			}
 
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, "user", *usr)
+			ctx = request.WithUser(ctx, *usr)
 			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)
@@ -99,17 +99,17 @@ func getPlayer(players engine.Players) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			userName := ctx.Value("username").(string)
-			client := ctx.Value("client").(string)
+			userName, _ := request.UsernameFrom(ctx)
+			client, _ := request.ClientFrom(ctx)
 			playerId := playerIDFromCookie(r, userName)
 			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 			player, trc, err := players.Register(ctx, playerId, client, r.Header.Get("user-agent"), ip)
 			if err != nil {
 				log.Error("Could not register player", "userName", userName, "client", client)
 			} else {
-				ctx = context.WithValue(ctx, "player", *player)
+				ctx = request.WithPlayer(ctx, *player)
 				if trc != nil {
-					ctx = context.WithValue(ctx, "transcoding", *trc)
+					ctx = request.WithTranscoding(ctx, *trc)
 				}
 				r = r.WithContext(ctx)
 

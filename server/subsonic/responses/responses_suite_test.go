@@ -1,7 +1,6 @@
 package responses
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/bradleyjkemp/cupaloy"
@@ -33,9 +32,9 @@ func (matcher snapshotMatcher) Match(actual interface{}) (success bool, err erro
 }
 
 func (matcher snapshotMatcher) FailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected to match saved snapshot\n")
+	return "Expected to match saved snapshot\n"
 }
 
 func (matcher snapshotMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected to not match saved snapshot\n")
+	return "Expected to not match saved snapshot\n"
 }

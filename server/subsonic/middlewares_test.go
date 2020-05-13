@@ -10,6 +10,7 @@ import (
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -73,9 +74,13 @@ var _ = Describe("Middlewares", func() {
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
-			Expect(next.req.Context().Value("username")).To(Equal("user"))
-			Expect(next.req.Context().Value("version")).To(Equal("1.15"))
-			Expect(next.req.Context().Value("client")).To(Equal("test"))
+			username, _ := request.UsernameFrom(next.req.Context())
+			Expect(username).To(Equal("user"))
+			version, _ := request.VersionFrom(next.req.Context())
+			Expect(version).To(Equal("1.15"))
+			client, _ := request.ClientFrom(next.req.Context())
+			Expect(client).To(Equal("test"))
+
 			Expect(next.called).To(BeTrue())
 		})
 
@@ -124,7 +129,7 @@ var _ = Describe("Middlewares", func() {
 			Expect(mockedUsers.salt).To(Equal("salt"))
 			Expect(mockedUsers.jwt).To(Equal("jwt"))
 			Expect(next.called).To(BeTrue())
-			user := next.req.Context().Value("user").(model.User)
+			user, _ := request.UserFrom(next.req.Context())
 			Expect(user.UserName).To(Equal("valid"))
 		})
 
@@ -144,8 +149,8 @@ var _ = Describe("Middlewares", func() {
 		BeforeEach(func() {
 			mockedPlayers = &mockPlayers{}
 			r = newGetRequest()
-			ctx := context.WithValue(r.Context(), "username", "someone")
-			ctx = context.WithValue(ctx, "client", "client")
+			ctx := request.WithUsername(r.Context(), "someone")
+			ctx = request.WithClient(ctx, "client")
 			r = r.WithContext(ctx)
 		})
 
@@ -158,7 +163,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("does not add the cookie if there was an error", func() {
-			ctx := context.WithValue(r.Context(), "client", "error")
+			ctx := request.WithClient(r.Context(), "error")
 			r = r.WithContext(ctx)
 
 			gp := getPlayer(mockedPlayers)(next)
@@ -183,9 +188,10 @@ var _ = Describe("Middlewares", func() {
 
 			It("stores the player in the context", func() {
 				Expect(next.called).To(BeTrue())
-				player := next.req.Context().Value("player").(model.Player)
+				player, _ := request.PlayerFrom(next.req.Context())
 				Expect(player.ID).To(Equal("123"))
-				Expect(next.req.Context().Value("transcoding")).To(BeNil())
+				_, ok := request.TranscodingFrom(next.req.Context())
+				Expect(ok).To(BeFalse())
 			})
 
 			It("returns the playerId in the cookie", func() {
@@ -208,9 +214,9 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("stores the player in the context", func() {
-				player := next.req.Context().Value("player").(model.Player)
+				player, _ := request.PlayerFrom(next.req.Context())
 				Expect(player.ID).To(Equal("123"))
-				transcoding := next.req.Context().Value("transcoding").(model.Transcoding)
+				transcoding, _ := request.TranscodingFrom(next.req.Context())
 				Expect(transcoding.ID).To(Equal("12"))
 			})
 		})

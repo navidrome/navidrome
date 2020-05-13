@@ -7,6 +7,7 @@ import (
 
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/google/uuid"
 )
 
@@ -27,7 +28,7 @@ func (p *players) Register(ctx context.Context, id, client, typ, ip string) (*mo
 	var plr *model.Player
 	var trc *model.Transcoding
 	var err error
-	userName := ctx.Value("username").(string)
+	userName, _ := request.UsernameFrom(ctx)
 	if id != "" {
 		plr, err = p.ds.Player(ctx).Get(id)
 		if err == nil && plr.Client != client {

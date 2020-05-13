@@ -10,6 +10,7 @@ import (
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
@@ -154,10 +155,10 @@ func ToGenres(genres model.Genres) *responses.Genres {
 }
 
 func getTranscoding(ctx context.Context) (format string, bitRate int) {
-	if trc, ok := ctx.Value("transcoding").(model.Transcoding); ok {
+	if trc, ok := request.TranscodingFrom(ctx); ok {
 		format = trc.TargetFormat
 	}
-	if plr, ok := ctx.Value("player").(model.Player); ok {
+	if plr, ok := request.PlayerFrom(ctx); ok {
 		bitRate = plr.MaxBitRate
 	}
 	return

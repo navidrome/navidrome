@@ -13,6 +13,7 @@ import (
 	"github.com/deluan/navidrome/engine/transcoder"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/djherbis/fscache"
 )
 
@@ -161,7 +162,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 		bitRate = mf.BitRate
 		return
 	}
-	trc, hasDefault := ctx.Value("transcoding").(model.Transcoding)
+	trc, hasDefault := request.TranscodingFrom(ctx)
 	var cFormat string
 	var cBitRate int
 	if reqFormat != "" {
@@ -170,7 +171,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 		if hasDefault {
 			cFormat = trc.TargetFormat
 			cBitRate = trc.DefaultBitRate
-			if p, ok := ctx.Value("player").(model.Player); ok {
+			if p, ok := request.PlayerFrom(ctx); ok {
 				cBitRate = p.MaxBitRate
 			}
 		}

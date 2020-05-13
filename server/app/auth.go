@@ -12,6 +12,7 @@ import (
 	"github.com/deluan/navidrome/engine/auth"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/deluan/rest"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/jwtauth"
@@ -146,7 +147,7 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 func contextWithUser(ctx context.Context, ds model.DataStore, claims jwt.MapClaims) context.Context {
 	userName := claims["sub"].(string)
 	user, _ := ds.User(ctx).FindByUsername(userName)
-	return context.WithValue(ctx, "user", *user)
+	return request.WithUser(ctx, *user)
 }
 
 func getToken(ds model.DataStore, ctx context.Context) (*jwt.Token, error) {

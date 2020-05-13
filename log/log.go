@@ -24,6 +24,10 @@ const (
 	LevelTrace    = Level(logrus.TraceLevel)
 )
 
+type contextKey string
+
+const loggerCtxKey = contextKey("logger")
+
 var (
 	currentLevel  Level
 	defaultLogger = logrus.New()
@@ -66,7 +70,7 @@ func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Conte
 	}
 
 	logger := addFields(createNewLogger(), keyValuePairs)
-	ctx = context.WithValue(ctx, "logger", logger)
+	ctx = context.WithValue(ctx, loggerCtxKey, logger)
 
 	return ctx
 }
@@ -176,7 +180,7 @@ func extractLogger(ctx interface{}) (*logrus.Entry, error) {
 	case *logrus.Entry:
 		return ctx, nil
 	case context.Context:
-		logger := ctx.Value("logger")
+		logger := ctx.Value(loggerCtxKey)
 		if logger != nil {
 			return logger.(*logrus.Entry), nil
 		}

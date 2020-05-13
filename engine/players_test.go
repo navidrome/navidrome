@@ -6,6 +6,7 @@ import (
 
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/deluan/navidrome/persistence"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,8 +15,9 @@ import (
 var _ = Describe("Players", func() {
 	var players Players
 	var repo *mockPlayerRepository
-	ctx := context.WithValue(log.NewContext(context.TODO()), "user", model.User{ID: "userid", UserName: "johndoe"})
-	ctx = context.WithValue(ctx, "username", "johndoe")
+	ctx := log.NewContext(context.TODO())
+	ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "johndoe"})
+	ctx = request.WithUsername(ctx, "johndoe")
 	var beforeRegister time.Time
 
 	BeforeEach(func() {

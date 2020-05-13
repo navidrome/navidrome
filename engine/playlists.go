@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/deluan/navidrome/utils"
 )
 
@@ -52,7 +53,7 @@ func (p *playlists) Create(ctx context.Context, playlistId, name string, ids []s
 }
 
 func (p *playlists) getUser(ctx context.Context) string {
-	user, ok := ctx.Value("user").(model.User)
+	user, ok := request.UserFrom(ctx)
 	if ok {
 		return user.UserName
 	}

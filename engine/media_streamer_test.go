@@ -7,6 +7,7 @@ import (
 
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/deluan/navidrome/persistence"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -101,7 +102,7 @@ var _ = Describe("MediaStreamer", func() {
 		Context("player has format configured", func() {
 			BeforeEach(func() {
 				t := model.Transcoding{ID: "oga1", TargetFormat: "oga", DefaultBitRate: 96}
-				ctx = context.WithValue(ctx, "transcoding", t)
+				ctx = request.WithTranscoding(ctx, t)
 			})
 			It("returns raw if raw is requested", func() {
 				mf.Suffix = "flac"
@@ -142,8 +143,8 @@ var _ = Describe("MediaStreamer", func() {
 			BeforeEach(func() {
 				t := model.Transcoding{ID: "oga1", TargetFormat: "oga", DefaultBitRate: 96}
 				p := model.Player{ID: "player1", TranscodingId: t.ID, MaxBitRate: 80}
-				ctx = context.WithValue(ctx, "transcoding", t)
-				ctx = context.WithValue(ctx, "player", p)
+				ctx = request.WithTranscoding(ctx, t)
+				ctx = request.WithPlayer(ctx, p)
 			})
 			It("returns raw if raw is requested", func() {
 				mf.Suffix = "flac"

@@ -11,6 +11,7 @@ import (
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/google/uuid"
 )
 
@@ -24,21 +25,19 @@ type sqlRepository struct {
 const invalidUserId = "-1"
 
 func userId(ctx context.Context) string {
-	user := ctx.Value("user")
-	if user == nil {
+	if user, ok := request.UserFrom(ctx); !ok {
 		return invalidUserId
+	} else {
+		return user.ID
 	}
-	usr := user.(model.User)
-	return usr.ID
 }
 
 func loggedUser(ctx context.Context) *model.User {
-	user := ctx.Value("user")
-	if user == nil {
+	if user, ok := request.UserFrom(ctx); !ok {
 		return &model.User{}
+	} else {
+		return &user
 	}
-	u := user.(model.User)
-	return &u
 }
 
 func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {

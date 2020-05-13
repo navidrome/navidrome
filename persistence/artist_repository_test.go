@@ -6,6 +6,7 @@ import (
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -14,7 +15,8 @@ var _ = Describe("ArtistRepository", func() {
 	var repo model.ArtistRepository
 
 	BeforeEach(func() {
-		ctx := context.WithValue(log.NewContext(context.TODO()), "user", model.User{ID: "userid"})
+		ctx := log.NewContext(context.TODO())
+		ctx = request.WithUser(ctx, model.User{ID: "userid"})
 		repo = NewArtistRepository(ctx, orm.NewOrm())
 	})
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 )
 
 type Entry struct {
@@ -159,10 +160,9 @@ func FromArtists(ars model.Artists) Entries {
 }
 
 func userName(ctx context.Context) string {
-	user := ctx.Value("user")
-	if user == nil {
+	if user, ok := request.UserFrom(ctx); !ok {
 		return "UNKNOWN"
+	} else {
+		return user.UserName
 	}
-	usr := user.(model.User)
-	return usr.UserName
 }

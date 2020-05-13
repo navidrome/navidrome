@@ -10,6 +10,7 @@ import (
 	"github.com/deluan/navidrome/db"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/deluan/navidrome/tests"
 	_ "github.com/mattn/go-sqlite3"
 	. "github.com/onsi/ginkgo"
@@ -84,7 +85,8 @@ var _ = Describe("Initialize test DB", func() {
 	// TODO Load this data setup from file(s)
 	BeforeSuite(func() {
 		o := orm.NewOrm()
-		ctx := context.WithValue(log.NewContext(context.TODO()), "user", model.User{ID: "userid"})
+		ctx := log.NewContext(context.TODO())
+		ctx = request.WithUser(ctx, model.User{ID: "userid"})
 		mr := NewMediaFileRepository(ctx, o)
 		for i := range testSongs {
 			s := testSongs[i]
