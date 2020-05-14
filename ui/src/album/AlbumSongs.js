@@ -82,9 +82,11 @@ const AlbumSongs = (props) => {
 
   let multiDisc = false
   if (loaded) {
-    const discSet = new Set()
-    ids.forEach((id) => discSet.add(data[id].discNumber))
-    multiDisc = discSet.size > 1
+    const discNumbers = ids
+      .map((id) => data[id])
+      .filter((r) => r)
+      .map((r) => r.discNumber)
+    multiDisc = new Set(discNumbers).size > 1
   }
 
   const anySong = data[ids[0]]
