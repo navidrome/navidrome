@@ -15,9 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v0.2.0
+        uses: golangci/golangci-lint-action@v0.1.7
         with:
-          version: v1.27
+          version: v1.26
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   go:
