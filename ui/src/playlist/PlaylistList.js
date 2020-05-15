@@ -10,7 +10,7 @@ import { DurationField, List } from '../common'
 
 const PlaylistList = (props) => (
   <List {...props} exporter={false}>
-    <Datagrid rowClick="edit">
+    <Datagrid rowClick="show">
       <TextField source="name" />
       <TextField source="owner" />
       <BooleanField source="public" />

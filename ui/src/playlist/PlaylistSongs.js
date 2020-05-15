@@ -2,19 +2,15 @@ import React from 'react'
 import {
   BulkActionsToolbar,
   Datagrid,
-  DatagridBody,
   DatagridLoading,
-  FunctionField,
   ListToolbar,
   TextField,
   useListController,
 } from 'react-admin'
 import classnames from 'classnames'
-import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import { playAlbum } from '../audioplayer'
-import { DurationField, SongDetails, SongDatagridRow } from '../common'
+import { DurationField, SongDetails } from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -52,43 +48,18 @@ const useStylesListToolbar = makeStyles({
   },
 })
 
-const trackName = (r) => {
-  const name = r.title
-  if (r.trackNumber) {
-    return r.trackNumber.toString().padStart(2, '0') + ' ' + name
-  }
-  return name
-}
-
-const AlbumSongs = (props) => {
+const PlaylistSongs = (props) => {
   const classes = useStyles(props)
   const classesToolbar = useStylesListToolbar(props)
-  const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  // const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
-  const { bulkActionButtons, albumId, expand, className } = props
-  const { data, ids, version, loaded } = controllerProps
-
-  let multiDisc = false
-  if (loaded) {
-    const discNumbers = ids
-      .map((id) => data[id])
-      .filter((r) => r)
-      .map((r) => r.discNumber)
-    multiDisc = new Set(discNumbers).size > 1
-  }
+  const { bulkActionButtons, expand, className } = props
+  const { data, ids, version } = controllerProps
 
   const anySong = data[ids[0]]
-  const showPlaceholder = !anySong || anySong.albumId !== albumId
+  const showPlaceholder = !anySong
   const hasBulkActions = props.bulkActionButtons !== false
-
-  const SongsDatagridBody = (props) => (
-    <DatagridBody {...props} row={<SongDatagridRow multiDisc={multiDisc} />} />
-  )
-  const SongsDatagrid = (props) => (
-    <Datagrid {...props} body={<SongsDatagridBody />} />
-  )
 
   return (
     <>
@@ -122,31 +93,16 @@ const AlbumSongs = (props) => {
               size={'small'}
             />
           ) : (
-            <SongsDatagrid
+            <Datagrid
               expand={!isXsmall && <SongDetails />}
-              rowClick={(id) => dispatch(playAlbum(data, ids, id))}
+              rowClick={null}
               {...controllerProps}
               hasBulkActions={hasBulkActions}
             >
-              {isDesktop && (
-                <TextField
-                  source="trackNumber"
-                  sortBy="discNumber asc, trackNumber asc"
-                  label="#"
-                  sortable={false}
-                />
-              )}
-              {isDesktop && <TextField source="title" sortable={false} />}
-              {!isDesktop && (
-                <FunctionField
-                  source="title"
-                  render={trackName}
-                  sortable={false}
-                />
-              )}
-              {isDesktop && <TextField source="artist" sortable={false} />}
+              <TextField source="title" sortable={false} />
+              <TextField source="artist" sortable={false} />
               <DurationField source="duration" sortable={false} />
-            </SongsDatagrid>
+            </Datagrid>
           )}
         </Card>
       </div>
@@ -154,4 +110,4 @@ const AlbumSongs = (props) => {
   )
 }
 
-export default AlbumSongs
+export default PlaylistSongs
