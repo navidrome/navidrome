@@ -3,6 +3,7 @@ import { useGetOne } from 'react-admin'
 import PlaylistDetails from './PlaylistDetails'
 import { Title } from '../common'
 import PlaylistSongs from './PlaylistSongs'
+import PlaylistActions from './PlaylistActions'
 
 const PlaylistShow = (props) => {
   const { data: record, loading, error } = useGetOne('playlist', props.id)
@@ -22,7 +23,7 @@ const PlaylistShow = (props) => {
         {...props}
         playlistId={props.id}
         title={<Title subTitle={record.name} />}
-        // actions={<AlbumActions />}
+        actions={<PlaylistActions />}
         filter={{ playlist_id: props.id }}
         resource={'playlistTrack'}
         exporter={false}

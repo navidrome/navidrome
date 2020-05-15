@@ -7,16 +7,19 @@ const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
 const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 const PLAYER_PLAY_ALBUM = 'PLAYER_PLAY_ALBUM'
 
-const mapToAudioLists = (item) => ({
-  id: item.id,
-  trackId: item.id,
-  name: item.title,
-  singer: item.artist,
-  duration: item.duration,
-  cover: subsonic.url('getCoverArt', item.id, { size: 300 }),
-  musicSrc: subsonic.url('stream', item.id, { ts: true }),
-  scrobbled: false,
-})
+const mapToAudioLists = (item) => {
+  // If item comes from a playlist, id is mediaFileId
+  const id = item.mediaFileId || item.id
+  return {
+    trackId: id,
+    name: item.title,
+    singer: item.artist,
+    duration: item.duration,
+    cover: subsonic.url('getCoverArt', id, { size: 300 }),
+    musicSrc: subsonic.url('stream', id, { ts: true }),
+    scrobbled: false,
+  }
+}
 
 const setTrack = (data) => ({
   type: PLAYER_SET_TRACK,
@@ -49,7 +52,7 @@ const shuffle = (data) => {
   return shuffled
 }
 
-const shuffleAlbum = (data, ids) => {
+const shuffleTracks = (data, ids) => {
   const songs = filterAlbumSongs(data, ids)
   const shuffled = shuffle(songs)
   const firstId = Object.keys(shuffled)[0]
@@ -60,7 +63,7 @@ const shuffleAlbum = (data, ids) => {
   }
 }
 
-const playAlbum = (data, ids, selectedId) => {
+const playTracks = (data, ids, selectedId) => {
   const songs = filterAlbumSongs(data, ids)
   return {
     type: PLAYER_PLAY_ALBUM,
@@ -146,9 +149,9 @@ const playQueueReducer = (
 export {
   addTracks,
   setTrack,
-  playAlbum,
+  playTracks,
   syncQueue,
   scrobble,
-  shuffleAlbum,
+  shuffleTracks,
   playQueueReducer,
 }
