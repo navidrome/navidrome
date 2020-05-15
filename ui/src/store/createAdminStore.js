@@ -1,11 +1,10 @@
 import { applyMiddleware, combineReducers, compose, createStore } from 'redux'
-import { connectRouter, routerMiddleware } from 'connected-react-router'
+import { routerMiddleware, connectRouter } from 'connected-react-router'
 import createSagaMiddleware from 'redux-saga'
 import { all, fork } from 'redux-saga/effects'
 import { adminReducer, adminSaga, USER_LOGOUT } from 'react-admin'
 import throttle from 'lodash.throttle'
 import { loadState, saveState } from './persistState'
-import { pruneResources } from './pruneResources'
 
 export default ({
   authProvider,
@@ -51,9 +50,6 @@ export default ({
     throttle(() => {
       const state = store.getState()
       saveState({
-        admin: {
-          resources: pruneResources(state),
-        },
         theme: state.theme,
         queue: state.queue,
         albumView: state.albumView,
