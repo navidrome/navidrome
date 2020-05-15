@@ -3,8 +3,8 @@ import { useGetOne } from 'react-admin'
 import AlbumDetails from './AlbumDetails'
 import { Title } from '../common'
 import { useStyles } from './styles'
-import { AlbumActions } from './AlbumActions'
 import { AlbumSongBulkActions } from './AlbumSongBulkActions'
+import AlbumActions from './AlbumActions'
 import AlbumSongs from './AlbumSongs'
 
 const AlbumShow = (props) => {

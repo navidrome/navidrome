@@ -10,7 +10,7 @@ import React from 'react'
 import { useDispatch } from 'react-redux'
 import { playAlbum, shuffleAlbum } from '../audioplayer'
 
-export const AlbumActions = ({
+const AlbumActions = ({
   className,
   ids,
   data,
@@ -47,3 +47,5 @@ AlbumActions.defaultProps = {
   selectedIds: [],
   onUnselectItems: () => null,
 }
+
+export default AlbumActions

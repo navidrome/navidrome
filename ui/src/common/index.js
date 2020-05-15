@@ -10,6 +10,7 @@ import SongDetails from './SongDetails'
 import SizeField from './SizeField'
 import DocLink from './DocLink'
 import List from './List'
+import SongDatagridRow from './SongDatagridRow'
 
 export {
   Title,
@@ -22,6 +23,7 @@ export {
   SimpleList,
   RangeField,
   SongDetails,
+  SongDatagridRow,
   DocLink,
   formatRange,
   ArtistLinkField,
