@@ -3,15 +3,15 @@ import {
   addTracks,
   setTrack,
   playQueueReducer,
-  playAlbum,
-  shuffleAlbum,
+  playTracks,
+  shuffleTracks,
 } from './queue'
 
 export {
   Player,
   addTracks,
   setTrack,
-  playAlbum,
+  playTracks,
   playQueueReducer,
-  shuffleAlbum,
+  shuffleTracks,
 }

@@ -5,12 +5,11 @@ import {
   useTranslate,
 } from 'react-admin'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
-import ShuffleIcon from '@material-ui/icons/Shuffle'
 import React from 'react'
 import { useDispatch } from 'react-redux'
-import { playTracks, shuffleTracks } from '../audioplayer'
+import { playTracks } from '../audioplayer'
 
-const AlbumActions = ({
+const PlaylistActions = ({
   className,
   ids,
   data,
@@ -25,27 +24,19 @@ const AlbumActions = ({
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <Button
         onClick={() => {
-          dispatch(playTracks(data, ids))
+          dispatch(playTracks(data))
         }}
         label={translate('resources.album.actions.playAll')}
       >
         <PlayArrowIcon />
       </Button>
-      <Button
-        onClick={() => {
-          dispatch(shuffleTracks(data, ids))
-        }}
-        label={translate('resources.album.actions.shuffle')}
-      >
-        <ShuffleIcon />
-      </Button>
     </TopToolbar>
   )
 }
 
-AlbumActions.defaultProps = {
+PlaylistActions.defaultProps = {
   selectedIds: [],
   onUnselectItems: () => null,
 }
 
-export default AlbumActions
+export default PlaylistActions
