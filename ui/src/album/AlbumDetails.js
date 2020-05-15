@@ -3,7 +3,7 @@ import { Card, CardContent, CardMedia, Typography } from '@material-ui/core'
 import { useTranslate } from 'react-admin'
 import subsonic from '../subsonic'
 import { DurationField, formatRange } from '../common'
-import { ArtistLinkField } from './ArtistLinkField'
+import { ArtistLinkField } from '../common'
 
 const AlbumDetails = ({ classes, record }) => {
   const translate = useTranslate()

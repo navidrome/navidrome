@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 import { linkToRecord, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
-import { ArtistLinkField } from './ArtistLinkField'
+import { ArtistLinkField } from '../common'
 import AlbumContextMenu from './AlbumContextMenu.js'
 
 const useStyles = makeStyles((theme) => ({

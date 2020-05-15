@@ -3,13 +3,17 @@ import {
   BooleanField,
   Datagrid,
   DateField,
-  FunctionField,
   NumberField,
   Show,
   SimpleShowLayout,
   TextField,
 } from 'react-admin'
-import { DurationField, RangeField, SimpleList } from '../common'
+import {
+  ArtistLinkField,
+  DurationField,
+  RangeField,
+  SimpleList,
+} from '../common'
 import { useMediaQuery } from '@material-ui/core'
 import AlbumContextMenu from './AlbumContextMenu'
 
@@ -46,7 +50,7 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
   ) : (
     <Datagrid expand={<AlbumDetails />} rowClick={'show'} {...rest}>
       <TextField source="name" />
-      <FunctionField source="artist" render={(r) => r.albumArtist} />
+      <ArtistLinkField />
       {isDesktop && <NumberField source="songCount" />}
       {isDesktop && <NumberField source="playCount" />}
       <RangeField source={'year'} sortBy={'maxYear'} />

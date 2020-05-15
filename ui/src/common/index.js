@@ -5,6 +5,7 @@ import Pagination from './Pagination'
 import PlayButton from './PlayButton'
 import SimpleList from './SimpleList'
 import RangeField, { formatRange } from './RangeField'
+import ArtistLinkField, { artistLink } from './ArtistLinkField'
 import SongDetails from './SongDetails'
 import SizeField from './SizeField'
 import DocLink from './DocLink'
@@ -21,4 +22,6 @@ export {
   SongDetails,
   DocLink,
   formatRange,
+  ArtistLinkField,
+  artistLink,
 }
