@@ -3,18 +3,16 @@ import {
   Datagrid,
   Filter,
   FunctionField,
-  List,
   NumberField,
   SearchInput,
   TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { DurationField, Pagination, SimpleList, Title } from '../common'
+import { DurationField, SimpleList, List, SongDetails } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../audioplayer'
 import { SongBulkActions } from './SongBulkActions'
 import { AlbumLinkField } from './AlbumLinkField'
-import { SongDetails } from '../common'
 import { SongContextMenu } from './SongContextMenu'
 
 const SongFilter = (props) => (
@@ -30,15 +28,11 @@ const SongList = (props) => {
   return (
     <List
       {...props}
-      title={
-        <Title subTitle={'resources.song.name'} args={{ smart_count: 2 }} />
-      }
       sort={{ field: 'title', order: 'ASC' }}
       exporter={false}
       bulkActionButtons={<SongBulkActions />}
       filters={<SongFilter />}
       perPage={isXsmall ? 50 : 15}
-      pagination={<Pagination />}
     >
       {isXsmall ? (
         <SimpleList

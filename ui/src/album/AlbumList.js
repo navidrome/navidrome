@@ -3,7 +3,6 @@ import { useSelector } from 'react-redux'
 import {
   AutocompleteInput,
   Filter,
-  List,
   NullableBooleanInput,
   NumberInput,
   ReferenceInput,
@@ -11,7 +10,7 @@ import {
   Pagination,
   useTranslate,
 } from 'react-admin'
-import { Title } from '../common'
+import { List } from '../common'
 import { withWidth } from '@material-ui/core'
 import AlbumListActions from './AlbumListActions'
 import AlbumListView from './AlbumListView'
@@ -60,9 +59,6 @@ const AlbumList = (props) => {
   return (
     <List
       {...props}
-      title={
-        <Title subTitle={'resources.album.name'} args={{ smart_count: 2 }} />
-      }
       exporter={false}
       bulkActionButtons={false}
       actions={<AlbumListActions />}

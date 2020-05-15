@@ -9,6 +9,7 @@ import ArtistLinkField, { artistLink } from './ArtistLinkField'
 import SongDetails from './SongDetails'
 import SizeField from './SizeField'
 import DocLink from './DocLink'
+import List from './List'
 
 export {
   Title,
@@ -16,6 +17,7 @@ export {
   SizeField,
   BitrateField,
   Pagination,
+  List,
   PlayButton,
   SimpleList,
   RangeField,

@@ -1,25 +1,18 @@
 import React from 'react'
 import {
   Datagrid,
-  List,
   TextField,
   DateField,
   FunctionField,
   ReferenceField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { SimpleList, Title } from '../common'
+import { SimpleList, List } from '../common'
 
 const PlayerList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return (
-    <List
-      title={
-        <Title subTitle={'resources.player.name'} args={{ smart_count: 2 }} />
-      }
-      exporter={false}
-      {...props}
-    >
+    <List exporter={false} {...props}>
       {isXsmall ? (
         <SimpleList
           primaryText={(r) => r.client}

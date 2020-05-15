@@ -4,13 +4,12 @@ import {
   Datagrid,
   Filter,
   DateField,
-  List,
   SearchInput,
   SimpleList,
   TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { Title } from '../common'
+import { List } from '../common'
 
 const UserFilter = (props) => (
   <Filter {...props}>
@@ -24,9 +23,6 @@ const UserList = (props) => {
   return (
     <List
       {...props}
-      title={
-        <Title subTitle={'resources.user.name'} args={{ smart_count: 2 }} />
-      }
       sort={{ field: 'userName', order: 'ASC' }}
       exporter={false}
       filters={<UserFilter />}
