@@ -1,12 +1,17 @@
 import React from 'react'
+import { useSelector } from 'react-redux'
 import { useGetOne } from 'react-admin'
 import PlaylistDetails from './PlaylistDetails'
 import { Title } from '../common'
 import PlaylistSongs from './PlaylistSongs'
 import PlaylistActions from './PlaylistActions'
+import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 
 const PlaylistShow = (props) => {
-  const { data: record, loading, error } = useGetOne('playlist', props.id)
+  const viewVersion = useSelector((s) => s.admin.ui && s.admin.ui.viewVersion)
+  const { data: record, loading, error } = useGetOne('playlist', props.id, {
+    v: viewVersion,
+  })
 
   if (loading) {
     return null
@@ -29,8 +34,7 @@ const PlaylistShow = (props) => {
         exporter={false}
         perPage={-1}
         pagination={null}
-        bulkActionButtons={false}
-        // bulkActionButtons={<AlbumSongBulkActions />}
+        bulkActionButtons={<PlaylistSongBulkActions playlistId={props.id} />}
       />
     </>
   )

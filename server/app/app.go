@@ -109,6 +109,9 @@ func (app *Router) addPlaylistTrackRoute(r chi.Router) {
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(UrlParams)
 			r.Get("/", wrapper(rest.Get))
+			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+				deleteFromPlaylist(app.ds)(w, r)
+			})
 		})
 		r.With(UrlParams).Post("/", func(w http.ResponseWriter, r *http.Request) {
 			addToPlaylist(app.ds)(w, r)

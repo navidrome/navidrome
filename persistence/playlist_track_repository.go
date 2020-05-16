@@ -123,12 +123,16 @@ func (r *playlistTrackRepository) Update(mediaFileIds []string) error {
 		}
 	}
 
+	return r.updateStats()
+}
+
+func (r *playlistTrackRepository) updateStats() error {
 	// Get total playlist duration and count
 	statsSql := Select("sum(duration) as duration", "count(*) as count").From("media_file").
 		Join("playlist_tracks f on f.media_file_id = media_file.id").
 		Where(Eq{"playlist_id": r.playlistId})
 	var res struct{ Duration, Count float32 }
-	err = r.queryOne(statsSql, &res)
+	err := r.queryOne(statsSql, &res)
 	if err != nil {
 		return err
 	}
@@ -142,5 +146,12 @@ func (r *playlistTrackRepository) Update(mediaFileIds []string) error {
 	return err
 }
 
+func (r *playlistTrackRepository) Delete(id string) error {
+	err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": id}})
+	if err != nil {
+		return err
+	}
+	return r.updateStats()
+}
+
 var _ model.PlaylistTrackRepository = (*playlistTrackRepository)(nil)
-var _ model.ResourceRepository = (*playlistTrackRepository)(nil)
