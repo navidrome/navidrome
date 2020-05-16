@@ -1,11 +1,11 @@
 import 'react-jinke-music-player/assets/index.css'
 import subsonic from '../subsonic'
 
-const PLAYER_ADD_TRACK = 'PLAYER_ADD_TRACK'
+const PLAYER_ADD_TRACKS = 'PLAYER_ADD_TRACKS'
 const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
 const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
 const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
-const PLAYER_PLAY_ALBUM = 'PLAYER_PLAY_ALBUM'
+const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, id is mediaFileId
@@ -36,7 +36,7 @@ let filterAlbumSongs = function (data, ids) {
 const addTracks = (data, ids) => {
   const songs = filterAlbumSongs(data, ids)
   return {
-    type: PLAYER_ADD_TRACK,
+    type: PLAYER_ADD_TRACKS,
     data: songs,
   }
 }
@@ -57,7 +57,7 @@ const shuffleTracks = (data, ids) => {
   const shuffled = shuffle(songs)
   const firstId = Object.keys(shuffled)[0]
   return {
-    type: PLAYER_PLAY_ALBUM,
+    type: PLAYER_PLAY_TRACKS,
     id: firstId,
     data: shuffled,
   }
@@ -66,7 +66,7 @@ const shuffleTracks = (data, ids) => {
 const playTracks = (data, ids, selectedId) => {
   const songs = filterAlbumSongs(data, ids)
   return {
-    type: PLAYER_PLAY_ALBUM,
+    type: PLAYER_PLAY_TRACKS,
     id: selectedId || Object.keys(songs)[0],
     data: songs,
   }
@@ -91,7 +91,7 @@ const playQueueReducer = (
   let queue
   const { type, data } = payload
   switch (type) {
-    case PLAYER_ADD_TRACK:
+    case PLAYER_ADD_TRACKS:
       queue = previousState.queue
       Object.keys(data).forEach((id) => {
         queue.push(mapToAudioLists(data[id]))
@@ -124,7 +124,7 @@ const playQueueReducer = (
         clear: false,
         playing: true,
       }
-    case PLAYER_PLAY_ALBUM:
+    case PLAYER_PLAY_TRACKS:
       queue = []
       let match = false
       Object.keys(data).forEach((id) => {
