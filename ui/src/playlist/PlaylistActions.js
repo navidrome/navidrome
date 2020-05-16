@@ -24,7 +24,7 @@ const PlaylistActions = ({
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <Button
         onClick={() => {
-          dispatch(playTracks(data))
+          dispatch(playTracks(data, ids))
         }}
         label={translate('resources.album.actions.playAll')}
       >

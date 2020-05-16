@@ -26,7 +26,7 @@ const setTrack = (data) => ({
   data,
 })
 
-let filterAlbumSongs = function (data, ids) {
+let filterSongs = function (data, ids) {
   if (!ids) {
     return data
   }
@@ -34,7 +34,7 @@ let filterAlbumSongs = function (data, ids) {
 }
 
 const addTracks = (data, ids) => {
-  const songs = filterAlbumSongs(data, ids)
+  const songs = filterSongs(data, ids)
   return {
     type: PLAYER_ADD_TRACKS,
     data: songs,
@@ -53,7 +53,7 @@ const shuffle = (data) => {
 }
 
 const shuffleTracks = (data, ids) => {
-  const songs = filterAlbumSongs(data, ids)
+  const songs = filterSongs(data, ids)
   const shuffled = shuffle(songs)
   const firstId = Object.keys(shuffled)[0]
   return {
@@ -64,7 +64,7 @@ const shuffleTracks = (data, ids) => {
 }
 
 const playTracks = (data, ids, selectedId) => {
-  const songs = filterAlbumSongs(data, ids)
+  const songs = filterSongs(data, ids)
   return {
     type: PLAYER_PLAY_TRACKS,
     id: selectedId || Object.keys(songs)[0],
