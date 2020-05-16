@@ -72,63 +72,17 @@ func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
 	sel := r.newSelect(options...).Columns("*")
-	var res model.Playlists
+	res := model.Playlists{}
 	err := r.queryAll(sel, &res)
 	return res, err
 }
 
 func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {
-	// Remove old tracks
-	del := Delete("playlist_tracks").Where(Eq{"playlist_id": id})
-	_, err := r.executeSQL(del)
-	if err != nil {
-		return err
+	ids := make([]string, len(tracks))
+	for i := range tracks {
+		ids[i] = tracks[i].ID
 	}
-
-	// Break the track list in chunks to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
-	numTracks := len(tracks)
-	const chunkSize = 50
-	var chunks [][]model.MediaFile
-	for i := 0; i < numTracks; i += chunkSize {
-		end := i + chunkSize
-		if end > numTracks {
-			end = numTracks
-		}
-
-		chunks = append(chunks, tracks[i:end])
-	}
-
-	// Add new tracks, chunk by chunk
-	pos := 0
-	for i := range chunks {
-		ins := Insert("playlist_tracks").Columns("playlist_id", "media_file_id", "id")
-		for _, t := range chunks[i] {
-			ins = ins.Values(id, t.ID, pos)
-			pos++
-		}
-		_, err = r.executeSQL(ins)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Get total playlist duration and count
-	statsSql := Select("sum(duration) as duration", "count(*) as count").From("media_file").
-		Join("playlist_tracks f on f.media_file_id = media_file.id").
-		Where(Eq{"playlist_id": id})
-	var res struct{ Duration, Count float32 }
-	err = r.queryOne(statsSql, &res)
-	if err != nil {
-		return err
-	}
-
-	// Update total playlist duration and count
-	upd := Update(r.tableName).
-		Set("duration", res.Duration).
-		Set("song_count", res.Count).
-		Where(Eq{"id": id})
-	_, err = r.executeSQL(upd)
-	return err
+	return r.Tracks(id).Update(ids)
 }
 
 func (r *playlistRepository) loadTracks(pls *model.Playlist) (err error) {

@@ -51,7 +51,7 @@ func (app *Router) routes(path string) http.Handler {
 		app.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
 		app.RX(r, "/translation", newTranslationRepository, false)
 
-		app.addPlaylistTracksRoute(r)
+		app.addPlaylistTrackRoute(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"response":"ok"}`)) })
@@ -90,7 +90,7 @@ func (app *Router) RX(r chi.Router, pathPrefix string, constructor rest.Reposito
 
 type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
 
-func (app *Router) addPlaylistTracksRoute(r chi.Router) {
+func (app *Router) addPlaylistTrackRoute(r chi.Router) {
 	// Add a middleware to capture the playlisId
 	wrapper := func(f restHandler) http.HandlerFunc {
 		return func(res http.ResponseWriter, req *http.Request) {
@@ -109,6 +109,9 @@ func (app *Router) addPlaylistTracksRoute(r chi.Router) {
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(UrlParams)
 			r.Get("/", wrapper(rest.Get))
+		})
+		r.With(UrlParams).Post("/", func(w http.ResponseWriter, r *http.Request) {
+			addToPlaylist(app.ds)(w, r)
 		})
 	})
 }

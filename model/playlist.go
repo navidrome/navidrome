@@ -19,6 +19,8 @@ type Playlist struct {
 	UpdatedAt time.Time  `json:"updatedAt"`
 }
 
+type Playlists []Playlist
+
 type PlaylistRepository interface {
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
@@ -26,18 +28,20 @@ type PlaylistRepository interface {
 	Get(id string) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	Delete(id string) error
-	Tracks(playlistId string) PlaylistTracksRepository
+	Tracks(playlistId string) PlaylistTrackRepository
 }
 
-type PlaylistTracks struct {
+type PlaylistTrack struct {
 	ID          string `json:"id"          orm:"column(id)"`
 	MediaFileID string `json:"mediaFileId" orm:"column(media_file_id)"`
+	PlaylistID  string `json:"playlistId" orm:"column(playlist_id)"`
 	MediaFile
 }
 
-type PlaylistTracksRepository interface {
-	rest.Repository
-	//rest.Persistable
-}
+type PlaylistTracks []PlaylistTrack
 
-type Playlists []Playlist
+type PlaylistTrackRepository interface {
+	rest.Repository
+	Add(mediaFileIds []string) error
+	Update(mediaFileIds []string) error
+}
