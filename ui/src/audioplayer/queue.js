@@ -48,7 +48,9 @@ const shuffle = (data) => {
     ;[ids[i], ids[j]] = [ids[j], ids[i]]
   }
   const shuffled = {}
-  ids.forEach((id) => (shuffled[id] = data[id]))
+  // The "_" is to force the object key to be a string, so it keeps the order when adding to object
+  // or else the keys will always be in the same (numerically) order
+  ids.forEach((id) => (shuffled['_' + id] = data[id]))
   return shuffled
 }
 
