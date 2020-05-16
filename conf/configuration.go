@@ -36,7 +36,7 @@ type nd struct {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool   `default:"false"`
 	DevAutoCreateAdminPassword string `default:""`
-	DevEnableUIPlaylists       bool   `default:"false"`
+	DevEnableUIPlaylists       bool   `default:"true"`
 }
 
 var Server = &nd{}
