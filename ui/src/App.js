@@ -14,6 +14,7 @@ import artist from './artist'
 import playlist from './playlist'
 import { Player, playQueueReducer } from './audioplayer'
 import { albumViewReducer } from './album/albumState'
+import config from './config'
 import customRoutes from './routes'
 import themeReducer from './personal/themeReducer'
 import createAdminStore from './store/createAdminStore'
@@ -47,11 +48,13 @@ const App = () => (
         <Resource name="album" {...album} options={{ subMenu: 'library' }} />,
         <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
         <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
-        <Resource
-          name="playlist"
-          {...playlist}
-          options={{ subMenu: 'library' }}
-        />,
+        config.enablePlaylists && (
+          <Resource
+            name="playlist"
+            {...playlist}
+            options={{ subMenu: 'library' }}
+          />
+        ),
         permissions === 'admin' ? (
           <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
         ) : null,
