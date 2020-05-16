@@ -30,6 +30,7 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 			"baseURL":                 strings.TrimSuffix(conf.Server.BaseURL, "/"),
 			"loginBackgroundURL":      conf.Server.UILoginBackgroundURL,
 			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,
+			"enablePlaylists":         conf.Server.DevEnableUIPlaylists,
 		}
 		j, err := json.Marshal(appConfig)
 		if err != nil {
