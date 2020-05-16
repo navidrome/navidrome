@@ -2,8 +2,6 @@ package model
 
 import (
 	"time"
-
-	"github.com/deluan/rest"
 )
 
 type Playlist struct {
@@ -41,7 +39,8 @@ type PlaylistTrack struct {
 type PlaylistTracks []PlaylistTrack
 
 type PlaylistTrackRepository interface {
-	rest.Repository
+	ResourceRepository
 	Add(mediaFileIds []string) error
 	Update(mediaFileIds []string) error
+	Delete(id string) error
 }
