@@ -54,12 +54,16 @@ const PlaylistSongs = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   // const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
-  const { bulkActionButtons, expand, className } = props
-  const { data, ids, version } = controllerProps
+  const { bulkActionButtons, expand, className, playlistId } = props
+  const { data, ids, version, loaded } = controllerProps
 
   const anySong = data[ids[0]]
-  const showPlaceholder = !anySong
+  const showPlaceholder = !anySong || anySong.playlistId !== playlistId
   const hasBulkActions = props.bulkActionButtons !== false
+
+  if (loaded && ids.length === 0) {
+    return <div />
+  }
 
   return (
     <>

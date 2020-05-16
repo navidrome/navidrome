@@ -22,6 +22,7 @@
             },
             "actions": {
                 "addToQueue": "Play Later",
+                "addToPlaylist": "Add to Playlist",
                 "playNow": "Play Now"
             }
         },
@@ -63,6 +64,9 @@
                 "public": "Public",
                 "updatedAt":"Updated at",
                 "createdAt": "Created at"
+            },
+            "actions": {
+                "selectPlaylist": "Add songs to playlist:"
             }
         },
         "user": {

@@ -11,6 +11,7 @@ import SizeField from './SizeField'
 import DocLink from './DocLink'
 import List from './List'
 import SongDatagridRow from './SongDatagridRow'
+import SelectPlaylistDialog from './SelectPlaylistDialog'
 
 export {
   Title,
@@ -28,4 +29,5 @@ export {
   formatRange,
   ArtistLinkField,
   artistLink,
+  SelectPlaylistDialog,
 }

@@ -6,7 +6,6 @@ const restUrl = '/app/api'
 const dataProvider = jsonServerProvider(restUrl, httpClient)
 
 const mapResource = (resource, params) => {
-  console.log('R: ', resource, 'P: ', params)
   switch (resource) {
     case 'albumSong':
       return ['song', params]
