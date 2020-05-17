@@ -27,8 +27,9 @@ const removeEmpty = (obj) => {
 
 const prepareLanguage = (lang) => {
   removeEmpty(lang)
-  // Make "albumSongs" resource use the same translations as "song"
+  // Make "albumSong" and "playlistTrack" resource use the same translations as "song"
   lang.resources.albumSong = lang.resources.song
+  lang.resources.playlistTrack = lang.resources.song
   // ra.boolean.null should always be empty
   lang.ra.boolean.null = ''
   // Fallback to english translations

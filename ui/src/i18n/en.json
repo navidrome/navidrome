@@ -60,6 +60,7 @@
             "fields": {
                 "name": "Name",
                 "duration": "Duration",
+                "songCount": "Songs",
                 "owner": "Owner",
                 "public": "Public",
                 "updatedAt":"Updated at",

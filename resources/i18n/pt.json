@@ -21,8 +21,9 @@
                 "discSubtitle": "Sub-título do disco"
             },
             "actions": {
-                "addToQueue": "Tocar por último",
-                "playNow": "Tocar agora"
+                "addToQueue": "Adicionar à fila",
+                "playNow": "Tocar agora",
+                "addToPlaylist": "Adicionar à playlist"
             }
         },
         "album": {
@@ -42,7 +43,7 @@
             "actions": {
                 "playAll": "Tocar",
                 "playNext": "Tocar em seguida",
-                "addToQueue": "Tocar no fim",
+                "addToQueue": "Adicionar à fila",
                 "shuffle": "Aleatório"
             }
         },
@@ -84,6 +85,21 @@
                 "targetFormat": "Formato",
                 "defaultBitRate": "Bitrate padrão",
                 "command": "Comando"
+            }
+        },
+        "playlist": {
+            "name": "Playlist |||| Playlists",
+            "fields": {
+                "name": "Nome",
+                "duration": "Duração",
+                "owner": "Dono",
+                "public": "Pública",
+                "updatedAt": "Últ. Atualização",
+                "createdAt": "Data de Criação ",
+                "songCount": "Músicas"
+            },
+            "actions": {
+                "selectPlaylist": "Selecione a playlist:"
             }
         }
     },
