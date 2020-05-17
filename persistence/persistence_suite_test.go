@@ -65,7 +65,6 @@ var (
 
 var (
 	plsBest = model.Playlist{
-		ID:        "10",
 		Name:      "Best",
 		Comment:   "No Comments",
 		Owner:     "userid",
@@ -73,8 +72,8 @@ var (
 		SongCount: 2,
 		Tracks:    model.MediaFiles{{ID: "1001"}, {ID: "1003"}},
 	}
-	plsCool       = model.Playlist{ID: "11", Name: "Cool", Tracks: model.MediaFiles{{ID: "1004"}}}
-	testPlaylists = model.Playlists{plsBest, plsCool}
+	plsCool       = model.Playlist{Name: "Cool", Owner: "userid", Tracks: model.MediaFiles{{ID: "1004"}}}
+	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
 )
 
 func P(path string) string {
@@ -117,8 +116,7 @@ var _ = Describe("Initialize test DB", func() {
 
 		pr := NewPlaylistRepository(ctx, o)
 		for i := range testPlaylists {
-			pls := testPlaylists[i]
-			err := pr.Put(&pls)
+			err := pr.Put(testPlaylists[i])
 			if err != nil {
 				panic(err)
 			}

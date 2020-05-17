@@ -24,26 +24,47 @@ func NewPlaylistRepository(ctx context.Context, o orm.Ormer) model.PlaylistRepos
 	return r
 }
 
+func (r *playlistRepository) userFilter() Sqlizer {
+	user := loggedUser(r.ctx)
+	if user.IsAdmin {
+		return And{}
+	}
+	return Or{
+		Eq{"public": true},
+		Eq{"owner": user.UserName},
+	}
+}
+
 func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(Select(), options...)
+	sql := Select().Where(r.userFilter())
+	return r.count(sql, options...)
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"id": id}))
+	return r.exists(Select().Where(And{Eq{"id": id}, r.userFilter()}))
 }
 
 func (r *playlistRepository) Delete(id string) error {
-	del := Delete("playlist_tracks").Where(Eq{"playlist_id": id})
-	_, err := r.executeSQL(del)
+	err := r.delete(And{Eq{"id": id}, r.userFilter()})
 	if err != nil {
 		return err
 	}
-	return r.delete(Eq{"id": id})
+	del := Delete("playlist_tracks").Where(Eq{"playlist_id": id})
+	_, err = r.executeSQL(del)
+	return err
 }
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
 	if p.ID == "" {
 		p.CreatedAt = time.Now()
+	} else {
+		ok, err := r.Exists(p.ID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return model.ErrNotAuthorized
+		}
 	}
 	p.UpdatedAt = time.Now()
 
@@ -55,12 +76,16 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 	if err != nil {
 		return err
 	}
+	p.ID = id
 	err = r.updateTracks(id, tracks)
-	return err
+	if err != nil {
+		return err
+	}
+	return r.loadTracks(p)
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
+	sel := r.newSelect().Columns("*").Where(And{Eq{"id": id}, r.userFilter()})
 	var pls model.Playlist
 	err := r.queryOne(sel, &pls)
 	if err != nil {
@@ -71,7 +96,7 @@ func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
-	sel := r.newSelect(options...).Columns("*")
+	sel := r.newSelect(options...).Columns("*").Where(r.userFilter())
 	res := model.Playlists{}
 	err := r.queryAll(sel, &res)
 	return res, err
@@ -85,7 +110,7 @@ func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) er
 	return r.Tracks(id).Update(ids)
 }
 
-func (r *playlistRepository) loadTracks(pls *model.Playlist) (err error) {
+func (r *playlistRepository) loadTracks(pls *model.Playlist) error {
 	tracksQuery := Select().From("playlist_tracks").
 		LeftJoin("annotation on ("+
 			"annotation.item_id = media_file_id"+
@@ -94,11 +119,11 @@ func (r *playlistRepository) loadTracks(pls *model.Playlist) (err error) {
 		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*").
 		Join("media_file f on f.id = media_file_id").
 		Where(Eq{"playlist_id": pls.ID}).OrderBy("playlist_tracks.id")
-	err = r.queryAll(tracksQuery, &pls.Tracks)
+	err := r.queryAll(tracksQuery, &pls.Tracks)
 	if err != nil {
 		log.Error("Error loading playlist tracks", "playlist", pls.Name, "id", pls.ID)
 	}
-	return
+	return err
 }
 
 func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {

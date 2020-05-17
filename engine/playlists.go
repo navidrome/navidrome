@@ -111,11 +111,7 @@ func (p *playlists) Update(ctx context.Context, playlistId string, name *string,
 }
 
 func (p *playlists) GetAll(ctx context.Context) (model.Playlists, error) {
-	all, err := p.ds.Playlist(ctx).GetAll(model.QueryOptions{})
-	for i := range all {
-		all[i].Public = true
-	}
-	return all, err
+	return p.ds.Playlist(ctx).GetAll()
 }
 
 type PlaylistInfo struct {

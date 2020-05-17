@@ -6,6 +6,7 @@ import (
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -14,7 +15,9 @@ var _ = Describe("PlaylistRepository", func() {
 	var repo model.PlaylistRepository
 
 	BeforeEach(func() {
-		repo = NewPlaylistRepository(log.NewContext(context.TODO()), orm.NewOrm())
+		ctx := log.NewContext(context.TODO())
+		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		repo = NewPlaylistRepository(ctx, orm.NewOrm())
 	})
 
 	Describe("Count", func() {
@@ -25,7 +28,7 @@ var _ = Describe("PlaylistRepository", func() {
 
 	Describe("Exists", func() {
 		It("returns true for an existing playlist", func() {
-			Expect(repo.Exists("11")).To(BeTrue())
+			Expect(repo.Exists(plsCool.ID)).To(BeTrue())
 		})
 		It("returns false for a non-existing playlist", func() {
 			Expect(repo.Exists("666")).To(BeFalse())
@@ -34,7 +37,7 @@ var _ = Describe("PlaylistRepository", func() {
 
 	Describe("Get", func() {
 		It("returns an existing playlist", func() {
-			p, err := repo.Get("10")
+			p, err := repo.Get(plsBest.ID)
 			Expect(err).To(BeNil())
 			// Compare all but Tracks and timestamps
 			p2 := *p
@@ -52,7 +55,7 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 		It("returns all tracks", func() {
-			pls, err := repo.Get("10")
+			pls, err := repo.Get(plsBest.ID)
 			Expect(err).To(BeNil())
 			Expect(pls.Name).To(Equal(plsBest.Name))
 			Expect(pls.Tracks).To(Equal(model.MediaFiles{
@@ -62,32 +65,31 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
-	Describe("Put/Exists/Delete", func() {
-		var newPls model.Playlist
-		BeforeEach(func() {
-			newPls = model.Playlist{ID: "22", Name: "Great!", Tracks: model.MediaFiles{{ID: "1004"}, {ID: "1003"}}}
-		})
-		It("saves the playlist to the DB", func() {
-			Expect(repo.Put(&newPls)).To(BeNil())
-		})
-		It("adds repeated songs to a playlist and keeps the order", func() {
-			newPls.Tracks = append(newPls.Tracks, model.MediaFile{ID: "1004"})
-			Expect(repo.Put(&newPls)).To(BeNil())
-			saved, _ := repo.Get("22")
-			Expect(saved.Tracks).To(HaveLen(3))
-			Expect(saved.Tracks[0].ID).To(Equal("1004"))
-			Expect(saved.Tracks[1].ID).To(Equal("1003"))
-			Expect(saved.Tracks[2].ID).To(Equal("1004"))
-		})
-		It("returns the newly created playlist", func() {
-			Expect(repo.Exists("22")).To(BeTrue())
-		})
-		It("returns deletes the playlist", func() {
-			Expect(repo.Delete("22")).To(BeNil())
-		})
-		It("returns error if tries to retrieve the deleted playlist", func() {
-			Expect(repo.Exists("22")).To(BeFalse())
-		})
+	It("Put/Exists/Delete", func() {
+		By("saves the playlist to the DB")
+		newPls := model.Playlist{Name: "Great!", Owner: "userid",
+			Tracks: model.MediaFiles{{ID: "1004"}, {ID: "1003"}}}
+
+		By("saves the playlist to the DB")
+		Expect(repo.Put(&newPls)).To(BeNil())
+
+		By("adds repeated songs to a playlist and keeps the order")
+		newPls.Tracks = append(newPls.Tracks, model.MediaFile{ID: "1004"})
+		Expect(repo.Put(&newPls)).To(BeNil())
+		saved, _ := repo.Get(newPls.ID)
+		Expect(saved.Tracks).To(HaveLen(3))
+		Expect(saved.Tracks[0].ID).To(Equal("1004"))
+		Expect(saved.Tracks[1].ID).To(Equal("1003"))
+		Expect(saved.Tracks[2].ID).To(Equal("1004"))
+
+		By("returns the newly created playlist")
+		Expect(repo.Exists(newPls.ID)).To(BeTrue())
+
+		By("returns deletes the playlist")
+		Expect(repo.Delete(newPls.ID)).To(BeNil())
+
+		By("returns error if tries to retrieve the deleted playlist")
+		Expect(repo.Exists(newPls.ID)).To(BeFalse())
 	})
 
 	Describe("GetAll", func() {
