@@ -17,11 +17,13 @@
                 "year": "Année",
                 "size": "Taille",
                 "updatedAt": "Mise à jour",
-                "bitRate": "Bitrate"
+                "bitRate": "Bitrate",
+                "discSubtitle": "Sous-titre du disque"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
-                "playNow": "Lire"
+                "playNow": "Lire",
+                "addToPlaylist": "Ajouter à la playlist"
             }
         },
         "album": {
@@ -83,6 +85,21 @@
                 "targetFormat": "Format",
                 "defaultBitRate": "Bitrate  par défaut",
                 "command": "Commande"
+            }
+        },
+        "playlist": {
+            "name": "Playlist |||| Playlists",
+            "fields": {
+                "name": "Nom",
+                "duration": "Durée",
+                "owner": "Propriétaire",
+                "public": "Public",
+                "updatedAt": "Mise à jour le",
+                "createdAt": "Crée le",
+                "songCount": "Titres"
+            },
+            "actions": {
+                "selectPlaylist": "Ajouter les pistes à la playlist"
             }
         }
     },
@@ -218,7 +235,9 @@
     "message": {
         "note": "NOTE",
         "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancer le serveur avec l'option %{config} activée.",
-        "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé de n'activer cette fonctionnalité uniquement lors de la configuration du Transcodage."
+        "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé de n'activer cette fonctionnalité uniquement lors de la configuration du Transcodage.",
+        "discSubtitle": "%{subtitle} (disque %{number})",
+        "discWithoutSubtitle": "Disque %{number}"
     },
     "menu": {
         "library": "Bibliothèque",
