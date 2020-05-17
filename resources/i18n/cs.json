@@ -17,11 +17,13 @@
                 "year": "Rok",
                 "size": "Velikost souboru",
                 "updatedAt": "Nahráno",
-                "bitRate": "Přenosová rychlost"
+                "bitRate": "Přenosová rychlost",
+                "discSubtitle": "Podtitul disku"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
-                "playNow": "Přehrát nyní"
+                "playNow": "Přehrát nyní",
+                "addToPlaylist": "Přidat do seznamu skladeb"
             }
         },
         "album": {
@@ -83,6 +85,21 @@
                 "targetFormat": "Cílený formát",
                 "defaultBitRate": "Výchozí přenosová rychlost",
                 "command": "Příkaz"
+            }
+        },
+        "playlist": {
+            "name": "Seznam skladeb |||| Seznamy skladeb",
+            "fields": {
+                "name": "Název",
+                "duration": "Délka",
+                "owner": "Vlastník",
+                "public": "Veřejný",
+                "updatedAt": "Nahrán",
+                "createdAt": "Vytvořen",
+                "songCount": "Skladby"
+            },
+            "actions": {
+                "selectPlaylist": "Přidat skladby do seznamu:"
             }
         }
     },
@@ -218,7 +235,9 @@
     "message": {
         "note": "POZNÁMKA",
         "transcodingDisabled": "Měnění nastavení překódování je ve webovém prostředí vypnuto kvůli bezpečnosti. Pokud by jste chtěli změnit (upravit nebo přidat) možnosti překódování, restartujte server s možností %{config}.",
-        "transcodingEnabled": "Navidrome právě běží s možností %{config}, umožňující spouštění systémových příkazů z nastavení překódování pomocí webového rozhraní. Doporučujeme ji vypnout kvůli bezpečnosti a použít ji pouze pokud upravujete nastavení překódování."
+        "transcodingEnabled": "Navidrome právě běží s možností %{config}, umožňující spouštění systémových příkazů z nastavení překódování pomocí webového rozhraní. Doporučujeme ji vypnout kvůli bezpečnosti a použít ji pouze pokud upravujete nastavení překódování.",
+        "discSubtitle": "%{subtitle} (disk %{number})",
+        "discWithoutSubtitle": "Disk %{number}"
     },
     "menu": {
         "library": "Knihovna",
