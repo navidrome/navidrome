@@ -237,7 +237,8 @@
         "transcodingDisabled": "Changing the transcoding configuration through the web interface is disabled for security reasons. If you would like to change (edit or add) transcoding options, restart the server with the %{config} configuration option.",
         "transcodingEnabled": "Navidrome is currently running with %{config}, making it possible to run system commands from the transcoding settings using the web interface. We recommend to disable it for security reasons and only enable it when configuring Transcoding options.",
         "discSubtitle": "%{subtitle} (disc %{number})",
-        "discWithoutSubtitle": "Disc %{number}"
+        "discWithoutSubtitle": "Disc %{number}",
+        "songsAddedToPlaylist": "Added 1 song to playlist |||| Added %{smart_count} songs to playlist"
     },
     "menu": {
         "library": "Library",

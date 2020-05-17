@@ -1,59 +1,46 @@
-import React, { useState } from 'react'
-import {
-  Button,
-  useTranslate,
-  useUnselectAll,
-  useDataProvider,
-  useNotify,
-} from 'react-admin'
-import SelectPlaylistDialog from '../common/SelectPlaylistDialog'
+import React from 'react'
+import { Button, useTranslate, useUnselectAll } from 'react-admin'
+import { Menu } from '@material-ui/core'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
+import { AddToPlaylistMenu } from '../common'
 
 const AddToPlaylistButton = ({ resource, selectedIds }) => {
-  const [open, setOpen] = useState(false)
-  const [selectedValue, setSelectedValue] = useState('')
+  const [anchorEl, setAnchorEl] = React.useState(null)
   const translate = useTranslate()
   const unselectAll = useUnselectAll()
-  const notify = useNotify()
-  const dataProvider = useDataProvider()
 
-  const handleClickOpen = () => {
-    setOpen(true)
+  const handleClick = (event) => {
+    setAnchorEl(event.currentTarget)
   }
 
-  const handleClose = (value) => {
-    if (value !== '') {
-      dataProvider
-        .create('playlistTrack', {
-          data: { ids: selectedIds },
-          filter: { playlist_id: value },
-        })
-        .then(() => {
-          notify(`Added ${selectedIds.length} songs to playlist`)
-        })
-        .catch(() => {
-          notify('ra.page.error', 'warning')
-        })
-    }
-    setOpen(false)
-    setSelectedValue(value)
+  const handleClose = () => {
+    setAnchorEl(null)
     unselectAll(resource)
   }
 
   return (
     <>
       <Button
+        aria-controls="simple-menu"
+        aria-haspopup="true"
+        onClick={handleClick}
         color="secondary"
-        onClick={handleClickOpen}
         label={translate('resources.song.actions.addToPlaylist')}
       >
         <PlaylistAddIcon />
       </Button>
-      <SelectPlaylistDialog
-        selectedValue={selectedValue}
-        open={open}
+      <Menu
+        id="simple-menu"
+        anchorEl={anchorEl}
+        keepMounted
+        open={Boolean(anchorEl)}
         onClose={handleClose}
-      />
+      >
+        <AddToPlaylistMenu
+          selectedIds={selectedIds}
+          menuOpen={Boolean(anchorEl)}
+        />
+      </Menu>
     </>
   )
 }

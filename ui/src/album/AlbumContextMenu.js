@@ -7,6 +7,8 @@ import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import { addTracks, playTracks, shuffleTracks } from '../audioplayer'
+import NestedMenuItem from 'material-ui-nested-menu-item'
+import { AddToPlaylistMenu } from '../common'
 
 const useStyles = makeStyles({
   icon: {
@@ -96,6 +98,15 @@ const AlbumContextMenu = ({ record, color }) => {
             {options[key].label}
           </MenuItem>
         ))}
+        <NestedMenuItem
+          label={translate('resources.song.actions.addToPlaylist')}
+          parentMenuOpen={open}
+        >
+          <AddToPlaylistMenu
+            albumId={[record.id]}
+            onClose={() => setAnchorEl(null)}
+          />
+        </NestedMenuItem>
       </Menu>
     </div>
   )

@@ -4,6 +4,8 @@ import { useTranslate } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { addTracks, setTrack } from '../audioplayer'
+import { AddToPlaylistMenu } from '../common'
+import NestedMenuItem from 'material-ui-nested-menu-item'
 
 export const SongContextMenu = ({ record }) => {
   const dispatch = useDispatch()
@@ -38,6 +40,8 @@ export const SongContextMenu = ({ record }) => {
     e.stopPropagation()
   }
 
+  const open = Boolean(anchorEl)
+
   return (
     <>
       <IconButton onClick={handleClick} size={'small'}>
@@ -46,7 +50,7 @@ export const SongContextMenu = ({ record }) => {
       <Menu
         id={'menu' + record.id}
         anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
+        open={open}
         onClose={handleClose}
       >
         {Object.keys(options).map((key) => (
@@ -54,6 +58,15 @@ export const SongContextMenu = ({ record }) => {
             {options[key].label}
           </MenuItem>
         ))}
+        <NestedMenuItem
+          label={translate('resources.song.actions.addToPlaylist')}
+          parentMenuOpen={open}
+        >
+          <AddToPlaylistMenu
+            selectedIds={[record.id]}
+            onClose={() => setAnchorEl(null)}
+          />
+        </NestedMenuItem>
       </Menu>
     </>
   )

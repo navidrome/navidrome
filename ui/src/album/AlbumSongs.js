@@ -67,7 +67,7 @@ const AlbumSongs = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
-  const { bulkActionButtons, albumId, expand, className } = props
+  const { bulkActionButtons, albumId, className } = props
   const { data, ids, version, loaded } = controllerProps
 
   let multiDisc = false
@@ -116,7 +116,7 @@ const AlbumSongs = (props) => {
             <DatagridLoading
               classes={classes}
               className={className}
-              expand={expand}
+              expand={null}
               hasBulkActions={hasBulkActions}
               nbChildren={3}
               size={'small'}
