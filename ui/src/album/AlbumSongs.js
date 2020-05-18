@@ -15,6 +15,7 @@ import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { playTracks } from '../audioplayer'
 import { DurationField, SongDetails, SongDatagridRow } from '../common'
+import { SongContextMenu } from '../song/SongContextMenu'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -146,6 +147,7 @@ const AlbumSongs = (props) => {
               )}
               {isDesktop && <TextField source="artist" sortable={false} />}
               <DurationField source="duration" sortable={false} />
+              <SongContextMenu />
             </SongsDatagrid>
           )}
         </Card>

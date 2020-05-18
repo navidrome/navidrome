@@ -1,6 +1,7 @@
 import React, { Fragment, useEffect } from 'react'
 import { useUnselectAll } from 'react-admin'
 import AddToQueueButton from '../song/AddToQueueButton'
+import AddToPlaylistButton from '../song/AddToPlaylistButton'
 
 export const AlbumSongBulkActions = (props) => {
   const unselectAll = useUnselectAll()
@@ -11,6 +12,7 @@ export const AlbumSongBulkActions = (props) => {
   return (
     <Fragment>
       <AddToQueueButton {...props} />
+      <AddToPlaylistButton {...props} />
     </Fragment>
   )
 }
