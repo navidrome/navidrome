@@ -3,7 +3,6 @@ import {
   useDataProvider,
   useGetList,
   useNotify,
-  useTranslate,
 } from 'react-admin'
 import { MenuItem } from '@material-ui/core'
 import PropTypes from 'prop-types'
@@ -26,8 +25,7 @@ export const addAlbumToPlaylist = (dataProvider, albumId, playlistId) =>
     .then((response) => response.data.map((song) => song.id))
     .then((ids) => addTracksToPlaylist(dataProvider, ids, playlistId))
 
-const AddToPlaylistMenu = ({ selectedIds, albumId, onClose }) => {
-  const translate = useTranslate()
+const AddToPlaylistMenu = React.forwardRef(({ selectedIds, albumId, onClose }, ref) => {
   const notify = useNotify()
   const dataProvider = useDataProvider()
   const { ids, data, loaded } = useGetList(
@@ -51,11 +49,7 @@ const AddToPlaylistMenu = ({ selectedIds, albumId, onClose }) => {
 
       add
         .then((len) => {
-          notify(
-            translate('message.songsAddedToPlaylist', {
-              smart_count: len,
-            })
-          )
+          notify('message.songsAddedToPlaylist', 'info', {smart_count: len})
         })
         .catch(() => {
           notify('ra.page.error', 'warning')
@@ -74,7 +68,7 @@ const AddToPlaylistMenu = ({ selectedIds, albumId, onClose }) => {
       ))}
     </>
   )
-}
+})
 
 AddToPlaylistMenu.propTypes = {
   selectedIds: PropTypes.arrayOf(PropTypes.any).isRequired,

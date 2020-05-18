@@ -39,6 +39,7 @@ const AddToPlaylistButton = ({ resource, selectedIds }) => {
         <AddToPlaylistMenu
           selectedIds={selectedIds}
           menuOpen={Boolean(anchorEl)}
+          onClose={handleClose}
         />
       </Menu>
     </>
