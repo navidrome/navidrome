@@ -54,7 +54,7 @@ const PlaylistSongs = (props) => {
   const classes = useStyles(props)
   const classesToolbar = useStylesListToolbar(props)
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
-  // const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
   const refresh = useRefresh()
   const { bulkActionButtons, expand, className, playlistId } = props
@@ -112,9 +112,9 @@ const PlaylistSongs = (props) => {
               {...controllerProps}
               hasBulkActions={hasBulkActions}
             >
-              <TextField source="id" label={'#'} />
+              {isDesktop && <TextField source="id" label={'#'} />}
               <TextField source="title" />
-              <TextField source="artist" />
+              {isDesktop && <TextField source="artist" />}
               <DurationField source="duration" />
               <SongContextMenu onAddToPlaylist={onAddToPlaylist} />
             </Datagrid>
