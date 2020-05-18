@@ -17,11 +17,13 @@
                 "year": "Jahr",
                 "size": "Dateigröße",
                 "updatedAt": "Hochgeladen um",
-                "bitRate": "Bitrate"
+                "bitRate": "Bitrate",
+                "discSubtitle": ""
             },
             "actions": {
                 "addToQueue": "Später abspielen",
-                "playNow": "Jetzt abspielen"
+                "playNow": "Jetzt abspielen",
+                "addToPlaylist": "Der Playlist hinzufügen"
             }
         },
         "album": {
@@ -62,7 +64,7 @@
                 "updatedAt": "Aktualisiert um",
                 "name": "Name",
                 "password": "Passwort",
-                "createdAt": "Hergestellt um"
+                "createdAt": "Ergestellt um"
             }
         },
         "player": {
@@ -83,6 +85,22 @@
                 "targetFormat": "Zielformat",
                 "defaultBitRate": "Standardbitrate",
                 "command": "Befehl"
+            }
+        },
+        "playlist": {
+            "name": "Playlist |||| Playlists",
+            "fields": {
+                "name": "Name",
+                "duration": "Dauer",
+                "owner": "Inhaber",
+                "public": "Öffentlich",
+                "updatedAt": "Aktualisiert um",
+                "createdAt": "Ergestellt um",
+                "songCount": "Songanzahl",
+                "comment": ""
+            },
+            "actions": {
+                "selectPlaylist": "Songs der Playlist hinzufügen"
             }
         }
     },
@@ -218,7 +236,10 @@
     "message": {
         "note": "HINWEIS",
         "transcodingDisabled": "Die Änderung der Transcodierungskonfiguration über die Web-UI ist aus Sicherheitsgründen deaktiviert. Wenn du die Transcodierungsoptionen ändern (bearbeiten oder hinzufügen) möchtest, starte den Server mit der Konfigurationsoption %{config} neu.",
-        "transcodingEnabled": "Navidrome läuft derzeit mit %{config}, wodurch es möglich ist, Systembefehle aus den Transkodierungseinstellungen über die Webschnittstelle auszuführen. Wir empfehlen, es aus Sicherheitsgründen zu deaktivieren und nur bei der Konfiguration von Transkodierungsoptionen zu aktivieren."
+        "transcodingEnabled": "Navidrome läuft derzeit mit %{config}, wodurch es möglich ist, Systembefehle aus den Transkodierungseinstellungen über die Webschnittstelle auszuführen. Wir empfehlen, es aus Sicherheitsgründen zu deaktivieren und nur bei der Konfiguration von Transkodierungsoptionen zu aktivieren.",
+        "discSubtitle": "",
+        "discWithoutSubtitle": "",
+        "songsAddedToPlaylist": ""
     },
     "menu": {
         "library": "Bibliothek",
