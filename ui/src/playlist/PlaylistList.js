@@ -7,6 +7,7 @@ import {
   DateField,
   Filter,
   SearchInput,
+  EditButton,
 } from 'react-admin'
 import { DurationField, List } from '../common'
 
@@ -25,6 +26,7 @@ const PlaylistList = (props) => (
       <NumberField source="songCount" />
       <DurationField source="duration" />
       <DateField source="updatedAt" />
+      <EditButton />
     </Datagrid>
   </List>
 )
