@@ -22,7 +22,7 @@ export const addAlbumToPlaylist = (dataProvider, albumId, playlistId) =>
     .then((ids) => addTracksToPlaylist(dataProvider, ids, playlistId))
 
 const AddToPlaylistMenu = React.forwardRef(
-  ({ selectedIds, albumId, onClose }, ref) => {
+  ({ selectedIds, albumId, onClose, onItemAdded }, ref) => {
     const notify = useNotify()
     const dataProvider = useDataProvider()
     const { ids, data, loaded } = useGetList(
@@ -38,22 +38,23 @@ const AddToPlaylistMenu = React.forwardRef(
 
     const handleItemClick = (e) => {
       e.preventDefault()
-      const value = e.target.getAttribute('value')
-      if (value !== '') {
+      const playlistId = e.target.getAttribute('value')
+      if (playlistId !== '') {
         const add = albumId
-          ? addAlbumToPlaylist(dataProvider, albumId, value)
-          : addTracksToPlaylist(dataProvider, selectedIds, value)
+          ? addAlbumToPlaylist(dataProvider, albumId, playlistId)
+          : addTracksToPlaylist(dataProvider, selectedIds, playlistId)
 
         add
           .then((len) => {
             notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
+            onItemAdded && onItemAdded(playlistId, selectedIds)
           })
           .catch(() => {
             notify('ra.page.error', 'warning')
           })
       }
       e.stopPropagation()
-      onClose && onClose()
+      onClose && onClose(e)
     }
 
     return (
@@ -71,6 +72,8 @@ const AddToPlaylistMenu = React.forwardRef(
 AddToPlaylistMenu.propTypes = {
   selectedIds: PropTypes.arrayOf(PropTypes.any).isRequired,
   albumId: PropTypes.string,
+  onClose: PropTypes.func,
+  onItemAdded: PropTypes.func,
 }
 
 AddToPlaylistMenu.defaultProps = {

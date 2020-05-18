@@ -6,11 +6,13 @@ import {
   ListToolbar,
   TextField,
   useListController,
+  useRefresh,
 } from 'react-admin'
 import classnames from 'classnames'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { DurationField, SongDetails } from '../common'
+import { SongContextMenu } from '../song/SongContextMenu'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -54,6 +56,7 @@ const PlaylistSongs = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   // const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
+  const refresh = useRefresh()
   const { bulkActionButtons, expand, className, playlistId } = props
   const { data, ids, version, loaded } = controllerProps
 
@@ -63,6 +66,12 @@ const PlaylistSongs = (props) => {
 
   if (loaded && ids.length === 0) {
     return <div />
+  }
+
+  const onAddToPlaylist = (playlistId) => {
+    if (playlistId === props.id) {
+      refresh()
+    }
   }
 
   return (
@@ -106,6 +115,7 @@ const PlaylistSongs = (props) => {
               <TextField source="title" sortable={false} />
               <TextField source="artist" sortable={false} />
               <DurationField source="duration" sortable={false} />
+              <SongContextMenu onAddToPlaylist={onAddToPlaylist} />
             </Datagrid>
           )}
         </Card>

@@ -6,8 +6,9 @@ import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { addTracks, setTrack } from '../audioplayer'
 import { AddToPlaylistMenu } from '../common'
 import NestedMenuItem from 'material-ui-nested-menu-item'
+import PropTypes from 'prop-types'
 
-export const SongContextMenu = ({ record }) => {
+export const SongContextMenu = ({ record, onAddToPlaylist }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const [anchorEl, setAnchorEl] = useState(null)
@@ -63,11 +64,17 @@ export const SongContextMenu = ({ record }) => {
           parentMenuOpen={open}
         >
           <AddToPlaylistMenu
-            selectedIds={[record.id]}
-            onClose={() => setAnchorEl(null)}
+            selectedIds={[record.mediaFileId || record.id]}
+            onClose={handleClose}
+            onItemAdded={onAddToPlaylist}
           />
         </NestedMenuItem>
       </Menu>
     </>
   )
+}
+
+SongContextMenu.propTypes = {
+  record: PropTypes.object,
+  onAddToPlaylist: PropTypes.func,
 }

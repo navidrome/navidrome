@@ -4,7 +4,7 @@ import { Menu } from '@material-ui/core'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import { AddToPlaylistMenu } from '../common'
 
-const AddToPlaylistButton = ({ resource, selectedIds }) => {
+const AddToPlaylistButton = ({ resource, selectedIds, onAddToPlaylist }) => {
   const [anchorEl, setAnchorEl] = React.useState(null)
   const translate = useTranslate()
   const unselectAll = useUnselectAll()
@@ -40,6 +40,7 @@ const AddToPlaylistButton = ({ resource, selectedIds }) => {
           selectedIds={selectedIds}
           menuOpen={Boolean(anchorEl)}
           onClose={handleClose}
+          onItemAdded={onAddToPlaylist}
         />
       </Menu>
     </>
