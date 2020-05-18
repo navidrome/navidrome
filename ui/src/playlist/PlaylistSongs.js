@@ -112,9 +112,10 @@ const PlaylistSongs = (props) => {
               {...controllerProps}
               hasBulkActions={hasBulkActions}
             >
-              <TextField source="title" sortable={false} />
-              <TextField source="artist" sortable={false} />
-              <DurationField source="duration" sortable={false} />
+              <TextField source="id" label={'#'} />
+              <TextField source="title" />
+              <TextField source="artist" />
+              <DurationField source="duration" />
               <SongContextMenu onAddToPlaylist={onAddToPlaylist} />
             </Datagrid>
           )}
