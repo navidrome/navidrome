@@ -91,6 +91,7 @@
             "name": "Playlist |||| Playlists",
             "fields": {
                 "name": "Nome",
+                "comment": "Comentário",
                 "duration": "Duração",
                 "owner": "Dono",
                 "public": "Pública",

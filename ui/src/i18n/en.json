@@ -59,6 +59,7 @@
             "name": "Playlist |||| Playlists",
             "fields": {
                 "name": "Name",
+                "comment": "Comment",
                 "duration": "Duration",
                 "songCount": "Songs",
                 "owner": "Owner",
