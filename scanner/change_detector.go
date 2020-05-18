@@ -62,12 +62,12 @@ func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated
 		return
 	}
 	for _, f := range files {
-		isDir, err := IsDirOrSymlinkToDir(dirPath, f)
+		isDir, err := isDirOrSymlinkToDir(dirPath, f)
 		// Skip invalid symlinks
 		if err != nil {
 			continue
 		}
-		if isDir && !IsDirIgnored(dirPath, f) {
+		if isDir && !isDirIgnored(dirPath, f) {
 			children = append(children, filepath.Join(dirPath, f.Name()))
 		} else {
 			if f.ModTime().After(lastUpdated) {
@@ -78,12 +78,12 @@ func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated
 	return
 }
 
-// IsDirOrSymlinkToDir returns true if and only if the dirent represents a file
+// isDirOrSymlinkToDir returns true if and only if the dirent represents a file
 // system directory, or a symbolic link to a directory. Note that if the dirent
 // is not a directory but is a symbolic link, this method will resolve by
 // sending a request to the operating system to follow the symbolic link.
 // Copied from github.com/karrick/godirwalk
-func IsDirOrSymlinkToDir(baseDir string, dirent os.FileInfo) (bool, error) {
+func isDirOrSymlinkToDir(baseDir string, dirent os.FileInfo) (bool, error) {
 	if dirent.IsDir() {
 		return true, nil
 	}
@@ -98,7 +98,7 @@ func IsDirOrSymlinkToDir(baseDir string, dirent os.FileInfo) (bool, error) {
 	return dirent.IsDir(), nil
 }
 
-func IsDirIgnored(baseDir string, dirent os.FileInfo) bool {
+func isDirIgnored(baseDir string, dirent os.FileInfo) bool {
 	_, err := os.Stat(filepath.Join(baseDir, dirent.Name(), consts.SkipScanFile))
 	return err == nil
 }

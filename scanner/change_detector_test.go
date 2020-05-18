@@ -111,34 +111,34 @@ var _ = Describe("ChangeDetector", func() {
 		Expect(changed).To(ConsistOf(P("a/b")))
 	})
 
-	Describe("IsDirOrSymlinkToDir", func() {
+	Describe("isDirOrSymlinkToDir", func() {
 		It("returns true for normal dirs", func() {
 			dir, _ := os.Stat("tests/fixtures")
-			Expect(IsDirOrSymlinkToDir("tests", dir)).To(BeTrue())
+			Expect(isDirOrSymlinkToDir("tests", dir)).To(BeTrue())
 		})
 		It("returns true for symlinks to dirs", func() {
 			dir, _ := os.Stat("tests/fixtures/symlink2dir")
-			Expect(IsDirOrSymlinkToDir("tests/fixtures", dir)).To(BeTrue())
+			Expect(isDirOrSymlinkToDir("tests/fixtures", dir)).To(BeTrue())
 		})
 		It("returns false for files", func() {
 			dir, _ := os.Stat("tests/fixtures/test.mp3")
-			Expect(IsDirOrSymlinkToDir("tests/fixtures", dir)).To(BeFalse())
+			Expect(isDirOrSymlinkToDir("tests/fixtures", dir)).To(BeFalse())
 		})
 		It("returns false for symlinks to files", func() {
 			dir, _ := os.Stat("tests/fixtures/symlink")
-			Expect(IsDirOrSymlinkToDir("tests/fixtures", dir)).To(BeFalse())
+			Expect(isDirOrSymlinkToDir("tests/fixtures", dir)).To(BeFalse())
 		})
 	})
 
-	Describe("IsDirIgnored", func() {
+	Describe("isDirIgnored", func() {
 		baseDir := filepath.Join("tests", "fixtures")
 		It("returns false for normal dirs", func() {
 			dir, _ := os.Stat(filepath.Join(baseDir, "empty_folder"))
-			Expect(IsDirIgnored(baseDir, dir)).To(BeFalse())
+			Expect(isDirIgnored(baseDir, dir)).To(BeFalse())
 		})
 		It("returns true when folder contains .ndignore file", func() {
 			dir, _ := os.Stat(filepath.Join(baseDir, "ignored_folder"))
-			Expect(IsDirIgnored(baseDir, dir)).To(BeTrue())
+			Expect(isDirIgnored(baseDir, dir)).To(BeTrue())
 		})
 	})
 })
