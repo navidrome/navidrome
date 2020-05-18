@@ -14,6 +14,7 @@ const SongDetails = (props) => {
   const { record } = props
   const data = {
     path: <TextField record={record} source="path" />,
+    album: <TextField record={record} source="album" />,
     discSubtitle: <TextField record={record} source="discSubtitle" />,
     albumArtist: <TextField record={record} source="albumArtist" />,
     genre: <TextField record={record} source="genre" />,
