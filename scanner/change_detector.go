@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 )
 
@@ -66,7 +67,7 @@ func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated
 		if err != nil {
 			continue
 		}
-		if isDir {
+		if isDir && !IsDirIgnored(dirPath, f) {
 			children = append(children, filepath.Join(dirPath, f.Name()))
 		} else {
 			if f.ModTime().After(lastUpdated) {
@@ -77,24 +78,29 @@ func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated
 	return
 }
 
-// IsDirOrSymlinkToDir returns true if and only if the Dirent represents a file
-// system directory, or a symbolic link to a directory. Note that if the Dirent
+// IsDirOrSymlinkToDir returns true if and only if the dirent represents a file
+// system directory, or a symbolic link to a directory. Note that if the dirent
 // is not a directory but is a symbolic link, this method will resolve by
 // sending a request to the operating system to follow the symbolic link.
 // Copied from github.com/karrick/godirwalk
-func IsDirOrSymlinkToDir(baseDir string, info os.FileInfo) (bool, error) {
-	if info.IsDir() {
+func IsDirOrSymlinkToDir(baseDir string, dirent os.FileInfo) (bool, error) {
+	if dirent.IsDir() {
 		return true, nil
 	}
-	if info.Mode()&os.ModeSymlink == 0 {
+	if dirent.Mode()&os.ModeSymlink == 0 {
 		return false, nil
 	}
 	// Does this symlink point to a directory?
-	info, err := os.Stat(filepath.Join(baseDir, info.Name()))
+	dirent, err := os.Stat(filepath.Join(baseDir, dirent.Name()))
 	if err != nil {
 		return false, err
 	}
-	return info.IsDir(), nil
+	return dirent.IsDir(), nil
+}
+
+func IsDirIgnored(baseDir string, dirent os.FileInfo) bool {
+	_, err := os.Stat(filepath.Join(baseDir, dirent.Name(), consts.SkipScanFile))
+	return err == nil
 }
 
 func (s *ChangeDetector) loadMap(dirMap dirInfoMap, path string, since time.Time, maybe bool) error {

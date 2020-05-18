@@ -129,6 +129,18 @@ var _ = Describe("ChangeDetector", func() {
 			Expect(IsDirOrSymlinkToDir("tests/fixtures", dir)).To(BeFalse())
 		})
 	})
+
+	Describe("IsDirIgnored", func() {
+		baseDir := filepath.Join("tests", "fixtures")
+		It("returns false for normal dirs", func() {
+			dir, _ := os.Stat(filepath.Join(baseDir, "empty_folder"))
+			Expect(IsDirIgnored(baseDir, dir)).To(BeFalse())
+		})
+		It("returns true when folder contains .ndignore file", func() {
+			dir, _ := os.Stat(filepath.Join(baseDir, "ignored_folder"))
+			Expect(IsDirIgnored(baseDir, dir)).To(BeTrue())
+		})
+	})
 })
 
 // I hate time-based tests....

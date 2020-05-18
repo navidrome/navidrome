@@ -28,7 +28,8 @@ const (
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
 
-	I18nFolder = "i18n"
+	I18nFolder   = "i18n"
+	SkipScanFile = ".ndignore"
 )
 
 // Cache options
