@@ -180,7 +180,7 @@ func getMinYear(years string) int {
 	return 0
 }
 
-func (r *albumRepository) PurgeEmpty() error {
+func (r *albumRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
 	c, err := r.executeSQL(del)
 	if err == nil {

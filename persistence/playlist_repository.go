@@ -165,6 +165,40 @@ func (r *playlistRepository) Update(entity interface{}, cols ...string) error {
 	return err
 }
 
+func (r *playlistRepository) removeOrphans() error {
+	sel := Select("playlist_tracks.playlist_id as id", "p.name").From("playlist_tracks").
+		Join("playlist p on playlist_tracks.playlist_id = p.id").
+		LeftJoin("media_file mf on playlist_tracks.media_file_id = mf.id").
+		Where(Eq{"mf.id": nil}).
+		GroupBy("playlist_tracks.playlist_id")
+
+	var pls []struct{ Id, Name string }
+	err := r.queryAll(sel, &pls)
+	if err != nil {
+		return err
+	}
+
+	for _, pl := range pls {
+		log.Debug(r.ctx, "Cleaning-up orphan tracks from playlist", "id", pl.Id, "name", pl.Name)
+		del := Delete("playlist_tracks").Where(And{
+			ConcatExpr("media_file_id not in (select id from media_file)"),
+			Eq{"playlist_id": pl.Id},
+		})
+		n, err := r.executeSQL(del)
+		if n == 0 || err != nil {
+			return err
+		}
+		log.Debug(r.ctx, "Deleted tracks, now reordering", "id", pl.Id, "name", pl.Name, "deleted", n)
+
+		// To reorganize the playlist, just add an empty list of new tracks
+		trks := r.Tracks(pl.Id)
+		if err := trks.Add(nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
 var _ rest.Repository = (*playlistRepository)(nil)
 var _ rest.Persistable = (*playlistRepository)(nil)

@@ -155,7 +155,7 @@ func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Arti
 	return starred, err
 }
 
-func (r *artistRepository) PurgeEmpty() error {
+func (r *artistRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_artist_id) from album)")
 	c, err := r.executeSQL(del)
 	if err == nil {

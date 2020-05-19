@@ -66,7 +66,9 @@ func (r *playlistTrackRepository) NewInstance() interface{} {
 }
 
 func (r *playlistTrackRepository) Add(mediaFileIds []string) error {
-	log.Debug(r.ctx, "Adding songs to playlist", "playlistId", r.playlistId, "mediaFileIds", mediaFileIds)
+	if len(mediaFileIds) > 0 {
+		log.Debug(r.ctx, "Adding songs to playlist", "playlistId", r.playlistId, "mediaFileIds", mediaFileIds)
+	}
 
 	// Get all current tracks
 	all := r.newSelect().Columns("media_file_id").Where(Eq{"playlist_id": r.playlistId}).OrderBy("id")

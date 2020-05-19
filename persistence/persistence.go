@@ -108,11 +108,11 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 }
 
 func (s *SQLStore) GC(ctx context.Context) error {
-	err := s.Album(ctx).PurgeEmpty()
+	err := s.Album(ctx).(*albumRepository).purgeEmpty()
 	if err != nil {
 		return err
 	}
-	err = s.Artist(ctx).PurgeEmpty()
+	err = s.Artist(ctx).(*artistRepository).purgeEmpty()
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,11 @@ func (s *SQLStore) GC(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return s.Artist(ctx).(*artistRepository).cleanAnnotations()
+	err = s.Artist(ctx).(*artistRepository).cleanAnnotations()
+	if err != nil {
+		return err
+	}
+	return s.Playlist(ctx).(*playlistRepository).removeOrphans()
 }
 
 func (s *SQLStore) getOrmer() orm.Ormer {
