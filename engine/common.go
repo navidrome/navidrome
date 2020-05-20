@@ -23,7 +23,7 @@ type Entry struct {
 	Starred     time.Time
 	Track       int
 	Duration    int
-	Size        int
+	Size        int64
 	Suffix      string
 	BitRate     int
 	ContentType string

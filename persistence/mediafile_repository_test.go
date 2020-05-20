@@ -101,7 +101,7 @@ var _ = Describe("MediaRepository", func() {
 			Expect(err).To(BeNil())
 
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
-			Expect(mf.PlayCount).To(Equal(1))
+			Expect(mf.PlayCount).To(Equal(int64(1)))
 		})
 
 		It("increments play count on newly starred items", func() {
@@ -115,7 +115,7 @@ var _ = Describe("MediaRepository", func() {
 			Expect(err).To(BeNil())
 
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
-			Expect(mf.PlayCount).To(Equal(1))
+			Expect(mf.PlayCount).To(Equal(int64(1)))
 		})
 	})
 })

@@ -61,7 +61,7 @@ type DirectoryInfo struct {
 	Entries    Entries
 	Parent     string
 	Starred    time.Time
-	PlayCount  int32
+	PlayCount  int64
 	UserRating int
 	AlbumCount int
 	CoverArt   string
@@ -138,7 +138,7 @@ func (b *browser) buildArtistDir(a *model.Artist, albums model.Albums) *Director
 	for i := range albums {
 		al := albums[i]
 		dir.Entries[i] = FromAlbum(&al)
-		dir.PlayCount += int32(al.PlayCount)
+		dir.PlayCount += al.PlayCount
 	}
 	return dir
 }
@@ -156,7 +156,7 @@ func (b *browser) buildAlbumDir(al *model.Album, tracks model.MediaFiles) *Direc
 		Year:       al.MaxYear,
 		Genre:      al.Genre,
 		CoverArt:   al.CoverArtId,
-		PlayCount:  int32(al.PlayCount),
+		PlayCount:  al.PlayCount,
 		UserRating: al.Rating,
 	}
 

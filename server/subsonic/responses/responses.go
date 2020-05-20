@@ -96,7 +96,7 @@ type Child struct {
 	Year                  int        `xml:"year,attr,omitempty"                     json:"year,omitempty"`
 	Genre                 string     `xml:"genre,attr,omitempty"                    json:"genre,omitempty"`
 	CoverArt              string     `xml:"coverArt,attr,omitempty"                 json:"coverArt,omitempty"`
-	Size                  string     `xml:"size,attr,omitempty"                     json:"size,omitempty"`
+	Size                  int64      `xml:"size,attr,omitempty"                     json:"size,omitempty"`
 	ContentType           string     `xml:"contentType,attr,omitempty"              json:"contentType,omitempty"`
 	Suffix                string     `xml:"suffix,attr,omitempty"                   json:"suffix,omitempty"`
 	Starred               *time.Time `xml:"starred,attr,omitempty"                  json:"starred,omitempty"`
@@ -132,7 +132,7 @@ type Directory struct {
 	Name       string     `xml:"name,attr"                          json:"name"`
 	Parent     string     `xml:"parent,attr,omitempty"              json:"parent,omitempty"`
 	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
-	PlayCount  int32      `xml:"playCount,attr,omitempty"           json:"playcount,omitempty"`
+	PlayCount  int64      `xml:"playCount,attr,omitempty"           json:"playcount,omitempty"`
 	UserRating int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
 
 	// ID3

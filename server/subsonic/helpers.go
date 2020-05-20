@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
-	"strconv"
 
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/engine"
@@ -119,7 +118,7 @@ func ToChild(ctx context.Context, entry engine.Entry) responses.Child {
 	child.CoverArt = entry.CoverArt
 	child.Track = entry.Track
 	child.Duration = entry.Duration
-	child.Size = strconv.Itoa(entry.Size)
+	child.Size = entry.Size
 	child.Suffix = entry.Suffix
 	child.BitRate = entry.BitRate
 	child.ContentType = entry.ContentType

@@ -115,7 +115,7 @@ var _ = Describe("Responses", func() {
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				child[0] = Child{
 					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
-					Year: 1985, Genre: "Rock", CoverArt: "1", Size: "8421341", ContentType: "audio/flac",
+					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
 					Duration: 146, BitRate: 320, Starred: &t,
 				}

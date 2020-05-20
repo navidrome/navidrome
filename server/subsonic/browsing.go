@@ -229,7 +229,7 @@ func (c *BrowsingController) buildAlbum(ctx context.Context, d *engine.Directory
 	dir.CoverArt = d.CoverArt
 	dir.SongCount = d.SongCount
 	dir.Duration = d.Duration
-	dir.PlayCount = int64(d.PlayCount)
+	dir.PlayCount = d.PlayCount
 	dir.Year = d.Year
 	dir.Genre = d.Genre
 	if !d.Created.IsZero() {

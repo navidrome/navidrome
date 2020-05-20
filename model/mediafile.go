@@ -20,7 +20,7 @@ type MediaFile struct {
 	DiscNumber           int       `json:"discNumber"`
 	DiscSubtitle         string    `json:"discSubtitle"`
 	Year                 int       `json:"year"`
-	Size                 int       `json:"size"`
+	Size                 int64     `json:"size"`
 	Suffix               string    `json:"suffix"`
 	Duration             float32   `json:"duration"`
 	BitRate              int       `json:"bitRate"`
@@ -38,7 +38,7 @@ type MediaFile struct {
 	UpdatedAt            time.Time `json:"updatedAt"`
 
 	// Annotations
-	PlayCount int       `json:"playCount"   orm:"-"`
+	PlayCount int64     `json:"playCount"   orm:"-"`
 	PlayDate  time.Time `json:"playDate"    orm:"-"`
 	Rating    int       `json:"rating"      orm:"-"`
 	Starred   bool      `json:"starred"     orm:"-"`

@@ -49,7 +49,7 @@ func (m *Metadata) BitRate() int                { return m.parseInt("bitrate") }
 func (m *Metadata) ModificationTime() time.Time { return m.fileInfo.ModTime() }
 func (m *Metadata) FilePath() string            { return m.filePath }
 func (m *Metadata) Suffix() string              { return m.suffix }
-func (m *Metadata) Size() int                   { return int(m.fileInfo.Size()) }
+func (m *Metadata) Size() int64                 { return m.fileInfo.Size() }
 
 func LoadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {
 	dir, err := os.Open(dirPath)
