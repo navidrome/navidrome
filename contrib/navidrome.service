@@ -5,6 +5,9 @@ Description=Navidrome Music Server and Streamer compatible with Subsonic/Airsoni
 After=remote-fs.target network.target
 AssertPathExists=/var/lib/navidrome
 
+[Install]
+WantedBy=multi-user.target
+
 [Service]
 User=navidrome
 Group=navidrome
