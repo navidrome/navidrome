@@ -20,7 +20,6 @@ require (
 	github.com/go-chi/cors v1.1.1
 	github.com/go-chi/jwtauth v4.0.4+incompatible
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
-	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/google/wire v0.4.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
@@ -29,17 +28,14 @@ require (
 	github.com/lib/pq v1.3.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/onsi/ginkgo v1.12.1
-	github.com/onsi/gomega v1.10.0
+	github.com/onsi/gomega v1.10.1
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pressly/goose v2.6.0+incompatible
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.4.0 // indirect
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
 	golang.org/x/sys v0.0.0-20200515095857-1151b9dac4a9 // indirect
 	golang.org/x/text v0.3.2 // indirect
-	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
 	gopkg.in/djherbis/stream.v1 v1.3.1 // indirect
-	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
