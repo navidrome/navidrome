@@ -78,7 +78,7 @@ export const SongContextMenu = ({ className, record, onAddToPlaylist }) => {
 
   return (
     <span className={`${classes.noWrap} ${className}`}>
-      {config.enableStarred && (
+      {config.enableStarred && !onAddToPlaylist && (
         <IconButton
           onClick={(e) => handleToggleStar(e, record)}
           size={'small'}
