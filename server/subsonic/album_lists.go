@@ -168,7 +168,7 @@ func (c *AlbumListController) GetSongsByGenre(w http.ResponseWriter, r *http.Req
 	}
 
 	response := NewResponse()
-	response.RandomSongs = &responses.Songs{}
-	response.RandomSongs.Songs = ToChildren(r.Context(), songs)
+	response.SongsByGenre = &responses.Songs{}
+	response.SongsByGenre.Songs = ToChildren(r.Context(), songs)
 	return response, nil
 }
