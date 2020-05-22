@@ -2,6 +2,18 @@ package model
 
 import "time"
 
+type Annotations struct {
+	PlayCount int64     `json:"playCount"`
+	PlayDate  time.Time `json:"playDate"`
+	Rating    int       `json:"rating"`
+	Starred   bool      `json:"starred"`
+	StarredAt time.Time `json:"starredAt"`
+}
+
+type AnnotatedModel interface {
+	GetAnnotations() Annotations
+}
+
 type AnnotatedRepository interface {
 	IncPlayCount(itemID string, ts time.Time) error
 	SetStar(starred bool, itemIDs ...string) error

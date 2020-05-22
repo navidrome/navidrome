@@ -54,9 +54,14 @@ func (r mediaFileRepository) selectMediaFile(options ...model.QueryOptions) Sele
 
 func (r mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 	sel := r.selectMediaFile().Where(Eq{"id": id})
-	var res model.MediaFile
-	err := r.queryOne(sel, &res)
-	return &res, err
+	var res model.MediaFiles
+	if err := r.queryAll(sel, &res); err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, model.ErrNotFound
+	}
+	return &res[0], nil
 }
 
 func (r mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
@@ -155,8 +160,20 @@ func (r mediaFileRepository) EntityName() string {
 }
 
 func (r mediaFileRepository) NewInstance() interface{} {
-	return model.MediaFile{}
+	return &model.MediaFile{}
+}
+
+func (r mediaFileRepository) Save(entity interface{}) (string, error) {
+	mf := entity.(*model.MediaFile)
+	err := r.Put(mf)
+	return mf.ID, err
+}
+
+func (r mediaFileRepository) Update(entity interface{}, cols ...string) error {
+	mf := entity.(*model.MediaFile)
+	return r.Put(mf)
 }
 
 var _ model.MediaFileRepository = (*mediaFileRepository)(nil)
 var _ model.ResourceRepository = (*mediaFileRepository)(nil)
+var _ rest.Persistable = (*mediaFileRepository)(nil)

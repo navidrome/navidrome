@@ -1,8 +1,8 @@
 package model
 
-import "time"
-
 type Artist struct {
+	Annotations
+
 	ID              string `json:"id"          orm:"column(id)"`
 	Name            string `json:"name"`
 	AlbumCount      int    `json:"albumCount"`
@@ -10,13 +10,6 @@ type Artist struct {
 	FullText        string `json:"fullText"`
 	SortArtistName  string `json:"sortArtistName"`
 	OrderArtistName string `json:"orderArtistName"`
-
-	// Annotations
-	PlayCount int64     `json:"playCount"   orm:"-"`
-	PlayDate  time.Time `json:"playDate"    orm:"-"`
-	Rating    int       `json:"rating"      orm:"-"`
-	Starred   bool      `json:"starred"     orm:"-"`
-	StarredAt time.Time `json:"starredAt"   orm:"-"`
 }
 
 type Artists []Artist
@@ -37,4 +30,8 @@ type ArtistRepository interface {
 	Refresh(ids ...string) error
 	GetIndex() (ArtistIndexes, error)
 	AnnotatedRepository
+}
+
+func (a Artist) GetAnnotations() Annotations {
+	return a.Annotations
 }

@@ -21,7 +21,7 @@ func TestPersistence(t *testing.T) {
 	tests.Init(t, true)
 
 	//os.Remove("./test-123.db")
-	//conf.Server.Path = "./test-123.db"
+	//conf.Server.DbPath = "./test-123.db"
 	conf.Server.DbPath = "file::memory:?cache=shared"
 	_ = orm.RegisterDataBase("default", db.Driver, conf.Server.DbPath)
 	db.EnsureLatestVersion()

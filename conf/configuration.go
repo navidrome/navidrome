@@ -37,6 +37,7 @@ type nd struct {
 	DevLogSourceLine           bool   `default:"false"`
 	DevAutoCreateAdminPassword string `default:""`
 	DevEnableUIPlaylists       bool   `default:"true"`
+	DevEnableUIStarred         bool   `default:"false"`
 }
 
 var Server = &nd{}

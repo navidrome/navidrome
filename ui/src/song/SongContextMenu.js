@@ -1,16 +1,29 @@
 import React, { useState } from 'react'
+import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
-import { useTranslate } from 'react-admin'
+import { useUpdate, useTranslate, useRefresh, useNotify } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
+import StarIcon from '@material-ui/icons/Star'
+import StarBorderIcon from '@material-ui/icons/StarBorder'
+import NestedMenuItem from 'material-ui-nested-menu-item'
 import { addTracks, setTrack } from '../audioplayer'
 import { AddToPlaylistMenu } from '../common'
-import NestedMenuItem from 'material-ui-nested-menu-item'
-import PropTypes from 'prop-types'
+import config from '../config'
 
-export const SongContextMenu = ({ record, onAddToPlaylist }) => {
+const useStyles = makeStyles({
+  noWrap: {
+    whiteSpace: 'nowrap',
+  },
+})
+
+export const SongContextMenu = ({ className, record, onAddToPlaylist }) => {
+  const classes = useStyles()
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const notify = useNotify()
+  const refresh = useRefresh()
   const [anchorEl, setAnchorEl] = useState(null)
   const options = {
     playNow: {
@@ -41,10 +54,39 @@ export const SongContextMenu = ({ record, onAddToPlaylist }) => {
     e.stopPropagation()
   }
 
+  const [toggleStar, { toggling: loading }] = useUpdate(
+    'albumSong',
+    record.id,
+    record,
+    {
+      undoable: false,
+      onFailure: (error) => {
+        console.log(error)
+        notify('ra.page.error', 'warning')
+        refresh()
+      },
+    }
+  )
+
+  const handleToggleStar = (e, record) => {
+    record.starred = !record.starred
+    toggleStar()
+    e.stopPropagation()
+  }
+
   const open = Boolean(anchorEl)
 
   return (
-    <>
+    <span className={`${classes.noWrap} ${className}`}>
+      {config.enableStarred && (
+        <IconButton
+          onClick={(e) => handleToggleStar(e, record)}
+          size={'small'}
+          disabled={loading}
+        >
+          {record.starred ? <StarIcon /> : <StarBorderIcon />}
+        </IconButton>
+      )}
       <IconButton onClick={handleClick} size={'small'}>
         <MoreVertIcon />
       </IconButton>
@@ -70,7 +112,7 @@ export const SongContextMenu = ({ record, onAddToPlaylist }) => {
           />
         </NestedMenuItem>
       </Menu>
-    </>
+    </span>
   )
 }
 

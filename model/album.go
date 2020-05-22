@@ -3,6 +3,8 @@ package model
 import "time"
 
 type Album struct {
+	Annotations
+
 	ID                   string    `json:"id"            orm:"column(id)"`
 	Name                 string    `json:"name"`
 	CoverArtPath         string    `json:"coverArtPath"`
@@ -25,13 +27,6 @@ type Album struct {
 	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
 	CreatedAt            time.Time `json:"createdAt"`
 	UpdatedAt            time.Time `json:"updatedAt"`
-
-	// Annotations
-	PlayCount int64     `json:"playCount"   orm:"-"`
-	PlayDate  time.Time `json:"playDate"    orm:"-"`
-	Rating    int       `json:"rating"      orm:"-"`
-	Starred   bool      `json:"starred"     orm:"-"`
-	StarredAt time.Time `json:"starredAt"   orm:"-"`
 }
 
 type Albums []Album
@@ -47,4 +42,8 @@ type AlbumRepository interface {
 	Search(q string, offset int, size int) (Albums, error)
 	Refresh(ids ...string) error
 	AnnotatedRepository
+}
+
+func (a Album) GetAnnotations() Annotations {
+	return a.Annotations
 }

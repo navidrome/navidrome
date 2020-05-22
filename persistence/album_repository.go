@@ -74,12 +74,14 @@ func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuild
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
 	sq := r.selectAlbum().Where(Eq{"id": id})
-	var res model.Album
-	err := r.queryOne(sq, &res)
-	if err != nil {
+	var res model.Albums
+	if err := r.queryAll(sq, &res); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	if len(res) == 0 {
+		return nil, model.ErrNotFound
+	}
+	return &res[0], nil
 }
 
 func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {

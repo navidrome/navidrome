@@ -112,6 +112,8 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 	return res.RowsAffected()
 }
 
+// Note: Due to a bug in the QueryRow, this method does not map any embedded structs (ex: annotations)
+// In this case, use the queryAll method and get the first item of the returned list
 func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	query, args, err := sq.ToSql()
 	if err != nil {
@@ -169,7 +171,10 @@ func (r sqlRepository) put(id string, m interface{}) (newId string, err error) {
 			return "", err
 		}
 		if count > 0 {
-			return id, nil
+			if _, ok := m.(model.AnnotatedModel); ok {
+				err = r.updateAnnotations(id, m)
+			}
+			return id, err
 		}
 	}
 	// If does not have an id OR could not update (new record with predefined id)

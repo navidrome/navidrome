@@ -6,6 +6,8 @@ import (
 )
 
 type MediaFile struct {
+	Annotations
+
 	ID                   string    `json:"id"            orm:"pk;column(id)"`
 	Path                 string    `json:"path"`
 	Title                string    `json:"title"`
@@ -36,13 +38,6 @@ type MediaFile struct {
 	Compilation          bool      `json:"compilation"`
 	CreatedAt            time.Time `json:"createdAt"`
 	UpdatedAt            time.Time `json:"updatedAt"`
-
-	// Annotations
-	PlayCount int64     `json:"playCount"   orm:"-"`
-	PlayDate  time.Time `json:"playDate"    orm:"-"`
-	Rating    int       `json:"rating"      orm:"-"`
-	Starred   bool      `json:"starred"     orm:"-"`
-	StarredAt time.Time `json:"starredAt"   orm:"-"`
 }
 
 func (mf *MediaFile) ContentType() string {
@@ -66,4 +61,8 @@ type MediaFileRepository interface {
 	DeleteByPath(path string) error
 
 	AnnotatedRepository
+}
+
+func (mf MediaFile) GetAnnotations() Annotations {
+	return mf.Annotations
 }
