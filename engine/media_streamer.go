@@ -41,9 +41,11 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 
 	var format string
 	var bitRate int
+	var cached bool
 	defer func() {
-		log.Info("Streaming file", "title", mf.Title, "artist", mf.Artist, "format", format,
-			"bitRate", bitRate, "user", userName(ctx), "transcoding", format != "raw", "originalFormat", mf.Suffix)
+		log.Info("Streaming file", "title", mf.Title, "artist", mf.Artist, "format", format, "cached", cached,
+			"bitRate", bitRate, "user", userName(ctx), "transcoding", format != "raw",
+			"originalFormat", mf.Suffix, "originalBitRate", mf.BitRate)
 	}()
 
 	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, reqFormat, reqBitRate)
@@ -76,8 +78,10 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 		return nil, err
 	}
 
+	cached = w == nil
+
 	// If this is a brand new transcoding request, not in the cache, start transcoding
-	if w != nil {
+	if !cached {
 		log.Trace(ctx, "Cache miss. Starting new transcoding session", "id", mf.ID)
 		t, err := ms.ds.Transcoding(ctx).FindByFormat(format)
 		if err != nil {
@@ -93,7 +97,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 	}
 
 	// If it is in the cache, check if the stream is done being written. If so, return a ReaderSeeker
-	if w == nil {
+	if cached {
 		size := getFinalCachedSize(r)
 		if size > 0 {
 			log.Debug(ctx, "Streaming cached file", "id", mf.ID, "path", mf.Path,
