@@ -75,7 +75,7 @@ export const SongDatagrid = ({ multiDisc, contextVisible, ...rest }) => {
       }
     />
   )
-  return <Datagrid {...rest} body={<SongDatagridBody />} />
+  return <Datagrid {...rest} body={<SongDatagridBody />} optimized />
 }
 
 SongDatagrid.propTypes = {

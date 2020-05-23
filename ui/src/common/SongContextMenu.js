@@ -25,7 +25,7 @@ const useStyles = makeStyles({
   },
 })
 
-const SongContextMenu = ({ record, onAddToPlaylist, visible }) => {
+const SongContextMenu = ({ record, showStar, onAddToPlaylist, visible }) => {
   const classes = useStyles({ visible, starred: record.starred })
   const dispatch = useDispatch()
   const translate = useTranslate()
@@ -89,7 +89,7 @@ const SongContextMenu = ({ record, onAddToPlaylist, visible }) => {
 
   return (
     <span className={classes.noWrap}>
-      {config.enableStarred && !onAddToPlaylist && (
+      {config.enableStarred && showStar && (
         <IconButton
           onClick={(e) => handleToggleStar(e, record)}
           size={'small'}
@@ -137,6 +137,12 @@ SongContextMenu.propTypes = {
   record: PropTypes.object,
   onAddToPlaylist: PropTypes.func,
   visible: PropTypes.bool,
+  showStar: PropTypes.bool,
+}
+
+SongContextMenu.defaultProps = {
+  visible: true,
+  showStar: true,
 }
 
 export default SongContextMenu

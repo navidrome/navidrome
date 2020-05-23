@@ -70,10 +70,14 @@ const SongList = (props) => {
             <FunctionField source="year" render={(r) => r.year || ''} />
           )}
           <DurationField source="duration" />
-          <SongContextMenu
-            label={translate('resources.song.fields.starred')}
-            sortBy={'starred DESC, starredAt ASC'}
-          />
+          {isDesktop ? (
+            <SongContextMenu
+              label={translate('resources.song.fields.starred')}
+              sortBy={'starred DESC, starredAt ASC'}
+            />
+          ) : (
+            <SongContextMenu showStar={false} />
+          )}
         </SongDatagrid>
       )}
     </List>

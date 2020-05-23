@@ -55,6 +55,14 @@ const useStylesListToolbar = makeStyles({
   },
 })
 
+const SongsDatagridBody = (props) => (
+  <DatagridBody {...props} row={<SongDatagridRow contextVisible={true} />} />
+)
+
+const SongsDatagrid = ({ contextVisible, ...rest }) => {
+  return <Datagrid {...rest} body={<SongsDatagridBody />} />
+}
+
 const PlaylistSongs = (props) => {
   const classes = useStyles(props)
   const classesToolbar = useStylesListToolbar(props)
@@ -78,16 +86,6 @@ const PlaylistSongs = (props) => {
       refresh()
     }
   }
-
-  const SongsDatagridBody = (props) => (
-    <DatagridBody
-      {...props}
-      row={<SongDatagridRow contextVisible={isXsmall} />}
-    />
-  )
-  const SongsDatagrid = (props) => (
-    <Datagrid {...props} body={<SongsDatagridBody />} />
-  )
 
   return (
     <>
@@ -131,7 +129,10 @@ const PlaylistSongs = (props) => {
               <TextField source="title" />
               {isDesktop && <TextField source="artist" />}
               <DurationField source="duration" />
-              <SongContextMenu onAddToPlaylist={onAddToPlaylist} />
+              <SongContextMenu
+                onAddToPlaylist={onAddToPlaylist}
+                showStar={false}
+              />
             </SongsDatagrid>
           )}
         </Card>
