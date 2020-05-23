@@ -1,7 +1,22 @@
 import React, { useState, isValidElement, cloneElement } from 'react'
-import { Datagrid, DatagridBody, DatagridRow, useTranslate } from 'react-admin'
+import { Datagrid, DatagridBody, DatagridRow } from 'react-admin'
 import { TableCell, TableRow, Typography } from '@material-ui/core'
 import PropTypes from 'prop-types'
+import { makeStyles } from '@material-ui/core/styles'
+import AlbumIcon from '@material-ui/icons/Album'
+
+const useStyles = makeStyles({
+  subtitle: {
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    verticalAlign: 'middle',
+  },
+  discIcon: {
+    verticalAlign: 'text-top',
+    marginRight: '4px',
+  },
+})
 
 export const SongDatagridRow = ({
   record,
@@ -10,7 +25,7 @@ export const SongDatagridRow = ({
   contextVisible,
   ...rest
 }) => {
-  const translate = useTranslate()
+  const classes = useStyles()
   const [visible, setVisible] = useState(false)
   const childCount = React.Children.count(children)
   return (
@@ -19,15 +34,10 @@ export const SongDatagridRow = ({
         <TableRow>
           {record.trackNumber === 1 && (
             <TableCell colSpan={children.length + 2}>
-              <Typography variant="h6">
-                {record.discSubtitle
-                  ? translate('message.discSubtitle', {
-                      subtitle: record.discSubtitle,
-                      number: record.discNumber,
-                    })
-                  : translate('message.discWithoutSubtitle', {
-                      number: record.discNumber,
-                    })}
+              <Typography variant="h6" className={classes.subtitle}>
+                <AlbumIcon className={classes.discIcon} fontSize={'small'} />
+                {record.discNumber}
+                {record.discSubtitle && `: ${record.discSubtitle}`}
               </Typography>
             </TableCell>
           )}

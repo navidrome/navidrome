@@ -237,8 +237,6 @@
         "note": "ATENÇÃO",
         "transcodingDisabled": "Por questão de segurança, esta tela de configuração está desabilitada. Se você quiser alterar estas configurações, reinicie o servidor com a opção %{config}",
         "transcodingEnabled": "Navidrome está sendo executado com a opção %{config}. Isto permite que potencialmente se execute comandos do sistema pela interface Web. É recomendado que vc mantenha esta opção desabilitada, e só a habilite quando precisar configurar opções de Conversão",
-        "discSubtitle": "%{subtitle} (disco %{number})",
-        "discWithoutSubtitle": "Disco %{number}",
         "songsAddedToPlaylist": "Música adicionada à playlist |||| %{smart_count} músicas adicionadas à playlist"
     },
     "menu": {
