@@ -103,7 +103,7 @@ const AlbumContextMenu = ({ record, color }) => {
           parentMenuOpen={open}
         >
           <AddToPlaylistMenu
-            albumId={[record.id]}
+            albumId={record.id}
             onClose={() => setAnchorEl(null)}
           />
         </NestedMenuItem>
