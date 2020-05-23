@@ -35,7 +35,7 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 }
 
 func (r mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.newSelectWithAnnotation("id", options...))
+	return r.count(Select(), options...)
 }
 
 func (r mediaFileRepository) Exists(id string) (bool, error) {
