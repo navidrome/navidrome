@@ -9,17 +9,24 @@ import StarIcon from '@material-ui/icons/Star'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import NestedMenuItem from 'material-ui-nested-menu-item'
 import { addTracks, setTrack } from '../audioplayer'
-import { AddToPlaylistMenu } from '../common'
+import AddToPlaylistMenu from './AddToPlaylistMenu'
 import config from '../config'
 
 const useStyles = makeStyles({
   noWrap: {
     whiteSpace: 'nowrap',
   },
+  menu: {
+    visibility: (props) => (props.visible ? 'visible' : 'hidden'),
+  },
+  star: {
+    visibility: (props) =>
+      props.visible || props.starred ? 'visible' : 'hidden',
+  },
 })
 
-export const SongContextMenu = ({ className, record, onAddToPlaylist }) => {
-  const classes = useStyles()
+const SongContextMenu = ({ record, onAddToPlaylist, visible }) => {
+  const classes = useStyles({ visible, starred: record.starred })
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()
@@ -54,7 +61,7 @@ export const SongContextMenu = ({ className, record, onAddToPlaylist }) => {
     e.stopPropagation()
   }
 
-  const [toggleStar, { toggling: loading }] = useUpdate(
+  const [updateRecord, { loading: updating }] = useUpdate(
     'albumSong',
     record.id,
     record,
@@ -68,26 +75,36 @@ export const SongContextMenu = ({ className, record, onAddToPlaylist }) => {
     }
   )
 
-  const handleToggleStar = (e, record) => {
+  const toggleStar = (record) => {
     record.starred = !record.starred
-    toggleStar()
+    updateRecord()
+  }
+
+  const handleToggleStar = (e, record) => {
+    toggleStar(record)
     e.stopPropagation()
   }
 
   const open = Boolean(anchorEl)
 
   return (
-    <span className={`${classes.noWrap} ${className}`}>
+    <span className={classes.noWrap}>
       {config.enableStarred && !onAddToPlaylist && (
         <IconButton
           onClick={(e) => handleToggleStar(e, record)}
           size={'small'}
-          disabled={loading}
+          disabled={updating}
+          className={classes.star}
         >
           {record.starred ? <StarIcon /> : <StarBorderIcon />}
         </IconButton>
       )}
-      <IconButton onClick={handleClick} size={'small'}>
+      <IconButton
+        onClick={handleClick}
+        size={'small'}
+        className={classes.menu}
+        disabled={updating}
+      >
         <MoreVertIcon />
       </IconButton>
       <Menu
@@ -119,4 +136,7 @@ export const SongContextMenu = ({ className, record, onAddToPlaylist }) => {
 SongContextMenu.propTypes = {
   record: PropTypes.object,
   onAddToPlaylist: PropTypes.func,
+  visible: PropTypes.bool,
 }
+
+export default SongContextMenu

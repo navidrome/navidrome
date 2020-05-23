@@ -1,6 +1,7 @@
 import React from 'react'
 import {
   Datagrid,
+  DatagridBody,
   Filter,
   FunctionField,
   NumberField,
@@ -8,17 +9,30 @@ import {
   TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { DurationField, SimpleList, List, SongDetails } from '../common'
+import {
+  DurationField,
+  SimpleList,
+  List,
+  SongDetails,
+  SongDatagridRow,
+  SongContextMenu,
+} from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../audioplayer'
 import { SongBulkActions } from './SongBulkActions'
 import { AlbumLinkField } from './AlbumLinkField'
-import { SongContextMenu } from './SongContextMenu'
 
 const SongFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="title" alwaysOn />
   </Filter>
+)
+
+const SongsDatagridBody = (props) => (
+  <DatagridBody {...props} row={<SongDatagridRow />} />
+)
+const SongsDatagrid = (props) => (
+  <Datagrid {...props} body={<SongsDatagridBody />} />
 )
 
 const SongList = (props) => {
@@ -48,7 +62,7 @@ const SongList = (props) => {
           rightIcon={(r) => <SongContextMenu record={r} />}
         />
       ) : (
-        <Datagrid
+        <SongsDatagrid
           expand={<SongDetails />}
           rowClick={(id, basePath, record) => dispatch(setTrack(record))}
         >
@@ -62,7 +76,7 @@ const SongList = (props) => {
           )}
           <DurationField source="duration" />
           <SongContextMenu />
-        </Datagrid>
+        </SongsDatagrid>
       )}
     </List>
   )

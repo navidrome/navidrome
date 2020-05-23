@@ -2,6 +2,7 @@ import React from 'react'
 import {
   BulkActionsToolbar,
   Datagrid,
+  DatagridBody,
   DatagridLoading,
   ListToolbar,
   TextField,
@@ -11,8 +12,12 @@ import {
 import classnames from 'classnames'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import { DurationField, SongDetails } from '../common'
-import { SongContextMenu } from '../song/SongContextMenu'
+import {
+  DurationField,
+  SongDetails,
+  SongContextMenu,
+  SongDatagridRow,
+} from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -49,6 +54,13 @@ const useStylesListToolbar = makeStyles({
     justifyContent: 'flex-start',
   },
 })
+
+const SongsDatagridBody = (props) => (
+  <DatagridBody {...props} row={<SongDatagridRow />} />
+)
+const SongsDatagrid = (props) => (
+  <Datagrid {...props} body={<SongsDatagridBody />} />
+)
 
 const PlaylistSongs = (props) => {
   const classes = useStyles(props)
@@ -106,7 +118,7 @@ const PlaylistSongs = (props) => {
               size={'small'}
             />
           ) : (
-            <Datagrid
+            <SongsDatagrid
               expand={!isXsmall && <SongDetails />}
               rowClick={null}
               {...controllerProps}
@@ -117,7 +129,7 @@ const PlaylistSongs = (props) => {
               {isDesktop && <TextField source="artist" />}
               <DurationField source="duration" />
               <SongContextMenu onAddToPlaylist={onAddToPlaylist} />
-            </Datagrid>
+            </SongsDatagrid>
           )}
         </Card>
       </div>

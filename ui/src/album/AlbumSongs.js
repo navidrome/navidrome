@@ -14,8 +14,12 @@ import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { playTracks } from '../audioplayer'
-import { DurationField, SongDetails, SongDatagridRow } from '../common'
-import { SongContextMenu } from '../song/SongContextMenu'
+import {
+  DurationField,
+  SongDetails,
+  SongDatagridRow,
+  SongContextMenu,
+} from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({

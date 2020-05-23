@@ -12,6 +12,7 @@ import DocLink from './DocLink'
 import List from './List'
 import SongDatagridRow from './SongDatagridRow'
 import AddToPlaylistMenu from './AddToPlaylistMenu'
+import SongContextMenu from './SongContextMenu'
 
 export {
   Title,
@@ -30,4 +31,5 @@ export {
   ArtistLinkField,
   artistLink,
   AddToPlaylistMenu,
+  SongContextMenu,
 }
