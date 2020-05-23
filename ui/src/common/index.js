@@ -13,6 +13,7 @@ import List from './List'
 import { SongDatagrid, SongDatagridRow } from './SongDatagrid'
 import AddToPlaylistMenu from './AddToPlaylistMenu'
 import SongContextMenu from './SongContextMenu'
+import QuickFilter from './QuickFilter'
 
 export {
   Title,
@@ -33,4 +34,5 @@ export {
   artistLink,
   AddToPlaylistMenu,
   SongContextMenu,
+  QuickFilter,
 }

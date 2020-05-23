@@ -2,7 +2,6 @@ import React from 'react'
 import {
   Filter,
   FunctionField,
-  NullableBooleanInput,
   NumberField,
   SearchInput,
   TextField,
@@ -11,11 +10,12 @@ import {
 import { useMediaQuery } from '@material-ui/core'
 import {
   DurationField,
-  SimpleList,
   List,
-  SongDetails,
-  SongDatagrid,
+  SimpleList,
   SongContextMenu,
+  SongDatagrid,
+  SongDetails,
+  QuickFilter,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../audioplayer'
@@ -25,7 +25,7 @@ import { AlbumLinkField } from './AlbumLinkField'
 const SongFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="title" alwaysOn />
-    <NullableBooleanInput source="starred" />
+    <QuickFilter source="starred" defaultValue={true} />
   </Filter>
 )
 
