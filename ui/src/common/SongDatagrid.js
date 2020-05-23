@@ -1,10 +1,10 @@
 import React, { useState, isValidElement, cloneElement } from 'react'
-import { DatagridRow, useTranslate } from 'react-admin'
+import { Datagrid, DatagridBody, DatagridRow, useTranslate } from 'react-admin'
 import { TableCell, TableRow, Typography } from '@material-ui/core'
 import PropTypes from 'prop-types'
 import RangeField from './RangeField'
 
-const SongDatagridRow = ({ record, children, multiDisc, ...rest }) => {
+export const SongDatagridRow = ({ record, children, multiDisc, ...rest }) => {
   const translate = useTranslate()
   const [visible, setVisible] = useState(false)
   return (
@@ -51,4 +51,10 @@ RangeField.propTypes = {
   multiDisc: PropTypes.bool,
 }
 
-export default SongDatagridRow
+export const SongDatagrid = (props) => {
+  const multiDisc = props.multiDisc
+  const SongDatagridBody = (props) => (
+    <DatagridBody {...props} row={<SongDatagridRow multiDisc={multiDisc} />} />
+  )
+  return <Datagrid {...props} body={<SongDatagridBody />} />
+}

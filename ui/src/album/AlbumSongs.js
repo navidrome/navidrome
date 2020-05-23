@@ -1,8 +1,6 @@
 import React from 'react'
 import {
   BulkActionsToolbar,
-  Datagrid,
-  DatagridBody,
   DatagridLoading,
   FunctionField,
   ListToolbar,
@@ -17,7 +15,7 @@ import { playTracks } from '../audioplayer'
 import {
   DurationField,
   SongDetails,
-  SongDatagridRow,
+  SongDatagrid,
   SongContextMenu,
 } from '../common'
 
@@ -88,13 +86,6 @@ const AlbumSongs = (props) => {
   const showPlaceholder = !anySong || anySong.albumId !== albumId
   const hasBulkActions = props.bulkActionButtons !== false
 
-  const SongsDatagridBody = (props) => (
-    <DatagridBody {...props} row={<SongDatagridRow multiDisc={multiDisc} />} />
-  )
-  const SongsDatagrid = (props) => (
-    <Datagrid {...props} body={<SongsDatagridBody />} />
-  )
-
   return (
     <>
       <ListToolbar
@@ -127,11 +118,12 @@ const AlbumSongs = (props) => {
               size={'small'}
             />
           ) : (
-            <SongsDatagrid
+            <SongDatagrid
               expand={!isXsmall && <SongDetails />}
               rowClick={(id) => dispatch(playTracks(data, ids, id))}
               {...controllerProps}
               hasBulkActions={hasBulkActions}
+              multiDisc={multiDisc}
             >
               {isDesktop && (
                 <TextField
@@ -152,7 +144,7 @@ const AlbumSongs = (props) => {
               {isDesktop && <TextField source="artist" sortable={false} />}
               <DurationField source="duration" sortable={false} />
               <SongContextMenu />
-            </SongsDatagrid>
+            </SongDatagrid>
           )}
         </Card>
       </div>

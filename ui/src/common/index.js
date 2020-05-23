@@ -10,7 +10,7 @@ import SongDetails from './SongDetails'
 import SizeField from './SizeField'
 import DocLink from './DocLink'
 import List from './List'
-import SongDatagridRow from './SongDatagridRow'
+import { SongDatagrid, SongDatagridRow } from './SongDatagrid'
 import AddToPlaylistMenu from './AddToPlaylistMenu'
 import SongContextMenu from './SongContextMenu'
 
@@ -25,6 +25,7 @@ export {
   SimpleList,
   RangeField,
   SongDetails,
+  SongDatagrid,
   SongDatagridRow,
   DocLink,
   formatRange,

@@ -1,7 +1,5 @@
 import React from 'react'
 import {
-  Datagrid,
-  DatagridBody,
   Filter,
   FunctionField,
   NumberField,
@@ -14,7 +12,7 @@ import {
   SimpleList,
   List,
   SongDetails,
-  SongDatagridRow,
+  SongDatagrid,
   SongContextMenu,
 } from '../common'
 import { useDispatch } from 'react-redux'
@@ -26,13 +24,6 @@ const SongFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="title" alwaysOn />
   </Filter>
-)
-
-const SongsDatagridBody = (props) => (
-  <DatagridBody {...props} row={<SongDatagridRow />} />
-)
-const SongsDatagrid = (props) => (
-  <Datagrid {...props} body={<SongsDatagridBody />} />
 )
 
 const SongList = (props) => {
@@ -59,10 +50,10 @@ const SongList = (props) => {
             </>
           )}
           linkType={(id, basePath, record) => dispatch(setTrack(record))}
-          rightIcon={(r) => <SongContextMenu record={r} />}
+          rightIcon={(r) => <SongContextMenu record={r} visible={true} />}
         />
       ) : (
-        <SongsDatagrid
+        <SongDatagrid
           expand={<SongDetails />}
           rowClick={(id, basePath, record) => dispatch(setTrack(record))}
         >
@@ -76,7 +67,7 @@ const SongList = (props) => {
           )}
           <DurationField source="duration" />
           <SongContextMenu />
-        </SongsDatagrid>
+        </SongDatagrid>
       )}
     </List>
   )

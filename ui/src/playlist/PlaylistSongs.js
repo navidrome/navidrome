@@ -1,11 +1,11 @@
 import React from 'react'
 import {
   BulkActionsToolbar,
-  Datagrid,
-  DatagridBody,
   DatagridLoading,
   ListToolbar,
   TextField,
+  DatagridBody,
+  Datagrid,
   useListController,
   useRefresh,
 } from 'react-admin'
