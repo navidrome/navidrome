@@ -2,9 +2,14 @@ import React, { useState, isValidElement, cloneElement } from 'react'
 import { Datagrid, DatagridBody, DatagridRow, useTranslate } from 'react-admin'
 import { TableCell, TableRow, Typography } from '@material-ui/core'
 import PropTypes from 'prop-types'
-import RangeField from './RangeField'
 
-export const SongDatagridRow = ({ record, children, multiDisc, ...rest }) => {
+export const SongDatagridRow = ({
+  record,
+  children,
+  multiDisc,
+  contextVisible,
+  ...rest
+}) => {
   const translate = useTranslate()
   const [visible, setVisible] = useState(false)
   return (
@@ -37,7 +42,10 @@ export const SongDatagridRow = ({ record, children, multiDisc, ...rest }) => {
           child &&
           isValidElement(child) &&
           child.type.name === 'SongContextMenu'
-            ? cloneElement(child, { visible, ...rest })
+            ? cloneElement(child, {
+                visible: contextVisible || visible,
+                ...rest,
+              })
             : child
         )}
       </DatagridRow>
@@ -45,16 +53,29 @@ export const SongDatagridRow = ({ record, children, multiDisc, ...rest }) => {
   )
 }
 
-RangeField.propTypes = {
+SongDatagridRow.propTypes = {
   record: PropTypes.object,
   children: PropTypes.node,
   multiDisc: PropTypes.bool,
+  contextVisible: PropTypes.bool,
 }
 
-export const SongDatagrid = (props) => {
-  const multiDisc = props.multiDisc
+export const SongDatagrid = ({ multiDisc, contextVisible, ...rest }) => {
   const SongDatagridBody = (props) => (
-    <DatagridBody {...props} row={<SongDatagridRow multiDisc={multiDisc} />} />
+    <DatagridBody
+      {...props}
+      row={
+        <SongDatagridRow
+          multiDisc={multiDisc}
+          contextVisible={contextVisible}
+        />
+      }
+    />
   )
-  return <Datagrid {...props} body={<SongDatagridBody />} />
+  return <Datagrid {...rest} body={<SongDatagridBody />} />
+}
+
+SongDatagrid.propTypes = {
+  contextVisible: PropTypes.bool,
+  multiDisc: PropTypes.bool,
 }

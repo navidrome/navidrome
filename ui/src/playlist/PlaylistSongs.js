@@ -55,13 +55,6 @@ const useStylesListToolbar = makeStyles({
   },
 })
 
-const SongsDatagridBody = (props) => (
-  <DatagridBody {...props} row={<SongDatagridRow />} />
-)
-const SongsDatagrid = (props) => (
-  <Datagrid {...props} body={<SongsDatagridBody />} />
-)
-
 const PlaylistSongs = (props) => {
   const classes = useStyles(props)
   const classesToolbar = useStylesListToolbar(props)
@@ -85,6 +78,16 @@ const PlaylistSongs = (props) => {
       refresh()
     }
   }
+
+  const SongsDatagridBody = (props) => (
+    <DatagridBody
+      {...props}
+      row={<SongDatagridRow contextVisible={isXsmall} />}
+    />
+  )
+  const SongsDatagrid = (props) => (
+    <Datagrid {...props} body={<SongsDatagridBody />} />
+  )
 
   return (
     <>
