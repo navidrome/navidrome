@@ -28,13 +28,14 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 		"random": "RANDOM()",
 	}
 	r.filterMappings = map[string]filterFunc{
-		"title": fullTextFilter,
+		"title":   fullTextFilter,
+		"starred": booleanFilter,
 	}
 	return r
 }
 
 func (r mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(Select(), options...)
+	return r.count(r.newSelectWithAnnotation("id", options...))
 }
 
 func (r mediaFileRepository) Exists(id string) (bool, error) {

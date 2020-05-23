@@ -2,11 +2,14 @@ import React from 'react'
 import {
   Filter,
   FunctionField,
+  NullableBooleanInput,
   NumberField,
   SearchInput,
   TextField,
+  useTranslate,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
+import StarBorderIcon from '@material-ui/icons/StarBorder'
 import {
   DurationField,
   SimpleList,
@@ -23,11 +26,13 @@ import { AlbumLinkField } from './AlbumLinkField'
 const SongFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="title" alwaysOn />
+    <NullableBooleanInput source="starred" />
   </Filter>
 )
 
 const SongList = (props) => {
   const dispatch = useDispatch()
+  const translate = useTranslate()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   return (
@@ -66,7 +71,10 @@ const SongList = (props) => {
             <FunctionField source="year" render={(r) => r.year || ''} />
           )}
           <DurationField source="duration" />
-          <SongContextMenu />
+          <SongContextMenu
+            label={translate('resources.song.fields.starred')}
+            sortBy={'starred DESC, starredAt ASC'}
+          />
         </SongDatagrid>
       )}
     </List>

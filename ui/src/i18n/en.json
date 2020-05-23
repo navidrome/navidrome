@@ -18,7 +18,8 @@
                 "size": "File size",
                 "bitRate": "Bit rate",
                 "updatedAt": "Uploaded at",
-                "discSubtitle": "Disc Subtitle"
+                "discSubtitle": "Disc Subtitle",
+                "starred": "Starred"
             },
             "actions": {
                 "addToQueue": "Play Later",

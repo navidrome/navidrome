@@ -6,6 +6,7 @@ import {
   ListToolbar,
   TextField,
   useListController,
+  useTranslate,
 } from 'react-admin'
 import classnames from 'classnames'
 import { useDispatch } from 'react-redux'
@@ -65,6 +66,7 @@ const trackName = (r) => {
 
 const AlbumSongs = (props) => {
   const classes = useStyles(props)
+  const translate = useTranslate()
   const classesToolbar = useStylesListToolbar(props)
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -144,7 +146,9 @@ const AlbumSongs = (props) => {
               )}
               {isDesktop && <TextField source="artist" sortable={false} />}
               <DurationField source="duration" sortable={false} />
-              <SongContextMenu />
+              <SongContextMenu
+                label={translate('resources.song.fields.starred')}
+              />
             </SongDatagrid>
           )}
         </Card>
