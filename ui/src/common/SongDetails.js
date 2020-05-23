@@ -36,7 +36,7 @@ const SongDetails = (props) => {
         <TableBody>
           {Object.keys(data).map((key) => {
             return (
-              <TableRow key={record.id}>
+              <TableRow key={`${record.id}-${key}`}>
                 <TableCell component="th" scope="row">
                   {translate(`resources.song.fields.${key}`, {
                     _: inflection.humanize(inflection.underscore(key)),
