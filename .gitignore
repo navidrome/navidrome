@@ -1,11 +1,13 @@
 .DS_Store
 .idea
+.vscode
 .envrc
 /navidrome
 /iTunes*.xml
 /tmp
 data/*
 vendor/*/
+cache/
 wiki
 TODO.md
 var
