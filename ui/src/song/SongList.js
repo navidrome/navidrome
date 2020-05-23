@@ -9,7 +9,6 @@ import {
   useTranslate,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
 import {
   DurationField,
   SimpleList,
