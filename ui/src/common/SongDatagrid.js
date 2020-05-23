@@ -12,6 +12,7 @@ export const SongDatagridRow = ({
 }) => {
   const translate = useTranslate()
   const [visible, setVisible] = useState(false)
+  const childCount = React.Children.count(children)
   return (
     <>
       {multiDisc && (
@@ -38,15 +39,17 @@ export const SongDatagridRow = ({
         onMouseLeave={() => setVisible(false)}
         {...rest}
       >
-        {React.Children.map(children, (child) =>
-          child &&
-          isValidElement(child) &&
-          child.type.name === 'SongContextMenu'
-            ? cloneElement(child, {
-                visible: contextVisible || visible,
-                ...rest,
-              })
-            : child
+        {React.Children.map(
+          children,
+          (child, index) =>
+            child &&
+            isValidElement(child) &&
+            (index < childCount - 1
+              ? child
+              : cloneElement(child, {
+                  visible: contextVisible || visible,
+                  ...rest,
+                }))
         )}
       </DatagridRow>
     </>
