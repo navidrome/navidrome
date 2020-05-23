@@ -24,4 +24,3 @@ docker-compose.override.yml
 navidrome.db-shm
 navidrome.db-wal
 tags
-
