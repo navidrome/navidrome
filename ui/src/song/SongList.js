@@ -92,7 +92,7 @@ const SongList = (props) => {
                   className={classes.columnIcon}
                 />
               }
-              sortBy={'starred DESC, starredAt ASC'}
+              sortBy={'starred DESC, starredAt DESC'}
             />
           ) : (
             <SongContextMenu showStar={false} />
