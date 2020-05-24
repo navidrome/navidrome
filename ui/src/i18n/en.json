@@ -69,7 +69,8 @@
                 "createdAt": "Created at"
             },
             "actions": {
-                "selectPlaylist": "Add songs to playlist:"
+                "selectPlaylist": "Add songs to playlist:",
+                "newPlaylist": "New playlist"
             }
         },
         "user": {

@@ -17,6 +17,7 @@ import { albumViewReducer } from './album/albumState'
 import config from './config'
 import customRoutes from './routes'
 import themeReducer from './personal/themeReducer'
+import { newPlaylistDialogReducer } from './dialogs/dialogState'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 
@@ -32,6 +33,7 @@ const App = () => (
         queue: playQueueReducer,
         albumView: albumViewReducer,
         theme: themeReducer,
+        newPlaylistDialog: newPlaylistDialogReducer,
       },
     })}
   >
