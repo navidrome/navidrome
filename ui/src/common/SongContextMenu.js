@@ -143,6 +143,7 @@ SongContextMenu.propTypes = {
 SongContextMenu.defaultProps = {
   visible: true,
   showStar: true,
+  addLabel: true,
 }
 
 export default SongContextMenu

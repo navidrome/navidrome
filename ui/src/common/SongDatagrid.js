@@ -58,6 +58,7 @@ export const SongDatagridRow = ({
               ? child
               : cloneElement(child, {
                   visible: contextVisible || visible,
+                  ...child.props,
                   ...rest,
                 }))
         )}
@@ -85,7 +86,7 @@ export const SongDatagrid = ({ multiDisc, contextVisible, ...rest }) => {
       }
     />
   )
-  return <Datagrid {...rest} body={<SongDatagridBody />} optimized />
+  return <Datagrid {...rest} body={<SongDatagridBody />} />
 }
 
 SongDatagrid.propTypes = {

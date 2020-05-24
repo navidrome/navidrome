@@ -72,6 +72,7 @@ const SongList = (props) => {
           <DurationField source="duration" />
           {isDesktop ? (
             <SongContextMenu
+              source={'starred'}
               label={translate('resources.song.fields.starred')}
               sortBy={'starred DESC, starredAt ASC'}
             />
