@@ -1,12 +1,16 @@
 import React from 'react'
+import { useDispatch } from 'react-redux'
+import PropTypes from 'prop-types'
 import {
   useDataProvider,
   useGetList,
   useNotify,
   useTranslate,
 } from 'react-admin'
-import { MenuItem } from '@material-ui/core'
-import PropTypes from 'prop-types'
+import { MenuItem, Divider } from '@material-ui/core'
+import NewPlaylistIcon from '@material-ui/icons/Add'
+import { openNewPlaylist } from '../dialogs/dialogState'
+import NewPlaylistDialog from '../dialogs/NewPlaylist'
 
 export const addTracksToPlaylist = (dataProvider, selectedIds, playlistId) =>
   dataProvider
@@ -29,6 +33,7 @@ export const addAlbumToPlaylist = (dataProvider, albumId, playlistId) =>
 const AddToPlaylistMenu = React.forwardRef(
   ({ selectedIds, albumId, onClose, onItemAdded }, ref) => {
     const notify = useNotify()
+    const dispatch = useDispatch()
     const translate = useTranslate()
     const dataProvider = useDataProvider()
     const { ids, data, loaded } = useGetList(
@@ -42,48 +47,55 @@ const AddToPlaylistMenu = React.forwardRef(
       return <MenuItem>Loading...</MenuItem>
     }
 
-    // TODO: This is temporary, while we don't have the "New Playlist" option in the menu
-    if (ids.length === 0) {
-      return (
-        <MenuItem
-          onClick={(e) => {
-            e.stopPropagation()
-            onClose && onClose(e)
-          }}
-        >
-          {translate('message.noPlaylistsAvailable')}
-        </MenuItem>
-      )
+    const addToPlaylist = (playlistId) => {
+      const add = albumId
+        ? addAlbumToPlaylist(dataProvider, albumId, playlistId)
+        : addTracksToPlaylist(dataProvider, selectedIds, playlistId)
+
+      add
+        .then((len) => {
+          notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
+          onItemAdded(playlistId)
+        })
+        .catch(() => {
+          notify('ra.page.error', 'warning')
+        })
     }
 
     const handleItemClick = (e) => {
       e.preventDefault()
       const playlistId = e.target.getAttribute('value')
       if (playlistId !== '') {
-        const add = albumId
-          ? addAlbumToPlaylist(dataProvider, albumId, playlistId)
-          : addTracksToPlaylist(dataProvider, selectedIds, playlistId)
-
-        add
-          .then((len) => {
-            notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
-            onItemAdded && onItemAdded(playlistId, selectedIds)
-          })
-          .catch(() => {
-            notify('ra.page.error', 'warning')
-          })
+        addToPlaylist(playlistId)
       }
       e.stopPropagation()
-      onClose && onClose(e)
+      onClose(e)
+    }
+
+    const handleOpenDialog = (e) => {
+      e.preventDefault()
+      dispatch(openNewPlaylist(albumId, selectedIds))
+      e.stopPropagation()
+      onClose(e)
     }
 
     return (
       <>
+        <Divider component="li" />
         {ids.map((id) => (
           <MenuItem value={id} key={id} onClick={handleItemClick}>
             {data[id].name}
           </MenuItem>
         ))}
+        <MenuItem
+          value="newPlaylist"
+          key="newPlaylist"
+          onClick={handleOpenDialog}
+        >
+          {<NewPlaylistIcon fontSize="small" />}&nbsp;
+          {translate('resources.playlist.actions.newPlaylist')}
+        </MenuItem>
+        <NewPlaylistDialog onSubmit={onItemAdded} />
       </>
     )
   }
@@ -98,6 +110,8 @@ AddToPlaylistMenu.propTypes = {
 
 AddToPlaylistMenu.defaultProps = {
   selectedIds: [],
+  onClose: () => {},
+  onItemAdded: () => {},
 }
 
 export default AddToPlaylistMenu
