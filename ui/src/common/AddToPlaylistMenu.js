@@ -1,5 +1,10 @@
 import React from 'react'
-import { useDataProvider, useGetList, useNotify } from 'react-admin'
+import {
+  useDataProvider,
+  useGetList,
+  useNotify,
+  useTranslate,
+} from 'react-admin'
 import { MenuItem } from '@material-ui/core'
 import PropTypes from 'prop-types'
 
@@ -24,6 +29,7 @@ export const addAlbumToPlaylist = (dataProvider, albumId, playlistId) =>
 const AddToPlaylistMenu = React.forwardRef(
   ({ selectedIds, albumId, onClose, onItemAdded }, ref) => {
     const notify = useNotify()
+    const translate = useTranslate()
     const dataProvider = useDataProvider()
     const { ids, data, loaded } = useGetList(
       'playlist',
@@ -34,6 +40,20 @@ const AddToPlaylistMenu = React.forwardRef(
 
     if (!loaded) {
       return <MenuItem>Loading...</MenuItem>
+    }
+
+    // TODO: This is temporary, while we don't have the "New Playlist" option in the menu
+    if (ids.length === 0) {
+      return (
+        <MenuItem
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose && onClose(e)
+          }}
+        >
+          {translate('message.noPlaylistsAvailable')}
+        </MenuItem>
+      )
     }
 
     const handleItemClick = (e) => {
