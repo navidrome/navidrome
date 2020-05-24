@@ -18,7 +18,8 @@
                 "size": "Velikost souboru",
                 "updatedAt": "Nahráno",
                 "bitRate": "Přenosová rychlost",
-                "discSubtitle": "Podtitul disku"
+                "discSubtitle": "Podtitul disku",
+                "starred": ""
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -96,7 +97,8 @@
                 "public": "Veřejný",
                 "updatedAt": "Nahrán",
                 "createdAt": "Vytvořen",
-                "songCount": "Skladby"
+                "songCount": "Skladby",
+                "comment": ""
             },
             "actions": {
                 "selectPlaylist": "Přidat skladby do seznamu:"
@@ -171,7 +173,7 @@
             "not_found": "Nenalezeno",
             "show": "%{name} #%{id}",
             "empty": "Zatím žádné %{name}",
-            "invite": "Chcete přidat?"
+            "invite": "Chcete jeden přidat?"
         },
         "input": {
             "file": {
@@ -236,8 +238,8 @@
         "note": "POZNÁMKA",
         "transcodingDisabled": "Měnění nastavení překódování je ve webovém prostředí vypnuto kvůli bezpečnosti. Pokud by jste chtěli změnit (upravit nebo přidat) možnosti překódování, restartujte server s možností %{config}.",
         "transcodingEnabled": "Navidrome právě běží s možností %{config}, umožňující spouštění systémových příkazů z nastavení překódování pomocí webového rozhraní. Doporučujeme ji vypnout kvůli bezpečnosti a použít ji pouze pokud upravujete nastavení překódování.",
-        "discSubtitle": "%{subtitle} (disk %{number})",
-        "discWithoutSubtitle": "Disk %{number}"
+        "songsAddedToPlaylist": "",
+        "noPlaylistsAvailable": ""
     },
     "menu": {
         "library": "Knihovna",
