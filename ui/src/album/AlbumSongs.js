@@ -6,12 +6,12 @@ import {
   ListToolbar,
   TextField,
   useListController,
-  useTranslate,
 } from 'react-admin'
 import classnames from 'classnames'
 import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
+import StarBorderIcon from '@material-ui/icons/StarBorder'
 import { playTracks } from '../audioplayer'
 import {
   DurationField,
@@ -46,6 +46,10 @@ const useStyles = makeStyles(
       flexWrap: 'wrap',
     },
     noResults: { padding: 20 },
+    columnIcon: {
+      marginLeft: '3px',
+      verticalAlign: 'text-top',
+    },
   }),
   { name: 'RaList' }
 )
@@ -66,7 +70,6 @@ const trackName = (r) => {
 
 const AlbumSongs = (props) => {
   const classes = useStyles(props)
-  const translate = useTranslate()
   const classesToolbar = useStylesListToolbar(props)
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -147,7 +150,14 @@ const AlbumSongs = (props) => {
               {isDesktop && <TextField source="artist" sortable={false} />}
               <DurationField source="duration" sortable={false} />
               <SongContextMenu
-                label={translate('resources.song.fields.starred')}
+                source={'starred'}
+                sortable={false}
+                label={
+                  <StarBorderIcon
+                    fontSize={'small'}
+                    className={classes.columnIcon}
+                  />
+                }
               />
             </SongDatagrid>
           )}

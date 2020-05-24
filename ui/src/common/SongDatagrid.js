@@ -58,7 +58,6 @@ export const SongDatagridRow = ({
               ? child
               : cloneElement(child, {
                   visible: contextVisible || visible,
-                  ...child.props,
                   ...rest,
                 }))
         )}

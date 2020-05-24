@@ -96,7 +96,11 @@ const SongContextMenu = ({ record, showStar, onAddToPlaylist, visible }) => {
           disabled={updating}
           className={classes.star}
         >
-          {record.starred ? <StarIcon /> : <StarBorderIcon />}
+          {record.starred ? (
+            <StarIcon fontSize={'small'} />
+          ) : (
+            <StarBorderIcon fontSize={'small'} />
+          )}
         </IconButton>
       )}
       <IconButton

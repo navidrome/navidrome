@@ -5,9 +5,11 @@ import {
   NumberField,
   SearchInput,
   TextField,
-  useTranslate,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
+import StarBorderIcon from '@material-ui/icons/StarBorder'
+import StarIcon from '@material-ui/icons/Star'
 import {
   DurationField,
   List,
@@ -22,16 +24,27 @@ import { setTrack } from '../audioplayer'
 import { SongBulkActions } from './SongBulkActions'
 import { AlbumLinkField } from './AlbumLinkField'
 
+const useStyles = makeStyles({
+  columnIcon: {
+    marginLeft: '3px',
+    verticalAlign: 'text-top',
+  },
+})
+
 const SongFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="title" alwaysOn />
-    <QuickFilter source="starred" defaultValue={true} />
+    <QuickFilter
+      source="starred"
+      label={<StarIcon fontSize={'small'} />}
+      defaultValue={true}
+    />
   </Filter>
 )
 
 const SongList = (props) => {
+  const classes = useStyles()
   const dispatch = useDispatch()
-  const translate = useTranslate()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   return (
@@ -73,7 +86,12 @@ const SongList = (props) => {
           {isDesktop ? (
             <SongContextMenu
               source={'starred'}
-              label={translate('resources.song.fields.starred')}
+              label={
+                <StarBorderIcon
+                  fontSize={'small'}
+                  className={classes.columnIcon}
+                />
+              }
               sortBy={'starred DESC, starredAt ASC'}
             />
           ) : (
