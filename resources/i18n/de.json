@@ -18,12 +18,13 @@
                 "size": "Dateigröße",
                 "updatedAt": "Hochgeladen um",
                 "bitRate": "Bitrate",
-                "discSubtitle": ""
+                "discSubtitle": "CD Untertitel",
+                "starred": ""
             },
             "actions": {
                 "addToQueue": "Später abspielen",
                 "playNow": "Jetzt abspielen",
-                "addToPlaylist": "Der Playlist hinzufügen"
+                "addToPlaylist": "Zur Playlist hinzufügen"
             }
         },
         "album": {
@@ -64,7 +65,7 @@
                 "updatedAt": "Aktualisiert um",
                 "name": "Name",
                 "password": "Passwort",
-                "createdAt": "Ergestellt um"
+                "createdAt": "Erstellt um"
             }
         },
         "player": {
@@ -95,12 +96,12 @@
                 "owner": "Inhaber",
                 "public": "Öffentlich",
                 "updatedAt": "Aktualisiert um",
-                "createdAt": "Ergestellt um",
+                "createdAt": "Erstellt um",
                 "songCount": "Songanzahl",
-                "comment": ""
+                "comment": "Kommentar"
             },
             "actions": {
-                "selectPlaylist": "Songs der Playlist hinzufügen"
+                "selectPlaylist": "Songs zur Playlist hinzufügen"
             }
         }
     },
@@ -172,7 +173,7 @@
             "not_found": "Nicht gefunden",
             "show": "%{name} #%{id}",
             "empty": "Noch kein %{name}.\n",
-            "invite": "Möchten du einen hinzufügen?"
+            "invite": "Möchtest du eine hinzufügen?"
         },
         "input": {
             "file": {
@@ -237,9 +238,8 @@
         "note": "HINWEIS",
         "transcodingDisabled": "Die Änderung der Transcodierungskonfiguration über die Web-UI ist aus Sicherheitsgründen deaktiviert. Wenn du die Transcodierungsoptionen ändern (bearbeiten oder hinzufügen) möchtest, starte den Server mit der Konfigurationsoption %{config} neu.",
         "transcodingEnabled": "Navidrome läuft derzeit mit %{config}, wodurch es möglich ist, Systembefehle aus den Transkodierungseinstellungen über die Webschnittstelle auszuführen. Wir empfehlen, es aus Sicherheitsgründen zu deaktivieren und nur bei der Konfiguration von Transkodierungsoptionen zu aktivieren.",
-        "discSubtitle": "",
-        "discWithoutSubtitle": "",
-        "songsAddedToPlaylist": ""
+        "songsAddedToPlaylist": "Einen Song zur Playlist hinzugefügt |||| %{smart_count} Songs zur Playlist hinzugefügt",
+        "noPlaylistsAvailable": ""
     },
     "menu": {
         "library": "Bibliothek",
