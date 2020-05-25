@@ -51,7 +51,9 @@ const SelectPlaylistInput = ({ onChange }) => {
         if (params.inputValue !== '') {
           filtered.push({
             inputValue: params.inputValue,
-            name: `Add "${params.inputValue}"`,
+            name: translate('resources.playlist.actions.addNewPlaylist', {
+              name: params.inputValue,
+            }),
           })
         }
 

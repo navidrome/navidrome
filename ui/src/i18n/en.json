@@ -70,7 +70,7 @@
             },
             "actions": {
                 "selectPlaylist": "Select a playlist:",
-                "addToPlaylist": "New playlist"
+                "addNewPlaylist": "Create \"%{name}\""
             }
         },
         "user": {

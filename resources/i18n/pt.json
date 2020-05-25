@@ -100,7 +100,8 @@
                 "songCount": "Músicas"
             },
             "actions": {
-                "selectPlaylist": "Selecione a playlist:"
+                "selectPlaylist": "Selecione a playlist:",
+                "addNewPlaylist": "Criar \"%{name}\""
             }
         }
     },
