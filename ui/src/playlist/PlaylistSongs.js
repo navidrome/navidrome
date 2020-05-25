@@ -18,6 +18,7 @@ import {
   SongContextMenu,
   SongDatagridRow,
 } from '../common'
+import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -137,6 +138,7 @@ const PlaylistSongs = (props) => {
           )}
         </Card>
       </div>
+      <AddToPlaylistDialog />,
     </>
   )
 }

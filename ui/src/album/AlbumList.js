@@ -16,6 +16,7 @@ import AlbumListActions from './AlbumListActions'
 import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
 import { ALBUM_MODE_LIST } from './albumState'
+import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -57,22 +58,27 @@ const AlbumList = (props) => {
   const { width } = props
   const albumView = useSelector((state) => state.albumView)
   return (
-    <List
-      {...props}
-      exporter={false}
-      bulkActionButtons={false}
-      actions={<AlbumListActions />}
-      sort={{ field: 'created_at', order: 'DESC' }}
-      filters={<AlbumFilter />}
-      perPage={getPerPage(width)}
-      pagination={<Pagination rowsPerPageOptions={getPerPageOptions(width)} />}
-    >
-      {albumView.mode === ALBUM_MODE_LIST ? (
-        <AlbumListView {...props} />
-      ) : (
-        <AlbumGridView {...props} />
-      )}
-    </List>
+    <>
+      <List
+        {...props}
+        exporter={false}
+        bulkActionButtons={false}
+        actions={<AlbumListActions />}
+        sort={{ field: 'created_at', order: 'DESC' }}
+        filters={<AlbumFilter />}
+        perPage={getPerPage(width)}
+        pagination={
+          <Pagination rowsPerPageOptions={getPerPageOptions(width)} />
+        }
+      >
+        {albumView.mode === ALBUM_MODE_LIST ? (
+          <AlbumListView {...props} />
+        ) : (
+          <AlbumGridView {...props} />
+        )}
+      </List>
+      <AddToPlaylistDialog />,
+    </>
   )
 }
 
