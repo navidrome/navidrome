@@ -7,10 +7,9 @@ import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import StarIcon from '@material-ui/icons/Star'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
-import NestedMenuItem from 'material-ui-nested-menu-item'
 import { addTracks, setTrack } from '../audioplayer'
-import AddToPlaylistMenu from './AddToPlaylistMenu'
 import config from '../config'
+import { openAddToPlaylist } from '../dialogs/dialogState'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -40,6 +39,14 @@ const SongContextMenu = ({ record, showStar, onAddToPlaylist, visible }) => {
     addToQueue: {
       label: translate('resources.song.actions.addToQueue'),
       action: (record) => addTracks({ [record.id]: record }),
+    },
+    addToPlaylist: {
+      label: translate('resources.song.actions.addToPlaylist'),
+      action: (record) =>
+        openAddToPlaylist({
+          selectedIds: [record.mediaFileId || record.id],
+          onSuccess: (id) => onAddToPlaylist(id),
+        }),
     },
   }
 
@@ -122,16 +129,6 @@ const SongContextMenu = ({ record, showStar, onAddToPlaylist, visible }) => {
             {options[key].label}
           </MenuItem>
         ))}
-        <NestedMenuItem
-          label={translate('resources.song.actions.addToPlaylist')}
-          parentMenuOpen={open}
-        >
-          <AddToPlaylistMenu
-            selectedIds={[record.mediaFileId || record.id]}
-            onClose={handleClose}
-            onItemAdded={onAddToPlaylist}
-          />
-        </NestedMenuItem>
       </Menu>
     </span>
   )
@@ -145,6 +142,7 @@ SongContextMenu.propTypes = {
 }
 
 SongContextMenu.defaultProps = {
+  onAddToPlaylist: () => {},
   visible: true,
   showStar: true,
   addLabel: true,

@@ -1,49 +1,30 @@
 import React from 'react'
+import { useDispatch } from 'react-redux'
 import { Button, useTranslate, useUnselectAll } from 'react-admin'
-import { Menu } from '@material-ui/core'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
-import { AddToPlaylistMenu } from '../common'
+import { openAddToPlaylist } from '../dialogs/dialogState'
 
 const AddToPlaylistButton = ({ resource, selectedIds, onAddToPlaylist }) => {
-  const [anchorEl, setAnchorEl] = React.useState(null)
   const translate = useTranslate()
+  const dispatch = useDispatch()
   const unselectAll = useUnselectAll()
 
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget)
-  }
-
-  const handleClose = () => {
-    setAnchorEl(null)
-    unselectAll(resource)
+  const handleClick = () => {
+    dispatch(
+      openAddToPlaylist({ selectedIds, onSuccess: () => unselectAll(resource) })
+    )
   }
 
   return (
-    <>
-      <Button
-        aria-controls="simple-menu"
-        aria-haspopup="true"
-        onClick={handleClick}
-        color="secondary"
-        label={translate('resources.song.actions.addToPlaylist')}
-      >
-        <PlaylistAddIcon />
-      </Button>
-      <Menu
-        id="simple-menu"
-        anchorEl={anchorEl}
-        keepMounted
-        open={Boolean(anchorEl)}
-        onClose={handleClose}
-      >
-        <AddToPlaylistMenu
-          selectedIds={selectedIds}
-          menuOpen={Boolean(anchorEl)}
-          onClose={handleClose}
-          onItemAdded={onAddToPlaylist}
-        />
-      </Menu>
-    </>
+    <Button
+      aria-controls="simple-menu"
+      aria-haspopup="true"
+      onClick={handleClick}
+      color="secondary"
+      label={translate('resources.song.actions.addToPlaylist')}
+    >
+      <PlaylistAddIcon />
+    </Button>
   )
 }
 

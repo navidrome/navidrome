@@ -11,7 +11,6 @@ import SizeField from './SizeField'
 import DocLink from './DocLink'
 import List from './List'
 import { SongDatagrid, SongDatagridRow } from './SongDatagrid'
-import AddToPlaylistMenu from './AddToPlaylistMenu'
 import SongContextMenu from './SongContextMenu'
 import QuickFilter from './QuickFilter'
 
@@ -32,7 +31,6 @@ export {
   formatRange,
   ArtistLinkField,
   artistLink,
-  AddToPlaylistMenu,
   SongContextMenu,
   QuickFilter,
 }

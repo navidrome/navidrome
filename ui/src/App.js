@@ -17,9 +17,10 @@ import { albumViewReducer } from './album/albumState'
 import config from './config'
 import customRoutes from './routes'
 import themeReducer from './personal/themeReducer'
-import { newPlaylistDialogReducer } from './dialogs/dialogState'
+import { addToPlaylistDialogReducer } from './dialogs/dialogState'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
+import AddToPlaylistDialog from './dialogs/AddToPlaylistDialog'
 
 const history = createHashHistory()
 
@@ -33,7 +34,7 @@ const App = () => (
         queue: playQueueReducer,
         albumView: albumViewReducer,
         theme: themeReducer,
-        newPlaylistDialog: newPlaylistDialogReducer,
+        addToPlaylistDialog: addToPlaylistDialogReducer,
       },
     })}
   >
@@ -77,7 +78,10 @@ const App = () => (
         <Resource name="albumSong" />,
         <Resource name="translation" />,
         <Resource name="playlistTrack" />,
+
+        // Detached components
         <Player />,
+        <AddToPlaylistDialog />,
       ]}
     </Admin>
   </Provider>

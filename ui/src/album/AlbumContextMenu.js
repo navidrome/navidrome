@@ -1,14 +1,13 @@
 import React, { useState } from 'react'
+import { useDispatch } from 'react-redux'
 import IconButton from '@material-ui/core/IconButton'
 import Menu from '@material-ui/core/Menu'
 import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, useNotify, useTranslate } from 'react-admin'
-import { useDispatch } from 'react-redux'
 import { addTracks, playTracks, shuffleTracks } from '../audioplayer'
-import NestedMenuItem from 'material-ui-nested-menu-item'
-import { AddToPlaylistMenu } from '../common'
+import { openAddToPlaylist } from '../dialogs/dialogState'
 
 const useStyles = makeStyles({
   icon: {
@@ -23,19 +22,23 @@ const AlbumContextMenu = ({ record, color }) => {
   const translate = useTranslate()
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
-  const open = Boolean(anchorEl)
+
   const options = {
     play: {
       label: translate('resources.album.actions.playAll'),
-      action: (data) => playTracks(data),
+      action: playTracks,
     },
     addToQueue: {
       label: translate('resources.album.actions.addToQueue'),
-      action: (data) => addTracks(data),
+      action: addTracks,
     },
     shuffle: {
       label: translate('resources.album.actions.shuffle'),
-      action: (data) => shuffleTracks(data),
+      action: shuffleTracks,
+    },
+    addToPlaylist: {
+      label: translate('resources.song.actions.addToPlaylist'),
+      action: () => openAddToPlaylist({ albumId: record.id }),
     },
   }
 
@@ -74,6 +77,8 @@ const AlbumContextMenu = ({ record, color }) => {
     e.stopPropagation()
   }
 
+  const open = Boolean(anchorEl)
+
   return (
     <div>
       <IconButton
@@ -98,15 +103,6 @@ const AlbumContextMenu = ({ record, color }) => {
             {options[key].label}
           </MenuItem>
         ))}
-        <NestedMenuItem
-          label={translate('resources.song.actions.addToPlaylist')}
-          parentMenuOpen={open}
-        >
-          <AddToPlaylistMenu
-            albumId={record.id}
-            onClose={() => setAnchorEl(null)}
-          />
-        </NestedMenuItem>
       </Menu>
     </div>
   )
