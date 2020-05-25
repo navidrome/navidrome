@@ -1,17 +1,18 @@
-const NEW_PLAYLIST_OPEN = 'NEW_PLAYLIST_OPEN'
-const NEW_PLAYLIST_CLOSE = 'NEW_PLAYLIST_CLOSE'
+const ADD_TO_PLAYLIST_OPEN = 'ADD_TO_PLAYLIST_OPEN'
+const ADD_TO_PLAYLIST_CLOSE = 'ADD_TO_PLAYLIST_CLOSE'
 
-const openNewPlaylist = (albumId, selectedIds) => ({
-  type: NEW_PLAYLIST_OPEN,
+const openAddToPlaylist = ({ albumId, selectedIds, onSuccess }) => ({
+  type: ADD_TO_PLAYLIST_OPEN,
   albumId,
   selectedIds,
+  onSuccess,
 })
 
-const closeNewPlaylist = () => ({
-  type: NEW_PLAYLIST_CLOSE,
+const closeAddToPlaylist = () => ({
+  type: ADD_TO_PLAYLIST_CLOSE,
 })
 
-const newPlaylistDialogReducer = (
+const addToPlaylistDialogReducer = (
   previousState = {
     open: false,
   },
@@ -19,18 +20,19 @@ const newPlaylistDialogReducer = (
 ) => {
   const { type } = payload
   switch (type) {
-    case NEW_PLAYLIST_OPEN:
+    case ADD_TO_PLAYLIST_OPEN:
       return {
         ...previousState,
         open: true,
         albumId: payload.albumId,
         selectedIds: payload.selectedIds,
+        onSuccess: payload.onSuccess,
       }
-    case NEW_PLAYLIST_CLOSE:
-      return { ...previousState, open: false }
+    case ADD_TO_PLAYLIST_CLOSE:
+      return { ...previousState, open: false, onSuccess: undefined }
     default:
       return previousState
   }
 }
 
-export { openNewPlaylist, closeNewPlaylist, newPlaylistDialogReducer }
+export { openAddToPlaylist, closeAddToPlaylist, addToPlaylistDialogReducer }

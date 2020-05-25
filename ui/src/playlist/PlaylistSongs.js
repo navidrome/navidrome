@@ -81,8 +81,8 @@ const PlaylistSongs = (props) => {
     return <div />
   }
 
-  const onAddToPlaylist = (playlistId) => {
-    if (playlistId === props.id) {
+  const onAddToPlaylist = (pls) => {
+    if (pls.id === props.id) {
       refresh()
     }
   }
