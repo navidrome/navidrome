@@ -26,5 +26,9 @@ var _ = Describe("sqlRepository", func() {
 		It("remove symbols", func() {
 			Expect(getFullText("Tom’s Diner ' “40” ‘A’")).To(Equal(" 40 a diner toms"))
 		})
+
+		It("remove opening brackets", func() {
+			Expect(getFullText("[Five Years]")).To(Equal(" five years"))
+		})
 	})
 })

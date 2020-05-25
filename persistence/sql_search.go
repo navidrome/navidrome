@@ -9,7 +9,7 @@ import (
 	"github.com/kennygrant/sanitize"
 )
 
-var quotesRegex = regexp.MustCompile("[“”‘’'\"]")
+var quotesRegex = regexp.MustCompile("[“”‘’'\"\\[\\(\\{\\]\\)\\}]")
 
 func getFullText(text ...string) string {
 	fullText := sanitizeStrings(text...)
