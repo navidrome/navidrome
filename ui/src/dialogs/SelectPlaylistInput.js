@@ -11,18 +11,14 @@ const filter = createFilterOptions()
 
 const SelectPlaylistInput = ({ onChange }) => {
   const translate = useTranslate()
-  const { ids, data, loaded } = useGetList(
+  const { ids, data } = useGetList(
     'playlist',
     { page: 1, perPage: -1 },
     { field: 'name', order: 'ASC' },
     {}
   )
 
-  if (!loaded) {
-    return null
-  }
-
-  const options = ids.map((id) => data[id])
+  const options = ids && ids.map((id) => data[id])
 
   const handleOnChange = (event, newValue) => {
     if (newValue == null) {
