@@ -43,7 +43,11 @@ func (s *scrobbler) Register(ctx context.Context, playerId int, trackId string, 
 		return err
 	})
 
-	log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", userName(ctx))
+	if err != nil {
+		log.Error("Error while scrobbling", "trackId", trackId, err)
+	} else {
+		log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", userName(ctx))
+	}
 
 	return mf, err
 }
