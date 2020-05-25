@@ -25,7 +25,7 @@ const AddToPlaylistDialog = () => {
   const notify = useNotify()
   const [value, setValue] = useState({})
   const dataProvider = useDataProvider()
-  const [create] = useCreate(
+  const [createAndAddToPlaylist] = useCreate(
     'playlist',
     { name: value.name },
     {
@@ -74,7 +74,7 @@ const AddToPlaylistDialog = () => {
     if (value.id) {
       addToPlaylist(value.id)
     } else {
-      create()
+      createAndAddToPlaylist()
     }
     dispatch(closeAddToPlaylist())
     e.stopPropagation()
