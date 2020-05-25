@@ -20,7 +20,6 @@ import themeReducer from './personal/themeReducer'
 import { addToPlaylistDialogReducer } from './dialogs/dialogState'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
-import AddToPlaylistDialog from './dialogs/AddToPlaylistDialog'
 
 const history = createHashHistory()
 
@@ -79,9 +78,7 @@ const App = () => (
         <Resource name="translation" />,
         <Resource name="playlistTrack" />,
 
-        // Detached components
         <Player />,
-        <AddToPlaylistDialog />,
       ]}
     </Admin>
   </Provider>
