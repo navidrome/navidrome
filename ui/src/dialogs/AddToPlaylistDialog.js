@@ -91,9 +91,9 @@ const AddToPlaylistDialog = () => {
 
   return (
     <Dialog
-      disableBackdropClick
       open={open}
       onClose={handleClickClose}
+      onBackdropClick={handleClickClose}
       aria-labelledby="form-dialog-new-playlist"
     >
       <DialogTitle id="form-dialog-new-playlist">
