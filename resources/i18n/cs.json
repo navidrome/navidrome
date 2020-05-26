@@ -19,7 +19,7 @@
                 "updatedAt": "Nahráno",
                 "bitRate": "Přenosová rychlost",
                 "discSubtitle": "Podtitul disku",
-                "starred": ""
+                "starred": "Hvězdičkované"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -98,10 +98,11 @@
                 "updatedAt": "Nahrán",
                 "createdAt": "Vytvořen",
                 "songCount": "Skladby",
-                "comment": ""
+                "comment": "Komentář"
             },
             "actions": {
-                "selectPlaylist": "Přidat skladby do seznamu:"
+                "selectPlaylist": "Přidat skladby do seznamu:",
+                "addNewPlaylist": "Vytvořit \"%{name}\""
             }
         }
     },
@@ -238,8 +239,8 @@
         "note": "POZNÁMKA",
         "transcodingDisabled": "Měnění nastavení překódování je ve webovém prostředí vypnuto kvůli bezpečnosti. Pokud by jste chtěli změnit (upravit nebo přidat) možnosti překódování, restartujte server s možností %{config}.",
         "transcodingEnabled": "Navidrome právě běží s možností %{config}, umožňující spouštění systémových příkazů z nastavení překódování pomocí webového rozhraní. Doporučujeme ji vypnout kvůli bezpečnosti a použít ji pouze pokud upravujete nastavení překódování.",
-        "songsAddedToPlaylist": "",
-        "noPlaylistsAvailable": ""
+        "songsAddedToPlaylist": "1 skladba přidána na seznam skladeb ||| %{smart_count} skladeb přidáno na seznam skladeb",
+        "noPlaylistsAvailable": "Žádné nejsou dostupné"
     },
     "menu": {
         "library": "Knihovna",
