@@ -194,7 +194,7 @@ type Playlist struct {
 	Comment   string    `xml:"comment,attr,omitempty"        json:"comment,omitempty"`
 	SongCount int       `xml:"songCount,attr"                json:"songCount"`
 	Duration  int       `xml:"duration,attr"                 json:"duration"`
-	Public    bool      `xml:"public,attr,omitempty"         json:"public,omitempty"`
+	Public    bool      `xml:"public,attr"                   json:"public"`
 	Owner     string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
 	Created   time.Time `xml:"created,attr"                  json:"created"`
 	Changed   time.Time `xml:"changed,attr"                  json:"changed"`
