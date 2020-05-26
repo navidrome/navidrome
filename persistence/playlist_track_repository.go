@@ -112,7 +112,7 @@ func (r *playlistTrackRepository) Update(mediaFileIds []string) error {
 	}
 
 	// Add new tracks, chunk by chunk
-	pos := 0
+	pos := 1
 	for i := range chunks {
 		ins := Insert(r.tableName).Columns("playlist_id", "media_file_id", "id")
 		for _, t := range chunks[i] {

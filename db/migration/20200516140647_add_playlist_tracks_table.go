@@ -87,7 +87,7 @@ func Up20200516140647UpdatePlaylistTracks(tx *sql.Tx, id string, tracks string) 
 		return err
 	}
 	for i, trackId := range trackList {
-		_, err := stmt.Exec(id, trackId, i)
+		_, err := stmt.Exec(id, trackId, i+1)
 		if err != nil {
 			log.Error("Error adding track to playlist", "playlistId", id, "trackId", trackId, err)
 		}
