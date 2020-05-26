@@ -4,8 +4,6 @@ import {
   DatagridLoading,
   ListToolbar,
   TextField,
-  DatagridBody,
-  Datagrid,
   useListController,
   useRefresh,
 } from 'react-admin'
@@ -16,7 +14,7 @@ import {
   DurationField,
   SongDetails,
   SongContextMenu,
-  SongDatagridRow,
+  SongDatagrid,
 } from '../common'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 
@@ -55,14 +53,6 @@ const useStylesListToolbar = makeStyles({
     justifyContent: 'flex-start',
   },
 })
-
-const SongsDatagridBody = (props) => (
-  <DatagridBody {...props} row={<SongDatagridRow contextVisible={true} />} />
-)
-
-const SongsDatagrid = ({ contextVisible, ...rest }) => {
-  return <Datagrid {...rest} body={<SongsDatagridBody />} />
-}
 
 const PlaylistSongs = (props) => {
   const classes = useStyles(props)
@@ -120,11 +110,12 @@ const PlaylistSongs = (props) => {
               size={'small'}
             />
           ) : (
-            <SongsDatagrid
+            <SongDatagrid
               expand={!isXsmall && <SongDetails />}
               rowClick={null}
               {...controllerProps}
               hasBulkActions={hasBulkActions}
+              contextVisible={isXsmall}
             >
               {isDesktop && <TextField source="id" label={'#'} />}
               <TextField source="title" />
@@ -134,7 +125,7 @@ const PlaylistSongs = (props) => {
                 onAddToPlaylist={onAddToPlaylist}
                 showStar={false}
               />
-            </SongsDatagrid>
+            </SongDatagrid>
           )}
         </Card>
       </div>

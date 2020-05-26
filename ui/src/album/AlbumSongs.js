@@ -49,6 +49,7 @@ const useStyles = makeStyles(
     noResults: { padding: 20 },
     columnIcon: {
       marginLeft: '3px',
+      marginTop: '-2px',
       verticalAlign: 'text-top',
     },
   }),

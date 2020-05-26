@@ -28,6 +28,7 @@ import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 const useStyles = makeStyles({
   columnIcon: {
     marginLeft: '3px',
+    marginTop: '-2px',
     verticalAlign: 'text-top',
   },
 })
