@@ -17,11 +17,14 @@
                 "year": "Anno",
                 "size": "Dimensioni",
                 "updatedAt": "Ultimo aggiornamento",
-                "bitRate": "Bitrate"
+                "bitRate": "Bitrate",
+                "discSubtitle": "Sottotitoli disco",
+                "starred": "Preferita"
             },
             "actions": {
                 "addToQueue": "Aggiungi alla coda",
-                "playNow": "Riproduci adesso"
+                "playNow": "Riproduci adesso",
+                "addToPlaylist": "Aggiungi alla playlist"
             }
         },
         "album": {
@@ -49,7 +52,8 @@
             "name": "Artista |||| Artisti",
             "fields": {
                 "name": "Nome",
-                "albumCount": "Album"
+                "albumCount": "Album",
+                "songCount": "Numero tracce"
             }
         },
         "user": {
@@ -82,6 +86,23 @@
                 "targetFormat": "Formato",
                 "defaultBitRate": "Bitrate predefinito",
                 "command": "Comando"
+            }
+        },
+        "playlist": {
+            "name": "Playlist |||| Playlist",
+            "fields": {
+                "name": "Nome",
+                "duration": "Durata",
+                "owner": "Creatore",
+                "public": "Pubblica",
+                "updatedAt": "Ultimo aggiornamento",
+                "createdAt": "Data creazione",
+                "songCount": "Tracce",
+                "comment": "Commento"
+            },
+            "actions": {
+                "selectPlaylist": "Aggiungi tracce alla playlist:",
+                "addNewPlaylist": "Aggiungi \"%{name}\""
             }
         }
     },
@@ -217,7 +238,9 @@
     "message": {
         "note": "Note",
         "transcodingDisabled": "La possibilità di modificare le opzioni di transcodifica attraverso l’interfaccia web è disabilitata per ragioni di sicurezza. Se desideri cambiare (modificare o aggiungere) opzioni di transcodifica, riavvia il server con l’opzione %{config}.",
-        "transcodingEnabled": "Navidrome è al momento attivo con %{config}, rendendo possibile eseguire comandi remoti attraverso l’interfaccia web. Si raccomanda di disabilitare questa opzione per ragioni di sicurezza e di abilitarla solo per configurare le opzioni di transcodifica."
+        "transcodingEnabled": "Navidrome è al momento attivo con %{config}, rendendo possibile eseguire comandi remoti attraverso l’interfaccia web. Si raccomanda di disabilitare questa opzione per ragioni di sicurezza e di abilitarla solo per configurare le opzioni di transcodifica.",
+        "songsAddedToPlaylist": "Aggiunta una traccia alla playlist |||| Aggiunte %{smart_count} tracce alla playlist",
+        "noPlaylistsAvailable": "Nessuna playlist"
     },
     "menu": {
         "library": "Libreria",
