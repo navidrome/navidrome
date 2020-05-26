@@ -19,7 +19,7 @@
                 "updatedAt": "Mise à jour",
                 "bitRate": "Bitrate",
                 "discSubtitle": "Sous-titre du disque",
-                "starred": ""
+                "starred": "Favoris"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -98,10 +98,11 @@
                 "updatedAt": "Mise à jour le",
                 "createdAt": "Crée le",
                 "songCount": "Titres",
-                "comment": ""
+                "comment": "Commentaire"
             },
             "actions": {
-                "selectPlaylist": "Ajouter les pistes à la playlist"
+                "selectPlaylist": "Ajouter les pistes à la playlist",
+                "addNewPlaylist": "Créer \"%{name}\""
             }
         }
     },
@@ -238,8 +239,8 @@
         "note": "NOTE",
         "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancer le serveur avec l'option %{config} activée.",
         "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé de n'activer cette fonctionnalité uniquement lors de la configuration du Transcodage.",
-        "songsAddedToPlaylist": "",
-        "noPlaylistsAvailable": ""
+        "songsAddedToPlaylist": "Une piste ajoutée à la playlist |||| %{smart_count} pistes ajoutées à la playlist",
+        "noPlaylistsAvailable": "Aucune playlist"
     },
     "menu": {
         "library": "Bibliothèque",
