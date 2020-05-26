@@ -22,7 +22,8 @@ export const SongDatagridRow = ({
   record,
   children,
   multiDisc,
-  contextVisible,
+  contextAlwaysVisible,
+  contextMenu,
   ...rest
 }) => {
   const classes = useStyles()
@@ -57,7 +58,7 @@ export const SongDatagridRow = ({
             (index < childCount - 1
               ? child
               : cloneElement(child, {
-                  visible: contextVisible || visible,
+                  visible: contextAlwaysVisible || visible,
                   ...rest,
                 }))
         )}
@@ -70,17 +71,17 @@ SongDatagridRow.propTypes = {
   record: PropTypes.object,
   children: PropTypes.node,
   multiDisc: PropTypes.bool,
-  contextVisible: PropTypes.bool,
+  contextAlwaysVisible: PropTypes.bool,
 }
 
-export const SongDatagrid = ({ multiDisc, contextVisible, ...rest }) => {
+export const SongDatagrid = ({ multiDisc, contextAlwaysVisible, ...rest }) => {
   const SongDatagridBody = (props) => (
     <DatagridBody
       {...props}
       row={
         <SongDatagridRow
           multiDisc={multiDisc}
-          contextVisible={contextVisible}
+          contextAlwaysVisible={contextAlwaysVisible}
         />
       }
     />
@@ -89,6 +90,6 @@ export const SongDatagrid = ({ multiDisc, contextVisible, ...rest }) => {
 }
 
 SongDatagrid.propTypes = {
-  contextVisible: PropTypes.bool,
+  contextAlwaysVisible: PropTypes.bool,
   multiDisc: PropTypes.bool,
 }

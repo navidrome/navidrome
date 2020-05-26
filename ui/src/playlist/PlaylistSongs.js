@@ -115,7 +115,7 @@ const PlaylistSongs = (props) => {
               rowClick={null}
               {...controllerProps}
               hasBulkActions={hasBulkActions}
-              contextVisible={isXsmall}
+              contextAlwaysVisible={isXsmall}
             >
               {isDesktop && <TextField source="id" label={'#'} />}
               <TextField source="title" />
