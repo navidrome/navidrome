@@ -101,7 +101,8 @@
                 "comment": "Kommentar"
             },
             "actions": {
-                "selectPlaylist": "Songs zur Playlist hinzufügen"
+                "selectPlaylist": "Songs zur Playlist hinzufügen",
+                "addNewPlaylist": "\"%{name}\" erstellen"
             }
         }
     },
