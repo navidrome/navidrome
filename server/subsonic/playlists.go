@@ -109,12 +109,12 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 		pname = &s
 	}
 
-	log.Info(r, "Updating playlist", "id", playlistId)
+	log.Debug(r, "Updating playlist", "id", playlistId)
 	if pname != nil {
-		log.Debug(r, fmt.Sprintf("-- New Name: '%s'", *pname))
+		log.Trace(r, fmt.Sprintf("-- New Name: '%s'", *pname))
 	}
-	log.Debug(r, fmt.Sprintf("-- Adding: '%v'", songsToAdd))
-	log.Debug(r, fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
+	log.Trace(r, fmt.Sprintf("-- Adding: '%v'", songsToAdd))
+	log.Trace(r, fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
 	err = c.pls.Update(r.Context(), playlistId, pname, songsToAdd, songIndexesToRemove)
 	if err == model.ErrNotAuthorized {
