@@ -19,7 +19,7 @@
                 "updatedAt": "Hochgeladen um",
                 "bitRate": "Bitrate",
                 "discSubtitle": "CD Untertitel",
-                "starred": ""
+                "starred": "Favorit"
             },
             "actions": {
                 "addToQueue": "Später abspielen",
@@ -240,7 +240,7 @@
         "transcodingDisabled": "Die Änderung der Transcodierungskonfiguration über die Web-UI ist aus Sicherheitsgründen deaktiviert. Wenn du die Transcodierungsoptionen ändern (bearbeiten oder hinzufügen) möchtest, starte den Server mit der Konfigurationsoption %{config} neu.",
         "transcodingEnabled": "Navidrome läuft derzeit mit %{config}, wodurch es möglich ist, Systembefehle aus den Transkodierungseinstellungen über die Webschnittstelle auszuführen. Wir empfehlen, es aus Sicherheitsgründen zu deaktivieren und nur bei der Konfiguration von Transkodierungsoptionen zu aktivieren.",
         "songsAddedToPlaylist": "Einen Song zur Playlist hinzugefügt |||| %{smart_count} Songs zur Playlist hinzugefügt",
-        "noPlaylistsAvailable": ""
+        "noPlaylistsAvailable": "Keine Playlist verfügbar"
     },
     "menu": {
         "library": "Bibliothek",
