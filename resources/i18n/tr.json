@@ -17,11 +17,14 @@
                 "year": "Yıl",
                 "size": "Dosya boyutu",
                 "updatedAt": "Yüklendiği zaman",
-                "bitRate": "Bir sayısı"
+                "bitRate": "Bir sayısı",
+                "discSubtitle": "Disk Altyazısı",
+                "starred": "Yıldızlı"
             },
             "actions": {
                 "addToQueue": "Sonra çal",
-                "playNow": "Şimdi cal"
+                "playNow": "Şimdi cal",
+                "addToPlaylist": "Çalma listesine ekle"
             }
         },
         "album": {
@@ -83,6 +86,23 @@
                 "targetFormat": "Hedef Formatı",
                 "defaultBitRate": "Varsayılan bit orani",
                 "command": "komut"
+            }
+        },
+        "playlist": {
+            "name": "Çalma listesi |||| Çalma listeler",
+            "fields": {
+                "name": "Isim",
+                "duration": "Süre",
+                "owner": "Sahibi",
+                "public": "Görülebilir",
+                "updatedAt": "Güncelleme tarihi:",
+                "createdAt": "Oluşturma tarihi:",
+                "songCount": "Şarkılar",
+                "comment": "Yorum"
+            },
+            "actions": {
+                "selectPlaylist": "Bir çalma listesi seç:",
+                "addNewPlaylist": "Oluştur  \"%{name}\""
             }
         }
     },
@@ -218,7 +238,9 @@
     "message": {
         "note": "NOT",
         "transcodingDisabled": "Transcoding ayarlari  web arayüzü üzerinden değiştirilmesi güvenlik nedeniyle devre dışı bırakılmıştır.  Kod dönüştürme seçeneklerini değiştirmek (düzenlemek veya eklemek) istiyorsan, %{config} seçeneğiyle sunucuyu yeniden başlatın.",
-        "transcodingEnabled": "Navidrome şu anda %{config} ile çalışıyor, web arayüzünü kullanarak kod dönüştürme ayarlarından sistem komutlarını çalıştırmayı mümkün kılıyor. Güvenlik nedeniyle devre dışı bırakmanızı ve yalnızca Kod Dönüştürme seçeneklerini yapılandırırken etkinleştirmenizi öneririz."
+        "transcodingEnabled": "Navidrome şu anda %{config} ile çalışıyor, web arayüzünü kullanarak kod dönüştürme ayarlarından sistem komutlarını çalıştırmayı mümkün kılıyor. Güvenlik nedeniyle devre dışı bırakmanızı ve yalnızca Kod Dönüştürme seçeneklerini yapılandırırken etkinleştirmenizi öneririz.",
+        "songsAddedToPlaylist": "Çalma listesine 1 şarkı eklendi |||| Çalma listesine %{smart_count} şarkı eklendi",
+        "noPlaylistsAvailable": "Mevcut değil"
     },
     "menu": {
         "library": "Müzik kütüphanesi",
