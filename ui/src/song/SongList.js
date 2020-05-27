@@ -76,6 +76,7 @@ const SongList = (props) => {
           <SongDatagrid
             expand={<SongDetails />}
             rowClick={(id, basePath, record) => dispatch(setTrack(record))}
+            contextAlwaysVisible={!isDesktop}
           >
             <TextField source="title" />
             {isDesktop && <AlbumLinkField source="album" />}
@@ -86,20 +87,16 @@ const SongList = (props) => {
               <FunctionField source="year" render={(r) => r.year || ''} />
             )}
             <DurationField source="duration" />
-            {isDesktop ? (
-              <SongContextMenu
-                source={'starred'}
-                label={
-                  <StarBorderIcon
-                    fontSize={'small'}
-                    className={classes.columnIcon}
-                  />
-                }
-                sortBy={'starred DESC, starredAt DESC'}
-              />
-            ) : (
-              <SongContextMenu showStar={false} />
-            )}
+            <SongContextMenu
+              source={'starred'}
+              sortBy={'starred DESC, starredAt DESC'}
+              label={
+                <StarBorderIcon
+                  fontSize={'small'}
+                  className={classes.columnIcon}
+                />
+              }
+            />
           </SongDatagrid>
         )}
       </List>

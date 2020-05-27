@@ -131,7 +131,7 @@ const AlbumSongs = (props) => {
               {...controllerProps}
               hasBulkActions={hasBulkActions}
               multiDisc={multiDisc}
-              contextAlwaysVisible={isXsmall}
+              contextAlwaysVisible={!isDesktop}
             >
               {isDesktop && (
                 <TextField
