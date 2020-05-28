@@ -1,9 +1,11 @@
 import React, { useState, isValidElement, cloneElement } from 'react'
+import { useDispatch } from 'react-redux'
 import { Datagrid, DatagridBody, DatagridRow } from 'react-admin'
 import { TableCell, TableRow, Typography } from '@material-ui/core'
 import PropTypes from 'prop-types'
 import { makeStyles } from '@material-ui/core/styles'
 import AlbumIcon from '@material-ui/icons/Album'
+import { playTracks } from '../audioplayer'
 
 const useStyles = makeStyles({
   subtitle: {
@@ -11,6 +13,7 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     verticalAlign: 'middle',
+    cursor: 'pointer',
   },
   discIcon: {
     verticalAlign: 'text-top',
@@ -24,24 +27,26 @@ export const SongDatagridRow = ({
   multiDisc,
   contextAlwaysVisible,
   contextMenu,
+  onClickDiscSubtitle,
   ...rest
 }) => {
   const classes = useStyles()
   const [visible, setVisible] = useState(false)
   const childCount = React.Children.count(children)
+  const handlePlayDisc = (discNumber) => () => {
+    onClickDiscSubtitle(discNumber)
+  }
   return (
     <>
-      {multiDisc && (
-        <TableRow>
-          {record.trackNumber === 1 && (
-            <TableCell colSpan={children.length + 2}>
-              <Typography variant="h6" className={classes.subtitle}>
-                <AlbumIcon className={classes.discIcon} fontSize={'small'} />
-                {record.discNumber}
-                {record.discSubtitle && `: ${record.discSubtitle}`}
-              </Typography>
-            </TableCell>
-          )}
+      {multiDisc && record.trackNumber === 1 && (
+        <TableRow hover onClick={handlePlayDisc(record.discNumber)}>
+          <TableCell colSpan={childCount + 1}>
+            <Typography variant="h6" className={classes.subtitle}>
+              <AlbumIcon className={classes.discIcon} fontSize={'small'} />
+              {record.discNumber}
+              {record.discSubtitle && `: ${record.discSubtitle}`}
+            </Typography>
+          </TableCell>
         </TableRow>
       )}
       <DatagridRow
@@ -72,9 +77,19 @@ SongDatagridRow.propTypes = {
   children: PropTypes.node,
   multiDisc: PropTypes.bool,
   contextAlwaysVisible: PropTypes.bool,
+  onClickDiscSubtitle: PropTypes.func,
+}
+
+SongDatagridRow.defaultProps = {
+  onClickDiscSubtitle: () => {},
 }
 
 export const SongDatagrid = ({ multiDisc, contextAlwaysVisible, ...rest }) => {
+  const dispatch = useDispatch()
+  const playDisc = (discNumber) => {
+    const ids = rest.ids.filter((id) => rest.data[id].discNumber === discNumber)
+    dispatch(playTracks(rest.data, ids))
+  }
   const SongDatagridBody = (props) => (
     <DatagridBody
       {...props}
@@ -82,6 +97,7 @@ export const SongDatagrid = ({ multiDisc, contextAlwaysVisible, ...rest }) => {
         <SongDatagridRow
           multiDisc={multiDisc}
           contextAlwaysVisible={contextAlwaysVisible}
+          onClickDiscSubtitle={playDisc}
         />
       }
     />
