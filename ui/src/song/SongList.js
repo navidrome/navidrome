@@ -100,7 +100,7 @@ const SongList = (props) => {
           </SongDatagrid>
         )}
       </List>
-      <AddToPlaylistDialog />,
+      <AddToPlaylistDialog />
     </>
   )
 }

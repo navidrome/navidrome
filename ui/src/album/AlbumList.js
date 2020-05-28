@@ -77,7 +77,7 @@ const AlbumList = (props) => {
           <AlbumGridView {...props} />
         )}
       </List>
-      <AddToPlaylistDialog />,
+      <AddToPlaylistDialog />
     </>
   )
 }

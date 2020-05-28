@@ -129,7 +129,7 @@ const PlaylistSongs = (props) => {
           )}
         </Card>
       </div>
-      <AddToPlaylistDialog />,
+      <AddToPlaylistDialog />
     </>
   )
 }
