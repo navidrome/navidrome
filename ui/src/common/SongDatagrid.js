@@ -8,12 +8,14 @@ import AlbumIcon from '@material-ui/icons/Album'
 import { playTracks } from '../audioplayer'
 
 const useStyles = makeStyles({
+  row: {
+    cursor: 'pointer',
+  },
   subtitle: {
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     verticalAlign: 'middle',
-    cursor: 'pointer',
   },
   discIcon: {
     verticalAlign: 'text-top',
@@ -39,7 +41,11 @@ export const SongDatagridRow = ({
   return (
     <>
       {multiDisc && record.trackNumber === 1 && (
-        <TableRow hover onClick={handlePlayDisc(record.discNumber)}>
+        <TableRow
+          hover
+          onClick={handlePlayDisc(record.discNumber)}
+          className={classes.row}
+        >
           <TableCell colSpan={childCount + 1}>
             <Typography variant="h6" className={classes.subtitle}>
               <AlbumIcon className={classes.discIcon} fontSize={'small'} />
