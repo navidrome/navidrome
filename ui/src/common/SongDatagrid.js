@@ -24,7 +24,7 @@ const useStyles = makeStyles({
   },
 })
 
-const DiscSubtitleRow = ({ record, onClickDiscSubtitle, length }) => {
+const DiscSubtitleRow = ({ record, onClickDiscSubtitle, colSpan }) => {
   const classes = useStyles()
   const [visible, setVisible] = useState(false)
   const handlePlayDisc = (discNumber) => () => {
@@ -38,7 +38,7 @@ const DiscSubtitleRow = ({ record, onClickDiscSubtitle, length }) => {
       onMouseLeave={() => setVisible(false)}
       className={classes.row}
     >
-      <TableCell colSpan={length}>
+      <TableCell colSpan={colSpan}>
         <Typography variant="h6" className={classes.subtitle}>
           <AlbumIcon className={classes.discIcon} fontSize={'small'} />
           {record.discNumber}
@@ -73,7 +73,7 @@ export const SongDatagridRow = ({
         <DiscSubtitleRow
           record={record}
           onClickDiscSubtitle={onClickDiscSubtitle}
-          length={childCount}
+          colSpan={childCount}
         />
       )}
       <DatagridRow
@@ -111,12 +111,28 @@ SongDatagridRow.defaultProps = {
   onClickDiscSubtitle: () => {},
 }
 
-export const SongDatagrid = ({ multiDisc, contextAlwaysVisible, ...rest }) => {
+export const SongDatagrid = ({
+  contextAlwaysVisible,
+  showDiscSubtitles,
+  ...rest
+}) => {
   const dispatch = useDispatch()
+  const { ids, data } = rest
+
   const playDisc = (discNumber) => {
-    const ids = rest.ids.filter((id) => rest.data[id].discNumber === discNumber)
-    dispatch(playTracks(rest.data, ids))
+    const idsToPlay = ids.filter((id) => data[id].discNumber === discNumber)
+    dispatch(playTracks(data, idsToPlay))
   }
+
+  const multiDisc =
+    showDiscSubtitles &&
+    new Set(
+      ids
+        .map((id) => data[id])
+        .filter((r) => r) // remove null records
+        .map((r) => r.discNumber)
+    ).size > 1
+
   const SongDatagridBody = (props) => (
     <DatagridBody
       {...props}
@@ -134,5 +150,5 @@ export const SongDatagrid = ({ multiDisc, contextAlwaysVisible, ...rest }) => {
 
 SongDatagrid.propTypes = {
   contextAlwaysVisible: PropTypes.bool,
-  multiDisc: PropTypes.bool,
+  showDiscSubtitles: PropTypes.bool,
 }

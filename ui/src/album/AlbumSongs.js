@@ -78,16 +78,7 @@ const AlbumSongs = (props) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
   const { bulkActionButtons, albumId, className } = props
-  const { data, ids, version, loaded } = controllerProps
-
-  let multiDisc = false
-  if (loaded) {
-    const discNumbers = ids
-      .map((id) => data[id])
-      .filter((r) => r)
-      .map((r) => r.discNumber)
-    multiDisc = new Set(discNumbers).size > 1
-  }
+  const { data, ids, version } = controllerProps
 
   const anySong = data[ids[0]]
   const showPlaceholder = !anySong || anySong.albumId !== albumId
@@ -130,7 +121,7 @@ const AlbumSongs = (props) => {
               rowClick={(id) => dispatch(playTracks(data, ids, id))}
               {...controllerProps}
               hasBulkActions={hasBulkActions}
-              multiDisc={multiDisc}
+              showDiscSubtitles={true}
               contextAlwaysVisible={!isDesktop}
             >
               {isDesktop && (
