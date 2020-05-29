@@ -8,15 +8,24 @@ import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import { openAddToPlaylist } from '../dialogs/dialogState'
+import StarIcon from '@material-ui/icons/Star'
+import PropTypes from 'prop-types'
 
 const useStyles = makeStyles({
-  icon: {
+  noWrap: {
+    whiteSpace: 'nowrap',
+  },
+  menu: {
     color: (props) => props.color,
+    visibility: (props) => (props.visible ? 'visible' : 'hidden'),
+  },
+  star: {
+    visibility: 'hidden', // TODO: Invisible for now
   },
 })
 
-const AlbumContextMenu = ({ record, color }) => {
-  const classes = useStyles({ color })
+const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
+  const classes = useStyles({ color, visible })
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const translate = useTranslate()
@@ -54,6 +63,20 @@ const AlbumContextMenu = ({ record, color }) => {
     e.stopPropagation()
   }
 
+  let extractSongsData = function (response, discNumber) {
+    const data = response.data.reduce(
+      (acc, cur) => ({ ...acc, [cur.id]: cur }),
+      {}
+    )
+    let ids = null
+    if (discNumber) {
+      ids = response.data
+        .filter((r) => r.discNumber === discNumber)
+        .map((r) => r.id)
+    }
+    return { data, ids }
+  }
+
   const handleItemClick = (e) => {
     setAnchorEl(null)
     const key = e.target.getAttribute('value')
@@ -64,11 +87,8 @@ const AlbumContextMenu = ({ record, color }) => {
         filter: { album_id: record.id },
       })
       .then((response) => {
-        const adata = response.data.reduce(
-          (acc, cur) => ({ ...acc, [cur.id]: cur }),
-          {}
-        )
-        dispatch(options[key].action(adata))
+        let { data, ids } = extractSongsData(response, discNumber)
+        dispatch(options[key].action(data, ids))
       })
       .catch(() => {
         notify('ra.page.error', 'warning')
@@ -80,12 +100,15 @@ const AlbumContextMenu = ({ record, color }) => {
   const open = Boolean(anchorEl)
 
   return (
-    <div>
+    <span className={classes.noWrap}>
+      <IconButton size={'small'} className={classes.star}>
+        <StarIcon fontSize={'small'} />
+      </IconButton>
       <IconButton
         aria-label="more"
         aria-controls="context-menu"
         aria-haspopup="true"
-        className={classes.icon}
+        className={classes.menu}
         onClick={handleClick}
         size={'small'}
       >
@@ -104,7 +127,20 @@ const AlbumContextMenu = ({ record, color }) => {
           </MenuItem>
         ))}
       </Menu>
-    </div>
+    </span>
   )
 }
+
+AlbumContextMenu.propTypes = {
+  record: PropTypes.object,
+  discNumber: PropTypes.number,
+  visible: PropTypes.bool,
+  color: PropTypes.string,
+}
+
+AlbumContextMenu.defaultProps = {
+  visible: true,
+  addLabel: true,
+}
+
 export default AlbumContextMenu

@@ -6,6 +6,7 @@ import PropTypes from 'prop-types'
 import { makeStyles } from '@material-ui/core/styles'
 import AlbumIcon from '@material-ui/icons/Album'
 import { playTracks } from '../audioplayer'
+import AlbumContextMenu from './AlbumContextMenu'
 
 const useStyles = makeStyles({
   row: {
@@ -23,6 +24,38 @@ const useStyles = makeStyles({
   },
 })
 
+const DiscSubtitleRow = ({ record, onClickDiscSubtitle, length }) => {
+  const classes = useStyles()
+  const [visible, setVisible] = useState(false)
+  const handlePlayDisc = (discNumber) => () => {
+    onClickDiscSubtitle(discNumber)
+  }
+  return (
+    <TableRow
+      hover
+      onClick={handlePlayDisc(record.discNumber)}
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+      className={classes.row}
+    >
+      <TableCell colSpan={length}>
+        <Typography variant="h6" className={classes.subtitle}>
+          <AlbumIcon className={classes.discIcon} fontSize={'small'} />
+          {record.discNumber}
+          {record.discSubtitle && `: ${record.discSubtitle}`}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <AlbumContextMenu
+          record={{ id: record.albumId }}
+          discNumber={record.discNumber}
+          visible={visible}
+        />
+      </TableCell>
+    </TableRow>
+  )
+}
+
 export const SongDatagridRow = ({
   record,
   children,
@@ -32,28 +65,16 @@ export const SongDatagridRow = ({
   onClickDiscSubtitle,
   ...rest
 }) => {
-  const classes = useStyles()
   const [visible, setVisible] = useState(false)
   const childCount = React.Children.count(children)
-  const handlePlayDisc = (discNumber) => () => {
-    onClickDiscSubtitle(discNumber)
-  }
   return (
     <>
       {multiDisc && record.trackNumber === 1 && (
-        <TableRow
-          hover
-          onClick={handlePlayDisc(record.discNumber)}
-          className={classes.row}
-        >
-          <TableCell colSpan={childCount + 1}>
-            <Typography variant="h6" className={classes.subtitle}>
-              <AlbumIcon className={classes.discIcon} fontSize={'small'} />
-              {record.discNumber}
-              {record.discSubtitle && `: ${record.discSubtitle}`}
-            </Typography>
-          </TableCell>
-        </TableRow>
+        <DiscSubtitleRow
+          record={record}
+          onClickDiscSubtitle={onClickDiscSubtitle}
+          length={childCount}
+        />
       )}
       <DatagridRow
         record={record}
