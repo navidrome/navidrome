@@ -24,7 +24,13 @@ const useStyles = makeStyles({
   },
 })
 
-const SongContextMenu = ({ record, showStar, onAddToPlaylist, visible }) => {
+const SongContextMenu = ({
+  resource,
+  record,
+  showStar,
+  onAddToPlaylist,
+  visible,
+}) => {
   const classes = useStyles({ visible, starred: record.starred })
   const dispatch = useDispatch()
   const translate = useTranslate()
@@ -68,10 +74,13 @@ const SongContextMenu = ({ record, showStar, onAddToPlaylist, visible }) => {
     e.stopPropagation()
   }
 
-  const [updateRecord, { loading: updating }] = useUpdate(
-    'albumSong',
+  const [toggleStarred, { loading: updating }] = useUpdate(
+    resource,
     record.id,
-    record,
+    {
+      ...record,
+      starred: !record.starred,
+    },
     {
       undoable: false,
       onFailure: (error) => {
@@ -82,13 +91,8 @@ const SongContextMenu = ({ record, showStar, onAddToPlaylist, visible }) => {
     }
   )
 
-  const toggleStar = (record) => {
-    record.starred = !record.starred
-    updateRecord()
-  }
-
-  const handleToggleStar = (e, record) => {
-    toggleStar(record)
+  const handleToggleStar = (e) => {
+    toggleStarred()
     e.stopPropagation()
   }
 
@@ -98,7 +102,7 @@ const SongContextMenu = ({ record, showStar, onAddToPlaylist, visible }) => {
     <span className={classes.noWrap}>
       {config.enableStarred && showStar && (
         <IconButton
-          onClick={(e) => handleToggleStar(e, record)}
+          onClick={handleToggleStar}
           size={'small'}
           disabled={updating}
           className={classes.star}
@@ -135,6 +139,7 @@ const SongContextMenu = ({ record, showStar, onAddToPlaylist, visible }) => {
 }
 
 SongContextMenu.propTypes = {
+  resource: PropTypes.string,
   record: PropTypes.object,
   onAddToPlaylist: PropTypes.func,
   visible: PropTypes.bool,
