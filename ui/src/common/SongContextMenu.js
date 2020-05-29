@@ -39,15 +39,15 @@ const SongContextMenu = ({
   const [anchorEl, setAnchorEl] = useState(null)
   const options = {
     playNow: {
-      label: translate('resources.song.actions.playNow'),
+      label: 'resources.song.actions.playNow',
       action: (record) => setTrack(record),
     },
     addToQueue: {
-      label: translate('resources.song.actions.addToQueue'),
+      label: 'resources.song.actions.addToQueue',
       action: (record) => addTracks({ [record.id]: record }),
     },
     addToPlaylist: {
-      label: translate('resources.song.actions.addToPlaylist'),
+      label: 'resources.song.actions.addToPlaylist',
       action: (record) =>
         openAddToPlaylist({
           selectedIds: [record.mediaFileId || record.id],
@@ -130,7 +130,7 @@ const SongContextMenu = ({
       >
         {Object.keys(options).map((key) => (
           <MenuItem value={key} key={key} onClick={handleItemClick}>
-            {options[key].label}
+            {translate(options[key].label)}
           </MenuItem>
         ))}
       </Menu>

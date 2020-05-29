@@ -34,19 +34,19 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
 
   const options = {
     play: {
-      label: translate('resources.album.actions.playAll'),
+      label: 'resources.album.actions.playAll',
       action: playTracks,
     },
     addToQueue: {
-      label: translate('resources.album.actions.addToQueue'),
+      label: 'resources.album.actions.addToQueue',
       action: addTracks,
     },
     shuffle: {
-      label: translate('resources.album.actions.shuffle'),
+      label: 'resources.album.actions.shuffle',
       action: shuffleTracks,
     },
     addToPlaylist: {
-      label: translate('resources.song.actions.addToPlaylist'),
+      label: 'resources.song.actions.addToPlaylist',
       action: (data, ids) => openAddToPlaylist({ selectedIds: ids }),
     },
   }
@@ -63,17 +63,12 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
     e.stopPropagation()
   }
 
-  let extractSongsData = function (response, discNumber) {
+  let extractSongsData = function (response) {
     const data = response.data.reduce(
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
       {}
     )
-
-    const ids = response.data
-      // Select only songs from discNumber if it is specified
-      .filter((r) => !discNumber || r.discNumber === discNumber)
-      .map((r) => r.id)
-
+    const ids = response.data.map((r) => r.id)
     return { data, ids }
   }
 
@@ -84,10 +79,10 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
       .getList('albumSong', {
         pagination: { page: 1, perPage: -1 },
         sort: { field: 'discNumber, trackNumber', order: 'ASC' },
-        filter: { album_id: record.id },
+        filter: { album_id: record.id, disc_number: discNumber },
       })
       .then((response) => {
-        let { data, ids } = extractSongsData(response, discNumber)
+        let { data, ids } = extractSongsData(response)
         dispatch(options[key].action(data, ids))
       })
       .catch(() => {
@@ -123,7 +118,7 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
       >
         {Object.keys(options).map((key) => (
           <MenuItem value={key} key={key} onClick={handleItemClick}>
-            {options[key].label}
+            {translate(options[key].label)}
           </MenuItem>
         ))}
       </Menu>
