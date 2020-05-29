@@ -47,7 +47,7 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
     },
     addToPlaylist: {
       label: translate('resources.song.actions.addToPlaylist'),
-      action: () => openAddToPlaylist({ albumId: record.id }),
+      action: (data, ids) => openAddToPlaylist({ selectedIds: ids }),
     },
   }
 
@@ -68,12 +68,12 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
       {}
     )
-    let ids = null
-    if (discNumber) {
-      ids = response.data
-        .filter((r) => r.discNumber === discNumber)
-        .map((r) => r.id)
-    }
+
+    const ids = response.data
+      // Select only songs from discNumber if it is specified
+      .filter((r) => !discNumber || r.discNumber === discNumber)
+      .map((r) => r.id)
+
     return { data, ids }
   }
 
@@ -83,7 +83,7 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
     dataProvider
       .getList('albumSong', {
         pagination: { page: 1, perPage: -1 },
-        sort: { field: 'trackNumber', order: 'ASC' },
+        sort: { field: 'discNumber, trackNumber', order: 'ASC' },
         filter: { album_id: record.id },
       })
       .then((response) => {

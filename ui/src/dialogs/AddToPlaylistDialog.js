@@ -3,8 +3,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import {
   useCreate,
   useDataProvider,
-  useTranslate,
   useNotify,
+  useTranslate,
 } from 'react-admin'
 import {
   Button,
@@ -17,7 +17,7 @@ import { closeAddToPlaylist } from './dialogState'
 import SelectPlaylistInput from './SelectPlaylistInput'
 
 const AddToPlaylistDialog = () => {
-  const { open, albumId, selectedIds, onSuccess } = useSelector(
+  const { open, selectedIds, onSuccess } = useSelector(
     (state) => state.addToPlaylistDialog
   )
   const dispatch = useDispatch()
@@ -37,31 +37,14 @@ const AddToPlaylistDialog = () => {
     }
   )
 
-  const addTracksToPlaylist = (selectedIds, playlistId) =>
+  const addToPlaylist = (playlistId) => {
     dataProvider
       .create('playlistTrack', {
         data: { ids: selectedIds },
         filter: { playlist_id: playlistId },
       })
-      .then(() => selectedIds.length)
-
-  const addAlbumToPlaylist = (albumId, playlistId) =>
-    dataProvider
-      .getList('albumSong', {
-        pagination: { page: 1, perPage: -1 },
-        sort: { field: 'discNumber asc, trackNumber asc', order: 'ASC' },
-        filter: { album_id: albumId },
-      })
-      .then((response) => response.data.map((song) => song.id))
-      .then((ids) => addTracksToPlaylist(ids, playlistId))
-
-  const addToPlaylist = (playlistId) => {
-    const add = albumId
-      ? addAlbumToPlaylist(albumId, playlistId)
-      : addTracksToPlaylist(selectedIds, playlistId)
-
-    add
-      .then((len) => {
+      .then(() => {
+        const len = selectedIds.length
         notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
         onSuccess && onSuccess(value, len)
       })
