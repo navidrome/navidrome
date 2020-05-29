@@ -1,7 +1,9 @@
-import React from 'react'
+import React, { cloneElement, isValidElement, useState } from 'react'
 import {
   BooleanField,
   Datagrid,
+  DatagridBody,
+  DatagridRow,
   DateField,
   NumberField,
   Show,
@@ -30,6 +32,38 @@ const AlbumDetails = (props) => {
   )
 }
 
+const AlbumDatagridRow = ({ children, ...rest }) => {
+  const [visible, setVisible] = useState(false)
+  const childCount = React.Children.count(children)
+  return (
+    <DatagridRow
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+      {...rest}
+    >
+      {React.Children.map(
+        children,
+        (child, index) =>
+          child &&
+          isValidElement(child) &&
+          (index < childCount - 1
+            ? child
+            : cloneElement(child, {
+                visible,
+                ...rest,
+              }))
+      )}
+    </DatagridRow>
+  )
+}
+
+const AlbumDatagridBody = (props) => (
+  <DatagridBody {...props} row={<AlbumDatagridRow />} />
+)
+const AlbumDatagrid = (props) => (
+  <Datagrid {...props} body={<AlbumDatagridBody />} />
+)
+
 const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -48,7 +82,7 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
       {...rest}
     />
   ) : (
-    <Datagrid expand={<AlbumDetails />} rowClick={'show'} {...rest}>
+    <AlbumDatagrid expand={<AlbumDetails />} rowClick={'show'} {...rest}>
       <TextField source="name" />
       <ArtistLinkField />
       {isDesktop && <NumberField source="songCount" />}
@@ -56,7 +90,7 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
       <RangeField source={'year'} sortBy={'maxYear'} />
       {isDesktop && <DurationField source="duration" />}
       <AlbumContextMenu />
-    </Datagrid>
+    </AlbumDatagrid>
   )
 }
 
