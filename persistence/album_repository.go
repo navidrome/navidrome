@@ -26,8 +26,10 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 	r.ormer = o
 	r.tableName = "album"
 	r.sortMappings = map[string]string{
-		"artist": "compilation asc, order_album_artist_name asc, order_album_name asc",
-		"random": "RANDOM()",
+		"name":     "order_album_name",
+		"artist":   "compilation asc, order_album_artist_name asc, order_album_name asc",
+		"random":   "RANDOM()",
+		"max_year": "max_year asc, name, order_album_name asc",
 	}
 	r.filterMappings = map[string]filterFunc{
 		"name":        fullTextFilter,
