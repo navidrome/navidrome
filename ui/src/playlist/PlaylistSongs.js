@@ -17,6 +17,7 @@ import {
   SongDatagrid,
 } from '../common'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
+import { AlbumLinkField } from '../song/AlbumLinkField'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -115,10 +116,11 @@ const PlaylistSongs = (props) => {
               rowClick={null}
               {...controllerProps}
               hasBulkActions={hasBulkActions}
-              contextAlwaysVisible={isXsmall}
+              contextAlwaysVisible={!isDesktop}
             >
               {isDesktop && <TextField source="id" label={'#'} />}
               <TextField source="title" />
+              {isDesktop && <AlbumLinkField source="album" />}
               {isDesktop && <TextField source="artist" />}
               <DurationField source="duration" />
               <SongContextMenu
