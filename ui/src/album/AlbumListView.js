@@ -50,7 +50,6 @@ const AlbumDatagridRow = ({ children, ...rest }) => {
             ? child
             : cloneElement(child, {
                 visible,
-                ...rest,
               }))
       )}
     </DatagridRow>

@@ -1,5 +1,10 @@
-import React from 'react'
-import { GridList, GridListTile, GridListTileBar } from '@material-ui/core'
+import React, { useState } from 'react'
+import {
+  GridList,
+  GridListTile,
+  GridListTileBar,
+  useMediaQuery,
+} from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
@@ -15,6 +20,7 @@ const useStyles = makeStyles((theme) => ({
   },
   tileBar: {
     textAlign: 'left',
+    marginBottom: '3px',
     background:
       'linear-gradient(to top, rgba(0,0,0,1) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
   },
@@ -65,37 +71,58 @@ const Cover = withContentRect('bounds')(
   }
 )
 
+const AlbumGridTile = ({ record }) => {
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const classes = useStyles()
+  const [visible, setVisible] = useState(false)
+
+  return (
+    <div
+      onMouseMove={() => {
+        setVisible(true)
+      }}
+      onMouseLeave={() => {
+        setVisible(false)
+      }}
+    >
+      <Cover album={record} />
+      {(!isDesktop || visible) && (
+        <GridListTileBar
+          className={classes.tileBar}
+          title={record.name}
+          subtitle={
+            <div className={classes.albumArtistName}>
+              <ArtistLinkField record={record} className={classes.artistLink}>
+                {record.albumArtist}
+              </ArtistLinkField>
+            </div>
+          }
+          actionIcon={<AlbumContextMenu record={record} color={'white'} />}
+        />
+      )}
+    </div>
+  )
+}
+
 const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
 
   return (
     <div className={classes.root}>
-      <GridList cellHeight={'auto'} cols={getColsForWidth(width)} spacing={20}>
+      <GridList
+        component={'div'}
+        cellHeight={'auto'}
+        cols={getColsForWidth(width)}
+        spacing={20}
+      >
         {ids.map((id) => (
           <GridListTile
             className={classes.gridListTile}
             component={Link}
             key={id}
-            to={linkToRecord(basePath, data[id].id, 'show')}
+            to={linkToRecord(basePath, id, 'show')}
           >
-            <Cover album={data[id]} />
-            <GridListTileBar
-              className={classes.tileBar}
-              title={data[id].name}
-              subtitle={
-                <div className={classes.albumArtistName}>
-                  <ArtistLinkField
-                    record={data[id]}
-                    className={classes.artistLink}
-                  >
-                    {data[id].albumArtist}
-                  </ArtistLinkField>
-                </div>
-              }
-              actionIcon={
-                <AlbumContextMenu record={data[id]} color={'white'} />
-              }
-            />
+            <AlbumGridTile record={data[id]} />
           </GridListTile>
         ))}
       </GridList>
