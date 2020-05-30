@@ -20,7 +20,7 @@ type nd struct {
 	ScanInterval   string `default:"1m"`
 	DbPath         string ``
 	LogLevel       string `default:"info"`
-	SessionTimeout string `default:"30m"`
+	SessionTimeout string `default:"24h"`
 	BaseURL        string `default:""`
 
 	UILoginBackgroundURL string `default:"https://source.unsplash.com/random/1600x900?music"`
