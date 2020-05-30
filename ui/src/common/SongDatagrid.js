@@ -70,7 +70,10 @@ export const SongDatagridRow = ({
   ...rest
 }) => {
   const [visible, setVisible] = useState(false)
-  const childCount = children.filter((c) => isValidElement(c)).length
+  const fields = React.Children.toArray(children).filter((c) =>
+    isValidElement(c)
+  )
+  const childCount = fields.length
   return (
     <>
       {multiDisc && record.trackNumber === 1 && (
@@ -87,16 +90,12 @@ export const SongDatagridRow = ({
         onMouseLeave={() => setVisible(false)}
         {...rest}
       >
-        {React.Children.map(
-          children,
-          (child, index) =>
-            child &&
-            isValidElement(child) &&
-            (index < childCount
-              ? child
-              : cloneElement(child, {
-                  visible: contextAlwaysVisible || visible,
-                }))
+        {fields.map((child, index) =>
+          index < childCount - 1
+            ? child
+            : cloneElement(child, {
+                visible: contextAlwaysVisible || visible,
+              })
         )}
       </DatagridRow>
     </>
