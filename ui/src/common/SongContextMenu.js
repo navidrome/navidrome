@@ -120,7 +120,7 @@ const SongContextMenu = ({
         className={classes.menu}
         disabled={updating}
       >
-        <MoreVertIcon />
+        <MoreVertIcon fontSize={'small'} />
       </IconButton>
       <Menu
         id={'menu' + record.id}

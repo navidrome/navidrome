@@ -107,7 +107,7 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
         onClick={handleClick}
         size={'small'}
       >
-        <MoreVertIcon />
+        <MoreVertIcon fontSize={'small'} />
       </IconButton>
       <Menu
         id="context-menu"

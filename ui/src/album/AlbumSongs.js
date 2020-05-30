@@ -117,7 +117,7 @@ const AlbumSongs = (props) => {
             />
           ) : (
             <SongDatagrid
-              expand={!isXsmall && <SongDetails />}
+              expand={isXsmall ? null : <SongDetails />}
               rowClick={(id) => dispatch(playTracks(data, ids, id))}
               {...controllerProps}
               hasBulkActions={hasBulkActions}

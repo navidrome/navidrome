@@ -24,7 +24,12 @@ const useStyles = makeStyles({
   },
 })
 
-const DiscSubtitleRow = ({ record, onClickDiscSubtitle, colSpan }) => {
+const DiscSubtitleRow = ({
+  record,
+  onClickDiscSubtitle,
+  colSpan,
+  contextAlwaysVisible,
+}) => {
   const classes = useStyles()
   const [visible, setVisible] = useState(false)
   const handlePlayDisc = (discNumber) => () => {
@@ -49,7 +54,7 @@ const DiscSubtitleRow = ({ record, onClickDiscSubtitle, colSpan }) => {
         <AlbumContextMenu
           record={{ id: record.albumId }}
           discNumber={record.discNumber}
-          visible={visible}
+          visible={contextAlwaysVisible || visible}
         />
       </TableCell>
     </TableRow>
@@ -61,19 +66,19 @@ export const SongDatagridRow = ({
   children,
   multiDisc,
   contextAlwaysVisible,
-  contextMenu,
   onClickDiscSubtitle,
   ...rest
 }) => {
   const [visible, setVisible] = useState(false)
-  const childCount = React.Children.count(children)
+  const childCount = children.filter((c) => isValidElement(c)).length
   return (
     <>
       {multiDisc && record.trackNumber === 1 && (
         <DiscSubtitleRow
           record={record}
           onClickDiscSubtitle={onClickDiscSubtitle}
-          colSpan={childCount}
+          contextAlwaysVisible={contextAlwaysVisible}
+          colSpan={childCount + (rest.expand ? 1 : 0)}
         />
       )}
       <DatagridRow
@@ -87,11 +92,10 @@ export const SongDatagridRow = ({
           (child, index) =>
             child &&
             isValidElement(child) &&
-            (index < childCount - 1
+            (index < childCount
               ? child
               : cloneElement(child, {
                   visible: contextAlwaysVisible || visible,
-                  ...rest,
                 }))
         )}
       </DatagridRow>
