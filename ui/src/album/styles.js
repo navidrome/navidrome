@@ -36,7 +36,7 @@ export const useStyles = makeStyles((theme) => ({
       width: '26em',
     },
     [theme.breakpoints.up('lg')]: {
-      width: '38em',
+      width: '43em',
     },
   },
   albumTitle: {

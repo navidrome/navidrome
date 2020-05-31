@@ -26,14 +26,14 @@ const useStyles = makeStyles({
 
 const DiscSubtitleRow = ({
   record,
-  onClickDiscSubtitle,
+  onClick,
   colSpan,
   contextAlwaysVisible,
 }) => {
   const classes = useStyles()
   const [visible, setVisible] = useState(false)
   const handlePlayDisc = (discNumber) => () => {
-    onClickDiscSubtitle(discNumber)
+    onClick(discNumber)
   }
   return (
     <TableRow
@@ -79,14 +79,14 @@ export const SongDatagridRow = ({
       {multiDisc && record.trackNumber === 1 && (
         <DiscSubtitleRow
           record={record}
-          onClickDiscSubtitle={onClickDiscSubtitle}
+          onClick={onClickDiscSubtitle}
           contextAlwaysVisible={contextAlwaysVisible}
           colSpan={childCount + (rest.expand ? 1 : 0)}
         />
       )}
       <DatagridRow
         record={record}
-        onMouseEnter={() => setVisible(true)}
+        onMouseMove={() => setVisible(true)}
         onMouseLeave={() => setVisible(false)}
         {...rest}
       >

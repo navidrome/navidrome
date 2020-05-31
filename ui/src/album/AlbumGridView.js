@@ -71,7 +71,7 @@ const Cover = withContentRect('bounds')(
   }
 )
 
-const AlbumGridTile = ({ record }) => {
+const AlbumGridTile = ({ record, basePath }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles()
   const [visible, setVisible] = useState(false)
@@ -85,21 +85,23 @@ const AlbumGridTile = ({ record }) => {
         setVisible(false)
       }}
     >
-      <Cover album={record} />
-      {(!isDesktop || visible) && (
-        <GridListTileBar
-          className={classes.tileBar}
-          title={record.name}
-          subtitle={
-            <div className={classes.albumArtistName}>
-              <ArtistLinkField record={record} className={classes.artistLink}>
-                {record.albumArtist}
-              </ArtistLinkField>
-            </div>
-          }
-          actionIcon={<AlbumContextMenu record={record} color={'white'} />}
-        />
-      )}
+      <Link to={linkToRecord(basePath, record.id, 'show')}>
+        <Cover album={record} />
+        {(!isDesktop || visible) && (
+          <GridListTileBar
+            className={classes.tileBar}
+            title={record.name}
+            subtitle={
+              <div className={classes.albumArtistName}>
+                <ArtistLinkField record={record} className={classes.artistLink}>
+                  {record.albumArtist}
+                </ArtistLinkField>
+              </div>
+            }
+            actionIcon={<AlbumContextMenu record={record} color={'white'} />}
+          />
+        )}
+      </Link>
     </div>
   )
 }
@@ -116,13 +118,8 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
         spacing={20}
       >
         {ids.map((id) => (
-          <GridListTile
-            className={classes.gridListTile}
-            component={Link}
-            key={id}
-            to={linkToRecord(basePath, id, 'show')}
-          >
-            <AlbumGridTile record={data[id]} />
+          <GridListTile className={classes.gridListTile} key={id}>
+            <AlbumGridTile record={data[id]} basePath={basePath} />
           </GridListTile>
         ))}
       </GridList>
