@@ -122,7 +122,7 @@ func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
-			reader, err = resources.AssetFile().Open("navidrome-310x310.png")
+			reader, err = resources.AssetFile().Open(consts.PlaceholderAlbumArt)
 		}
 	}()
 	var data []byte

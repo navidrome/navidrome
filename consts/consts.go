@@ -30,6 +30,8 @@ const (
 
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
+
+	PlaceholderAlbumArt = "navidrome-600x600.png"
 )
 
 // Cache options

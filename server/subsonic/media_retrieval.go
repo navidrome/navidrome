@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -21,7 +22,7 @@ func NewMediaRetrievalController(cover engine.Cover) *MediaRetrievalController {
 }
 
 func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	f, err := resources.AssetFile().Open("navidrome-310x310.png")
+	f, err := resources.AssetFile().Open(consts.PlaceholderAlbumArt)
 	if err != nil {
 		log.Error(r, "Image not found", err)
 		return nil, NewError(responses.ErrorDataNotFound, "Avatar image not found")
