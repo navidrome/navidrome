@@ -35,7 +35,8 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const PlaylistDetails = ({ record }) => {
+const PlaylistDetails = (props) => {
+  const { record = {} } = props
   const translate = useTranslate()
   const classes = useStyles()
 
@@ -43,13 +44,22 @@ const PlaylistDetails = ({ record }) => {
     <Card className={classes.container}>
       <CardContent className={classes.details}>
         <Typography variant="h5" className={classes.title}>
-          {record.name}
+          {record.name || translate('ra.page.loading')}
         </Typography>
         <Typography component="h6">{record.comment}</Typography>
         <Typography component="p">
-          {record.songCount}{' '}
-          {translate('resources.song.name', { smart_count: record.songCount })}{' '}
-          · <DurationField record={record} source={'duration'} />
+          {record.songCount ? (
+            <span>
+              {record.songCount}{' '}
+              {translate('resources.song.name', {
+                smart_count: record.songCount,
+              })}
+              {' · '}
+              <DurationField record={record} source={'duration'} />
+            </span>
+          ) : (
+            <span>&nbsp;</span>
+          )}
         </Typography>
       </CardContent>
     </Card>

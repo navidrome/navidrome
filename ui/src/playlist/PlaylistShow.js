@@ -9,13 +9,9 @@ import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 
 const PlaylistShow = (props) => {
   const viewVersion = useSelector((s) => s.admin.ui && s.admin.ui.viewVersion)
-  const { data: record, loading, error } = useGetOne('playlist', props.id, {
+  const { data: record, error } = useGetOne('playlist', props.id, {
     v: viewVersion,
   })
-
-  if (loading) {
-    return null
-  }
 
   if (error) {
     return <p>ERROR: {error}</p>
@@ -27,14 +23,16 @@ const PlaylistShow = (props) => {
       <PlaylistSongs
         {...props}
         playlistId={props.id}
-        title={<Title subTitle={record.name} />}
+        title={<Title subTitle={record && record.name} />}
         actions={<PlaylistActions />}
         filter={{ playlist_id: props.id }}
         resource={'playlistTrack'}
         exporter={false}
         perPage={-1}
         pagination={null}
-        bulkActionButtons={<PlaylistSongBulkActions playlistId={props.id} />}
+        bulkActionButtons={
+          <PlaylistSongBulkActions playlistId={props.id} record={record} />
+        }
       />
     </>
   )
