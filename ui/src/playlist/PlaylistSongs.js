@@ -48,7 +48,7 @@ const useStyles = makeStyles(
       flexWrap: 'wrap',
     },
     noResults: { padding: 20 },
-    draggable: {
+    row: {
       cursor: 'move',
     },
   }),
@@ -138,24 +138,17 @@ const PlaylistSongs = (props) => {
           ) : (
             <ReactDragListView onDragEnd={handleDragEnd} nodeSelector={'tr'}>
               <SongDatagrid
+                classes={classes}
                 expand={!isXsmall && <SongDetails />}
                 rowClick={null}
                 {...controllerProps}
                 hasBulkActions={hasBulkActions}
                 contextAlwaysVisible={!isDesktop}
               >
-                {isDesktop && (
-                  <TextField
-                    source="id"
-                    label={'#'}
-                    className={classes.draggable}
-                  />
-                )}
-                <TextField source="title" className={classes.draggable} />
+                {isDesktop && <TextField source="id" label={'#'} />}
+                <TextField source="title" />
                 {isDesktop && <AlbumLinkField source="album" />}
-                {isDesktop && (
-                  <TextField source="artist" className={classes.draggable} />
-                )}
+                {isDesktop && <TextField source="artist" />}
                 <DurationField
                   source="duration"
                   className={classes.draggable}
