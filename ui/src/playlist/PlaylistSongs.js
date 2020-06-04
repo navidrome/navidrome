@@ -6,10 +6,13 @@ import {
   TextField,
   useListController,
   useRefresh,
+  useDataProvider,
+  useNotify,
 } from 'react-admin'
 import classnames from 'classnames'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
+import ReactDragListView from 'react-drag-listview'
 import {
   DurationField,
   SongDetails,
@@ -45,6 +48,9 @@ const useStyles = makeStyles(
       flexWrap: 'wrap',
     },
     noResults: { padding: 20 },
+    draggable: {
+      cursor: 'move',
+    },
   }),
   { name: 'RaList' }
 )
@@ -61,22 +67,41 @@ const PlaylistSongs = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
+  const dataProvider = useDataProvider()
   const refresh = useRefresh()
+  const notify = useNotify()
   const { bulkActionButtons, expand, className, playlistId } = props
-  const { data, ids, version, loaded } = controllerProps
+  const { data, ids, version } = controllerProps
 
   const anySong = data[ids[0]]
   const showPlaceholder = !anySong || anySong.playlistId !== playlistId
   const hasBulkActions = props.bulkActionButtons !== false
 
-  if (loaded && ids.length === 0) {
-    return <div />
+  const reorder = (playlistId, id, newPos) => {
+    dataProvider
+      .update('playlistTrack', {
+        id,
+        data: { insert_before: newPos },
+        filter: { playlist_id: playlistId },
+      })
+      .then(() => {
+        refresh()
+      })
+      .catch(() => {
+        notify('ra.page.error', 'warning')
+      })
   }
 
   const onAddToPlaylist = (pls) => {
     if (pls.id === props.id) {
       refresh()
     }
+  }
+
+  const handleDragEnd = (from, to) => {
+    const toId = ids[to]
+    const fromId = ids[from]
+    reorder(playlistId, fromId, toId)
   }
 
   return (
@@ -111,23 +136,36 @@ const PlaylistSongs = (props) => {
               size={'small'}
             />
           ) : (
-            <SongDatagrid
-              expand={!isXsmall && <SongDetails />}
-              rowClick={null}
-              {...controllerProps}
-              hasBulkActions={hasBulkActions}
-              contextAlwaysVisible={!isDesktop}
-            >
-              {isDesktop && <TextField source="id" label={'#'} />}
-              <TextField source="title" />
-              {isDesktop && <AlbumLinkField source="album" />}
-              {isDesktop && <TextField source="artist" />}
-              <DurationField source="duration" />
-              <SongContextMenu
-                onAddToPlaylist={onAddToPlaylist}
-                showStar={false}
-              />
-            </SongDatagrid>
+            <ReactDragListView onDragEnd={handleDragEnd} nodeSelector={'tr'}>
+              <SongDatagrid
+                expand={!isXsmall && <SongDetails />}
+                rowClick={null}
+                {...controllerProps}
+                hasBulkActions={hasBulkActions}
+                contextAlwaysVisible={!isDesktop}
+              >
+                {isDesktop && (
+                  <TextField
+                    source="id"
+                    label={'#'}
+                    className={classes.draggable}
+                  />
+                )}
+                <TextField source="title" className={classes.draggable} />
+                {isDesktop && <AlbumLinkField source="album" />}
+                {isDesktop && (
+                  <TextField source="artist" className={classes.draggable} />
+                )}
+                <DurationField
+                  source="duration"
+                  className={classes.draggable}
+                />
+                <SongContextMenu
+                  onAddToPlaylist={onAddToPlaylist}
+                  showStar={false}
+                />
+              </SongDatagrid>
+            </ReactDragListView>
           )}
         </Card>
       </div>

@@ -43,4 +43,5 @@ type PlaylistTrackRepository interface {
 	Add(mediaFileIds []string) error
 	Update(mediaFileIds []string) error
 	Delete(id string) error
+	Reorder(pos int, newPos int) error
 }

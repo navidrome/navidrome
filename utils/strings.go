@@ -25,3 +25,16 @@ func StringInSlice(a string, list []string) bool {
 	}
 	return false
 }
+
+func InsertString(array []string, value string, index int) []string {
+	return append(array[:index], append([]string{value}, array[index:]...)...)
+}
+
+func RemoveString(array []string, index int) []string {
+	return append(array[:index], array[index+1:]...)
+}
+
+func MoveString(array []string, srcIndex int, dstIndex int) []string {
+	value := array[srcIndex]
+	return InsertString(RemoveString(array, srcIndex), value, dstIndex)
+}

@@ -4,6 +4,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/utils"
 	"github.com/deluan/rest"
 )
 
@@ -70,17 +71,9 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) error {
 		log.Debug(r.ctx, "Adding songs to playlist", "playlistId", r.playlistId, "mediaFileIds", mediaFileIds)
 	}
 
-	// Get all current tracks
-	all := r.newSelect().Columns("media_file_id").Where(Eq{"playlist_id": r.playlistId}).OrderBy("id")
-	var tracks model.PlaylistTracks
-	err := r.queryAll(all, &tracks)
+	ids, err := r.getTracks()
 	if err != nil {
-		log.Error("Error querying current tracks from playlist", "playlistId", r.playlistId, err)
 		return err
-	}
-	ids := make([]string, len(tracks))
-	for i := range tracks {
-		ids[i] = tracks[i].MediaFileID
 	}
 
 	// Append new tracks
@@ -88,6 +81,22 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) error {
 
 	// Update tracks and playlist
 	return r.Update(ids)
+}
+
+func (r *playlistTrackRepository) getTracks() ([]string, error) {
+	// Get all current tracks
+	all := r.newSelect().Columns("media_file_id").Where(Eq{"playlist_id": r.playlistId}).OrderBy("id")
+	var tracks model.PlaylistTracks
+	err := r.queryAll(all, &tracks)
+	if err != nil {
+		log.Error("Error querying current tracks from playlist", "playlistId", r.playlistId, err)
+		return nil, err
+	}
+	ids := make([]string, len(tracks))
+	for i := range tracks {
+		ids[i] = tracks[i].MediaFileID
+	}
+	return ids, nil
 }
 
 func (r *playlistTrackRepository) Update(mediaFileIds []string) error {
@@ -154,6 +163,15 @@ func (r *playlistTrackRepository) Delete(id string) error {
 		return err
 	}
 	return r.updateStats()
+}
+
+func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
+	ids, err := r.getTracks()
+	if err != nil {
+		return err
+	}
+	newOrder := utils.MoveString(ids, pos-1, newPos-1)
+	return r.Update(newOrder)
 }
 
 var _ model.PlaylistTrackRepository = (*playlistTrackRepository)(nil)

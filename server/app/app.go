@@ -91,7 +91,7 @@ func (app *Router) RX(r chi.Router, pathPrefix string, constructor rest.Reposito
 type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
 
 func (app *Router) addPlaylistTrackRoute(r chi.Router) {
-	// Add a middleware to capture the playlisId
+	// Add a middleware to capture the playlistId
 	wrapper := func(f restHandler) http.HandlerFunc {
 		return func(res http.ResponseWriter, req *http.Request) {
 			c := func(ctx context.Context) rest.Repository {
@@ -109,6 +109,9 @@ func (app *Router) addPlaylistTrackRoute(r chi.Router) {
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(UrlParams)
 			r.Get("/", wrapper(rest.Get))
+			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
+				reorderItem(app.ds)(w, r)
+			})
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				deleteFromPlaylist(app.ds)(w, r)
 			})
