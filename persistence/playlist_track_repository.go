@@ -11,11 +11,13 @@ import (
 type playlistTrackRepository struct {
 	sqlRepository
 	sqlRestful
-	playlistId string
+	playlistId   string
+	playlistRepo model.PlaylistRepository
 }
 
 func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTrackRepository {
 	p := &playlistTrackRepository{}
+	p.playlistRepo = NewPlaylistRepository(r.ctx, r.ormer)
 	p.playlistId = playlistId
 	p.ctx = r.ctx
 	p.ormer = r.ormer
@@ -67,6 +69,10 @@ func (r *playlistTrackRepository) NewInstance() interface{} {
 }
 
 func (r *playlistTrackRepository) Add(mediaFileIds []string) error {
+	if !r.isWritable() {
+		return rest.ErrPermissionDenied
+	}
+
 	if len(mediaFileIds) > 0 {
 		log.Debug(r.ctx, "Adding songs to playlist", "playlistId", r.playlistId, "mediaFileIds", mediaFileIds)
 	}
@@ -100,6 +106,10 @@ func (r *playlistTrackRepository) getTracks() ([]string, error) {
 }
 
 func (r *playlistTrackRepository) Update(mediaFileIds []string) error {
+	if !r.isWritable() {
+		return rest.ErrPermissionDenied
+	}
+
 	// Remove old tracks
 	del := Delete(r.tableName).Where(Eq{"playlist_id": r.playlistId})
 	_, err := r.executeSQL(del)
@@ -158,6 +168,9 @@ func (r *playlistTrackRepository) updateStats() error {
 }
 
 func (r *playlistTrackRepository) Delete(id string) error {
+	if !r.isWritable() {
+		return rest.ErrPermissionDenied
+	}
 	err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": id}})
 	if err != nil {
 		return err
@@ -166,12 +179,24 @@ func (r *playlistTrackRepository) Delete(id string) error {
 }
 
 func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
+	if !r.isWritable() {
+		return rest.ErrPermissionDenied
+	}
 	ids, err := r.getTracks()
 	if err != nil {
 		return err
 	}
 	newOrder := utils.MoveString(ids, pos-1, newPos-1)
 	return r.Update(newOrder)
+}
+
+func (r *playlistTrackRepository) isWritable() bool {
+	usr := loggedUser(r.ctx)
+	if usr.IsAdmin {
+		return true
+	}
+	pls, err := r.playlistRepo.Get(r.playlistId)
+	return err == nil && pls.Owner == usr.UserName
 }
 
 var _ model.PlaylistTrackRepository = (*playlistTrackRepository)(nil)

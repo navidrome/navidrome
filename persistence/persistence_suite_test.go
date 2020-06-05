@@ -86,7 +86,7 @@ var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
 		o := orm.NewOrm()
 		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, model.User{ID: "userid"})
+		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid"})
 		mr := NewMediaFileRepository(ctx, o)
 		for i := range testSongs {
 			s := testSongs[i]

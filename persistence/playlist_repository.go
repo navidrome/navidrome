@@ -45,6 +45,16 @@ func (r *playlistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *playlistRepository) Delete(id string) error {
+	usr := loggedUser(r.ctx)
+	if !usr.IsAdmin {
+		pls, err := r.Get(id)
+		if err != nil {
+			return err
+		}
+		if pls.Owner != usr.UserName {
+			return rest.ErrPermissionDenied
+		}
+	}
 	err := r.delete(And{Eq{"id": id}, r.userFilter()})
 	if err != nil {
 		return err
@@ -158,6 +168,10 @@ func (r *playlistRepository) Save(entity interface{}) (string, error) {
 
 func (r *playlistRepository) Update(entity interface{}, cols ...string) error {
 	pls := entity.(*model.Playlist)
+	usr := loggedUser(r.ctx)
+	if !usr.IsAdmin && pls.Owner != usr.UserName {
+		return rest.ErrPermissionDenied
+	}
 	err := r.Put(pls)
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
