@@ -20,7 +20,7 @@ const PlaylistFilter = (props) => (
 
 const PlaylistList = (props) => (
   <List {...props} exporter={false} filters={<PlaylistFilter />}>
-    <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r.owner)}>
+    <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r && r.owner)}>
       <TextField source="name" />
       <TextField source="owner" />
       <BooleanField source="public" />

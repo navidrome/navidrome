@@ -78,7 +78,11 @@ const PlaylistSongs = (props) => {
   const refresh = useRefresh()
   const notify = useNotify()
   const { bulkActionButtons, expand, className, playlistId, readOnly } = props
-  const { data, ids, version } = controllerProps
+  const { data, ids, version, total } = controllerProps
+
+  if (total === 0) {
+    return null
+  }
 
   const anySong = data[ids[0]]
   const showPlaceholder = !anySong || anySong.playlistId !== playlistId
