@@ -9,7 +9,7 @@ import {
 
 const PlaylistEdit = (props) => (
   <Edit {...props}>
-    <SimpleForm>
+    <SimpleForm redirect="list">
       <TextInput source="name" validate={required()} />
       <TextInput source="comment" />
       <BooleanInput source="public" />

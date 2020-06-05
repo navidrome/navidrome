@@ -9,7 +9,7 @@ import {
 
 const PlaylistCreate = (props) => (
   <Create {...props}>
-    <SimpleForm>
+    <SimpleForm redirect="list">
       <TextInput source="name" validate={required()} />
       <TextInput multiline source="comment" />
       <BooleanInput source="public" initialValue={true} />
