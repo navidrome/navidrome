@@ -61,12 +61,12 @@ Jamstash-master:
 	rm -rf Jamstash-master/node_modules Jamstash-master/bower_components
 
 check_env: check_go_env check_node_env
-.PHONE: check_env
+.PHONY: check_env
 
 check_hooks:
 	@lefthook add pre-commit
 	@lefthook add pre-push
-.PHONE: check_hooks
+.PHONY: check_hooks
 
 check_go_env:
 	@(hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
