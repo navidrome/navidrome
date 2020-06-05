@@ -6,6 +6,7 @@ import { Title } from '../common'
 import PlaylistSongs from './PlaylistSongs'
 import PlaylistActions from './PlaylistActions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
+import { isReadOnly } from './Writable'
 
 const PlaylistShow = (props) => {
   const viewVersion = useSelector((s) => s.admin.ui && s.admin.ui.viewVersion)
@@ -23,6 +24,7 @@ const PlaylistShow = (props) => {
       <PlaylistSongs
         {...props}
         playlistId={props.id}
+        readOnly={isReadOnly(record && record.owner)}
         title={<Title subTitle={record && record.name} />}
         actions={<PlaylistActions />}
         filter={{ playlist_id: props.id }}

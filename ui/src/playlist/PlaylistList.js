@@ -1,15 +1,16 @@
 import React from 'react'
 import {
-  Datagrid,
-  TextField,
   BooleanField,
-  NumberField,
+  Datagrid,
   DateField,
-  Filter,
-  SearchInput,
   EditButton,
+  Filter,
+  NumberField,
+  SearchInput,
+  TextField,
 } from 'react-admin'
 import { DurationField, List } from '../common'
+import Writable, { isWritable } from './Writable'
 
 const PlaylistFilter = (props) => (
   <Filter {...props}>
@@ -19,14 +20,17 @@ const PlaylistFilter = (props) => (
 
 const PlaylistList = (props) => (
   <List {...props} exporter={false} filters={<PlaylistFilter />}>
-    <Datagrid rowClick="show">
+    <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r.owner)}>
       <TextField source="name" />
       <TextField source="owner" />
       <BooleanField source="public" />
       <NumberField source="songCount" />
       <DurationField source="duration" />
       <DateField source="updatedAt" />
-      <EditButton />
+      <Writable>
+        <EditButton />
+      </Writable>
+      />
     </Datagrid>
   </List>
 )

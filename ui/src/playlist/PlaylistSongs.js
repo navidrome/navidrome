@@ -49,7 +49,7 @@ const useStyles = makeStyles(
     },
     noResults: { padding: 20 },
     row: {
-      cursor: 'move',
+      cursor: (props) => (props.readOnly ? 'arrow' : 'move'),
     },
   }),
   { name: 'RaList' }
@@ -61,6 +61,13 @@ const useStylesListToolbar = makeStyles({
   },
 })
 
+const ReorderableList = ({ readOnly, children, ...rest }) => {
+  if (readOnly) {
+    return children
+  }
+  return <ReactDragListView {...rest}>{children}</ReactDragListView>
+}
+
 const PlaylistSongs = (props) => {
   const classes = useStyles(props)
   const classesToolbar = useStylesListToolbar(props)
@@ -70,7 +77,7 @@ const PlaylistSongs = (props) => {
   const dataProvider = useDataProvider()
   const refresh = useRefresh()
   const notify = useNotify()
-  const { bulkActionButtons, expand, className, playlistId } = props
+  const { bulkActionButtons, expand, className, playlistId, readOnly } = props
   const { data, ids, version } = controllerProps
 
   const anySong = data[ids[0]]
@@ -136,7 +143,11 @@ const PlaylistSongs = (props) => {
               size={'small'}
             />
           ) : (
-            <ReactDragListView onDragEnd={handleDragEnd} nodeSelector={'tr'}>
+            <ReorderableList
+              readOnly={readOnly}
+              onDragEnd={handleDragEnd}
+              nodeSelector={'tr'}
+            >
               <SongDatagrid
                 classes={classes}
                 expand={!isXsmall && <SongDetails />}
@@ -158,7 +169,7 @@ const PlaylistSongs = (props) => {
                   showStar={false}
                 />
               </SongDatagrid>
-            </ReactDragListView>
+            </ReorderableList>
           )}
         </Card>
       </div>
