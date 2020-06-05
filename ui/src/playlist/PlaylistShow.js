@@ -6,7 +6,7 @@ import { Title } from '../common'
 import PlaylistSongs from './PlaylistSongs'
 import PlaylistActions from './PlaylistActions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
-import { isReadOnly } from './Writable'
+import { isReadOnly } from '../common/Writable'
 
 const PlaylistShow = (props) => {
   const viewVersion = useSelector((s) => s.admin.ui && s.admin.ui.viewVersion)

@@ -6,6 +6,7 @@ import Autocomplete, {
 } from '@material-ui/lab/Autocomplete'
 import { useGetList, useTranslate } from 'react-admin'
 import PropTypes from 'prop-types'
+import { isWritable } from '../common/Writable'
 
 const filter = createFilterOptions()
 
@@ -18,7 +19,9 @@ const SelectPlaylistInput = ({ onChange }) => {
     {}
   )
 
-  const options = ids && ids.map((id) => data[id])
+  const options =
+    ids &&
+    ids.map((id) => data[id]).filter((option) => isWritable(option.owner))
 
   const handleOnChange = (event, newValue) => {
     if (newValue == null) {

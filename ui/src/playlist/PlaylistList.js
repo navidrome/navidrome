@@ -10,7 +10,7 @@ import {
   TextField,
 } from 'react-admin'
 import { DurationField, List } from '../common'
-import Writable, { isWritable } from './Writable'
+import Writable, { isWritable } from '../common/Writable'
 
 const PlaylistFilter = (props) => (
   <Filter {...props}>
