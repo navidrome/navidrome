@@ -154,6 +154,7 @@
             "show": "Exibir",
             "sort": "Ordenar",
             "undo": "Desfazer",
+            "unselect": "Deselecionar",
             "expand": "Expandir",
             "close": "Fechar",
             "open_menu": "Abrir menu",
