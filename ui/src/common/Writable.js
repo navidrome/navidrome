@@ -1,4 +1,4 @@
-import { cloneElement } from 'react'
+import { cloneElement, Children, isValidElement } from 'react'
 
 export const isWritable = (owner) => {
   return (
@@ -14,7 +14,9 @@ export const isReadOnly = (owner) => {
 const Writable = (props) => {
   const { record, children } = props
   if (isWritable(record.owner)) {
-    return cloneElement(children, props)
+    return Children.map(children, (child) =>
+      isValidElement(child) ? cloneElement(child, props) : child
+    )
   }
   return null
 }
