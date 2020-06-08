@@ -87,9 +87,13 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 		return err
 	}
 	p.ID = id
-	err = r.updateTracks(id, tracks)
-	if err != nil {
-		return err
+
+	// Only update tracks if they are specified
+	if tracks != nil {
+		err = r.updateTracks(id, tracks)
+		if err != nil {
+			return err
+		}
 	}
 	return r.loadTracks(p)
 }
