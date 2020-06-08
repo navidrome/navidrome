@@ -46,11 +46,19 @@ func (r *playerRepository) FindByName(client, userName string) (*model.Player, e
 
 func (r *playerRepository) newRestSelect(options ...model.QueryOptions) SelectBuilder {
 	s := r.newSelect(options...)
+	return s.Where(r.addRestriction())
+}
+
+func (r *playerRepository) addRestriction(sql ...Sqlizer) Sqlizer {
+	s := And{}
+	if len(sql) > 0 {
+		s = append(s, sql[0])
+	}
 	u := loggedUser(r.ctx)
 	if u.IsAdmin {
 		return s
 	}
-	return s.Where(Eq{"user_name": u.UserName})
+	return append(s, Eq{"user_name": u.UserName})
 }
 
 func (r *playerRepository) Count(options ...rest.QueryOptions) (int64, error) {
@@ -109,7 +117,8 @@ func (r *playerRepository) Update(entity interface{}, cols ...string) error {
 }
 
 func (r *playerRepository) Delete(id string) error {
-	err := r.delete(And{Eq{"id": id}, Eq{"user_name": loggedUser(r.ctx).UserName}})
+	filter := r.addRestriction(And{Eq{"id": id}})
+	err := r.delete(filter)
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
 	}
