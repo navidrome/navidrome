@@ -20,7 +20,7 @@ const PlaylistFilter = (props) => (
   </Filter>
 )
 
-const TogglePublicInput = ({ resource, record, source }) => {
+const TogglePublicInput = ({ permissions, resource, record, source }) => {
   const notify = useNotify()
   const [togglePublic] = useUpdate(
     resource,
@@ -43,10 +43,20 @@ const TogglePublicInput = ({ resource, record, source }) => {
     e.stopPropagation()
   }
 
-  return <Switch checked={record[source]} onClick={handleClick} />
+  const canChange =
+    permissions === 'admin' ||
+    localStorage.getItem('username') === record['owner']
+
+  return (
+    <Switch
+      checked={record[source]}
+      onClick={handleClick}
+      disabled={!canChange}
+    />
+  )
 }
 
-const PlaylistList = (props) => (
+const PlaylistList = ({ permissions, ...props }) => (
   <List {...props} exporter={false} filters={<PlaylistFilter />}>
     <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r && r.owner)}>
       <TextField source="name" />
@@ -54,7 +64,7 @@ const PlaylistList = (props) => (
       <NumberField source="songCount" />
       <DurationField source="duration" />
       <DateField source="updatedAt" />
-      <TogglePublicInput source="public" />
+      <TogglePublicInput source="public" permissions={permissions} />
       <Writable>
         <EditButton />
       </Writable>
