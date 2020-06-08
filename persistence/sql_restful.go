@@ -52,6 +52,10 @@ func startsWithFilter(field string, value interface{}) Sqlizer {
 	return Like{field: fmt.Sprintf("%s%%", value)}
 }
 
+func containsFilter(field string, value interface{}) Sqlizer {
+	return Like{field: fmt.Sprintf("%%%s%%", value)}
+}
+
 func booleanFilter(field string, value interface{}) Sqlizer {
 	v := strings.ToLower(value.(string))
 	return Eq{field: strings.ToLower(v) == "true"}

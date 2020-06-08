@@ -5,14 +5,27 @@ import {
   DateField,
   FunctionField,
   ReferenceField,
+  Filter,
+  SearchInput,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import { SimpleList, List } from '../common'
 
-const PlayerList = (props) => {
+const PlayerFilter = (props) => (
+  <Filter {...props}>
+    <SearchInput source="name" alwaysOn />
+  </Filter>
+)
+
+const PlayerList = ({ permissions, ...props }) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return (
-    <List exporter={false} {...props}>
+    <List
+      {...props}
+      sort={{ field: 'lastSeen', order: 'DESC' }}
+      exporter={false}
+      filters={<PlayerFilter />}
+    >
       {isXsmall ? (
         <SimpleList
           primaryText={(r) => r.client}
@@ -22,6 +35,7 @@ const PlayerList = (props) => {
       ) : (
         <Datagrid rowClick="edit">
           <TextField source="name" />
+          {permissions === 'admin' && <TextField source="userName" />}
           <ReferenceField source="transcodingId" reference="transcoding">
             <TextField source="name" />
           </ReferenceField>

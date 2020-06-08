@@ -19,6 +19,9 @@ func NewPlayerRepository(ctx context.Context, o orm.Ormer) model.PlayerRepositor
 	r.ctx = ctx
 	r.ormer = o
 	r.tableName = "player"
+	r.filterMappings = map[string]filterFunc{
+		"name": containsFilter,
+	}
 	return r
 }
 
