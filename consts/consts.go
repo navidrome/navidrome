@@ -11,7 +11,7 @@ const (
 	AppName = "navidrome"
 
 	LocalConfigFile     = "./navidrome.toml"
-	DefaultDbPath       = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL"
+	DefaultDbPath       = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on"
 	InitialSetupFlagKey = "InitialSetup"
 
 	UIAuthorizationHeader = "X-ND-Authorization"

@@ -27,7 +27,7 @@ func Db() *sql.DB {
 		var err error
 		Path = conf.Server.DbPath
 		if Path == ":memory:" {
-			Path = "file::memory:?cache=shared"
+			Path = "file::memory:?cache=shared&_foreign_keys=on"
 			conf.Server.DbPath = Path
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
