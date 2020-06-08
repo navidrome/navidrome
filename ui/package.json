@@ -22,7 +22,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^5.9.0",
     "@testing-library/react": "^10.2.0",
-    "@testing-library/user-event": "^11.2.0",
+    "@testing-library/user-event": "^11.2.1",
     "prettier": "^2.0.5"
   },
   "scripts": {
