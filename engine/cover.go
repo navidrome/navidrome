@@ -146,7 +146,7 @@ func resizeImage(reader io.Reader, size int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := imaging.Resize(img, size, size, imaging.Lanczos)
+	m := imaging.Fit(img, size, size, imaging.Lanczos)
 	buf := new(bytes.Buffer)
 	err = jpeg.Encode(buf, m, &jpeg.Options{Quality: 75})
 	return buf.Bytes(), err
