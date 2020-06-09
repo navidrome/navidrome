@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"time"
+
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -162,6 +164,7 @@ func (r *playlistTrackRepository) updateStats() error {
 	upd := Update("playlist").
 		Set("duration", res.Duration).
 		Set("song_count", res.Count).
+		Set("updated_at", time.Now()).
 		Where(Eq{"id": r.playlistId})
 	_, err = r.executeSQL(upd)
 	return err
