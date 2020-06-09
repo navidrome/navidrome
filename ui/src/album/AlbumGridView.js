@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   GridList,
   GridListTile,
@@ -8,7 +9,7 @@ import {
 import { makeStyles } from '@material-ui/core/styles'
 import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
-import { linkToRecord, Loading } from 'react-admin'
+import { linkToRecord, Loading, useListParams } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
 import { ArtistLinkField } from '../common'
@@ -71,7 +72,7 @@ const Cover = withContentRect('bounds')(
   }
 )
 
-const AlbumGridTile = ({ record, basePath }) => {
+const AlbumGridTile = ({ showArtist, record, basePath }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles()
   const [visible, setVisible] = useState(false)
@@ -93,9 +94,14 @@ const AlbumGridTile = ({ record, basePath }) => {
             title={record.name}
             subtitle={
               <div className={classes.albumArtistName}>
-                <ArtistLinkField record={record} className={classes.artistLink}>
-                  {record.albumArtist}
-                </ArtistLinkField>
+                {showArtist ? (
+                  <ArtistLinkField
+                    record={record}
+                    className={classes.artistLink}
+                  />
+                ) : (
+                  record.maxYear || ''
+                )}
               </div>
             }
             actionIcon={<AlbumContextMenu record={record} color={'white'} />}
@@ -106,8 +112,16 @@ const AlbumGridTile = ({ record, basePath }) => {
   )
 }
 
-const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
+const LoadedAlbumGrid = ({ ids, data, basePath, width, resource }) => {
   const classes = useStyles()
+  const location = useLocation()
+
+  const [listParams] = useListParams({
+    resource,
+    location,
+  })
+
+  const isArtistView = !!(listParams.filter && listParams.filter.artist_id)
 
   return (
     <div className={classes.root}>
@@ -119,7 +133,11 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
       >
         {ids.map((id) => (
           <GridListTile className={classes.gridListTile} key={id}>
-            <AlbumGridTile record={data[id]} basePath={basePath} />
+            <AlbumGridTile
+              record={data[id]}
+              basePath={basePath}
+              showArtist={!isArtistView}
+            />
           </GridListTile>
         ))}
       </GridList>
