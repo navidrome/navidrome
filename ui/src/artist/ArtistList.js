@@ -24,8 +24,8 @@ const ArtistList = (props) => (
   >
     <Datagrid rowClick={artistLink}>
       <TextField source="name" />
-      <NumberField source="albumCount" />
-      <NumberField source="songCount" />
+      <NumberField source="albumCount" sortByOrder={'DESC'} />
+      <NumberField source="songCount" sortByOrder={'DESC'} />
     </Datagrid>
   </List>
 )

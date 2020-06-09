@@ -40,8 +40,8 @@ const UserList = (props) => {
           <TextField source="userName" />
           <TextField source="name" />
           <BooleanField source="isAdmin" />
-          <DateField source="lastLoginAt" locales="pt-BR" />
-          <DateField source="updatedAt" locales="pt-BR" />
+          <DateField source="lastLoginAt" sortByOrder={'DESC'} />
+          <DateField source="updatedAt" sortByOrder={'DESC'} />
         </Datagrid>
       )}
     </List>

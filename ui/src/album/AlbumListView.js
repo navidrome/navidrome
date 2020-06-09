@@ -84,9 +84,9 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
     <AlbumDatagrid expand={<AlbumDetails />} rowClick={'show'} {...rest}>
       <TextField source="name" />
       <ArtistLinkField />
-      {isDesktop && <NumberField source="songCount" />}
-      {isDesktop && <NumberField source="playCount" />}
-      <RangeField source={'year'} sortBy={'maxYear'} />
+      {isDesktop && <NumberField source="songCount" sortByOrder={'DESC'} />}
+      {isDesktop && <NumberField source="playCount" sortByOrder={'DESC'} />}
+      <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
       {isDesktop && <DurationField source="duration" />}
       <AlbumContextMenu />
     </AlbumDatagrid>

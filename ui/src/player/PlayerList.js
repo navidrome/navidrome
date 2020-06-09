@@ -29,7 +29,7 @@ const PlayerList = (props) => {
             source="maxBitRate"
             render={(r) => (r.maxBitRate ? r.maxBitRate : '-')}
           />
-          <DateField source="lastSeen" showTime />
+          <DateField source="lastSeen" showTime sortByOrder={'DESC'} />
         </Datagrid>
       )}
     </List>

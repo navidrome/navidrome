@@ -87,14 +87,21 @@ const SongList = (props) => {
             {isDesktop && <AlbumLinkField source="album" />}
             <TextField source="artist" />
             {isDesktop && <NumberField source="trackNumber" />}
-            {isDesktop && <NumberField source="playCount" />}
             {isDesktop && (
-              <FunctionField source="year" render={(r) => r.year || ''} />
+              <NumberField source="playCount" sortByOrder={'DESC'} />
+            )}
+            {isDesktop && (
+              <FunctionField
+                source="year"
+                render={(r) => r.year || ''}
+                sortByOrder={'DESC'}
+              />
             )}
             <DurationField source="duration" />
             <SongContextMenu
               source={'starred'}
-              sortBy={'starred DESC, starredAt DESC'}
+              sortBy={'starred ASC, starredAt ASC'}
+              sortByOrder={'DESC'}
               label={
                 <StarBorderIcon
                   fontSize={'small'}

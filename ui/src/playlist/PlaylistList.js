@@ -63,8 +63,12 @@ const PlaylistList = ({ permissions, ...props }) => (
       <TextField source="owner" />
       <NumberField source="songCount" />
       <DurationField source="duration" />
-      <DateField source="updatedAt" />
-      <TogglePublicInput source="public" permissions={permissions} />
+      <DateField source="updatedAt" sortByOrder={'DESC'} />
+      <TogglePublicInput
+        source="public"
+        permissions={permissions}
+        sortByOrder={'DESC'}
+      />
       <Writable>
         <EditButton />
       </Writable>
