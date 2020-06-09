@@ -10,6 +10,7 @@ import {
   useNotify,
 } from 'react-admin'
 import classnames from 'classnames'
+import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import ReactDragListView from 'react-drag-listview'
@@ -21,6 +22,7 @@ import {
 } from '../common'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 import { AlbumLinkField } from '../song/AlbumLinkField'
+import { playTracks } from '../audioplayer'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -48,9 +50,6 @@ const useStyles = makeStyles(
       flexWrap: 'wrap',
     },
     noResults: { padding: 20 },
-    row: {
-      cursor: (props) => (props.readOnly ? 'arrow' : 'move'),
-    },
   }),
   { name: 'RaList' }
 )
@@ -71,6 +70,7 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 const PlaylistSongs = (props) => {
   const classes = useStyles(props)
   const classesToolbar = useStylesListToolbar(props)
+  const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const controllerProps = useListController(props)
@@ -153,9 +153,8 @@ const PlaylistSongs = (props) => {
               nodeSelector={'tr'}
             >
               <SongDatagrid
-                classes={classes}
                 expand={!isXsmall && <SongDetails />}
-                rowClick={null}
+                rowClick={(id) => dispatch(playTracks(data, ids, id))}
                 {...controllerProps}
                 hasBulkActions={hasBulkActions}
                 contextAlwaysVisible={!isDesktop}
