@@ -17,8 +17,28 @@ please fill a [GitHub issue](https://github.com/deluan/navidrome/issues) or join
 [themes](https://www.navidrome.org/docs/developers/creating-themes)), please join the chat in our 
 [Discord server](https://discord.gg/xh7j7yF). 
 
+## Installation
+
+See instructions in the [project's website](https://www.navidrome.org/docs/installation/)
+
+## Features
+ 
+ - Handles very **large music collections**
+ - Streams virtually **any audio format** available
+ - Reads and uses all your beautifully curated **metadata**
+ - Great support for **Box Sets** (multi-disc albums)
+ - **Multi-user**, each user has their own play counts, playlists, favourites, etc...
+ - Very **low resource usage**
+ - **Multi-platform**, runs on macOS, Linux and Windows. **Docker** images are also provided
+ - Ready to use **Raspberry Pi** binaries and Docker images available
+ - Automatically **monitors your library** for changes, importing new files and reloading new metadata 
+ - **Themeable**, modern and responsive **Web interface** based on [Material UI](https://material-ui.com)
+ - **Compatible** with all Subsonic/Madsonic/Airsonic [clients](https://www.navidrome.org/docs/overview/#apps)
+ - **Transcoding** on the fly. Can be set per user/player. **Opus encoding is supported**
+ - Translated to **various languages**
+
 ## Documentation
-All documentation can be found in the project's homepage: https://www.navidrome.org/docs. 
+All documentation can be found in the project's website: https://www.navidrome.org/docs. 
 Here are some useful direct links:
 
 - [Overview](https://www.navidrome.org/docs/overview/)
