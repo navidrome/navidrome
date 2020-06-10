@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@material-ui/lab": "^4.0.0-alpha.54",
+    "@material-ui/lab": "^4.0.0-alpha.55",
     "deepmerge": "^4.2.2",
     "jwt-decode": "^2.2.0",
     "lodash.get": "^4.4.2",
