@@ -31,6 +31,9 @@ func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
 	}
 }
 
+type ArtistMap map[string]bool
+type AlbumMap map[string]bool
+
 // Scan algorithm overview:
 // For each changed: Get all files from DB that starts with the folder, scan each file:
 //	    if file in folder is newer, update the one in DB
@@ -63,25 +66,13 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 	sort.Strings(changed)
 	sort.Strings(deleted)
 
-	updatedArtists := map[string]bool{}
-	updatedAlbums := map[string]bool{}
+	updatedArtists := ArtistMap{}
+	updatedAlbums := AlbumMap{}
 
 	for _, c := range changed {
 		err := s.processChangedDir(ctx, c, updatedArtists, updatedAlbums)
 		if err != nil {
 			return err
-		}
-		if len(updatedAlbums)+len(updatedArtists) > 100 {
-			err = s.refreshAlbums(ctx, updatedAlbums)
-			if err != nil {
-				return err
-			}
-			err = s.refreshArtists(ctx, updatedArtists)
-			if err != nil {
-				return err
-			}
-			updatedAlbums = map[string]bool{}
-			updatedArtists = map[string]bool{}
 		}
 	}
 	for _, c := range deleted {
@@ -89,26 +80,14 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		if err != nil {
 			return err
 		}
-		if len(updatedAlbums)+len(updatedArtists) > 100 {
-			err = s.refreshAlbums(ctx, updatedAlbums)
-			if err != nil {
-				return err
-			}
-			err = s.refreshArtists(ctx, updatedArtists)
-			if err != nil {
-				return err
-			}
-			updatedAlbums = map[string]bool{}
-			updatedArtists = map[string]bool{}
-		}
 	}
 
-	err = s.refreshAlbums(ctx, updatedAlbums)
+	err = s.flushAlbums(ctx, updatedAlbums)
 	if err != nil {
 		return err
 	}
 
-	err = s.refreshArtists(ctx, updatedArtists)
+	err = s.flushArtists(ctx, updatedArtists)
 	if err != nil {
 		return err
 	}
@@ -119,23 +98,31 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 	return err
 }
 
-func (s *TagScanner) refreshAlbums(ctx context.Context, updatedAlbums map[string]bool) error {
+func (s *TagScanner) flushAlbums(ctx context.Context, updatedAlbums AlbumMap) error {
+	if len(updatedAlbums) == 0 {
+		return nil
+	}
 	var ids []string
 	for id := range updatedAlbums {
 		ids = append(ids, id)
+		delete(updatedAlbums, id)
 	}
 	return s.ds.Album(ctx).Refresh(ids...)
 }
 
-func (s *TagScanner) refreshArtists(ctx context.Context, updatedArtists map[string]bool) error {
+func (s *TagScanner) flushArtists(ctx context.Context, updatedArtists ArtistMap) error {
+	if len(updatedArtists) == 0 {
+		return nil
+	}
 	var ids []string
 	for id := range updatedArtists {
 		ids = append(ids, id)
+		delete(updatedArtists, id)
 	}
 	return s.ds.Artist(ctx).Refresh(ids...)
 }
 
-func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedArtists map[string]bool, updatedAlbums map[string]bool) error {
+func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedArtists ArtistMap, updatedAlbums AlbumMap) error {
 	dir = filepath.Join(s.rootFolder, dir)
 	start := time.Now()
 
@@ -181,17 +168,23 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 			return err
 		}
 
-		// If track from folder is newer than the one in DB, update/insert in DB and delete from the current tracks
+		// If track from folder is newer than the one in DB, update/insert in DB
 		log.Trace("Updating mediaFiles in DB", "dir", dir, "files", filesToUpdate, "numFiles", len(filesToUpdate))
 		for i := range newTracks {
 			n := newTracks[i]
 			err := s.ds.MediaFile(ctx).Put(&n)
-			updatedArtists[n.AlbumArtistID] = true
-			updatedAlbums[n.AlbumID] = true
-			numUpdatedTracks++
 			if err != nil {
 				return err
 			}
+			err = s.updateAlbum(ctx, n.AlbumID, updatedAlbums)
+			if err != nil {
+				return err
+			}
+			err = s.updateArtist(ctx, n.AlbumArtistID, updatedArtists)
+			if err != nil {
+				return err
+			}
+			numUpdatedTracks++
 		}
 	}
 
@@ -200,8 +193,14 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 		// Remaining tracks from DB that are not in the folder are deleted
 		for _, ct := range currentTracks {
 			numPurgedTracks++
-			updatedArtists[ct.AlbumArtistID] = true
-			updatedAlbums[ct.AlbumID] = true
+			err = s.updateAlbum(ctx, ct.AlbumID, updatedAlbums)
+			if err != nil {
+				return err
+			}
+			err = s.updateArtist(ctx, ct.AlbumArtistID, updatedArtists)
+			if err != nil {
+				return err
+			}
 			if err := s.ds.MediaFile(ctx).Delete(ct.ID); err != nil {
 				return err
 			}
@@ -212,7 +211,29 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 	return nil
 }
 
-func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedArtists map[string]bool, updatedAlbums map[string]bool) error {
+func (s *TagScanner) updateAlbum(ctx context.Context, albumId string, updatedAlbums AlbumMap) error {
+	updatedAlbums[albumId] = true
+	if len(updatedAlbums) > 5 {
+		err := s.flushAlbums(ctx, updatedAlbums)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *TagScanner) updateArtist(ctx context.Context, artistId string, updatedArtists ArtistMap) error {
+	updatedArtists[artistId] = true
+	if len(updatedArtists) > 5 {
+		err := s.flushArtists(ctx, updatedArtists)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedArtists ArtistMap, updatedAlbums AlbumMap) error {
 	dir = filepath.Join(s.rootFolder, dir)
 	start := time.Now()
 
@@ -221,8 +242,14 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedA
 		return err
 	}
 	for _, t := range ct {
-		updatedArtists[t.AlbumArtistID] = true
-		updatedAlbums[t.AlbumID] = true
+		err = s.updateAlbum(ctx, t.AlbumID, updatedAlbums)
+		if err != nil {
+			return err
+		}
+		err = s.updateArtist(ctx, t.AlbumArtistID, updatedArtists)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Info("Finished processing deleted folder", "dir", dir, "purged", len(ct), "elapsed", time.Since(start))
