@@ -25,6 +25,7 @@ const UserList = (props) => {
       {...props}
       sort={{ field: 'userName', order: 'ASC' }}
       exporter={false}
+      bulkActionButtons={false}
       filters={<UserFilter />}
     >
       {isXsmall ? (
