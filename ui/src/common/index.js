@@ -13,7 +13,7 @@ import List from './List'
 import { SongDatagrid, SongDatagridRow } from './SongDatagrid'
 import SongContextMenu from './SongContextMenu'
 import QuickFilter from './QuickFilter'
-import useAlbumsPerPage from './useAlbumPerPage'
+import useAlbumsPerPage from './useAlbumsPerPage'
 
 export {
   Title,

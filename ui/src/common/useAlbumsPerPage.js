@@ -17,7 +17,7 @@ const getPerPageOptions = (width) => {
   return options.map((v) => v * 6)
 }
 
-const useAlbumPerPage = (width) => {
+const useAlbumsPerPage = (width) => {
   const perPage =
     useSelector((state) =>
       get(state.admin.resources, ['album', 'list', 'params', 'perPage'])
@@ -26,4 +26,4 @@ const useAlbumPerPage = (width) => {
   return [perPage, getPerPageOptions(width)]
 }
 
-export default useAlbumPerPage
+export default useAlbumsPerPage
