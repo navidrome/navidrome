@@ -55,13 +55,7 @@ func (r *playlistRepository) Delete(id string) error {
 			return rest.ErrPermissionDenied
 		}
 	}
-	err := r.delete(And{Eq{"id": id}, r.userFilter()})
-	if err != nil {
-		return err
-	}
-	del := Delete("playlist_tracks").Where(Eq{"playlist_id": id})
-	_, err = r.executeSQL(del)
-	return err
+	return r.delete(And{Eq{"id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
