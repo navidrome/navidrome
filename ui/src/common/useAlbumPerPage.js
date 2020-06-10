@@ -1,5 +1,5 @@
-import { useSelector } from "react-redux"
-import get from "lodash.get"
+import { useSelector } from 'react-redux'
+import get from 'lodash.get'
 
 const getPerPage = (width) => {
   if (width === 'xs') return 12
