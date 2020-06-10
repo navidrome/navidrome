@@ -6,7 +6,8 @@ import {
   SearchInput,
   TextField,
 } from 'react-admin'
-import { artistLink, List } from '../common'
+import { List, useGetHandleArtistClick } from '../common'
+import { withWidth } from '@material-ui/core'
 
 const ArtistFilter = (props) => (
   <Filter {...props}>
@@ -14,20 +15,23 @@ const ArtistFilter = (props) => (
   </Filter>
 )
 
-const ArtistList = (props) => (
-  <List
-    {...props}
-    sort={{ field: 'name', order: 'ASC' }}
-    exporter={false}
-    bulkActionButtons={false}
-    filters={<ArtistFilter />}
-  >
-    <Datagrid rowClick={artistLink}>
-      <TextField source="name" />
-      <NumberField source="albumCount" sortByOrder={'DESC'} />
-      <NumberField source="songCount" sortByOrder={'DESC'} />
-    </Datagrid>
-  </List>
-)
+const ArtistList = ({ width, ...props }) => {
+  const handleArtistLink = useGetHandleArtistClick(width)
+  return (
+    <List
+      {...props}
+      sort={{ field: 'name', order: 'ASC' }}
+      exporter={false}
+      bulkActionButtons={false}
+      filters={<ArtistFilter />}
+    >
+      <Datagrid rowClick={handleArtistLink}>
+        <TextField source="name" />
+        <NumberField source="albumCount" sortByOrder={'DESC'} />
+        <NumberField source="songCount" sortByOrder={'DESC'} />
+      </Datagrid>
+    </List>
+  )
+}
 
-export default ArtistList
+export default withWidth()(ArtistList)

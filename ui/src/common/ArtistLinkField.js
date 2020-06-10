@@ -1,12 +1,19 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { Link } from 'react-admin'
+import { useAlbumsPerPage } from './index'
+import { withWidth } from '@material-ui/core'
 
-const artistLink = (id) => {
-  return `/album?filter={"artist_id":"${id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}`
+const useGetHandleArtistClick = (width) => {
+  const [perPage] = useAlbumsPerPage(width)
+
+  return (id) => {
+    return `/album?filter={"artist_id":"${id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`
+  }
 }
 
-const ArtistLinkField = ({ record, className }) => {
+const ArtistLinkField = ({ record, className, width }) => {
+  const artistLink = useGetHandleArtistClick(width)
   return (
     <Link
       to={artistLink(record.albumArtistId)}
@@ -28,6 +35,6 @@ ArtistLinkField.defaultProps = {
   addLabel: true,
 }
 
-export { artistLink }
+export { useGetHandleArtistClick }
 
-export default ArtistLinkField
+export default withWidth()(ArtistLinkField)

@@ -5,7 +5,7 @@ import Pagination from './Pagination'
 import PlayButton from './PlayButton'
 import SimpleList from './SimpleList'
 import RangeField, { formatRange } from './RangeField'
-import ArtistLinkField, { artistLink } from './ArtistLinkField'
+import ArtistLinkField, { useGetHandleArtistClick } from './ArtistLinkField'
 import SongDetails from './SongDetails'
 import SizeField from './SizeField'
 import DocLink from './DocLink'
@@ -13,6 +13,7 @@ import List from './List'
 import { SongDatagrid, SongDatagridRow } from './SongDatagrid'
 import SongContextMenu from './SongContextMenu'
 import QuickFilter from './QuickFilter'
+import useAlbumsPerPage from "./useAlbumPerPage"
 
 export {
   Title,
@@ -30,7 +31,8 @@ export {
   DocLink,
   formatRange,
   ArtistLinkField,
-  artistLink,
+  useGetHandleArtistClick,
   SongContextMenu,
   QuickFilter,
+  useAlbumsPerPage,
 }

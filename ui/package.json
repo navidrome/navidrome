@@ -6,6 +6,7 @@
     "@material-ui/lab": "^4.0.0-alpha.54",
     "deepmerge": "^4.2.2",
     "jwt-decode": "^2.2.0",
+    "lodash.get": "^4.4.2",
     "lodash.throttle": "^4.1.1",
     "md5-hex": "^3.0.1",
     "prop-types": "^15.7.2",

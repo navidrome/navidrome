@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { useLocation } from 'react-router-dom'
 import {
   GridList,
   GridListTile,
@@ -9,7 +8,7 @@ import {
 import { makeStyles } from '@material-ui/core/styles'
 import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
-import { linkToRecord, Loading, useListParams } from 'react-admin'
+import { linkToRecord, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
 import { ArtistLinkField } from '../common'
@@ -112,16 +111,8 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
   )
 }
 
-const LoadedAlbumGrid = ({ ids, data, basePath, width, resource }) => {
+const LoadedAlbumGrid = ({ ids, data, basePath, width, isArtistView }) => {
   const classes = useStyles()
-  const location = useLocation()
-
-  const [listParams] = useListParams({
-    resource,
-    location,
-  })
-
-  const isArtistView = !!(listParams.filter && listParams.filter.artist_id)
 
   return (
     <div className={classes.root}>

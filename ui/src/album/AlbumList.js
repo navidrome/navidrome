@@ -1,5 +1,6 @@
 import React from 'react'
 import { useSelector } from 'react-redux'
+import { useLocation } from 'react-router-dom'
 import {
   AutocompleteInput,
   Filter,
@@ -9,8 +10,9 @@ import {
   SearchInput,
   Pagination,
   useTranslate,
+  useListParams,
 } from 'react-admin'
-import { List } from '../common'
+import { List, useAlbumsPerPage } from '../common'
 import { withWidth } from '@material-ui/core'
 import AlbumListActions from './AlbumListActions'
 import AlbumListView from './AlbumListView'
@@ -38,25 +40,19 @@ const AlbumFilter = (props) => {
   )
 }
 
-const getPerPage = (width) => {
-  if (width === 'xs') return 12
-  if (width === 'sm') return 12
-  if (width === 'md') return 15
-  if (width === 'lg') return 18
-  return 21
-}
-
-const getPerPageOptions = (width) => {
-  const options = [3, 6, 12]
-  if (width === 'xs') return [12]
-  if (width === 'sm') return [12]
-  if (width === 'md') return options.map((v) => v * 4)
-  return options.map((v) => v * 6)
-}
-
 const AlbumList = (props) => {
-  const { width } = props
+  const { width, resource } = props
   const albumView = useSelector((state) => state.albumView)
+  const [perPage, perPageOptions] = useAlbumsPerPage(width)
+  const location = useLocation()
+
+  const [query] = useListParams({
+    resource,
+    location,
+    perPage,
+  })
+  const isArtistView = !!(query.filter && query.filter.artist_id)
+
   return (
     <>
       <List
@@ -66,15 +62,13 @@ const AlbumList = (props) => {
         actions={<AlbumListActions />}
         sort={{ field: 'created_at', order: 'DESC' }}
         filters={<AlbumFilter />}
-        perPage={getPerPage(width)}
-        pagination={
-          <Pagination rowsPerPageOptions={getPerPageOptions(width)} />
-        }
+        perPage={perPage}
+        pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
       >
         {albumView.mode === ALBUM_MODE_LIST ? (
           <AlbumListView {...props} />
         ) : (
-          <AlbumGridView {...props} />
+          <AlbumGridView isArtistView={isArtistView} {...props} />
         )}
       </List>
       <AddToPlaylistDialog />
