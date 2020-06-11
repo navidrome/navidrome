@@ -38,3 +38,17 @@ func MoveString(array []string, srcIndex int, dstIndex int) []string {
 	value := array[srcIndex]
 	return InsertString(RemoveString(array, srcIndex), value, dstIndex)
 }
+
+func BreakUpStringSlice(mediaFileIds []string, chunkSize int) [][]string {
+	numTracks := len(mediaFileIds)
+	var chunks [][]string
+	for i := 0; i < numTracks; i += chunkSize {
+		end := i + chunkSize
+		if end > numTracks {
+			end = numTracks
+		}
+
+		chunks = append(chunks, mediaFileIds[i:end])
+	}
+	return chunks
+}
