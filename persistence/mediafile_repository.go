@@ -2,8 +2,8 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"os"
-	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
@@ -80,24 +80,16 @@ func (r mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, erro
 }
 
 func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
-	sel := r.selectMediaFile().Where(Like{"path": path + "%"})
+	// Only return mediafiles that are direct child of requested path
+	// Query by path based on https://stackoverflow.com/a/13911906/653632
+	sel0 := r.selectMediaFile().Columns(fmt.Sprintf("substr(path, %d) AS item", len(path)+2)).
+		Where(Like{"path": path + string(os.PathSeparator) + "%"})
+	sel := r.newSelect().Columns("*", "item NOT GLOB '*"+string(os.PathSeparator)+"*' AS isLast").
+		Where(Eq{"isLast": 1}).FromSelect(sel0, "sel0")
+
 	res := model.MediaFiles{}
 	err := r.queryAll(sel, &res)
-	if err != nil {
-		return nil, err
-	}
-
-	// Only return mediafiles that are direct child of requested path
-	filtered := model.MediaFiles{}
-	path = strings.ToLower(path) + string(os.PathSeparator)
-	for _, mf := range res {
-		filename := strings.TrimPrefix(strings.ToLower(mf.Path), path)
-		if len(strings.Split(filename, string(os.PathSeparator))) > 1 {
-			continue
-		}
-		filtered = append(filtered, mf)
-	}
-	return filtered, nil
+	return res, err
 }
 
 func (r mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
@@ -121,20 +113,11 @@ func (r mediaFileRepository) Delete(id string) error {
 }
 
 func (r mediaFileRepository) DeleteByPath(path string) error {
-	filtered, err := r.FindByPath(path)
-	if err != nil {
-		return err
-	}
-	if len(filtered) == 0 {
-		return nil
-	}
-	ids := make([]string, len(filtered))
-	for i, mf := range filtered {
-		ids[i] = mf.ID
-	}
-	log.Debug(r.ctx, "Deleting mediafiles by path", "path", path, "totalDeleted", len(ids))
-	del := Delete(r.tableName).Where(Eq{"id": ids})
-	_, err = r.executeSQL(del)
+	del := Delete(r.tableName).
+		Where(And{Like{"path": path + string(os.PathSeparator) + "%"},
+			Eq{fmt.Sprintf("substr(path, %d) glob '*%s*'", len(path)+2, string(os.PathSeparator)): 0}})
+	log.Debug(r.ctx, "Deleting mediafiles by path", "path", path)
+	_, err := r.executeSQL(del)
 	return err
 }
 
