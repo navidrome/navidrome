@@ -31,8 +31,18 @@ func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
 	}
 }
 
-type ArtistMap map[string]bool
-type AlbumMap map[string]bool
+type (
+	ArtistMap map[string]bool
+	AlbumMap  map[string]bool
+)
+
+const (
+	// batchSize used for albums/artists updates
+	batchSize = 5
+
+	// filesBatchSize used for extract file metadata
+	filesBatchSize = 100
+)
 
 // Scan algorithm overview:
 // For each changed: Get all files from DB that starts with the folder, scan each file:
@@ -162,29 +172,33 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 	numPurgedTracks := 0
 
 	if len(filesToUpdate) > 0 {
-		// Load tracks Metadata from the folder
-		newTracks, err := s.loadTracks(filesToUpdate)
-		if err != nil {
-			return err
-		}
+		// Break the file list in chunks to avoid calling ffmpeg with too many parameters
+		chunks := utils.BreakUpStringSlice(filesToUpdate, filesBatchSize)
+		for _, chunk := range chunks {
+			// Load tracks Metadata from the folder
+			newTracks, err := s.loadTracks(chunk)
+			if err != nil {
+				return err
+			}
 
-		// If track from folder is newer than the one in DB, update/insert in DB
-		log.Trace("Updating mediaFiles in DB", "dir", dir, "files", filesToUpdate, "numFiles", len(filesToUpdate))
-		for i := range newTracks {
-			n := newTracks[i]
-			err := s.ds.MediaFile(ctx).Put(&n)
-			if err != nil {
-				return err
+			// If track from folder is newer than the one in DB, update/insert in DB
+			log.Trace("Updating mediaFiles in DB", "dir", dir, "files", chunk, "numFiles", len(chunk))
+			for i := range newTracks {
+				n := newTracks[i]
+				err := s.ds.MediaFile(ctx).Put(&n)
+				if err != nil {
+					return err
+				}
+				err = s.updateAlbum(ctx, n.AlbumID, updatedAlbums)
+				if err != nil {
+					return err
+				}
+				err = s.updateArtist(ctx, n.AlbumArtistID, updatedArtists)
+				if err != nil {
+					return err
+				}
+				numUpdatedTracks++
 			}
-			err = s.updateAlbum(ctx, n.AlbumID, updatedAlbums)
-			if err != nil {
-				return err
-			}
-			err = s.updateArtist(ctx, n.AlbumArtistID, updatedArtists)
-			if err != nil {
-				return err
-			}
-			numUpdatedTracks++
 		}
 	}
 
@@ -213,7 +227,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 
 func (s *TagScanner) updateAlbum(ctx context.Context, albumId string, updatedAlbums AlbumMap) error {
 	updatedAlbums[albumId] = true
-	if len(updatedAlbums) > 5 {
+	if len(updatedAlbums) >= batchSize {
 		err := s.flushAlbums(ctx, updatedAlbums)
 		if err != nil {
 			return err
@@ -224,7 +238,7 @@ func (s *TagScanner) updateAlbum(ctx context.Context, albumId string, updatedAlb
 
 func (s *TagScanner) updateArtist(ctx context.Context, artistId string, updatedArtists ArtistMap) error {
 	updatedArtists[artistId] = true
-	if len(updatedArtists) > 5 {
+	if len(updatedArtists) >= batchSize {
 		err := s.flushArtists(ctx, updatedArtists)
 		if err != nil {
 			return err

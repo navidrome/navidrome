@@ -120,17 +120,7 @@ func (r *playlistTrackRepository) Update(mediaFileIds []string) error {
 	}
 
 	// Break the track list in chunks to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
-	numTracks := len(mediaFileIds)
-	const chunkSize = 50
-	var chunks [][]string
-	for i := 0; i < numTracks; i += chunkSize {
-		end := i + chunkSize
-		if end > numTracks {
-			end = numTracks
-		}
-
-		chunks = append(chunks, mediaFileIds[i:end])
-	}
+	chunks := utils.BreakUpStringSlice(mediaFileIds, 50)
 
 	// Add new tracks, chunk by chunk
 	pos := 1
