@@ -8,6 +8,7 @@ import (
 
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/utils"
 )
 
 type dirInfo struct {
@@ -104,15 +105,11 @@ func isDirIgnored(baseDir string, dirInfo os.FileInfo) bool {
 // isDirReadable returns true if the directory represented by dirInfo is readable
 func isDirReadable(baseDir string, dirInfo os.FileInfo) bool {
 	path := filepath.Join(baseDir, dirInfo.Name())
-	dir, err := os.Open(path)
-	if err != nil {
+	res, err := utils.IsDirReadable(path)
+	if !res {
 		log.Debug("Warning: Skipping unreadable directory", "path", path, err)
-		return false
 	}
-	if err := dir.Close(); err != nil {
-		log.Error("Error closing directory", "path", path, err)
-	}
-	return true
+	return res
 }
 
 func (s *ChangeDetector) loadMap(dirMap dirInfoMap, path string, since time.Time, maybe bool) error {
