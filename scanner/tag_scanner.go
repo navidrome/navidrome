@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/deluan/navidrome/consts"
@@ -21,6 +22,7 @@ type TagScanner struct {
 	rootFolder string
 	ds         model.DataStore
 	detector   *ChangeDetector
+	firstRun   sync.Once
 }
 
 func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
@@ -28,6 +30,7 @@ func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
 		rootFolder: rootFolder,
 		ds:         ds,
 		detector:   NewChangeDetector(rootFolder),
+		firstRun:   sync.Once{},
 	}
 }
 
@@ -45,11 +48,13 @@ const (
 )
 
 // Scan algorithm overview:
-// For each changed: Get all files from DB that starts with the folder, scan each file:
+// For each changed folder: Get all files from DB that starts with the folder, scan each file:
 //	    if file in folder is newer, update the one in DB
 //      if file in folder does not exists in DB, add
 // 	    for each file in the DB that is not found in the folder, delete from DB
 // For each deleted folder: delete all files from DB that starts with the folder path
+// Only on first run, check if any folder under each changed folder is missing.
+//      if it is, delete everything under it
 // Create new albums/artists, update counters:
 //      collect all albumIDs and artistIDs from previous steps
 //	    refresh the collected albums and artists with the metadata from the mediafiles
@@ -101,6 +106,10 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 	if err != nil {
 		return err
 	}
+
+	s.firstRun.Do(func() {
+		s.removeDeletedFolders(context.TODO(), changed)
+	})
 
 	err = s.ds.GC(log.NewContext(context.TODO()))
 	log.Info("Finished Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start))
@@ -268,6 +277,28 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedA
 
 	log.Info("Finished processing deleted folder", "dir", dir, "purged", len(ct), "elapsed", time.Since(start))
 	return s.ds.MediaFile(ctx).DeleteByPath(dir)
+}
+
+func (s *TagScanner) removeDeletedFolders(ctx context.Context, changed []string) {
+	for _, dir := range changed {
+		fullPath := filepath.Join(s.rootFolder, dir)
+		paths, err := s.ds.MediaFile(ctx).FindPathsRecursively(fullPath)
+		if err != nil {
+			log.Error(ctx, "Error reading paths from DB", "path", dir, err)
+			return
+		}
+
+		// If a path is unreadable, remove from the DB
+		for _, path := range paths {
+			if readable, err := utils.IsDirReadable(path); !readable {
+				log.Warn(ctx, "Path unavailable. Removing tracks from DB", "path", path, err)
+				err = s.ds.MediaFile(ctx).DeleteByPath(path)
+				if err != nil {
+					log.Error(ctx, "Error removing MediaFiles from DB", "path", path, err)
+				}
+			}
+		}
+	}
 }
 
 func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {

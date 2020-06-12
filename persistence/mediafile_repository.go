@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
@@ -79,15 +80,25 @@ func (r mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, erro
 	return res, err
 }
 
+// FindByPath only return mediafiles that are direct children of requested path
 func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
-	// Only return mediafiles that are direct child of requested path
 	// Query by path based on https://stackoverflow.com/a/13911906/653632
 	sel0 := r.selectMediaFile().Columns(fmt.Sprintf("substr(path, %d) AS item", len(path)+2)).
-		Where(Like{"path": path + string(os.PathSeparator) + "%"})
+		Where(Like{"path": filepath.Join(path, "%")})
 	sel := r.newSelect().Columns("*", "item NOT GLOB '*"+string(os.PathSeparator)+"*' AS isLast").
 		Where(Eq{"isLast": 1}).FromSelect(sel0, "sel0")
 
 	res := model.MediaFiles{}
+	err := r.queryAll(sel, &res)
+	return res, err
+}
+
+// FindPathsRecursively returns a list of all subfolders of basePath, recursively
+func (r mediaFileRepository) FindPathsRecursively(basePath string) ([]string, error) {
+	// Query based on https://stackoverflow.com/a/38330814/653632
+	sel := r.newSelect().Columns("distinct rtrim(path, replace(path, '/', ''))").
+		Where(Like{"path": filepath.Join(basePath, "%")})
+	var res []string
 	err := r.queryAll(sel, &res)
 	return res, err
 }
@@ -112,9 +123,11 @@ func (r mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
 }
 
+// DeleteByPath delete from the DB all mediafiles that are direct children of path
 func (r mediaFileRepository) DeleteByPath(path string) error {
+	path = filepath.Clean(path)
 	del := Delete(r.tableName).
-		Where(And{Like{"path": path + string(os.PathSeparator) + "%"},
+		Where(And{Like{"path": filepath.Join(path, "%")},
 			Eq{fmt.Sprintf("substr(path, %d) glob '*%s*'", len(path)+2, string(os.PathSeparator)): 0}})
 	log.Debug(r.ctx, "Deleting mediafiles by path", "path", path)
 	_, err := r.executeSQL(del)

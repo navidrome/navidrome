@@ -54,6 +54,7 @@ type MediaFileRepository interface {
 	GetAll(options ...QueryOptions) (MediaFiles, error)
 	FindByAlbum(albumId string) (MediaFiles, error)
 	FindByPath(path string) (MediaFiles, error)
+	FindPathsRecursively(basePath string) ([]string, error)
 	GetStarred(options ...QueryOptions) (MediaFiles, error)
 	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
