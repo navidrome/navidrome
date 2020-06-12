@@ -96,7 +96,7 @@ func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
 // FindPathsRecursively returns a list of all subfolders of basePath, recursively
 func (r mediaFileRepository) FindPathsRecursively(basePath string) ([]string, error) {
 	// Query based on https://stackoverflow.com/a/38330814/653632
-	sel := r.newSelect().Columns("distinct rtrim(path, replace(path, '/', ''))").
+	sel := r.newSelect().Columns(fmt.Sprintf("distinct rtrim(path, replace(path, '%s', ''))", string(os.PathSeparator))).
 		Where(Like{"path": filepath.Join(basePath, "%")})
 	var res []string
 	err := r.queryAll(sel, &res)
