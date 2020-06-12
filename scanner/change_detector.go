@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -46,18 +47,13 @@ func (s *ChangeDetector) Scan(lastModifiedSince time.Time) (changed []string, de
 }
 
 func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated time.Time, err error) {
-	dir, err := os.Open(dirPath)
-	if err != nil {
-		return
-	}
-	defer dir.Close()
 	dirInfo, err := os.Stat(dirPath)
 	if err != nil {
 		return
 	}
 	lastUpdated = dirInfo.ModTime()
 
-	files, err := dir.Readdir(-1)
+	files, err := ioutil.ReadDir(dirPath)
 	if err != nil {
 		return
 	}
@@ -67,7 +63,7 @@ func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated
 		if err != nil {
 			continue
 		}
-		if isDir && !isDirIgnored(dirPath, f) {
+		if isDir && !isDirIgnored(dirPath, f) && isDirReadable(dirPath, f) {
 			children = append(children, filepath.Join(dirPath, f.Name()))
 		} else {
 			if f.ModTime().After(lastUpdated) {
@@ -78,29 +74,45 @@ func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated
 	return
 }
 
-// isDirOrSymlinkToDir returns true if and only if the dirent represents a file
-// system directory, or a symbolic link to a directory. Note that if the dirent
+// isDirOrSymlinkToDir returns true if and only if the dirInfo represents a file
+// system directory, or a symbolic link to a directory. Note that if the dirInfo
 // is not a directory but is a symbolic link, this method will resolve by
 // sending a request to the operating system to follow the symbolic link.
 // Copied from github.com/karrick/godirwalk
-func isDirOrSymlinkToDir(baseDir string, dirent os.FileInfo) (bool, error) {
-	if dirent.IsDir() {
+func isDirOrSymlinkToDir(baseDir string, dirInfo os.FileInfo) (bool, error) {
+	if dirInfo.IsDir() {
 		return true, nil
 	}
-	if dirent.Mode()&os.ModeSymlink == 0 {
+	if dirInfo.Mode()&os.ModeSymlink == 0 {
 		return false, nil
 	}
 	// Does this symlink point to a directory?
-	dirent, err := os.Stat(filepath.Join(baseDir, dirent.Name()))
+	dirInfo, err := os.Stat(filepath.Join(baseDir, dirInfo.Name()))
 	if err != nil {
 		return false, err
 	}
-	return dirent.IsDir(), nil
+	return dirInfo.IsDir(), nil
 }
 
-func isDirIgnored(baseDir string, dirent os.FileInfo) bool {
-	_, err := os.Stat(filepath.Join(baseDir, dirent.Name(), consts.SkipScanFile))
+// isDirIgnored returns true if the directory represented by dirInfo contains an
+// `ignore` file (named after consts.SkipScanFile)
+func isDirIgnored(baseDir string, dirInfo os.FileInfo) bool {
+	_, err := os.Stat(filepath.Join(baseDir, dirInfo.Name(), consts.SkipScanFile))
 	return err == nil
+}
+
+// isDirReadable returns true if the directory represented by dirInfo is readable
+func isDirReadable(baseDir string, dirInfo os.FileInfo) bool {
+	path := filepath.Join(baseDir, dirInfo.Name())
+	dir, err := os.Open(path)
+	if err != nil {
+		log.Debug("Warning: Skipping unreadable directory", "path", path, err)
+		return false
+	}
+	if err := dir.Close(); err != nil {
+		log.Error("Error closing directory", "path", path, err)
+	}
+	return true
 }
 
 func (s *ChangeDetector) loadMap(dirMap dirInfoMap, path string, since time.Time, maybe bool) error {
