@@ -93,10 +93,15 @@ const Player = () => {
 
   const OnAudioPlay = (info) => {
     if (info.duration) {
+      document.title = `${info.name} - ${info.singer} - Navidrome`
       dispatch(scrobble(info.trackId, false))
       subsonic.scrobble(info.trackId, false)
       dataProvider.getOne('keepalive', { id: info.trackId })
     }
+  }
+
+  const onAudioEnded = () => {
+    document.title = 'Navidrome'
   }
 
   if (authenticated && options.audioLists.length > 0) {
@@ -106,9 +111,11 @@ const Player = () => {
         onAudioListsChange={OnAudioListsChange}
         onAudioProgress={OnAudioProgress}
         onAudioPlay={OnAudioPlay}
+        onAudioEnded={onAudioEnded}
       />
     )
   }
+  document.title = 'Navidrome'
   return null
 }
 
