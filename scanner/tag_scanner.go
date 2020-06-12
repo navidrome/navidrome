@@ -35,8 +35,8 @@ func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
 }
 
 type (
-	ArtistMap map[string]bool
-	AlbumMap  map[string]bool
+	ArtistMap map[string]struct{}
+	AlbumMap  map[string]struct{}
 )
 
 const (
@@ -235,7 +235,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 }
 
 func (s *TagScanner) updateAlbum(ctx context.Context, albumId string, updatedAlbums AlbumMap) error {
-	updatedAlbums[albumId] = true
+	updatedAlbums[albumId] = struct{}{}
 	if len(updatedAlbums) >= batchSize {
 		err := s.flushAlbums(ctx, updatedAlbums)
 		if err != nil {
@@ -246,7 +246,7 @@ func (s *TagScanner) updateAlbum(ctx context.Context, albumId string, updatedAlb
 }
 
 func (s *TagScanner) updateArtist(ctx context.Context, artistId string, updatedArtists ArtistMap) error {
-	updatedArtists[artistId] = true
+	updatedArtists[artistId] = struct{}{}
 	if len(updatedArtists) >= batchSize {
 		err := s.flushArtists(ctx, updatedArtists)
 		if err != nil {
