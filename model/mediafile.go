@@ -14,7 +14,7 @@ type MediaFile struct {
 	Album                string    `json:"album"`
 	ArtistID             string    `json:"artistId"      orm:"pk;column(artist_id)"`
 	Artist               string    `json:"artist"`
-	AlbumArtistID        string    `json:"albumArtistId"`
+	AlbumArtistID        string    `json:"albumArtistId" orm:"pk;column(album_artist_id)"`
 	AlbumArtist          string    `json:"albumArtist"`
 	AlbumID              string    `json:"albumId"       orm:"pk;column(album_id)"`
 	HasCoverArt          bool      `json:"hasCoverArt"`

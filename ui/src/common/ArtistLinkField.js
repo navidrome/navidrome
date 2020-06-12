@@ -26,12 +26,12 @@ const ArtistLinkField = ({ record, className, width }) => {
 }
 
 ArtistLinkField.propTypes = {
+  record: PropTypes.object,
+  width: PropTypes.number,
   className: PropTypes.string,
-  source: PropTypes.string,
 }
 
 ArtistLinkField.defaultProps = {
-  source: 'artistId',
   addLabel: true,
 }
 

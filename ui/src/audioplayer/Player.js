@@ -1,17 +1,36 @@
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import subsonic from '../subsonic'
 import { scrobble, syncQueue } from './queue'
 import themes from '../themes'
+import { makeStyles } from '@material-ui/core/styles'
+
+const useStyle = makeStyles((theme) => ({
+  audioTitle: {
+    textDecoration: 'none',
+    color: theme.palette.primary.light,
+  },
+}))
 
 const Player = () => {
+  const classes = useStyle()
   const translate = useTranslate()
   const currentTheme = useSelector((state) => state.theme)
   const theme = themes[currentTheme] || themes.DarkTheme
   const playerTheme = (theme.player && theme.player.theme) || 'dark'
+
+  const audioTitle = (audioInfo) => (
+    <Link
+      to={`/album/${audioInfo.albumId}/show`}
+      className={classes.audioTitle}
+    >
+      {`${audioInfo.name} - ${audioInfo.singer}`}
+    </Link>
+  )
 
   const defaultOptions = {
     theme: playerTheme,
@@ -48,6 +67,7 @@ const Player = () => {
       destroyText: translate('player.destroyText'),
       downloadText: translate('player.downloadText'),
       removeAudioListsText: translate('player.removeAudioListsText'),
+      audioTitle: audioTitle,
       clickToDeleteText: (name) =>
         translate('player.clickToDeleteText', { name }),
       emptyLyricText: translate('player.emptyLyricText'),
