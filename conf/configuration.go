@@ -36,15 +36,13 @@ type nd struct {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool   `default:"false"`
 	DevAutoCreateAdminPassword string `default:""`
-	DevEnableUIPlaylists       bool   `default:"true"`
-	DevEnableUIStarred         bool   `default:"true"`
 }
 
 var Server = &nd{}
 
 // TODO refactor configuration and use something different. Maybe https://github.com/spf13/cobra
-// This function loads the config just load the ConfigFile. This is very cumbersome, but doesn't
-// seem there's a simpler way to do thiswith multiconfig. Time to replace this library?
+// This function loads the whole config just to get the ConfigFile. This is very cumbersome, but doesn't
+// seem there's a simpler way to do this with multiconfig. Time to replace this library?
 func configFile() string {
 	conf := &nd{}
 	loader := multiconfig.MultiLoader(

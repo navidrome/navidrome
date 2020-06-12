@@ -8,7 +8,6 @@ import MoreVertIcon from '@material-ui/icons/MoreVert'
 import StarIcon from '@material-ui/icons/Star'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import { addTracks, setTrack } from '../audioplayer'
-import config from '../config'
 import { openAddToPlaylist } from '../dialogs/dialogState'
 
 const useStyles = makeStyles({
@@ -100,7 +99,7 @@ const SongContextMenu = ({
 
   return (
     <span className={classes.noWrap}>
-      {config.enableStarred && showStar && (
+      {showStar && (
         <IconButton
           onClick={handleToggleStar}
           size={'small'}
