@@ -5,7 +5,7 @@ import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import subsonic from '../subsonic'
-import { scrobble, syncQueue, progress } from './queue'
+import { scrobble, syncQueue } from './queue'
 import themes from '../themes'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -100,12 +100,8 @@ const Player = () => {
   }
 
   const OnAudioProgress = (info) => {
-    if (info.ended) {
-      document.title = 'Navidrome'
-    }
-    dispatch(progress(info))
-    const pos = (info.currentTime / info.duration) * 100
-    if (isNaN(info.duration) || pos < 90) {
+    const progress = (info.currentTime / info.duration) * 100
+    if (isNaN(info.duration) || progress < 90) {
       return
     }
     const item = queue.queue.find((item) => item.trackId === info.trackId)
@@ -124,6 +120,10 @@ const Player = () => {
     }
   }
 
+  const onAudioEnded = () => {
+    document.title = 'Navidrome'
+  }
+
   if (authenticated && options.audioLists.length > 0) {
     return (
       <ReactJkMusicPlayer
@@ -131,6 +131,7 @@ const Player = () => {
         onAudioListsChange={OnAudioListsChange}
         onAudioProgress={OnAudioProgress}
         onAudioPlay={OnAudioPlay}
+        onAudioEnded={onAudioEnded}
       />
     )
   }

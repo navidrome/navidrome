@@ -12,7 +12,6 @@ import DocLink from './DocLink'
 import List from './List'
 import { SongDatagrid, SongDatagridRow } from './SongDatagrid'
 import SongContextMenu from './SongContextMenu'
-import SongTitleField from './SongTitleField'
 import QuickFilter from './QuickFilter'
 import useAlbumsPerPage from './useAlbumsPerPage'
 
@@ -29,7 +28,6 @@ export {
   SongDetails,
   SongDatagrid,
   SongDatagridRow,
-  SongTitleField,
   DocLink,
   formatRange,
   ArtistLinkField,
