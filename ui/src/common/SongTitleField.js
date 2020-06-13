@@ -1,10 +1,12 @@
 import { makeStyles } from '@material-ui/core/styles'
 import React from 'react'
-import { useSelector } from 'react-redux'
-import get from 'lodash.get'
-import playing from '../icons/playing.gif'
-import { FunctionField } from 'react-admin'
 import PropTypes from 'prop-types'
+import { useSelector } from 'react-redux'
+import { FunctionField } from 'react-admin'
+import get from 'lodash.get'
+import { useTheme } from '@material-ui/core/styles'
+import PlayingLight from '../icons/playing-light.gif'
+import PlayingDark from '../icons/playing-dark.gif'
 
 const useStyles = makeStyles({
   playingIcon: {
@@ -17,6 +19,7 @@ const useStyles = makeStyles({
 })
 
 const SongTitleField = ({ showTrackNumbers, ...props }) => {
+  const theme = useTheme()
   const classes = useStyles()
   const { record } = props
   const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
@@ -38,7 +41,11 @@ const SongTitleField = ({ showTrackNumbers, ...props }) => {
   return (
     <>
       {isCurrent && (
-        <img src={playing} className={classes.playingIcon} alt="playing" />
+        <img
+          src={theme.palette.type === 'light' ? PlayingLight : PlayingDark}
+          className={classes.playingIcon}
+          alt="playing"
+        />
       )}
       <FunctionField
         {...props}
