@@ -33,6 +33,8 @@ type nd struct {
 	ImageCacheSize          string `default:"100MB"` // in MB
 	ProbeCommand            string `default:"ffmpeg %s -f ffmetadata"`
 
+	CoverArtPriority string `default:"embedded, cover.*, folder.*, front.*"`
+
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool   `default:"false"`
 	DevAutoCreateAdminPassword string `default:""`

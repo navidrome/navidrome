@@ -11,6 +11,7 @@ import (
 	_ "image/png"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -91,6 +92,7 @@ func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastU
 	if found, err = c.ds.Album(ctx).Exists(id); err != nil {
 		return
 	}
+	var coverPath string
 	if found {
 		var al *model.Album
 		al, err = c.ds.Album(ctx).Get(id)
@@ -102,15 +104,22 @@ func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastU
 			return
 		}
 		id = al.CoverArtId
+		coverPath = al.CoverArtPath
 	}
 	var mf *model.MediaFile
 	mf, err = c.ds.MediaFile(ctx).Get(id)
-	if err != nil {
+	if err == nil && mf.HasCoverArt {
+		return mf.Path, mf.UpdatedAt, nil
+	} else if err != nil && coverPath != "" {
+		info, err := os.Stat(coverPath)
+		if err != nil {
+			return "", time.Time{}, model.ErrNotFound
+		}
+		return coverPath, info.ModTime(), nil
+	} else if err != nil {
 		return
 	}
-	if mf.HasCoverArt {
-		return mf.Path, mf.UpdatedAt, nil
-	}
+
 	return "", time.Time{}, model.ErrNotFound
 }
 
@@ -126,7 +135,17 @@ func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.
 		}
 	}()
 	var data []byte
-	data, err = readFromTag(path)
+	for _, p := range strings.Split(conf.Server.CoverArtPriority, ",") {
+		pat := strings.ToLower(strings.TrimSpace(p))
+		if pat == "embedded" {
+			data, err = readFromTag(path)
+		} else if ok, _ := filepath.Match(pat, strings.ToLower(filepath.Base(path))); ok {
+			data, err = readFromFile(path)
+		}
+		if err == nil {
+			break
+		}
+	}
 
 	if err == nil && size > 0 {
 		data, err = resizeImage(bytes.NewReader(data), size)
@@ -169,6 +188,21 @@ func readFromTag(path string) ([]byte, error) {
 		return nil, errors.New("file does not contain embedded art")
 	}
 	return picture.Data, nil
+}
+
+func readFromFile(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer f.Close()
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(f); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func NewImageCache() (ImageCache, error) {

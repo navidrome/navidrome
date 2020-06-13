@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -9,6 +11,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -137,9 +140,15 @@ func (r *albumRepository) Refresh(ids ...string) error {
 	toInsert := 0
 	toUpdate := 0
 	for _, al := range albums {
-		if !al.HasCoverArt {
-			al.CoverArtId = ""
+		if !al.HasCoverArt || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
+			if path := getCoverFromPath(al.CoverArtPath, al.HasCoverArt); path != "" {
+				al.CoverArtId = "al-" + al.ID
+				al.CoverArtPath = path
+			} else if !al.HasCoverArt {
+				al.CoverArtId = ""
+			}
 		}
+
 		if al.Compilation {
 			al.AlbumArtist = consts.VariousArtists
 			al.AlbumArtistID = consts.VariousArtistsID
@@ -182,6 +191,42 @@ func getMinYear(years string) int {
 		}
 	}
 	return 0
+}
+
+// GetCoverFromPath accepts a path to a file, and returns a path to an eligible cover image from the
+// file's directory (as configured with CoverArtPriority). If no cover file is found, among
+// available choices, or an error occurs, an empty string is returned. If HasEmbeddedCover is true,
+// and 'embedded' is matched among eligible choices, GetCoverFromPath will return early with an
+// empty path.
+func getCoverFromPath(path string, hasEmbeddedCover bool) string {
+	n, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return ""
+	}
+
+	defer n.Close()
+	names, err := n.Readdirnames(-1)
+	if err != nil {
+		return ""
+	}
+
+	for _, p := range strings.Split(conf.Server.CoverArtPriority, ",") {
+		pat := strings.ToLower(strings.TrimSpace(p))
+		if pat == "embedded" {
+			if hasEmbeddedCover {
+				return ""
+			}
+			continue
+		}
+
+		for _, name := range names {
+			if ok, _ := filepath.Match(pat, strings.ToLower(name)); ok {
+				return filepath.Join(filepath.Dir(path), name)
+			}
+		}
+	}
+
+	return ""
 }
 
 func (r *albumRepository) purgeEmpty() error {
