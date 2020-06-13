@@ -19,6 +19,7 @@ import {
   SongDetails,
   SongContextMenu,
   SongDatagrid,
+  SongTitleField,
 } from '../common'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 import { AlbumLinkField } from '../song/AlbumLinkField'
@@ -160,7 +161,7 @@ const PlaylistSongs = (props) => {
                 contextAlwaysVisible={!isDesktop}
               >
                 {isDesktop && <TextField source="id" label={'#'} />}
-                <TextField source="title" />
+                <SongTitleField source="title" showTrackNumbers={false} />
                 {isDesktop && <AlbumLinkField source="album" />}
                 {isDesktop && <TextField source="artist" />}
                 <DurationField

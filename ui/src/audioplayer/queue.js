@@ -6,6 +6,7 @@ const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
 const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
 const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
+const PLAYER_PROGRESS = 'PLAYER_PROGRESS'
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, id is mediaFileId
@@ -88,13 +89,30 @@ const scrobble = (id, submit) => ({
   submit,
 })
 
+const progress = (audioInfo) => ({
+  type: PLAYER_PROGRESS,
+  data: audioInfo,
+})
+
 const playQueueReducer = (
-  previousState = { queue: [], clear: true, playing: false },
+  previousState = { queue: [], clear: true, playing: false, current: {} },
   payload
 ) => {
-  let queue
+  let queue, current
   const { type, data } = payload
   switch (type) {
+    case PLAYER_PROGRESS:
+      queue = previousState.queue
+      current = data.ended
+        ? {}
+        : {
+            trackId: data.trackId,
+            paused: data.paused,
+          }
+      return {
+        ...previousState,
+        current,
+      }
     case PLAYER_ADD_TRACKS:
       queue = previousState.queue
       Object.keys(data).forEach((id) => {
@@ -109,10 +127,12 @@ const playQueueReducer = (
         playing: true,
       }
     case PLAYER_SYNC_QUEUE:
+      current = data.length > 0 ? previousState.current : {}
       return {
         ...previousState,
         queue: data,
         clear: false,
+        current,
       }
     case PLAYER_SCROBBLE:
       const newQueue = previousState.queue.map((item) => {
@@ -156,6 +176,7 @@ export {
   playTracks,
   syncQueue,
   scrobble,
+  progress,
   shuffleTracks,
   playQueueReducer,
 }
