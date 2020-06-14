@@ -135,6 +135,7 @@ func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.
 		}
 	}()
 	var data []byte
+	err = errors.New("no matching cover found")
 	for _, p := range strings.Split(conf.Server.CoverArtPriority, ",") {
 		pat := strings.ToLower(strings.TrimSpace(p))
 		if pat == "embedded" {
@@ -147,7 +148,9 @@ func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.
 		}
 	}
 
-	if err == nil && size > 0 {
+	if err != nil {
+		return
+	} else if size > 0 {
 		data, err = resizeImage(bytes.NewReader(data), size)
 	}
 
