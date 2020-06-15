@@ -105,7 +105,7 @@ func getPlayer(players engine.Players) func(next http.Handler) http.Handler {
 			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 			player, trc, err := players.Register(ctx, playerId, client, r.Header.Get("user-agent"), ip)
 			if err != nil {
-				log.Error("Could not register player", "userName", userName, "client", client)
+				log.Error("Could not register player", "username", userName, "client", client)
 			} else {
 				ctx = request.WithPlayer(ctx, *player)
 				if trc != nil {
