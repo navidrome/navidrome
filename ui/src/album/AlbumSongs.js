@@ -8,11 +8,12 @@ import {
   useListController,
 } from 'react-admin'
 import classnames from 'classnames'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import { playTracks } from '../audioplayer'
+import PlayCircleFilledIcon from '@material-ui/icons/PlayCircleFilled';
 import {
   DurationField,
   SongDetails,
@@ -52,6 +53,10 @@ const useStyles = makeStyles(
       marginTop: '-2px',
       verticalAlign: 'text-top',
     },
+    playIcon: {
+      width: '23px',
+      height: '23px',
+    }
   }),
   { name: 'RaList' }
 )
@@ -83,7 +88,11 @@ const AlbumSongs = (props) => {
   const anySong = data[ids[0]]
   const showPlaceholder = !anySong || anySong.albumId !== albumId
   const hasBulkActions = props.bulkActionButtons !== false
-
+  const trackCurrentlyPlaying = useSelector((state) => state.queue.currentlyPlaying.trackId)
+  const isPlaying = useSelector((state) => state.queue.playing)
+  const currentlyPlaying = track => {
+    return track.id === trackCurrentlyPlaying && isPlaying ? <PlayCircleFilledIcon className={classes.playIcon} fontSize="small" /> : ''
+  }
   return (
     <>
       <ListToolbar
@@ -124,6 +133,14 @@ const AlbumSongs = (props) => {
               showDiscSubtitles={true}
               contextAlwaysVisible={!isDesktop}
             >
+              {isDesktop && (
+                <FunctionField
+                  textAlign="center"
+                  render={currentlyPlaying}
+                  sortable={false}
+                  label=""
+                />
+              )}
               {isDesktop && (
                 <TextField
                   source="trackNumber"

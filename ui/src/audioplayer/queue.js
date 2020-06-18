@@ -6,6 +6,7 @@ const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
 const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
 const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
+const PLAYER_CURRENTLY_PLAYING = 'PLAYER_CURRENTLY_PLAYING'
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, id is mediaFileId
@@ -88,12 +89,18 @@ const scrobble = (id, submit) => ({
   submit,
 })
 
+const currentlyPlaying = (trackId, albumId) => ({
+  type: PLAYER_CURRENTLY_PLAYING,
+  trackId,
+  albumId,
+})
+
 const playQueueReducer = (
-  previousState = { queue: [], clear: true, playing: false },
+  previousState = { queue: [], clear: true, playing: false, currentlyPlaying: { albumId: '', trackId: '' } },
   payload
 ) => {
   let queue
-  const { type, data } = payload
+  const { type, data, trackId, albumId } = payload
   switch (type) {
     case PLAYER_ADD_TRACKS:
       queue = previousState.queue
@@ -107,12 +114,19 @@ const playQueueReducer = (
         queue: [mapToAudioLists(data)],
         clear: true,
         playing: true,
+        currentlyPlaying: { albumId: albumId, trackId: trackId }
       }
     case PLAYER_SYNC_QUEUE:
       return {
         ...previousState,
         queue: data,
         clear: false,
+        currentlyPlaying: { albumId: albumId, trackId: trackId }
+      }
+    case PLAYER_CURRENTLY_PLAYING:
+      return {
+        ...previousState,
+        currentlyPlaying: { albumId: albumId, trackId: trackId }
       }
     case PLAYER_SCROBBLE:
       const newQueue = previousState.queue.map((item) => {
@@ -144,6 +158,7 @@ const playQueueReducer = (
         queue,
         clear: true,
         playing: true,
+        currentlyPlaying: { albumId: '', trackId: '' }
       }
     default:
       return previousState
@@ -156,6 +171,7 @@ export {
   playTracks,
   syncQueue,
   scrobble,
+  currentlyPlaying,
   shuffleTracks,
   playQueueReducer,
 }

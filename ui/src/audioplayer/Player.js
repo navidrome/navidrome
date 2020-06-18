@@ -5,7 +5,7 @@ import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import subsonic from '../subsonic'
-import { scrobble, syncQueue } from './queue'
+import { scrobble, syncQueue, currentlyPlaying } from './queue'
 import themes from '../themes'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -115,6 +115,7 @@ const Player = () => {
     if (info.duration) {
       document.title = `${info.name} - ${info.singer} - Navidrome`
       dispatch(scrobble(info.trackId, false))
+      dispatch(currentlyPlaying(info.trackId, info.albumId))
       subsonic.scrobble(info.trackId, false)
       dataProvider.getOne('keepalive', { id: info.trackId })
     }
