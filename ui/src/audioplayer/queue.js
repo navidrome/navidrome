@@ -96,7 +96,12 @@ const currentlyPlaying = (trackId, albumId) => ({
 })
 
 const playQueueReducer = (
-  previousState = { queue: [], clear: true, playing: false, currentlyPlaying: { albumId: '', trackId: '' } },
+  previousState = {
+    queue: [],
+    clear: true,
+    playing: false,
+    currentlyPlaying: { albumId: '', trackId: '' },
+  },
   payload
 ) => {
   let queue
@@ -114,19 +119,19 @@ const playQueueReducer = (
         queue: [mapToAudioLists(data)],
         clear: true,
         playing: true,
-        currentlyPlaying: { albumId: albumId, trackId: trackId }
+        currentlyPlaying: { albumId: albumId, trackId: trackId },
       }
     case PLAYER_SYNC_QUEUE:
       return {
         ...previousState,
         queue: data,
         clear: false,
-        currentlyPlaying: { albumId: albumId, trackId: trackId }
+        currentlyPlaying: { albumId: albumId, trackId: trackId },
       }
     case PLAYER_CURRENTLY_PLAYING:
       return {
         ...previousState,
-        currentlyPlaying: { albumId: albumId, trackId: trackId }
+        currentlyPlaying: { albumId: albumId, trackId: trackId },
       }
     case PLAYER_SCROBBLE:
       const newQueue = previousState.queue.map((item) => {
@@ -158,7 +163,7 @@ const playQueueReducer = (
         queue,
         clear: true,
         playing: true,
-        currentlyPlaying: { albumId: '', trackId: '' }
+        currentlyPlaying: { albumId: '', trackId: '' },
       }
     default:
       return previousState
