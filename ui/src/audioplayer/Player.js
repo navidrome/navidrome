@@ -142,9 +142,7 @@ const Player = () => {
         onAudioPlay={OnAudioPlay}
         onAudioPause={onAudioPause}
         onAudioEnded={onAudioEnded}
-        onPlayIndexChange={(playIndex) => {
-          setPlayIndex(playIndex)
-        }}
+        onPlayIndexChange={setPlayIndex}
       />
     )
   }
