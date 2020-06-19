@@ -16,7 +16,7 @@
     "react-admin": "^3.6.0",
     "react-dom": "^16.13.1",
     "react-drag-listview": "^0.1.6",
-    "react-jinke-music-player": "^4.15.1",
+    "react-jinke-music-player": "^4.13.1",
     "react-measure": "^2.3.0",
     "react-redux": "^7.2.0",
     "react-scripts": "^3.4.1"

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
@@ -17,7 +17,6 @@ const useStyle = makeStyles((theme) => ({
 }))
 
 const Player = () => {
-  const [playIndex, setPlayIndex] = useState(0)
   const classes = useStyle()
   const translate = useTranslate()
   const currentTheme = useSelector((state) => state.theme)
@@ -29,7 +28,7 @@ const Player = () => {
       to={`/album/${audioInfo.albumId}/show`}
       className={classes.audioTitle}
     >
-      {audioInfo.name ? `${audioInfo.name} - ${audioInfo.singer}` : ''}
+      {`${audioInfo.name} - ${audioInfo.singer}`}
     </Link>
   )
 
@@ -37,8 +36,7 @@ const Player = () => {
     theme: playerTheme,
     bounds: 'body',
     mode: 'full',
-    autoPlay: true,
-    playIndex,
+    autoPlay: false,
     preload: true,
     autoPlayInitLoadPlayList: true,
     loadAudioErrorPlayNext: false,
@@ -85,6 +83,7 @@ const Player = () => {
   const addQueueToOptions = (queue) => {
     return {
       ...defaultOptions,
+      autoPlay: false,
       clearPriorAudioLists: queue.clear,
       audioLists: queue.queue.map((item) => item),
     }
@@ -142,7 +141,6 @@ const Player = () => {
         onAudioPlay={OnAudioPlay}
         onAudioPause={onAudioPause}
         onAudioEnded={onAudioEnded}
-        onPlayIndexChange={setPlayIndex}
       />
     )
   }
