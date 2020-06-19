@@ -2,7 +2,6 @@ import React from 'react'
 import {
   BulkActionsToolbar,
   DatagridLoading,
-  FunctionField,
   ListToolbar,
   TextField,
   useListController,
@@ -15,9 +14,10 @@ import StarBorderIcon from '@material-ui/icons/StarBorder'
 import { playTracks } from '../audioplayer'
 import {
   DurationField,
-  SongDetails,
-  SongDatagrid,
   SongContextMenu,
+  SongDatagrid,
+  SongDetails,
+  SongTitleField,
 } from '../common'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 
@@ -61,14 +61,6 @@ const useStylesListToolbar = makeStyles({
     justifyContent: 'flex-start',
   },
 })
-
-const trackName = (r) => {
-  const name = r.title
-  if (r.trackNumber) {
-    return r.trackNumber.toString().padStart(2, '0') + ' ' + name
-  }
-  return name
-}
 
 const AlbumSongs = (props) => {
   const classes = useStyles(props)
@@ -132,14 +124,11 @@ const AlbumSongs = (props) => {
                   sortable={false}
                 />
               )}
-              {isDesktop && <TextField source="title" sortable={false} />}
-              {!isDesktop && (
-                <FunctionField
-                  source="title"
-                  render={trackName}
-                  sortable={false}
-                />
-              )}
+              <SongTitleField
+                source="title"
+                sortable={false}
+                showTrackNumbers={!isDesktop}
+              />
               {isDesktop && <TextField source="artist" sortable={false} />}
               <DurationField source="duration" sortable={false} />
               <SongContextMenu

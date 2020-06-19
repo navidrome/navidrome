@@ -18,6 +18,7 @@ import {
   SongDatagrid,
   SongDetails,
   QuickFilter,
+  SongTitleField,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../audioplayer'
@@ -83,7 +84,7 @@ const SongList = (props) => {
             rowClick={handleRowClick}
             contextAlwaysVisible={!isDesktop}
           >
-            <TextField source="title" />
+            <SongTitleField source="title" showTrackNumbers={false} />
             {isDesktop && <AlbumLinkField source="album" />}
             <TextField source="artist" />
             {isDesktop && <NumberField source="trackNumber" />}

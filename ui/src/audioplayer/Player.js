@@ -5,7 +5,7 @@ import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import subsonic from '../subsonic'
-import { scrobble, syncQueue } from './queue'
+import { scrobble, syncQueue, currentPlaying } from './queue'
 import themes from '../themes'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -100,6 +100,9 @@ const Player = () => {
   }
 
   const OnAudioProgress = (info) => {
+    if (info.ended) {
+      document.title = 'Navidrome'
+    }
     const progress = (info.currentTime / info.duration) * 100
     if (isNaN(info.duration) || progress < 90) {
       return
@@ -112,16 +115,21 @@ const Player = () => {
   }
 
   const OnAudioPlay = (info) => {
+    dispatch(currentPlaying(info))
     if (info.duration) {
       document.title = `${info.name} - ${info.singer} - Navidrome`
       dispatch(scrobble(info.trackId, false))
       subsonic.scrobble(info.trackId, false)
-      dataProvider.getOne('keepalive', { id: info.trackId })
     }
   }
 
-  const onAudioEnded = () => {
-    document.title = 'Navidrome'
+  const onAudioPause = (info) => {
+    dispatch(currentPlaying(info))
+  }
+
+  const onAudioEnded = (currentPlayId, audioLists, info) => {
+    dispatch(currentPlaying(info))
+    dataProvider.getOne('keepalive', { id: info.trackId })
   }
 
   if (authenticated && options.audioLists.length > 0) {
@@ -131,6 +139,7 @@ const Player = () => {
         onAudioListsChange={OnAudioListsChange}
         onAudioProgress={OnAudioProgress}
         onAudioPlay={OnAudioPlay}
+        onAudioPause={onAudioPause}
         onAudioEnded={onAudioEnded}
       />
     )
