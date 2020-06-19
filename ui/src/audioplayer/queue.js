@@ -99,7 +99,7 @@ const currentPlaying = (audioInfo) => ({
   data: audioInfo,
 })
 
-const initialState = { queue: [], clear: true, playing: false, current: {} }
+const initialState = { queue: [], clear: true, current: {} }
 
 const playQueueReducer = (previousState = initialState, payload) => {
   let queue, current
@@ -130,7 +130,6 @@ const playQueueReducer = (previousState = initialState, payload) => {
         ...previousState,
         queue: [mapToAudioLists(data)],
         clear: true,
-        playing: true,
       }
     case PLAYER_SYNC_QUEUE:
       current = data.length > 0 ? previousState.current : {}
@@ -152,7 +151,6 @@ const playQueueReducer = (previousState = initialState, payload) => {
         ...previousState,
         queue: newQueue,
         clear: false,
-        playing: true,
       }
     case PLAYER_PLAY_TRACKS:
       queue = []
@@ -169,7 +167,6 @@ const playQueueReducer = (previousState = initialState, payload) => {
         ...previousState,
         queue,
         clear: true,
-        playing: true,
       }
     default:
       return previousState

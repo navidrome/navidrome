@@ -4,6 +4,7 @@ import createSagaMiddleware from 'redux-saga'
 import { all, fork } from 'redux-saga/effects'
 import { adminReducer, adminSaga, USER_LOGOUT } from 'react-admin'
 import throttle from 'lodash.throttle'
+import pick from 'lodash.pick'
 import { loadState, saveState } from './persistState'
 
 export default ({
@@ -36,10 +37,6 @@ export default ({
     compose
 
   const persistedState = loadState()
-  // TODO Better encapsulate state in general
-  if (persistedState && persistedState.queue) {
-    persistedState.queue.playing = false
-  }
   const store = createStore(
     resettableAppReducer,
     persistedState,
@@ -51,7 +48,7 @@ export default ({
       const state = store.getState()
       saveState({
         theme: state.theme,
-        queue: state.queue,
+        queue: pick(state.queue, ['queue']),
         albumView: state.albumView,
       })
     }),

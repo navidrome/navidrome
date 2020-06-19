@@ -83,7 +83,7 @@ const Player = () => {
   const addQueueToOptions = (queue) => {
     return {
       ...defaultOptions,
-      autoPlay: queue.playing,
+      autoPlay: false,
       clearPriorAudioLists: queue.clear,
       audioLists: queue.queue.map((item) => item),
     }
