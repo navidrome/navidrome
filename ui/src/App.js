@@ -4,7 +4,7 @@ import { createHashHistory } from 'history'
 import { Admin, Resource } from 'react-admin'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
-import { Layout, Login } from './layout'
+import { Layout, Login, Logout } from './layout'
 import transcoding from './transcoding'
 import player from './player'
 import user from './user'
@@ -44,6 +44,7 @@ const App = () => (
       history={history}
       layout={Layout}
       loginPage={Login}
+      logoutButton={Logout}
     >
       {(permissions) => [
         <Resource name="album" {...album} options={{ subMenu: 'library' }} />,

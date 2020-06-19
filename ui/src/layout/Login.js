@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { Field, Form } from 'react-final-form'
+
+import { useDispatch } from 'react-redux'
 
 import Avatar from '@material-ui/core/Avatar'
 import Button from '@material-ui/core/Button'
@@ -16,6 +18,7 @@ import { Notification, useLogin, useNotify, useTranslate } from 'react-admin'
 
 import LightTheme from '../themes/light'
 import config from '../config'
+import { clearQueue } from '../audioplayer'
 
 const useStyles = makeStyles((theme) => ({
   main: {
@@ -210,49 +213,60 @@ const Login = ({ location }) => {
   const translate = useTranslate()
   const notify = useNotify()
   const login = useLogin()
+  const dispatch = useDispatch()
 
-  const handleSubmit = (auth) => {
-    setLoading(true)
-    login(auth, location.state ? location.state.nextPathname : '/').catch(
-      (error) => {
-        setLoading(false)
-        notify(
-          typeof error === 'string'
-            ? error
-            : typeof error === 'undefined' || !error.message
-            ? 'ra.auth.sign_in_error'
-            : error.message,
-          'warning'
-        )
+  const handleSubmit = useCallback(
+    (auth) => {
+      setLoading(true)
+      dispatch(clearQueue())
+      login(auth, location.state ? location.state.nextPathname : '/').catch(
+        (error) => {
+          setLoading(false)
+          notify(
+            typeof error === 'string'
+              ? error
+              : typeof error === 'undefined' || !error.message
+              ? 'ra.auth.sign_in_error'
+              : error.message,
+            'warning'
+          )
+        }
+      )
+    },
+    [dispatch, login, notify, setLoading, location]
+  )
+
+  const validateLogin = useCallback(
+    (values) => {
+      const errors = {}
+      if (!values.username) {
+        errors.username = translate('ra.validation.required')
       }
-    )
-  }
+      if (!values.password) {
+        errors.password = translate('ra.validation.required')
+      }
+      return errors
+    },
+    [translate]
+  )
 
-  const validateLogin = (values) => {
-    const errors = {}
-    if (!values.username) {
-      errors.username = translate('ra.validation.required')
-    }
-    if (!values.password) {
-      errors.password = translate('ra.validation.required')
-    }
-    return errors
-  }
-
-  const validateSignup = (values) => {
-    const errors = validateLogin(values)
-    const regex = /^\w+$/g
-    if (values.username && !values.username.match(regex)) {
-      errors.username = translate('ra.validation.invalidChars')
-    }
-    if (!values.confirmPassword) {
-      errors.confirmPassword = translate('ra.validation.required')
-    }
-    if (values.confirmPassword !== values.password) {
-      errors.confirmPassword = translate('ra.validation.passwordDoesNotMatch')
-    }
-    return errors
-  }
+  const validateSignup = useCallback(
+    (values) => {
+      const errors = validateLogin(values)
+      const regex = /^\w+$/g
+      if (values.username && !values.username.match(regex)) {
+        errors.username = translate('ra.validation.invalidChars')
+      }
+      if (!values.confirmPassword) {
+        errors.confirmPassword = translate('ra.validation.required')
+      }
+      if (values.confirmPassword !== values.password) {
+        errors.confirmPassword = translate('ra.validation.passwordDoesNotMatch')
+      }
+      return errors
+    },
+    [translate, validateLogin]
+  )
 
   if (config.firstTime) {
     return (

@@ -4,6 +4,7 @@ import subsonic from '../subsonic'
 const PLAYER_ADD_TRACKS = 'PLAYER_ADD_TRACKS'
 const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
 const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
+const PLAYER_CLEAR_QUEUE = 'PLAYER_CLEAR_QUEUE'
 const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
 const PLAYER_CURRENT = 'PLAYER_CURRENT'
@@ -83,6 +84,10 @@ const syncQueue = (id, data) => ({
   data,
 })
 
+const clearQueue = () => ({
+  type: PLAYER_CLEAR_QUEUE,
+})
+
 const scrobble = (id, submit) => ({
   type: PLAYER_SCROBBLE,
   id,
@@ -94,13 +99,14 @@ const currentPlaying = (audioInfo) => ({
   data: audioInfo,
 })
 
-const playQueueReducer = (
-  previousState = { queue: [], clear: true, playing: false, current: {} },
-  payload
-) => {
+const initialState = { queue: [], clear: true, playing: false, current: {} }
+
+const playQueueReducer = (previousState = initialState, payload) => {
   let queue, current
   const { type, data } = payload
   switch (type) {
+    case PLAYER_CLEAR_QUEUE:
+      return initialState
     case PLAYER_CURRENT:
       queue = previousState.queue
       current = data.ended
@@ -175,6 +181,7 @@ export {
   setTrack,
   playTracks,
   syncQueue,
+  clearQueue,
   scrobble,
   currentPlaying,
   shuffleTracks,
