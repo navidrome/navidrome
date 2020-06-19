@@ -28,7 +28,7 @@ const Player = () => {
       to={`/album/${audioInfo.albumId}/show`}
       className={classes.audioTitle}
     >
-      {`${audioInfo.name} - ${audioInfo.singer}`}
+      {audioInfo.name ? `${audioInfo.name} - ${audioInfo.singer}` : ''}
     </Link>
   )
 
@@ -36,7 +36,7 @@ const Player = () => {
     theme: playerTheme,
     bounds: 'body',
     mode: 'full',
-    autoPlay: false,
+    autoPlay: true,
     preload: true,
     autoPlayInitLoadPlayList: true,
     loadAudioErrorPlayNext: false,
@@ -83,7 +83,6 @@ const Player = () => {
   const addQueueToOptions = (queue) => {
     return {
       ...defaultOptions,
-      autoPlay: false,
       clearPriorAudioLists: queue.clear,
       audioLists: queue.queue.map((item) => item),
     }
