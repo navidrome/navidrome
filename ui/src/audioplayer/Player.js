@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
@@ -23,13 +23,16 @@ const Player = () => {
   const theme = themes[currentTheme] || themes.DarkTheme
   const playerTheme = (theme.player && theme.player.theme) || 'dark'
 
-  const audioTitle = (audioInfo) => (
-    <Link
-      to={`/album/${audioInfo.albumId}/show`}
-      className={classes.audioTitle}
-    >
-      {audioInfo.name ? `${audioInfo.name} - ${audioInfo.singer}` : ''}
-    </Link>
+  const audioTitle = useCallback(
+    (audioInfo) => (
+      <Link
+        to={`/album/${audioInfo.albumId}/show`}
+        className={classes.audioTitle}
+      >
+        {audioInfo.name ? `${audioInfo.name} - ${audioInfo.singer}` : ''}
+      </Link>
+    ),
+    [classes.audioTitle]
   )
 
   const defaultOptions = {
@@ -80,56 +83,70 @@ const Player = () => {
     },
   }
 
-  const addQueueToOptions = (queue) => {
+  const dataProvider = useDataProvider()
+  const dispatch = useDispatch()
+  const queue = useSelector((state) => state.queue)
+  const { authenticated } = useAuthState()
+
+  const options = useMemo(() => {
     return {
       ...defaultOptions,
       clearPriorAudioLists: queue.clear,
       audioLists: queue.queue.map((item) => item),
     }
-  }
+  }, [queue.clear, queue.queue, defaultOptions])
 
-  const dataProvider = useDataProvider()
-  const dispatch = useDispatch()
-  const queue = useSelector((state) => state.queue)
-  const options = addQueueToOptions(queue)
-  const { authenticated } = useAuthState()
+  const OnAudioListsChange = useCallback(
+    (currentPlayIndex, audioLists) => {
+      dispatch(syncQueue(currentPlayIndex, audioLists))
+    },
+    [dispatch]
+  )
 
-  const OnAudioListsChange = (currentPlayIndex, audioLists) => {
-    dispatch(syncQueue(currentPlayIndex, audioLists))
-  }
+  const OnAudioProgress = useCallback(
+    (info) => {
+      if (info.ended) {
+        document.title = 'Navidrome'
+      }
+      const progress = (info.currentTime / info.duration) * 100
+      if (isNaN(info.duration) || progress < 90) {
+        return
+      }
+      const item = queue.queue.find((item) => item.trackId === info.trackId)
+      if (item && !item.scrobbled) {
+        dispatch(scrobble(info.trackId, true))
+        subsonic.scrobble(info.trackId, true)
+      }
+    },
+    [dispatch, queue.queue]
+  )
 
-  const OnAudioProgress = (info) => {
-    if (info.ended) {
-      document.title = 'Navidrome'
-    }
-    const progress = (info.currentTime / info.duration) * 100
-    if (isNaN(info.duration) || progress < 90) {
-      return
-    }
-    const item = queue.queue.find((item) => item.trackId === info.trackId)
-    if (item && !item.scrobbled) {
-      dispatch(scrobble(info.trackId, true))
-      subsonic.scrobble(info.trackId, true)
-    }
-  }
+  const OnAudioPlay = useCallback(
+    (info) => {
+      dispatch(currentPlaying(info))
+      if (info.duration) {
+        document.title = `${info.name} - ${info.singer} - Navidrome`
+        dispatch(scrobble(info.trackId, false))
+        subsonic.scrobble(info.trackId, false)
+      }
+    },
+    [dispatch]
+  )
 
-  const OnAudioPlay = (info) => {
-    dispatch(currentPlaying(info))
-    if (info.duration) {
-      document.title = `${info.name} - ${info.singer} - Navidrome`
-      dispatch(scrobble(info.trackId, false))
-      subsonic.scrobble(info.trackId, false)
-    }
-  }
+  const onAudioPause = useCallback(
+    (info) => {
+      dispatch(currentPlaying(info))
+    },
+    [dispatch]
+  )
 
-  const onAudioPause = (info) => {
-    dispatch(currentPlaying(info))
-  }
-
-  const onAudioEnded = (currentPlayId, audioLists, info) => {
-    dispatch(currentPlaying(info))
-    dataProvider.getOne('keepalive', { id: info.trackId })
-  }
+  const onAudioEnded = useCallback(
+    (currentPlayId, audioLists, info) => {
+      dispatch(currentPlaying(info))
+      dataProvider.getOne('keepalive', { id: info.trackId })
+    },
+    [dispatch, dataProvider]
+  )
 
   if (authenticated && options.audioLists.length > 0) {
     return (
