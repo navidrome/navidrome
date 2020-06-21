@@ -19,7 +19,7 @@ var _ = Describe("Cover", func() {
 
 	BeforeEach(func() {
 		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}
-		ds.Album(ctx).(*persistence.MockAlbum).SetData(`[{"id": "222", "coverArtId": "123"}, {"id": "333", "coverArtId": ""}]`)
+		ds.Album(ctx).(*persistence.MockAlbum).SetData(`[{"id": "222", "coverArtId": "123"}, {"id": "333", "coverArtId": ""}, {"id": "444", "coverArtId": "444", "coverArtPath": "tests/fixtures/cover.jpg"}]`)
 		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(`[{"id": "123", "path": "tests/fixtures/test.mp3", "hasCoverArt": true, "updatedAt":"2020-04-02T21:29:31.6377Z"}]`)
 	})
 
@@ -58,10 +58,20 @@ var _ = Describe("Cover", func() {
 			Expect(format).To(Equal("png"))
 		})
 
-		It("returns the default cover if album is not found", func() {
+		It("returns the external cover for the album", func() {
 			buf := new(bytes.Buffer)
 
 			Expect(cover.Get(ctx, "444", 0, buf)).To(BeNil())
+
+			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
+			Expect(err).To(BeNil())
+			Expect(format).To(Equal("jpeg"))
+		})
+
+		It("returns the default cover if album is not found", func() {
+			buf := new(bytes.Buffer)
+
+			Expect(cover.Get(ctx, "0101", 0, buf)).To(BeNil())
 
 			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 			Expect(err).To(BeNil())
