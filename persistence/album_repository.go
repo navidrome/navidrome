@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"mime"
 	"os"
 	"path/filepath"
 	"sort"
@@ -220,13 +221,18 @@ func getCoverFromPath(path string, hasEmbeddedCover bool) string {
 		}
 
 		for _, name := range names {
-			if ok, _ := filepath.Match(pat, strings.ToLower(name)); ok {
+			match, _ := filepath.Match(pat, strings.ToLower(name))
+			if match && isImageFile(filepath.Ext(name)) {
 				return filepath.Join(filepath.Dir(path), name)
 			}
 		}
 	}
 
 	return ""
+}
+
+func isImageFile(extension string) bool {
+	return strings.HasPrefix(mime.TypeByExtension(extension), "image/")
 }
 
 func (r *albumRepository) purgeEmpty() error {
