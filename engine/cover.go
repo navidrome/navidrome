@@ -10,6 +10,7 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -134,18 +135,16 @@ func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.
 			reader, err = resources.AssetFile().Open(consts.PlaceholderAlbumArt)
 		}
 	}()
+
+	if path == "" {
+		return nil, errors.New("empty path given for cover")
+	}
+
 	var data []byte
-	err = errors.New("no matching cover found")
-	for _, p := range strings.Split(conf.Server.CoverArtPriority, ",") {
-		pat := strings.ToLower(strings.TrimSpace(p))
-		if pat == "embedded" {
-			data, err = readFromTag(path)
-		} else if ok, _ := filepath.Match(pat, strings.ToLower(filepath.Base(path))); ok {
-			data, err = readFromFile(path)
-		}
-		if err == nil {
-			break
-		}
+	if isAudioFile(filepath.Ext(path)) {
+		data, err = readFromTag(path)
+	} else {
+		data, err = readFromFile(path)
 	}
 
 	if err != nil {
@@ -206,6 +205,10 @@ func readFromFile(path string) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func isAudioFile(extension string) bool {
+	return strings.HasPrefix(mime.TypeByExtension(extension), "audio/")
 }
 
 func NewImageCache() (ImageCache, error) {
