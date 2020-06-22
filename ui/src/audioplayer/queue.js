@@ -30,7 +30,7 @@ const setTrack = (data) => ({
   data,
 })
 
-let filterSongs = function (data, ids) {
+const filterSongs = (data, ids) => {
   if (!ids) {
     return data
   }
