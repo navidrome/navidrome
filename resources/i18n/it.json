@@ -158,7 +158,8 @@
             "expand": "Espandi",
             "close": "Chiudi",
             "open_menu": "Apri menù",
-            "close_menu": "Chiudi menù"
+            "close_menu": "Chiudi menù",
+            "unselect": "Deseleziona"
         },
         "boolean": {
             "true": "Si",
@@ -240,7 +241,9 @@
         "transcodingDisabled": "La possibilità di modificare le opzioni di transcodifica attraverso l’interfaccia web è disabilitata per ragioni di sicurezza. Se desideri cambiare (modificare o aggiungere) opzioni di transcodifica, riavvia il server con l’opzione %{config}.",
         "transcodingEnabled": "Navidrome è al momento attivo con %{config}, rendendo possibile eseguire comandi remoti attraverso l’interfaccia web. Si raccomanda di disabilitare questa opzione per ragioni di sicurezza e di abilitarla solo per configurare le opzioni di transcodifica.",
         "songsAddedToPlaylist": "Aggiunta una traccia alla playlist |||| Aggiunte %{smart_count} tracce alla playlist",
-        "noPlaylistsAvailable": "Nessuna playlist"
+        "noPlaylistsAvailable": "Nessuna playlist",
+        "delete_user_title": "Rimuovi utente '%{name}'",
+        "delete_user_content": "Sei sicuro di voler rimuovere questo utente e tutti i suoi dati, incluse playlist e impostazioni?"
     },
     "menu": {
         "library": "Libreria",
