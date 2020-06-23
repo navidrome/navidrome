@@ -158,7 +158,8 @@
             "expand": "Genişlettir",
             "close": "Kapat",
             "open_menu": "Menüyü aç",
-            "close_menu": "Menüyü kapat"
+            "close_menu": "Menüyü kapat",
+            "unselect": "Seçimi kaldır"
         },
         "boolean": {
             "true": "Evet",
@@ -240,7 +241,9 @@
         "transcodingDisabled": "Transcoding ayarlari  web arayüzü üzerinden değiştirilmesi güvenlik nedeniyle devre dışı bırakılmıştır.  Kod dönüştürme seçeneklerini değiştirmek (düzenlemek veya eklemek) istiyorsan, %{config} seçeneğiyle sunucuyu yeniden başlatın.",
         "transcodingEnabled": "Navidrome şu anda %{config} ile çalışıyor, web arayüzünü kullanarak kod dönüştürme ayarlarından sistem komutlarını çalıştırmayı mümkün kılıyor. Güvenlik nedeniyle devre dışı bırakmanızı ve yalnızca Kod Dönüştürme seçeneklerini yapılandırırken etkinleştirmenizi öneririz.",
         "songsAddedToPlaylist": "Çalma listesine 1 şarkı eklendi |||| Çalma listesine %{smart_count} şarkı eklendi",
-        "noPlaylistsAvailable": "Mevcut değil"
+        "noPlaylistsAvailable": "Mevcut değil",
+        "delete_user_title": "'%{name}' kullanıcısını sil",
+        "delete_user_content": "Bu kullanıcıyı ve tüm verilerini (çalma listesi ve tercihleri dahil) silmek istediğinden emin misin?"
     },
     "menu": {
         "library": "Müzik kütüphanesi",
