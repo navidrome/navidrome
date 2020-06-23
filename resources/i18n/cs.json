@@ -19,7 +19,7 @@
                 "updatedAt": "Nahráno",
                 "bitRate": "Přenosová rychlost",
                 "discSubtitle": "Podtitul disku",
-                "starred": "Hvězdičkované"
+                "starred": "Oblíbené"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -158,7 +158,8 @@
             "expand": "Zvětšit",
             "close": "Zavřít",
             "open_menu": "Otevřít nabídku",
-            "close_menu": "Zavřít nabídku"
+            "close_menu": "Zavřít nabídku",
+            "unselect": "Zrušit výběr"
         },
         "boolean": {
             "true": "Ano",
@@ -240,7 +241,9 @@
         "transcodingDisabled": "Měnění nastavení překódování je ve webovém prostředí vypnuto kvůli bezpečnosti. Pokud by jste chtěli změnit (upravit nebo přidat) možnosti překódování, restartujte server s možností %{config}.",
         "transcodingEnabled": "Navidrome právě běží s možností %{config}, umožňující spouštění systémových příkazů z nastavení překódování pomocí webového rozhraní. Doporučujeme ji vypnout kvůli bezpečnosti a použít ji pouze pokud upravujete nastavení překódování.",
         "songsAddedToPlaylist": "1 skladba přidána na seznam skladeb ||| %{smart_count} skladeb přidáno na seznam skladeb",
-        "noPlaylistsAvailable": "Žádné nejsou dostupné"
+        "noPlaylistsAvailable": "Žádné nejsou dostupné",
+        "delete_user_title": "Odstranit uživatele '%{name}'",
+        "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?"
     },
     "menu": {
         "library": "Knihovna",
