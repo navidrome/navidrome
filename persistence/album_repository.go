@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"mime"
 	"os"
 	"path/filepath"
 	"sort"
@@ -16,6 +15,7 @@ import (
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/utils"
 	"github.com/deluan/rest"
 )
 
@@ -222,17 +222,13 @@ func getCoverFromPath(path string, hasEmbeddedCover bool) string {
 
 		for _, name := range names {
 			match, _ := filepath.Match(pat, strings.ToLower(name))
-			if match && isImageFile(filepath.Ext(name)) {
+			if match && utils.IsImageFile(name) {
 				return filepath.Join(filepath.Dir(path), name)
 			}
 		}
 	}
 
 	return ""
-}
-
-func isImageFile(extension string) bool {
-	return strings.HasPrefix(mime.TypeByExtension(extension), "image/")
 }
 
 func (r *albumRepository) purgeEmpty() error {
