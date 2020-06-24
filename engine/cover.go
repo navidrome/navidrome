@@ -10,9 +10,7 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
-	"mime"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -21,6 +19,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/resources"
+	"github.com/deluan/navidrome/utils"
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
 	"github.com/djherbis/fscache"
@@ -141,7 +140,7 @@ func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.
 	}
 
 	var data []byte
-	if isAudioFile(filepath.Ext(path)) {
+	if utils.IsAudioFile(path) {
 		data, err = readFromTag(path)
 	} else {
 		data, err = readFromFile(path)
@@ -205,10 +204,6 @@ func readFromFile(path string) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
-}
-
-func isAudioFile(extension string) bool {
-	return strings.HasPrefix(mime.TypeByExtension(extension), "audio/")
 }
 
 func NewImageCache() (ImageCache, error) {

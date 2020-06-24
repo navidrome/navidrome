@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"mime"
 	"os"
 	"os/exec"
 	"path"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/utils"
 )
 
 type Metadata struct {
@@ -66,8 +66,7 @@ func LoadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {
 			continue
 		}
 		filePath := filepath.Join(dirPath, f.Name())
-		extension := path.Ext(filePath)
-		if !isAudioFile(extension) {
+		if !utils.IsAudioFile(filePath) {
 			continue
 		}
 		fi, err := os.Stat(filePath)
@@ -157,11 +156,6 @@ func extractMetadata(filePath, info string) (*Metadata, error) {
 		return nil, errors.New("not a media file")
 	}
 	return m, nil
-}
-
-func isAudioFile(extension string) bool {
-	typ := mime.TypeByExtension(extension)
-	return strings.HasPrefix(typ, "audio/")
 }
 
 func (m *Metadata) parseInfo(info string) {
