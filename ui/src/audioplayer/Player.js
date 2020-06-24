@@ -5,7 +5,7 @@ import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import subsonic from '../subsonic'
-import { scrobble, syncQueue, currentPlaying } from './queue'
+import { scrobble, syncQueue, currentPlaying, setVolume } from './queue'
 import themes from '../themes'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -93,8 +93,9 @@ const Player = () => {
       ...defaultOptions,
       clearPriorAudioLists: queue.clear,
       audioLists: queue.queue.map((item) => item),
+      defaultVolume: queue.volume,
     }
-  }, [queue.clear, queue.queue, defaultOptions])
+  }, [queue.clear, queue.queue, queue.volume, defaultOptions])
 
   const OnAudioListsChange = useCallback(
     (currentPlayIndex, audioLists) => {
@@ -119,6 +120,11 @@ const Player = () => {
       }
     },
     [dispatch, queue.queue]
+  )
+
+  const onAudioVolumeChange = useCallback(
+    (volume) => dispatch(setVolume(volume)),
+    [dispatch]
   )
 
   const OnAudioPlay = useCallback(
@@ -157,6 +163,7 @@ const Player = () => {
         onAudioPlay={OnAudioPlay}
         onAudioPause={onAudioPause}
         onAudioEnded={onAudioEnded}
+        onAudioVolumeChange={onAudioVolumeChange}
       />
     )
   }

@@ -48,7 +48,7 @@ export default ({
       const state = store.getState()
       saveState({
         theme: state.theme,
-        queue: pick(state.queue, ['queue']),
+        queue: pick(state.queue, ['queue', 'volume']),
         albumView: state.albumView,
       })
     }),

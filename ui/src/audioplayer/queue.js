@@ -8,6 +8,7 @@ const PLAYER_CLEAR_QUEUE = 'PLAYER_CLEAR_QUEUE'
 const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
 const PLAYER_CURRENT = 'PLAYER_CURRENT'
+const PLAYER_SET_VOLUME = 'PLAYER_SET_VOLUME'
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, id is mediaFileId
@@ -99,7 +100,12 @@ const currentPlaying = (audioInfo) => ({
   data: audioInfo,
 })
 
-const initialState = { queue: [], clear: true, current: {} }
+const setVolume = (volume) => ({
+  type: PLAYER_SET_VOLUME,
+  data: { volume },
+})
+
+const initialState = { queue: [], clear: true, current: {}, volume: 1 }
 
 const playQueueReducer = (previousState = initialState, payload) => {
   let queue, current
@@ -107,6 +113,11 @@ const playQueueReducer = (previousState = initialState, payload) => {
   switch (type) {
     case PLAYER_CLEAR_QUEUE:
       return initialState
+    case PLAYER_SET_VOLUME:
+      return {
+        ...previousState,
+        volume: data.volume,
+      }
     case PLAYER_CURRENT:
       queue = previousState.queue
       current = data.ended
@@ -118,6 +129,7 @@ const playQueueReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         current,
+        volume: data.volume,
       }
     case PLAYER_ADD_TRACKS:
       queue = previousState.queue
@@ -181,6 +193,7 @@ export {
   clearQueue,
   scrobble,
   currentPlaying,
+  setVolume,
   shuffleTracks,
   playQueueReducer,
 }
