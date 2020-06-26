@@ -110,25 +110,34 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 func (s *SQLStore) GC(ctx context.Context) error {
 	err := s.Album(ctx).(*albumRepository).purgeEmpty()
 	if err != nil {
+		log.Error(ctx, "Error removing empty albums", err)
 		return err
 	}
 	err = s.Artist(ctx).(*artistRepository).purgeEmpty()
 	if err != nil {
+		log.Error(ctx, "Error removing empty artists", err)
 		return err
 	}
 	err = s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations()
 	if err != nil {
+		log.Error(ctx, "Error removing orphan mediafile annotations", err)
 		return err
 	}
 	err = s.Album(ctx).(*albumRepository).cleanAnnotations()
 	if err != nil {
+		log.Error(ctx, "Error removing orphan album annotations", err)
 		return err
 	}
 	err = s.Artist(ctx).(*artistRepository).cleanAnnotations()
 	if err != nil {
+		log.Error(ctx, "Error removing orphan artist annotations", err)
 		return err
 	}
-	return s.Playlist(ctx).(*playlistRepository).removeOrphans()
+	err = s.Playlist(ctx).(*playlistRepository).removeOrphans()
+	if err != nil {
+		log.Error(ctx, "Error tidying up playlists", err)
+	}
+	return err
 }
 
 func (s *SQLStore) getOrmer() orm.Ormer {
