@@ -41,7 +41,6 @@ type cover struct {
 }
 
 func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) error {
-	id = strings.TrimPrefix(id, "al-")
 	path, lastUpdate, err := c.getCoverPath(ctx, id)
 	if err != nil && err != model.ErrNotFound {
 		return err
@@ -88,12 +87,9 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 }
 
 func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastUpdated time.Time, err error) {
-	var found bool
-	if found, err = c.ds.Album(ctx).Exists(id); err != nil {
-		return
-	}
-	var coverPath string
-	if found {
+	// If id is an album cover ID
+	if strings.HasPrefix(id, "al-") {
+		id = strings.TrimPrefix(id, "al-")
 		var al *model.Album
 		al, err = c.ds.Album(ctx).Get(id)
 		if err != nil {
@@ -101,26 +97,22 @@ func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastU
 		}
 		if al.CoverArtId == "" {
 			err = model.ErrNotFound
-			return
 		}
-		id = al.CoverArtId
-		coverPath = al.CoverArtPath
-	}
-	var mf *model.MediaFile
-	mf, err = c.ds.MediaFile(ctx).Get(id)
-	if err == nil && mf.HasCoverArt {
-		return mf.Path, mf.UpdatedAt, nil
-	} else if err != nil && coverPath != "" {
-		info, err := os.Stat(coverPath)
-		if err != nil {
-			return "", time.Time{}, model.ErrNotFound
-		}
-		return coverPath, info.ModTime(), nil
-	} else if err != nil {
-		return
+		return al.CoverArtPath, al.UpdatedAt, err
 	}
 
-	return "", time.Time{}, model.ErrNotFound
+	// if id is a mediafile cover id
+	var mf *model.MediaFile
+	mf, err = c.ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return
+	}
+	if mf.HasCoverArt {
+		return mf.Path, mf.UpdatedAt, nil
+	}
+
+	// if the mediafile does not have a coverArt, fallback to the album cover
+	return c.getCoverPath(ctx, "al-"+mf.AlbumID)
 }
 
 func imageCacheKey(path string, size int, lastUpdate time.Time) string {
