@@ -175,6 +175,17 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 			filesToUpdate = append(filesToUpdate, filePath)
 		}
 		delete(currentTracks, filePath)
+
+		// Force a refresh of the album and artist, to cater for cover art files. Ideally we would only do this
+		// if there are any image file in the folder (TODO)
+		err = s.updateAlbum(ctx, c.AlbumID, updatedAlbums)
+		if err != nil {
+			return err
+		}
+		err = s.updateArtist(ctx, c.AlbumArtistID, updatedArtists)
+		if err != nil {
+			return err
+		}
 	}
 
 	numUpdatedTracks := 0
