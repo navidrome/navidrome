@@ -123,16 +123,18 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		DiscSubtitles string
 	}
 	var albums []refreshAlbum
-	sel := Select(`album_id as id, album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
+	sel := Select(`f.album_id as id, f.album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
 		f.sort_album_name, f.sort_artist_name, f.sort_album_artist_name,
 		f.order_album_name, f.order_album_artist_name,
 		f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
-		count(*) as song_count, a.id as current_id, f.id as cover_art_id, f.path as cover_art_path, f.has_cover_art, 
+		count(*) as song_count, a.id as current_id, 
+		f2.id as cover_art_id, f2.path as cover_art_path, f2.has_cover_art, 
 		group_concat(f.disc_subtitle, ' ') as disc_subtitles,
 		group_concat(f.artist, ' ') as song_artists, group_concat(f.year, ' ') as years`).
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
-		Where(Eq{"f.album_id": ids}).GroupBy("album_id").OrderBy("f.id")
+		LeftJoin("(select * from media_file where has_cover_art) f2 on (f.album_id = f2.album_id)").
+		Where(Eq{"f.album_id": ids}).GroupBy("f.album_id")
 	err := r.queryAll(sel, &albums)
 	if err != nil {
 		return err

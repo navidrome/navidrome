@@ -119,7 +119,7 @@ var (
 )
 
 func parseOutput(output string) map[string]string {
-	split := map[string]string{}
+	outputs := map[string]string{}
 	all := inputRegex.FindAllStringSubmatchIndex(output, -1)
 	for i, loc := range all {
 		// Filename is the first captured group
@@ -135,9 +135,9 @@ func parseOutput(output string) map[string]string {
 			// if this is the last match
 			info = output[initial:]
 		}
-		split[file] = info
+		outputs[file] = info
 	}
-	return split
+	return outputs
 }
 
 func extractMetadata(filePath, info string) (*Metadata, error) {
