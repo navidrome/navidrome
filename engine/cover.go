@@ -163,7 +163,7 @@ func resizeImage(reader io.Reader, size int) ([]byte, error) {
 	}
 	m := imaging.Resize(img, size, size, imaging.Lanczos)
 	buf := new(bytes.Buffer)
-	err = jpeg.Encode(buf, m, &jpeg.Options{Quality: 75})
+	err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
 	return buf.Bytes(), err
 }
 

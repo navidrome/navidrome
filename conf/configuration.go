@@ -34,6 +34,7 @@ type nd struct {
 	ProbeCommand            string `default:"ffmpeg %s -f ffmetadata"`
 
 	CoverArtPriority string `default:"embedded, cover.*, folder.*, front.*"`
+	CoverJpegQuality int    `default:"75"`
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool   `default:"false"`
