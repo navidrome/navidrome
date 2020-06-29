@@ -128,7 +128,7 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		f.sort_album_name, f.sort_artist_name, f.sort_album_artist_name,
 		f.order_album_name, f.order_album_artist_name, f.path,
 		f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
-		count(*) as song_count, a.id as current_id, 
+		count(distinct(f.id)) as song_count, a.id as current_id, 
 		f2.id as cover_art_id, f2.path as cover_art_path, f2.has_cover_art, 
 		group_concat(f.disc_subtitle, ' ') as disc_subtitles,
 		group_concat(f.artist, ' ') as song_artists, group_concat(f.year, ' ') as years`).
