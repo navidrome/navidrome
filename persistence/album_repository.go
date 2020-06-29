@@ -121,11 +121,12 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		SongArtists   string
 		Years         string
 		DiscSubtitles string
+		Path          string
 	}
 	var albums []refreshAlbum
 	sel := Select(`f.album_id as id, f.album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
 		f.sort_album_name, f.sort_artist_name, f.sort_album_artist_name,
-		f.order_album_name, f.order_album_artist_name,
+		f.order_album_name, f.order_album_artist_name, f.path,
 		f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
 		count(*) as song_count, a.id as current_id, 
 		f2.id as cover_art_id, f2.path as cover_art_path, f2.has_cover_art, 
@@ -144,12 +145,13 @@ func (r *albumRepository) Refresh(ids ...string) error {
 	toUpdate := 0
 	for _, al := range albums {
 		if !al.HasCoverArt || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
-			if path := getCoverFromPath(al.CoverArtPath, al.HasCoverArt); path != "" {
+			if path := getCoverFromPath(al.Path, al.CoverArtPath); path != "" {
 				al.CoverArtId = "al-" + al.ID
 				al.CoverArtPath = path
 			} else if !al.HasCoverArt {
 				al.CoverArtId = ""
 			}
+			log.Trace(r.ctx, "Found album art", "id", al.ID, "name", al.Name, "coverArtPath", al.CoverArtPath, "coverArtId", al.CoverArtId, "hasCoverArt", al.HasCoverArt)
 		}
 
 		if al.Compilation {
@@ -201,8 +203,8 @@ func getMinYear(years string) int {
 // available choices, or an error occurs, an empty string is returned. If HasEmbeddedCover is true,
 // and 'embedded' is matched among eligible choices, GetCoverFromPath will return early with an
 // empty path.
-func getCoverFromPath(path string, hasEmbeddedCover bool) string {
-	n, err := os.Open(filepath.Dir(path))
+func getCoverFromPath(mediaPath string, embeddedPath string) string {
+	n, err := os.Open(filepath.Dir(mediaPath))
 	if err != nil {
 		return ""
 	}
@@ -216,7 +218,7 @@ func getCoverFromPath(path string, hasEmbeddedCover bool) string {
 	for _, p := range strings.Split(conf.Server.CoverArtPriority, ",") {
 		pat := strings.ToLower(strings.TrimSpace(p))
 		if pat == "embedded" {
-			if hasEmbeddedCover {
+			if embeddedPath != "" {
 				return ""
 			}
 			continue
@@ -225,7 +227,7 @@ func getCoverFromPath(path string, hasEmbeddedCover bool) string {
 		for _, name := range names {
 			match, _ := filepath.Match(pat, strings.ToLower(name))
 			if match && utils.IsImageFile(name) {
-				return filepath.Join(filepath.Dir(path), name)
+				return filepath.Join(filepath.Dir(mediaPath), name)
 			}
 		}
 	}

@@ -89,6 +89,7 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastUpdated time.Time, err error) {
 	// If id is an album cover ID
 	if strings.HasPrefix(id, "al-") {
+		log.Trace(ctx, "Looking for album art", "id", id)
 		id = strings.TrimPrefix(id, "al-")
 		var al *model.Album
 		al, err = c.ds.Album(ctx).Get(id)
@@ -101,6 +102,7 @@ func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastU
 		return al.CoverArtPath, al.UpdatedAt, err
 	}
 
+	log.Trace(ctx, "Looking for media file art", "id", id)
 	// if id is a mediafile cover id
 	var mf *model.MediaFile
 	mf, err = c.ds.MediaFile(ctx).Get(id)
@@ -112,6 +114,7 @@ func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastU
 	}
 
 	// if the mediafile does not have a coverArt, fallback to the album cover
+	log.Trace(ctx, "Media file does not contain art. Falling back to album art", "id", id, "albumId", "al-"+mf.AlbumID)
 	return c.getCoverPath(ctx, "al-"+mf.AlbumID)
 }
 
