@@ -113,11 +113,28 @@ func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums
 	return results, err
 }
 
+// Return a map of mediafiles that have embedded covers for the given album ids
+func (r *albumRepository) getEmbeddedCovers(ids []string) (map[string]model.MediaFile, error) {
+	var mfs model.MediaFiles
+	coverSql := Select("album_id", "id", "path").Distinct().From("media_file").
+		Where(And{Eq{"has_cover_art": true}, Eq{"album_id": ids}}).
+		GroupBy("album_id")
+	err := r.queryAll(coverSql, &mfs)
+	if err != nil {
+		return nil, err
+	}
+
+	result := map[string]model.MediaFile{}
+	for _, mf := range mfs {
+		result[mf.AlbumID] = mf
+	}
+	return result, nil
+}
+
 func (r *albumRepository) Refresh(ids ...string) error {
 	type refreshAlbum struct {
 		model.Album
 		CurrentId     string
-		HasCoverArt   bool
 		SongArtists   string
 		Years         string
 		DiscSubtitles string
@@ -128,30 +145,42 @@ func (r *albumRepository) Refresh(ids ...string) error {
 		f.sort_album_name, f.sort_artist_name, f.sort_album_artist_name,
 		f.order_album_name, f.order_album_artist_name, f.path,
 		f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
-		count(distinct(f.id)) as song_count, a.id as current_id, 
-		f2.id as cover_art_id, f2.path as cover_art_path, f2.has_cover_art, 
+		count(f.id) as song_count, a.id as current_id, 
 		group_concat(f.disc_subtitle, ' ') as disc_subtitles,
 		group_concat(f.artist, ' ') as song_artists, group_concat(f.year, ' ') as years`).
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
-		LeftJoin("(select * from media_file where has_cover_art) f2 on (f.album_id = f2.album_id)").
 		Where(Eq{"f.album_id": ids}).GroupBy("f.album_id")
 	err := r.queryAll(sel, &albums)
 	if err != nil {
 		return err
 	}
 
+	covers, err := r.getEmbeddedCovers(ids)
+	if err != nil {
+		return nil
+	}
+
 	toInsert := 0
 	toUpdate := 0
 	for _, al := range albums {
-		if !al.HasCoverArt || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
+		embedded, hasCoverArt := covers[al.ID]
+		if hasCoverArt {
+			al.CoverArtId = embedded.ID
+			al.CoverArtPath = embedded.Path
+		}
+
+		if !hasCoverArt || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
 			if path := getCoverFromPath(al.Path, al.CoverArtPath); path != "" {
 				al.CoverArtId = "al-" + al.ID
 				al.CoverArtPath = path
-			} else if !al.HasCoverArt {
-				al.CoverArtId = ""
 			}
-			log.Trace(r.ctx, "Found album art", "id", al.ID, "name", al.Name, "coverArtPath", al.CoverArtPath, "coverArtId", al.CoverArtId, "hasCoverArt", al.HasCoverArt)
+		}
+
+		if al.CoverArtId != "" {
+			log.Trace(r.ctx, "Found album art", "id", al.ID, "name", al.Name, "coverArtPath", al.CoverArtPath, "coverArtId", al.CoverArtId, "hasCoverArt", hasCoverArt)
+		} else {
+			log.Trace(r.ctx, "Could not find album art", "id", al.ID, "name", al.Name)
 		}
 
 		if al.Compilation {
