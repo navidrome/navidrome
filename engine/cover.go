@@ -119,7 +119,7 @@ func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastU
 }
 
 func imageCacheKey(path string, size int, lastUpdate time.Time) string {
-	return fmt.Sprintf("%s.%d.%s", path, size, lastUpdate.Format(time.RFC3339Nano))
+	return fmt.Sprintf("%s.%d.%s.%d", path, size, lastUpdate.Format(time.RFC3339Nano), conf.Server.CoverJpegQuality)
 }
 
 func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.Reader, err error) {
