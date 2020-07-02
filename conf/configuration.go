@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-type nd struct {
+type configOptions struct {
 	ConfigFile              string
 	Port                    int
 	MusicFolder             string
@@ -36,11 +36,9 @@ type nd struct {
 	DevAutoCreateAdminPassword string
 }
 
-var Server = &nd{}
+var Server = &configOptions{}
 
 func LoadFromFile(confFile string) {
-	// Use config file from the flag.
-	SetDefaults()
 	viper.SetConfigFile(confFile)
 	Load()
 }
@@ -61,7 +59,7 @@ func Load() {
 	log.Debug("Loaded configuration", "file", Server.ConfigFile, "config", fmt.Sprintf("%#v", Server))
 }
 
-func SetDefaults() {
+func init() {
 	viper.SetDefault("musicfolder", "./music")
 	viper.SetDefault("datafolder", "./")
 	viper.SetDefault("loglevel", "info")
@@ -84,4 +82,21 @@ func SetDefaults() {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devautocreateadminpassword", "")
+}
+
+func InitConfig(cfgFile string) error {
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} else {
+		// Search config in local directory with name "navidrome" (without extension).
+		viper.AddConfigPath(".")
+		viper.SetConfigName("navidrome")
+	}
+
+	viper.BindEnv("port")
+	viper.SetEnvPrefix("ND")
+	viper.AutomaticEnv()
+
+	return viper.ReadInConfig()
 }

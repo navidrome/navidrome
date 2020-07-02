@@ -13,7 +13,7 @@ func init() {
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the version number of Navidrome",
+	Short: "Print Navidrome's version",
 	Long:  `All software has versions. This is Navidrome's`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(consts.Version())

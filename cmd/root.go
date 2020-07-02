@@ -6,6 +6,7 @@ import (
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/db"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -19,7 +20,7 @@ var (
 		Long: `Navidrome is a self-hosted music server and streamer.
 Complete documentation is available at https://www.navidrome.org/docs`,
 		Run: func(cmd *cobra.Command, args []string) {
-			start()
+			startServer()
 		},
 		Version: consts.Version(),
 	}
@@ -31,6 +32,22 @@ func Execute() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func startServer() {
+	println(consts.Banner())
+
+	conf.Load()
+	db.EnsureLatestVersion()
+
+	subsonic, err := CreateSubsonicAPIRouter()
+	if err != nil {
+		panic(fmt.Sprintf("Could not create the Subsonic API router. Aborting! err=%v", err))
+	}
+	a := CreateServer(conf.Server.MusicFolder)
+	a.MountRouter(consts.URLPathSubsonicAPI, subsonic)
+	a.MountRouter(consts.URLPathUI, CreateAppRouter())
+	a.Run(fmt.Sprintf(":%d", conf.Server.Port))
 }
 
 // TODO: Implemement some struct tags to map flags to viper
@@ -46,9 +63,9 @@ func init() {
 	viper.BindPFlag("datafolder", rootCmd.PersistentFlags().Lookup("datafolder"))
 	viper.BindPFlag("loglevel", rootCmd.PersistentFlags().Lookup("loglevel"))
 
-	rootCmd.Flags().StringP("port", "p", viper.GetString("port"), "HTTP port Navidrome will use")
-	rootCmd.Flags().String("sessiontimeout", viper.GetString("sessiontimeout"), "how long Navidrome will wait before closing web ui idle sessions")
-	rootCmd.Flags().String("scaninterval", viper.GetString("scaninterval"), "how frequently to scan for changes in your music library")
+	rootCmd.Flags().IntP("port", "p", viper.GetInt("port"), "HTTP port Navidrome will use")
+	rootCmd.Flags().Duration("sessiontimeout", viper.GetDuration("sessiontimeout"), "how long Navidrome will wait before closing web ui idle sessions")
+	rootCmd.Flags().Duration("scaninterval", viper.GetDuration("scaninterval"), "how frequently to scan for changes in your music library")
 	rootCmd.Flags().String("baseurl", viper.GetString("baseurl"), "base URL (only the path part) to configure Navidrome behind a proxy (ex: /music)")
 	rootCmd.Flags().String("uiloginbackgroundurl", viper.GetString("uiloginbackgroundurl"), "URL to a backaground image used in the Login page")
 	rootCmd.Flags().Bool("enabletranscodingconfig", viper.GetBool("enabletranscodingconfig"), "enables transcoding configuration in the UI")
@@ -66,22 +83,7 @@ func init() {
 }
 
 func initConfig() {
-	conf.SetDefaults()
-
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Search config in local directory with name "navidrome" (without extension).
-		viper.AddConfigPath(".")
-		viper.SetConfigName("navidrome")
-	}
-
-	viper.BindEnv("port")
-	viper.SetEnvPrefix("ND")
-	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err != nil {
+	if err := conf.InitConfig(cfgFile); err != nil {
 		fmt.Printf("Error loading config file '%s'. Error: %s\n", viper.ConfigFileUsed(), err)
 		os.Exit(1)
 	}

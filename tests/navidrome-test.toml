@@ -5,3 +5,4 @@ DbPath = "file::memory:?cache=shared"
 MusicFolder = "./tests/fixtures"
 DataFolder = "data/tests"
 DownsampleCommand = "ffmpeg -i %s -b:a %bk mp3 -"
+ScanInterval=0
