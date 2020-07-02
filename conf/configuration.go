@@ -94,7 +94,7 @@ func InitConfig(cfgFile string) error {
 		viper.SetConfigName("navidrome")
 	}
 
-	viper.BindEnv("port")
+	_ = viper.BindEnv("port")
 	viper.SetEnvPrefix("ND")
 	viper.AutomaticEnv()
 

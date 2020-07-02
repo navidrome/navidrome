@@ -59,9 +59,9 @@ func init() {
 	rootCmd.PersistentFlags().String("datafolder", viper.GetString("datafolder"), "folder to store application data (DB, cache...), needs write access")
 	rootCmd.PersistentFlags().StringP("loglevel", "l", viper.GetString("loglevel"), "log level, possible values: error, info, debug, trace")
 
-	viper.BindPFlag("musicfolder", rootCmd.PersistentFlags().Lookup("musicfolder"))
-	viper.BindPFlag("datafolder", rootCmd.PersistentFlags().Lookup("datafolder"))
-	viper.BindPFlag("loglevel", rootCmd.PersistentFlags().Lookup("loglevel"))
+	_ = viper.BindPFlag("musicfolder", rootCmd.PersistentFlags().Lookup("musicfolder"))
+	_ = viper.BindPFlag("datafolder", rootCmd.PersistentFlags().Lookup("datafolder"))
+	_ = viper.BindPFlag("loglevel", rootCmd.PersistentFlags().Lookup("loglevel"))
 
 	rootCmd.Flags().IntP("port", "p", viper.GetInt("port"), "HTTP port Navidrome will use")
 	rootCmd.Flags().Duration("sessiontimeout", viper.GetDuration("sessiontimeout"), "how long Navidrome will wait before closing web ui idle sessions")
@@ -72,14 +72,14 @@ func init() {
 	rootCmd.Flags().String("transcodingcachesize", viper.GetString("transcodingcachesize"), "size of transcoding cache")
 	rootCmd.Flags().String("imagecachesize", viper.GetString("imagecachesize"), "size of image (art work) cache. set to 0 to disable cache")
 
-	viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
-	viper.BindPFlag("sessiontimeout", rootCmd.Flags().Lookup("sessiontimeout"))
-	viper.BindPFlag("scaninterval", rootCmd.Flags().Lookup("scaninterval"))
-	viper.BindPFlag("baseurl", rootCmd.Flags().Lookup("baseurl"))
-	viper.BindPFlag("uiloginbackgroundurl", rootCmd.Flags().Lookup("uiloginbackgroundurl"))
-	viper.BindPFlag("enabletranscodingconfig", rootCmd.Flags().Lookup("enabletranscodingconfig"))
-	viper.BindPFlag("transcodingcachesize", rootCmd.Flags().Lookup("transcodingcachesize"))
-	viper.BindPFlag("imagecachesize", rootCmd.Flags().Lookup("imagecachesize"))
+	_ = viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
+	_ = viper.BindPFlag("sessiontimeout", rootCmd.Flags().Lookup("sessiontimeout"))
+	_ = viper.BindPFlag("scaninterval", rootCmd.Flags().Lookup("scaninterval"))
+	_ = viper.BindPFlag("baseurl", rootCmd.Flags().Lookup("baseurl"))
+	_ = viper.BindPFlag("uiloginbackgroundurl", rootCmd.Flags().Lookup("uiloginbackgroundurl"))
+	_ = viper.BindPFlag("enabletranscodingconfig", rootCmd.Flags().Lookup("enabletranscodingconfig"))
+	_ = viper.BindPFlag("transcodingcachesize", rootCmd.Flags().Lookup("transcodingcachesize"))
+	_ = viper.BindPFlag("imagecachesize", rootCmd.Flags().Lookup("imagecachesize"))
 }
 
 func initConfig() {
