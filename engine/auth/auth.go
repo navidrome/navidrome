@@ -44,11 +44,7 @@ func CreateToken(u *model.User) (string, error) {
 
 func getSessionTimeOut() time.Duration {
 	if sessionTimeOut == 0 {
-		if to, err := time.ParseDuration(conf.Server.SessionTimeout); err != nil {
-			sessionTimeOut = consts.DefaultSessionTimeout
-		} else {
-			sessionTimeOut = to
-		}
+		sessionTimeOut = conf.Server.SessionTimeout
 		log.Info("Setting Session Timeout", "value", sessionTimeOut)
 	}
 	return sessionTimeOut

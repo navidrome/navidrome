@@ -75,11 +75,7 @@ func (a *Server) initRoutes() {
 }
 
 func (a *Server) initScanner() {
-	interval, err := time.ParseDuration(conf.Server.ScanInterval)
-	if err != nil {
-		log.Error("Invalid interval specification. Using default of 5m", "interval", conf.Server.ScanInterval, err)
-		interval = 5 * time.Minute
-	}
+	interval := conf.Server.ScanInterval
 	if interval == 0 {
 		log.Warn("Scanner is disabled", "interval", conf.Server.ScanInterval)
 		return

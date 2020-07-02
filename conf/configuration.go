@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
@@ -15,10 +16,10 @@ type nd struct {
 	Port                    int
 	MusicFolder             string
 	DataFolder              string
-	ScanInterval            string
 	DbPath                  string
 	LogLevel                string
-	SessionTimeout          string
+	ScanInterval            time.Duration
+	SessionTimeout          time.Duration
 	BaseURL                 string
 	UILoginBackgroundURL    string
 	IgnoredArticles         string
@@ -65,8 +66,8 @@ func SetDefaults() {
 	viper.SetDefault("datafolder", "./")
 	viper.SetDefault("loglevel", "info")
 	viper.SetDefault("port", 4533)
-	viper.SetDefault("sessiontimeout", "1h")
-	viper.SetDefault("scaninterval", "1m")
+	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
+	viper.SetDefault("scaninterval", time.Minute)
 	viper.SetDefault("baseurl", "")
 	viper.SetDefault("uiloginbackgroundurl", "")
 	viper.SetDefault("enabletranscodingconfig", false)
