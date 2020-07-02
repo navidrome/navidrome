@@ -1,6 +1,6 @@
 //+build wireinject
 
-package main
+package cmd
 
 import (
 	"github.com/deluan/navidrome/engine"

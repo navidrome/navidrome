@@ -12,15 +12,12 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/fscache v0.10.1
 	github.com/dustin/go-humanize v1.0.0
-	github.com/fatih/camelcase v0.0.0-20160318181535-f6a740d52f96 // indirect
-	github.com/fatih/structs v1.0.0 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-chi/cors v1.1.1
 	github.com/go-chi/jwtauth v4.0.4+incompatible
 	github.com/google/uuid v1.1.1
 	github.com/google/wire v0.4.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
-	github.com/koding/multiconfig v0.0.0-20170327155832-26b6dfd3a84a
 	github.com/lib/pq v1.3.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/onsi/ginkgo v1.13.0
@@ -28,6 +25,8 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pressly/goose v2.6.0+incompatible
 	github.com/sirupsen/logrus v1.6.0
+	github.com/spf13/cobra v1.0.0
+	github.com/spf13/viper v1.4.0
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344 // indirect
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	golang.org/x/text v0.3.3 // indirect
