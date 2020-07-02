@@ -15,7 +15,7 @@ Jamstash-master
 testDB
 navidrome.db
 *.swp
-*_gen.go
+embedded_gen.go
 dist
 music
 docker-compose.override.yml
