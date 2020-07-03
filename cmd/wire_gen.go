@@ -25,6 +25,12 @@ func CreateServer(musicFolder string) *server.Server {
 	return serverServer
 }
 
+func CreateScanner(musicFolder string) *scanner.Scanner {
+	dataStore := persistence.New()
+	scannerScanner := scanner.New(dataStore)
+	return scannerScanner
+}
+
 func CreateAppRouter() *app.Router {
 	dataStore := persistence.New()
 	router := app.New(dataStore)
