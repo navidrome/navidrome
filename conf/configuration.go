@@ -88,18 +88,19 @@ func InitConfig(cfgFile string) {
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
-		if err := viper.ReadInConfig(); err != nil {
-			fmt.Println("Navidrome could not open config file: ", err)
-			os.Exit(1)
-		}
 	} else {
 		// Search config in local directory with name "navidrome" (without extension).
 		viper.AddConfigPath(".")
 		viper.SetConfigName("navidrome")
-		_ = viper.ReadInConfig()
 	}
 
 	_ = viper.BindEnv("port")
 	viper.SetEnvPrefix("ND")
 	viper.AutomaticEnv()
+
+	err := viper.ReadInConfig()
+	if cfgFile != "" && err != nil {
+		fmt.Println("Navidrome could not open config file: ", err)
+		os.Exit(1)
+	}
 }
