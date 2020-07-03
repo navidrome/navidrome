@@ -84,7 +84,7 @@ func init() {
 	viper.SetDefault("devautocreateadminpassword", "")
 }
 
-func InitConfig(cfgFile string) error {
+func InitConfig(cfgFile string) {
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
@@ -98,5 +98,5 @@ func InitConfig(cfgFile string) error {
 	viper.SetEnvPrefix("ND")
 	viper.AutomaticEnv()
 
-	return viper.ReadInConfig()
+	viper.ReadInConfig()
 }

@@ -52,7 +52,9 @@ func startServer() {
 
 // TODO: Implemement some struct tags to map flags to viper
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(func() {
+		conf.InitConfig(cfgFile)
+	})
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "configfile", "c", "", `config file (default "./navidrome.toml")`)
 	rootCmd.PersistentFlags().String("musicfolder", viper.GetString("musicfolder"), "folder where your music is stored")
@@ -80,11 +82,4 @@ func init() {
 	_ = viper.BindPFlag("enabletranscodingconfig", rootCmd.Flags().Lookup("enabletranscodingconfig"))
 	_ = viper.BindPFlag("transcodingcachesize", rootCmd.Flags().Lookup("transcodingcachesize"))
 	_ = viper.BindPFlag("imagecachesize", rootCmd.Flags().Lookup("imagecachesize"))
-}
-
-func initConfig() {
-	if err := conf.InitConfig(cfgFile); err != nil {
-		fmt.Printf("Error loading config file '%s'. Error: %s\n", viper.ConfigFileUsed(), err)
-		os.Exit(1)
-	}
 }
