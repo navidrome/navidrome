@@ -11,10 +11,12 @@ import (
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 // Injects the config in the `index.html` template
 func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
+	policy := bluemonday.UGCPolicy()
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := ds.User(r.Context()).CountAll()
 		firstTime := c == 0 && err == nil
@@ -27,8 +29,9 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 		appConfig := map[string]interface{}{
 			"version":                 consts.Version(),
 			"firstTime":               firstTime,
-			"baseURL":                 strings.TrimSuffix(conf.Server.BaseURL, "/"),
-			"loginBackgroundURL":      conf.Server.UILoginBackgroundURL,
+			"baseURL":                 policy.Sanitize(strings.TrimSuffix(conf.Server.BaseURL, "/")),
+			"loginBackgroundURL":      policy.Sanitize(conf.Server.UILoginBackgroundURL),
+			"welcomeMessage":          policy.Sanitize(conf.Server.UIWelcomeMessage),
 			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,
 		}
 		j, err := json.Marshal(appConfig)
@@ -38,6 +41,7 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 			log.Trace(r, "Injecting config in index.html", "config", string(j))
 		}
 
+		log.Debug("UI configuration", "appConfig", appConfig)
 		data := map[string]interface{}{
 			"AppConfig": string(j),
 			"Version":   consts.Version(),

@@ -22,14 +22,16 @@ type configOptions struct {
 	SessionTimeout          time.Duration
 	BaseURL                 string
 	UILoginBackgroundURL    string
-	IgnoredArticles         string
-	IndexGroups             string
 	EnableTranscodingConfig bool
 	TranscodingCacheSize    string
 	ImageCacheSize          string
-	ProbeCommand            string
-	CoverArtPriority        string
-	CoverJpegQuality        int
+
+	IgnoredArticles  string
+	IndexGroups      string
+	ProbeCommand     string
+	CoverArtPriority string
+	CoverJpegQuality int
+	UIWelcomeMessage string
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
@@ -78,6 +80,7 @@ func init() {
 	viper.SetDefault("probecommand", "ffmpeg %s -f ffmetadata")
 	viper.SetDefault("coverartpriority", "embedded, cover.*, folder.*, front.*")
 	viper.SetDefault("coverjpegquality", 75)
+	viper.SetDefault("uiwelcomemessage", "")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

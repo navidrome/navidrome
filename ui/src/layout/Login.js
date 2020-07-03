@@ -50,6 +50,13 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
     color: '#3f51b5', //theme.palette.grey[500]
   },
+  welcome: {
+    marginTop: '1em',
+    padding: '0 1em 1em 1em',
+    display: 'flex',
+    justifyContent: 'center',
+    color: '#3f51b5', //theme.palette.grey[500]
+  },
   form: {
     padding: '0 1em 1em 1em',
   },
@@ -92,7 +99,21 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
                   <LockIcon />
                 </Avatar>
               </div>
-              <div className={classes.systemName}>Navidrome</div>
+              <div className={classes.systemName}>
+                <a
+                  href="https://www.navidrome.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Navidrome
+                </a>
+              </div>
+              {config.welcomeMessage && (
+                <div
+                  className={classes.welcome}
+                  dangerouslySetInnerHTML={{ __html: config.welcomeMessage }}
+                />
+              )}
               <div className={classes.form}>
                 <div className={classes.input}>
                   <Field
@@ -152,10 +173,10 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                   <LockIcon />
                 </Avatar>
               </div>
-              <div className={classes.systemName}>
+              <div className={classes.welcome}>
                 {translate('ra.auth.welcome1')}
               </div>
-              <div className={classes.systemName}>
+              <div className={classes.welcome}>
                 {translate('ra.auth.welcome2')}
               </div>
               <div className={classes.form}>

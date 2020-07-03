@@ -81,6 +81,28 @@ var _ = Describe("ServeIndex", func() {
 		Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "my_background_url"))
 	})
 
+	It("sets the welcomeMessage", func() {
+		conf.Server.UIWelcomeMessage = "Hello"
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		ServeIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("welcomeMessage", "Hello"))
+	})
+
+	It("sets the enableTranscodingConfig", func() {
+		conf.Server.EnableTranscodingConfig = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		ServeIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableTranscodingConfig", true))
+	})
+
 	It("sets the version", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
