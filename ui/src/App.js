@@ -1,4 +1,5 @@
 import React from 'react'
+import ReactGA from 'react-ga'
 import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
 import { Admin, Resource } from 'react-admin'
@@ -19,8 +20,17 @@ import themeReducer from './personal/themeReducer'
 import { addToPlaylistDialogReducer } from './dialogs/dialogState'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
+import config from './config'
 
 const history = createHashHistory()
+
+if (config.gaTrackingId) {
+  ReactGA.initialize(config.gaTrackingId)
+  history.listen((location) => {
+    ReactGA.pageview(location.pathname)
+  })
+  ReactGA.pageview(window.location.pathname)
+}
 
 const App = () => (
   <Provider
