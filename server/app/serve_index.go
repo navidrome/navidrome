@@ -33,6 +33,7 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 			"loginBackgroundURL":      policy.Sanitize(conf.Server.UILoginBackgroundURL),
 			"welcomeMessage":          policy.Sanitize(conf.Server.UIWelcomeMessage),
 			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,
+			"gaTrackingId":            conf.Server.GATrackingID,
 		}
 		j, err := json.Marshal(appConfig)
 		if err != nil {
