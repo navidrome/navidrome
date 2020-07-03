@@ -12,13 +12,17 @@ import (
 )
 
 var (
-	cfgFile string
+	cfgFile  string
+	noBanner bool
 
 	rootCmd = &cobra.Command{
 		Use:   "navidrome",
 		Short: "Navidrome is a self-hosted music server and streamer",
 		Long: `Navidrome is a self-hosted music server and streamer.
 Complete documentation is available at https://www.navidrome.org/docs`,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			preRun()
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			startServer()
 		},
@@ -34,10 +38,14 @@ func Execute() {
 	}
 }
 
-func startServer() {
-	println(consts.Banner())
-
+func preRun() {
+	if !noBanner {
+		println(consts.Banner())
+	}
 	conf.Load()
+}
+
+func startServer() {
 	db.EnsureLatestVersion()
 
 	subsonic, err := CreateSubsonicAPIRouter()
@@ -57,6 +65,7 @@ func init() {
 	})
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "configfile", "c", "", `config file (default "./navidrome.toml")`)
+	rootCmd.PersistentFlags().BoolVarP(&noBanner, "nobanner", "n", false, `don't show banner`)
 	rootCmd.PersistentFlags().String("musicfolder", viper.GetString("musicfolder"), "folder where your music is stored")
 	rootCmd.PersistentFlags().String("datafolder", viper.GetString("datafolder"), "folder to store application data (DB, cache...), needs write access")
 	rootCmd.PersistentFlags().StringP("loglevel", "l", viper.GetString("loglevel"), "log level, possible values: error, info, debug, trace")
