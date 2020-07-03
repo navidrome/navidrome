@@ -98,5 +98,5 @@ func InitConfig(cfgFile string) {
 	viper.SetEnvPrefix("ND")
 	viper.AutomaticEnv()
 
-	viper.ReadInConfig()
+	_ = viper.ReadInConfig()
 }
