@@ -8,6 +8,7 @@ import (
 
 var excludeAudioType = []string{
 	"audio/x-mpegurl",
+	"audio/x-scpls",
 }
 
 func IsAudioFile(filePath string) bool {

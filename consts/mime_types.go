@@ -19,6 +19,8 @@ func init() {
 		".shn":  "audio/x-shn",
 		".aif":  "audio/x-aiff",
 		".aiff": "audio/x-aiff",
+		".m3u":  "audio/x-mpegurl",
+		".pls":  "audio/x-scpls",
 		".gif":  "image/gif",
 		".jpg":  "image/jpeg",
 		".jpeg": "image/jpeg",
