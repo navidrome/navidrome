@@ -90,45 +90,8 @@ jobs:
           name: js-bundle
           path: ui/build
 
-  # binaries:
-  #   name: Binaries
-  #   needs: [js, go, golangci-lint]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v2
-
-  #     - name: Unshallow
-  #       run: git fetch --prune --unshallow
-
-  #     - uses: actions/download-artifact@v1
-  #       with:
-  #         name: js-bundle
-  #         path: ui/build
-
-  #     - name: Run GoReleaser - SNAPSHOT
-  #       if: startsWith(github.ref, 'refs/tags/') != true
-  #       uses: docker://deluan/ci-goreleaser:1.14.3-0
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         args: goreleaser release --rm-dist --skip-publish --snapshot
-
-  #     - name: Run GoReleaser - RELEASE
-  #       if: startsWith(github.ref, 'refs/tags/')
-  #       uses: docker://deluan/ci-goreleaser:1.14.3-0
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         args: goreleaser release --rm-dist
-
-  #     - uses: actions/upload-artifact@v1
-  #       with:
-  #         name: binaries
-  #         path: dist
-
-  linux:
-    name: Build Linux Binary
+  binaries:
+    name: Binaries
     needs: [js, go, golangci-lint]
     runs-on: ubuntu-latest
     steps:
@@ -143,48 +106,85 @@ jobs:
           name: js-bundle
           path: ui/build
 
-      - name: Build - SNAPSHOT
+      - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
-        run: |
-          make setup-go
-          PATH=$HOME/go/bin:$PATH make build-go
-          mkdir dist
-          tar cvfz dist/navidrome_Linux_amd64.tar.gz navidrome README.md LICENSE
+        uses: docker://deluan/ci-goreleaser:1.14.3-0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: goreleaser release --rm-dist --skip-publish --snapshot
+
+      - name: Run GoReleaser - RELEASE
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: docker://deluan/ci-goreleaser:1.14.3-0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: goreleaser release --rm-dist
 
       - uses: actions/upload-artifact@v1
         with:
           name: binaries
           path: dist
 
-  # docker:
-  #   name: Docker images
-  #   needs: [binaries]
+  # linux:
+  #   name: Build Linux Binary
+  #   needs: [js, go, golangci-lint]
   #   runs-on: ubuntu-latest
-  #   env:
-  #     DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
   #   steps:
-  #     - name: Set up Docker Buildx
-  #       id: buildx
-  #       uses: crazy-max/ghaction-docker-buildx@v1
-  #       if: env.DOCKER_IMAGE != ''
-  #       with:
-  #         buildx-version: latest
-  #         qemu-version: latest
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v2
 
-  #     - uses: actions/checkout@v1
-  #       if: env.DOCKER_IMAGE != ''
+  #     - name: Unshallow
+  #       run: git fetch --prune --unshallow
 
   #     - uses: actions/download-artifact@v1
-  #       if: env.DOCKER_IMAGE != ''
+  #       with:
+  #         name: js-bundle
+  #         path: ui/build
+
+  #     - name: Build - SNAPSHOT
+  #       if: startsWith(github.ref, 'refs/tags/') != true
+  #       run: |
+  #         make setup-go
+  #         PATH=$HOME/go/bin:$PATH make build-go
+  #         mkdir dist
+  #         tar cvfz dist/navidrome_Linux_amd64.tar.gz navidrome README.md LICENSE
+
+  #     - uses: actions/upload-artifact@v1
   #       with:
   #         name: binaries
   #         path: dist
 
-  #     - name: Build the Docker image and push
-  #       if: env.DOCKER_IMAGE != ''
-  #       env:
-  #         DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
-  #         DOCKER_PLATFORM: linux/amd64,linux/arm/v7,linux/arm64
-  #       run: |
-  #         echo ${{secrets.DOCKER_PASSWORD}} | docker login -u ${{secrets.DOCKER_USERNAME}} --password-stdin
-  #         docker buildx build --platform ${DOCKER_PLATFORM} `.github/workflows/docker-tags.sh` -f .github/workflows/pipeline.dockerfile --push .
+  docker:
+    name: Docker images
+    needs: [binaries]
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
+    steps:
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
+        if: env.DOCKER_IMAGE != ''
+        with:
+          buildx-version: latest
+          qemu-version: latest
+
+      - uses: actions/checkout@v1
+        if: env.DOCKER_IMAGE != ''
+
+      - uses: actions/download-artifact@v1
+        if: env.DOCKER_IMAGE != ''
+        with:
+          name: binaries
+          path: dist
+
+      - name: Build the Docker image and push
+        if: env.DOCKER_IMAGE != ''
+        env:
+          DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
+          DOCKER_PLATFORM: linux/amd64,linux/arm/v7,linux/arm64
+        run: |
+          echo ${{secrets.DOCKER_PASSWORD}} | docker login -u ${{secrets.DOCKER_USERNAME}} --password-stdin
+          docker buildx build --platform ${DOCKER_PLATFORM} `.github/workflows/docker-tags.sh` -f .github/workflows/pipeline.dockerfile --push .
