@@ -302,7 +302,7 @@ func (s *TagScanner) removeDeletedFolders(ctx context.Context, changed []string)
 		// If a path is unreadable, remove from the DB
 		for _, path := range paths {
 			if readable, err := utils.IsDirReadable(path); !readable {
-				log.Warn(ctx, "Path unavailable. Removing tracks from DB", "path", path, err)
+				log.Info(ctx, "Path unavailable. Removing tracks from DB", "path", path, err)
 				err = s.ds.MediaFile(ctx).DeleteByPath(path)
 				if err != nil {
 					log.Error(ctx, "Error removing MediaFiles from DB", "path", path, err)
