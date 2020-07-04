@@ -17,7 +17,7 @@ const (
 	UIAuthorizationHeader = "X-ND-Authorization"
 	JWTSecretKey          = "JWTSecret"
 	JWTIssuer             = "ND"
-	DefaultSessionTimeout = 30 * time.Minute
+	DefaultSessionTimeout = 24 * time.Hour
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
