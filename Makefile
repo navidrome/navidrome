@@ -42,11 +42,14 @@ create-migration:
 	goose -dir db/migration create ${name}
 .PHONY: create-migration
 
-setup:
-	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
-	go mod download
+setup: setup-go
 	@(cd ./ui && npm ci)
 .PHONY: setup
+
+setup-go:
+	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
+	go mod download
+.PHONY: setup-go
 
 setup-dev: setup
 	@which wire          || (echo "Installing Wire"          && GO111MODULE=off go get -u github.com/google/wire/cmd/wire)
@@ -83,15 +86,17 @@ check_node_env:
 	@node --version | grep -q $(NODE_VERSION) || (echo "\nERROR: Please check your Node version. Should be $(NODE_VERSION)\n"; exit 1)
 .PHONY: check_node_env
 
-build: check_go_env
-	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT"
-.PHONY: build
-
-buildall: check_env
-	@(cd ./ui && npm run build)
+build-go: check_go_env
 	go-bindata -fs -prefix "resources" -tags embed -ignore="\\\*.go" -pkg resources -o resources/embedded_gen.go resources/...
 	go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
 	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=embed
+.PHONY: build
+
+build-js: check_node_env
+	@(cd ./ui && npm run build)
+.PHONY: buildjs
+
+buildall: build-js build-go
 .PHONY: buildall
 
 release:
