@@ -6,9 +6,14 @@ import (
 	"strings"
 )
 
+var excludeAudioType = []string{
+	"audio/x-mpegurl",
+}
+
 func IsAudioFile(filePath string) bool {
 	extension := filepath.Ext(filePath)
-	return strings.HasPrefix(mime.TypeByExtension(extension), "audio/")
+	mimeType := mime.TypeByExtension(extension)
+	return !StringInSlice(mimeType, excludeAudioType) && strings.HasPrefix(mimeType, "audio/")
 }
 
 func IsImageFile(filePath string) bool {

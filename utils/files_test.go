@@ -20,6 +20,14 @@ var _ = Describe("Files", func() {
 		It("returns false for a non-audio file", func() {
 			Expect(IsAudioFile("test.jpg")).To(BeFalse())
 		})
+
+		It("returns false for m3u files", func() {
+			Expect(IsAudioFile("test.m3u")).To(BeFalse())
+		})
+
+		It("returns false for pls files", func() {
+			Expect(IsAudioFile("test.pls")).To(BeFalse())
+		})
 	})
 
 	Describe("IsImageFile", func() {
