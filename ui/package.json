@@ -11,7 +11,7 @@
     "lodash.throttle": "^4.1.1",
     "md5-hex": "^3.0.1",
     "prop-types": "^15.7.2",
-    "ra-data-json-server": "^3.6.1",
+    "ra-data-json-server": "^3.7.0",
     "react": "^16.13.1",
     "react-admin": "^3.6.1",
     "react-dom": "^16.13.1",
