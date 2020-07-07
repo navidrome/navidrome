@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -15,10 +14,6 @@ import (
 
 func initialSetup(ds model.DataStore) {
 	_ = ds.WithTx(func(tx model.DataStore) error {
-		if err := createDefaultTranscodings(ds); err != nil {
-			return err
-		}
-
 		properties := ds.Property(context.TODO())
 		_, err := properties.Get(consts.InitialSetupFlagKey)
 		if err == nil {
@@ -83,28 +78,4 @@ func createJWTSecret(ds model.DataStore) error {
 		log.Error("Could not save JWT secret in DB", err)
 	}
 	return err
-}
-
-func createDefaultTranscodings(ds model.DataStore) error {
-	transcodings := ds.Transcoding(context.TODO())
-	c, _ := transcodings.CountAll()
-	if c != 0 {
-		return nil
-	}
-	for _, d := range consts.DefaultTranscodings {
-		var j []byte
-		var err error
-		if j, err = json.Marshal(d); err != nil {
-			return err
-		}
-		var t model.Transcoding
-		if err = json.Unmarshal(j, &t); err != nil {
-			return err
-		}
-		log.Info("Creating default transcoding config", "name", t.Name)
-		if err = transcodings.Put(&t); err != nil {
-			return err
-		}
-	}
-	return nil
 }
