@@ -55,7 +55,7 @@ func startServer() {
 	a := CreateServer(conf.Server.MusicFolder)
 	a.MountRouter(consts.URLPathSubsonicAPI, subsonic)
 	a.MountRouter(consts.URLPathUI, CreateAppRouter())
-	a.Run(fmt.Sprintf(":%d", conf.Server.Port))
+	a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
 }
 
 // TODO: Implemement some struct tags to map flags to viper
@@ -74,6 +74,7 @@ func init() {
 	_ = viper.BindPFlag("datafolder", rootCmd.PersistentFlags().Lookup("datafolder"))
 	_ = viper.BindPFlag("loglevel", rootCmd.PersistentFlags().Lookup("loglevel"))
 
+	rootCmd.Flags().StringP("address", "a", viper.GetString("address"), "IP address to bind")
 	rootCmd.Flags().IntP("port", "p", viper.GetInt("port"), "HTTP port Navidrome will use")
 	rootCmd.Flags().Duration("sessiontimeout", viper.GetDuration("sessiontimeout"), "how long Navidrome will wait before closing web ui idle sessions")
 	rootCmd.Flags().Duration("scaninterval", viper.GetDuration("scaninterval"), "how frequently to scan for changes in your music library")
@@ -83,6 +84,7 @@ func init() {
 	rootCmd.Flags().String("transcodingcachesize", viper.GetString("transcodingcachesize"), "size of transcoding cache")
 	rootCmd.Flags().String("imagecachesize", viper.GetString("imagecachesize"), "size of image (art work) cache. set to 0 to disable cache")
 
+	_ = viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))
 	_ = viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
 	_ = viper.BindPFlag("sessiontimeout", rootCmd.Flags().Lookup("sessiontimeout"))
 	_ = viper.BindPFlag("scaninterval", rootCmd.Flags().Lookup("scaninterval"))

@@ -13,6 +13,7 @@ import (
 
 type configOptions struct {
 	ConfigFile              string
+	Address                 string
 	Port                    int
 	MusicFolder             string
 	DataFolder              string
@@ -66,6 +67,7 @@ func init() {
 	viper.SetDefault("musicfolder", "./music")
 	viper.SetDefault("datafolder", "./")
 	viper.SetDefault("loglevel", "info")
+	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("scaninterval", time.Minute)
