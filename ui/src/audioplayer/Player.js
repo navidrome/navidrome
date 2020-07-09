@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react'
+import ReactGA from 'react-ga'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
@@ -8,6 +9,7 @@ import subsonic from '../subsonic'
 import { scrobble, syncQueue, currentPlaying, setVolume } from './queue'
 import themes from '../themes'
 import { makeStyles } from '@material-ui/core/styles'
+import config from '../config'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
@@ -134,6 +136,13 @@ const Player = () => {
         document.title = `${info.name} - ${info.singer} - Navidrome`
         dispatch(scrobble(info.trackId, false))
         subsonic.scrobble(info.trackId, false)
+        if (config.gaTrackingId) {
+          ReactGA.event({
+            category: 'Player',
+            action: 'Play song',
+            label: `${info.name} - ${info.singer}`,
+          })
+        }
       }
     },
     [dispatch]
