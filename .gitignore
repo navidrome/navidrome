@@ -18,7 +18,7 @@ navidrome.db
 embedded_gen.go
 dist
 music
-docker-compose.override.yml
+docker-compose.yml
 navidrome.db-shm
 navidrome.db-wal
 tags
