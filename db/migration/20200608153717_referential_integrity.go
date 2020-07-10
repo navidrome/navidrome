@@ -18,6 +18,20 @@ delete from player where user_name not in (select user_name from user)`)
 		return err
 	}
 
+	// Also delete dangling players
+	_, err = tx.Exec(`
+delete from playlist where owner not in (select user_name from user)`)
+	if err != nil {
+		return err
+	}
+
+	// Also delete dangling playlist tracks
+	_, err = tx.Exec(`
+delete from playlist_tracks where playlist_id not in (select id from playlist)`)
+	if err != nil {
+		return err
+	}
+
 	// Add foreign key to player table
 	err = updatePlayer_20200608153717(tx)
 	if err != nil {
