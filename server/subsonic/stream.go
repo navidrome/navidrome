@@ -1,21 +1,21 @@
 package subsonic
 
 import (
+	"github.com/deluan/navidrome/core"
 	"io"
 	"net/http"
 	"strconv"
 
-	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
 
 type StreamController struct {
-	streamer engine.MediaStreamer
+	streamer core.MediaStreamer
 }
 
-func NewStreamController(streamer engine.MediaStreamer) *StreamController {
+func NewStreamController(streamer core.MediaStreamer) *StreamController {
 	return &StreamController{streamer: streamer}
 }
 

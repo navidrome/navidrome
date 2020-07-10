@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/deluan/navidrome/engine/auth"
+	"github.com/deluan/navidrome/core/auth"
 	"github.com/deluan/navidrome/log"
 	"github.com/dgrijalva/jwt-go"
 	. "github.com/onsi/ginkgo"

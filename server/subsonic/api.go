@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"github.com/deluan/navidrome/core"
 	"net/http"
 	"runtime"
 
@@ -22,22 +23,22 @@ type Handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, er
 
 type Router struct {
 	Browser       engine.Browser
-	Cover         engine.Cover
+	Cover         core.Cover
 	ListGenerator engine.ListGenerator
 	Playlists     engine.Playlists
 	Ratings       engine.Ratings
 	Scrobbler     engine.Scrobbler
 	Search        engine.Search
 	Users         engine.Users
-	Streamer      engine.MediaStreamer
+	Streamer      core.MediaStreamer
 	Players       engine.Players
 
 	mux http.Handler
 }
 
-func New(browser engine.Browser, cover engine.Cover, listGenerator engine.ListGenerator, users engine.Users,
+func New(browser engine.Browser, cover core.Cover, listGenerator engine.ListGenerator, users engine.Users,
 	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search,
-	streamer engine.MediaStreamer, players engine.Players) *Router {
+	streamer core.MediaStreamer, players engine.Players) *Router {
 	r := &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
 		Ratings: ratings, Scrobbler: scrobbler, Search: search, Users: users, Streamer: streamer, Players: players}
 	r.mux = r.routes()

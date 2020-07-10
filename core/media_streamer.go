@@ -1,4 +1,4 @@
-package engine
+package core
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/engine/transcoder"
+	"github.com/deluan/navidrome/core/transcoder"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"

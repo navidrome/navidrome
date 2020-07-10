@@ -1,13 +1,11 @@
 package engine
 
 import (
-	"github.com/deluan/navidrome/engine/transcoder"
 	"github.com/google/wire"
 )
 
 var Set = wire.NewSet(
 	NewBrowser,
-	NewCover,
 	NewListGenerator,
 	NewPlaylists,
 	NewRatings,
@@ -15,9 +13,5 @@ var Set = wire.NewSet(
 	NewSearch,
 	NewNowPlayingRepository,
 	NewUsers,
-	NewMediaStreamer,
-	transcoder.New,
-	NewTranscodingCache,
-	NewImageCache,
 	NewPlayers,
 )

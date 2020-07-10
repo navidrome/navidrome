@@ -1,11 +1,11 @@
 package subsonic
 
 import (
+	"github.com/deluan/navidrome/core"
 	"io"
 	"net/http"
 
 	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/resources"
@@ -14,10 +14,10 @@ import (
 )
 
 type MediaRetrievalController struct {
-	cover engine.Cover
+	cover core.Cover
 }
 
-func NewMediaRetrievalController(cover engine.Cover) *MediaRetrievalController {
+func NewMediaRetrievalController(cover core.Cover) *MediaRetrievalController {
 	return &MediaRetrievalController{cover: cover}
 }
 

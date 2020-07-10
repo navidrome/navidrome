@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/persistence"
 	"github.com/deluan/navidrome/scanner"
@@ -14,6 +15,7 @@ import (
 
 var allProviders = wire.NewSet(
 	engine.Set,
+	core.Set,
 	scanner.New,
 	subsonic.New,
 	app.New,

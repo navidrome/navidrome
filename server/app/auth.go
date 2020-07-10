@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/engine/auth"
+	"github.com/deluan/navidrome/core/auth"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"

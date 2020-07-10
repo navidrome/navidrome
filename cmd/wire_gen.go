@@ -6,8 +6,9 @@
 package cmd
 
 import (
+	"github.com/deluan/navidrome/core"
+	"github.com/deluan/navidrome/core/transcoder"
 	"github.com/deluan/navidrome/engine"
-	"github.com/deluan/navidrome/engine/transcoder"
 	"github.com/deluan/navidrome/persistence"
 	"github.com/deluan/navidrome/scanner"
 	"github.com/deluan/navidrome/server"
@@ -40,11 +41,11 @@ func CreateAppRouter() *app.Router {
 func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
 	dataStore := persistence.New()
 	browser := engine.NewBrowser(dataStore)
-	imageCache, err := engine.NewImageCache()
+	imageCache, err := core.NewImageCache()
 	if err != nil {
 		return nil, err
 	}
-	cover := engine.NewCover(dataStore, imageCache)
+	cover := core.NewCover(dataStore, imageCache)
 	nowPlayingRepository := engine.NewNowPlayingRepository()
 	listGenerator := engine.NewListGenerator(dataStore, nowPlayingRepository)
 	users := engine.NewUsers(dataStore)
@@ -53,11 +54,11 @@ func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
 	scrobbler := engine.NewScrobbler(dataStore, nowPlayingRepository)
 	search := engine.NewSearch(dataStore)
 	transcoderTranscoder := transcoder.New()
-	transcodingCache, err := engine.NewTranscodingCache()
+	transcodingCache, err := core.NewTranscodingCache()
 	if err != nil {
 		return nil, err
 	}
-	mediaStreamer := engine.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
+	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
 	players := engine.NewPlayers(dataStore)
 	router := subsonic.New(browser, cover, listGenerator, users, playlists, ratings, scrobbler, search, mediaStreamer, players)
 	return router, nil
@@ -65,4 +66,4 @@ func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(engine.Set, scanner.New, subsonic.New, app.New, persistence.New)
+var allProviders = wire.NewSet(engine.Set, core.Set, scanner.New, subsonic.New, app.New, persistence.New)

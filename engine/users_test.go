@@ -3,7 +3,7 @@ package engine
 import (
 	"context"
 
-	"github.com/deluan/navidrome/engine/auth"
+	"github.com/deluan/navidrome/core/auth"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/persistence"
 	. "github.com/onsi/ginkgo"

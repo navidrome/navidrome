@@ -8,7 +8,7 @@ import (
 
 	"github.com/deluan/navidrome/assets"
 	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/engine/auth"
+	"github.com/deluan/navidrome/core/auth"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi"
