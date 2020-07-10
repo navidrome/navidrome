@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/deluan/navidrome/core"
 	"net/http"
 	"runtime"
 
 	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/server/subsonic/responses"
