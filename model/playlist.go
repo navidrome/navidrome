@@ -13,6 +13,8 @@ type Playlist struct {
 	Owner     string     `json:"owner"`
 	Public    bool       `json:"public"`
 	Tracks    MediaFiles `json:"tracks,omitempty"`
+	Path      string     `json:"path"`
+	Sync      bool       `json:"sync"`
 	CreatedAt time.Time  `json:"createdAt"`
 	UpdatedAt time.Time  `json:"updatedAt"`
 }
