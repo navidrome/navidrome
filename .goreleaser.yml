@@ -43,6 +43,7 @@ builds:
     goarch:
       - arm
     goarm:
+      - 5
       - 6
       - 7
     flags:
