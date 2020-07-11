@@ -65,6 +65,13 @@ func (r *userRepository) Put(u *model.User) error {
 	return err
 }
 
+func (r *userRepository) FindFirstAdmin() (*model.User, error) {
+	sel := r.newSelect(model.QueryOptions{Sort: "updated_at", Max: 1}).Columns("*").Where(Eq{"is_admin": true})
+	var usr model.User
+	err := r.queryOne(sel, &usr)
+	return &usr, err
+}
+
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
 	username = strings.ToLower(username)
 	sel := r.newSelect().Columns("*").Where(Eq{"user_name": username})

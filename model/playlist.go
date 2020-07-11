@@ -27,6 +27,7 @@ type PlaylistRepository interface {
 	Put(pls *Playlist) error
 	Get(id string) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
+	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string) PlaylistTrackRepository
 }

@@ -55,7 +55,7 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.Put(&model.MediaFile{ID: "7001", Path: P("/Find:By'Path/_/123.mp3")})).To(BeNil())
 		Expect(mr.Put(&model.MediaFile{ID: "7002", Path: P("/Find:By'Path/1/123.mp3")})).To(BeNil())
 
-		found, err := mr.FindByPath(P("/Find:By'Path/_/"))
+		found, err := mr.FindAllByPath(P("/Find:By'Path/_/"))
 		Expect(err).To(BeNil())
 		Expect(found).To(HaveLen(1))
 		Expect(found[0].ID).To(Equal("7001"))
@@ -65,12 +65,12 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.Put(&model.MediaFile{ID: "7003", Path: P("/Casesensitive/file1.mp3")})).To(BeNil())
 		Expect(mr.Put(&model.MediaFile{ID: "7004", Path: P("/casesensitive/file2.mp3")})).To(BeNil())
 
-		found, err := mr.FindByPath(P("/Casesensitive"))
+		found, err := mr.FindAllByPath(P("/Casesensitive"))
 		Expect(err).To(BeNil())
 		Expect(found).To(HaveLen(1))
 		Expect(found[0].ID).To(Equal("7003"))
 
-		found, err = mr.FindByPath(P("/casesensitive/"))
+		found, err = mr.FindAllByPath(P("/casesensitive/"))
 		Expect(err).To(BeNil())
 		Expect(found).To(HaveLen(1))
 		Expect(found[0].ID).To(Equal("7004"))

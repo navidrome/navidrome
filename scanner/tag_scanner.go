@@ -93,12 +93,14 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		if err != nil {
 			return err
 		}
+		// TODO Search for playlists and import (with `sync` on)
 	}
 	for _, c := range deleted {
 		err := s.processDeletedDir(ctx, c, updatedArtists, updatedAlbums, cnt)
 		if err != nil {
 			return err
 		}
+		// TODO "Un-sync" all playlists synched from a deleted folder
 	}
 
 	err = s.flushAlbums(ctx, updatedAlbums)
@@ -152,7 +154,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 
 	// Load folder's current tracks from DB into a map
 	currentTracks := map[string]model.MediaFile{}
-	ct, err := s.ds.MediaFile(ctx).FindByPath(dir)
+	ct, err := s.ds.MediaFile(ctx).FindAllByPath(dir)
 	if err != nil {
 		return err
 	}
@@ -282,7 +284,7 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedA
 	dir = filepath.Join(s.rootFolder, dir)
 	start := time.Now()
 
-	mfs, err := s.ds.MediaFile(ctx).FindByPath(dir)
+	mfs, err := s.ds.MediaFile(ctx).FindAllByPath(dir)
 	if err != nil {
 		return err
 	}
