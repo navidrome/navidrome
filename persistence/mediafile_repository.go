@@ -80,8 +80,20 @@ func (r mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, erro
 	return res, err
 }
 
-// FindByPath only return mediafiles that are direct children of requested path
-func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
+func (r mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
+	sel := r.selectMediaFile().Where(Eq{"path": path})
+	var res model.MediaFiles
+	if err := r.queryAll(sel, &res); err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, model.ErrNotFound
+	}
+	return &res[0], nil
+}
+
+// FindAllByPath only return mediafiles that are direct children of requested path
+func (r mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, error) {
 	// Query by path based on https://stackoverflow.com/a/13911906/653632
 	sel0 := r.selectMediaFile().Columns(fmt.Sprintf("substr(path, %d) AS item", len(path)+2)).
 		Where(pathStartsWith(path))

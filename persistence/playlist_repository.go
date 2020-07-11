@@ -103,6 +103,16 @@ func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	return &pls, err
 }
 
+func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
+	sel := r.newSelect().Columns("*").Where(Eq{"path": path})
+	var pls model.Playlist
+	err := r.queryOne(sel, &pls)
+	if err != nil {
+		return nil, err
+	}
+	return &pls, err
+}
+
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
 	sel := r.newSelect(options...).Columns("*").Where(r.userFilter())
 	res := model.Playlists{}
