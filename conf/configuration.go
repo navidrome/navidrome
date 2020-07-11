@@ -53,6 +53,11 @@ func Load() {
 		fmt.Println("Error parsing config:", err)
 		os.Exit(1)
 	}
+	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
+	if err != nil {
+		fmt.Println("Error creating data path:", "path", Server.DataFolder, err)
+		os.Exit(1)
+	}
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
