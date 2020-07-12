@@ -287,7 +287,8 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedA
 	}
 
 	log.Info("Finished processing deleted folder", "dir", dir, "purged", len(ct), "elapsed", time.Since(start))
-	return s.ds.MediaFile(ctx).DeleteByPath(dir)
+	_, err = s.ds.MediaFile(ctx).DeleteByPath(dir)
+	return err
 }
 
 func (s *TagScanner) removeDeletedFolders(ctx context.Context, changed []string) {
@@ -303,7 +304,7 @@ func (s *TagScanner) removeDeletedFolders(ctx context.Context, changed []string)
 		for _, path := range paths {
 			if readable, err := utils.IsDirReadable(path); !readable {
 				log.Info(ctx, "Path unavailable. Removing tracks from DB", "path", path, err)
-				err = s.ds.MediaFile(ctx).DeleteByPath(path)
+				_, err = s.ds.MediaFile(ctx).DeleteByPath(path)
 				if err != nil {
 					log.Error(ctx, "Error removing MediaFiles from DB", "path", path, err)
 				}

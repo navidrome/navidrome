@@ -59,7 +59,7 @@ type MediaFileRepository interface {
 	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
-	DeleteByPath(path string) error
+	DeleteByPath(path string) (int64, error)
 
 	AnnotatedRepository
 }

@@ -124,14 +124,13 @@ func (r mediaFileRepository) Delete(id string) error {
 }
 
 // DeleteByPath delete from the DB all mediafiles that are direct children of path
-func (r mediaFileRepository) DeleteByPath(path string) error {
+func (r mediaFileRepository) DeleteByPath(path string) (int64, error) {
 	path = filepath.Clean(path)
 	del := Delete(r.tableName).
 		Where(And{Like{"path": filepath.Join(path, "%")},
 			Eq{fmt.Sprintf("substr(path, %d) glob '*%s*'", len(path)+2, string(os.PathSeparator)): 0}})
 	log.Debug(r.ctx, "Deleting mediafiles by path", "path", path)
-	_, err := r.executeSQL(del)
-	return err
+	return r.executeSQL(del)
 }
 
 func (r mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {

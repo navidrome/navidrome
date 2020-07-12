@@ -82,7 +82,7 @@ var _ = Describe("MediaRepository", func() {
 		id3 := "3333"
 		Expect(mr.Put(&model.MediaFile{ID: id3, Path: P("/abc/" + id3 + ".mp3")})).To(BeNil())
 
-		Expect(mr.DeleteByPath(P("/abc"))).To(BeNil())
+		Expect(mr.DeleteByPath(P("/abc"))).To(Equal(int64(1)))
 
 		Expect(mr.Get(id1)).ToNot(BeNil())
 		Expect(mr.Get(id2)).ToNot(BeNil())
