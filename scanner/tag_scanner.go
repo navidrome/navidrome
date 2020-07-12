@@ -35,8 +35,8 @@ func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
 }
 
 type (
-	ArtistMap map[string]struct{}
-	AlbumMap  map[string]struct{}
+	artistMap map[string]struct{}
+	albumMap  map[string]struct{}
 )
 
 const (
@@ -81,8 +81,8 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 	sort.Strings(changed)
 	sort.Strings(deleted)
 
-	updatedArtists := ArtistMap{}
-	updatedAlbums := AlbumMap{}
+	updatedArtists := artistMap{}
+	updatedAlbums := albumMap{}
 
 	for _, c := range changed {
 		err := s.processChangedDir(ctx, c, updatedArtists, updatedAlbums)
@@ -117,7 +117,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 	return err
 }
 
-func (s *TagScanner) flushAlbums(ctx context.Context, updatedAlbums AlbumMap) error {
+func (s *TagScanner) flushAlbums(ctx context.Context, updatedAlbums albumMap) error {
 	if len(updatedAlbums) == 0 {
 		return nil
 	}
@@ -129,7 +129,7 @@ func (s *TagScanner) flushAlbums(ctx context.Context, updatedAlbums AlbumMap) er
 	return s.ds.Album(ctx).Refresh(ids...)
 }
 
-func (s *TagScanner) flushArtists(ctx context.Context, updatedArtists ArtistMap) error {
+func (s *TagScanner) flushArtists(ctx context.Context, updatedArtists artistMap) error {
 	if len(updatedArtists) == 0 {
 		return nil
 	}
@@ -141,7 +141,7 @@ func (s *TagScanner) flushArtists(ctx context.Context, updatedArtists ArtistMap)
 	return s.ds.Artist(ctx).Refresh(ids...)
 }
 
-func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedArtists ArtistMap, updatedAlbums AlbumMap) error {
+func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedArtists artistMap, updatedAlbums albumMap) error {
 	dir = filepath.Join(s.rootFolder, dir)
 	start := time.Now()
 
@@ -245,7 +245,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, updatedA
 	return nil
 }
 
-func (s *TagScanner) updateAlbum(ctx context.Context, albumId string, updatedAlbums AlbumMap) error {
+func (s *TagScanner) updateAlbum(ctx context.Context, albumId string, updatedAlbums albumMap) error {
 	updatedAlbums[albumId] = struct{}{}
 	if len(updatedAlbums) >= batchSize {
 		err := s.flushAlbums(ctx, updatedAlbums)
@@ -256,7 +256,7 @@ func (s *TagScanner) updateAlbum(ctx context.Context, albumId string, updatedAlb
 	return nil
 }
 
-func (s *TagScanner) updateArtist(ctx context.Context, artistId string, updatedArtists ArtistMap) error {
+func (s *TagScanner) updateArtist(ctx context.Context, artistId string, updatedArtists artistMap) error {
 	updatedArtists[artistId] = struct{}{}
 	if len(updatedArtists) >= batchSize {
 		err := s.flushArtists(ctx, updatedArtists)
@@ -267,7 +267,7 @@ func (s *TagScanner) updateArtist(ctx context.Context, artistId string, updatedA
 	return nil
 }
 
-func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedArtists ArtistMap, updatedAlbums AlbumMap) error {
+func (s *TagScanner) processDeletedDir(ctx context.Context, dir string, updatedArtists artistMap, updatedAlbums albumMap) error {
 	dir = filepath.Join(s.rootFolder, dir)
 	start := time.Now()
 
