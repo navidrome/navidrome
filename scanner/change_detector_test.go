@@ -27,7 +27,7 @@ var _ = Describe("ChangeDetector", func() {
 
 	It("detects changes recursively", func() {
 		// Scan empty folder
-		changed, deleted, err := scanner.Scan(lastModifiedSince)
+		changed, deleted, err := scanner.Scan(nil, lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
 		Expect(changed).To(ConsistOf("."))
@@ -38,7 +38,7 @@ var _ = Describe("ChangeDetector", func() {
 		if err != nil {
 			panic(err)
 		}
-		changed, deleted, err = scanner.Scan(lastModifiedSince)
+		changed, deleted, err = scanner.Scan(nil, lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
 		Expect(changed).To(ConsistOf(".", P("a")))
@@ -49,14 +49,14 @@ var _ = Describe("ChangeDetector", func() {
 		if err != nil {
 			panic(err)
 		}
-		changed, deleted, err = scanner.Scan(lastModifiedSince)
+		changed, deleted, err = scanner.Scan(nil, lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
 		Expect(changed).To(ConsistOf(P("a"), P("a/b"), P("a/b/c")))
 
 		// Scan with no changes
 		lastModifiedSince = nowWithDelay()
-		changed, deleted, err = scanner.Scan(lastModifiedSince)
+		changed, deleted, err = scanner.Scan(nil, lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
 		Expect(changed).To(BeEmpty())
@@ -67,7 +67,7 @@ var _ = Describe("ChangeDetector", func() {
 		if err != nil {
 			panic(err)
 		}
-		changed, deleted, err = scanner.Scan(lastModifiedSince)
+		changed, deleted, err = scanner.Scan(nil, lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
 		Expect(changed).To(ConsistOf(P("a/b")))
@@ -78,7 +78,7 @@ var _ = Describe("ChangeDetector", func() {
 		if err != nil {
 			panic(err)
 		}
-		changed, deleted, err = scanner.Scan(lastModifiedSince)
+		changed, deleted, err = scanner.Scan(nil, lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
 		Expect(changed).To(ConsistOf(P("a/b")))
@@ -89,7 +89,7 @@ var _ = Describe("ChangeDetector", func() {
 		if err != nil {
 			panic(err)
 		}
-		changed, deleted, err = scanner.Scan(lastModifiedSince)
+		changed, deleted, err = scanner.Scan(nil, lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(ConsistOf(P("a/b/c")))
 		Expect(changed).To(ConsistOf(P("a/b")))
@@ -97,7 +97,7 @@ var _ = Describe("ChangeDetector", func() {
 		// Only returns changes after lastModifiedSince
 		lastModifiedSince = nowWithDelay()
 		newScanner := NewChangeDetector(testFolder)
-		changed, deleted, err = newScanner.Scan(lastModifiedSince)
+		changed, deleted, err = newScanner.Scan(nil, lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
 		Expect(changed).To(BeEmpty())
@@ -105,7 +105,7 @@ var _ = Describe("ChangeDetector", func() {
 
 		f, _ := os.Create(filepath.Join(testFolder, "a", "b", "new.txt"))
 		_ = f.Close()
-		changed, deleted, err = newScanner.Scan(lastModifiedSince)
+		changed, deleted, err = newScanner.Scan(nil, lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())
 		Expect(changed).To(ConsistOf(P("a/b")))

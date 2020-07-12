@@ -67,7 +67,9 @@ const (
 // Delete all empty albums, delete all empty Artists
 func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) error {
 	start := time.Now()
-	changed, deleted, err := s.detector.Scan(lastModifiedSince)
+	log.Trace(ctx, "Looking for changes in music folder", "folder", s.rootFolder)
+
+	changed, deleted, err := s.detector.Scan(ctx, lastModifiedSince)
 	if err != nil {
 		return err
 	}

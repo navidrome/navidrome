@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -29,11 +30,12 @@ func NewChangeDetector(rootFolder string) *ChangeDetector {
 	}
 }
 
-func (s *ChangeDetector) Scan(lastModifiedSince time.Time) (changed []string, deleted []string, err error) {
+func (s *ChangeDetector) Scan(ctx context.Context, lastModifiedSince time.Time) (changed []string, deleted []string, err error) {
 	start := time.Now()
 	newMap := make(dirInfoMap)
-	err = s.loadMap(newMap, s.rootFolder, lastModifiedSince, false)
+	err = s.loadMap(ctx, newMap, s.rootFolder, lastModifiedSince, false)
 	if err != nil {
+		log.Error("Error reading folder tree", "folder", s.rootFolder, err)
 		return
 	}
 	changed, deleted, err = s.checkForUpdates(lastModifiedSince, newMap)
@@ -42,20 +44,22 @@ func (s *ChangeDetector) Scan(lastModifiedSince time.Time) (changed []string, de
 	}
 	elapsed := time.Since(start)
 
-	log.Trace("Folder analysis complete\n", "total", len(newMap), "changed", len(changed), "deleted", len(deleted), "elapsed", elapsed)
+	log.Trace(ctx, "Folder analysis complete\n", "total", len(newMap), "changed", len(changed), "deleted", len(deleted), "elapsed", elapsed)
 	s.dirMap = newMap
 	return
 }
 
-func (s *ChangeDetector) loadDir(dirPath string) (children []string, lastUpdated time.Time, err error) {
+func (s *ChangeDetector) loadDir(ctx context.Context, dirPath string) (children []string, lastUpdated time.Time, err error) {
 	dirInfo, err := os.Stat(dirPath)
 	if err != nil {
+		log.Error(ctx, "Error stating dir", "path", dirPath)
 		return
 	}
 	lastUpdated = dirInfo.ModTime()
 
 	files, err := ioutil.ReadDir(dirPath)
 	if err != nil {
+		log.Error(ctx, "Error reading dir", "path", dirPath)
 		return
 	}
 	for _, f := range files {
@@ -112,14 +116,14 @@ func isDirReadable(baseDir string, dirInfo os.FileInfo) bool {
 	return res
 }
 
-func (s *ChangeDetector) loadMap(dirMap dirInfoMap, path string, since time.Time, maybe bool) error {
-	children, lastUpdated, err := s.loadDir(path)
+func (s *ChangeDetector) loadMap(ctx context.Context, dirMap dirInfoMap, path string, since time.Time, maybe bool) error {
+	children, lastUpdated, err := s.loadDir(ctx, path)
 	if err != nil {
 		return err
 	}
 	maybe = maybe || lastUpdated.After(since)
 	for _, c := range children {
-		err := s.loadMap(dirMap, c, since, maybe)
+		err := s.loadMap(ctx, dirMap, c, since, maybe)
 		if err != nil {
 			return err
 		}
