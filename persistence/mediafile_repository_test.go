@@ -52,9 +52,13 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("finds tracks by path", func() {
-		Expect(mr.FindByPath(P("/beatles/1/sgt"))).To(Equal(model.MediaFiles{
-			songDayInALife,
-		}))
+		Expect(mr.Put(&model.MediaFile{ID: "7001", Path: P("/Find:By'Path/_/123.mp3")})).To(BeNil())
+		Expect(mr.Put(&model.MediaFile{ID: "7002", Path: P("/Find:By'Path/1/123.mp3")})).To(BeNil())
+
+		found, err := mr.FindByPath(P("/Find:By'Path/_/"))
+		Expect(err).To(BeNil())
+		Expect(found).To(HaveLen(1))
+		Expect(found[0].ID).To(Equal("7001"))
 	})
 
 	It("returns starred tracks", func() {
@@ -80,12 +84,15 @@ var _ = Describe("MediaRepository", func() {
 		id2 := "2222"
 		Expect(mr.Put(&model.MediaFile{ID: id2, Path: P("/abc/123/" + id2 + ".mp3")})).To(BeNil())
 		id3 := "3333"
-		Expect(mr.Put(&model.MediaFile{ID: id3, Path: P("/abc/" + id3 + ".mp3")})).To(BeNil())
+		Expect(mr.Put(&model.MediaFile{ID: id3, Path: P("/ab_/" + id3 + ".mp3")})).To(BeNil())
+		id4 := "4444"
+		Expect(mr.Put(&model.MediaFile{ID: id4, Path: P("/abc/" + id4 + ".mp3")})).To(BeNil())
 
-		Expect(mr.DeleteByPath(P("/abc"))).To(Equal(int64(1)))
+		Expect(mr.DeleteByPath(P("/ab_"))).To(Equal(int64(1)))
 
 		Expect(mr.Get(id1)).ToNot(BeNil())
 		Expect(mr.Get(id2)).ToNot(BeNil())
+		Expect(mr.Get(id4)).ToNot(BeNil())
 		_, err := mr.Get(id3)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})

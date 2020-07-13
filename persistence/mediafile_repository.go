@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
@@ -84,7 +85,7 @@ func (r mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, erro
 func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
 	// Query by path based on https://stackoverflow.com/a/13911906/653632
 	sel0 := r.selectMediaFile().Columns(fmt.Sprintf("substr(path, %d) AS item", len(path)+2)).
-		Where(Like{"path": filepath.Join(path, "%")})
+		Where(pathStartsWith(path))
 	sel := r.newSelect().Columns("*", "item NOT GLOB '*"+string(os.PathSeparator)+"*' AS isLast").
 		Where(Eq{"isLast": 1}).FromSelect(sel0, "sel0")
 
@@ -93,11 +94,19 @@ func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
 	return res, err
 }
 
+func pathStartsWith(path string) Sqlizer {
+	escapeChar := string(os.PathListSeparator)
+	escapedPath := strings.ReplaceAll(path, escapeChar, escapeChar+escapeChar)
+	escapedPath = strings.ReplaceAll(escapedPath, "_", escapeChar+"_")
+	escapedPath = strings.ReplaceAll(escapedPath, "%", escapeChar+"%")
+	return ConcatExpr(Like{"path": filepath.Join(escapedPath, "%")}, " escape '"+escapeChar+"'")
+}
+
 // FindPathsRecursively returns a list of all subfolders of basePath, recursively
 func (r mediaFileRepository) FindPathsRecursively(basePath string) ([]string, error) {
 	// Query based on https://stackoverflow.com/a/38330814/653632
 	sel := r.newSelect().Columns(fmt.Sprintf("distinct rtrim(path, replace(path, '%s', ''))", string(os.PathSeparator))).
-		Where(Like{"path": filepath.Join(basePath, "%")})
+		Where(pathStartsWith(basePath))
 	var res []string
 	err := r.queryAll(sel, &res)
 	return res, err
@@ -127,7 +136,7 @@ func (r mediaFileRepository) Delete(id string) error {
 func (r mediaFileRepository) DeleteByPath(path string) (int64, error) {
 	path = filepath.Clean(path)
 	del := Delete(r.tableName).
-		Where(And{Like{"path": filepath.Join(path, "%")},
+		Where(And{pathStartsWith(path),
 			Eq{fmt.Sprintf("substr(path, %d) glob '*%s*'", len(path)+2, string(os.PathSeparator)): 0}})
 	log.Debug(r.ctx, "Deleting mediafiles by path", "path", path)
 	return r.executeSQL(del)
