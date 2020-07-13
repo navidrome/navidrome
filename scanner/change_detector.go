@@ -35,7 +35,6 @@ func (s *ChangeDetector) Scan(ctx context.Context, lastModifiedSince time.Time) 
 	newMap := make(dirInfoMap)
 	err = s.loadMap(ctx, newMap, s.rootFolder, lastModifiedSince, false)
 	if err != nil {
-		log.Error("Error reading folder tree", "folder", s.rootFolder, err)
 		return
 	}
 	changed, deleted, err = s.checkForUpdates(lastModifiedSince, newMap)
@@ -52,14 +51,14 @@ func (s *ChangeDetector) Scan(ctx context.Context, lastModifiedSince time.Time) 
 func (s *ChangeDetector) loadDir(ctx context.Context, dirPath string) (children []string, lastUpdated time.Time, err error) {
 	dirInfo, err := os.Stat(dirPath)
 	if err != nil {
-		log.Error(ctx, "Error stating dir", "path", dirPath)
+		log.Error(ctx, "Error stating dir", "path", dirPath, err)
 		return
 	}
 	lastUpdated = dirInfo.ModTime()
 
 	files, err := ioutil.ReadDir(dirPath)
 	if err != nil {
-		log.Error(ctx, "Error reading dir", "path", dirPath)
+		log.Error(ctx, "Error reading dir", "path", dirPath, err)
 		return
 	}
 	for _, f := range files {
