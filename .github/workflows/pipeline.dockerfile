@@ -29,6 +29,7 @@ ENV ND_MUSICFOLDER /music
 ENV ND_DATAFOLDER /data
 ENV ND_LOGLEVEL info
 ENV ND_PORT 4533
+ENV GODEBUG "asyncpreemptoff=1"
 
 EXPOSE ${ND_PORT}
 HEALTHCHECK CMD wget -O- http://localhost:${ND_PORT}/ping || exit 1
