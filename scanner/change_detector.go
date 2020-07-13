@@ -43,7 +43,7 @@ func (s *ChangeDetector) Scan(ctx context.Context, lastModifiedSince time.Time) 
 	}
 	elapsed := time.Since(start)
 
-	log.Trace(ctx, "Folder analysis complete\n", "total", len(newMap), "changed", len(changed), "deleted", len(deleted), "elapsed", elapsed)
+	log.Trace(ctx, "Folder analysis complete", "total", len(newMap), "changed", len(changed), "deleted", len(deleted), "elapsed", elapsed)
 	s.dirMap = newMap
 	return
 }
