@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
@@ -95,11 +94,9 @@ func (r mediaFileRepository) FindByPath(path string) (model.MediaFiles, error) {
 }
 
 func pathStartsWith(path string) Sqlizer {
-	escapeChar := string(os.PathListSeparator)
-	escapedPath := strings.ReplaceAll(path, escapeChar, escapeChar+escapeChar)
-	escapedPath = strings.ReplaceAll(escapedPath, "_", escapeChar+"_")
-	escapedPath = strings.ReplaceAll(escapedPath, "%", escapeChar+"%")
-	return ConcatExpr(Like{"path": filepath.Join(escapedPath, "%")}, " escape '"+escapeChar+"'")
+	cleanPath := filepath.Clean(path)
+	substr := fmt.Sprintf("substr(path, 1, %d)", len(cleanPath))
+	return Eq{substr: cleanPath}
 }
 
 // FindPathsRecursively returns a list of all subfolders of basePath, recursively

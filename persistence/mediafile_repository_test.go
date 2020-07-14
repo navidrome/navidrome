@@ -51,7 +51,7 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.FindByAlbum("67")).To(Equal(model.MediaFiles{}))
 	})
 
-	It("finds tracks by path", func() {
+	It("finds tracks by path when using wildcards chars", func() {
 		Expect(mr.Put(&model.MediaFile{ID: "7001", Path: P("/Find:By'Path/_/123.mp3")})).To(BeNil())
 		Expect(mr.Put(&model.MediaFile{ID: "7002", Path: P("/Find:By'Path/1/123.mp3")})).To(BeNil())
 
@@ -59,6 +59,21 @@ var _ = Describe("MediaRepository", func() {
 		Expect(err).To(BeNil())
 		Expect(found).To(HaveLen(1))
 		Expect(found[0].ID).To(Equal("7001"))
+	})
+
+	It("finds tracks by path case sensitively", func() {
+		Expect(mr.Put(&model.MediaFile{ID: "7003", Path: P("/Casesensitive/file1.mp3")})).To(BeNil())
+		Expect(mr.Put(&model.MediaFile{ID: "7004", Path: P("/casesensitive/file2.mp3")})).To(BeNil())
+
+		found, err := mr.FindByPath(P("/Casesensitive"))
+		Expect(err).To(BeNil())
+		Expect(found).To(HaveLen(1))
+		Expect(found[0].ID).To(Equal("7003"))
+
+		found, err = mr.FindByPath(P("/casesensitive/"))
+		Expect(err).To(BeNil())
+		Expect(found).To(HaveLen(1))
+		Expect(found[0].ID).To(Equal("7004"))
 	})
 
 	It("returns starred tracks", func() {
