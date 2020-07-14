@@ -19,7 +19,7 @@ builds:
     flags:
       - -tags=embed
     ldflags:
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_amd64
     env:
@@ -32,7 +32,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_arm
     env:
@@ -50,7 +50,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_arm64
     env:
@@ -64,7 +64,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_windows_i686
     env:
@@ -79,7 +79,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_windows_x64
     env:
@@ -94,7 +94,7 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
-      - -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
 archives:
   - format_overrides:
