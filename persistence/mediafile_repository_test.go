@@ -102,12 +102,15 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.Put(&model.MediaFile{ID: id3, Path: P("/ab_/" + id3 + ".mp3")})).To(BeNil())
 		id4 := "4444"
 		Expect(mr.Put(&model.MediaFile{ID: id4, Path: P("/abc/" + id4 + ".mp3")})).To(BeNil())
+		id5 := "5555"
+		Expect(mr.Put(&model.MediaFile{ID: id5, Path: P("/Ab_/" + id5 + ".mp3")})).To(BeNil())
 
 		Expect(mr.DeleteByPath(P("/ab_"))).To(Equal(int64(1)))
 
 		Expect(mr.Get(id1)).ToNot(BeNil())
 		Expect(mr.Get(id2)).ToNot(BeNil())
 		Expect(mr.Get(id4)).ToNot(BeNil())
+		Expect(mr.Get(id5)).ToNot(BeNil())
 		_, err := mr.Get(id3)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
