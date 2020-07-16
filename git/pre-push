@@ -1,0 +1,4 @@
+#!/bin/sh
+
+golangci-lint run
+make test

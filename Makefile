@@ -48,15 +48,19 @@ setup:
 	@(cd ./ui && npm ci)
 .PHONY: setup
 
-setup-dev: setup
+setup-dev: setup setup-git
 	@which wire          || (echo "Installing Wire"          && GO111MODULE=off go get -u github.com/google/wire/cmd/wire)
 	@which ginkgo        || (echo "Installing Ginkgo"        && GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo)
 	@which goose         || (echo "Installing Goose"         && GO111MODULE=off go get -u github.com/pressly/goose/cmd/goose)
 	@which reflex        || (echo "Installing Reflex"        && GO111MODULE=off go get -u github.com/cespare/reflex)
 	@which golangci-lint || (echo "Installing GolangCI-Lint" && cd .. && GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0)
-	@which lefthook      || (echo "Installing Lefthook"      && GO111MODULE=off go get -u github.com/Arkweid/lefthook)
-	@lefthook install
+	@which goimports     || (echo "Installing goimports"     && GO111MODULE=off go get -u golang.org/x/tools/cmd/goimports)
 .PHONY: setup-dev
+
+setup-git:
+	@mkdir -p .git/hooks
+	(cd .git/hooks && ln -sf ../../git/* .)
+.PHONY: setup-git
 
 Jamstash-master:
 	wget -N https://github.com/tsquillario/Jamstash/archive/master.zip
@@ -67,11 +71,6 @@ Jamstash-master:
 
 check_env: check_go_env check_node_env
 .PHONY: check_env
-
-check_hooks:
-	@lefthook add pre-commit
-	@lefthook add pre-push
-.PHONY: check_hooks
 
 check_go_env:
 	@(hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
