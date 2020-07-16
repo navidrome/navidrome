@@ -101,6 +101,8 @@ func FromMediaFile(mf *model.MediaFile) Entry {
 	e.BitRate = mf.BitRate
 	if mf.HasCoverArt {
 		e.CoverArt = mf.ID
+	} else {
+		e.CoverArt = "al-" + mf.AlbumID
 	}
 	e.ContentType = mf.ContentType()
 	e.AbsolutePath = mf.Path
