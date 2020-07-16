@@ -47,26 +47,6 @@ var _ = Describe("Metadata", func() {
 		})
 	})
 
-	Context("LoadAllAudioFiles", func() {
-		It("return all audiofiles from the folder", func() {
-			files, err := LoadAllAudioFiles("tests/fixtures")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(files).To(HaveLen(3))
-			Expect(files).To(HaveKey("tests/fixtures/test.ogg"))
-			Expect(files).To(HaveKey("tests/fixtures/test.mp3"))
-			Expect(files).To(HaveKey("tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
-			Expect(files).ToNot(HaveKey("tests/fixtures/playlist.m3u"))
-		})
-		It("returns error if path does not exist", func() {
-			_, err := LoadAllAudioFiles("./INVALID/PATH")
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("returns empty map if there are no audio files in path", func() {
-			Expect(LoadAllAudioFiles("tests/fixtures/empty_folder")).To(BeEmpty())
-		})
-	})
-
 	Context("extractMetadata", func() {
 		It("detects embedded cover art correctly", func() {
 			const output = `
