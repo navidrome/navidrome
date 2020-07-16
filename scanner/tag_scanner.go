@@ -442,3 +442,32 @@ func (s *TagScanner) artistID(md *Metadata) string {
 func (s *TagScanner) albumArtistID(md *Metadata) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapAlbumArtistName(md)))))
 }
+
+func LoadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		return nil, err
+	}
+	files, err := dir.Readdir(-1)
+	if err != nil {
+		return nil, err
+	}
+	audioFiles := make(map[string]os.FileInfo)
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		filePath := filepath.Join(dirPath, f.Name())
+		if !utils.IsAudioFile(filePath) {
+			continue
+		}
+		fi, err := os.Stat(filePath)
+		if err != nil {
+			log.Error("Could not stat file", "filePath", filePath, err)
+		} else {
+			audioFiles[filePath] = fi
+		}
+	}
+
+	return audioFiles, nil
+}
