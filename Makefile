@@ -56,7 +56,7 @@ setup-dev: setup
 	@which golangci-lint || (echo "Installing GolangCI-Lint" && cd .. && GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0)
 	@which lefthook      || (echo "Installing Lefthook"      && GO111MODULE=off go get -u github.com/Arkweid/lefthook)
 	@lefthook install
-.PHONY: setup
+.PHONY: setup-dev
 
 Jamstash-master:
 	wget -N https://github.com/tsquillario/Jamstash/archive/master.zip
