@@ -98,7 +98,7 @@ func (s *TagScanner2) getDirTree(ctx context.Context) (dirMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Trace("Directory tree loaded", "total", len(dirs), "elapsed", time.Since(start))
+	log.Debug("Directory tree loaded", "total", len(dirs), "elapsed", time.Since(start))
 	return dirs, nil
 }
 
@@ -112,7 +112,7 @@ func (s *TagScanner2) getChangedDirs(ctx context.Context, dirs dirMap, lastModif
 		}
 	}
 	sort.Strings(changed)
-	log.Trace(ctx, "Finished changed folders check", "total", len(changed), "elapsed", time.Since(start))
+	log.Debug(ctx, "Finished changed folders check", "total", len(changed), "elapsed", time.Since(start))
 	return changed
 }
 
@@ -146,7 +146,7 @@ func (s *TagScanner2) getDeletedDirs(ctx context.Context, allDirs dirMap, change
 	}
 
 	sort.Strings(deleted)
-	log.Trace(ctx, "Finished deleted folders check", "total", len(deleted), "elapsed", time.Since(start))
+	log.Debug(ctx, "Finished deleted folders check", "total", len(deleted), "elapsed", time.Since(start))
 	return deleted, nil
 }
 
