@@ -97,7 +97,9 @@
                 "public": "Pública",
                 "updatedAt": "Últ. Atualização",
                 "createdAt": "Data de Criação ",
-                "songCount": "Músicas"
+                "songCount": "Músicas",
+                "sync": "Auto-importar",
+                "path": "Importar de"
             },
             "actions": {
                 "selectPlaylist": "Selecione a playlist:",
