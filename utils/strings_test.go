@@ -123,7 +123,6 @@ var testPaths = []string{
 	"/Music/iTunes 1/iTunes Media/Music/Compilations/Bambolê - Volume II/03 Blue Moon.m4a",
 	"/Music/iTunes 1/iTunes Media/Music/Compilations/Big Brother Brasil 2004/04 I Will Survive.m4a",
 	"/Music/iTunes 1/iTunes Media/Music/Compilations/Collateral Soundtrack/03 Hands Of Time.m4a",
-	"/Music/iTunes 1/iTunes Media/Music/Compilations/Estúpido Cupido (Internacional)/08 The Twist.m4a",
 	"/Music/iTunes 1/iTunes Media/Music/Compilations/Forrest Gump - The Soundtrack/1-12 California Dreamin'.m4a",
 	"/Music/iTunes 1/iTunes Media/Music/Compilations/Forrest Gump - The Soundtrack/1-16 Mrs. Robinson.m4a",
 	"/Music/iTunes 1/iTunes Media/Music/Compilations/Ghost World - Original Motion Picture Soundtrack/01 Jaan Pechechaan Ho.m4a",
