@@ -2,8 +2,6 @@ package scanner
 
 import (
 	"context"
-	"crypto/md5"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -11,17 +9,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
-	"github.com/kennygrant/sanitize"
 )
 
 type TagScanner struct {
 	rootFolder string
 	ds         model.DataStore
-	detector   *ChangeDetector
+	detector   *changeDetector
+	mapper     *mediaFileMapper
 	firstRun   sync.Once
 }
 
@@ -29,7 +26,8 @@ func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
 	return &TagScanner{
 		rootFolder: rootFolder,
 		ds:         ds,
-		detector:   NewChangeDetector(rootFolder),
+		detector:   newChangeDetector(rootFolder),
+		mapper:     newMediaFileMapper(rootFolder),
 		firstRun:   sync.Once{},
 	}
 }
@@ -46,9 +44,6 @@ type (
 )
 
 const (
-	// batchSize used for albums/artists updates
-	batchSize = 5
-
 	// filesBatchSize used for extract file metadata
 	filesBatchSize = 100
 )
@@ -339,108 +334,10 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 
 	var mfs model.MediaFiles
 	for _, md := range mds {
-		mf := s.toMediaFile(md)
+		mf := s.mapper.toMediaFile(md)
 		mfs = append(mfs, mf)
 	}
 	return mfs, nil
-}
-
-func (s *TagScanner) toMediaFile(md *Metadata) model.MediaFile {
-	mf := &model.MediaFile{}
-	mf.ID = s.trackID(md)
-	mf.Title = s.mapTrackTitle(md)
-	mf.Album = md.Album()
-	mf.AlbumID = s.albumID(md)
-	mf.Album = s.mapAlbumName(md)
-	mf.ArtistID = s.artistID(md)
-	mf.Artist = s.mapArtistName(md)
-	mf.AlbumArtistID = s.albumArtistID(md)
-	mf.AlbumArtist = s.mapAlbumArtistName(md)
-	mf.Genre = md.Genre()
-	mf.Compilation = md.Compilation()
-	mf.Year = md.Year()
-	mf.TrackNumber, _ = md.TrackNumber()
-	mf.DiscNumber, _ = md.DiscNumber()
-	mf.DiscSubtitle = md.DiscSubtitle()
-	mf.Duration = md.Duration()
-	mf.BitRate = md.BitRate()
-	mf.Path = md.FilePath()
-	mf.Suffix = md.Suffix()
-	mf.Size = md.Size()
-	mf.HasCoverArt = md.HasPicture()
-	mf.SortTitle = md.SortTitle()
-	mf.SortAlbumName = md.SortAlbum()
-	mf.SortArtistName = md.SortArtist()
-	mf.SortAlbumArtistName = md.SortAlbumArtist()
-	mf.OrderAlbumName = sanitizeFieldForSorting(mf.Album)
-	mf.OrderArtistName = sanitizeFieldForSorting(mf.Artist)
-	mf.OrderAlbumArtistName = sanitizeFieldForSorting(mf.AlbumArtist)
-
-	// TODO Get Creation time. https://github.com/djherbis/times ?
-	mf.CreatedAt = md.ModificationTime()
-	mf.UpdatedAt = md.ModificationTime()
-
-	return *mf
-}
-
-func sanitizeFieldForSorting(originalValue string) string {
-	v := utils.NoArticle(originalValue)
-	v = strings.TrimSpace(sanitize.Accents(v))
-	return utils.NoArticle(v)
-}
-
-func (s *TagScanner) mapTrackTitle(md *Metadata) string {
-	if md.Title() == "" {
-		s := strings.TrimPrefix(md.FilePath(), s.rootFolder+string(os.PathSeparator))
-		e := filepath.Ext(s)
-		return strings.TrimSuffix(s, e)
-	}
-	return md.Title()
-}
-
-func (s *TagScanner) mapAlbumArtistName(md *Metadata) string {
-	switch {
-	case md.Compilation():
-		return consts.VariousArtists
-	case md.AlbumArtist() != "":
-		return md.AlbumArtist()
-	case md.Artist() != "":
-		return md.Artist()
-	default:
-		return consts.UnknownArtist
-	}
-}
-
-func (s *TagScanner) mapArtistName(md *Metadata) string {
-	if md.Artist() != "" {
-		return md.Artist()
-	}
-	return consts.UnknownArtist
-}
-
-func (s *TagScanner) mapAlbumName(md *Metadata) string {
-	name := md.Album()
-	if name == "" {
-		return "[Unknown Album]"
-	}
-	return name
-}
-
-func (s *TagScanner) trackID(md *Metadata) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(md.FilePath())))
-}
-
-func (s *TagScanner) albumID(md *Metadata) string {
-	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
-	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
-}
-
-func (s *TagScanner) artistID(md *Metadata) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapArtistName(md)))))
-}
-
-func (s *TagScanner) albumArtistID(md *Metadata) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapAlbumArtistName(md)))))
 }
 
 func LoadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {

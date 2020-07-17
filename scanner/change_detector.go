@@ -7,9 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/utils"
 )
 
 type dirInfo struct {
@@ -18,19 +16,19 @@ type dirInfo struct {
 }
 type dirInfoMap map[string]dirInfo
 
-type ChangeDetector struct {
+type changeDetector struct {
 	rootFolder string
 	dirMap     dirInfoMap
 }
 
-func NewChangeDetector(rootFolder string) *ChangeDetector {
-	return &ChangeDetector{
+func newChangeDetector(rootFolder string) *changeDetector {
+	return &changeDetector{
 		rootFolder: rootFolder,
 		dirMap:     dirInfoMap{},
 	}
 }
 
-func (s *ChangeDetector) Scan(ctx context.Context, lastModifiedSince time.Time) (changed []string, deleted []string, err error) {
+func (s *changeDetector) Scan(ctx context.Context, lastModifiedSince time.Time) (changed []string, deleted []string, err error) {
 	start := time.Now()
 	newMap := make(dirInfoMap)
 	err = s.loadMap(ctx, newMap, s.rootFolder, lastModifiedSince, false)
@@ -48,7 +46,7 @@ func (s *ChangeDetector) Scan(ctx context.Context, lastModifiedSince time.Time) 
 	return
 }
 
-func (s *ChangeDetector) loadDir(ctx context.Context, dirPath string) (children []string, lastUpdated time.Time, err error) {
+func (s *changeDetector) loadDir(ctx context.Context, dirPath string) (children []string, lastUpdated time.Time, err error) {
 	dirInfo, err := os.Stat(dirPath)
 	if err != nil {
 		log.Error(ctx, "Error stating dir", "path", dirPath, err)
@@ -78,44 +76,7 @@ func (s *ChangeDetector) loadDir(ctx context.Context, dirPath string) (children 
 	return
 }
 
-// isDirOrSymlinkToDir returns true if and only if the dirInfo represents a file
-// system directory, or a symbolic link to a directory. Note that if the dirInfo
-// is not a directory but is a symbolic link, this method will resolve by
-// sending a request to the operating system to follow the symbolic link.
-// Copied from github.com/karrick/godirwalk
-func isDirOrSymlinkToDir(baseDir string, dirInfo os.FileInfo) (bool, error) {
-	if dirInfo.IsDir() {
-		return true, nil
-	}
-	if dirInfo.Mode()&os.ModeSymlink == 0 {
-		return false, nil
-	}
-	// Does this symlink point to a directory?
-	dirInfo, err := os.Stat(filepath.Join(baseDir, dirInfo.Name()))
-	if err != nil {
-		return false, err
-	}
-	return dirInfo.IsDir(), nil
-}
-
-// isDirIgnored returns true if the directory represented by dirInfo contains an
-// `ignore` file (named after consts.SkipScanFile)
-func isDirIgnored(baseDir string, dirInfo os.FileInfo) bool {
-	_, err := os.Stat(filepath.Join(baseDir, dirInfo.Name(), consts.SkipScanFile))
-	return err == nil
-}
-
-// isDirReadable returns true if the directory represented by dirInfo is readable
-func isDirReadable(baseDir string, dirInfo os.FileInfo) bool {
-	path := filepath.Join(baseDir, dirInfo.Name())
-	res, err := utils.IsDirReadable(path)
-	if !res {
-		log.Debug("Warning: Skipping unreadable directory", "path", path, err)
-	}
-	return res
-}
-
-func (s *ChangeDetector) loadMap(ctx context.Context, dirMap dirInfoMap, path string, since time.Time, maybe bool) error {
+func (s *changeDetector) loadMap(ctx context.Context, dirMap dirInfoMap, path string, since time.Time, maybe bool) error {
 	children, lastUpdated, err := s.loadDir(ctx, path)
 	if err != nil {
 		return err
@@ -134,7 +95,7 @@ func (s *ChangeDetector) loadMap(ctx context.Context, dirMap dirInfoMap, path st
 	return nil
 }
 
-func (s *ChangeDetector) getRelativePath(subFolder string) string {
+func (s *changeDetector) getRelativePath(subFolder string) string {
 	dir, _ := filepath.Rel(s.rootFolder, subFolder)
 	if dir == "" {
 		dir = "."
@@ -142,7 +103,7 @@ func (s *ChangeDetector) getRelativePath(subFolder string) string {
 	return dir
 }
 
-func (s *ChangeDetector) checkForUpdates(lastModifiedSince time.Time, newMap dirInfoMap) (changed []string, deleted []string, err error) {
+func (s *changeDetector) checkForUpdates(lastModifiedSince time.Time, newMap dirInfoMap) (changed []string, deleted []string, err error) {
 	for dir, newEntry := range newMap {
 		lastUpdated := newEntry.mdate
 		oldLastUpdated := lastModifiedSince

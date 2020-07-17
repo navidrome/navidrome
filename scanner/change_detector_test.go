@@ -11,9 +11,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ChangeDetector", func() {
+var _ = Describe("changeDetector", func() {
 	var testFolder string
-	var scanner *ChangeDetector
+	var scanner *changeDetector
 
 	lastModifiedSince := time.Time{}
 
@@ -23,7 +23,7 @@ var _ = Describe("ChangeDetector", func() {
 		if err != nil {
 			panic(err)
 		}
-		scanner = NewChangeDetector(testFolder)
+		scanner = newChangeDetector(testFolder)
 	})
 
 	It("detects changes recursively", func() {
@@ -97,7 +97,7 @@ var _ = Describe("ChangeDetector", func() {
 
 		// Only returns changes after lastModifiedSince
 		lastModifiedSince = nowWithDelay()
-		newScanner := NewChangeDetector(testFolder)
+		newScanner := newChangeDetector(testFolder)
 		changed, deleted, err = newScanner.Scan(context.TODO(), lastModifiedSince)
 		Expect(err).To(BeNil())
 		Expect(deleted).To(BeEmpty())

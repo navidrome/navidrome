@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 )
@@ -81,8 +82,15 @@ func (s *Scanner) loadFolders() {
 	fs, _ := s.ds.MediaFolder(context.TODO()).GetAll()
 	for _, f := range fs {
 		log.Info("Configuring Media Folder", "name", f.Name, "path", f.Path)
-		s.folders[f.Path] = NewTagScanner(f.Path, s.ds)
+		s.folders[f.Path] = s.newScanner(f)
 	}
+}
+
+func (s *Scanner) newScanner(f model.MediaFolder) FolderScanner {
+	if conf.Server.DevNewScanner {
+		return NewTagScanner2(f.Path, s.ds)
+	}
+	return NewTagScanner(f.Path, s.ds)
 }
 
 type Status int

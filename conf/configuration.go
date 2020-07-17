@@ -38,6 +38,7 @@ type configOptions struct {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
 	DevAutoCreateAdminPassword string
+	DevNewScanner              bool
 }
 
 var Server = &configOptions{}
@@ -94,6 +95,7 @@ func init() {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devautocreateadminpassword", "")
+	viper.SetDefault("devnewscanner", false)
 }
 
 func InitConfig(cfgFile string) {
