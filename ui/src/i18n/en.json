@@ -65,6 +65,8 @@
                 "songCount": "Songs",
                 "owner": "Owner",
                 "public": "Public",
+                "sync": "Auto-import",
+                "path": "Import from",
                 "updatedAt":"Updated at",
                 "createdAt": "Created at"
             },
