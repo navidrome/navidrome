@@ -9,6 +9,7 @@ import (
 
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/deluan/navidrome/utils"
 )
 
@@ -44,6 +45,8 @@ func NewTagScanner2(rootFolder string, ds model.DataStore) *TagScanner2 {
 //	    refresh the collected albums and artists with the metadata from the mediafiles
 // Delete all empty albums, delete all empty Artists
 func (s *TagScanner2) Scan(ctx context.Context, lastModifiedSince time.Time) error {
+	ctx = s.setAdminUser(ctx)
+
 	start := time.Now()
 	allDirs, err := s.getDirTree(ctx)
 	if err != nil {
@@ -320,4 +323,15 @@ func (s *TagScanner2) loadTracks(filePaths []string) (model.MediaFiles, error) {
 		mfs = append(mfs, mf)
 	}
 	return mfs, nil
+}
+
+func (s *TagScanner2) setAdminUser(ctx context.Context) context.Context {
+	u, err := s.ds.User(ctx).FindFirstAdmin()
+	if err != nil {
+		log.Error(ctx, "Error retrieving playlist owner", err)
+		u = &model.User{}
+	}
+
+	ctx = request.WithUsername(ctx, u.UserName)
+	return request.WithUser(ctx, *u)
 }

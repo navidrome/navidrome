@@ -93,9 +93,7 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 }
 
 func (s *playlistSync) updatePlaylistIfNewer(ctx context.Context, newPls *model.Playlist) error {
-	owner := s.getPlaylistsOwner(ctx)
-	ctx = request.WithUsername(ctx, owner.UserName)
-	ctx = request.WithUser(ctx, *owner)
+	owner, _ := request.UsernameFrom(ctx)
 
 	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
 	if err != nil && err != model.ErrNotFound {
@@ -113,16 +111,8 @@ func (s *playlistSync) updatePlaylistIfNewer(ctx context.Context, newPls *model.
 		newPls.Comment = pls.Comment
 		newPls.Owner = pls.Owner
 	} else {
-		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
-		newPls.Owner = owner.UserName
+		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner)
+		newPls.Owner = owner
 	}
 	return s.ds.Playlist(ctx).Put(newPls)
-}
-
-func (s *playlistSync) getPlaylistsOwner(ctx context.Context) *model.User {
-	u, err := s.ds.User(ctx).FindFirstAdmin()
-	if err != nil {
-		log.Error(ctx, "Error retrieving playlist owner", err)
-	}
-	return u
 }
