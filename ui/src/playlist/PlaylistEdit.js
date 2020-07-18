@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { Fragment } from 'react'
+
 import {
   Edit,
+  FormDataConsumer,
   SimpleForm,
   TextInput,
   TextField,
@@ -8,14 +10,24 @@ import {
   required,
 } from 'react-admin'
 
+const SyncFragment = ({ formData, ...rest }) => {
+  return (
+    <Fragment>
+      {formData.path && <BooleanInput source="sync" {...rest} />}
+      {formData.path && <TextField source="path" {...rest} />}
+    </Fragment>
+  )
+}
+
 const PlaylistEdit = (props) => (
   <Edit {...props}>
     <SimpleForm redirect="list">
       <TextInput source="name" validate={required()} />
       <TextInput multiline source="comment" />
       <BooleanInput source="public" />
-      <BooleanInput source="sync" />
-      <TextField source="path" />
+      <FormDataConsumer>
+        {(formDataProps) => <SyncFragment {...formDataProps} />}
+      </FormDataConsumer>
     </SimpleForm>
   </Edit>
 )
