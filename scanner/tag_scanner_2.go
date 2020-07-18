@@ -233,58 +233,79 @@ func (s *TagScanner2) processChangedDir(ctx context.Context, dir string) error {
 	numPurgedTracks := 0
 
 	if len(filesToUpdate) > 0 {
-		// Break the file list in chunks to avoid calling ffmpeg with too many parameters
-		chunks := utils.BreakUpStringSlice(filesToUpdate, filesBatchSize)
-		for _, chunk := range chunks {
-			// Load tracks Metadata from the folder
-			newTracks, err := s.loadTracks(chunk)
-			if err != nil {
-				return err
-			}
-
-			// If track from folder is newer than the one in DB, update/insert in DB
-			log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "files", chunk, "numFiles", len(chunk))
-			for i := range newTracks {
-				n := newTracks[i]
-				err := s.ds.MediaFile(ctx).Put(&n)
-				if err != nil {
-					return err
-				}
-				err = s.albumMap.update(n.AlbumID)
-				if err != nil {
-					return err
-				}
-				err = s.artistMap.update(n.AlbumArtistID)
-				if err != nil {
-					return err
-				}
-				numUpdatedTracks++
-			}
+		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, dir, filesToUpdate)
+		if err != nil {
+			return err
 		}
 	}
 
 	if len(currentTracks) > 0 {
-		log.Trace(ctx, "Deleting dangling tracks from DB", "dir", dir, "numTracks", len(currentTracks))
-		// Remaining tracks from DB that are not in the folder are deleted
-		for _, ct := range currentTracks {
-			numPurgedTracks++
-			err = s.albumMap.update(ct.AlbumID)
-			if err != nil {
-				return err
-			}
-			err = s.artistMap.update(ct.AlbumArtistID)
-			if err != nil {
-				return err
-			}
-			if err := s.ds.MediaFile(ctx).Delete(ct.ID); err != nil {
-				return err
-			}
-			s.cnt.deleted++
+		numPurgedTracks, err = s.deleteOrphanSongs(ctx, dir, currentTracks)
+		if err != nil {
+			return err
 		}
 	}
 
 	log.Info(ctx, "Finished processing changed folder", "dir", dir, "updated", numUpdatedTracks, "purged", numPurgedTracks, "elapsed", time.Since(start))
 	return nil
+}
+
+func (s *TagScanner2) deleteOrphanSongs(ctx context.Context, dir string, tracksToDelete map[string]model.MediaFile) (int, error) {
+	numPurgedTracks := 0
+
+	log.Debug(ctx, "Deleting orphan tracks from DB", "dir", dir, "numTracks", len(tracksToDelete))
+	// Remaining tracks from DB that are not in the folder are deleted
+	for _, ct := range tracksToDelete {
+		numPurgedTracks++
+		err := s.albumMap.update(ct.AlbumID)
+		if err != nil {
+			return 0, err
+		}
+		err = s.artistMap.update(ct.AlbumArtistID)
+		if err != nil {
+			return 0, err
+		}
+		if err := s.ds.MediaFile(ctx).Delete(ct.ID); err != nil {
+			return 0, err
+		}
+		s.cnt.deleted++
+	}
+	return numPurgedTracks, nil
+}
+
+func (s *TagScanner2) addOrUpdateTracksInDB(ctx context.Context, dir string, filesToUpdate []string) (int, error) {
+	numUpdatedTracks := 0
+
+	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
+	// Break the file list in chunks to avoid calling ffmpeg with too many parameters
+	chunks := utils.BreakUpStringSlice(filesToUpdate, filesBatchSize)
+	for _, chunk := range chunks {
+		// Load tracks Metadata from the folder
+		newTracks, err := s.loadTracks(chunk)
+		if err != nil {
+			return 0, err
+		}
+
+		// If track from folder is newer than the one in DB, update/insert in DB
+		log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "files", chunk, "numFiles", len(chunk))
+		for i := range newTracks {
+			n := newTracks[i]
+			err := s.ds.MediaFile(ctx).Put(&n)
+			if err != nil {
+				return 0, err
+			}
+			err = s.albumMap.update(n.AlbumID)
+			if err != nil {
+				return 0, err
+			}
+			err = s.artistMap.update(n.AlbumArtistID)
+			if err != nil {
+				return 0, err
+			}
+			numUpdatedTracks++
+		}
+	}
+	return numUpdatedTracks, nil
 }
 
 func (s *TagScanner2) loadTracks(filePaths []string) (model.MediaFiles, error) {
