@@ -39,7 +39,7 @@ func (s *playlistSync) processPlaylists(ctx context.Context, dir string) error {
 			continue
 		}
 		log.Debug("Found playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks))
-		err = s.updatePlaylistIfNewer(ctx, pls)
+		err = s.updatePlaylist(ctx, pls)
 		if err != nil {
 			log.Error(ctx, "Error updating playlist", "playlist", f.Name(), err)
 		}
@@ -92,7 +92,7 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 	return pls, scanner.Err()
 }
 
-func (s *playlistSync) updatePlaylistIfNewer(ctx context.Context, newPls *model.Playlist) error {
+func (s *playlistSync) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
 	owner, _ := request.UsernameFrom(ctx)
 
 	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
