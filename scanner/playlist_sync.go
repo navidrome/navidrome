@@ -12,6 +12,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
+	"github.com/deluan/navidrome/utils"
 )
 
 type playlistSync struct {
@@ -22,15 +23,15 @@ func newPlaylistSync(ds model.DataStore) *playlistSync {
 	return &playlistSync{ds: ds}
 }
 
-func (s *playlistSync) processPlaylists(ctx context.Context, dir string) error {
+func (s *playlistSync) processPlaylists(ctx context.Context, dir string) int {
+	count := 0
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Error(ctx, "Error reading files", "dir", dir, err)
-		return err
+		return count
 	}
 	for _, f := range files {
-		match, _ := filepath.Match("*.m3u", strings.ToLower(f.Name()))
-		if !match {
+		if !utils.IsPlaylist(f.Name()) {
 			continue
 		}
 		pls, err := s.parsePlaylist(ctx, f.Name(), dir)
@@ -43,8 +44,9 @@ func (s *playlistSync) processPlaylists(ctx context.Context, dir string) error {
 		if err != nil {
 			log.Error(ctx, "Error updating playlist", "playlist", f.Name(), err)
 		}
+		count++
 	}
-	return nil
+	return count
 }
 
 func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, baseDir string) (*model.Playlist, error) {

@@ -33,19 +33,22 @@ func NewTagScanner2(rootFolder string, ds model.DataStore) *TagScanner2 {
 }
 
 // Scan algorithm overview:
-// Load all directories under the music folder, with their ModTime (self or any non-dir children)
-// Find changed folders (based on lastModifiedSince) and deletes folders (comparing to the DB)
-// For each deleted folder: delete all files from DB whose path starts with the delete folder path
-// For each changed folder: Get all files from DB whose path starts with the changed folder, scan each file:
+// Load all directories under the music folder, with their ModTime (self or any non-dir children, whichever is newer)
+// Find changed folders (based on lastModifiedSince) and deleted folders (comparing to the DB)
+// For each deleted folder: delete all files from DB whose path starts with the delete folder path (non-recursively)
+// For each changed folder: get all files from DB whose path starts with the changed folder (non-recursively), check each file:
 //	    if file in folder is newer, update the one in DB
-//      if file in folder does not exists in DB, add
-// 	    for each file in the DB that is not found in the folder, delete from DB
+//      if file in folder does not exists in DB, add it
+// 	    for each file in the DB that is not found in the folder, delete it from DB
 // Create new albums/artists, update counters:
 //      collect all albumIDs and artistIDs from previous steps
 //	    refresh the collected albums and artists with the metadata from the mediafiles
-// Delete all empty albums, delete all empty Artists
+// For each changed folder, process playlists:
+//      If the playlist is not in the DB, import it, setting sync = true
+//      If the playlist is in the DB and sync == true, import it, or else skip it
+// Delete all empty albums, delete all empty artists, clean-up playlists
 func (s *TagScanner2) Scan(ctx context.Context, lastModifiedSince time.Time) error {
-	ctx = s.setAdminUser(ctx)
+	ctx = s.withAdminUser(ctx)
 
 	start := time.Now()
 	allDirs, err := s.getDirTree(ctx)
@@ -88,13 +91,23 @@ func (s *TagScanner2) Scan(ctx context.Context, lastModifiedSince time.Time) err
 	_ = s.artistMap.flush()
 
 	// Now that all mediafiles are imported/updated, search for and import playlists
+	u, _ := request.UserFrom(ctx)
+	plsCount := 0
 	for _, dir := range changedDirs {
-		_ = s.plsSync.processPlaylists(ctx, dir)
+		info := allDirs[dir]
+		if info.hasPlaylist {
+			if !u.IsAdmin {
+				log.Warn("Playlists will not be imported, as there are no admin users yet, "+
+					"Please create an admin user first, and then update the playlists for them to be imported", "dir", dir)
+			} else {
+				plsCount = s.plsSync.processPlaylists(ctx, dir)
+			}
+		}
 	}
 
 	err = s.ds.GC(log.NewContext(ctx))
 	log.Info("Finished processing Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start),
-		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted)
+		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted, "playlistsImported", plsCount)
 
 	return err
 }
@@ -114,8 +127,8 @@ func (s *TagScanner2) getChangedDirs(ctx context.Context, dirs dirMap, lastModif
 	start := time.Now()
 	log.Trace(ctx, "Checking for changed folders")
 	var changed []string
-	for d, t := range dirs {
-		if t.After(lastModified) {
+	for d, info := range dirs {
+		if info.modTime.After(lastModified) {
 			changed = append(changed, d)
 		}
 	}
@@ -206,7 +219,7 @@ func (s *TagScanner2) processChangedDir(ctx context.Context, dir string) error {
 		return nil
 	}
 
-	// If track from folder is newer than the one in DB, select for update/insert in DB and delete from the current tracks
+	// If track from folder is newer than the one in DB, select for update/insert in DB
 	log.Trace(ctx, "Processing changed folder", "dir", dir, "tracksInDB", len(currentTracks), "tracksInFolder", len(files))
 	var filesToUpdate []string
 	for filePath, info := range files {
@@ -219,7 +232,6 @@ func (s *TagScanner2) processChangedDir(ctx context.Context, dir string) error {
 			filesToUpdate = append(filesToUpdate, filePath)
 			s.cnt.updated++
 		}
-		delete(currentTracks, filePath)
 
 		// Force a refresh of the album and artist, to cater for cover art files
 		err = s.albumMap.update(c.AlbumID)
@@ -230,6 +242,10 @@ func (s *TagScanner2) processChangedDir(ctx context.Context, dir string) error {
 		if err != nil {
 			return err
 		}
+
+		// Remove it from currentTracks (the ones found in DB). After this loop any currentTracks remaining
+		// are considered gone from the music folder and will be deleted from DB
+		delete(currentTracks, filePath)
 	}
 
 	numUpdatedTracks := 0
@@ -249,7 +265,8 @@ func (s *TagScanner2) processChangedDir(ctx context.Context, dir string) error {
 		}
 	}
 
-	log.Info(ctx, "Finished processing changed folder", "dir", dir, "updated", numUpdatedTracks, "purged", numPurgedTracks, "elapsed", time.Since(start))
+	log.Info(ctx, "Finished processing changed folder", "dir", dir, "updated", numUpdatedTracks,
+		"purged", numPurgedTracks, "elapsed", time.Since(start))
 	return nil
 }
 
@@ -325,10 +342,10 @@ func (s *TagScanner2) loadTracks(filePaths []string) (model.MediaFiles, error) {
 	return mfs, nil
 }
 
-func (s *TagScanner2) setAdminUser(ctx context.Context) context.Context {
+func (s *TagScanner2) withAdminUser(ctx context.Context) context.Context {
 	u, err := s.ds.User(ctx).FindFirstAdmin()
 	if err != nil {
-		log.Error(ctx, "Error retrieving playlist owner", err)
+		log.Warn(ctx, "No admin user found!", err)
 		u = &model.User{}
 	}
 

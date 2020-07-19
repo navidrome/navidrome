@@ -12,10 +12,16 @@ import (
 	"github.com/deluan/navidrome/utils"
 )
 
-type dirMap = map[string]time.Time
+type (
+	dirMapValue struct {
+		modTime     time.Time
+		hasPlaylist bool
+	}
+	dirMap = map[string]dirMapValue
+)
 
 func loadDirTree(ctx context.Context, rootFolder string) (dirMap, error) {
-	newMap := make(map[string]time.Time)
+	newMap := make(dirMap)
 	err := loadMap(ctx, rootFolder, rootFolder, newMap)
 	if err != nil {
 		log.Error(ctx, "Error loading directory tree", err)
@@ -24,7 +30,7 @@ func loadDirTree(ctx context.Context, rootFolder string) (dirMap, error) {
 }
 
 func loadMap(ctx context.Context, rootPath string, currentFolder string, dirMap dirMap) error {
-	children, lastUpdated, err := loadDir(ctx, currentFolder)
+	children, dirMapValue, err := loadDir(ctx, currentFolder)
 	if err != nil {
 		return err
 	}
@@ -36,18 +42,18 @@ func loadMap(ctx context.Context, rootPath string, currentFolder string, dirMap 
 	}
 
 	dir := filepath.Clean(currentFolder)
-	dirMap[dir] = lastUpdated
+	dirMap[dir] = dirMapValue
 
 	return nil
 }
 
-func loadDir(ctx context.Context, dirPath string) (children []string, lastUpdated time.Time, err error) {
+func loadDir(ctx context.Context, dirPath string) (children []string, info dirMapValue, err error) {
 	dirInfo, err := os.Stat(dirPath)
 	if err != nil {
 		log.Error(ctx, "Error stating dir", "path", dirPath, err)
 		return
 	}
-	lastUpdated = dirInfo.ModTime()
+	info.modTime = dirInfo.ModTime()
 
 	files, err := ioutil.ReadDir(dirPath)
 	if err != nil {
@@ -63,9 +69,10 @@ func loadDir(ctx context.Context, dirPath string) (children []string, lastUpdate
 		if isDir && !isDirIgnored(dirPath, f) && isDirReadable(dirPath, f) {
 			children = append(children, filepath.Join(dirPath, f.Name()))
 		} else {
-			if f.ModTime().After(lastUpdated) {
-				lastUpdated = f.ModTime()
+			if f.ModTime().After(info.modTime) {
+				info.modTime = f.ModTime()
 			}
+			info.hasPlaylist = info.hasPlaylist || utils.IsPlaylist(f.Name())
 		}
 	}
 	return

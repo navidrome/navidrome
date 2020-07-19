@@ -21,3 +21,8 @@ func IsImageFile(filePath string) bool {
 	extension := filepath.Ext(filePath)
 	return strings.HasPrefix(mime.TypeByExtension(extension), "image/")
 }
+
+func IsPlaylist(filePath string) bool {
+	extension := filepath.Ext(filePath)
+	return strings.ToLower(extension) == ".m3u"
+}
