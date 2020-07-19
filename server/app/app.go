@@ -9,9 +9,11 @@ import (
 	"github.com/deluan/navidrome/assets"
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/core/auth"
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/httprate"
 	"github.com/go-chi/jwtauth"
 )
 
@@ -35,7 +37,18 @@ func (app *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (app *Router) routes(path string) http.Handler {
 	r := chi.NewRouter()
 
-	r.Post("/login", Login(app.ds))
+	if conf.Server.AuthRequestLimit > 0 {
+		log.Info(context.TODO(), "Login rate limit set", "requestLimit", conf.Server.AuthRequestLimit,
+			"windowLength", conf.Server.AuthWindowLength)
+		rateLimiter := httprate.LimitByIP(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
+
+		r.With(rateLimiter).Post("/login", Login(app.ds))
+	} else {
+		log.Warn(context.TODO(), "Login rate limit is disabled! Consider enabling it to be protected against brute-force attacks")
+
+		r.Post("/login", Login(app.ds))
+	}
+
 	r.Post("/createAdmin", CreateAdmin(app.ds))
 
 	r.Route("/api", func(r chi.Router) {

@@ -45,6 +45,7 @@ github.com/bradleyjkemp/cupaloy v2.3.0+incompatible h1:UafIjBvWQmS9i/xRg+CamMrnL
 github.com/bradleyjkemp/cupaloy v2.3.0+incompatible/go.mod h1:Au1Xw1sgaJ5iSFktEhYsS0dbQiS1B0/XMXl+42y9Ilk=
 github.com/casbin/casbin v1.7.0/go.mod h1:c67qKN6Oum3UF5Q1+BByfFxkwKvhwW57ITjqwtzR1KE=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
+github.com/cespare/xxhash v1.1.0 h1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/cespare/xxhash/v2 v2.1.1 h1:6MnRN8NT7+YBpUIWxHtefFZOKTAPgGjpQSxqLNn0+qY=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
@@ -97,6 +98,8 @@ github.com/go-chi/chi v4.1.2+incompatible h1:fGFk2Gmi/YKXk0OmGfBh0WgmN3XB8lVnEyN
 github.com/go-chi/chi v4.1.2+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxmMeXJVKy9tTv1XzQ=
 github.com/go-chi/cors v1.1.1 h1:eHuqxsIw89iXcWnWUN8R72JMibABJTN/4IOYI5WERvw=
 github.com/go-chi/cors v1.1.1/go.mod h1:K2Yje0VW/SJzxiyMYu6iPQYa7hMjQX2i/F491VChg1I=
+github.com/go-chi/httprate v0.4.0 h1:M2qVV0w6ksgLs6L8lTrvqNeaVm0ZJNVdbYM8u2T8HaE=
+github.com/go-chi/httprate v0.4.0/go.mod h1:7e7qjQtHzEbdyW5TYQrl4X2uNRCnlTajictc7B4ftgc=
 github.com/go-chi/jwtauth v4.0.4+incompatible h1:LGIxg6YfvSBzxU2BljXbrzVc1fMlgqSKBQgKOGAVtPY=
 github.com/go-chi/jwtauth v4.0.4+incompatible/go.mod h1:Q5EIArY/QnD6BdS+IyDw7B2m6iNbnPxtfd6/BcmtWbs=
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=

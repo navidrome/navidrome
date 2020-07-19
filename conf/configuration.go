@@ -34,6 +34,8 @@ type configOptions struct {
 	CoverJpegQuality int
 	UIWelcomeMessage string
 	GATrackingID     string
+	AuthRequestLimit int
+	AuthWindowLength time.Duration
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
@@ -83,7 +85,7 @@ func init() {
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
 
-	// Config options only valid for file configuration
+	// Config options only valid for file/env configuration
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("probecommand", "ffmpeg %s -f ffmetadata")
@@ -91,6 +93,8 @@ func init() {
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("gatrackingid", "")
+	viper.SetDefault("authrequestlimit", 5)
+	viper.SetDefault("authwindowlength", 20*time.Second)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
