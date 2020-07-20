@@ -103,6 +103,7 @@ func init() {
 }
 
 func InitConfig(cfgFile string) {
+	cfgFile = getConfigFile(cfgFile)
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
@@ -121,4 +122,11 @@ func InitConfig(cfgFile string) {
 		fmt.Println("Navidrome could not open config file: ", err)
 		os.Exit(1)
 	}
+}
+
+func getConfigFile(cfgFile string) string {
+	if cfgFile != "" {
+		return cfgFile
+	}
+	return os.Getenv("ND_CONFIGFILE")
 }
