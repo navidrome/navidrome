@@ -87,11 +87,10 @@ func (s *Scanner) loadFolders() {
 }
 
 func (s *Scanner) newScanner(f model.MediaFolder) FolderScanner {
-	if conf.Server.DevNewScanner {
-		log.Warn("Using *experimental* new scanner")
-		return NewTagScanner2(f.Path, s.ds)
+	if conf.Server.DevOldScanner {
+		return NewTagScanner(f.Path, s.ds)
 	}
-	return NewTagScanner(f.Path, s.ds)
+	return NewTagScanner2(f.Path, s.ds)
 }
 
 type Status int
