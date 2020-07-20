@@ -80,7 +80,7 @@ func init() {
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("scaninterval", time.Minute)
 	viper.SetDefault("baseurl", "")
-	viper.SetDefault("uiloginbackgroundurl", "")
+	viper.SetDefault("uiloginbackgroundurl", "https://source.unsplash.com/random/1600x900?music")
 	viper.SetDefault("enabletranscodingconfig", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
