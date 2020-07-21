@@ -85,7 +85,7 @@ jobs:
           cd ui
           npm run build
 
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v2
         with:
           name: js-bundle
           path: ui/build
@@ -101,7 +101,7 @@ jobs:
       - name: Unshallow
         run: git fetch --prune --unshallow
 
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v2
         with:
           name: js-bundle
           path: ui/build
@@ -128,7 +128,7 @@ jobs:
         with:
           args: goreleaser release --rm-dist
 
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v2
         with:
           name: binaries
           path: |
@@ -154,7 +154,7 @@ jobs:
       - uses: actions/checkout@v1
         if: env.DOCKER_IMAGE != ''
 
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v2
         if: env.DOCKER_IMAGE != ''
         with:
           name: binaries
