@@ -97,9 +97,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
-
-      - name: Unshallow
-        run: git fetch --prune --unshallow
+        with:
+          - fetch-depth: 0
 
       - uses: actions/download-artifact@v2
         with:
