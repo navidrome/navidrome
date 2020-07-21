@@ -131,7 +131,10 @@ jobs:
       - uses: actions/upload-artifact@v1
         with:
           name: binaries
-          path: dist
+          path: |
+            dist
+            !dist/*.tar.gz
+            !dist/*.zip
 
   docker:
     name: Docker images
