@@ -106,6 +106,12 @@ jobs:
           name: js-bundle
           path: ui/build
 
+      - name: Show Tags
+        run: git tag
+
+      - name: Show Version
+        run: git describe --tags
+
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
         uses: docker://deluan/ci-goreleaser:1.14.4-2
