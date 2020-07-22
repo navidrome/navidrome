@@ -1,5 +1,5 @@
 {
-    "languageName": "Danish",
+    "languageName": "Dansk",
     "resources": {
         "song": {
             "name": "Sang |||| Sange",
@@ -10,8 +10,8 @@
                 "playCount": "Afspilninger",
                 "title": "Titel",
                 "artist": "Kunstner",
-                "album": "Album",
-                "path": "Fil adresse",
+                "album": "Album navn",
+                "path": "Fil placering",
                 "genre": "Genre",
                 "compilation": "Samling",
                 "year": "År",
@@ -61,7 +61,7 @@
             "fields": {
                 "userName": "Brugernavn",
                 "isAdmin": "Er administrator",
-                "lastLoginAt": "Sidste login den",
+                "lastLoginAt": "Sidste login",
                 "updatedAt": "Opdateret den",
                 "name": "Navn",
                 "password": "Kodeord",
@@ -76,7 +76,7 @@
                 "maxBitRate": "Maks. bitrate",
                 "client": "Klient",
                 "userName": "Brugernavn",
-                "lastSeen": "Sidst set den"
+                "lastSeen": "Sidst set"
             }
         },
         "transcoding": {
@@ -84,7 +84,7 @@
             "fields": {
                 "name": "Navn",
                 "targetFormat": "Målformat",
-                "defaultBitRate": "Standard bit rate",
+                "defaultBitRate": "Standard bitrate",
                 "command": "Kommando"
             }
         },
@@ -102,7 +102,7 @@
             },
             "actions": {
                 "selectPlaylist": "Vælg en afspilningsliste:",
-                "addNewPlaylist": "Opret \"%(name)\""
+                "addNewPlaylist": "Opret \"%{name}\""
             }
         }
     },
@@ -153,7 +153,7 @@
             "save": "Gem",
             "search": "Søg",
             "show": "Vis",
-            "sort": "Sorter",
+            "sort": "Sortér",
             "undo": "Fortryd",
             "expand": "Udvid",
             "close": "Luk",
@@ -174,7 +174,7 @@
             "loading": "Henter",
             "not_found": "Ikke fundet",
             "show": "%{name} #%{id}",
-            "empty": "Inget %(name) endnu",
+            "empty": "Ingen %{name} endnu",
             "invite": "Vil du tilføje en?"
         },
         "input": {
@@ -219,7 +219,7 @@
             "page_out_from_end": "Der findes ikke flere sider",
             "page_out_from_begin": "Der er ingen side før end side 1",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} af %{total}",
-            "page_rows_per_page": "Række pr. side:",
+            "page_rows_per_page": "Rækker pr. side:",
             "next": "Næste",
             "prev": "Forrige"
         },
@@ -238,17 +238,17 @@
     },
     "message": {
         "note": "NOTE",
-        "transcodingDisabled": "Skift af indstillinger for omkodning gennem web platformen er frakoblet af sikkerhedsgrunde. Genstart serveren med %(config) indstilling tilvalgt.",
-        "transcodingEnabled": "Navidrome kører i øjeblikket med %(config), hvilket gør det muligt at køre system kommandoer fra web platformen. Vi anbefaler at slå det fra af sikkerhedsgrunde og kun slå det til ved indstilling af omkodning.",
-        "songsAddedToPlaylist": "Tilføjede 1 sang til afspilningsliste |||| Tilføjede %(smart_count) sange til afspilningsliste",
+        "transcodingDisabled": "Skift af indstillinger for omkodning gennem web platformen er frakoblet af sikkerhedsgrunde. Genstart serveren med %{config} indstilling tilvalgt.",
+        "transcodingEnabled": "Navidrome kører i øjeblikket med %{config}, hvilket gør det muligt at køre system kommandoer fra web platformen. Vi anbefaler at slå det fra af sikkerhedsgrunde og kun slå det til ved indstilling af omkodning.",
+        "songsAddedToPlaylist": "Tilføjede 1 sang til afspilningsliste |||| Tilføjede %{smart_count} sange til afspilningsliste",
         "noPlaylistsAvailable": "Ingen tilgængelige",
-        "delete_user_title": "Slet bruger '%(name)'",
+        "delete_user_title": "Slet bruger '%{name}'",
         "delete_user_content": "Er du sikker på at du vil slette denne bruger og tilhørende data (inklusive afspilningslister og indstillinger)?"
     },
     "menu": {
         "library": "Bibliotek",
         "settings": "Indstillinger",
-        "version": "Version (%version)",
+        "version": "Version %{version}",
         "theme": "Tema",
         "personal": {
             "name": "Personligt",
@@ -274,7 +274,7 @@
         "destroyText": "Fjern",
         "downloadText": "Hent",
         "removeAudioListsText": "Slet afspillingsliste",
-        "clickToDeleteText": "Tryk for at slette %(name)",
+        "clickToDeleteText": "Tryk for at slette %{name}",
         "emptyLyricText": "Ingen sangtekst",
         "playModeText": {
             "order": "I rækkefølge",
