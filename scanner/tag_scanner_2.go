@@ -188,6 +188,13 @@ func (s *TagScanner2) processDeletedDir(ctx context.Context, dir string) error {
 	if err != nil {
 		return err
 	}
+
+	c, err := s.ds.MediaFile(ctx).DeleteByPath(dir)
+	if err != nil {
+		return err
+	}
+	s.cnt.deleted += c
+
 	for _, t := range mfs {
 		err = s.albumMap.update(t.AlbumID)
 		if err != nil {
@@ -200,8 +207,6 @@ func (s *TagScanner2) processDeletedDir(ctx context.Context, dir string) error {
 	}
 
 	log.Info(ctx, "Finished processing deleted folder", "path", dir, "purged", len(mfs), "elapsed", time.Since(start))
-	c, err := s.ds.MediaFile(ctx).DeleteByPath(dir)
-	s.cnt.deleted += c
 	return err
 }
 
