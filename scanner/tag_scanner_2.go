@@ -63,11 +63,12 @@ func (s *TagScanner2) Scan(ctx context.Context, lastModifiedSince time.Time) err
 	}
 
 	changedDirs := s.getChangedDirs(ctx, allDirs, allDBDirs, lastModifiedSince)
-	if len(changedDirs) == 0 {
+	deletedDirs := s.getDeletedDirs(ctx, allDirs, allDBDirs)
+
+	if len(changedDirs)+len(deletedDirs) == 0 {
 		log.Debug(ctx, "No changes found in Music Folder", "folder", s.rootFolder)
 		return nil
 	}
-	deletedDirs, _ := s.getDeletedDirs(ctx, allDirs, allDBDirs)
 
 	if log.CurrentLevel() >= log.LevelTrace {
 		log.Info(ctx, "Folder changes detected", "changedFolders", len(changedDirs), "deletedFolders", len(deletedDirs),
@@ -165,7 +166,7 @@ func (s *TagScanner2) getChangedDirs(ctx context.Context, dirs dirMap, dbDirs ma
 	return changed
 }
 
-func (s *TagScanner2) getDeletedDirs(ctx context.Context, allDirs dirMap, dbDirs map[string]struct{}) ([]string, error) {
+func (s *TagScanner2) getDeletedDirs(ctx context.Context, allDirs dirMap, dbDirs map[string]struct{}) []string {
 	start := time.Now()
 	log.Trace(ctx, "Checking for deleted folders")
 	var deleted []string
@@ -178,7 +179,7 @@ func (s *TagScanner2) getDeletedDirs(ctx context.Context, allDirs dirMap, dbDirs
 
 	sort.Strings(deleted)
 	log.Debug(ctx, "Finished deleted folders check", "total", len(deleted), "elapsed", time.Since(start))
-	return deleted, nil
+	return deleted
 }
 
 func (s *TagScanner2) processDeletedDir(ctx context.Context, dir string) error {
