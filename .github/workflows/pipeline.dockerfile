@@ -27,7 +27,6 @@ COPY --from=copy-binary /navidrome /app/
 VOLUME ["/data", "/music"]
 ENV ND_MUSICFOLDER /music
 ENV ND_DATAFOLDER /data
-ENV ND_LOGLEVEL info
 ENV ND_PORT 4533
 ENV GODEBUG "asyncpreemptoff=1"
 
