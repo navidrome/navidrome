@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
@@ -95,7 +96,8 @@ func (r mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
 // FindAllByPath only return mediafiles that are direct children of requested path
 func (r mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, error) {
 	// Query by path based on https://stackoverflow.com/a/13911906/653632
-	sel0 := r.selectMediaFile().Columns(fmt.Sprintf("substr(path, %d) AS item", len(path)+2)).
+	pathLen := utf8.RuneCountInString(path)
+	sel0 := r.selectMediaFile().Columns(fmt.Sprintf("substr(path, %d) AS item", pathLen+2)).
 		Where(pathStartsWith(path))
 	sel := r.newSelect().Columns("*", "item NOT GLOB '*"+string(os.PathSeparator)+"*' AS isLast").
 		Where(Eq{"isLast": 1}).FromSelect(sel0, "sel0")
@@ -107,7 +109,7 @@ func (r mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, error
 
 func pathStartsWith(path string) Sqlizer {
 	cleanPath := filepath.Clean(path)
-	substr := fmt.Sprintf("substr(path, 1, %d)", len(cleanPath))
+	substr := fmt.Sprintf("substr(path, 1, %d)", utf8.RuneCountInString(cleanPath))
 	return Eq{substr: cleanPath}
 }
 
@@ -144,9 +146,10 @@ func (r mediaFileRepository) Delete(id string) error {
 // DeleteByPath delete from the DB all mediafiles that are direct children of path
 func (r mediaFileRepository) DeleteByPath(path string) (int64, error) {
 	path = filepath.Clean(path)
+	pathLen := utf8.RuneCountInString(path)
 	del := Delete(r.tableName).
 		Where(And{pathStartsWith(path),
-			Eq{fmt.Sprintf("substr(path, %d) glob '*%s*'", len(path)+2, string(os.PathSeparator)): 0}})
+			Eq{fmt.Sprintf("substr(path, %d) glob '*%s*'", pathLen+2, string(os.PathSeparator)): 0}})
 	log.Debug(r.ctx, "Deleting mediafiles by path", "path", path)
 	return r.executeSQL(del)
 }
