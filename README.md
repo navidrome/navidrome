@@ -7,6 +7,7 @@
 [![Dev Chat](https://img.shields.io/discord/671335427726114836?label=chat&style=flat-square)](https://discord.gg/xh7j7yF)
 [![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?style=flat-square)](https://www.reddit.com/r/navidrome/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg)](code_of_conduct.md)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdeluan%2Fnavidrome.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdeluan%2Fnavidrome?ref=badge_shield)
 
 Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your 
 music collection from any browser or mobile device. It's like your personal Spotify!
@@ -63,3 +64,7 @@ Here are some useful direct links:
     <img height="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-album-view.png">
     <img width="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-desktop-player.png">
 </p>
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdeluan%2Fnavidrome.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdeluan%2Fnavidrome?ref=badge_large)
