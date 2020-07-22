@@ -32,6 +32,8 @@ func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
 	}
 }
 
+const batchSize = 5
+
 type (
 	artistMap map[string]struct{}
 	albumMap  map[string]struct{}
