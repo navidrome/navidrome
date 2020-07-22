@@ -48,7 +48,7 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(s.Duration()).To(Equal(float32(257.0)))
 		})
 		It("returns a seekable stream if the file is complete in the cache", func() {
-			Eventually(func() bool { return ffmpeg.closed }).Should(BeTrue())
+			Eventually(func() bool { return ffmpeg.closed }, "3s").Should(BeTrue())
 			s, err := streamer.NewStream(ctx, "123", "mp3", 64)
 			Expect(err).To(BeNil())
 			Expect(s.Seekable()).To(BeTrue())
