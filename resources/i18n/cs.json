@@ -174,7 +174,7 @@
             "loading": "Načítání",
             "not_found": "Nenalezeno",
             "show": "%{name} #%{id}",
-            "empty": "Zatím žádné %{name}",
+            "empty": "Zatím žádný %{name}",
             "invite": "Chcete jeden přidat?"
         },
         "input": {
@@ -240,7 +240,7 @@
         "note": "POZNÁMKA",
         "transcodingDisabled": "Měnění nastavení překódování je ve webovém prostředí vypnuto kvůli bezpečnosti. Pokud by jste chtěli změnit (upravit nebo přidat) možnosti překódování, restartujte server s možností %{config}.",
         "transcodingEnabled": "Navidrome právě běží s možností %{config}, umožňující spouštění systémových příkazů z nastavení překódování pomocí webového rozhraní. Doporučujeme ji vypnout kvůli bezpečnosti a použít ji pouze pokud upravujete nastavení překódování.",
-        "songsAddedToPlaylist": "1 skladba přidána na seznam skladeb ||| %{smart_count} skladeb přidáno na seznam skladeb",
+        "songsAddedToPlaylist": "1 skladba přidána na seznam skladeb |||| %{smart_count} skladeb přidáno na seznam skladeb",
         "noPlaylistsAvailable": "Žádné nejsou dostupné",
         "delete_user_title": "Odstranit uživatele '%{name}'",
         "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?"
