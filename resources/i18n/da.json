@@ -1,5 +1,5 @@
 {
-    "languageName": "Danish",
+    "languageName": "Dansk",
     "resources": {
         "song": {
             "name": "Sang |||| Sange",
@@ -10,8 +10,8 @@
                 "playCount": "Afspilninger",
                 "title": "Titel",
                 "artist": "Kunstner",
-                "album": "Album",
-                "path": "Fil adresse",
+                "album": "Album navn",
+                "path": "Fil placering",
                 "genre": "Genre",
                 "compilation": "Samling",
                 "year": "År",
@@ -61,7 +61,7 @@
             "fields": {
                 "userName": "Brugernavn",
                 "isAdmin": "Er administrator",
-                "lastLoginAt": "Sidste login den",
+                "lastLoginAt": "Sidste login",
                 "updatedAt": "Opdateret den",
                 "name": "Navn",
                 "password": "Kodeord",
@@ -76,7 +76,7 @@
                 "maxBitRate": "Maks. bitrate",
                 "client": "Klient",
                 "userName": "Brugernavn",
-                "lastSeen": "Sidst set den"
+                "lastSeen": "Sidst set"
             }
         },
         "transcoding": {
@@ -84,7 +84,7 @@
             "fields": {
                 "name": "Navn",
                 "targetFormat": "Målformat",
-                "defaultBitRate": "Standard bit rate",
+                "defaultBitRate": "Standard bitrate",
                 "command": "Kommando"
             }
         },
@@ -153,7 +153,7 @@
             "save": "Gem",
             "search": "Søg",
             "show": "Vis",
-            "sort": "Sorter",
+            "sort": "Sortér",
             "undo": "Fortryd",
             "expand": "Udvid",
             "close": "Luk",
@@ -219,7 +219,7 @@
             "page_out_from_end": "Der findes ikke flere sider",
             "page_out_from_begin": "Der er ingen side før end side 1",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} af %{total}",
-            "page_rows_per_page": "Række pr. side:",
+            "page_rows_per_page": "Rækker pr. side:",
             "next": "Næste",
             "prev": "Forrige"
         },
@@ -248,7 +248,7 @@
     "menu": {
         "library": "Bibliotek",
         "settings": "Indstillinger",
-        "version": "Version (%version)",
+        "version": "Version %{version}",
         "theme": "Tema",
         "personal": {
             "name": "Personligt",
