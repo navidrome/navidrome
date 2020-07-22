@@ -17,15 +17,16 @@ type refreshBuffer struct {
 
 func newRefreshBuffer(ctx context.Context, ds model.DataStore) *refreshBuffer {
 	return &refreshBuffer{
-		ctx:   ctx,
-		ds:    ds,
-		album: map[string]struct{}{},
+		ctx:    ctx,
+		ds:     ds,
+		album:  map[string]struct{}{},
+		artist: map[string]struct{}{},
 	}
 }
 
 func (f *refreshBuffer) accumulate(mf model.MediaFile) {
 	f.album[mf.AlbumID] = struct{}{}
-	f.album[mf.AlbumArtistID] = struct{}{}
+	f.artist[mf.AlbumArtistID] = struct{}{}
 }
 
 type refreshCallbackFunc = func(ids ...string) error
