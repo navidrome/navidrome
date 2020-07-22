@@ -14,8 +14,10 @@ import (
 
 type (
 	dirMapValue struct {
-		modTime     time.Time
-		hasPlaylist bool
+		modTime       time.Time
+		hasImages     bool
+		hasPlaylist   bool
+		hasAudioFiles bool
 	}
 	dirMap = map[string]dirMapValue
 )
@@ -72,7 +74,9 @@ func loadDir(ctx context.Context, dirPath string) (children []string, info dirMa
 			if f.ModTime().After(info.modTime) {
 				info.modTime = f.ModTime()
 			}
+			info.hasImages = info.hasImages || utils.IsImageFile(f.Name())
 			info.hasPlaylist = info.hasPlaylist || utils.IsPlaylist(f.Name())
+			info.hasAudioFiles = info.hasAudioFiles || utils.IsAudioFile(f.Name())
 		}
 	}
 	return

@@ -34,7 +34,8 @@ func NewTagScanner2(rootFolder string, ds model.DataStore) *TagScanner2 {
 
 // Scan algorithm overview:
 // Load all directories under the music folder, with their ModTime (self or any non-dir children, whichever is newer)
-// Find changed folders (based on lastModifiedSince) and deleted folders (comparing to the DB)
+// Load all directories from the DB
+// Compare both collections to find changed folders (based on lastModifiedSince) and deleted folders
 // For each deleted folder: delete all files from DB whose path starts with the delete folder path (non-recursively)
 // For each changed folder: get all files from DB whose path starts with the changed folder (non-recursively), check each file:
 //	    if file in folder is newer, update the one in DB
@@ -56,12 +57,17 @@ func (s *TagScanner2) Scan(ctx context.Context, lastModifiedSince time.Time) err
 		return err
 	}
 
-	changedDirs := s.getChangedDirs(ctx, allDirs, lastModifiedSince)
+	allDBDirs, err := s.getDBDirTree(ctx)
+	if err != nil {
+		return err
+	}
+
+	changedDirs := s.getChangedDirs(ctx, allDirs, allDBDirs, lastModifiedSince)
 	if len(changedDirs) == 0 {
 		log.Debug(ctx, "No changes found in Music Folder", "folder", s.rootFolder)
 		return nil
 	}
-	deletedDirs, _ := s.getDeletedDirs(ctx, allDirs, changedDirs)
+	deletedDirs, _ := s.getDeletedDirs(ctx, allDirs, allDBDirs)
 
 	if log.CurrentLevel() >= log.LevelTrace {
 		log.Info(ctx, "Folder changes detected", "changedFolders", len(changedDirs), "deletedFolders", len(deletedDirs),
@@ -123,46 +129,50 @@ func (s *TagScanner2) getDirTree(ctx context.Context) (dirMap, error) {
 	return dirs, nil
 }
 
-func (s *TagScanner2) getChangedDirs(ctx context.Context, dirs dirMap, lastModified time.Time) []string {
+func (s *TagScanner2) getDBDirTree(ctx context.Context) (map[string]struct{}, error) {
+	repo := s.ds.MediaFile(ctx)
+
+	dirs, err := repo.FindPathsRecursively(s.rootFolder)
+	if err != nil {
+		return nil, err
+	}
+	resp := map[string]struct{}{}
+	for _, d := range dirs {
+		resp[filepath.Clean(d)] = struct{}{}
+	}
+
+	return resp, nil
+}
+
+func (s *TagScanner2) getChangedDirs(ctx context.Context, dirs dirMap, dbDirs map[string]struct{}, lastModified time.Time) []string {
 	start := time.Now()
 	log.Trace(ctx, "Checking for changed folders")
 	var changed []string
+
 	for d, info := range dirs {
+		_, inDB := dbDirs[d]
+		if !inDB && (info.hasAudioFiles) {
+			changed = append(changed, d)
+			continue
+		}
 		if info.modTime.After(lastModified) {
 			changed = append(changed, d)
 		}
 	}
+
 	sort.Strings(changed)
 	log.Debug(ctx, "Finished changed folders check", "total", len(changed), "elapsed", time.Since(start))
 	return changed
 }
 
-func (s *TagScanner2) getDeletedDirs(ctx context.Context, allDirs dirMap, changedDirs []string) ([]string, error) {
+func (s *TagScanner2) getDeletedDirs(ctx context.Context, allDirs dirMap, dbDirs map[string]struct{}) ([]string, error) {
 	start := time.Now()
 	log.Trace(ctx, "Checking for deleted folders")
-
 	var deleted []string
-	repo := s.ds.MediaFile(ctx)
 
-	// If rootFolder is in the list of changedDirs, optimize and only do one query to the DB
-	var foldersToCheck []string
-	if utils.StringInSlice(s.rootFolder, changedDirs) {
-		foldersToCheck = []string{s.rootFolder}
-	} else {
-		foldersToCheck = changedDirs
-	}
-
-	for _, changedDir := range foldersToCheck {
-		dirs, err := repo.FindPathsRecursively(changedDir)
-		if err != nil {
-			log.Error("Error getting subfolders from DB", "path", changedDir, err)
-			continue
-		}
-		for _, d := range dirs {
-			d := filepath.Clean(d)
-			if _, ok := allDirs[d]; !ok {
-				deleted = append(deleted, d)
-			}
+	for d := range dbDirs {
+		if _, ok := allDirs[d]; !ok {
+			deleted = append(deleted, d)
 		}
 	}
 
