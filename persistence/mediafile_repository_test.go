@@ -61,6 +61,15 @@ var _ = Describe("MediaRepository", func() {
 		Expect(found[0].ID).To(Equal("7001"))
 	})
 
+	It("finds tracks by path when using UTF8 chars", func() {
+		Expect(mr.Put(&model.MediaFile{ID: "7010", Path: P("/Пётр Ильич Чайковский/123.mp3")})).To(BeNil())
+		Expect(mr.Put(&model.MediaFile{ID: "7011", Path: P("/Пётр Ильич Чайковский/222.mp3")})).To(BeNil())
+
+		found, err := mr.FindAllByPath(P("/Пётр Ильич Чайковский/"))
+		Expect(err).To(BeNil())
+		Expect(found).To(HaveLen(2))
+	})
+
 	It("finds tracks by path case sensitively", func() {
 		Expect(mr.Put(&model.MediaFile{ID: "7003", Path: P("/Casesensitive/file1.mp3")})).To(BeNil())
 		Expect(mr.Put(&model.MediaFile{ID: "7004", Path: P("/casesensitive/file2.mp3")})).To(BeNil())
@@ -94,15 +103,15 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("delete tracks by path", func() {
-		id1 := "1111"
+		id1 := "6001"
 		Expect(mr.Put(&model.MediaFile{ID: id1, Path: P("/abc/123/" + id1 + ".mp3")})).To(BeNil())
-		id2 := "2222"
+		id2 := "6002"
 		Expect(mr.Put(&model.MediaFile{ID: id2, Path: P("/abc/123/" + id2 + ".mp3")})).To(BeNil())
-		id3 := "3333"
+		id3 := "6003"
 		Expect(mr.Put(&model.MediaFile{ID: id3, Path: P("/ab_/" + id3 + ".mp3")})).To(BeNil())
-		id4 := "4444"
+		id4 := "6004"
 		Expect(mr.Put(&model.MediaFile{ID: id4, Path: P("/abc/" + id4 + ".mp3")})).To(BeNil())
-		id5 := "5555"
+		id5 := "6005"
 		Expect(mr.Put(&model.MediaFile{ID: id5, Path: P("/Ab_/" + id5 + ".mp3")})).To(BeNil())
 
 		Expect(mr.DeleteByPath(P("/ab_"))).To(Equal(int64(1)))
@@ -113,6 +122,19 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.Get(id5)).ToNot(BeNil())
 		_, err := mr.Get(id3)
 		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	It("delete tracks by path containing UTF8 chars", func() {
+		id1 := "6011"
+		Expect(mr.Put(&model.MediaFile{ID: id1, Path: P("/Legião Urbana/" + id1 + ".mp3")})).To(BeNil())
+		id2 := "6012"
+		Expect(mr.Put(&model.MediaFile{ID: id2, Path: P("/Legião Urbana/" + id2 + ".mp3")})).To(BeNil())
+		id3 := "6003"
+		Expect(mr.Put(&model.MediaFile{ID: id3, Path: P("/Legião Urbana/" + id3 + ".mp3")})).To(BeNil())
+
+		Expect(mr.FindAllByPath(P("/Legião Urbana"))).To(HaveLen(3))
+		Expect(mr.DeleteByPath(P("/Legião Urbana"))).To(Equal(int64(3)))
+		Expect(mr.FindAllByPath(P("/Legião Urbana"))).To(HaveLen(0))
 	})
 
 	Context("Annotations", func() {
