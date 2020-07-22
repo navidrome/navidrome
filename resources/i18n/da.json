@@ -102,7 +102,7 @@
             },
             "actions": {
                 "selectPlaylist": "Vælg en afspilningsliste:",
-                "addNewPlaylist": "Opret \"%(name)\""
+                "addNewPlaylist": "Opret \"%{name}\""
             }
         }
     },
@@ -174,7 +174,7 @@
             "loading": "Henter",
             "not_found": "Ikke fundet",
             "show": "%{name} #%{id}",
-            "empty": "Inget %(name) endnu",
+            "empty": "Ingen %{name} endnu",
             "invite": "Vil du tilføje en?"
         },
         "input": {
@@ -238,11 +238,11 @@
     },
     "message": {
         "note": "NOTE",
-        "transcodingDisabled": "Skift af indstillinger for omkodning gennem web platformen er frakoblet af sikkerhedsgrunde. Genstart serveren med %(config) indstilling tilvalgt.",
-        "transcodingEnabled": "Navidrome kører i øjeblikket med %(config), hvilket gør det muligt at køre system kommandoer fra web platformen. Vi anbefaler at slå det fra af sikkerhedsgrunde og kun slå det til ved indstilling af omkodning.",
-        "songsAddedToPlaylist": "Tilføjede 1 sang til afspilningsliste |||| Tilføjede %(smart_count) sange til afspilningsliste",
+        "transcodingDisabled": "Skift af indstillinger for omkodning gennem web platformen er frakoblet af sikkerhedsgrunde. Genstart serveren med %{config} indstilling tilvalgt.",
+        "transcodingEnabled": "Navidrome kører i øjeblikket med %{config}, hvilket gør det muligt at køre system kommandoer fra web platformen. Vi anbefaler at slå det fra af sikkerhedsgrunde og kun slå det til ved indstilling af omkodning.",
+        "songsAddedToPlaylist": "Tilføjede 1 sang til afspilningsliste |||| Tilføjede %{smart_count} sange til afspilningsliste",
         "noPlaylistsAvailable": "Ingen tilgængelige",
-        "delete_user_title": "Slet bruger '%(name)'",
+        "delete_user_title": "Slet bruger '%{name}'",
         "delete_user_content": "Er du sikker på at du vil slette denne bruger og tilhørende data (inklusive afspilningslister og indstillinger)?"
     },
     "menu": {
@@ -274,7 +274,7 @@
         "destroyText": "Fjern",
         "downloadText": "Hent",
         "removeAudioListsText": "Slet afspillingsliste",
-        "clickToDeleteText": "Tryk for at slette %(name)",
+        "clickToDeleteText": "Tryk for at slette %{name}",
         "emptyLyricText": "Ingen sangtekst",
         "playModeText": {
             "order": "I rækkefølge",
