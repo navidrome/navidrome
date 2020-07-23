@@ -227,6 +227,11 @@ func (s *TagScanner2) processChangedDir(ctx context.Context, dir string) error {
 		return nil
 	}
 
+	orphanTracks := map[string]model.MediaFile{}
+	for k, v := range currentTracks {
+		orphanTracks[k] = v
+	}
+
 	// If track from folder is newer than the one in DB, select for update/insert in DB
 	log.Trace(ctx, "Processing changed folder", "dir", dir, "tracksInDB", len(currentTracks), "tracksInFolder", len(files))
 	var filesToUpdate []string
@@ -244,23 +249,23 @@ func (s *TagScanner2) processChangedDir(ctx context.Context, dir string) error {
 		// Force a refresh of the album and artist, to cater for cover art files
 		buffer.accumulate(c)
 
-		// Remove it from currentTracks (the ones found in DB). After this loop any currentTracks remaining
+		// Only leaves in orphanTracks the ones not found in the folder. After this loop any remaining orphanTracks
 		// are considered gone from the music folder and will be deleted from DB
-		delete(currentTracks, filePath)
+		delete(orphanTracks, filePath)
 	}
 
 	numUpdatedTracks := 0
 	numPurgedTracks := 0
 
 	if len(filesToUpdate) > 0 {
-		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, dir, filesToUpdate, buffer)
+		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, dir, currentTracks, filesToUpdate, buffer)
 		if err != nil {
 			return err
 		}
 	}
 
-	if len(currentTracks) > 0 {
-		numPurgedTracks, err = s.deleteOrphanSongs(ctx, dir, currentTracks, buffer)
+	if len(orphanTracks) > 0 {
+		numPurgedTracks, err = s.deleteOrphanSongs(ctx, dir, orphanTracks, buffer)
 		if err != nil {
 			return err
 		}
@@ -288,7 +293,7 @@ func (s *TagScanner2) deleteOrphanSongs(ctx context.Context, dir string, tracksT
 	return numPurgedTracks, nil
 }
 
-func (s *TagScanner2) addOrUpdateTracksInDB(ctx context.Context, dir string, filesToUpdate []string, buffer *refreshBuffer) (int, error) {
+func (s *TagScanner2) addOrUpdateTracksInDB(ctx context.Context, dir string, currentTracks map[string]model.MediaFile, filesToUpdate []string, buffer *refreshBuffer) (int, error) {
 	numUpdatedTracks := 0
 
 	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
@@ -305,6 +310,10 @@ func (s *TagScanner2) addOrUpdateTracksInDB(ctx context.Context, dir string, fil
 		log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "files", chunk, "numFiles", len(chunk))
 		for i := range newTracks {
 			n := newTracks[i]
+			// Keep current annotations if the track is in the DB
+			if t, ok := currentTracks[n.Path]; ok {
+				n.Annotations = t.Annotations
+			}
 			err := s.ds.MediaFile(ctx).Put(&n)
 			if err != nil {
 				return 0, err
