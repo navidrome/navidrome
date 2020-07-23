@@ -10,9 +10,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/resources"
+	"github.com/deluan/navidrome/utils"
 	"github.com/deluan/rest"
 )
 
@@ -28,7 +30,10 @@ var (
 )
 
 func newTranslationRepository(context.Context) rest.Repository {
-	dir := resources.AssetFile()
+	dir := utils.NewMergeFS(
+		resources.AssetFile(),
+		http.Dir(filepath.Join(conf.Server.DataFolder, "resources")),
+	)
 	if err := loadTranslations(dir); err != nil {
 		log.Error("Error loading translation files", err)
 	}
