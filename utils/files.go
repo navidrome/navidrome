@@ -23,6 +23,6 @@ func IsImageFile(filePath string) bool {
 }
 
 func IsPlaylist(filePath string) bool {
-	extension := filepath.Ext(filePath)
-	return strings.ToLower(extension) == ".m3u"
+	extension := strings.ToLower(filepath.Ext(filePath))
+	return extension == ".m3u" || extension == ".m3u8"
 }
