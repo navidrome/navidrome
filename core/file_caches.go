@@ -5,39 +5,64 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"time"
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/utils"
 	"github.com/djherbis/fscache"
 	"github.com/dustin/go-humanize"
 )
 
 type ReadFunc func(ctx context.Context, arg fmt.Stringer) (io.Reader, error)
 
-func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) (*FileCache, error) {
-	cache, err := newFSCache(name, cacheSize, cacheFolder, maxItems)
-	if err != nil {
-		return nil, err
+type FileCache interface {
+	Get(ctx context.Context, arg fmt.Stringer) (*CachedStream, error)
+	Ready() bool
+}
+
+func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) *fileCache {
+	fc := &fileCache{
+		name:        name,
+		cacheSize:   cacheSize,
+		cacheFolder: cacheFolder,
+		maxItems:    maxItems,
+		getReader:   getReader,
+		ready:       utils.AtomicBool{},
 	}
-	return &FileCache{
-		name:      name,
-		disabled:  cache == nil,
-		cache:     cache,
-		getReader: getReader,
-	}, nil
+
+	go func() {
+		cache, err := newFSCache(fc.name, fc.cacheSize, fc.cacheFolder, fc.maxItems)
+		if err == nil {
+			fc.cache = cache
+			fc.disabled = cache == nil
+		}
+		fc.ready.Set(true)
+	}()
+
+	return fc
 }
 
-type FileCache struct {
-	disabled  bool
-	name      string
-	cache     fscache.Cache
-	getReader ReadFunc
+type fileCache struct {
+	name        string
+	cacheSize   string
+	cacheFolder string
+	maxItems    int
+	cache       fscache.Cache
+	getReader   ReadFunc
+	disabled    bool
+	ready       utils.AtomicBool
 }
 
-func (fc *FileCache) Get(ctx context.Context, arg fmt.Stringer) (*CachedStream, error) {
+func (fc *fileCache) Get(ctx context.Context, arg fmt.Stringer) (*CachedStream, error) {
+	if !fc.Ready() {
+		log.Debug(ctx, "Cache not initialized yet", "cache", fc.name)
+	}
 	if fc.disabled {
 		log.Debug(ctx, "Cache disabled", "cache", fc.name)
+	}
+	if fc.disabled || !fc.Ready() {
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
 			return nil, err
@@ -79,6 +104,10 @@ func (fc *FileCache) Get(ctx context.Context, arg fmt.Stringer) (*CachedStream, 
 
 	// All other cases, just return a Reader, without Seek capabilities
 	return &CachedStream{Reader: r}, nil
+}
+
+func (fc *fileCache) Ready() bool {
+	return fc.ready.Get()
 }
 
 type CachedStream struct {
@@ -125,20 +154,29 @@ func copyAndClose(ctx context.Context, w io.WriteCloser, r io.Reader) {
 func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cache, error) {
 	size, err := humanize.ParseBytes(cacheSize)
 	if err != nil {
-		log.Error("Invalid cache size. Using default size", "cache", name, "size", cacheSize, "defaultSize", consts.DefaultCacheSize)
+		log.Error("Invalid cache size. Using default size", "cache", name, "size", cacheSize,
+			"defaultSize", humanize.Bytes(consts.DefaultCacheSize))
 		size = consts.DefaultCacheSize
 	}
 	if size == 0 {
 		log.Warn(fmt.Sprintf("%s cache disabled", name))
 		return nil, nil
 	}
+
+	start := time.Now()
 	lru := fscache.NewLRUHaunter(maxItems, int64(size), consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
 	cacheFolder = filepath.Join(conf.Server.DataFolder, cacheFolder)
+
 	log.Info(fmt.Sprintf("Creating %s cache", name), "path", cacheFolder, "maxSize", humanize.Bytes(size))
 	fs, err := fscache.NewFs(cacheFolder, 0755)
 	if err != nil {
-		return nil, err
+		log.Error(fmt.Sprintf("Error initializing %s cache", name), err, "elapsedTime", time.Since(start))
+		if err != nil {
+			return nil, err
+		}
 	}
+	log.Debug(fmt.Sprintf("%s cache initialized", name), "elapsedTime", time.Since(start))
+
 	return fscache.NewCacheWithHaunter(fs, h)
 }
