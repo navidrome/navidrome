@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("MergeFS", func() {
+var _ = Describe("mergeFS", func() {
 	var baseName, overlayName string
 	var baseDir, overlayDir, mergedDir http.FileSystem
 

@@ -8,19 +8,23 @@ import (
 	"sort"
 )
 
-type MergeFS struct {
-	base    http.FileSystem
-	overlay http.FileSystem
-}
-
+// NewMergeFS returns a simple implementation of a merged FS (http.FileSystem), that can combine a base FS with a
+// overlay FS. The semantics are:
+// - Files from the overlay FS will override file s with the same name in the base FS
+// - Directories are combined, with priority for the overlay FS over the base FS for files with matching names
 func NewMergeFS(base, overlay http.FileSystem) http.FileSystem {
-	return &MergeFS{
+	return &mergeFS{
 		base:    base,
 		overlay: overlay,
 	}
 }
 
-func (m MergeFS) Open(name string) (http.File, error) {
+type mergeFS struct {
+	base    http.FileSystem
+	overlay http.FileSystem
+}
+
+func (m mergeFS) Open(name string) (http.File, error) {
 	f, err := m.overlay.Open(name)
 	if err != nil {
 		return m.base.Open(name)
@@ -44,7 +48,7 @@ func (m MergeFS) Open(name string) (http.File, error) {
 	return m.mergeDirs(name, info, baseDir, f)
 }
 
-func (m MergeFS) mergeDirs(name string, info os.FileInfo, baseDir http.File, overlayDir http.File) (http.File, error) {
+func (m mergeFS) mergeDirs(name string, info os.FileInfo, baseDir http.File, overlayDir http.File) (http.File, error) {
 	merged := map[string]os.FileInfo{}
 
 	baseFiles, err := baseDir.Readdir(-1)
@@ -104,5 +108,9 @@ func (d mergedDir) Read(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("cannot Read from directory %s", d.name)
 }
 func (d mergedDir) Seek(offset int64, whence int) (int64, error) {
+	if offset == 0 && whence == io.SeekStart {
+		d.pos = 0
+		return 0, nil
+	}
 	return 0, fmt.Errorf("unsupported Seek in directory %s", d.name)
 }
