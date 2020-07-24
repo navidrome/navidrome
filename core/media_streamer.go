@@ -88,11 +88,12 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 		log.Error(ctx, "Error accessing transcoding cache", "id", mf.ID, err)
 		return nil, err
 	}
+	cached = r.Cached
 
 	log.Debug(ctx, "Streaming TRANSCODED file", "id", mf.ID, "path", mf.Path,
 		"requestBitrate", reqBitRate, "requestFormat", reqFormat,
 		"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
-		"selectedBitrate", bitRate, "selectedFormat", format, "cached", r.Cached)
+		"selectedBitrate", bitRate, "selectedFormat", format, "cached", cached)
 
 	s.Reader = r
 	s.Closer = r
