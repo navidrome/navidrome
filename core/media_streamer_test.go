@@ -3,8 +3,11 @@ package core
 import (
 	"context"
 	"io"
+	"io/ioutil"
+	"os"
 	"strings"
 
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
@@ -18,11 +21,19 @@ var _ = Describe("MediaStreamer", func() {
 	var ds model.DataStore
 	ffmpeg := &fakeFFmpeg{Data: "fake data"}
 	ctx := log.NewContext(context.TODO())
+	log.SetLevel(log.LevelTrace)
 
 	BeforeEach(func() {
+		conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
+		conf.Server.TranscodingCacheSize = "100MB"
 		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}
 		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(`[{"id": "123", "path": "tests/fixtures/test.mp3", "suffix": "mp3", "bitRate": 128, "duration": 257.0}]`)
+		testCache, _ := NewTranscodingCache()
 		streamer = NewMediaStreamer(ds, ffmpeg, testCache)
+	})
+
+	AfterEach(func() {
+		os.RemoveAll(conf.Server.DataFolder)
 	})
 
 	Context("NewStream", func() {
@@ -48,8 +59,11 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(s.Duration()).To(Equal(float32(257.0)))
 		})
 		It("returns a seekable stream if the file is complete in the cache", func() {
+			s, err := streamer.NewStream(ctx, "123", "mp3", 32)
+			Expect(err).To(BeNil())
 			Eventually(func() bool { return ffmpeg.closed }, "3s").Should(BeTrue())
-			s, err := streamer.NewStream(ctx, "123", "mp3", 64)
+
+			s, err = streamer.NewStream(ctx, "123", "mp3", 32)
 			Expect(err).To(BeNil())
 			Expect(s.Seekable()).To(BeTrue())
 		})

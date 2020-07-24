@@ -202,5 +202,5 @@ func readFromFile(path string) ([]byte, error) {
 }
 
 func NewImageCache() (ImageCache, error) {
-	return newFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems)
+	return newFSCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems)
 }
