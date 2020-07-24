@@ -21,10 +21,10 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 		c, err := ds.User(r.Context()).CountAll()
 		firstTime := c == 0 && err == nil
 
-		t := getIndexTemplate(r, fs)
-
+		t, err := getIndexTemplate(r, fs)
 		if err != nil {
-			log.Error("Error loading default English translation file", err)
+			http.NotFound(w, r)
+			return
 		}
 		appConfig := map[string]interface{}{
 			"version":                 consts.Version(),
@@ -54,19 +54,22 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 	}
 }
 
-func getIndexTemplate(r *http.Request, fs http.FileSystem) *template.Template {
+func getIndexTemplate(r *http.Request, fs http.FileSystem) (*template.Template, error) {
 	t := template.New("initial state")
 	indexHtml, err := fs.Open("index.html")
 	if err != nil {
 		log.Error(r, "Could not find `index.html` template", err)
+		return nil, err
 	}
 	indexStr, err := ioutil.ReadAll(indexHtml)
 	if err != nil {
 		log.Error(r, "Could not read from `index.html`", err)
+		return nil, err
 	}
 	t, err = t.Parse(string(indexStr))
 	if err != nil {
 		log.Error(r, "Error parsing `index.html`", err)
+		return nil, err
 	}
-	return t
+	return t, nil
 }
