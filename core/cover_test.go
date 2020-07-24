@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"image"
+	"io/ioutil"
+	"os"
 
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/persistence"
@@ -25,7 +28,14 @@ var _ = Describe("Cover", func() {
 
 	Context("Cache is configured", func() {
 		BeforeEach(func() {
-			cover = NewCover(ds, testCache)
+			conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
+			conf.Server.ImageCacheSize = "100MB"
+			cache, _ := NewImageCache()
+			cover = NewCover(ds, cache)
+		})
+
+		AfterEach(func() {
+			os.RemoveAll(conf.Server.DataFolder)
 		})
 
 		It("retrieves the external cover art for an album", func() {
@@ -116,21 +126,6 @@ var _ = Describe("Cover", func() {
 
 				Expect(cover.Get(ctx, "123", 0, buf)).To(MatchError("Error!"))
 			})
-		})
-	})
-	Context("Cache is NOT configured", func() {
-		BeforeEach(func() {
-			cover = NewCover(ds, nil)
-		})
-
-		It("retrieves the original cover art from an album", func() {
-			buf := new(bytes.Buffer)
-
-			Expect(cover.Get(ctx, "al-222", 0, buf)).To(BeNil())
-
-			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
-			Expect(err).To(BeNil())
-			Expect(format).To(Equal("jpeg"))
 		})
 	})
 })

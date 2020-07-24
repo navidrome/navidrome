@@ -123,13 +123,14 @@ func copyAndClose(ctx context.Context, w io.WriteCloser, r io.Reader) {
 }
 
 func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cache, error) {
-	if cacheSize == "0" {
-		log.Warn(fmt.Sprintf("%s cache disabled", name))
-		return nil, nil
-	}
 	size, err := humanize.ParseBytes(cacheSize)
 	if err != nil {
+		log.Error("Invalid cache size. Using default size", "cache", name, "size", cacheSize, "defaultSize", consts.DefaultCacheSize)
 		size = consts.DefaultCacheSize
+	}
+	if size == 0 {
+		log.Warn(fmt.Sprintf("%s cache disabled", name))
+		return nil, nil
 	}
 	lru := fscache.NewLRUHaunter(maxItems, int64(size), consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)

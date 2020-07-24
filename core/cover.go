@@ -22,22 +22,30 @@ import (
 	"github.com/deluan/navidrome/utils"
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
-	"github.com/djherbis/fscache"
 )
 
 type Cover interface {
 	Get(ctx context.Context, id string, size int, out io.Writer) error
 }
 
-type ImageCache fscache.Cache
-
-func NewCover(ds model.DataStore, cache ImageCache) Cover {
+func NewCover(ds model.DataStore, cache *FileCache) Cover {
 	return &cover{ds: ds, cache: cache}
 }
 
 type cover struct {
 	ds    model.DataStore
-	cache fscache.Cache
+	cache *FileCache
+}
+
+type coverInfo struct {
+	c          *cover
+	path       string
+	size       int
+	lastUpdate time.Time
+}
+
+func (ci *coverInfo) String() string {
+	return fmt.Sprintf("%s.%d.%s.%d", ci.path, ci.size, ci.lastUpdate.Format(time.RFC3339Nano), conf.Server.CoverJpegQuality)
 }
 
 func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) error {
@@ -46,40 +54,17 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 		return err
 	}
 
-	// If cache is disabled, just read the coverart directly from file
-	if c.cache == nil {
-		log.Trace(ctx, "Retrieving cover art from file", "path", path, "size", size, err)
-		reader, err := c.getCover(ctx, path, size)
-		if err != nil {
-			log.Error(ctx, "Error loading cover art", "path", path, "size", size, err)
-		} else {
-			_, err = io.Copy(out, reader)
-		}
-		return err
+	info := &coverInfo{
+		c:          c,
+		path:       path,
+		size:       size,
+		lastUpdate: lastUpdate,
 	}
 
-	cacheKey := imageCacheKey(path, size, lastUpdate)
-	r, w, err := c.cache.Get(cacheKey)
+	r, err := c.cache.Get(ctx, info)
 	if err != nil {
-		log.Error(ctx, "Error reading from image cache", "path", path, "size", size, err)
+		log.Error(ctx, "Error accessing image cache", "path", path, "size", size, err)
 		return err
-	}
-	defer r.Close()
-	if w != nil {
-		log.Trace(ctx, "Image cache miss", "path", path, "size", size, "lastUpdate", lastUpdate)
-		go func() {
-			defer w.Close()
-			reader, err := c.getCover(ctx, path, size)
-			if err != nil {
-				log.Error(ctx, "Error loading cover art", "path", path, "size", size, err)
-				return
-			}
-			if _, err := io.Copy(w, reader); err != nil {
-				log.Error(ctx, "Error saving covert art to cache", "path", path, "size", size, err)
-			}
-		}()
-	} else {
-		log.Trace(ctx, "Loading image from cache", "path", path, "size", size, "lastUpdate", lastUpdate)
 	}
 
 	_, err = io.Copy(out, r)
@@ -116,10 +101,6 @@ func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastU
 	// if the mediafile does not have a coverArt, fallback to the album cover
 	log.Trace(ctx, "Media file does not contain art. Falling back to album art", "id", id, "albumId", "al-"+mf.AlbumID)
 	return c.getCoverPath(ctx, "al-"+mf.AlbumID)
-}
-
-func imageCacheKey(path string, size int, lastUpdate time.Time) string {
-	return fmt.Sprintf("%s.%d.%s.%d", path, size, lastUpdate.Format(time.RFC3339Nano), conf.Server.CoverJpegQuality)
 }
 
 func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.Reader, err error) {
@@ -201,6 +182,15 @@ func readFromFile(path string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func NewImageCache() (ImageCache, error) {
-	return newFSCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems)
+func NewImageCache() (*FileCache, error) {
+	return NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
+		func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {
+			info := arg.(*coverInfo)
+			reader, err := info.c.getCover(ctx, info.path, info.size)
+			if err != nil {
+				log.Error(ctx, "Error loading cover art", "path", info.path, "size", info.size, err)
+				return nil, err
+			}
+			return reader, nil
+		})
 }

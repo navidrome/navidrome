@@ -21,7 +21,6 @@ var _ = Describe("MediaStreamer", func() {
 	var ds model.DataStore
 	ffmpeg := &fakeFFmpeg{Data: "fake data"}
 	ctx := log.NewContext(context.TODO())
-	log.SetLevel(log.LevelTrace)
 
 	BeforeEach(func() {
 		conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
@@ -61,6 +60,8 @@ var _ = Describe("MediaStreamer", func() {
 		It("returns a seekable stream if the file is complete in the cache", func() {
 			s, err := streamer.NewStream(ctx, "123", "mp3", 32)
 			Expect(err).To(BeNil())
+			_, _ = ioutil.ReadAll(s)
+			_ = s.Close()
 			Eventually(func() bool { return ffmpeg.closed }, "3s").Should(BeTrue())
 
 			s, err = streamer.NewStream(ctx, "123", "mp3", 32)

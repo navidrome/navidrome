@@ -83,7 +83,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 	}
 	r, err := ms.cache.Get(ctx, job)
 	if err != nil {
-		log.Error(ctx, "Error accessing cache", "id", mf.ID, err)
+		log.Error(ctx, "Error accessing transcoding cache", "id", mf.ID, err)
 		return nil, err
 	}
 
