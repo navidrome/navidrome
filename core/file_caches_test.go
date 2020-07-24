@@ -60,6 +60,7 @@ var _ = Describe("File Caches", func() {
 			// First call is a MISS
 			s, err := fc.Get(context.TODO(), &testArg{"test"})
 			Expect(err).To(BeNil())
+			Expect(s.Cached).To(BeFalse())
 			Expect(ioutil.ReadAll(s)).To(Equal([]byte("test")))
 
 			// Second call is a HIT
@@ -67,6 +68,7 @@ var _ = Describe("File Caches", func() {
 			s, err = fc.Get(context.TODO(), &testArg{"test"})
 			Expect(err).To(BeNil())
 			Expect(ioutil.ReadAll(s)).To(Equal([]byte("test")))
+			Expect(s.Cached).To(BeTrue())
 			Expect(called).To(BeFalse())
 		})
 
@@ -79,6 +81,7 @@ var _ = Describe("File Caches", func() {
 			// First call is a MISS
 			s, err := fc.Get(context.TODO(), &testArg{"test"})
 			Expect(err).To(BeNil())
+			Expect(s.Cached).To(BeFalse())
 			Expect(ioutil.ReadAll(s)).To(Equal([]byte("test")))
 
 			// Second call is also a MISS
@@ -86,6 +89,7 @@ var _ = Describe("File Caches", func() {
 			s, err = fc.Get(context.TODO(), &testArg{"test"})
 			Expect(err).To(BeNil())
 			Expect(ioutil.ReadAll(s)).To(Equal([]byte("test")))
+			Expect(s.Cached).To(BeFalse())
 			Expect(called).To(BeTrue())
 		})
 	})

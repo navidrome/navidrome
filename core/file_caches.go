@@ -105,7 +105,7 @@ func (fc *fileCache) Get(ctx context.Context, arg fmt.Stringer) (*CachedStream, 
 	}
 
 	// All other cases, just return a Reader, without Seek capabilities
-	return &CachedStream{Reader: r, Cached: true}, nil
+	return &CachedStream{Reader: r, Cached: cached}, nil
 }
 
 func (fc *fileCache) Ready() bool {
