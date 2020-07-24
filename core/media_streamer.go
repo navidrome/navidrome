@@ -20,14 +20,16 @@ type MediaStreamer interface {
 	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int) (*Stream, error)
 }
 
-func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache *FileCache) MediaStreamer {
+type TranscodingCache FileCache
+
+func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache TranscodingCache) MediaStreamer {
 	return &mediaStreamer{ds: ds, ffm: ffm, cache: cache}
 }
 
 type mediaStreamer struct {
 	ds    model.DataStore
 	ffm   transcoder.Transcoder
-	cache *FileCache
+	cache FileCache
 }
 
 type streamJob struct {
@@ -90,7 +92,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 	log.Debug(ctx, "Streaming TRANSCODED file", "id", mf.ID, "path", mf.Path,
 		"requestBitrate", reqBitRate, "requestFormat", reqFormat,
 		"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
-		"selectedBitrate", bitRate, "selectedFormat", format)
+		"selectedBitrate", bitRate, "selectedFormat", format, "cached", r.Cached)
 
 	s.Reader = r
 	s.Closer = r
@@ -166,7 +168,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 	return
 }
 
-func NewTranscodingCache() (*FileCache, error) {
+func NewTranscodingCache() TranscodingCache {
 	return NewFileCache("Transcoding", conf.Server.TranscodingCacheSize,
 		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
 		func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {

@@ -30,7 +30,8 @@ var _ = Describe("Cover", func() {
 		BeforeEach(func() {
 			conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
 			conf.Server.ImageCacheSize = "100MB"
-			cache, _ := NewImageCache()
+			cache := NewImageCache()
+			Eventually(func() bool { return cache.Ready() }).Should(BeTrue())
 			cover = NewCover(ds, cache)
 		})
 

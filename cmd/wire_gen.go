@@ -41,11 +41,8 @@ func CreateAppRouter() *app.Router {
 func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
 	dataStore := persistence.New()
 	browser := engine.NewBrowser(dataStore)
-	imageCache, err := core.NewImageCache()
-	if err != nil {
-		return nil, err
-	}
-	cover := core.NewCover(dataStore, imageCache)
+	coverCache := core.NewImageCache()
+	cover := core.NewCover(dataStore, coverCache)
 	nowPlayingRepository := engine.NewNowPlayingRepository()
 	listGenerator := engine.NewListGenerator(dataStore, nowPlayingRepository)
 	users := engine.NewUsers(dataStore)
@@ -54,10 +51,7 @@ func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
 	scrobbler := engine.NewScrobbler(dataStore, nowPlayingRepository)
 	search := engine.NewSearch(dataStore)
 	transcoderTranscoder := transcoder.New()
-	transcodingCache, err := core.NewTranscodingCache()
-	if err != nil {
-		return nil, err
-	}
+	transcodingCache := core.NewTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
 	players := engine.NewPlayers(dataStore)
 	router := subsonic.New(browser, cover, listGenerator, users, playlists, ratings, scrobbler, search, mediaStreamer, players)

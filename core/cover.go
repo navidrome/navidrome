@@ -28,13 +28,15 @@ type Cover interface {
 	Get(ctx context.Context, id string, size int, out io.Writer) error
 }
 
-func NewCover(ds model.DataStore, cache *FileCache) Cover {
+type CoverCache FileCache
+
+func NewCover(ds model.DataStore, cache CoverCache) Cover {
 	return &cover{ds: ds, cache: cache}
 }
 
 type cover struct {
 	ds    model.DataStore
-	cache *FileCache
+	cache FileCache
 }
 
 type coverInfo struct {
@@ -182,7 +184,7 @@ func readFromFile(path string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func NewImageCache() (*FileCache, error) {
+func NewImageCache() CoverCache {
 	return NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
 		func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {
 			info := arg.(*coverInfo)
