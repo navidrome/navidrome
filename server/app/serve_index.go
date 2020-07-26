@@ -43,9 +43,13 @@ func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 		}
 
 		log.Debug("UI configuration", "appConfig", appConfig)
+		version := consts.Version()
+		if version != "dev" {
+			version = "v" + version
+		}
 		data := map[string]interface{}{
 			"AppConfig": string(j),
-			"Version":   consts.Version(),
+			"Version":   version,
 		}
 		err = t.Execute(w, data)
 		if err != nil {
