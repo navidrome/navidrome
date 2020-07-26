@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/utils"
 	"github.com/djherbis/fscache"
 	"github.com/dustin/go-humanize"
 )
@@ -29,17 +29,21 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 		cacheFolder: cacheFolder,
 		maxItems:    maxItems,
 		getReader:   getReader,
-		disabled:    utils.AtomicBool{},
-		ready:       utils.AtomicBool{},
+		mutex:       &sync.RWMutex{},
 	}
 
 	go func() {
 		cache, err := newFSCache(fc.name, fc.cacheSize, fc.cacheFolder, fc.maxItems)
+		fc.mutex.Lock()
+		defer fc.mutex.Unlock()
 		if err == nil {
 			fc.cache = cache
-			fc.disabled.Set(cache == nil)
+			fc.disabled = cache == nil
 		}
-		fc.ready.Set(true)
+		fc.ready = true
+		if fc.disabled {
+			log.Debug("Cache disabled", "cache", fc.name, "size", fc.cacheSize)
+		}
 	}()
 
 	return fc
@@ -52,18 +56,30 @@ type fileCache struct {
 	maxItems    int
 	cache       fscache.Cache
 	getReader   ReadFunc
-	disabled    utils.AtomicBool
-	ready       utils.AtomicBool
+	disabled    bool
+	ready       bool
+	mutex       *sync.RWMutex
+}
+
+func (fc *fileCache) Ready() bool {
+	fc.mutex.RLock()
+	defer fc.mutex.RUnlock()
+	return fc.ready
+}
+
+func (fc *fileCache) available(ctx context.Context) bool {
+	fc.mutex.RLock()
+	defer fc.mutex.RUnlock()
+
+	if !fc.ready {
+		log.Debug(ctx, "Cache not initialized yet", "cache", fc.name)
+	}
+
+	return fc.ready && !fc.disabled
 }
 
 func (fc *fileCache) Get(ctx context.Context, arg fmt.Stringer) (*CachedStream, error) {
-	if !fc.Ready() {
-		log.Debug(ctx, "Cache not initialized yet", "cache", fc.name)
-	}
-	if fc.disabled.Get() {
-		log.Debug(ctx, "Cache disabled", "cache", fc.name)
-	}
-	if fc.disabled.Get() || !fc.Ready() {
+	if !fc.available(ctx) {
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
 			return nil, err
@@ -106,10 +122,6 @@ func (fc *fileCache) Get(ctx context.Context, arg fmt.Stringer) (*CachedStream, 
 
 	// All other cases, just return a Reader, without Seek capabilities
 	return &CachedStream{Reader: r, Cached: cached}, nil
-}
-
-func (fc *fileCache) Ready() bool {
-	return fc.ready.Get()
 }
 
 type CachedStream struct {

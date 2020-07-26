@@ -70,8 +70,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 		if err != nil {
 			return nil, err
 		}
-		s.Reader = f
-		s.Closer = f
+		s.ReadCloser = f
 		s.Seeker = f
 		s.format = mf.Suffix
 		return s, nil
@@ -93,10 +92,9 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 	log.Debug(ctx, "Streaming TRANSCODED file", "id", mf.ID, "path", mf.Path,
 		"requestBitrate", reqBitRate, "requestFormat", reqFormat,
 		"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
-		"selectedBitrate", bitRate, "selectedFormat", format, "cached", cached)
+		"selectedBitrate", bitRate, "selectedFormat", format, "cached", cached, "seekable", s.Seekable())
 
-	s.Reader = r
-	s.Closer = r
+	s.ReadCloser = r
 	if r.Seekable() {
 		s.Seeker = r
 	}
@@ -109,8 +107,7 @@ type Stream struct {
 	mf      *model.MediaFile
 	bitRate int
 	format  string
-	io.Reader
-	io.Closer
+	io.ReadCloser
 	io.Seeker
 }
 

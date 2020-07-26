@@ -40,13 +40,13 @@ var _ = Describe("File Caches", func() {
 		It("creates the cache folder with invalid size", func() {
 			fc := callNewFileCache("test", "abc", "test", 0, nil)
 			Expect(fc.cache).ToNot(BeNil())
-			Expect(fc.disabled.Get()).To(BeFalse())
+			Expect(fc.disabled).To(BeFalse())
 		})
 
 		It("returns empty if cache size is '0'", func() {
 			fc := callNewFileCache("test", "0", "test", 0, nil)
 			Expect(fc.cache).To(BeNil())
-			Expect(fc.disabled.Get()).To(BeTrue())
+			Expect(fc.disabled).To(BeTrue())
 		})
 	})
 
