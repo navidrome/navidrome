@@ -40,7 +40,6 @@ type configOptions struct {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
 	DevAutoCreateAdminPassword string
-	DevOldScanner              bool
 }
 
 var Server = &configOptions{}

@@ -1,7 +1,6 @@
 package scanner
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/deluan/navidrome/log"
@@ -15,8 +14,4 @@ func TestScanner(t *testing.T) {
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Scanner Suite")
-}
-
-func P(path string) string {
-	return filepath.FromSlash(path)
 }

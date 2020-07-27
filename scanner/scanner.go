@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 )
@@ -87,10 +86,7 @@ func (s *Scanner) loadFolders() {
 }
 
 func (s *Scanner) newScanner(f model.MediaFolder) FolderScanner {
-	if conf.Server.DevOldScanner {
-		return NewTagScanner(f.Path, s.ds)
-	}
-	return NewTagScanner2(f.Path, s.ds)
+	return NewTagScanner(f.Path, s.ds)
 }
 
 type Status int
