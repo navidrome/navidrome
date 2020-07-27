@@ -50,7 +50,7 @@ func (s *TagScanner2) Scan(ctx context.Context, lastModifiedSince time.Time) err
 	ctx = s.withAdminUser(ctx)
 
 	start := time.Now()
-	allDirs, err := s.getDirTree(ctx)
+	allFSDirs, err := s.getDirTree(ctx)
 	if err != nil {
 		return err
 	}
@@ -60,8 +60,8 @@ func (s *TagScanner2) Scan(ctx context.Context, lastModifiedSince time.Time) err
 		return err
 	}
 
-	changedDirs := s.getChangedDirs(ctx, allDirs, allDBDirs, lastModifiedSince)
-	deletedDirs := s.getDeletedDirs(ctx, allDirs, allDBDirs)
+	changedDirs := s.getChangedDirs(ctx, allFSDirs, allDBDirs, lastModifiedSince)
+	deletedDirs := s.getDeletedDirs(ctx, allFSDirs, allDBDirs)
 
 	if len(changedDirs)+len(deletedDirs) == 0 {
 		log.Debug(ctx, "No changes found in Music Folder", "folder", s.rootFolder)
@@ -94,7 +94,7 @@ func (s *TagScanner2) Scan(ctx context.Context, lastModifiedSince time.Time) err
 	u, _ := request.UserFrom(ctx)
 	plsCount := 0
 	for _, dir := range changedDirs {
-		info := allDirs[dir]
+		info := allFSDirs[dir]
 		if info.hasPlaylist {
 			if !u.IsAdmin {
 				log.Warn("Playlists will not be imported, as there are no admin users yet, "+
@@ -141,18 +141,14 @@ func (s *TagScanner2) getDBDirTree(ctx context.Context) (map[string]struct{}, er
 	return resp, nil
 }
 
-func (s *TagScanner2) getChangedDirs(ctx context.Context, dirs dirMap, dbDirs map[string]struct{}, lastModified time.Time) []string {
+func (s *TagScanner2) getChangedDirs(ctx context.Context, fsDirs dirMap, dbDirs map[string]struct{}, lastModified time.Time) []string {
 	start := time.Now()
 	log.Trace(ctx, "Checking for changed folders")
 	var changed []string
 
-	for d, info := range dirs {
+	for d, info := range fsDirs {
 		_, inDB := dbDirs[d]
-		if !inDB && (info.hasAudioFiles) {
-			changed = append(changed, d)
-			continue
-		}
-		if info.modTime.After(lastModified) {
+		if (!inDB && (info.hasAudioFiles)) || info.modTime.After(lastModified) {
 			changed = append(changed, d)
 		}
 	}
@@ -162,13 +158,13 @@ func (s *TagScanner2) getChangedDirs(ctx context.Context, dirs dirMap, dbDirs ma
 	return changed
 }
 
-func (s *TagScanner2) getDeletedDirs(ctx context.Context, allDirs dirMap, dbDirs map[string]struct{}) []string {
+func (s *TagScanner2) getDeletedDirs(ctx context.Context, fsDirs dirMap, dbDirs map[string]struct{}) []string {
 	start := time.Now()
 	log.Trace(ctx, "Checking for deleted folders")
 	var deleted []string
 
 	for d := range dbDirs {
-		if _, ok := allDirs[d]; !ok {
+		if _, ok := fsDirs[d]; !ok {
 			deleted = append(deleted, d)
 		}
 	}

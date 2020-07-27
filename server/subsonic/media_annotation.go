@@ -59,7 +59,7 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 	ids = append(ids, albumIds...)
 	ids = append(ids, artistIds...)
 
-	err := c.star(r.Context(), true, ids...)
+	err := c.setStar(r.Context(), true, ids...)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 	return NewResponse(), nil
 }
 
-func (c *MediaAnnotationController) star(ctx context.Context, starred bool, ids ...string) error {
+func (c *MediaAnnotationController) setStar(ctx context.Context, starred bool, ids ...string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -94,7 +94,7 @@ func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Reques
 	ids = append(ids, albumIds...)
 	ids = append(ids, artistIds...)
 
-	err := c.star(r.Context(), false, ids...)
+	err := c.setStar(r.Context(), false, ids...)
 	if err != nil {
 		return nil, err
 	}
