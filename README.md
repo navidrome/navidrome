@@ -32,7 +32,7 @@ See instructions in the [project's website](https://www.navidrome.org/docs/insta
  - Handles very **large music collections**
  - Streams virtually **any audio format** available
  - Reads and uses all your beautifully curated **metadata**
- - Great support for **Box Sets** (multi-disc albums)
+ - Great support for **compilations** (Various Artists albums) and **box sets** (multi-disc albums)
  - **Multi-user**, each user has their own play counts, playlists, favourites, etc...
  - Very **low resource usage**
  - **Multi-platform**, runs on macOS, Linux and Windows. **Docker** images are also provided
