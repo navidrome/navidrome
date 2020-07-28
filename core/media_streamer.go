@@ -40,7 +40,7 @@ type streamJob struct {
 }
 
 func (j *streamJob) String() string {
-	return fmt.Sprintf("%s.%d.%s", j.mf.ID, j.bitRate, j.format)
+	return fmt.Sprintf("%s.%s.%d.%s", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.format)
 }
 
 func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int) (*Stream, error) {
