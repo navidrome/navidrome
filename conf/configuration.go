@@ -71,8 +71,8 @@ func Load() {
 }
 
 func init() {
-	viper.SetDefault("musicfolder", "./music")
-	viper.SetDefault("datafolder", "./")
+	viper.SetDefault("musicfolder", filepath.Join(".", "music"))
+	viper.SetDefault("datafolder", ".")
 	viper.SetDefault("loglevel", "info")
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)

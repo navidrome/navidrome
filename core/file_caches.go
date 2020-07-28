@@ -26,7 +26,7 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 	fc := &fileCache{
 		name:        name,
 		cacheSize:   cacheSize,
-		cacheFolder: cacheFolder,
+		cacheFolder: filepath.FromSlash(cacheFolder),
 		maxItems:    maxItems,
 		getReader:   getReader,
 		mutex:       &sync.RWMutex{},
