@@ -72,7 +72,7 @@ func artistFilter(field string, value interface{}) Sqlizer {
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.selectAlbum(options...))
+	return r.count(r.selectAlbum(), options...)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
