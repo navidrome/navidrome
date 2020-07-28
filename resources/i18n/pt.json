@@ -45,6 +45,13 @@
                 "playNext": "Tocar em seguida",
                 "addToQueue": "Adicionar à fila",
                 "shuffle": "Aleatório"
+            },
+            "lists": {
+                "default": "Todos",
+                "random": "Aleatório",
+                "recentlyAdded": "Recém-adicionados",
+                "recentlyPlayed": "Recém-tocados",
+                "mostPlayed": "Mais tocados"
             }
         },
         "artist": {
@@ -247,6 +254,7 @@
         "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?"
     },
     "menu": {
+        "albumList": "Álbuns",
         "library": "Biblioteca",
         "settings": "Configurações",
         "version": "Versão %{version}",
