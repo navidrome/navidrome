@@ -60,8 +60,8 @@ const AlbumList = (props) => {
         exporter={false}
         bulkActionButtons={false}
         actions={<AlbumListActions />}
-        sort={{ field: 'created_at', order: 'DESC' }}
         filters={<AlbumFilter />}
+        sort={{ field: 'name', order: 'ASC' }}
         perPage={perPage}
         pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
       >

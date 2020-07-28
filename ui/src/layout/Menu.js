@@ -6,9 +6,14 @@ import { withRouter } from 'react-router-dom'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import SettingsIcon from '@material-ui/icons/Settings'
 import ViewListIcon from '@material-ui/icons/ViewList'
+import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import PersonalMenu from './PersonalMenu'
+import ShuffleIcon from '@material-ui/icons/Shuffle'
+import LibraryAddIcon from '@material-ui/icons/LibraryAdd'
+import VideoLibraryIcon from '@material-ui/icons/VideoLibrary'
+import RepeatIcon from '@material-ui/icons/Repeat'
 
 const translatedResourceName = (resource, translate) =>
   translate(`resources.${resource.name}.name`, {
@@ -22,6 +27,26 @@ const translatedResourceName = (resource, translate) =>
         : inflection.humanize(inflection.pluralize(resource.name)),
   })
 
+const albumLists = [
+  { type: '', icon: AlbumIcon, params: 'sort=name&order=ASC' },
+  { type: 'random', icon: ShuffleIcon, params: 'sort=random' },
+  {
+    type: 'recentlyAdded',
+    icon: LibraryAddIcon,
+    params: 'sort=created_at&order=DESC',
+  },
+  {
+    type: 'recentlyPlayed',
+    icon: VideoLibraryIcon,
+    params: 'sort=play_date&order=DESC&filter={"recently_played":true}',
+  },
+  {
+    type: 'mostPlayed',
+    icon: RepeatIcon,
+    params: 'sort=play_count&order=DESC&filter={"recently_played":true}',
+  },
+]
+
 const Menu = ({ onMenuClick, dense, logout }) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
@@ -30,6 +55,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
+    menuAlbumList: true,
     menuLibrary: true,
     menuSettings: false,
   })
@@ -38,7 +64,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     setState((state) => ({ ...state, [menu]: !state[menu] }))
   }
 
-  const renderMenuItemLink = (resource) => (
+  const renderResourceMenuItemLink = (resource) => (
     <MenuItemLink
       key={resource.name}
       to={`/${resource.name}`}
@@ -52,11 +78,47 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     />
   )
 
+  const renderAlbumMenuItemLink = ({ type, params, icon }) => {
+    const resource = resources.find((r) => r.name === 'album')
+    if (!resource) {
+      return null
+    }
+
+    const albumListAddress = `/album/${type}?${params}`
+
+    const name = translate(`resources.album.lists.${type || 'default'}`, {
+      _: translatedResourceName(resource, translate),
+    })
+
+    return (
+      <MenuItemLink
+        key={`album/${type}`}
+        to={albumListAddress}
+        primaryText={name}
+        leftIcon={(icon && createElement(icon)) || <ViewListIcon />}
+        onClick={onMenuClick}
+        sidebarIsOpen={open}
+        dense={dense}
+        exact
+      />
+    )
+  }
+
   const subItems = (subMenu) => (resource) =>
     resource.hasList && resource.options && resource.options.subMenu === subMenu
 
   return (
     <div>
+      <SubMenu
+        handleToggle={() => handleToggle('menuAlbumList')}
+        isOpen={state.menuAlbumList}
+        sidebarIsOpen={open}
+        name="menu.albumList"
+        icon={<AlbumIcon />}
+        dense={dense}
+      >
+        {albumLists.map((al) => renderAlbumMenuItemLink(al))}
+      </SubMenu>
       <SubMenu
         handleToggle={() => handleToggle('menuLibrary')}
         isOpen={state.menuLibrary}
@@ -65,7 +127,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         icon={<LibraryMusicIcon />}
         dense={dense}
       >
-        {resources.filter(subItems('library')).map(renderMenuItemLink)}
+        {resources.filter(subItems('library')).map(renderResourceMenuItemLink)}
       </SubMenu>
       <SubMenu
         handleToggle={() => handleToggle('menuSettings')}
@@ -75,14 +137,14 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         icon={<SettingsIcon />}
         dense={dense}
       >
-        {resources.filter(subItems('settings')).map(renderMenuItemLink)}
+        {resources.filter(subItems('settings')).map(renderResourceMenuItemLink)}
         <PersonalMenu
           dense={dense}
           sidebarIsOpen={open}
           onClick={onMenuClick}
         />
       </SubMenu>
-      {resources.filter(subItems(undefined)).map(renderMenuItemLink)}
+      {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
       {isXsmall && logout}
     </div>
   )
