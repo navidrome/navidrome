@@ -21,7 +21,6 @@ import { addToPlaylistDialogReducer } from './dialogs/dialogState'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
-
 const history = createHashHistory()
 
 if (config.gaTrackingId) {
@@ -57,7 +56,7 @@ const App = () => (
       logoutButton={Logout}
     >
       {(permissions) => [
-        <Resource name="album" {...album} options={{ subMenu: 'library' }} />,
+        <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
         <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
         <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
         <Resource

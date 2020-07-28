@@ -36,13 +36,18 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 		"max_year": "max_year asc, name, order_album_name asc",
 	}
 	r.filterMappings = map[string]filterFunc{
-		"name":        fullTextFilter,
-		"compilation": booleanFilter,
-		"artist_id":   artistFilter,
-		"year":        yearFilter,
+		"name":            fullTextFilter,
+		"compilation":     booleanFilter,
+		"artist_id":       artistFilter,
+		"year":            yearFilter,
+		"recently_played": recentlyPlayedFilter,
 	}
 
 	return r
+}
+
+func recentlyPlayedFilter(field string, value interface{}) Sqlizer {
+	return Gt{"play_count": 0}
 }
 
 func yearFilter(field string, value interface{}) Sqlizer {
@@ -67,7 +72,7 @@ func artistFilter(field string, value interface{}) Sqlizer {
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(Select(), options...)
+	return r.count(r.selectAlbum(options...))
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
