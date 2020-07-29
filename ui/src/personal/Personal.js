@@ -15,6 +15,7 @@ import { changeTheme } from './actions'
 import themes from '../themes'
 import { docsUrl } from '../utils/docsUrl'
 import { useGetLanguageChoices } from '../i18n'
+import albumLists, { defaultAlbumList } from '../album/albumLists'
 
 const useStyles = makeStyles({
   root: { marginTop: '1em' },
@@ -95,6 +96,29 @@ const SelectTheme = (props) => {
   )
 }
 
+const SelectDefaultView = (props) => {
+  const translate = useTranslate()
+  const current = localStorage.getItem('defaultView') || defaultAlbumList
+  const choices = Object.keys(albumLists).map((type) => ({
+    id: type,
+    name: translate(`resources.album.lists.${type}`),
+  }))
+
+  return (
+    <SelectInput
+      {...props}
+      source="defaultView"
+      label={translate('menu.personal.options.defaultView')}
+      defaultValue={current}
+      choices={choices}
+      translateChoice={false}
+      onChange={(event) => {
+        localStorage.setItem('defaultView', event.target.value)
+      }}
+    />
+  )
+}
+
 const Personal = () => {
   const translate = useTranslate()
   const classes = useStyles()
@@ -105,6 +129,7 @@ const Personal = () => {
       <SimpleForm toolbar={null}>
         <SelectTheme />
         <SelectLanguage />
+        <SelectDefaultView />
       </SimpleForm>
     </Card>
   )

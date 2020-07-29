@@ -263,7 +263,8 @@
             "name": "Pessoal",
             "options": {
                 "theme": "Tema",
-                "language": "Língua"
+                "language": "Língua",
+                "defaultView": "Tela inicial"
             }
         }
     },

@@ -19,7 +19,7 @@ import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
 import { ALBUM_MODE_LIST } from './albumState'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
-import albumLists from './albumLists'
+import albumLists, { defaultAlbumList } from './albumLists'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -73,7 +73,8 @@ const AlbumList = (props) => {
   // If it does not have filter/sort params (usually coming from Menu),
   // reload with correct filter/sort params
   if (!location.search) {
-    const type = albumListType || 'all'
+    const type =
+      albumListType || localStorage.getItem('defaultView') || defaultAlbumList
     const listParams = albumLists[type]
     if (listParams) {
       return <Redirect to={`/album/${type}?${listParams.params}`} />
