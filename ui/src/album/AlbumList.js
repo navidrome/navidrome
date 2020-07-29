@@ -12,7 +12,7 @@ import {
   useTranslate,
   useListParams,
 } from 'react-admin'
-import { List, useAlbumsPerPage } from '../common'
+import { List, Title, useAlbumsPerPage } from '../common'
 import { withWidth } from '@material-ui/core'
 import AlbumListActions from './AlbumListActions'
 import AlbumListView from './AlbumListView'
@@ -41,6 +41,18 @@ const AlbumFilter = (props) => {
   )
 }
 
+const AlbumListTitle = ({ albumListType }) => {
+  const translate = useTranslate()
+  let title = translate('resources.album.name', { smart_count: 2 })
+  if (albumListType) {
+    let listTitle = translate(`resources.album.lists.${albumListType}`, {
+      smart_count: 2,
+    })
+    title = `${title} - ${listTitle}`
+  }
+  return <Title subTitle={title} args={{ smart_count: 2 }} />
+}
+
 const AlbumList = (props) => {
   const { width, resource } = props
   const albumView = useSelector((state) => state.albumView)
@@ -54,12 +66,14 @@ const AlbumList = (props) => {
   })
   const isArtistView = !!(query.filter && query.filter.artist_id)
 
+  const albumListType = location.pathname
+    .replace(/^\/album/, '')
+    .replace(/^\//, '')
+
   // If it does not have filter/sort params (usually coming from Menu),
   // reload with correct filter/sort params
   if (!location.search) {
-    let type =
-      location.pathname.replace(/^\/album/, '').replace(/^\//, '') || 'all'
-
+    const type = albumListType || 'all'
     const listParams = albumLists[type]
     if (listParams) {
       return <Redirect to={`/album/${type}?${listParams.params}`} />
@@ -76,6 +90,7 @@ const AlbumList = (props) => {
         filters={<AlbumFilter />}
         perPage={perPage}
         pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
+        title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.mode === ALBUM_MODE_LIST ? (
           <AlbumListView {...props} />
