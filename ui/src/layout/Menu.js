@@ -10,10 +10,7 @@ import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import PersonalMenu from './PersonalMenu'
-import ShuffleIcon from '@material-ui/icons/Shuffle'
-import LibraryAddIcon from '@material-ui/icons/LibraryAdd'
-import VideoLibraryIcon from '@material-ui/icons/VideoLibrary'
-import RepeatIcon from '@material-ui/icons/Repeat'
+import albumLists from '../album/albumLists'
 
 const translatedResourceName = (resource, translate) =>
   translate(`resources.${resource.name}.name`, {
@@ -26,26 +23,6 @@ const translatedResourceName = (resource, translate) =>
           })
         : inflection.humanize(inflection.pluralize(resource.name)),
   })
-
-const albumLists = [
-  { type: '', icon: AlbumIcon, params: 'sort=name&order=ASC' },
-  { type: 'random', icon: ShuffleIcon, params: 'sort=random' },
-  {
-    type: 'recentlyAdded',
-    icon: LibraryAddIcon,
-    params: 'sort=created_at&order=DESC',
-  },
-  {
-    type: 'recentlyPlayed',
-    icon: VideoLibraryIcon,
-    params: 'sort=play_date&order=DESC&filter={"recently_played":true}',
-  },
-  {
-    type: 'mostPlayed',
-    icon: RepeatIcon,
-    params: 'sort=play_count&order=DESC&filter={"recently_played":true}',
-  },
-]
 
 const Menu = ({ onMenuClick, dense, logout }) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -78,13 +55,13 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     />
   )
 
-  const renderAlbumMenuItemLink = ({ type, params, icon }) => {
+  const renderAlbumMenuItemLink = (type, al) => {
     const resource = resources.find((r) => r.name === 'album')
     if (!resource) {
       return null
     }
 
-    const albumListAddress = `/album/${type}?${params}`
+    const albumListAddress = `/album/${type}`
 
     const name = translate(`resources.album.lists.${type || 'default'}`, {
       _: translatedResourceName(resource, translate),
@@ -92,10 +69,10 @@ const Menu = ({ onMenuClick, dense, logout }) => {
 
     return (
       <MenuItemLink
-        key={`album/${type}`}
+        key={albumListAddress}
         to={albumListAddress}
         primaryText={name}
-        leftIcon={(icon && createElement(icon)) || <ViewListIcon />}
+        leftIcon={(al.icon && createElement(al.icon)) || <ViewListIcon />}
         onClick={onMenuClick}
         sidebarIsOpen={open}
         dense={dense}
@@ -117,7 +94,9 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         icon={<AlbumIcon />}
         dense={dense}
       >
-        {albumLists.map((al) => renderAlbumMenuItemLink(al))}
+        {Object.keys(albumLists).map((type) =>
+          renderAlbumMenuItemLink(type, albumLists[type])
+        )}
       </SubMenu>
       <SubMenu
         handleToggle={() => handleToggle('menuLibrary')}

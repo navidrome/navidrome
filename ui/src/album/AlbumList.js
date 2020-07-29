@@ -1,6 +1,6 @@
 import React from 'react'
 import { useSelector } from 'react-redux'
-import { useLocation } from 'react-router-dom'
+import { Redirect, useLocation } from 'react-router-dom'
 import {
   AutocompleteInput,
   Filter,
@@ -19,6 +19,7 @@ import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
 import { ALBUM_MODE_LIST } from './albumState'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
+import albumLists from './albumLists'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -53,6 +54,18 @@ const AlbumList = (props) => {
   })
   const isArtistView = !!(query.filter && query.filter.artist_id)
 
+  // If it does not have filter/sort params (usually coming from Menu),
+  // reload with correct filter/sort params
+  if (!location.search) {
+    let type =
+      location.pathname.replace(/^\/album/, '').replace(/^\//, '') || 'all'
+
+    const listParams = albumLists[type]
+    if (listParams) {
+      return <Redirect to={`/album/${type}?${listParams.params}`} />
+    }
+  }
+
   return (
     <>
       <List
@@ -61,7 +74,6 @@ const AlbumList = (props) => {
         bulkActionButtons={false}
         actions={<AlbumListActions />}
         filters={<AlbumFilter />}
-        sort={{ field: 'name', order: 'ASC' }}
         perPage={perPage}
         pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
       >
