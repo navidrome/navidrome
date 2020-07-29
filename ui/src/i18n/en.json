@@ -264,7 +264,8 @@
             "name": "Personal",
             "options": {
                 "theme": "Theme",
-                "language": "Language"
+                "language": "Language",
+                "defaultView": "Default View"
             }
         }
     },

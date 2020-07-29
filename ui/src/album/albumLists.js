@@ -23,3 +23,5 @@ export default {
     params: 'sort=play_count&order=DESC&filter={"recently_played":true}',
   },
 }
+
+export const defaultAlbumList = 'recentlyAdded'
