@@ -48,7 +48,7 @@
                 "shuffle": "Shuffle"
             },
             "lists": {
-                "default": "All",
+                "all": "All",
                 "random": "Random",
                 "recentlyAdded": "Recently Added",
                 "recentlyPlayed": "Recently Played",

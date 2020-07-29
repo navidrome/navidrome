@@ -47,7 +47,7 @@
                 "shuffle": "Aleatório"
             },
             "lists": {
-                "default": "Todos",
+                "all": "Todos",
                 "random": "Aleatório",
                 "recentlyAdded": "Recém-adicionados",
                 "recentlyPlayed": "Recém-tocados",
