@@ -46,6 +46,13 @@
                 "playNext": "Afspil næste",
                 "addToQueue": "Afspil senere",
                 "shuffle": "Bland"
+            },
+            "lists": {
+                "all": "Alle",
+                "random": "Tilfældig",
+                "recentlyAdded": "Nyligt tilføjet",
+                "recentlyPlayed": "Nyligt Afspillet",
+                "mostPlayed": "Mest Afspillet"
             }
         },
         "artist": {
@@ -98,7 +105,9 @@
                 "updatedAt": "Opdateret den",
                 "createdAt": "Oprettet den",
                 "songCount": "Sange",
-                "comment": "Kommentar"
+                "comment": "Kommentar",
+                "sync": "Auto-importér",
+                "path": "Importér fra"
             },
             "actions": {
                 "selectPlaylist": "Vælg en afspilningsliste:",
@@ -254,9 +263,11 @@
             "name": "Personligt",
             "options": {
                 "theme": "Tema",
-                "language": "Sprog"
+                "language": "Sprog",
+                "defaultView": "Standardopsætning"
             }
-        }
+        },
+        "albumList": "Albums"
     },
     "player": {
         "playListsText": "Afspilnings kø",
