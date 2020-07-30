@@ -11,7 +11,7 @@ import { Link } from 'react-router-dom'
 import { linkToRecord, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
-import { ArtistLinkField } from '../common'
+import { ArtistLinkField, RangeField } from '../common'
 import AlbumContextMenu from '../common/AlbumContextMenu.js'
 
 const useStyles = makeStyles((theme) => ({
@@ -99,7 +99,12 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
                     className={classes.artistLink}
                   />
                 ) : (
-                  record.maxYear || ''
+                  <RangeField
+                    record={record}
+                    source={'year'}
+                    sortBy={'maxYear'}
+                    sortByOrder={'DESC'}
+                  />
                 )}
               </div>
             }
