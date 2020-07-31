@@ -51,6 +51,18 @@ func ParamInt(r *http.Request, param string, def int) int {
 	return int(value)
 }
 
+func ParamInt64(r *http.Request, param string, def int64) int64 {
+	v := ParamString(r, param)
+	if v == "" {
+		return def
+	}
+	value, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		return def
+	}
+	return value
+}
+
 func ParamInts(r *http.Request, param string) []int {
 	pStr := ParamStrings(r, param)
 	ints := make([]int, 0, len(pStr))

@@ -9,6 +9,7 @@ import (
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 )
 
 type playQueueRepository struct {
@@ -28,7 +29,7 @@ type playQueue struct {
 	UserID    string `orm:"column(user_id)"`
 	Comment   string
 	Current   string
-	Position  float32
+	Position  int64
 	ChangedBy string
 	Items     string
 	CreatedAt time.Time
@@ -61,6 +62,66 @@ func (r *playQueueRepository) Retrieve(userId string) (*model.PlayQueue, error) 
 	err := r.queryOne(sel, &res)
 	pls := r.toModel(&res)
 	return &pls, err
+}
+
+func (r *playQueueRepository) AddBookmark(userId, id, comment string, position int64) error {
+	u := loggedUser(r.ctx)
+	client, _ := request.ClientFrom(r.ctx)
+	bm := &playQueue{
+		UserID:    userId,
+		Comment:   comment,
+		Current:   id,
+		Position:  position,
+		ChangedBy: client,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	sel := r.newSelect().Column("id").Where(And{
+		Eq{"user_id": userId},
+		Eq{"items": ""},
+		Eq{"current": id},
+	})
+	var prev model.PlayQueue
+	err := r.queryOne(sel, &prev)
+	if err != nil && err != model.ErrNotFound {
+		log.Error(r.ctx, "Error retrieving previous bookmark", "user", u.UserName, err, "mediaFileId", id, err)
+		return err
+	}
+
+	_, err = r.put(prev.ID, bm)
+	if err != nil {
+		log.Error(r.ctx, "Error saving bookmark", "user", u.UserName, err, "mediaFileId", id, err)
+		return err
+	}
+	return nil
+}
+
+func (r *playQueueRepository) GetBookmarks(userId string) (model.Bookmarks, error) {
+	u := loggedUser(r.ctx)
+	sel := r.newSelect().Column("*").Where(And{Eq{"user_id": userId}, Eq{"items": ""}})
+	var pqs model.PlayQueues
+	err := r.queryAll(sel, &pqs)
+	if err != nil {
+		log.Error(r.ctx, "Error retrieving bookmarks", "user", u.UserName, err)
+		return nil, err
+	}
+	bms := make(model.Bookmarks, len(pqs))
+	for i := range pqs {
+		bms[i].ID = pqs[i].Current
+		bms[i].Comment = pqs[i].Comment
+		bms[i].Position = int64(pqs[i].Position)
+		bms[i].CreatedAt = pqs[i].CreatedAt
+	}
+	return bms, nil
+}
+
+func (r *playQueueRepository) DeleteBookmark(userId, id string) error {
+	return r.delete(And{
+		Eq{"user_id": userId},
+		Eq{"items": ""},
+		Eq{"current": id},
+	})
 }
 
 func (r *playQueueRepository) fromModel(q *model.PlayQueue) playQueue {

@@ -23,32 +23,76 @@ var _ = Describe("PlayQueueRepository", func() {
 		repo = NewPlayQueueRepository(ctx, orm.NewOrm())
 	})
 
-	It("returns notfound error if there's no playqueue for the user", func() {
-		_, err := repo.Retrieve("user999")
-		Expect(err).To(MatchError(model.ErrNotFound))
+	Describe("PlayQueues", func() {
+		It("returns notfound error if there's no playqueue for the user", func() {
+			_, err := repo.Retrieve("user999")
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+
+		It("stores and retrieves the playqueue for the user", func() {
+			By("Storing a playqueue for the user")
+
+			expected := aPlayQueue("user1", songDayInALife.ID, 123, songComeTogether, songDayInALife)
+			Expect(repo.Store(expected)).To(BeNil())
+
+			actual, err := repo.Retrieve("user1")
+			Expect(err).To(BeNil())
+
+			AssertPlayQueue(expected, actual)
+
+			By("Storing a new playqueue for the same user")
+
+			new := aPlayQueue("user1", songRadioactivity.ID, 321, songAntenna, songRadioactivity)
+			Expect(repo.Store(new)).To(BeNil())
+
+			actual, err = repo.Retrieve("user1")
+			Expect(err).To(BeNil())
+
+			AssertPlayQueue(new, actual)
+			Expect(countPlayQueues(repo, "user1")).To(Equal(1))
+		})
 	})
 
-	It("stores and retrieves the playqueue for the user", func() {
-		By("Storing a playqueue for the user")
+	Describe("Bookmarks", func() {
+		It("returns an empty collection if there are no bookmarks", func() {
+			Expect(repo.GetBookmarks("user999")).To(BeEmpty())
+		})
 
-		expected := aPlayQueue("user1", songDayInALife.ID, 123, songComeTogether, songDayInALife)
-		Expect(repo.Store(expected)).To(BeNil())
+		It("saves and overrides bookmarks", func() {
+			By("Saving the bookmark")
+			Expect(repo.AddBookmark("user5", songAntenna.ID, "this is a comment", 123)).To(BeNil())
 
-		actual, err := repo.Retrieve("user1")
-		Expect(err).To(BeNil())
+			bms, err := repo.GetBookmarks("user5")
+			Expect(err).To(BeNil())
 
-		AssertPlayQueue(expected, actual)
+			Expect(bms).To(HaveLen(1))
+			Expect(bms[0].ID).To(Equal(songAntenna.ID))
+			Expect(bms[0].Comment).To(Equal("this is a comment"))
+			Expect(bms[0].Position).To(Equal(int64(123)))
 
-		By("Storing a new playqueue for the same user")
+			By("Overriding the bookmark")
+			Expect(repo.AddBookmark("user5", songAntenna.ID, "another comment", 333)).To(BeNil())
 
-		new := aPlayQueue("user1", songRadioactivity.ID, 321, songAntenna, songRadioactivity)
-		Expect(repo.Store(new)).To(BeNil())
+			bms, err = repo.GetBookmarks("user5")
+			Expect(err).To(BeNil())
 
-		actual, err = repo.Retrieve("user1")
-		Expect(err).To(BeNil())
+			Expect(bms[0].ID).To(Equal(songAntenna.ID))
+			Expect(bms[0].Comment).To(Equal("another comment"))
+			Expect(bms[0].Position).To(Equal(int64(333)))
 
-		AssertPlayQueue(new, actual)
-		Expect(countPlayQueues(repo, "user1")).To(Equal(1))
+			By("Saving another bookmark")
+			Expect(repo.AddBookmark("user5", songComeTogether.ID, "one more comment", 444)).To(BeNil())
+			bms, err = repo.GetBookmarks("user5")
+			Expect(err).To(BeNil())
+			Expect(bms).To(HaveLen(2))
+
+			By("Delete bookmark")
+			Expect(repo.DeleteBookmark("user5", songAntenna.ID))
+			bms, err = repo.GetBookmarks("user5")
+			Expect(err).To(BeNil())
+			Expect(bms).To(HaveLen(1))
+			Expect(bms[0].ID).To(Equal(songComeTogether.ID))
+		})
 	})
 })
 
@@ -74,7 +118,7 @@ func AssertPlayQueue(expected, actual *model.PlayQueue) {
 	}
 }
 
-func aPlayQueue(userId, current string, position float32, items ...model.MediaFile) *model.PlayQueue {
+func aPlayQueue(userId, current string, position int64, items ...model.MediaFile) *model.PlayQueue {
 	createdAt := time.Now()
 	updatedAt := createdAt.Add(time.Minute)
 	id, _ := uuid.NewRandom()
