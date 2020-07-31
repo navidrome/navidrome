@@ -331,4 +331,39 @@ var _ = Describe("Responses", func() {
 
 		})
 	})
+
+	Describe("PlayQueue", func() {
+		BeforeEach(func() {
+			response.PlayQueue = &PlayQueue{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.PlayQueue.Username = "user1"
+				response.PlayQueue.Current = "111"
+				response.PlayQueue.Position = 243
+				response.PlayQueue.Changed = &time.Time{}
+				response.PlayQueue.ChangedBy = "a_client"
+				child := make([]Child, 1)
+				child[0] = Child{Id: "1", Title: "title", IsDir: false}
+				response.PlayQueue.Entry = child
+
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
 })

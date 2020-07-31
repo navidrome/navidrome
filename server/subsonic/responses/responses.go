@@ -36,8 +36,10 @@ type Subsonic struct {
 	ArtistWithAlbumsID3 *ArtistWithAlbumsID3 `xml:"artist,omitempty"                      json:"artist,omitempty"`
 	AlbumWithSongsID3   *AlbumWithSongsID3   `xml:"album,omitempty"                       json:"album,omitempty"`
 
-	ArtistInfo  *ArtistInfo  `xml:"artistInfo,omitempty"                  json:"artistInfo,omitempty"`
-	ArtistInfo2 *ArtistInfo2 `xml:"artistInfo2,omitempty"                 json:"artistInfo2,omitempty"`
+	ArtistInfo  *ArtistInfo  `xml:"artistInfo,omitempty"                                  json:"artistInfo,omitempty"`
+	ArtistInfo2 *ArtistInfo2 `xml:"artistInfo2,omitempty"                                 json:"artistInfo2,omitempty"`
+
+	PlayQueue *PlayQueue `xml:"playQueue,omitempty"                                       json:"playQueue,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -292,4 +294,13 @@ type ArtistInfo struct {
 type ArtistInfo2 struct {
 	ArtistInfoBase
 	SimilarArtist []ArtistID3 `xml:"similarArtist,omitempty"    json:"similarArtist,omitempty"`
+}
+
+type PlayQueue struct {
+	Entry     []Child    `xml:"entry,omitempty"         json:"entry,omitempty"`
+	Current   string     `xml:"current,attr,omitempty"  json:"current,omitempty"`
+	Position  int64      `xml:"position,attr,omitempty" json:"position,omitempty"`
+	Username  string     `xml:"username,attr"           json:"username"`
+	Changed   *time.Time `xml:"changed,attr,omitempty"  json:"changed,omitempty"`
+	ChangedBy string     `xml:"changedBy,attr"          json:"changedBy"`
 }
