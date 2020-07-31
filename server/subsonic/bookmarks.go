@@ -18,6 +18,66 @@ func NewBookmarksController(ds model.DataStore) *BookmarksController {
 	return &BookmarksController{ds: ds}
 }
 
+func (c *BookmarksController) GetBookmarks(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	user, _ := request.UserFrom(r.Context())
+
+	repo := c.ds.PlayQueue(r.Context())
+	bmks, err := repo.GetBookmarks(user.ID)
+	if err != nil {
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	response := NewResponse()
+	response.Bookmarks = &responses.Bookmarks{}
+	for _, bmk := range bmks {
+		b := responses.Bookmark{
+			Entry:    []responses.Child{ChildFromMediaFile(r.Context(), bmk.Item)},
+			Position: bmk.Position,
+			Username: user.UserName,
+			Comment:  bmk.Comment,
+			Created:  bmk.CreatedAt,
+			Changed:  bmk.UpdatedAt,
+		}
+		response.Bookmarks.Bookmark = append(response.Bookmarks.Bookmark, b)
+	}
+	return response, nil
+}
+
+func (c *BookmarksController) CreateBookmark(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	id, err := RequiredParamString(r, "id", "id parameter required")
+	if err != nil {
+		return nil, err
+	}
+
+	comment := utils.ParamString(r, "comment")
+	position := utils.ParamInt64(r, "position", 0)
+
+	user, _ := request.UserFrom(r.Context())
+
+	repo := c.ds.PlayQueue(r.Context())
+	err = repo.AddBookmark(user.ID, id, comment, position)
+	if err != nil {
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+	}
+	return NewResponse(), nil
+}
+
+func (c *BookmarksController) DeleteBookmark(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	id, err := RequiredParamString(r, "id", "id parameter required")
+	if err != nil {
+		return nil, err
+	}
+
+	user, _ := request.UserFrom(r.Context())
+
+	repo := c.ds.PlayQueue(r.Context())
+	err = repo.DeleteBookmark(user.ID, id)
+	if err != nil {
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+	}
+	return NewResponse(), nil
+}
+
 func (c *BookmarksController) GetPlayQueue(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
@@ -31,7 +91,7 @@ func (c *BookmarksController) GetPlayQueue(w http.ResponseWriter, r *http.Reques
 	response.PlayQueue = &responses.PlayQueue{
 		Entry:     ChildrenFromMediaFiles(r.Context(), pq.Items),
 		Current:   pq.Current,
-		Position:  int64(pq.Position),
+		Position:  pq.Position,
 		Username:  user.UserName,
 		Changed:   &pq.UpdatedAt,
 		ChangedBy: pq.ChangedBy,
