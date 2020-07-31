@@ -13,7 +13,6 @@ import (
 
 type playQueueRepository struct {
 	sqlRepository
-	sqlRestful
 }
 
 func NewPlayQueueRepository(ctx context.Context, o orm.Ormer) model.PlayQueueRepository {
@@ -62,7 +61,6 @@ func (r *playQueueRepository) Retrieve(userId string) (*model.PlayQueue, error) 
 	err := r.queryOne(sel, &res)
 	pls := r.toModel(&res)
 	return &pls, err
-
 }
 
 func (r *playQueueRepository) fromModel(q *model.PlayQueue) playQueue {
