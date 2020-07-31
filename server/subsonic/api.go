@@ -11,13 +11,14 @@ import (
 	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 )
 
-const Version = "1.10.2"
+const Version = "1.12.0"
 
 type Handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
@@ -32,15 +33,17 @@ type Router struct {
 	Users         engine.Users
 	Streamer      core.MediaStreamer
 	Players       engine.Players
+	DataStore     model.DataStore
 
 	mux http.Handler
 }
 
 func New(browser engine.Browser, artwork core.Artwork, listGenerator engine.ListGenerator, users engine.Users,
 	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search,
-	streamer core.MediaStreamer, players engine.Players) *Router {
+	streamer core.MediaStreamer, players engine.Players, ds model.DataStore) *Router {
 	r := &Router{Browser: browser, Artwork: artwork, ListGenerator: listGenerator, Playlists: playlists,
-		Ratings: ratings, Scrobbler: scrobbler, Search: search, Users: users, Streamer: streamer, Players: players}
+		Ratings: ratings, Scrobbler: scrobbler, Search: search, Users: users, Streamer: streamer, Players: players,
+		DataStore: ds}
 	r.mux = r.routes()
 	return r
 }
@@ -106,6 +109,12 @@ func (api *Router) routes() http.Handler {
 		H(withPlayer, "createPlaylist", c.CreatePlaylist)
 		H(withPlayer, "deletePlaylist", c.DeletePlaylist)
 		H(withPlayer, "updatePlaylist", c.UpdatePlaylist)
+	})
+	r.Group(func(r chi.Router) {
+		c := initBookmarksController(api)
+		withPlayer := r.With(getPlayer(api.Players))
+		H(withPlayer, "getPlayQueue", c.GetPlayQueue)
+		H(withPlayer, "savePlayQueue", c.SavePlayQueue)
 	})
 	r.Group(func(r chi.Router) {
 		c := initSearchingController(api)

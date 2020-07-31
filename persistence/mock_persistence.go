@@ -52,6 +52,10 @@ func (db *MockDataStore) Playlist(context.Context) model.PlaylistRepository {
 	return struct{ model.PlaylistRepository }{}
 }
 
+func (db *MockDataStore) PlayQueue(context.Context) model.PlayQueueRepository {
+	return struct{ model.PlayQueueRepository }{}
+}
+
 func (db *MockDataStore) Property(context.Context) model.PropertyRepository {
 	return struct{ model.PropertyRepository }{}
 }
