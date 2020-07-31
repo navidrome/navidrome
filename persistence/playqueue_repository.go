@@ -77,7 +77,7 @@ func (r *playQueueRepository) AddBookmark(userId, id, comment string, position i
 		UpdatedAt: time.Now(),
 	}
 
-	sel := r.newSelect().Column("id").Where(And{
+	sel := r.newSelect().Column("*").Where(And{
 		Eq{"user_id": userId},
 		Eq{"items": ""},
 		Eq{"current": id},
@@ -89,11 +89,13 @@ func (r *playQueueRepository) AddBookmark(userId, id, comment string, position i
 		return err
 	}
 
-	if !prev.CreatedAt.IsZero() {
+	// If there is a previous bookmark, override
+	if prev.ID != "" {
+		bm.ID = prev.ID
 		bm.CreatedAt = prev.CreatedAt
 	}
 
-	_, err = r.put(prev.ID, bm)
+	_, err = r.put(bm.ID, bm)
 	if err != nil {
 		log.Error(r.ctx, "Error saving bookmark", "user", u.UserName, err, "mediaFileId", id, err)
 		return err
@@ -115,7 +117,7 @@ func (r *playQueueRepository) GetBookmarks(userId string) (model.Bookmarks, erro
 		items := r.loadTracks(model.MediaFiles{{ID: pqs[i].Current}})
 		bms[i].Item = items[0]
 		bms[i].Comment = pqs[i].Comment
-		bms[i].Position = int64(pqs[i].Position)
+		bms[i].Position = pqs[i].Position
 		bms[i].CreatedAt = pqs[i].CreatedAt
 		bms[i].UpdatedAt = pqs[i].UpdatedAt
 	}
@@ -217,7 +219,7 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 }
 
 func (r *playQueueRepository) clearPlayQueue(userId string) error {
-	return r.delete(Eq{"user_id": userId})
+	return r.delete(And{Eq{"user_id": userId}, NotEq{"items": ""}})
 }
 
 var _ model.PlayQueueRepository = (*playQueueRepository)(nil)

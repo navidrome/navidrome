@@ -113,6 +113,9 @@ func (api *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		c := initBookmarksController(api)
 		withPlayer := r.With(getPlayer(api.Players))
+		H(withPlayer, "getBookmarks", c.GetBookmarks)
+		H(withPlayer, "createBookmark", c.CreateBookmark)
+		H(withPlayer, "deleteBookmark", c.DeleteBookmark)
 		H(withPlayer, "getPlayQueue", c.GetPlayQueue)
 		H(withPlayer, "savePlayQueue", c.SavePlayQueue)
 	})
