@@ -89,6 +89,10 @@ func (r *playQueueRepository) AddBookmark(userId, id, comment string, position i
 		return err
 	}
 
+	if !prev.CreatedAt.IsZero() {
+		bm.CreatedAt = prev.CreatedAt
+	}
+
 	_, err = r.put(prev.ID, bm)
 	if err != nil {
 		log.Error(r.ctx, "Error saving bookmark", "user", u.UserName, err, "mediaFileId", id, err)
@@ -112,6 +116,7 @@ func (r *playQueueRepository) GetBookmarks(userId string) (model.Bookmarks, erro
 		bms[i].Comment = pqs[i].Comment
 		bms[i].Position = int64(pqs[i].Position)
 		bms[i].CreatedAt = pqs[i].CreatedAt
+		bms[i].UpdatedAt = pqs[i].UpdatedAt
 	}
 	return bms, nil
 }
