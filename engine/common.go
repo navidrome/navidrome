@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
 )
@@ -114,17 +113,6 @@ func FromMediaFile(mf *model.MediaFile) Entry {
 	}
 	e.UserRating = mf.Rating
 	return e
-}
-
-func realArtistName(mf *model.MediaFile) string {
-	switch {
-	case mf.Compilation:
-		return consts.VariousArtists
-	case mf.AlbumArtist != "":
-		return mf.AlbumArtist
-	}
-
-	return mf.Artist
 }
 
 func FromAlbums(albums model.Albums) Entries {
