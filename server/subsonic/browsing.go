@@ -165,16 +165,18 @@ func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (
 	return response, nil
 }
 
-const noImageAvailableUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/1024px-No_image_available.svg.png"
+const placeholderArtistImageSmallUrl = "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png"
+const placeholderArtistImageMediumUrl = "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png"
+const placeholderArtistImageLargeUrl = "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png"
 
 // TODO Integrate with Last.FM
 func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	response := NewResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
 	response.ArtistInfo.Biography = "Biography not available"
-	response.ArtistInfo.SmallImageUrl = noImageAvailableUrl
-	response.ArtistInfo.MediumImageUrl = noImageAvailableUrl
-	response.ArtistInfo.LargeImageUrl = noImageAvailableUrl
+	response.ArtistInfo.SmallImageUrl = placeholderArtistImageSmallUrl
+	response.ArtistInfo.MediumImageUrl = placeholderArtistImageMediumUrl
+	response.ArtistInfo.LargeImageUrl = placeholderArtistImageLargeUrl
 	return response, nil
 }
 
@@ -183,9 +185,9 @@ func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Reque
 	response := NewResponse()
 	response.ArtistInfo2 = &responses.ArtistInfo2{}
 	response.ArtistInfo2.Biography = "Biography not available"
-	response.ArtistInfo2.SmallImageUrl = noImageAvailableUrl
-	response.ArtistInfo2.MediumImageUrl = noImageAvailableUrl
-	response.ArtistInfo2.LargeImageUrl = noImageAvailableUrl
+	response.ArtistInfo2.SmallImageUrl = placeholderArtistImageSmallUrl
+	response.ArtistInfo2.MediumImageUrl = placeholderArtistImageSmallUrl
+	response.ArtistInfo2.LargeImageUrl = placeholderArtistImageSmallUrl
 	return response, nil
 }
 
