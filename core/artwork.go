@@ -24,39 +24,39 @@ import (
 	"github.com/disintegration/imaging"
 )
 
-type Cover interface {
+type Artwork interface {
 	Get(ctx context.Context, id string, size int, out io.Writer) error
 }
 
-type CoverCache FileCache
+type ArtworkCache FileCache
 
-func NewCover(ds model.DataStore, cache CoverCache) Cover {
-	return &cover{ds: ds, cache: cache}
+func NewArtwork(ds model.DataStore, cache ArtworkCache) Artwork {
+	return &artwork{ds: ds, cache: cache}
 }
 
-type cover struct {
+type artwork struct {
 	ds    model.DataStore
 	cache FileCache
 }
 
-type coverInfo struct {
-	c          *cover
+type imageInfo struct {
+	c          *artwork
 	path       string
 	size       int
 	lastUpdate time.Time
 }
 
-func (ci *coverInfo) String() string {
+func (ci *imageInfo) String() string {
 	return fmt.Sprintf("%s.%d.%s.%d", ci.path, ci.size, ci.lastUpdate.Format(time.RFC3339Nano), conf.Server.CoverJpegQuality)
 }
 
-func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) error {
-	path, lastUpdate, err := c.getCoverPath(ctx, id)
+func (c *artwork) Get(ctx context.Context, id string, size int, out io.Writer) error {
+	path, lastUpdate, err := c.getImagePath(ctx, id)
 	if err != nil && err != model.ErrNotFound {
 		return err
 	}
 
-	info := &coverInfo{
+	info := &imageInfo{
 		c:          c,
 		path:       path,
 		size:       size,
@@ -73,7 +73,7 @@ func (c *cover) Get(ctx context.Context, id string, size int, out io.Writer) err
 	return err
 }
 
-func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastUpdated time.Time, err error) {
+func (c *artwork) getImagePath(ctx context.Context, id string) (path string, lastUpdated time.Time, err error) {
 	// If id is an album cover ID
 	if strings.HasPrefix(id, "al-") {
 		log.Trace(ctx, "Looking for album art", "id", id)
@@ -102,10 +102,10 @@ func (c *cover) getCoverPath(ctx context.Context, id string) (path string, lastU
 
 	// if the mediafile does not have a coverArt, fallback to the album cover
 	log.Trace(ctx, "Media file does not contain art. Falling back to album art", "id", id, "albumId", "al-"+mf.AlbumID)
-	return c.getCoverPath(ctx, "al-"+mf.AlbumID)
+	return c.getImagePath(ctx, "al-"+mf.AlbumID)
 }
 
-func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.Reader, err error) {
+func (c *artwork) getArtwork(ctx context.Context, path string, size int) (reader io.Reader, err error) {
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
@@ -114,7 +114,7 @@ func (c *cover) getCover(ctx context.Context, path string, size int) (reader io.
 	}()
 
 	if path == "" {
-		return nil, errors.New("empty path given for cover")
+		return nil, errors.New("empty path given for artwork")
 	}
 
 	var data []byte
@@ -184,13 +184,13 @@ func readFromFile(path string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func NewImageCache() CoverCache {
+func NewImageCache() ArtworkCache {
 	return NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
 		func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {
-			info := arg.(*coverInfo)
-			reader, err := info.c.getCover(ctx, info.path, info.size)
+			info := arg.(*imageInfo)
+			reader, err := info.c.getArtwork(ctx, info.path, info.size)
 			if err != nil {
-				log.Error(ctx, "Error loading cover art", "path", info.path, "size", info.size, err)
+				log.Error(ctx, "Error loading artwork art", "path", info.path, "size", info.size, err)
 				return nil, err
 			}
 			return reader, nil

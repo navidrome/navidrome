@@ -53,8 +53,8 @@ func initUsersController(router *Router) *UsersController {
 }
 
 func initMediaRetrievalController(router *Router) *MediaRetrievalController {
-	cover := router.Cover
-	mediaRetrievalController := NewMediaRetrievalController(cover)
+	artwork := router.Artwork
+	mediaRetrievalController := NewMediaRetrievalController(artwork)
 	return mediaRetrievalController
 }
 
@@ -75,5 +75,5 @@ var allProviders = wire.NewSet(
 	NewSearchingController,
 	NewUsersController,
 	NewMediaRetrievalController,
-	NewStreamController, wire.FieldsOf(new(*Router), "Browser", "Cover", "ListGenerator", "Playlists", "Ratings", "Scrobbler", "Search", "Streamer"),
+	NewStreamController, wire.FieldsOf(new(*Router), "Browser", "Artwork", "ListGenerator", "Playlists", "Ratings", "Scrobbler", "Search", "Streamer"),
 )

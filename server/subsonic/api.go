@@ -23,7 +23,7 @@ type Handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, er
 
 type Router struct {
 	Browser       engine.Browser
-	Cover         core.Cover
+	Artwork       core.Artwork
 	ListGenerator engine.ListGenerator
 	Playlists     engine.Playlists
 	Ratings       engine.Ratings
@@ -36,10 +36,10 @@ type Router struct {
 	mux http.Handler
 }
 
-func New(browser engine.Browser, cover core.Cover, listGenerator engine.ListGenerator, users engine.Users,
+func New(browser engine.Browser, artwork core.Artwork, listGenerator engine.ListGenerator, users engine.Users,
 	playlists engine.Playlists, ratings engine.Ratings, scrobbler engine.Scrobbler, search engine.Search,
 	streamer core.MediaStreamer, players engine.Players) *Router {
-	r := &Router{Browser: browser, Cover: cover, ListGenerator: listGenerator, Playlists: playlists,
+	r := &Router{Browser: browser, Artwork: artwork, ListGenerator: listGenerator, Playlists: playlists,
 		Ratings: ratings, Scrobbler: scrobbler, Search: search, Users: users, Streamer: streamer, Players: players}
 	r.mux = r.routes()
 	return r

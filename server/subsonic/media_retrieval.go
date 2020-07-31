@@ -14,11 +14,11 @@ import (
 )
 
 type MediaRetrievalController struct {
-	cover core.Cover
+	artwork core.Artwork
 }
 
-func NewMediaRetrievalController(cover core.Cover) *MediaRetrievalController {
-	return &MediaRetrievalController{cover: cover}
+func NewMediaRetrievalController(artwork core.Artwork) *MediaRetrievalController {
+	return &MediaRetrievalController{artwork: artwork}
 }
 
 func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -41,12 +41,12 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 	size := utils.ParamInt(r, "size", 0)
 
 	w.Header().Set("cache-control", "public, max-age=315360000")
-	err = c.cover.Get(r.Context(), id, size, w)
+	err = c.artwork.Get(r.Context(), id, size, w)
 
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, "Couldn't find coverArt", "id", id, err)
-		return nil, NewError(responses.ErrorDataNotFound, "Cover not found")
+		return nil, NewError(responses.ErrorDataNotFound, "Artwork not found")
 	case err != nil:
 		log.Error(r, "Error retrieving coverArt", "id", id, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")

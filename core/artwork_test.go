@@ -15,8 +15,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Cover", func() {
-	var cover Cover
+var _ = Describe("Artwork", func() {
+	var artwork Artwork
 	var ds model.DataStore
 	ctx := log.NewContext(context.TODO())
 
@@ -32,57 +32,57 @@ var _ = Describe("Cover", func() {
 			conf.Server.ImageCacheSize = "100MB"
 			cache := NewImageCache()
 			Eventually(func() bool { return cache.Ready() }).Should(BeTrue())
-			cover = NewCover(ds, cache)
+			artwork = NewArtwork(ds, cache)
 		})
 
 		AfterEach(func() {
 			os.RemoveAll(conf.Server.DataFolder)
 		})
 
-		It("retrieves the external cover art for an album", func() {
+		It("retrieves the external artwork art for an album", func() {
 			buf := new(bytes.Buffer)
 
-			Expect(cover.Get(ctx, "al-444", 0, buf)).To(BeNil())
+			Expect(artwork.Get(ctx, "al-444", 0, buf)).To(BeNil())
 
 			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("jpeg"))
 		})
 
-		It("retrieves the embedded cover art for an album", func() {
+		It("retrieves the embedded artwork art for an album", func() {
 			buf := new(bytes.Buffer)
 
-			Expect(cover.Get(ctx, "al-222", 0, buf)).To(BeNil())
+			Expect(artwork.Get(ctx, "al-222", 0, buf)).To(BeNil())
 
 			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("jpeg"))
 		})
 
-		It("returns the default cover if album does not have cover", func() {
+		It("returns the default artwork if album does not have artwork", func() {
 			buf := new(bytes.Buffer)
 
-			Expect(cover.Get(ctx, "al-333", 0, buf)).To(BeNil())
+			Expect(artwork.Get(ctx, "al-333", 0, buf)).To(BeNil())
 
 			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("png"))
 		})
 
-		It("returns the default cover if album is not found", func() {
+		It("returns the default artwork if album is not found", func() {
 			buf := new(bytes.Buffer)
 
-			Expect(cover.Get(ctx, "al-0101", 0, buf)).To(BeNil())
+			Expect(artwork.Get(ctx, "al-0101", 0, buf)).To(BeNil())
 
 			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("png"))
 		})
 
-		It("retrieves the original cover art from a media_file", func() {
+		It("retrieves the original artwork art from a media_file", func() {
 			buf := new(bytes.Buffer)
 
-			Expect(cover.Get(ctx, "123", 0, buf)).To(BeNil())
+			Expect(artwork.Get(ctx, "123", 0, buf)).To(BeNil())
 
 			img, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 			Expect(err).To(BeNil())
@@ -91,20 +91,20 @@ var _ = Describe("Cover", func() {
 			Expect(img.Bounds().Size().Y).To(Equal(600))
 		})
 
-		It("retrieves the album cover art if media_file does not have one", func() {
+		It("retrieves the album artwork art if media_file does not have one", func() {
 			buf := new(bytes.Buffer)
 
-			Expect(cover.Get(ctx, "456", 0, buf)).To(BeNil())
+			Expect(artwork.Get(ctx, "456", 0, buf)).To(BeNil())
 
 			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("jpeg"))
 		})
 
-		It("resized cover art as requested", func() {
+		It("resized artwork art as requested", func() {
 			buf := new(bytes.Buffer)
 
-			Expect(cover.Get(ctx, "123", 200, buf)).To(BeNil())
+			Expect(artwork.Get(ctx, "123", 200, buf)).To(BeNil())
 
 			img, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
 			Expect(err).To(BeNil())
@@ -118,14 +118,14 @@ var _ = Describe("Cover", func() {
 				ds.Album(ctx).(*persistence.MockAlbum).SetError(true)
 				buf := new(bytes.Buffer)
 
-				Expect(cover.Get(ctx, "al-222", 0, buf)).To(MatchError("Error!"))
+				Expect(artwork.Get(ctx, "al-222", 0, buf)).To(MatchError("Error!"))
 			})
 
 			It("returns err if gets error from media_file table", func() {
 				ds.MediaFile(ctx).(*persistence.MockMediaFile).SetError(true)
 				buf := new(bytes.Buffer)
 
-				Expect(cover.Get(ctx, "123", 0, buf)).To(MatchError("Error!"))
+				Expect(artwork.Get(ctx, "123", 0, buf)).To(MatchError("Error!"))
 			})
 		})
 	})
