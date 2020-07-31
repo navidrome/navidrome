@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/deluan/navidrome/consts"
@@ -42,8 +41,6 @@ type Entry struct {
 	PlayerId   int
 	PlayerName string
 	AlbumCount int
-
-	AbsolutePath string
 }
 
 type Entries []Entry
@@ -105,11 +102,7 @@ func FromMediaFile(mf *model.MediaFile) Entry {
 		e.CoverArt = "al-" + mf.AlbumID
 	}
 	e.ContentType = mf.ContentType()
-	e.AbsolutePath = mf.Path
-	// Creates a "pseudo" Path, to avoid sending absolute paths to the client
-	if mf.Path != "" {
-		e.Path = fmt.Sprintf("%s/%s/%s.%s", realArtistName(mf), mf.Album, mf.Title, mf.Suffix)
-	}
+	e.Path = mf.Path
 	e.DiscNumber = mf.DiscNumber
 	e.Created = mf.CreatedAt
 	e.AlbumId = mf.AlbumID
