@@ -66,7 +66,8 @@ var _ = Describe("PlayQueueRepository", func() {
 			Expect(err).To(BeNil())
 
 			Expect(bms).To(HaveLen(1))
-			Expect(bms[0].ID).To(Equal(songAntenna.ID))
+			Expect(bms[0].Item.ID).To(Equal(songAntenna.ID))
+			Expect(bms[0].Item.Title).To(Equal(songAntenna.Title))
 			Expect(bms[0].Comment).To(Equal("this is a comment"))
 			Expect(bms[0].Position).To(Equal(int64(123)))
 
@@ -79,7 +80,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			bms, err = repo.GetBookmarks("user5")
 			Expect(err).To(BeNil())
 
-			Expect(bms[0].ID).To(Equal(songAntenna.ID))
+			Expect(bms[0].Item.ID).To(Equal(songAntenna.ID))
 			Expect(bms[0].Comment).To(Equal("another comment"))
 			Expect(bms[0].Position).To(Equal(int64(333)))
 			Expect(bms[0].CreatedAt).To(Equal(created))
@@ -96,7 +97,8 @@ var _ = Describe("PlayQueueRepository", func() {
 			bms, err = repo.GetBookmarks("user5")
 			Expect(err).To(BeNil())
 			Expect(bms).To(HaveLen(1))
-			Expect(bms[0].ID).To(Equal(songComeTogether.ID))
+			Expect(bms[0].Item.ID).To(Equal(songComeTogether.ID))
+			Expect(bms[0].Item.Title).To(Equal(songComeTogether.Title))
 		})
 	})
 })

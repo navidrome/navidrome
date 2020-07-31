@@ -27,7 +27,7 @@ type PlayQueueRepository interface {
 }
 
 type Bookmark struct {
-	ID        string    `json:"id"          orm:"column(id)"`
+	Item      MediaFile `json:"item"`
 	Comment   string    `json:"comment"`
 	Position  int64     `json:"position"`
 	CreatedAt time.Time `json:"createdAt"`

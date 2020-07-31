@@ -112,7 +112,8 @@ func (r *playQueueRepository) GetBookmarks(userId string) (model.Bookmarks, erro
 	}
 	bms := make(model.Bookmarks, len(pqs))
 	for i := range pqs {
-		bms[i].ID = pqs[i].Current
+		items := r.loadTracks(model.MediaFiles{{ID: pqs[i].Current}})
+		bms[i].Item = items[0]
 		bms[i].Comment = pqs[i].Comment
 		bms[i].Position = int64(pqs[i].Position)
 		bms[i].CreatedAt = pqs[i].CreatedAt
@@ -165,18 +166,18 @@ func (r *playQueueRepository) toModel(pq *playQueue) model.PlayQueue {
 			q.Items = append(q.Items, model.MediaFile{ID: t})
 		}
 	}
-	q.Items = r.loadTracks(&q)
+	q.Items = r.loadTracks(q.Items)
 	return q
 }
 
-func (r *playQueueRepository) loadTracks(p *model.PlayQueue) model.MediaFiles {
-	if len(p.Items) == 0 {
+func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFiles {
+	if len(tracks) == 0 {
 		return nil
 	}
 
 	// Collect all ids
-	ids := make([]string, len(p.Items))
-	for i, t := range p.Items {
+	ids := make([]string, len(tracks))
+	for i, t := range tracks {
 		ids[i] = t.ID
 	}
 
@@ -200,7 +201,7 @@ func (r *playQueueRepository) loadTracks(p *model.PlayQueue) model.MediaFiles {
 		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: idsFilter})
 		if err != nil {
 			u := loggedUser(r.ctx)
-			log.Error(r.ctx, "Could not load playqueue's tracks", "user", u.UserName, err)
+			log.Error(r.ctx, "Could not load playqueue/bookmark's tracks", "user", u.UserName, err)
 		}
 		for _, t := range tracks {
 			trackMap[t.ID] = t
@@ -208,8 +209,8 @@ func (r *playQueueRepository) loadTracks(p *model.PlayQueue) model.MediaFiles {
 	}
 
 	// Create a new list of tracks with the same order as the original
-	newTracks := make(model.MediaFiles, len(p.Items))
-	for i, t := range p.Items {
+	newTracks := make(model.MediaFiles, len(tracks))
+	for i, t := range tracks {
 		newTracks[i] = trackMap[t.ID]
 	}
 	return newTracks
