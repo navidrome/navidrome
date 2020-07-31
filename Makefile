@@ -37,10 +37,10 @@ update-snapshots: check_go_env
 	UPDATE_SNAPSHOTS=true ginkgo ./server/subsonic/...
 .PHONY: update-snapshots
 
-create-migration:
+migration:
 	@if [ -z "${name}" ]; then echo "Usage: make create-migration name=name_of_migration_file"; exit 1; fi
 	goose -dir db/migration create ${name}
-.PHONY: create-migration
+.PHONY: migration
 
 setup:
 	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
