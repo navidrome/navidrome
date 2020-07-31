@@ -356,7 +356,41 @@ var _ = Describe("Responses", func() {
 				child := make([]Child, 1)
 				child[0] = Child{Id: "1", Title: "title", IsDir: false}
 				response.PlayQueue.Entry = child
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
 
+	Describe("Bookmarks", func() {
+		BeforeEach(func() {
+			response.Bookmarks = &Bookmarks{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				bmk := Bookmark{
+					Position: 123,
+					Username: "user2",
+					Comment:  "a comment",
+					Created:  time.Time{},
+					Changed:  time.Time{},
+				}
+				bmk.Entry = []Child{{Id: "1", Title: "title", IsDir: false}}
+				response.Bookmarks.Bookmark = []Bookmark{bmk}
 			})
 			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
