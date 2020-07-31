@@ -37,8 +37,10 @@ type playQueue struct {
 }
 
 func (r *playQueueRepository) Store(q *model.PlayQueue) error {
+	u := loggedUser(r.ctx)
 	err := r.clearPlayQueue(q.UserID)
 	if err != nil {
+		log.Error(r.ctx, "Error deleting previous playqueue", "user", u.UserName, err)
 		return err
 	}
 	pq := r.fromModel(q)
@@ -47,7 +49,11 @@ func (r *playQueueRepository) Store(q *model.PlayQueue) error {
 	}
 	pq.UpdatedAt = time.Now()
 	_, err = r.put(pq.ID, pq)
-	return err
+	if err != nil {
+		log.Error(r.ctx, "Error saving playqueue", "user", u.UserName, err)
+		return err
+	}
+	return nil
 }
 
 func (r *playQueueRepository) Retrieve(userId string) (*model.PlayQueue, error) {
@@ -129,7 +135,8 @@ func (r *playQueueRepository) loadTracks(p *model.PlayQueue) model.MediaFiles {
 		idsFilter := Eq{"id": chunks[i]}
 		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: idsFilter})
 		if err != nil {
-			log.Error(r.ctx, "Could not load playqueue's tracks", "userId", p.UserID, err)
+			u := loggedUser(r.ctx)
+			log.Error(r.ctx, "Could not load playqueue's tracks", "user", u.UserName, err)
 		}
 		for _, t := range tracks {
 			trackMap[t.ID] = t

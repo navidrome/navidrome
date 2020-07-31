@@ -64,6 +64,12 @@ func initStreamController(router *Router) *StreamController {
 	return streamController
 }
 
+func initBookmarksController(router *Router) *BookmarksController {
+	dataStore := router.DataStore
+	bookmarksController := NewBookmarksController(dataStore)
+	return bookmarksController
+}
+
 // wire_injectors.go:
 
 var allProviders = wire.NewSet(
@@ -75,5 +81,6 @@ var allProviders = wire.NewSet(
 	NewSearchingController,
 	NewUsersController,
 	NewMediaRetrievalController,
-	NewStreamController, wire.FieldsOf(new(*Router), "Browser", "Artwork", "ListGenerator", "Playlists", "Ratings", "Scrobbler", "Search", "Streamer"),
+	NewStreamController,
+	NewBookmarksController, wire.FieldsOf(new(*Router), "Browser", "Artwork", "ListGenerator", "Playlists", "Ratings", "Scrobbler", "Search", "Streamer", "DataStore"),
 )

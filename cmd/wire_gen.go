@@ -54,7 +54,7 @@ func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
 	transcodingCache := core.NewTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
 	players := engine.NewPlayers(dataStore)
-	router := subsonic.New(browser, artwork, listGenerator, users, playlists, ratings, scrobbler, search, mediaStreamer, players)
+	router := subsonic.New(browser, artwork, listGenerator, users, playlists, ratings, scrobbler, search, mediaStreamer, players, dataStore)
 	return router, nil
 }
 

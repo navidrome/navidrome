@@ -162,3 +162,54 @@ func getTranscoding(ctx context.Context) (format string, bitRate int) {
 	}
 	return
 }
+
+// This seems to be duplicated, but it is an initial step into merging `engine` and the `subsonic` packages,
+// In the future there won't be any conversion to/from `engine. Entry` anymore
+func ChildFromMediaFile(ctx context.Context, mf *model.MediaFile) responses.Child {
+	child := responses.Child{}
+	child.Id = mf.ID
+	child.Title = mf.Title
+	child.IsDir = false
+	child.Parent = mf.AlbumID
+	child.Album = mf.Album
+	child.Year = mf.Year
+	child.Artist = mf.Artist
+	child.Genre = mf.Genre
+	child.Track = mf.TrackNumber
+	child.Duration = int(mf.Duration)
+	child.Size = mf.Size
+	child.Suffix = mf.Suffix
+	child.BitRate = mf.BitRate
+	if mf.HasCoverArt {
+		child.CoverArt = mf.ID
+	} else {
+		child.CoverArt = "al-" + mf.AlbumID
+	}
+	child.ContentType = mf.ContentType()
+	child.Path = mf.Path
+	child.DiscNumber = mf.DiscNumber
+	child.Created = &mf.CreatedAt
+	child.AlbumId = mf.AlbumID
+	child.ArtistId = mf.ArtistID
+	child.Type = "music"
+	child.PlayCount = mf.PlayCount
+	if mf.Starred {
+		child.Starred = &mf.StarredAt
+	}
+	child.UserRating = mf.Rating
+
+	format, _ := getTranscoding(ctx)
+	if mf.Suffix != "" && format != "" && mf.Suffix != format {
+		child.TranscodedSuffix = format
+		child.TranscodedContentType = mime.TypeByExtension("." + format)
+	}
+	return child
+}
+
+func ChildrenFromMediaFiles(ctx context.Context, mfs model.MediaFiles) []responses.Child {
+	children := make([]responses.Child, len(mfs))
+	for i, mf := range mfs {
+		children[i] = ChildFromMediaFile(ctx, &mf)
+	}
+	return children
+}

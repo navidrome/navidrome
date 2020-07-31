@@ -38,6 +38,10 @@ func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
 	return NewGenreRepository(ctx, s.getOrmer())
 }
 
+func (s *SQLStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
+	return NewPlayQueueRepository(ctx, s.getOrmer())
+}
+
 func (s *SQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
 	return NewPlaylistRepository(ctx, s.getOrmer())
 }
