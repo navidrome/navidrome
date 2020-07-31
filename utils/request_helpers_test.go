@@ -98,6 +98,24 @@ var _ = Describe("Request Helpers", func() {
 		})
 	})
 
+	Describe("ParamInt64", func() {
+		BeforeEach(func() {
+			r = httptest.NewRequest("GET", "/ping?i=123&inv=123.45", nil)
+		})
+
+		It("returns default value if param does not exist", func() {
+			Expect(ParamInt64(r, "xx", 999)).To(Equal(int64(999)))
+		})
+
+		It("returns default value if param is an invalid int", func() {
+			Expect(ParamInt64(r, "inv", 999)).To(Equal(int64(999)))
+		})
+
+		It("returns parsed time", func() {
+			Expect(ParamInt64(r, "i", 999)).To(Equal(int64(123)))
+		})
+	})
+
 	Describe("ParamInts", func() {
 		BeforeEach(func() {
 			r = httptest.NewRequest("GET", "/ping?i=123&i=456", nil)

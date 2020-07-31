@@ -46,7 +46,7 @@ func (c *BookmarksController) SavePlayQueue(w http.ResponseWriter, r *http.Reque
 	}
 
 	current := utils.ParamString(r, "current")
-	position := utils.ParamInt(r, "position", 0)
+	position := utils.ParamInt64(r, "position", 0)
 
 	user, _ := request.UserFrom(r.Context())
 	client, _ := request.ClientFrom(r.Context())
@@ -59,7 +59,7 @@ func (c *BookmarksController) SavePlayQueue(w http.ResponseWriter, r *http.Reque
 	pq := &model.PlayQueue{
 		UserID:    user.ID,
 		Current:   current,
-		Position:  float32(position),
+		Position:  position,
 		ChangedBy: client,
 		Items:     items,
 		CreatedAt: time.Time{},
