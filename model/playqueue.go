@@ -31,6 +31,7 @@ type Bookmark struct {
 	Comment   string    `json:"comment"`
 	Position  int64     `json:"position"`
 	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type Bookmarks []Bookmark

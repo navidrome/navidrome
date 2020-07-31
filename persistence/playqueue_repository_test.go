@@ -70,6 +70,9 @@ var _ = Describe("PlayQueueRepository", func() {
 			Expect(bms[0].Comment).To(Equal("this is a comment"))
 			Expect(bms[0].Position).To(Equal(int64(123)))
 
+			created := bms[0].CreatedAt
+			updated := bms[0].UpdatedAt
+
 			By("Overriding the bookmark")
 			Expect(repo.AddBookmark("user5", songAntenna.ID, "another comment", 333)).To(BeNil())
 
@@ -79,6 +82,8 @@ var _ = Describe("PlayQueueRepository", func() {
 			Expect(bms[0].ID).To(Equal(songAntenna.ID))
 			Expect(bms[0].Comment).To(Equal("another comment"))
 			Expect(bms[0].Position).To(Equal(int64(333)))
+			Expect(bms[0].CreatedAt).To(Equal(created))
+			Expect(bms[0].UpdatedAt).To(BeTemporally(">", updated))
 
 			By("Saving another bookmark")
 			Expect(repo.AddBookmark("user5", songComeTogether.ID, "one more comment", 444)).To(BeNil())
