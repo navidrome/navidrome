@@ -137,6 +137,11 @@ func (s *SQLStore) GC(ctx context.Context) error {
 		log.Error(ctx, "Error removing orphan artist annotations", err)
 		return err
 	}
+	err = s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks()
+	if err != nil {
+		log.Error(ctx, "Error removing orphan bookmarks", err)
+		return err
+	}
 	err = s.Playlist(ctx).(*playlistRepository).removeOrphans()
 	if err != nil {
 		log.Error(ctx, "Error tidying up playlists", err)

@@ -23,9 +23,9 @@ func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.
 
 func (r sqlRepository) annId(itemID ...string) And {
 	return And{
-		Eq{"user_id": userId(r.ctx)},
-		Eq{"item_type": r.tableName},
-		Eq{"item_id": itemID},
+		Eq{annotationTable + ".user_id": userId(r.ctx)},
+		Eq{annotationTable + ".item_type": r.tableName},
+		Eq{annotationTable + ".item_id": itemID},
 	}
 }
 

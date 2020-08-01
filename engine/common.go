@@ -9,37 +9,37 @@ import (
 )
 
 type Entry struct {
-	Id          string
-	Title       string
-	IsDir       bool
-	Parent      string
-	Album       string
-	Year        int
-	Artist      string
-	Genre       string
-	CoverArt    string
-	Starred     time.Time
-	Track       int
-	Duration    int
-	Size        int64
-	Suffix      string
-	BitRate     int
-	ContentType string
-	Path        string
-	PlayCount   int32
-	DiscNumber  int
-	Created     time.Time
-	AlbumId     string
-	ArtistId    string
-	Type        string
-	UserRating  int
-	SongCount   int
-
-	UserName   string
-	MinutesAgo int
-	PlayerId   int
-	PlayerName string
-	AlbumCount int
+	Id               string
+	Title            string
+	IsDir            bool
+	Parent           string
+	Album            string
+	Year             int
+	Artist           string
+	Genre            string
+	CoverArt         string
+	Starred          time.Time
+	Track            int
+	Duration         int
+	Size             int64
+	Suffix           string
+	BitRate          int
+	ContentType      string
+	Path             string
+	PlayCount        int32
+	DiscNumber       int
+	Created          time.Time
+	AlbumId          string
+	ArtistId         string
+	Type             string
+	UserRating       int
+	SongCount        int
+	UserName         string
+	MinutesAgo       int
+	PlayerId         int
+	PlayerName       string
+	AlbumCount       int
+	BookmarkPosition int64
 }
 
 type Entries []Entry
@@ -112,6 +112,7 @@ func FromMediaFile(mf *model.MediaFile) Entry {
 		e.Starred = mf.StarredAt
 	}
 	e.UserRating = mf.Rating
+	e.BookmarkPosition = mf.BookmarkPosition
 	return e
 }
 

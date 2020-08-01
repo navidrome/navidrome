@@ -142,6 +142,7 @@ func ToChild(ctx context.Context, entry engine.Entry) responses.Child {
 		child.TranscodedSuffix = format
 		child.TranscodedContentType = mime.TypeByExtension("." + format)
 	}
+	child.BookmarkPosition = entry.BookmarkPosition
 	return child
 }
 
@@ -203,6 +204,7 @@ func ChildFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.TranscodedSuffix = format
 		child.TranscodedContentType = mime.TypeByExtension("." + format)
 	}
+	child.BookmarkPosition = mf.BookmarkPosition
 	return child
 }
 

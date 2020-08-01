@@ -52,7 +52,8 @@ func (r mediaFileRepository) Put(m *model.MediaFile) error {
 }
 
 func (r mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
+	sql := r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
+	return r.withBookmark(sql, "media_file.id")
 }
 
 func (r mediaFileRepository) Get(id string) (*model.MediaFile, error) {

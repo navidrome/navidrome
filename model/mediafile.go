@@ -7,6 +7,7 @@ import (
 
 type MediaFile struct {
 	Annotations
+	Bookmarkable
 
 	ID                   string    `json:"id"            orm:"pk;column(id)"`
 	Path                 string    `json:"path"`
@@ -63,6 +64,7 @@ type MediaFileRepository interface {
 	DeleteByPath(path string) (int64, error)
 
 	AnnotatedRepository
+	BookmarkableRepository
 }
 
 func (mf MediaFile) GetAnnotations() Annotations {

@@ -23,7 +23,9 @@ func toSqlArgs(rec interface{}) (map[string]interface{}, error) {
 	err = json.Unmarshal(b, &m)
 	r := make(map[string]interface{}, len(m))
 	for f, v := range m {
-		if !utils.StringInSlice(f, model.AnnotationFields) && v != nil {
+		isAnnotationField := utils.StringInSlice(f, model.AnnotationFields)
+		isBookmarkField := utils.StringInSlice(f, model.BookmarkFields)
+		if !isAnnotationField && !isBookmarkField && v != nil {
 			r[toSnakeCase(f)] = v
 		}
 	}

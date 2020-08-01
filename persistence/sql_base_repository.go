@@ -112,7 +112,7 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 	return res.RowsAffected()
 }
 
-// Note: Due to a bug in the QueryRow, this method does not map any embedded structs (ex: annotations)
+// Note: Due to a bug in the QueryRow method, this function does not map any embedded structs (ex: annotations)
 // In this case, use the queryAll method and get the first item of the returned list
 func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	query, args, err := sq.ToSql()

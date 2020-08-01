@@ -52,55 +52,6 @@ var _ = Describe("PlayQueueRepository", func() {
 			Expect(countPlayQueues(repo, "user1")).To(Equal(1))
 		})
 	})
-
-	Describe("Bookmarks", func() {
-		It("returns an empty collection if there are no bookmarks", func() {
-			Expect(repo.GetBookmarks("user999")).To(BeEmpty())
-		})
-
-		It("saves and overrides bookmarks", func() {
-			By("Saving the bookmark")
-			Expect(repo.AddBookmark("user5", songAntenna.ID, "this is a comment", 123)).To(BeNil())
-
-			bms, err := repo.GetBookmarks("user5")
-			Expect(err).To(BeNil())
-
-			Expect(bms).To(HaveLen(1))
-			Expect(bms[0].Item.ID).To(Equal(songAntenna.ID))
-			Expect(bms[0].Item.Title).To(Equal(songAntenna.Title))
-			Expect(bms[0].Comment).To(Equal("this is a comment"))
-			Expect(bms[0].Position).To(Equal(int64(123)))
-
-			created := bms[0].CreatedAt
-			updated := bms[0].UpdatedAt
-
-			By("Overriding the bookmark")
-			Expect(repo.AddBookmark("user5", songAntenna.ID, "another comment", 333)).To(BeNil())
-
-			bms, err = repo.GetBookmarks("user5")
-			Expect(err).To(BeNil())
-
-			Expect(bms[0].Item.ID).To(Equal(songAntenna.ID))
-			Expect(bms[0].Comment).To(Equal("another comment"))
-			Expect(bms[0].Position).To(Equal(int64(333)))
-			Expect(bms[0].CreatedAt).To(Equal(created))
-			Expect(bms[0].UpdatedAt).To(BeTemporally(">", updated))
-
-			By("Saving another bookmark")
-			Expect(repo.AddBookmark("user5", songComeTogether.ID, "one more comment", 444)).To(BeNil())
-			bms, err = repo.GetBookmarks("user5")
-			Expect(err).To(BeNil())
-			Expect(bms).To(HaveLen(2))
-
-			By("Delete bookmark")
-			Expect(repo.DeleteBookmark("user5", songAntenna.ID))
-			bms, err = repo.GetBookmarks("user5")
-			Expect(err).To(BeNil())
-			Expect(bms).To(HaveLen(1))
-			Expect(bms[0].Item.ID).To(Equal(songComeTogether.ID))
-			Expect(bms[0].Item.Title).To(Equal(songComeTogether.Title))
-		})
-	})
 })
 
 func countPlayQueues(repo model.PlayQueueRepository, userId string) int {
@@ -115,7 +66,6 @@ func countPlayQueues(repo model.PlayQueueRepository, userId string) int {
 func AssertPlayQueue(expected, actual *model.PlayQueue) {
 	Expect(actual.ID).To(Equal(expected.ID))
 	Expect(actual.UserID).To(Equal(expected.UserID))
-	Expect(actual.Comment).To(Equal(expected.Comment))
 	Expect(actual.Current).To(Equal(expected.Current))
 	Expect(actual.Position).To(Equal(expected.Position))
 	Expect(actual.ChangedBy).To(Equal(expected.ChangedBy))
@@ -132,7 +82,6 @@ func aPlayQueue(userId, current string, position int64, items ...model.MediaFile
 	return &model.PlayQueue{
 		ID:        id.String(),
 		UserID:    userId,
-		Comment:   "no_comments",
 		Current:   current,
 		Position:  position,
 		ChangedBy: "test",

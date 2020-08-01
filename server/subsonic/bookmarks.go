@@ -21,8 +21,8 @@ func NewBookmarksController(ds model.DataStore) *BookmarksController {
 func (c *BookmarksController) GetBookmarks(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
-	repo := c.ds.PlayQueue(r.Context())
-	bmks, err := repo.GetBookmarks(user.ID)
+	repo := c.ds.MediaFile(r.Context())
+	bmks, err := repo.GetBookmarks()
 	if err != nil {
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
@@ -52,10 +52,8 @@ func (c *BookmarksController) CreateBookmark(w http.ResponseWriter, r *http.Requ
 	comment := utils.ParamString(r, "comment")
 	position := utils.ParamInt64(r, "position", 0)
 
-	user, _ := request.UserFrom(r.Context())
-
-	repo := c.ds.PlayQueue(r.Context())
-	err = repo.AddBookmark(user.ID, id, comment, position)
+	repo := c.ds.MediaFile(r.Context())
+	err = repo.AddBookmark(id, comment, position)
 	if err != nil {
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
@@ -68,10 +66,8 @@ func (c *BookmarksController) DeleteBookmark(w http.ResponseWriter, r *http.Requ
 		return nil, err
 	}
 
-	user, _ := request.UserFrom(r.Context())
-
-	repo := c.ds.PlayQueue(r.Context())
-	err = repo.DeleteBookmark(user.ID, id)
+	repo := c.ds.MediaFile(r.Context())
+	err = repo.DeleteBookmark(id)
 	if err != nil {
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/model/request"
 )
 
 type playQueueRepository struct {
@@ -27,7 +26,6 @@ func NewPlayQueueRepository(ctx context.Context, o orm.Ormer) model.PlayQueueRep
 type playQueue struct {
 	ID        string `orm:"column(id)"`
 	UserID    string `orm:"column(user_id)"`
-	Comment   string
 	Current   string
 	Position  int64
 	ChangedBy string
@@ -64,79 +62,10 @@ func (r *playQueueRepository) Retrieve(userId string) (*model.PlayQueue, error) 
 	return &pls, err
 }
 
-func (r *playQueueRepository) AddBookmark(userId, id, comment string, position int64) error {
-	u := loggedUser(r.ctx)
-	client, _ := request.ClientFrom(r.ctx)
-	bm := &playQueue{
-		UserID:    userId,
-		Comment:   comment,
-		Current:   id,
-		Position:  position,
-		ChangedBy: client,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	sel := r.newSelect().Column("*").Where(And{
-		Eq{"user_id": userId},
-		Eq{"items": ""},
-		Eq{"current": id},
-	})
-	var prev model.PlayQueue
-	err := r.queryOne(sel, &prev)
-	if err != nil && err != model.ErrNotFound {
-		log.Error(r.ctx, "Error retrieving previous bookmark", "user", u.UserName, err, "mediaFileId", id, err)
-		return err
-	}
-
-	// If there is a previous bookmark, override
-	if prev.ID != "" {
-		bm.ID = prev.ID
-		bm.CreatedAt = prev.CreatedAt
-	}
-
-	_, err = r.put(bm.ID, bm)
-	if err != nil {
-		log.Error(r.ctx, "Error saving bookmark", "user", u.UserName, err, "mediaFileId", id, err)
-		return err
-	}
-	return nil
-}
-
-func (r *playQueueRepository) GetBookmarks(userId string) (model.Bookmarks, error) {
-	u := loggedUser(r.ctx)
-	sel := r.newSelect().Column("*").Where(And{Eq{"user_id": userId}, Eq{"items": ""}})
-	var pqs model.PlayQueues
-	err := r.queryAll(sel, &pqs)
-	if err != nil {
-		log.Error(r.ctx, "Error retrieving bookmarks", "user", u.UserName, err)
-		return nil, err
-	}
-	bms := make(model.Bookmarks, len(pqs))
-	for i := range pqs {
-		items := r.loadTracks(model.MediaFiles{{ID: pqs[i].Current}})
-		bms[i].Item = items[0]
-		bms[i].Comment = pqs[i].Comment
-		bms[i].Position = pqs[i].Position
-		bms[i].CreatedAt = pqs[i].CreatedAt
-		bms[i].UpdatedAt = pqs[i].UpdatedAt
-	}
-	return bms, nil
-}
-
-func (r *playQueueRepository) DeleteBookmark(userId, id string) error {
-	return r.delete(And{
-		Eq{"user_id": userId},
-		Eq{"items": ""},
-		Eq{"current": id},
-	})
-}
-
 func (r *playQueueRepository) fromModel(q *model.PlayQueue) playQueue {
 	pq := playQueue{
 		ID:        q.ID,
 		UserID:    q.UserID,
-		Comment:   q.Comment,
 		Current:   q.Current,
 		Position:  q.Position,
 		ChangedBy: q.ChangedBy,
@@ -155,7 +84,6 @@ func (r *playQueueRepository) toModel(pq *playQueue) model.PlayQueue {
 	q := model.PlayQueue{
 		ID:        pq.ID,
 		UserID:    pq.UserID,
-		Comment:   pq.Comment,
 		Current:   pq.Current,
 		Position:  pq.Position,
 		ChangedBy: pq.ChangedBy,
@@ -219,7 +147,7 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 }
 
 func (r *playQueueRepository) clearPlayQueue(userId string) error {
-	return r.delete(And{Eq{"user_id": userId}, NotEq{"items": ""}})
+	return r.delete(Eq{"user_id": userId})
 }
 
 var _ model.PlayQueueRepository = (*playQueueRepository)(nil)
