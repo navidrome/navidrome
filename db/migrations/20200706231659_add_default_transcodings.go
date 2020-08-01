@@ -1,4 +1,4 @@
-package migration
+package migrations
 
 import (
 	"database/sql"
