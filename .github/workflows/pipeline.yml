@@ -19,6 +19,7 @@ jobs:
         with:
           version: v1.27
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          args: --timeout 2m
 
   go:
     name: Test Server on ${{ matrix.os }}
