@@ -8,7 +8,6 @@ var Set = wire.NewSet(
 	NewBrowser,
 	NewListGenerator,
 	NewPlaylists,
-	NewRatings,
 	NewScrobbler,
 	NewSearch,
 	NewNowPlayingRepository,

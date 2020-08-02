@@ -14,14 +14,11 @@ import (
 
 type MediaAnnotationController struct {
 	scrobbler engine.Scrobbler
-	ratings   engine.Ratings
+	ds        model.DataStore
 }
 
-func NewMediaAnnotationController(scrobbler engine.Scrobbler, ratings engine.Ratings) *MediaAnnotationController {
-	return &MediaAnnotationController{
-		scrobbler: scrobbler,
-		ratings:   ratings,
-	}
+func NewMediaAnnotationController(scrobbler engine.Scrobbler, ds model.DataStore) *MediaAnnotationController {
+	return &MediaAnnotationController{scrobbler: scrobbler, ds: ds}
 }
 
 func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -35,7 +32,7 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 	}
 
 	log.Debug(r, "Setting rating", "rating", rating, "id", id)
-	err = c.ratings.SetRating(r.Context(), id, rating)
+	err = c.setRating(r.Context(), id, rating)
 
 	switch {
 	case err == model.ErrNotFound:
@@ -47,6 +44,17 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 	}
 
 	return NewResponse(), nil
+}
+
+func (c *MediaAnnotationController) setRating(ctx context.Context, id string, rating int) error {
+	exist, err := c.ds.Album(ctx).Exists(id)
+	if err != nil {
+		return err
+	}
+	if exist {
+		return c.ds.Album(ctx).SetRating(rating, id)
+	}
+	return c.ds.MediaFile(ctx).SetRating(rating, id)
 }
 
 func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -65,23 +73,6 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 	}
 
 	return NewResponse(), nil
-}
-
-func (c *MediaAnnotationController) setStar(ctx context.Context, starred bool, ids ...string) error {
-	if len(ids) == 0 {
-		return nil
-	}
-	log.Debug(ctx, "Changing starred", "ids", ids, "starred", starred)
-	err := c.ratings.SetStar(ctx, starred, ids...)
-	switch {
-	case err == model.ErrNotFound:
-		log.Error(ctx, err)
-		return NewError(responses.ErrorDataNotFound, "ID not found")
-	case err != nil:
-		log.Error(ctx, err)
-		return NewError(responses.ErrorGeneric, "Internal Error")
-	}
-	return nil
 }
 
 func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -139,4 +130,57 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 		}
 	}
 	return NewResponse(), nil
+}
+
+func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids ...string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	log.Debug(ctx, "Changing starred", "ids", ids, "starred", star)
+	if len(ids) == 0 {
+		log.Warn(ctx, "Cannot star/unstar an empty list of ids")
+		return nil
+	}
+
+	err := c.ds.WithTx(func(tx model.DataStore) error {
+		for _, id := range ids {
+			exist, err := c.ds.Album(ctx).Exists(id)
+			if err != nil {
+				return err
+			}
+			if exist {
+				err = tx.Album(ctx).SetStar(star, ids...)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+			exist, err = c.ds.Artist(ctx).Exists(id)
+			if err != nil {
+				return err
+			}
+			if exist {
+				err = tx.Artist(ctx).SetStar(star, ids...)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+			err = tx.MediaFile(ctx).SetStar(star, ids...)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	switch {
+	case err == model.ErrNotFound:
+		log.Error(ctx, err)
+		return NewError(responses.ErrorDataNotFound, "ID not found")
+	case err != nil:
+		log.Error(ctx, err)
+		return NewError(responses.ErrorGeneric, "Internal Error")
+	}
+	return nil
 }
