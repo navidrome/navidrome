@@ -62,7 +62,7 @@ func (s *mediaFileMapper) toMediaFile(md *Metadata) model.MediaFile {
 func sanitizeFieldForSorting(originalValue string) string {
 	v := utils.NoArticle(originalValue)
 	v = strings.TrimSpace(sanitize.Accents(v))
-	return utils.NoArticle(v)
+	return v
 }
 
 func (s *mediaFileMapper) mapTrackTitle(md *Metadata) string {
