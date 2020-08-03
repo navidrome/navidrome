@@ -26,6 +26,7 @@ type configOptions struct {
 	EnableTranscodingConfig bool
 	TranscodingCacheSize    string
 	ImageCacheSize          string
+	AutoImportPlaylists     bool
 
 	IgnoredArticles  string
 	IndexGroups      string
@@ -83,6 +84,7 @@ func init() {
 	viper.SetDefault("enabletranscodingconfig", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
+	viper.SetDefault("autoimportplaylists", true)
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")

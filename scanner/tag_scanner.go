@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
@@ -104,19 +105,23 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		}
 	}
 
-	// Now that all mediafiles are imported/updated, search for and import playlists
-	u, _ := request.UserFrom(ctx)
 	plsCount := 0
-	for _, dir := range changedDirs {
-		info := allFSDirs[dir]
-		if info.hasPlaylist {
-			if !u.IsAdmin {
-				log.Warn("Playlists will not be imported, as there are no admin users yet, "+
-					"Please create an admin user first, and then update the playlists for them to be imported", "dir", dir)
-			} else {
-				plsCount = s.plsSync.processPlaylists(ctx, dir)
+	if conf.Server.AutoImportPlaylists {
+		// Now that all mediafiles are imported/updated, search for and import playlists
+		u, _ := request.UserFrom(ctx)
+		for _, dir := range changedDirs {
+			info := allFSDirs[dir]
+			if info.hasPlaylist {
+				if !u.IsAdmin {
+					log.Warn("Playlists will not be imported, as there are no admin users yet, "+
+						"Please create an admin user first, and then update the playlists for them to be imported", "dir", dir)
+				} else {
+					plsCount = s.plsSync.processPlaylists(ctx, dir)
+				}
 			}
 		}
+	} else {
+		log.Debug("Playlist auto-import is disabled")
 	}
 
 	err = s.ds.GC(log.NewContext(ctx))
