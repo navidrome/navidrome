@@ -25,7 +25,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^5.11.1",
     "@testing-library/react": "^10.4.7",
-    "@testing-library/user-event": "^12.0.11",
+    "@testing-library/user-event": "^12.1.0",
     "prettier": "^2.0.5"
   },
   "scripts": {
