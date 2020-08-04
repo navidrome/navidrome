@@ -44,7 +44,11 @@ func (a *archiver) Zip(ctx context.Context, id string, out io.Writer) error {
 
 func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile) error {
 	_, file := filepath.Split(mf.Path)
-	w, err := z.Create(fmt.Sprintf("%s/%s", mf.Album, file))
+	w, err := z.CreateHeader(&zip.FileHeader{
+		Name:     fmt.Sprintf("%s/%s", mf.Album, file),
+		Modified: mf.UpdatedAt,
+		Method:   zip.Store,
+	})
 	if err != nil {
 		log.Error(ctx, "Error creating zip entry", "file", mf.Path, err)
 		return err
