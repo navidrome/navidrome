@@ -60,7 +60,9 @@ func initMediaRetrievalController(router *Router) *MediaRetrievalController {
 
 func initStreamController(router *Router) *StreamController {
 	mediaStreamer := router.Streamer
-	streamController := NewStreamController(mediaStreamer)
+	archiver := router.Archiver
+	dataStore := router.DataStore
+	streamController := NewStreamController(mediaStreamer, archiver, dataStore)
 	return streamController
 }
 
@@ -82,5 +84,6 @@ var allProviders = wire.NewSet(
 	NewUsersController,
 	NewMediaRetrievalController,
 	NewStreamController,
-	NewBookmarksController, wire.FieldsOf(new(*Router), "Browser", "Artwork", "ListGenerator", "Playlists", "Scrobbler", "Search", "Streamer", "DataStore"),
+	NewBookmarksController, wire.FieldsOf(new(*Router), "Browser", "Artwork", "ListGenerator", "Playlists", "Scrobbler",
+		"Search", "Streamer", "Archiver", "DataStore"),
 )

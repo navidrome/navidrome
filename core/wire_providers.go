@@ -10,5 +10,6 @@ var Set = wire.NewSet(
 	NewMediaStreamer,
 	NewTranscodingCache,
 	NewImageCache,
+	NewArchiver,
 	transcoder.New,
 )

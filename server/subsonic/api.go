@@ -31,6 +31,7 @@ type Router struct {
 	Search        engine.Search
 	Users         engine.Users
 	Streamer      core.MediaStreamer
+	Archiver      core.Archiver
 	Players       engine.Players
 	DataStore     model.DataStore
 
@@ -39,10 +40,10 @@ type Router struct {
 
 func New(browser engine.Browser, artwork core.Artwork, listGenerator engine.ListGenerator, users engine.Users,
 	playlists engine.Playlists, scrobbler engine.Scrobbler, search engine.Search,
-	streamer core.MediaStreamer, players engine.Players, ds model.DataStore) *Router {
+	streamer core.MediaStreamer, archiver core.Archiver, players engine.Players, ds model.DataStore) *Router {
 	r := &Router{Browser: browser, Artwork: artwork, ListGenerator: listGenerator, Playlists: playlists,
-		Scrobbler: scrobbler, Search: search, Users: users, Streamer: streamer, Players: players,
-		DataStore: ds}
+		Scrobbler: scrobbler, Search: search, Users: users, Streamer: streamer, Archiver: archiver,
+		Players: players, DataStore: ds}
 	r.mux = r.routes()
 	return r
 }

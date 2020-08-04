@@ -7,16 +7,19 @@ import (
 
 	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
 
 type StreamController struct {
 	streamer core.MediaStreamer
+	archiver core.Archiver
+	ds       model.DataStore
 }
 
-func NewStreamController(streamer core.MediaStreamer) *StreamController {
-	return &StreamController{streamer: streamer}
+func NewStreamController(streamer core.MediaStreamer, archiver core.Archiver, ds model.DataStore) *StreamController {
+	return &StreamController{streamer: streamer, archiver: archiver, ds: ds}
 }
 
 func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -73,11 +76,25 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 		return nil, err
 	}
 
-	stream, err := c.streamer.NewStream(r.Context(), id, "raw", 0)
+	isTrack, err := c.ds.MediaFile(r.Context()).Exists(id)
 	if err != nil {
 		return nil, err
 	}
 
-	http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
+	if isTrack {
+		stream, err := c.streamer.NewStream(r.Context(), id, "raw", 0)
+		if err != nil {
+			return nil, err
+		}
+
+		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
+	} else {
+		w.Header().Set("Content-Type", "application/zip")
+		err := c.archiver.Zip(r.Context(), id, w)
+
+		if err != nil {
+			return nil, err
+		}
+	}
 	return nil, nil
 }
