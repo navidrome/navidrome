@@ -144,7 +144,7 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 
 	err := c.ds.WithTx(func(tx model.DataStore) error {
 		for _, id := range ids {
-			exist, err := c.ds.Album(ctx).Exists(id)
+			exist, err := tx.Album(ctx).Exists(id)
 			if err != nil {
 				return err
 			}
@@ -155,7 +155,7 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 				}
 				continue
 			}
-			exist, err = c.ds.Artist(ctx).Exists(id)
+			exist, err = tx.Artist(ctx).Exists(id)
 			if err != nil {
 				return err
 			}
