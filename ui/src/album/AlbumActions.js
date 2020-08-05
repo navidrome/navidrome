@@ -6,7 +6,7 @@ import {
 } from 'react-admin'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
-import CloudDownloadIcon from '@material-ui/icons/CloudDownload'
+import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import React from 'react'
 import { useDispatch } from 'react-redux'
 import { playTracks, shuffleTracks } from '../audioplayer'
@@ -24,7 +24,6 @@ const AlbumActions = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
 
-  console.log(rest)
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <Button
@@ -49,7 +48,7 @@ const AlbumActions = ({
         }}
         label={translate('resources.album.actions.download')}
       >
-        <CloudDownloadIcon />
+        <CloudDownloadOutlinedIcon />
       </Button>
     </TopToolbar>
   )
