@@ -2,8 +2,10 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
 )
@@ -40,6 +42,7 @@ type Entry struct {
 	PlayerName       string
 	AlbumCount       int
 	BookmarkPosition int64
+	AbsolutePath     string
 }
 
 type Entries []Entry
@@ -101,7 +104,11 @@ func FromMediaFile(mf *model.MediaFile) Entry {
 		e.CoverArt = "al-" + mf.AlbumID
 	}
 	e.ContentType = mf.ContentType()
-	e.Path = mf.Path
+	e.AbsolutePath = mf.Path
+	// Creates a "pseudo" Path, to avoid sending absolute paths to the client
+	if mf.Path != "" {
+		e.Path = fmt.Sprintf("%s/%s/%s.%s", realArtistName(mf), mf.Album, mf.Title, mf.Suffix)
+	}
 	e.DiscNumber = mf.DiscNumber
 	e.Created = mf.CreatedAt
 	e.AlbumId = mf.AlbumID
@@ -114,6 +121,17 @@ func FromMediaFile(mf *model.MediaFile) Entry {
 	e.UserRating = mf.Rating
 	e.BookmarkPosition = mf.BookmarkPosition
 	return e
+}
+
+func realArtistName(mf *model.MediaFile) string {
+	switch {
+	case mf.Compilation:
+		return consts.VariousArtists
+	case mf.AlbumArtist != "":
+		return mf.AlbumArtist
+	}
+
+	return mf.Artist
 }
 
 func FromAlbums(albums model.Albums) Entries {
