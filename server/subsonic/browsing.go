@@ -191,6 +191,13 @@ func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Reque
 	return response, nil
 }
 
+// TODO Integrate with Last.FM
+func (c *BrowsingController) GetTopSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	response := NewResponse()
+	response.TopSongs = &responses.TopSongs{}
+	return response, nil
+}
+
 func (c *BrowsingController) buildDirectory(ctx context.Context, d *engine.DirectoryInfo) *responses.Directory {
 	dir := &responses.Directory{
 		Id:         d.Id,

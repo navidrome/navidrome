@@ -332,6 +332,35 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("TopSongs", func() {
+		BeforeEach(func() {
+			response.TopSongs = &TopSongs{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				child := make([]Child, 1)
+				child[0] = Child{Id: "1", Title: "title", IsDir: false}
+				response.TopSongs.Song = child
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
 	Describe("PlayQueue", func() {
 		BeforeEach(func() {
 			response.PlayQueue = &PlayQueue{}

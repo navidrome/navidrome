@@ -38,6 +38,7 @@ type Subsonic struct {
 
 	ArtistInfo  *ArtistInfo  `xml:"artistInfo,omitempty"                                  json:"artistInfo,omitempty"`
 	ArtistInfo2 *ArtistInfo2 `xml:"artistInfo2,omitempty"                                 json:"artistInfo2,omitempty"`
+	TopSongs    *TopSongs    `xml:"topSongs,omitempty"                                    json:"topSongs,omitempty"`
 
 	PlayQueue *PlayQueue `xml:"playQueue,omitempty"                                       json:"playQueue,omitempty"`
 	Bookmarks *Bookmarks `xml:"bookmarks,omitempty"                                       json:"bookmarks,omitempty"`
@@ -295,6 +296,10 @@ type ArtistInfo struct {
 type ArtistInfo2 struct {
 	ArtistInfoBase
 	SimilarArtist []ArtistID3 `xml:"similarArtist,omitempty"    json:"similarArtist,omitempty"`
+}
+
+type TopSongs struct {
+	Song []Child `xml:"song,omitempty"         json:"song,omitempty"`
 }
 
 type PlayQueue struct {
