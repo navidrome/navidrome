@@ -45,7 +45,9 @@
                 "playAll": "Play",
                 "playNext": "Play Next",
                 "addToQueue": "Play Later",
-                "shuffle": "Shuffle"
+                "shuffle": "Shuffle",
+                "addToPlaylist": "Add to Playlist",
+                "download": "Download"
             },
             "lists": {
                 "all": "All",

@@ -26,4 +26,6 @@ const url = (command, id, options) => {
 const scrobble = (id, submit) =>
   fetchUtils.fetchJson(url('scrobble', id, { submission: submit }))
 
-export default { url, scrobble }
+const download = (id, submit) => (window.location.href = url('download', id))
+
+export default { url, scrobble, download }

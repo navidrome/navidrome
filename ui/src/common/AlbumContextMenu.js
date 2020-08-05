@@ -1,15 +1,16 @@
 import React, { useState } from 'react'
+import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
 import IconButton from '@material-ui/core/IconButton'
 import Menu from '@material-ui/core/Menu'
 import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
+import StarIcon from '@material-ui/icons/Star'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import { openAddToPlaylist } from '../dialogs/dialogState'
-import StarIcon from '@material-ui/icons/Star'
-import PropTypes from 'prop-types'
+import subsonic from '../subsonic'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -35,19 +36,23 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
   const options = {
     play: {
       label: 'resources.album.actions.playAll',
-      action: playTracks,
+      action: (data, ids) => dispatch(playTracks(data, ids)),
     },
     addToQueue: {
       label: 'resources.album.actions.addToQueue',
-      action: addTracks,
+      action: (data, ids) => dispatch(addTracks(data, ids)),
     },
     shuffle: {
       label: 'resources.album.actions.shuffle',
-      action: shuffleTracks,
+      action: (data, ids) => dispatch(shuffleTracks(data, ids)),
     },
     addToPlaylist: {
-      label: 'resources.song.actions.addToPlaylist',
-      action: (data, ids) => openAddToPlaylist({ selectedIds: ids }),
+      label: 'resources.album.actions.addToPlaylist',
+      action: (data, ids) => dispatch(openAddToPlaylist({ selectedIds: ids })),
+    },
+    download: {
+      label: 'resources.album.actions.download',
+      action: () => subsonic.download(record.id),
     },
   }
 
@@ -83,7 +88,7 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
       })
       .then((response) => {
         let { data, ids } = extractSongsData(response)
-        dispatch(options[key].action(data, ids))
+        options[key].action(data, ids)
       })
       .catch(() => {
         notify('ra.page.error', 'warning')

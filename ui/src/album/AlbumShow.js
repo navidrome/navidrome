@@ -26,7 +26,7 @@ const AlbumShow = (props) => {
         {...props}
         albumId={props.id}
         title={<Title subTitle={record.name} />}
-        actions={<AlbumActions />}
+        actions={<AlbumActions albumId={props.id} />}
         filter={{ album_id: props.id }}
         resource={'albumSong'}
         exporter={false}
