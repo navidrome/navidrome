@@ -8,12 +8,12 @@ package cmd
 import (
 	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/core/transcoder"
-	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/persistence"
 	"github.com/deluan/navidrome/scanner"
 	"github.com/deluan/navidrome/server"
 	"github.com/deluan/navidrome/server/app"
 	"github.com/deluan/navidrome/server/subsonic"
+	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/google/wire"
 )
 

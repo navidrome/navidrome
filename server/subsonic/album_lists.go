@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/deluan/navidrome/engine"
 	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
