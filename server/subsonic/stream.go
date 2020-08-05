@@ -89,6 +89,7 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 
 		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
 	} else {
+		w.Header().Set("Content-Disposition", "attachment; filename=Navidrome-download.zip")
 		w.Header().Set("Content-Type", "application/zip")
 		err := c.archiver.Zip(r.Context(), id, w)
 
