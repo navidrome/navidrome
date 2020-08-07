@@ -23,7 +23,8 @@
             "actions": {
                 "addToQueue": "Adicionar à fila",
                 "playNow": "Tocar agora",
-                "addToPlaylist": "Adicionar à playlist"
+                "addToPlaylist": "Adicionar à playlist",
+                "shuffleAll": "Aleatório"
             }
         },
         "album": {

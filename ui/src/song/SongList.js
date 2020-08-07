@@ -23,6 +23,7 @@ import {
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../audioplayer'
 import { SongBulkActions } from './SongBulkActions'
+import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 
@@ -62,6 +63,7 @@ const SongList = (props) => {
         sort={{ field: 'title', order: 'ASC' }}
         exporter={false}
         bulkActionButtons={<SongBulkActions />}
+        actions={<SongListActions />}
         filters={<SongFilter />}
         perPage={isXsmall ? 50 : 15}
       >

@@ -24,7 +24,8 @@
             "actions": {
                 "addToQueue": "Play Later",
                 "addToPlaylist": "Add to Playlist",
-                "playNow": "Play Now"
+                "playNow": "Play Now",
+                "shuffleAll": "Shuffle All"
             }
         },
         "album": {
