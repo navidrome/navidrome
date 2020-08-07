@@ -34,6 +34,19 @@ builds:
       - "-extldflags '-static'"
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
+  - id: navidrome_linux_386
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - 386
+    flags:
+      - -tags=embed
+    ldflags:
+      - "-extldflags '-static'"
+      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+
   - id: navidrome_linux_arm
     env:
       - CGO_ENABLED=1
