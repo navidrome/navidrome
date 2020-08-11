@@ -1,4 +1,4 @@
-# Navidrome Music Streamer
+# Navidrome Music Server
 
 [![Last Release](https://img.shields.io/github/v/release/deluan/navidrome?label=latest&style=flat-square)](https://github.com/deluan/navidrome/releases)
 [![Build](https://img.shields.io/github/workflow/status/deluan/navidrome/Build?style=flat-square)](https://github.com/deluan/navidrome/actions)
@@ -36,7 +36,7 @@ See instructions in the [project's website](https://www.navidrome.org/docs/insta
  - **Multi-user**, each user has their own play counts, playlists, favourites, etc...
  - Very **low resource usage**
  - **Multi-platform**, runs on macOS, Linux and Windows. **Docker** images are also provided
- - Ready to use **Raspberry Pi** binaries and Docker images available
+ - Ready to use binaries for all major platforms, including **Raspberry Pi**
  - Automatically **monitors your library** for changes, importing new files and reloading new metadata 
  - **Themeable**, modern and responsive **Web interface** based on [Material UI](https://material-ui.com)
  - **Compatible** with all Subsonic/Madsonic/Airsonic [clients](https://www.navidrome.org/docs/overview/#apps)
