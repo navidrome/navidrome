@@ -12,9 +12,7 @@ import (
 )
 
 type Browser interface {
-	// Deprecated
 	Directory(ctx context.Context, id string) (*DirectoryInfo, error)
-	Artist(ctx context.Context, id string) (*DirectoryInfo, error)
 	Album(ctx context.Context, id string) (*DirectoryInfo, error)
 	GetSong(ctx context.Context, id string) (*Entry, error)
 	GetGenres(ctx context.Context) (model.Genres, error)

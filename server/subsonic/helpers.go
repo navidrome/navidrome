@@ -215,3 +215,32 @@ func ChildrenFromMediaFiles(ctx context.Context, mfs model.MediaFiles) []respons
 	}
 	return children
 }
+
+func ChildFromAlbum(ctx context.Context, al model.Album) responses.Child {
+	child := responses.Child{}
+	child.Id = al.ID
+	child.IsDir = true
+	child.Name = al.Name
+	child.Artist = al.AlbumArtist
+	child.Year = al.MaxYear
+	child.Genre = al.Genre
+	child.CoverArt = al.CoverArtId
+	child.Created = &al.CreatedAt
+	child.ArtistId = al.AlbumArtistID
+	child.Duration = int(al.Duration)
+	child.SongCount = al.SongCount
+	if al.Starred {
+		child.Starred = &al.StarredAt
+	}
+	child.PlayCount = al.PlayCount
+	child.UserRating = al.Rating
+	return child
+}
+
+func ChildrenFromAlbums(ctx context.Context, als model.Albums) []responses.Child {
+	children := make([]responses.Child, len(als))
+	for i, al := range als {
+		children[i] = ChildFromAlbum(ctx, al)
+	}
+	return children
+}

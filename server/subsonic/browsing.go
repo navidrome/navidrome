@@ -122,18 +122,26 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 
 func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	id := utils.ParamString(r, "id")
-	dir, err := c.browser.Artist(r.Context(), id)
+	ctx := r.Context()
+
+	artist, err := c.ds.Artist(ctx).Get(id)
 	switch {
 	case err == model.ErrNotFound:
-		log.Error(r, "Requested ArtistID not found ", "id", id)
+		log.Error(ctx, "Requested ArtistID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Artist not found")
 	case err != nil:
-		log.Error(r, err)
+		log.Error(ctx, "Error retrieving artist", "id", id, err)
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	albums, err := c.ds.Album(ctx).FindByArtist(id)
+	if err != nil {
+		log.Error(ctx, "Error retrieving albums by artist", "id", id, "name", artist.Name, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	response := NewResponse()
-	response.ArtistWithAlbumsID3 = c.buildArtist(r.Context(), dir)
+	response.ArtistWithAlbumsID3 = c.buildArtist(ctx, artist, albums)
 	return response, nil
 }
 
@@ -234,17 +242,16 @@ func (c *BrowsingController) buildDirectory(ctx context.Context, d *engine.Direc
 	return dir
 }
 
-func (c *BrowsingController) buildArtist(ctx context.Context, d *engine.DirectoryInfo) *responses.ArtistWithAlbumsID3 {
+func (c *BrowsingController) buildArtist(ctx context.Context, artist *model.Artist, albums model.Albums) *responses.ArtistWithAlbumsID3 {
 	dir := &responses.ArtistWithAlbumsID3{}
-	dir.Id = d.Id
-	dir.Name = d.Name
-	dir.AlbumCount = d.AlbumCount
-	dir.CoverArt = d.CoverArt
-	if !d.Starred.IsZero() {
-		dir.Starred = &d.Starred
+	dir.Id = artist.ID
+	dir.Name = artist.Name
+	dir.AlbumCount = artist.AlbumCount
+	if artist.Starred {
+		dir.Starred = &artist.StarredAt
 	}
 
-	dir.Album = ToAlbums(ctx, d.Entries)
+	dir.Album = ChildrenFromAlbums(ctx, albums)
 	return dir
 }
 
