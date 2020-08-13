@@ -19,7 +19,7 @@
     "react-ga": "^3.1.2",
     "react-jinke-music-player": "^4.16.5",
     "react-measure": "^2.3.0",
-    "react-redux": "^7.2.0",
+    "react-redux": "^7.2.1",
     "react-scripts": "^3.4.3"
   },
   "devDependencies": {
