@@ -147,18 +147,26 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 
 func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	id := utils.ParamString(r, "id")
-	dir, err := c.browser.Album(r.Context(), id)
+	ctx := r.Context()
+
+	album, err := c.ds.Album(ctx).Get(id)
 	switch {
 	case err == model.ErrNotFound:
-		log.Error(r, "Requested ID not found ", "id", id)
+		log.Error(ctx, "Requested AlbumID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Album not found")
 	case err != nil:
-		log.Error(r, err)
+		log.Error(ctx, "Error retrieving album", "id", id, err)
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+	}
+
+	mfs, err := c.ds.MediaFile(ctx).FindByAlbum(id)
+	if err != nil {
+		log.Error(ctx, "Error retrieving tracks from album", "id", id, "name", album.Name, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	response := NewResponse()
-	response.AlbumWithSongsID3 = c.buildAlbum(r.Context(), dir)
+	response.AlbumWithSongsID3 = c.buildAlbum(ctx, album, mfs)
 	return response, nil
 }
 
@@ -255,25 +263,25 @@ func (c *BrowsingController) buildArtist(ctx context.Context, artist *model.Arti
 	return dir
 }
 
-func (c *BrowsingController) buildAlbum(ctx context.Context, d *engine.DirectoryInfo) *responses.AlbumWithSongsID3 {
+func (c *BrowsingController) buildAlbum(ctx context.Context, album *model.Album, mfs model.MediaFiles) *responses.AlbumWithSongsID3 {
 	dir := &responses.AlbumWithSongsID3{}
-	dir.Id = d.Id
-	dir.Name = d.Name
-	dir.Artist = d.Artist
-	dir.ArtistId = d.ArtistId
-	dir.CoverArt = d.CoverArt
-	dir.SongCount = d.SongCount
-	dir.Duration = d.Duration
-	dir.PlayCount = d.PlayCount
-	dir.Year = d.Year
-	dir.Genre = d.Genre
-	if !d.Created.IsZero() {
-		dir.Created = &d.Created
+	dir.Id = album.ID
+	dir.Name = album.Name
+	dir.Artist = album.AlbumArtist
+	dir.ArtistId = album.AlbumArtistID
+	dir.CoverArt = album.CoverArtId
+	dir.SongCount = album.SongCount
+	dir.Duration = int(album.Duration)
+	dir.PlayCount = album.PlayCount
+	dir.Year = album.MaxYear
+	dir.Genre = album.Genre
+	if !album.CreatedAt.IsZero() {
+		dir.Created = &album.CreatedAt
 	}
-	if !d.Starred.IsZero() {
-		dir.Starred = &d.Starred
+	if album.Starred {
+		dir.Starred = &album.StarredAt
 	}
 
-	dir.Song = ToChildren(ctx, d.Entries)
+	dir.Song = ChildrenFromMediaFiles(ctx, mfs)
 	return dir
 }

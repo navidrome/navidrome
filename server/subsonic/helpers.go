@@ -187,7 +187,7 @@ func ChildFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.CoverArt = "al-" + mf.AlbumID
 	}
 	child.ContentType = mf.ContentType()
-	child.Path = mf.Path
+	child.Path = fmt.Sprintf("%s/%s/%s.%s", realArtistName(mf), mf.Album, mf.Title, mf.Suffix)
 	child.DiscNumber = mf.DiscNumber
 	child.Created = &mf.CreatedAt
 	child.AlbumId = mf.AlbumID
@@ -206,6 +206,17 @@ func ChildFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 	child.BookmarkPosition = mf.BookmarkPosition
 	return child
+}
+
+func realArtistName(mf model.MediaFile) string {
+	switch {
+	case mf.Compilation:
+		return consts.VariousArtists
+	case mf.AlbumArtist != "":
+		return mf.AlbumArtist
+	}
+
+	return mf.Artist
 }
 
 func ChildrenFromMediaFiles(ctx context.Context, mfs model.MediaFiles) []responses.Child {
