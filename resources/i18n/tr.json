@@ -23,7 +23,7 @@
             },
             "actions": {
                 "addToQueue": "Sonra çal",
-                "playNow": "Şimdi cal",
+                "playNow": "Şimdi çal",
                 "addToPlaylist": "Çalma listesine ekle"
             }
         },
@@ -46,6 +46,13 @@
                 "playNext": "Sonrakini çal",
                 "addToQueue": "Sonra çal",
                 "shuffle": "Karıştır"
+            },
+            "lists": {
+                "all": "Hepsi",
+                "random": "Rasgele",
+                "recentlyAdded": "Son Eklenenler",
+                "recentlyPlayed": "Son oynatılan",
+                "mostPlayed": "En çok çalanlar"
             }
         },
         "artist": {
@@ -98,7 +105,9 @@
                 "updatedAt": "Güncelleme tarihi:",
                 "createdAt": "Oluşturma tarihi:",
                 "songCount": "Şarkılar",
-                "comment": "Yorum"
+                "comment": "Yorum",
+                "sync": "otomatik-aktarma",
+                "path": "'dan Aktar"
             },
             "actions": {
                 "selectPlaylist": "Bir çalma listesi seç:",
@@ -254,9 +263,11 @@
             "name": "Kişisel",
             "options": {
                 "theme": "Tema",
-                "language": "Dil"
+                "language": "Dil",
+                "defaultView": "Varsayılan görünüm"
             }
-        }
+        },
+        "albumList": "Albümler"
     },
     "player": {
         "playListsText": "Oynatma Sırası",
