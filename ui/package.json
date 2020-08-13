@@ -20,7 +20,7 @@
     "react-jinke-music-player": "^4.16.5",
     "react-measure": "^2.3.0",
     "react-redux": "^7.2.0",
-    "react-scripts": "^3.4.1"
+    "react-scripts": "^3.4.3"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.11.1",
