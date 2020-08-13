@@ -4,18 +4,15 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/utils"
 )
 
 type Browser interface {
-	MediaFolders(ctx context.Context) (model.MediaFolders, error)
-	Indexes(ctx context.Context, mediaFolderId string, ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error)
+	// Deprecated
 	Directory(ctx context.Context, id string) (*DirectoryInfo, error)
 	Artist(ctx context.Context, id string) (*DirectoryInfo, error)
 	Album(ctx context.Context, id string) (*DirectoryInfo, error)
@@ -29,30 +26,6 @@ func NewBrowser(ds model.DataStore) Browser {
 
 type browser struct {
 	ds model.DataStore
-}
-
-func (b *browser) MediaFolders(ctx context.Context) (model.MediaFolders, error) {
-	return b.ds.MediaFolder(ctx).GetAll()
-}
-
-func (b *browser) Indexes(ctx context.Context, mediaFolderId string, ifModifiedSince time.Time) (model.ArtistIndexes, time.Time, error) {
-	// TODO Proper handling of mediaFolderId param
-	folder, _ := b.ds.MediaFolder(ctx).Get(mediaFolderId)
-
-	l, err := b.ds.Property(ctx).DefaultGet(model.PropLastScan+"-"+folder.Path, "-1")
-	ms, _ := strconv.ParseInt(l, 10, 64)
-	lastModified := utils.ToTime(ms)
-
-	if err != nil {
-		return nil, time.Time{}, fmt.Errorf("error retrieving LastScan property: %v", err)
-	}
-
-	if lastModified.After(ifModifiedSince) {
-		indexes, err := b.ds.Artist(ctx).GetIndex()
-		return indexes, lastModified, err
-	}
-
-	return nil, lastModified, nil
 }
 
 type DirectoryInfo struct {

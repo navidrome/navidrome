@@ -18,7 +18,8 @@ func initSystemController(router *Router) *SystemController {
 
 func initBrowsingController(router *Router) *BrowsingController {
 	browser := router.Browser
-	browsingController := NewBrowsingController(browser)
+	dataStore := router.DataStore
+	browsingController := NewBrowsingController(browser, dataStore)
 	return browsingController
 }
 
