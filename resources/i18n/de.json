@@ -46,6 +46,13 @@
                 "playNext": "Als nächstes abspielen",
                 "addToQueue": "Später abspielen",
                 "shuffle": "Zufallswiedergabe"
+            },
+            "lists": {
+                "all": "Alle",
+                "random": "Zufällig",
+                "recentlyAdded": "Kürzlich hinzugefügt",
+                "recentlyPlayed": "Kürzlich gespielt",
+                "mostPlayed": "Meist gespielt"
             }
         },
         "artist": {
@@ -98,7 +105,9 @@
                 "updatedAt": "Aktualisiert um",
                 "createdAt": "Erstellt um",
                 "songCount": "Songanzahl",
-                "comment": "Kommentar"
+                "comment": "Kommentar",
+                "sync": "Auto-Import",
+                "path": "Importieren aus"
             },
             "actions": {
                 "selectPlaylist": "Songs zur Playlist hinzufügen",
@@ -254,9 +263,11 @@
             "name": "Persönlich",
             "options": {
                 "theme": "Design",
-                "language": "Sprache"
+                "language": "Sprache",
+                "defaultView": "Standard-Ansicht"
             }
-        }
+        },
+        "albumList": "Alben"
     },
     "player": {
         "playListsText": "Wiedergabeliste abspielen",
