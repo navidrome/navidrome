@@ -30,7 +30,8 @@ func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepositor
 		"name": "order_artist_name",
 	}
 	r.filterMappings = map[string]filterFunc{
-		"name": fullTextFilter,
+		"name":    fullTextFilter,
+		"starred": booleanFilter,
 	}
 	return r
 }
@@ -40,7 +41,7 @@ func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBui
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(Select(), options...)
+	return r.count(r.newSelectWithAnnotation("artist.id"), options...)
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {
@@ -197,6 +198,21 @@ func (r *artistRepository) NewInstance() interface{} {
 	return &model.Artist{}
 }
 
-var _ model.ArtistRepository = (*artistRepository)(nil)
+func (r artistRepository) Delete(id string) error {
+	return r.delete(Eq{"id": id})
+}
+
+func (r artistRepository) Save(entity interface{}) (string, error) {
+	mf := entity.(*model.Artist)
+	err := r.Put(mf)
+	return mf.ID, err
+}
+
+func (r artistRepository) Update(entity interface{}, cols ...string) error {
+	mf := entity.(*model.Artist)
+	return r.Put(mf)
+}
+
 var _ model.ArtistRepository = (*artistRepository)(nil)
 var _ model.ResourceRepository = (*artistRepository)(nil)
+var _ rest.Persistable = (*artistRepository)(nil)

@@ -9,10 +9,12 @@ import {
   TextField,
 } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
+import StarIcon from '@material-ui/icons/Star'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 import {
   ArtistContextMenu,
   List,
+  QuickFilter,
   SimpleList,
   useGetHandleArtistClick,
 } from '../common'
@@ -20,6 +22,11 @@ import {
 const ArtistFilter = (props) => (
   <Filter {...props}>
     <SearchInput source="name" alwaysOn />
+    <QuickFilter
+      source="starred"
+      label={<StarIcon fontSize={'small'} />}
+      defaultValue={true}
+    />
   </Filter>
 )
 
