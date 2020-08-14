@@ -17,8 +17,7 @@ var allProviders = wire.NewSet(
 	NewMediaRetrievalController,
 	NewStreamController,
 	NewBookmarksController,
-	wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Scrobbler",
-		"Search", "Streamer", "Archiver", "DataStore"),
+	wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Scrobbler", "Streamer", "Archiver", "DataStore"),
 )
 
 func initSystemController(router *Router) *SystemController {
