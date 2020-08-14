@@ -5,7 +5,6 @@ import (
 )
 
 var Set = wire.NewSet(
-	NewBrowser,
 	NewListGenerator,
 	NewPlaylists,
 	NewScrobbler,

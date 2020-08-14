@@ -3,24 +3,24 @@ package subsonic
 import (
 	"context"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
 
 type BrowsingController struct {
-	browser engine.Browser
-	ds      model.DataStore
+	ds model.DataStore
 }
 
-func NewBrowsingController(browser engine.Browser, ds model.DataStore) *BrowsingController {
-	return &BrowsingController{browser: browser, ds: ds}
+func NewBrowsingController(ds model.DataStore) *BrowsingController {
+	return &BrowsingController{ds: ds}
 }
 
 func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -210,11 +210,20 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 }
 
 func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	genres, err := c.browser.GetGenres(r.Context())
+	ctx := r.Context()
+	genres, err := c.ds.Genre(ctx).GetAll()
 	if err != nil {
 		log.Error(r, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
+	for i, g := range genres {
+		if strings.TrimSpace(g.Name) == "" {
+			genres[i].Name = "<Empty>"
+		}
+	}
+	sort.Slice(genres, func(i, j int) bool {
+		return genres[i].Name < genres[j].Name
+	})
 
 	response := NewResponse()
 	response.Genres = ToGenres(genres)
