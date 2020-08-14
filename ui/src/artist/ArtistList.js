@@ -10,6 +10,7 @@ import {
 } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
 import StarIcon from '@material-ui/icons/Star'
+import StarBorderIcon from '@material-ui/icons/StarBorder'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 import {
   ArtistContextMenu,
@@ -18,6 +19,15 @@ import {
   SimpleList,
   useGetHandleArtistClick,
 } from '../common'
+import { makeStyles } from '@material-ui/core/styles'
+
+const useStyles = makeStyles({
+  columnIcon: {
+    marginLeft: '3px',
+    marginTop: '-2px',
+    verticalAlign: 'text-top',
+  },
+})
 
 const ArtistFilter = (props) => (
   <Filter {...props}>
@@ -62,6 +72,7 @@ const ArtistDatagrid = (props) => (
 )
 
 const ArtistList = ({ width, ...rest }) => {
+  const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return (
@@ -86,7 +97,17 @@ const ArtistList = ({ width, ...rest }) => {
             <NumberField source="albumCount" sortByOrder={'DESC'} />
             <NumberField source="songCount" sortByOrder={'DESC'} />
             <NumberField source="playCount" sortByOrder={'DESC'} />
-            <ArtistContextMenu />
+            <ArtistContextMenu
+              source={'starred'}
+              sortBy={'starred ASC, starredAt ASC'}
+              sortByOrder={'DESC'}
+              label={
+                <StarBorderIcon
+                  fontSize={'small'}
+                  className={classes.columnIcon}
+                />
+              }
+            />
           </ArtistDatagrid>
         )}
       </List>

@@ -100,6 +100,9 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
       <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
       {isDesktop && <DurationField source="duration" />}
       <AlbumContextMenu
+        source={'starred'}
+        sortBy={'starred ASC, starredAt ASC'}
+        sortByOrder={'DESC'}
         label={
           <StarBorderIcon fontSize={'small'} className={classes.columnIcon} />
         }
