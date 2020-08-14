@@ -9,6 +9,7 @@ import StarIcon from '@material-ui/icons/Star'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import { addTracks, setTrack } from '../audioplayer'
 import { openAddToPlaylist } from '../dialogs/dialogState'
+import subsonic from '../subsonic'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -39,19 +40,25 @@ const SongContextMenu = ({
   const options = {
     playNow: {
       label: 'resources.song.actions.playNow',
-      action: (record) => setTrack(record),
+      action: (record) => dispatch(setTrack(record)),
     },
     addToQueue: {
       label: 'resources.song.actions.addToQueue',
-      action: (record) => addTracks({ [record.id]: record }),
+      action: (record) => dispatch(addTracks({ [record.id]: record })),
     },
     addToPlaylist: {
       label: 'resources.song.actions.addToPlaylist',
       action: (record) =>
-        openAddToPlaylist({
-          selectedIds: [record.mediaFileId || record.id],
-          onSuccess: (id) => onAddToPlaylist(id),
-        }),
+        dispatch(
+          openAddToPlaylist({
+            selectedIds: [record.mediaFileId || record.id],
+            onSuccess: (id) => onAddToPlaylist(id),
+          })
+        ),
+    },
+    download: {
+      label: 'resources.song.actions.download',
+      action: (record) => subsonic.download(record.id),
     },
   }
 
@@ -69,7 +76,7 @@ const SongContextMenu = ({
     e.preventDefault()
     setAnchorEl(null)
     const key = e.target.getAttribute('value')
-    dispatch(options[key].action(record))
+    options[key].action(record)
     e.stopPropagation()
   }
 

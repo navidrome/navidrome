@@ -25,7 +25,8 @@
                 "addToQueue": "Play Later",
                 "addToPlaylist": "Add to Playlist",
                 "playNow": "Play Now",
-                "shuffleAll": "Shuffle All"
+                "shuffleAll": "Shuffle All",
+                "download": "Download"
             }
         },
         "album": {

@@ -35,22 +35,27 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
 
   const options = {
     play: {
+      needData: true,
       label: 'resources.album.actions.playAll',
       action: (data, ids) => dispatch(playTracks(data, ids)),
     },
     addToQueue: {
+      needData: true,
       label: 'resources.album.actions.addToQueue',
       action: (data, ids) => dispatch(addTracks(data, ids)),
     },
     shuffle: {
+      needData: true,
       label: 'resources.album.actions.shuffle',
       action: (data, ids) => dispatch(shuffleTracks(data, ids)),
     },
     addToPlaylist: {
+      needData: true,
       label: 'resources.album.actions.addToPlaylist',
       action: (data, ids) => dispatch(openAddToPlaylist({ selectedIds: ids })),
     },
     download: {
+      needData: false,
       label: 'resources.album.actions.download',
       action: () => subsonic.download(record.id),
     },
@@ -80,19 +85,23 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
   const handleItemClick = (e) => {
     setAnchorEl(null)
     const key = e.target.getAttribute('value')
-    dataProvider
-      .getList('albumSong', {
-        pagination: { page: 1, perPage: -1 },
-        sort: { field: 'discNumber, trackNumber', order: 'ASC' },
-        filter: { album_id: record.id, disc_number: discNumber },
-      })
-      .then((response) => {
-        let { data, ids } = extractSongsData(response)
-        options[key].action(data, ids)
-      })
-      .catch(() => {
-        notify('ra.page.error', 'warning')
-      })
+    if (options[key].needData) {
+      dataProvider
+        .getList('albumSong', {
+          pagination: { page: 1, perPage: -1 },
+          sort: { field: 'discNumber, trackNumber', order: 'ASC' },
+          filter: { album_id: record.id, disc_number: discNumber },
+        })
+        .then((response) => {
+          let { data, ids } = extractSongsData(response)
+          options[key].action(data, ids)
+        })
+        .catch(() => {
+          notify('ra.page.error', 'warning')
+        })
+    } else {
+      options[key].action()
+    }
 
     e.stopPropagation()
   }

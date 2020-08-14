@@ -86,9 +86,9 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 	}
 
 	setHeaders := func(name string) {
-		filename := fmt.Sprintf("attachment; filename=%s.zip", name)
-		filename = strings.ReplaceAll(filename, ",", "_")
-		w.Header().Set("Content-Disposition", filename)
+		name = strings.ReplaceAll(name, ",", "_")
+		disposition := fmt.Sprintf("attachment; filename=\"%s.zip\"", name)
+		w.Header().Set("Content-Disposition", disposition)
 		w.Header().Set("Content-Type", "application/zip")
 	}
 
@@ -99,6 +99,8 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 			return nil, err
 		}
 
+		disposition := fmt.Sprintf("attachment; filename=\"%s\"", stream.Name())
+		w.Header().Set("Content-Disposition", disposition)
 		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
 		return nil, nil
 	case *model.Album:

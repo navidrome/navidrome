@@ -24,7 +24,8 @@
                 "addToQueue": "Adicionar à fila",
                 "playNow": "Tocar agora",
                 "addToPlaylist": "Adicionar à playlist",
-                "shuffleAll": "Aleatório"
+                "shuffleAll": "Aleatório",
+                "download": "Baixar"
             }
         },
         "album": {
