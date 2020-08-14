@@ -15,6 +15,7 @@ import SongContextMenu from './SongContextMenu'
 import SongTitleField from './SongTitleField'
 import QuickFilter from './QuickFilter'
 import useAlbumsPerPage from './useAlbumsPerPage'
+import ShuffleAllButton from './ShuffleAllButton'
 import { AlbumContextMenu, ArtistContextMenu } from './ContextMenus'
 
 export {
@@ -40,4 +41,5 @@ export {
   SongContextMenu,
   QuickFilter,
   useAlbumsPerPage,
+  ShuffleAllButton,
 }
