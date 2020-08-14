@@ -3,6 +3,7 @@
 package subsonic
 
 import (
+	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/google/wire"
 )
 
@@ -17,7 +18,8 @@ var allProviders = wire.NewSet(
 	NewMediaRetrievalController,
 	NewStreamController,
 	NewBookmarksController,
-	wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Scrobbler", "Streamer", "Archiver", "DataStore"),
+	engine.NewNowPlayingRepository,
+	wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Streamer", "Archiver", "DataStore"),
 )
 
 func initSystemController(router *Router) *SystemController {

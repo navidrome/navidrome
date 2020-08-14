@@ -6,6 +6,7 @@
 package subsonic
 
 import (
+	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/google/wire"
 )
 
@@ -29,9 +30,9 @@ func initAlbumListController(router *Router) *AlbumListController {
 }
 
 func initMediaAnnotationController(router *Router) *MediaAnnotationController {
-	scrobbler := router.Scrobbler
 	dataStore := router.DataStore
-	mediaAnnotationController := NewMediaAnnotationController(scrobbler, dataStore)
+	nowPlayingRepository := engine.NewNowPlayingRepository()
+	mediaAnnotationController := NewMediaAnnotationController(dataStore, nowPlayingRepository)
 	return mediaAnnotationController
 }
 
@@ -84,5 +85,5 @@ var allProviders = wire.NewSet(
 	NewUsersController,
 	NewMediaRetrievalController,
 	NewStreamController,
-	NewBookmarksController, wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Scrobbler", "Streamer", "Archiver", "DataStore"),
+	NewBookmarksController, engine.NewNowPlayingRepository, wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Streamer", "Archiver", "DataStore"),
 )
