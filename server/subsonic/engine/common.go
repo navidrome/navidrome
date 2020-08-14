@@ -1,13 +1,11 @@
 package engine
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/model/request"
 )
 
 type Entry struct {
@@ -159,12 +157,4 @@ func FromArtists(ars model.Artists) Entries {
 		entries[i] = FromArtist(&ar)
 	}
 	return entries
-}
-
-func userName(ctx context.Context) string {
-	if user, ok := request.UserFrom(ctx); !ok {
-		return "UNKNOWN"
-	} else {
-		return user.UserName
-	}
 }
