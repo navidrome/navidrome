@@ -17,7 +17,7 @@ import {
   SimpleList,
 } from '../common'
 import { useMediaQuery } from '@material-ui/core'
-import AlbumContextMenu from '../common/AlbumContextMenu'
+import { AlbumContextMenu } from '../common'
 
 const AlbumDetails = (props) => {
   return (

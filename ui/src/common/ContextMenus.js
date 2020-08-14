@@ -25,7 +25,7 @@ const useStyles = makeStyles({
   },
 })
 
-const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
+const ContextMenu = ({ record, color, visible, songQueryParams }) => {
   const classes = useStyles({ color, visible })
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
@@ -87,11 +87,7 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
     const key = e.target.getAttribute('value')
     if (options[key].needData) {
       dataProvider
-        .getList('albumSong', {
-          pagination: { page: 1, perPage: -1 },
-          sort: { field: 'discNumber, trackNumber', order: 'ASC' },
-          filter: { album_id: record.id, disc_number: discNumber },
-        })
+        .getList('albumSong', songQueryParams)
         .then((response) => {
           let { data, ids } = extractSongsData(response)
           options[key].action(data, ids)
@@ -140,6 +136,17 @@ const AlbumContextMenu = ({ record, discNumber, color, visible }) => {
   )
 }
 
+export const AlbumContextMenu = (props) => (
+  <ContextMenu
+    {...props}
+    songQueryParams={{
+      pagination: { page: 1, perPage: -1 },
+      sort: { field: 'discNumber, trackNumber', order: 'ASC' },
+      filter: { album_id: props.record.id, disc_number: props.discNumber },
+    }}
+  />
+)
+
 AlbumContextMenu.propTypes = {
   record: PropTypes.object,
   discNumber: PropTypes.number,
@@ -152,4 +159,24 @@ AlbumContextMenu.defaultProps = {
   addLabel: true,
 }
 
-export default AlbumContextMenu
+export const ArtistContextMenu = (props) => (
+  <ContextMenu
+    {...props}
+    songQueryParams={{
+      pagination: { page: 1, perPage: 200 },
+      sort: { field: 'album, discNumber, trackNumber', order: 'ASC' },
+      filter: { album_artist_id: props.record.id },
+    }}
+  />
+)
+
+ArtistContextMenu.propTypes = {
+  record: PropTypes.object,
+  visible: PropTypes.bool,
+  color: PropTypes.string,
+}
+
+ArtistContextMenu.defaultProps = {
+  visible: true,
+  addLabel: true,
+}

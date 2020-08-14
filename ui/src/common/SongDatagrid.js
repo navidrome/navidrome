@@ -6,7 +6,7 @@ import PropTypes from 'prop-types'
 import { makeStyles } from '@material-ui/core/styles'
 import AlbumIcon from '@material-ui/icons/Album'
 import { playTracks } from '../audioplayer'
-import AlbumContextMenu from './AlbumContextMenu'
+import { AlbumContextMenu } from '../common'
 
 const useStyles = makeStyles({
   row: {

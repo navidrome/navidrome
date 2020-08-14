@@ -12,7 +12,7 @@ import { linkToRecord, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
 import { ArtistLinkField, RangeField } from '../common'
-import AlbumContextMenu from '../common/AlbumContextMenu.js'
+import { AlbumContextMenu } from '../common'
 
 const useStyles = makeStyles((theme) => ({
   root: {

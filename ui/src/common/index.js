@@ -15,6 +15,7 @@ import SongContextMenu from './SongContextMenu'
 import SongTitleField from './SongTitleField'
 import QuickFilter from './QuickFilter'
 import useAlbumsPerPage from './useAlbumsPerPage'
+import { AlbumContextMenu, ArtistContextMenu } from './ContextMenus'
 
 export {
   Title,
@@ -33,6 +34,8 @@ export {
   DocLink,
   formatRange,
   ArtistLinkField,
+  AlbumContextMenu,
+  ArtistContextMenu,
   useGetHandleArtistClick,
   SongContextMenu,
   QuickFilter,
