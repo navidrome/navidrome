@@ -7,9 +7,11 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/deluan/navidrome/core/auth"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
+	"github.com/deluan/navidrome/persistence"
 	"github.com/deluan/navidrome/server/subsonic/engine"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -113,29 +115,24 @@ var _ = Describe("Middlewares", func() {
 	})
 
 	Describe("Authenticate", func() {
-		var mockedUsers *mockUsers
+		var ds model.DataStore
 		BeforeEach(func() {
-			mockedUsers = &mockUsers{}
+			ds = &persistence.MockDataStore{}
 		})
 
-		It("passes all parameters to users.Authenticate ", func() {
-			r := newGetRequest("u=valid", "p=password", "t=token", "s=salt", "jwt=jwt")
-			cp := authenticate(mockedUsers)(next)
+		It("passes authentication with correct credentials", func() {
+			r := newGetRequest("u=admin", "p=wordpass")
+			cp := authenticate(ds)(next)
 			cp.ServeHTTP(w, r)
 
-			Expect(mockedUsers.username).To(Equal("valid"))
-			Expect(mockedUsers.password).To(Equal("password"))
-			Expect(mockedUsers.token).To(Equal("token"))
-			Expect(mockedUsers.salt).To(Equal("salt"))
-			Expect(mockedUsers.jwt).To(Equal("jwt"))
 			Expect(next.called).To(BeTrue())
 			user, _ := request.UserFrom(next.req.Context())
-			Expect(user.UserName).To(Equal("valid"))
+			Expect(user.UserName).To(Equal("admin"))
 		})
 
 		It("fails authentication with wrong password", func() {
 			r := newGetRequest("u=invalid", "", "", "")
-			cp := authenticate(mockedUsers)(next)
+			cp := authenticate(ds)(next)
 			cp.ServeHTTP(w, r)
 
 			Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
@@ -221,6 +218,75 @@ var _ = Describe("Middlewares", func() {
 			})
 		})
 	})
+
+	Describe("validateUser", func() {
+		var ds model.DataStore
+		BeforeEach(func() {
+			ds = &persistence.MockDataStore{}
+		})
+
+		Context("Plaintext password", func() {
+			It("authenticates with plaintext password ", func() {
+				usr, err := validateUser(context.TODO(), ds, "admin", "wordpass", "", "", "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(usr).To(Equal(&model.User{UserName: "admin", Password: "wordpass"}))
+			})
+
+			It("fails authentication with wrong password", func() {
+				_, err := validateUser(context.TODO(), ds, "admin", "INVALID", "", "", "")
+				Expect(err).To(MatchError(model.ErrInvalidAuth))
+			})
+		})
+
+		Context("Encoded password", func() {
+			It("authenticates with simple encoded password ", func() {
+				usr, err := validateUser(context.TODO(), ds, "admin", "enc:776f726470617373", "", "", "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(usr).To(Equal(&model.User{UserName: "admin", Password: "wordpass"}))
+			})
+		})
+
+		Context("Token based authentication", func() {
+			It("authenticates with token based authentication", func() {
+				usr, err := validateUser(context.TODO(), ds, "admin", "", "23b342970e25c7928831c3317edd0b67", "retnlmjetrymazgkt", "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(usr).To(Equal(&model.User{UserName: "admin", Password: "wordpass"}))
+			})
+
+			It("fails if salt is missing", func() {
+				_, err := validateUser(context.TODO(), ds, "admin", "", "23b342970e25c7928831c3317edd0b67", "", "")
+				Expect(err).To(MatchError(model.ErrInvalidAuth))
+			})
+		})
+
+		Context("JWT based authentication", func() {
+			var validToken string
+			BeforeEach(func() {
+				u := &model.User{UserName: "admin"}
+				var err error
+				validToken, err = auth.CreateToken(u)
+				if err != nil {
+					panic(err)
+				}
+			})
+			It("authenticates with JWT token based authentication", func() {
+				usr, err := validateUser(context.TODO(), ds, "admin", "", "", "", validToken)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(usr).To(Equal(&model.User{UserName: "admin", Password: "wordpass"}))
+			})
+
+			It("fails if JWT token is invalid", func() {
+				_, err := validateUser(context.TODO(), ds, "admin", "", "", "", "invalid.token")
+				Expect(err).To(MatchError(model.ErrInvalidAuth))
+			})
+
+			It("fails if JWT token sub is different than username", func() {
+				_, err := validateUser(context.TODO(), ds, "not_admin", "", "", "", validToken)
+				Expect(err).To(MatchError(model.ErrInvalidAuth))
+			})
+		})
+	})
 })
 
 type mockHandler struct {
@@ -231,23 +297,6 @@ type mockHandler struct {
 func (mh *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mh.req = r
 	mh.called = true
-}
-
-type mockUsers struct {
-	engine.Users
-	username, password, token, salt, jwt string
-}
-
-func (m *mockUsers) Authenticate(ctx context.Context, username, password, token, salt, jwt string) (*model.User, error) {
-	m.username = username
-	m.password = password
-	m.token = token
-	m.salt = salt
-	m.jwt = jwt
-	if username == "valid" {
-		return &model.User{UserName: username, Password: password}, nil
-	}
-	return nil, model.ErrInvalidAuth
 }
 
 type mockPlayers struct {
