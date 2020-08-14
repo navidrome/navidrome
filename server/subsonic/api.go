@@ -181,7 +181,7 @@ func HGone(r chi.Router, path string) {
 }
 
 func SendError(w http.ResponseWriter, r *http.Request, err error) {
-	response := NewResponse()
+	response := newResponse()
 	code := responses.ErrorGeneric
 	if e, ok := err.(SubsonicError); ok {
 		code = e.code

@@ -25,7 +25,7 @@ func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Reques
 	allPls, err := c.pls.GetAll(r.Context())
 	if err != nil {
 		log.Error(r, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal error")
+		return nil, newError(responses.ErrorGeneric, "Internal error")
 	}
 	playlists := make([]responses.Playlist, len(allPls))
 	for i, p := range allPls {
@@ -39,13 +39,13 @@ func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Reques
 		playlists[i].Created = p.CreatedAt
 		playlists[i].Changed = p.UpdatedAt
 	}
-	response := NewResponse()
+	response := newResponse()
 	response.Playlists = &responses.Playlists{Playlist: playlists}
 	return response, nil
 }
 
 func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, err := RequiredParamString(r, "id", "id parameter required")
+	id, err := requiredParamString(r, "id", "id parameter required")
 	if err != nil {
 		return nil, err
 	}
@@ -53,13 +53,13 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, err.Error(), "id", id)
-		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
+		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
 		log.Error(r, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.Playlist = c.buildPlaylistWithSongs(r.Context(), pinfo)
 	return response, nil
 }
@@ -74,29 +74,29 @@ func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Requ
 	err := c.pls.Create(r.Context(), playlistId, name, songIds)
 	if err != nil {
 		log.Error(r, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
-	return NewResponse(), nil
+	return newResponse(), nil
 }
 
 func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, err := RequiredParamString(r, "id", "Required parameter id is missing")
+	id, err := requiredParamString(r, "id", "Required parameter id is missing")
 	if err != nil {
 		return nil, err
 	}
 	err = c.pls.Delete(r.Context(), id)
 	if err == model.ErrNotAuthorized {
-		return nil, NewError(responses.ErrorAuthorizationFail)
+		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 	if err != nil {
 		log.Error(r, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
-	return NewResponse(), nil
+	return newResponse(), nil
 }
 
 func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	playlistId, err := RequiredParamString(r, "playlistId", "Required parameter playlistId is missing")
+	playlistId, err := requiredParamString(r, "playlistId", "Required parameter playlistId is missing")
 	if err != nil {
 		return nil, err
 	}
@@ -118,20 +118,20 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 
 	err = c.pls.Update(r.Context(), playlistId, pname, songsToAdd, songIndexesToRemove)
 	if err == model.ErrNotAuthorized {
-		return nil, NewError(responses.ErrorAuthorizationFail)
+		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 	if err != nil {
 		log.Error(r, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
-	return NewResponse(), nil
+	return newResponse(), nil
 }
 
 func (c *PlaylistsController) buildPlaylistWithSongs(ctx context.Context, d *engine.PlaylistInfo) *responses.PlaylistWithSongs {
 	pls := &responses.PlaylistWithSongs{
 		Playlist: *c.buildPlaylist(d),
 	}
-	pls.Entry = ToChildren(ctx, d.Entries)
+	pls.Entry = toChildren(ctx, d.Entries)
 	return pls
 }
 

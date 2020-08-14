@@ -22,7 +22,7 @@ func NewAlbumListController(listGen engine.ListGenerator) *AlbumListController {
 }
 
 func (c *AlbumListController) getNewAlbumList(r *http.Request) (engine.Entries, error) {
-	typ, err := RequiredParamString(r, "type", "Required string parameter 'type' is not present")
+	typ, err := requiredParamString(r, "type", "Required string parameter 'type' is not present")
 	if err != nil {
 		return nil, err
 	}
@@ -69,22 +69,22 @@ func (c *AlbumListController) getNewAlbumList(r *http.Request) (engine.Entries, 
 func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	albums, err := c.getNewAlbumList(r)
 	if err != nil {
-		return nil, NewError(responses.ErrorGeneric, err.Error())
+		return nil, newError(responses.ErrorGeneric, err.Error())
 	}
 
-	response := NewResponse()
-	response.AlbumList = &responses.AlbumList{Album: ToChildren(r.Context(), albums)}
+	response := newResponse()
+	response.AlbumList = &responses.AlbumList{Album: toChildren(r.Context(), albums)}
 	return response, nil
 }
 
 func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	albums, err := c.getNewAlbumList(r)
 	if err != nil {
-		return nil, NewError(responses.ErrorGeneric, err.Error())
+		return nil, newError(responses.ErrorGeneric, err.Error())
 	}
 
-	response := NewResponse()
-	response.AlbumList2 = &responses.AlbumList{Album: ToAlbums(r.Context(), albums)}
+	response := newResponse()
+	response.AlbumList2 = &responses.AlbumList{Album: toAlbums(r.Context(), albums)}
 	return response, nil
 }
 
@@ -92,14 +92,14 @@ func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request)
 	artists, albums, mediaFiles, err := c.listGen.GetAllStarred(r.Context())
 	if err != nil {
 		log.Error(r, "Error retrieving starred media", "error", err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.Starred = &responses.Starred{}
-	response.Starred.Artist = ToArtists(artists)
-	response.Starred.Album = ToChildren(r.Context(), albums)
-	response.Starred.Song = ToChildren(r.Context(), mediaFiles)
+	response.Starred.Artist = toArtists(artists)
+	response.Starred.Album = toChildren(r.Context(), albums)
+	response.Starred.Song = toChildren(r.Context(), mediaFiles)
 	return response, nil
 }
 
@@ -107,14 +107,14 @@ func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request
 	artists, albums, mediaFiles, err := c.listGen.GetAllStarred(r.Context())
 	if err != nil {
 		log.Error(r, "Error retrieving starred media", "error", err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.Starred2 = &responses.Starred{}
-	response.Starred2.Artist = ToArtists(artists)
-	response.Starred2.Album = ToAlbums(r.Context(), albums)
-	response.Starred2.Song = ToChildren(r.Context(), mediaFiles)
+	response.Starred2.Artist = toArtists(artists)
+	response.Starred2.Album = toAlbums(r.Context(), albums)
+	response.Starred2.Song = toChildren(r.Context(), mediaFiles)
 	return response, nil
 }
 
@@ -122,14 +122,14 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 	npInfos, err := c.listGen.GetNowPlaying(r.Context())
 	if err != nil {
 		log.Error(r, "Error retrieving now playing list", "error", err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.NowPlaying = &responses.NowPlaying{}
 	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(npInfos))
 	for i, entry := range npInfos {
-		response.NowPlaying.Entry[i].Child = ToChild(r.Context(), entry)
+		response.NowPlaying.Entry[i].Child = toChild(r.Context(), entry)
 		response.NowPlaying.Entry[i].UserName = entry.UserName
 		response.NowPlaying.Entry[i].MinutesAgo = entry.MinutesAgo
 		response.NowPlaying.Entry[i].PlayerId = entry.PlayerId
@@ -147,12 +147,12 @@ func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Requ
 	songs, err := c.listGen.GetSongs(r.Context(), 0, size, engine.SongsByRandom(genre, fromYear, toYear))
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", "error", err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.RandomSongs = &responses.Songs{}
-	response.RandomSongs.Songs = ToChildren(r.Context(), songs)
+	response.RandomSongs.Songs = toChildren(r.Context(), songs)
 	return response, nil
 }
 
@@ -164,11 +164,11 @@ func (c *AlbumListController) GetSongsByGenre(w http.ResponseWriter, r *http.Req
 	songs, err := c.listGen.GetSongs(r.Context(), offset, count, engine.SongsByGenre(genre))
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", "error", err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.SongsByGenre = &responses.Songs{}
-	response.SongsByGenre.Songs = ToChildren(r.Context(), songs)
+	response.SongsByGenre.Songs = toChildren(r.Context(), songs)
 	return response, nil
 }

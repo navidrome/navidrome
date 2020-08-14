@@ -13,11 +13,11 @@ func NewSystemController() *SystemController {
 }
 
 func (c *SystemController) Ping(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	return NewResponse(), nil
+	return newResponse(), nil
 }
 
 func (c *SystemController) GetLicense(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	response := NewResponse()
+	response := newResponse()
 	response.License = &responses.License{Valid: true}
 	return response, nil
 }
