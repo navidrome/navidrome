@@ -101,6 +101,16 @@ var _ = Describe("Artwork", func() {
 			Expect(format).To(Equal("jpeg"))
 		})
 
+		It("retrieves the album artwork by album id", func() {
+			buf := new(bytes.Buffer)
+
+			Expect(artwork.Get(ctx, "222", 0, buf)).To(BeNil())
+
+			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
+			Expect(err).To(BeNil())
+			Expect(format).To(Equal("jpeg"))
+		})
+
 		It("resized artwork art as requested", func() {
 			buf := new(bytes.Buffer)
 

@@ -90,17 +90,25 @@ func (c *artwork) getImagePath(ctx context.Context, id string) (path string, las
 	}
 
 	log.Trace(ctx, "Looking for media file art", "id", id)
-	// if id is a mediafile cover id
+
+	// Check if id is a mediaFile cover id
 	var mf *model.MediaFile
 	mf, err = c.ds.MediaFile(ctx).Get(id)
+
+	// If it is not, may be an albumId
+	if err == model.ErrNotFound {
+		return c.getImagePath(ctx, "al-"+id)
+	}
 	if err != nil {
 		return
 	}
+
+	// If it is a mediaFile and it has cover art, return it
 	if mf.HasCoverArt {
 		return mf.Path, mf.UpdatedAt, nil
 	}
 
-	// if the mediafile does not have a coverArt, fallback to the album cover
+	// if the mediaFile does not have a coverArt, fallback to the album cover
 	log.Trace(ctx, "Media file does not contain art. Falling back to album art", "id", id, "albumId", "al-"+mf.AlbumID)
 	return c.getImagePath(ctx, "al-"+mf.AlbumID)
 }
