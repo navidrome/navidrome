@@ -25,7 +25,7 @@ func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Requ
 	f, err := resources.AssetFile().Open(consts.PlaceholderAlbumArt)
 	if err != nil {
 		log.Error(r, "Image not found", err)
-		return nil, NewError(responses.ErrorDataNotFound, "Avatar image not found")
+		return nil, newError(responses.ErrorDataNotFound, "Avatar image not found")
 	}
 	defer f.Close()
 	_, _ = io.Copy(w, f)
@@ -34,7 +34,7 @@ func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Requ
 }
 
 func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, err := RequiredParamString(r, "id", "id parameter required")
+	id, err := requiredParamString(r, "id", "id parameter required")
 	if err != nil {
 		return nil, err
 	}
@@ -46,10 +46,10 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, "Couldn't find coverArt", "id", id, err)
-		return nil, NewError(responses.ErrorDataNotFound, "Artwork not found")
+		return nil, newError(responses.ErrorDataNotFound, "Artwork not found")
 	case err != nil:
 		log.Error(r, "Error retrieving coverArt", "id", id, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	return nil, nil

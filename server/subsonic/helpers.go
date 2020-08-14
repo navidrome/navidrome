@@ -14,30 +14,30 @@ import (
 	"github.com/deluan/navidrome/utils"
 )
 
-func NewResponse() *responses.Subsonic {
+func newResponse() *responses.Subsonic {
 	return &responses.Subsonic{Status: "ok", Version: Version, Type: consts.AppName, ServerVersion: consts.Version()}
 }
 
-func RequiredParamString(r *http.Request, param string, msg string) (string, error) {
+func requiredParamString(r *http.Request, param string, msg string) (string, error) {
 	p := utils.ParamString(r, param)
 	if p == "" {
-		return "", NewError(responses.ErrorMissingParameter, msg)
+		return "", newError(responses.ErrorMissingParameter, msg)
 	}
 	return p, nil
 }
 
-func RequiredParamStrings(r *http.Request, param string, msg string) ([]string, error) {
+func requiredParamStrings(r *http.Request, param string, msg string) ([]string, error) {
 	ps := utils.ParamStrings(r, param)
 	if len(ps) == 0 {
-		return nil, NewError(responses.ErrorMissingParameter, msg)
+		return nil, newError(responses.ErrorMissingParameter, msg)
 	}
 	return ps, nil
 }
 
-func RequiredParamInt(r *http.Request, param string, msg string) (int, error) {
+func requiredParamInt(r *http.Request, param string, msg string) (int, error) {
 	p := utils.ParamString(r, param)
 	if p == "" {
-		return 0, NewError(responses.ErrorMissingParameter, msg)
+		return 0, newError(responses.ErrorMissingParameter, msg)
 	}
 	return utils.ParamInt(r, param, 0), nil
 }
@@ -47,7 +47,7 @@ type SubsonicError struct {
 	messages []interface{}
 }
 
-func NewError(code int, message ...interface{}) error {
+func newError(code int, message ...interface{}) error {
 	return SubsonicError{
 		code:     code,
 		messages: message,
@@ -64,16 +64,16 @@ func (e SubsonicError) Error() string {
 	return msg
 }
 
-func ToAlbums(ctx context.Context, entries engine.Entries) []responses.Child {
+func toAlbums(ctx context.Context, entries engine.Entries) []responses.Child {
 	children := make([]responses.Child, len(entries))
 	for i, entry := range entries {
-		children[i] = ToAlbum(ctx, entry)
+		children[i] = toAlbum(ctx, entry)
 	}
 	return children
 }
 
-func ToAlbum(ctx context.Context, entry engine.Entry) responses.Child {
-	album := ToChild(ctx, entry)
+func toAlbum(ctx context.Context, entry engine.Entry) responses.Child {
+	album := toChild(ctx, entry)
 	album.Name = album.Title
 	album.Title = ""
 	album.Parent = ""
@@ -82,7 +82,7 @@ func ToAlbum(ctx context.Context, entry engine.Entry) responses.Child {
 	return album
 }
 
-func ToArtists(entries engine.Entries) []responses.Artist {
+func toArtists(entries engine.Entries) []responses.Artist {
 	artists := make([]responses.Artist, len(entries))
 	for i, entry := range entries {
 		artists[i] = responses.Artist{
@@ -97,15 +97,15 @@ func ToArtists(entries engine.Entries) []responses.Artist {
 	return artists
 }
 
-func ToChildren(ctx context.Context, entries engine.Entries) []responses.Child {
+func toChildren(ctx context.Context, entries engine.Entries) []responses.Child {
 	children := make([]responses.Child, len(entries))
 	for i, entry := range entries {
-		children[i] = ToChild(ctx, entry)
+		children[i] = toChild(ctx, entry)
 	}
 	return children
 }
 
-func ToChild(ctx context.Context, entry engine.Entry) responses.Child {
+func toChild(ctx context.Context, entry engine.Entry) responses.Child {
 	child := responses.Child{}
 	child.Id = entry.Id
 	child.Title = entry.Title
@@ -146,7 +146,7 @@ func ToChild(ctx context.Context, entry engine.Entry) responses.Child {
 	return child
 }
 
-func ToGenres(genres model.Genres) *responses.Genres {
+func toGenres(genres model.Genres) *responses.Genres {
 	response := make([]responses.Genre, len(genres))
 	for i, g := range genres {
 		response[i] = responses.Genre(g)
@@ -166,7 +166,7 @@ func getTranscoding(ctx context.Context) (format string, bitRate int) {
 
 // This seems to be duplicated, but it is an initial step into merging `engine` and the `subsonic` packages,
 // In the future there won't be any conversion to/from `engine. Entry` anymore
-func ChildFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
+func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
 	child := responses.Child{}
 	child.Id = mf.ID
 	child.Title = mf.Title
@@ -219,15 +219,15 @@ func realArtistName(mf model.MediaFile) string {
 	return mf.Artist
 }
 
-func ChildrenFromMediaFiles(ctx context.Context, mfs model.MediaFiles) []responses.Child {
+func childrenFromMediaFiles(ctx context.Context, mfs model.MediaFiles) []responses.Child {
 	children := make([]responses.Child, len(mfs))
 	for i, mf := range mfs {
-		children[i] = ChildFromMediaFile(ctx, mf)
+		children[i] = childFromMediaFile(ctx, mf)
 	}
 	return children
 }
 
-func ChildFromAlbum(ctx context.Context, al model.Album) responses.Child {
+func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child := responses.Child{}
 	child.Id = al.ID
 	child.IsDir = true
@@ -248,10 +248,10 @@ func ChildFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	return child
 }
 
-func ChildrenFromAlbums(ctx context.Context, als model.Albums) []responses.Child {
+func childrenFromAlbums(ctx context.Context, als model.Albums) []responses.Child {
 	children := make([]responses.Child, len(als))
 	for i, al := range als {
-		children[i] = ChildFromAlbum(ctx, al)
+		children[i] = childFromAlbum(ctx, al)
 	}
 	return children
 }

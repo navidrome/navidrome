@@ -31,7 +31,7 @@ func NewSearchingController(search engine.Search) *SearchingController {
 func (c *SearchingController) getParams(r *http.Request) (*searchParams, error) {
 	var err error
 	sp := &searchParams{}
-	sp.query, err = RequiredParamString(r, "query", "Parameter query required")
+	sp.query, err = requiredParamString(r, "query", "Parameter query required")
 	if err != nil {
 		return nil, err
 	}
@@ -69,11 +69,11 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 	}
 	mfs, als, as := c.searchAll(r, sp)
 
-	response := NewResponse()
+	response := newResponse()
 	searchResult2 := &responses.SearchResult2{}
-	searchResult2.Artist = ToArtists(as)
-	searchResult2.Album = ToChildren(r.Context(), als)
-	searchResult2.Song = ToChildren(r.Context(), mfs)
+	searchResult2.Artist = toArtists(as)
+	searchResult2.Album = toChildren(r.Context(), als)
+	searchResult2.Song = toChildren(r.Context(), mfs)
 	response.SearchResult2 = searchResult2
 	return response, nil
 }
@@ -85,7 +85,7 @@ func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*
 	}
 	mfs, als, as := c.searchAll(r, sp)
 
-	response := NewResponse()
+	response := newResponse()
 	searchResult3 := &responses.SearchResult3{}
 	searchResult3.Artist = make([]responses.ArtistID3, len(as))
 	for i, e := range as {
@@ -99,8 +99,8 @@ func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*
 			searchResult3.Artist[i].Starred = &e.Starred
 		}
 	}
-	searchResult3.Album = ToAlbums(r.Context(), als)
-	searchResult3.Song = ToChildren(r.Context(), mfs)
+	searchResult3.Album = toAlbums(r.Context(), als)
+	searchResult3.Song = toChildren(r.Context(), mfs)
 	response.SearchResult3 = searchResult3
 	return response, nil
 }

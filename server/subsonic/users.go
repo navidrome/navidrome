@@ -14,11 +14,11 @@ func NewUsersController() *UsersController {
 
 // TODO This is a placeholder. The real one has to read this info from a config file or the database
 func (c *UsersController) GetUser(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	user, err := RequiredParamString(r, "username", "Required string parameter 'username' is not present")
+	user, err := requiredParamString(r, "username", "Required string parameter 'username' is not present")
 	if err != nil {
 		return nil, err
 	}
-	response := NewResponse()
+	response := newResponse()
 	response.User = &responses.User{}
 	response.User.Username = user
 	response.User.StreamRole = true

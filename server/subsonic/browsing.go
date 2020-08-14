@@ -30,7 +30,7 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 		folders[i].Id = f.ID
 		folders[i].Name = f.Name
 	}
-	response := NewResponse()
+	response := newResponse()
 	response.MusicFolders = &responses.MusicFolders{Folders: folders}
 	return response, nil
 }
@@ -39,13 +39,13 @@ func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId s
 	folder, err := c.ds.MediaFolder(ctx).Get(mediaFolderId)
 	if err != nil {
 		log.Error(ctx, "Error retrieving MediaFolder", "id", mediaFolderId, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	l, err := c.ds.Property(ctx).DefaultGet(model.PropLastScan+"-"+folder.Path, "-1")
 	if err != nil {
 		log.Error(ctx, "Error retrieving LastScan property", err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	var indexes model.ArtistIndexes
@@ -55,7 +55,7 @@ func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId s
 		indexes, err = c.ds.Artist(ctx).GetIndex()
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
-			return nil, NewError(responses.ErrorGeneric, "Internal Error")
+			return nil, newError(responses.ErrorGeneric, "Internal Error")
 		}
 	}
 
@@ -86,7 +86,7 @@ func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) 
 		return nil, err
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.Indexes = res
 	return response, nil
 }
@@ -98,7 +98,7 @@ func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) 
 		return nil, err
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.Artist = res
 	return response, nil
 }
@@ -111,10 +111,10 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, "Requested ID not found ", "id", id)
-		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
+		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
 		log.Error(err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	var dir *responses.Directory
@@ -126,15 +126,15 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 		dir, err = c.buildAlbumDirectory(ctx, v)
 	default:
 		log.Error(r, "Requested ID of invalid type", "id", id, "entity", v)
-		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
+		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
 	}
 
 	if err != nil {
 		log.Error(err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.Directory = dir
 	return response, nil
 }
@@ -147,19 +147,19 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(ctx, "Requested ArtistID not found ", "id", id)
-		return nil, NewError(responses.ErrorDataNotFound, "Artist not found")
+		return nil, newError(responses.ErrorDataNotFound, "Artist not found")
 	case err != nil:
 		log.Error(ctx, "Error retrieving artist", "id", id, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	albums, err := c.ds.Album(ctx).FindByArtist(id)
 	if err != nil {
 		log.Error(ctx, "Error retrieving albums by artist", "id", id, "name", artist.Name, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.ArtistWithAlbumsID3 = c.buildArtist(ctx, artist, albums)
 	return response, nil
 }
@@ -172,19 +172,19 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(ctx, "Requested AlbumID not found ", "id", id)
-		return nil, NewError(responses.ErrorDataNotFound, "Album not found")
+		return nil, newError(responses.ErrorDataNotFound, "Album not found")
 	case err != nil:
 		log.Error(ctx, "Error retrieving album", "id", id, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	mfs, err := c.ds.MediaFile(ctx).FindByAlbum(id)
 	if err != nil {
 		log.Error(ctx, "Error retrieving tracks from album", "id", id, "name", album.Name, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewResponse()
+	response := newResponse()
 	response.AlbumWithSongsID3 = c.buildAlbum(ctx, album, mfs)
 	return response, nil
 }
@@ -197,14 +197,14 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, "Requested MediaFileID not found ", "id", id)
-		return nil, NewError(responses.ErrorDataNotFound, "Song not found")
+		return nil, newError(responses.ErrorDataNotFound, "Song not found")
 	case err != nil:
 		log.Error(r, "Error retrieving MediaFile", "id", id, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	response := NewResponse()
-	child := ChildFromMediaFile(ctx, *mf)
+	response := newResponse()
+	child := childFromMediaFile(ctx, *mf)
 	response.Song = &child
 	return response, nil
 }
@@ -214,7 +214,7 @@ func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (
 	genres, err := c.ds.Genre(ctx).GetAll()
 	if err != nil {
 		log.Error(r, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 	for i, g := range genres {
 		if strings.TrimSpace(g.Name) == "" {
@@ -225,8 +225,8 @@ func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (
 		return genres[i].Name < genres[j].Name
 	})
 
-	response := NewResponse()
-	response.Genres = ToGenres(genres)
+	response := newResponse()
+	response.Genres = toGenres(genres)
 	return response, nil
 }
 
@@ -236,7 +236,7 @@ const placeholderArtistImageLargeUrl = "https://lastfm.freetls.fastly.net/i/u/30
 
 // TODO Integrate with Last.FM
 func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	response := NewResponse()
+	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
 	response.ArtistInfo.Biography = "Biography not available"
 	response.ArtistInfo.SmallImageUrl = placeholderArtistImageSmallUrl
@@ -247,7 +247,7 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 
 // TODO Integrate with Last.FM
 func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	response := NewResponse()
+	response := newResponse()
 	response.ArtistInfo2 = &responses.ArtistInfo2{}
 	response.ArtistInfo2.Biography = "Biography not available"
 	response.ArtistInfo2.SmallImageUrl = placeholderArtistImageSmallUrl
@@ -258,7 +258,7 @@ func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Reque
 
 // TODO Integrate with Last.FM
 func (c *BrowsingController) GetTopSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	response := NewResponse()
+	response := newResponse()
 	response.TopSongs = &responses.TopSongs{}
 	return response, nil
 }
@@ -279,7 +279,7 @@ func (c *BrowsingController) buildArtistDirectory(ctx context.Context, artist *m
 		return nil, err
 	}
 
-	dir.Child = ChildrenFromAlbums(ctx, albums)
+	dir.Child = childrenFromAlbums(ctx, albums)
 	return dir, nil
 }
 
@@ -292,7 +292,7 @@ func (c *BrowsingController) buildArtist(ctx context.Context, artist *model.Arti
 		dir.Starred = &artist.StarredAt
 	}
 
-	dir.Album = ChildrenFromAlbums(ctx, albums)
+	dir.Album = childrenFromAlbums(ctx, albums)
 	return dir
 }
 
@@ -314,7 +314,7 @@ func (c *BrowsingController) buildAlbumDirectory(ctx context.Context, album *mod
 		return nil, err
 	}
 
-	dir.Child = ChildrenFromMediaFiles(ctx, mfs)
+	dir.Child = childrenFromMediaFiles(ctx, mfs)
 	return dir, nil
 }
 
@@ -337,6 +337,6 @@ func (c *BrowsingController) buildAlbum(ctx context.Context, album *model.Album,
 		dir.Starred = &album.StarredAt
 	}
 
-	dir.Song = ChildrenFromMediaFiles(ctx, mfs)
+	dir.Song = childrenFromMediaFiles(ctx, mfs)
 	return dir
 }

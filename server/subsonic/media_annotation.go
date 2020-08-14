@@ -22,11 +22,11 @@ func NewMediaAnnotationController(scrobbler engine.Scrobbler, ds model.DataStore
 }
 
 func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, err := RequiredParamString(r, "id", "Required id parameter is missing")
+	id, err := requiredParamString(r, "id", "Required id parameter is missing")
 	if err != nil {
 		return nil, err
 	}
-	rating, err := RequiredParamInt(r, "rating", "Required rating parameter is missing")
+	rating, err := requiredParamInt(r, "rating", "Required rating parameter is missing")
 	if err != nil {
 		return nil, err
 	}
@@ -37,13 +37,13 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, err)
-		return nil, NewError(responses.ErrorDataNotFound, "ID not found")
+		return nil, newError(responses.ErrorDataNotFound, "ID not found")
 	case err != nil:
 		log.Error(r, err)
-		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+		return nil, newError(responses.ErrorGeneric, "Internal Error")
 	}
 
-	return NewResponse(), nil
+	return newResponse(), nil
 }
 
 func (c *MediaAnnotationController) setRating(ctx context.Context, id string, rating int) error {
@@ -62,7 +62,7 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 	albumIds := utils.ParamStrings(r, "albumId")
 	artistIds := utils.ParamStrings(r, "artistId")
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
-		return nil, NewError(responses.ErrorMissingParameter, "Required id parameter is missing")
+		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
 	ids = append(ids, albumIds...)
 	ids = append(ids, artistIds...)
@@ -72,7 +72,7 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 		return nil, err
 	}
 
-	return NewResponse(), nil
+	return newResponse(), nil
 }
 
 func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -80,7 +80,7 @@ func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Reques
 	albumIds := utils.ParamStrings(r, "albumId")
 	artistIds := utils.ParamStrings(r, "artistId")
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
-		return nil, NewError(responses.ErrorMissingParameter, "Required id parameter is missing")
+		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
 	ids = append(ids, albumIds...)
 	ids = append(ids, artistIds...)
@@ -90,17 +90,17 @@ func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Reques
 		return nil, err
 	}
 
-	return NewResponse(), nil
+	return newResponse(), nil
 }
 
 func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	ids, err := RequiredParamStrings(r, "id", "Required id parameter is missing")
+	ids, err := requiredParamStrings(r, "id", "Required id parameter is missing")
 	if err != nil {
 		return nil, err
 	}
 	times := utils.ParamTimes(r, "time")
 	if len(times) > 0 && len(times) != len(ids) {
-		return nil, NewError(responses.ErrorGeneric, "Wrong number of timestamps: %d, should be %d", len(times), len(ids))
+		return nil, newError(responses.ErrorGeneric, "Wrong number of timestamps: %d, should be %d", len(times), len(ids))
 	}
 	submission := utils.ParamBool(r, "submission", true)
 	playerId := 1 // TODO Multiple players, based on playerName/username/clientIP(?)
@@ -129,7 +129,7 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 			}
 		}
 	}
-	return NewResponse(), nil
+	return newResponse(), nil
 }
 
 func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids ...string) error {
@@ -177,10 +177,10 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(ctx, err)
-		return NewError(responses.ErrorDataNotFound, "ID not found")
+		return newError(responses.ErrorDataNotFound, "ID not found")
 	case err != nil:
 		log.Error(ctx, err)
-		return NewError(responses.ErrorGeneric, "Internal Error")
+		return newError(responses.ErrorGeneric, "Internal Error")
 	}
 	return nil
 }

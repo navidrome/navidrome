@@ -23,7 +23,7 @@ func postFormToQueryParams(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
-			SendError(w, r, NewError(responses.ErrorGeneric, err.Error()))
+			SendError(w, r, newError(responses.ErrorGeneric, err.Error()))
 		}
 		var parts []string
 		for key, values := range r.Form {
@@ -45,7 +45,7 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 			if utils.ParamString(r, p) == "" {
 				msg := fmt.Sprintf(`Missing required parameter "%s"`, p)
 				log.Warn(r, msg)
-				SendError(w, r, NewError(responses.ErrorMissingParameter, msg))
+				SendError(w, r, newError(responses.ErrorMissingParameter, msg))
 				return
 			}
 		}
@@ -82,7 +82,7 @@ func authenticate(users engine.Users) func(next http.Handler) http.Handler {
 
 			if err != nil {
 				log.Warn(r, "Invalid login", "username", username)
-				SendError(w, r, NewError(responses.ErrorAuthenticationFail))
+				SendError(w, r, newError(responses.ErrorAuthenticationFail))
 				return
 			}
 
