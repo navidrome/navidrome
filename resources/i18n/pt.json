@@ -64,7 +64,8 @@
             "fields": {
                 "name": "Nome",
                 "albumCount": "Total de Álbuns",
-                "songCount": "Total de Músicas"
+                "songCount": "Total de Músicas",
+                "playCount": "Execuções"
             }
         },
         "user": {

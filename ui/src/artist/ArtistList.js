@@ -3,6 +3,7 @@ import {
   Datagrid,
   DatagridBody,
   DatagridRow,
+  DateField,
   Filter,
   NumberField,
   SearchInput,
@@ -85,6 +86,7 @@ const ArtistList = ({ width, ...rest }) => {
             <TextField source="name" />
             <NumberField source="albumCount" sortByOrder={'DESC'} />
             <NumberField source="songCount" sortByOrder={'DESC'} />
+            <NumberField source="playCount" sortByOrder={'DESC'} />
             <ArtistContextMenu />
           </ArtistDatagrid>
         )}

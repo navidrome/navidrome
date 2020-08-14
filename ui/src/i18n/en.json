@@ -65,7 +65,8 @@
             "fields": {
                 "name": "Name",
                 "albumCount": "Album Count",
-                "songCount": "Song Count"
+                "songCount": "Song Count",
+                "playCount": "Plays"
             }
         },
         "playlist": {
