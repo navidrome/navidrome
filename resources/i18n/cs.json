@@ -46,6 +46,13 @@
                 "playNext": "Přehrát další",
                 "addToQueue": "Přehrát později",
                 "shuffle": "Zamíchat"
+            },
+            "lists": {
+                "all": "Všechno",
+                "random": "Náhodné",
+                "recentlyAdded": "Nedávno přidané",
+                "recentlyPlayed": "Nedávno přehráté",
+                "mostPlayed": "Nejpřehrávanější"
             }
         },
         "artist": {
@@ -98,7 +105,9 @@
                 "updatedAt": "Nahrán",
                 "createdAt": "Vytvořen",
                 "songCount": "Skladby",
-                "comment": "Komentář"
+                "comment": "Komentář",
+                "sync": "Auto-import",
+                "path": "Importovat z"
             },
             "actions": {
                 "selectPlaylist": "Přidat skladby do seznamu:",
@@ -219,7 +228,7 @@
             "page_out_from_end": "Nelze jít za poslední stranu",
             "page_out_from_begin": "Nelze jít před první stranu",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} z %{total}",
-            "page_rows_per_page": "Řádků na stránce:",
+            "page_rows_per_page": "Položek na stránce:",
             "next": "Další",
             "prev": "Předchozí"
         },
@@ -254,9 +263,11 @@
             "name": "Osobní",
             "options": {
                 "theme": "Motiv",
-                "language": "Jazyk"
+                "language": "Jazyk",
+                "defaultView": "Výchozí stránka"
             }
-        }
+        },
+        "albumList": "Alba"
     },
     "player": {
         "playListsText": "Fronta",
