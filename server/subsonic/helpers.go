@@ -231,12 +231,15 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child := responses.Child{}
 	child.Id = al.ID
 	child.IsDir = true
+	child.Title = al.Name
 	child.Name = al.Name
+	child.Album = al.Name
 	child.Artist = al.AlbumArtist
 	child.Year = al.MaxYear
 	child.Genre = al.Genre
 	child.CoverArt = al.CoverArtId
 	child.Created = &al.CreatedAt
+	child.Parent = al.AlbumArtistID
 	child.ArtistId = al.AlbumArtistID
 	child.Duration = int(al.Duration)
 	child.SongCount = al.SongCount
