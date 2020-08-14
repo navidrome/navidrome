@@ -2,18 +2,13 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
-	"time"
 
-	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 )
 
 type Browser interface {
-	Directory(ctx context.Context, id string) (*DirectoryInfo, error)
-	Album(ctx context.Context, id string) (*DirectoryInfo, error)
 	GetSong(ctx context.Context, id string) (*Entry, error)
 	GetGenres(ctx context.Context) (model.Genres, error)
 }
@@ -24,55 +19,6 @@ func NewBrowser(ds model.DataStore) Browser {
 
 type browser struct {
 	ds model.DataStore
-}
-
-type DirectoryInfo struct {
-	Id         string
-	Name       string
-	Entries    Entries
-	Parent     string
-	Starred    time.Time
-	PlayCount  int64
-	UserRating int
-	AlbumCount int
-	CoverArt   string
-	Artist     string
-	ArtistId   string
-	SongCount  int
-	Duration   int
-	Created    time.Time
-	Year       int
-	Genre      string
-}
-
-func (b *browser) Artist(ctx context.Context, id string) (*DirectoryInfo, error) {
-	a, albums, err := b.retrieveArtist(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug(ctx, "Found Artist", "id", id, "name", a.Name)
-	return b.buildArtistDir(a, albums), nil
-}
-
-func (b *browser) Album(ctx context.Context, id string) (*DirectoryInfo, error) {
-	al, tracks, err := b.retrieveAlbum(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug(ctx, "Found Album", "id", id, "name", al.Name)
-	return b.buildAlbumDir(al, tracks), nil
-}
-
-func (b *browser) Directory(ctx context.Context, id string) (*DirectoryInfo, error) {
-	switch {
-	case b.isArtist(ctx, id):
-		return b.Artist(ctx, id)
-	case b.isAlbum(ctx, id):
-		return b.Album(ctx, id)
-	default:
-		log.Debug(ctx, "Directory not found", "id", id)
-		return nil, model.ErrNotFound
-	}
 }
 
 func (b *browser) GetSong(ctx context.Context, id string) (*Entry, error) {
@@ -96,89 +42,4 @@ func (b *browser) GetGenres(ctx context.Context) (model.Genres, error) {
 		return genres[i].Name < genres[j].Name
 	})
 	return genres, err
-}
-
-func (b *browser) buildArtistDir(a *model.Artist, albums model.Albums) *DirectoryInfo {
-	dir := &DirectoryInfo{
-		Id:         a.ID,
-		Name:       a.Name,
-		AlbumCount: a.AlbumCount,
-	}
-
-	dir.Entries = make(Entries, len(albums))
-	for i := range albums {
-		al := albums[i]
-		dir.Entries[i] = FromAlbum(&al)
-		dir.PlayCount += al.PlayCount
-	}
-	return dir
-}
-
-func (b *browser) buildAlbumDir(al *model.Album, tracks model.MediaFiles) *DirectoryInfo {
-	dir := &DirectoryInfo{
-		Id:         al.ID,
-		Name:       al.Name,
-		Parent:     al.AlbumArtistID,
-		Artist:     al.AlbumArtist,
-		ArtistId:   al.AlbumArtistID,
-		SongCount:  al.SongCount,
-		Duration:   int(al.Duration),
-		Created:    al.CreatedAt,
-		Year:       al.MaxYear,
-		Genre:      al.Genre,
-		CoverArt:   al.CoverArtId,
-		PlayCount:  al.PlayCount,
-		UserRating: al.Rating,
-	}
-
-	if al.Starred {
-		dir.Starred = al.StarredAt
-	}
-
-	dir.Entries = FromMediaFiles(tracks)
-	return dir
-}
-
-func (b *browser) isArtist(ctx context.Context, id string) bool {
-	found, err := b.ds.Artist(ctx).Exists(id)
-	if err != nil {
-		log.Debug(ctx, "Error searching for Artist", "id", id, err)
-		return false
-	}
-	return found
-}
-
-func (b *browser) isAlbum(ctx context.Context, id string) bool {
-	found, err := b.ds.Album(ctx).Exists(id)
-	if err != nil {
-		log.Debug(ctx, "Error searching for Album", "id", id, err)
-		return false
-	}
-	return found
-}
-
-func (b *browser) retrieveArtist(ctx context.Context, id string) (a *model.Artist, as model.Albums, err error) {
-	a, err = b.ds.Artist(ctx).Get(id)
-	if err != nil {
-		err = fmt.Errorf("Error reading Artist %s from DB: %v", id, err)
-		return
-	}
-
-	if as, err = b.ds.Album(ctx).FindByArtist(id); err != nil {
-		err = fmt.Errorf("Error reading %s's albums from DB: %v", a.Name, err)
-	}
-	return
-}
-
-func (b *browser) retrieveAlbum(ctx context.Context, id string) (al *model.Album, mfs model.MediaFiles, err error) {
-	al, err = b.ds.Album(ctx).Get(id)
-	if err != nil {
-		err = fmt.Errorf("Error reading Album %s from DB: %v", id, err)
-		return
-	}
-
-	if mfs, err = b.ds.MediaFile(ctx).FindByAlbum(id); err != nil {
-		err = fmt.Errorf("Error reading %s's tracks from DB: %v", al.Name, err)
-	}
-	return
 }
