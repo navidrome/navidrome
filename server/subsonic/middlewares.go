@@ -1,12 +1,16 @@
 package subsonic
 
 import (
+	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/deluan/navidrome/core/auth"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
@@ -64,35 +68,75 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 	})
 }
 
-func authenticate(users engine.Users) func(next http.Handler) http.Handler {
+func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
 			username := utils.ParamString(r, "u")
+
 			pass := utils.ParamString(r, "p")
 			token := utils.ParamString(r, "t")
 			salt := utils.ParamString(r, "s")
 			jwt := utils.ParamString(r, "jwt")
 
-			usr, err := users.Authenticate(r.Context(), username, pass, token, salt, jwt)
+			usr, err := validateUser(ctx, ds, username, pass, token, salt, jwt)
 			if err == model.ErrInvalidAuth {
-				log.Warn(r, "Invalid login", "username", username, err)
+				log.Warn(ctx, "Invalid login", "username", username, err)
 			} else if err != nil {
-				log.Error(r, "Error authenticating username", "username", username, err)
+				log.Error(ctx, "Error authenticating username", "username", username, err)
 			}
 
 			if err != nil {
-				log.Warn(r, "Invalid login", "username", username)
 				SendError(w, r, newError(responses.ErrorAuthenticationFail))
 				return
 			}
 
-			ctx := r.Context()
+			// TODO: Find a way to update LastAccessAt without causing too much retention in the DB
+			//go func() {
+			//	err := ds.User(ctx).UpdateLastAccessAt(usr.ID)
+			//	if err != nil {
+			//		log.Error(ctx, "Could not update user's lastAccessAt", "user", usr.UserName)
+			//	}
+			//}()
+
 			ctx = request.WithUser(ctx, *usr)
 			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func validateUser(ctx context.Context, ds model.DataStore, username, pass, token, salt, jwt string) (*model.User, error) {
+	user, err := ds.User(ctx).FindByUsername(username)
+	if err == model.ErrNotFound {
+		return nil, model.ErrInvalidAuth
+	}
+	if err != nil {
+		return nil, err
+	}
+	valid := false
+
+	switch {
+	case jwt != "":
+		claims, err := auth.Validate(jwt)
+		valid = err == nil && claims["sub"] == username
+	case pass != "":
+		if strings.HasPrefix(pass, "enc:") {
+			if dec, err := hex.DecodeString(pass[4:]); err == nil {
+				pass = string(dec)
+			}
+		}
+		valid = pass == user.Password
+	case token != "":
+		t := fmt.Sprintf("%x", md5.Sum([]byte(user.Password+salt)))
+		valid = t == token
+	}
+
+	if !valid {
+		return nil, model.ErrInvalidAuth
+	}
+	return user, nil
 }
 
 func getPlayer(players engine.Players) func(next http.Handler) http.Handler {

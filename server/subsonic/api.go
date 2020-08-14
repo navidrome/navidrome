@@ -26,7 +26,6 @@ type Router struct {
 	Artwork       core.Artwork
 	ListGenerator engine.ListGenerator
 	Playlists     engine.Playlists
-	Users         engine.Users
 	Streamer      core.MediaStreamer
 	Archiver      core.Archiver
 	Players       engine.Players
@@ -35,11 +34,11 @@ type Router struct {
 	mux http.Handler
 }
 
-func New(artwork core.Artwork, listGenerator engine.ListGenerator, users engine.Users,
+func New(artwork core.Artwork, listGenerator engine.ListGenerator,
 	playlists engine.Playlists, streamer core.MediaStreamer,
 	archiver core.Archiver, players engine.Players, ds model.DataStore) *Router {
 	r := &Router{Artwork: artwork, ListGenerator: listGenerator, Playlists: playlists,
-		Users: users, Streamer: streamer, Archiver: archiver, Players: players, DataStore: ds}
+		Streamer: streamer, Archiver: archiver, Players: players, DataStore: ds}
 	r.mux = r.routes()
 	return r
 }
@@ -55,7 +54,7 @@ func (api *Router) routes() http.Handler {
 
 	r.Use(postFormToQueryParams)
 	r.Use(checkRequiredParameters)
-	r.Use(authenticate(api.Users))
+	r.Use(authenticate(api.DataStore))
 	// TODO Validate version
 
 	// Subsonic endpoints, grouped by controller

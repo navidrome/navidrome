@@ -8,6 +8,5 @@ var Set = wire.NewSet(
 	NewListGenerator,
 	NewPlaylists,
 	NewNowPlayingRepository,
-	NewUsers,
 	NewPlayers,
 )
