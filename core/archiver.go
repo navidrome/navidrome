@@ -14,7 +14,8 @@ import (
 )
 
 type Archiver interface {
-	Zip(ctx context.Context, id string, w io.Writer) error
+	ZipAlbum(ctx context.Context, id string, w io.Writer) error
+	ZipArtist(ctx context.Context, id string, w io.Writer) error
 }
 
 func NewArchiver(ds model.DataStore) Archiver {
@@ -25,17 +26,33 @@ type archiver struct {
 	ds model.DataStore
 }
 
-func (a *archiver) Zip(ctx context.Context, id string, out io.Writer) error {
-	mfs, err := a.loadTracks(ctx, id)
+func (a *archiver) ZipAlbum(ctx context.Context, id string, out io.Writer) error {
+	mfs, err := a.ds.MediaFile(ctx).FindByAlbum(id)
 	if err != nil {
-		log.Error(ctx, "Error loading media", "id", id, err)
+		log.Error(ctx, "Error loading mediafiles from album", "id", id, err)
 		return err
 	}
+	return a.zipTracks(ctx, id, out, mfs)
+}
+
+func (a *archiver) ZipArtist(ctx context.Context, id string, out io.Writer) error {
+	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Sort:    "album",
+		Filters: squirrel.Eq{"album_artist_id": id},
+	})
+	if err != nil {
+		log.Error(ctx, "Error loading mediafiles from artist", "id", id, err)
+		return err
+	}
+	return a.zipTracks(ctx, id, out, mfs)
+}
+
+func (a *archiver) zipTracks(ctx context.Context, id string, out io.Writer, mfs model.MediaFiles) error {
 	z := zip.NewWriter(out)
 	for _, mf := range mfs {
 		_ = a.addFileToZip(ctx, z, mf)
 	}
-	err = z.Close()
+	err := z.Close()
 	if err != nil {
 		log.Error(ctx, "Error closing zip file", "id", id, err)
 	}
@@ -65,29 +82,4 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 		return err
 	}
 	return nil
-}
-
-func (a *archiver) loadTracks(ctx context.Context, id string) (model.MediaFiles, error) {
-	exist, err := a.ds.Album(ctx).Exists(id)
-	if err != nil {
-		return nil, err
-	}
-	if exist {
-		return a.ds.MediaFile(ctx).FindByAlbum(id)
-	}
-	exist, err = a.ds.Artist(ctx).Exists(id)
-	if err != nil {
-		return nil, err
-	}
-	if exist {
-		return a.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Sort:    "album",
-			Filters: squirrel.Eq{"album_artist_id": id},
-		})
-	}
-	mf, err := a.ds.MediaFile(ctx).Get(id)
-	if err != nil {
-		return nil, err
-	}
-	return model.MediaFiles{*mf}, nil
 }

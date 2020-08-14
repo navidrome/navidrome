@@ -1,9 +1,11 @@
 package subsonic
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
@@ -23,6 +25,7 @@ func NewStreamController(streamer core.MediaStreamer, archiver core.Archiver, ds
 }
 
 func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	ctx := r.Context()
 	id, err := requiredParamString(r, "id", "id parameter required")
 	if err != nil {
 		return nil, err
@@ -31,7 +34,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	format := utils.ParamString(r, "format")
 	estimateContentLength := utils.ParamBool(r, "estimateContentLength", false)
 
-	stream, err := c.streamer.NewStream(r.Context(), id, format, maxBitRate)
+	stream, err := c.streamer.NewStream(ctx, id, format, maxBitRate)
 	if err != nil {
 		return nil, err
 	}
@@ -56,14 +59,14 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 		// if Client requests the estimated content-length, send it
 		if estimateContentLength {
 			length := strconv.Itoa(stream.EstimatedContentLength())
-			log.Trace(r.Context(), "Estimated content-length", "contentLength", length)
+			log.Trace(ctx, "Estimated content-length", "contentLength", length)
 			w.Header().Set("Content-Length", length)
 		}
 
 		if c, err := io.Copy(w, stream); err != nil {
-			log.Error(r.Context(), "Error sending transcoded file", "id", id, err)
+			log.Error(ctx, "Error sending transcoded file", "id", id, err)
 		} else {
-			log.Trace(r.Context(), "Success sending transcode file", "id", id, "size", c)
+			log.Trace(ctx, "Success sending transcode file", "id", id, "size", c)
 		}
 	}
 
@@ -71,31 +74,45 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 }
 
 func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	ctx := r.Context()
 	id, err := requiredParamString(r, "id", "id parameter required")
 	if err != nil {
 		return nil, err
 	}
 
-	isTrack, err := c.ds.MediaFile(r.Context()).Exists(id)
+	entity, err := getEntityByID(ctx, c.ds, id)
 	if err != nil {
 		return nil, err
 	}
 
-	if isTrack {
-		stream, err := c.streamer.NewStream(r.Context(), id, "raw", 0)
+	setHeaders := func(name string) {
+		filename := fmt.Sprintf("attachment; filename=%s.zip", name)
+		filename = strings.ReplaceAll(filename, ",", "_")
+		w.Header().Set("Content-Disposition", filename)
+		w.Header().Set("Content-Type", "application/zip")
+	}
+
+	switch v := entity.(type) {
+	case *model.MediaFile:
+		stream, err := c.streamer.NewStream(ctx, id, "raw", 0)
 		if err != nil {
 			return nil, err
 		}
 
 		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
-	} else {
-		w.Header().Set("Content-Disposition", "attachment; filename=Navidrome-download.zip")
-		w.Header().Set("Content-Type", "application/zip")
-		err := c.archiver.Zip(r.Context(), id, w)
+		return nil, nil
+	case *model.Album:
+		setHeaders(v.Name)
+		err = c.archiver.ZipAlbum(ctx, id, w)
+	case *model.Artist:
+		setHeaders(v.Name)
+		err = c.archiver.ZipArtist(ctx, id, w)
+	default:
+		err = model.ErrNotFound
+	}
 
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 	return nil, nil
 }
