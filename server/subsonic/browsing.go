@@ -191,18 +191,20 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 
 func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	id := utils.ParamString(r, "id")
-	song, err := c.browser.GetSong(r.Context(), id)
+	ctx := r.Context()
+
+	mf, err := c.ds.MediaFile(ctx).Get(id)
 	switch {
 	case err == model.ErrNotFound:
-		log.Error(r, "Requested ID not found ", "id", id)
+		log.Error(r, "Requested MediaFileID not found ", "id", id)
 		return nil, NewError(responses.ErrorDataNotFound, "Song not found")
 	case err != nil:
-		log.Error(r, err)
+		log.Error(r, "Error retrieving MediaFile", "id", id, err)
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
 	response := NewResponse()
-	child := ToChild(r.Context(), *song)
+	child := ChildFromMediaFile(ctx, *mf)
 	response.Song = &child
 	return response, nil
 }
