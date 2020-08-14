@@ -105,7 +105,9 @@ func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) 
 
 func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	id := utils.ParamString(r, "id")
-	dir, err := c.browser.Directory(r.Context(), id)
+	ctx := r.Context()
+
+	entity, err := getEntityByID(ctx, c.ds, id)
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, "Requested ID not found ", "id", id)
@@ -115,8 +117,25 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 		return nil, NewError(responses.ErrorGeneric, "Internal Error")
 	}
 
+	var dir *responses.Directory
+
+	switch v := entity.(type) {
+	case *model.Artist:
+		dir, err = c.buildArtistDirectory(ctx, v)
+	case *model.Album:
+		dir, err = c.buildAlbumDirectory(ctx, v)
+	default:
+		log.Error(r, "Requested ID of invalid type", "id", id, "entity", v)
+		return nil, NewError(responses.ErrorDataNotFound, "Directory not found")
+	}
+
+	if err != nil {
+		log.Error(err)
+		return nil, NewError(responses.ErrorGeneric, "Internal Error")
+	}
+
 	response := NewResponse()
-	response.Directory = c.buildDirectory(r.Context(), dir)
+	response.Directory = dir
 	return response, nil
 }
 
@@ -233,21 +252,24 @@ func (c *BrowsingController) GetTopSongs(w http.ResponseWriter, r *http.Request)
 	return response, nil
 }
 
-func (c *BrowsingController) buildDirectory(ctx context.Context, d *engine.DirectoryInfo) *responses.Directory {
-	dir := &responses.Directory{
-		Id:         d.Id,
-		Name:       d.Name,
-		Parent:     d.Parent,
-		PlayCount:  d.PlayCount,
-		AlbumCount: d.AlbumCount,
-		UserRating: d.UserRating,
-	}
-	if !d.Starred.IsZero() {
-		dir.Starred = &d.Starred
+func (c *BrowsingController) buildArtistDirectory(ctx context.Context, artist *model.Artist) (*responses.Directory, error) {
+	dir := &responses.Directory{}
+	dir.Id = artist.ID
+	dir.Name = artist.Name
+	dir.PlayCount = artist.PlayCount
+	dir.AlbumCount = artist.AlbumCount
+	dir.UserRating = artist.Rating
+	if artist.Starred {
+		dir.Starred = &artist.StarredAt
 	}
 
-	dir.Child = ToChildren(ctx, d.Entries)
-	return dir
+	albums, err := c.ds.Album(ctx).FindByArtist(artist.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	dir.Child = ChildrenFromAlbums(ctx, albums)
+	return dir, nil
 }
 
 func (c *BrowsingController) buildArtist(ctx context.Context, artist *model.Artist, albums model.Albums) *responses.ArtistWithAlbumsID3 {
@@ -261,6 +283,28 @@ func (c *BrowsingController) buildArtist(ctx context.Context, artist *model.Arti
 
 	dir.Album = ChildrenFromAlbums(ctx, albums)
 	return dir
+}
+
+func (c *BrowsingController) buildAlbumDirectory(ctx context.Context, album *model.Album) (*responses.Directory, error) {
+	dir := &responses.Directory{}
+	dir.Id = album.ID
+	dir.Name = album.Name
+	dir.Parent = album.AlbumArtistID
+	dir.PlayCount = album.PlayCount
+	dir.UserRating = album.Rating
+	dir.SongCount = album.SongCount
+	dir.CoverArt = album.CoverArtId
+	if album.Starred {
+		dir.Starred = &album.StarredAt
+	}
+
+	mfs, err := c.ds.MediaFile(ctx).FindByAlbum(album.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	dir.Child = ChildrenFromMediaFiles(ctx, mfs)
+	return dir, nil
 }
 
 func (c *BrowsingController) buildAlbum(ctx context.Context, album *model.Album, mfs model.MediaFiles) *responses.AlbumWithSongsID3 {
