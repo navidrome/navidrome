@@ -17,7 +17,7 @@ var allProviders = wire.NewSet(
 	NewMediaRetrievalController,
 	NewStreamController,
 	NewBookmarksController,
-	wire.FieldsOf(new(*Router), "Browser", "Artwork", "ListGenerator", "Playlists", "Scrobbler",
+	wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Scrobbler",
 		"Search", "Streamer", "Archiver", "DataStore"),
 )
 
