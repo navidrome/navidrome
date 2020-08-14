@@ -203,14 +203,14 @@ func (r artistRepository) Delete(id string) error {
 }
 
 func (r artistRepository) Save(entity interface{}) (string, error) {
-	mf := entity.(*model.Artist)
-	err := r.Put(mf)
-	return mf.ID, err
+	artist := entity.(*model.Artist)
+	err := r.Put(artist)
+	return artist.ID, err
 }
 
 func (r artistRepository) Update(entity interface{}, cols ...string) error {
-	mf := entity.(*model.Artist)
-	return r.Put(mf)
+	artist := entity.(*model.Artist)
+	return r.Put(artist)
 }
 
 var _ model.ArtistRepository = (*artistRepository)(nil)

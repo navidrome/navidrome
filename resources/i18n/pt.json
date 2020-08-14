@@ -53,6 +53,7 @@
             "lists": {
                 "all": "Todos",
                 "random": "Aleatório",
+                "starred": "Favoritos",
                 "recentlyAdded": "Recém-adicionados",
                 "recentlyPlayed": "Recém-tocados",
                 "mostPlayed": "Mais tocados"

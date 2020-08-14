@@ -201,10 +201,12 @@ AlbumContextMenu.propTypes = {
   discNumber: PropTypes.number,
   visible: PropTypes.bool,
   color: PropTypes.string,
+  showStar: PropTypes.bool,
 }
 
 AlbumContextMenu.defaultProps = {
   visible: true,
+  showStar: true,
   addLabel: true,
 }
 

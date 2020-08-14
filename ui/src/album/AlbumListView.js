@@ -10,14 +10,24 @@ import {
   SimpleShowLayout,
   TextField,
 } from 'react-admin'
+import { useMediaQuery } from '@material-ui/core'
+import StarBorderIcon from '@material-ui/icons/StarBorder'
 import {
   ArtistLinkField,
   DurationField,
   RangeField,
   SimpleList,
 } from '../common'
-import { useMediaQuery } from '@material-ui/core'
 import { AlbumContextMenu } from '../common'
+import { makeStyles } from '@material-ui/core/styles'
+
+const useStyles = makeStyles({
+  columnIcon: {
+    marginLeft: '3px',
+    marginTop: '-2px',
+    verticalAlign: 'text-top',
+  },
+})
 
 const AlbumDetails = (props) => {
   return (
@@ -64,6 +74,7 @@ const AlbumDatagrid = (props) => (
 )
 
 const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
+  const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return isXsmall ? (
@@ -88,7 +99,11 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
       {isDesktop && <NumberField source="playCount" sortByOrder={'DESC'} />}
       <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
       {isDesktop && <DurationField source="duration" />}
-      <AlbumContextMenu />
+      <AlbumContextMenu
+        label={
+          <StarBorderIcon fontSize={'small'} className={classes.columnIcon} />
+        }
+      />
     </AlbumDatagrid>
   )
 }

@@ -41,6 +41,7 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 		"artist_id":       artistFilter,
 		"year":            yearFilter,
 		"recently_played": recentlyPlayedFilter,
+		"starred":         booleanFilter,
 	}
 
 	return r
@@ -313,5 +314,22 @@ func (r *albumRepository) NewInstance() interface{} {
 	return &model.Album{}
 }
 
+func (r albumRepository) Delete(id string) error {
+	return r.delete(Eq{"id": id})
+}
+
+func (r albumRepository) Save(entity interface{}) (string, error) {
+	mf := entity.(*model.Artist)
+	id, err := r.put(mf.ID, mf)
+	return id, err
+}
+
+func (r albumRepository) Update(entity interface{}, cols ...string) error {
+	mf := entity.(*model.Artist)
+	_, err := r.put(mf.ID, mf)
+	return err
+}
+
 var _ model.AlbumRepository = (*albumRepository)(nil)
 var _ model.ResourceRepository = (*albumRepository)(nil)
+var _ rest.Persistable = (*albumRepository)(nil)

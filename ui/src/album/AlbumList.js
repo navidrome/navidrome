@@ -12,8 +12,9 @@ import {
   useTranslate,
   useListParams,
 } from 'react-admin'
-import { List, Title, useAlbumsPerPage } from '../common'
+import StarIcon from '@material-ui/icons/Star'
 import { withWidth } from '@material-ui/core'
+import { List, QuickFilter, Title, useAlbumsPerPage } from '../common'
 import AlbumListActions from './AlbumListActions'
 import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
@@ -37,6 +38,11 @@ const AlbumFilter = (props) => {
       </ReferenceInput>
       <NullableBooleanInput source="compilation" />
       <NumberInput source="year" />
+      <QuickFilter
+        source="starred"
+        label={<StarIcon fontSize={'small'} />}
+        defaultValue={true}
+      />
     </Filter>
   )
 }

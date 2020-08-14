@@ -54,6 +54,7 @@
             "lists": {
                 "all": "All",
                 "random": "Random",
+                "starred": "Starred",
                 "recentlyAdded": "Recently Added",
                 "recentlyPlayed": "Recently Played",
                 "mostPlayed": "Most Played"
