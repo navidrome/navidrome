@@ -42,8 +42,8 @@ func initPlaylistsController(router *Router) *PlaylistsController {
 }
 
 func initSearchingController(router *Router) *SearchingController {
-	search := router.Search
-	searchingController := NewSearchingController(search)
+	dataStore := router.DataStore
+	searchingController := NewSearchingController(dataStore)
 	return searchingController
 }
 
@@ -84,6 +84,5 @@ var allProviders = wire.NewSet(
 	NewUsersController,
 	NewMediaRetrievalController,
 	NewStreamController,
-	NewBookmarksController, wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Scrobbler",
-		"Search", "Streamer", "Archiver", "DataStore"),
+	NewBookmarksController, wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Scrobbler", "Streamer", "Archiver", "DataStore"),
 )

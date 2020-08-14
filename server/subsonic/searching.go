@@ -3,15 +3,17 @@ package subsonic
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/server/subsonic/engine"
+	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
+	"github.com/kennygrant/sanitize"
 )
 
 type SearchingController struct {
-	search engine.Search
+	ds model.DataStore
 }
 
 type searchParams struct {
@@ -24,8 +26,8 @@ type searchParams struct {
 	songOffset   int
 }
 
-func NewSearchingController(search engine.Search) *SearchingController {
-	return &SearchingController{search: search}
+func NewSearchingController(ds model.DataStore) *SearchingController {
+	return &SearchingController{ds: ds}
 }
 
 func (c *SearchingController) getParams(r *http.Request) (*searchParams, error) {
@@ -44,22 +46,26 @@ func (c *SearchingController) getParams(r *http.Request) (*searchParams, error) 
 	return sp, nil
 }
 
-func (c *SearchingController) searchAll(r *http.Request, sp *searchParams) (engine.Entries, engine.Entries, engine.Entries) {
-	as, err := c.search.SearchArtist(r.Context(), sp.query, sp.artistOffset, sp.artistCount)
+func (c *SearchingController) searchAll(r *http.Request, sp *searchParams) (model.MediaFiles, model.Albums, model.Artists) {
+	q := sanitize.Accents(strings.ToLower(strings.TrimSuffix(sp.query, "*")))
+	ctx := r.Context()
+
+	artists, err := c.ds.Artist(ctx).Search(q, sp.artistOffset, sp.artistCount)
 	if err != nil {
-		log.Error(r, "Error searching for Artists", err)
+		log.Error(ctx, "Error searching for Artists", err)
 	}
-	als, err := c.search.SearchAlbum(r.Context(), sp.query, sp.albumOffset, sp.albumCount)
+	albums, err := c.ds.Album(ctx).Search(q, sp.albumOffset, sp.albumCount)
 	if err != nil {
-		log.Error(r, "Error searching for Albums", err)
+		log.Error(ctx, "Error searching for Albums", err)
 	}
-	mfs, err := c.search.SearchSong(r.Context(), sp.query, sp.songOffset, sp.songCount)
+	mediaFiles, err := c.ds.MediaFile(ctx).Search(q, sp.songOffset, sp.songCount)
 	if err != nil {
-		log.Error(r, "Error searching for MediaFiles", err)
+		log.Error(ctx, "Error searching for MediaFiles", err)
 	}
 
-	log.Debug(r, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists", len(mfs), len(als), len(as)), "query", sp.query)
-	return mfs, als, as
+	log.Debug(ctx, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists",
+		len(mediaFiles), len(albums), len(artists)), "query", sp.query)
+	return mediaFiles, albums, artists
 }
 
 func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -71,9 +77,19 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 
 	response := newResponse()
 	searchResult2 := &responses.SearchResult2{}
-	searchResult2.Artist = toArtists(as)
-	searchResult2.Album = toChildren(r.Context(), als)
-	searchResult2.Song = toChildren(r.Context(), mfs)
+	searchResult2.Artist = make([]responses.Artist, len(as))
+	for i, artist := range as {
+		searchResult2.Artist[i] = responses.Artist{
+			Id:         artist.ID,
+			Name:       artist.Name,
+			AlbumCount: artist.AlbumCount,
+		}
+		if artist.Starred {
+			searchResult2.Artist[i].Starred = &artist.StarredAt
+		}
+	}
+	searchResult2.Album = childrenFromAlbums(r.Context(), als)
+	searchResult2.Song = childrenFromMediaFiles(r.Context(), mfs)
 	response.SearchResult2 = searchResult2
 	return response, nil
 }
@@ -88,19 +104,18 @@ func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*
 	response := newResponse()
 	searchResult3 := &responses.SearchResult3{}
 	searchResult3.Artist = make([]responses.ArtistID3, len(as))
-	for i, e := range as {
+	for i, artist := range as {
 		searchResult3.Artist[i] = responses.ArtistID3{
-			Id:         e.Id,
-			Name:       e.Title,
-			CoverArt:   e.CoverArt,
-			AlbumCount: e.AlbumCount,
+			Id:         artist.ID,
+			Name:       artist.Name,
+			AlbumCount: artist.AlbumCount,
 		}
-		if !e.Starred.IsZero() {
-			searchResult3.Artist[i].Starred = &e.Starred
+		if artist.Starred {
+			searchResult3.Artist[i].Starred = &artist.StarredAt
 		}
 	}
-	searchResult3.Album = toAlbums(r.Context(), als)
-	searchResult3.Song = toChildren(r.Context(), mfs)
+	searchResult3.Album = childrenFromAlbums(r.Context(), als)
+	searchResult3.Song = childrenFromMediaFiles(r.Context(), mfs)
 	response.SearchResult3 = searchResult3
 	return response, nil
 }
