@@ -2,23 +2,25 @@ package subsonic
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
 
 type MediaAnnotationController struct {
-	scrobbler engine.Scrobbler
-	ds        model.DataStore
+	ds     model.DataStore
+	npRepo engine.NowPlayingRepository
 }
 
-func NewMediaAnnotationController(scrobbler engine.Scrobbler, ds model.DataStore) *MediaAnnotationController {
-	return &MediaAnnotationController{scrobbler: scrobbler, ds: ds}
+func NewMediaAnnotationController(ds model.DataStore, npr engine.NowPlayingRepository) *MediaAnnotationController {
+	return &MediaAnnotationController{ds: ds, npRepo: npr}
 }
 
 func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -116,13 +118,13 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 			t = time.Now()
 		}
 		if submission {
-			_, err := c.scrobbler.Register(r.Context(), playerId, id, t)
+			_, err := c.scrobblerRegister(r.Context(), playerId, id, t)
 			if err != nil {
 				log.Error(r, "Error scrobbling track", "id", id, err)
 				continue
 			}
 		} else {
-			_, err := c.scrobbler.NowPlaying(r.Context(), playerId, playerName, id, username)
+			_, err := c.scrobblerNowPlaying(r.Context(), playerId, playerName, id, username)
 			if err != nil {
 				log.Error(r, "Error setting current song", "id", id, err)
 				continue
@@ -130,6 +132,52 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 		}
 	}
 	return newResponse(), nil
+}
+
+func (c *MediaAnnotationController) scrobblerRegister(ctx context.Context, playerId int, trackId string, playTime time.Time) (*model.MediaFile, error) {
+	var mf *model.MediaFile
+	var err error
+	err = c.ds.WithTx(func(tx model.DataStore) error {
+		mf, err = c.ds.MediaFile(ctx).Get(trackId)
+		if err != nil {
+			return err
+		}
+		err = c.ds.MediaFile(ctx).IncPlayCount(trackId, playTime)
+		if err != nil {
+			return err
+		}
+		err = c.ds.Album(ctx).IncPlayCount(mf.AlbumID, playTime)
+		if err != nil {
+			return err
+		}
+		err = c.ds.Artist(ctx).IncPlayCount(mf.ArtistID, playTime)
+		return err
+	})
+
+	username, _ := request.UsernameFrom(ctx)
+	if err != nil {
+		log.Error("Error while scrobbling", "trackId", trackId, "user", username, err)
+	} else {
+		log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
+	}
+
+	return mf, err
+}
+
+func (c *MediaAnnotationController) scrobblerNowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error) {
+	mf, err := c.ds.MediaFile(ctx).Get(trackId)
+	if err != nil {
+		return nil, err
+	}
+
+	if mf == nil {
+		return nil, fmt.Errorf(`ID "%s" not found`, trackId)
+	}
+
+	log.Info("Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username)
+
+	info := &engine.NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
+	return mf, c.npRepo.Enqueue(info)
 }
 
 func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids ...string) error {

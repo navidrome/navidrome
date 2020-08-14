@@ -46,13 +46,12 @@ func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
 	listGenerator := engine.NewListGenerator(dataStore, nowPlayingRepository)
 	users := engine.NewUsers(dataStore)
 	playlists := engine.NewPlaylists(dataStore)
-	scrobbler := engine.NewScrobbler(dataStore, nowPlayingRepository)
 	transcoderTranscoder := transcoder.New()
 	transcodingCache := core.NewTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
 	archiver := core.NewArchiver(dataStore)
 	players := engine.NewPlayers(dataStore)
-	router := subsonic.New(artwork, listGenerator, users, playlists, scrobbler, mediaStreamer, archiver, players, dataStore)
+	router := subsonic.New(artwork, listGenerator, users, playlists, mediaStreamer, archiver, players, dataStore)
 	return router, nil
 }
 
