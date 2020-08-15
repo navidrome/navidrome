@@ -136,6 +136,7 @@ const ContextMenu = ({
   )
 
   const handleToggleStar = (e) => {
+    e.preventDefault()
     toggleStarred()
     e.stopPropagation()
   }
@@ -188,6 +189,7 @@ const ContextMenu = ({
 export const AlbumContextMenu = (props) => (
   <ContextMenu
     {...props}
+    resource={'album'}
     songQueryParams={{
       pagination: { page: 1, perPage: -1 },
       sort: { field: 'discNumber, trackNumber', order: 'ASC' },
@@ -213,6 +215,7 @@ AlbumContextMenu.defaultProps = {
 export const ArtistContextMenu = (props) => (
   <ContextMenu
     {...props}
+    resource={'artist'}
     songQueryParams={{
       pagination: { page: 1, perPage: 200 },
       sort: { field: 'album, discNumber, trackNumber', order: 'ASC' },

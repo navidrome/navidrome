@@ -319,14 +319,14 @@ func (r albumRepository) Delete(id string) error {
 }
 
 func (r albumRepository) Save(entity interface{}) (string, error) {
-	mf := entity.(*model.Artist)
-	id, err := r.put(mf.ID, mf)
+	album := entity.(*model.Album)
+	id, err := r.put(album.ID, album)
 	return id, err
 }
 
 func (r albumRepository) Update(entity interface{}, cols ...string) error {
-	mf := entity.(*model.Artist)
-	_, err := r.put(mf.ID, mf)
+	album := entity.(*model.Album)
+	_, err := r.put(album.ID, album)
 	return err
 }
 
