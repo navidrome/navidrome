@@ -2,9 +2,7 @@ package server
 
 import (
 	"net/http"
-	"os"
 	"path"
-	"path/filepath"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
@@ -66,10 +64,6 @@ func (a *Server) initRoutes() {
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, indexHtml, 302)
 	})
-
-	workDir, _ := os.Getwd()
-	filesDir := filepath.Join(workDir, "Jamstash-master/dist")
-	FileServer(r, "/Jamstash", "/Jamstash", http.Dir(filesDir))
 
 	a.router = r
 }
