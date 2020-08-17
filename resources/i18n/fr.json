@@ -72,7 +72,7 @@
                 "updatedAt": "Dernière mise à jour",
                 "name": "Nom",
                 "password": "Mot de passe",
-                "createdAt": "Crée le"
+                "createdAt": "Créé le"
             }
         },
         "player": {
@@ -91,7 +91,7 @@
             "fields": {
                 "name": "Nom",
                 "targetFormat": "Format",
-                "defaultBitRate": "Bitrate  par défaut",
+                "defaultBitRate": "Bitrate par défaut",
                 "command": "Commande"
             }
         },
@@ -103,7 +103,7 @@
                 "owner": "Propriétaire",
                 "public": "Public",
                 "updatedAt": "Mise à jour le",
-                "createdAt": "Crée le",
+                "createdAt": "Créé le",
                 "songCount": "Titres",
                 "comment": "Commentaire",
                 "sync": "Import automatique",
@@ -248,11 +248,11 @@
     "message": {
         "note": "NOTE",
         "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancer le serveur avec l'option %{config} activée.",
-        "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé de n'activer cette fonctionnalité uniquement lors de la configuration du Transcodage.",
+        "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé d'activer cette fonctionnalité uniquement lors de la configuration du Transcodage.",
         "songsAddedToPlaylist": "Une piste ajoutée à la playlist |||| %{smart_count} pistes ajoutées à la playlist",
         "noPlaylistsAvailable": "Aucune playlist",
         "delete_user_title": "Supprimer l'utilisateur '%{name}'",
-        "delete_user_content": "Êtes-vous sûr de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences)"
+        "delete_user_content": "Êtes-vous sûr de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?"
     },
     "menu": {
         "library": "Bibliothèque",
@@ -260,7 +260,7 @@
         "version": "Version%{version}",
         "theme": "Thème",
         "personal": {
-            "name": "Paramètres personel",
+            "name": "Paramètres personnels",
             "options": {
                 "theme": "Thème",
                 "language": "Langue",
@@ -290,8 +290,8 @@
         "playModeText": {
             "order": "Ordonner",
             "orderLoop": "Tout répéter",
-            "singleLoop": "Repéter",
-            "shufflePlay": "Aleatoire"
+            "singleLoop": "Répéter",
+            "shufflePlay": "Aléatoire"
         }
     }
 }
