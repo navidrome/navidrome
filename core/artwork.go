@@ -68,6 +68,7 @@ func (c *artwork) Get(ctx context.Context, id string, size int, out io.Writer) e
 		log.Error(ctx, "Error accessing image cache", "path", path, "size", size, err)
 		return err
 	}
+	defer r.Close()
 
 	_, err = io.Copy(out, r)
 	return err
