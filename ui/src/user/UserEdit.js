@@ -38,7 +38,7 @@ const UserToolbar = (props) => (
 
 const UserEdit = (props) => (
   <Edit title={<UserTitle />} {...props}>
-    <SimpleForm toolbar={<UserToolbar />}>
+    <SimpleForm variant={'outlined'} toolbar={<UserToolbar />}>
       <TextInput source="userName" validate={[required()]} />
       <TextInput source="name" validate={[required()]} />
       <TextInput source="email" validate={[email()]} />

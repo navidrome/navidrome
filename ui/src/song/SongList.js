@@ -36,7 +36,7 @@ const useStyles = makeStyles({
 })
 
 const SongFilter = (props) => (
-  <Filter {...props}>
+  <Filter {...props} variant={'outlined'}>
     <SearchInput source="title" alwaysOn />
     <QuickFilter
       source="starred"

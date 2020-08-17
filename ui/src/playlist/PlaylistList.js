@@ -15,7 +15,7 @@ import { DurationField, List } from '../common'
 import Writable, { isWritable } from '../common/Writable'
 
 const PlaylistFilter = (props) => (
-  <Filter {...props}>
+  <Filter {...props} variant={'outlined'}>
     <SearchInput source="name" alwaysOn />
   </Filter>
 )

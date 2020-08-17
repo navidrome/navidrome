@@ -19,7 +19,7 @@ const PlayerTitle = ({ record }) => {
 
 const PlayerEdit = (props) => (
   <Edit title={<PlayerTitle />} {...props}>
-    <SimpleForm>
+    <SimpleForm variant={'outlined'}>
       <TextInput source="name" validate={[required()]} />
       <ReferenceInput
         source="transcodingId"

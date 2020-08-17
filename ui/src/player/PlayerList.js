@@ -12,7 +12,7 @@ import { useMediaQuery } from '@material-ui/core'
 import { SimpleList, List } from '../common'
 
 const PlayerFilter = (props) => (
-  <Filter {...props}>
+  <Filter {...props} variant={'outlined'}>
     <SearchInput source="name" alwaysOn />
   </Filter>
 )

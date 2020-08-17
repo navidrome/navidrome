@@ -25,7 +25,7 @@ import albumLists, { defaultAlbumList } from './albumLists'
 const AlbumFilter = (props) => {
   const translate = useTranslate()
   return (
-    <Filter {...props}>
+    <Filter {...props} variant={'outlined'}>
       <SearchInput source="name" alwaysOn />
       <ReferenceInput
         label={translate('resources.album.fields.artist')}

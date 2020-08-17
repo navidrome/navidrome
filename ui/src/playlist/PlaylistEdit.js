@@ -21,7 +21,7 @@ const SyncFragment = ({ formData, ...rest }) => {
 
 const PlaylistEdit = (props) => (
   <Edit {...props}>
-    <SimpleForm redirect="list">
+    <SimpleForm redirect="list" variant={'outlined'}>
       <TextInput source="name" validate={required()} />
       <TextInput multiline source="comment" />
       <BooleanInput source="public" />

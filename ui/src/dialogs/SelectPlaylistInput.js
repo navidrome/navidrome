@@ -82,6 +82,7 @@ const SelectPlaylistInput = ({ onChange }) => {
       renderInput={(params) => (
         <TextField
           autoFocus
+          variant={'outlined'}
           {...params}
           label={translate('resources.playlist.fields.name')}
         />

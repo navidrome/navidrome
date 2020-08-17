@@ -19,7 +19,7 @@ const UserCreate = (props) => {
   })
   return (
     <Create title={<Title subTitle={title} />} {...props}>
-      <SimpleForm redirect="list">
+      <SimpleForm redirect="list" variant={'outlined'}>
         <TextInput source="userName" validate={[required()]} />
         <TextInput source="name" validate={[required()]} />
         <TextInput source="email" validate={[required(), email()]} />

@@ -24,7 +24,7 @@ const TranscodingEdit = (props) => {
       <TranscodingNote message={'message.transcodingEnabled'} />
 
       <Edit title={<TranscodingTitle />} {...props}>
-        <SimpleForm>
+        <SimpleForm variant={'outlined'}>
           <TextInput source="name" validate={[required()]} />
           <TextInput source="targetFormat" validate={[required()]} />
           <SelectInput

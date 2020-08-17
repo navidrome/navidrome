@@ -30,7 +30,7 @@ const useStyles = makeStyles({
 })
 
 const ArtistFilter = (props) => (
-  <Filter {...props}>
+  <Filter {...props} variant={'outlined'}>
     <SearchInput source="name" alwaysOn />
     <QuickFilter
       source="starred"
