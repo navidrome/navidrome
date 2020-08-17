@@ -78,6 +78,7 @@ const renderInput = ({
     helperText={touched && error}
     {...inputProps}
     {...props}
+    variant={'outlined'}
     fullWidth
   />
 )
