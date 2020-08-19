@@ -42,7 +42,19 @@ func Db() *sql.DB {
 func EnsureLatestVersion() {
 	db := Db()
 
-	err := goose.SetDialect(Driver)
+	// Disable foreign_keys to allow re-creating tables in migrations
+	_, err := db.Exec("PRAGMA foreign_keys=off")
+	defer func() {
+		_, err := db.Exec("PRAGMA foreign_keys=on")
+		if err != nil {
+			log.Error("Error re-enabling foreign_keys", err)
+		}
+	}()
+	if err != nil {
+		log.Error("Error disabling foreign_keys", err)
+	}
+
+	err = goose.SetDialect(Driver)
 	if err != nil {
 		log.Error("Invalid DB driver", "driver", Driver, err)
 		os.Exit(1)
