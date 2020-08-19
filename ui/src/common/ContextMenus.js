@@ -28,6 +28,7 @@ const useStyles = makeStyles({
     visibility: (props) => (props.visible ? 'visible' : 'hidden'),
   },
   star: {
+    color: (props) => props.color,
     visibility: (props) =>
       props.visible || props.starred ? 'visible' : 'hidden',
   },
