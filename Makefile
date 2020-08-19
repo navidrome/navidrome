@@ -1,4 +1,4 @@
-GO_VERSION=$(shell grep -e "^go " go.mod | cut -f 2 -d ' ')
+GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
 
 GIT_SHA=$(shell git rev-parse --short HEAD)
