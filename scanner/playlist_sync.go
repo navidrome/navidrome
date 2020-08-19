@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -73,7 +74,9 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 		UpdatedAt: info.ModTime(),
 	}
 
+	mediaFileRepository := s.ds.MediaFile(ctx)
 	scanner := bufio.NewScanner(file)
+	scanner.Split(scanLines)
 	for scanner.Scan() {
 		path := scanner.Text()
 		// Skip extended info
@@ -83,7 +86,7 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(baseDir, path)
 		}
-		mf, err := s.ds.MediaFile(ctx).FindByPath(path)
+		mf, err := mediaFileRepository.FindByPath(path)
 		if err != nil {
 			log.Warn(ctx, "Path in playlist not found", "playlist", playlistFile, "path", path, err)
 			continue
@@ -117,4 +120,28 @@ func (s *playlistSync) updatePlaylist(ctx context.Context, newPls *model.Playlis
 		newPls.Owner = owner
 	}
 	return s.ds.Playlist(ctx).Put(newPls)
+}
+
+// From https://stackoverflow.com/a/41433698
+func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	if i := bytes.IndexAny(data, "\r\n"); i >= 0 {
+		if data[i] == '\n' {
+			// We have a line terminated by single newline.
+			return i + 1, data[0:i], nil
+		}
+		advance = i + 1
+		if len(data) > i+1 && data[i+1] == '\n' {
+			advance += 1
+		}
+		return advance, data[0:i], nil
+	}
+	// If we're at EOF, we have a final, non-terminated line. Return it.
+	if atEOF {
+		return len(data), data, nil
+	}
+	// Request more data.
+	return 0, nil, nil
 }
