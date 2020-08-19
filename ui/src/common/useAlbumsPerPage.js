@@ -6,7 +6,9 @@ const getPerPage = (width) => {
   if (width === 'sm') return 12
   if (width === 'md') return 15
   if (width === 'lg') return 18
-  return 36
+  if (width === 'xl') return 36
+  if (width === 'xxl') return 48
+  return 72
 }
 
 const getPerPageOptions = (width) => {

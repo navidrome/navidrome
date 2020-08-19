@@ -49,7 +49,9 @@ const getColsForWidth = (width) => {
   if (width === 'sm') return 3
   if (width === 'md') return 4
   if (width === 'lg') return 6
-  return 9
+  if (width === 'xl') return 9
+  if (width === 'xxl') return 12
+  return 18
 }
 
 const Cover = withContentRect('bounds')(
