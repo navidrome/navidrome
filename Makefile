@@ -38,8 +38,8 @@ update-snapshots: check_go_env
 .PHONY: update-snapshots
 
 migration:
-	@if [ -z "${name}" ]; then echo "Usage: make create-migration name=name_of_migration_file"; exit 1; fi
-	goose -dir db/migration create ${name}
+	@if [ -z "${name}" ]; then echo "Usage: make migration name=name_of_migration_file"; exit 1; fi
+	goose -dir db/migrations create ${name}
 .PHONY: migration
 
 setup:
