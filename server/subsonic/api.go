@@ -77,7 +77,7 @@ func (api *Router) routes() http.Handler {
 		H(withPlayer, "getSong", c.GetSong)
 		H(withPlayer, "getArtistInfo", c.GetArtistInfo)
 		H(withPlayer, "getArtistInfo2", c.GetArtistInfo2)
-		H(withPlayer, "GetTopSongs", c.GetTopSongs)
+		H(withPlayer, "getTopSongs", c.GetTopSongs)
 	})
 	r.Group(func(r chi.Router) {
 		c := initAlbumListController(api)
