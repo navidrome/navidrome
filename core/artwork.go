@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	_ "golang.org/x/image/webp"
+
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
