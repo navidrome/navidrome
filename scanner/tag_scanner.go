@@ -379,6 +379,9 @@ func loadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {
 		if f.IsDir() {
 			continue
 		}
+		if strings.HasPrefix(f.Name(), ".") {
+			continue
+		}
 		filePath := filepath.Join(dirPath, f.Name())
 		if !utils.IsAudioFile(filePath) {
 			continue

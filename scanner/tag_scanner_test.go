@@ -14,8 +14,10 @@ var _ = Describe("TagScanner", func() {
 			Expect(files).To(HaveKey("tests/fixtures/test.ogg"))
 			Expect(files).To(HaveKey("tests/fixtures/test.mp3"))
 			Expect(files).To(HaveKey("tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
+			Expect(files).ToNot(HaveKey("tests/fixtures/._02 Invisible.mp3"))
 			Expect(files).ToNot(HaveKey("tests/fixtures/playlist.m3u"))
 		})
+
 		It("returns error if path does not exist", func() {
 			_, err := loadAllAudioFiles("./INVALID/PATH")
 			Expect(err).To(HaveOccurred())
