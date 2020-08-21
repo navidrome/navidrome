@@ -13,6 +13,7 @@ export const useStyles = makeStyles((theme) => ({
   },
   albumCover: {
     display: 'inline-block',
+    cursor: 'pointer',
     [theme.breakpoints.down('xs')]: {
       height: '8em',
       width: '8em',
