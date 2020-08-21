@@ -1,3 +1,5 @@
+import React from 'react'
+import { useDispatch } from 'react-redux'
 import {
   Button,
   sanitizeListRestProps,
@@ -6,9 +8,9 @@ import {
 } from 'react-admin'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
-import React from 'react'
-import { useDispatch } from 'react-redux'
+import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { playTracks, shuffleTracks } from '../audioplayer'
+import subsonic from '../subsonic'
 
 const PlaylistActions = ({
   className,
@@ -16,6 +18,7 @@ const PlaylistActions = ({
   data,
   exporter,
   permanentFilter,
+  playlistId,
   ...rest
 }) => {
   const dispatch = useDispatch()
@@ -38,6 +41,14 @@ const PlaylistActions = ({
         label={translate('resources.album.actions.shuffle')}
       >
         <ShuffleIcon />
+      </Button>
+      <Button
+        onClick={() => {
+          subsonic.download(playlistId)
+        }}
+        label={translate('resources.album.actions.download')}
+      >
+        <CloudDownloadOutlinedIcon />
       </Button>
     </TopToolbar>
   )

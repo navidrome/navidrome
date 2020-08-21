@@ -109,6 +109,9 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 	case *model.Artist:
 		setHeaders(v.Name)
 		err = c.archiver.ZipArtist(ctx, id, w)
+	case *model.Playlist:
+		setHeaders(v.Name)
+		err = c.archiver.ZipPlaylist(ctx, id, w)
 	default:
 		err = model.ErrNotFound
 	}

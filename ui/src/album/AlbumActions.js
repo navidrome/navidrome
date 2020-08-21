@@ -1,3 +1,5 @@
+import React from 'react'
+import { useDispatch } from 'react-redux'
 import {
   Button,
   sanitizeListRestProps,
@@ -7,8 +9,6 @@ import {
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
-import React from 'react'
-import { useDispatch } from 'react-redux'
 import { playTracks, shuffleTracks } from '../audioplayer'
 import subsonic from '../subsonic'
 

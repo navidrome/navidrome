@@ -16,6 +16,7 @@ import (
 type Archiver interface {
 	ZipAlbum(ctx context.Context, id string, w io.Writer) error
 	ZipArtist(ctx context.Context, id string, w io.Writer) error
+	ZipPlaylist(ctx context.Context, id string, w io.Writer) error
 }
 
 func NewArchiver(ds model.DataStore) Archiver {
@@ -26,13 +27,15 @@ type archiver struct {
 	ds model.DataStore
 }
 
+type createHeader func(idx int, mf model.MediaFile) *zip.FileHeader
+
 func (a *archiver) ZipAlbum(ctx context.Context, id string, out io.Writer) error {
 	mfs, err := a.ds.MediaFile(ctx).FindByAlbum(id)
 	if err != nil {
 		log.Error(ctx, "Error loading mediafiles from album", "id", id, err)
 		return err
 	}
-	return a.zipTracks(ctx, id, out, mfs)
+	return a.zipTracks(ctx, id, out, mfs, a.createHeader)
 }
 
 func (a *archiver) ZipArtist(ctx context.Context, id string, out io.Writer) error {
@@ -44,13 +47,22 @@ func (a *archiver) ZipArtist(ctx context.Context, id string, out io.Writer) erro
 		log.Error(ctx, "Error loading mediafiles from artist", "id", id, err)
 		return err
 	}
-	return a.zipTracks(ctx, id, out, mfs)
+	return a.zipTracks(ctx, id, out, mfs, a.createHeader)
 }
 
-func (a *archiver) zipTracks(ctx context.Context, id string, out io.Writer, mfs model.MediaFiles) error {
+func (a *archiver) ZipPlaylist(ctx context.Context, id string, out io.Writer) error {
+	pls, err := a.ds.Playlist(ctx).Get(id)
+	if err != nil {
+		log.Error(ctx, "Error loading mediafiles from playlist", "id", id, err)
+		return err
+	}
+	return a.zipTracks(ctx, id, out, pls.Tracks, a.createPlaylistHeader)
+}
+
+func (a *archiver) zipTracks(ctx context.Context, id string, out io.Writer, mfs model.MediaFiles, ch createHeader) error {
 	z := zip.NewWriter(out)
-	for _, mf := range mfs {
-		_ = a.addFileToZip(ctx, z, mf)
+	for idx, mf := range mfs {
+		_ = a.addFileToZip(ctx, z, mf, ch(idx, mf))
 	}
 	err := z.Close()
 	if err != nil {
@@ -59,13 +71,26 @@ func (a *archiver) zipTracks(ctx context.Context, id string, out io.Writer, mfs 
 	return err
 }
 
-func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile) error {
+func (a *archiver) createHeader(idx int, mf model.MediaFile) *zip.FileHeader {
 	_, file := filepath.Split(mf.Path)
-	w, err := z.CreateHeader(&zip.FileHeader{
+	return &zip.FileHeader{
 		Name:     fmt.Sprintf("%s/%s", mf.Album, file),
 		Modified: mf.UpdatedAt,
 		Method:   zip.Store,
-	})
+	}
+}
+
+func (a *archiver) createPlaylistHeader(idx int, mf model.MediaFile) *zip.FileHeader {
+	_, file := filepath.Split(mf.Path)
+	return &zip.FileHeader{
+		Name:     fmt.Sprintf("%d - %s-%s", idx, mf.AlbumArtist, file),
+		Modified: mf.UpdatedAt,
+		Method:   zip.Store,
+	}
+}
+
+func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile, zh *zip.FileHeader) error {
+	w, err := z.CreateHeader(zh)
 	if err != nil {
 		log.Error(ctx, "Error creating zip entry", "file", mf.Path, err)
 		return err

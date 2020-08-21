@@ -269,6 +269,10 @@ func getEntityByID(ctx context.Context, ds model.DataStore, id string) (interfac
 	if err == nil {
 		return al, nil
 	}
+	pls, err := ds.Playlist(ctx).Get(id)
+	if err == nil {
+		return pls, nil
+	}
 	mf, err := ds.MediaFile(ctx).Get(id)
 	if err == nil {
 		return mf, nil
