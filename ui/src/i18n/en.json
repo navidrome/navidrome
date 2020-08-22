@@ -85,7 +85,8 @@
             },
             "actions": {
                 "selectPlaylist": "Select a playlist:",
-                "addNewPlaylist": "Create \"%{name}\""
+                "addNewPlaylist": "Create \"%{name}\"",
+                "export": "Export"
             }
         },
         "user": {

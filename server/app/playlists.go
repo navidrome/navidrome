@@ -56,16 +56,24 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 
+		log.Debug(ctx, "Exporting playlist as M3U", "playlistId", plsId, "name", pls.Name)
 		w.Header().Set("Content-Type", "audio/x-mpegurl")
+		disposition := fmt.Sprintf("attachment; filename=\"%s.m3u\"", pls.Name)
+		w.Header().Set("Content-Disposition", disposition)
 
 		// TODO: Move this and the import playlist logic to `core`
-		w.Write([]byte("#EXTM3U\n"))
+		_, err = w.Write([]byte("#EXTM3U\n"))
+		if err != nil {
+			log.Error(ctx, "Error sending playlist", "name", pls.Name)
+			return
+		}
 		for _, t := range pls.Tracks {
 			header := fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title)
 			line := t.Path + "\n"
-			_, err := w.Write([]byte(header + line))
+			_, err = w.Write([]byte(header + line))
 			if err != nil {
 				log.Error(ctx, "Error sending playlist", "name", pls.Name)
+				return
 			}
 		}
 	}

@@ -1,9 +1,8 @@
 import jsonServerProvider from 'ra-data-json-server'
 import httpClient from './httpClient'
+import { REST_URL } from '../consts'
 
-const restUrl = '/app/api'
-
-const dataProvider = jsonServerProvider(restUrl, httpClient)
+const dataProvider = jsonServerProvider(REST_URL, httpClient)
 
 const mapResource = (resource, params) => {
   switch (resource) {

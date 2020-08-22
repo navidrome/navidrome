@@ -26,7 +26,7 @@ const PlaylistShow = (props) => {
         playlistId={props.id}
         readOnly={isReadOnly(record && record.owner)}
         title={<Title subTitle={record && record.name} />}
-        actions={<PlaylistActions playlistId={props.id} />}
+        actions={<PlaylistActions record={record} />}
         filter={{ playlist_id: props.id }}
         resource={'playlistTrack'}
         exporter={false}

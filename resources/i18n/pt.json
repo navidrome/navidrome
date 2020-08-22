@@ -116,7 +116,8 @@
             },
             "actions": {
                 "selectPlaylist": "Selecione a playlist:",
-                "addNewPlaylist": "Criar \"%{name}\""
+                "addNewPlaylist": "Criar \"%{name}\"",
+                "export": "Exportar"
             }
         }
     },
