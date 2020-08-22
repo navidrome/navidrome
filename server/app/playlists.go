@@ -1,15 +1,75 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
+	"github.com/deluan/rest"
+	"github.com/go-chi/chi"
 )
+
+func getPlaylist(ds model.DataStore) http.HandlerFunc {
+	// Add a middleware to capture the playlistId
+	wrapper := func(handler restHandler) http.HandlerFunc {
+		return func(res http.ResponseWriter, req *http.Request) {
+			constructor := func(ctx context.Context) rest.Repository {
+				plsRepo := ds.Playlist(ctx)
+				plsId := chi.URLParam(req, "playlistId")
+				return plsRepo.(model.PlaylistRepository).Tracks(plsId)
+			}
+
+			handler(constructor).ServeHTTP(res, req)
+		}
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		accept := r.Header.Get("accept")
+		if strings.ToLower(accept) == "audio/x-mpegurl" {
+			handleExportPlaylist(ds)(w, r)
+			return
+		}
+		wrapper(rest.GetAll)(w, r)
+	}
+}
+
+func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		plsRepo := ds.Playlist(ctx)
+		plsId := chi.URLParam(r, "playlistId")
+		pls, err := plsRepo.Get(plsId)
+		if err == model.ErrNotFound {
+			log.Warn("Playlist not found", "playlistId", plsId)
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			log.Error("Error retrieving the playlist", "playlistId", plsId, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "audio/x-mpegurl")
+
+		// TODO: Move this and the import playlist logic to `core`
+		w.Write([]byte("#EXTM3U\n"))
+		for _, t := range pls.Tracks {
+			header := fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title)
+			line := t.Path + "\n"
+			_, err := w.Write([]byte(header + line))
+			if err != nil {
+				log.Error(ctx, "Error sending playlist", "name", pls.Name)
+			}
+		}
+	}
+}
 
 func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
