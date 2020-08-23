@@ -17,6 +17,7 @@ import QuickFilter from './QuickFilter'
 import useAlbumsPerPage from './useAlbumsPerPage'
 import ShuffleAllButton from './ShuffleAllButton'
 import { AlbumContextMenu, ArtistContextMenu } from './ContextMenus'
+import StarButton from './StarButton'
 
 export {
   Title,
@@ -37,6 +38,7 @@ export {
   ArtistLinkField,
   AlbumContextMenu,
   ArtistContextMenu,
+  StarButton,
   useGetHandleArtistClick,
   SongContextMenu,
   QuickFilter,
