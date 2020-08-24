@@ -16,6 +16,7 @@ import {
 import themes from '../themes'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
+import PlayerToolbar from './PlayerToolbar'
 import Hotkeys from 'react-hot-keys'
 
 const useStyle = makeStyles((theme) => ({
@@ -98,6 +99,7 @@ const Player = () => {
   const dispatch = useDispatch()
   const queue = useSelector((state) => state.queue)
   const { authenticated } = useAuthState()
+  const current = queue.current || {}
 
   const options = useMemo(() => {
     return {
@@ -106,9 +108,10 @@ const Player = () => {
       autoPlay: queue.clear || queue.playIndex === 0,
       playIndex: queue.playIndex,
       audioLists: queue.queue.map((item) => item),
+      extendsContent: <PlayerToolbar id={current.trackId} />,
       defaultVolume: queue.volume,
     }
-  }, [queue.clear, queue.queue, queue.volume, queue.playIndex, defaultOptions])
+  }, [queue.clear, queue.queue, queue.volume, queue.playIndex, current, defaultOptions])
 
   const OnAudioListsChange = useCallback(
     (currentPlayIndex, audioLists) => {
