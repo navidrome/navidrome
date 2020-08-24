@@ -67,6 +67,7 @@ StarButton.propTypes = {
 }
 
 StarButton.defaultProps = {
+  record: {},
   visible: true,
   showStar: true,
   addLabel: true,

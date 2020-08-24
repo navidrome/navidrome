@@ -1,15 +1,14 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
-import { useUpdate, useTranslate, useRefresh, useNotify } from 'react-admin'
+import { useTranslate } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
-import StarIcon from '@material-ui/icons/Star'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
 import { addTracks, setTrack } from '../audioplayer'
 import { openAddToPlaylist } from '../dialogs/dialogState'
 import subsonic from '../subsonic'
+import StarButton from './StarButton'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -17,10 +16,6 @@ const useStyles = makeStyles({
   },
   menu: {
     visibility: (props) => (props.visible ? 'visible' : 'hidden'),
-  },
-  star: {
-    visibility: (props) =>
-      props.visible || props.starred ? 'visible' : 'hidden',
   },
 })
 
@@ -31,11 +26,9 @@ const SongContextMenu = ({
   onAddToPlaylist,
   visible,
 }) => {
-  const classes = useStyles({ visible, starred: record.starred })
+  const classes = useStyles({ visible })
   const dispatch = useDispatch()
   const translate = useTranslate()
-  const notify = useNotify()
-  const refresh = useRefresh()
   const [anchorEl, setAnchorEl] = useState(null)
   const options = {
     playNow: {
@@ -80,52 +73,14 @@ const SongContextMenu = ({
     e.stopPropagation()
   }
 
-  const [toggleStarred, { loading: updating }] = useUpdate(
-    resource,
-    record.id,
-    {
-      ...record,
-      starred: !record.starred,
-    },
-    {
-      undoable: false,
-      onFailure: (error) => {
-        console.log(error)
-        notify('ra.page.error', 'warning')
-        refresh()
-      },
-    }
-  )
-
-  const handleToggleStar = (e) => {
-    toggleStarred()
-    e.stopPropagation()
-  }
-
   const open = Boolean(anchorEl)
 
   return (
     <span className={classes.noWrap}>
       {showStar && (
-        <IconButton
-          onClick={handleToggleStar}
-          size={'small'}
-          disabled={updating}
-          className={classes.star}
-        >
-          {record.starred ? (
-            <StarIcon fontSize={'small'} />
-          ) : (
-            <StarBorderIcon fontSize={'small'} />
-          )}
-        </IconButton>
+        <StarButton record={record} resource={resource} visible={visible} />
       )}
-      <IconButton
-        onClick={handleClick}
-        size={'small'}
-        className={classes.menu}
-        disabled={updating}
-      >
+      <IconButton onClick={handleClick} size={'small'} className={classes.menu}>
         <MoreVertIcon fontSize={'small'} />
       </IconButton>
       <Menu

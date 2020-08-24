@@ -30,7 +30,7 @@ const ContextMenu = ({
   visible,
   songQueryParams,
 }) => {
-  const classes = useStyles({ color, visible, starred: record.starred })
+  const classes = useStyles({ color, visible })
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const translate = useTranslate()
