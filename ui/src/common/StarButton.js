@@ -67,10 +67,9 @@ StarButton.propTypes = {
 }
 
 StarButton.defaultProps = {
+  addLabel: true,
   record: {},
   visible: true,
-  showStar: true,
-  addLabel: true,
   size: 'small',
 }
 
