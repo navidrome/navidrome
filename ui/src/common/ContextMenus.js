@@ -110,14 +110,12 @@ const ContextMenu = ({
 
   return (
     <span className={classes.noWrap}>
-      {showStar && (
-        <StarButton
-          record={record}
-          resource={resource}
-          visible={visible}
-          color={color}
-        />
-      )}
+      <StarButton
+        record={record}
+        resource={resource}
+        visible={visible && showStar}
+        color={color}
+      />
       <IconButton
         aria-label="more"
         aria-controls="context-menu"
