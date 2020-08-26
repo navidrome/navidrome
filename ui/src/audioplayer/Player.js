@@ -24,16 +24,25 @@ const useStyle = makeStyles((theme) => ({
     textDecoration: 'none',
     color: theme.palette.primary.light,
   },
+  player: {
+    display: (props) => (props.visible ? 'block' : 'none'),
+  },
 }))
 
 let audioInstance = null
 
 const Player = () => {
-  const classes = useStyle()
   const translate = useTranslate()
   const currentTheme = useSelector((state) => state.theme)
   const theme = themes[currentTheme] || themes.DarkTheme
   const playerTheme = (theme.player && theme.player.theme) || 'dark'
+  const dataProvider = useDataProvider()
+  const dispatch = useDispatch()
+  const queue = useSelector((state) => state.queue)
+  const { authenticated } = useAuthState()
+
+  const visible = authenticated && queue.queue.length > 0
+  const classes = useStyle({ visible })
 
   const audioTitle = useCallback(
     (audioInfo) => (
@@ -95,12 +104,7 @@ const Player = () => {
     },
   }
 
-  const dataProvider = useDataProvider()
-  const dispatch = useDispatch()
-  const queue = useSelector((state) => state.queue)
-  const { authenticated } = useAuthState()
   const current = queue.current || {}
-
   const options = useMemo(() => {
     return {
       ...defaultOptions,
@@ -111,7 +115,14 @@ const Player = () => {
       extendsContent: <PlayerToolbar id={current.trackId} />,
       defaultVolume: queue.volume,
     }
-  }, [queue.clear, queue.queue, queue.volume, queue.playIndex, current, defaultOptions])
+  }, [
+    queue.clear,
+    queue.queue,
+    queue.volume,
+    queue.playIndex,
+    current,
+    defaultOptions,
+  ])
 
   const OnAudioListsChange = useCallback(
     (currentPlayIndex, audioLists) => {
@@ -196,33 +207,34 @@ const Player = () => {
     }
   }, [])
 
-  if (authenticated && options.audioLists.length > 0) {
-    return (
-      <Hotkeys
-        keyName="space"
-        onKeyDown={onKeyDown}
-        onKeyUp={onKeyUp}
-        allowRepeat={false}
-      >
-        <ReactJkMusicPlayer
-          {...options}
-          quietUpdate
-          onAudioListsChange={OnAudioListsChange}
-          onAudioProgress={OnAudioProgress}
-          onAudioPlay={OnAudioPlay}
-          onAudioPause={onAudioPause}
-          onAudioEnded={onAudioEnded}
-          onAudioVolumeChange={onAudioVolumeChange}
-          onBeforeDestroy={onBeforeDestroy}
-          getAudioInstance={(instance) => {
-            audioInstance = instance
-          }}
-        />
-      </Hotkeys>
-    )
+  if (!visible) {
+    document.title = 'Navidrome'
   }
-  document.title = 'Navidrome'
-  return null
+
+  return (
+    <Hotkeys
+      keyName="space"
+      onKeyDown={onKeyDown}
+      onKeyUp={onKeyUp}
+      allowRepeat={false}
+    >
+      <ReactJkMusicPlayer
+        {...options}
+        quietUpdate
+        className={classes.player}
+        onAudioListsChange={OnAudioListsChange}
+        onAudioProgress={OnAudioProgress}
+        onAudioPlay={OnAudioPlay}
+        onAudioPause={onAudioPause}
+        onAudioEnded={onAudioEnded}
+        onAudioVolumeChange={onAudioVolumeChange}
+        onBeforeDestroy={onBeforeDestroy}
+        getAudioInstance={(instance) => {
+          audioInstance = instance
+        }}
+      />
+    </Hotkeys>
+  )
 }
 
 export default Player
