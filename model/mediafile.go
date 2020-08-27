@@ -37,6 +37,13 @@ type MediaFile struct {
 	OrderArtistName      string    `json:"orderArtistName"`
 	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
 	Compilation          bool      `json:"compilation"`
+	CatalogNum           string    `json:"catalogNum"`
+	MbzTrackID           string    `json:"mbzTrackId"         orm:"column(mbz_track_id)"`
+	MbzAlbumID           string    `json:"mbzAlbumId"         orm:"column(mbz_album_id)"`
+	MbzArtistID          string    `json:"mbzArtistId"        orm:"column(mbz_artist_id)"`
+	MbzAlbumArtistID     string    `json:"mbzAlbumArtistId"   orm:"column(mbz_album_artist_id)"`
+	MbzAlbumType         string    `json:"mbzAlbumType"`
+	MbzAlbumComment      string    `json:"mbzAlbumComment"`
 	CreatedAt            time.Time `json:"createdAt"`
 	UpdatedAt            time.Time `json:"updatedAt"`
 }

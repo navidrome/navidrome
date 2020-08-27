@@ -9,9 +9,9 @@ type Album struct {
 	Name                 string    `json:"name"`
 	CoverArtPath         string    `json:"coverArtPath"`
 	CoverArtId           string    `json:"coverArtId"`
-	ArtistID             string    `json:"artistId"      orm:"pk;column(artist_id)"`
+	ArtistID             string    `json:"artistId"      orm:"column(artist_id)"`
 	Artist               string    `json:"artist"`
-	AlbumArtistID        string    `json:"albumArtistId" orm:"pk;column(album_artist_id)"`
+	AlbumArtistID        string    `json:"albumArtistId" orm:"column(album_artist_id)"`
 	AlbumArtist          string    `json:"albumArtist"`
 	MaxYear              int       `json:"maxYear"`
 	MinYear              int       `json:"minYear"`
@@ -25,6 +25,11 @@ type Album struct {
 	SortAlbumArtistName  string    `json:"sortAlbumArtistName"`
 	OrderAlbumName       string    `json:"orderAlbumName"`
 	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
+	CatalogNum           string    `json:"catalogNum"`
+	MbzAlbumID           string    `json:"mbzAlbumId"         orm:"column(mbz_album_id)"`
+	MbzAlbumArtistID     string    `json:"mbzAlbumArtistId"   orm:"column(mbz_album_artist_id)"`
+	MbzAlbumType         string    `json:"mbzAlbumType"`
+	MbzAlbumComment      string    `json:"mbzAlbumComment"`
 	CreatedAt            time.Time `json:"createdAt"`
 	UpdatedAt            time.Time `json:"updatedAt"`
 	Size                 int64     `json:"size"`

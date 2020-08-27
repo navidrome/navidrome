@@ -52,6 +52,37 @@ var _ = Describe("ffmpegExtractor", func() {
 	})
 
 	Context("extractMetadata", func() {
+		It("extracts MusicBrainz custom tags", func() {
+			const output = `
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'Colt 45 - Underground Post-Punk, Tropical Tapes, Lo Fi Electronics And Others Sounds From Brazil (1983 - 1993) Selected By Tetine/01-06 X.m4a':
+  Metadata:
+    title           : X
+    artist          : Saara Saara
+    composer        : Servio Tulio & Raul Rachid
+    album           : Colt 45 - Underground Post-Punk, Tropical Tapes, Lo Fi Electronics And Others Sounds From Brazil (1983 - 1993) Selected By Tetine
+    genre           : Alternative
+    MusicBrainz Release Group Id: 0
+    MusicBrainz Album Artist Id: 194
+    MusicBrainz Artist Id: 200455
+    MusicBrainz Album Release Country: Unknown
+    MusicBrainz Album Id: 11406732
+    MusicBrainz Track Id: 11406732-6
+    Label           : Slum Dunk Music
+    publisher       : Slum Dunk Music
+    MusicBrainz Album Type: Compilation
+    MusicBrainz Album Comment: MP3
+    CATALOGNUMBER   : SLUM DUNK MUSIC 009
+`
+			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md.CatalogNum()).To(Equal("SLUM DUNK MUSIC 009"))
+			Expect(md.MbzTrackID()).To(Equal("11406732-6"))
+			Expect(md.MbzAlbumID()).To(Equal("11406732"))
+			Expect(md.MbzArtistID()).To(Equal("200455"))
+			Expect(md.MbzAlbumArtistID()).To(Equal("194"))
+			Expect(md.MbzAlbumType()).To(Equal("Compilation"))
+			Expect(md.MbzAlbumComment()).To(Equal("MP3"))
+		})
+
 		It("detects embedded cover art correctly", func() {
 			const output = `
 Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':

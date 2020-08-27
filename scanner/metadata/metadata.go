@@ -51,6 +51,13 @@ type Metadata interface {
 	HasPicture() bool
 	Comment() string
 	Compilation() bool
+	CatalogNum() string
+	MbzTrackID() string
+	MbzAlbumID() string
+	MbzArtistID() string
+	MbzAlbumArtistID() string
+	MbzAlbumType() string
+	MbzAlbumComment() string
 	Duration() float32
 	BitRate() int
 	ModificationTime() time.Time
@@ -86,6 +93,25 @@ func (m *baseMetadata) TrackNumber() (int, int) { return m.parseTuple("track", "
 func (m *baseMetadata) DiscNumber() (int, int)  { return m.parseTuple("disc", "discnumber") }
 func (m *baseMetadata) DiscSubtitle() string {
 	return m.getTag("tsst", "discsubtitle", "setsubtitle")
+}
+func (m *baseMetadata) CatalogNum() string { return m.getTag("catalognumber") }
+func (m *baseMetadata) MbzTrackID() string {
+	return m.getTag("musicbrainz_trackid", "musicbrainz track id")
+}
+func (m *baseMetadata) MbzAlbumID() string {
+	return m.getTag("musicbrainz_albumid", "musicbrainz album id")
+}
+func (m *baseMetadata) MbzArtistID() string {
+	return m.getTag("musicbrainz_artistid", "musicbrainz artist id")
+}
+func (m *baseMetadata) MbzAlbumArtistID() string {
+	return m.getTag("musicbrainz_albumartistid", "musicbrainz album artist id")
+}
+func (m *baseMetadata) MbzAlbumType() string {
+	return m.getTag("musicbrainz_albumtype", "musicbrainz album type")
+}
+func (m *baseMetadata) MbzAlbumComment() string {
+	return m.getTag("musicbrainz_albumcomment", "musicbrainz album comment")
 }
 
 func (m *baseMetadata) ModificationTime() time.Time { return m.fileInfo.ModTime() }

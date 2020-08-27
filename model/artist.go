@@ -11,6 +11,7 @@ type Artist struct {
 	SortArtistName  string `json:"sortArtistName"`
 	OrderArtistName string `json:"orderArtistName"`
 	Size            int64  `json:"size"`
+	MbzArtistID     string `json:"mbzArtistId" orm:"column(mbz_artist_id)"`
 }
 
 type Artists []Artist

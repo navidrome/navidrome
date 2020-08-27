@@ -52,6 +52,13 @@ func (s *mediaFileMapper) toMediaFile(md metadata.Metadata) model.MediaFile {
 	mf.OrderAlbumName = sanitizeFieldForSorting(mf.Album)
 	mf.OrderArtistName = sanitizeFieldForSorting(mf.Artist)
 	mf.OrderAlbumArtistName = sanitizeFieldForSorting(mf.AlbumArtist)
+	mf.CatalogNum = md.CatalogNum()
+	mf.MbzTrackID = md.MbzTrackID()
+	mf.MbzAlbumID = md.MbzAlbumID()
+	mf.MbzArtistID = md.MbzArtistID()
+	mf.MbzAlbumArtistID = md.MbzAlbumArtistID()
+	mf.MbzAlbumType = md.MbzAlbumType()
+	mf.MbzAlbumComment = md.MbzAlbumComment()
 
 	// TODO Get Creation time. https://github.com/djherbis/times ?
 	mf.CreatedAt = md.ModificationTime()
