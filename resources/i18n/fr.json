@@ -24,7 +24,9 @@
             "actions": {
                 "addToQueue": "Ajouter à la file",
                 "playNow": "Lire",
-                "addToPlaylist": "Ajouter à la playlist"
+                "addToPlaylist": "Ajouter à la playlist",
+                "shuffleAll": "",
+                "download": ""
             }
         },
         "album": {
@@ -45,14 +47,17 @@
                 "playAll": "Lire",
                 "playNext": "Lire ensuite",
                 "addToQueue": "Ajouter à la file",
-                "shuffle": "Mélanger"
+                "shuffle": "Mélanger",
+                "addToPlaylist": "",
+                "download": ""
             },
             "lists": {
                 "all": "Tous",
                 "random": "Aléatoire",
                 "recentlyAdded": "Récemment ajouté",
                 "recentlyPlayed": "Récemment joué",
-                "mostPlayed": "Plus joués"
+                "mostPlayed": "Plus joués",
+                "starred": ""
             }
         },
         "artist": {
@@ -60,7 +65,8 @@
             "fields": {
                 "name": "Nom",
                 "albumCount": "Nombre d'albums",
-                "songCount": "Nombre de pistes"
+                "songCount": "Nombre de pistes",
+                "playCount": ""
             }
         },
         "user": {
@@ -111,7 +117,8 @@
             },
             "actions": {
                 "selectPlaylist": "Ajouter les pistes à la playlist",
-                "addNewPlaylist": "Créer \"%{name}\""
+                "addNewPlaylist": "Créer \"%{name}\"",
+                "export": ""
             }
         }
     },
