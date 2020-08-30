@@ -62,11 +62,5 @@ func booleanFilter(field string, value interface{}) Sqlizer {
 }
 
 func fullTextFilter(field string, value interface{}) Sqlizer {
-	q := sanitizeStrings(value.(string))
-	parts := strings.Split(q, " ")
-	filters := And{}
-	for _, part := range parts {
-		filters = append(filters, Like{"full_text": "% " + part + "%"})
-	}
-	return filters
+	return fullTextExpr(value.(string))
 }

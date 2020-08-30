@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/navidrome/conf"
 	"github.com/kennygrant/sanitize"
 )
 
@@ -37,20 +38,32 @@ func sanitizeStrings(text ...string) string {
 }
 
 func (r sqlRepository) doSearch(q string, offset, size int, results interface{}, orderBys ...string) error {
+	q = strings.TrimSpace(q)
 	q = strings.TrimSuffix(q, "*")
-	q = sanitizeStrings(q)
 	if len(q) < 2 {
 		return nil
 	}
+
 	sq := r.newSelectWithAnnotation(r.tableName + ".id").Columns("*")
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 	if len(orderBys) > 0 {
 		sq = sq.OrderBy(orderBys...)
 	}
-	parts := strings.Split(q, " ")
-	for _, part := range parts {
-		sq = sq.Where(Like{"full_text": "% " + part + "%"})
-	}
+	sq = sq.Where(fullTextExpr(q))
 	err := r.queryAll(sq, results)
 	return err
+}
+
+func fullTextExpr(value string) Sqlizer {
+	var sep string
+	if !conf.Server.SearchFullString {
+		sep = " "
+	}
+	q := sanitizeStrings(value)
+	parts := strings.Split(q, " ")
+	filters := And{}
+	for _, part := range parts {
+		filters = append(filters, Like{"full_text": "%" + sep + part + "%"})
+	}
+	return filters
 }

@@ -28,6 +28,7 @@ type configOptions struct {
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
 
+	SearchFullString bool
 	IgnoredArticles  string
 	IndexGroups      string
 	ProbeCommand     string
@@ -87,6 +88,7 @@ func init() {
 	viper.SetDefault("autoimportplaylists", true)
 
 	// Config options only valid for file/env configuration
+	viper.SetDefault("searchfullstring", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("probecommand", "ffmpeg %s -f ffmetadata")
