@@ -24,7 +24,9 @@
             "actions": {
                 "addToQueue": "Přehrát později",
                 "playNow": "Přehrát nyní",
-                "addToPlaylist": "Přidat do seznamu skladeb"
+                "addToPlaylist": "Přidat do seznamu skladeb",
+                "shuffleAll": "Zamíchat vše",
+                "download": "Stáhnout"
             }
         },
         "album": {
@@ -45,14 +47,17 @@
                 "playAll": "Přehrát",
                 "playNext": "Přehrát další",
                 "addToQueue": "Přehrát později",
-                "shuffle": "Zamíchat"
+                "shuffle": "Zamíchat",
+                "addToPlaylist": "Přidat do seznamu skladeb",
+                "download": "Stáhnout"
             },
             "lists": {
                 "all": "Všechno",
                 "random": "Náhodné",
                 "recentlyAdded": "Nedávno přidané",
                 "recentlyPlayed": "Nedávno přehráté",
-                "mostPlayed": "Nejpřehrávanější"
+                "mostPlayed": "Nejpřehrávanější",
+                "starred": "Oblíbené"
             }
         },
         "artist": {
@@ -60,7 +65,8 @@
             "fields": {
                 "name": "Název",
                 "albumCount": "Počet alb",
-                "songCount": "Počet skladeb"
+                "songCount": "Počet skladeb",
+                "playCount": "Přehrání"
             }
         },
         "user": {
@@ -111,7 +117,8 @@
             },
             "actions": {
                 "selectPlaylist": "Přidat skladby do seznamu:",
-                "addNewPlaylist": "Vytvořit \"%{name}\""
+                "addNewPlaylist": "Vytvořit \"%{name}\"",
+                "export": "Export"
             }
         }
     },
