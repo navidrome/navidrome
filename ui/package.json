@@ -27,7 +27,7 @@
     "@testing-library/jest-dom": "^5.11.3",
     "@testing-library/react": "^10.4.8",
     "@testing-library/user-event": "^12.1.1",
-    "prettier": "^2.0.5"
+    "prettier": "^2.1.1"
   },
   "scripts": {
     "start": "react-scripts start",
