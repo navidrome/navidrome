@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -48,7 +47,6 @@ func (r *userRepository) Put(u *model.User) error {
 		id, _ := uuid.NewRandom()
 		u.ID = id.String()
 	}
-	u.UserName = strings.ToLower(u.UserName)
 	u.UpdatedAt = time.Now()
 	values, _ := toSqlArgs(*u)
 	update := Update(r.tableName).Where(Eq{"id": u.ID}).SetMap(values)
@@ -73,8 +71,7 @@ func (r *userRepository) FindFirstAdmin() (*model.User, error) {
 }
 
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
-	username = strings.ToLower(username)
-	sel := r.newSelect().Columns("*").Where(Eq{"user_name": username})
+	sel := r.newSelect().Columns("*").Where(Like{"user_name": username})
 	var usr model.User
 	err := r.queryOne(sel, &usr)
 	return &usr, err

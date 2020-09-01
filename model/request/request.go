@@ -2,7 +2,6 @@ package request
 
 import (
 	"context"
-	"strings"
 
 	"github.com/deluan/navidrome/model"
 )
@@ -23,7 +22,7 @@ func WithUser(ctx context.Context, u model.User) context.Context {
 }
 
 func WithUsername(ctx context.Context, username string) context.Context {
-	return context.WithValue(ctx, Username, strings.ToLower(username))
+	return context.WithValue(ctx, Username, username)
 }
 
 func WithClient(ctx context.Context, client string) context.Context {

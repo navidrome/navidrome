@@ -120,7 +120,7 @@ func validateUser(ctx context.Context, ds model.DataStore, username, pass, token
 	switch {
 	case jwt != "":
 		claims, err := auth.Validate(jwt)
-		valid = err == nil && claims["sub"] == username
+		valid = err == nil && claims["sub"] == user.UserName
 	case pass != "":
 		if strings.HasPrefix(pass, "enc:") {
 			if dec, err := hex.DecodeString(pass[4:]); err == nil {

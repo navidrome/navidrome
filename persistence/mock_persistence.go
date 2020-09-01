@@ -98,6 +98,9 @@ type mockedUserRepo struct {
 }
 
 func (u *mockedUserRepo) FindByUsername(username string) (*model.User, error) {
+	if username != "admin" {
+		return nil, model.ErrNotFound
+	}
 	return &model.User{UserName: "admin", Password: "wordpass"}, nil
 }
 

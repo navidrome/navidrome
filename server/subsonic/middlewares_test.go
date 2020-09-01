@@ -282,7 +282,9 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("fails if JWT token sub is different than username", func() {
-				_, err := validateUser(context.TODO(), ds, "not_admin", "", "", "", validToken)
+				u := &model.User{UserName: "hacker"}
+				validToken, _ = auth.CreateToken(u)
+				_, err := validateUser(context.TODO(), ds, "admin", "", "", "", validToken)
 				Expect(err).To(MatchError(model.ErrInvalidAuth))
 			})
 		})
