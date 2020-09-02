@@ -76,4 +76,9 @@ SongTitleField.propTypes = {
   showTrackNumbers: PropTypes.bool,
 }
 
+SongTitleField.defaultProps = {
+  record: {},
+  showTrackNumbers: false,
+}
+
 export default SongTitleField

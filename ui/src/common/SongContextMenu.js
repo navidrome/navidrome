@@ -100,8 +100,8 @@ const SongContextMenu = ({
 }
 
 SongContextMenu.propTypes = {
-  resource: PropTypes.string,
-  record: PropTypes.object,
+  resource: PropTypes.string.isRequired,
+  record: PropTypes.object.isRequired,
   onAddToPlaylist: PropTypes.func,
   visible: PropTypes.bool,
   showStar: PropTypes.bool,
@@ -109,6 +109,8 @@ SongContextMenu.propTypes = {
 
 SongContextMenu.defaultProps = {
   onAddToPlaylist: () => {},
+  record: {},
+  resource: 'song',
   visible: true,
   showStar: true,
   addLabel: true,
