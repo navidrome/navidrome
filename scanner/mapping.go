@@ -9,6 +9,7 @@ import (
 
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/scanner/metadata"
 	"github.com/deluan/navidrome/utils"
 	"github.com/kennygrant/sanitize"
 )
@@ -21,7 +22,7 @@ func newMediaFileMapper(rootFolder string) *mediaFileMapper {
 	return &mediaFileMapper{rootFolder: rootFolder}
 }
 
-func (s *mediaFileMapper) toMediaFile(md Metadata) model.MediaFile {
+func (s *mediaFileMapper) toMediaFile(md metadata.Metadata) model.MediaFile {
 	mf := &model.MediaFile{}
 	mf.ID = s.trackID(md)
 	mf.Title = s.mapTrackTitle(md)
@@ -64,7 +65,7 @@ func sanitizeFieldForSorting(originalValue string) string {
 	return utils.NoArticle(v)
 }
 
-func (s *mediaFileMapper) mapTrackTitle(md Metadata) string {
+func (s *mediaFileMapper) mapTrackTitle(md metadata.Metadata) string {
 	if md.Title() == "" {
 		s := strings.TrimPrefix(md.FilePath(), s.rootFolder+string(os.PathSeparator))
 		e := filepath.Ext(s)
@@ -73,7 +74,7 @@ func (s *mediaFileMapper) mapTrackTitle(md Metadata) string {
 	return md.Title()
 }
 
-func (s *mediaFileMapper) mapAlbumArtistName(md Metadata) string {
+func (s *mediaFileMapper) mapAlbumArtistName(md metadata.Metadata) string {
 	switch {
 	case md.Compilation():
 		return consts.VariousArtists
@@ -86,14 +87,14 @@ func (s *mediaFileMapper) mapAlbumArtistName(md Metadata) string {
 	}
 }
 
-func (s *mediaFileMapper) mapArtistName(md Metadata) string {
+func (s *mediaFileMapper) mapArtistName(md metadata.Metadata) string {
 	if md.Artist() != "" {
 		return md.Artist()
 	}
 	return consts.UnknownArtist
 }
 
-func (s *mediaFileMapper) mapAlbumName(md Metadata) string {
+func (s *mediaFileMapper) mapAlbumName(md metadata.Metadata) string {
 	name := md.Album()
 	if name == "" {
 		return "[Unknown Album]"
@@ -101,19 +102,19 @@ func (s *mediaFileMapper) mapAlbumName(md Metadata) string {
 	return name
 }
 
-func (s *mediaFileMapper) trackID(md Metadata) string {
+func (s *mediaFileMapper) trackID(md metadata.Metadata) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(md.FilePath())))
 }
 
-func (s *mediaFileMapper) albumID(md Metadata) string {
+func (s *mediaFileMapper) albumID(md metadata.Metadata) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
 }
 
-func (s *mediaFileMapper) artistID(md Metadata) string {
+func (s *mediaFileMapper) artistID(md metadata.Metadata) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapArtistName(md)))))
 }
 
-func (s *mediaFileMapper) albumArtistID(md Metadata) string {
+func (s *mediaFileMapper) albumArtistID(md metadata.Metadata) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapAlbumArtistName(md)))))
 }
