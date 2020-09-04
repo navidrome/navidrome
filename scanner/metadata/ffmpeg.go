@@ -3,59 +3,29 @@ package metadata
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"regexp"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 )
 
 type ffmpegMetadata struct {
-	filePath string
-	suffix   string
-	fileInfo os.FileInfo
-	tags     map[string]string
+	baseMetadata
 }
 
-func (m *ffmpegMetadata) Title() string       { return m.getTag("title", "sort_name") }
-func (m *ffmpegMetadata) Album() string       { return m.getTag("album", "sort_album") }
-func (m *ffmpegMetadata) Artist() string      { return m.getTag("artist", "sort_artist") }
-func (m *ffmpegMetadata) AlbumArtist() string { return m.getTag("album_artist", "albumartist") }
-func (m *ffmpegMetadata) SortTitle() string   { return m.getSortTag("", "title", "name") }
-func (m *ffmpegMetadata) SortAlbum() string   { return m.getSortTag("", "album") }
-func (m *ffmpegMetadata) SortArtist() string  { return m.getSortTag("", "artist") }
-func (m *ffmpegMetadata) SortAlbumArtist() string {
-	return m.getSortTag("tso2", "albumartist", "album_artist")
-}
-func (m *ffmpegMetadata) Composer() string        { return m.getTag("composer", "tcm", "sort_composer") }
-func (m *ffmpegMetadata) Genre() string           { return m.getTag("genre") }
-func (m *ffmpegMetadata) Year() int               { return m.parseYear("date") }
-func (m *ffmpegMetadata) TrackNumber() (int, int) { return m.parseTuple("track") }
-func (m *ffmpegMetadata) DiscNumber() (int, int)  { return m.parseTuple("tpa", "disc") }
-func (m *ffmpegMetadata) DiscSubtitle() string {
-	return m.getTag("tsst", "discsubtitle", "setsubtitle")
-}
+func (m *ffmpegMetadata) Duration() float32 { return m.parseDuration("duration") }
+func (m *ffmpegMetadata) BitRate() int      { return m.parseInt("bitrate") }
 func (m *ffmpegMetadata) HasPicture() bool {
 	return m.getTag("has_picture", "metadata_block_picture") != ""
 }
-func (m *ffmpegMetadata) Comment() string             { return m.getTag("comment") }
-func (m *ffmpegMetadata) Compilation() bool           { return m.parseBool("compilation") }
-func (m *ffmpegMetadata) Duration() float32           { return m.parseDuration("duration") }
-func (m *ffmpegMetadata) BitRate() int                { return m.parseInt("bitrate") }
-func (m *ffmpegMetadata) ModificationTime() time.Time { return m.fileInfo.ModTime() }
-func (m *ffmpegMetadata) FilePath() string            { return m.filePath }
-func (m *ffmpegMetadata) Suffix() string              { return m.suffix }
-func (m *ffmpegMetadata) Size() int64                 { return m.fileInfo.Size() }
+func (m *ffmpegMetadata) DiscNumber() (int, int) { return m.parseTuple("tpa", "disc") }
 
-type ffmpegMetadataExtractor struct{}
+type ffmpegExtractor struct{}
 
-func (e *ffmpegMetadataExtractor) Extract(files ...string) (map[string]Metadata, error) {
+func (e *ffmpegExtractor) Extract(files ...string) (map[string]Metadata, error) {
 	args := createProbeCommand(files)
 
 	log.Trace("Executing command", "args", args)
@@ -116,8 +86,9 @@ func parseOutput(output string) map[string]string {
 }
 
 func extractMetadata(filePath, info string) (*ffmpegMetadata, error) {
-	m := &ffmpegMetadata{filePath: filePath, tags: map[string]string{}}
-	m.suffix = strings.ToLower(strings.TrimPrefix(path.Ext(filePath), "."))
+	m := &ffmpegMetadata{}
+	m.filePath = filePath
+	m.tags = map[string]string{}
 	var err error
 	m.fileInfo, err = os.Stat(filePath)
 	if err != nil {
@@ -173,88 +144,6 @@ func (m *ffmpegMetadata) parseInfo(info string) {
 			m.tags["bitrate"] = match[2]
 		}
 	}
-}
-
-func (m *ffmpegMetadata) parseInt(tagName string) int {
-	if v, ok := m.tags[tagName]; ok {
-		i, _ := strconv.Atoi(v)
-		return i
-	}
-	return 0
-}
-
-var dateRegex = regexp.MustCompile(`^([12]\d\d\d)`)
-
-func (m *ffmpegMetadata) parseYear(tagName string) int {
-	if v, ok := m.tags[tagName]; ok {
-		match := dateRegex.FindStringSubmatch(v)
-		if len(match) == 0 {
-			log.Warn("Error parsing year from ffmpeg date field", "file", m.filePath, "date", v)
-			return 0
-		}
-		year, _ := strconv.Atoi(match[1])
-		return year
-	}
-	return 0
-}
-
-func (m *ffmpegMetadata) getTag(tags ...string) string {
-	for _, t := range tags {
-		if v, ok := m.tags[t]; ok {
-			return v
-		}
-	}
-	return ""
-}
-
-func (m *ffmpegMetadata) getSortTag(originalTag string, tags ...string) string {
-	formats := []string{"sort%s", "sort_%s", "sort-%s", "%ssort", "%s_sort", "%s-sort"}
-	all := []string{originalTag}
-	for _, tag := range tags {
-		for _, format := range formats {
-			name := fmt.Sprintf(format, tag)
-			all = append(all, name)
-		}
-	}
-	return m.getTag(all...)
-}
-
-func (m *ffmpegMetadata) parseTuple(tags ...string) (int, int) {
-	for _, tagName := range tags {
-		if v, ok := m.tags[tagName]; ok {
-			tuple := strings.Split(v, "/")
-			t1, t2 := 0, 0
-			t1, _ = strconv.Atoi(tuple[0])
-			if len(tuple) > 1 {
-				t2, _ = strconv.Atoi(tuple[1])
-			} else {
-				t2, _ = strconv.Atoi(m.tags[tagName+"total"])
-			}
-			return t1, t2
-		}
-	}
-	return 0, 0
-}
-
-func (m *ffmpegMetadata) parseBool(tagName string) bool {
-	if v, ok := m.tags[tagName]; ok {
-		i, _ := strconv.Atoi(strings.TrimSpace(v))
-		return i == 1
-	}
-	return false
-}
-
-var zeroTime = time.Date(0000, time.January, 1, 0, 0, 0, 0, time.UTC)
-
-func (m *ffmpegMetadata) parseDuration(tagName string) float32 {
-	if v, ok := m.tags[tagName]; ok {
-		d, err := time.Parse("15:04:05", v)
-		if err != nil {
-			return 0
-		}
-		return float32(d.Sub(zeroTime).Seconds())
-	}
-	return 0
 }
 
 // Inputs will always be absolute paths
