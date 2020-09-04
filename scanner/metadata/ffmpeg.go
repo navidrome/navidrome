@@ -1,4 +1,4 @@
-package scanner
+package metadata
 
 import (
 	"bufio"

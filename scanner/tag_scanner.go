@@ -12,6 +12,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
+	"github.com/deluan/navidrome/scanner/metadata"
 	"github.com/deluan/navidrome/utils"
 )
 
@@ -340,13 +341,8 @@ func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, curr
 	return numUpdatedTracks, nil
 }
 
-func (s *TagScanner) newMetadataExtractor() MetadataExtractor {
-	return &ffmpegMetadataExtractor{}
-}
-
 func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
-	e := s.newMetadataExtractor()
-	mds, err := e.Extract(filePaths...)
+	mds, err := metadata.Extract(filePaths...)
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package scanner
+package metadata
 
 import "time"
 
@@ -28,6 +28,11 @@ type Metadata interface {
 	Size() int64
 }
 
-type MetadataExtractor interface {
+type Extractor interface {
 	Extract(files ...string) (map[string]Metadata, error)
+}
+
+func Extract(files ...string) (map[string]Metadata, error) {
+	e := &ffmpegMetadataExtractor{}
+	return e.Extract(files...)
 }
