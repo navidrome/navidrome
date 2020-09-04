@@ -340,8 +340,13 @@ func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, curr
 	return numUpdatedTracks, nil
 }
 
+func (s *TagScanner) newMetadataExtractor() MetadataExtractor {
+	return &ffmpegMetadataExtractor{}
+}
+
 func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
-	mds, err := ExtractAllMetadata(filePaths)
+	e := s.newMetadataExtractor()
+	mds, err := e.Extract(filePaths...)
 	if err != nil {
 		return nil, err
 	}
