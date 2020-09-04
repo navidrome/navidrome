@@ -5,11 +5,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Metadata", func() {
+var _ = Describe("ffmpegMetadata", func() {
 	// TODO Need to mock `ffmpeg`
 	XContext("ExtractAllMetadata", func() {
 		It("correctly parses metadata from all files in folder", func() {
-			mds, err := ExtractAllMetadata([]string{"tests/fixtures/test.mp3", "tests/fixtures/test.ogg"})
+			e := &ffmpegMetadataExtractor{}
+			mds, err := e.Extract("tests/fixtures/test.mp3", "tests/fixtures/test.ogg")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(mds).To(HaveLen(2))
 
@@ -223,13 +224,13 @@ Input #0, mp3, from '/Users/deluan/Downloads/椎名林檎 - 加爾基 精液 栗
 				"May 12, 2016": 0,
 			}
 			for tag, expected := range examples {
-				md := &Metadata{tags: map[string]string{"date": tag}}
+				md := &ffmpegMetadata{tags: map[string]string{"date": tag}}
 				Expect(md.Year()).To(Equal(expected))
 			}
 		})
 
 		It("returns 0 if year is invalid", func() {
-			md := &Metadata{tags: map[string]string{"date": "invalid"}}
+			md := &ffmpegMetadata{tags: map[string]string{"date": "invalid"}}
 			Expect(md.Year()).To(Equal(0))
 		})
 	})
