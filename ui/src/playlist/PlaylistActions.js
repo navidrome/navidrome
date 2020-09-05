@@ -9,9 +9,10 @@ import {
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
+import AddToQueueIcon from '@material-ui/icons/AddToQueue'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
 import { httpClient } from '../dataProvider'
-import { playTracks, shuffleTracks } from '../audioplayer'
+import { addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
 import subsonic from '../subsonic'
 
@@ -29,6 +30,10 @@ const PlaylistActions = ({
 
   const handlePlay = React.useCallback(() => {
     dispatch(playTracks(data, ids))
+  }, [dispatch, data, ids])
+
+  const handlePlayLater = React.useCallback(() => {
+    dispatch(addTracks(data, ids))
   }, [dispatch, data, ids])
 
   const handleShuffle = React.useCallback(() => {
@@ -76,6 +81,12 @@ const PlaylistActions = ({
         label={translate('resources.album.actions.download')}
       >
         <CloudDownloadOutlinedIcon />
+      </Button>
+      <Button
+        onClick={handlePlayLater}
+        label={translate('resources.album.actions.addToQueue')}
+      >
+        <AddToQueueIcon />
       </Button>
       <Button
         onClick={handleExport}
