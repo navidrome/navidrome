@@ -5,13 +5,13 @@ import (
 	"os"
 
 	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/scanner/metadata/taglib"
 	"github.com/dhowden/tag"
-	"github.com/nicksellen/audiotags"
 )
 
 type taglibMetadata struct {
 	baseMetadata
-	props      *audiotags.AudioProperties
+	props      *taglib.AudioProperties
 	hasPicture bool
 }
 
@@ -42,7 +42,7 @@ func (e *taglibExtractor) extractMetadata(filePath string) (*taglibMetadata, err
 		log.Warn("Error stating file. Skipping", "filePath", filePath, err)
 		return nil, errors.New("error stating file")
 	}
-	md.tags, md.props, err = audiotags.Read(filePath)
+	md.tags, md.props, err = taglib.Read(filePath)
 	if err != nil {
 		log.Warn("Error reading metadata from file. Skipping", "filePath", filePath, err)
 		return nil, errors.New("error reading tags")
