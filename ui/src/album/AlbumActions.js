@@ -9,7 +9,8 @@ import {
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
-import { playTracks, shuffleTracks } from '../audioplayer'
+import AddToQueueIcon from '@material-ui/icons/AddToQueue'
+import { addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import subsonic from '../subsonic'
 
 const AlbumActions = ({
@@ -49,6 +50,14 @@ const AlbumActions = ({
         label={translate('resources.album.actions.download')}
       >
         <CloudDownloadOutlinedIcon />
+      </Button>
+      <Button
+        onClick={() => {
+          dispatch(addTracks(data, ids))
+        }}
+        label={translate('resources.album.actions.addToQueue')}
+      >
+        <AddToQueueIcon />
       </Button>
     </TopToolbar>
   )
