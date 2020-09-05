@@ -53,9 +53,9 @@ type baseMetadata struct {
 	tags     map[string]string
 }
 
-func (m *baseMetadata) Title() string       { return m.getTag("title", "sort_name") }
-func (m *baseMetadata) Album() string       { return m.getTag("album", "sort_album") }
-func (m *baseMetadata) Artist() string      { return m.getTag("artist", "sort_artist") }
+func (m *baseMetadata) Title() string       { return m.getTag("title", "sort_name", "titlesort") }
+func (m *baseMetadata) Album() string       { return m.getTag("album", "sort_album", "albumsort") }
+func (m *baseMetadata) Artist() string      { return m.getTag("artist", "sort_artist", "artistsort") }
 func (m *baseMetadata) AlbumArtist() string { return m.getTag("album_artist", "albumartist") }
 func (m *baseMetadata) SortTitle() string   { return m.getSortTag("", "title", "name") }
 func (m *baseMetadata) SortAlbum() string   { return m.getSortTag("", "album") }
