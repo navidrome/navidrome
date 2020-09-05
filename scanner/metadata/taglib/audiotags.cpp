@@ -59,7 +59,7 @@ void audiotags_file_close(TagLib_File *file)
   delete reinterpret_cast<TagLib::File *>(file);
 }
 
-void audiotags_file_properties(const TagLib_File *file, int id)
+void audiotags_file_properties(const TagLib_File *file, unsigned long id)
 {
   const TagLib::File *f = reinterpret_cast<const TagLib::File *>(file);
   TagLib::PropertyMap tags = f->properties();

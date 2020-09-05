@@ -31,12 +31,12 @@ extern "C" {
 typedef struct { int dummy; } TagLib_File;
 typedef struct { int dummy; } TagLib_AudioProperties;
 
-extern void go_map_put(int id, char *key, char *val);
+extern void go_map_put(unsigned long id, char *key, char *val);
 
 void audiotags_free(void* pointer);
 TagLib_File *audiotags_file_new(const char *filename);
 void audiotags_file_close(TagLib_File *file);
-void audiotags_file_properties(const TagLib_File *file, int id);
+void audiotags_file_properties(const TagLib_File *file, unsigned long id);
 const TagLib_AudioProperties *audiotags_file_audioproperties(const TagLib_File *file);
 
 int audiotags_audioproperties_length(const TagLib_AudioProperties *audioProperties);
