@@ -30,6 +30,7 @@ package taglib
 import "C"
 import (
 	"strings"
+	"sync"
 	"unsafe"
 )
 
@@ -60,35 +61,14 @@ func Read(filename string) (map[string]string, *AudioProperties, error) {
 	return f.ReadTags(), f.ReadAudioProperties(), nil
 }
 
-func ReadTags(filename string) (map[string]string, error) {
-	f, err := Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	return f.ReadTags(), nil
-}
-
-func ReadAudioProperties(filename string) (*AudioProperties, error) {
-	f, err := Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	return f.ReadAudioProperties(), nil
-}
-
 func (f *File) Close() {
 	C.audiotags_file_close((*C.TagLib_File)(f))
 }
 
 func (f *File) ReadTags() map[string]string {
-	id := mapsNextId
-	mapsNextId++
-	m := make(map[string]string)
-	maps[id] = m
-	C.audiotags_file_properties((*C.TagLib_File)(f), C.int(id))
-	delete(maps, id)
+	id, m := newMap()
+	defer deleteMap(id)
+	C.audiotags_file_properties((*C.TagLib_File)(f), C.ulong(id))
 	return m
 }
 
@@ -105,12 +85,31 @@ func (f *File) ReadAudioProperties() *AudioProperties {
 	return &p
 }
 
-var maps = make(map[int]map[string]string)
-var mapsNextId = 0
+var lock sync.RWMutex
+var maps = make(map[uint32]map[string]string)
+var mapsNextId uint32
+
+func newMap() (id uint32, m map[string]string) {
+	lock.Lock()
+	defer lock.Unlock()
+	id = mapsNextId
+	mapsNextId++
+	m = make(map[string]string)
+	maps[id] = m
+	return
+}
+
+func deleteMap(id uint32) {
+	lock.Lock()
+	defer lock.Unlock()
+	delete(maps, id)
+}
 
 //export go_map_put
-func go_map_put(id C.int, key *C.char, val *C.char) {
-	m := maps[int(id)]
+func go_map_put(id C.ulong, key *C.char, val *C.char) {
+	lock.RLock()
+	defer lock.RUnlock()
+	m := maps[uint32(id)]
 	k := strings.ToLower(C.GoString(key))
 	v := C.GoString(val)
 	m[k] = v
