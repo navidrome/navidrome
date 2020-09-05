@@ -38,7 +38,6 @@ builds:
   - id: navidrome_linux_386
     env:
       - CGO_ENABLED=1
-#      - PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
     goos:
       - linux
     goarch:
