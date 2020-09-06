@@ -111,6 +111,8 @@ func go_map_put(id C.ulong, key *C.char, val *C.char) {
 	defer lock.RUnlock()
 	m := maps[uint32(id)]
 	k := strings.ToLower(C.GoString(key))
-	v := C.GoString(val)
-	m[k] = v
+	if _, ok := m[k]; !ok {
+		v := C.GoString(val)
+		m[k] = v
+	}
 }
