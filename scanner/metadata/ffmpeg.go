@@ -26,7 +26,7 @@ func (m *ffmpegMetadata) DiscNumber() (int, int) { return m.parseTuple("tpa", "d
 type ffmpegExtractor struct{}
 
 func (e *ffmpegExtractor) Extract(files ...string) (map[string]Metadata, error) {
-	args := createProbeCommand(files)
+	args := e.createProbeCommand(files)
 
 	log.Trace("Executing command", "args", args)
 	cmd := exec.Command(args[0], args[1:]...) // #nosec
@@ -35,9 +35,9 @@ func (e *ffmpegExtractor) Extract(files ...string) (map[string]Metadata, error) 
 	if len(output) == 0 {
 		return mds, errors.New("error extracting metadata files")
 	}
-	infos := parseOutput(string(output))
+	infos := e.parseOutput(string(output))
 	for file, info := range infos {
-		md, err := extractMetadata(file, info)
+		md, err := e.extractMetadata(file, info)
 		// Skip files with errors
 		if err == nil {
 			mds[file] = md
@@ -63,7 +63,7 @@ var (
 	coverRx = regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (Video):.*`)
 )
 
-func parseOutput(output string) map[string]string {
+func (e *ffmpegExtractor) parseOutput(output string) map[string]string {
 	outputs := map[string]string{}
 	all := inputRegex.FindAllStringSubmatchIndex(output, -1)
 	for i, loc := range all {
@@ -85,7 +85,7 @@ func parseOutput(output string) map[string]string {
 	return outputs
 }
 
-func extractMetadata(filePath, info string) (*ffmpegMetadata, error) {
+func (e *ffmpegExtractor) extractMetadata(filePath, info string) (*ffmpegMetadata, error) {
 	m := &ffmpegMetadata{}
 	m.filePath = filePath
 	m.tags = map[string]string{}
@@ -147,7 +147,7 @@ func (m *ffmpegMetadata) parseInfo(info string) {
 }
 
 // Inputs will always be absolute paths
-func createProbeCommand(inputs []string) []string {
+func (e *ffmpegExtractor) createProbeCommand(inputs []string) []string {
 	split := strings.Split(conf.Server.ProbeCommand, " ")
 	args := make([]string, 0)
 
