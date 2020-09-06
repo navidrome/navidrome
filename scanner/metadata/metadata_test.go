@@ -15,7 +15,8 @@ var _ = Describe("ffmpegMetadata", func() {
 				"1980.07.25":   1980,
 				"2004-00-00":   2004,
 				"2013-May-12":  2013,
-				"May 12, 2016": 0,
+				"May 12, 2016": 2016,
+				"01/10/1990":   1990,
 			}
 			for tag, expected := range examples {
 				md := &baseMetadata{}

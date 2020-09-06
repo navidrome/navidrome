@@ -105,7 +105,7 @@ func (m *baseMetadata) parseInt(tagName string) int {
 	return 0
 }
 
-var dateRegex = regexp.MustCompile(`^([12]\d\d\d)`)
+var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
 
 func (m *baseMetadata) parseYear(tagName string) int {
 	if v, ok := m.tags[tagName]; ok {
