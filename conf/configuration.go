@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/deluan/navidrome/consts"
@@ -39,9 +40,15 @@ type configOptions struct {
 	AuthRequestLimit int
 	AuthWindowLength time.Duration
 
+	Scanner scannerOptions
+
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
 	DevAutoCreateAdminPassword string
+}
+
+type scannerOptions struct {
+	Extractor string
 }
 
 var Server = &configOptions{}
@@ -99,6 +106,8 @@ func init() {
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
 
+	viper.SetDefault("scanner.extractor", "ffmpeg")
+
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devautocreateadminpassword", "")
@@ -118,6 +127,8 @@ func InitConfig(cfgFile string) {
 
 	_ = viper.BindEnv("port")
 	viper.SetEnvPrefix("ND")
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
 	viper.AutomaticEnv()
 
 	err := viper.ReadInConfig()
