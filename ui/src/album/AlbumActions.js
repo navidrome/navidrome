@@ -1,4 +1,5 @@
 import React from 'react'
+import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
 import {
   Button,
@@ -13,15 +14,7 @@ import AddToQueueIcon from '@material-ui/icons/AddToQueue'
 import { addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import subsonic from '../subsonic'
 
-const AlbumActions = ({
-  albumId,
-  className,
-  ids,
-  data,
-  exporter,
-  permanentFilter,
-  ...rest
-}) => {
+const AlbumActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
 
@@ -38,8 +31,8 @@ const AlbumActions = ({
   }, [dispatch, data, ids])
 
   const handleDownload = React.useCallback(() => {
-    subsonic.download(albumId)
-  }, [albumId])
+    subsonic.download(record.id)
+  }, [record])
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
@@ -71,7 +64,13 @@ const AlbumActions = ({
   )
 }
 
+AlbumActions.propTypes = {
+  record: PropTypes.object.isRequired,
+  selectedIds: PropTypes.arrayOf(PropTypes.number),
+}
+
 AlbumActions.defaultProps = {
+  record: {},
   selectedIds: [],
   onUnselectItems: () => null,
 }

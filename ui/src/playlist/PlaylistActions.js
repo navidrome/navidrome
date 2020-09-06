@@ -15,16 +15,9 @@ import { httpClient } from '../dataProvider'
 import { addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
 import subsonic from '../subsonic'
+import PropTypes from 'prop-types'
 
-const PlaylistActions = ({
-  className,
-  ids,
-  data,
-  exporter,
-  permanentFilter,
-  record,
-  ...rest
-}) => {
+const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
 
@@ -98,7 +91,13 @@ const PlaylistActions = ({
   )
 }
 
+PlaylistActions.propTypes = {
+  record: PropTypes.object.isRequired,
+  selectedIds: PropTypes.arrayOf(PropTypes.number),
+}
+
 PlaylistActions.defaultProps = {
+  record: {},
   selectedIds: [],
   onUnselectItems: () => null,
 }
