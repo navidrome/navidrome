@@ -25,39 +25,47 @@ const AlbumActions = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
 
+  const handlePlay = React.useCallback(() => {
+    dispatch(playTracks(data, ids))
+  }, [dispatch, data, ids])
+
+  const handlePlayLater = React.useCallback(() => {
+    dispatch(addTracks(data, ids))
+  }, [dispatch, data, ids])
+
+  const handleShuffle = React.useCallback(() => {
+    dispatch(shuffleTracks(data, ids))
+  }, [dispatch, data, ids])
+
+  const handleDownload = React.useCallback(() => {
+    subsonic.download(albumId)
+  }, [albumId])
+
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <Button
-        onClick={() => {
-          dispatch(playTracks(data, ids))
-        }}
+        onClick={handlePlay}
         label={translate('resources.album.actions.playAll')}
       >
         <PlayArrowIcon />
       </Button>
       <Button
-        onClick={() => {
-          dispatch(shuffleTracks(data, ids))
-        }}
+        onClick={handleShuffle}
         label={translate('resources.album.actions.shuffle')}
       >
         <ShuffleIcon />
       </Button>
       <Button
-        onClick={() => {
-          subsonic.download(albumId)
-        }}
-        label={translate('resources.album.actions.download')}
-      >
-        <CloudDownloadOutlinedIcon />
-      </Button>
-      <Button
-        onClick={() => {
-          dispatch(addTracks(data, ids))
-        }}
+        onClick={handlePlayLater}
         label={translate('resources.album.actions.addToQueue')}
       >
         <AddToQueueIcon />
+      </Button>
+      <Button
+        onClick={handleDownload}
+        label={translate('resources.album.actions.download')}
+      >
+        <CloudDownloadOutlinedIcon />
       </Button>
     </TopToolbar>
   )

@@ -77,16 +77,16 @@ const PlaylistActions = ({
         <ShuffleIcon />
       </Button>
       <Button
-        onClick={handleDownload}
-        label={translate('resources.album.actions.download')}
-      >
-        <CloudDownloadOutlinedIcon />
-      </Button>
-      <Button
         onClick={handlePlayLater}
         label={translate('resources.album.actions.addToQueue')}
       >
         <AddToQueueIcon />
+      </Button>
+      <Button
+        onClick={handleDownload}
+        label={translate('resources.album.actions.download')}
+      >
+        <CloudDownloadOutlinedIcon />
       </Button>
       <Button
         onClick={handleExport}
