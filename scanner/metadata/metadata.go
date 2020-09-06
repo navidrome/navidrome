@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 )
 
@@ -17,7 +18,18 @@ type Extractor interface {
 }
 
 func Extract(files ...string) (map[string]Metadata, error) {
-	e := &taglibExtractor{}
+	var e Extractor
+
+	switch conf.Server.Scanner.Extractor {
+	case "taglib":
+		e = &taglibExtractor{}
+	case "ffmpeg":
+		e = &ffmpegExtractor{}
+	default:
+		log.Warn("Invalid Scanner.Extractor option. Using default ffmpeg", "requested", conf.Server.Scanner.Extractor,
+			"validOptions", "ffmpeg,taglib")
+		e = &ffmpegExtractor{}
+	}
 	return e.Extract(files...)
 }
 
