@@ -24,7 +24,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.4
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/onsi/ginkgo v1.14.0
-	github.com/onsi/gomega v1.10.1
+	github.com/onsi/gomega v1.10.2
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pressly/goose v2.6.0+incompatible
