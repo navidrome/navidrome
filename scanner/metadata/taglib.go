@@ -11,12 +11,11 @@ import (
 
 type taglibMetadata struct {
 	baseMetadata
-	props      *taglib.AudioProperties
 	hasPicture bool
 }
 
-func (m *taglibMetadata) Duration() float32 { return float32(m.props.Length) }
-func (m *taglibMetadata) BitRate() int      { return m.props.Bitrate }
+func (m *taglibMetadata) Duration() float32 { return m.parseFloat("length") }
+func (m *taglibMetadata) BitRate() int      { return m.parseInt("bitrate") }
 func (m *taglibMetadata) HasPicture() bool  { return m.hasPicture }
 
 type taglibExtractor struct{}
@@ -42,7 +41,7 @@ func (e *taglibExtractor) extractMetadata(filePath string) (*taglibMetadata, err
 		log.Warn("Error stating file. Skipping", "filePath", filePath, err)
 		return nil, errors.New("error stating file")
 	}
-	md.tags, md.props, err = taglib.Read(filePath)
+	md.tags, err = taglib.Read(filePath)
 	if err != nil {
 		log.Warn("Error reading metadata from file. Skipping", "filePath", filePath, err)
 		return nil, errors.New("error reading tags")
@@ -61,7 +60,7 @@ func hasEmbeddedImage(path string) bool {
 
 	m, err := tag.ReadFrom(f)
 	if err != nil {
-		log.Warn("Error reading tags from file", "filePath", path, err)
+		log.Warn("Error reading picture tag from file", "filePath", path, err)
 		return false
 	}
 
