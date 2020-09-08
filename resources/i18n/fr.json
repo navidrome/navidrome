@@ -25,8 +25,8 @@
                 "addToQueue": "Ajouter à la file",
                 "playNow": "Lire",
                 "addToPlaylist": "Ajouter à la playlist",
-                "shuffleAll": "",
-                "download": ""
+                "shuffleAll": "Tout mélanger",
+                "download": "Télécharger"
             }
         },
         "album": {
@@ -48,8 +48,8 @@
                 "playNext": "Lire ensuite",
                 "addToQueue": "Ajouter à la file",
                 "shuffle": "Mélanger",
-                "addToPlaylist": "",
-                "download": ""
+                "addToPlaylist": "Ajouter à la playlist",
+                "download": "Télécharger"
             },
             "lists": {
                 "all": "Tous",
@@ -57,7 +57,7 @@
                 "recentlyAdded": "Récemment ajouté",
                 "recentlyPlayed": "Récemment joué",
                 "mostPlayed": "Plus joués",
-                "starred": ""
+                "starred": "Favoris"
             }
         },
         "artist": {
@@ -66,7 +66,7 @@
                 "name": "Nom",
                 "albumCount": "Nombre d'albums",
                 "songCount": "Nombre de pistes",
-                "playCount": ""
+                "playCount": "Lectures"
             }
         },
         "user": {
@@ -118,7 +118,7 @@
             "actions": {
                 "selectPlaylist": "Ajouter les pistes à la playlist",
                 "addNewPlaylist": "Créer \"%{name}\"",
-                "export": ""
+                "export": "Exporter"
             }
         }
     },
