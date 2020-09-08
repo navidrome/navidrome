@@ -115,15 +115,17 @@ func (m *baseMetadata) parseFloat(tagName string) float32 {
 
 var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
 
-func (m *baseMetadata) parseYear(tagName string) int {
-	if v, ok := m.tags[tagName]; ok {
-		match := dateRegex.FindStringSubmatch(v)
-		if len(match) == 0 {
-			log.Warn("Error parsing year from ffmpeg date field", "file", m.filePath, "date", v)
-			return 0
+func (m *baseMetadata) parseYear(tags ...string) int {
+	for _, t := range tags {
+		if v, ok := m.tags[t]; ok {
+			match := dateRegex.FindStringSubmatch(v)
+			if len(match) == 0 {
+				log.Warn("Error parsing year from ffmpeg date field", "file", m.filePath, "date", v)
+				return 0
+			}
+			year, _ := strconv.Atoi(match[1])
+			return year
 		}
-		year, _ := strconv.Atoi(match[1])
-		return year
 	}
 	return 0
 }
