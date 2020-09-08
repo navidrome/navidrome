@@ -38,7 +38,7 @@ func Read(filename string) (map[string]string, error) {
 	if res != 0 {
 		return nil, fmt.Errorf("cannot process %s", filename)
 	}
-	log.Debug("TagLib: read tags", "tags", m, "filename", filename)
+	log.Trace("TagLib: read tags", "tags", m, "filename", filename, "id", id)
 	return m, nil
 }
 
