@@ -14,6 +14,14 @@ type taglibMetadata struct {
 	hasPicture bool
 }
 
+func (m *taglibMetadata) Title() string  { return m.getTag("title", "titlesort", "_track") }
+func (m *taglibMetadata) Album() string  { return m.getTag("album", "albumsort", "_album") }
+func (m *taglibMetadata) Artist() string { return m.getTag("artist", "artistsort", "_artist") }
+func (m *taglibMetadata) Genre() string  { return m.getTag("genre", "_genre") }
+func (m *taglibMetadata) Year() int      { return m.parseYear("date", "_year") }
+func (m *taglibMetadata) TrackNumber() (int, int) {
+	return m.parseTuple("track", "tracknumber", "_track")
+}
 func (m *taglibMetadata) Duration() float32 { return m.parseFloat("length") }
 func (m *taglibMetadata) BitRate() int      { return m.parseInt("bitrate") }
 func (m *taglibMetadata) HasPicture() bool  { return m.hasPicture }
