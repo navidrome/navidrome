@@ -57,10 +57,10 @@ int taglib_read(const char *filename, unsigned long id) {
     if (mp3File->ID3v2Tag()) {
       const auto &frameListMap(mp3File->ID3v2Tag()->frameListMap());
 
-      if (!frameListMap["TCMP"].isEmpty())
-        tags.insert("compilation", frameListMap["TCMP"].front()->toString());
-      if (!frameListMap["TSST"].isEmpty())
-        tags.insert("discsubtitle", frameListMap["TSST"].front()->toString());
+      for (const auto &[name, values] : frameListMap) {
+        if (!values.isEmpty())
+          tags.insert(name, values.front()->toString());
+      }
     }
   }
 
