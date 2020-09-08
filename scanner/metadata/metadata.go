@@ -79,7 +79,7 @@ func (m *baseMetadata) Composer() string        { return m.getTag("composer", "t
 func (m *baseMetadata) Genre() string           { return m.getTag("genre") }
 func (m *baseMetadata) Year() int               { return m.parseYear("date") }
 func (m *baseMetadata) Comment() string         { return m.getTag("comment") }
-func (m *baseMetadata) Compilation() bool       { return m.parseBool("compilation") }
+func (m *baseMetadata) Compilation() bool       { return m.parseBool("tcmp", "compilation") }
 func (m *baseMetadata) TrackNumber() (int, int) { return m.parseTuple("track", "tracknumber") }
 func (m *baseMetadata) DiscNumber() (int, int)  { return m.parseTuple("disc", "discnumber") }
 func (m *baseMetadata) DiscSubtitle() string {
@@ -168,10 +168,12 @@ func (m *baseMetadata) parseTuple(tags ...string) (int, int) {
 	return 0, 0
 }
 
-func (m *baseMetadata) parseBool(tagName string) bool {
-	if v, ok := m.tags[tagName]; ok {
-		i, _ := strconv.Atoi(strings.TrimSpace(v))
-		return i == 1
+func (m *baseMetadata) parseBool(tags ...string) bool {
+	for _, tagName := range tags {
+		if v, ok := m.tags[tagName]; ok {
+			i, _ := strconv.Atoi(strings.TrimSpace(v))
+			return i == 1
+		}
 	}
 	return false
 }
