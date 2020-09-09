@@ -115,6 +115,17 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 }
 
 func (r *artistRepository) Refresh(ids ...string) error {
+	chunks := utils.BreakUpStringSlice(ids, 100)
+	for _, chunk := range chunks {
+		err := r.refresh(chunk...)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *artistRepository) refresh(ids ...string) error {
 	type refreshArtist struct {
 		model.Artist
 		CurrentId string

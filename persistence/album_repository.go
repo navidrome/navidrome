@@ -138,6 +138,17 @@ func (r *albumRepository) getEmbeddedCovers(ids []string) (map[string]model.Medi
 }
 
 func (r *albumRepository) Refresh(ids ...string) error {
+	chunks := utils.BreakUpStringSlice(ids, 100)
+	for _, chunk := range chunks {
+		err := r.refresh(chunk...)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *albumRepository) refresh(ids ...string) error {
 	type refreshAlbum struct {
 		model.Album
 		CurrentId     string
