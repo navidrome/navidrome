@@ -7,21 +7,6 @@ before:
     - go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
 
 builds:
-  - id: navidrome_darwin
-    env:
-      - CGO_ENABLED=1
-      - CC=o64-clang
-      - CXX=o64-clang++
-      - PKG_CONFIG_PATH=/darwin/lib/pkgconfig
-    goos:
-      - darwin
-    goarch:
-      - amd64
-    flags:
-      - -tags=embed
-    ldflags:
-      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
-
   - id: navidrome_linux_amd64
     env:
       - CGO_ENABLED=1
@@ -112,6 +97,21 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
+      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+
+  - id: navidrome_darwin
+    env:
+      - CGO_ENABLED=1
+      - CC=o64-clang
+      - CXX=o64-clang++
+      - PKG_CONFIG_PATH=/darwin/lib/pkgconfig
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    flags:
+      - -tags=embed
+    ldflags:
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
 archives:
