@@ -96,5 +96,5 @@ release:
 .PHONY: release
 
 snapshot:
-	 docker run -it -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.14.7-2-taglib goreleaser release --rm-dist --skip-publish --snapshot
+	 docker run -it -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.14.9-1 goreleaser release --rm-dist --skip-publish --snapshot
 .PHONY: snapshot
