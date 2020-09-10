@@ -57,9 +57,9 @@ int taglib_read(const char *filename, unsigned long id) {
     if (mp3File->ID3v2Tag()) {
       const auto &frameListMap(mp3File->ID3v2Tag()->frameListMap());
 
-      for (const auto &[name, values] : frameListMap) {
-        if (!values.isEmpty())
-          tags.insert(name, values.front()->toString());
+      for (const auto& kv : frameListMap) {
+        if (!kv.second.isEmpty())
+          tags.insert(kv.first, kv.second.front()->toString());
       }
     }
   }
