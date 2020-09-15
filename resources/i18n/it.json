@@ -24,7 +24,9 @@
             "actions": {
                 "addToQueue": "Aggiungi alla coda",
                 "playNow": "Riproduci adesso",
-                "addToPlaylist": "Aggiungi alla playlist"
+                "addToPlaylist": "Aggiungi alla playlist",
+                "shuffleAll": "Riproduci casualmente",
+                "download": "Scarica"
             }
         },
         "album": {
@@ -45,7 +47,17 @@
                 "playAll": "Riproduci",
                 "playNext": "Riproduci come successivo",
                 "addToQueue": "Aggiungi alla coda",
-                "shuffle": "Riprodici casualmente"
+                "shuffle": "Riprodici casualmente",
+                "addToPlaylist": "Aggiungi alla Playlist",
+                "download": "Scarica"
+            },
+            "lists": {
+                "all": "Tutti",
+                "random": "Casuali",
+                "recentlyAdded": "Aggiunti di Recente",
+                "recentlyPlayed": "Riprodotti di Recente",
+                "mostPlayed": "I Più Riprodotti",
+                "starred": "Preferiti"
             }
         },
         "artist": {
@@ -53,7 +65,8 @@
             "fields": {
                 "name": "Nome",
                 "albumCount": "Album",
-                "songCount": "Numero tracce"
+                "songCount": "Numero tracce",
+                "playCount": "Riproduzioni"
             }
         },
         "user": {
@@ -98,11 +111,14 @@
                 "updatedAt": "Ultimo aggiornamento",
                 "createdAt": "Data creazione",
                 "songCount": "Tracce",
-                "comment": "Commento"
+                "comment": "Commento",
+                "sync": "Importazione automatica",
+                "path": "Importa da"
             },
             "actions": {
                 "selectPlaylist": "Aggiungi tracce alla playlist:",
-                "addNewPlaylist": "Aggiungi \"%{name}\""
+                "addNewPlaylist": "Aggiungi \"%{name}\"",
+                "export": "Esporta"
             }
         }
     },
@@ -254,9 +270,11 @@
             "name": "Personale",
             "options": {
                 "theme": "Tema",
-                "language": "Lingua"
+                "language": "Lingua",
+                "defaultView": "Vista Predefinita"
             }
-        }
+        },
+        "albumList": "Album"
     },
     "player": {
         "playListsText": "Coda",
