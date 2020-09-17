@@ -24,8 +24,7 @@
             "actions ": {
                 "addToQueue ": "稍后播放 ",
                 "playNow ": "立即播放 ",
-                "addToPlaylist ": "加入播放列表 ",
-         
+                "addToPlaylist ": "加入播放列表 "
             }
         },
         "album ": {
@@ -46,16 +45,14 @@
                 "playAll ": "全部播放 ",
                 "playNext ": "播放下一首 ",
                 "addToQueue ": "稍后播放 ",
-                "shuffle ": "随机播放 ",
-
+                "shuffle ": "随机播放 "
             },
             "lists ": {
                 "all ": "全部 ",
                 "random ": "随机 ",
                 "recentlyAdded ": "最近添加 ",
                 "recentlyPlayed ": "最近播放 ",
-                "mostPlayed ": "最多播放 ",
- 
+                "mostPlayed ": "最多播放 "
             }
         },
         "artist ": {
@@ -63,8 +60,7 @@
             "fields ": {
                 "name ": "名称 ",
                 "albumCount ": "专辑数 ",
-                "songCount ": "歌曲数 ",
-
+                "songCount ": "歌曲数 "
             }
         },
         "user ": {
@@ -115,8 +111,7 @@
             },
             "actions ": {
                 "selectPlaylist ": "选择播放列表 ",
-                "addNewPlaylist ": "新建 %{name} ",
-    
+                "addNewPlaylist ": "新建 %{name} "
             }
         }
     },
