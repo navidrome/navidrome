@@ -241,7 +241,7 @@
             "http_error ": "与服务通信出错 ",
             "data_provider_error ": "dataProvider错误. 请检查console的详细信息. ",
             "i18n_error ": "加载所选语言时出错 ",
-            "canceled ": "动作已取消 ",
+            "canceled ": "操作已取消 ",
             "logged_out ": "您的会话已结束，请重新登录。 "
         }
     },
