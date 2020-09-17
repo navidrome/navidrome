@@ -6,21 +6,25 @@
             "fields": {
                 "albumArtist": "专辑歌手",
                 "duration": "时长",
-                "trackNumber": "音轨 #",
+                "trackNumber": "音轨",
                 "playCount": "播放次数",
-                "title": "",
-                "artist": "",
-                "album": "",
-                "path": "",
-                "genre": "",
-                "compilation": "",
-                "year": "",
-                "size": "",
-                "updatedAt": ""
+                "title": "标题",
+                "artist": "歌手",
+                "album": "专辑",
+                "path": "路劲",
+                "genre": "类型",
+                "compilation": "合辑",
+                "year": "年",
+                "size": "大小",
+                "updatedAt": "更新于",
+                "bitRate": "比特率",
+                "discSubtitle": "光盘字幕",
+                "starred": "星级"
             },
             "actions": {
                 "addToQueue": "稍后播放",
-                "playNow": ""
+                "playNow": "立即播放",
+                "addToPlaylist": "加入播放列表"
             }
         },
         "album": {
@@ -31,63 +35,93 @@
                 "duration": "时长",
                 "songCount": "曲目数",
                 "playCount": "播放次数",
-                "name": "",
-                "genre": "",
-                "compilation": "",
-                "year": ""
+                "name": "名称",
+                "genre": "类型",
+                "compilation": "合辑",
+                "year": "年",
+                "updatedAt": "更新于"
             },
             "actions": {
-                "playAll": "播放",
+                "playAll": "全部播放",
                 "playNext": "播放下一首",
                 "addToQueue": "稍后播放",
-                "shuffle": "刷新"
+                "shuffle": "随机播放"
+            },
+            "lists": {
+                "all": "全部",
+                "random": "随机",
+                "recentlyAdded": "最近添加",
+                "recentlyPlayed": "最近播放",
+                "mostPlayed": "最多播放"
             }
         },
         "artist": {
             "name": "歌手 |||| 歌手",
             "fields": {
-                "name": "",
-                "albumCount": ""
+                "name": "名称",
+                "albumCount": "专辑数",
+                "songCount": "歌曲数"
             }
         },
         "user": {
             "name": "用户 |||| 用户",
             "fields": {
                 "userName": "用户名",
-                "isAdmin": "",
-                "lastLoginAt": "",
-                "updatedAt": "",
-                "name": ""
+                "isAdmin": "是否管理员",
+                "lastLoginAt": "上次登录",
+                "updatedAt": "更新于",
+                "name": "名称",
+                "password": "密码",
+                "createdAt": "创建于"
             }
         },
         "player": {
             "name": "用户 |||| 用户",
             "fields": {
-                "name": "",
-                "transcodingId": "",
-                "maxBitRate": "",
-                "client": "",
-                "userName": "",
-                "lastSeen": ""
+                "name": "名称",
+                "transcodingId": "转码编号",
+                "maxBitRate": "最大比特率",
+                "client": "客户端",
+                "userName": "用户名",
+                "lastSeen": "上次浏览"
             }
         },
         "transcoding": {
             "name": "转码 |||| 转码",
             "fields": {
-                "name": "",
-                "targetFormat": "",
-                "defaultBitRate": "",
-                "command": ""
+                "name": "名称",
+                "targetFormat": "目标格式",
+                "defaultBitRate": "默认比特率",
+                "command": "命令"
+            }
+        },
+        "playlist": {
+            "name": "播放列表 |||| 播放列表",
+            "fields": {
+                "name": "名称",
+                "duration": "时长",
+                "owner": "所有者",
+                "public": "公开",
+                "updatedAt": "更新于",
+                "createdAt": "创建于",
+                "songCount": "歌曲数",
+                "comment": "评论",
+                "sync": "同步",
+                "path": "路劲"
+            },
+            "actions": {
+                "selectPlaylist": "选择播放列表",
+                "addNewPlaylist": "新建 %{name}"
             }
         }
     },
     "ra": {
         "auth": {
             "welcome1": "感谢您安装Navidrome!",
-            "welcome2": "为了开始使用,请创建一个管理员账户",
+            "welcome2": "开始使用前,请创建一个管理员账户",
             "confirmPassword": "确认密码",
             "buttonCreateAdmin": "创建管理员",
-            "auth_check_error": "",
+            "auth_check_error": "请登录访问更多内容",
             "user_menu": "设置",
             "username": "用户名",
             "password": "密码",
@@ -96,7 +130,7 @@
             "logout": "退出"
         },
         "validation": {
-            "invalidChars": "请只使用字母和数字",
+            "invalidChars": "请使用字母和数字",
             "passwordDoesNotMatch": "密码不匹配",
             "required": "必填",
             "minLength": "必须不少于 %{min} 个字符",
@@ -114,9 +148,9 @@
             "back": "回退",
             "bulk_actions": "选中%{smart_count}项",
             "cancel": "取消",
-            "clear_input_value": "",
-            "clone": "",
-            "confirm": "",
+            "clear_input_value": "清除",
+            "clone": "克隆",
+            "confirm": "确认",
             "create": "新建",
             "delete": "删除",
             "edit": "编辑",
@@ -130,10 +164,11 @@
             "show": "显示",
             "sort": "排序",
             "undo": "撤销",
-            "expand": "",
-            "close": "",
-            "open_menu": "",
-            "close_menu": ""
+            "expand": "展开",
+            "close": "关闭",
+            "open_menu": "打开菜单",
+            "close_menu": "关闭菜单",
+            "unselect": "未选择"
         },
         "boolean": {
             "true": "是",
@@ -143,13 +178,13 @@
             "create": "新建 %{name}",
             "dashboard": "概览",
             "edit": "%{name} #%{id}",
-            "error": "出现错误",
-            "list": "%{name} 列表",
+            "error": "错误",
+            "list": "%{name}",
             "loading": "加载中",
             "not_found": "未发现",
             "show": "%{name} #%{id}",
-            "empty": "",
-            "invite": ""
+            "empty": "空白 %{name}.",
+            "invite": "您要创建一个吗？"
         },
         "input": {
             "file": {
@@ -166,8 +201,8 @@
                 "single_missing": "关联的参考数据不再可用."
             },
             "password": {
-                "toggle_visible": "",
-                "toggle_hidden": ""
+                "toggle_visible": "显示",
+                "toggle_hidden": "隐藏"
             }
         },
         "message": {
@@ -177,14 +212,14 @@
             "bulk_delete_title": "删除 %{name} |||| 删除 %{smart_count}项 %{name} ",
             "delete_content": "您确定要删除该条目?",
             "delete_title": "删除 %{name} #%{id}",
-            "details": "",
-            "error": "",
+            "details": "details",
+            "error": "error",
             "invalid_form": "表单输入无效. 请检查错误提示",
             "loading": "正在加载页面, 请稍候",
             "no": "否",
             "not_found": "您输入了错误的URL或者错误的链接.",
             "yes": "是",
-            "unsaved_changes": ""
+            "unsaved_changes": "某些更改尚未保存。您确定要离开此页面吗？"
         },
         "navigation": {
             "no_results": "结果为空",
@@ -205,15 +240,19 @@
             "item_doesnt_exist": "条目不存在",
             "http_error": "与服务通信出错",
             "data_provider_error": "dataProvider错误. 请检查console的详细信息.",
-            "i18n_error": "",
-            "canceled": "取消动作",
-            "logged_out": ""
+            "i18n_error": "加载所选语言时出错",
+            "canceled": "操作已取消",
+            "logged_out": "您的会话已结束，请重新登录。"
         }
     },
     "message": {
-        "note": "",
-        "transcodingDisabled": "",
-        "transcodingEnabled": ""
+        "note": "信息",
+        "transcodingDisabled": "出于安全原因，禁用了从Web界面更改参数。要更改（编辑或删除）转码选项，请在启用％{config}选项的情况下重新启动服务器。",
+        "transcodingEnabled": "Navidrome当前与％{config}一起使用，可以从Web界面执行任意命令。建议仅在配置Transcoding时启用此功能。",
+        "songsAddedToPlaylist": "添加到播放列表中的曲目||||已将％{smart_count}条曲目添加到播放列表",
+        "noPlaylistsAvailable": "未播放清单",
+        "delete_user_title": "删除用户 ％{name}",
+        "delete_user_content": "您确定要删除该用户及其相关数据（包括其播放列表和首选项）吗？"
     },
     "menu": {
         "library": "曲库",
@@ -224,9 +263,11 @@
             "name": "个性化",
             "options": {
                 "theme": "主题",
-                "language": "语言"
+                "language": "语言",
+                "defaultView": "默认视图"
             }
-        }
+        },
+        "albumList": "专辑"
     },
     "player": {
         "playListsText": "播放队列",
