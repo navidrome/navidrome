@@ -253,12 +253,12 @@
         }
     },
     "message ": {
-        "note ": "NOTE ",
+        "note ": "信息",
         "transcodingDisabled ": "出于安全原因，禁用了从Web界面更改参数。要更改（编辑或删除）转码选项，请在启用％{config}选项的情况下重新启动服务器。 ",
         "transcodingEnabled ": "Navidrome当前与％{config}一起使用，可以从Web界面执行任意命令。建议仅在配置Transcoding时启用此功能。 ",
         "songsAddedToPlaylist ": "添加到播放列表中的曲目||||已将％{smart_count}条曲目添加到播放列表 ",
         "noPlaylistsAvailable ": "未播放清单 ",
-        "delete_user_title ": "删除用户'％{name}' ",
+        "delete_user_title ": "删除用户 ％{name}",
         "delete_user_content ": "您确定要删除该用户及其相关数据（包括其播放列表和首选项）吗？ "
     },
     "menu ": {
