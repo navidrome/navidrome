@@ -264,7 +264,7 @@
             "options": {
                 "theme": "主题",
                 "language": "语言",
-                "defaultView": "默认视图"
+                "defaultView": "默认主题"
             }
         },
         "albumList": "专辑"
