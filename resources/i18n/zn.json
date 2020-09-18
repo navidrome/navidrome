@@ -18,21 +18,15 @@
                 "size": "大小",
                 "updatedAt": "更新于",
                 "bitRate": "比特率",
-
                 "discSubtitle": "字幕",
                 "starred": "收藏"
-
-
             },
             "actions": {
                 "addToQueue": "稍后播放",
                 "playNow": "立即播放",
-
                 "addToPlaylist": "加入播单",
                 "shuffleAll": "全部播放",
                 "download": "下载"
-                "addToPlaylist":"加入播放列表"
-
             }
         },
         "album": {
@@ -53,23 +47,17 @@
                 "playAll": "全部播放",
                 "playNext": "播放下一首",
                 "addToQueue": "稍后播放",
-
                 "shuffle": "随机播放",
                 "addToPlaylist": "加入播单",
                 "download": "下载"
-
-
             },
             "lists": {
                 "all": "全部",
                 "random": "随机",
                 "recentlyAdded": "最近添加",
                 "recentlyPlayed": "最近播放",
-
                 "mostPlayed": "最多播放",
                 "starred": "收藏"
-
-
             }
         },
         "artist": {
@@ -77,11 +65,8 @@
             "fields": {
                 "name": "名称",
                 "albumCount": "专辑数",
-
                 "songCount": "歌曲数",
                 "playCount": "播放量"
-
-
             }
         },
         "user": {
@@ -117,11 +102,7 @@
             }
         },
         "playlist": {
-
             "name": "播单 |||| 播单",
-
- 
-
             "fields": {
                 "name": "名称",
                 "duration": "时长",
@@ -135,13 +116,9 @@
                 "path": "路劲"
             },
             "actions": {
-
                 "selectPlaylist": "选择播单",
                 "addNewPlaylist": "新建 %{name}",
                 "export": "导出"
-
- 
-
             }
         }
     },
@@ -242,11 +219,8 @@
             "bulk_delete_title": "删除 %{name} |||| 删除 %{smart_count}项 %{name} ",
             "delete_content": "您确定要删除该条目?",
             "delete_title": "删除 %{name} #%{id}",
-
             "details": "详情",
             "error": "错误",
-
-
             "invalid_form": "表单输入无效. 请检查错误提示",
             "loading": "正在加载页面, 请稍候",
             "no": "否",
