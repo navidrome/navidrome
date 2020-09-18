@@ -19,7 +19,7 @@
                 "updatedAt": "更新于",
                 "bitRate": "比特率",
                 "discSubtitle": "光盘字幕",
-                "starred": "星级"
+                "starred": "已加星标"
             },
             "actions": {
                 "addToQueue": "稍后播放",
@@ -50,6 +50,7 @@
             "lists": {
                 "all": "全部",
                 "random": "随机",
+                "starred": "已加星标",
                 "recentlyAdded": "最近添加",
                 "recentlyPlayed": "最近播放",
                 "mostPlayed": "最多播放"
