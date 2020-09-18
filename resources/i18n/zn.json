@@ -82,7 +82,7 @@
             }
         },
         "player": {
-            "name": "听众 |||| 听众",
+            "name": "客户端 |||| 客户端",
             "fields": {
                 "name": "名称",
                 "transcodingId": "转码编号",
@@ -150,7 +150,7 @@
             "regex": "必须符合指定的格式 (regexp): %{pattern}"
         },
         "action": {
-            "add_filter": "增加检索",
+            "add_filter": "增加筛选",
             "add": "增加",
             "back": "回退",
             "bulk_actions": "选中%{smart_count}项",
@@ -164,10 +164,10 @@
             "export": "导出",
             "list": "列表",
             "refresh": "刷新",
-            "remove_filter": "移除检索",
+            "remove_filter": "移除筛选",
             "remove": "删除",
             "save": "保存",
-            "search": "检索",
+            "search": "筛选",
             "show": "显示",
             "sort": "排序",
             "undo": "撤销",
@@ -219,8 +219,8 @@
             "bulk_delete_title": "删除 %{name} |||| 删除 %{smart_count}项 %{name} ",
             "delete_content": "您确定要删除该条目?",
             "delete_title": "删除 %{name} #%{id}",
-            "details": "details",
-            "error": "error",
+            "details": "详情",
+            "error": "错误",
             "invalid_form": "表单输入无效. 请检查错误提示",
             "loading": "正在加载页面, 请稍候",
             "no": "否",
