@@ -82,7 +82,7 @@
             }
         },
         "player": {
-            "name": "用户 |||| 用户",
+            "name": "听众 |||| 听众",
             "fields": {
                 "name": "名称",
                 "transcodingId": "转码编号",
