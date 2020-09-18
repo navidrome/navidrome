@@ -18,7 +18,7 @@
                 "size": "大小",
                 "updatedAt": "更新于",
                 "bitRate": "比特率",
-                "discSubtitle": "光碟字幕",
+                "discSubtitle": "字幕",
                 "starred": "收藏"
             },
             "actions": {
@@ -150,8 +150,8 @@
             "regex": "必须符合指定的格式 (regexp): %{pattern}"
         },
         "action": {
-            "add_filter": "增加筛选",
-            "add": "增加",
+            "add_filter": "添加筛选",
+            "add": "添加",
             "back": "回退",
             "bulk_actions": "选中%{smart_count}项",
             "cancel": "取消",
@@ -240,11 +240,11 @@
             "prev": "向前"
         },
         "notification": {
-            "updated": "条目已更新 |||| %{smart_count} 项条目已更新",
-            "created": "条目已新建",
-            "deleted": "条目已删除 |||| %{smart_count} 项条目已删除",
-            "bad_item": "不正确的条目",
-            "item_doesnt_exist": "条目不存在",
+            "updated": "项已更新 |||| %{smart_count} 项已更新",
+            "created": "项已新建",
+            "deleted": "项已删除 |||| %{smart_count} 项已删除",
+            "bad_item": "不正确的项",
+            "item_doesnt_exist": "项不存在",
             "http_error": "与服务通信出错",
             "data_provider_error": "dataProvider错误. 请检查console的详细信息.",
             "i18n_error": "加载所选语言时出错",
@@ -271,7 +271,7 @@
             "options": {
                 "theme": "主题",
                 "language": "语言",
-                "defaultView": "默认主题"
+                "defaultView": "默认视图"
             }
         },
         "albumList": "专辑"
