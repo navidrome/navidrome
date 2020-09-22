@@ -51,7 +51,7 @@ var (
 	inputRegex = regexp.MustCompile(`(?m)^Input #\d+,.*,\sfrom\s'(.*)'`)
 
 	//    TITLE           : Back In Black
-	tagsRx = regexp.MustCompile(`(?i)^\s{4,6}([\w-]+)\s*:(.*)`)
+	tagsRx = regexp.MustCompile(`(?i)^\s{4,6}([\w\s-]+)\s*:(.*)`)
 
 	//  Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s`
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
@@ -114,7 +114,7 @@ func (m *ffmpegMetadata) parseInfo(info string) {
 		}
 		match := tagsRx.FindStringSubmatch(line)
 		if len(match) > 0 {
-			tagName := strings.ToLower(match[1])
+			tagName := strings.TrimSpace(strings.ToLower(match[1]))
 			tagValue := strings.TrimSpace(match[2])
 
 			// Skip when the tag was previously found

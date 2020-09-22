@@ -213,6 +213,16 @@ Input #0, mp3, from '/Users/deluan/Downloads/椎名林檎 - 加爾基 精液 栗
 			Expect(md.SortArtist()).To(Equal("Shiina, Ringo"))
 			Expect(md.SortAlbumArtist()).To(Equal("Shiina, Ringo"))
 		})
+
+		It("parses tags with spaces in the name", func() {
+			const output = `
+Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hut, to the Projects, to the Mansion/10 - The Struggle (interlude).mp3':
+  Metadata:
+    ALBUM ARTIST    : Wyclef Jean
+`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md.AlbumArtist()).To(Equal("Wyclef Jean"))
+		})
 	})
 
 	It("creates a valid command line", func() {

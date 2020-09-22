@@ -65,13 +65,15 @@ type baseMetadata struct {
 	tags     map[string]string
 }
 
-func (m *baseMetadata) Title() string       { return m.getTag("title", "sort_name", "titlesort") }
-func (m *baseMetadata) Album() string       { return m.getTag("album", "sort_album", "albumsort") }
-func (m *baseMetadata) Artist() string      { return m.getTag("artist", "sort_artist", "artistsort") }
-func (m *baseMetadata) AlbumArtist() string { return m.getTag("album_artist", "albumartist") }
-func (m *baseMetadata) SortTitle() string   { return m.getSortTag("", "title", "name") }
-func (m *baseMetadata) SortAlbum() string   { return m.getSortTag("", "album") }
-func (m *baseMetadata) SortArtist() string  { return m.getSortTag("", "artist") }
+func (m *baseMetadata) Title() string  { return m.getTag("title", "sort_name", "titlesort") }
+func (m *baseMetadata) Album() string  { return m.getTag("album", "sort_album", "albumsort") }
+func (m *baseMetadata) Artist() string { return m.getTag("artist", "sort_artist", "artistsort") }
+func (m *baseMetadata) AlbumArtist() string {
+	return m.getTag("album_artist", "album artist", "albumartist")
+}
+func (m *baseMetadata) SortTitle() string  { return m.getSortTag("", "title", "name") }
+func (m *baseMetadata) SortAlbum() string  { return m.getSortTag("", "album") }
+func (m *baseMetadata) SortArtist() string { return m.getSortTag("", "artist") }
 func (m *baseMetadata) SortAlbumArtist() string {
 	return m.getSortTag("tso2", "albumartist", "album_artist")
 }
