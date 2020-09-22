@@ -1,5 +1,6 @@
 import React, { Fragment, useEffect } from 'react'
 import { useUnselectAll } from 'react-admin'
+import { playNext } from '../audioplayer'
 import AddToQueueButton from '../song/AddToQueueButton'
 import AddToPlaylistButton from '../song/AddToPlaylistButton'
 
@@ -11,6 +12,11 @@ export const AlbumSongBulkActions = (props) => {
   }, [])
   return (
     <Fragment>
+      <AddToQueueButton
+        {...props}
+        action={playNext}
+        label={'resources.song.actions.playNext'}
+      />
       <AddToQueueButton {...props} />
       <AddToPlaylistButton {...props} />
     </Fragment>

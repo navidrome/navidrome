@@ -167,6 +167,7 @@ const Player = () => {
     return (
       <ReactJkMusicPlayer
         {...options}
+        quietUpdate
         onAudioListsChange={OnAudioListsChange}
         onAudioProgress={OnAudioProgress}
         onAudioPlay={OnAudioPlay}

@@ -7,7 +7,7 @@ import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, useNotify, useTranslate } from 'react-admin'
-import { addTracks, playTracks, shuffleTracks } from '../audioplayer'
+import { playNext, addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import { openAddToPlaylist } from '../dialogs/dialogState'
 import subsonic from '../subsonic'
 import StarButton from './StarButton'
@@ -42,6 +42,11 @@ const ContextMenu = ({
       needData: true,
       label: 'resources.album.actions.playAll',
       action: (data, ids) => dispatch(playTracks(data, ids)),
+    },
+    playNext: {
+      needData: true,
+      label: 'resources.album.actions.playNext',
+      action: (data, ids) => dispatch(playNext(data, ids)),
     },
     addToQueue: {
       needData: true,

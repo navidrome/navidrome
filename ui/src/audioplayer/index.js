@@ -4,6 +4,7 @@ import {
   setTrack,
   playQueueReducer,
   playTracks,
+  playNext,
   shuffleTracks,
   clearQueue,
 } from './queue'
@@ -13,6 +14,7 @@ export {
   addTracks,
   setTrack,
   playTracks,
+  playNext,
   playQueueReducer,
   shuffleTracks,
   clearQueue,

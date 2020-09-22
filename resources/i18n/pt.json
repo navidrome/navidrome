@@ -22,8 +22,9 @@
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
-                "playNow": "Tocar agora",
                 "addToPlaylist": "Adicionar à playlist",
+                "playNow": "Tocar agora",
+                "playNext": "Toca a seguir",
                 "shuffleAll": "Aleatório",
                 "download": "Baixar"
             }

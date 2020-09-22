@@ -5,7 +5,7 @@ import { useTranslate } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
-import { addTracks, setTrack } from '../audioplayer'
+import { playNext, addTracks, setTrack } from '../audioplayer'
 import { openAddToPlaylist } from '../dialogs/dialogState'
 import subsonic from '../subsonic'
 import StarButton from './StarButton'
@@ -34,6 +34,10 @@ const SongContextMenu = ({
     playNow: {
       label: 'resources.song.actions.playNow',
       action: (record) => dispatch(setTrack(record)),
+    },
+    playNext: {
+      label: 'resources.song.actions.playNext',
+      action: (record) => dispatch(playNext({ [record.id]: record })),
     },
     addToQueue: {
       label: 'resources.song.actions.addToQueue',

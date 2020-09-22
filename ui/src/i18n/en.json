@@ -25,6 +25,7 @@
                 "addToQueue": "Play Later",
                 "addToPlaylist": "Add to Playlist",
                 "playNow": "Play Now",
+                "playNext": "Play Next",
                 "shuffleAll": "Shuffle All",
                 "download": "Download"
             }
