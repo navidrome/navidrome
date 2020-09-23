@@ -26,7 +26,8 @@
                 "playNow": "Reproducir Ahora",
                 "addToPlaylist": "Agregar a la lista de reproducción",
                 "shuffleAll": "Todas Aleatorias",
-                "download": "Descarga"
+                "download": "Descarga",
+                "playNext": "Siguiente"
             }
         },
         "album": {
@@ -284,7 +285,7 @@
         "clickToPlayText": "Clic para reproducir",
         "clickToPauseText": "Clic para pausar",
         "nextTrackText": "Pista Siguiente",
-        "previousTrackText": "Pista previa",
+        "previousTrackText": "Pista anterior",
         "reloadText": "Refrescar",
         "volumeText": "Volumen",
         "toggleLyricText": "Mostrar letras",
