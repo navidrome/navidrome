@@ -6,7 +6,13 @@ import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import subsonic from '../subsonic'
-import { scrobble, syncQueue, currentPlaying, setVolume } from './queue'
+import {
+  scrobble,
+  syncQueue,
+  currentPlaying,
+  setVolume,
+  clearQueue,
+} from './queue'
 import themes from '../themes'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
@@ -41,12 +47,12 @@ const Player = () => {
     theme: playerTheme,
     bounds: 'body',
     mode: 'full',
-    autoPlay: true,
+    autoPlay: false,
     preload: true,
     autoPlayInitLoadPlayList: true,
-    // loadAudioErrorPlayNext: false,
+    loadAudioErrorPlayNext: false,
     clearPriorAudioLists: false,
-    showDestroy: false,
+    showDestroy: true,
     showDownload: false,
     showReload: false,
     glassBg: false,
@@ -94,10 +100,12 @@ const Player = () => {
     return {
       ...defaultOptions,
       clearPriorAudioLists: queue.clear,
+      autoPlay: queue.clear || queue.playIndex === 0,
+      playIndex: queue.playIndex,
       audioLists: queue.queue.map((item) => item),
       defaultVolume: queue.volume,
     }
-  }, [queue.clear, queue.queue, queue.volume, defaultOptions])
+  }, [queue.clear, queue.queue, queue.volume, queue.playIndex, defaultOptions])
 
   const OnAudioListsChange = useCallback(
     (currentPlayIndex, audioLists) => {
@@ -163,6 +171,13 @@ const Player = () => {
     [dispatch, dataProvider]
   )
 
+  const onBeforeDestroy = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      dispatch(clearQueue())
+      reject()
+    })
+  }, [dispatch])
+
   if (authenticated && options.audioLists.length > 0) {
     return (
       <ReactJkMusicPlayer
@@ -174,6 +189,7 @@ const Player = () => {
         onAudioPause={onAudioPause}
         onAudioEnded={onAudioEnded}
         onAudioVolumeChange={onAudioVolumeChange}
+        onBeforeDestroy={onBeforeDestroy}
       />
     )
   }
