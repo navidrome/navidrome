@@ -6,7 +6,13 @@ import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import subsonic from '../subsonic'
-import { scrobble, syncQueue, currentPlaying, setVolume } from './queue'
+import {
+  scrobble,
+  syncQueue,
+  currentPlaying,
+  setVolume,
+  clearQueue,
+} from './queue'
 import themes from '../themes'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
@@ -46,7 +52,7 @@ const Player = () => {
     autoPlayInitLoadPlayList: true,
     loadAudioErrorPlayNext: false,
     clearPriorAudioLists: false,
-    showDestroy: false,
+    showDestroy: true,
     showDownload: false,
     showReload: false,
     glassBg: false,
@@ -165,6 +171,13 @@ const Player = () => {
     [dispatch, dataProvider]
   )
 
+  const onBeforeDestroy = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      dispatch(clearQueue())
+      reject()
+    })
+  }, [dispatch])
+
   if (authenticated && options.audioLists.length > 0) {
     return (
       <ReactJkMusicPlayer
@@ -176,6 +189,7 @@ const Player = () => {
         onAudioPause={onAudioPause}
         onAudioEnded={onAudioEnded}
         onAudioVolumeChange={onAudioVolumeChange}
+        onBeforeDestroy={onBeforeDestroy}
       />
     )
   }
