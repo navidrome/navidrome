@@ -41,7 +41,7 @@ const Player = () => {
     theme: playerTheme,
     bounds: 'body',
     mode: 'full',
-    autoPlay: true,
+    autoPlay: false,
     preload: true,
     autoPlayInitLoadPlayList: true,
     loadAudioErrorPlayNext: false,
@@ -94,6 +94,7 @@ const Player = () => {
     return {
       ...defaultOptions,
       clearPriorAudioLists: queue.clear,
+      autoPlay: queue.clear || queue.playIndex === 0,
       playIndex: queue.playIndex,
       audioLists: queue.queue.map((item) => item),
       defaultVolume: queue.volume,
