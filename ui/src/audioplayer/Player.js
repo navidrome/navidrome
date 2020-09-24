@@ -98,7 +98,7 @@ const Player = () => {
       audioLists: queue.queue.map((item) => item),
       defaultVolume: queue.volume,
     }
-  }, [queue.clear, queue.queue, queue.volume, defaultOptions])
+  }, [queue.clear, queue.queue, queue.volume, queue.playIndex, defaultOptions])
 
   const OnAudioListsChange = useCallback(
     (currentPlayIndex, audioLists) => {
