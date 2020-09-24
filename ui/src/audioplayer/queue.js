@@ -117,7 +117,13 @@ const setVolume = (volume) => ({
   data: { volume },
 })
 
-const initialState = { queue: [], clear: true, current: {}, volume: 1 }
+const initialState = {
+  queue: [],
+  clear: true,
+  current: {},
+  volume: 1,
+  playIndex: 0,
+}
 
 const playQueueReducer = (previousState = initialState, payload) => {
   let queue, current
@@ -129,6 +135,7 @@ const playQueueReducer = (previousState = initialState, payload) => {
     case PLAYER_SET_VOLUME:
       return {
         ...previousState,
+        playIndex: undefined,
         volume: data.volume,
       }
     case PLAYER_CURRENT:
@@ -143,6 +150,7 @@ const playQueueReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         current,
+        playIndex: undefined,
         volume: data.volume,
       }
     case PLAYER_ADD_TRACKS:
@@ -150,7 +158,7 @@ const playQueueReducer = (previousState = initialState, payload) => {
       Object.keys(data).forEach((id) => {
         queue.push(mapToAudioLists(data[id]))
       })
-      return { ...previousState, queue, clear: false }
+      return { ...previousState, queue, clear: false, playIndex: undefined }
     case PLAYER_PLAY_NEXT:
       current = get(previousState.current, 'uuid', '')
       newQueue = []
@@ -169,12 +177,18 @@ const playQueueReducer = (previousState = initialState, payload) => {
           newQueue.push(mapToAudioLists(data[id]))
         })
       }
-      return { ...previousState, queue: newQueue, clear: true }
+      return {
+        ...previousState,
+        queue: newQueue,
+        clear: true,
+        playIndex: undefined,
+      }
     case PLAYER_SET_TRACK:
       return {
         ...previousState,
         queue: [mapToAudioLists(data)],
         clear: true,
+        playIndex: 0,
       }
     case PLAYER_SYNC_QUEUE:
       current = data.length > 0 ? previousState.current : {}
@@ -182,6 +196,7 @@ const playQueueReducer = (previousState = initialState, payload) => {
         ...previousState,
         queue: data,
         clear: false,
+        playIndex: undefined,
         current,
       }
     case PLAYER_SCROBBLE:
@@ -195,6 +210,7 @@ const playQueueReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         queue: newQueue,
+        playIndex: undefined,
         clear: false,
       }
     case PLAYER_PLAY_TRACKS:
@@ -211,6 +227,7 @@ const playQueueReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         queue,
+        playIndex: 0,
         clear: true,
       }
     default:

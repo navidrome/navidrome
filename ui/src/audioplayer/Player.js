@@ -44,7 +44,7 @@ const Player = () => {
     autoPlay: true,
     preload: true,
     autoPlayInitLoadPlayList: true,
-    // loadAudioErrorPlayNext: false,
+    loadAudioErrorPlayNext: false,
     clearPriorAudioLists: false,
     showDestroy: false,
     showDownload: false,
@@ -94,6 +94,7 @@ const Player = () => {
     return {
       ...defaultOptions,
       clearPriorAudioLists: queue.clear,
+      playIndex: queue.playIndex,
       audioLists: queue.queue.map((item) => item),
       defaultVolume: queue.volume,
     }
