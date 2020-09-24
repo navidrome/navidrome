@@ -26,7 +26,8 @@
                 "playNow": "Přehrát nyní",
                 "addToPlaylist": "Přidat do seznamu skladeb",
                 "shuffleAll": "Zamíchat vše",
-                "download": "Stáhnout"
+                "download": "Stáhnout",
+                "playNext": "Přehrát další"
             }
         },
         "album": {
