@@ -55,7 +55,7 @@ var (
 		},
 		{
 			"name":           "opus audio",
-			"targetFormat":   "oga",
+			"targetFormat":   "opus",
 			"defaultBitRate": 128,
 			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
