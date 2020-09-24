@@ -22,7 +22,7 @@
                 "starred": "收藏"
             },
             "actions": {
-                "addToQueue": "稍后播放",
+                "addToQueue": "最后播放",
                 "playNow": "立即播放",
                 "addToPlaylist": "加入播单",
                 "shuffleAll": "全部播放",
@@ -44,9 +44,9 @@
                 "updatedAt": "更新于"
             },
             "actions": {
-                "playAll": "全部播放",
-                "playNext": "播放下一首",
-                "addToQueue": "稍后播放",
+                "playAll": "立即播放",
+                "playNext": "接下来播放",
+                "addToQueue": "最后播放",
                 "shuffle": "随机播放",
                 "addToPlaylist": "加入播单",
                 "download": "下载"
