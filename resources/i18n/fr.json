@@ -26,7 +26,8 @@
                 "playNow": "Lire",
                 "addToPlaylist": "Ajouter à la playlist",
                 "shuffleAll": "Tout mélanger",
-                "download": "Télécharger"
+                "download": "Télécharger",
+                "playNext": "Lire ensuite"
             }
         },
         "album": {
