@@ -84,7 +84,7 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
       tertiaryText={(r) => (
         <>
           <RangeField record={r} source={'year'} sortBy={'maxYear'} />
-          &nbsp;&nbsp;&nbsp;
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         </>
       )}
       linkType={'show'}
