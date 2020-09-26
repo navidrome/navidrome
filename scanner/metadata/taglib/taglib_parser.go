@@ -3,6 +3,7 @@ package taglib
 /*
 #cgo pkg-config: taglib
 #cgo LDFLAGS: -lstdc++
+#cgo linux CXXFLAGS: -std=c++11
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
