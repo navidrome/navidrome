@@ -36,8 +36,8 @@ builds:
   - id: navidrome_linux_arm
     env:
       - CGO_ENABLED=1
-      - CC=arm-linux-gnueabihf-gcc
-      - CXX=arm-linux-gnueabihf-g++
+      - CC=arm-linux-gnueabi-gcc
+      - CXX=arm-linux-gnueabi-g++
     goos:
       - linux
     goarch:
