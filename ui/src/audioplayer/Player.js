@@ -16,6 +16,7 @@ import {
 import themes from '../themes'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
+import Hotkeys from 'react-hot-keys'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
@@ -23,6 +24,8 @@ const useStyle = makeStyles((theme) => ({
     color: theme.palette.primary.light,
   },
 }))
+
+let audioInstance = null
 
 const Player = () => {
   const classes = useStyle()
@@ -178,19 +181,41 @@ const Player = () => {
     })
   }, [dispatch])
 
+  const onKeyUp = useCallback((keyName, e) => {
+    if (keyName === 'space') {
+      e.preventDefault()
+    }
+  }, [])
+  const onKeyDown = useCallback((keyName, e) => {
+    if (keyName === 'space') {
+      e.preventDefault()
+      audioInstance && audioInstance.togglePlay()
+    }
+  }, [])
+
   if (authenticated && options.audioLists.length > 0) {
     return (
-      <ReactJkMusicPlayer
-        {...options}
-        quietUpdate
-        onAudioListsChange={OnAudioListsChange}
-        onAudioProgress={OnAudioProgress}
-        onAudioPlay={OnAudioPlay}
-        onAudioPause={onAudioPause}
-        onAudioEnded={onAudioEnded}
-        onAudioVolumeChange={onAudioVolumeChange}
-        onBeforeDestroy={onBeforeDestroy}
-      />
+      <Hotkeys
+        keyName="space"
+        onKeyDown={onKeyDown}
+        onKeyUp={onKeyUp}
+        allowRepeat={false}
+      >
+        <ReactJkMusicPlayer
+          {...options}
+          quietUpdate
+          onAudioListsChange={OnAudioListsChange}
+          onAudioProgress={OnAudioProgress}
+          onAudioPlay={OnAudioPlay}
+          onAudioPause={onAudioPause}
+          onAudioEnded={onAudioEnded}
+          onAudioVolumeChange={onAudioVolumeChange}
+          onBeforeDestroy={onBeforeDestroy}
+          getAudioInstance={(instance) => {
+            audioInstance = instance
+          }}
+        />
+      </Hotkeys>
     )
   }
   document.title = 'Navidrome'
