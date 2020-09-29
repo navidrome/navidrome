@@ -30,7 +30,7 @@ const PlaylistShow = (props) => {
         filter={{ playlist_id: props.id }}
         resource={'playlistTrack'}
         exporter={false}
-        perPage={-1}
+        perPage={0}
         pagination={null}
         bulkActionButtons={
           <PlaylistSongBulkActions playlistId={props.id} record={record} />
