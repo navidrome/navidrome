@@ -5,6 +5,9 @@ import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
+import Hotkeys from 'react-hot-keys'
+import { makeStyles } from '@material-ui/core/styles'
+import { isIOS } from 'react-device-detect'
 import subsonic from '../subsonic'
 import {
   scrobble,
@@ -14,10 +17,8 @@ import {
   clearQueue,
 } from './queue'
 import themes from '../themes'
-import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
-import Hotkeys from 'react-hot-keys'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
@@ -45,14 +46,22 @@ const Player = () => {
   const classes = useStyle({ visible })
 
   const audioTitle = useCallback(
-    (audioInfo) => (
-      <Link
-        to={`/album/${audioInfo.albumId}/show`}
-        className={classes.audioTitle}
-      >
-        {audioInfo.name ? `${audioInfo.name} - ${audioInfo.singer}` : ''}
-      </Link>
-    ),
+    (audioInfo) => {
+      const title = audioInfo.name
+        ? `${audioInfo.name} - ${audioInfo.singer}`
+        : ''
+      // TODO Ideally the react-player should accept a Link as the audioTitle
+      return isIOS ? (
+        title
+      ) : (
+        <Link
+          to={`/album/${audioInfo.albumId}/show`}
+          className={classes.audioTitle}
+        >
+          {title}
+        </Link>
+      )
+    },
     [classes.audioTitle]
   )
 
