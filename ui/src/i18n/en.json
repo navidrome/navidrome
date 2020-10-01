@@ -265,7 +265,7 @@
     "menu": {
         "library": "Library",
         "settings": "Settings",
-        "version": "Version %{version}",
+        "version": "Version",
         "theme": "Theme",
         "personal": {
             "name": "Personal",
@@ -275,7 +275,15 @@
                 "defaultView": "Default View"
             }
         },
-        "albumList": "Albums"
+        "albumList": "Albums",
+        "about": "About"
+    },
+    "about": {
+        "links": {
+            "homepage": "Home page",
+            "source": "Source code",
+            "featureRequests": "Feature requests"
+        }
     },
     "player": {
         "playListsText": "Play Queue",

@@ -222,7 +222,7 @@
     "menu": {
         "library": "Bibliotheek",
         "settings": "Instellingen",
-        "version": "Versie %{version}",
+        "version": "Versie",
         "theme": "Thema",
         "personal": {
             "name": "Persoonlijk",

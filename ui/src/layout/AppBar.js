@@ -1,40 +1,53 @@
 import React, { forwardRef } from 'react'
-import {
-  AppBar as RAAppBar,
-  MenuItemLink,
-  UserMenu,
-  useTranslate,
-} from 'react-admin'
-import { makeStyles } from '@material-ui/core'
+import { AppBar as RAAppBar, UserMenu, useTranslate } from 'react-admin'
+import { makeStyles, MenuItem, ListItemIcon } from '@material-ui/core'
 import InfoIcon from '@material-ui/icons/Info'
-import config from '../config'
+import AboutDialog from './AboutDialog'
 
 const useStyles = makeStyles((theme) => ({
-  menuItem: {
+  root: {
     color: theme.palette.text.secondary,
   },
+  active: {
+    color: theme.palette.text.primary,
+  },
+  icon: { minWidth: theme.spacing(5) },
 }))
 
-const VersionMenu = forwardRef((props, ref) => {
+const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
+  const classes = useStyles(rest)
   const translate = useTranslate()
-  const classes = useStyles()
+  const [open, setOpen] = React.useState(false)
+
+  const handleOpen = () => {
+    setOpen(true)
+  }
+  const handleClose = () => {
+    onClick && onClick()
+    setOpen(false)
+  }
+  const label = translate('menu.about')
   return (
-    <MenuItemLink
-      ref={ref}
-      to="#"
-      primaryText={translate('menu.version', {
-        version: config.version,
-      })}
-      leftIcon={<InfoIcon />}
-      className={classes.menuItem}
-      sidebarIsOpen={true}
-    />
+    <>
+      <MenuItem
+        ref={ref}
+        onClick={handleOpen}
+        className={classes.root}
+        activeClassName={classes.active}
+      >
+        <ListItemIcon className={classes.icon}>
+          <InfoIcon titleAccess={label} />
+        </ListItemIcon>
+        {label}
+      </MenuItem>
+      <AboutDialog onClose={handleClose} open={open} />
+    </>
   )
 })
 
 const CustomUserMenu = (props) => (
   <UserMenu {...props}>
-    <VersionMenu />
+    <AboutMenuItem />
   </UserMenu>
 )
 

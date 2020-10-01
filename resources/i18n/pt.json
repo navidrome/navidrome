@@ -265,7 +265,7 @@
         "albumList": "Álbuns",
         "library": "Biblioteca",
         "settings": "Configurações",
-        "version": "Versão %{version}",
+        "version": "Versão",
         "theme": "Tema",
         "personal": {
             "name": "Pessoal",
@@ -274,6 +274,13 @@
                 "language": "Língua",
                 "defaultView": "Tela inicial"
             }
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "Website",
+            "source": "Código fonte",
+            "featureRequests": "Pedido de funcionalidade"
         }
     },
     "player": {

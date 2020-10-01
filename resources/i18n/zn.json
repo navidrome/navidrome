@@ -265,7 +265,7 @@
     "menu": {
         "library": "曲库",
         "settings": "设置",
-        "version": "版本 %{version}",
+        "version": "版本",
         "theme": "主题",
         "personal": {
             "name": "个性化",

@@ -257,7 +257,7 @@
     "menu": {
         "library": "Bibliothek",
         "settings": "Einstellungen",
-        "version": "Version %{version}",
+        "version": "Version",
         "theme": "Design",
         "personal": {
             "name": "Persönlich",

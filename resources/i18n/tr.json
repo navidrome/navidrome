@@ -257,7 +257,7 @@
     "menu": {
         "library": "Müzik kütüphanesi",
         "settings": "Ayarlar",
-        "version": "Sürüm %{version}",
+        "version": "Sürüm",
         "theme": "Tema",
         "personal": {
             "name": "Kişisel",
