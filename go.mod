@@ -1,6 +1,6 @@
 module github.com/deluan/navidrome
 
-go 1.14
+go 1.15
 
 require (
 	github.com/Masterminds/squirrel v1.4.0
