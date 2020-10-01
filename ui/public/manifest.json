@@ -4,17 +4,17 @@
  "description": "Navidrome, an open source web-based music collection server and streamer",
  "categories": ["music", "entertainment"],
  "display": "standalone",
- "start_url": "/app/",
+ "start_url": "./",
  "background_color": "white",
  "theme_color": "blue",
  "icons": [
   {
-   "src": "/app/android-chrome-192x192.png",
+   "src": "./android-chrome-192x192.png",
    "sizes": "192x192",
    "type": "image/png"
   },
   {
-   "src": "/app/android-chrome-512x512.png",
+   "src": "./android-chrome-512x512.png",
    "sizes": "512x512",
    "type": "image/png"
   }
