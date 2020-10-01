@@ -14,6 +14,7 @@
     "ra-data-json-server": "^3.8.5",
     "react": "^16.13.1",
     "react-admin": "^3.8.5",
+    "react-device-detect": "^1.13.1",
     "react-dom": "^16.13.1",
     "react-drag-listview": "^0.1.7",
     "react-ga": "^3.1.2",
