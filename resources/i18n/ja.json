@@ -265,7 +265,7 @@
     "menu": {
         "library": "ライブラリ",
         "settings": "設定",
-        "version": "バージョン",
+        "version": "バージョン %{version}",
         "theme": "テーマ",
         "personal": {
             "name": "個人設定",
