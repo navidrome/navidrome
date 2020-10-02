@@ -111,8 +111,13 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 	return nil
 }
 
-func (s *SQLStore) GC(ctx context.Context) error {
-	err := s.Album(ctx).(*albumRepository).purgeEmpty()
+func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
+	err := s.MediaFile(ctx).(*mediaFileRepository).deleteNotInPath(rootFolder)
+	if err != nil {
+		log.Error(ctx, "Error removing dangling tracks", err)
+		return err
+	}
+	err = s.Album(ctx).(*albumRepository).purgeEmpty()
 	if err != nil {
 		log.Error(ctx, "Error removing empty albums", err)
 		return err
