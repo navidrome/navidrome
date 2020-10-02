@@ -23,8 +23,6 @@ const Toolbar = ({ id }) => {
   return <StarButton record={data} resource={resource} />
 }
 
-const PlayerToolbar = ({ id }) => (
-  <>{id ? <Toolbar id={id} /> : <Placeholder />} </>
-)
+const PlayerToolbar = ({ id }) => (id ? <Toolbar id={id} /> : <Placeholder />)
 
 export default PlayerToolbar
