@@ -71,10 +71,10 @@ const AboutDialog = ({ open, onClose }) => {
     <Dialog
       onClose={onClose}
       onBackdropClick={onClose}
-      aria-labelledby="customized-dialog-title"
+      aria-labelledby="about-dialog-title"
       open={open}
     >
-      <DialogTitle id="customized-dialog-title" onClose={onClose}>
+      <DialogTitle id="about-dialog-title" onClose={onClose}>
         Navidrome Music Server
       </DialogTitle>
       <DialogContent dividers>

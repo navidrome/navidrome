@@ -24,7 +24,10 @@
             "actions": {
                 "addToQueue": "Sonra çal",
                 "playNow": "Şimdi çal",
-                "addToPlaylist": "Çalma listesine ekle"
+                "addToPlaylist": "Çalma listesine ekle",
+                "shuffleAll": "Tümünü karıştır",
+                "download": "İndir",
+                "playNext": "Sonrakini çal"
             }
         },
         "album": {
@@ -45,14 +48,17 @@
                 "playAll": "Çaldır",
                 "playNext": "Sonrakini çal",
                 "addToQueue": "Sonra çal",
-                "shuffle": "Karıştır"
+                "shuffle": "Karıştır",
+                "addToPlaylist": "Playlist'e ekle",
+                "download": "İndir"
             },
             "lists": {
                 "all": "Hepsi",
                 "random": "Rasgele",
                 "recentlyAdded": "Son Eklenenler",
                 "recentlyPlayed": "Son oynatılan",
-                "mostPlayed": "En çok çalanlar"
+                "mostPlayed": "En çok çalanlar",
+                "starred": "Yıldızlı"
             }
         },
         "artist": {
@@ -60,7 +66,8 @@
             "fields": {
                 "name": "Ad",
                 "albumCount": "Albüm Sayısı",
-                "songCount": "Şarkı sayısı"
+                "songCount": "Şarkı sayısı",
+                "playCount": "Oynatma"
             }
         },
         "user": {
@@ -111,7 +118,8 @@
             },
             "actions": {
                 "selectPlaylist": "Bir çalma listesi seç:",
-                "addNewPlaylist": "Oluştur  \"%{name}\""
+                "addNewPlaylist": "Oluştur  \"%{name}\"",
+                "export": "Aktar"
             }
         }
     },
