@@ -263,9 +263,10 @@
         "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?"
     },
     "menu": {
+        "about": "Info",
         "library": "Biblioteca",
         "settings": "Configurações",
-        "version": "Versão %{version}",
+        "version": "Versão",
         "theme": "Tema",
         "personal": {
             "name": "Pessoal",
@@ -276,6 +277,13 @@
             }
         },
         "albumList": "Álbuns"
+    },
+    "about": {
+        "links": {
+            "homepage": "Website",
+            "source": "Código fonte",
+            "featureRequests": "Pedido de funcionalidade"
+        }
     },
     "player": {
         "playListsText": "Fila de Execução",

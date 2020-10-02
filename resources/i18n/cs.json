@@ -265,7 +265,7 @@
     "menu": {
         "library": "Knihovna",
         "settings": "Nastavení",
-        "version": "Verze %{version}",
+        "version": "Verze",
         "theme": "Motiv",
         "personal": {
             "name": "Osobní",
