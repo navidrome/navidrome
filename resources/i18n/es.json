@@ -187,7 +187,7 @@
             "dashboard": "Tablero",
             "edit": "%{name} #%{id}",
             "error": "Algo salió mal",
-            "list": "\n%{name}",
+            "list": "%{name}",
             "loading": "Cargando",
             "not_found": "No encontrado",
             "show": "%{name} #%{id}",
@@ -265,7 +265,7 @@
     "menu": {
         "library": "Biblioteca",
         "settings": "Ajustes",
-        "version": "Versión",
+        "version": "Versión %{version}",
         "theme": "Tema",
         "personal": {
             "name": "Personal",
