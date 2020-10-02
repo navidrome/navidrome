@@ -1,0 +1,4 @@
+User-agent: bingbot
+Disallow: /manifest.json
+
+User-agent: *

@@ -5,6 +5,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/deluan/navidrome/assets"
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
@@ -39,7 +40,7 @@ func (a *Server) MountRouter(urlPath string, subRouter Handler) {
 	log.Info("Mounting routes", "path", urlPath)
 	subRouter.Setup(urlPath)
 	a.router.Group(func(r chi.Router) {
-		r.Use(RequestLogger)
+		r.Use(requestLogger)
 		r.Mount(urlPath, subRouter)
 	})
 }
@@ -58,7 +59,8 @@ func (a *Server) initRoutes() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5, "application/xml", "application/json", "application/javascript"))
 	r.Use(middleware.Heartbeat("/ping"))
-	r.Use(InjectLogger)
+	r.Use(injectLogger)
+	r.Use(robotsTXT(assets.AssetFile()))
 
 	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI, "index.html")
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
@@ -87,7 +89,7 @@ func (a *Server) initScanner() {
 	}()
 }
 
-func InjectLogger(next http.Handler) http.Handler {
+func injectLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		ctx = log.NewContext(r.Context(), "requestId", ctx.Value(middleware.RequestIDKey))
