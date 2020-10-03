@@ -275,7 +275,8 @@
                 "defaultView": "默认界面"
             }
         },
-        "albumList": "专辑"
+        "albumList": "专辑",
+        "about": "关于"
     },
     "player": {
         "playListsText": "播放列表",
@@ -300,6 +301,13 @@
             "orderLoop": "列表循环",
             "singleLoop": "单曲循环",
             "shufflePlay": "随机播放"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "主页",
+            "source": "源代码",
+            "featureRequests": "功能需求"
         }
     }
 }
