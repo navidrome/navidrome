@@ -6,12 +6,14 @@ require (
 	github.com/Masterminds/squirrel v1.4.0
 	github.com/astaxie/beego v1.12.2
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
+	github.com/cespare/reflex v0.3.0
 	github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/fscache v0.10.1
 	github.com/dustin/go-humanize v1.0.0
+	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-chi/cors v1.1.1
 	github.com/go-chi/httprate v0.4.0
@@ -35,10 +37,12 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.7.1
+	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344 // indirect
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	golang.org/x/text v0.3.3 // indirect
+	golang.org/x/tools v0.0.0-20200117065230-39095c1d176c
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
 	gopkg.in/djherbis/stream.v1 v1.3.1 // indirect
