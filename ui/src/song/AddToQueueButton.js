@@ -8,9 +8,9 @@ import {
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import { addTracks } from '../audioplayer'
-import AddToQueueIcon from '@material-ui/icons/AddToQueue'
+import { RiPlayListAddFill } from 'react-icons/ri'
 
-const AddToQueueButton = ({ resource, selectedIds }) => {
+const AddToQueueButton = ({ resource, selectedIds, action, label, icon }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const dataProvider = useDataProvider()
@@ -27,7 +27,7 @@ const AddToQueueButton = ({ resource, selectedIds }) => {
           {}
         )
         // Add the tracks to the queue in the selection order
-        dispatch(addTracks(tracks, selectedIds))
+        dispatch(action(tracks, selectedIds))
       })
       .catch(() => {
         notify('ra.page.error', 'warning')
@@ -36,14 +36,16 @@ const AddToQueueButton = ({ resource, selectedIds }) => {
   }
 
   return (
-    <Button
-      color="secondary"
-      onClick={addToQueue}
-      label={translate('resources.song.actions.addToQueue')}
-    >
-      <AddToQueueIcon />
+    <Button color="secondary" onClick={addToQueue} label={translate(label)}>
+      {icon}
     </Button>
   )
+}
+
+AddToQueueButton.defaultProps = {
+  action: addTracks,
+  label: 'resources.song.actions.addToQueue',
+  icon: <RiPlayListAddFill />,
 }
 
 export default AddToQueueButton

@@ -8,7 +8,9 @@ import {
   TextField,
   BooleanInput,
   required,
+  useTranslate,
 } from 'react-admin'
+import { Title } from '../common'
 
 const SyncFragment = ({ formData, ...rest }) => {
   return (
@@ -19,8 +21,14 @@ const SyncFragment = ({ formData, ...rest }) => {
   )
 }
 
+const PlaylistTitle = ({ record }) => {
+  const translate = useTranslate()
+  const resourceName = translate('resources.playlist.name', { smart_count: 1 })
+  return <Title subTitle={`${resourceName} "${record ? record.name : ''}"`} />
+}
+
 const PlaylistEdit = (props) => (
-  <Edit {...props}>
+  <Edit title={<PlaylistTitle />} {...props}>
     <SimpleForm redirect="list" variant={'outlined'}>
       <TextInput source="name" validate={required()} />
       <TextInput multiline source="comment" />

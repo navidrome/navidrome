@@ -11,23 +11,26 @@
     "lodash.throttle": "^4.1.1",
     "md5-hex": "^3.0.1",
     "prop-types": "^15.7.2",
-    "ra-data-json-server": "^3.7.1",
+    "ra-data-json-server": "^3.8.5",
     "react": "^16.13.1",
-    "react-admin": "^3.7.1",
+    "react-admin": "^3.8.5",
     "react-dom": "^16.13.1",
     "react-drag-listview": "^0.1.7",
     "react-ga": "^3.1.2",
+    "react-hot-keys": "^2.6.0",
+    "react-icons": "^3.11.0",
     "react-image-lightbox": "^5.1.1",
-    "react-jinke-music-player": "^4.18.0",
-    "react-measure": "^2.3.0",
+    "react-jinke-music-player": "^4.18.3",
+    "react-measure": "^2.5.2",
     "react-redux": "^7.2.1",
-    "react-scripts": "^3.4.3"
+    "react-scripts": "^3.4.3",
+    "uuid": "^8.3.0"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^5.11.3",
-    "@testing-library/react": "^10.4.8",
-    "@testing-library/user-event": "^12.1.1",
-    "prettier": "^2.0.5"
+    "@testing-library/jest-dom": "^5.11.4",
+    "@testing-library/react": "^11.0.4",
+    "@testing-library/user-event": "^12.1.6",
+    "prettier": "^2.1.2"
   },
   "scripts": {
     "start": "react-scripts start",

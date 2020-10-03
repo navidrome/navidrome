@@ -26,7 +26,8 @@
                 "playNow": "すぐに再生",
                 "addToPlaylist": "プレイリストに追加",
                 "shuffleAll": "全曲シャッフル",
-                "download": "ダウンロード"
+                "download": "ダウンロード",
+                "playNext": "次に再生"
             }
         },
         "album": {
@@ -264,7 +265,7 @@
     "menu": {
         "library": "ライブラリ",
         "settings": "設定",
-        "version": "バージョン %{version}",
+        "version": "バージョン",
         "theme": "テーマ",
         "personal": {
             "name": "個人設定",

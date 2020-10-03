@@ -16,17 +16,18 @@
                 "compilation": "Compilation",
                 "year": "Year",
                 "size": "File size",
-                "bitRate": "Bit rate",
                 "updatedAt": "Updated at",
+                "bitRate": "Bit rate",
                 "discSubtitle": "Disc Subtitle",
                 "starred": "Starred"
             },
             "actions": {
                 "addToQueue": "Play Later",
-                "addToPlaylist": "Add to Playlist",
                 "playNow": "Play Now",
+                "addToPlaylist": "Add to Playlist",
                 "shuffleAll": "Shuffle All",
-                "download": "Download"
+                "download": "Download",
+                "playNext": "Play Next"
             }
         },
         "album": {
@@ -41,7 +42,7 @@
                 "genre": "Genre",
                 "compilation": "Compilation",
                 "year": "Year",
-                "updatedAt":"Updated at"
+                "updatedAt": "Updated at"
             },
             "actions": {
                 "playAll": "Play",
@@ -54,10 +55,10 @@
             "lists": {
                 "all": "All",
                 "random": "Random",
-                "starred": "Starred",
                 "recentlyAdded": "Recently Added",
                 "recentlyPlayed": "Recently Played",
-                "mostPlayed": "Most Played"
+                "mostPlayed": "Most Played",
+                "starred": "Starred"
             }
         },
         "artist": {
@@ -69,35 +70,15 @@
                 "playCount": "Plays"
             }
         },
-        "playlist": {
-            "name": "Playlist |||| Playlists",
-            "fields": {
-                "name": "Name",
-                "comment": "Comment",
-                "duration": "Duration",
-                "songCount": "Songs",
-                "owner": "Owner",
-                "public": "Public",
-                "sync": "Auto-import",
-                "path": "Import from",
-                "updatedAt":"Updated at",
-                "createdAt": "Created at"
-            },
-            "actions": {
-                "selectPlaylist": "Select a playlist:",
-                "addNewPlaylist": "Create \"%{name}\"",
-                "export": "Export"
-            }
-        },
         "user": {
             "name": "User |||| Users",
             "fields": {
                 "userName": "Username",
-                "name": "Name",
-                "password": "Password",
                 "isAdmin": "Is Admin",
                 "lastLoginAt": "Last Login At",
                 "updatedAt": "Updated at",
+                "name": "Name",
+                "password": "Password",
                 "createdAt": "Created at"
             }
         },
@@ -119,6 +100,26 @@
                 "targetFormat": "Target Format",
                 "defaultBitRate": "Default Bit Rate",
                 "command": "Command"
+            }
+        },
+        "playlist": {
+            "name": "Playlist |||| Playlists",
+            "fields": {
+                "name": "Name",
+                "duration": "Duration",
+                "owner": "Owner",
+                "public": "Public",
+                "updatedAt": "Updated at",
+                "createdAt": "Created at",
+                "songCount": "Songs",
+                "comment": "Comment",
+                "sync": "Auto-import",
+                "path": "Import from"
+            },
+            "actions": {
+                "selectPlaylist": "Select a playlist:",
+                "addNewPlaylist": "Create \"%{name}\"",
+                "export": "Export"
             }
         }
     },
@@ -171,11 +172,11 @@
             "show": "Show",
             "sort": "Sort",
             "undo": "Undo",
-            "unselect": "Unselect",
             "expand": "Expand",
             "close": "Close",
             "open_menu": "Open menu",
-            "close_menu": "Close menu"
+            "close_menu": "Close menu",
+            "unselect": "Unselect"
         },
         "boolean": {
             "true": "Yes",
@@ -235,7 +236,7 @@
             "page_out_from_end": "Cannot go after last page",
             "page_out_from_begin": "Cannot go before page 1",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} of %{total}",
-            "page_rows_per_page": "Rows per page:",
+            "page_rows_per_page": "Items per page:",
             "next": "Next",
             "prev": "Prev"
         },
@@ -262,10 +263,9 @@
         "delete_user_content": "Are you sure you want to delete this user and all their data (including playlists and preferences)?"
     },
     "menu": {
-        "albumList": "Albums",
         "library": "Library",
         "settings": "Settings",
-        "version": "Version %{version}",
+        "version": "Version",
         "theme": "Theme",
         "personal": {
             "name": "Personal",
@@ -274,6 +274,15 @@
                 "language": "Language",
                 "defaultView": "Default View"
             }
+        },
+        "albumList": "Albums",
+        "about": "About"
+    },
+    "about": {
+        "links": {
+            "homepage": "Home page",
+            "source": "Source code",
+            "featureRequests": "Feature requests"
         }
     },
     "player": {

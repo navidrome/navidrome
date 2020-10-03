@@ -71,6 +71,7 @@ StarButton.defaultProps = {
   record: {},
   visible: true,
   size: 'small',
+  color: 'inherit',
 }
 
 export default StarButton

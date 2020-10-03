@@ -10,8 +10,8 @@ import {
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
-import AddToQueueIcon from '@material-ui/icons/AddToQueue'
-import { addTracks, playTracks, shuffleTracks } from '../audioplayer'
+import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
+import { playNext, addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import subsonic from '../subsonic'
 
 const AlbumActions = ({ className, ids, data, record, ...rest }) => {
@@ -20,6 +20,10 @@ const AlbumActions = ({ className, ids, data, record, ...rest }) => {
 
   const handlePlay = React.useCallback(() => {
     dispatch(playTracks(data, ids))
+  }, [dispatch, data, ids])
+
+  const handlePlayNext = React.useCallback(() => {
+    dispatch(playNext(data, ids))
   }, [dispatch, data, ids])
 
   const handlePlayLater = React.useCallback(() => {
@@ -49,10 +53,16 @@ const AlbumActions = ({ className, ids, data, record, ...rest }) => {
         <ShuffleIcon />
       </Button>
       <Button
+        onClick={handlePlayNext}
+        label={translate('resources.album.actions.playNext')}
+      >
+        <RiPlayList2Fill />
+      </Button>
+      <Button
         onClick={handlePlayLater}
         label={translate('resources.album.actions.addToQueue')}
       >
-        <AddToQueueIcon />
+        <RiPlayListAddFill />
       </Button>
       <Button
         onClick={handleDownload}

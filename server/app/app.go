@@ -71,7 +71,7 @@ func (app *Router) routes(path string) http.Handler {
 	})
 
 	// Serve UI app assets
-	r.Handle("/", ServeIndex(app.ds, assets.AssetFile()))
+	r.Handle("/", serveIndex(app.ds, assets.AssetFile()))
 	r.Handle("/*", http.StripPrefix(path, http.FileServer(assets.AssetFile())))
 
 	return r

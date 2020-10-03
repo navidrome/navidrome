@@ -7,20 +7,6 @@ before:
     - go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
 
 builds:
-  - id: navidrome_darwin
-    env:
-      - CGO_ENABLED=1
-      - CC=o64-clang
-      - CXX=o64-clang++
-    goos:
-      - darwin
-    goarch:
-      - amd64
-    flags:
-      - -tags=embed
-    ldflags:
-      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
-
   - id: navidrome_linux_amd64
     env:
       - CGO_ENABLED=1
@@ -31,7 +17,7 @@ builds:
     flags:
       - -tags=embed
     ldflags:
-      - "-extldflags '-static'"
+      - "-extldflags '-static -lz'"
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_386
@@ -50,7 +36,8 @@ builds:
   - id: navidrome_linux_arm
     env:
       - CGO_ENABLED=1
-      - CC=arm-linux-gnueabi-gcc-5
+      - CC=arm-linux-gnueabi-gcc
+      - CXX=arm-linux-gnueabi-g++
     goos:
       - linux
     goarch:
@@ -68,7 +55,8 @@ builds:
   - id: navidrome_linux_arm64
     env:
       - CGO_ENABLED=1
-      - CC=aarch64-linux-gnu-gcc-5
+      - CC=aarch64-linux-gnu-gcc
+      - CXX=aarch64-linux-gnu-g++
     goos:
       - linux
     goarch:
@@ -84,6 +72,7 @@ builds:
       - CGO_ENABLED=1
       - CC=i686-w64-mingw32-gcc
       - CXX=i686-w64-mingw32-g++
+      - PKG_CONFIG_PATH=/mingw32/lib/pkgconfig
     goos:
       - windows
     goarch:
@@ -99,6 +88,7 @@ builds:
       - CGO_ENABLED=1
       - CC=x86_64-w64-mingw32-gcc
       - CXX=x86_64-w64-mingw32-g++
+      - PKG_CONFIG_PATH=/mingw64/lib/pkgconfig
     goos:
       - windows
     goarch:
@@ -107,6 +97,21 @@ builds:
       - -tags=embed
     ldflags:
       - "-extldflags '-static'"
+      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+
+  - id: navidrome_darwin
+    env:
+      - CGO_ENABLED=1
+      - CC=o64-clang
+      - CXX=o64-clang++
+      - PKG_CONFIG_PATH=/darwin/lib/pkgconfig
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    flags:
+      - -tags=embed
+    ldflags:
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 
 archives:

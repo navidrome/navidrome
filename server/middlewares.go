@@ -3,13 +3,14 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/deluan/navidrome/log"
 	"github.com/go-chi/chi/middleware"
 )
 
-func RequestLogger(next http.Handler) http.Handler {
+func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		scheme := "http"
 		if r.TLS != nil {
@@ -43,4 +44,17 @@ func RequestLogger(next http.Handler) http.Handler {
 			log.Debug(logArgs...)
 		}
 	})
+}
+
+func robotsTXT(fs http.FileSystem) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/robots.txt") {
+				r.URL.Path = "/robots.txt"
+				http.FileServer(fs).ServeHTTP(w, r)
+			} else {
+				next.ServeHTTP(w, r)
+			}
+		})
+	}
 }

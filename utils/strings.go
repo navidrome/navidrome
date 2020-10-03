@@ -39,8 +39,8 @@ func MoveString(array []string, srcIndex int, dstIndex int) []string {
 	return InsertString(RemoveString(array, srcIndex), value, dstIndex)
 }
 
-func BreakUpStringSlice(mediaFileIds []string, chunkSize int) [][]string {
-	numTracks := len(mediaFileIds)
+func BreakUpStringSlice(items []string, chunkSize int) [][]string {
+	numTracks := len(items)
 	var chunks [][]string
 	for i := 0; i < numTracks; i += chunkSize {
 		end := i + chunkSize
@@ -48,7 +48,7 @@ func BreakUpStringSlice(mediaFileIds []string, chunkSize int) [][]string {
 			end = numTracks
 		}
 
-		chunks = append(chunks, mediaFileIds[i:end])
+		chunks = append(chunks, items[i:end])
 	}
 	return chunks
 }

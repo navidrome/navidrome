@@ -1,6 +1,6 @@
 module github.com/deluan/navidrome
 
-go 1.14
+go 1.15
 
 require (
 	github.com/Masterminds/squirrel v1.4.0
@@ -16,19 +16,19 @@ require (
 	github.com/go-chi/cors v1.1.1
 	github.com/go-chi/httprate v0.4.0
 	github.com/go-chi/jwtauth v4.0.4+incompatible
-	github.com/google/uuid v1.1.1
+	github.com/google/uuid v1.1.2
 	github.com/google/wire v0.4.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/lib/pq v1.3.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/microcosm-cc/bluemonday v1.0.4
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
-	github.com/onsi/ginkgo v1.14.0
-	github.com/onsi/gomega v1.10.1
+	github.com/onsi/ginkgo v1.14.1
+	github.com/onsi/gomega v1.10.2
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pressly/goose v2.6.0+incompatible
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/afero v1.3.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/cobra v1.0.0

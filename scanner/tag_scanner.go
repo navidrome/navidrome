@@ -12,6 +12,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
+	"github.com/deluan/navidrome/scanner/metadata"
 	"github.com/deluan/navidrome/utils"
 )
 
@@ -32,13 +33,11 @@ func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
 	}
 }
 
-type (
-	counters struct {
-		added   int64
-		updated int64
-		deleted int64
-	}
-)
+type counters struct {
+	added   int64
+	updated int64
+	deleted int64
+}
 
 const (
 	// filesBatchSize used for batching file metadata extraction
@@ -124,7 +123,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		log.Debug("Playlist auto-import is disabled")
 	}
 
-	err = s.ds.GC(log.NewContext(ctx))
+	err = s.ds.GC(log.NewContext(ctx), s.rootFolder)
 	log.Info("Finished processing Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start),
 		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted, "playlistsImported", plsCount)
 
@@ -341,7 +340,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, curr
 }
 
 func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
-	mds, err := ExtractAllMetadata(filePaths)
+	mds, err := metadata.Extract(filePaths...)
 	if err != nil {
 		return nil, err
 	}

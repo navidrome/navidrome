@@ -7,8 +7,6 @@ import {
   TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
 import StarIcon from '@material-ui/icons/Star'
 import {
   DurationField,
@@ -27,14 +25,6 @@ import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 
-const useStyles = makeStyles({
-  columnIcon: {
-    marginLeft: '3px',
-    marginTop: '-2px',
-    verticalAlign: 'text-top',
-  },
-})
-
 const SongFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
     <SearchInput source="title" alwaysOn />
@@ -47,7 +37,6 @@ const SongFilter = (props) => (
 )
 
 const SongList = (props) => {
-  const classes = useStyles()
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -74,7 +63,7 @@ const SongList = (props) => {
             tertiaryText={(r) => (
               <>
                 <DurationField record={r} source={'duration'} />
-                &nbsp;&nbsp;&nbsp;
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
               </>
             )}
             linkType={(id, basePath, record) => dispatch(setTrack(record))}
@@ -105,12 +94,6 @@ const SongList = (props) => {
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}
               sortByOrder={'DESC'}
-              label={
-                <StarBorderIcon
-                  fontSize={'small'}
-                  className={classes.columnIcon}
-                />
-              }
             />
           </SongDatagrid>
         )}

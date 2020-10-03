@@ -1,7 +1,10 @@
 import 'react-jinke-music-player/assets/index.css'
+import get from 'lodash.get'
+import { v4 as uuidv4 } from 'uuid'
 import subsonic from '../subsonic'
 
 const PLAYER_ADD_TRACKS = 'PLAYER_ADD_TRACKS'
+const PLAYER_PLAY_NEXT = 'PLAYER_PLAY_NEXT'
 const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
 const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
 const PLAYER_CLEAR_QUEUE = 'PLAYER_CLEAR_QUEUE'
@@ -23,6 +26,7 @@ const mapToAudioLists = (item) => {
     cover: subsonic.url('getCoverArt', id, { size: 300 }),
     musicSrc: subsonic.url('stream', id, { ts: true }),
     scrobbled: false,
+    uuid: uuidv4(),
   }
 }
 
@@ -42,6 +46,14 @@ const addTracks = (data, ids) => {
   const songs = filterSongs(data, ids)
   return {
     type: PLAYER_ADD_TRACKS,
+    data: songs,
+  }
+}
+
+const playNext = (data, ids) => {
+  const songs = filterSongs(data, ids)
+  return {
+    type: PLAYER_PLAY_NEXT,
     data: songs,
   }
 }
@@ -105,10 +117,17 @@ const setVolume = (volume) => ({
   data: { volume },
 })
 
-const initialState = { queue: [], clear: true, current: {}, volume: 1 }
+const initialState = {
+  queue: [],
+  clear: true,
+  current: {},
+  volume: 1,
+  playIndex: 0,
+}
 
 const playQueueReducer = (previousState = initialState, payload) => {
   let queue, current
+  let newQueue
   const { type, data } = payload
   switch (type) {
     case PLAYER_CLEAR_QUEUE:
@@ -116,6 +135,7 @@ const playQueueReducer = (previousState = initialState, payload) => {
     case PLAYER_SET_VOLUME:
       return {
         ...previousState,
+        playIndex: undefined,
         volume: data.volume,
       }
     case PLAYER_CURRENT:
@@ -124,11 +144,13 @@ const playQueueReducer = (previousState = initialState, payload) => {
         ? {}
         : {
             trackId: data.trackId,
+            uuid: data.uuid,
             paused: data.paused,
           }
       return {
         ...previousState,
         current,
+        playIndex: undefined,
         volume: data.volume,
       }
     case PLAYER_ADD_TRACKS:
@@ -136,12 +158,37 @@ const playQueueReducer = (previousState = initialState, payload) => {
       Object.keys(data).forEach((id) => {
         queue.push(mapToAudioLists(data[id]))
       })
-      return { ...previousState, queue, clear: false }
+      return { ...previousState, queue, clear: false, playIndex: undefined }
+    case PLAYER_PLAY_NEXT:
+      current = get(previousState.current, 'uuid', '')
+      newQueue = []
+      let foundPos = false
+      previousState.queue.forEach((item) => {
+        newQueue.push(item)
+        if (item.uuid === current) {
+          foundPos = true
+          Object.keys(data).forEach((id) => {
+            newQueue.push(mapToAudioLists(data[id]))
+          })
+        }
+      })
+      if (!foundPos) {
+        Object.keys(data).forEach((id) => {
+          newQueue.push(mapToAudioLists(data[id]))
+        })
+      }
+      return {
+        ...previousState,
+        queue: newQueue,
+        clear: true,
+        playIndex: undefined,
+      }
     case PLAYER_SET_TRACK:
       return {
         ...previousState,
         queue: [mapToAudioLists(data)],
         clear: true,
+        playIndex: 0,
       }
     case PLAYER_SYNC_QUEUE:
       current = data.length > 0 ? previousState.current : {}
@@ -149,10 +196,11 @@ const playQueueReducer = (previousState = initialState, payload) => {
         ...previousState,
         queue: data,
         clear: false,
+        playIndex: undefined,
         current,
       }
     case PLAYER_SCROBBLE:
-      const newQueue = previousState.queue.map((item) => {
+      newQueue = previousState.queue.map((item) => {
         return {
           ...item,
           scrobbled:
@@ -162,6 +210,7 @@ const playQueueReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         queue: newQueue,
+        playIndex: undefined,
         clear: false,
       }
     case PLAYER_PLAY_TRACKS:
@@ -178,6 +227,7 @@ const playQueueReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         queue,
+        playIndex: 0,
         clear: true,
       }
     default:
@@ -189,6 +239,7 @@ export {
   addTracks,
   setTrack,
   playTracks,
+  playNext,
   syncQueue,
   clearQueue,
   scrobble,

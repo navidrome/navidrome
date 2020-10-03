@@ -1,9 +1,4 @@
 #!/bin/sh
 set -e
 
-echo "#### Linting"
-golangci-lint run -v
-
-echo
-echo "#### Running tests"
-make test
+make pre-push

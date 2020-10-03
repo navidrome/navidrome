@@ -18,14 +18,16 @@
                 "size": "Tamanho",
                 "updatedAt": "Últ. Atualização",
                 "bitRate": "Bitrate",
-                "discSubtitle": "Sub-título do disco"
+                "discSubtitle": "Sub-título do disco",
+                "starred": "Favorita"
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
                 "playNow": "Tocar agora",
                 "addToPlaylist": "Adicionar à playlist",
                 "shuffleAll": "Aleatório",
-                "download": "Baixar"
+                "download": "Baixar",
+                "playNext": "Toca a seguir"
             }
         },
         "album": {
@@ -53,10 +55,10 @@
             "lists": {
                 "all": "Todos",
                 "random": "Aleatório",
-                "starred": "Favoritos",
                 "recentlyAdded": "Recém-adicionados",
                 "recentlyPlayed": "Recém-tocados",
-                "mostPlayed": "Mais tocados"
+                "mostPlayed": "Mais tocados",
+                "starred": "Favoritos"
             }
         },
         "artist": {
@@ -104,13 +106,13 @@
             "name": "Playlist |||| Playlists",
             "fields": {
                 "name": "Nome",
-                "comment": "Comentário",
                 "duration": "Duração",
                 "owner": "Dono",
                 "public": "Pública",
                 "updatedAt": "Últ. Atualização",
                 "createdAt": "Data de Criação ",
                 "songCount": "Músicas",
+                "comment": "Comentário",
                 "sync": "Auto-importar",
                 "path": "Importar de"
             },
@@ -170,11 +172,11 @@
             "show": "Exibir",
             "sort": "Ordenar",
             "undo": "Desfazer",
-            "unselect": "Deselecionar",
             "expand": "Expandir",
             "close": "Fechar",
             "open_menu": "Abrir menu",
-            "close_menu": "Fechar menu"
+            "close_menu": "Fechar menu",
+            "unselect": "Deselecionar"
         },
         "boolean": {
             "true": "Sim",
@@ -261,10 +263,10 @@
         "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?"
     },
     "menu": {
-        "albumList": "Álbuns",
+        "about": "Info",
         "library": "Biblioteca",
         "settings": "Configurações",
-        "version": "Versão %{version}",
+        "version": "Versão",
         "theme": "Tema",
         "personal": {
             "name": "Pessoal",
@@ -273,6 +275,14 @@
                 "language": "Língua",
                 "defaultView": "Tela inicial"
             }
+        },
+        "albumList": "Álbuns"
+    },
+    "about": {
+        "links": {
+            "homepage": "Website",
+            "source": "Código fonte",
+            "featureRequests": "Solicitar funcionalidade"
         }
     },
     "player": {

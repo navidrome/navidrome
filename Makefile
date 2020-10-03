@@ -86,15 +86,22 @@ buildall: check_env
 	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=embed
 .PHONY: buildall
 
+pre-push:
+	golangci-lint run -v
+
+	@echo
+	make test
+.PHONY: pre-push
+
 release:
 	@if [[ ! "${V}" =~ ^[0-9]+\.[0-9]+\.[0-9]+.*$$ ]]; then echo "Usage: make release V=X.X.X"; exit 1; fi
 	go mod tidy
 	@if [ -n "`git status -s`" ]; then echo "\n\nThere are pending changes. Please commit or stash first"; exit 1; fi
-	make test
+	make pre-push
 	git tag v${V}
-	git push origin v${V}
+	git push origin v${V} --no-verify
 .PHONY: release
 
 snapshot:
-	 docker run -it -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.14.4-3 goreleaser release --rm-dist --skip-publish --snapshot
+	 docker run -it -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.15.2-1 goreleaser release --rm-dist --skip-publish --snapshot
 .PHONY: snapshot

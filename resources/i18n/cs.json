@@ -26,7 +26,8 @@
                 "playNow": "Přehrát nyní",
                 "addToPlaylist": "Přidat do seznamu skladeb",
                 "shuffleAll": "Zamíchat vše",
-                "download": "Stáhnout"
+                "download": "Stáhnout",
+                "playNext": "Přehrát další"
             }
         },
         "album": {
@@ -55,7 +56,7 @@
                 "all": "Všechno",
                 "random": "Náhodné",
                 "recentlyAdded": "Nedávno přidané",
-                "recentlyPlayed": "Nedávno přehráté",
+                "recentlyPlayed": "Nedávno přehrané",
                 "mostPlayed": "Nejpřehrávanější",
                 "starred": "Oblíbené"
             }
@@ -264,7 +265,7 @@
     "menu": {
         "library": "Knihovna",
         "settings": "Nastavení",
-        "version": "Verze %{version}",
+        "version": "Verze",
         "theme": "Motiv",
         "personal": {
             "name": "Osobní",
