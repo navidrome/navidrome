@@ -53,6 +53,7 @@ func (a *Server) Run(addr string) {
 func (a *Server) initRoutes() {
 	r := chi.NewRouter()
 
+	r.Use(secureMiddleware())
 	r.Use(cors.AllowAll().Handler)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -87,12 +88,4 @@ func (a *Server) initScanner() {
 			time.Sleep(interval)
 		}
 	}()
-}
-
-func injectLogger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		ctx = log.NewContext(r.Context(), "requestId", ctx.Value(middleware.RequestIDKey))
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
 }
