@@ -26,6 +26,10 @@ const url = (command, id, options) => {
 const scrobble = (id, submit) =>
   fetchUtils.fetchJson(url('scrobble', id, { submission: submit }))
 
+const star = (id) => fetchUtils.fetchJson(url('star', id))
+
+const unstar = (id) => fetchUtils.fetchJson(url('unstar', id))
+
 const download = (id) => (window.location.href = url('download', id))
 
-export default { url, scrobble, download }
+export default { url, scrobble, download, star, unstar }

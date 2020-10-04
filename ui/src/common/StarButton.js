@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
-import { useNotify, useRefresh, useUpdate } from 'react-admin'
+import { useNotify, useDataProvider } from 'react-admin'
 import StarIcon from '@material-ui/icons/Star'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import IconButton from '@material-ui/core/IconButton'
 import { makeStyles } from '@material-ui/core/styles'
+import subsonic from '../subsonic'
 
 const useStyles = makeStyles({
   star: {
@@ -15,30 +16,42 @@ const useStyles = makeStyles({
 })
 
 const StarButton = ({ resource, record, color, visible, size }) => {
+  const [loading, setLoading] = useState(false)
   const classes = useStyles({ color, visible, starred: record.starred })
   const notify = useNotify()
-  const refresh = useRefresh()
 
-  const [toggleStarred, { loading }] = useUpdate(
-    resource,
-    record.id,
-    {
-      ...record,
-      starred: !record.starred,
-    },
-    {
-      undoable: false,
-      onFailure: (error) => {
-        console.log(error)
-        notify('ra.page.error', 'warning')
-        refresh()
-      },
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
     }
-  )
+  }, [])
+
+  const dataProvider = useDataProvider()
+
+  const refreshRecord = useCallback(() => {
+    dataProvider.getOne(resource, { id: record.id }).then(() => {
+      if (mountedRef.current) {
+        setLoading(false)
+      }
+    })
+  }, [dataProvider, record.id, resource])
 
   const handleToggleStar = (e) => {
     e.preventDefault()
-    toggleStarred()
+    const toggleStar = record.starred ? subsonic.unstar : subsonic.star
+
+    setLoading(true)
+    toggleStar(record.id)
+      .then(refreshRecord)
+      .catch((e) => {
+        console.log('Error toggling star: ', e)
+        notify('ra.page.error', 'warning')
+        if (mountedRef.current) {
+          setLoading(false)
+        }
+      })
     e.stopPropagation()
   }
 

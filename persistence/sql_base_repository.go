@@ -171,9 +171,6 @@ func (r sqlRepository) put(id string, m interface{}) (newId string, err error) {
 			return "", err
 		}
 		if count > 0 {
-			if _, ok := m.(model.AnnotatedModel); ok {
-				err = r.updateAnnotations(id, m)
-			}
 			return id, err
 		}
 	}

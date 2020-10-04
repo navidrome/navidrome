@@ -96,12 +96,3 @@ func (r sqlRepository) cleanAnnotations() error {
 	}
 	return nil
 }
-
-func (r sqlRepository) updateAnnotations(id string, m interface{}) error {
-	ans := m.(model.AnnotatedModel).GetAnnotations()
-	err := r.SetStar(ans.Starred, id)
-	if err != nil {
-		return err
-	}
-	return r.SetRating(ans.Rating, id)
-}
