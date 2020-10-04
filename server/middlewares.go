@@ -8,6 +8,7 @@ import (
 
 	"github.com/deluan/navidrome/log"
 	"github.com/go-chi/chi/middleware"
+	"github.com/unrolled/secure"
 )
 
 func requestLogger(next http.Handler) http.Handler {
@@ -46,6 +47,14 @@ func requestLogger(next http.Handler) http.Handler {
 	})
 }
 
+func injectLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		ctx = log.NewContext(r.Context(), "requestId", ctx.Value(middleware.RequestIDKey))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func robotsTXT(fs http.FileSystem) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -57,4 +66,15 @@ func robotsTXT(fs http.FileSystem) func(next http.Handler) http.Handler {
 			}
 		})
 	}
+}
+
+func secureMiddleware() func(h http.Handler) http.Handler {
+	sec := secure.New(secure.Options{
+		ContentTypeNosniff:    true,
+		FrameDeny:             true,
+		ReferrerPolicy:        "same-origin",
+		FeaturePolicy:         "autoplay 'none'; camera: 'none'; display-capture 'none'; microphone: 'none'; usb: 'none'",
+		ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
+	})
+	return sec.Handler
 }
