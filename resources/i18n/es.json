@@ -275,7 +275,8 @@
                 "defaultView": "Vista por defecto"
             }
         },
-        "albumList": "Álbumes"
+        "albumList": "Álbumes",
+        "about": "Acerca de"
     },
     "player": {
         "playListsText": "Lista de Reproducción",
@@ -300,6 +301,13 @@
             "orderLoop": "Repetir",
             "singleLoop": "Repetir Una",
             "shufflePlay": "Aleatorio"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "Página de inicio",
+            "source": "Código Fuente",
+            "featureRequests": "Pedir funcionalidad"
         }
     }
 }
