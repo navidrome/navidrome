@@ -56,7 +56,7 @@
                 "all": "Všechno",
                 "random": "Náhodné",
                 "recentlyAdded": "Nedávno přidané",
-                "recentlyPlayed": "Nedávno přehráté",
+                "recentlyPlayed": "Nedávno přehrané",
                 "mostPlayed": "Nejpřehrávanější",
                 "starred": "Oblíbené"
             }
@@ -265,7 +265,7 @@
     "menu": {
         "library": "Knihovna",
         "settings": "Nastavení",
-        "version": "Verze %{version}",
+        "version": "Verze",
         "theme": "Motiv",
         "personal": {
             "name": "Osobní",

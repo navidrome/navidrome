@@ -108,7 +108,7 @@ func (r mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, error
 	return res, err
 }
 
-func pathStartsWith(path string) Sqlizer {
+func pathStartsWith(path string) Eq {
 	cleanPath := filepath.Clean(path)
 	substr := fmt.Sprintf("substr(path, 1, %d)", utf8.RuneCountInString(cleanPath))
 	return Eq{substr: cleanPath}
@@ -122,6 +122,17 @@ func (r mediaFileRepository) FindPathsRecursively(basePath string) ([]string, er
 	var res []string
 	err := r.queryAll(sel, &res)
 	return res, err
+}
+
+func (r mediaFileRepository) deleteNotInPath(basePath string) error {
+	sel := Delete(r.tableName).Where(NotEq(pathStartsWith(basePath)))
+	c, err := r.executeSQL(sel)
+	if err == nil {
+		if c > 0 {
+			log.Debug(r.ctx, "Deleted dangling tracks", "totalDeleted", c)
+		}
+	}
+	return err
 }
 
 func (r mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {

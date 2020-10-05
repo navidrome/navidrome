@@ -255,8 +255,8 @@
     },
     "message": {
         "note": "注意",
-        "transcodingDisabled": "Web インターフェイスからトランスコード設定を変更することは、セキュリティ上の理由から無効になっています。これを変更したい場合 %{config} を編集しサーバーを再起動してください。",
-        "transcodingEnabled": "Navidromeは現在 %{config} で実行されており、Webインターフェイスのトランスコード設定からシステムコマンドを実行できます。\nこれはセキュリティ上の理由により推奨されません。\n設定を変更する場合のみ有効にすることをお勧めします。\n",
+        "transcodingDisabled": "セキュリティ上の理由から、Web インターフェイスからのトランスコード設定は無効になっています。\nこれを設定したい場合、環境変数 %{config} を設定しサーバーを再起動してください。",
+        "transcodingEnabled": "Navidromeは現在 %{config} の設定で実行されており、WebUIのトランスコード設定からコマンドを実行できます。\nセキュリティ上の問題から、この設定はトランスコード設定を変更する時のみ有効にすることを推奨します。",
         "songsAddedToPlaylist": "プレイリストへ1曲追加しました |||| プレイリストへ%{smart_count}曲追加しました",
         "noPlaylistsAvailable": "利用不可",
         "delete_user_title": "'%{name}' を削除",
@@ -265,7 +265,7 @@
     "menu": {
         "library": "ライブラリ",
         "settings": "設定",
-        "version": "バージョン %{version}",
+        "version": "バージョン",
         "theme": "テーマ",
         "personal": {
             "name": "個人設定",
@@ -275,7 +275,8 @@
                 "defaultView": "デフォルト画面"
             }
         },
-        "albumList": "アルバム"
+        "albumList": "アルバム",
+        "about": "詳細"
     },
     "player": {
         "playListsText": "再生リスト",
@@ -300,6 +301,13 @@
             "orderLoop": "リピート",
             "singleLoop": "一曲リピート",
             "shufflePlay": "シャッフル"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "ホームページ",
+            "source": "ソースコード",
+            "featureRequests": "機能リクエスト"
         }
     }
 }

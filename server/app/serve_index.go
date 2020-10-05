@@ -15,7 +15,7 @@ import (
 )
 
 // Injects the config in the `index.html` template
-func ServeIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
+func serveIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 	policy := bluemonday.UGCPolicy()
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := ds.User(r.Context()).CountAll()

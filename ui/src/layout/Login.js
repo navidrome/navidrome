@@ -1,10 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { Field, Form } from 'react-final-form'
-
 import { useDispatch } from 'react-redux'
-
-import Avatar from '@material-ui/core/Avatar'
 import Button from '@material-ui/core/Button'
 import Card from '@material-ui/core/Card'
 import CardActions from '@material-ui/core/CardActions'
@@ -12,7 +9,7 @@ import CircularProgress from '@material-ui/core/CircularProgress'
 import TextField from '@material-ui/core/TextField'
 import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
 import { ThemeProvider } from '@material-ui/styles'
-import LockIcon from '@material-ui/icons/Lock'
+import Logo from '../icons/android-icon-72x72.png'
 
 import { Notification, useLogin, useNotify, useTranslate } from 'react-admin'
 
@@ -42,7 +39,8 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
   },
   icon: {
-    backgroundColor: theme.palette.secondary.main,
+    backgroundColor: 'white',
+    width: '40px',
   },
   systemName: {
     marginTop: '1em',
@@ -95,9 +93,7 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
           <div className={classes.main}>
             <Card className={classes.card}>
               <div className={classes.avatar}>
-                <Avatar className={classes.icon}>
-                  <LockIcon />
-                </Avatar>
+                <img src={Logo} className={classes.icon} alt={'logo'} />
               </div>
               <div className={classes.systemName}>
                 <a
@@ -169,9 +165,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
           <div className={classes.main}>
             <Card className={classes.card}>
               <div className={classes.avatar}>
-                <Avatar className={classes.icon}>
-                  <LockIcon />
-                </Avatar>
+                <img src={Logo} className={classes.icon} alt={'logo'} />
               </div>
               <div className={classes.welcome}>
                 {translate('ra.auth.welcome1')}

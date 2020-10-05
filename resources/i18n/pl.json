@@ -265,7 +265,7 @@
     "menu": {
         "library": "Biblioteka",
         "settings": "Ustawienia",
-        "version": "Wersja %{version}",
+        "version": "Wersja",
         "theme": "Wygląd",
         "personal": {
             "name": "Personalizacja",

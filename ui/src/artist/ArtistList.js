@@ -1,4 +1,5 @@
 import React, { cloneElement, isValidElement, useState } from 'react'
+import { useHistory } from 'react-router-dom'
 import {
   Datagrid,
   DatagridBody,
@@ -71,45 +72,49 @@ const ArtistDatagrid = (props) => (
   <Datagrid {...props} body={<ArtistDatagridBody />} />
 )
 
-const ArtistList = ({ width, ...rest }) => {
+const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
+  const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  return isXsmall ? (
+    <SimpleList
+      primaryText={(r) => r.name}
+      linkType={(id) => {
+        history.push(handleArtistLink(id))
+      }}
+      rightIcon={(r) => <ArtistContextMenu record={r} />}
+      {...rest}
+    />
+  ) : (
+    <ArtistDatagrid rowClick={handleArtistLink}>
+      <TextField source="name" />
+      <NumberField source="albumCount" sortByOrder={'DESC'} />
+      <NumberField source="songCount" sortByOrder={'DESC'} />
+      <NumberField source="playCount" sortByOrder={'DESC'} />
+      <ArtistContextMenu
+        source={'starred'}
+        sortBy={'starred ASC, starredAt ASC'}
+        sortByOrder={'DESC'}
+        label={
+          <StarBorderIcon fontSize={'small'} className={classes.columnIcon} />
+        }
+      />
+    </ArtistDatagrid>
+  )
+}
+
+const ArtistList = (props) => {
   return (
     <>
       <List
-        {...rest}
+        {...props}
         sort={{ field: 'name', order: 'ASC' }}
         exporter={false}
         bulkActionButtons={false}
         filters={<ArtistFilter />}
       >
-        {isXsmall ? (
-          <SimpleList
-            primaryText={(r) => r.name}
-            linkType={'show'}
-            rightIcon={(r) => <ArtistContextMenu record={r} />}
-            {...rest}
-          />
-        ) : (
-          <ArtistDatagrid rowClick={handleArtistLink}>
-            <TextField source="name" />
-            <NumberField source="albumCount" sortByOrder={'DESC'} />
-            <NumberField source="songCount" sortByOrder={'DESC'} />
-            <NumberField source="playCount" sortByOrder={'DESC'} />
-            <ArtistContextMenu
-              source={'starred'}
-              sortBy={'starred ASC, starredAt ASC'}
-              sortByOrder={'DESC'}
-              label={
-                <StarBorderIcon
-                  fontSize={'small'}
-                  className={classes.columnIcon}
-                />
-              }
-            />
-          </ArtistDatagrid>
-        )}
+        <ArtistListView {...props} />
       </List>
       <AddToPlaylistDialog />
     </>

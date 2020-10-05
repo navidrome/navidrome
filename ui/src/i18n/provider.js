@@ -2,15 +2,27 @@ import polyglotI18nProvider from 'ra-i18n-polyglot'
 import deepmerge from 'deepmerge'
 import dataProvider from '../dataProvider'
 import en from './en.json'
+import { i18nProvider } from './index'
 
 // Only returns current selected locale if its translations are found in localStorage
 const defaultLocale = function () {
   const locale = localStorage.getItem('locale')
   const current = JSON.parse(localStorage.getItem('translation'))
   if (current && current.id === locale) {
+    // Asynchronously reload the translation from the server
+    retrieveTranslation(locale).then(() => {
+      i18nProvider.changeLocale(locale)
+    })
     return locale
   }
   return 'en'
+}
+
+function retrieveTranslation(locale) {
+  return dataProvider.getOne('translation', { id: locale }).then((res) => {
+    localStorage.setItem('translation', JSON.stringify(res.data))
+    return prepareLanguage(JSON.parse(res.data.data))
+  })
 }
 
 const removeEmpty = (obj) => {
@@ -47,8 +59,5 @@ export default polyglotI18nProvider((locale) => {
     return prepareLanguage(JSON.parse(current.data))
   }
   // If not, get it from the server, and store it in localStorage
-  return dataProvider.getOne('translation', { id: locale }).then((res) => {
-    localStorage.setItem('translation', JSON.stringify(res.data))
-    return prepareLanguage(JSON.parse(res.data.data))
-  })
+  return retrieveTranslation(locale)
 }, defaultLocale())

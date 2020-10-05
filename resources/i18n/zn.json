@@ -6,15 +6,15 @@
             "fields": {
                 "albumArtist": "专辑歌手",
                 "duration": "时长",
-                "trackNumber": "音轨",
+                "trackNumber": "歌曲序号",
                 "playCount": "播放次数",
-                "title": "标题",
+                "title": "曲名",
                 "artist": "歌手",
                 "album": "专辑",
-                "path": "路劲",
-                "genre": "类型",
+                "path": "文件路径",
+                "genre": "曲风",
                 "compilation": "合辑",
-                "year": "年",
+                "year": "发布年份",
                 "size": "大小",
                 "updatedAt": "更新于",
                 "bitRate": "比特率",
@@ -22,12 +22,12 @@
                 "starred": "收藏"
             },
             "actions": {
-                "addToQueue": "最后播放",
+                "addToQueue": "加入播放列表",
                 "playNow": "立即播放",
-                "addToPlaylist": "加入播单",
-                "shuffleAll": "全部播放",
+                "addToPlaylist": "加入歌单",
+                "shuffleAll": "全部随机播放",
                 "download": "下载",
-                "playNext": "接下来播放"
+                "playNext": "下一首播放"
             }
         },
         "album": {
@@ -36,28 +36,28 @@
                 "albumArtist": "专辑歌手",
                 "artist": "歌手",
                 "duration": "时长",
-                "songCount": "歌曲数",
+                "songCount": "歌曲数量",
                 "playCount": "播放次数",
                 "name": "名称",
-                "genre": "类型",
+                "genre": "曲风",
                 "compilation": "合辑",
-                "year": "年",
+                "year": "发布年份",
                 "updatedAt": "更新于"
             },
             "actions": {
                 "playAll": "立即播放",
-                "playNext": "接下来播放",
-                "addToQueue": "最后播放",
+                "playNext": "下首播放",
+                "addToQueue": "加入播放列表",
                 "shuffle": "随机播放",
-                "addToPlaylist": "加入播单",
+                "addToPlaylist": "加入歌单",
                 "download": "下载"
             },
             "lists": {
-                "all": "全部",
+                "all": "所有",
                 "random": "随机",
                 "recentlyAdded": "最近添加",
                 "recentlyPlayed": "最近播放",
-                "mostPlayed": "最多播放",
+                "mostPlayed": "最喜欢听的",
                 "starred": "收藏"
             }
         },
@@ -103,21 +103,21 @@
             }
         },
         "playlist": {
-            "name": "播单 |||| 播单",
+            "name": "歌单 |||| 歌单",
             "fields": {
                 "name": "名称",
                 "duration": "时长",
                 "owner": "所有者",
-                "public": "公开",
+                "public": "公共",
                 "updatedAt": "更新于",
                 "createdAt": "创建于",
                 "songCount": "歌曲数",
                 "comment": "评论",
-                "sync": "同步",
-                "path": "路劲"
+                "sync": "自动导入",
+                "path": "导入"
             },
             "actions": {
-                "selectPlaylist": "选择播单",
+                "selectPlaylist": "选择歌单",
                 "addNewPlaylist": "新建 %{name}",
                 "export": "导出"
             }
@@ -130,7 +130,7 @@
             "confirmPassword": "确认密码",
             "buttonCreateAdmin": "创建管理员",
             "auth_check_error": "请登录访问更多内容",
-            "user_menu": "设置",
+            "user_menu": "配置",
             "username": "用户名",
             "password": "密码",
             "sign_in": "登录",
@@ -148,16 +148,16 @@
             "number": "必须为数字",
             "email": "必须是有效的邮箱",
             "oneOf": "必须为: %{options}其中一项",
-            "regex": "必须符合指定的格式 (regexp): %{pattern}"
+            "regex": "必须符合指定的格式 (正则表达式): %{pattern}"
         },
         "action": {
             "add_filter": "添加筛选",
             "add": "添加",
-            "back": "回退",
+            "back": "返回",
             "bulk_actions": "选中%{smart_count}项",
             "cancel": "取消",
             "clear_input_value": "清除",
-            "clone": "克隆",
+            "clone": "复制",
             "confirm": "确认",
             "create": "新建",
             "delete": "删除",
@@ -165,10 +165,10 @@
             "export": "导出",
             "list": "列表",
             "refresh": "刷新",
-            "remove_filter": "移除筛选",
+            "remove_filter": "移除此条件",
             "remove": "删除",
             "save": "保存",
-            "search": "筛选",
+            "search": "搜索",
             "show": "显示",
             "sort": "排序",
             "undo": "撤销",
@@ -186,22 +186,22 @@
             "create": "新建 %{name}",
             "dashboard": "概览",
             "edit": "%{name} #%{id}",
-            "error": "错误",
+            "error": "发生错误",
             "list": "%{name}",
             "loading": "加载中",
-            "not_found": "未发现",
+            "not_found": "未找到",
             "show": "%{name} #%{id}",
-            "empty": "空白 %{name}.",
+            "empty": "还没有 %{name}.",
             "invite": "您要创建一个吗？"
         },
         "input": {
             "file": {
-                "upload_several": "将文件集合拖拽到这里, 或点击这里选择文件集合.",
-                "upload_single": "将文件拖拽到这里, 或点击这里选择文件."
+                "upload_several": "拖拽多个文件上传或点击选择一个",
+                "upload_single": "拖拽单个文件上传或点击选择一个"
             },
             "image": {
-                "upload_several": "将图片文件集合拖拽到这里, 或点击这里选择图片文件集合.",
-                "upload_single": "将图片文件拖拽到这里, 或点击这里选择图片文件."
+                "upload_several": "拖拽多个图片上传或点击选择一个",
+                "upload_single": "拖拽单个图片上传或点击选择一个"
             },
             "references": {
                 "all_missing": "未找到参考数据.",
@@ -209,36 +209,36 @@
                 "single_missing": "关联的参考数据不再可用."
             },
             "password": {
-                "toggle_visible": "显示",
-                "toggle_hidden": "隐藏"
+                "toggle_visible": "隐藏密码",
+                "toggle_hidden": "显示密码"
             }
         },
         "message": {
             "about": "关于",
             "are_you_sure": "您确定操作?",
             "bulk_delete_content": "您确定要删除 %{name}? |||| 您确定要删除 %{smart_count} 项?",
-            "bulk_delete_title": "删除 %{name} |||| 删除 %{smart_count}项 %{name} ",
+            "bulk_delete_title": "删除 %{name} |||| 删除 %{smart_count}项 %{name}",
             "delete_content": "您确定要删除该条目?",
             "delete_title": "删除 %{name} #%{id}",
             "details": "详情",
-            "error": "错误",
-            "invalid_form": "表单输入无效. 请检查错误提示",
+            "error": "发生一个客户端错误，您的请求无法完成。",
+            "invalid_form": "提交内容无效. 请检查错误",
             "loading": "正在加载页面, 请稍候",
             "no": "否",
-            "not_found": "您输入了错误的URL或者错误的链接.",
+            "not_found": "您输入的链接格式不对或链接丢失",
             "yes": "是",
             "unsaved_changes": "某些更改尚未保存。您确定要离开此页面吗？"
         },
         "navigation": {
-            "no_results": "结果为空",
+            "no_results": "无内容",
             "no_more_results": "页码 %{page} 超出边界. 试试上一页.",
             "page_out_of_boundaries": "页码 %{page} 超出边界",
-            "page_out_from_end": "已到最末页",
-            "page_out_from_begin": "已到最前页",
+            "page_out_from_end": "已经最后一页",
+            "page_out_from_begin": "已经是第一页",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
             "page_rows_per_page": "每页行数:",
-            "next": "向后",
-            "prev": "向前"
+            "next": "下一页",
+            "prev": "上一页"
         },
         "notification": {
             "updated": "项已更新 |||| %{smart_count} 项已更新",
@@ -257,36 +257,36 @@
         "note": "信息",
         "transcodingDisabled": "出于安全原因，禁用了从Web界面更改参数。要更改（编辑或删除）转码选项，请在启用％{config}选项的情况下重新启动服务器。",
         "transcodingEnabled": "Navidrome当前与％{config}一起使用，可以从Web界面执行任意命令。建议仅在配置Transcoding时启用此功能。",
-        "songsAddedToPlaylist": "添加到播放列表中的曲目||||已将％{smart_count}条曲目添加到播放列表",
-        "noPlaylistsAvailable": "未播放清单",
+        "songsAddedToPlaylist": "已添加一首歌到歌单||||已添加％{smart_count}首歌到歌单",
+        "noPlaylistsAvailable": "没有有效的歌单",
         "delete_user_title": "删除用户 ％{name}",
-        "delete_user_content": "您确定要删除该用户及其相关数据（包括其播放列表和首选项）吗？"
+        "delete_user_content": "您确定要删除该用户及其相关数据（包括歌单和用户配置）吗？"
     },
     "menu": {
         "library": "曲库",
         "settings": "设置",
-        "version": "版本 %{version}",
+        "version": "版本",
         "theme": "主题",
         "personal": {
             "name": "个性化",
             "options": {
                 "theme": "主题",
                 "language": "语言",
-                "defaultView": "默认视图"
+                "defaultView": "默认界面"
             }
         },
         "albumList": "专辑"
     },
     "player": {
-        "playListsText": "播放队列",
+        "playListsText": "播放列表",
         "openText": "打开",
         "closeText": "关闭",
-        "notContentText": "无音乐",
+        "notContentText": "没有音乐",
         "clickToPlayText": "点击播放",
         "clickToPauseText": "点击暂停",
         "nextTrackText": "下一首",
         "previousTrackText": "上一首",
-        "reloadText": "重新载入",
+        "reloadText": "重新播放",
         "volumeText": "音量",
         "toggleLyricText": "切换歌词",
         "toggleMiniModeText": "最小化",

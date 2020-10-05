@@ -42,24 +42,27 @@ migration:
 	goose -dir db/migrations create ${name}
 .PHONY: migration
 
-setup:
-	@which go-bindata || (echo "Installing BinData"  && GO111MODULE=off go get -u github.com/go-bindata/go-bindata/...)
-	go mod download
-	@(cd ./ui && npm ci)
+setup: download-deps
+	@echo Installing tools from tools.go
+	@cat tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI % go install %
 .PHONY: setup
 
+download-deps:
+	@echo Download Go dependencies
+	@go mod download
+	@echo Download Node dependencies
+	@(cd ./ui && npm ci)
+.PHONY: download-deps
+
 setup-dev: setup setup-git
-	@which wire          || (echo "Installing Wire"          && GO111MODULE=off go get -u github.com/google/wire/cmd/wire)
-	@which ginkgo        || (echo "Installing Ginkgo"        && GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo)
-	@which goose         || (echo "Installing Goose"         && GO111MODULE=off go get -u github.com/pressly/goose/cmd/goose)
-	@which reflex        || (echo "Installing Reflex"        && GO111MODULE=off go get -u github.com/cespare/reflex)
+	@echo Installing golangci-lint
 	@which golangci-lint || (echo "Installing GolangCI-Lint" && cd .. && GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0)
-	@which goimports     || (echo "Installing goimports"     && GO111MODULE=off go get -u golang.org/x/tools/cmd/goimports)
 .PHONY: setup-dev
 
 setup-git:
+	@echo Setting up git hooks
 	@mkdir -p .git/hooks
-	(cd .git/hooks && ln -sf ../../git/* .)
+	@(cd .git/hooks && ln -sf ../../git/* .)
 .PHONY: setup-git
 
 check_env: check_go_env check_node_env
@@ -103,5 +106,5 @@ release:
 .PHONY: release
 
 snapshot:
-	 docker run -it -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.14.9-3 goreleaser release --rm-dist --skip-publish --snapshot
+	 docker run -it -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.15.2-1 goreleaser release --rm-dist --skip-publish --snapshot
 .PHONY: snapshot

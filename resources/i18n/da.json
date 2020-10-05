@@ -257,7 +257,7 @@
     "menu": {
         "library": "Bibliotek",
         "settings": "Indstillinger",
-        "version": "Version %{version}",
+        "version": "Version",
         "theme": "Tema",
         "personal": {
             "name": "Personligt",

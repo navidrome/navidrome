@@ -16,7 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ServeIndex", func() {
+var _ = Describe("serveIndex", func() {
 	var ds model.DataStore
 	mockUser := &mockedUserRepo{}
 	fs := http.Dir("tests/fixtures")
@@ -30,7 +30,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds, fs)(w, r)
+		serveIndex(ds, fs)(w, r)
 
 		Expect(w.Code).To(Equal(200))
 		config := extractAppConfig(w.Body.String())
@@ -42,7 +42,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds, fs)(w, r)
+		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("firstTime", true))
@@ -53,7 +53,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds, fs)(w, r)
+		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("firstTime", false))
@@ -64,7 +64,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds, fs)(w, r)
+		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("baseURL", "base_url_test"))
@@ -75,7 +75,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds, fs)(w, r)
+		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "my_background_url"))
@@ -86,7 +86,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds, fs)(w, r)
+		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("welcomeMessage", "Hello"))
@@ -97,7 +97,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds, fs)(w, r)
+		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("enableTranscodingConfig", true))
@@ -108,7 +108,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds, fs)(w, r)
+		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("gaTrackingId", "UA-12345"))
@@ -118,7 +118,7 @@ var _ = Describe("ServeIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		ServeIndex(ds, fs)(w, r)
+		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("version", consts.Version()))
