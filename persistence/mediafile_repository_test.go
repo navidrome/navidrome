@@ -137,6 +137,19 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.FindAllByPath(P("/Legião Urbana"))).To(HaveLen(0))
 	})
 
+	It("only deletes tracks that match exact path", func() {
+		id1 := "6021"
+		Expect(mr.Put(&model.MediaFile{ID: id1, Path: P("/music/overlap/Ella Fitzgerald/" + id1 + ".mp3")})).To(BeNil())
+		id2 := "6022"
+		Expect(mr.Put(&model.MediaFile{ID: id2, Path: P("/music/overlap/Ella Fitzgerald/" + id2 + ".mp3")})).To(BeNil())
+		id3 := "6023"
+		Expect(mr.Put(&model.MediaFile{ID: id3, Path: P("/music/overlap/Ella Fitzgerald & Louis Armstrong - They Can't Take That Away From Me.mp3")})).To(BeNil())
+
+		Expect(mr.FindAllByPath(P("/music/overlap/Ella Fitzgerald"))).To(HaveLen(2))
+		Expect(mr.DeleteByPath(P("/music/overlap/Ella Fitzgerald"))).To(Equal(int64(2)))
+		Expect(mr.FindAllByPath(P("/music/overlap"))).To(HaveLen(1))
+	})
+
 	Context("Annotations", func() {
 		It("increments play count when the tracks does not have annotations", func() {
 			id := "incplay.firsttime"
