@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
@@ -94,9 +95,23 @@ func (r mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
 	return &res[0], nil
 }
 
+func cleanPath(path string) string {
+	path = filepath.Clean(path)
+	if !strings.HasSuffix(path, string(os.PathSeparator)) {
+		path = path + string(os.PathSeparator)
+	}
+	return path
+}
+
+func pathStartsWith(path string) Eq {
+	substr := fmt.Sprintf("substr(path, 1, %d)", utf8.RuneCountInString(path))
+	return Eq{substr: path}
+}
+
 // FindAllByPath only return mediafiles that are direct children of requested path
 func (r mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, error) {
 	// Query by path based on https://stackoverflow.com/a/13911906/653632
+	path = cleanPath(path)
 	pathLen := utf8.RuneCountInString(path)
 	sel0 := r.selectMediaFile().Columns(fmt.Sprintf("substr(path, %d) AS item", pathLen+2)).
 		Where(pathStartsWith(path))
@@ -108,24 +123,20 @@ func (r mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, error
 	return res, err
 }
 
-func pathStartsWith(path string) Eq {
-	cleanPath := filepath.Clean(path)
-	substr := fmt.Sprintf("substr(path, 1, %d)", utf8.RuneCountInString(cleanPath))
-	return Eq{substr: cleanPath}
-}
-
 // FindPathsRecursively returns a list of all subfolders of basePath, recursively
 func (r mediaFileRepository) FindPathsRecursively(basePath string) ([]string, error) {
+	path := cleanPath(basePath)
 	// Query based on https://stackoverflow.com/a/38330814/653632
 	sel := r.newSelect().Columns(fmt.Sprintf("distinct rtrim(path, replace(path, '%s', ''))", string(os.PathSeparator))).
-		Where(pathStartsWith(basePath))
+		Where(pathStartsWith(path))
 	var res []string
 	err := r.queryAll(sel, &res)
 	return res, err
 }
 
 func (r mediaFileRepository) deleteNotInPath(basePath string) error {
-	sel := Delete(r.tableName).Where(NotEq(pathStartsWith(basePath)))
+	path := cleanPath(basePath)
+	sel := Delete(r.tableName).Where(NotEq(pathStartsWith(path)))
 	c, err := r.executeSQL(sel)
 	if err == nil {
 		if c > 0 {
@@ -156,8 +167,8 @@ func (r mediaFileRepository) Delete(id string) error {
 }
 
 // DeleteByPath delete from the DB all mediafiles that are direct children of path
-func (r mediaFileRepository) DeleteByPath(path string) (int64, error) {
-	path = filepath.Clean(path)
+func (r mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
+	path := cleanPath(basePath)
 	pathLen := utf8.RuneCountInString(path)
 	del := Delete(r.tableName).
 		Where(And{pathStartsWith(path),
