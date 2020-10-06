@@ -70,11 +70,11 @@ func robotsTXT(fs http.FileSystem) func(next http.Handler) http.Handler {
 
 func secureMiddleware() func(h http.Handler) http.Handler {
 	sec := secure.New(secure.Options{
-		ContentTypeNosniff:    true,
-		FrameDeny:             true,
-		ReferrerPolicy:        "same-origin",
-		FeaturePolicy:         "autoplay 'none'; camera: 'none'; display-capture 'none'; microphone: 'none'; usb: 'none'",
-		ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
+		ContentTypeNosniff: true,
+		FrameDeny:          true,
+		ReferrerPolicy:     "same-origin",
+		FeaturePolicy:      "autoplay 'none'; camera: 'none'; display-capture 'none'; microphone: 'none'; usb: 'none'",
+		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
 }
