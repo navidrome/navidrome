@@ -16,11 +16,10 @@ type Transcoder interface {
 }
 
 func New() Transcoder {
-	path, err := exec.LookPath("ffmpeg")
+	_, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		log.Error("Unable to find ffmpeg", err)
 	}
-	log.Debug("Found ffmpeg", "path", path)
 	return &ffmpeg{}
 }
 

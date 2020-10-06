@@ -32,6 +32,7 @@ func New(scanner *scanner.Scanner, ds model.DataStore) *Server {
 	initialSetup(ds)
 	a.initRoutes()
 	a.initScanner()
+	checkFfmpegInstallation()
 	return a
 }
 

@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
@@ -78,4 +79,16 @@ func createJWTSecret(ds model.DataStore) error {
 		log.Error("Could not save JWT secret in DB", err)
 	}
 	return err
+}
+
+func checkFfmpegInstallation() {
+	path, err := exec.LookPath("ffmpeg")
+	if err == nil {
+		log.Debug("Found ffmpeg", "path", path)
+	}
+	log.Warn("Unable to find ffmpeg. Transcoding will fail if used", err)
+	if conf.Server.Scanner.Extractor == "ffmpeg" {
+		log.Warn("ffmpeg cannot be used for metadata extraction. Falling back to taglib")
+		conf.Server.Scanner.Extractor = "taglib"
+	}
 }
