@@ -377,6 +377,7 @@ github.com/ugorji/go v0.0.0-20171122102828-84cb69a8af83/go.mod h1:hnLbHMwcvSihnD
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
 github.com/unrolled/secure v1.0.8 h1:JaMvKbe4CRt8oyxVXn+xY+6jlqd7pyJNSVkmsBxxQsM=
 github.com/unrolled/secure v1.0.8/go.mod h1:fO+mEan+FLB0CdEnHf6Q4ZZVNqG+5fuLFnP8p0BXDPI=
+github.com/urfave/negroni v1.0.0 h1:kIimOitoypq34K7TG7DUaJ9kq/N4Ofuwi1sjz0KipXc=
 github.com/urfave/negroni v1.0.0/go.mod h1:Meg73S6kFm/4PpbYdq35yYWoCZ9mS/YSx+lKnmiohz4=
 github.com/wader/tag v0.0.0-20200426234345-d072771f6a51 h1:WAxntH7YQD6fIboAvewi7eU+2PQ7Y1K9OOXh67CM4bY=
 github.com/wader/tag v0.0.0-20200426234345-d072771f6a51/go.mod h1:f3YqVk9PEeVf7T4JQ2+TdRqqjTg2fkaROZv0EMQOuKo=
