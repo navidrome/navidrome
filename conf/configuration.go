@@ -106,7 +106,7 @@ func init() {
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
 
-	viper.SetDefault("scanner.extractor", "ffmpeg")
+	viper.SetDefault("scanner.extractor", "taglib")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
