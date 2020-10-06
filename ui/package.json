@@ -24,7 +24,7 @@
     "react-measure": "^2.5.2",
     "react-redux": "^7.2.1",
     "react-scripts": "^3.4.3",
-    "uuid": "^8.3.0"
+    "uuid": "^8.3.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.11.4",
