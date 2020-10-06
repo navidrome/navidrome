@@ -21,7 +21,7 @@ func (m *ffmpegMetadata) BitRate() int      { return m.parseInt("bitrate") }
 func (m *ffmpegMetadata) HasPicture() bool {
 	return m.getTag("has_picture", "metadata_block_picture") != ""
 }
-func (m *ffmpegMetadata) DiscNumber() (int, int) { return m.parseTuple("tpa", "disc") }
+func (m *ffmpegMetadata) DiscNumber() (int, int) { return m.parseTuple("tpa", "disc", "discnumber") }
 
 type ffmpegExtractor struct{}
 
