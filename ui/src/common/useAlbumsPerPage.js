@@ -11,6 +11,13 @@ const getPerPage = (width) => {
 
 const getPerPageOptions = (width) => {
   const options = [3, 6, 12]
+  var customRowsPerPage=parseInt(localStorage.rowsPerPageAlbum);
+
+  if(customRowsPerPage>0){
+    options.push(customRowsPerPage);
+    options.sort(function(a, b){return a-b});
+  }
+
   if (width === 'xs') return [12]
   if (width === 'sm') return [12]
   if (width === 'md') return options.map((v) => v * 4)

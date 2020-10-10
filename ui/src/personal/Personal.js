@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Card } from '@material-ui/core'
 import {
   SelectInput,
+  NumberInput,
   SimpleForm,
   Title,
   useLocale,
@@ -119,6 +120,44 @@ const SelectDefaultView = (props) => {
   )
 }
 
+const SelectRowsPerPageAlbum = (props) => {
+  const translate = useTranslate()
+  const current = localStorage.getItem('rowsPerPageAlbum') || 0
+
+  return (
+    <NumberInput
+      {...props}
+      step={1}
+      min={0}
+      source="rowsPerPageAlbum"
+      defaultValue={current}
+      label={translate('menu.personal.options.rowsPerPageAlbum')}
+      onChange={(event) => {
+        localStorage.setItem('rowsPerPageAlbum', event.target.value)
+      }}
+    />
+  )
+}
+
+const SelectRowsPerPageOther = (props) => {
+  const translate = useTranslate()
+  const current = localStorage.getItem('rowsPerPageOther') || 0
+
+  return (
+    <NumberInput
+      {...props}
+      step={1}
+      min={0}
+      source="rowsPerPageOther"
+      defaultValue={current}
+      label={translate('menu.personal.options.rowsPerPageOther')}
+      onChange={(event) => {
+        localStorage.setItem('rowsPerPageOther', event.target.value)
+      }}
+    />
+  )
+}
+
 const Personal = () => {
   const translate = useTranslate()
   const classes = useStyles()
@@ -130,6 +169,11 @@ const Personal = () => {
         <SelectTheme />
         <SelectLanguage />
         <SelectDefaultView />
+        <br />
+        <div>{translate('menu.personal.options.rowsPerPageGroup')}</div>
+        <br />
+        <SelectRowsPerPageAlbum />
+        <SelectRowsPerPageOther />
       </SimpleForm>
     </Card>
   )

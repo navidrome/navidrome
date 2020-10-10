@@ -272,7 +272,10 @@
             "options": {
                 "theme": "Theme",
                 "language": "Language",
-                "defaultView": "Default View"
+                "defaultView": "Default View",
+                "rowsPerPageAlbum": "Albums View (Rows/page)",
+                "rowsPerPageOther": "Other Views (Items/Page)",
+                "rowsPerPageGroup": "Custom pagination values. Refresh page after setting."
             }
         },
         "albumList": "Albums",
