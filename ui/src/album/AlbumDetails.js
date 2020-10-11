@@ -48,8 +48,8 @@ const AlbumDetails = ({ classes, record }) => {
         <Typography component="p">
           {record.songCount}{' '}
           {translate('resources.song.name', { smart_count: record.songCount })}{' '}
-          · <DurationField record={record} source={'duration'} />{' '}
-          · <SizeField record={record} source="size" />
+          · <DurationField record={record} source={'duration'} /> ·{' '}
+          <SizeField record={record} source="size" />
         </Typography>
         <StarButton record={record} resource={'album'} size={'large'} />
       </CardContent>
