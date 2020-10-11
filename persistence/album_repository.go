@@ -156,7 +156,6 @@ func (r *albumRepository) refresh(ids ...string) error {
 		Years         string
 		DiscSubtitles string
 		Path          string
-		Size          int
 	}
 	var albums []refreshAlbum
 	sel := Select(`f.album_id as id, f.album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
