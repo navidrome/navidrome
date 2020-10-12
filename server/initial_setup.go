@@ -85,6 +85,7 @@ func checkFfmpegInstallation() {
 	path, err := exec.LookPath("ffmpeg")
 	if err == nil {
 		log.Debug("Found ffmpeg", "path", path)
+		return
 	}
 	log.Warn("Unable to find ffmpeg. Transcoding will fail if used", err)
 	if conf.Server.Scanner.Extractor == "ffmpeg" {
