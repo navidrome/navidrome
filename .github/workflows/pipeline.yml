@@ -33,7 +33,7 @@ jobs:
         run: sudo apt-get install libtag1-dev
 
       - name: Set up Go 1.15
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: 1.15
         id: go
@@ -41,7 +41,7 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
-      - uses: actions/cache@v1
+      - uses: actions/cache@v2
         id: cache-go
         with:
           path: ~/go/pkg/mod
@@ -64,7 +64,7 @@ jobs:
         with:
           node-version: 14
 
-      - uses: actions/cache@v1
+      - uses: actions/cache@v2
         id: cache-npm
         with:
           path: ~/.npm
@@ -152,7 +152,7 @@ jobs:
           buildx-version: latest
           qemu-version: latest
 
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
         if: env.DOCKER_IMAGE != ''
 
       - uses: actions/download-artifact@v2
