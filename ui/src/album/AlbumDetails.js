@@ -4,7 +4,7 @@ import { useTranslate } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
-import { DurationField, formatRange, StarButton } from '../common'
+import { DurationField, formatRange, StarButton, SizeField } from '../common'
 import { ArtistLinkField } from '../common'
 
 const AlbumDetails = ({ classes, record }) => {
@@ -48,7 +48,8 @@ const AlbumDetails = ({ classes, record }) => {
         <Typography component="p">
           {record.songCount}{' '}
           {translate('resources.song.name', { smart_count: record.songCount })}{' '}
-          · <DurationField record={record} source={'duration'} />
+          · <DurationField record={record} source={'duration'} /> ·{' '}
+          <SizeField record={record} source="size" />
         </Typography>
         <StarButton record={record} resource={'album'} size={'large'} />
       </CardContent>

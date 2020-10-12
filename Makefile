@@ -39,7 +39,7 @@ update-snapshots: check_go_env
 
 migration:
 	@if [ -z "${name}" ]; then echo "Usage: make migration name=name_of_migration_file"; exit 1; fi
-	goose -dir db/migrations create ${name}
+	goose -dir db/migration create ${name}
 .PHONY: migration
 
 setup: download-deps

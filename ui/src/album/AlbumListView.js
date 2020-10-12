@@ -17,6 +17,7 @@ import {
   DurationField,
   RangeField,
   SimpleList,
+  SizeField,
 } from '../common'
 import { AlbumContextMenu } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
@@ -37,6 +38,7 @@ const AlbumDetails = (props) => {
         <TextField source="genre" />
         <BooleanField source="compilation" />
         <DateField source="updatedAt" showTime />
+        <SizeField source="size" />
       </SimpleShowLayout>
     </Show>
   )
