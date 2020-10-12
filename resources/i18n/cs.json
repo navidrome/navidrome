@@ -275,7 +275,8 @@
                 "defaultView": "Výchozí stránka"
             }
         },
-        "albumList": "Alba"
+        "albumList": "Alba",
+        "about": "O"
     },
     "player": {
         "playListsText": "Fronta",
@@ -300,6 +301,13 @@
             "orderLoop": "Opakovat",
             "singleLoop": "Opakovat jednou",
             "shufflePlay": "Zamíchat"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "Domovská stránka",
+            "source": "Zdrojový kód",
+            "featureRequests": "Požadavky o funkce"
         }
     }
 }
