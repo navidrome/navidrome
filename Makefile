@@ -55,8 +55,6 @@ download-deps:
 .PHONY: download-deps
 
 setup-dev: setup setup-git
-	@echo Installing golangci-lint
-	@which golangci-lint || (echo "Installing GolangCI-Lint" && cd .. && GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0)
 .PHONY: setup-dev
 
 setup-git:
