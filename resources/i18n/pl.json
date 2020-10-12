@@ -19,7 +19,7 @@
                 "updatedAt": "Zaktualizowano",
                 "bitRate": "Szybkość transmisji danych",
                 "discSubtitle": "Podtytuł Płyty",
-                "starred": "Oznaczone gwiazdką"
+                "starred": "Ulubione"
             },
             "actions": {
                 "addToQueue": "Odtwarzaj Później",
@@ -275,7 +275,8 @@
                 "defaultView": "Widok Podstawowy"
             }
         },
-        "albumList": "Albumy"
+        "albumList": "Albumy",
+        "about": "O aplikacji"
     },
     "player": {
         "playListsText": "Kolejka Odtwarzania",
@@ -300,6 +301,13 @@
             "orderLoop": "Powtarzaj",
             "singleLoop": "Powtórz Raz",
             "shufflePlay": "Odtwarzaj losowo"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "Strona główna",
+            "source": "Kod źródłowy",
+            "featureRequests": "Prośby o nowe funkcjonalności"
         }
     }
 }
