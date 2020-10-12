@@ -19,9 +19,9 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v1
+        uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.27
+          version: v1.31
           github-token: ${{ secrets.GITHUB_TOKEN }}
           args: --timeout 2m
 

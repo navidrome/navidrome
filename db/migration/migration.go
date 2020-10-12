@@ -33,7 +33,7 @@ var once sync.Once
 
 func isDBInitialized(tx *sql.Tx) (initialized bool) {
 	once.Do(func() {
-		rows, err := tx.Query("select count(*) from property where id='" + consts.InitialSetupFlagKey + "'")
+		rows, err := tx.Query("select count(*) from property where id=?", consts.InitialSetupFlagKey)
 		checkErr(err)
 		initialized = checkCount(rows) > 0
 	})
