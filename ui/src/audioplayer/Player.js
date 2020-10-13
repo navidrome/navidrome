@@ -7,7 +7,6 @@ import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import Hotkeys from 'react-hot-keys'
 import { makeStyles } from '@material-ui/core/styles'
-import { isIOS } from 'react-device-detect'
 import subsonic from '../subsonic'
 import {
   scrobble,
@@ -32,6 +31,19 @@ const useStyle = makeStyles((theme) => ({
 
 let audioInstance = null
 
+const audioTitle = (audioInfo) => {
+  return audioInfo.name ? `${audioInfo.name} - ${audioInfo.singer}` : ''
+}
+
+const AudioTitle = ({ audioInfo, className }) => {
+  const title = audioTitle(audioInfo)
+  return (
+    <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
+      {title}
+    </Link>
+  )
+}
+
 const Player = () => {
   const translate = useTranslate()
   const currentTheme = useSelector((state) => state.theme)
@@ -44,26 +56,6 @@ const Player = () => {
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
-
-  const audioTitle = useCallback(
-    (audioInfo) => {
-      const title = audioInfo.name
-        ? `${audioInfo.name} - ${audioInfo.singer}`
-        : ''
-      // TODO Ideally the react-player should accept a Link as the audioTitle
-      return isIOS ? (
-        title
-      ) : (
-        <Link
-          to={`/album/${audioInfo.albumId}/show`}
-          className={classes.audioTitle}
-        >
-          {title}
-        </Link>
-      )
-    },
-    [classes.audioTitle]
-  )
 
   const defaultOptions = {
     theme: playerTheme,
@@ -84,6 +76,9 @@ const Player = () => {
       top: 300,
       left: 120,
     },
+    renderAudioTitle: (audioInfo) => (
+      <AudioTitle audioInfo={audioInfo} className={classes.audioTitle} />
+    ),
     locale: {
       playListsText: translate('player.playListsText'),
       openText: translate('player.openText'),
