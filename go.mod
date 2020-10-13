@@ -27,7 +27,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.4
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/onsi/ginkgo v1.14.1
-	github.com/onsi/gomega v1.10.2
+	github.com/onsi/gomega v1.10.3
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/pressly/goose v2.6.0+incompatible
 	github.com/sirupsen/logrus v1.7.0
@@ -39,7 +39,6 @@ require (
 	github.com/unrolled/secure v1.0.8
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
-	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/tools v0.0.0-20200812195022-5ae4c3c160a0
 	google.golang.org/protobuf v1.25.0 // indirect
