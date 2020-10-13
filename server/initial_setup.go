@@ -84,7 +84,7 @@ func createJWTSecret(ds model.DataStore) error {
 func checkFfmpegInstallation() {
 	path, err := exec.LookPath("ffmpeg")
 	if err == nil {
-		log.Debug("Found ffmpeg", "path", path)
+		log.Info("Found ffmpeg", "path", path)
 		return
 	}
 	log.Warn("Unable to find ffmpeg. Transcoding will fail if used", err)
