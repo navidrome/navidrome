@@ -2,7 +2,7 @@ import React from 'react'
 import { Card, CardContent, Typography } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
-import { DurationField } from '../common'
+import { DurationField, SizeField } from '../common'
 
 const useStyles = makeStyles((theme) => ({
   container: {
@@ -56,6 +56,8 @@ const PlaylistDetails = (props) => {
               })}
               {' · '}
               <DurationField record={record} source={'duration'} />
+              {' · '}
+              <SizeField record={record} source={'size'} />
             </span>
           ) : (
             <span>&nbsp;</span>

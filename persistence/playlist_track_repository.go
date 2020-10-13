@@ -140,19 +140,21 @@ func (r *playlistTrackRepository) Update(mediaFileIds []string) error {
 }
 
 func (r *playlistTrackRepository) updateStats() error {
-	// Get total playlist duration and count
-	statsSql := Select("sum(duration) as duration", "count(*) as count").From("media_file").
+	// Get total playlist duration, size and count
+	statsSql := Select("sum(duration) as duration", "sum(size) as size", "count(*) as count").
+		From("media_file").
 		Join("playlist_tracks f on f.media_file_id = media_file.id").
 		Where(Eq{"playlist_id": r.playlistId})
-	var res struct{ Duration, Count float32 }
+	var res struct{ Duration, Size, Count float32 }
 	err := r.queryOne(statsSql, &res)
 	if err != nil {
 		return err
 	}
 
-	// Update playlist's total duration and count
+	// Update playlist's total duration, size and count
 	upd := Update("playlist").
 		Set("duration", res.Duration).
+		Set("size", res.Size).
 		Set("song_count", res.Count).
 		Set("updated_at", time.Now()).
 		Where(Eq{"id": r.playlistId})

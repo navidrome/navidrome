@@ -16,10 +16,13 @@ import { playNext, addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
 import subsonic from '../subsonic'
 import PropTypes from 'prop-types'
+import { formatBytes } from '../common/SizeField'
+import { useMediaQuery } from '@material-ui/core'
 
 const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
   const handlePlay = React.useCallback(() => {
     dispatch(playTracks(data, ids))
@@ -87,7 +90,10 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
       </Button>
       <Button
         onClick={handleDownload}
-        label={translate('resources.album.actions.download')}
+        label={
+          translate('resources.album.actions.download') +
+          (isDesktop ? ` (${formatBytes(record.size)})` : '')
+        }
       >
         <CloudDownloadOutlinedIcon />
       </Button>

@@ -9,6 +9,7 @@ type Playlist struct {
 	Name      string     `json:"name"`
 	Comment   string     `json:"comment"`
 	Duration  float32    `json:"duration"`
+	Size      int64      `json:"size"`
 	SongCount int        `json:"songCount"`
 	Owner     string     `json:"owner"`
 	Public    bool       `json:"public"`
