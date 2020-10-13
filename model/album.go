@@ -27,7 +27,7 @@ type Album struct {
 	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
 	CreatedAt            time.Time `json:"createdAt"`
 	UpdatedAt            time.Time `json:"updatedAt"`
-	Size                 int       `json:"size"`
+	Size                 int64     `json:"size"`
 }
 
 type Albums []Album
