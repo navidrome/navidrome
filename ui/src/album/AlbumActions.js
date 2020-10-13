@@ -13,10 +13,13 @@ import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import { playNext, addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import subsonic from '../subsonic'
+import { formatBytes } from '../common/SizeField'
+import { useMediaQuery } from '@material-ui/core'
 
 const AlbumActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
   const handlePlay = React.useCallback(() => {
     dispatch(playTracks(data, ids))
@@ -66,7 +69,10 @@ const AlbumActions = ({ className, ids, data, record, ...rest }) => {
       </Button>
       <Button
         onClick={handleDownload}
-        label={translate('resources.album.actions.download')}
+        label={
+          translate('resources.album.actions.download') +
+          (isDesktop ? ` (${formatBytes(record.size)})` : '')
+        }
       >
         <CloudDownloadOutlinedIcon />
       </Button>

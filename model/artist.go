@@ -10,6 +10,7 @@ type Artist struct {
 	FullText        string `json:"fullText"`
 	SortArtistName  string `json:"sortArtistName"`
 	OrderArtistName string `json:"orderArtistName"`
+	Size            int64  `json:"size"`
 }
 
 type Artists []Artist

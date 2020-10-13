@@ -11,6 +11,7 @@ import { playNext, addTracks, playTracks, shuffleTracks } from '../audioplayer'
 import { openAddToPlaylist } from '../dialogs/dialogState'
 import subsonic from '../subsonic'
 import StarButton from './StarButton'
+import { formatBytes } from './SizeField'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -40,32 +41,34 @@ const ContextMenu = ({
   const options = {
     play: {
       needData: true,
-      label: 'resources.album.actions.playAll',
+      label: translate('resources.album.actions.playAll'),
       action: (data, ids) => dispatch(playTracks(data, ids)),
     },
     playNext: {
       needData: true,
-      label: 'resources.album.actions.playNext',
+      label: translate('resources.album.actions.playNext'),
       action: (data, ids) => dispatch(playNext(data, ids)),
     },
     addToQueue: {
       needData: true,
-      label: 'resources.album.actions.addToQueue',
+      label: translate('resources.album.actions.addToQueue'),
       action: (data, ids) => dispatch(addTracks(data, ids)),
     },
     shuffle: {
       needData: true,
-      label: 'resources.album.actions.shuffle',
+      label: translate('resources.album.actions.shuffle'),
       action: (data, ids) => dispatch(shuffleTracks(data, ids)),
     },
     addToPlaylist: {
       needData: true,
-      label: 'resources.album.actions.addToPlaylist',
+      label: translate('resources.album.actions.addToPlaylist'),
       action: (data, ids) => dispatch(openAddToPlaylist({ selectedIds: ids })),
     },
     download: {
       needData: false,
-      label: 'resources.album.actions.download',
+      label: `${translate('resources.album.actions.download')} (${formatBytes(
+        record.size
+      )})`,
       action: () => subsonic.download(record.id),
     },
   }
@@ -140,7 +143,7 @@ const ContextMenu = ({
       >
         {Object.keys(options).map((key) => (
           <MenuItem value={key} key={key} onClick={handleItemClick}>
-            {translate(options[key].label)}
+            {options[key].label}
           </MenuItem>
         ))}
       </Menu>

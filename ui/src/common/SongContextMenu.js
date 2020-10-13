@@ -9,6 +9,7 @@ import { playNext, addTracks, setTrack } from '../audioplayer'
 import { openAddToPlaylist } from '../dialogs/dialogState'
 import subsonic from '../subsonic'
 import StarButton from './StarButton'
+import { formatBytes } from './SizeField'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -32,19 +33,19 @@ const SongContextMenu = ({
   const [anchorEl, setAnchorEl] = useState(null)
   const options = {
     playNow: {
-      label: 'resources.song.actions.playNow',
+      label: translate('resources.song.actions.playNow'),
       action: (record) => dispatch(setTrack(record)),
     },
     playNext: {
-      label: 'resources.song.actions.playNext',
+      label: translate('resources.song.actions.playNext'),
       action: (record) => dispatch(playNext({ [record.id]: record })),
     },
     addToQueue: {
-      label: 'resources.song.actions.addToQueue',
+      label: translate('resources.song.actions.addToQueue'),
       action: (record) => dispatch(addTracks({ [record.id]: record })),
     },
     addToPlaylist: {
-      label: 'resources.song.actions.addToPlaylist',
+      label: translate('resources.song.actions.addToPlaylist'),
       action: (record) =>
         dispatch(
           openAddToPlaylist({
@@ -54,7 +55,9 @@ const SongContextMenu = ({
         ),
     },
     download: {
-      label: 'resources.song.actions.download',
+      label: `${translate('resources.song.actions.download')} (${formatBytes(
+        record.size
+      )})`,
       action: (record) => subsonic.download(record.id),
     },
   }
@@ -95,7 +98,7 @@ const SongContextMenu = ({
       >
         {Object.keys(options).map((key) => (
           <MenuItem value={key} key={key} onClick={handleItemClick}>
-            {translate(options[key].label)}
+            {options[key].label}
           </MenuItem>
         ))}
       </Menu>
