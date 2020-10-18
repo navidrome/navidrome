@@ -2,6 +2,7 @@ package lastfm
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io/ioutil"
 	"net/http"
@@ -25,7 +26,7 @@ var _ = Describe("Client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			httpClient.res = http.Response{Body: f, StatusCode: 200}
 
-			artist, err := client.ArtistGetInfo("U2")
+			artist, err := client.ArtistGetInfo(context.TODO(), "U2")
 			Expect(err).To(BeNil())
 			Expect(artist.Name).To(Equal("U2"))
 			Expect(httpClient.savedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
@@ -37,14 +38,14 @@ var _ = Describe("Client", func() {
 				StatusCode: 400,
 			}
 
-			_, err := client.ArtistGetInfo("U2")
+			_, err := client.ArtistGetInfo(context.TODO(), "U2")
 			Expect(err).To(MatchError("last.fm error(3): Invalid Method - No method with that name in this package"))
 		})
 
 		It("fails if HttpClient.Do() returns error", func() {
 			httpClient.err = errors.New("generic error")
 
-			_, err := client.ArtistGetInfo("U2")
+			_, err := client.ArtistGetInfo(context.TODO(), "U2")
 			Expect(err).To(MatchError("generic error"))
 		})
 
@@ -54,7 +55,7 @@ var _ = Describe("Client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.ArtistGetInfo("U2")
+			_, err := client.ArtistGetInfo(context.TODO(), "U2")
 			Expect(err).To(MatchError("invalid character '<' looking for beginning of value"))
 		})
 

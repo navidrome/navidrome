@@ -19,7 +19,8 @@ func initSystemController(router *Router) *SystemController {
 
 func initBrowsingController(router *Router) *BrowsingController {
 	dataStore := router.DataStore
-	browsingController := NewBrowsingController(dataStore)
+	externalInfo := router.ExternalInfo
+	browsingController := NewBrowsingController(dataStore, externalInfo)
 	return browsingController
 }
 
@@ -85,5 +86,5 @@ var allProviders = wire.NewSet(
 	NewUsersController,
 	NewMediaRetrievalController,
 	NewStreamController,
-	NewBookmarksController, engine.NewNowPlayingRepository, wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Streamer", "Archiver", "DataStore"),
+	NewBookmarksController, engine.NewNowPlayingRepository, wire.FieldsOf(new(*Router), "Artwork", "ListGenerator", "Playlists", "Streamer", "Archiver", "DataStore", "ExternalInfo"),
 )

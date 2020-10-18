@@ -66,6 +66,18 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 	return &res[0], nil
 }
 
+func (r *artistRepository) FindByName(name string) (*model.Artist, error) {
+	sel := r.selectArtist().Where(Eq{"name": name})
+	var res model.Artists
+	if err := r.queryAll(sel, &res); err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, model.ErrNotFound
+	}
+	return &res[0], nil
+}
+
 func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists, error) {
 	sel := r.selectArtist(options...)
 	res := model.Artists{}
