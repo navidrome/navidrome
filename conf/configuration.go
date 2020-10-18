@@ -41,6 +41,7 @@ type configOptions struct {
 	AuthWindowLength time.Duration
 
 	Scanner scannerOptions
+	LastFM  lastfmOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
@@ -49,6 +50,12 @@ type configOptions struct {
 
 type scannerOptions struct {
 	Extractor string
+}
+
+type lastfmOptions struct {
+	ApiKey   string
+	Secret   string
+	Language string
 }
 
 var Server = &configOptions{}
@@ -107,6 +114,7 @@ func init() {
 	viper.SetDefault("authwindowlength", 20*time.Second)
 
 	viper.SetDefault("scanner.extractor", "taglib")
+	viper.SetDefault("lastfm.language", "en")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
