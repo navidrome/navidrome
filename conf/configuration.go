@@ -42,6 +42,7 @@ type configOptions struct {
 
 	Scanner scannerOptions
 	LastFM  lastfmOptions
+	Spotify spotifyOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
@@ -56,6 +57,11 @@ type lastfmOptions struct {
 	ApiKey   string
 	Secret   string
 	Language string
+}
+
+type spotifyOptions struct {
+	ID     string
+	Secret string
 }
 
 var Server = &configOptions{}

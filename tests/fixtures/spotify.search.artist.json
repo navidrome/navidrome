@@ -1,0 +1,638 @@
+{
+"artists": {
+"href": "https://api.spotify.com/v1/search?query=U2&type=artist&offset=0&limit=20",
+"items": [
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/51Blml2LZPmy7TTiAg47vQ"
+},
+"followers": {
+"href": null,
+"total": 7369641
+},
+"genres": [
+"irish rock",
+"permanent wave",
+"rock"
+],
+"href": "https://api.spotify.com/v1/artists/51Blml2LZPmy7TTiAg47vQ",
+"id": "51Blml2LZPmy7TTiAg47vQ",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/e22d5c0c8139b8439440a69854ed66efae91112d",
+"width": 640
+},
+{
+"height": 320,
+"url": "https://i.scdn.co/image/40d6c5c14355cfc127b70da221233315497ec91d",
+"width": 320
+},
+{
+"height": 160,
+"url": "https://i.scdn.co/image/7293d6752ae8a64e34adee5086858e408185b534",
+"width": 160
+}
+],
+"name": "U2",
+"popularity": 82,
+"type": "artist",
+"uri": "spotify:artist:51Blml2LZPmy7TTiAg47vQ"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/6Yi6ndhYVLUaYu7rEqUCPT"
+},
+"followers": {
+"href": null,
+"total": 1008
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/6Yi6ndhYVLUaYu7rEqUCPT",
+"id": "6Yi6ndhYVLUaYu7rEqUCPT",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/ab67616d0000b2734dc59f13a52e236c404b8abf",
+"width": 640
+},
+{
+"height": 300,
+"url": "https://i.scdn.co/image/ab67616d00001e024dc59f13a52e236c404b8abf",
+"width": 300
+},
+{
+"height": 64,
+"url": "https://i.scdn.co/image/ab67616d000048514dc59f13a52e236c404b8abf",
+"width": 64
+}
+],
+"name": "U2R",
+"popularity": 1,
+"type": "artist",
+"uri": "spotify:artist:6Yi6ndhYVLUaYu7rEqUCPT"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/5TucOfYYQ8HPdDdvsQZAZe"
+},
+"followers": {
+"href": null,
+"total": 658
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/5TucOfYYQ8HPdDdvsQZAZe",
+"id": "5TucOfYYQ8HPdDdvsQZAZe",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/ab67616d0000b273931ae74e023fcb999dc423a5",
+"width": 640
+},
+{
+"height": 300,
+"url": "https://i.scdn.co/image/ab67616d00001e02931ae74e023fcb999dc423a5",
+"width": 300
+},
+{
+"height": 64,
+"url": "https://i.scdn.co/image/ab67616d00004851931ae74e023fcb999dc423a5",
+"width": 64
+}
+],
+"name": "U2KUSHI",
+"popularity": 2,
+"type": "artist",
+"uri": "spotify:artist:5TucOfYYQ8HPdDdvsQZAZe"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/5s3rOzCczqCQrvueHRCZOx"
+},
+"followers": {
+"href": null,
+"total": 44
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/5s3rOzCczqCQrvueHRCZOx",
+"id": "5s3rOzCczqCQrvueHRCZOx",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/c474959b393e2cf05bec6deb83643b65b12cf258",
+"width": 640
+},
+{
+"height": 320,
+"url": "https://i.scdn.co/image/36ea6b9246b8dfe59288f826cfeaf9cf641e7316",
+"width": 320
+},
+{
+"height": 160,
+"url": "https://i.scdn.co/image/709c8f24166781c1a0695046e757e1f4f6e1ac34",
+"width": 160
+}
+],
+"name": "U2funnyTJ",
+"popularity": 6,
+"type": "artist",
+"uri": "spotify:artist:5s3rOzCczqCQrvueHRCZOx"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/4CWC85PCLJ0yzPeJYXnQOG"
+},
+"followers": {
+"href": null,
+"total": 908
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/4CWC85PCLJ0yzPeJYXnQOG",
+"id": "4CWC85PCLJ0yzPeJYXnQOG",
+"images": [],
+"name": "U2 Rocks",
+"popularity": 0,
+"type": "artist",
+"uri": "spotify:artist:4CWC85PCLJ0yzPeJYXnQOG"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/21114frei5NgrkMuLn6AOz"
+},
+"followers": {
+"href": null,
+"total": 0
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/21114frei5NgrkMuLn6AOz",
+"id": "21114frei5NgrkMuLn6AOz",
+"images": [],
+"name": "U2A9F",
+"popularity": 0,
+"type": "artist",
+"uri": "spotify:artist:21114frei5NgrkMuLn6AOz"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/3dhoDqkI6atVLE43nkx8VZ"
+},
+"followers": {
+"href": null,
+"total": 878
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/3dhoDqkI6atVLE43nkx8VZ",
+"id": "3dhoDqkI6atVLE43nkx8VZ",
+"images": [],
+"name": "LMC vs U2",
+"popularity": 14,
+"type": "artist",
+"uri": "spotify:artist:3dhoDqkI6atVLE43nkx8VZ"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/5bi7xpKp2mDDSnFfQkBEjR"
+},
+"followers": {
+"href": null,
+"total": 989
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/5bi7xpKp2mDDSnFfQkBEjR",
+"id": "5bi7xpKp2mDDSnFfQkBEjR",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/ab67616d0000b2735931f4613d57703ef50ff0e4",
+"width": 640
+},
+{
+"height": 300,
+"url": "https://i.scdn.co/image/ab67616d00001e025931f4613d57703ef50ff0e4",
+"width": 300
+},
+{
+"height": 64,
+"url": "https://i.scdn.co/image/ab67616d000048515931f4613d57703ef50ff0e4",
+"width": 64
+}
+],
+"name": "U21",
+"popularity": 0,
+"type": "artist",
+"uri": "spotify:artist:5bi7xpKp2mDDSnFfQkBEjR"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/3H7E05uiFuqgwBQrXFaQIm"
+},
+"followers": {
+"href": null,
+"total": 18
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/3H7E05uiFuqgwBQrXFaQIm",
+"id": "3H7E05uiFuqgwBQrXFaQIm",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/ab67616d0000b27366ca114acb03e008d141f28b",
+"width": 640
+},
+{
+"height": 300,
+"url": "https://i.scdn.co/image/ab67616d00001e0266ca114acb03e008d141f28b",
+"width": 300
+},
+{
+"height": 64,
+"url": "https://i.scdn.co/image/ab67616d0000485166ca114acb03e008d141f28b",
+"width": 64
+}
+],
+"name": "U2M JR",
+"popularity": 1,
+"type": "artist",
+"uri": "spotify:artist:3H7E05uiFuqgwBQrXFaQIm"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/6BMzJXRYmy28QVMZc09rGB"
+},
+"followers": {
+"href": null,
+"total": 13
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/6BMzJXRYmy28QVMZc09rGB",
+"id": "6BMzJXRYmy28QVMZc09rGB",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/ab67616d0000b273bd26433a01cf571413cbb1ec",
+"width": 640
+},
+{
+"height": 300,
+"url": "https://i.scdn.co/image/ab67616d00001e02bd26433a01cf571413cbb1ec",
+"width": 300
+},
+{
+"height": 64,
+"url": "https://i.scdn.co/image/ab67616d00004851bd26433a01cf571413cbb1ec",
+"width": 64
+}
+],
+"name": "U2oh",
+"popularity": 0,
+"type": "artist",
+"uri": "spotify:artist:6BMzJXRYmy28QVMZc09rGB"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/4MtRKC7apgAyAd5uUjN3L4"
+},
+"followers": {
+"href": null,
+"total": 64
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/4MtRKC7apgAyAd5uUjN3L4",
+"id": "4MtRKC7apgAyAd5uUjN3L4",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/ab67616d0000b273b8ca9830e6849d80b41ef109",
+"width": 640
+},
+{
+"height": 300,
+"url": "https://i.scdn.co/image/ab67616d00001e02b8ca9830e6849d80b41ef109",
+"width": 300
+},
+{
+"height": 64,
+"url": "https://i.scdn.co/image/ab67616d00004851b8ca9830e6849d80b41ef109",
+"width": 64
+}
+],
+"name": "Zürcher Jugendblasorchester U25",
+"popularity": 1,
+"type": "artist",
+"uri": "spotify:artist:4MtRKC7apgAyAd5uUjN3L4"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/18JD8DVlD1fakDAw7E9LFC"
+},
+"followers": {
+"href": null,
+"total": 137412
+},
+"genres": [
+"bubblegum dance",
+"eurodance",
+"europop",
+"hip house"
+],
+"href": "https://api.spotify.com/v1/artists/18JD8DVlD1fakDAw7E9LFC",
+"id": "18JD8DVlD1fakDAw7E9LFC",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/c4fdb52d1be39038a8001116929044415fbd8962",
+"width": 640
+},
+{
+"height": 320,
+"url": "https://i.scdn.co/image/54a2ea5b22f2966c5d30ba2aa5d5589adfe023ef",
+"width": 320
+},
+{
+"height": 160,
+"url": "https://i.scdn.co/image/c11fdfd488dcf99e8b88975bba88205998ee7012",
+"width": 160
+}
+],
+"name": "2 Unlimited",
+"popularity": 59,
+"type": "artist",
+"uri": "spotify:artist:18JD8DVlD1fakDAw7E9LFC"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/0goZ9x7MGZF5rlaJOFrj1F"
+},
+"followers": {
+"href": null,
+"total": 10
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/0goZ9x7MGZF5rlaJOFrj1F",
+"id": "0goZ9x7MGZF5rlaJOFrj1F",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/195ebaebab44986c53d8423155299b47d16652db",
+"width": 640
+},
+{
+"height": 320,
+"url": "https://i.scdn.co/image/00bc3410ab6f5065625f10d8a1c7a4c4f922e95e",
+"width": 320
+},
+{
+"height": 160,
+"url": "https://i.scdn.co/image/c0c6bae7ea925c370fb91b2e27f4aa89182f8b3f",
+"width": 160
+}
+],
+"name": "24U",
+"popularity": 42,
+"type": "artist",
+"uri": "spotify:artist:0goZ9x7MGZF5rlaJOFrj1F"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/76pyFXpXITp0aRz4j3SyGJ"
+},
+"followers": {
+"href": null,
+"total": 318
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/76pyFXpXITp0aRz4j3SyGJ",
+"id": "76pyFXpXITp0aRz4j3SyGJ",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/9c72fe64128e7d01d8bae4275401e37a12562b43",
+"width": 640
+},
+{
+"height": 320,
+"url": "https://i.scdn.co/image/d3a313ef8e07f8ae5bf4a1800690065a7d1001b8",
+"width": 320
+},
+{
+"height": 160,
+"url": "https://i.scdn.co/image/3430c976f100fc5065b96fb588b3341d568c4f42",
+"width": 160
+}
+],
+"name": "L2U",
+"popularity": 21,
+"type": "artist",
+"uri": "spotify:artist:76pyFXpXITp0aRz4j3SyGJ"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/0j5kVHxvTgUN4nBIPKCLRJ"
+},
+"followers": {
+"href": null,
+"total": 9504
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/0j5kVHxvTgUN4nBIPKCLRJ",
+"id": "0j5kVHxvTgUN4nBIPKCLRJ",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/827f2b45917c1cc7bdc750a86b4f075c85fa615d",
+"width": 640
+},
+{
+"height": 320,
+"url": "https://i.scdn.co/image/3a16f063bc027a66e29343156be2c206575c773b",
+"width": 320
+},
+{
+"height": 160,
+"url": "https://i.scdn.co/image/f39027c69b58a49f13a07c778c215cdd592935b9",
+"width": 160
+}
+],
+"name": "Never Get Used To People",
+"popularity": 46,
+"type": "artist",
+"uri": "spotify:artist:0j5kVHxvTgUN4nBIPKCLRJ"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/1TxfUEM21kYVWinDMOqWwb"
+},
+"followers": {
+"href": null,
+"total": 121
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/1TxfUEM21kYVWinDMOqWwb",
+"id": "1TxfUEM21kYVWinDMOqWwb",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/ab67616d0000b27387b97641acd320159865afea",
+"width": 640
+},
+{
+"height": 300,
+"url": "https://i.scdn.co/image/ab67616d00001e0287b97641acd320159865afea",
+"width": 300
+},
+{
+"height": 64,
+"url": "https://i.scdn.co/image/ab67616d0000485187b97641acd320159865afea",
+"width": 64
+}
+],
+"name": "2f U-Flow",
+"popularity": 29,
+"type": "artist",
+"uri": "spotify:artist:1TxfUEM21kYVWinDMOqWwb"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/0iwKcRbay1SnKY1IH8MNL8"
+},
+"followers": {
+"href": null,
+"total": 2
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/0iwKcRbay1SnKY1IH8MNL8",
+"id": "0iwKcRbay1SnKY1IH8MNL8",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/ab67616d0000b2739664d2726b29a5e642003027",
+"width": 640
+},
+{
+"height": 300,
+"url": "https://i.scdn.co/image/ab67616d00001e029664d2726b29a5e642003027",
+"width": 300
+},
+{
+"height": 64,
+"url": "https://i.scdn.co/image/ab67616d000048519664d2726b29a5e642003027",
+"width": 64
+}
+],
+"name": "y27uri",
+"popularity": 30,
+"type": "artist",
+"uri": "spotify:artist:0iwKcRbay1SnKY1IH8MNL8"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/2wTNs9AmIOv5Fjs66HK1tV"
+},
+"followers": {
+"href": null,
+"total": 15791
+},
+"genres": [
+"rhythm game"
+],
+"href": "https://api.spotify.com/v1/artists/2wTNs9AmIOv5Fjs66HK1tV",
+"id": "2wTNs9AmIOv5Fjs66HK1tV",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/d4d7e6f174ee5be4c1099ccbe61220fcae904953",
+"width": 640
+},
+{
+"height": 320,
+"url": "https://i.scdn.co/image/57a8c4bf2c20aece32d765ce9fc69330dd3cd18f",
+"width": 320
+},
+{
+"height": 160,
+"url": "https://i.scdn.co/image/1d9e1c6d0aa5f080dbca4fc7d2b5457b5d5d8011",
+"width": 160
+}
+],
+"name": "M2U",
+"popularity": 41,
+"type": "artist",
+"uri": "spotify:artist:2wTNs9AmIOv5Fjs66HK1tV"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/1oUiDfTNWZCprR1GeRPs0i"
+},
+"followers": {
+"href": null,
+"total": 15485
+},
+"genres": [
+"j-pixie",
+"japanese math rock"
+],
+"href": "https://api.spotify.com/v1/artists/1oUiDfTNWZCprR1GeRPs0i",
+"id": "1oUiDfTNWZCprR1GeRPs0i",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/5d40c50ce833008a578fa0c7d92fc65d0f222c54",
+"width": 640
+},
+{
+"height": 320,
+"url": "https://i.scdn.co/image/0b346e14627b90cd25e9020443122bc32681baed",
+"width": 320
+},
+{
+"height": 160,
+"url": "https://i.scdn.co/image/f80ef7a4ec092e5bf054bc245b014963561639e5",
+"width": 160
+}
+],
+"name": "Lie and a Chameleon",
+"popularity": 41,
+"type": "artist",
+"uri": "spotify:artist:1oUiDfTNWZCprR1GeRPs0i"
+},
+{
+"external_urls": {
+"spotify": "https://open.spotify.com/artist/6diA719p2OaW6zQnXCbRO9"
+},
+"followers": {
+"href": null,
+"total": 236
+},
+"genres": [],
+"href": "https://api.spotify.com/v1/artists/6diA719p2OaW6zQnXCbRO9",
+"id": "6diA719p2OaW6zQnXCbRO9",
+"images": [
+{
+"height": 640,
+"url": "https://i.scdn.co/image/ab67616d0000b2737934fbc7e0876496ee772792",
+"width": 640
+},
+{
+"height": 300,
+"url": "https://i.scdn.co/image/ab67616d00001e027934fbc7e0876496ee772792",
+"width": 300
+},
+{
+"height": 64,
+"url": "https://i.scdn.co/image/ab67616d000048517934fbc7e0876496ee772792",
+"width": 64
+}
+],
+"name": "US Two",
+"popularity": 32,
+"type": "artist",
+"uri": "spotify:artist:6diA719p2OaW6zQnXCbRO9"
+}
+],
+"limit": 20,
+"next": "https://api.spotify.com/v1/search?query=U2&type=artist&offset=20&limit=20",
+"offset": 0,
+"previous": null,
+"total": 922
+}
+}
