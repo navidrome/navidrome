@@ -26,6 +26,7 @@ type ArtistRepository interface {
 	Exists(id string) (bool, error)
 	Put(m *Artist) error
 	Get(id string) (*Artist, error)
+	FindByName(name string) (*Artist, error)
 	GetStarred(options ...QueryOptions) (Artists, error)
 	Search(q string, offset int, size int) (Artists, error)
 	Refresh(ids ...string) error

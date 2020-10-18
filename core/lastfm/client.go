@@ -1,6 +1,7 @@
 package lastfm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -27,7 +28,7 @@ type Client struct {
 }
 
 // TODO SimilarArtists()
-func (c *Client) ArtistGetInfo(name string) (*Artist, error) {
+func (c *Client) ArtistGetInfo(ctx context.Context, name string) (*Artist, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getInfo")
 	params.Add("format", "json")

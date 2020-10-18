@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/server/subsonic/responses"
@@ -17,10 +18,11 @@ import (
 
 type BrowsingController struct {
 	ds model.DataStore
+	ei core.ExternalInfo
 }
 
-func NewBrowsingController(ds model.DataStore) *BrowsingController {
-	return &BrowsingController{ds: ds}
+func NewBrowsingController(ds model.DataStore, ei core.ExternalInfo) *BrowsingController {
+	return &BrowsingController{ds: ds, ei: ei}
 }
 
 func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -230,29 +232,75 @@ func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (
 	return response, nil
 }
 
-const placeholderArtistImageSmallUrl = "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png"
-const placeholderArtistImageMediumUrl = "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png"
-const placeholderArtistImageLargeUrl = "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png"
-
-// TODO Integrate with Last.FM
 func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	ctx := r.Context()
+	id, err := requiredParamString(r, "id", "id parameter required")
+	if err != nil {
+		return nil, err
+	}
+	count := utils.ParamInt(r, "count", 20)
+	includeNotPresent := utils.ParamBool(r, "includeNotPresent", false)
+
+	entity, err := getEntityByID(ctx, c.ds, id)
+	if err != nil {
+		return nil, err
+	}
+
+	switch v := entity.(type) {
+	case *model.MediaFile:
+		id = v.ArtistID
+	case *model.Album:
+		id = v.AlbumArtistID
+	case *model.Artist:
+		id = v.ID
+	default:
+		err = model.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := c.ei.ArtistInfo(ctx, id, includeNotPresent, count)
+	if err != nil {
+		return nil, err
+	}
+
 	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
-	response.ArtistInfo.Biography = "Biography not available"
-	response.ArtistInfo.SmallImageUrl = placeholderArtistImageSmallUrl
-	response.ArtistInfo.MediumImageUrl = placeholderArtistImageMediumUrl
-	response.ArtistInfo.LargeImageUrl = placeholderArtistImageLargeUrl
+	response.ArtistInfo.Biography = info.Bio
+	response.ArtistInfo.SmallImageUrl = info.SmallImageUrl
+	response.ArtistInfo.MediumImageUrl = info.MediumImageUrl
+	response.ArtistInfo.LargeImageUrl = info.LargeImageUrl
+	for _, s := range info.Similar {
+		similar := responses.Artist{}
+		similar.Id = s.ID
+		similar.Name = s.Name
+		similar.AlbumCount = s.AlbumCount
+		if s.Starred {
+			similar.Starred = &s.StarredAt
+		}
+		response.ArtistInfo.SimilarArtist = append(response.ArtistInfo.SimilarArtist, similar)
+	}
 	return response, nil
 }
 
-// TODO Integrate with Last.FM
 func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	info, err := c.GetArtistInfo(w, r)
+	if err != nil {
+		return nil, err
+	}
+
 	response := newResponse()
 	response.ArtistInfo2 = &responses.ArtistInfo2{}
-	response.ArtistInfo2.Biography = "Biography not available"
-	response.ArtistInfo2.SmallImageUrl = placeholderArtistImageSmallUrl
-	response.ArtistInfo2.MediumImageUrl = placeholderArtistImageSmallUrl
-	response.ArtistInfo2.LargeImageUrl = placeholderArtistImageSmallUrl
+	response.ArtistInfo2.ArtistInfoBase = info.ArtistInfo.ArtistInfoBase
+	for _, s := range info.ArtistInfo.SimilarArtist {
+		similar := responses.ArtistID3{}
+		similar.Id = s.Id
+		similar.Name = s.Name
+		similar.AlbumCount = s.AlbumCount
+		similar.Starred = s.Starred
+		response.ArtistInfo2.SimilarArtist = append(response.ArtistInfo2.SimilarArtist, similar)
+	}
 	return response, nil
 }
 

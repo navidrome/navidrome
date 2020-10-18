@@ -1,6 +1,7 @@
 package spotify
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -34,8 +35,8 @@ type Client struct {
 	hc     HttpClient
 }
 
-func (c *Client) ArtistImages(name string) ([]Image, error) {
-	token, err := c.authorize()
+func (c *Client) ArtistImages(ctx context.Context, name string) ([]Image, error) {
+	token, err := c.authorize(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -58,12 +59,13 @@ func (c *Client) ArtistImages(name string) ([]Image, error) {
 	if len(results.Artists.Items) == 0 {
 		return nil, ErrNotFound
 	}
+	log.Debug(ctx, "Found artist in Spotify", "artist", results.Artists.Items[0].Name)
 	return results.Artists.Items[0].Images, err
 }
 
-func (c *Client) authorize() (string, error) {
+func (c *Client) authorize(ctx context.Context) (string, error) {
 	payload := url.Values{}
-	payload.Add("grant_type", "client_credentials.getInfo")
+	payload.Add("grant_type", "client_credentials")
 
 	req, _ := http.NewRequest("POST", "https://accounts.spotify.com/api/token", strings.NewReader(payload.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -80,7 +82,7 @@ func (c *Client) authorize() (string, error) {
 	if v, ok := response["access_token"]; ok {
 		return v.(string), nil
 	}
-	log.Error("Invalid spotify response", "resp", response)
+	log.Error(ctx, "Invalid spotify response", "resp", response)
 	return "", errors.New("invalid response")
 }
 
