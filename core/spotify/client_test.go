@@ -75,7 +75,7 @@ var _ = Describe("Client", func() {
 				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"access_token": "NEW_ACCESS_TOKEN","token_type": "Bearer","expires_in": 3600}`)),
 			})
 
-			token, err := client.authorize(nil)
+			token, err := client.authorize(context.TODO())
 			Expect(err).To(BeNil())
 			Expect(token).To(Equal("NEW_ACCESS_TOKEN"))
 			auth := httpClient.lastRequest.Header.Get("Authorization")
@@ -88,7 +88,7 @@ var _ = Describe("Client", func() {
 				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":"invalid_client","error_description":"Invalid client"}`)),
 			})
 
-			_, err := client.authorize(nil)
+			_, err := client.authorize(context.TODO())
 			Expect(err).To(MatchError("spotify error(invalid_client): Invalid client"))
 		})
 
@@ -98,7 +98,7 @@ var _ = Describe("Client", func() {
 				Body:       ioutil.NopCloser(bytes.NewBufferString(`{NOT_VALID}`)),
 			})
 
-			_, err := client.authorize(nil)
+			_, err := client.authorize(context.TODO())
 			Expect(err).To(MatchError("invalid character 'N' looking for beginning of object key string"))
 		})
 	})
