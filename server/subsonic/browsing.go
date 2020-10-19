@@ -271,6 +271,8 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 	response.ArtistInfo.SmallImageUrl = info.SmallImageUrl
 	response.ArtistInfo.MediumImageUrl = info.MediumImageUrl
 	response.ArtistInfo.LargeImageUrl = info.LargeImageUrl
+	response.ArtistInfo.LastFmUrl = info.LastFMUrl
+	response.ArtistInfo.MusicBrainzID = info.MbzID
 	for _, s := range info.Similar {
 		similar := responses.Artist{}
 		similar.Id = s.ID

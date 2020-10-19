@@ -83,6 +83,8 @@ func (e *externalInfo) callArtistInfo(ctx context.Context, artist *model.Artist,
 				log.Debug(ctx, "Got info from Last.FM", "artist", artist.Name, "info", lfmArtist.Bio.Summary, "elapsed", time.Since(start))
 			}
 			e.setBio(info, lfmArtist.Bio.Summary)
+			e.setLastFMUrl(info, lfmArtist.URL)
+			e.setMbzID(info, lfmArtist.MBID)
 			e.setSimilar(ctx, info, lfmArtist.Similar.Artists, includeNotPresent)
 		}()
 	}
@@ -123,6 +125,18 @@ func (e *externalInfo) setBio(info *model.ArtistInfo, bio string) {
 		bio = policy.Sanitize(bio)
 		bio = strings.ReplaceAll(bio, "\n", " ")
 		info.Bio = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
+	}
+}
+
+func (e *externalInfo) setLastFMUrl(info *model.ArtistInfo, url string) {
+	if info.LastFMUrl == "" {
+		info.LastFMUrl = url
+	}
+}
+
+func (e *externalInfo) setMbzID(info *model.ArtistInfo, mbzID string) {
+	if info.MbzID == "" {
+		info.MbzID = mbzID
 	}
 }
 
