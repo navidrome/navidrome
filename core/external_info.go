@@ -76,7 +76,7 @@ func (e *externalInfo) callArtistInfo(ctx context.Context, artist *model.Artist,
 		go func() {
 			start := time.Now()
 			defer wg.Done()
-			lfmArtist, err := e.lfm.ArtistGetInfo(nil, artist.Name)
+			lfmArtist, err := e.lfm.ArtistGetInfo(ctx, artist.Name)
 			if err != nil {
 				log.Error(ctx, "Error calling Last.FM", "artist", artist.Name, err)
 			} else {
@@ -97,7 +97,7 @@ func (e *externalInfo) callArtistImages(ctx context.Context, artist *model.Artis
 		go func() {
 			start := time.Now()
 			defer wg.Done()
-			spfImages, err := e.spf.ArtistImages(nil, artist.Name)
+			spfImages, err := e.spf.ArtistImages(ctx, artist.Name)
 			if err != nil {
 				log.Error(ctx, "Error calling Spotify", "artist", artist.Name, err)
 			} else {
