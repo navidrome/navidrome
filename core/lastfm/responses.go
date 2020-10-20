@@ -1,7 +1,8 @@
 package lastfm
 
 type Response struct {
-	Artist Artist `json:"artist"`
+	Artist         Artist         `json:"artist"`
+	SimilarArtists SimilarArtists `json:"similarartists"`
 }
 
 type Artist struct {
@@ -14,13 +15,15 @@ type Artist struct {
 		Listeners string `json:"listeners"`
 		Plays     string `json:"plays"`
 	} `json:"stats"`
-	Similar struct {
-		Artists []Artist `json:"artist"`
-	} `json:"similar"`
-	Tags struct {
+	Similar SimilarArtists `json:"similar"`
+	Tags    struct {
 		Tag []ArtistTag `json:"tag"`
 	} `json:"tags"`
 	Bio ArtistBio `json:"bio"`
+}
+
+type SimilarArtists struct {
+	Artists []Artist `json:"artist"`
 }
 
 type ArtistImage struct {

@@ -36,9 +36,11 @@ type Subsonic struct {
 	ArtistWithAlbumsID3 *ArtistWithAlbumsID3 `xml:"artist,omitempty"                      json:"artist,omitempty"`
 	AlbumWithSongsID3   *AlbumWithSongsID3   `xml:"album,omitempty"                       json:"album,omitempty"`
 
-	ArtistInfo  *ArtistInfo  `xml:"artistInfo,omitempty"                                  json:"artistInfo,omitempty"`
-	ArtistInfo2 *ArtistInfo2 `xml:"artistInfo2,omitempty"                                 json:"artistInfo2,omitempty"`
-	TopSongs    *TopSongs    `xml:"topSongs,omitempty"                                    json:"topSongs,omitempty"`
+	ArtistInfo    *ArtistInfo    `xml:"artistInfo,omitempty"                              json:"artistInfo,omitempty"`
+	ArtistInfo2   *ArtistInfo2   `xml:"artistInfo2,omitempty"                             json:"artistInfo2,omitempty"`
+	SimilarSongs  *SimilarSongs  `xml:"similarSongs,omitempty"                            json:"similarSongs,omitempty"`
+	SimilarSongs2 *SimilarSongs2 `xml:"similarSongs2,omitempty"                           json:"similarSongs2,omitempty"`
+	TopSongs      *TopSongs      `xml:"topSongs,omitempty"                                json:"topSongs,omitempty"`
 
 	PlayQueue *PlayQueue `xml:"playQueue,omitempty"                                       json:"playQueue,omitempty"`
 	Bookmarks *Bookmarks `xml:"bookmarks,omitempty"                                       json:"bookmarks,omitempty"`
@@ -296,6 +298,14 @@ type ArtistInfo struct {
 type ArtistInfo2 struct {
 	ArtistInfoBase
 	SimilarArtist []ArtistID3 `xml:"similarArtist,omitempty"    json:"similarArtist,omitempty"`
+}
+
+type SimilarSongs struct {
+	Song []Child `xml:"song,omitempty"         json:"song,omitempty"`
+}
+
+type SimilarSongs2 struct {
+	Song []Child `xml:"song,omitempty"         json:"song,omitempty"`
 }
 
 type TopSongs struct {
