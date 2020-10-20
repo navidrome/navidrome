@@ -54,32 +54,29 @@ var _ = Describe("ffmpegExtractor", func() {
 	Context("extractMetadata", func() {
 		It("extracts MusicBrainz custom tags", func() {
 			const output = `
-Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'Colt 45 - Underground Post-Punk, Tropical Tapes, Lo Fi Electronics And Others Sounds From Brazil (1983 - 1993) Selected By Tetine/01-06 X.m4a':
+Input #0, ape, from './Capture/02 01 - Symphony No. 5 in C minor, Op. 67 I. Allegro con brio - Ludwig van Beethoven.ape':
   Metadata:
-    title           : X
-    artist          : Saara Saara
-    composer        : Servio Tulio & Raul Rachid
-    album           : Colt 45 - Underground Post-Punk, Tropical Tapes, Lo Fi Electronics And Others Sounds From Brazil (1983 - 1993) Selected By Tetine
-    genre           : Alternative
-    MusicBrainz Release Group Id: 0
-    MusicBrainz Album Artist Id: 194
-    MusicBrainz Artist Id: 200455
-    MusicBrainz Album Release Country: Unknown
-    MusicBrainz Album Id: 11406732
-    MusicBrainz Track Id: 11406732-6
-    Label           : Slum Dunk Music
-    publisher       : Slum Dunk Music
-    MusicBrainz Album Type: Compilation
-    MusicBrainz Album Comment: MP3
-    CATALOGNUMBER   : SLUM DUNK MUSIC 009
+    ALBUM           : Forever Classics
+    ARTIST          : Ludwig van Beethoven
+    TITLE           : Symphony No. 5 in C minor, Op. 67: I. Allegro con brio
+    MUSICBRAINZ_ALBUMSTATUS: official
+    MUSICBRAINZ_ALBUMTYPE: album
+    MusicBrainz_AlbumComment: MP3
+    Musicbrainz_Albumid: 71eb5e4a-90e2-4a31-a2d1-a96485fcb667
+    musicbrainz_trackid: ffe06940-727a-415a-b608-b7e45737f9d8
+    Musicbrainz_Artistid: 1f9df192-a621-4f54-8850-2c5373b7eac9
+    Musicbrainz_Albumartistid: 89ad4ac3-39f7-470e-963a-56509c546377
+    Musicbrainz_Releasegroupid: 708b1ae1-2d3d-34c7-b764-2732b154f5b6
+    musicbrainz_releasetrackid: 6fee2e35-3049-358f-83be-43b36141028b
+    CatalogNumber   : PLD 1201
 `
-			md, _ := extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.CatalogNum()).To(Equal("SLUM DUNK MUSIC 009"))
-			Expect(md.MbzTrackID()).To(Equal("11406732-6"))
-			Expect(md.MbzAlbumID()).To(Equal("11406732"))
-			Expect(md.MbzArtistID()).To(Equal("200455"))
-			Expect(md.MbzAlbumArtistID()).To(Equal("194"))
-			Expect(md.MbzAlbumType()).To(Equal("Compilation"))
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md.CatalogNum()).To(Equal("PLD 1201"))
+			Expect(md.MbzTrackID()).To(Equal("ffe06940-727a-415a-b608-b7e45737f9d8"))
+			Expect(md.MbzAlbumID()).To(Equal("71eb5e4a-90e2-4a31-a2d1-a96485fcb667"))
+			Expect(md.MbzArtistID()).To(Equal("1f9df192-a621-4f54-8850-2c5373b7eac9"))
+			Expect(md.MbzAlbumArtistID()).To(Equal("89ad4ac3-39f7-470e-963a-56509c546377"))
+			Expect(md.MbzAlbumType()).To(Equal("album"))
 			Expect(md.MbzAlbumComment()).To(Equal("MP3"))
 		})
 

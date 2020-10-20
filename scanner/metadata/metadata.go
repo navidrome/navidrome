@@ -11,6 +11,7 @@ import (
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
+	"github.com/google/uuid"
 )
 
 type Extractor interface {
@@ -96,16 +97,16 @@ func (m *baseMetadata) DiscSubtitle() string {
 }
 func (m *baseMetadata) CatalogNum() string { return m.getTag("catalognumber") }
 func (m *baseMetadata) MbzTrackID() string {
-	return m.getTag("musicbrainz_trackid", "musicbrainz track id")
+	return m.getMbzID("musicbrainz_trackid", "musicbrainz track id")
 }
 func (m *baseMetadata) MbzAlbumID() string {
-	return m.getTag("musicbrainz_albumid", "musicbrainz album id")
+	return m.getMbzID("musicbrainz_albumid", "musicbrainz album id")
 }
 func (m *baseMetadata) MbzArtistID() string {
-	return m.getTag("musicbrainz_artistid", "musicbrainz artist id")
+	return m.getMbzID("musicbrainz_artistid", "musicbrainz artist id")
 }
 func (m *baseMetadata) MbzAlbumArtistID() string {
-	return m.getTag("musicbrainz_albumartistid", "musicbrainz album artist id")
+	return m.getMbzID("musicbrainz_albumartistid", "musicbrainz album artist id")
 }
 func (m *baseMetadata) MbzAlbumType() string {
 	return m.getTag("musicbrainz_albumtype", "musicbrainz album type")
@@ -156,6 +157,20 @@ func (m *baseMetadata) parseYear(tags ...string) int {
 		}
 	}
 	return 0
+}
+
+func (m *baseMetadata) getMbzID(tags ...string) string {
+	var value string
+	for _, t := range tags {
+		if v, ok := m.tags[t]; ok {
+			value = v
+			break
+		}
+	}
+	if _, err := uuid.Parse(value); err != nil {
+		return ""
+	}
+	return value
 }
 
 func (m *baseMetadata) getTag(tags ...string) string {
