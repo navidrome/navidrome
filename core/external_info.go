@@ -121,10 +121,10 @@ func (e *externalInfo) callArtistImages(ctx context.Context, artist *model.Artis
 
 func (e *externalInfo) setBio(info *model.ArtistInfo, bio string) {
 	policy := bluemonday.UGCPolicy()
-	if info.Bio == "" {
+	if info.Biography == "" {
 		bio = policy.Sanitize(bio)
 		bio = strings.ReplaceAll(bio, "\n", " ")
-		info.Bio = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
+		info.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
 	}
 }
 
@@ -134,9 +134,9 @@ func (e *externalInfo) setLastFMUrl(info *model.ArtistInfo, url string) {
 	}
 }
 
-func (e *externalInfo) setMbzID(info *model.ArtistInfo, mbzID string) {
-	if info.MbzID == "" {
-		info.MbzID = mbzID
+func (e *externalInfo) setMbzID(info *model.ArtistInfo, mbID string) {
+	if info.MBID == "" {
+		info.MBID = mbID
 	}
 }
 

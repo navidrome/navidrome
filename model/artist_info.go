@@ -3,8 +3,8 @@ package model
 type ArtistInfo struct {
 	ID             string
 	Name           string
-	MbzID          string
-	Bio            string
+	MBID           string
+	Biography      string
 	Similar        []Artist
 	SmallImageUrl  string
 	MediumImageUrl string
