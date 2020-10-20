@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/deluan/navidrome/core/lastfm"
 	"github.com/deluan/navidrome/core/spotify"
 	"github.com/deluan/navidrome/log"
@@ -63,10 +64,31 @@ func (e *externalInfo) getArtist(ctx context.Context, id string) (artist *model.
 }
 
 func (e *externalInfo) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
-	// TODO
-	// Get Similar Artists
-	// Get `count` songs from all similar artists, sorted randomly
-	return nil, nil
+	if e.lfm == nil {
+		log.Warn(ctx, "Last.FM client not configured")
+		return nil, model.ErrNotAvailable
+	}
+
+	artist, err := e.getArtist(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	artists, err := e.similarArtists(ctx, artist, count, false)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(artists)+1)
+	ids[0] = artist.ID
+	for i, a := range artists {
+		ids[i+1] = a.ID
+	}
+
+	return e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Eq{"artist_id": ids},
+		Max:     count,
+		Sort:    "random()",
+	})
 }
 
 func (e *externalInfo) SimilarArtists(ctx context.Context, id string, includeNotPresent bool, count int) (model.Artists, error) {
@@ -80,6 +102,10 @@ func (e *externalInfo) SimilarArtists(ctx context.Context, id string, includeNot
 		return nil, err
 	}
 
+	return e.similarArtists(ctx, artist, count, includeNotPresent)
+}
+
+func (e *externalInfo) similarArtists(ctx context.Context, artist *model.Artist, count int, includeNotPresent bool) (model.Artists, error) {
 	var result model.Artists
 	var notPresent []string
 

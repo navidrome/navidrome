@@ -320,7 +320,7 @@ func (c *BrowsingController) GetSimilarSongs2(w http.ResponseWriter, r *http.Req
 
 	response := newResponse()
 	response.SimilarSongs2 = &responses.SimilarSongs2{
-		Song: res.SimilarSongs2.Song,
+		Song: res.SimilarSongs.Song,
 	}
 	return response, nil
 }
