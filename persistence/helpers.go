@@ -1,12 +1,15 @@
 package persistence
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/utils"
 )
@@ -54,4 +57,33 @@ func (e existsCond) ToSql() (string, []interface{}, error) {
 	sql, args, err := e.cond.ToSql()
 	sql = fmt.Sprintf("exists (select 1 from %s where %s)", e.subTable, sql)
 	return sql, args, err
+}
+
+func getMbzId(ctx context.Context, mbzIDS, entityName, name string) string {
+	ids := strings.Fields(mbzIDS)
+	if len(ids) == 0 {
+		return ""
+	}
+	idCounts := map[string]int{}
+	for _, id := range ids {
+		if c, ok := idCounts[id]; ok {
+			idCounts[id] = c + 1
+		} else {
+			idCounts[id] = 1
+		}
+	}
+
+	var topKey string
+	var topCount int
+	for k, v := range idCounts {
+		if v > topCount {
+			topKey = k
+			topCount = v
+		}
+	}
+
+	if len(idCounts) > 1 && name != consts.VariousArtists {
+		log.Warn(ctx, "Multiple MBIDs found for "+entityName, "name", name, "mbids", idCounts)
+	}
+	return topKey
 }

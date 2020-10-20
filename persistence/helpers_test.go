@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -59,6 +60,18 @@ var _ = Describe("Helpers", func() {
 			Expect(sql).To(Equal("exists (select 1 from album where id = ?)"))
 			Expect(args).To(Equal([]interface{}{1}))
 			Expect(err).To(BeNil())
+		})
+	})
+
+	Describe("getMbzId", func() {
+		It(`returns "" when no ids are passed`, func() {
+			Expect(getMbzId(context.TODO(), " ", "", "")).To(Equal(""))
+		})
+		It(`returns the only id passed`, func() {
+			Expect(getMbzId(context.TODO(), "1234 ", "", "")).To(Equal("1234"))
+		})
+		It(`returns the id with higher frequency`, func() {
+			Expect(getMbzId(context.TODO(), "1 2 3 4 1", "", "")).To(Equal("1"))
 		})
 	})
 })

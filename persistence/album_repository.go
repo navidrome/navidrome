@@ -161,8 +161,8 @@ func (r *albumRepository) refresh(ids ...string) error {
 	sel := Select(`f.album_id as id, f.album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
 		f.sort_album_name, f.sort_artist_name, f.sort_album_artist_name,
 		f.order_album_name, f.order_album_artist_name, f.path,
-		f.mbz_album_id, f.mbz_album_artist_id, f.mbz_album_type, f.mbz_album_comment, f.catalog_num,
-		f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
+		group_concat(f.mbz_album_id, ' ') as mbz_album_id, f.mbz_album_artist_id, f.mbz_album_type, f.mbz_album_comment, 
+		f.catalog_num, f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
 		count(f.id) as song_count, a.id as current_id, 
 		group_concat(f.disc_subtitle, ' ') as disc_subtitles,
 		group_concat(f.artist, ' ') as song_artists, group_concat(f.year, ' ') as years,
@@ -211,6 +211,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 			al.AlbumArtistID = al.ArtistID
 		}
 		al.MinYear = getMinYear(al.Years)
+		al.MbzAlbumID = getMbzId(r.ctx, al.MbzAlbumID, r.tableName, al.Name)
 		al.UpdatedAt = time.Now()
 		if al.CurrentId != "" {
 			toUpdate++

@@ -144,7 +144,7 @@ func (r *artistRepository) refresh(ids ...string) error {
 	}
 	var artists []refreshArtist
 	sel := Select("f.album_artist_id as id", "f.album_artist as name", "count(*) as album_count", "a.id as current_id",
-		"f.mbz_album_artist_id as mbz_artist_id",
+		"group_concat(f.mbz_album_artist_id , ' ') as mbz_artist_id",
 		"f.sort_album_artist_name as sort_artist_name", "f.order_album_artist_name as order_artist_name",
 		"sum(f.song_count) as song_count", "sum(f.size) as size").
 		From("album f").
@@ -164,6 +164,7 @@ func (r *artistRepository) refresh(ids ...string) error {
 		} else {
 			toInsert++
 		}
+		ar.MbzArtistID = getMbzId(r.ctx, ar.MbzArtistID, r.tableName, ar.Name)
 		err := r.Put(&ar.Artist)
 		if err != nil {
 			return err
