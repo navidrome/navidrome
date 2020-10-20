@@ -361,6 +361,64 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("SimilarSongs", func() {
+		BeforeEach(func() {
+			response.SimilarSongs = &SimilarSongs{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				child := make([]Child, 1)
+				child[0] = Child{Id: "1", Title: "title", IsDir: false}
+				response.SimilarSongs.Song = child
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("SimilarSongs2", func() {
+		BeforeEach(func() {
+			response.SimilarSongs2 = &SimilarSongs2{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				child := make([]Child, 1)
+				child[0] = Child{Id: "1", Title: "title", IsDir: false}
+				response.SimilarSongs2.Song = child
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
 	Describe("PlayQueue", func() {
 		BeforeEach(func() {
 			response.PlayQueue = &PlayQueue{}

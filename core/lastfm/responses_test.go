@@ -28,6 +28,19 @@ var _ = Describe("LastFM responses", func() {
 		})
 	})
 
+	Describe("SimilarArtists", func() {
+		It("parses the response correctly", func() {
+			var resp Response
+			body, _ := ioutil.ReadFile("tests/fixtures/lastfm.artist.getsimilar.json")
+			err := json.Unmarshal(body, &resp)
+			Expect(err).To(BeNil())
+
+			Expect(resp.SimilarArtists.Artists).To(HaveLen(2))
+			Expect(resp.SimilarArtists.Artists[0].Name).To(Equal("Passengers"))
+			Expect(resp.SimilarArtists.Artists[1].Name).To(Equal("INXS"))
+		})
+	})
+
 	Describe("Error", func() {
 		It("parses the error response correctly", func() {
 			var error Error

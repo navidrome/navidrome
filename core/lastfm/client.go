@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 const (
@@ -27,14 +28,10 @@ type Client struct {
 	hc     HttpClient
 }
 
-// TODO SimilarArtists()
-func (c *Client) ArtistGetInfo(ctx context.Context, name string) (*Artist, error) {
-	params := url.Values{}
-	params.Add("method", "artist.getInfo")
+func (c *Client) makeRequest(params url.Values) (*Response, error) {
 	params.Add("format", "json")
 	params.Add("api_key", c.apiKey)
-	params.Add("artist", name)
-	params.Add("lang", c.lang)
+
 	req, _ := http.NewRequest("GET", apiBaseUrl, nil)
 	req.URL.RawQuery = params.Encode()
 
@@ -55,7 +52,32 @@ func (c *Client) ArtistGetInfo(ctx context.Context, name string) (*Artist, error
 
 	var response Response
 	err = json.Unmarshal(data, &response)
-	return &response.Artist, err
+
+	return &response, err
+}
+
+func (c *Client) ArtistGetInfo(ctx context.Context, name string) (*Artist, error) {
+	params := url.Values{}
+	params.Add("method", "artist.getInfo")
+	params.Add("artist", name)
+	params.Add("lang", c.lang)
+	response, err := c.makeRequest(params)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Artist, nil
+}
+
+func (c *Client) ArtistGetSimilar(ctx context.Context, name string, limit int) ([]Artist, error) {
+	params := url.Values{}
+	params.Add("method", "artist.getSimilar")
+	params.Add("artist", name)
+	params.Add("limit", strconv.Itoa(limit))
+	response, err := c.makeRequest(params)
+	if err != nil {
+		return nil, err
+	}
+	return response.SimilarArtists.Artists, nil
 }
 
 func (c *Client) parseError(data []byte) error {

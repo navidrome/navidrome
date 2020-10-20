@@ -109,7 +109,7 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 	id := utils.ParamString(r, "id")
 	ctx := r.Context()
 
-	entity, err := getEntityByID(ctx, c.ds, id)
+	entity, err := core.GetEntityByID(ctx, c.ds, id)
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(r, "Requested ID not found ", "id", id)
@@ -241,26 +241,12 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 	count := utils.ParamInt(r, "count", 20)
 	includeNotPresent := utils.ParamBool(r, "includeNotPresent", false)
 
-	entity, err := getEntityByID(ctx, c.ds, id)
+	info, err := c.ei.ArtistInfo(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	switch v := entity.(type) {
-	case *model.MediaFile:
-		id = v.ArtistID
-	case *model.Album:
-		id = v.AlbumArtistID
-	case *model.Artist:
-		id = v.ID
-	default:
-		err = model.ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	info, err := c.ei.ArtistInfo(ctx, id, includeNotPresent, count)
+	similar, err := c.ei.SimilarArtists(ctx, id, includeNotPresent, count)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +259,7 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 	response.ArtistInfo.LargeImageUrl = info.LargeImageUrl
 	response.ArtistInfo.LastFmUrl = info.LastFMUrl
 	response.ArtistInfo.MusicBrainzID = info.MBID
-	for _, s := range info.Similar {
+	for _, s := range similar {
 		similar := responses.Artist{}
 		similar.Id = s.ID
 		similar.Name = s.Name
@@ -302,6 +288,39 @@ func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Reque
 		similar.AlbumCount = s.AlbumCount
 		similar.Starred = s.Starred
 		response.ArtistInfo2.SimilarArtist = append(response.ArtistInfo2.SimilarArtist, similar)
+	}
+	return response, nil
+}
+
+func (c *BrowsingController) GetSimilarSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	ctx := r.Context()
+	id, err := requiredParamString(r, "id", "id parameter required")
+	if err != nil {
+		return nil, err
+	}
+	count := utils.ParamInt(r, "count", 20)
+
+	songs, err := c.ei.SimilarSongs(ctx, id, count)
+	if err != nil {
+		return nil, err
+	}
+
+	response := newResponse()
+	response.SimilarSongs = &responses.SimilarSongs{
+		Song: childrenFromMediaFiles(ctx, songs),
+	}
+	return response, nil
+}
+
+func (c *BrowsingController) GetSimilarSongs2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	res, err := c.GetSimilarSongs(w, r)
+	if err != nil {
+		return nil, err
+	}
+
+	response := newResponse()
+	response.SimilarSongs2 = &responses.SimilarSongs2{
+		Song: res.SimilarSongs2.Song,
 	}
 	return response, nil
 }

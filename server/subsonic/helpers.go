@@ -258,24 +258,3 @@ func childrenFromAlbums(ctx context.Context, als model.Albums) []responses.Child
 	}
 	return children
 }
-
-// TODO: Should the type be encoded in the ID?
-func getEntityByID(ctx context.Context, ds model.DataStore, id string) (interface{}, error) {
-	ar, err := ds.Artist(ctx).Get(id)
-	if err == nil {
-		return ar, nil
-	}
-	al, err := ds.Album(ctx).Get(id)
-	if err == nil {
-		return al, nil
-	}
-	pls, err := ds.Playlist(ctx).Get(id)
-	if err == nil {
-		return pls, nil
-	}
-	mf, err := ds.MediaFile(ctx).Get(id)
-	if err == nil {
-		return mf, nil
-	}
-	return nil, err
-}

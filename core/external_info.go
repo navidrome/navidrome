@@ -19,11 +19,14 @@ const placeholderArtistImageMediumUrl = "https://lastfm.freetls.fastly.net/i/u/1
 const placeholderArtistImageLargeUrl = "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png"
 
 type ExternalInfo interface {
-	ArtistInfo(ctx context.Context, artistId string, includeNotPresent bool, count int) (*model.ArtistInfo, error)
+	ArtistInfo(ctx context.Context, id string) (*model.ArtistInfo, error)
+	SimilarArtists(ctx context.Context, id string, includeNotPresent bool, count int) (model.Artists, error)
+	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 }
 
 type LastFMClient interface {
 	ArtistGetInfo(ctx context.Context, name string) (*lastfm.Artist, error)
+	ArtistGetSimilar(ctx context.Context, name string, limit int) ([]lastfm.Artist, error)
 }
 
 type SpotifyClient interface {
@@ -40,20 +43,86 @@ type externalInfo struct {
 	spf SpotifyClient
 }
 
-func (e *externalInfo) ArtistInfo(ctx context.Context, artistId string,
-	includeNotPresent bool, count int) (*model.ArtistInfo, error) {
-	info := model.ArtistInfo{ID: artistId}
-
-	artist, err := e.ds.Artist(ctx).Get(artistId)
+func (e *externalInfo) getArtist(ctx context.Context, id string) (artist *model.Artist, err error) {
+	var entity interface{}
+	entity, err = GetEntityByID(ctx, e.ds, id)
 	if err != nil {
 		return nil, err
 	}
-	info.Name = artist.Name
+
+	switch v := entity.(type) {
+	case *model.Artist:
+		artist = v
+	case *model.MediaFile:
+		artist = &model.Artist{
+			ID:   v.ArtistID,
+			Name: v.Artist,
+		}
+	case *model.Album:
+		artist = &model.Artist{
+			ID:   v.AlbumArtistID,
+			Name: v.Artist,
+		}
+	default:
+		err = model.ErrNotFound
+	}
+	return
+}
+
+func (e *externalInfo) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+	// TODO
+	// Get Similar Artists
+	// Get `count` songs from all similar artists, sorted randomly
+	return nil, nil
+}
+
+func (e *externalInfo) SimilarArtists(ctx context.Context, id string, includeNotPresent bool, count int) (model.Artists, error) {
+	artist, err := e.getArtist(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	var result model.Artists
+	var notPresent []string
+
+	similar, err := e.lfm.ArtistGetSimilar(ctx, artist.Name, count)
+	if err != nil {
+		return nil, err
+	}
+
+	// First select artists that are present.
+	for _, s := range similar {
+		sa, err := e.ds.Artist(ctx).FindByName(s.Name)
+		if err != nil {
+			notPresent = append(notPresent, s.Name)
+			continue
+		}
+		result = append(result, *sa)
+	}
+
+	// Then fill up with non-present artists
+	if includeNotPresent {
+		for _, s := range notPresent {
+			sa := model.Artist{ID: "-1", Name: s}
+			result = append(result, sa)
+		}
+	}
+
+	return result, nil
+}
+
+func (e *externalInfo) ArtistInfo(ctx context.Context, id string) (*model.ArtistInfo, error) {
+	artist, err := e.getArtist(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	info := model.ArtistInfo{ID: artist.ID, Name: artist.Name}
 
 	// TODO Load from local: artist.jpg/png/webp, artist.json (with the remaining info)
 
 	var wg sync.WaitGroup
-	e.callArtistInfo(ctx, artist, includeNotPresent, &wg, &info)
+	e.callArtistInfo(ctx, artist, &wg, &info)
 	e.callArtistImages(ctx, artist, &wg, &info)
 	wg.Wait()
 
@@ -68,7 +137,7 @@ func (e *externalInfo) ArtistInfo(ctx context.Context, artistId string,
 	return &info, nil
 }
 
-func (e *externalInfo) callArtistInfo(ctx context.Context, artist *model.Artist, includeNotPresent bool,
+func (e *externalInfo) callArtistInfo(ctx context.Context, artist *model.Artist,
 	wg *sync.WaitGroup, info *model.ArtistInfo) {
 	if e.lfm != nil {
 		log.Debug(ctx, "Calling Last.FM ArtistGetInfo", "artist", artist.Name)
@@ -85,7 +154,6 @@ func (e *externalInfo) callArtistInfo(ctx context.Context, artist *model.Artist,
 			e.setBio(info, lfmArtist.Bio.Summary)
 			e.setLastFMUrl(info, lfmArtist.URL)
 			e.setMbzID(info, lfmArtist.MBID)
-			e.setSimilar(ctx, info, lfmArtist.Similar.Artists, includeNotPresent)
 		}()
 	}
 }
@@ -155,29 +223,5 @@ func (e *externalInfo) setMediumImageUrl(info *model.ArtistInfo, url string) {
 func (e *externalInfo) setLargeImageUrl(info *model.ArtistInfo, url string) {
 	if info.LargeImageUrl == "" {
 		info.LargeImageUrl = url
-	}
-}
-
-func (e *externalInfo) setSimilar(ctx context.Context, info *model.ArtistInfo, artists []lastfm.Artist, includeNotPresent bool) {
-	if len(info.Similar) == 0 {
-		var notPresent []string
-
-		// First select artists that are present.
-		for _, s := range artists {
-			sa, err := e.ds.Artist(ctx).FindByName(s.Name)
-			if err != nil {
-				notPresent = append(notPresent, s.Name)
-				continue
-			}
-			info.Similar = append(info.Similar, *sa)
-		}
-
-		// Then fill up with non-present artists
-		if includeNotPresent {
-			for _, s := range notPresent {
-				sa := model.Artist{ID: "-1", Name: s}
-				info.Similar = append(info.Similar, sa)
-			}
-		}
 	}
 }

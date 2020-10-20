@@ -5,7 +5,6 @@ type ArtistInfo struct {
 	Name           string
 	MBID           string
 	Biography      string
-	Similar        []Artist
 	SmallImageUrl  string
 	MediumImageUrl string
 	LargeImageUrl  string

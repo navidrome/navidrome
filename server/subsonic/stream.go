@@ -80,7 +80,7 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 		return nil, err
 	}
 
-	entity, err := getEntityByID(ctx, c.ds, id)
+	entity, err := core.GetEntityByID(ctx, c.ds, id)
 	if err != nil {
 		return nil, err
 	}
