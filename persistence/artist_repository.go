@@ -67,7 +67,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 }
 
 func (r *artistRepository) FindByName(name string) (*model.Artist, error) {
-	sel := r.selectArtist().Where(Eq{"name": name})
+	sel := r.selectArtist().Where(Like{"name": name})
 	var res model.Artists
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err
