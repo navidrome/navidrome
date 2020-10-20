@@ -22,7 +22,7 @@ var Set = wire.NewSet(
 	transcoder.New,
 )
 
-func LastFMNewClient() LastFMClient {
+func LastFMNewClient() *lastfm.Client {
 	if conf.Server.LastFM.ApiKey == "" {
 		return nil
 	}
@@ -30,7 +30,7 @@ func LastFMNewClient() LastFMClient {
 	return lastfm.NewClient(conf.Server.LastFM.ApiKey, conf.Server.LastFM.Language, http.DefaultClient)
 }
 
-func SpotifyNewClient() SpotifyClient {
+func SpotifyNewClient() *spotify.Client {
 	if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
 		return nil
 	}

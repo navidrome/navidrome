@@ -26,23 +26,14 @@ type ExternalInfo interface {
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 }
 
-type LastFMClient interface {
-	ArtistGetInfo(ctx context.Context, name string) (*lastfm.Artist, error)
-	ArtistGetSimilar(ctx context.Context, name string, limit int) ([]lastfm.Artist, error)
-}
-
-type SpotifyClient interface {
-	SearchArtists(ctx context.Context, name string, limit int) ([]spotify.Artist, error)
-}
-
-func NewExternalInfo(ds model.DataStore, lfm LastFMClient, spf SpotifyClient) ExternalInfo {
+func NewExternalInfo(ds model.DataStore, lfm *lastfm.Client, spf *spotify.Client) ExternalInfo {
 	return &externalInfo{ds: ds, lfm: lfm, spf: spf}
 }
 
 type externalInfo struct {
 	ds  model.DataStore
-	lfm LastFMClient
-	spf SpotifyClient
+	lfm *lastfm.Client
+	spf *spotify.Client
 }
 
 func (e *externalInfo) getArtist(ctx context.Context, id string) (artist *model.Artist, err error) {
