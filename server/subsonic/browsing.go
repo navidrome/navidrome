@@ -267,12 +267,12 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 
 	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
-	response.ArtistInfo.Biography = info.Bio
+	response.ArtistInfo.Biography = info.Biography
 	response.ArtistInfo.SmallImageUrl = info.SmallImageUrl
 	response.ArtistInfo.MediumImageUrl = info.MediumImageUrl
 	response.ArtistInfo.LargeImageUrl = info.LargeImageUrl
 	response.ArtistInfo.LastFmUrl = info.LastFMUrl
-	response.ArtistInfo.MusicBrainzID = info.MbzID
+	response.ArtistInfo.MusicBrainzID = info.MBID
 	for _, s := range info.Similar {
 		similar := responses.Artist{}
 		similar.Id = s.ID
