@@ -29,8 +29,12 @@ var _ = Describe("Client", func() {
 				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"access_token": "NEW_ACCESS_TOKEN","token_type": "Bearer","expires_in": 3600}`)),
 			})
 
-			images, err := client.ArtistImages(context.TODO(), "U2")
+			artists, err := client.SearchArtists(context.TODO(), "U2", 10)
 			Expect(err).To(BeNil())
+			Expect(artists).To(HaveLen(20))
+			Expect(artists[0].Popularity).To(Equal(82))
+
+			images := artists[0].Images
 			Expect(images).To(HaveLen(3))
 			Expect(images[0].Width).To(Equal(640))
 			Expect(images[1].Width).To(Equal(320))
@@ -51,7 +55,7 @@ var _ = Describe("Client", func() {
 				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"access_token": "NEW_ACCESS_TOKEN","token_type": "Bearer","expires_in": 3600}`)),
 			})
 
-			_, err := client.ArtistImages(context.TODO(), "U2")
+			_, err := client.SearchArtists(context.TODO(), "U2", 10)
 			Expect(err).To(MatchError(ErrNotFound))
 		})
 
@@ -63,7 +67,7 @@ var _ = Describe("Client", func() {
 				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":"invalid_client","error_description":"Invalid client"}`)),
 			})
 
-			_, err := client.ArtistImages(context.TODO(), "U2")
+			_, err := client.SearchArtists(context.TODO(), "U2", 10)
 			Expect(err).To(MatchError("spotify error(invalid_client): Invalid client"))
 		})
 	})

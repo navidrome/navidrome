@@ -35,7 +35,7 @@ type Client struct {
 	hc     HttpClient
 }
 
-func (c *Client) ArtistImages(ctx context.Context, name string) ([]Image, error) {
+func (c *Client) SearchArtists(ctx context.Context, name string, limit int) ([]Artist, error) {
 	token, err := c.authorize(ctx)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (c *Client) ArtistImages(ctx context.Context, name string) ([]Image, error)
 	params.Add("type", "artist")
 	params.Add("q", name)
 	params.Add("offset", "0")
-	params.Add("limit", "1")
+	params.Add("limit", strconv.Itoa(limit))
 	req, _ := http.NewRequest("GET", apiBaseUrl+"search", nil)
 	req.URL.RawQuery = params.Encode()
 	req.Header.Add("Authorization", "Bearer "+token)
@@ -60,7 +60,7 @@ func (c *Client) ArtistImages(ctx context.Context, name string) ([]Image, error)
 		return nil, ErrNotFound
 	}
 	log.Debug(ctx, "Found artist in Spotify", "artist", results.Artists.Items[0].Name)
-	return results.Artists.Items[0].Images, err
+	return results.Artists.Items, err
 }
 
 func (c *Client) authorize(ctx context.Context) (string, error) {

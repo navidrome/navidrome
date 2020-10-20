@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/xrash/smetrics"
 )
 
 const placeholderArtistImageSmallUrl = "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png"
@@ -30,7 +32,7 @@ type LastFMClient interface {
 }
 
 type SpotifyClient interface {
-	ArtistImages(ctx context.Context, name string) ([]spotify.Image, error)
+	SearchArtists(ctx context.Context, name string, limit int) ([]spotify.Artist, error)
 }
 
 func NewExternalInfo(ds model.DataStore, lfm LastFMClient, spf SpotifyClient) ExternalInfo {
@@ -77,6 +79,11 @@ func (e *externalInfo) SimilarSongs(ctx context.Context, id string, count int) (
 }
 
 func (e *externalInfo) SimilarArtists(ctx context.Context, id string, includeNotPresent bool, count int) (model.Artists, error) {
+	if e.lfm == nil {
+		log.Warn(ctx, "Last.FM client not configured")
+		return nil, model.ErrNotAvailable
+	}
+
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
@@ -85,6 +92,7 @@ func (e *externalInfo) SimilarArtists(ctx context.Context, id string, includeNot
 	var result model.Artists
 	var notPresent []string
 
+	log.Debug(ctx, "Calling Last.FM ArtistGetSimilar", "artist", artist.Name)
 	similar, err := e.lfm.ArtistGetSimilar(ctx, artist.Name, count)
 	if err != nil {
 		return nil, err
@@ -158,22 +166,44 @@ func (e *externalInfo) callArtistInfo(ctx context.Context, artist *model.Artist,
 	}
 }
 
+func (e *externalInfo) findArtist(ctx context.Context, name string) (*spotify.Artist, error) {
+	artists, err := e.spf.SearchArtists(ctx, name, 40)
+	if err != nil || len(artists) == 0 {
+		return nil, model.ErrNotFound
+	}
+	name = strings.ToLower(name)
+
+	// Sort results, prioritizing artists with images, with similar names and with high popularity, in this order
+	sort.Slice(artists, func(i, j int) bool {
+		ai := fmt.Sprintf("%-5t-%03d-%04d", len(artists[i].Images) == 0, smetrics.WagnerFischer(name, strings.ToLower(artists[i].Name), 1, 1, 2), 1000-artists[i].Popularity)
+		aj := fmt.Sprintf("%-5t-%03d-%04d", len(artists[j].Images) == 0, smetrics.WagnerFischer(name, strings.ToLower(artists[j].Name), 1, 1, 2), 1000-artists[j].Popularity)
+		return strings.Compare(ai, aj) < 0
+	})
+
+	// If the first one has the same name, that's the one
+	if strings.ToLower(artists[0].Name) != name {
+		return nil, model.ErrNotFound
+	}
+	return &artists[0], err
+}
+
 func (e *externalInfo) callArtistImages(ctx context.Context, artist *model.Artist, wg *sync.WaitGroup, info *model.ArtistInfo) {
 	if e.spf != nil {
-		log.Debug(ctx, "Calling Spotify ArtistImages", "artist", artist.Name)
+		log.Debug(ctx, "Calling Spotify SearchArtist", "artist", artist.Name)
 		wg.Add(1)
 		go func() {
 			start := time.Now()
 			defer wg.Done()
-			spfImages, err := e.spf.ArtistImages(ctx, artist.Name)
+
+			a, err := e.findArtist(ctx, artist.Name)
 			if err != nil {
 				log.Error(ctx, "Error calling Spotify", "artist", artist.Name, err)
-			} else {
-				log.Debug(ctx, "Got images from Spotify", "artist", artist.Name, "images", spfImages, "elapsed", time.Since(start))
+				return
 			}
+			spfImages := a.Images
+			log.Debug(ctx, "Got images from Spotify", "artist", artist.Name, "images", spfImages, "elapsed", time.Since(start))
 
 			sort.Slice(spfImages, func(i, j int) bool { return spfImages[i].Width > spfImages[j].Width })
-
 			if len(spfImages) >= 1 {
 				e.setLargeImageUrl(info, spfImages[0].URL)
 			}

@@ -10,11 +10,12 @@ type ArtistsResult struct {
 }
 
 type Artist struct {
-	Genres []string `json:"genres"`
-	HRef   string   `json:"href"`
-	ID     string   `json:"id"`
-	Images []Image  `json:"images"`
-	Name   string   `json:"name"`
+	Genres     []string `json:"genres"`
+	HRef       string   `json:"href"`
+	ID         string   `json:"id"`
+	Popularity int      `json:"popularity"`
+	Images     []Image  `json:"images"`
+	Name       string   `json:"name"`
 }
 
 type Image struct {
