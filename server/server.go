@@ -33,6 +33,7 @@ func New(scanner *scanner.Scanner, ds model.DataStore) *Server {
 	a.initRoutes()
 	a.initScanner()
 	checkFfmpegInstallation()
+	checkExternalCredentials()
 	return a
 }
 

@@ -93,3 +93,13 @@ func checkFfmpegInstallation() {
 		conf.Server.Scanner.Extractor = "taglib"
 	}
 }
+
+func checkExternalCredentials() {
+	if conf.Server.LastFM.ApiKey == "" || conf.Server.LastFM.Secret == "" {
+		log.Info("Last.FM integration not available: missing ApiKey/Secret")
+	}
+
+	if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
+		log.Info("Spotify integration is not enabled: artist images will not be available")
+	}
+}
