@@ -18,7 +18,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 )
 
-const Version = "1.12.0"
+const Version = "1.13.0"
 
 type Handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
