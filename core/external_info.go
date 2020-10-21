@@ -149,23 +149,33 @@ func (e *externalInfo) TopSongs(ctx context.Context, artist string, count int) (
 	}
 	var songs model.MediaFiles
 	for _, t := range tracks {
-		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.And{
+		mf, err := e.findMatchingTrack(ctx, artist, t.Name, t.MBID)
+		if err != nil {
+			continue
+		}
+		songs = append(songs, *mf)
+	}
+	return songs, nil
+}
+
+func (e *externalInfo) findMatchingTrack(ctx context.Context, artist, title, mbid string) (*model.MediaFile, error) {
+	mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Or{
+			squirrel.And{
 				squirrel.Or{
 					squirrel.Like{"artist": artist},
 					squirrel.Like{"album_artist": artist},
 				},
-				squirrel.Like{"title": t.Name},
+				squirrel.Like{"title": title},
 			},
-			Sort:  "year",
-			Order: "asc",
-		})
-		if err != nil || len(mfs) == 0 {
-			continue
-		}
-		songs = append(songs, mfs[0])
+			squirrel.Like{"mbz_track_id": mbid},
+		},
+		Sort: "mbz_track_id desc, year asc",
+	})
+	if err != nil || len(mfs) == 0 {
+		return nil, model.ErrNotFound
 	}
-	return songs, nil
+	return &mfs[0], nil
 }
 
 func (e *externalInfo) ArtistInfo(ctx context.Context, id string) (*model.ArtistInfo, error) {
