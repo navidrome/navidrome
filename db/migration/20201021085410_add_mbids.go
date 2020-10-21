@@ -7,10 +7,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(upAddMoreTags, downAddMoreTags)
+	goose.AddMigration(Up20201021085410, Down20201021085410)
 }
 
-func upAddMoreTags(tx *sql.Tx) error {
+func Up20201021085410(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
 	add mbz_track_id varchar(255);
@@ -52,6 +52,7 @@ alter table artist
 	return forceFullRescan(tx)
 }
 
-func downAddMoreTags(tx *sql.Tx) error {
+func Down20201021085410(tx *sql.Tx) error {
+	// This code is executed when the migration is rolled back.
 	return nil
 }
