@@ -154,6 +154,8 @@ func (e *externalInfo) TopSongs(ctx context.Context, artist string, count int) (
 				squirrel.Like{"artist": artist},
 				squirrel.Like{"title": t.Name},
 			},
+			Sort:  "year",
+			Order: "desc",
 		})
 		if err != nil || len(mfs) == 0 {
 			continue
