@@ -41,6 +41,21 @@ var _ = Describe("LastFM responses", func() {
 		})
 	})
 
+	Describe("TopTracks", func() {
+		It("parses the response correctly", func() {
+			var resp Response
+			body, _ := ioutil.ReadFile("tests/fixtures/lastfm.artist.gettoptracks.json")
+			err := json.Unmarshal(body, &resp)
+			Expect(err).To(BeNil())
+
+			Expect(resp.TopTracks.Track).To(HaveLen(2))
+			Expect(resp.TopTracks.Track[0].Name).To(Equal("Beautiful Day"))
+			Expect(resp.TopTracks.Track[0].MBID).To(Equal("f7f264d0-a89b-4682-9cd7-a4e7c37637af"))
+			Expect(resp.TopTracks.Track[1].Name).To(Equal("With or Without You"))
+			Expect(resp.TopTracks.Track[1].MBID).To(Equal("6b9a509f-6907-4a6e-9345-2f12da09ba4b"))
+		})
+	})
+
 	Describe("Error", func() {
 		It("parses the error response correctly", func() {
 			var error Error

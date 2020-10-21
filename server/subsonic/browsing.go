@@ -298,7 +298,7 @@ func (c *BrowsingController) GetSimilarSongs(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return nil, err
 	}
-	count := utils.ParamInt(r, "count", 20)
+	count := utils.ParamInt(r, "count", 50)
 
 	songs, err := c.ei.SimilarSongs(ctx, id, count)
 	if err != nil {
@@ -325,10 +325,23 @@ func (c *BrowsingController) GetSimilarSongs2(w http.ResponseWriter, r *http.Req
 	return response, nil
 }
 
-// TODO Integrate with Last.FM
 func (c *BrowsingController) GetTopSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	ctx := r.Context()
+	artist, err := requiredParamString(r, "artist", "artist parameter required")
+	if err != nil {
+		return nil, err
+	}
+	count := utils.ParamInt(r, "count", 50)
+
+	songs, err := c.ei.TopSongs(ctx, artist, count)
+	if err != nil {
+		return nil, err
+	}
+
 	response := newResponse()
-	response.TopSongs = &responses.TopSongs{}
+	response.TopSongs = &responses.TopSongs{
+		Song: childrenFromMediaFiles(ctx, songs),
+	}
 	return response, nil
 }
 

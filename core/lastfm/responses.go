@@ -3,6 +3,7 @@ package lastfm
 type Response struct {
 	Artist         Artist         `json:"artist"`
 	SimilarArtists SimilarArtists `json:"similarartists"`
+	TopTracks      TopTracks      `json:"toptracks"`
 }
 
 type Artist struct {
@@ -40,6 +41,15 @@ type ArtistBio struct {
 	Published string `json:"published"`
 	Summary   string `json:"summary"`
 	Content   string `json:"content"`
+}
+
+type Track struct {
+	Name string `json:"name"`
+	MBID string `json:"mbid"`
+}
+
+type TopTracks struct {
+	Track []Track `json:"track"`
 }
 
 type Error struct {

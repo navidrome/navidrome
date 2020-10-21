@@ -80,6 +80,18 @@ func (c *Client) ArtistGetSimilar(ctx context.Context, name string, limit int) (
 	return response.SimilarArtists.Artists, nil
 }
 
+func (c *Client) ArtistGetTopTracks(ctx context.Context, name string, limit int) ([]Track, error) {
+	params := url.Values{}
+	params.Add("method", "artist.getTopTracks")
+	params.Add("artist", name)
+	params.Add("limit", strconv.Itoa(limit))
+	response, err := c.makeRequest(params)
+	if err != nil {
+		return nil, err
+	}
+	return response.TopTracks.Track, nil
+}
+
 func (c *Client) parseError(data []byte) error {
 	var e Error
 	err := json.Unmarshal(data, &e)

@@ -25,6 +25,7 @@ type ExternalInfo interface {
 	ArtistInfo(ctx context.Context, id string) (*model.ArtistInfo, error)
 	SimilarArtists(ctx context.Context, id string, includeNotPresent bool, count int) (model.Artists, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
+	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 }
 
 func NewExternalInfo(ds model.DataStore, lfm *lastfm.Client, spf *spotify.Client) ExternalInfo {
@@ -134,6 +135,32 @@ func (e *externalInfo) similarArtists(ctx context.Context, artist *model.Artist,
 	}
 
 	return result, nil
+}
+
+func (e *externalInfo) TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error) {
+	if e.lfm == nil {
+		log.Warn(ctx, "Last.FM client not configured")
+		return nil, model.ErrNotAvailable
+	}
+	log.Debug(ctx, "Calling Last.FM ArtistGetTopTracks", "artist", artist)
+	tracks, err := e.lfm.ArtistGetTopTracks(ctx, artist, count)
+	if err != nil {
+		return nil, err
+	}
+	var songs model.MediaFiles
+	for _, t := range tracks {
+		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.And{
+				squirrel.Like{"artist": artist},
+				squirrel.Like{"title": t.Name},
+			},
+		})
+		if err != nil || len(mfs) == 0 {
+			continue
+		}
+		songs = append(songs, mfs[0])
+	}
+	return songs, nil
 }
 
 func (e *externalInfo) ArtistInfo(ctx context.Context, id string) (*model.ArtistInfo, error) {
