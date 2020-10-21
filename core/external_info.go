@@ -137,19 +137,25 @@ func (e *externalInfo) similarArtists(ctx context.Context, artist *model.Artist,
 	return result, nil
 }
 
-func (e *externalInfo) TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error) {
+func (e *externalInfo) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
 	if e.lfm == nil {
 		log.Warn(ctx, "Last.FM client not configured")
 		return nil, model.ErrNotAvailable
 	}
-	log.Debug(ctx, "Calling Last.FM ArtistGetTopTracks", "artist", artist)
-	tracks, err := e.lfm.ArtistGetTopTracks(ctx, artist, count)
+	artist, err := e.ds.Artist(ctx).FindByName(artistName)
+	if err != nil {
+		log.Error(ctx, "Artist not found", "name", artistName, err)
+		return nil, nil
+	}
+
+	log.Debug(ctx, "Calling Last.FM ArtistGetTopTracks", "artist", artistName, "id", artist.ID)
+	tracks, err := e.lfm.ArtistGetTopTracks(ctx, artistName, count)
 	if err != nil {
 		return nil, err
 	}
 	var songs model.MediaFiles
 	for _, t := range tracks {
-		mf, err := e.findMatchingTrack(ctx, artist, t.Name, t.MBID)
+		mf, err := e.findMatchingTrack(ctx, t.MBID, artist.ID, t.Name)
 		if err != nil {
 			continue
 		}
@@ -158,19 +164,24 @@ func (e *externalInfo) TopSongs(ctx context.Context, artist string, count int) (
 	return songs, nil
 }
 
-func (e *externalInfo) findMatchingTrack(ctx context.Context, artist, title, mbid string) (*model.MediaFile, error) {
+func (e *externalInfo) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
+	if mbid != "" {
+		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.Eq{"mbz_track_id": mbid},
+		})
+		if err == nil && len(mfs) > 0 {
+			return &mfs[0], nil
+		}
+	}
 	mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.Or{
-			squirrel.And{
-				squirrel.Or{
-					squirrel.Like{"artist": artist},
-					squirrel.Like{"album_artist": artist},
-				},
-				squirrel.Like{"title": title},
+		Filters: squirrel.And{
+			squirrel.Or{
+				squirrel.Eq{"artist_id": artistID},
+				squirrel.Eq{"album_artist_id": artistID},
 			},
-			squirrel.Like{"mbz_track_id": mbid},
+			squirrel.Like{"title": title},
 		},
-		Sort: "mbz_track_id desc, year asc",
+		Sort: "year",
 	})
 	if err != nil || len(mfs) == 0 {
 		return nil, model.ErrNotFound
