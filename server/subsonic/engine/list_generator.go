@@ -61,8 +61,13 @@ func ByGenre(genre string) ListFilter {
 }
 
 func ByYear(fromYear, toYear int) ListFilter {
+	sortOption := "max_year, name"
+	if fromYear > toYear {
+		fromYear, toYear = toYear, fromYear
+		sortOption = "max_year desc, name"
+	}
 	return ListFilter{
-		Sort: "max_year, name",
+		Sort: sortOption,
 		Filters: squirrel.Or{
 			squirrel.And{
 				squirrel.GtOrEq{"min_year": fromYear},
