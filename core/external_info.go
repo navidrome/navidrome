@@ -181,7 +181,7 @@ func (e *externalInfo) findMatchingTrack(ctx context.Context, mbid string, artis
 			},
 			squirrel.Like{"title": title},
 		},
-		Sort: "year",
+		Sort: "starred desc, rating desc, year asc",
 	})
 	if err != nil || len(mfs) == 0 {
 		return nil, model.ErrNotFound
