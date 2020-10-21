@@ -151,7 +151,10 @@ func (e *externalInfo) TopSongs(ctx context.Context, artist string, count int) (
 	for _, t := range tracks {
 		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 			Filters: squirrel.And{
-				squirrel.Like{"artist": artist},
+				squirrel.Or{
+					squirrel.Like{"artist": artist},
+					squirrel.Like{"album_artist": artist},
+				},
 				squirrel.Like{"title": t.Name},
 			},
 			Sort:  "year",
