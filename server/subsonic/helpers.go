@@ -89,6 +89,7 @@ func toArtists(entries engine.Entries) []responses.Artist {
 			Id:         entry.Id,
 			Name:       entry.Title,
 			AlbumCount: entry.AlbumCount,
+			UserRating: entry.UserRating,
 		}
 		if !entry.Starred.IsZero() {
 			artists[i].Starred = &entry.Starred

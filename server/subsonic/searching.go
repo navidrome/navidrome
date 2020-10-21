@@ -83,6 +83,7 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 			Id:         artist.ID,
 			Name:       artist.Name,
 			AlbumCount: artist.AlbumCount,
+			UserRating: artist.Rating,
 		}
 		if artist.Starred {
 			searchResult2.Artist[i].Starred = &artist.StarredAt

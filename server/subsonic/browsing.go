@@ -267,6 +267,7 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 		if s.Starred {
 			similar.Starred = &s.StarredAt
 		}
+		similar.UserRating = s.Rating
 		response.ArtistInfo.SimilarArtist = append(response.ArtistInfo.SimilarArtist, similar)
 	}
 	return response, nil
