@@ -22,8 +22,7 @@ const placeholderArtistImageMediumUrl = "https://lastfm.freetls.fastly.net/i/u/1
 const placeholderArtistImageLargeUrl = "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png"
 
 type ExternalInfo interface {
-	ArtistInfo(ctx context.Context, id string) (*model.ArtistInfo, error)
-	SimilarArtists(ctx context.Context, id string, includeNotPresent bool, count int) (model.Artists, error)
+	ArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.ArtistInfo, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 }
@@ -90,20 +89,6 @@ func (e *externalInfo) SimilarSongs(ctx context.Context, id string, count int) (
 		Max:     count,
 		Sort:    "random()",
 	})
-}
-
-func (e *externalInfo) SimilarArtists(ctx context.Context, id string, includeNotPresent bool, count int) (model.Artists, error) {
-	if e.lfm == nil {
-		log.Warn(ctx, "Last.FM client not configured")
-		return nil, model.ErrNotAvailable
-	}
-
-	artist, err := e.getArtist(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return e.similarArtists(ctx, artist, count, includeNotPresent)
 }
 
 func (e *externalInfo) similarArtists(ctx context.Context, artist *model.Artist, count int, includeNotPresent bool) (model.Artists, error) {
@@ -189,7 +174,7 @@ func (e *externalInfo) findMatchingTrack(ctx context.Context, mbid string, artis
 	return &mfs[0], nil
 }
 
-func (e *externalInfo) ArtistInfo(ctx context.Context, id string) (*model.ArtistInfo, error) {
+func (e *externalInfo) ArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.ArtistInfo, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
@@ -202,6 +187,7 @@ func (e *externalInfo) ArtistInfo(ctx context.Context, id string) (*model.Artist
 	var wg sync.WaitGroup
 	e.callArtistInfo(ctx, artist, &wg, &info)
 	e.callArtistImages(ctx, artist, &wg, &info)
+	e.callSimilarArtists(ctx, artist, count, includeNotPresent, &wg, &info)
 	wg.Wait()
 
 	// Use placeholders if could not get from external sources
@@ -215,8 +201,7 @@ func (e *externalInfo) ArtistInfo(ctx context.Context, id string) (*model.Artist
 	return &info, nil
 }
 
-func (e *externalInfo) callArtistInfo(ctx context.Context, artist *model.Artist,
-	wg *sync.WaitGroup, info *model.ArtistInfo) {
+func (e *externalInfo) callArtistInfo(ctx context.Context, artist *model.Artist, wg *sync.WaitGroup, info *model.ArtistInfo) {
 	if e.lfm != nil {
 		log.Debug(ctx, "Calling Last.FM ArtistGetInfo", "artist", artist.Name)
 		wg.Add(1)
@@ -255,6 +240,24 @@ func (e *externalInfo) findArtist(ctx context.Context, name string) (*spotify.Ar
 		return nil, model.ErrNotFound
 	}
 	return &artists[0], err
+}
+
+func (e *externalInfo) callSimilarArtists(ctx context.Context, artist *model.Artist, count int, includeNotPresent bool,
+	wg *sync.WaitGroup, info *model.ArtistInfo) {
+	if e.lfm != nil {
+		wg.Add(1)
+		go func() {
+			start := time.Now()
+			defer wg.Done()
+			similar, err := e.similarArtists(ctx, artist, count, includeNotPresent)
+			if err != nil {
+				log.Error(ctx, "Error calling Last.FM", "artist", artist.Name, err)
+				return
+			}
+			log.Debug(ctx, "Got similar artists from Last.FM", "artist", artist.Name, "info", "elapsed", time.Since(start))
+			info.SimilarArtists = similar
+		}()
+	}
 }
 
 func (e *externalInfo) callArtistImages(ctx context.Context, artist *model.Artist, wg *sync.WaitGroup, info *model.ArtistInfo) {

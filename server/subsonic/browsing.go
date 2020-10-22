@@ -241,12 +241,7 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 	count := utils.ParamInt(r, "count", 20)
 	includeNotPresent := utils.ParamBool(r, "includeNotPresent", false)
 
-	info, err := c.ei.ArtistInfo(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	similar, err := c.ei.SimilarArtists(ctx, id, includeNotPresent, count)
+	info, err := c.ei.ArtistInfo(ctx, id, count, includeNotPresent)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +254,7 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 	response.ArtistInfo.LargeImageUrl = info.LargeImageUrl
 	response.ArtistInfo.LastFmUrl = info.LastFMUrl
 	response.ArtistInfo.MusicBrainzID = info.MBID
-	for _, s := range similar {
+	for _, s := range info.SimilarArtists {
 		similar := responses.Artist{}
 		similar.Id = s.ID
 		similar.Name = s.Name
