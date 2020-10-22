@@ -43,6 +43,7 @@ type configOptions struct {
 	Scanner scannerOptions
 	LastFM  lastfmOptions
 	Spotify spotifyOptions
+	LDAP    ldapOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
@@ -62,6 +63,16 @@ type lastfmOptions struct {
 type spotifyOptions struct {
 	ID     string
 	Secret string
+}
+
+type ldapOptions struct {
+	Host         string
+	BindDN       string
+	BindPassword string
+	Base         string
+	SearchFilter string
+	Mail         string
+	Name         string
 }
 
 var Server = &configOptions{}
@@ -125,6 +136,14 @@ func init() {
 	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
+
+	viper.SetDefault("ldap.host", "ldap://localhost:389")
+	viper.SetDefault("ldap.binddn", "")
+	viper.SetDefault("ldap.bindpassword", "")
+	viper.SetDefault("ldap.base", "")
+	viper.SetDefault("ldap.searchfilter", "(&(objectClass=inetOrgPerson)(uid=%s))")
+	viper.SetDefault("ldap.mail", "mail")
+	viper.SetDefault("ldap.name", "cn")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

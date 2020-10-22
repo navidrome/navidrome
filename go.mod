@@ -18,6 +18,7 @@ require (
 	github.com/go-chi/cors v1.1.1
 	github.com/go-chi/httprate v0.4.0
 	github.com/go-chi/jwtauth v4.0.4+incompatible
+	github.com/go-ldap/ldap v3.0.3+incompatible
 	github.com/golangci/golangci-lint v1.31.0
 	github.com/google/uuid v1.1.2
 	github.com/google/wire v0.4.0
@@ -42,6 +43,7 @@ require (
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 	golang.org/x/tools v0.0.0-20200812195022-5ae4c3c160a0
 	google.golang.org/protobuf v1.25.0 // indirect
+	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
 	gopkg.in/djherbis/stream.v1 v1.3.1 // indirect
 	gopkg.in/ini.v1 v1.57.0 // indirect
