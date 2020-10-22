@@ -121,6 +121,10 @@ func init() {
 
 	viper.SetDefault("scanner.extractor", "taglib")
 	viper.SetDefault("lastfm.language", "en")
+	viper.SetDefault("lastfm.apikey", "")
+	viper.SetDefault("lastfm.secret", "")
+	viper.SetDefault("spotify.id", "")
+	viper.SetDefault("spotify.secret", "")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
