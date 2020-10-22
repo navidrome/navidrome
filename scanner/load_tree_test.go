@@ -38,5 +38,9 @@ var _ = Describe("load_tree", func() {
 			dir, _ := os.Stat(filepath.Join(baseDir, "ignored_folder"))
 			Expect(isDirIgnored(baseDir, dir)).To(BeTrue())
 		})
+		It("returns true when folder name starts with a `.`", func() {
+			dir, _ := os.Stat(filepath.Join(baseDir, ".hidden_folder"))
+			Expect(isDirIgnored(baseDir, dir)).To(BeTrue())
+		})
 	})
 })
