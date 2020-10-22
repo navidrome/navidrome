@@ -34,6 +34,25 @@ const useStyles = makeStyles((theme) => ({
   artistLink: {
     color: theme.palette.primary.light,
   },
+  albumArtist: {
+    fontSize:'12px',
+    color:'#c5c5c5',
+    overflow:'hidden',
+    whiteSpace:'nowrap',
+    textOverflow: 'ellipsis'
+  },
+  albumName: {
+    fontSize:'14px',
+    color:'#eee',
+    overflow:'hidden',
+    whiteSpace:'nowrap',
+    textOverflow: 'ellipsis'
+  },
+  link: {
+    position:'relative',
+    display: 'block',
+    textDecoration:'none'
+  }
 }))
 
 const useCoverStyles = makeStyles({
@@ -85,32 +104,18 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
         setVisible(false)
       }}
     >
-      <Link to={linkToRecord(basePath, record.id, 'show')}>
+      <Link className={classes.link} to={linkToRecord(basePath, record.id, 'show')}>
         <Cover album={record} />
         {(!isDesktop || visible) && (
           <GridListTileBar
             className={classes.tileBar}
-            title={record.name}
-            subtitle={
-              <div className={classes.albumArtistName}>
-                {showArtist ? (
-                  <ArtistLinkField
-                    record={record}
-                    className={classes.artistLink}
-                  />
-                ) : (
-                  <RangeField
-                    record={record}
-                    source={'year'}
-                    sortBy={'maxYear'}
-                    sortByOrder={'DESC'}
-                  />
-                )}
-              </div>
-            }
             actionIcon={<AlbumContextMenu record={record} color={'white'} />}
           />
         )}
+      </Link>
+      <Link className={classes.link} to={linkToRecord(basePath, record.id, 'show')}>
+        <div className={classes.albumName}>{record.name}</div>
+        <div className={classes.albumArtist}>{record.albumArtist}</div>
       </Link>
     </div>
   )
