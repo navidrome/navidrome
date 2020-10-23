@@ -18,8 +18,8 @@ const useStyles = makeStyles((theme) => ({
     margin: '20px',
   },
   tileBar: {
-    transition:'all 150ms ease-out',
-    opacity:0,
+    transition: 'all 150ms ease-out',
+    opacity: 0,
     textAlign: 'left',
     marginBottom: '3px',
     background:
@@ -42,31 +42,31 @@ const useStyles = makeStyles((theme) => ({
     color: theme.palette.primary.light,
   },
   albumArtist: {
-    fontSize:'12px',
-    color:'#c5c5c5',
-    overflow:'hidden',
-    whiteSpace:'nowrap',
-    textOverflow: 'ellipsis'
+    fontSize: '12px',
+    color: '#c5c5c5',
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
   },
   albumName: {
-    fontSize:'14px',
-    color:'#eee',
-    overflow:'hidden',
-    whiteSpace:'nowrap',
-    textOverflow: 'ellipsis'
+    fontSize: '14px',
+    color: '#eee',
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
   },
   link: {
-    position:'relative',
+    position: 'relative',
     display: 'block',
-    textDecoration:'none',
-    "&:hover $tileBar": {
-      opacity:1,
-    }
+    textDecoration: 'none',
+    '&:hover $tileBar': {
+      opacity: 1,
+    },
   },
   albumLlink: {
-    position:'relative',
+    position: 'relative',
     display: 'block',
-    textDecoration:'none',
+    textDecoration: 'none',
   },
 }))
 
@@ -111,17 +111,27 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
 
   return (
     <div>
-      <Link className={classes.link} to={linkToRecord(basePath, record.id, 'show')}>
+      <Link
+        className={classes.link}
+        to={linkToRecord(basePath, record.id, 'show')}
+      >
         <Cover album={record} />
-          <GridListTileBar
-            className={isDesktop ? classes.tileBar : classes.tileBarMobile}
-            subtitle={
-              <PlayButton record={record} className={classes.playButton} size="small" />
-            }
-            actionIcon={<AlbumContextMenu record={record} color={'white'} />}
-          />
+        <GridListTileBar
+          className={isDesktop ? classes.tileBar : classes.tileBarMobile}
+          subtitle={
+            <PlayButton
+              record={record}
+              className={classes.playButton}
+              size="small"
+            />
+          }
+          actionIcon={<AlbumContextMenu record={record} color={'white'} />}
+        />
       </Link>
-      <Link className={classes.albumLlink} to={linkToRecord(basePath, record.id, 'show')}>
+      <Link
+        className={classes.albumLlink}
+        to={linkToRecord(basePath, record.id, 'show')}
+      >
         <div className={classes.albumName}>{record.name}</div>
         <div className={classes.albumArtist}>{record.albumArtist}</div>
       </Link>

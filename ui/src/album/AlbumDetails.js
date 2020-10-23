@@ -38,7 +38,11 @@ const AlbumDetails = ({ classes, record }) => {
         className={classes.albumCover}
         onClick={handleOpenLightbox}
       >
-        <PlayButton record={record} className={classes.playButton} size={"large"} />
+        <PlayButton
+          record={record}
+          className={classes.playButton}
+          size={'large'}
+        />
       </CardMedia>
       <CardContent className={classes.albumDetails}>
         <Typography variant="h5" className={classes.albumTitle}>
