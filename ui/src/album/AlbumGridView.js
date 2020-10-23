@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   GridList,
   GridListTile,
@@ -108,17 +108,9 @@ const Cover = withContentRect('bounds')(
 const AlbumGridTile = ({ showArtist, record, basePath }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles()
-  const [visible, setVisible] = useState(false)
 
   return (
-    <div
-      onMouseMove={() => {
-        setVisible(true)
-      }}
-      onMouseLeave={() => {
-        setVisible(false)
-      }}
-    >
+    <div>
       <Link className={classes.link} to={linkToRecord(basePath, record.id, 'show')}>
         <Cover album={record} />
           <GridListTileBar
