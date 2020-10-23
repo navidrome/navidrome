@@ -11,9 +11,16 @@ export const useStyles = makeStyles((theme) => ({
       minWidth: '32em',
     },
   },
+  playButton: {
+    opacity:0,
+    transition:'all 150ms ease-out'
+  },
   albumCover: {
-    display: 'inline-block',
+    display: 'inline-flex',
+    justifyContent:'center',
+    alignItems:'center',
     cursor: 'pointer',
+    
     [theme.breakpoints.down('xs')]: {
       height: '8em',
       width: '8em',
@@ -26,6 +33,9 @@ export const useStyles = makeStyles((theme) => ({
       height: '15em',
       width: '15em',
     },
+    '&:hover $playButton': {
+      opacity:1,  
+    }
   },
   albumDetails: {
     display: 'inline-block',
