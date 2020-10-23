@@ -11,18 +11,25 @@ import { Link } from 'react-router-dom'
 import { linkToRecord, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
-import { ArtistLinkField, RangeField } from '../common'
-import { AlbumContextMenu } from '../common'
+import { AlbumContextMenu, PlayButton } from '../common'
 
 const useStyles = makeStyles((theme) => ({
   root: {
     margin: '20px',
   },
   tileBar: {
+    transition:'all 150ms ease-out',
+    opacity:0,
     textAlign: 'left',
     marginBottom: '3px',
     background:
-      'linear-gradient(to top, rgba(0,0,0,1) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
+      'linear-gradient(to top, rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
+  },
+  tileBarMobile: {
+    textAlign: 'left',
+    marginBottom: '3px',
+    background:
+      'linear-gradient(to top, rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
   },
   albumArtistName: {
     whiteSpace: 'nowrap',
@@ -51,8 +58,16 @@ const useStyles = makeStyles((theme) => ({
   link: {
     position:'relative',
     display: 'block',
-    textDecoration:'none'
-  }
+    textDecoration:'none',
+    "&:hover $tileBar": {
+      opacity:1,
+    }
+  },
+  albumLlink: {
+    position:'relative',
+    display: 'block',
+    textDecoration:'none',
+  },
 }))
 
 const useCoverStyles = makeStyles({
@@ -106,14 +121,15 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
     >
       <Link className={classes.link} to={linkToRecord(basePath, record.id, 'show')}>
         <Cover album={record} />
-        {(!isDesktop || visible) && (
           <GridListTileBar
-            className={classes.tileBar}
+            className={isDesktop ? classes.tileBar : classes.tileBarMobile}
+            subtitle={
+              <PlayButton record={record} className={classes.playButton} size="small" />
+            }
             actionIcon={<AlbumContextMenu record={record} color={'white'} />}
           />
-        )}
       </Link>
-      <Link className={classes.link} to={linkToRecord(basePath, record.id, 'show')}>
+      <Link className={classes.albumLlink} to={linkToRecord(basePath, record.id, 'show')}>
         <div className={classes.albumName}>{record.name}</div>
         <div className={classes.albumArtist}>{record.albumArtist}</div>
       </Link>
