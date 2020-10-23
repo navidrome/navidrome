@@ -206,7 +206,7 @@
             "references": {
                 "all_missing": "De gerefereerde elementen konden niet gevonden worden.",
                 "many_missing": "Een of meer van de gerefereerde elementen is niet meer beschikbaar.",
-                "single_missing": "Een van de gerefereerde elementen is niet meer beschikbaar"
+                "single_missing": "Een van de bijbehorende elementen is niet meer beschikbaar"
             },
             "password": {
                 "toggle_visible": "Verberg wachtwoord",
@@ -255,7 +255,7 @@
     },
     "message": {
         "note": "Notitie",
-        "transcodingDisabled": "Het wijzigen van de transcoderingsconfiguratie via de web interface is om veiligheidsredenen uitgeschakeld. Als je transcoderopties wilt wijzigen (bewerken of toevoegen), start de server opnieuw op met de %{config} configuratie-optie.",
+        "transcodingDisabled": "Het wijzigen van de transcodersconfiguratie via de web interface is om veiligheidsredenen uitgeschakeld. Als je transcoderopties wilt wijzigen (bewerken of toevoegen), start de server opnieuw op met de %{config} configuratie-optie.",
         "transcodingEnabled": "Navidrome werkt momenteel met %{config}, waardoor het mogelijk is om systeemopdrachten uit te voeren vanuit de transcoderinstellingen via de web interface. We raden aan dit om veiligheidsredenen uit te schakelen en alleen in te schakelen bij het configureren van transcoderopties.",
         "songsAddedToPlaylist": "1 nummer toegevoegd aan afspeellijst |||| %{smart_count} nummers toegevoegd aan afspeellijst",
         "noPlaylistsAvailable": "Geen beschikbaar",
@@ -275,7 +275,8 @@
                 "defaultView": "Standaard Weergave"
             }
         },
-        "albumList": "Albums"
+        "albumList": "Albums",
+        "about": "Over"
     },
     "player": {
         "playListsText": "Afspeellijst afspelen",
@@ -300,6 +301,13 @@
             "orderLoop": "Herhalen",
             "singleLoop": "Herhaal Eenmalig",
             "shufflePlay": "Shuffle"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "Thuispagina",
+            "source": "Broncode",
+            "featureRequests": "Functie verzoeken"
         }
     }
 }

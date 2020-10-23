@@ -21,7 +21,7 @@ func NewAlbumListController(listGen engine.ListGenerator) *AlbumListController {
 	return c
 }
 
-func (c *AlbumListController) getNewAlbumList(r *http.Request) (engine.Entries, error) {
+func (c *AlbumListController) getAlbumList(r *http.Request) (engine.Entries, error) {
 	typ, err := requiredParamString(r, "type", "Required string parameter 'type' is not present")
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (c *AlbumListController) getNewAlbumList(r *http.Request) (engine.Entries, 
 }
 
 func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	albums, err := c.getNewAlbumList(r)
+	albums, err := c.getAlbumList(r)
 	if err != nil {
 		return nil, newError(responses.ErrorGeneric, err.Error())
 	}
@@ -78,7 +78,7 @@ func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Reques
 }
 
 func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	albums, err := c.getNewAlbumList(r)
+	albums, err := c.getAlbumList(r)
 	if err != nil {
 		return nil, newError(responses.ErrorGeneric, err.Error())
 	}

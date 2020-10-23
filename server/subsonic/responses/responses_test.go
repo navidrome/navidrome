@@ -92,7 +92,7 @@ var _ = Describe("Responses", func() {
 			BeforeEach(func() {
 				artists := make([]Artist, 1)
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
-				artists[0] = Artist{Id: "111", Name: "aaa", Starred: &t}
+				artists[0] = Artist{Id: "111", Name: "aaa", Starred: &t, UserRating: 3, AlbumCount: 2}
 				index := make([]Index, 1)
 				index[0] = Index{Name: "A", Artists: artists}
 				response.Indexes.Index = index

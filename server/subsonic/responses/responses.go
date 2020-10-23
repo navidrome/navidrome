@@ -73,8 +73,8 @@ type Artist struct {
 	Name       string     `xml:"name,attr"                         json:"name"`
 	AlbumCount int        `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
 	Starred    *time.Time `xml:"starred,attr,omitempty"            json:"starred,omitempty"`
+	UserRating int        `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
 	/*
-		<xs:attribute name="userRating" type="sub:UserRating" use="optional"/>  <!-- Added in 1.13.0 -->
 		<xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
 }
@@ -123,8 +123,6 @@ type Child struct {
 	BookmarkPosition      int64      `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
 	/*
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
-	   <xs:attribute name="originalWidth" type="xs:int" use="optional"/>  <!-- Added in 1.13.0 -->
-	   <xs:attribute name="originalHeight" type="xs:int" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
 }
 

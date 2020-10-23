@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/deluan/navidrome/consts"
@@ -105,6 +106,9 @@ func isDirOrSymlinkToDir(baseDir string, dirInfo os.FileInfo) (bool, error) {
 // isDirIgnored returns true if the directory represented by dirInfo contains an
 // `ignore` file (named after consts.SkipScanFile)
 func isDirIgnored(baseDir string, dirInfo os.FileInfo) bool {
+	if strings.HasPrefix(dirInfo.Name(), ".") {
+		return true
+	}
 	_, err := os.Stat(filepath.Join(baseDir, dirInfo.Name(), consts.SkipScanFile))
 	return err == nil
 }

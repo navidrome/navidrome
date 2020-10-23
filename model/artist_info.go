@@ -9,4 +9,5 @@ type ArtistInfo struct {
 	MediumImageUrl string
 	LargeImageUrl  string
 	LastFMUrl      string
+	SimilarArtists Artists
 }

@@ -51,6 +51,7 @@ func FromArtist(ar *model.Artist) Entry {
 	e.Title = ar.Name
 	e.AlbumCount = ar.AlbumCount
 	e.IsDir = true
+	e.UserRating = ar.Rating
 	if ar.Starred {
 		e.Starred = ar.StarredAt
 	}
