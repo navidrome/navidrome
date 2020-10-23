@@ -6,6 +6,7 @@ import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
 import { DurationField, formatRange, StarButton, SizeField } from '../common'
 import { ArtistLinkField } from '../common'
+import { AlbumContextMenu, PlayButton } from '../common'
 
 const AlbumDetails = ({ classes, record }) => {
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
@@ -36,7 +37,9 @@ const AlbumDetails = ({ classes, record }) => {
         image={imageUrl}
         className={classes.albumCover}
         onClick={handleOpenLightbox}
-      />
+      >
+        <PlayButton record={record} className={classes.playButton} size={"large"} />
+      </CardMedia>
       <CardContent className={classes.albumDetails}>
         <Typography variant="h5" className={classes.albumTitle}>
           {record.name}
