@@ -17,7 +17,7 @@ const PlayButton = ({ record, size = 'small', ...rest }) => {
   }
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
-  const playAlbum = record => {
+  const playAlbum = (record) => {
     dataProvider
       .getList('albumSong', {
         pagination: { page: 1, perPage: -1 },
