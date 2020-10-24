@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestEngine(t *testing.T) {
+func TestCore(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
