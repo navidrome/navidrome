@@ -22,7 +22,7 @@ func NewMediaRetrievalController(artwork core.Artwork) *MediaRetrievalController
 }
 
 func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	f, err := resources.AssetFile().Open(consts.PlaceholderAlbumArt)
+	f, err := resources.AssetFile().Open(consts.PlaceholderAvatar)
 	if err != nil {
 		log.Error(r, "Image not found", err)
 		return nil, newError(responses.ErrorDataNotFound, "Avatar image not found")
