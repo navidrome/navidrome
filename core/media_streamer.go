@@ -40,7 +40,7 @@ type streamJob struct {
 	bitRate int
 }
 
-func (j *streamJob) String() string {
+func (j *streamJob) Key() string {
 	return fmt.Sprintf("%s.%s.%d.%s", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.format)
 }
 
@@ -170,7 +170,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 func NewTranscodingCache() TranscodingCache {
 	return cache.NewFileCache("Transcoding", conf.Server.TranscodingCacheSize,
 		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
-		func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {
+		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 			job := arg.(*streamJob)
 			t, err := job.ms.ds.Transcoding(ctx).FindByFormat(job.format)
 			if err != nil {

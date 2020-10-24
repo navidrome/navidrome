@@ -15,10 +15,14 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
-type ReadFunc func(ctx context.Context, arg fmt.Stringer) (io.Reader, error)
+type Item interface {
+	Key() string
+}
+
+type ReadFunc func(ctx context.Context, item Item) (io.Reader, error)
 
 type FileCache interface {
-	Get(ctx context.Context, arg fmt.Stringer) (*CachedStream, error)
+	Get(ctx context.Context, item Item) (*CachedStream, error)
 	Ready() bool
 }
 
@@ -78,7 +82,7 @@ func (fc *fileCache) available(ctx context.Context) bool {
 	return fc.ready && !fc.disabled
 }
 
-func (fc *fileCache) Get(ctx context.Context, arg fmt.Stringer) (*CachedStream, error) {
+func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 	if !fc.available(ctx) {
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
@@ -87,7 +91,7 @@ func (fc *fileCache) Get(ctx context.Context, arg fmt.Stringer) (*CachedStream, 
 		return &CachedStream{Reader: reader}, nil
 	}
 
-	key := arg.String()
+	key := arg.Key()
 	r, w, err := fc.cache.Get(key)
 	if err != nil {
 		return nil, err
