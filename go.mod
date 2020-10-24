@@ -21,6 +21,7 @@ require (
 	github.com/golangci/golangci-lint v1.31.0
 	github.com/google/uuid v1.1.2
 	github.com/google/wire v0.4.0
+	github.com/karrick/godirwalk v1.16.1
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/lib/pq v1.3.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
@@ -43,8 +44,8 @@ require (
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 	golang.org/x/tools v0.0.0-20200812195022-5ae4c3c160a0
 	google.golang.org/protobuf v1.25.0 // indirect
-	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
-	gopkg.in/djherbis/stream.v1 v1.3.1 // indirect
+	gopkg.in/djherbis/atime.v1 v1.0.0
+	gopkg.in/djherbis/stream.v1 v1.3.1
 	gopkg.in/ini.v1 v1.57.0 // indirect
 )
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
+	"github.com/deluan/navidrome/core/cache"
 	"github.com/deluan/navidrome/core/transcoder"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
@@ -20,7 +21,7 @@ type MediaStreamer interface {
 	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int) (*Stream, error)
 }
 
-type TranscodingCache FileCache
+type TranscodingCache cache.FileCache
 
 func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache TranscodingCache) MediaStreamer {
 	return &mediaStreamer{ds: ds, ffm: ffm, cache: cache}
@@ -29,7 +30,7 @@ func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache Trans
 type mediaStreamer struct {
 	ds    model.DataStore
 	ffm   transcoder.Transcoder
-	cache FileCache
+	cache cache.FileCache
 }
 
 type streamJob struct {
@@ -167,7 +168,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 }
 
 func NewTranscodingCache() TranscodingCache {
-	return NewFileCache("Transcoding", conf.Server.TranscodingCacheSize,
+	return cache.NewFileCache("Transcoding", conf.Server.TranscodingCacheSize,
 		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
 		func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {
 			job := arg.(*streamJob)
