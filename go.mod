@@ -22,6 +22,7 @@ require (
 	github.com/golangci/golangci-lint v1.31.0
 	github.com/google/uuid v1.1.2
 	github.com/google/wire v0.4.0
+	github.com/karrick/godirwalk v1.16.1
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/lib/pq v1.3.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible

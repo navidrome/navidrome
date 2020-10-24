@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deluan/navidrome/core/cache"
 	_ "golang.org/x/image/webp"
 
 	"github.com/deluan/navidrome/conf"
@@ -30,7 +31,7 @@ type Artwork interface {
 	Get(ctx context.Context, id string, size int, out io.Writer) error
 }
 
-type ArtworkCache FileCache
+type ArtworkCache cache.FileCache
 
 func NewArtwork(ds model.DataStore, cache ArtworkCache) Artwork {
 	return &artwork{ds: ds, cache: cache}
@@ -38,7 +39,7 @@ func NewArtwork(ds model.DataStore, cache ArtworkCache) Artwork {
 
 type artwork struct {
 	ds    model.DataStore
-	cache FileCache
+	cache cache.FileCache
 }
 
 type imageInfo struct {
@@ -196,7 +197,7 @@ func readFromFile(path string) ([]byte, error) {
 }
 
 func NewImageCache() ArtworkCache {
-	return NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
+	return cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
 		func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {
 			info := arg.(*imageInfo)
 			reader, err := info.c.getArtwork(ctx, info.path, info.size)
