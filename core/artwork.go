@@ -44,6 +44,7 @@ type artwork struct {
 
 type imageInfo struct {
 	c          *artwork
+	id         string
 	path       string
 	size       int
 	lastUpdate time.Time
@@ -53,20 +54,21 @@ func (ci *imageInfo) String() string {
 	return fmt.Sprintf("%s.%d.%s.%d", ci.path, ci.size, ci.lastUpdate.Format(time.RFC3339Nano), conf.Server.CoverJpegQuality)
 }
 
-func (c *artwork) Get(ctx context.Context, id string, size int, out io.Writer) error {
-	path, lastUpdate, err := c.getImagePath(ctx, id)
+func (a *artwork) Get(ctx context.Context, id string, size int, out io.Writer) error {
+	path, lastUpdate, err := a.getImagePath(ctx, id)
 	if err != nil && err != model.ErrNotFound {
 		return err
 	}
 
 	info := &imageInfo{
-		c:          c,
+		c:          a,
+		id:         id,
 		path:       path,
 		size:       size,
 		lastUpdate: lastUpdate,
 	}
 
-	r, err := c.cache.Get(ctx, info)
+	r, err := a.cache.Get(ctx, info)
 	if err != nil {
 		log.Error(ctx, "Error accessing image cache", "path", path, "size", size, err)
 		return err
@@ -77,13 +79,13 @@ func (c *artwork) Get(ctx context.Context, id string, size int, out io.Writer) e
 	return err
 }
 
-func (c *artwork) getImagePath(ctx context.Context, id string) (path string, lastUpdated time.Time, err error) {
+func (a *artwork) getImagePath(ctx context.Context, id string) (path string, lastUpdated time.Time, err error) {
 	// If id is an album cover ID
 	if strings.HasPrefix(id, "al-") {
 		log.Trace(ctx, "Looking for album art", "id", id)
 		id = strings.TrimPrefix(id, "al-")
 		var al *model.Album
-		al, err = c.ds.Album(ctx).Get(id)
+		al, err = a.ds.Album(ctx).Get(id)
 		if err != nil {
 			return
 		}
@@ -97,11 +99,11 @@ func (c *artwork) getImagePath(ctx context.Context, id string) (path string, las
 
 	// Check if id is a mediaFile cover id
 	var mf *model.MediaFile
-	mf, err = c.ds.MediaFile(ctx).Get(id)
+	mf, err = a.ds.MediaFile(ctx).Get(id)
 
 	// If it is not, may be an albumId
 	if err == model.ErrNotFound {
-		return c.getImagePath(ctx, "al-"+id)
+		return a.getImagePath(ctx, "al-"+id)
 	}
 	if err != nil {
 		return
@@ -114,10 +116,10 @@ func (c *artwork) getImagePath(ctx context.Context, id string) (path string, las
 
 	// if the mediaFile does not have a coverArt, fallback to the album cover
 	log.Trace(ctx, "Media file does not contain art. Falling back to album art", "id", id, "albumId", "al-"+mf.AlbumID)
-	return c.getImagePath(ctx, "al-"+mf.AlbumID)
+	return a.getImagePath(ctx, "al-"+mf.AlbumID)
 }
 
-func (c *artwork) getArtwork(ctx context.Context, path string, size int) (reader io.Reader, err error) {
+func (a *artwork) getArtwork(ctx context.Context, id string, path string, size int) (reader io.Reader, err error) {
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
@@ -130,16 +132,23 @@ func (c *artwork) getArtwork(ctx context.Context, path string, size int) (reader
 	}
 
 	var data []byte
-	if utils.IsAudioFile(path) {
-		data, err = readFromTag(path)
-	} else {
-		data, err = readFromFile(path)
-	}
 
-	if err != nil {
-		return
-	} else if size > 0 {
-		data, err = resizeImage(bytes.NewReader(data), size)
+	if size == 0 {
+		// If requested original size, just read from the file
+		if utils.IsAudioFile(path) {
+			data, err = readFromTag(path)
+		} else {
+			data, err = readFromFile(path)
+		}
+	} else {
+		// If requested a resized image, get the original (possibly from cache) and resize it
+		a2 := NewArtwork(a.ds, a.cache)
+		buf := new(bytes.Buffer)
+		err = a2.Get(ctx, id, 0, buf)
+		if err != nil {
+			return
+		}
+		data, err = resizeImage(buf, size)
 	}
 
 	// Confirm the image is valid. Costly, but necessary
@@ -200,7 +209,7 @@ func NewImageCache() ArtworkCache {
 	return cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
 		func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {
 			info := arg.(*imageInfo)
-			reader, err := info.c.getArtwork(ctx, info.path, info.size)
+			reader, err := info.c.getArtwork(ctx, info.id, info.path, info.size)
 			if err != nil {
 				log.Error(ctx, "Error loading artwork art", "path", info.path, "size", info.size, err)
 				return nil, err
