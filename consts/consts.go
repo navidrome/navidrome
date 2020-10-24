@@ -31,6 +31,7 @@ const (
 	SkipScanFile = ".ndignore"
 
 	PlaceholderAlbumArt = "navidrome-600x600.png"
+	PlaceholderAvatar   = "logo-192x192.png"
 )
 
 // Cache options
