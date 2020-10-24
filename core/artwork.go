@@ -43,14 +43,14 @@ type artwork struct {
 }
 
 type imageInfo struct {
-	c          *artwork
+	a          *artwork
 	id         string
 	path       string
 	size       int
 	lastUpdate time.Time
 }
 
-func (ci *imageInfo) String() string {
+func (ci *imageInfo) Key() string {
 	return fmt.Sprintf("%s.%d.%s.%d", ci.path, ci.size, ci.lastUpdate.Format(time.RFC3339Nano), conf.Server.CoverJpegQuality)
 }
 
@@ -61,7 +61,7 @@ func (a *artwork) Get(ctx context.Context, id string, size int, out io.Writer) e
 	}
 
 	info := &imageInfo{
-		c:          a,
+		a:          a,
 		id:         id,
 		path:       path,
 		size:       size,
@@ -207,9 +207,9 @@ func readFromFile(path string) ([]byte, error) {
 
 func NewImageCache() ArtworkCache {
 	return cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
-		func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {
+		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 			info := arg.(*imageInfo)
-			reader, err := info.c.getArtwork(ctx, info.id, info.path, info.size)
+			reader, err := info.a.getArtwork(ctx, info.id, info.path, info.size)
 			if err != nil {
 				log.Error(ctx, "Error loading artwork art", "path", info.path, "size", info.size, err)
 				return nil, err

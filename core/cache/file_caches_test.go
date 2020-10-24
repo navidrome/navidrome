@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -53,9 +52,9 @@ var _ = Describe("File Caches", func() {
 	Describe("FileCache", func() {
 		It("caches data if cache is enabled", func() {
 			called := false
-			fc := callNewFileCache("test", "1KB", "test", 0, func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {
+			fc := callNewFileCache("test", "1KB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
 				called = true
-				return strings.NewReader(arg.String()), nil
+				return strings.NewReader(arg.Key()), nil
 			})
 			// First call is a MISS
 			s, err := fc.Get(context.TODO(), &testArg{"test"})
@@ -74,9 +73,9 @@ var _ = Describe("File Caches", func() {
 
 		It("does not cache data if cache is disabled", func() {
 			called := false
-			fc := callNewFileCache("test", "0", "test", 0, func(ctx context.Context, arg fmt.Stringer) (io.Reader, error) {
+			fc := callNewFileCache("test", "0", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
 				called = true
-				return strings.NewReader(arg.String()), nil
+				return strings.NewReader(arg.Key()), nil
 			})
 			// First call is a MISS
 			s, err := fc.Get(context.TODO(), &testArg{"test"})
@@ -97,4 +96,4 @@ var _ = Describe("File Caches", func() {
 
 type testArg struct{ s string }
 
-func (t *testArg) String() string { return t.s }
+func (t *testArg) Key() string { return t.s }
