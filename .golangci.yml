@@ -26,4 +26,4 @@ issues:
   exclude-rules:
     - linters:
         - gosec
-      text: "(G501|G401):"
+      text: "(G501|G401|G505):"

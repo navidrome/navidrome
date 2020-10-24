@@ -184,7 +184,7 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 	cacheFolder = filepath.Join(conf.Server.DataFolder, cacheFolder)
 
 	log.Info(fmt.Sprintf("Creating %s cache", name), "path", cacheFolder, "maxSize", humanize.Bytes(size))
-	fs, err := NewSpreadFs(cacheFolder, 0755)
+	fs, err := NewSpreadFS(cacheFolder, 0755)
 	if err != nil {
 		log.Error(fmt.Sprintf("Error initializing %s cache", name), err, "elapsedTime", time.Since(start))
 		return nil, err
