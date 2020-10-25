@@ -21,8 +21,7 @@ import (
 
 func CreateServer(musicFolder string) *server.Server {
 	dataStore := persistence.New()
-	scannerScanner := scanner.New(dataStore)
-	serverServer := server.New(scannerScanner, dataStore)
+	serverServer := server.New(dataStore)
 	return serverServer
 }
 
@@ -38,7 +37,7 @@ func CreateAppRouter() *app.Router {
 	return router
 }
 
-func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
+func CreateSubsonicAPIRouter() *subsonic.Router {
 	dataStore := persistence.New()
 	artworkCache := core.NewImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
@@ -54,7 +53,7 @@ func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
 	spotifyClient := core.SpotifyNewClient()
 	externalInfo := core.NewExternalInfo(dataStore, client, spotifyClient)
 	router := subsonic.New(artwork, listGenerator, playlists, mediaStreamer, archiver, players, externalInfo, dataStore)
-	return router, nil
+	return router
 }
 
 // wire_injectors.go:

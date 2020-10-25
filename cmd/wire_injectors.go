@@ -39,6 +39,6 @@ func CreateAppRouter() *app.Router {
 	panic(wire.Build(allProviders))
 }
 
-func CreateSubsonicAPIRouter() (*subsonic.Router, error) {
+func CreateSubsonicAPIRouter() *subsonic.Router {
 	panic(wire.Build(allProviders))
 }
