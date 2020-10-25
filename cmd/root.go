@@ -53,11 +53,8 @@ func runNavidrome() {
 
 	var g run.Group
 	g.Add(startServer())
-	if conf.Server.ScanInterval != 0 {
-		g.Add(startScanner())
-	} else {
-		log.Warn("Scanner is disabled", "interval", conf.Server.ScanInterval)
-	}
+	g.Add(startScanner())
+
 	if err := g.Run(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
 	}
@@ -83,25 +80,16 @@ func startScanner() (func() error, func(err error)) {
 	log.Info("Starting scanner", "interval", interval.String())
 	scanner := CreateScanner(conf.Server.MusicFolder)
 
-	ticker := time.NewTicker(interval)
-	done := make(chan bool)
-
 	return func() error {
-			time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
-			for {
-				if err := scanner.RescanAll(false); err != nil {
-					log.Error("Error scanning media folder", "folder", conf.Server.MusicFolder, err)
-				}
-				select {
-				case <-ticker.C:
-					continue
-				case <-done:
-					return nil
-				}
+			if interval != 0 {
+				go func() {
+					time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
+					scanner.RescanAll(false)
+				}()
 			}
+			return scanner.Start(interval)
 		}, func(err error) {
-			ticker.Stop()
-			done <- true
+			scanner.Stop()
 			if err != nil {
 				log.Error("Fatal error executing Scanner", err)
 			} else {

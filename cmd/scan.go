@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"time"
+
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -22,12 +25,23 @@ var scanCmd = &cobra.Command{
 	},
 }
 
+func waitScanToFinish(scanner scanner.Scanner) {
+	time.Sleep(500 * time.Millisecond)
+	ticker := time.Tick(100 * time.Millisecond)
+	for {
+		if !scanner.Scanning() {
+			return
+		}
+		<-ticker
+	}
+}
+
 func runScanner() {
 	scanner := CreateScanner(conf.Server.MusicFolder)
-	err := scanner.RescanAll(fullRescan)
-	if err != nil {
-		log.Error("Error scanning media folder", "folder", conf.Server.MusicFolder, err)
-	}
+	go func() { _ = scanner.Start(0) }()
+	scanner.RescanAll(fullRescan)
+	waitScanToFinish(scanner)
+	scanner.Stop()
 	if fullRescan {
 		log.Info("Finished full rescan")
 	} else {

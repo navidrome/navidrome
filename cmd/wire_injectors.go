@@ -29,7 +29,7 @@ func CreateServer(musicFolder string) *server.Server {
 	))
 }
 
-func CreateScanner(musicFolder string) *scanner.Scanner {
+func CreateScanner(musicFolder string) scanner.Scanner {
 	panic(wire.Build(
 		allProviders,
 	))
