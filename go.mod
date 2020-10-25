@@ -23,6 +23,7 @@ require (
 	github.com/google/wire v0.4.0
 	github.com/karrick/godirwalk v1.16.1
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
+	github.com/kr/pretty v0.2.0
 	github.com/lib/pq v1.3.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/microcosm-cc/bluemonday v1.0.4

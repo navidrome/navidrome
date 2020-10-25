@@ -9,6 +9,7 @@ import (
 
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
+	"github.com/kr/pretty"
 	"github.com/spf13/viper"
 )
 
@@ -89,7 +90,9 @@ func Load() {
 
 	log.SetLevelString(Server.LogLevel)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
-	log.Debug("Loaded configuration", "file", Server.ConfigFile, "config", fmt.Sprintf("%#v", Server))
+	if log.CurrentLevel() >= log.LevelDebug {
+		pretty.Printf("Loaded configuration from '%s': %# v\n", Server.ConfigFile, Server)
+	}
 }
 
 func init() {
