@@ -33,6 +33,10 @@ testall: check_go_env test
 	@(cd ./ui && npm test -- --watchAll=false)
 .PHONY: testall
 
+lint:
+	golangci-lint run -v
+.PHONY: lint
+
 update-snapshots: check_go_env
 	UPDATE_SNAPSHOTS=true ginkgo ./server/subsonic/...
 .PHONY: update-snapshots
@@ -87,11 +91,7 @@ buildall: check_env
 	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=embed
 .PHONY: buildall
 
-pre-push:
-	golangci-lint run -v
-
-	@echo
-	make test
+pre-push: lint test
 .PHONY: pre-push
 
 release:

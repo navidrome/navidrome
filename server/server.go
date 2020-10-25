@@ -3,14 +3,12 @@ package server
 import (
 	"net/http"
 	"path"
-	"time"
 
 	"github.com/deluan/navidrome/assets"
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/scanner"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
@@ -22,16 +20,14 @@ type Handler interface {
 }
 
 type Server struct {
-	Scanner *scanner.Scanner
-	router  *chi.Mux
-	ds      model.DataStore
+	router *chi.Mux
+	ds     model.DataStore
 }
 
-func New(scanner *scanner.Scanner, ds model.DataStore) *Server {
-	a := &Server{Scanner: scanner, ds: ds}
+func New(ds model.DataStore) *Server {
+	a := &Server{ds: ds}
 	initialSetup(ds)
 	a.initRoutes()
-	a.initScanner()
 	checkFfmpegInstallation()
 	checkExternalCredentials()
 	return a
@@ -47,9 +43,9 @@ func (a *Server) MountRouter(urlPath string, subRouter Handler) {
 	})
 }
 
-func (a *Server) Run(addr string) {
+func (a *Server) Run(addr string) error {
 	log.Info("Navidrome server is accepting requests", "address", addr)
-	log.Error(http.ListenAndServe(addr, a.router))
+	return http.ListenAndServe(addr, a.router)
 }
 
 func (a *Server) initRoutes() {
@@ -71,23 +67,4 @@ func (a *Server) initRoutes() {
 	})
 
 	a.router = r
-}
-
-func (a *Server) initScanner() {
-	interval := conf.Server.ScanInterval
-	if interval == 0 {
-		log.Warn("Scanner is disabled", "interval", conf.Server.ScanInterval)
-		return
-	}
-	log.Info("Starting scanner", "interval", interval.String())
-	go func() {
-		time.Sleep(2 * time.Second)
-		for {
-			err := a.Scanner.RescanAll(false)
-			if err != nil {
-				log.Error("Error scanning media folder", "folder", conf.Server.MusicFolder, err)
-			}
-			time.Sleep(interval)
-		}
-	}()
 }

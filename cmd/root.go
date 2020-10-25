@@ -3,10 +3,13 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/db"
+	"github.com/deluan/navidrome/log"
+	"github.com/oklog/run"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -24,7 +27,7 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 			preRun()
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			startServer()
+			runNavidrome()
 		},
 		Version: consts.Version(),
 	}
@@ -45,20 +48,69 @@ func preRun() {
 	conf.Load()
 }
 
-func startServer() {
+func runNavidrome() {
 	db.EnsureLatestVersion()
 
-	subsonic, err := CreateSubsonicAPIRouter()
-	if err != nil {
-		panic(fmt.Sprintf("Could not create the Subsonic API router. Aborting! err=%v", err))
+	var g run.Group
+	g.Add(startServer())
+	if conf.Server.ScanInterval != 0 {
+		g.Add(startScanner())
+	} else {
+		log.Warn("Scanner is disabled", "interval", conf.Server.ScanInterval)
 	}
-	a := CreateServer(conf.Server.MusicFolder)
-	a.MountRouter(consts.URLPathSubsonicAPI, subsonic)
-	a.MountRouter(consts.URLPathUI, CreateAppRouter())
-	a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
+	if err := g.Run(); err != nil {
+		log.Error("Fatal error in Navidrome. Aborting", err)
+	}
 }
 
-// TODO: Implemement some struct tags to map flags to viper
+func startServer() (func() error, func(err error)) {
+	return func() error {
+			a := CreateServer(conf.Server.MusicFolder)
+			a.MountRouter(consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
+			a.MountRouter(consts.URLPathUI, CreateAppRouter())
+			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
+		}, func(err error) {
+			if err != nil {
+				log.Error("Fatal error executing Scanner", err)
+			} else {
+				log.Info("Shutting down Scanner")
+			}
+		}
+}
+
+func startScanner() (func() error, func(err error)) {
+	interval := conf.Server.ScanInterval
+	log.Info("Starting scanner", "interval", interval.String())
+	scanner := CreateScanner(conf.Server.MusicFolder)
+
+	ticker := time.NewTicker(interval)
+	done := make(chan bool)
+
+	return func() error {
+			time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
+			for {
+				if err := scanner.RescanAll(false); err != nil {
+					log.Error("Error scanning media folder", "folder", conf.Server.MusicFolder, err)
+				}
+				select {
+				case <-ticker.C:
+					continue
+				case <-done:
+					return nil
+				}
+			}
+		}, func(err error) {
+			ticker.Stop()
+			done <- true
+			if err != nil {
+				log.Error("Fatal error executing Scanner", err)
+			} else {
+				log.Info("Shutting down Scanner")
+			}
+		}
+}
+
+// TODO: Implement some struct tags to map flags to viper
 func init() {
 	cobra.OnInitialize(func() {
 		conf.InitConfig(cfgFile)
