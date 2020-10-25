@@ -25,7 +25,7 @@ func CreateServer(musicFolder string) *server.Server {
 	return serverServer
 }
 
-func CreateScanner(musicFolder string) *scanner.Scanner {
+func CreateScanner(musicFolder string) scanner.Scanner {
 	dataStore := persistence.New()
 	scannerScanner := scanner.New(dataStore)
 	return scannerScanner
