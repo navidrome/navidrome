@@ -25,8 +25,12 @@ func newRefreshBuffer(ctx context.Context, ds model.DataStore) *refreshBuffer {
 }
 
 func (f *refreshBuffer) accumulate(mf model.MediaFile) {
-	f.album[mf.AlbumID] = struct{}{}
-	f.artist[mf.AlbumArtistID] = struct{}{}
+	if mf.AlbumID != "" {
+		f.album[mf.AlbumID] = struct{}{}
+	}
+	if mf.AlbumArtistID != "" {
+		f.artist[mf.AlbumArtistID] = struct{}{}
+	}
 }
 
 type refreshCallbackFunc = func(ids ...string) error
