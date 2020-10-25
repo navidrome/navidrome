@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/deluan/navidrome/conf"
+	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
@@ -17,19 +18,21 @@ import (
 )
 
 type TagScanner struct {
-	rootFolder string
-	ds         model.DataStore
-	mapper     *mediaFileMapper
-	plsSync    *playlistSync
-	cnt        *counters
+	rootFolder  string
+	ds          model.DataStore
+	mapper      *mediaFileMapper
+	plsSync     *playlistSync
+	cnt         *counters
+	cacheWarmer core.CacheWarmer
 }
 
-func NewTagScanner(rootFolder string, ds model.DataStore) *TagScanner {
+func NewTagScanner(rootFolder string, ds model.DataStore, cacheWarmer core.CacheWarmer) *TagScanner {
 	return &TagScanner{
-		rootFolder: rootFolder,
-		mapper:     newMediaFileMapper(rootFolder),
-		plsSync:    newPlaylistSync(ds),
-		ds:         ds,
+		rootFolder:  rootFolder,
+		mapper:      newMediaFileMapper(rootFolder),
+		plsSync:     newPlaylistSync(ds),
+		ds:          ds,
+		cacheWarmer: cacheWarmer,
 	}
 }
 
@@ -62,6 +65,7 @@ const (
 // Delete all empty albums, delete all empty artists, clean-up playlists
 func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) error {
 	ctx = s.withAdminUser(ctx)
+	defer s.cacheWarmer.Flush(ctx)
 
 	start := time.Now()
 	allFSDirs, err := s.getDirTree(ctx)
@@ -209,6 +213,7 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string) error {
 
 	for _, t := range mfs {
 		buffer.accumulate(t)
+		s.cacheWarmer.AddAlbum(ctx, t.AlbumID)
 	}
 
 	err = buffer.flush()
@@ -283,6 +288,11 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// Pre cache all changed album artwork
+	for albumID := range buffer.album {
+		s.cacheWarmer.AddAlbum(ctx, albumID)
 	}
 
 	err = buffer.flush()

@@ -27,7 +27,10 @@ func CreateServer(musicFolder string) *server.Server {
 
 func CreateScanner(musicFolder string) scanner.Scanner {
 	dataStore := persistence.New()
-	scannerScanner := scanner.New(dataStore)
+	artworkCache := core.NewImageCache()
+	artwork := core.NewArtwork(dataStore, artworkCache)
+	cacheWarmer := core.NewCacheWarmer(artworkCache, artwork)
+	scannerScanner := scanner.New(dataStore, cacheWarmer)
 	return scannerScanner
 }
 
