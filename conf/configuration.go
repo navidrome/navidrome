@@ -48,6 +48,7 @@ type configOptions struct {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
 	DevAutoCreateAdminPassword string
+	DevPreCacheAlbumArtwork    bool
 }
 
 type scannerOptions struct {
@@ -132,7 +133,7 @@ func init() {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devautocreateadminpassword", "")
-	viper.SetDefault("devoldscanner", false)
+	viper.SetDefault("devprecachealbumartwork", false)
 }
 
 func InitConfig(cfgFile string) {

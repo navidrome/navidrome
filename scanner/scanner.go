@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 )
@@ -32,12 +33,13 @@ type FolderScanner interface {
 }
 
 type scanner struct {
-	folders map[string]FolderScanner
-	status  map[string]*scanStatus
-	lock    *sync.RWMutex
-	ds      model.DataStore
-	done    chan bool
-	scan    chan bool
+	folders     map[string]FolderScanner
+	status      map[string]*scanStatus
+	lock        *sync.RWMutex
+	ds          model.DataStore
+	cacheWarmer core.CacheWarmer
+	done        chan bool
+	scan        chan bool
 }
 
 type scanStatus struct {
@@ -46,14 +48,15 @@ type scanStatus struct {
 	lastUpdate time.Time
 }
 
-func New(ds model.DataStore) Scanner {
+func New(ds model.DataStore, cacheWarmer core.CacheWarmer) Scanner {
 	s := &scanner{
-		ds:      ds,
-		folders: map[string]FolderScanner{},
-		status:  map[string]*scanStatus{},
-		lock:    &sync.RWMutex{},
-		done:    make(chan bool),
-		scan:    make(chan bool),
+		ds:          ds,
+		cacheWarmer: cacheWarmer,
+		folders:     map[string]FolderScanner{},
+		status:      map[string]*scanStatus{},
+		lock:        &sync.RWMutex{},
+		done:        make(chan bool),
+		scan:        make(chan bool),
 	}
 	s.loadFolders()
 	return s
@@ -209,5 +212,5 @@ func (s *scanner) loadFolders() {
 }
 
 func (s *scanner) newScanner(f model.MediaFolder) FolderScanner {
-	return NewTagScanner(f.Path, s.ds)
+	return NewTagScanner(f.Path, s.ds, s.cacheWarmer)
 }
