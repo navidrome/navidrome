@@ -14,10 +14,9 @@ type CacheWarmer interface {
 	Flush(ctx context.Context)
 }
 
-func NewCacheWarmer(cache ArtworkCache, artwork Artwork) CacheWarmer {
+func NewCacheWarmer(artwork Artwork) CacheWarmer {
 	w := &warmer{
 		artwork: artwork,
-		cache:   cache,
 		albums:  map[string]struct{}{},
 	}
 	p, err := pool.NewPool("artwork", 3, &artworkItem{}, w.execute)
@@ -33,7 +32,6 @@ func NewCacheWarmer(cache ArtworkCache, artwork Artwork) CacheWarmer {
 type warmer struct {
 	pool    *pool.Pool
 	artwork Artwork
-	cache   ArtworkCache
 	albums  map[string]struct{}
 }
 
