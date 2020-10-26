@@ -37,8 +37,8 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 	return response, nil
 }
 
-func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId string, ifModifiedSince time.Time) (*responses.Indexes, error) {
-	folder, err := c.ds.MediaFolder(ctx).Get(mediaFolderId)
+func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+	folder, err := c.ds.MediaFolder(ctx).Get(int32(mediaFolderId))
 	if err != nil {
 		log.Error(ctx, "Error retrieving MediaFolder", "id", mediaFolderId, err)
 		return nil, newError(responses.ErrorGeneric, "Internal Error")
@@ -80,7 +80,7 @@ func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId s
 }
 
 func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	musicFolderId := utils.ParamString(r, "musicFolderId")
+	musicFolderId := utils.ParamInt(r, "musicFolderId", 0)
 	ifModifiedSince := utils.ParamTime(r, "ifModifiedSince", time.Time{})
 
 	res, err := c.getArtistIndex(r.Context(), musicFolderId, ifModifiedSince)
@@ -94,7 +94,7 @@ func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) 
 }
 
 func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	musicFolderId := utils.ParamString(r, "musicFolderId")
+	musicFolderId := utils.ParamInt(r, "musicFolderId", 0)
 	res, err := c.getArtistIndex(r.Context(), musicFolderId, time.Time{})
 	if err != nil {
 		return nil, err
