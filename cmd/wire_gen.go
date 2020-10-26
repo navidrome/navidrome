@@ -29,7 +29,7 @@ func CreateScanner(musicFolder string) scanner.Scanner {
 	dataStore := persistence.New()
 	artworkCache := core.NewImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
-	cacheWarmer := core.NewCacheWarmer(artworkCache, artwork)
+	cacheWarmer := core.NewCacheWarmer(artwork)
 	scannerScanner := scanner.New(dataStore, cacheWarmer)
 	return scannerScanner
 }
