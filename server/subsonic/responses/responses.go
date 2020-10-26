@@ -42,8 +42,9 @@ type Subsonic struct {
 	SimilarSongs2 *SimilarSongs2 `xml:"similarSongs2,omitempty"                           json:"similarSongs2,omitempty"`
 	TopSongs      *TopSongs      `xml:"topSongs,omitempty"                                json:"topSongs,omitempty"`
 
-	PlayQueue *PlayQueue `xml:"playQueue,omitempty"                                       json:"playQueue,omitempty"`
-	Bookmarks *Bookmarks `xml:"bookmarks,omitempty"                                       json:"bookmarks,omitempty"`
+	PlayQueue  *PlayQueue  `xml:"playQueue,omitempty"                                     json:"playQueue,omitempty"`
+	Bookmarks  *Bookmarks  `xml:"bookmarks,omitempty"                                     json:"bookmarks,omitempty"`
+	ScanStatus *ScanStatus `xml:"scanStatus,omitempty"                                    json:"scanStatus,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -330,4 +331,9 @@ type Bookmark struct {
 
 type Bookmarks struct {
 	Bookmark []Bookmark `xml:"bookmark,omitempty"    json:"bookmark,omitempty"`
+}
+
+type ScanStatus struct {
+	Scanning bool  `xml:"scanning,attr"  json:"scanning"`
+	Count    int64 `xml:"count,attr"     json:"count"`
 }

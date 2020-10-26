@@ -487,4 +487,34 @@ var _ = Describe("Responses", func() {
 			})
 		})
 	})
+
+	Describe("ScanStatus", func() {
+		BeforeEach(func() {
+			response.ScanStatus = &ScanStatus{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.ScanStatus = &ScanStatus{
+					Scanning: true,
+					Count:    123,
+				}
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
 })
