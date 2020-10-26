@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/deluan/navidrome/core/cache"
@@ -206,23 +205,15 @@ func readFromFile(path string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-var (
-	onceImageCache sync.Once
-	imageCache     ArtworkCache
-)
-
 func NewImageCache() ArtworkCache {
-	onceImageCache.Do(func() {
-		imageCache = cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
-			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
-				info := arg.(*imageInfo)
-				reader, err := info.a.getArtwork(ctx, info.id, info.path, info.size)
-				if err != nil {
-					log.Error(ctx, "Error loading artwork art", "path", info.path, "size", info.size, err)
-					return nil, err
-				}
-				return reader, nil
-			})
-	})
-	return imageCache
+	return cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
+		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
+			info := arg.(*imageInfo)
+			reader, err := info.a.getArtwork(ctx, info.id, info.path, info.size)
+			if err != nil {
+				log.Error(ctx, "Error loading artwork art", "path", info.path, "size", info.size, err)
+				return nil, err
+			}
+			return reader, nil
+		})
 }
