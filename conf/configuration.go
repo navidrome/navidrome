@@ -49,6 +49,7 @@ type configOptions struct {
 	DevLogSourceLine           bool
 	DevAutoCreateAdminPassword string
 	DevPreCacheAlbumArtwork    bool
+	DevNewCacheLayout          bool
 }
 
 type scannerOptions struct {
@@ -134,6 +135,7 @@ func init() {
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devprecachealbumartwork", false)
+	viper.SetDefault("devnewcachelayout", false)
 }
 
 func InitConfig(cfgFile string) {
