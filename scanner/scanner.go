@@ -24,7 +24,7 @@ type StatusInfo struct {
 	MediaFolder string
 	Scanning    bool
 	LastScan    time.Time
-	Count       int
+	Count       int64
 }
 
 type FolderScanner interface {
@@ -42,7 +42,7 @@ type scanner struct {
 
 type scanStatus struct {
 	active     bool
-	count      int
+	count      int64
 	lastUpdate time.Time
 }
 
@@ -134,7 +134,7 @@ func (s *scanner) getStatus(folder string) *scanStatus {
 	return nil
 }
 
-func (s *scanner) setStatus(folder string, active bool, count int, lastUpdate time.Time) {
+func (s *scanner) setStatus(folder string, active bool, count int64, lastUpdate time.Time) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if status, ok := s.status[folder]; ok {

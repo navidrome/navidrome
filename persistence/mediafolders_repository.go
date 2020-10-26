@@ -16,7 +16,7 @@ func NewMediaFolderRepository(ctx context.Context, o orm.Ormer) model.MediaFolde
 	return &mediaFolderRepository{ctx}
 }
 
-func (r *mediaFolderRepository) Get(id string) (*model.MediaFolder, error) {
+func (r *mediaFolderRepository) Get(id int32) (*model.MediaFolder, error) {
 	mediaFolder := hardCoded()
 	return &mediaFolder, nil
 }
