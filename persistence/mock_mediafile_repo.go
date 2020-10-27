@@ -1,9 +1,7 @@
 package persistence
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/deluan/navidrome/model"
 )
@@ -22,15 +20,10 @@ func (m *MockMediaFile) SetError(err bool) {
 	m.err = err
 }
 
-func (m *MockMediaFile) SetData(j string) {
+func (m *MockMediaFile) SetData(mfs model.MediaFiles) {
 	m.data = make(map[string]model.MediaFile)
-	var l = model.MediaFiles{}
-	err := json.Unmarshal([]byte(j), &l)
-	if err != nil {
-		fmt.Println("ERROR: ", err)
-	}
-	for _, a := range l {
-		m.data[a.ID] = a
+	for _, mf := range mfs {
+		m.data[mf.ID] = mf
 	}
 }
 

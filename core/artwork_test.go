@@ -22,8 +22,15 @@ var _ = Describe("Artwork", func() {
 
 	BeforeEach(func() {
 		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}
-		ds.Album(ctx).(*persistence.MockAlbum).SetData(`[{"id": "222", "coverArtId": "123", "coverArtPath":"tests/fixtures/test.mp3"}, {"id": "333", "coverArtId": ""}, {"id": "444", "coverArtId": "444", "coverArtPath": "tests/fixtures/cover.jpg"}]`)
-		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(`[{"id": "123", "albumId": "222", "path": "tests/fixtures/test.mp3", "hasCoverArt": true, "updatedAt":"2020-04-02T21:29:31.6377Z"},{"id": "456", "albumId": "222", "path": "tests/fixtures/test.ogg", "hasCoverArt": false, "updatedAt":"2020-04-02T21:29:31.6377Z"}]`)
+		ds.Album(ctx).(*persistence.MockAlbum).SetData(model.Albums{
+			{ID: "222", CoverArtId: "123", CoverArtPath: "tests/fixtures/test.mp3"},
+			{ID: "333", CoverArtId: ""},
+			{ID: "444", CoverArtId: "444", CoverArtPath: "tests/fixtures/cover.jpg"},
+		})
+		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(model.MediaFiles{
+			{ID: "123", AlbumID: "222", Path: "tests/fixtures/test.mp3", HasCoverArt: true},
+			{ID: "456", AlbumID: "222", Path: "tests/fixtures/test.ogg", HasCoverArt: false},
+		})
 	})
 
 	Context("Cache is configured", func() {
