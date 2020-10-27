@@ -34,7 +34,7 @@ func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Requ
 }
 
 func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, err := requiredParamString(r, "id", "id parameter required")
+	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 		return nil, newError(responses.ErrorDataNotFound, "Artwork not found")
 	case err != nil:
 		log.Error(r, "Error retrieving coverArt", "id", id, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	return nil, nil

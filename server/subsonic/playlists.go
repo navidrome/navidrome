@@ -25,7 +25,7 @@ func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Reques
 	allPls, err := c.ds.Playlist(ctx).GetAll()
 	if err != nil {
 		log.Error(r, err)
-		return nil, newError(responses.ErrorGeneric, "Internal error")
+		return nil, err
 	}
 	playlists := make([]responses.Playlist, len(allPls))
 	for i, p := range allPls {
@@ -38,7 +38,7 @@ func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Reques
 
 func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	id, err := requiredParamString(r, "id", "id parameter required")
+	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
 		log.Error(r, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
@@ -97,7 +97,7 @@ func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Requ
 	err := c.create(r.Context(), playlistId, name, songIds)
 	if err != nil {
 		log.Error(r, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 	return newResponse(), nil
 }
@@ -118,7 +118,7 @@ func (c *PlaylistsController) delete(ctx context.Context, playlistId string) err
 }
 
 func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, err := requiredParamString(r, "id", "Required parameter id is missing")
+	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 	}
 	if err != nil {
 		log.Error(r, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 	return newResponse(), nil
 }
@@ -166,7 +166,7 @@ func (p *PlaylistsController) update(ctx context.Context, playlistId string, nam
 }
 
 func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	playlistId, err := requiredParamString(r, "playlistId", "Required parameter playlistId is missing")
+	playlistId, err := requiredParamString(r, "playlistId")
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	}
 	if err != nil {
 		log.Error(r, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 	return newResponse(), nil
 }

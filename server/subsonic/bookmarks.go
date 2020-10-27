@@ -24,7 +24,7 @@ func (c *BookmarksController) GetBookmarks(w http.ResponseWriter, r *http.Reques
 	repo := c.ds.MediaFile(r.Context())
 	bmks, err := repo.GetBookmarks()
 	if err != nil {
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
@@ -44,7 +44,7 @@ func (c *BookmarksController) GetBookmarks(w http.ResponseWriter, r *http.Reques
 }
 
 func (c *BookmarksController) CreateBookmark(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, err := requiredParamString(r, "id", "id parameter required")
+	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
@@ -55,13 +55,13 @@ func (c *BookmarksController) CreateBookmark(w http.ResponseWriter, r *http.Requ
 	repo := c.ds.MediaFile(r.Context())
 	err = repo.AddBookmark(id, comment, position)
 	if err != nil {
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 	return newResponse(), nil
 }
 
 func (c *BookmarksController) DeleteBookmark(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, err := requiredParamString(r, "id", "id parameter required")
+	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (c *BookmarksController) DeleteBookmark(w http.ResponseWriter, r *http.Requ
 	repo := c.ds.MediaFile(r.Context())
 	err = repo.DeleteBookmark(id)
 	if err != nil {
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 	return newResponse(), nil
 }
@@ -80,7 +80,7 @@ func (c *BookmarksController) GetPlayQueue(w http.ResponseWriter, r *http.Reques
 	repo := c.ds.PlayQueue(r.Context())
 	pq, err := repo.Retrieve(user.ID)
 	if err != nil {
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
@@ -96,7 +96,7 @@ func (c *BookmarksController) GetPlayQueue(w http.ResponseWriter, r *http.Reques
 }
 
 func (c *BookmarksController) SavePlayQueue(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	ids, err := requiredParamStrings(r, "id", "id parameter required")
+	ids, err := requiredParamStrings(r, "id")
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (c *BookmarksController) SavePlayQueue(w http.ResponseWriter, r *http.Reque
 	repo := c.ds.PlayQueue(r.Context())
 	err = repo.Store(pq)
 	if err != nil {
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 	return newResponse(), nil
 }

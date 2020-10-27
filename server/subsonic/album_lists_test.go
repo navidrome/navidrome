@@ -44,7 +44,7 @@ var _ = Describe("AlbumListController", func() {
 			r := newGetRequest()
 			_, err := controller.GetAlbumList(w, r)
 
-			Expect(err).To(MatchError("Required string parameter 'type' is not present"))
+			Expect(err).To(MatchError("required 'type' parameter is missing"))
 		})
 
 		It("should return error if call fails", func() {
@@ -76,7 +76,7 @@ var _ = Describe("AlbumListController", func() {
 			r := newGetRequest()
 			_, err := controller.GetAlbumList2(w, r)
 
-			Expect(err).To(MatchError("Required string parameter 'type' is not present"))
+			Expect(err).To(MatchError("required 'type' parameter is missing"))
 		})
 
 		It("should return error if call fails", func() {

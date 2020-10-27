@@ -24,11 +24,11 @@ func NewMediaAnnotationController(ds model.DataStore, npr core.NowPlaying) *Medi
 }
 
 func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, err := requiredParamString(r, "id", "Required id parameter is missing")
+	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
-	rating, err := requiredParamInt(r, "rating", "Required rating parameter is missing")
+	rating, err := requiredParamInt(r, "rating")
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 		return nil, newError(responses.ErrorDataNotFound, "ID not found")
 	case err != nil:
 		log.Error(r, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	return newResponse(), nil
@@ -96,7 +96,7 @@ func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Reques
 }
 
 func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	ids, err := requiredParamStrings(r, "id", "Required id parameter is missing")
+	ids, err := requiredParamStrings(r, "id")
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 		return newError(responses.ErrorDataNotFound, "ID not found")
 	case err != nil:
 		log.Error(ctx, err)
-		return newError(responses.ErrorGeneric, "Internal Error")
+		return err
 	}
 	return nil
 }

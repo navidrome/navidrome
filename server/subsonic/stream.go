@@ -26,7 +26,7 @@ func NewStreamController(streamer core.MediaStreamer, archiver core.Archiver, ds
 
 func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	id, err := requiredParamString(r, "id", "id parameter required")
+	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 
 func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	id, err := requiredParamString(r, "id", "id parameter required")
+	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}

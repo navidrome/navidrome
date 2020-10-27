@@ -28,7 +28,7 @@ func NewAlbumListController(ds model.DataStore, nowPlaying core.NowPlaying) *Alb
 }
 
 func (c *AlbumListController) getAlbumList(r *http.Request) (model.Albums, error) {
-	typ, err := requiredParamString(r, "type", "Required string parameter 'type' is not present")
+	typ, err := requiredParamString(r, "type")
 	if err != nil {
 		return nil, err
 	}
@@ -100,17 +100,17 @@ func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request)
 	artists, err := c.ds.Artist(ctx).GetStarred(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred artists", "error", err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 	albums, err := c.ds.Album(ctx).GetStarred(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred albums", "error", err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 	mediaFiles, err := c.ds.MediaFile(ctx).GetStarred(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred mediaFiles", "error", err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
@@ -137,7 +137,7 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 	npInfo, err := c.nowPlaying.GetAll()
 	if err != nil {
 		log.Error(r, "Error retrieving now playing list", "error", err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
@@ -146,7 +146,7 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 	for i, np := range npInfo {
 		mf, err := c.ds.MediaFile(ctx).Get(np.TrackID)
 		if err != nil {
-			return nil, newError(responses.ErrorGeneric, "Internal Error")
+			return nil, err
 		}
 
 		response.NowPlaying.Entry[i].Child = childFromMediaFile(ctx, *mf)
@@ -167,7 +167,7 @@ func (c *AlbumListController) GetRandomSongs(w http.ResponseWriter, r *http.Requ
 	songs, err := c.getSongs(r.Context(), 0, size, filter.SongsByRandom(genre, fromYear, toYear))
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", "error", err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
@@ -184,7 +184,7 @@ func (c *AlbumListController) GetSongsByGenre(w http.ResponseWriter, r *http.Req
 	songs, err := c.getSongs(r.Context(), offset, count, filter.SongsByGenre(genre))
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", "error", err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
