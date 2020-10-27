@@ -38,7 +38,7 @@ var _ = Describe("Pool", func() {
 		for i := 0; i < 5; i++ {
 			pool.Submit(&testItem{ID: i})
 		}
-		Eventually(processed.Len).Should(Equal(5))
+		Eventually(processed.Len, "10s").Should(Equal(5))
 		Expect(processed).To(ContainElements(0, 1, 2, 3, 4))
 	})
 })

@@ -3,13 +3,14 @@ package pool
 type Executor func(workload interface{})
 
 type Pool struct {
-	name    string
-	item    interface{}
-	workers []worker
-	exec    Executor
+	name          string
+	item          interface{}
+	workers       []worker
+	exec          Executor
+	workerChannel chan chan work
+	queue         chan work // receives jobs to send to workers
+	end           chan bool // when receives bool stops workers
 	//queue *dque.DQue
-	queue chan work // receives jobs to send to workers
-	end   chan bool // when receives bool stops workers
 }
 
 func NewPool(name string, workerCount int, item interface{}, exec Executor) (*Pool, error) {
@@ -26,12 +27,14 @@ func NewPool(name string, workerCount int, item interface{}, exec Executor) (*Po
 	//	return nil, err
 	//}
 	//p.queue = q
+
+	p.workerChannel = make(chan chan work)
 	for i := 0; i < workerCount; i++ {
 		worker := worker{
 			p:             p,
 			id:            i,
 			channel:       make(chan work),
-			workerChannel: workerChannel,
+			workerChannel: p.workerChannel,
 			end:           make(chan bool)}
 		worker.Start()
 		p.workers = append(p.workers, worker)
@@ -47,8 +50,8 @@ func NewPool(name string, workerCount int, item interface{}, exec Executor) (*Po
 				}
 				return
 			case work := <-p.queue:
-				worker := <-workerChannel // wait for available channel
-				worker <- work            // dispatch work to worker
+				worker := <-p.workerChannel // wait for available channel
+				worker <- work              // dispatch work to worker
 			}
 		}
 	}()
@@ -64,8 +67,6 @@ func (p *Pool) Submit(workload interface{}) {
 //	return reflect.New(t).Interface()
 //}
 //
-var workerChannel = make(chan chan work)
-
 type work struct {
 	workload interface{}
 }
