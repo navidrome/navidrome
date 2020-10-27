@@ -3,7 +3,6 @@ package cmd
 import (
 	"time"
 
-	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/scanner"
 	"github.com/spf13/cobra"
@@ -37,7 +36,7 @@ func waitScanToFinish(scanner scanner.Scanner) {
 }
 
 func runScanner() {
-	scanner := CreateScanner(conf.Server.MusicFolder)
+	scanner := GetScanner()
 	go func() { _ = scanner.Start(0) }()
 	scanner.RescanAll(fullRescan)
 	waitScanToFinish(scanner)

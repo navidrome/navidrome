@@ -14,7 +14,6 @@ import (
 
 var allProviders = wire.NewSet(
 	core.Set,
-	scanner.New,
 	subsonic.New,
 	app.New,
 	persistence.New,
@@ -27,16 +26,33 @@ func CreateServer(musicFolder string) *server.Server {
 	))
 }
 
-func CreateScanner(musicFolder string) scanner.Scanner {
-	panic(wire.Build(
-		allProviders,
-	))
-}
-
 func CreateAppRouter() *app.Router {
 	panic(wire.Build(allProviders))
 }
 
 func CreateSubsonicAPIRouter() *subsonic.Router {
-	panic(wire.Build(allProviders))
+	panic(wire.Build(
+		allProviders,
+		GetScanner,
+	))
+}
+
+// Scanner must be a Singleton
+var (
+	onceScanner     sync.Once
+	scannerInstance scanner.Scanner
+)
+
+func GetScanner() scanner.Scanner {
+	onceScanner.Do(func() {
+		scannerInstance = createScanner()
+	})
+	return scannerInstance
+}
+
+func createScanner() scanner.Scanner {
+	panic(wire.Build(
+		allProviders,
+		scanner.New,
+	))
 }

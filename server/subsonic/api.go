@@ -11,36 +11,39 @@ import (
 	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/scanner"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 )
 
-const Version = "1.13.0"
+const Version = "1.15.0"
 
 type handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
 type Router struct {
+	DataStore    model.DataStore
 	Artwork      core.Artwork
 	Streamer     core.MediaStreamer
 	Archiver     core.Archiver
 	Players      core.Players
 	ExternalInfo core.ExternalInfo
-	DataStore    model.DataStore
+	Scanner      scanner.Scanner
 
 	mux http.Handler
 }
 
-func New(artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver, players core.Players,
-	externalInfo core.ExternalInfo, ds model.DataStore) *Router {
+func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver, players core.Players,
+	externalInfo core.ExternalInfo, scanner scanner.Scanner) *Router {
 	r := &Router{
+		DataStore:    ds,
 		Artwork:      artwork,
 		Streamer:     streamer,
 		Archiver:     archiver,
 		Players:      players,
 		ExternalInfo: externalInfo,
-		DataStore:    ds,
+		Scanner:      scanner,
 	}
 	r.mux = r.routes()
 	return r
@@ -129,6 +132,12 @@ func (api *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		c := initUsersController(api)
 		h(r, "getUser", c.GetUser)
+		h(r, "getUsers", c.GetUsers)
+	})
+	r.Group(func(r chi.Router) {
+		c := initLibraryScanningController(api)
+		h(r, "getScanStatus", c.GetScanStatus)
+		h(r, "startScan", c.StartScan)
 	})
 	r.Group(func(r chi.Router) {
 		c := initMediaRetrievalController(api)

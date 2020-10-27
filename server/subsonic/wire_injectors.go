@@ -18,8 +18,9 @@ var allProviders = wire.NewSet(
 	NewMediaRetrievalController,
 	NewStreamController,
 	NewBookmarksController,
+	NewLibraryScanningController,
 	core.NewNowPlayingRepository,
-	wire.FieldsOf(new(*Router), "Artwork", "Streamer", "Archiver", "DataStore", "ExternalInfo"),
+	wire.FieldsOf(new(*Router), "DataStore", "Artwork", "Streamer", "Archiver", "ExternalInfo", "Scanner"),
 )
 
 func initSystemController(router *Router) *SystemController {
@@ -59,5 +60,9 @@ func initStreamController(router *Router) *StreamController {
 }
 
 func initBookmarksController(router *Router) *BookmarksController {
+	panic(wire.Build(allProviders))
+}
+
+func initLibraryScanningController(router *Router) *LibraryScanningController {
 	panic(wire.Build(allProviders))
 }

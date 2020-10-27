@@ -75,6 +75,12 @@ func initBookmarksController(router *Router) *BookmarksController {
 	return bookmarksController
 }
 
+func initLibraryScanningController(router *Router) *LibraryScanningController {
+	scanner := router.Scanner
+	libraryScanningController := NewLibraryScanningController(scanner)
+	return libraryScanningController
+}
+
 // wire_injectors.go:
 
 var allProviders = wire.NewSet(
@@ -87,5 +93,6 @@ var allProviders = wire.NewSet(
 	NewUsersController,
 	NewMediaRetrievalController,
 	NewStreamController,
-	NewBookmarksController, core.NewNowPlayingRepository, wire.FieldsOf(new(*Router), "Artwork", "Streamer", "Archiver", "DataStore", "ExternalInfo"),
+	NewBookmarksController,
+	NewLibraryScanningController, core.NewNowPlayingRepository, wire.FieldsOf(new(*Router), "DataStore", "Artwork", "Streamer", "Archiver", "ExternalInfo", "Scanner"),
 )
