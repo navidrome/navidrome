@@ -38,7 +38,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			r := newGetRequest()
 			_, err := controller.GetCoverArt(w, r)
 
-			Expect(err).To(MatchError("id parameter required"))
+			Expect(err).To(MatchError("required 'id' parameter is missing"))
 		})
 
 		It("should fail when the file is not found", func() {
@@ -54,7 +54,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			r := newGetRequest("id=34", "size=128")
 			_, err := controller.GetCoverArt(w, r)
 
-			Expect(err).To(MatchError("Internal Error"))
+			Expect(err).To(MatchError("weird error"))
 		})
 	})
 })

@@ -33,7 +33,7 @@ func NewSearchingController(ds model.DataStore) *SearchingController {
 func (c *SearchingController) getParams(r *http.Request) (*searchParams, error) {
 	var err error
 	sp := &searchParams{}
-	sp.query, err = requiredParamString(r, "query", "Parameter query required")
+	sp.query, err = requiredParamString(r, "query")
 	if err != nil {
 		return nil, err
 	}

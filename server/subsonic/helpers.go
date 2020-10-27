@@ -17,43 +17,43 @@ func newResponse() *responses.Subsonic {
 	return &responses.Subsonic{Status: "ok", Version: Version, Type: consts.AppName, ServerVersion: consts.Version()}
 }
 
-func requiredParamString(r *http.Request, param string, msg string) (string, error) {
+func requiredParamString(r *http.Request, param string) (string, error) {
 	p := utils.ParamString(r, param)
 	if p == "" {
-		return "", newError(responses.ErrorMissingParameter, msg)
+		return "", newError(responses.ErrorMissingParameter, "required '%s' parameter is missing", param)
 	}
 	return p, nil
 }
 
-func requiredParamStrings(r *http.Request, param string, msg string) ([]string, error) {
+func requiredParamStrings(r *http.Request, param string) ([]string, error) {
 	ps := utils.ParamStrings(r, param)
 	if len(ps) == 0 {
-		return nil, newError(responses.ErrorMissingParameter, msg)
+		return nil, newError(responses.ErrorMissingParameter, "required '%s' parameter is missing", param)
 	}
 	return ps, nil
 }
 
-func requiredParamInt(r *http.Request, param string, msg string) (int, error) {
+func requiredParamInt(r *http.Request, param string) (int, error) {
 	p := utils.ParamString(r, param)
 	if p == "" {
-		return 0, newError(responses.ErrorMissingParameter, msg)
+		return 0, newError(responses.ErrorMissingParameter, "required '%s' parameter is missing", param)
 	}
 	return utils.ParamInt(r, param, 0), nil
 }
 
-type Error struct {
+type subError struct {
 	code     int
 	messages []interface{}
 }
 
 func newError(code int, message ...interface{}) error {
-	return Error{
+	return subError{
 		code:     code,
 		messages: message,
 	}
 }
 
-func (e Error) Error() string {
+func (e subError) Error() string {
 	var msg string
 	if len(e.messages) == 0 {
 		msg = responses.ErrorMsg(e.code)

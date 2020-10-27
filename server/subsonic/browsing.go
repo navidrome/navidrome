@@ -41,13 +41,13 @@ func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId i
 	folder, err := c.ds.MediaFolder(ctx).Get(int32(mediaFolderId))
 	if err != nil {
 		log.Error(ctx, "Error retrieving MediaFolder", "id", mediaFolderId, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	l, err := c.ds.Property(ctx).DefaultGet(model.PropLastScan+"-"+folder.Path, "-1")
 	if err != nil {
 		log.Error(ctx, "Error retrieving LastScan property", err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	var indexes model.ArtistIndexes
@@ -57,7 +57,7 @@ func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId i
 		indexes, err = c.ds.Artist(ctx).GetIndex()
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
-			return nil, newError(responses.ErrorGeneric, "Internal Error")
+			return nil, err
 		}
 	}
 
@@ -116,7 +116,7 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
 		log.Error(err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	var dir *responses.Directory
@@ -133,7 +133,7 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 
 	if err != nil {
 		log.Error(err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
@@ -152,13 +152,13 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 		return nil, newError(responses.ErrorDataNotFound, "Artist not found")
 	case err != nil:
 		log.Error(ctx, "Error retrieving artist", "id", id, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	albums, err := c.ds.Album(ctx).FindByArtist(id)
 	if err != nil {
 		log.Error(ctx, "Error retrieving albums by artist", "id", id, "name", artist.Name, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
@@ -177,13 +177,13 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 		return nil, newError(responses.ErrorDataNotFound, "Album not found")
 	case err != nil:
 		log.Error(ctx, "Error retrieving album", "id", id, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	mfs, err := c.ds.MediaFile(ctx).FindByAlbum(id)
 	if err != nil {
 		log.Error(ctx, "Error retrieving tracks from album", "id", id, "name", album.Name, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
@@ -202,7 +202,7 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 		return nil, newError(responses.ErrorDataNotFound, "Song not found")
 	case err != nil:
 		log.Error(r, "Error retrieving MediaFile", "id", id, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 
 	response := newResponse()
@@ -216,7 +216,7 @@ func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (
 	genres, err := c.ds.Genre(ctx).GetAll()
 	if err != nil {
 		log.Error(r, err)
-		return nil, newError(responses.ErrorGeneric, "Internal Error")
+		return nil, err
 	}
 	for i, g := range genres {
 		if strings.TrimSpace(g.Name) == "" {
@@ -234,7 +234,7 @@ func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (
 
 func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	id, err := requiredParamString(r, "id", "id parameter required")
+	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +290,7 @@ func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Reque
 
 func (c *BrowsingController) GetSimilarSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	id, err := requiredParamString(r, "id", "id parameter required")
+	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func (c *BrowsingController) GetSimilarSongs2(w http.ResponseWriter, r *http.Req
 
 func (c *BrowsingController) GetTopSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	artist, err := requiredParamString(r, "artist", "artist parameter required")
+	artist, err := requiredParamString(r, "artist")
 	if err != nil {
 		return nil, err
 	}
