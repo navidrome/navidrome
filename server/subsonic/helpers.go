@@ -9,7 +9,6 @@ import (
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
@@ -42,19 +41,19 @@ func requiredParamInt(r *http.Request, param string, msg string) (int, error) {
 	return utils.ParamInt(r, param, 0), nil
 }
 
-type SubsonicError struct {
+type Error struct {
 	code     int
 	messages []interface{}
 }
 
 func newError(code int, message ...interface{}) error {
-	return SubsonicError{
+	return Error{
 		code:     code,
 		messages: message,
 	}
 }
 
-func (e SubsonicError) Error() string {
+func (e Error) Error() string {
 	var msg string
 	if len(e.messages) == 0 {
 		msg = responses.ErrorMsg(e.code)
@@ -62,6 +61,14 @@ func (e SubsonicError) Error() string {
 		msg = fmt.Sprintf(e.messages[0].(string), e.messages[1:]...)
 	}
 	return msg
+}
+
+func getUser(ctx context.Context) string {
+	user, ok := request.UserFrom(ctx)
+	if ok {
+		return user.UserName
+	}
+	return ""
 }
 
 func toArtists(ctx context.Context, artists model.Artists) []responses.Artist {
@@ -78,55 +85,6 @@ func toArtists(ctx context.Context, artists model.Artists) []responses.Artist {
 		}
 	}
 	return as
-}
-
-func toChildren(ctx context.Context, entries engine.Entries) []responses.Child {
-	children := make([]responses.Child, len(entries))
-	for i, entry := range entries {
-		children[i] = toChild(ctx, entry)
-	}
-	return children
-}
-
-func toChild(ctx context.Context, entry engine.Entry) responses.Child {
-	child := responses.Child{}
-	child.Id = entry.Id
-	child.Title = entry.Title
-	child.IsDir = entry.IsDir
-	child.Parent = entry.Parent
-	child.Album = entry.Album
-	child.Year = entry.Year
-	child.Artist = entry.Artist
-	child.Genre = entry.Genre
-	child.CoverArt = entry.CoverArt
-	child.Track = entry.Track
-	child.Duration = entry.Duration
-	child.Size = entry.Size
-	child.Suffix = entry.Suffix
-	child.BitRate = entry.BitRate
-	child.ContentType = entry.ContentType
-	if !entry.Starred.IsZero() {
-		child.Starred = &entry.Starred
-	}
-	child.Path = entry.Path
-	child.PlayCount = int64(entry.PlayCount)
-	child.DiscNumber = entry.DiscNumber
-	if !entry.Created.IsZero() {
-		child.Created = &entry.Created
-	}
-	child.AlbumId = entry.AlbumId
-	child.ArtistId = entry.ArtistId
-	child.Type = entry.Type
-	child.IsVideo = false
-	child.UserRating = entry.UserRating
-	child.SongCount = entry.SongCount
-	format, _ := getTranscoding(ctx)
-	if entry.Suffix != "" && format != "" && entry.Suffix != format {
-		child.TranscodedSuffix = format
-		child.TranscodedContentType = mime.TypeByExtension("." + format)
-	}
-	child.BookmarkPosition = entry.BookmarkPosition
-	return child
 }
 
 func toGenres(genres model.Genres) *responses.Genres {

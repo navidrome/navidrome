@@ -11,7 +11,6 @@ import (
 	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 	"github.com/go-chi/chi"
@@ -24,7 +23,6 @@ type Handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, er
 
 type Router struct {
 	Artwork      core.Artwork
-	Playlists    engine.Playlists
 	Streamer     core.MediaStreamer
 	Archiver     core.Archiver
 	Players      core.Players
@@ -34,11 +32,16 @@ type Router struct {
 	mux http.Handler
 }
 
-func New(artwork core.Artwork,
-	playlists engine.Playlists, streamer core.MediaStreamer,
-	archiver core.Archiver, players core.Players, externalInfo core.ExternalInfo, ds model.DataStore) *Router {
-	r := &Router{Artwork: artwork, Playlists: playlists,
-		Streamer: streamer, Archiver: archiver, Players: players, ExternalInfo: externalInfo, DataStore: ds}
+func New(artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver, players core.Players,
+	externalInfo core.ExternalInfo, ds model.DataStore) *Router {
+	r := &Router{
+		Artwork:      artwork,
+		Streamer:     streamer,
+		Archiver:     archiver,
+		Players:      players,
+		ExternalInfo: externalInfo,
+		DataStore:    ds,
+	}
 	r.mux = r.routes()
 	return r
 }
@@ -181,7 +184,7 @@ func HGone(r chi.Router, path string) {
 func SendError(w http.ResponseWriter, r *http.Request, err error) {
 	response := newResponse()
 	code := responses.ErrorGeneric
-	if e, ok := err.(SubsonicError); ok {
+	if e, ok := err.(Error); ok {
 		code = e.code
 	}
 	response.Status = "fail"

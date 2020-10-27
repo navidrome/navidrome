@@ -13,7 +13,6 @@ import (
 	"github.com/deluan/navidrome/server"
 	"github.com/deluan/navidrome/server/app"
 	"github.com/deluan/navidrome/server/subsonic"
-	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/google/wire"
 )
 
@@ -44,7 +43,6 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	dataStore := persistence.New()
 	artworkCache := core.NewImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
-	playlists := engine.NewPlaylists(dataStore)
 	transcoderTranscoder := transcoder.New()
 	transcodingCache := core.NewTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
@@ -53,10 +51,10 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	client := core.LastFMNewClient()
 	spotifyClient := core.SpotifyNewClient()
 	externalInfo := core.NewExternalInfo(dataStore, client, spotifyClient)
-	router := subsonic.New(artwork, playlists, mediaStreamer, archiver, players, externalInfo, dataStore)
+	router := subsonic.New(artwork, mediaStreamer, archiver, players, externalInfo, dataStore)
 	return router
 }
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(engine.Set, core.Set, scanner.New, subsonic.New, app.New, persistence.New)
+var allProviders = wire.NewSet(core.Set, scanner.New, subsonic.New, app.New, persistence.New)
