@@ -14,6 +14,7 @@ import (
 	"github.com/deluan/navidrome/server/app"
 	"github.com/deluan/navidrome/server/subsonic"
 	"github.com/google/wire"
+	"sync"
 )
 
 // Injectors from wire_injectors.go:
@@ -22,15 +23,6 @@ func CreateServer(musicFolder string) *server.Server {
 	dataStore := persistence.New()
 	serverServer := server.New(dataStore)
 	return serverServer
-}
-
-func CreateScanner(musicFolder string) scanner.Scanner {
-	dataStore := persistence.New()
-	artworkCache := core.GetImageCache()
-	artwork := core.NewArtwork(dataStore, artworkCache)
-	cacheWarmer := core.NewCacheWarmer(artwork)
-	scannerScanner := scanner.New(dataStore, cacheWarmer)
-	return scannerScanner
 }
 
 func CreateAppRouter() *app.Router {
@@ -51,10 +43,32 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	client := core.LastFMNewClient()
 	spotifyClient := core.SpotifyNewClient()
 	externalInfo := core.NewExternalInfo(dataStore, client, spotifyClient)
-	router := subsonic.New(artwork, mediaStreamer, archiver, players, externalInfo, dataStore)
+	scanner := GetScanner()
+	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalInfo, scanner)
 	return router
+}
+
+func createScanner() scanner.Scanner {
+	dataStore := persistence.New()
+	artworkCache := core.GetImageCache()
+	artwork := core.NewArtwork(dataStore, artworkCache)
+	cacheWarmer := core.NewCacheWarmer(artwork)
+	scannerScanner := scanner.New(dataStore, cacheWarmer)
+	return scannerScanner
 }
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, scanner.New, subsonic.New, app.New, persistence.New)
+var allProviders = wire.NewSet(core.Set, subsonic.New, app.New, persistence.New)
+
+var (
+	onceScanner     sync.Once
+	scannerInstance scanner.Scanner
+)
+
+func GetScanner() scanner.Scanner {
+	onceScanner.Do(func() {
+		scannerInstance = createScanner()
+	})
+	return scannerInstance
+}

@@ -17,6 +17,7 @@ type Subsonic struct {
 	Indexes       *Indexes           `xml:"indexes,omitempty"                             json:"indexes,omitempty"`
 	Directory     *Directory         `xml:"directory,omitempty"                           json:"directory,omitempty"`
 	User          *User              `xml:"user,omitempty"                                json:"user,omitempty"`
+	Users         *Users             `xml:"users,omitempty"                               json:"users,omitempty"`
 	AlbumList     *AlbumList         `xml:"albumList,omitempty"                           json:"albumList,omitempty"`
 	AlbumList2    *AlbumList         `xml:"albumList2,omitempty"                          json:"albumList2,omitempty"`
 	Playlists     *Playlists         `xml:"playlists,omitempty"                           json:"playlists,omitempty"`
@@ -270,6 +271,10 @@ type User struct {
 	Folder              []int  `xml:"folder,omitempty"            json:"folder,omitempty"`
 }
 
+type Users struct {
+	User []User `xml:"user"  json:"user"`
+}
+
 type Genre struct {
 	Name       string `xml:",chardata"                      json:"value,omitempty"`
 	SongCount  int    `xml:"songCount,attr"             json:"songCount"`
@@ -334,6 +339,7 @@ type Bookmarks struct {
 }
 
 type ScanStatus struct {
-	Scanning bool  `xml:"scanning,attr"  json:"scanning"`
-	Count    int64 `xml:"count,attr"     json:"count"`
+	Scanning bool       `xml:"scanning,attr"            json:"scanning"`
+	Count    int64      `xml:"count,attr"               json:"count"`
+	LastScan *time.Time `xml:"lastScan,attr,omitempty"  json:"lastScan,omitempty"`
 }

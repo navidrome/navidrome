@@ -78,7 +78,7 @@ func startServer() (func() error, func(err error)) {
 func startScanner() (func() error, func(err error)) {
 	interval := conf.Server.ScanInterval
 	log.Info("Starting scanner", "interval", interval.String())
-	scanner := CreateScanner(conf.Server.MusicFolder)
+	scanner := GetScanner()
 
 	return func() error {
 			if interval != 0 {

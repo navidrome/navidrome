@@ -220,6 +220,39 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("Users", func() {
+		BeforeEach(func() {
+			u := User{Username: "deluan"}
+			response.Users = &Users{User: []User{u}}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				u := User{Username: "deluan"}
+				u.Email = "navidrome@deluan.com"
+				u.AdminRole = true
+				u.Folder = []int{1}
+				response.Users = &Users{User: []User{u}}
+			})
+
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
 	Describe("Playlists", func() {
 		BeforeEach(func() {
 			response.Playlists = &Playlists{}
@@ -504,9 +537,11 @@ var _ = Describe("Responses", func() {
 
 		Context("with data", func() {
 			BeforeEach(func() {
+				t, _ := time.Parse(time.RFC822, time.RFC822)
 				response.ScanStatus = &ScanStatus{
 					Scanning: true,
 					Count:    123,
+					LastScan: &t,
 				}
 			})
 			It("should match .XML", func() {
