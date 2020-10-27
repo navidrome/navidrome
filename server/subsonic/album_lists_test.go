@@ -6,7 +6,7 @@ import (
 
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/persistence"
+	"github.com/deluan/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -14,13 +14,13 @@ import (
 var _ = Describe("AlbumListController", func() {
 	var controller *AlbumListController
 	var ds model.DataStore
-	var mockRepo *persistence.MockAlbum
+	var mockRepo *tests.MockAlbum
 	var w *httptest.ResponseRecorder
 	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
-		ds = &persistence.MockDataStore{}
-		mockRepo = ds.Album(ctx).(*persistence.MockAlbum)
+		ds = &tests.MockDataStore{}
+		mockRepo = ds.Album(ctx).(*tests.MockAlbum)
 		controller = NewAlbumListController(ds, nil)
 		w = httptest.NewRecorder()
 	})

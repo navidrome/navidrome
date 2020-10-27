@@ -11,7 +11,7 @@ import (
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/persistence"
+	"github.com/deluan/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +22,7 @@ var _ = Describe("serveIndex", func() {
 	fs := http.Dir("tests/fixtures")
 
 	BeforeEach(func() {
-		ds = &persistence.MockDataStore{MockedUser: mockUser}
+		ds = &tests.MockDataStore{MockedUser: mockUser}
 		conf.Server.UILoginBackgroundURL = ""
 	})
 

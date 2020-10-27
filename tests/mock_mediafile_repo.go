@@ -1,4 +1,4 @@
-package persistence
+package tests
 
 import (
 	"errors"

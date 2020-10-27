@@ -1,16 +1,16 @@
-package core
+package tests
 
 import "github.com/deluan/navidrome/model"
 
-type mockTranscodingRepository struct {
+type MockTranscodingRepository struct {
 	model.TranscodingRepository
 }
 
-func (m *mockTranscodingRepository) Get(id string) (*model.Transcoding, error) {
+func (m *MockTranscodingRepository) Get(id string) (*model.Transcoding, error) {
 	return &model.Transcoding{ID: id, TargetFormat: "mp3", DefaultBitRate: 160}, nil
 }
 
-func (m *mockTranscodingRepository) FindByFormat(format string) (*model.Transcoding, error) {
+func (m *MockTranscodingRepository) FindByFormat(format string) (*model.Transcoding, error) {
 	switch format {
 	case "mp3":
 		return &model.Transcoding{ID: "mp31", TargetFormat: "mp3", DefaultBitRate: 160}, nil

@@ -10,7 +10,7 @@ import (
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/persistence"
+	"github.com/deluan/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -21,13 +21,13 @@ var _ = Describe("Artwork", func() {
 	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
-		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}
-		ds.Album(ctx).(*persistence.MockAlbum).SetData(model.Albums{
+		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepository{}}
+		ds.Album(ctx).(*tests.MockAlbum).SetData(model.Albums{
 			{ID: "222", CoverArtId: "123", CoverArtPath: "tests/fixtures/test.mp3"},
 			{ID: "333", CoverArtId: ""},
 			{ID: "444", CoverArtId: "444", CoverArtPath: "tests/fixtures/cover.jpg"},
 		})
-		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(model.MediaFiles{
+		ds.MediaFile(ctx).(*tests.MockMediaFile).SetData(model.MediaFiles{
 			{ID: "123", AlbumID: "222", Path: "tests/fixtures/test.mp3", HasCoverArt: true},
 			{ID: "456", AlbumID: "222", Path: "tests/fixtures/test.ogg", HasCoverArt: false},
 		})
@@ -132,14 +132,14 @@ var _ = Describe("Artwork", func() {
 
 		Context("Errors", func() {
 			It("returns err if gets error from album table", func() {
-				ds.Album(ctx).(*persistence.MockAlbum).SetError(true)
+				ds.Album(ctx).(*tests.MockAlbum).SetError(true)
 				buf := new(bytes.Buffer)
 
 				Expect(artwork.Get(ctx, "al-222", 0, buf)).To(MatchError("Error!"))
 			})
 
 			It("returns err if gets error from media_file table", func() {
-				ds.MediaFile(ctx).(*persistence.MockMediaFile).SetError(true)
+				ds.MediaFile(ctx).(*tests.MockMediaFile).SetError(true)
 				buf := new(bytes.Buffer)
 
 				Expect(artwork.Get(ctx, "123", 0, buf)).To(MatchError("Error!"))
