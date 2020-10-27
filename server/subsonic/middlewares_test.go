@@ -7,12 +7,12 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/core/auth"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/persistence"
-	"github.com/deluan/navidrome/server/subsonic/engine"
+	"github.com/deluan/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -117,7 +117,7 @@ var _ = Describe("Middlewares", func() {
 	Describe("Authenticate", func() {
 		var ds model.DataStore
 		BeforeEach(func() {
-			ds = &persistence.MockDataStore{}
+			ds = &tests.MockDataStore{}
 		})
 
 		It("passes authentication with correct credentials", func() {
@@ -222,7 +222,7 @@ var _ = Describe("Middlewares", func() {
 	Describe("validateUser", func() {
 		var ds model.DataStore
 		BeforeEach(func() {
-			ds = &persistence.MockDataStore{}
+			ds = &tests.MockDataStore{}
 		})
 
 		Context("Plaintext password", func() {
@@ -302,7 +302,7 @@ func (mh *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type mockPlayers struct {
-	engine.Players
+	core.Players
 	transcoding *model.Transcoding
 }
 

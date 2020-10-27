@@ -1,4 +1,4 @@
-package engine
+package core
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/persistence"
+	"github.com/deluan/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +22,7 @@ var _ = Describe("Players", func() {
 
 	BeforeEach(func() {
 		repo = &mockPlayerRepository{}
-		ds := &persistence.MockDataStore{MockedPlayer: repo, MockedTranscoding: &mockTranscodingRepository{}}
+		ds := &tests.MockDataStore{MockedPlayer: repo, MockedTranscoding: &tests.MockTranscodingRepository{}}
 		players = NewPlayers(ds)
 		beforeRegister = time.Now()
 	})

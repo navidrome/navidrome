@@ -11,7 +11,7 @@ import (
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/persistence"
+	"github.com/deluan/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -25,8 +25,8 @@ var _ = Describe("MediaStreamer", func() {
 	BeforeEach(func() {
 		conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
 		conf.Server.TranscodingCacheSize = "100MB"
-		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}
-		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(model.MediaFiles{
+		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepository{}}
+		ds.MediaFile(ctx).(*tests.MockMediaFile).SetData(model.MediaFiles{
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
 		})
 		testCache := NewTranscodingCache()

@@ -10,11 +10,11 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/core/auth"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
@@ -139,7 +139,7 @@ func validateUser(ctx context.Context, ds model.DataStore, username, pass, token
 	return user, nil
 }
 
-func getPlayer(players engine.Players) func(next http.Handler) http.Handler {
+func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()

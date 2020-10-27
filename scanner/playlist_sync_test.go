@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/persistence"
+	"github.com/deluan/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -15,7 +15,7 @@ var _ = Describe("playlistSync", func() {
 		var ps *playlistSync
 		ctx := context.TODO()
 		BeforeEach(func() {
-			ds = &persistence.MockDataStore{
+			ds = &tests.MockDataStore{
 				MockedMediaFile: &mockedMediaFile{},
 			}
 			ps = newPlaylistSync(ds)

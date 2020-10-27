@@ -27,7 +27,7 @@ type Router struct {
 	Playlists    engine.Playlists
 	Streamer     core.MediaStreamer
 	Archiver     core.Archiver
-	Players      engine.Players
+	Players      core.Players
 	ExternalInfo core.ExternalInfo
 	DataStore    model.DataStore
 
@@ -36,7 +36,7 @@ type Router struct {
 
 func New(artwork core.Artwork,
 	playlists engine.Playlists, streamer core.MediaStreamer,
-	archiver core.Archiver, players engine.Players, externalInfo core.ExternalInfo, ds model.DataStore) *Router {
+	archiver core.Archiver, players core.Players, externalInfo core.ExternalInfo, ds model.DataStore) *Router {
 	r := &Router{Artwork: artwork, Playlists: playlists,
 		Streamer: streamer, Archiver: archiver, Players: players, ExternalInfo: externalInfo, DataStore: ds}
 	r.mux = r.routes()
