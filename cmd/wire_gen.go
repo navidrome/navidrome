@@ -26,7 +26,7 @@ func CreateServer(musicFolder string) *server.Server {
 
 func CreateScanner(musicFolder string) scanner.Scanner {
 	dataStore := persistence.New()
-	artworkCache := core.NewImageCache()
+	artworkCache := core.GetImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
 	cacheWarmer := core.NewCacheWarmer(artwork)
 	scannerScanner := scanner.New(dataStore, cacheWarmer)
@@ -41,10 +41,10 @@ func CreateAppRouter() *app.Router {
 
 func CreateSubsonicAPIRouter() *subsonic.Router {
 	dataStore := persistence.New()
-	artworkCache := core.NewImageCache()
+	artworkCache := core.GetImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
 	transcoderTranscoder := transcoder.New()
-	transcodingCache := core.NewTranscodingCache()
+	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
 	archiver := core.NewArchiver(dataStore)
 	players := core.NewPlayers(dataStore)

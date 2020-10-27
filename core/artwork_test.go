@@ -5,7 +5,6 @@ import (
 	"context"
 	"image"
 	"io/ioutil"
-	"os"
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
@@ -37,13 +36,9 @@ var _ = Describe("Artwork", func() {
 		BeforeEach(func() {
 			conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
 			conf.Server.ImageCacheSize = "100MB"
-			cache := NewImageCache()
+			cache := GetImageCache()
 			Eventually(func() bool { return cache.Ready() }).Should(BeTrue())
 			artwork = NewArtwork(ds, cache)
-		})
-
-		AfterEach(func() {
-			os.RemoveAll(conf.Server.DataFolder)
 		})
 
 		It("retrieves the external artwork art for an album", func() {
