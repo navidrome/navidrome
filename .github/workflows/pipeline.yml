@@ -94,7 +94,7 @@ jobs:
 
   binaries:
     name: Binaries
-    needs: [js]
+    needs: [js, go, golangci-lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
