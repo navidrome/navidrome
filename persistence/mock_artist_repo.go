@@ -1,9 +1,7 @@
 package persistence
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/deluan/navidrome/model"
 )
@@ -22,14 +20,9 @@ func (m *MockArtist) SetError(err bool) {
 	m.err = err
 }
 
-func (m *MockArtist) SetData(j string) {
+func (m *MockArtist) SetData(artists model.Artists) {
 	m.data = make(map[string]model.Artist)
-	var l = model.Artists{}
-	err := json.Unmarshal([]byte(j), &l)
-	if err != nil {
-		fmt.Println("ERROR: ", err)
-	}
-	for _, a := range l {
+	for _, a := range artists {
 		m.data[a.ID] = a
 	}
 }

@@ -28,7 +28,9 @@ var _ = Describe("AlbumListController", func() {
 	Describe("GetAlbumList", func() {
 		It("should return list of the type specified", func() {
 			r := newGetRequest("type=newest", "offset=10", "size=20")
-			mockRepo.SetData(`[{"id": "1"},{"id": "2"}]`)
+			mockRepo.SetData(model.Albums{
+				{ID: "1"}, {ID: "2"},
+			})
 			resp, err := controller.GetAlbumList(w, r)
 
 			Expect(err).To(BeNil())
@@ -58,7 +60,9 @@ var _ = Describe("AlbumListController", func() {
 	Describe("GetAlbumList2", func() {
 		It("should return list of the type specified", func() {
 			r := newGetRequest("type=newest", "offset=10", "size=20")
-			mockRepo.SetData(`[{"id": "1"},{"id": "2"}]`)
+			mockRepo.SetData(model.Albums{
+				{ID: "1"}, {ID: "2"},
+			})
 			resp, err := controller.GetAlbumList2(w, r)
 
 			Expect(err).To(BeNil())

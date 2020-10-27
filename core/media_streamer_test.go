@@ -26,7 +26,9 @@ var _ = Describe("MediaStreamer", func() {
 		conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
 		conf.Server.TranscodingCacheSize = "100MB"
 		ds = &persistence.MockDataStore{MockedTranscoding: &mockTranscodingRepository{}}
-		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(`[{"id": "123", "path": "tests/fixtures/test.mp3", "suffix": "mp3", "bitRate": 128, "duration": 257.0}]`)
+		ds.MediaFile(ctx).(*persistence.MockMediaFile).SetData(model.MediaFiles{
+			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
+		})
 		testCache := NewTranscodingCache()
 		Eventually(func() bool { return testCache.Ready() }).Should(BeTrue())
 		streamer = NewMediaStreamer(ds, ffmpeg, testCache)
