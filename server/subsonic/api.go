@@ -23,22 +23,21 @@ const Version = "1.13.0"
 type Handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
 type Router struct {
-	Artwork       core.Artwork
-	ListGenerator engine.ListGenerator
-	Playlists     engine.Playlists
-	Streamer      core.MediaStreamer
-	Archiver      core.Archiver
-	Players       engine.Players
-	ExternalInfo  core.ExternalInfo
-	DataStore     model.DataStore
+	Artwork      core.Artwork
+	Playlists    engine.Playlists
+	Streamer     core.MediaStreamer
+	Archiver     core.Archiver
+	Players      engine.Players
+	ExternalInfo core.ExternalInfo
+	DataStore    model.DataStore
 
 	mux http.Handler
 }
 
-func New(artwork core.Artwork, listGenerator engine.ListGenerator,
+func New(artwork core.Artwork,
 	playlists engine.Playlists, streamer core.MediaStreamer,
 	archiver core.Archiver, players engine.Players, externalInfo core.ExternalInfo, ds model.DataStore) *Router {
-	r := &Router{Artwork: artwork, ListGenerator: listGenerator, Playlists: playlists,
+	r := &Router{Artwork: artwork, Playlists: playlists,
 		Streamer: streamer, Archiver: archiver, Players: players, ExternalInfo: externalInfo, DataStore: ds}
 	r.mux = r.routes()
 	return r

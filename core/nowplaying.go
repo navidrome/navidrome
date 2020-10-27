@@ -1,4 +1,4 @@
-package engine
+package core
 
 import (
 	"container/list"
@@ -17,21 +17,9 @@ type NowPlayingInfo struct {
 }
 
 // This repo must have the semantics of a FIFO queue, for each playerId
-type NowPlayingRepository interface {
+type NowPlaying interface {
 	// Insert at the head of the queue
 	Enqueue(*NowPlayingInfo) error
-
-	// Removes and returns the element at the end of the queue
-	Dequeue(playerId int) (*NowPlayingInfo, error)
-
-	// Returns the element at the head of the queue (last inserted one)
-	Head(playerId int) (*NowPlayingInfo, error)
-
-	// Returns the element at the end of the queue (first inserted one)
-	Tail(playerId int) (*NowPlayingInfo, error)
-
-	// Size of the queue for the playerId
-	Count(playerId int) (int64, error)
 
 	// Returns all heads from all playerIds
 	GetAll() ([]*NowPlayingInfo, error)
@@ -41,53 +29,15 @@ var playerMap = sync.Map{}
 
 type nowPlayingRepository struct{}
 
-func NewNowPlayingRepository() NowPlayingRepository {
+func NewNowPlayingRepository() NowPlaying {
 	r := &nowPlayingRepository{}
 	return r
-}
-
-func (r *nowPlayingRepository) getList(id int) *list.List {
-	l, _ := playerMap.LoadOrStore(id, list.New())
-	return l.(*list.List)
 }
 
 func (r *nowPlayingRepository) Enqueue(info *NowPlayingInfo) error {
 	l := r.getList(info.PlayerId)
 	l.PushFront(info)
 	return nil
-}
-
-func (r *nowPlayingRepository) Dequeue(playerId int) (*NowPlayingInfo, error) {
-	l := r.getList(playerId)
-	e := checkExpired(l, l.Back)
-	if e == nil {
-		return nil, nil
-	}
-	l.Remove(e)
-	return e.Value.(*NowPlayingInfo), nil
-}
-
-func (r *nowPlayingRepository) Head(playerId int) (*NowPlayingInfo, error) {
-	l := r.getList(playerId)
-	e := checkExpired(l, l.Front)
-	if e == nil {
-		return nil, nil
-	}
-	return e.Value.(*NowPlayingInfo), nil
-}
-
-func (r *nowPlayingRepository) Tail(playerId int) (*NowPlayingInfo, error) {
-	l := r.getList(playerId)
-	e := checkExpired(l, l.Back)
-	if e == nil {
-		return nil, nil
-	}
-	return e.Value.(*NowPlayingInfo), nil
-}
-
-func (r *nowPlayingRepository) Count(playerId int) (int64, error) {
-	l := r.getList(playerId)
-	return int64(l.Len()), nil
 }
 
 func (r *nowPlayingRepository) GetAll() ([]*NowPlayingInfo, error) {
@@ -101,6 +51,44 @@ func (r *nowPlayingRepository) GetAll() ([]*NowPlayingInfo, error) {
 		return true
 	})
 	return all, nil
+}
+
+func (r *nowPlayingRepository) getList(id int) *list.List {
+	l, _ := playerMap.LoadOrStore(id, list.New())
+	return l.(*list.List)
+}
+
+func (r *nowPlayingRepository) dequeue(playerId int) (*NowPlayingInfo, error) {
+	l := r.getList(playerId)
+	e := checkExpired(l, l.Back)
+	if e == nil {
+		return nil, nil
+	}
+	l.Remove(e)
+	return e.Value.(*NowPlayingInfo), nil
+}
+
+func (r *nowPlayingRepository) head(playerId int) (*NowPlayingInfo, error) {
+	l := r.getList(playerId)
+	e := checkExpired(l, l.Front)
+	if e == nil {
+		return nil, nil
+	}
+	return e.Value.(*NowPlayingInfo), nil
+}
+
+func (r *nowPlayingRepository) tail(playerId int) (*NowPlayingInfo, error) {
+	l := r.getList(playerId)
+	e := checkExpired(l, l.Back)
+	if e == nil {
+		return nil, nil
+	}
+	return e.Value.(*NowPlayingInfo), nil
+}
+
+func (r *nowPlayingRepository) count(playerId int) (int64, error) {
+	l := r.getList(playerId)
+	return int64(l.Len()), nil
 }
 
 func checkExpired(l *list.List, f func() *list.Element) *list.Element {

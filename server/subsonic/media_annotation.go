@@ -6,20 +6,20 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
 
 type MediaAnnotationController struct {
 	ds     model.DataStore
-	npRepo engine.NowPlayingRepository
+	npRepo core.NowPlaying
 }
 
-func NewMediaAnnotationController(ds model.DataStore, npr engine.NowPlayingRepository) *MediaAnnotationController {
+func NewMediaAnnotationController(ds model.DataStore, npr core.NowPlaying) *MediaAnnotationController {
 	return &MediaAnnotationController{ds: ds, npRepo: npr}
 }
 
@@ -176,7 +176,7 @@ func (c *MediaAnnotationController) scrobblerNowPlaying(ctx context.Context, pla
 
 	log.Info("Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username)
 
-	info := &engine.NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
+	info := &core.NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
 	return mf, c.npRepo.Enqueue(info)
 }
 

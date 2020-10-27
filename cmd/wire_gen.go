@@ -44,8 +44,6 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	dataStore := persistence.New()
 	artworkCache := core.NewImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
-	nowPlayingRepository := engine.NewNowPlayingRepository()
-	listGenerator := engine.NewListGenerator(dataStore, nowPlayingRepository)
 	playlists := engine.NewPlaylists(dataStore)
 	transcoderTranscoder := transcoder.New()
 	transcodingCache := core.NewTranscodingCache()
@@ -55,7 +53,7 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	client := core.LastFMNewClient()
 	spotifyClient := core.SpotifyNewClient()
 	externalInfo := core.NewExternalInfo(dataStore, client, spotifyClient)
-	router := subsonic.New(artwork, listGenerator, playlists, mediaStreamer, archiver, players, externalInfo, dataStore)
+	router := subsonic.New(artwork, playlists, mediaStreamer, archiver, players, externalInfo, dataStore)
 	return router
 }
 
