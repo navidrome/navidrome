@@ -64,38 +64,20 @@ func (e SubsonicError) Error() string {
 	return msg
 }
 
-func toAlbums(ctx context.Context, entries engine.Entries) []responses.Child {
-	children := make([]responses.Child, len(entries))
-	for i, entry := range entries {
-		children[i] = toAlbum(ctx, entry)
-	}
-	return children
-}
-
-func toAlbum(ctx context.Context, entry engine.Entry) responses.Child {
-	album := toChild(ctx, entry)
-	album.Name = album.Title
-	album.Title = ""
-	album.Parent = ""
-	album.Album = ""
-	album.AlbumId = ""
-	return album
-}
-
-func toArtists(entries engine.Entries) []responses.Artist {
-	artists := make([]responses.Artist, len(entries))
-	for i, entry := range entries {
-		artists[i] = responses.Artist{
-			Id:         entry.Id,
-			Name:       entry.Title,
-			AlbumCount: entry.AlbumCount,
-			UserRating: entry.UserRating,
+func toArtists(ctx context.Context, artists model.Artists) []responses.Artist {
+	as := make([]responses.Artist, len(artists))
+	for i, artist := range artists {
+		as[i] = responses.Artist{
+			Id:         artist.ID,
+			Name:       artist.Name,
+			AlbumCount: artist.AlbumCount,
+			UserRating: artist.Rating,
 		}
-		if !entry.Starred.IsZero() {
-			artists[i].Starred = &entry.Starred
+		if artist.Starred {
+			as[i].Starred = &artist.StarredAt
 		}
 	}
-	return artists
+	return as
 }
 
 func toChildren(ctx context.Context, entries engine.Entries) []responses.Child {

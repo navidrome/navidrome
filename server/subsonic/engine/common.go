@@ -45,43 +45,6 @@ type Entry struct {
 
 type Entries []Entry
 
-func FromArtist(ar *model.Artist) Entry {
-	e := Entry{}
-	e.Id = ar.ID
-	e.Title = ar.Name
-	e.AlbumCount = ar.AlbumCount
-	e.IsDir = true
-	e.UserRating = ar.Rating
-	if ar.Starred {
-		e.Starred = ar.StarredAt
-	}
-	return e
-}
-
-func FromAlbum(al *model.Album) Entry {
-	e := Entry{}
-	e.Id = al.ID
-	e.Title = al.Name
-	e.IsDir = true
-	e.Parent = al.AlbumArtistID
-	e.Album = al.Name
-	e.Year = al.MaxYear
-	e.Artist = al.AlbumArtist
-	e.Genre = al.Genre
-	e.CoverArt = al.CoverArtId
-	e.Created = al.CreatedAt
-	e.AlbumId = al.ID
-	e.ArtistId = al.AlbumArtistID
-	e.Duration = int(al.Duration)
-	e.SongCount = al.SongCount
-	if al.Starred {
-		e.Starred = al.StarredAt
-	}
-	e.PlayCount = int32(al.PlayCount)
-	e.UserRating = al.Rating
-	return e
-}
-
 func FromMediaFile(mf *model.MediaFile) Entry {
 	e := Entry{}
 	e.Id = mf.ID
@@ -133,29 +96,11 @@ func realArtistName(mf *model.MediaFile) string {
 	return mf.Artist
 }
 
-func FromAlbums(albums model.Albums) Entries {
-	entries := make(Entries, len(albums))
-	for i := range albums {
-		al := albums[i]
-		entries[i] = FromAlbum(&al)
-	}
-	return entries
-}
-
 func FromMediaFiles(mfs model.MediaFiles) Entries {
 	entries := make(Entries, len(mfs))
 	for i := range mfs {
 		mf := mfs[i]
 		entries[i] = FromMediaFile(&mf)
-	}
-	return entries
-}
-
-func FromArtists(ars model.Artists) Entries {
-	entries := make(Entries, len(ars))
-	for i := range ars {
-		ar := ars[i]
-		entries[i] = FromArtist(&ar)
 	}
 	return entries
 }

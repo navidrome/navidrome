@@ -25,8 +25,9 @@ func initBrowsingController(router *Router) *BrowsingController {
 }
 
 func initAlbumListController(router *Router) *AlbumListController {
+	dataStore := router.DataStore
 	listGenerator := router.ListGenerator
-	albumListController := NewAlbumListController(listGenerator)
+	albumListController := NewAlbumListController(dataStore, listGenerator)
 	return albumListController
 }
 
