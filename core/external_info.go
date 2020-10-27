@@ -59,8 +59,21 @@ func (e *externalInfo) getArtist(ctx context.Context, id string) (artist *model.
 		}
 	default:
 		err = model.ErrNotFound
+		return
 	}
+	artist.Name = clearName(artist.Name)
 	return
+}
+
+// Replace some Unicode chars with their equivalent ASCII
+func clearName(name string) string {
+	name = strings.ReplaceAll(name, "–", "-")
+	name = strings.ReplaceAll(name, "‐", "-")
+	name = strings.ReplaceAll(name, "“", `"`)
+	name = strings.ReplaceAll(name, "”", `"`)
+	name = strings.ReplaceAll(name, "‘", `'`)
+	name = strings.ReplaceAll(name, "’", `'`)
+	return name
 }
 
 func (e *externalInfo) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
@@ -132,6 +145,7 @@ func (e *externalInfo) TopSongs(ctx context.Context, artistName string, count in
 		log.Error(ctx, "Artist not found", "name", artistName, err)
 		return nil, nil
 	}
+	artistName = clearName(artistName)
 
 	log.Debug(ctx, "Calling Last.FM ArtistGetTopTracks", "artist", artistName, "id", artist.ID)
 	tracks, err := e.lfm.ArtistGetTopTracks(ctx, artistName, count)
