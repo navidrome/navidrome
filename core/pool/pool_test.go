@@ -26,7 +26,7 @@ func (r results) Len() int { return len(r) }
 
 var processed results
 
-var _ = Describe("Pool", func() {
+var _ = XDescribe("Pool", func() {
 	var pool *Pool
 
 	BeforeEach(func() {
