@@ -4,24 +4,25 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
+	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/deluan/navidrome/server/subsonic/filter"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
 
 type AlbumListController struct {
-	ds      model.DataStore
-	listGen engine.ListGenerator
+	ds         model.DataStore
+	nowPlaying core.NowPlaying
 }
 
-func NewAlbumListController(ds model.DataStore, listGen engine.ListGenerator) *AlbumListController {
+func NewAlbumListController(ds model.DataStore, nowPlaying core.NowPlaying) *AlbumListController {
 	c := &AlbumListController{
-		ds:      ds,
-		listGen: listGen,
+		ds:         ds,
+		nowPlaying: nowPlaying,
 	}
 	return c
 }
@@ -132,7 +133,8 @@ func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request
 }
 
 func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	npInfos, err := c.listGen.GetNowPlaying(r.Context())
+	ctx := r.Context()
+	npInfo, err := c.nowPlaying.GetAll()
 	if err != nil {
 		log.Error(r, "Error retrieving now playing list", "error", err)
 		return nil, newError(responses.ErrorGeneric, "Internal Error")
@@ -140,13 +142,18 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 
 	response := newResponse()
 	response.NowPlaying = &responses.NowPlaying{}
-	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(npInfos))
-	for i, entry := range npInfos {
-		response.NowPlaying.Entry[i].Child = toChild(r.Context(), entry)
-		response.NowPlaying.Entry[i].UserName = entry.UserName
-		response.NowPlaying.Entry[i].MinutesAgo = entry.MinutesAgo
-		response.NowPlaying.Entry[i].PlayerId = entry.PlayerId
-		response.NowPlaying.Entry[i].PlayerName = entry.PlayerName
+	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(npInfo))
+	for i, np := range npInfo {
+		mf, err := c.ds.MediaFile(ctx).Get(np.TrackID)
+		if err != nil {
+			return nil, newError(responses.ErrorGeneric, "Internal Error")
+		}
+
+		response.NowPlaying.Entry[i].Child = childFromMediaFile(ctx, *mf)
+		response.NowPlaying.Entry[i].UserName = np.Username
+		response.NowPlaying.Entry[i].MinutesAgo = int(time.Since(np.Start).Minutes())
+		response.NowPlaying.Entry[i].PlayerId = np.PlayerId
+		response.NowPlaying.Entry[i].PlayerName = np.PlayerName
 	}
 	return response, nil
 }

@@ -5,8 +5,6 @@ import (
 )
 
 var Set = wire.NewSet(
-	NewListGenerator,
 	NewPlaylists,
-	NewNowPlayingRepository,
 	NewPlayers,
 )

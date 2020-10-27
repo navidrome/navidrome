@@ -1,4 +1,4 @@
-package engine
+package core
 
 import (
 	"sync"
@@ -8,27 +8,27 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("NowPlayingRepository", func() {
-	var repo NowPlayingRepository
+var _ = Describe("NowPlaying", func() {
+	var repo *nowPlayingRepository
 	var now = time.Now()
 	var past = time.Time{}
 
 	BeforeEach(func() {
 		playerMap = sync.Map{}
-		repo = NewNowPlayingRepository()
+		repo = NewNowPlayingRepository().(*nowPlayingRepository)
 	})
 
 	It("enqueues and dequeues records", func() {
 		Expect(repo.Enqueue(&NowPlayingInfo{PlayerId: 1, TrackID: "AAA", Start: now})).To(BeNil())
 		Expect(repo.Enqueue(&NowPlayingInfo{PlayerId: 1, TrackID: "BBB", Start: now})).To(BeNil())
 
-		Expect(repo.Tail(1)).To(Equal(&NowPlayingInfo{PlayerId: 1, TrackID: "AAA", Start: now}))
-		Expect(repo.Head(1)).To(Equal(&NowPlayingInfo{PlayerId: 1, TrackID: "BBB", Start: now}))
+		Expect(repo.tail(1)).To(Equal(&NowPlayingInfo{PlayerId: 1, TrackID: "AAA", Start: now}))
+		Expect(repo.head(1)).To(Equal(&NowPlayingInfo{PlayerId: 1, TrackID: "BBB", Start: now}))
 
-		Expect(repo.Count(1)).To(Equal(int64(2)))
+		Expect(repo.count(1)).To(Equal(int64(2)))
 
-		Expect(repo.Dequeue(1)).To(Equal(&NowPlayingInfo{PlayerId: 1, TrackID: "AAA", Start: now}))
-		Expect(repo.Count(1)).To(Equal(int64(1)))
+		Expect(repo.dequeue(1)).To(Equal(&NowPlayingInfo{PlayerId: 1, TrackID: "AAA", Start: now}))
+		Expect(repo.count(1)).To(Equal(int64(1)))
 	})
 
 	It("handles multiple players", func() {
@@ -43,11 +43,11 @@ var _ = Describe("NowPlayingRepository", func() {
 			{PlayerId: 2, TrackID: "DDD", Start: now},
 		}))
 
-		Expect(repo.Count(2)).To(Equal(int64(2)))
-		Expect(repo.Count(2)).To(Equal(int64(2)))
+		Expect(repo.count(2)).To(Equal(int64(2)))
+		Expect(repo.count(2)).To(Equal(int64(2)))
 
-		Expect(repo.Tail(1)).To(Equal(&NowPlayingInfo{PlayerId: 1, TrackID: "AAA", Start: now}))
-		Expect(repo.Head(2)).To(Equal(&NowPlayingInfo{PlayerId: 2, TrackID: "DDD", Start: now}))
+		Expect(repo.tail(1)).To(Equal(&NowPlayingInfo{PlayerId: 1, TrackID: "AAA", Start: now}))
+		Expect(repo.head(2)).To(Equal(&NowPlayingInfo{PlayerId: 2, TrackID: "DDD", Start: now}))
 	})
 
 	It("handles expired items", func() {
