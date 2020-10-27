@@ -19,7 +19,7 @@ var allProviders = wire.NewSet(
 	NewStreamController,
 	NewBookmarksController,
 	core.NewNowPlayingRepository,
-	wire.FieldsOf(new(*Router), "Artwork", "Playlists", "Streamer", "Archiver", "DataStore", "ExternalInfo"),
+	wire.FieldsOf(new(*Router), "Artwork", "Streamer", "Archiver", "DataStore", "ExternalInfo"),
 )
 
 func initSystemController(router *Router) *SystemController {

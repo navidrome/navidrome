@@ -19,6 +19,7 @@ var Set = wire.NewSet(
 	NewNowPlayingRepository,
 	NewExternalInfo,
 	NewCacheWarmer,
+	NewPlayers,
 	LastFMNewClient,
 	SpotifyNewClient,
 	transcoder.New,

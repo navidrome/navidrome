@@ -9,12 +9,10 @@ import (
 	"github.com/deluan/navidrome/server"
 	"github.com/deluan/navidrome/server/app"
 	"github.com/deluan/navidrome/server/subsonic"
-	"github.com/deluan/navidrome/server/subsonic/engine"
 	"github.com/google/wire"
 )
 
 var allProviders = wire.NewSet(
-	engine.Set,
 	core.Set,
 	scanner.New,
 	subsonic.New,
