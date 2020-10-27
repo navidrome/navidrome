@@ -13,8 +13,8 @@ import (
 var Set = wire.NewSet(
 	NewArtwork,
 	NewMediaStreamer,
-	NewTranscodingCache,
-	NewImageCache,
+	GetTranscodingCache,
+	GetImageCache,
 	NewArchiver,
 	NewNowPlayingRepository,
 	NewExternalInfo,

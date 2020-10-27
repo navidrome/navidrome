@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"os"
 	"strings"
 
 	"github.com/deluan/navidrome/conf"
@@ -29,13 +28,9 @@ var _ = Describe("MediaStreamer", func() {
 		ds.MediaFile(ctx).(*tests.MockMediaFile).SetData(model.MediaFiles{
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
 		})
-		testCache := NewTranscodingCache()
+		testCache := GetTranscodingCache()
 		Eventually(func() bool { return testCache.Ready() }).Should(BeTrue())
 		streamer = NewMediaStreamer(ds, ffmpeg, testCache)
-	})
-
-	AfterEach(func() {
-		os.RemoveAll(conf.Server.DataFolder)
 	})
 
 	Context("NewStream", func() {
