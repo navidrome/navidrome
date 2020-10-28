@@ -122,6 +122,7 @@ func (s *scanner) RescanAll(fullRescan bool) {
 }
 
 func (s *scanner) rescanAll(fullRescan bool) {
+	defer s.cacheWarmer.Flush(context.Background())
 	var hasError bool
 	for folder := range s.folders {
 		err := s.rescan(folder, fullRescan)
