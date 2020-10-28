@@ -42,13 +42,17 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		return nil, err
 	}
+	return c.getPlaylist(ctx, id)
+}
+
+func (c *PlaylistsController) getPlaylist(ctx context.Context, id string) (*responses.Subsonic, error) {
 	pls, err := c.ds.Playlist(ctx).Get(id)
 	switch {
 	case err == model.ErrNotFound:
-		log.Error(r, err.Error(), "id", id)
+		log.Error(ctx, err.Error(), "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
 	case err != nil:
-		log.Error(r, err)
+		log.Error(ctx, err)
 		return nil, err
 	}
 
@@ -57,8 +61,8 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 	return response, nil
 }
 
-func (c *PlaylistsController) create(ctx context.Context, playlistId, name string, ids []string) error {
-	return c.ds.WithTx(func(tx model.DataStore) error {
+func (c *PlaylistsController) create(ctx context.Context, playlistId, name string, ids []string) (string, error) {
+	err := c.ds.WithTx(func(tx model.DataStore) error {
 		owner := getUser(ctx)
 		var pls *model.Playlist
 		var err error
@@ -83,23 +87,27 @@ func (c *PlaylistsController) create(ctx context.Context, playlistId, name strin
 			pls.Tracks = append(pls.Tracks, model.MediaFile{ID: id})
 		}
 
-		return tx.Playlist(ctx).Put(pls)
+		err = tx.Playlist(ctx).Put(pls)
+		playlistId = pls.ID
+		return err
 	})
+	return playlistId, err
 }
 
 func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	ctx := r.Context()
 	songIds := utils.ParamStrings(r, "songId")
 	playlistId := utils.ParamString(r, "playlistId")
 	name := utils.ParamString(r, "name")
 	if playlistId == "" && name == "" {
 		return nil, errors.New("required parameter name is missing")
 	}
-	err := c.create(r.Context(), playlistId, name, songIds)
+	id, err := c.create(ctx, playlistId, name, songIds)
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
 	}
-	return newResponse(), nil
+	return c.getPlaylist(ctx, id)
 }
 
 func (c *PlaylistsController) delete(ctx context.Context, playlistId string) error {
@@ -133,8 +141,8 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 	return newResponse(), nil
 }
 
-func (p *PlaylistsController) update(ctx context.Context, playlistId string, name *string, idsToAdd []string, idxToRemove []int) error {
-	return p.ds.WithTx(func(tx model.DataStore) error {
+func (c *PlaylistsController) update(ctx context.Context, playlistId string, name *string, idsToAdd []string, idxToRemove []int) error {
+	return c.ds.WithTx(func(tx model.DataStore) error {
 		pls, err := tx.Playlist(ctx).Get(playlistId)
 		if err != nil {
 			return err
