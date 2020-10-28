@@ -13,12 +13,15 @@ type Pool struct {
 	//queue *dque.DQue
 }
 
+// TODO This hardcoded value will go away when the queue is persisted in disk
+const bufferSize = 10000
+
 func NewPool(name string, workerCount int, item interface{}, exec Executor) (*Pool, error) {
 	p := &Pool{
 		name:  name,
 		item:  item,
 		exec:  exec,
-		queue: make(chan work),
+		queue: make(chan work, bufferSize),
 		end:   make(chan bool),
 	}
 
