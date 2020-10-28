@@ -65,7 +65,6 @@ const (
 // Delete all empty albums, delete all empty artists, clean-up playlists
 func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) error {
 	ctx = s.withAdminUser(ctx)
-	defer s.cacheWarmer.Flush(ctx)
 
 	start := time.Now()
 	allFSDirs, err := s.getDirTree(ctx)
