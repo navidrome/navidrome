@@ -49,6 +49,7 @@ type configOptions struct {
 	DevLogSourceLine           bool
 	DevAutoCreateAdminPassword string
 	DevPreCacheAlbumArtwork    bool
+	DevDisableTrackCoverArt    bool
 	DevNewCacheLayout          bool
 }
 
@@ -136,6 +137,7 @@ func init() {
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devprecachealbumartwork", false)
 	viper.SetDefault("devnewcachelayout", false)
+	viper.SetDefault("devdisabletrackcoverart", false)
 }
 
 func InitConfig(cfgFile string) {
