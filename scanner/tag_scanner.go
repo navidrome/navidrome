@@ -36,26 +36,30 @@ func NewTagScanner(rootFolder string, ds model.DataStore, cacheWarmer core.Cache
 	}
 }
 
-type counters struct {
-	added   int64
-	updated int64
-	deleted int64
-}
+type (
+	counters struct {
+		added     int64
+		updated   int64
+		deleted   int64
+		playlists int64
+	}
+	dirMap map[string]dirStats
+)
 
 const (
 	// filesBatchSize used for batching file metadata extraction
 	filesBatchSize = 100
 )
 
-// Scanner algorithm overview:
-// Load all directories under the music folder, with their ModTime (self or any non-dir children, whichever is newer)
+// TagScanner algorithm overview:
 // Load all directories from the DB
-// Compare both collections to find changed folders (based on lastModifiedSince) and deleted folders
-// For each deleted folder: delete all files from DB whose path starts with the delete folder path (non-recursively)
+// Traverse the music folder, collecting each subfolder's ModTime (self or any non-dir children, whichever is newer)
 // For each changed folder: get all files from DB whose path starts with the changed folder (non-recursively), check each file:
 //	    if file in folder is newer, update the one in DB
 //      if file in folder does not exists in DB, add it
 // 	    for each file in the DB that is not found in the folder, delete it from DB
+// Compare directories in the fs with the ones in the DB to find deleted folders
+// For each deleted folder: delete all files from DB whose path starts with the delete folder path (non-recursively)
 // Create new albums/artists, update counters:
 //      collect all albumIDs and artistIDs from previous steps
 //	    refresh the collected albums and artists with the metadata from the mediafiles
@@ -65,34 +69,39 @@ const (
 // Delete all empty albums, delete all empty artists, clean-up playlists
 func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) error {
 	ctx = s.withAdminUser(ctx)
-
 	start := time.Now()
-	allFSDirs, err := s.getDirTree(ctx)
-	if err != nil {
-		return err
-	}
 
 	allDBDirs, err := s.getDBDirTree(ctx)
 	if err != nil {
 		return err
 	}
 
-	changedDirs := s.getChangedDirs(ctx, allFSDirs, allDBDirs, lastModifiedSince)
-	deletedDirs := s.getDeletedDirs(ctx, allFSDirs, allDBDirs)
+	allFSDirs := dirMap{}
+	var changedDirs []string
+	s.cnt = &counters{}
 
-	if len(changedDirs)+len(deletedDirs) == 0 {
+	foldersFound := s.getRootFolderWalker(ctx)
+	for {
+		folderStats, more := <-foldersFound
+		if !more {
+			break
+		}
+		allFSDirs[folderStats.Path] = folderStats
+
+		if s.isChangedDirs(ctx, folderStats, allDBDirs, lastModifiedSince) {
+			changedDirs = append(changedDirs, folderStats.Path)
+			err := s.processChangedDir(ctx, folderStats.Path)
+			if err != nil {
+				log.Error("Error updating folder in the DB", "path", folderStats.Path, err)
+			}
+		}
+	}
+
+	deletedDirs := s.getDeletedDirs(ctx, allFSDirs, allDBDirs)
+	if len(deletedDirs)+len(changedDirs) == 0 {
 		log.Debug(ctx, "No changes found in Music Folder", "folder", s.rootFolder)
 		return nil
 	}
-
-	if log.CurrentLevel() >= log.LevelTrace {
-		log.Info(ctx, "Folder changes detected", "changedFolders", len(changedDirs), "deletedFolders", len(deletedDirs),
-			"changed", strings.Join(changedDirs, ";"), "deleted", strings.Join(deletedDirs, ";"))
-	} else {
-		log.Info(ctx, "Folder changes detected", "changedFolders", len(changedDirs), "deletedFolders", len(deletedDirs))
-	}
-
-	s.cnt = &counters{}
 
 	for _, dir := range deletedDirs {
 		err := s.processDeletedDir(ctx, dir)
@@ -100,25 +109,19 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 			log.Error("Error removing deleted folder from DB", "path", dir, err)
 		}
 	}
-	for _, dir := range changedDirs {
-		err := s.processChangedDir(ctx, dir)
-		if err != nil {
-			log.Error("Error updating folder in the DB", "path", dir, err)
-		}
-	}
 
-	plsCount := 0
+	s.cnt.playlists = 0
 	if conf.Server.AutoImportPlaylists {
-		// Now that all mediafiles are imported/updated, search for and import playlists
+		// Now that all mediafiles are imported/updated, search for and import/update playlists
 		u, _ := request.UserFrom(ctx)
 		for _, dir := range changedDirs {
 			info := allFSDirs[dir]
-			if info.hasPlaylist {
+			if info.HasPlaylist {
 				if !u.IsAdmin {
 					log.Warn("Playlists will not be imported, as there are no admin users yet, "+
 						"Please create an admin user first, and then update the playlists for them to be imported", "dir", dir)
 				} else {
-					plsCount = s.plsSync.processPlaylists(ctx, dir)
+					s.cnt.playlists = s.plsSync.processPlaylists(ctx, dir)
 				}
 			}
 		}
@@ -128,20 +131,22 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 
 	err = s.ds.GC(log.NewContext(ctx), s.rootFolder)
 	log.Info("Finished processing Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start),
-		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted, "playlistsImported", plsCount)
+		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted, "playlistsImported", s.cnt.playlists)
 
 	return err
 }
 
-func (s *TagScanner) getDirTree(ctx context.Context) (dirMap, error) {
+func (s *TagScanner) getRootFolderWalker(ctx context.Context) walkResults {
 	start := time.Now()
 	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.rootFolder)
-	dirs, err := loadDirTree(ctx, s.rootFolder)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug("Directory tree loaded from music folder", "total", len(dirs), "elapsed", time.Since(start))
-	return dirs, nil
+	results := make(chan dirStats, 5000)
+	go func() {
+		if err := walkDirTree(ctx, s.rootFolder, results); err != nil {
+			log.Error("Scan was interrupted by error", err)
+		}
+		log.Debug("Finished reading directories from filesystem", "total", "elapsed", time.Since(start))
+	}()
+	return results
 }
 
 func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]struct{}, error) {
@@ -162,21 +167,10 @@ func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]struct{}, err
 	return resp, nil
 }
 
-func (s *TagScanner) getChangedDirs(ctx context.Context, fsDirs dirMap, dbDirs map[string]struct{}, lastModified time.Time) []string {
-	start := time.Now()
-	log.Trace(ctx, "Checking for changed folders")
-	var changed []string
-
-	for d, info := range fsDirs {
-		_, inDB := dbDirs[d]
-		if (!inDB && (info.hasAudioFiles)) || info.modTime.After(lastModified) {
-			changed = append(changed, d)
-		}
-	}
-
-	sort.Strings(changed)
-	log.Debug(ctx, "Finished changed folders check", "total", len(changed), "elapsed", time.Since(start))
-	return changed
+func (s *TagScanner) isChangedDirs(ctx context.Context, folder dirStats, dbDirs map[string]struct{}, lastModified time.Time) bool {
+	_, inDB := dbDirs[folder.Path]
+	// If is a new folder with at least one song OR it was modified after lastModified
+	return (!inDB && (folder.AudioFilesCount > 0)) || folder.ModTime.After(lastModified)
 }
 
 func (s *TagScanner) getDeletedDirs(ctx context.Context, fsDirs dirMap, dbDirs map[string]struct{}) []string {

@@ -14,49 +14,53 @@ import (
 )
 
 type (
-	dirMapValue struct {
-		modTime       time.Time
-		hasImages     bool
-		hasPlaylist   bool
-		hasAudioFiles bool
+	dirStats struct {
+		Path            string
+		ModTime         time.Time
+		HasImages       bool
+		HasPlaylist     bool
+		AudioFilesCount int64
 	}
-	dirMap = map[string]dirMapValue
+	walkResults = chan dirStats
 )
 
-func loadDirTree(ctx context.Context, rootFolder string) (dirMap, error) {
-	newMap := make(dirMap)
-	err := loadMap(ctx, rootFolder, rootFolder, newMap)
+func walkDirTree(ctx context.Context, rootFolder string, results walkResults) error {
+	err := walkFolder(ctx, rootFolder, rootFolder, results)
 	if err != nil {
 		log.Error(ctx, "Error loading directory tree", err)
 	}
-	return newMap, err
+	close(results)
+	return err
 }
 
-func loadMap(ctx context.Context, rootPath string, currentFolder string, dirMap dirMap) error {
-	children, dirMapValue, err := loadDir(ctx, currentFolder)
+func walkFolder(ctx context.Context, rootPath string, currentFolder string, results walkResults) error {
+	children, stats, err := loadDir(ctx, currentFolder)
 	if err != nil {
 		return err
 	}
 	for _, c := range children {
-		err := loadMap(ctx, rootPath, c, dirMap)
+		err := walkFolder(ctx, rootPath, c, results)
 		if err != nil {
 			return err
 		}
 	}
 
 	dir := filepath.Clean(currentFolder)
-	dirMap[dir] = dirMapValue
+	log.Trace(ctx, "Found directory", "dir", dir, "audioCount", stats.AudioFilesCount,
+		"hasImages", stats.HasImages, "HasPlaylist", stats.HasPlaylist)
+	stats.Path = dir
+	results <- stats
 
 	return nil
 }
 
-func loadDir(ctx context.Context, dirPath string) (children []string, info dirMapValue, err error) {
+func loadDir(ctx context.Context, dirPath string) (children []string, stats dirStats, err error) {
 	dirInfo, err := os.Stat(dirPath)
 	if err != nil {
 		log.Error(ctx, "Error stating dir", "path", dirPath, err)
 		return
 	}
-	info.modTime = dirInfo.ModTime()
+	stats.ModTime = dirInfo.ModTime()
 
 	files, err := ioutil.ReadDir(dirPath)
 	if err != nil {
@@ -67,17 +71,21 @@ func loadDir(ctx context.Context, dirPath string) (children []string, info dirMa
 		isDir, err := isDirOrSymlinkToDir(dirPath, f)
 		// Skip invalid symlinks
 		if err != nil {
+			log.Error(ctx, "Invalid symlink", "dir", dirPath)
 			continue
 		}
 		if isDir && !isDirIgnored(dirPath, f) && isDirReadable(dirPath, f) {
 			children = append(children, filepath.Join(dirPath, f.Name()))
 		} else {
-			if f.ModTime().After(info.modTime) {
-				info.modTime = f.ModTime()
+			if f.ModTime().After(stats.ModTime) {
+				stats.ModTime = f.ModTime()
 			}
-			info.hasImages = info.hasImages || utils.IsImageFile(f.Name())
-			info.hasPlaylist = info.hasPlaylist || utils.IsPlaylist(f.Name())
-			info.hasAudioFiles = info.hasAudioFiles || utils.IsAudioFile(f.Name())
+			if utils.IsAudioFile(f.Name()) {
+				stats.AudioFilesCount++
+			} else {
+				stats.HasPlaylist = stats.HasPlaylist || utils.IsPlaylist(f.Name())
+				stats.HasImages = stats.HasImages || utils.IsImageFile(f.Name())
+			}
 		}
 	}
 	return
