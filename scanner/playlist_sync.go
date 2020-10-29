@@ -24,8 +24,8 @@ func newPlaylistSync(ds model.DataStore) *playlistSync {
 	return &playlistSync{ds: ds}
 }
 
-func (s *playlistSync) processPlaylists(ctx context.Context, dir string) int {
-	count := 0
+func (s *playlistSync) processPlaylists(ctx context.Context, dir string) int64 {
+	var count int64
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Error(ctx, "Error reading files", "dir", dir, err)

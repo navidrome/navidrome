@@ -1,14 +1,46 @@
 package scanner
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 var _ = Describe("load_tree", func() {
+
+	Describe("walkDirTree", func() {
+		It("reads all info correctly", func() {
+			var collected = dirMap{}
+			results := make(walkResults, 5000)
+			var err error
+			go func() {
+				err = walkDirTree(context.TODO(), "tests/fixtures", results)
+			}()
+
+			for {
+				stats, more := <-results
+				if !more {
+					break
+				}
+				collected[stats.Path] = stats
+			}
+
+			Expect(err).To(BeNil())
+			Expect(collected["tests/fixtures"]).To(MatchFields(IgnoreExtras, Fields{
+				"HasImages":       BeTrue(),
+				"HasPlaylist":     BeFalse(),
+				"AudioFilesCount": BeNumerically("==", 4),
+			}))
+			Expect(collected["tests/fixtures/playlists"].HasPlaylist).To(BeTrue())
+			Expect(collected).To(HaveKey("tests/fixtures/symlink2dir"))
+			Expect(collected).To(HaveKey("tests/fixtures/empty_folder"))
+		})
+	})
+
 	Describe("isDirOrSymlinkToDir", func() {
 		It("returns true for normal dirs", func() {
 			dir, _ := os.Stat("tests/fixtures")
