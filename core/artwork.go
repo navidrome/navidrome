@@ -98,7 +98,7 @@ func (a *artwork) getImagePath(ctx context.Context, id string) (path string, las
 
 	log.Trace(ctx, "Looking for media file art", "id", id)
 
-	// Check if id is a mediaFile cover id
+	// Check if id is a mediaFile id
 	var mf *model.MediaFile
 	mf, err = a.ds.MediaFile(ctx).Get(id)
 
@@ -110,8 +110,8 @@ func (a *artwork) getImagePath(ctx context.Context, id string) (path string, las
 		return
 	}
 
-	// If it is a mediaFile and it has cover art, return it
-	if mf.HasCoverArt {
+	// If it is a mediaFile and it has cover art, return it (if feature is disabled, skip)
+	if !conf.Server.DevDisableTrackCoverArt && mf.HasCoverArt {
 		return mf.Path, mf.UpdatedAt, nil
 	}
 
