@@ -98,6 +98,12 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		}
 	}
 
+	// If the media folder is empty, abort to avoid deleting all data
+	if len(allFSDirs) <= 1 {
+		log.Error(ctx, "Media Folder is empty. Aborting scan.", "folder", s.rootFolder)
+		return nil
+	}
+
 	deletedDirs := s.getDeletedDirs(ctx, allFSDirs, allDBDirs)
 	if len(deletedDirs)+len(changedDirs) == 0 {
 		log.Debug(ctx, "No changes found in Music Folder", "folder", s.rootFolder)
