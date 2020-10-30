@@ -71,11 +71,12 @@ type MusicFolders struct {
 }
 
 type Artist struct {
-	Id         string     `xml:"id,attr"                           json:"id"`
-	Name       string     `xml:"name,attr"                         json:"name"`
-	AlbumCount int        `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
-	Starred    *time.Time `xml:"starred,attr,omitempty"            json:"starred,omitempty"`
-	UserRating int        `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
+	Id             string     `xml:"id,attr"                           json:"id"`
+	Name           string     `xml:"name,attr"                         json:"name"`
+	AlbumCount     int        `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
+	Starred        *time.Time `xml:"starred,attr,omitempty"            json:"starred,omitempty"`
+	UserRating     int        `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
+	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"     json:"artistImageUrl,omitempty"`
 	/*
 		<xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
@@ -158,11 +159,12 @@ type Directory struct {
 }
 
 type ArtistID3 struct {
-	Id         string     `xml:"id,attr"                            json:"id"`
-	Name       string     `xml:"name,attr"                          json:"name"`
-	CoverArt   string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
-	AlbumCount int        `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
-	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
+	Id             string     `xml:"id,attr"                            json:"id"`
+	Name           string     `xml:"name,attr"                          json:"name"`
+	CoverArt       string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
+	AlbumCount     int        `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
+	Starred        *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
+	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"     json:"artistImageUrl,omitempty"`
 }
 
 type AlbumID3 struct {
