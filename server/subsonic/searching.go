@@ -96,6 +96,7 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 }
 
 func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	ctx := r.Context()
 	sp, err := c.getParams(r)
 	if err != nil {
 		return nil, err
@@ -106,17 +107,10 @@ func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*
 	searchResult3 := &responses.SearchResult3{}
 	searchResult3.Artist = make([]responses.ArtistID3, len(as))
 	for i, artist := range as {
-		searchResult3.Artist[i] = responses.ArtistID3{
-			Id:         artist.ID,
-			Name:       artist.Name,
-			AlbumCount: artist.AlbumCount,
-		}
-		if artist.Starred {
-			searchResult3.Artist[i].Starred = &artist.StarredAt
-		}
+		searchResult3.Artist[i] = toArtistID3(ctx, artist)
 	}
-	searchResult3.Album = childrenFromAlbums(r.Context(), als)
-	searchResult3.Song = childrenFromMediaFiles(r.Context(), mfs)
+	searchResult3.Album = childrenFromAlbums(ctx, als)
+	searchResult3.Song = childrenFromMediaFiles(ctx, mfs)
 	response.SearchResult3 = searchResult3
 	return response, nil
 }

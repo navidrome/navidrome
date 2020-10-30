@@ -9,6 +9,7 @@ import (
 	"github.com/deluan/navidrome/model/request"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 var _ = Describe("ArtistRepository", func() {
@@ -67,6 +68,28 @@ var _ = Describe("ArtistRepository", func() {
 					},
 				},
 			}))
+		})
+	})
+
+	Describe("dbArtist mapping", func() {
+		var a *model.Artist
+		BeforeEach(func() {
+			a = &model.Artist{ID: "1", Name: "Van Halen", SimilarArtists: []model.Artist{
+				{ID: "2", Name: "AC/DC"}, {ID: "-1", Name: "Test;With:Sep,Chars"},
+			}}
+		})
+		It("maps fields", func() {
+			dba := repo.(*artistRepository).fromModel(a)
+			actual := repo.(*artistRepository).toModel(dba)
+			Expect(*actual).To(MatchFields(IgnoreExtras, Fields{
+				"ID":   Equal(a.ID),
+				"Name": Equal(a.Name),
+			}))
+			Expect(actual.SimilarArtists).To(HaveLen(2))
+			Expect(actual.SimilarArtists[0].ID).To(Equal("2"))
+			Expect(actual.SimilarArtists[0].Name).To(Equal("AC/DC"))
+			Expect(actual.SimilarArtists[1].ID).To(Equal("-1"))
+			Expect(actual.SimilarArtists[1].Name).To(Equal("Test;With:Sep,Chars"))
 		})
 	})
 })

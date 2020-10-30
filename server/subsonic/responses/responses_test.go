@@ -92,7 +92,14 @@ var _ = Describe("Responses", func() {
 			BeforeEach(func() {
 				artists := make([]Artist, 1)
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
-				artists[0] = Artist{Id: "111", Name: "aaa", Starred: &t, UserRating: 3, AlbumCount: 2}
+				artists[0] = Artist{
+					Id:             "111",
+					Name:           "aaa",
+					Starred:        &t,
+					UserRating:     3,
+					AlbumCount:     2,
+					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+				}
 				index := make([]Index, 1)
 				index[0] = Index{Name: "A", Artists: artists}
 				response.Indexes.Index = index

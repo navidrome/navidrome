@@ -59,7 +59,6 @@ func (c *Client) SearchArtists(ctx context.Context, name string, limit int) ([]A
 	if len(results.Artists.Items) == 0 {
 		return nil, ErrNotFound
 	}
-	log.Debug(ctx, "Found artist in Spotify", "artist", results.Artists.Items[0].Name)
 	return results.Artists.Items, err
 }
 

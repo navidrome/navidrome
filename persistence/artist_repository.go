@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -18,6 +20,11 @@ type artistRepository struct {
 	sqlRepository
 	sqlRestful
 	indexGroups utils.IndexGroups
+}
+
+type dbArtist struct {
+	model.Artist
+	SimilarArtists string `json:"similarArtists"`
 }
 
 func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepository {
@@ -49,40 +56,69 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *artistRepository) Put(a *model.Artist) error {
-	a.FullText = getFullText(a.Name, a.SortArtistName)
-	_, err := r.put(a.ID, a)
+	dba := r.fromModel(a)
+	a.FullText = getFullText(dba.Name, dba.SortArtistName)
+	_, err := r.put(dba.ID, dba)
 	return err
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
 	sel := r.selectArtist().Where(Eq{"id": id})
-	var res model.Artists
-	if err := r.queryAll(sel, &res); err != nil {
+	var dba []dbArtist
+	if err := r.queryAll(sel, &dba); err != nil {
 		return nil, err
 	}
-	if len(res) == 0 {
+	if len(dba) == 0 {
 		return nil, model.ErrNotFound
 	}
-	return &res[0], nil
-}
-
-func (r *artistRepository) FindByName(name string) (*model.Artist, error) {
-	sel := r.selectArtist().Where(Like{"name": name})
-	var res model.Artists
-	if err := r.queryAll(sel, &res); err != nil {
-		return nil, err
-	}
-	if len(res) == 0 {
-		return nil, model.ErrNotFound
-	}
+	res := r.toModels(dba)
 	return &res[0], nil
 }
 
 func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists, error) {
 	sel := r.selectArtist(options...)
-	res := model.Artists{}
-	err := r.queryAll(sel, &res)
+	var dba []dbArtist
+	err := r.queryAll(sel, &dba)
+	res := r.toModels(dba)
 	return res, err
+}
+
+func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
+	var res model.Artists
+	for i := range dba {
+		a := dba[i]
+		res = append(res, *r.toModel(&a))
+	}
+	return res
+}
+
+func (r *artistRepository) toModel(dba *dbArtist) *model.Artist {
+	a := dba.Artist
+	a.SimilarArtists = nil
+	for _, s := range strings.Split(dba.SimilarArtists, ";") {
+		fields := strings.Split(s, ":")
+		if len(fields) != 2 {
+			continue
+		}
+		name, _ := url.QueryUnescape(fields[1])
+		a.SimilarArtists = append(a.SimilarArtists, model.Artist{
+			ID:   fields[0],
+			Name: name,
+		})
+	}
+	return &a
+}
+
+func (r *artistRepository) fromModel(a *model.Artist) *dbArtist {
+	dba := &dbArtist{Artist: *a}
+	var sa []string
+
+	for _, s := range a.SimilarArtists {
+		sa = append(sa, fmt.Sprintf("%s:%s", s.ID, url.QueryEscape(s.Name)))
+	}
+
+	dba.SimilarArtists = strings.Join(sa, ";")
+	return dba
 }
 
 func (r *artistRepository) getIndexKey(a *model.Artist) string {
@@ -98,9 +134,7 @@ func (r *artistRepository) getIndexKey(a *model.Artist) string {
 
 // TODO Cache the index (recalculate when there are changes to the DB)
 func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
-	sq := r.selectArtist().OrderBy("order_artist_name")
-	var all model.Artists
-	err := r.queryAll(sq, &all)
+	all, err := r.GetAll(model.QueryOptions{Sort: "order_artist_name"})
 	if err != nil {
 		return nil, err
 	}
@@ -181,8 +215,9 @@ func (r *artistRepository) refresh(ids ...string) error {
 
 func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Artists, error) {
 	sq := r.selectArtist(options...).Where("starred = true")
-	starred := model.Artists{}
-	err := r.queryAll(sq, &starred)
+	var dba []dbArtist
+	err := r.queryAll(sq, &dba)
+	starred := r.toModels(dba)
 	return starred, err
 }
 
@@ -198,9 +233,12 @@ func (r *artistRepository) purgeEmpty() error {
 }
 
 func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {
-	results := model.Artists{}
-	err := r.doSearch(q, offset, size, &results, "name")
-	return results, err
+	var dba []dbArtist
+	err := r.doSearch(q, offset, size, &dba, "name")
+	if err != nil {
+		return nil, err
+	}
+	return r.toModels(dba), nil
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {

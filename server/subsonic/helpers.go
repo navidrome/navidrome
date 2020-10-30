@@ -74,17 +74,36 @@ func getUser(ctx context.Context) string {
 func toArtists(ctx context.Context, artists model.Artists) []responses.Artist {
 	as := make([]responses.Artist, len(artists))
 	for i, artist := range artists {
-		as[i] = responses.Artist{
-			Id:         artist.ID,
-			Name:       artist.Name,
-			AlbumCount: artist.AlbumCount,
-			UserRating: artist.Rating,
-		}
-		if artist.Starred {
-			as[i].Starred = &artist.StarredAt
-		}
+		as[i] = toArtist(ctx, artist)
 	}
 	return as
+}
+
+func toArtist(ctx context.Context, a model.Artist) responses.Artist {
+	artist := responses.Artist{
+		Id:             a.ID,
+		Name:           a.Name,
+		AlbumCount:     a.AlbumCount,
+		UserRating:     a.Rating,
+		ArtistImageUrl: a.ArtistImageUrl(),
+	}
+	if a.Starred {
+		artist.Starred = &a.StarredAt
+	}
+	return artist
+}
+
+func toArtistID3(ctx context.Context, a model.Artist) responses.ArtistID3 {
+	artist := responses.ArtistID3{
+		Id:             a.ID,
+		Name:           a.Name,
+		AlbumCount:     a.AlbumCount,
+		ArtistImageUrl: a.ArtistImageUrl(),
+	}
+	if a.Starred {
+		artist.Starred = &a.StarredAt
+	}
+	return artist
 }
 
 func toGenres(genres model.Genres) *responses.Genres {

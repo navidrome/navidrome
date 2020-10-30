@@ -61,7 +61,7 @@ func NewPool(name string, workerCount int, item interface{}, exec Executor) (*Po
 					log.Debug("Queue status", "pool", p.name, "items", len(p.queue))
 				} else {
 					if running {
-						log.Info("Finished draining queue", "pool", p.name)
+						log.Info("Queue empty", "pool", p.name)
 					}
 					running = false
 				}

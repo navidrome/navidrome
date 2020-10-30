@@ -69,12 +69,7 @@ func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId i
 	res.Index = make([]responses.Index, len(indexes))
 	for i, idx := range indexes {
 		res.Index[i].Name = idx.ID
-		res.Index[i].Artists = make([]responses.Artist, len(idx.Artists))
-		for j, a := range idx.Artists {
-			res.Index[i].Artists[j].Id = a.ID
-			res.Index[i].Artists[j].Name = a.Name
-			res.Index[i].Artists[j].AlbumCount = a.AlbumCount
-		}
+		res.Index[i].Artists = toArtists(ctx, idx.Artists)
 	}
 	return res, nil
 }
@@ -241,28 +236,21 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 	count := utils.ParamInt(r, "count", 20)
 	includeNotPresent := utils.ParamBool(r, "includeNotPresent", false)
 
-	info, err := c.ei.ArtistInfo(ctx, id, count, includeNotPresent)
+	artist, err := c.ei.UpdateArtistInfo(ctx, id, count, includeNotPresent)
 	if err != nil {
 		return nil, err
 	}
 
 	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
-	response.ArtistInfo.Biography = info.Biography
-	response.ArtistInfo.SmallImageUrl = info.SmallImageUrl
-	response.ArtistInfo.MediumImageUrl = info.MediumImageUrl
-	response.ArtistInfo.LargeImageUrl = info.LargeImageUrl
-	response.ArtistInfo.LastFmUrl = info.LastFMUrl
-	response.ArtistInfo.MusicBrainzID = info.MBID
-	for _, s := range info.SimilarArtists {
-		similar := responses.Artist{}
-		similar.Id = s.ID
-		similar.Name = s.Name
-		similar.AlbumCount = s.AlbumCount
-		if s.Starred {
-			similar.Starred = &s.StarredAt
-		}
-		similar.UserRating = s.Rating
+	response.ArtistInfo.Biography = artist.Biography
+	response.ArtistInfo.SmallImageUrl = artist.SmallImageUrl
+	response.ArtistInfo.MediumImageUrl = artist.MediumImageUrl
+	response.ArtistInfo.LargeImageUrl = artist.LargeImageUrl
+	response.ArtistInfo.LastFmUrl = artist.ExternalUrl
+	response.ArtistInfo.MusicBrainzID = artist.MbzArtistID
+	for _, s := range artist.SimilarArtists {
+		similar := toArtist(ctx, s)
 		response.ArtistInfo.SimilarArtist = append(response.ArtistInfo.SimilarArtist, similar)
 	}
 	return response, nil
@@ -283,6 +271,7 @@ func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Reque
 		similar.Name = s.Name
 		similar.AlbumCount = s.AlbumCount
 		similar.Starred = s.Starred
+		similar.ArtistImageUrl = s.ArtistImageUrl
 		response.ArtistInfo2.SimilarArtist = append(response.ArtistInfo2.SimilarArtist, similar)
 	}
 	return response, nil
@@ -362,16 +351,10 @@ func (c *BrowsingController) buildArtistDirectory(ctx context.Context, artist *m
 }
 
 func (c *BrowsingController) buildArtist(ctx context.Context, artist *model.Artist, albums model.Albums) *responses.ArtistWithAlbumsID3 {
-	dir := &responses.ArtistWithAlbumsID3{}
-	dir.Id = artist.ID
-	dir.Name = artist.Name
-	dir.AlbumCount = artist.AlbumCount
-	if artist.Starred {
-		dir.Starred = &artist.StarredAt
-	}
-
-	dir.Album = childrenFromAlbums(ctx, albums)
-	return dir
+	a := &responses.ArtistWithAlbumsID3{}
+	a.ArtistID3 = toArtistID3(ctx, *artist)
+	a.Album = childrenFromAlbums(ctx, albums)
+	return a
 }
 
 func (c *BrowsingController) buildAlbumDirectory(ctx context.Context, album *model.Album) (*responses.Directory, error) {
