@@ -2,6 +2,7 @@ import React from 'react'
 import {
   GridList,
   GridListTile,
+  Typography,
   GridListTileBar,
   useMediaQuery,
 } from '@material-ui/core'
@@ -11,7 +12,12 @@ import { Link } from 'react-router-dom'
 import { linkToRecord, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
-import { AlbumContextMenu, PlayButton } from '../common'
+import {
+  AlbumContextMenu,
+  PlayButton,
+  ArtistLinkField,
+  RangeField,
+} from '../common'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -38,19 +44,16 @@ const useStyles = makeStyles((theme) => ({
     textAlign: 'left',
     fontSize: '1em',
   },
-  artistLink: {
-    color: theme.palette.primary.light,
-  },
-  albumArtist: {
-    fontSize: '12px',
-    color: '#c5c5c5',
+  albumName: {
+    fontSize: '14px',
+    color: theme.palette.type === 'dark' ? '#eee' : 'black',
     overflow: 'hidden',
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',
   },
-  albumName: {
-    fontSize: '14px',
-    color: '#eee',
+  albumSubtitle: {
+    fontSize: '12px',
+    color: theme.palette.type === 'dark' ? '#c5c5c5' : '#696969',
     overflow: 'hidden',
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',
@@ -63,7 +66,7 @@ const useStyles = makeStyles((theme) => ({
       opacity: 1,
     },
   },
-  albumLlink: {
+  albumLink: {
     position: 'relative',
     display: 'block',
     textDecoration: 'none',
@@ -118,22 +121,26 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
         <Cover album={record} />
         <GridListTileBar
           className={isDesktop ? classes.tileBar : classes.tileBarMobile}
-          subtitle={
-            <PlayButton
-              record={record}
-              className={classes.playButton}
-              size="small"
-            />
-          }
+          subtitle={<PlayButton color={'white'} record={record} size="small" />}
           actionIcon={<AlbumContextMenu record={record} color={'white'} />}
         />
       </Link>
       <Link
-        className={classes.albumLlink}
+        className={classes.albumLink}
         to={linkToRecord(basePath, record.id, 'show')}
       >
-        <div className={classes.albumName}>{record.name}</div>
-        <div className={classes.albumArtist}>{record.albumArtist}</div>
+        <Typography className={classes.albumName}>{record.name}</Typography>
+        {showArtist ? (
+          <ArtistLinkField record={record} className={classes.albumSubtitle} />
+        ) : (
+          <RangeField
+            record={record}
+            source={'year'}
+            sortBy={'maxYear'}
+            sortByOrder={'DESC'}
+            className={classes.albumSubtitle}
+          />
+        )}
       </Link>
     </div>
   )

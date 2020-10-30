@@ -11,10 +11,6 @@ export const useStyles = makeStyles((theme) => ({
       minWidth: '32em',
     },
   },
-  playButton: {
-    opacity: 0,
-    transition: 'all 150ms ease-out',
-  },
   albumCover: {
     display: 'inline-flex',
     justifyContent: 'center',
