@@ -59,6 +59,11 @@ func (e *taglibExtractor) extractMetadata(filePath string) (*taglibMetadata, err
 }
 
 func hasEmbeddedImage(path string) bool {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("Panic while checking for images. Please report this error with a copy of the file", "path", path, r)
+		}
+	}()
 	f, err := os.Open(path)
 	if err != nil {
 		log.Warn("Error opening file", "filePath", path, err)
