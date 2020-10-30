@@ -1,5 +1,11 @@
 package pool
 
+import (
+	"time"
+
+	"github.com/deluan/navidrome/log"
+)
+
 type Executor func(workload interface{})
 
 type Pool struct {
@@ -7,6 +13,7 @@ type Pool struct {
 	item          interface{}
 	workers       []worker
 	exec          Executor
+	logTicker     *time.Ticker
 	workerChannel chan chan work
 	queue         chan work // receives jobs to send to workers
 	end           chan bool // when receives bool stops workers
@@ -45,14 +52,26 @@ func NewPool(name string, workerCount int, item interface{}, exec Executor) (*Po
 
 	// start pool
 	go func() {
+		p.logTicker = time.NewTicker(10 * time.Second)
+		running := false
 		for {
 			select {
+			case <-p.logTicker.C:
+				if len(p.queue) > 0 {
+					log.Debug("Queue status", "pool", p.name, "items", len(p.queue))
+				} else {
+					if running {
+						log.Info("Finished draining queue", "pool", p.name)
+					}
+					running = false
+				}
 			case <-p.end:
 				for _, w := range p.workers {
 					w.Stop() // stop worker
 				}
 				return
 			case work := <-p.queue:
+				running = true
 				worker := <-p.workerChannel // wait for available channel
 				worker <- work              // dispatch work to worker
 			}
