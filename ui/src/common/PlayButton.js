@@ -5,8 +5,16 @@ import { IconButton } from '@material-ui/core'
 import { useDispatch } from 'react-redux'
 import { useDataProvider } from 'react-admin'
 import { playTracks } from '../audioplayer'
+import { makeStyles } from '@material-ui/core/styles'
 
-const PlayButton = ({ record, size = 'small', ...rest }) => {
+const useStyles = makeStyles({
+  icon: {
+    color: (props) => props.color,
+  },
+})
+
+const PlayButton = ({ record, color, size, ...rest }) => {
+  const classes = useStyles({ color })
   let extractSongsData = function (response) {
     const data = response.data.reduce(
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
@@ -37,6 +45,8 @@ const PlayButton = ({ record, size = 'small', ...rest }) => {
         e.preventDefault()
         playAlbum(record)
       }}
+      aria-label="play"
+      className={classes.icon}
       {...rest}
       size={size}
     >
@@ -46,7 +56,12 @@ const PlayButton = ({ record, size = 'small', ...rest }) => {
 }
 
 PlayButton.propTypes = {
-  icon: PropTypes.element,
   record: PropTypes.object,
+  color: PropTypes.string,
+  size: PropTypes.string,
+}
+
+PlayButton.defaultProps = {
+  size: 'small',
 }
 export default PlayButton
