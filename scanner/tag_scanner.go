@@ -88,7 +88,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		}
 		allFSDirs[folderStats.Path] = folderStats
 
-		if s.isChangedDirs(ctx, folderStats, allDBDirs, lastModifiedSince) {
+		if s.folderHasChanged(ctx, folderStats, allDBDirs, lastModifiedSince) {
 			changedDirs = append(changedDirs, folderStats.Path)
 			log.Debug("Processing changed folder", "dir", folderStats.Path)
 			err := s.processChangedDir(ctx, folderStats.Path)
@@ -174,7 +174,7 @@ func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]struct{}, err
 	return resp, nil
 }
 
-func (s *TagScanner) isChangedDirs(ctx context.Context, folder dirStats, dbDirs map[string]struct{}, lastModified time.Time) bool {
+func (s *TagScanner) folderHasChanged(ctx context.Context, folder dirStats, dbDirs map[string]struct{}, lastModified time.Time) bool {
 	_, inDB := dbDirs[folder.Path]
 	// If is a new folder with at least one song OR it was modified after lastModified
 	return (!inDB && (folder.AudioFilesCount > 0)) || folder.ModTime.After(lastModified)
