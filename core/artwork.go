@@ -61,6 +61,10 @@ func (a *artwork) Get(ctx context.Context, id string, size int, out io.Writer) e
 		return err
 	}
 
+	if stat, err := os.Stat(path); err == nil {
+		lastUpdate = stat.ModTime()
+	}
+
 	info := &imageInfo{
 		a:          a,
 		id:         id,
