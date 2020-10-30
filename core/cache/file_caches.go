@@ -37,6 +37,7 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 	}
 
 	go func() {
+		start := time.Now()
 		cache, err := newFSCache(fc.name, fc.cacheSize, fc.cacheFolder, fc.maxItems)
 		fc.mutex.Lock()
 		defer fc.mutex.Unlock()
@@ -44,9 +45,10 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 			fc.cache = cache
 			fc.disabled = cache == nil
 		}
+		log.Info("Finished initializing cache", "cache", fc.name, "maxSize", fc.cacheSize, "elapsedTime", time.Since(start))
 		fc.ready = true
 		if fc.disabled {
-			log.Debug("Cache disabled", "cache", fc.name, "size", fc.cacheSize)
+			log.Debug("Cache DISABLED", "cache", fc.name, "size")
 		}
 	}()
 
@@ -182,7 +184,6 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		return nil, nil
 	}
 
-	start := time.Now()
 	lru := fscache.NewLRUHaunter(maxItems, int64(size), consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
 	cacheFolder = filepath.Join(conf.Server.DataFolder, cacheFolder)
@@ -195,10 +196,9 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		fs, err = fscache.NewFs(cacheFolder, 0755)
 	}
 	if err != nil {
-		log.Error(fmt.Sprintf("Error initializing %s cache", name), err, "elapsedTime", time.Since(start))
+		log.Error(fmt.Sprintf("Error initializing %s cache", name), err)
 		return nil, err
 	}
-	log.Debug(fmt.Sprintf("%s cache initialized", name), "elapsedTime", time.Since(start))
 
 	return fscache.NewCacheWithHaunter(fs, h)
 }
