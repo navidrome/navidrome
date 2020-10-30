@@ -90,9 +90,10 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 
 		if s.isChangedDirs(ctx, folderStats, allDBDirs, lastModifiedSince) {
 			changedDirs = append(changedDirs, folderStats.Path)
+			log.Debug("Processing changed folder", "dir", folderStats.Path)
 			err := s.processChangedDir(ctx, folderStats.Path)
 			if err != nil {
-				log.Error("Error updating folder in the DB", "path", folderStats.Path, err)
+				log.Error("Error updating folder in the DB", "dir", folderStats.Path, err)
 			}
 		}
 	}
@@ -106,7 +107,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 	for _, dir := range deletedDirs {
 		err := s.processDeletedDir(ctx, dir)
 		if err != nil {
-			log.Error("Error removing deleted folder from DB", "path", dir, err)
+			log.Error("Error removing deleted folder from DB", "dir", dir, err)
 		}
 	}
 
@@ -144,7 +145,7 @@ func (s *TagScanner) getRootFolderWalker(ctx context.Context) walkResults {
 		if err := walkDirTree(ctx, s.rootFolder, results); err != nil {
 			log.Error("Scan was interrupted by error", err)
 		}
-		log.Debug("Finished reading directories from filesystem", "total", "elapsed", time.Since(start))
+		log.Debug("Finished reading directories from filesystem", "elapsed", time.Since(start))
 	}()
 	return results
 }
@@ -210,7 +211,7 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string) error {
 	}
 
 	err = buffer.flush()
-	log.Info(ctx, "Finished processing deleted folder", "path", dir, "purged", len(mfs), "elapsed", time.Since(start))
+	log.Info(ctx, "Finished processing deleted folder", "dir", dir, "purged", len(mfs), "elapsed", time.Since(start))
 	return err
 }
 
