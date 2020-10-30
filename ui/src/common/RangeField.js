@@ -15,8 +15,8 @@ const formatRange = (record, source) => {
   return range.join('-')
 }
 
-const RangeField = ({ record = {}, source }) => {
-  return <span>{formatRange(record, source)}</span>
+const RangeField = ({ className, record = {}, source }) => {
+  return <span className={className}>{formatRange(record, source)}</span>
 }
 
 RangeField.propTypes = {
