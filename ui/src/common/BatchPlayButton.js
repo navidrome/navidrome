@@ -10,7 +10,7 @@ import { useDispatch } from 'react-redux'
 import { addTracks } from '../audioplayer'
 import { RiPlayListAddFill } from 'react-icons/ri'
 
-const AddToQueueButton = ({ resource, selectedIds, action, label, icon }) => {
+const BatchPlayButton = ({ resource, selectedIds, action, label, icon }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const dataProvider = useDataProvider()
@@ -42,10 +42,10 @@ const AddToQueueButton = ({ resource, selectedIds, action, label, icon }) => {
   )
 }
 
-AddToQueueButton.defaultProps = {
+BatchPlayButton.defaultProps = {
   action: addTracks,
   label: 'resources.song.actions.addToQueue',
   icon: <RiPlayListAddFill />,
 }
 
-export default AddToQueueButton
+export default BatchPlayButton

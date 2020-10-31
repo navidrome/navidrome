@@ -4,7 +4,7 @@ import { Button, useTranslate, useUnselectAll } from 'react-admin'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import { openAddToPlaylist } from '../dialogs/dialogState'
 
-const AddToPlaylistButton = ({ resource, selectedIds, onAddToPlaylist }) => {
+const AddToPlaylistButton = ({ resource, selectedIds }) => {
   const translate = useTranslate()
   const dispatch = useDispatch()
   const unselectAll = useUnselectAll()
