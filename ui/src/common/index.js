@@ -4,6 +4,8 @@ import BitrateField from './BitrateField'
 import Pagination from './Pagination'
 import PlayButton from './PlayButton'
 import BatchPlayButton from './BatchPlayButton'
+import SongBulkActions from './SongBulkActions'
+import AddToPlaylistButton from './AddToPlaylistButton'
 import SimpleList from './SimpleList'
 import RangeField, { formatRange } from './RangeField'
 import ArtistLinkField, { useGetHandleArtistClick } from './ArtistLinkField'
@@ -29,6 +31,8 @@ export {
   List,
   PlayButton,
   BatchPlayButton,
+  SongBulkActions,
+  AddToPlaylistButton,
   SimpleList,
   RangeField,
   SongDetails,

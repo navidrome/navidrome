@@ -3,7 +3,7 @@ import { useGetOne } from 'react-admin'
 import AlbumDetails from './AlbumDetails'
 import { Title } from '../common'
 import { useStyles } from './styles'
-import { AlbumSongBulkActions } from './AlbumSongBulkActions'
+import { SongBulkActions } from '../common'
 import AlbumActions from './AlbumActions'
 import AlbumSongs from './AlbumSongs'
 
@@ -33,7 +33,7 @@ const AlbumShow = (props) => {
         perPage={0}
         pagination={null}
         sort={{ field: 'discNumber asc, trackNumber asc', order: 'ASC' }}
-        bulkActionButtons={<AlbumSongBulkActions />}
+        bulkActionButtons={<SongBulkActions />}
       />
     </>
   )
