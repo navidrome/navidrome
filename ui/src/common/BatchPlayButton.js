@@ -41,11 +41,12 @@ const BatchPlayButton = ({
     unselectAll(resource)
   }
 
+  const caption = translate(label)
   return (
     <Button
-      color="secondary"
+      aria-label={caption}
       onClick={addToQueue}
-      label={translate(label)}
+      label={caption}
       className={className}
     >
       {icon}
