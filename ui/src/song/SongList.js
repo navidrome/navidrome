@@ -20,7 +20,7 @@ import {
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../audioplayer'
-import { SongBulkActions } from './SongBulkActions'
+import { SongBulkActions } from '../common'
 import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'

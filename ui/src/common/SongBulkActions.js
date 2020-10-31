@@ -1,15 +1,15 @@
 import React, { Fragment, useEffect } from 'react'
 import { useUnselectAll } from 'react-admin'
-import { playNext, playTracks } from '../audioplayer'
-import { RiPlayList2Fill } from 'react-icons/ri'
+import { addTracks, playNext, playTracks } from '../audioplayer'
+import { RiPlayList2Fill, RiPlayListAddFill } from 'react-icons/ri'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
-import { BatchPlayButton } from '../common'
-import AddToPlaylistButton from '../song/AddToPlaylistButton'
+import { BatchPlayButton } from './index'
+import AddToPlaylistButton from './AddToPlaylistButton'
 
-export const AlbumSongBulkActions = (props) => {
+const SongBulkActions = (props) => {
   const unselectAll = useUnselectAll()
   useEffect(() => {
-    unselectAll('albumSong')
+    unselectAll(props.resource)
     // eslint-disable-next-line
   }, [])
   return (
@@ -26,8 +26,15 @@ export const AlbumSongBulkActions = (props) => {
         label={'resources.song.actions.playNext'}
         icon={<RiPlayList2Fill />}
       />
-      <BatchPlayButton {...props} />
+      <BatchPlayButton
+        {...props}
+        action={addTracks}
+        label={'resources.song.actions.addToQueue'}
+        icon={<RiPlayListAddFill />}
+      />
       <AddToPlaylistButton {...props} />
     </Fragment>
   )
 }
+
+export default SongBulkActions

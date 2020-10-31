@@ -1,4 +1,5 @@
 import React from 'react'
+import PropTypes from 'prop-types'
 import {
   Button,
   useDataProvider,
@@ -7,8 +8,6 @@ import {
   useNotify,
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
-import { addTracks } from '../audioplayer'
-import { RiPlayListAddFill } from 'react-icons/ri'
 
 const BatchPlayButton = ({ resource, selectedIds, action, label, icon }) => {
   const dispatch = useDispatch()
@@ -42,10 +41,10 @@ const BatchPlayButton = ({ resource, selectedIds, action, label, icon }) => {
   )
 }
 
-BatchPlayButton.defaultProps = {
-  action: addTracks,
-  label: 'resources.song.actions.addToQueue',
-  icon: <RiPlayListAddFill />,
+BatchPlayButton.propTypes = {
+  action: PropTypes.func.isRequired,
+  label: PropTypes.string.isRequired,
+  icon: PropTypes.object.isRequired,
 }
 
 export default BatchPlayButton
