@@ -23,7 +23,8 @@ type ReadFunc func(ctx context.Context, item Item) (io.Reader, error)
 
 type FileCache interface {
 	Get(ctx context.Context, item Item) (*CachedStream, error)
-	Ready() bool
+	Ready(ctx context.Context) bool
+	Available(ctx context.Context) bool
 }
 
 func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) *fileCache {
@@ -67,13 +68,13 @@ type fileCache struct {
 	mutex       *sync.RWMutex
 }
 
-func (fc *fileCache) Ready() bool {
+func (fc *fileCache) Ready(ctx context.Context) bool {
 	fc.mutex.RLock()
 	defer fc.mutex.RUnlock()
 	return fc.ready
 }
 
-func (fc *fileCache) available(ctx context.Context) bool {
+func (fc *fileCache) Available(ctx context.Context) bool {
 	fc.mutex.RLock()
 	defer fc.mutex.RUnlock()
 
@@ -85,7 +86,7 @@ func (fc *fileCache) available(ctx context.Context) bool {
 }
 
 func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
-	if !fc.available(ctx) {
+	if !fc.Available(ctx) {
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
 			return nil, err

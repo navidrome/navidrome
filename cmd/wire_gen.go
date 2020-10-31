@@ -52,7 +52,7 @@ func createScanner() scanner.Scanner {
 	dataStore := persistence.New()
 	artworkCache := core.GetImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
-	cacheWarmer := core.NewCacheWarmer(artwork)
+	cacheWarmer := core.NewCacheWarmer(artwork, artworkCache)
 	scannerScanner := scanner.New(dataStore, cacheWarmer)
 	return scannerScanner
 }
@@ -61,6 +61,7 @@ func createScanner() scanner.Scanner {
 
 var allProviders = wire.NewSet(core.Set, subsonic.New, app.New, persistence.New)
 
+// Scanner must be a Singleton
 var (
 	onceScanner     sync.Once
 	scannerInstance scanner.Scanner

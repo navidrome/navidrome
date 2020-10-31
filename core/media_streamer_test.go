@@ -29,7 +29,7 @@ var _ = Describe("MediaStreamer", func() {
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
 		})
 		testCache := GetTranscodingCache()
-		Eventually(func() bool { return testCache.Ready() }).Should(BeTrue())
+		Eventually(func() bool { return testCache.Ready(context.TODO()) }).Should(BeTrue())
 		streamer = NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 

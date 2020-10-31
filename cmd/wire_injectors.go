@@ -10,6 +10,7 @@ import (
 	"github.com/deluan/navidrome/server/app"
 	"github.com/deluan/navidrome/server/subsonic"
 	"github.com/google/wire"
+	"sync"
 )
 
 var allProviders = wire.NewSet(
