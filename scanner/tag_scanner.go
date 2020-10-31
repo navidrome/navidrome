@@ -80,7 +80,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 	var changedDirs []string
 	s.cnt = &counters{}
 
-	foldersFound := s.getRootFolderWalker(ctx)
+	foldersFound, walkerError := s.getRootFolderWalker(ctx)
 	for {
 		folderStats, more := <-foldersFound
 		if !more {
@@ -96,6 +96,11 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 				log.Error("Error updating folder in the DB", "dir", folderStats.Path, err)
 			}
 		}
+	}
+
+	if err := <-walkerError; err != nil {
+		log.Error("Scan was interrupted by error. See errors above", err)
+		return err
 	}
 
 	// If the media folder is empty, abort to avoid deleting all data
@@ -143,17 +148,20 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 	return err
 }
 
-func (s *TagScanner) getRootFolderWalker(ctx context.Context) walkResults {
+func (s *TagScanner) getRootFolderWalker(ctx context.Context) (walkResults, chan error) {
 	start := time.Now()
 	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.rootFolder)
 	results := make(chan dirStats, 5000)
+	walkerError := make(chan error)
 	go func() {
-		if err := walkDirTree(ctx, s.rootFolder, results); err != nil {
-			log.Error("Scan was interrupted by error", err)
+		err := walkDirTree(ctx, s.rootFolder, results)
+		if err != nil {
+			log.Error("There were errors reading directories from filesystem", err)
 		}
+		walkerError <- err
 		log.Debug("Finished reading directories from filesystem", "elapsed", time.Since(start))
 	}()
-	return results
+	return results, walkerError
 }
 
 func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]struct{}, error) {
