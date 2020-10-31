@@ -4,7 +4,7 @@ export default {
   themeName: 'Dark',
   palette: {
     primary: {
-      main: '#90caf9',
+      main: '#00fcf4',
     },
     secondary: blue,
     type: 'dark',

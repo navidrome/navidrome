@@ -10,8 +10,7 @@ const SongBulkActions = (props) => {
   const unselectAll = useUnselectAll()
   useEffect(() => {
     unselectAll(props.resource)
-    // eslint-disable-next-line
-  }, [])
+  }, [unselectAll, props.resource])
   return (
     <Fragment>
       <BatchPlayButton
