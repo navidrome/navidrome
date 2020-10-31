@@ -5,8 +5,16 @@ import { RiPlayList2Fill, RiPlayListAddFill } from 'react-icons/ri'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import { BatchPlayButton } from './index'
 import AddToPlaylistButton from './AddToPlaylistButton'
+import { makeStyles } from '@material-ui/core/styles'
+
+const useStyles = makeStyles((theme) => ({
+  button: {
+    color: theme.palette.type === 'dark' ? 'white' : undefined,
+  },
+}))
 
 const SongBulkActions = (props) => {
+  const classes = useStyles()
   const unselectAll = useUnselectAll()
   useEffect(() => {
     unselectAll(props.resource)
@@ -18,20 +26,23 @@ const SongBulkActions = (props) => {
         action={playTracks}
         label={'resources.song.actions.playNow'}
         icon={<PlayArrowIcon />}
+        className={classes.button}
       />
       <BatchPlayButton
         {...props}
         action={playNext}
         label={'resources.song.actions.playNext'}
         icon={<RiPlayList2Fill />}
+        className={classes.button}
       />
       <BatchPlayButton
         {...props}
         action={addTracks}
         label={'resources.song.actions.addToQueue'}
         icon={<RiPlayListAddFill />}
+        className={classes.button}
       />
-      <AddToPlaylistButton {...props} />
+      <AddToPlaylistButton {...props} className={classes.button} />
     </Fragment>
   )
 }
