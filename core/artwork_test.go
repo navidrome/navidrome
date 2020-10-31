@@ -37,7 +37,7 @@ var _ = Describe("Artwork", func() {
 			conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
 			conf.Server.ImageCacheSize = "100MB"
 			cache := GetImageCache()
-			Eventually(func() bool { return cache.Ready() }).Should(BeTrue())
+			Eventually(func() bool { return cache.Ready(context.TODO()) }).Should(BeTrue())
 			artwork = NewArtwork(ds, cache)
 		})
 

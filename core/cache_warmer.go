@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"io/ioutil"
+	"time"
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/core/pool"
@@ -14,10 +15,11 @@ type CacheWarmer interface {
 	Flush(ctx context.Context)
 }
 
-func NewCacheWarmer(artwork Artwork) CacheWarmer {
+func NewCacheWarmer(artwork Artwork, artworkCache ArtworkCache) CacheWarmer {
 	w := &warmer{
-		artwork: artwork,
-		albums:  map[string]struct{}{},
+		artwork:      artwork,
+		artworkCache: artworkCache,
+		albums:       map[string]struct{}{},
 	}
 	p, err := pool.NewPool("artwork", 3, &artworkItem{}, w.execute)
 	if err != nil {
@@ -30,9 +32,10 @@ func NewCacheWarmer(artwork Artwork) CacheWarmer {
 }
 
 type warmer struct {
-	pool    *pool.Pool
-	artwork Artwork
-	albums  map[string]struct{}
+	pool         *pool.Pool
+	artwork      Artwork
+	artworkCache ArtworkCache
+	albums       map[string]struct{}
 }
 
 func (w *warmer) AddAlbum(ctx context.Context, albumID string) {
@@ -42,15 +45,31 @@ func (w *warmer) AddAlbum(ctx context.Context, albumID string) {
 	w.albums[albumID] = struct{}{}
 }
 
-func (w *warmer) Flush(ctx context.Context) {
-	if conf.Server.DevPreCacheAlbumArtwork {
-		if w.pool == nil || len(w.albums) == 0 {
+func (w *warmer) waitForCacheReady(ctx context.Context) {
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
+	for {
+		<-tick.C
+		if w.artworkCache.Ready(ctx) {
 			return
 		}
-		log.Info(ctx, "Pre-caching album artworks", "numAlbums", len(w.albums))
-		for id := range w.albums {
-			w.pool.Submit(artworkItem{albumID: id})
+	}
+}
+
+func (w *warmer) Flush(ctx context.Context) {
+	w.waitForCacheReady(ctx)
+	if w.artworkCache.Available(ctx) {
+		if conf.Server.DevPreCacheAlbumArtwork {
+			if w.pool == nil || len(w.albums) == 0 {
+				return
+			}
+			log.Info(ctx, "Pre-caching album artworks", "numAlbums", len(w.albums))
+			for id := range w.albums {
+				w.pool.Submit(artworkItem{albumID: id})
+			}
 		}
+	} else {
+		log.Warn(ctx, "Pre-cache warmer is not available as ImageCache is DISABLED")
 	}
 	w.albums = map[string]struct{}{}
 }
