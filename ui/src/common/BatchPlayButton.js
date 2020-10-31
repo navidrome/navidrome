@@ -9,7 +9,14 @@ import {
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
 
-const BatchPlayButton = ({ resource, selectedIds, action, label, icon }) => {
+const BatchPlayButton = ({
+  resource,
+  selectedIds,
+  action,
+  label,
+  icon,
+  className,
+}) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const dataProvider = useDataProvider()
@@ -35,7 +42,12 @@ const BatchPlayButton = ({ resource, selectedIds, action, label, icon }) => {
   }
 
   return (
-    <Button color="secondary" onClick={addToQueue} label={translate(label)}>
+    <Button
+      color="secondary"
+      onClick={addToQueue}
+      label={translate(label)}
+      className={className}
+    >
       {icon}
     </Button>
   )
@@ -45,6 +57,7 @@ BatchPlayButton.propTypes = {
   action: PropTypes.func.isRequired,
   label: PropTypes.string.isRequired,
   icon: PropTypes.object.isRequired,
+  className: PropTypes.object,
 }
 
 export default BatchPlayButton
