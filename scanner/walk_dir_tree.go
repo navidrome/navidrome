@@ -19,7 +19,7 @@ type (
 		ModTime         time.Time
 		HasImages       bool
 		HasPlaylist     bool
-		AudioFilesCount int64
+		AudioFilesCount uint32
 	}
 	walkResults = chan dirStats
 )

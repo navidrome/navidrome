@@ -31,7 +31,7 @@ func (c *LibraryScanningController) GetScanStatus(w http.ResponseWriter, r *http
 	response := newResponse()
 	response.ScanStatus = &responses.ScanStatus{
 		Scanning: status.Scanning,
-		Count:    status.Count,
+		Count:    int64(status.Count),
 		LastScan: &status.LastScan,
 	}
 	return response, nil

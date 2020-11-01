@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/deluan/navidrome/core"
@@ -25,11 +26,11 @@ type StatusInfo struct {
 	MediaFolder string
 	Scanning    bool
 	LastScan    time.Time
-	Count       int64
+	Count       uint32
 }
 
 type FolderScanner interface {
-	Scan(ctx context.Context, lastModifiedSince time.Time) error
+	Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) error
 }
 
 type scanner struct {
@@ -44,7 +45,7 @@ type scanner struct {
 
 type scanStatus struct {
 	active     bool
-	count      int64
+	count      uint32
 	lastUpdate time.Time
 }
 
@@ -63,22 +64,22 @@ func New(ds model.DataStore, cacheWarmer core.CacheWarmer) Scanner {
 }
 
 func (s *scanner) Start(interval time.Duration) error {
+	var ticker *time.Ticker
 	if interval == 0 {
 		log.Warn("Periodic scan is DISABLED", "interval", interval)
+		ticker = time.NewTicker(1 * time.Hour)
+	} else {
+		ticker = time.NewTicker(interval)
 	}
-	var sleep <-chan time.Time
+	defer ticker.Stop()
 	for {
-		if interval == 0 {
-			sleep = make(chan time.Time)
-		} else {
-			sleep = time.After(interval)
-		}
 		select {
 		case full := <-s.scan:
 			s.rescanAll(full)
-		case <-sleep:
-			s.rescanAll(false)
-			continue
+		case <-ticker.C:
+			if interval != 0 {
+				s.rescanAll(false)
+			}
 		case <-s.done:
 			return nil
 		}
@@ -104,7 +105,19 @@ func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
 	s.setStatusActive(mediaFolder, true)
 	defer s.setStatus(mediaFolder, false, 0, start)
 
-	err := folderScanner.Scan(log.NewContext(context.TODO()), lastModifiedSince)
+	progress := make(chan uint32, 10)
+	go func() {
+		for {
+			count, more := <-progress
+			if !more {
+				break
+			}
+			atomic.AddUint32(&s.status[mediaFolder].count, count)
+		}
+	}()
+
+	err := folderScanner.Scan(log.NewContext(context.TODO()), lastModifiedSince, progress)
+	close(progress)
 	if err != nil {
 		log.Error("Error importing MediaFolder", "folder", mediaFolder, err)
 	}
@@ -142,7 +155,7 @@ func (s *scanner) getStatus(folder string) *scanStatus {
 	return nil
 }
 
-func (s *scanner) setStatus(folder string, active bool, count int64, lastUpdate time.Time) {
+func (s *scanner) setStatus(folder string, active bool, count uint32, lastUpdate time.Time) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if status, ok := s.status[folder]; ok {
