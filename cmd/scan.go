@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"time"
-
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -24,23 +22,11 @@ var scanCmd = &cobra.Command{
 	},
 }
 
-func waitScanToFinish(scanner scanner.Scanner) {
-	time.Sleep(500 * time.Millisecond)
-	ticker := time.Tick(100 * time.Millisecond)
-	for {
-		if !scanner.Scanning() {
-			return
-		}
-		<-ticker
-	}
-}
-
 func runScanner() {
+	conf.Server.DevPreCacheAlbumArtwork = false
+
 	scanner := GetScanner()
-	go func() { _ = scanner.Start(0) }()
-	scanner.RescanAll(fullRescan)
-	waitScanToFinish(scanner)
-	scanner.Stop()
+	_ = scanner.RescanAll(fullRescan)
 	if fullRescan {
 		log.Info("Finished full rescan")
 	} else {

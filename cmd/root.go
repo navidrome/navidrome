@@ -68,9 +68,9 @@ func startServer() (func() error, func(err error)) {
 			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
 		}, func(err error) {
 			if err != nil {
-				log.Error("Fatal error executing Scanner", err)
+				log.Error("Shutting down Server due to error", err)
 			} else {
-				log.Info("Shutting down Scanner")
+				log.Info("Shutting down Server")
 			}
 		}
 }
@@ -79,19 +79,23 @@ func startScanner() (func() error, func(err error)) {
 	interval := conf.Server.ScanInterval
 	log.Info("Starting scanner", "interval", interval.String())
 	scanner := GetScanner()
+	done := make(chan struct{})
 
 	return func() error {
 			if interval != 0 {
-				go func() {
-					time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
-					scanner.RescanAll(false)
-				}()
+				time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
+				scanner.Start(interval)
+			} else {
+				log.Warn("Periodic scan is DISABLED", "interval", interval)
 			}
-			return scanner.Start(interval)
+
+			<-done
+			return nil
 		}, func(err error) {
 			scanner.Stop()
+			done <- struct{}{}
 			if err != nil {
-				log.Error("Fatal error executing Scanner", err)
+				log.Error("Shutting down Scanner due to error", err)
 			} else {
 				log.Info("Shutting down Scanner")
 			}

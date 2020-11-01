@@ -48,7 +48,13 @@ func (c *LibraryScanningController) StartScan(w http.ResponseWriter, r *http.Req
 	}
 
 	fullScan := utils.ParamBool(r, "fullScan", false)
-	c.scanner.RescanAll(fullScan)
+
+	go func() {
+		err := c.scanner.RescanAll(fullScan)
+		if err != nil {
+			log.Error(r.Context(), err)
+		}
+	}()
 
 	return c.GetScanStatus(w, r)
 }

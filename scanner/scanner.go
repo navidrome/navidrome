@@ -12,12 +12,13 @@ import (
 	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/utils"
 )
 
 type Scanner interface {
-	Start(interval time.Duration) error
+	Start(interval time.Duration)
 	Stop()
-	RescanAll(fullRescan bool)
+	RescanAll(fullRescan bool) error
 	Status(mediaFolder string) (*StatusInfo, error)
 	Scanning() bool
 }
@@ -29,9 +30,16 @@ type StatusInfo struct {
 	Count       uint32
 }
 
+var (
+	ErrAlreadyScanning = errors.New("already scanning")
+	ErrScanError       = errors.New("scan error")
+)
+
 type FolderScanner interface {
 	Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) error
 }
+
+var isScanning utils.AtomicBool
 
 type scanner struct {
 	folders     map[string]FolderScanner
@@ -63,25 +71,19 @@ func New(ds model.DataStore, cacheWarmer core.CacheWarmer) Scanner {
 	return s
 }
 
-func (s *scanner) Start(interval time.Duration) error {
-	var ticker *time.Ticker
-	if interval == 0 {
-		log.Warn("Periodic scan is DISABLED", "interval", interval)
-		ticker = time.NewTicker(1 * time.Hour)
-	} else {
-		ticker = time.NewTicker(interval)
-	}
+func (s *scanner) Start(interval time.Duration) {
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
+		err := s.RescanAll(false)
+		if err != nil {
+			log.Error(err)
+		}
 		select {
-		case full := <-s.scan:
-			s.rescanAll(full)
 		case <-ticker.C:
-			if interval != 0 {
-				s.rescanAll(false)
-			}
+			continue
 		case <-s.done:
-			return nil
+			return
 		}
 	}
 }
@@ -94,6 +96,9 @@ func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
 	folderScanner := s.folders[mediaFolder]
 	start := time.Now()
 
+	s.setStatusStart(mediaFolder)
+	defer s.setStatusEnd(mediaFolder, start)
+
 	lastModifiedSince := time.Time{}
 	if !fullRescan {
 		lastModifiedSince = s.getLastModifiedSince(mediaFolder)
@@ -102,10 +107,7 @@ func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
 		log.Debug("Scanning folder (full scan)", "folder", mediaFolder)
 	}
 
-	s.setStatusActive(mediaFolder, true)
-	defer s.setStatus(mediaFolder, false, 0, start)
-
-	progress := make(chan uint32, 10)
+	progress := make(chan uint32)
 	go func() {
 		for {
 			count, more := <-progress
@@ -126,15 +128,14 @@ func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
 	return err
 }
 
-func (s *scanner) RescanAll(fullRescan bool) {
+func (s *scanner) RescanAll(fullRescan bool) error {
 	if s.Scanning() {
 		log.Debug("Scanner already running, ignoring request for rescan.")
-		return
+		return ErrAlreadyScanning
 	}
-	s.scan <- fullRescan
-}
+	isScanning.Set(true)
+	defer func() { isScanning.Set(false) }()
 
-func (s *scanner) rescanAll(fullRescan bool) {
 	defer s.cacheWarmer.Flush(context.Background())
 	var hasError bool
 	for folder := range s.folders {
@@ -143,7 +144,9 @@ func (s *scanner) rescanAll(fullRescan bool) {
 	}
 	if hasError {
 		log.Error("Errors while scanning media. Please check the logs")
+		return ErrScanError
 	}
+	return nil
 }
 
 func (s *scanner) getStatus(folder string) *scanStatus {
@@ -155,33 +158,26 @@ func (s *scanner) getStatus(folder string) *scanStatus {
 	return nil
 }
 
-func (s *scanner) setStatus(folder string, active bool, count uint32, lastUpdate time.Time) {
+func (s *scanner) setStatusStart(folder string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if status, ok := s.status[folder]; ok {
-		status.active = active
-		status.count = count
+		status.active = true
+		status.count = 0
+	}
+}
+
+func (s *scanner) setStatusEnd(folder string, lastUpdate time.Time) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if status, ok := s.status[folder]; ok {
+		status.active = false
 		status.lastUpdate = lastUpdate
 	}
 }
 
-func (s *scanner) setStatusActive(folder string, active bool) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	if status, ok := s.status[folder]; ok {
-		status.active = active
-	}
-}
-
 func (s *scanner) Scanning() bool {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	for _, status := range s.status {
-		if status.active {
-			return true
-		}
-	}
-	return false
+	return isScanning.Get()
 }
 
 func (s *scanner) Status(mediaFolder string) (*StatusInfo, error) {
