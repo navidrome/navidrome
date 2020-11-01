@@ -67,7 +67,7 @@ const (
 //      If the playlist is not in the DB, import it, setting sync = true
 //      If the playlist is in the DB and sync == true, import it, or else skip it
 // Delete all empty albums, delete all empty artists, clean-up playlists
-func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) error {
+func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) error {
 	ctx = s.withAdminUser(ctx)
 	start := time.Now()
 
@@ -86,6 +86,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time) erro
 		if !more {
 			break
 		}
+		progress <- folderStats.AudioFilesCount
 		allFSDirs[folderStats.Path] = folderStats
 
 		if s.folderHasChanged(ctx, folderStats, allDBDirs, lastModifiedSince) {
