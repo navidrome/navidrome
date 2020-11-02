@@ -4,12 +4,10 @@ import { useMediaQuery } from '@material-ui/core'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
-import SettingsIcon from '@material-ui/icons/Settings'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
 import inflection from 'inflection'
-import PersonalMenu from './PersonalMenu'
 import albumLists from '../album/albumLists'
 
 const translatedResourceName = (resource, translate) =>
@@ -107,21 +105,6 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         dense={dense}
       >
         {resources.filter(subItems('library')).map(renderResourceMenuItemLink)}
-      </SubMenu>
-      <SubMenu
-        handleToggle={() => handleToggle('menuSettings')}
-        isOpen={state.menuSettings}
-        sidebarIsOpen={open}
-        name="menu.settings"
-        icon={<SettingsIcon />}
-        dense={dense}
-      >
-        {resources.filter(subItems('settings')).map(renderResourceMenuItemLink)}
-        <PersonalMenu
-          dense={dense}
-          sidebarIsOpen={open}
-          onClick={onMenuClick}
-        />
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
       {isXsmall && logout}
