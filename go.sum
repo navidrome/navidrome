@@ -197,8 +197,8 @@ github.com/golangci/gocyclo v0.0.0-20180528144436-0a533e8fa43d h1:pXTK/gkVNs7Zyy
 github.com/golangci/gocyclo v0.0.0-20180528144436-0a533e8fa43d/go.mod h1:ozx7R9SIwqmqf5pRP90DhR2Oay2UIjGuKheCBCNwAYU=
 github.com/golangci/gofmt v0.0.0-20190930125516-244bba706f1a h1:iR3fYXUjHCR97qWS8ch1y9zPNsgXThGwjKPrYfqMPks=
 github.com/golangci/gofmt v0.0.0-20190930125516-244bba706f1a/go.mod h1:9qCChq59u/eW8im404Q2WWTrnBUQKjpNYKMbU4M7EFU=
-github.com/golangci/golangci-lint v1.32.0 h1:3wL5pvhTpRvlvtosoZecS+hu40IAiJl1qlZQuXIFBAg=
-github.com/golangci/golangci-lint v1.32.0/go.mod h1:aEG8mkR2s0W900N8YVtSAhhemMGLRWZzASgaHc7eLt4=
+github.com/golangci/golangci-lint v1.32.1 h1:XaDrjRo5VmoAwhCTKKlE2EpjWmrAoK2qaJ3xoooqFmw=
+github.com/golangci/golangci-lint v1.32.1/go.mod h1:8lqePWOtRXUYRU0BpoPyp+uZCYKMWxxCLEPBMto6HUg=
 github.com/golangci/ineffassign v0.0.0-20190609212857-42439a7714cc h1:gLLhTLMk2/SutryVJ6D4VZCU3CUqr8YloG7FPIBWFpI=
 github.com/golangci/ineffassign v0.0.0-20190609212857-42439a7714cc/go.mod h1:e5tpTHCfVze+7EpLEozzMB3eafxo2KT5veNg1k6byQU=
 github.com/golangci/lint-1 v0.0.0-20191013205115-297bf364a8e0 h1:MfyDlzVjl1hoaPzPD4Gpb/QgoRfSBR0jdhwGyAWwMSA=
@@ -353,8 +353,8 @@ github.com/mattn/go-sqlite3 v2.0.3+incompatible/go.mod h1:FPy6KqzDD04eiIsT53CuJW
 github.com/mattn/goveralls v0.0.2/go.mod h1:8d1ZMHsd7fW6IRPKQh46F2WRpyib5/X4FOpevwGNQEw=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
-github.com/mbilski/exhaustivestruct v1.0.1 h1:FouWZOuwqC4YFgkbODefMA0lcuTLKArZLLpzKzjCMF0=
-github.com/mbilski/exhaustivestruct v1.0.1/go.mod h1:OeTBVxQWoEmB2J2JCHmXWPJ0aksxSUOUy+nvtVEfzXc=
+github.com/mbilski/exhaustivestruct v1.1.0 h1:4ykwscnAFeHJruT+EY3M3vdeP8uXMh0VV2E61iR7XD8=
+github.com/mbilski/exhaustivestruct v1.1.0/go.mod h1:OeTBVxQWoEmB2J2JCHmXWPJ0aksxSUOUy+nvtVEfzXc=
 github.com/microcosm-cc/bluemonday v1.0.4 h1:p0L+CTpo/PLFdkoPcJemLXG+fpMD7pYOoDEq1axMbGg=
 github.com/microcosm-cc/bluemonday v1.0.4/go.mod h1:8iwZnFn2CDDNZ0r6UXhF4xawGvzaqzCRa1n3/lO3W2w=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
