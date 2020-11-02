@@ -1,8 +1,17 @@
-import React, { forwardRef } from 'react'
-import { AppBar as RAAppBar, UserMenu, useTranslate } from 'react-admin'
+import React, { createElement, forwardRef } from 'react'
+import {
+  AppBar as RAAppBar,
+  UserMenu,
+  MenuItemLink,
+  useTranslate,
+  getResources,
+} from 'react-admin'
+import { useSelector } from 'react-redux'
 import { makeStyles, MenuItem, ListItemIcon } from '@material-ui/core'
+import ViewListIcon from '@material-ui/icons/ViewList'
 import InfoIcon from '@material-ui/icons/Info'
 import AboutDialog from './AboutDialog'
+import PersonalMenu from './PersonalMenu'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -45,11 +54,46 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
   )
 })
 
-const CustomUserMenu = (props) => (
-  <UserMenu {...props}>
-    <AboutMenuItem />
-  </UserMenu>
-)
+const settingsResources = (resource) =>
+  resource.hasList &&
+  resource.options &&
+  resource.options.subMenu === 'settings'
+
+const CustomUserMenu = ({ onClick, ...rest }) => {
+  const translate = useTranslate()
+  const resources = useSelector(getResources)
+  const classes = useStyles(rest)
+
+  const renderSettingsMenuItemLink = (resource) => {
+    const label = translate(`resources.${resource.name}.name`, {
+      smart_count: 2,
+    })
+    return (
+      <MenuItemLink
+        className={classes.root}
+        activeClassName={classes.active}
+        key={resource.name}
+        to={`/${resource.name}`}
+        primaryText={label}
+        leftIcon={
+          (resource.icon && createElement(resource.icon)) || <ViewListIcon />
+        }
+        onClick={onClick}
+        sidebarIsOpen={true}
+      />
+    )
+  }
+
+  return (
+    <UserMenu {...rest}>
+      <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
+      <hr />
+      {resources.filter(settingsResources).map(renderSettingsMenuItemLink)}
+      <hr />
+      <AboutMenuItem />
+    </UserMenu>
+  )
+}
 
 const AppBar = (props) => <RAAppBar {...props} userMenu={<CustomUserMenu />} />
 
