@@ -70,6 +70,13 @@ const authProvider = {
     const role = localStorage.getItem('role')
     return role ? Promise.resolve(role) : Promise.reject()
   },
+
+  getIdentity: () => {
+    return {
+      id: localStorage.getItem('username'),
+      fullName: localStorage.getItem('name'),
+    }
+  },
 }
 
 const removeItems = () => {
