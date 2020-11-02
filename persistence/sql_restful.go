@@ -21,6 +21,9 @@ func (r sqlRestful) parseRestFilters(options rest.QueryOptions) Sqlizer {
 	}
 	filters := And{}
 	for f, v := range options.Filters {
+		if v == "" {
+			continue
+		}
 		if ff, ok := r.filterMappings[f]; ok {
 			filters = append(filters, ff(f, v))
 		} else if f == "id" {

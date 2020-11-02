@@ -84,7 +84,7 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 }
 
 func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
-	var res model.Artists
+	res := model.Artists{}
 	for i := range dba {
 		a := dba[i]
 		res = append(res, *r.toModel(&a))
