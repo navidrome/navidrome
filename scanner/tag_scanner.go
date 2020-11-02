@@ -185,8 +185,8 @@ func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]struct{}, err
 
 func (s *TagScanner) folderHasChanged(ctx context.Context, folder dirStats, dbDirs map[string]struct{}, lastModified time.Time) bool {
 	_, inDB := dbDirs[folder.Path]
-	// If is a new folder with at least one song OR it is empty OR it was modified after lastModified
-	return (!inDB && (folder.AudioFilesCount > 0)) || folder.AudioFilesCount == 0 || folder.ModTime.After(lastModified)
+	// If is a new folder with at least one song OR it was modified after lastModified
+	return (!inDB && (folder.AudioFilesCount > 0)) || folder.ModTime.After(lastModified)
 }
 
 func (s *TagScanner) getDeletedDirs(ctx context.Context, fsDirs dirMap, dbDirs map[string]struct{}) []string {
