@@ -11,7 +11,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27
 	github.com/disintegration/imaging v1.6.2
-	github.com/djherbis/fscache v0.10.1
+	github.com/djherbis/fscache v0.10.2-0.20201024185917-a0daa9e52747
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-chi/chi v4.1.2+incompatible

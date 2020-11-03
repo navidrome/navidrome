@@ -3,7 +3,6 @@ package cache
 import (
 	"crypto/sha1"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,8 +18,6 @@ type spreadFS struct {
 	mode os.FileMode
 	init func() error
 }
-
-const keyFileExtension = ".key"
 
 // NewSpreadFS returns a FileSystem rooted at directory dir. It
 // Dir is created with perms if it doesn't exist.
@@ -39,32 +36,13 @@ func (fs *spreadFS) Reload(f func(key string, name string)) error {
 				return nil
 			}
 
-			// Skip if name is not in the format XX/XX/XXXXXXXXXXXX.key
+			// Skip if name is not in the format XX/XX/XXXXXXXXXXXX
 			parts := strings.Split(path, string(os.PathSeparator))
-			if len(parts) != 3 || len(parts[0]) != 2 || len(parts[1]) != 2 ||
-				filepath.Ext(path) != keyFileExtension {
+			if len(parts) != 3 || len(parts[0]) != 2 || len(parts[1]) != 2 {
 				return nil
 			}
 
-			keyFileName := absoluteFilePath
-			dataFileName := absoluteFilePath[0 : len(absoluteFilePath)-len(keyFileExtension)]
-
-			// Load the key from the key file. Remove and skip on error
-			key, err := ioutil.ReadFile(keyFileName)
-			if err != nil {
-				_ = fs.Remove(dataFileName)
-				return nil
-			}
-
-			// If the data file is not readable, remove and skip
-			file, err := os.Open(dataFileName)
-			defer func() { _ = file.Close() }()
-			if err != nil {
-				_ = fs.Remove(dataFileName)
-				return nil
-			}
-
-			f(string(key), dataFileName)
+			f(absoluteFilePath, absoluteFilePath)
 			return nil
 		},
 		Unsorted: true,
@@ -72,18 +50,12 @@ func (fs *spreadFS) Reload(f func(key string, name string)) error {
 }
 
 func (fs *spreadFS) Create(name string) (stream.File, error) {
-	key := fmt.Sprintf("%x", sha1.Sum([]byte(name)))
-	path := fmt.Sprintf("%s%c%s", key[0:2], os.PathSeparator, key[2:4])
-	err := os.MkdirAll(filepath.Join(fs.root, path), fs.mode)
+	path := filepath.Dir(name)
+	err := os.MkdirAll(path, fs.mode)
 	if err != nil {
 		return nil, err
 	}
-	absolutePath := filepath.Join(fs.root, path, key)
-	err = ioutil.WriteFile(absolutePath+keyFileExtension, []byte(name), 0600)
-	if err != nil {
-		return nil, err
-	}
-	return os.OpenFile(absolutePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	return os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 }
 
 func (fs *spreadFS) Open(name string) (stream.File, error) {
@@ -91,7 +63,6 @@ func (fs *spreadFS) Open(name string) (stream.File, error) {
 }
 
 func (fs *spreadFS) Remove(name string) error {
-	_ = os.Remove(name + keyFileExtension)
 	return os.Remove(name)
 }
 
@@ -108,4 +79,9 @@ func (fs *spreadFS) RemoveAll() error {
 		return err
 	}
 	return fs.init()
+}
+
+func (fs *spreadFS) KeyMapper(key string) string {
+	hash := fmt.Sprintf("%x", sha1.Sum([]byte(key)))
+	return filepath.Join(fs.root, hash[0:2], hash[2:4], hash)
 }
