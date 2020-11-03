@@ -201,5 +201,14 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		return nil, err
 	}
 
-	return fscache.NewCacheWithHaunter(fs, h)
+	ck, err := fscache.NewCacheWithHaunter(fs, h)
+	if err != nil {
+		return nil, err
+	}
+
+	if conf.Server.DevNewCacheLayout {
+		ck.SetKeyMapper(fs.(*spreadFS).KeyMapper)
+	}
+
+	return ck, nil
 }
