@@ -90,7 +90,7 @@ type mergedDir struct {
 	pos     int
 }
 
-func (d mergedDir) Readdir(count int) ([]os.FileInfo, error) {
+func (d *mergedDir) Readdir(count int) ([]os.FileInfo, error) {
 	if d.pos >= len(d.entries) && count > 0 {
 		return nil, io.EOF
 	}
@@ -102,12 +102,12 @@ func (d mergedDir) Readdir(count int) ([]os.FileInfo, error) {
 	return e, nil
 }
 
-func (d mergedDir) Close() error               { return nil }
-func (d mergedDir) Stat() (os.FileInfo, error) { return d.info, nil }
-func (d mergedDir) Read(p []byte) (n int, err error) {
+func (d *mergedDir) Close() error               { return nil }
+func (d *mergedDir) Stat() (os.FileInfo, error) { return d.info, nil }
+func (d *mergedDir) Read(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("cannot Read from directory %s", d.name)
 }
-func (d mergedDir) Seek(offset int64, whence int) (int64, error) {
+func (d *mergedDir) Seek(offset int64, whence int) (int64, error) {
 	if offset == 0 && whence == io.SeekStart {
 		d.pos = 0
 		return 0, nil
