@@ -20,7 +20,7 @@ const PlaylistFilter = (props) => (
   </Filter>
 )
 
-const TogglePublicInput = ({ permissions, resource, record, source }) => {
+const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
   const notify = useNotify()
   const [togglePublic] = useUpdate(
     resource,

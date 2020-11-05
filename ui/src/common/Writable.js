@@ -12,7 +12,7 @@ export const isReadOnly = (owner) => {
 }
 
 const Writable = (props) => {
-  const { record, children } = props
+  const { record = {}, children } = props
   if (isWritable(record.owner)) {
     return Children.map(children, (child) =>
       isValidElement(child) ? cloneElement(child, props) : child
