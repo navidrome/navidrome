@@ -140,10 +140,17 @@ const Player = () => {
       if (info.ended) {
         document.title = 'Navidrome'
       }
+
+      // See https://www.last.fm/api/scrobbling#when-is-a-scrobble-a-scrobble
       const progress = (info.currentTime / info.duration) * 100
-      if (isNaN(info.duration) || progress < 90) {
+      if (
+        isNaN(info.duration) ||
+        info.duration < 30 ||
+        (progress < 50 && info.currentTime < 240)
+      ) {
         return
       }
+
       const item = queue.queue.find((item) => item.trackId === info.trackId)
       if (item && !item.scrobbled) {
         dispatch(scrobble(info.trackId, true))
