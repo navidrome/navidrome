@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -72,6 +73,27 @@ var _ = Describe("mergeFS", func() {
 		Expect(list).To(HaveLen(2))
 		Expect(list[0].Name()).To(Equal("1111.txt"))
 		Expect(list[1].Name()).To(Equal("2222.json"))
+	})
+
+	It("allows to seek to the beginning of the directory", func() {
+		_f(baseName, "1111")
+		_f(baseName, "2222")
+		_f(baseName, "3333")
+
+		dir, err := mergedDir.Open(".")
+		Expect(err).To(BeNil())
+
+		list, _ := dir.Readdir(2)
+		Expect(list).To(HaveLen(2))
+		Expect(list[0].Name()).To(Equal("1111"))
+		Expect(list[1].Name()).To(Equal("2222"))
+
+		Expect(dir.Seek(0, io.SeekStart)).To(Equal(int64(0)))
+
+		list, _ = dir.Readdir(2)
+		Expect(list).To(HaveLen(2))
+		Expect(list[0].Name()).To(Equal("1111"))
+		Expect(list[1].Name()).To(Equal("2222"))
 	})
 })
 
