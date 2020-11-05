@@ -91,15 +91,13 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 	}
 	cached = r.Cached
 
+	s.ReadCloser = r
+	s.Seeker = r.Seeker
+
 	log.Debug(ctx, "Streaming TRANSCODED file", "id", mf.ID, "path", mf.Path,
 		"requestBitrate", reqBitRate, "requestFormat", reqFormat,
 		"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
 		"selectedBitrate", bitRate, "selectedFormat", format, "cached", cached, "seekable", s.Seekable())
-
-	s.ReadCloser = r
-	if r.Seekable() {
-		s.Seeker = r
-	}
 
 	return s, nil
 }
