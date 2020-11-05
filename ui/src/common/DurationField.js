@@ -11,10 +11,13 @@ const DurationField = ({ record = {}, source }) => {
 }
 
 const format = (d) => {
-  const date = new Date(null)
-  date.setSeconds(d)
-  const fmt = date.toISOString().substr(11, 8)
-  return fmt.replace(/^00:/, '')
+  const hours = Math.floor(d / 3600)
+  const minutes = Math.floor(d / 60) % 60
+  const seconds = d % 60
+  return [hours, minutes, seconds]
+    .map((v) => (v < 10 ? '0' + v : v))
+    .filter((v, i) => v !== '00' || i > 0)
+    .join(':')
 }
 
 DurationField.propTypes = {
