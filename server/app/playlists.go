@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"strconv"
 	"strings"
@@ -123,7 +124,7 @@ func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 		}
 
 		// Must return an object with an ID, to satisfy ReactAdmin `create` call
-		_, err = w.Write([]byte(fmt.Sprintf(`{"id":"%s"}`, playlistId)))
+		_, err = fmt.Fprintf(w, `{"id":"%s"}`, html.EscapeString(playlistId))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
