@@ -10,9 +10,9 @@ import TextField from '@material-ui/core/TextField'
 import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
 import { ThemeProvider } from '@material-ui/styles'
 import Logo from '../icons/android-icon-72x72.png'
+import { useLogin, useNotify, useTranslate } from 'react-admin'
 
-import { Notification, useLogin, useNotify, useTranslate } from 'react-admin'
-
+import Notification from './Notification'
 import LightTheme from '../themes/light'
 import config from '../config'
 import { clearQueue } from '../audioplayer'

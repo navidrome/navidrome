@@ -4,6 +4,7 @@ import { Layout } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import Menu from './Menu'
 import AppBar from './AppBar'
+import Notification from './Notification'
 import themes from '../themes'
 
 const useStyles = makeStyles({
@@ -22,6 +23,7 @@ export default (props) => {
       menu={Menu}
       appBar={AppBar}
       theme={theme}
+      notification={Notification}
     />
   )
 }
