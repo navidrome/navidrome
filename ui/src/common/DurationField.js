@@ -15,7 +15,8 @@ const format = (d) => {
   const minutes = Math.floor(d / 60) % 60
   const seconds = d % 60
   return [hours, minutes, seconds]
-    .map((v) => (v < 10 ? '0' + v : v))
+    .map((v) => Math.round(v).toString())
+    .map((v) => (v.length !== 2 ? '0' + v : v))
     .filter((v, i) => v !== '00' || i > 0)
     .join(':')
 }
