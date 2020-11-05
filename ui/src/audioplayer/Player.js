@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
-import Hotkeys from 'react-hot-keys'
 import { makeStyles } from '@material-ui/core/styles'
 import subsonic from '../subsonic'
 import {
@@ -18,6 +17,7 @@ import {
 import themes from '../themes'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
+import { useHotkeys } from 'react-hotkeys-hook'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
@@ -52,10 +52,54 @@ const Player = () => {
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const queue = useSelector((state) => state.queue)
+  const current = queue.current || {}
   const { authenticated } = useAuthState()
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
+
+  const nextSong = () => {
+    const idx = queue.queue.findIndex(
+      (item) => item.uuid === queue.current.uuid
+    )
+    return idx !== null ? queue.queue[idx + 1] : null
+  }
+
+  const prevSong = () => {
+    const idx = queue.queue.findIndex(
+      (item) => item.uuid === queue.current.uuid
+    )
+    return idx !== null ? queue.queue[idx - 1] : null
+  }
+
+  useHotkeys('space', (e) => {
+    e.preventDefault()
+    audioInstance && audioInstance.togglePlay()
+  })
+
+  useHotkeys(
+    'left',
+    (e) => {
+      if (prevSong()) {
+        e.preventDefault()
+        audioInstance && audioInstance.playPrev()
+      }
+    },
+    {},
+    [queue]
+  )
+
+  useHotkeys(
+    'right',
+    (e) => {
+      if (nextSong()) {
+        e.preventDefault()
+        audioInstance && audioInstance.playNext()
+      }
+    },
+    {},
+    [queue]
+  )
 
   const defaultOptions = {
     theme: playerTheme,
@@ -108,7 +152,6 @@ const Player = () => {
     },
   }
 
-  const current = queue.current || {}
   const options = useMemo(() => {
     return {
       ...defaultOptions,
@@ -206,45 +249,26 @@ const Player = () => {
     })
   }, [dispatch])
 
-  const onKeyUp = useCallback((keyName, e) => {
-    if (keyName === 'space') {
-      e.preventDefault()
-    }
-  }, [])
-  const onKeyDown = useCallback((keyName, e) => {
-    if (keyName === 'space') {
-      e.preventDefault()
-      audioInstance && audioInstance.togglePlay()
-    }
-  }, [])
-
   if (!visible) {
     document.title = 'Navidrome'
   }
 
   return (
-    <Hotkeys
-      keyName="space"
-      onKeyDown={onKeyDown}
-      onKeyUp={onKeyUp}
-      allowRepeat={false}
-    >
-      <ReactJkMusicPlayer
-        {...options}
-        quietUpdate
-        className={classes.player}
-        onAudioListsChange={OnAudioListsChange}
-        onAudioProgress={OnAudioProgress}
-        onAudioPlay={OnAudioPlay}
-        onAudioPause={onAudioPause}
-        onAudioEnded={onAudioEnded}
-        onAudioVolumeChange={onAudioVolumeChange}
-        onBeforeDestroy={onBeforeDestroy}
-        getAudioInstance={(instance) => {
-          audioInstance = instance
-        }}
-      />
-    </Hotkeys>
+    <ReactJkMusicPlayer
+      {...options}
+      quietUpdate
+      className={classes.player}
+      onAudioListsChange={OnAudioListsChange}
+      onAudioProgress={OnAudioProgress}
+      onAudioPlay={OnAudioPlay}
+      onAudioPause={onAudioPause}
+      onAudioEnded={onAudioEnded}
+      onAudioVolumeChange={onAudioVolumeChange}
+      onBeforeDestroy={onBeforeDestroy}
+      getAudioInstance={(instance) => {
+        audioInstance = instance
+      }}
+    />
   )
 }
 
