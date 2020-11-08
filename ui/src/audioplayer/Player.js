@@ -89,6 +89,14 @@ const Player = () => {
     [queue]
   )
 
+  useHotkeys('=', () => {
+    audioInstance.volume = Math.min(1, audioInstance.volume + 0.1)
+  })
+
+  useHotkeys('-', () => {
+    audioInstance.volume = Math.max(0, audioInstance.volume - 0.1)
+  })
+
   useHotkeys(
     'right',
     (e) => {
