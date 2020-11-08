@@ -22,7 +22,16 @@ const AlbumDetails = ({ classes, record }) => {
     return genreDateLine.join(' · ')
   }
 
-  const imageUrl = subsonic.url('getCoverArt', record.coverArtId || 'not_found')
+  const imageUrl = subsonic.url(
+    'getCoverArt',
+    record.coverArtId || 'not_found',
+    { size: 300 }
+  )
+
+  const fullImageUrl = subsonic.url(
+    'getCoverArt',
+    record.coverArtId || 'not_found'
+  )
 
   const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
   const handleCloseLightbox = React.useCallback(
@@ -59,7 +68,7 @@ const AlbumDetails = ({ classes, record }) => {
           imagePadding={50}
           animationDuration={200}
           imageTitle={record.name}
-          mainSrc={imageUrl}
+          mainSrc={fullImageUrl}
           onCloseRequest={handleCloseLightbox}
         />
       )}
