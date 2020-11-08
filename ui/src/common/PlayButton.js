@@ -4,7 +4,7 @@ import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import { IconButton } from '@material-ui/core'
 import { useDispatch } from 'react-redux'
 import { useDataProvider } from 'react-admin'
-import { playTracks } from '../audioplayer'
+import { playTracks } from '../actions'
 import { makeStyles } from '@material-ui/core/styles'
 
 const useStyles = makeStyles({

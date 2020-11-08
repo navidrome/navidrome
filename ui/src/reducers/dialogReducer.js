@@ -1,17 +1,6 @@
-const ADD_TO_PLAYLIST_OPEN = 'ADD_TO_PLAYLIST_OPEN'
-const ADD_TO_PLAYLIST_CLOSE = 'ADD_TO_PLAYLIST_CLOSE'
+import { ADD_TO_PLAYLIST_CLOSE, ADD_TO_PLAYLIST_OPEN } from '../actions'
 
-const openAddToPlaylist = ({ selectedIds, onSuccess }) => ({
-  type: ADD_TO_PLAYLIST_OPEN,
-  selectedIds,
-  onSuccess,
-})
-
-const closeAddToPlaylist = () => ({
-  type: ADD_TO_PLAYLIST_CLOSE,
-})
-
-const addToPlaylistDialogReducer = (
+export const addToPlaylistDialogReducer = (
   previousState = {
     open: false,
   },
@@ -32,5 +21,3 @@ const addToPlaylistDialogReducer = (
       return previousState
   }
 }
-
-export { openAddToPlaylist, closeAddToPlaylist, addToPlaylistDialogReducer }

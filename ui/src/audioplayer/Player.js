@@ -13,7 +13,7 @@ import {
   currentPlaying,
   setVolume,
   clearQueue,
-} from './queue'
+} from '../actions'
 import themes from '../themes'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'

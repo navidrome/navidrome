@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
 import { Button, useTranslate, useUnselectAll } from 'react-admin'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
-import { openAddToPlaylist } from '../dialogs/dialogState'
+import { openAddToPlaylist } from '../actions'
 
 const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
   const translate = useTranslate()

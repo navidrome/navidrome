@@ -2,7 +2,7 @@ import React from 'react'
 import { Button, useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
-import { playTracks } from '../audioplayer'
+import { playTracks } from '../actions'
 import PropTypes from 'prop-types'
 
 const ShuffleAllButton = ({ filters }) => {

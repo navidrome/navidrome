@@ -19,7 +19,7 @@ import {
   SongTitleField,
 } from '../common'
 import { useDispatch } from 'react-redux'
-import { setTrack } from '../audioplayer'
+import { setTrack } from '../actions'
 import { SongBulkActions } from '../common'
 import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'

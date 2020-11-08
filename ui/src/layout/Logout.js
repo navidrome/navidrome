@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react'
 import { useDispatch } from 'react-redux'
 import { Logout } from 'react-admin'
-import { clearQueue } from '../audioplayer'
+import { clearQueue } from '../actions'
 
 export default (props) => {
   const dispatch = useDispatch()

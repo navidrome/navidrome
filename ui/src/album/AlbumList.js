@@ -18,7 +18,6 @@ import { List, QuickFilter, Title, useAlbumsPerPage } from '../common'
 import AlbumListActions from './AlbumListActions'
 import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
-import { ALBUM_MODE_LIST } from './albumState'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 import albumLists, { defaultAlbumList } from './albumLists'
 
@@ -99,10 +98,10 @@ const AlbumList = (props) => {
         pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
         title={<AlbumListTitle albumListType={albumListType} />}
       >
-        {albumView.mode === ALBUM_MODE_LIST ? (
-          <AlbumListView {...props} />
-        ) : (
+        {albumView.grid ? (
           <AlbumGridView isArtistView={isArtistView} {...props} />
+        ) : (
+          <AlbumListView {...props} />
         )}
       </List>
       <AddToPlaylistDialog />

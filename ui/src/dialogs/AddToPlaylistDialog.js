@@ -13,7 +13,7 @@ import {
   DialogContent,
   DialogTitle,
 } from '@material-ui/core'
-import { closeAddToPlaylist } from './dialogState'
+import { closeAddToPlaylist } from '../actions'
 import SelectPlaylistInput from './SelectPlaylistInput'
 
 const AddToPlaylistDialog = () => {
