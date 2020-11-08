@@ -12,6 +12,7 @@ import (
 	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/server/events"
 	"github.com/deluan/navidrome/utils"
 )
 
@@ -47,6 +48,7 @@ type scanner struct {
 	lock        *sync.RWMutex
 	ds          model.DataStore
 	cacheWarmer core.CacheWarmer
+	broker      events.Broker
 	done        chan bool
 	scan        chan bool
 }
@@ -57,10 +59,11 @@ type scanStatus struct {
 	lastUpdate time.Time
 }
 
-func New(ds model.DataStore, cacheWarmer core.CacheWarmer) Scanner {
+func New(ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker) Scanner {
 	s := &scanner{
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
+		broker:      broker,
 		folders:     map[string]FolderScanner{},
 		status:      map[string]*scanStatus{},
 		lock:        &sync.RWMutex{},
@@ -107,14 +110,21 @@ func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
 		log.Debug("Scanning folder (full scan)", "folder", mediaFolder)
 	}
 
-	progress := make(chan uint32)
+	progress := make(chan uint32, 100)
 	go func() {
+		defer func() {
+			s.broker.SendMessage(&events.ScanStatus{Scanning: false, Count: int64(s.status[mediaFolder].count)})
+		}()
 		for {
 			count, more := <-progress
 			if !more {
 				break
 			}
-			atomic.AddUint32(&s.status[mediaFolder].count, count)
+			if count == 0 {
+				continue
+			}
+			total := atomic.AddUint32(&s.status[mediaFolder].count, count)
+			s.broker.SendMessage(&events.ScanStatus{Scanning: true, Count: int64(total)})
 		}
 	}()
 

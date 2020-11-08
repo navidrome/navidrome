@@ -9,7 +9,7 @@ const url = (command, id, options) => {
   params.append('f', 'json')
   params.append('v', '1.8.0')
   params.append('c', 'NavidromeUI')
-  params.append('id', id)
+  id && params.append('id', id)
   if (options) {
     if (options.ts) {
       options['_'] = new Date().getTime()

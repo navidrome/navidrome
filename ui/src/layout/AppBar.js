@@ -12,6 +12,7 @@ import ViewListIcon from '@material-ui/icons/ViewList'
 import InfoIcon from '@material-ui/icons/Info'
 import AboutDialog from './AboutDialog'
 import PersonalMenu from './PersonalMenu'
+import ActivityMenu from './ActivityMenu'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -85,13 +86,16 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   }
 
   return (
-    <UserMenu {...rest}>
-      <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
-      <hr />
-      {resources.filter(settingsResources).map(renderSettingsMenuItemLink)}
-      <hr />
-      <AboutMenuItem />
-    </UserMenu>
+    <>
+      <ActivityMenu />
+      <UserMenu {...rest}>
+        <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
+        <hr />
+        {resources.filter(settingsResources).map(renderSettingsMenuItemLink)}
+        <hr />
+        <AboutMenuItem />
+      </UserMenu>
+    </>
   )
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/deluan/navidrome/core/auth"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/server/events"
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/httprate"
@@ -18,12 +19,13 @@ import (
 )
 
 type Router struct {
-	ds  model.DataStore
-	mux http.Handler
+	ds     model.DataStore
+	mux    http.Handler
+	broker events.Broker
 }
 
-func New(ds model.DataStore) *Router {
-	return &Router{ds: ds}
+func New(ds model.DataStore, broker events.Broker) *Router {
+	return &Router{ds: ds, broker: broker}
 }
 
 func (app *Router) Setup(path string) {
@@ -68,6 +70,8 @@ func (app *Router) routes(path string) http.Handler {
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"response":"ok"}`)) })
+
+		r.Handle("/events", app.broker)
 	})
 
 	// Serve UI app assets

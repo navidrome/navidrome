@@ -12,6 +12,7 @@ import (
 	"github.com/deluan/navidrome/scanner"
 	"github.com/deluan/navidrome/server"
 	"github.com/deluan/navidrome/server/app"
+	"github.com/deluan/navidrome/server/events"
 	"github.com/deluan/navidrome/server/subsonic"
 	"github.com/google/wire"
 	"sync"
@@ -27,7 +28,8 @@ func CreateServer(musicFolder string) *server.Server {
 
 func CreateAppRouter() *app.Router {
 	dataStore := persistence.New()
-	router := app.New(dataStore)
+	broker := GetBroker()
+	router := app.New(dataStore, broker)
 	return router
 }
 
@@ -53,8 +55,14 @@ func createScanner() scanner.Scanner {
 	artworkCache := core.GetImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
 	cacheWarmer := core.NewCacheWarmer(artwork, artworkCache)
-	scannerScanner := scanner.New(dataStore, cacheWarmer)
+	broker := GetBroker()
+	scannerScanner := scanner.New(dataStore, cacheWarmer, broker)
 	return scannerScanner
+}
+
+func createBroker() events.Broker {
+	broker := events.NewBroker()
+	return broker
 }
 
 // wire_injectors.go:
@@ -72,4 +80,17 @@ func GetScanner() scanner.Scanner {
 		scannerInstance = createScanner()
 	})
 	return scannerInstance
+}
+
+// Broker must be a Singleton
+var (
+	onceBroker     sync.Once
+	brokerInstance events.Broker
+)
+
+func GetBroker() events.Broker {
+	onceBroker.Do(func() {
+		brokerInstance = createBroker()
+	})
+	return brokerInstance
 }
