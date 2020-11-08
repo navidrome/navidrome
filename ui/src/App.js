@@ -1,9 +1,9 @@
 import React from 'react'
 import ReactGA from 'react-ga'
 import 'react-jinke-music-player/assets/index.css'
-import { Provider } from 'react-redux'
+import { Provider, useDispatch } from 'react-redux'
 import { createHashHistory } from 'history'
-import { Admin, Resource } from 'react-admin'
+import { Admin as RAAdmin, Resource } from 'react-admin'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
 import { Layout, Login, Logout } from './layout'
@@ -21,10 +21,13 @@ import {
   addToPlaylistDialogReducer,
   playQueueReducer,
   albumViewReducer,
+  activityReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
+import { startEventStream } from './eventStream'
+import { updateScanStatus } from './actions'
 const history = createHashHistory()
 
 if (config.gaTrackingId) {
@@ -46,10 +49,20 @@ const App = () => (
         albumView: albumViewReducer,
         theme: themeReducer,
         addToPlaylistDialog: addToPlaylistDialogReducer,
+        activity: activityReducer,
       },
     })}
   >
-    <Admin
+    <Admin />
+  </Provider>
+)
+
+const Admin = (props) => {
+  const dispatch = useDispatch()
+  startEventStream((data) => dispatch(updateScanStatus(data)))
+
+  return (
+    <RAAdmin
       dataProvider={dataProvider}
       authProvider={authProvider}
       i18nProvider={i18nProvider}
@@ -58,6 +71,7 @@ const App = () => (
       layout={Layout}
       loginPage={Login}
       logoutButton={Logout}
+      {...props}
     >
       {(permissions) => [
         <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
@@ -91,8 +105,8 @@ const App = () => (
 
         <Player />,
       ]}
-    </Admin>
-  </Provider>
-)
+    </RAAdmin>
+  )
+}
 
 export default App

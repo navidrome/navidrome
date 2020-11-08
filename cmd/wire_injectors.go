@@ -3,14 +3,16 @@
 package cmd
 
 import (
+	"sync"
+
 	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/persistence"
 	"github.com/deluan/navidrome/scanner"
 	"github.com/deluan/navidrome/server"
 	"github.com/deluan/navidrome/server/app"
+	"github.com/deluan/navidrome/server/events"
 	"github.com/deluan/navidrome/server/subsonic"
 	"github.com/google/wire"
-	"sync"
 )
 
 var allProviders = wire.NewSet(
@@ -28,7 +30,10 @@ func CreateServer(musicFolder string) *server.Server {
 }
 
 func CreateAppRouter() *app.Router {
-	panic(wire.Build(allProviders))
+	panic(wire.Build(
+		allProviders,
+		GetBroker,
+	))
 }
 
 func CreateSubsonicAPIRouter() *subsonic.Router {
@@ -54,6 +59,26 @@ func GetScanner() scanner.Scanner {
 func createScanner() scanner.Scanner {
 	panic(wire.Build(
 		allProviders,
+		GetBroker,
 		scanner.New,
+	))
+}
+
+// Broker must be a Singleton
+var (
+	onceBroker     sync.Once
+	brokerInstance events.Broker
+)
+
+func GetBroker() events.Broker {
+	onceBroker.Do(func() {
+		brokerInstance = createBroker()
+	})
+	return brokerInstance
+}
+
+func createBroker() events.Broker {
+	panic(wire.Build(
+		events.NewBroker,
 	))
 }
