@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactGA from 'react-ga'
+import 'react-jinke-music-player/assets/index.css'
 import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
 import { Admin, Resource } from 'react-admin'
@@ -13,11 +14,14 @@ import song from './song'
 import album from './album'
 import artist from './artist'
 import playlist from './playlist'
-import { Player, playQueueReducer } from './audioplayer'
-import { albumViewReducer } from './album/albumState'
+import { Player } from './audioplayer'
 import customRoutes from './routes'
-import themeReducer from './personal/themeReducer'
-import { addToPlaylistDialogReducer } from './dialogs/dialogState'
+import {
+  themeReducer,
+  addToPlaylistDialogReducer,
+  playQueueReducer,
+  albumViewReducer,
+} from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'

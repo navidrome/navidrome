@@ -7,8 +7,13 @@ import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, useNotify, useTranslate } from 'react-admin'
-import { playNext, addTracks, playTracks, shuffleTracks } from '../audioplayer'
-import { openAddToPlaylist } from '../dialogs/dialogState'
+import {
+  playNext,
+  addTracks,
+  playTracks,
+  shuffleTracks,
+  openAddToPlaylist,
+} from '../actions'
 import subsonic from '../subsonic'
 import StarButton from './StarButton'
 import { formatBytes } from './SizeField'

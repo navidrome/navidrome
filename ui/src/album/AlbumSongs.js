@@ -11,7 +11,7 @@ import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
-import { playTracks } from '../audioplayer'
+import { playTracks } from '../actions'
 import {
   DurationField,
   SongContextMenu,

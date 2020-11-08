@@ -23,7 +23,7 @@ import {
 } from '../common'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
 import { AlbumLinkField } from '../song/AlbumLinkField'
-import { playTracks } from '../audioplayer'
+import { playTracks } from '../actions'
 
 const useStyles = makeStyles(
   (theme) => ({

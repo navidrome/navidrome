@@ -11,7 +11,7 @@ import {
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
-import { changeTheme } from './actions'
+import { changeTheme } from '../actions'
 import themes from '../themes'
 import { docsUrl } from '../utils/docsUrl'
 import { useGetLanguageChoices } from '../i18n'

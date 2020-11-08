@@ -1,6 +1,6 @@
 import React, { Fragment, useEffect } from 'react'
 import { useUnselectAll } from 'react-admin'
-import { addTracks, playNext, playTracks } from '../audioplayer'
+import { addTracks, playNext, playTracks } from '../actions'
 import { RiPlayList2Fill, RiPlayListAddFill } from 'react-icons/ri'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import { BatchPlayButton } from './index'

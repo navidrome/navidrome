@@ -15,7 +15,7 @@ import { useLogin, useNotify, useTranslate } from 'react-admin'
 import Notification from './Notification'
 import LightTheme from '../themes/light'
 import config from '../config'
-import { clearQueue } from '../audioplayer'
+import { clearQueue } from '../actions'
 
 const useStyles = makeStyles((theme) => ({
   main: {
