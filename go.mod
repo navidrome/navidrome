@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/Masterminds/squirrel v1.4.0
-	github.com/astaxie/beego v1.12.2
+	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.0
 	github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0
