@@ -1,9 +1,9 @@
 import baseUrl from './utils/baseUrl'
 import throttle from 'lodash.throttle'
 
-// TODO https://stackoverflow.com/a/20060461
 let es = null
-let dispatchFunc = null
+let onMessageHandler = null
+let timeOut = null
 
 const getEventStream = () => {
   if (es === null) {
@@ -14,17 +14,31 @@ const getEventStream = () => {
   return es
 }
 
-export const startEventStream = (func) => {
+// Reestablish the event stream after 20 secs of inactivity
+const setTimeout = () => {
+  if (timeOut != null) {
+    window.clearTimeout(timeOut)
+  }
+  timeOut = window.setTimeout(() => {
+    es.close()
+    es = null
+    startEventStream(onMessageHandler)
+  }, 20000)
+}
+
+export const startEventStream = (messageHandler) => {
   const es = getEventStream()
-  dispatchFunc = func
+  onMessageHandler = messageHandler
   es.onmessage = throttle(
     (msg) => {
       const data = JSON.parse(msg.data)
       if (data.name !== 'keepAlive') {
-        dispatchFunc(data)
+        onMessageHandler(data)
       }
+      setTimeout() // Reset timeout on every received message
     },
     100,
     { trailing: true }
   )
+  setTimeout()
 }
