@@ -27,7 +27,7 @@ import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
 import { startEventStream } from './eventStream'
-import { updateScanStatus } from './actions'
+import { processEvent } from './actions'
 const history = createHashHistory()
 
 if (config.gaTrackingId) {
@@ -59,7 +59,7 @@ const App = () => (
 
 const Admin = (props) => {
   const dispatch = useDispatch()
-  startEventStream((data) => dispatch(updateScanStatus(data)))
+  startEventStream((data) => dispatch(processEvent(data)))
 
   return (
     <RAAdmin

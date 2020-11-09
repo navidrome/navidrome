@@ -17,7 +17,7 @@ type Broker interface {
 
 type broker struct {
 	// Events are pushed to this channel by the main events-gathering routine
-	Notifier chan []byte
+	notifier chan []byte
 
 	// New client connections
 	newClients chan chan []byte
@@ -32,7 +32,7 @@ type broker struct {
 func NewBroker() Broker {
 	// Instantiate a broker
 	broker := &broker{
-		Notifier:       make(chan []byte, 1),
+		notifier:       make(chan []byte, 1),
 		newClients:     make(chan chan []byte),
 		closingClients: make(chan chan []byte),
 		clients:        make(map[chan []byte]bool),
@@ -52,7 +52,7 @@ func (broker *broker) SendMessage(event Event) {
 	pkg.Name = event.EventName()
 	pkg.Event = event
 	data, _ := json.Marshal(pkg)
-	broker.Notifier <- data
+	broker.notifier <- data
 }
 
 func (broker *broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -119,7 +119,7 @@ func (broker *broker) listen() {
 			// stop sending them messages.
 			delete(broker.clients, s)
 			log.Debug("Removed client", "numClients", len(broker.clients))
-		case event := <-broker.Notifier:
+		case event := <-broker.notifier:
 
 			// We got a new event from the outside!
 			// Send event to all connected clients

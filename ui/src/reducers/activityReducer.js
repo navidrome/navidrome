@@ -1,4 +1,4 @@
-import { ACTIVITY_SCAN_STATUS_UPD } from '../actions'
+import { EVENT_SCAN_STATUS } from '../actions'
 
 export const activityReducer = (
   previousState = {
@@ -8,7 +8,7 @@ export const activityReducer = (
 ) => {
   const { type, data } = payload
   switch (type) {
-    case ACTIVITY_SCAN_STATUS_UPD:
+    case EVENT_SCAN_STATUS:
       return { ...previousState, scanStatus: data }
     default:
       return previousState
