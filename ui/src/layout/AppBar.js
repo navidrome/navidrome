@@ -4,6 +4,7 @@ import {
   UserMenu,
   MenuItemLink,
   useTranslate,
+  usePermissions,
   getResources,
 } from 'react-admin'
 import { useSelector } from 'react-redux'
@@ -65,6 +66,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   const translate = useTranslate()
   const resources = useSelector(getResources)
   const classes = useStyles(rest)
+  const { permissions } = usePermissions()
 
   const renderSettingsMenuItemLink = (resource) => {
     const label = translate(`resources.${resource.name}.name`, {
@@ -88,7 +90,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
-      {config.devActivityMenu && <ActivityMenu />}
+      {config.devActivityMenu && permissions === 'admin' && <ActivityMenu />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
         <hr />
