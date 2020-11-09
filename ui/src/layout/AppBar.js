@@ -13,6 +13,7 @@ import InfoIcon from '@material-ui/icons/Info'
 import AboutDialog from './AboutDialog'
 import PersonalMenu from './PersonalMenu'
 import ActivityMenu from './ActivityMenu'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -87,7 +88,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
-      <ActivityMenu />
+      {config.devActivityMenu && <ActivityMenu />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
         <hr />

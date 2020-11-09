@@ -59,7 +59,9 @@ const App = () => (
 
 const Admin = (props) => {
   const dispatch = useDispatch()
-  startEventStream((data) => dispatch(processEvent(data)))
+  if (config.devActivityMenu) {
+    startEventStream((data) => dispatch(processEvent(data)))
+  }
 
   return (
     <RAAdmin
