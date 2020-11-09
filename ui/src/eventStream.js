@@ -20,13 +20,20 @@ const setTimeout = () => {
     window.clearTimeout(timeOut)
   }
   timeOut = window.setTimeout(() => {
-    es.close()
+    if (es != null) {
+      es.close()
+    }
     es = null
     startEventStream(onMessageHandler)
   }, 20000)
 }
 
 export const startEventStream = (messageHandler) => {
+  setTimeout()
+  if (!localStorage.getItem('token')) {
+    console.log('Cannot create a unauthenticated EventSource')
+    return
+  }
   const es = getEventStream()
   onMessageHandler = messageHandler
   es.onmessage = throttle(
@@ -40,5 +47,4 @@ export const startEventStream = (messageHandler) => {
     100,
     { trailing: true }
   )
-  setTimeout()
 }
