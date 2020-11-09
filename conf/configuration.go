@@ -52,6 +52,7 @@ type configOptions struct {
 	DevPreCacheAlbumArtwork    bool
 	DevDisableTrackCoverArt    bool
 	DevOldCacheLayout          bool
+	DevActivityMenu            bool
 }
 
 type scannerOptions struct {
@@ -157,6 +158,7 @@ func init() {
 	viper.SetDefault("devprecachealbumartwork", false)
 	viper.SetDefault("devoldcachelayout", false)
 	viper.SetDefault("devdisabletrackcoverart", false)
+	viper.SetDefault("devactivitymenu", false)
 }
 
 func InitConfig(cfgFile string) {

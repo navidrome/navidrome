@@ -9,6 +9,7 @@ const defaultConfig = {
   enableTranscodingConfig: true,
   welcomeMessage: '',
   gaTrackingId: '',
+  devActivityMenu: true,
 }
 
 let config
