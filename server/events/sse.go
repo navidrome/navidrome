@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/deluan/navidrome/log"
+	"github.com/deluan/navidrome/model/request"
 )
 
 type Broker interface {
@@ -52,15 +53,19 @@ func (broker *broker) SendMessage(event Event) {
 	pkg.Name = event.EventName()
 	pkg.Event = event
 	data, _ := json.Marshal(pkg)
+
+	log.Trace("Broker received new event", "name", pkg.Name, "payload", data)
 	broker.notifier <- data
 }
 
 func (broker *broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Make sure that the writer supports flushing.
-	//
 	flusher, ok := rw.(http.Flusher)
 
+	username, _ := request.UsernameFrom(req.Context())
 	if !ok {
+		log.Error(rw, "Streaming unsupported! Events cannot be sent to this client", "address", req.RemoteAddr,
+			"userAgent", req.UserAgent(), "user", username)
 		http.Error(rw, "Streaming unsupported!", http.StatusInternalServerError)
 		return
 	}
@@ -83,9 +88,7 @@ func (broker *broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}()
 
 	// Listen to connection close and un-register messageChan
-	// notify := rw.(http.CloseNotifier).CloseNotify()
 	notify := req.Context().Done()
-
 	go func() {
 		<-notify
 		broker.closingClients <- messageChan
@@ -112,13 +115,13 @@ func (broker *broker) listen() {
 			// A new client has connected.
 			// Register their message channel
 			broker.clients[s] = true
-			log.Debug("Client added", "numClients", len(broker.clients))
+			log.Debug("Client added to event broker", "numClients", len(broker.clients))
 		case s := <-broker.closingClients:
 
 			// A client has dettached and we want to
 			// stop sending them messages.
 			delete(broker.clients, s)
-			log.Debug("Removed client", "numClients", len(broker.clients))
+			log.Debug("Removed client from event broker", "numClients", len(broker.clients))
 		case event := <-broker.notifier:
 
 			// We got a new event from the outside!
