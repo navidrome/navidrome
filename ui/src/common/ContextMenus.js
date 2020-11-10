@@ -17,6 +17,7 @@ import {
 import subsonic from '../subsonic'
 import StarButton from './StarButton'
 import { formatBytes } from './SizeField'
+import config from '../config'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -45,31 +46,37 @@ const ContextMenu = ({
 
   const options = {
     play: {
+      enabled: true,
       needData: true,
       label: translate('resources.album.actions.playAll'),
       action: (data, ids) => dispatch(playTracks(data, ids)),
     },
     playNext: {
+      enabled: true,
       needData: true,
       label: translate('resources.album.actions.playNext'),
       action: (data, ids) => dispatch(playNext(data, ids)),
     },
     addToQueue: {
+      enabled: true,
       needData: true,
       label: translate('resources.album.actions.addToQueue'),
       action: (data, ids) => dispatch(addTracks(data, ids)),
     },
     shuffle: {
+      enabled: true,
       needData: true,
       label: translate('resources.album.actions.shuffle'),
       action: (data, ids) => dispatch(shuffleTracks(data, ids)),
     },
     addToPlaylist: {
+      enabled: true,
       needData: true,
       label: translate('resources.album.actions.addToPlaylist'),
       action: (data, ids) => dispatch(openAddToPlaylist({ selectedIds: ids })),
     },
     download: {
+      enabled: config.enableDownloads,
       needData: false,
       label: `${translate('resources.album.actions.download')} (${formatBytes(
         record.size
@@ -146,11 +153,14 @@ const ContextMenu = ({
         open={open}
         onClose={handleOnClose}
       >
-        {Object.keys(options).map((key) => (
-          <MenuItem value={key} key={key} onClick={handleItemClick}>
-            {options[key].label}
-          </MenuItem>
-        ))}
+        {Object.keys(options).map(
+          (key) =>
+            options[key].enabled && (
+              <MenuItem value={key} key={key} onClick={handleItemClick}>
+                {options[key].label}
+              </MenuItem>
+            )
+        )}
       </Menu>
     </span>
   )

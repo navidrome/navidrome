@@ -18,6 +18,7 @@ import subsonic from '../subsonic'
 import PropTypes from 'prop-types'
 import { formatBytes } from '../common/SizeField'
 import { useMediaQuery } from '@material-ui/core'
+import config from '../config'
 
 const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
@@ -88,15 +89,17 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
       >
         <RiPlayListAddFill />
       </Button>
-      <Button
-        onClick={handleDownload}
-        label={
-          translate('resources.album.actions.download') +
-          (isDesktop ? ` (${formatBytes(record.size)})` : '')
-        }
-      >
-        <CloudDownloadOutlinedIcon />
-      </Button>
+      {config.enableDownloads && (
+        <Button
+          onClick={handleDownload}
+          label={
+            translate('resources.album.actions.download') +
+            (isDesktop ? ` (${formatBytes(record.size)})` : '')
+          }
+        >
+          <CloudDownloadOutlinedIcon />
+        </Button>
+      )}
       <Button
         onClick={handleExport}
         label={translate('resources.playlist.actions.export')}

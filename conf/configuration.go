@@ -26,6 +26,7 @@ type configOptions struct {
 	BaseURL                 string
 	UILoginBackgroundURL    string
 	EnableTranscodingConfig bool
+	EnableDownloads         bool
 	TranscodingCacheSize    string
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
@@ -113,6 +114,7 @@ func init() {
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
 	viper.SetDefault("autoimportplaylists", true)
+	viper.SetDefault("enabledownloads", true)
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)

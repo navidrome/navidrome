@@ -7,6 +7,7 @@ const defaultConfig = {
   baseURL: '',
   loginBackgroundURL: 'https://source.unsplash.com/random/1600x900?music',
   enableTranscodingConfig: true,
+  enableDownloads: true,
   welcomeMessage: '',
   gaTrackingId: '',
   devActivityMenu: true,
