@@ -63,7 +63,7 @@ const SongContextMenu = ({
       label: `${translate('resources.song.actions.download')} (${formatBytes(
         record.size
       )})`,
-      action: (record) => subsonic.download(record.id),
+      action: (record) => subsonic.download(record.mediaFileId || record.id),
     },
   }
 
