@@ -8,9 +8,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/core"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/model/request"
 	"github.com/deluan/navidrome/server/subsonic/responses"
 	"github.com/deluan/navidrome/utils"
 )
@@ -80,9 +82,15 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 
 func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
+	username, _ := request.UsernameFrom(ctx)
 	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
+	}
+
+	if !conf.Server.EnableDownloads {
+		log.Warn(ctx, "Downloads are disabled", "user", username, "id", id)
+		return nil, newError(responses.ErrorAuthorizationFail, "downloads are disabled")
 	}
 
 	entity, err := core.GetEntityByID(ctx, c.ds, id)
