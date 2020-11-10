@@ -29,13 +29,13 @@ const setTimeout = () => {
 }
 
 export const startEventStream = (messageHandler) => {
+  onMessageHandler = messageHandler
   setTimeout()
   if (!localStorage.getItem('token')) {
     console.log('Cannot create a unauthenticated EventSource')
     return
   }
   const es = getEventStream()
-  onMessageHandler = messageHandler
   es.onmessage = throttle(
     (msg) => {
       const data = JSON.parse(msg.data)
