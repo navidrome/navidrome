@@ -54,7 +54,7 @@ func (broker *broker) SendMessage(event Event) {
 	pkg.Event = event
 	data, _ := json.Marshal(pkg)
 
-	log.Trace("Broker received new event", "name", pkg.Name, "payload", data)
+	log.Trace("Broker received new event", "name", pkg.Name, "payload", string(data))
 	broker.notifier <- data
 }
 
