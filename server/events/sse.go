@@ -33,7 +33,7 @@ type broker struct {
 func NewBroker() Broker {
 	// Instantiate a broker
 	broker := &broker{
-		notifier:       make(chan []byte, 1),
+		notifier:       make(chan []byte, 100),
 		newClients:     make(chan chan []byte),
 		closingClients: make(chan chan []byte),
 		clients:        make(map[chan []byte]bool),
