@@ -19,8 +19,7 @@ var _ = Describe("taglibExtractor", func() {
 			Expect(m.Artist()).To(Equal("Artist"))
 			Expect(m.AlbumArtist()).To(Equal("Album Artist"))
 			Expect(m.Composer()).To(Equal("Composer"))
-			// TODO This is not working. See https://github.com/taglib/taglib/issues/971
-			//Expect(m.Compilation()).To(BeTrue())
+			Expect(m.Compilation()).To(BeTrue())
 			Expect(m.Genre()).To(Equal("Rock"))
 			Expect(m.Year()).To(Equal(2014))
 			n, t := m.TrackNumber()
