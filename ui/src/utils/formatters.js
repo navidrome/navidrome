@@ -10,20 +10,6 @@ export const formatBytes = (bytes, decimals = 2) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
 
-export const formatRange = (record, source) => {
-  const nameCapitalized = source.charAt(0).toUpperCase() + source.slice(1)
-  const min = record[`min${nameCapitalized}`]
-  const max = record[`max${nameCapitalized}`]
-  let range = []
-  if (min) {
-    range.push(min)
-  }
-  if (max && max !== min) {
-    range.push(max)
-  }
-  return range.join('-')
-}
-
 export const formatDuration = (d) => {
   const hours = Math.floor(d / 3600)
   const minutes = Math.floor(d / 60) % 60
