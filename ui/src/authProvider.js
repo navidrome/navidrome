@@ -1,6 +1,6 @@
 import jwtDecode from 'jwt-decode'
 import md5 from 'md5-hex'
-import baseUrl from './utils/baseUrl'
+import { baseUrl } from './utils'
 import config from './config'
 import { v4 as uuidv4 } from 'uuid'
 

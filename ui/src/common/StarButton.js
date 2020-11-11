@@ -15,7 +15,7 @@ const useStyles = makeStyles({
   },
 })
 
-const StarButton = ({ resource, record, color, visible, size }) => {
+export const StarButton = ({ resource, record, color, visible, size }) => {
   const [loading, setLoading] = useState(false)
   const classes = useStyles({ color, visible, starred: record.starred })
   const notify = useNotify()
@@ -86,5 +86,3 @@ StarButton.defaultProps = {
   size: 'small',
   color: 'inherit',
 }
-
-export default StarButton

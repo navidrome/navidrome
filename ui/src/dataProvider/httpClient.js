@@ -1,5 +1,5 @@
 import { fetchUtils } from 'react-admin'
-import baseUrl from '../utils/baseUrl'
+import { baseUrl } from '../utils'
 import config from '../config'
 
 const customAuthorizationHeader = 'X-ND-Authorization'

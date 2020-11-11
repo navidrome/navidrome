@@ -15,9 +15,9 @@ import {
   openAddToPlaylist,
 } from '../actions'
 import subsonic from '../subsonic'
-import StarButton from './StarButton'
-import { formatBytes } from './SizeField'
+import { StarButton } from './StarButton'
 import config from '../config'
+import { formatBytes } from '../utils'
 
 const useStyles = makeStyles({
   noWrap: {

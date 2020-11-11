@@ -8,11 +8,9 @@ const useQuickFilterStyles = makeStyles((theme) => ({
   },
 }))
 
-const QuickFilter = ({ source, label }) => {
+export const QuickFilter = ({ source, label }) => {
   const translate = useTranslate()
   const classes = useQuickFilterStyles()
   const lbl = label || `resources.song.fields.${source}`
   return <Chip className={classes.chip} label={translate(lbl)} />
 }
-
-export default QuickFilter

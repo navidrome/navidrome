@@ -11,7 +11,7 @@ export const isReadOnly = (owner) => {
   return !isWritable(owner)
 }
 
-const Writable = (props) => {
+export const Writable = (props) => {
   const { record = {}, children } = props
   if (isWritable(record.owner)) {
     return Children.map(children, (child) =>
@@ -20,5 +20,3 @@ const Writable = (props) => {
   }
   return null
 }
-
-export default Writable

@@ -4,7 +4,7 @@ import { addTracks, playNext, playTracks } from '../actions'
 import { RiPlayList2Fill, RiPlayListAddFill } from 'react-icons/ri'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import { BatchPlayButton } from './index'
-import AddToPlaylistButton from './AddToPlaylistButton'
+import { AddToPlaylistButton } from './AddToPlaylistButton'
 import { makeStyles } from '@material-ui/core/styles'
 
 const useStyles = makeStyles((theme) => ({
@@ -13,7 +13,7 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const SongBulkActions = (props) => {
+export const SongBulkActions = (props) => {
   const classes = useStyles()
   const unselectAll = useUnselectAll()
   useEffect(() => {
@@ -46,5 +46,3 @@ const SongBulkActions = (props) => {
     </Fragment>
   )
 }
-
-export default SongBulkActions

@@ -13,7 +13,7 @@ import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import { playNext, addTracks, playTracks, shuffleTracks } from '../actions'
 import subsonic from '../subsonic'
-import { formatBytes } from '../common/SizeField'
+import { formatBytes } from '../utils'
 import { useMediaQuery } from '@material-ui/core'
 import config from '../config'
 

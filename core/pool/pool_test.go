@@ -20,13 +20,9 @@ type testItem struct {
 	ID int
 }
 
-type results []int
+var processed []int
 
-func (r results) Len() int { return len(r) }
-
-var processed results
-
-var _ = XDescribe("Pool", func() {
+var _ = Describe("Pool", func() {
 	var pool *Pool
 
 	BeforeEach(func() {
@@ -38,7 +34,7 @@ var _ = XDescribe("Pool", func() {
 		for i := 0; i < 5; i++ {
 			pool.Submit(&testItem{ID: i})
 		}
-		Eventually(processed.Len, "10s").Should(Equal(5))
+		Eventually(func() []int { return processed }, "10s").Should(HaveLen(5))
 		Expect(processed).To(ContainElements(0, 1, 2, 3, 4))
 	})
 })

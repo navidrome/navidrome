@@ -1,24 +1,14 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import { formatDuration } from '../utils'
 
-const DurationField = ({ record = {}, source }) => {
+export const DurationField = ({ record = {}, source }) => {
   try {
-    return <span>{format(record[source])}</span>
+    return <span>{formatDuration(record[source])}</span>
   } catch (e) {
     console.log('Error in DurationField! Record:', record)
     return <span>00:00</span>
   }
-}
-
-const format = (d) => {
-  const hours = Math.floor(d / 3600)
-  const minutes = Math.floor(d / 60) % 60
-  const seconds = d % 60
-  return [hours, minutes, seconds]
-    .map((v) => Math.round(v).toString())
-    .map((v) => (v.length !== 2 ? '0' + v : v))
-    .filter((v, i) => v !== '00' || i > 0)
-    .join(':')
 }
 
 DurationField.propTypes = {
@@ -30,5 +20,3 @@ DurationField.propTypes = {
 DurationField.defaultProps = {
   addLabel: true,
 }
-
-export default DurationField
