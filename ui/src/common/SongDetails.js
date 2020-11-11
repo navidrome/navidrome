@@ -9,7 +9,7 @@ import { BooleanField, DateField, TextField, useTranslate } from 'react-admin'
 import inflection from 'inflection'
 import { BitrateField, SizeField } from './index'
 
-const SongDetails = (props) => {
+export const SongDetails = (props) => {
   const translate = useTranslate()
   const { record } = props
   const data = {
@@ -52,5 +52,3 @@ const SongDetails = (props) => {
     </TableContainer>
   )
 }
-
-export default SongDetails

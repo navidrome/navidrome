@@ -1,10 +1,8 @@
 import React from 'react'
-import { docsUrl } from '../utils/docsUrl'
+import { docsUrl } from '../utils'
 
-const DocLink = ({ path, children }) => (
+export const DocLink = ({ path, children }) => (
   <a href={docsUrl(path)} target={'_blank'} rel="noopener noreferrer">
     {children}
   </a>
 )
-
-export default DocLink

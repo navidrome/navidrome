@@ -1,9 +1,9 @@
 import React from 'react'
 import { List as RAList } from 'react-admin'
-import Pagination from './Pagination'
+import { Pagination } from './Pagination'
 import { Title } from './index'
 
-const List = (props) => {
+export const List = (props) => {
   const { resource } = props
   return (
     <RAList
@@ -19,5 +19,3 @@ const List = (props) => {
     />
   )
 }
-
-export default List

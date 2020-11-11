@@ -11,8 +11,7 @@ import {
   useNotify,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
-import { DurationField, List } from '../common'
-import Writable, { isWritable } from '../common/Writable'
+import { DurationField, List, Writable, isWritable } from '../common'
 
 const PlaylistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>

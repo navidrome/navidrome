@@ -1,5 +1,5 @@
 import { fetchUtils } from 'react-admin'
-import baseUrl from '../utils/baseUrl'
+import { baseUrl } from '../utils'
 
 const url = (command, id, options) => {
   const params = new URLSearchParams()

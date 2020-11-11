@@ -1,4 +1,4 @@
-import baseUrl from './utils/baseUrl'
+import { baseUrl } from './utils'
 import throttle from 'lodash.throttle'
 
 let es = null

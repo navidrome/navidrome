@@ -24,7 +24,7 @@ const useStyles = makeStyles({
   },
 })
 
-const SongTitleField = ({ showTrackNumbers, ...props }) => {
+export const SongTitleField = ({ showTrackNumbers, ...props }) => {
   const theme = useTheme()
   const classes = useStyles()
   const { record } = props
@@ -80,5 +80,3 @@ SongTitleField.defaultProps = {
   record: {},
   showTrackNumbers: false,
 }
-
-export default SongTitleField

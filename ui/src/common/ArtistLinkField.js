@@ -4,7 +4,7 @@ import { Link } from 'react-admin'
 import { useAlbumsPerPage } from './index'
 import { withWidth } from '@material-ui/core'
 
-const useGetHandleArtistClick = (width) => {
+export const useGetHandleArtistClick = (width) => {
   const [perPage] = useAlbumsPerPage(width)
 
   return (id) => {
@@ -12,7 +12,7 @@ const useGetHandleArtistClick = (width) => {
   }
 }
 
-const ArtistLinkField = ({ record, className, width }) => {
+export const ArtistLinkField = withWidth()(({ record, className, width }) => {
   const artistLink = useGetHandleArtistClick(width)
   return (
     <Link
@@ -23,7 +23,7 @@ const ArtistLinkField = ({ record, className, width }) => {
       {record.albumArtist}
     </Link>
   )
-}
+})
 
 ArtistLinkField.propTypes = {
   record: PropTypes.object,
@@ -33,7 +33,3 @@ ArtistLinkField.propTypes = {
 ArtistLinkField.defaultProps = {
   addLabel: true,
 }
-
-export { useGetHandleArtistClick }
-
-export default withWidth()(ArtistLinkField)

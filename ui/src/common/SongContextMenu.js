@@ -7,9 +7,9 @@ import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { playNext, addTracks, setTrack, openAddToPlaylist } from '../actions'
 import subsonic from '../subsonic'
-import StarButton from './StarButton'
-import { formatBytes } from './SizeField'
+import { StarButton } from './StarButton'
 import config from '../config'
+import { formatBytes } from '../utils'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -20,7 +20,7 @@ const useStyles = makeStyles({
   },
 })
 
-const SongContextMenu = ({
+export const SongContextMenu = ({
   resource,
   record,
   showStar,
@@ -130,5 +130,3 @@ SongContextMenu.defaultProps = {
   showStar: true,
   addLabel: true,
 }
-
-export default SongContextMenu

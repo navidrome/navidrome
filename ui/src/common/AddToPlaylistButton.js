@@ -5,7 +5,7 @@ import { Button, useTranslate, useUnselectAll } from 'react-admin'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import { openAddToPlaylist } from '../actions'
 
-const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
+export const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
   const translate = useTranslate()
   const dispatch = useDispatch()
   const unselectAll = useUnselectAll()
@@ -34,5 +34,3 @@ AddToPlaylistButton.propTypes = {
   selectedIds: PropTypes.arrayOf(PropTypes.string).isRequired,
   className: PropTypes.object,
 }
-
-export default AddToPlaylistButton

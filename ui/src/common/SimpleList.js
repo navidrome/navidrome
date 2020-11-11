@@ -46,7 +46,7 @@ const LinkOrNot = ({
   )
 }
 
-const SimpleList = ({
+export const SimpleList = ({
   basePath,
   className,
   classes: classesOverride,
@@ -145,5 +145,3 @@ SimpleList.defaultProps = {
   hasBulkActions: false,
   selectedIds: [],
 }
-
-export default SimpleList

@@ -16,7 +16,7 @@ import { playNext, addTracks, playTracks, shuffleTracks } from '../actions'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
 import subsonic from '../subsonic'
 import PropTypes from 'prop-types'
-import { formatBytes } from '../common/SizeField'
+import { formatBytes } from '../utils'
 import { useMediaQuery } from '@material-ui/core'
 import config from '../config'
 

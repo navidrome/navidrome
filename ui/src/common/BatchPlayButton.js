@@ -9,7 +9,7 @@ import {
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
 
-const BatchPlayButton = ({
+export const BatchPlayButton = ({
   resource,
   selectedIds,
   action,
@@ -60,5 +60,3 @@ BatchPlayButton.propTypes = {
   icon: PropTypes.object.isRequired,
   className: PropTypes.object,
 }
-
-export default BatchPlayButton

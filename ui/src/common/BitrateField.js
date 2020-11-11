@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 
-const BitrateField = ({ record = {}, source }) => {
+export const BitrateField = ({ record = {}, source }) => {
   return <span>{`${record[source]} kbps`}</span>
 }
 
@@ -14,5 +14,3 @@ BitrateField.propTypes = {
 BitrateField.defaultProps = {
   addLabel: true,
 }
-
-export default BitrateField

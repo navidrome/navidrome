@@ -5,7 +5,7 @@ import ShuffleIcon from '@material-ui/icons/Shuffle'
 import { playTracks } from '../actions'
 import PropTypes from 'prop-types'
 
-const ShuffleAllButton = ({ filters }) => {
+export const ShuffleAllButton = ({ filters }) => {
   const translate = useTranslate()
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
@@ -46,5 +46,3 @@ ShuffleAllButton.propTypes = {
 ShuffleAllButton.defaultProps = {
   filters: {},
 }
-
-export default ShuffleAllButton

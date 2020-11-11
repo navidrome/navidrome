@@ -13,7 +13,7 @@ const useStyles = makeStyles({
   },
 })
 
-const PlayButton = ({ record, color, size, ...rest }) => {
+export const PlayButton = ({ record, color, size, ...rest }) => {
   const classes = useStyles({ color })
   let extractSongsData = function (response) {
     const data = response.data.reduce(
@@ -64,4 +64,3 @@ PlayButton.propTypes = {
 PlayButton.defaultProps = {
   size: 'small',
 }
-export default PlayButton
