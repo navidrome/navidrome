@@ -53,6 +53,9 @@ var (
 	//    TITLE           : Back In Black
 	tagsRx = regexp.MustCompile(`(?i)^\s{4,6}([\w\s-]+)\s*:(.*)`)
 
+	//                    : Second comment line
+	continuationRx = regexp.MustCompile(`(?i)^\s+:(.*)`)
+
 	//  Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s`
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
 
@@ -107,6 +110,7 @@ func (e *ffmpegExtractor) extractMetadata(filePath, info string) (*ffmpegMetadat
 func (m *ffmpegMetadata) parseInfo(info string) {
 	reader := strings.NewReader(info)
 	scanner := bufio.NewScanner(reader)
+	lastTag := ""
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) == 0 {
@@ -115,15 +119,27 @@ func (m *ffmpegMetadata) parseInfo(info string) {
 		match := tagsRx.FindStringSubmatch(line)
 		if len(match) > 0 {
 			tagName := strings.TrimSpace(strings.ToLower(match[1]))
-			tagValue := strings.TrimSpace(match[2])
-
-			// Skip when the tag was previously found
-			if _, ok := m.tags[tagName]; !ok {
-				m.tags[tagName] = tagValue
+			if tagName != "" {
+				tagValue := strings.TrimSpace(match[2])
+				// Skip when the tag was previously found
+				if _, ok := m.tags[tagName]; !ok {
+					m.tags[tagName] = tagValue
+					lastTag = tagName
+				}
+				continue
 			}
-			continue
 		}
 
+		if lastTag != "" {
+			match = continuationRx.FindStringSubmatch(line)
+			if len(match) > 0 {
+				tagValue := m.tags[lastTag]
+				m.tags[lastTag] = tagValue + "\n" + strings.TrimSpace(match[1])
+				continue
+			}
+		}
+
+		lastTag = ""
 		match = coverRx.FindStringSubmatch(line)
 		if len(match) > 0 {
 			m.tags["has_picture"] = "true"
