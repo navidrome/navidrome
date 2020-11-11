@@ -12,14 +12,16 @@ import (
 	"github.com/deluan/navidrome/scanner/metadata"
 	"github.com/deluan/navidrome/utils"
 	"github.com/kennygrant/sanitize"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 type mediaFileMapper struct {
 	rootFolder string
+	policy     *bluemonday.Policy
 }
 
 func newMediaFileMapper(rootFolder string) *mediaFileMapper {
-	return &mediaFileMapper{rootFolder: rootFolder}
+	return &mediaFileMapper{rootFolder: rootFolder, policy: bluemonday.UGCPolicy()}
 }
 
 func (s *mediaFileMapper) toMediaFile(md metadata.Metadata) model.MediaFile {
@@ -59,8 +61,8 @@ func (s *mediaFileMapper) toMediaFile(md metadata.Metadata) model.MediaFile {
 	mf.MbzAlbumArtistID = md.MbzAlbumArtistID()
 	mf.MbzAlbumType = md.MbzAlbumType()
 	mf.MbzAlbumComment = md.MbzAlbumComment()
-	mf.Comment = md.Comment()
-	mf.Lyrics = md.Lyrics()
+	mf.Comment = s.policy.Sanitize(md.Comment())
+	mf.Lyrics = s.policy.Sanitize(md.Lyrics())
 
 	// TODO Get Creation time. https://github.com/djherbis/times ?
 	mf.CreatedAt = md.ModificationTime()
