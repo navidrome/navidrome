@@ -183,8 +183,7 @@ Input #0, flac, from '/Users/deluan/Downloads/06. Back In Black.flac':
 			Expect(md.Year()).To(Equal(1980))
 		})
 
-		// TODO Handle multiline tags
-		XIt("parses multiline tags", func() {
+		It("parses multiline tags", func() {
 			const outputWithMultilineComment = `
 Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'modulo.m4a':
   Metadata:
@@ -212,8 +211,7 @@ Tracklist:
 05. Vírus de Sírius
 06. Doktor Fritz
 07. Wunderbar
-08. Quarta Dimensão
-`
+08. Quarta Dimensão`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", outputWithMultilineComment)
 			Expect(md.Comment()).To(Equal(expectedComment))
 		})

@@ -34,6 +34,7 @@ var _ = Describe("taglibExtractor", func() {
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.mp3"))
 			Expect(m.Suffix()).To(Equal("mp3"))
 			Expect(m.Size()).To(Equal(int64(60845)))
+			Expect(m.Comment()).To(Equal("Comment1\nComment2"))
 
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())
