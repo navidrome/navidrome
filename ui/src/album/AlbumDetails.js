@@ -5,8 +5,7 @@ import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
 import { DurationField, StarButton, SizeField } from '../common'
-import { ArtistLinkField } from '../common'
-import { formatRange } from '../utils'
+import { ArtistLinkField, formatRange } from '../common'
 
 const AlbumDetails = ({ classes, record }) => {
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
