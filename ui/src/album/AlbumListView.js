@@ -21,6 +21,7 @@ import {
 } from '../common'
 import { AlbumContextMenu } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
+import MultiLineTextField from '../common/MultiLineTextField'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -39,6 +40,7 @@ const AlbumDetails = (props) => {
         <BooleanField source="compilation" />
         <DateField source="updatedAt" showTime />
         <SizeField source="size" />
+        <MultiLineTextField source="comment" />
       </SimpleShowLayout>
     </Show>
   )
