@@ -37,6 +37,8 @@ type MediaFile struct {
 	OrderArtistName      string    `json:"orderArtistName"`
 	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
 	Compilation          bool      `json:"compilation"`
+	Comment              string    `json:"comment"`
+	Lyrics               string    `json:"lyrics"`
 	CatalogNum           string    `json:"catalogNum"`
 	MbzTrackID           string    `json:"mbzTrackId"         orm:"column(mbz_track_id)"`
 	MbzAlbumID           string    `json:"mbzAlbumId"         orm:"column(mbz_album_id)"`

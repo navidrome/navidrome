@@ -16,6 +16,7 @@ type Album struct {
 	MaxYear              int       `json:"maxYear"`
 	MinYear              int       `json:"minYear"`
 	Compilation          bool      `json:"compilation"`
+	Comment              string    `json:"comment"`
 	SongCount            int       `json:"songCount"`
 	Duration             float32   `json:"duration"`
 	Genre                string    `json:"genre"`

@@ -51,6 +51,7 @@ type Metadata interface {
 	DiscSubtitle() string
 	HasPicture() bool
 	Comment() string
+	Lyrics() string
 	Compilation() bool
 	CatalogNum() string
 	MbzTrackID() string
@@ -89,6 +90,7 @@ func (m *baseMetadata) Composer() string        { return m.getTag("composer", "t
 func (m *baseMetadata) Genre() string           { return m.getTag("genre") }
 func (m *baseMetadata) Year() int               { return m.parseYear("date") }
 func (m *baseMetadata) Comment() string         { return m.getTag("comment") }
+func (m *baseMetadata) Lyrics() string          { return m.getTag("lyrics", "lyrics-eng") }
 func (m *baseMetadata) Compilation() bool       { return m.parseBool("tcmp", "compilation") }
 func (m *baseMetadata) TrackNumber() (int, int) { return m.parseTuple("track", "tracknumber") }
 func (m *baseMetadata) DiscNumber() (int, int)  { return m.parseTuple("disc", "discnumber") }

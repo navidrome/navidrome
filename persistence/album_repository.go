@@ -155,12 +155,14 @@ func (r *albumRepository) refresh(ids ...string) error {
 		SongArtists   string
 		Years         string
 		DiscSubtitles string
+		Comments      string
 		Path          string
 	}
 	var albums []refreshAlbum
+	const zwsp = string('\u200b')
 	sel := Select(`f.album_id as id, f.album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
 		f.sort_album_name, f.sort_artist_name, f.sort_album_artist_name,
-		f.order_album_name, f.order_album_artist_name, f.path,
+		f.order_album_name, f.order_album_artist_name, f.path, group_concat(f.comment, "` + zwsp + `") as comments,
 		group_concat(f.mbz_album_id, ' ') as mbz_album_id, f.mbz_album_artist_id, f.mbz_album_type, f.mbz_album_comment, 
 		f.catalog_num, f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
 		count(f.id) as song_count, a.id as current_id, 
@@ -212,6 +214,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 		}
 		al.MinYear = getMinYear(al.Years)
 		al.MbzAlbumID = getMbzId(r.ctx, al.MbzAlbumID, r.tableName, al.Name)
+		al.Comment = getComment(al.Comments, zwsp)
 		al.UpdatedAt = time.Now()
 		if al.CurrentId != "" {
 			toUpdate++
@@ -233,6 +236,17 @@ func (r *albumRepository) refresh(ids ...string) error {
 		log.Debug(r.ctx, "Updated albums", "totalUpdated", toUpdate)
 	}
 	return err
+}
+
+// Return the first non empty comment, if any
+func getComment(comments string, separator string) string {
+	cs := strings.Split(comments, separator)
+	for _, c := range cs {
+		if c != "" {
+			return c
+		}
+	}
+	return ""
 }
 
 func getMinYear(years string) int {
