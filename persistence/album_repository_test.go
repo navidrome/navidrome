@@ -91,6 +91,16 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("getComment", func() {
+		const zwsp = string('\u200b')
+		It("returns empty string if there are no comments", func() {
+			Expect(getComment("", "")).To(Equal(""))
+		})
+		It("returns first occurrence of non-empty comment", func() {
+			Expect(getComment(zwsp+zwsp+"first"+zwsp+"second", zwsp)).To(Equal("first"))
+		})
+	})
+
 	Describe("getCoverFromPath", func() {
 		testFolder, _ := ioutil.TempDir("", "album_persistence_tests")
 		if err := os.MkdirAll(testFolder, 0777); err != nil {
