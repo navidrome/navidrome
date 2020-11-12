@@ -8,7 +8,7 @@ import {
   getResources,
 } from 'react-admin'
 import { useSelector } from 'react-redux'
-import { makeStyles, MenuItem, ListItemIcon } from '@material-ui/core'
+import { makeStyles, MenuItem, ListItemIcon, Divider } from '@material-ui/core'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import InfoIcon from '@material-ui/icons/Info'
 import AboutDialog from './AboutDialog'
@@ -93,9 +93,9 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
       {config.devActivityMenu && permissions === 'admin' && <ActivityMenu />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
-        <hr />
+        <Divider />
         {resources.filter(settingsResources).map(renderSettingsMenuItemLink)}
-        <hr />
+        <Divider />
         <AboutMenuItem />
       </UserMenu>
     </>
