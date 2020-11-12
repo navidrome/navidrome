@@ -110,8 +110,22 @@ func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
 		log.Debug("Scanning folder (full scan)", "folder", mediaFolder)
 	}
 
+	progress := s.startProgressTracker(mediaFolder)
+	defer close(progress)
+
+	err := folderScanner.Scan(log.NewContext(context.TODO()), lastModifiedSince, progress)
+	if err != nil {
+		log.Error("Error importing MediaFolder", "folder", mediaFolder, err)
+	}
+
+	s.updateLastModifiedSince(mediaFolder, start)
+	return err
+}
+
+func (s *scanner) startProgressTracker(mediaFolder string) chan uint32 {
 	progress := make(chan uint32, 100)
 	go func() {
+		s.broker.SendMessage(&events.ScanStatus{Scanning: true, Count: 0})
 		defer func() {
 			s.broker.SendMessage(&events.ScanStatus{Scanning: false, Count: int64(s.status[mediaFolder].count)})
 		}()
@@ -127,15 +141,7 @@ func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
 			s.broker.SendMessage(&events.ScanStatus{Scanning: true, Count: int64(total)})
 		}
 	}()
-
-	err := folderScanner.Scan(log.NewContext(context.TODO()), lastModifiedSince, progress)
-	close(progress)
-	if err != nil {
-		log.Error("Error importing MediaFolder", "folder", mediaFolder, err)
-	}
-
-	s.updateLastModifiedSince(mediaFolder, start)
-	return err
+	return progress
 }
 
 func (s *scanner) RescanAll(fullRescan bool) error {
