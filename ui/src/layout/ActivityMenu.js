@@ -19,12 +19,14 @@ const useStyles = makeStyles((theme) => ({
     position: 'relative',
   },
   progress: {
+    color: theme.palette.primary.light,
     position: 'absolute',
     top: 10,
     left: 10,
     zIndex: 1,
   },
   button: {
+    color: 'inherit',
     zIndex: 2,
   },
 }))
