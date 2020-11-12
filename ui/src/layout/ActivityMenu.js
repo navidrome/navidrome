@@ -1,16 +1,18 @@
-import React, { useState } from 'react'
-import { useSelector } from 'react-redux'
+import React, { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchUtils } from 'react-admin'
 import {
   Menu,
+  MenuItem,
   Badge,
   CircularProgress,
   IconButton,
   makeStyles,
   Tooltip,
-  MenuItem,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
 import subsonic from '../subsonic'
+import { scanStatusUpdate } from '../actions'
 
 const useStyles = makeStyles((theme) => ({
   wrapper: {
@@ -18,8 +20,8 @@ const useStyles = makeStyles((theme) => ({
   },
   progress: {
     position: 'absolute',
-    top: -1,
-    left: 0,
+    top: 10,
+    left: 10,
     zIndex: 1,
   },
   button: {
@@ -30,31 +32,43 @@ const useStyles = makeStyles((theme) => ({
 const ActivityMenu = () => {
   const classes = useStyles()
   const [anchorEl, setAnchorEl] = useState(null)
-  const scanStatus = useSelector((state) => state.activity.scanStatus)
-
   const open = Boolean(anchorEl)
+  const scanStatus = useSelector((state) => state.activity.scanStatus)
+  const dispatch = useDispatch()
 
-  const handleMenu = (event) => setAnchorEl(event.currentTarget)
-  const handleClose = () => setAnchorEl(null)
-  const startScan = () => fetch(subsonic.url('startScan', null))
+  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
+  const handleCloseClose = () => setAnchorEl(null)
+  const triggerScan = () => fetch(subsonic.url('startScan'))
+
+  // Get updated status on component mount
+  useEffect(() => {
+    fetchUtils
+      .fetchJson(subsonic.url('getScanStatus'))
+      .then((resp) => resp.json['subsonic-response'])
+      .then((data) => {
+        if (data.status === 'ok') {
+          dispatch(scanStatusUpdate(data.scanStatus))
+        }
+      })
+  }, [dispatch])
 
   return (
     <div className={classes.wrapper}>
       <Tooltip title={'Activity'}>
-        <IconButton className={classes.button} onClick={handleMenu}>
+        <IconButton className={classes.button} onClick={handleMenuOpen}>
           <Badge badgeContent={null} color="secondary">
             <FiActivity size={'20'} />
           </Badge>
         </IconButton>
       </Tooltip>
       {scanStatus.scanning && (
-        <CircularProgress size={46} className={classes.progress} />
+        <CircularProgress size={24} className={classes.progress} />
       )}
       <Menu
         id="menu-activity"
         anchorEl={anchorEl}
         anchorOrigin={{
-          vertical: 'top',
+          vertical: 'bottom',
           horizontal: 'right',
         }}
         transformOrigin={{
@@ -62,12 +76,12 @@ const ActivityMenu = () => {
           horizontal: 'right',
         }}
         open={open}
-        onClose={handleClose}
+        onClose={handleCloseClose}
       >
         <MenuItem
           className={classes.root}
           activeClassName={classes.active}
-          onClick={startScan}
+          onClick={triggerScan}
           sidebarIsOpen={true}
         >
           {`Scanned: ${scanStatus.count}`}
