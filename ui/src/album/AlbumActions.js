@@ -17,7 +17,14 @@ import { formatBytes } from '../utils'
 import { useMediaQuery } from '@material-ui/core'
 import config from '../config'
 
-const AlbumActions = ({ className, ids, data, record, ...rest }) => {
+const AlbumActions = ({
+  className,
+  ids,
+  data,
+  record,
+  permanentFilter,
+  ...rest
+}) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))

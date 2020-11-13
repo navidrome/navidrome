@@ -58,5 +58,4 @@ BatchPlayButton.propTypes = {
   action: PropTypes.func.isRequired,
   label: PropTypes.string.isRequired,
   icon: PropTypes.object.isRequired,
-  className: PropTypes.object,
 }
