@@ -19,7 +19,8 @@
                 "updatedAt": "Últ. Atualização",
                 "bitRate": "Bitrate",
                 "discSubtitle": "Sub-título do disco",
-                "starred": "Favorita"
+                "starred": "Favorita",
+                "comment": "Comentário"
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
@@ -42,7 +43,8 @@
                 "genre": "Gênero",
                 "compilation": "Coletânea",
                 "year": "Ano",
-                "updatedAt": "Últ. Atualização"
+                "updatedAt": "Últ. Atualização",
+                "comment": "Comentário"
             },
             "actions": {
                 "playAll": "Tocar",
@@ -284,6 +286,12 @@
             "source": "Código fonte",
             "featureRequests": "Solicitar funcionalidade"
         }
+    },
+    "activity": {
+        "title": "Atividade",
+        "totalScanned": "Total de pastas encontradas",
+        "quickScan": "Scan rápido",
+        "fullScan": "Scan completo"
     },
     "player": {
         "playListsText": "Fila de Execução",

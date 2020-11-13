@@ -113,7 +113,7 @@ UserMenu.propTypes = {
 }
 
 UserMenu.defaultProps = {
-  label: 'ra.auth.user_menu',
+  label: 'menu.settings',
   icon: <AccountCircle />,
 }
 
