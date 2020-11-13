@@ -1,9 +1,13 @@
 import { baseUrl } from './utils'
 import throttle from 'lodash.throttle'
+import { processEvent, serverDown } from './actions'
 
 let es = null
-let onMessageHandler = null
-let timeOut = null
+let dispatch = null
+let timeout = null
+const defaultIntervalCheck = 20000
+const errorIntervalCheck = 2000
+let currentIntervalCheck = defaultIntervalCheck
 
 const getEventStream = () => {
   if (es === null) {
@@ -15,22 +19,23 @@ const getEventStream = () => {
 }
 
 // Reestablish the event stream after 20 secs of inactivity
-const setTimeout = () => {
-  if (timeOut != null) {
-    window.clearTimeout(timeOut)
+const setTimeout = (value) => {
+  currentIntervalCheck = value
+  if (timeout != null) {
+    window.clearTimeout(timeout)
   }
-  timeOut = window.setTimeout(() => {
+  timeout = window.setTimeout(() => {
     if (es != null) {
       es.close()
     }
     es = null
-    startEventStream(onMessageHandler)
-  }, 20000)
+    startEventStream(dispatch)
+  }, currentIntervalCheck)
 }
 
-export const startEventStream = (messageHandler) => {
-  onMessageHandler = messageHandler
-  setTimeout()
+export const startEventStream = (dispatchFunc) => {
+  dispatch = dispatchFunc
+  setTimeout(currentIntervalCheck)
   if (!localStorage.getItem('token')) {
     console.log('Cannot create a unauthenticated EventSource')
     return
@@ -40,11 +45,17 @@ export const startEventStream = (messageHandler) => {
     (msg) => {
       const data = JSON.parse(msg.data)
       if (data.name !== 'keepAlive') {
-        onMessageHandler(data)
+        dispatch(processEvent(data))
       }
-      setTimeout() // Reset timeout on every received message
+      setTimeout(defaultIntervalCheck) // Reset timeout on every received message
     },
     100,
     { trailing: true }
   )
+  es.onerror = (e) => {
+    setTimeout(errorIntervalCheck)
+    dispatch(serverDown())
+  }
+
+  return es
 }

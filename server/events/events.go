@@ -1,5 +1,7 @@
 package events
 
+import "time"
+
 type Event interface {
 	EventName() string
 }
@@ -16,3 +18,9 @@ type KeepAlive struct {
 }
 
 func (s KeepAlive) EventName() string { return "keepAlive" }
+
+type ServerStart struct {
+	StartTime time.Time `json:"startTime"`
+}
+
+func (s ServerStart) EventName() string { return "serverStart" }

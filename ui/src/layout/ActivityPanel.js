@@ -15,14 +15,18 @@ import {
   Box,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
+import { BiError } from 'react-icons/bi'
 import { VscSync } from 'react-icons/vsc'
 import { GiMagnifyingGlass } from 'react-icons/gi'
 import subsonic from '../subsonic'
 import { scanStatusUpdate } from '../actions'
+import { useInterval } from '../common'
+import { formatDuration } from '../utils'
 
 const useStyles = makeStyles((theme) => ({
   wrapper: {
     position: 'relative',
+    color: (props) => (props.up ? null : 'orange'),
   },
   progress: {
     color: theme.palette.primary.light,
@@ -36,17 +40,31 @@ const useStyles = makeStyles((theme) => ({
     zIndex: 2,
   },
   counterStatus: {
-    minWidth: '16em',
+    minWidth: '15em',
   },
 }))
 
+const getUptime = (serverStart) =>
+  formatDuration((Date.now() - serverStart.startTime) / 1000)
+
+const Uptime = () => {
+  const serverStart = useSelector((state) => state.activity.serverStart)
+  const [uptime, setUptime] = useState(getUptime(serverStart))
+  useInterval(() => {
+    setUptime(getUptime(serverStart))
+  }, 1000)
+  return <span>{uptime}</span>
+}
+
 const ActivityPanel = () => {
-  const classes = useStyles()
+  const serverStart = useSelector((state) => state.activity.serverStart)
+  const up = serverStart && serverStart.startTime
+  const classes = useStyles({ up })
   const translate = useTranslate()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
-  const scanStatus = useSelector((state) => state.activity.scanStatus)
   const dispatch = useDispatch()
+  const scanStatus = useSelector((state) => state.activity.scanStatus)
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
   const handleMenuClose = () => setAnchorEl(null)
@@ -70,7 +88,7 @@ const ActivityPanel = () => {
       <Tooltip title={translate('activity.title')}>
         <IconButton className={classes.button} onClick={handleMenuOpen}>
           <Badge badgeContent={null} color="secondary">
-            <FiActivity size={'20'} />
+            {up ? <FiActivity size={'20'} /> : <BiError size={'20'} />}
           </Badge>
         </IconButton>
       </Tooltip>
@@ -92,6 +110,17 @@ const ActivityPanel = () => {
         onClose={handleMenuClose}
       >
         <Card>
+          <CardContent>
+            <Box display="flex" className={classes.counterStatus}>
+              <Box component="span" flex={2}>
+                {translate('activity.serverUptime')}:
+              </Box>
+              <Box component="span" flex={1}>
+                {up ? <Uptime /> : translate('activity.serverDown')}
+              </Box>
+            </Box>
+          </CardContent>
+          <Divider />
           <CardContent>
             <Box display="flex" className={classes.counterStatus}>
               <Box component="span" flex={2}>
