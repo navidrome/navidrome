@@ -13,7 +13,7 @@ import ViewListIcon from '@material-ui/icons/ViewList'
 import InfoIcon from '@material-ui/icons/Info'
 import AboutDialog from './AboutDialog'
 import PersonalMenu from './PersonalMenu'
-import ActivityMenu from './ActivityMenu'
+import ActivityPanel from './ActivityPanel'
 import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
@@ -90,7 +90,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
-      {config.devActivityMenu && permissions === 'admin' && <ActivityMenu />}
+      {config.devActivityMenu && permissions === 'admin' && <ActivityPanel />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
         <Divider />
