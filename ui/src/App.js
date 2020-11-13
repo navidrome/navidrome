@@ -27,7 +27,7 @@ import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
 import { startEventStream } from './eventStream'
-import { processEvent } from './actions'
+
 const history = createHashHistory()
 
 if (config.gaTrackingId) {
@@ -60,7 +60,7 @@ const App = () => (
 const Admin = (props) => {
   const dispatch = useDispatch()
   if (config.devActivityMenu) {
-    startEventStream((data) => dispatch(processEvent(data)))
+    startEventStream(dispatch)
   }
 
   return (

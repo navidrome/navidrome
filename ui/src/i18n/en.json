@@ -291,7 +291,9 @@
         "title": "Activity",
         "totalScanned": "Total Folders Scanned",
         "quickScan": "Quick Scan",
-        "fullScan": "Full Scan"
+        "fullScan": "Full Scan",
+        "serverUptime": "Server Uptime",
+        "serverDown": "OFFLINE"
     },
     "player": {
         "playListsText": "Play Queue",

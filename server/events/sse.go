@@ -16,6 +16,8 @@ type Broker interface {
 	SendMessage(event Event)
 }
 
+var serverStart time.Time
+
 type broker struct {
 	// Events are pushed to this channel by the main events-gathering routine
 	notifier chan []byte
@@ -46,6 +48,13 @@ func NewBroker() Broker {
 }
 
 func (broker *broker) SendMessage(event Event) {
+	data := broker.formatEvent(event)
+
+	log.Trace("Broker received new event", "name", event.EventName(), "payload", string(data))
+	broker.notifier <- data
+}
+
+func (broker *broker) formatEvent(event Event) []byte {
 	pkg := struct {
 		Event `json:"data"`
 		Name  string `json:"name"`
@@ -53,9 +62,7 @@ func (broker *broker) SendMessage(event Event) {
 	pkg.Name = event.EventName()
 	pkg.Event = event
 	data, _ := json.Marshal(pkg)
-
-	log.Trace("Broker received new event", "name", pkg.Name, "payload", string(data))
-	broker.notifier <- data
+	return data
 }
 
 func (broker *broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -111,27 +118,34 @@ func (broker *broker) listen() {
 	for {
 		select {
 		case s := <-broker.newClients:
-
 			// A new client has connected.
 			// Register their message channel
 			broker.clients[s] = true
 			log.Debug("Client added to event broker", "numClients", len(broker.clients))
-		case s := <-broker.closingClients:
 
+			// Send a serverStart event to new client
+			s <- broker.formatEvent(&ServerStart{serverStart})
+
+		case s := <-broker.closingClients:
 			// A client has dettached and we want to
 			// stop sending them messages.
 			delete(broker.clients, s)
 			log.Debug("Removed client from event broker", "numClients", len(broker.clients))
-		case event := <-broker.notifier:
 
+		case event := <-broker.notifier:
 			// We got a new event from the outside!
 			// Send event to all connected clients
 			for clientMessageChan := range broker.clients {
 				clientMessageChan <- event
 			}
+
 		case ts := <-keepAlive.C:
 			// Send a keep alive packet every 15 seconds
 			broker.SendMessage(&KeepAlive{TS: ts.Unix()})
 		}
 	}
+}
+
+func init() {
+	serverStart = time.Now()
 }

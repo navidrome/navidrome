@@ -291,7 +291,9 @@
         "title": "Atividade",
         "totalScanned": "Total de pastas encontradas",
         "quickScan": "Scan rápido",
-        "fullScan": "Scan completo"
+        "fullScan": "Scan completo",
+        "serverUptime": "Uptime do servidor",
+        "serverDown": "DESCONECTADO"
     },
     "player": {
         "playListsText": "Fila de Execução",
