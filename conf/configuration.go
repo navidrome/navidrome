@@ -143,7 +143,7 @@ func init() {
 	viper.SetDefault("devprecachealbumartwork", false)
 	viper.SetDefault("devoldcachelayout", false)
 	viper.SetDefault("devdisabletrackcoverart", false)
-	viper.SetDefault("devactivitymenu", false)
+	viper.SetDefault("devactivitymenu", true)
 }
 
 func InitConfig(cfgFile string) {
