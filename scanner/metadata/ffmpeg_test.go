@@ -240,6 +240,21 @@ Input #0, mp3, from '/Users/deluan/Downloads/椎名林檎 - 加爾基 精液 栗
 			Expect(md.SortAlbumArtist()).To(Equal("Shiina, Ringo"))
 		})
 
+		It("ignores cover comment", func() {
+			const output = `
+Input #0, mp3, from './Edie Brickell/Picture Perfect Morning/01-01 Tomorrow Comes.mp3':
+  Metadata:
+    title           : Tomorrow Comes
+    artist          : Edie Brickell
+  Duration: 00:03:56.12, start: 0.000000, bitrate: 332 kb/s
+    Stream #0:0: Audio: mp3, 44100 Hz, stereo, s16p, 320 kb/s
+    Stream #0:1: Video: mjpeg, yuvj420p(pc, bt470bg/unknown/unknown), 1200x1200 [SAR 72:72 DAR 1:1], 90k tbr, 90k tbn, 90k tbc
+    Metadata:
+      comment         : Cover (front)`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md.Comment()).To(Equal(""))
+		})
+
 		It("parses tags with spaces in the name", func() {
 			const output = `
 Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hut, to the Projects, to the Mansion/10 - The Struggle (interlude).mp3':
