@@ -29,6 +29,9 @@ export const SongDetails = (props) => {
   if (!record.discSubtitle) {
     delete data.discSubtitle
   }
+  if (!record.comment) {
+    delete data.comment
+  }
   if (record.playCount > 0) {
     data.playDate = <DateField record={record} source="playDate" showTime />
   }
