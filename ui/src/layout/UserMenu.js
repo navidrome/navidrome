@@ -26,7 +26,14 @@ const useStyles = makeStyles((theme) => ({
     height: theme.spacing(4),
   },
   username: {
-    marginTop: '-0.5em',
+    maxWidth: '11em',
+    marginTop: '-0.7em',
+    marginBottom: '-1em',
+  },
+  usernameWrap: {
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
 }))
 
@@ -81,12 +88,12 @@ const UserMenu = (props) => {
         <MenuList>
           {loaded && (
             <Card elevation={0} className={classes.username}>
-              <CardContent>
+              <CardContent className={classes.usernameWrap}>
                 <Typography variant={'button'}>{identity.fullName}</Typography>
               </CardContent>
-              <Divider />
             </Card>
           )}
+          <Divider />
           {Children.map(children, (menuItem) =>
             isValidElement(menuItem)
               ? cloneElement(menuItem, {
