@@ -1,4 +1,4 @@
-import React, { useState, isValidElement, cloneElement } from 'react'
+import React, { useState, isValidElement, cloneElement, useMemo } from 'react'
 import { useDispatch } from 'react-redux'
 import { Datagrid, DatagridBody, DatagridRow } from 'react-admin'
 import { TableCell, TableRow, Typography } from '@material-ui/core'
@@ -65,7 +65,7 @@ const DiscSubtitleRow = ({
 export const SongDatagridRow = ({
   record,
   children,
-  multiDisc,
+  firstTracks,
   contextAlwaysVisible,
   onClickDiscSubtitle,
   ...rest
@@ -77,7 +77,7 @@ export const SongDatagridRow = ({
   const childCount = fields.length
   return (
     <>
-      {multiDisc && record.trackNumber === 1 && (
+      {firstTracks.has(record.id) && (
         <DiscSubtitleRow
           record={record}
           onClick={onClickDiscSubtitle}
@@ -128,21 +128,33 @@ export const SongDatagrid = ({
     dispatch(playTracks(data, idsToPlay))
   }
 
-  const multiDisc =
-    showDiscSubtitles &&
-    new Set(
+  const firstTracks = useMemo(() => {
+    const set = new Set(
       ids
-        .map((id) => data[id])
-        .filter((r) => r) // remove null records
-        .map((r) => r.discNumber)
-    ).size > 1
+        .filter((i) => data[i])
+        .reduce((acc, id) => {
+          const last = acc && acc[acc.length - 1]
+          if (
+            acc.length === 0 ||
+            (last && data[id].discNumber !== data[last].discNumber)
+          ) {
+            acc.push(id)
+          }
+          return acc
+        }, [])
+    )
+    if (!showDiscSubtitles || set.size < 2) {
+      set.clear()
+    }
+    return set
+  }, [ids, data, showDiscSubtitles])
 
   const SongDatagridBody = (props) => (
     <DatagridBody
       {...props}
       row={
         <SongDatagridRow
-          multiDisc={multiDisc}
+          firstTracks={firstTracks}
           contextAlwaysVisible={contextAlwaysVisible}
           onClickDiscSubtitle={playDisc}
         />
