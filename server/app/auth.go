@@ -12,6 +12,7 @@ import (
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/core/auth"
+	"github.com/deluan/navidrome/core/gravatar"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/model/request"
@@ -58,14 +59,17 @@ func handleLogin(ds model.DataStore, username string, password string, w http.Re
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authenticating user. Please try again")
 		return
 	}
-	_ = rest.RespondWithJSON(w, http.StatusOK,
-		map[string]interface{}{
-			"message":  "User '" + username + "' authenticated successfully",
-			"token":    tokenString,
-			"name":     user.Name,
-			"username": username,
-			"isAdmin":  user.IsAdmin,
-		})
+	payload := map[string]interface{}{
+		"message":  "User '" + username + "' authenticated successfully",
+		"token":    tokenString,
+		"name":     user.Name,
+		"username": username,
+		"isAdmin":  user.IsAdmin,
+	}
+	if conf.Server.EnableGravatar && user.Email != "" {
+		payload["avatar"] = gravatar.Url(user.Email, 50)
+	}
+	_ = rest.RespondWithJSON(w, http.StatusOK, payload)
 }
 
 func getCredentialsFromBody(r *http.Request) (username string, password string, err error) {
