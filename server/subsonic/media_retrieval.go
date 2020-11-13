@@ -4,8 +4,10 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/core"
+	"github.com/deluan/navidrome/core/gravatar"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model"
 	"github.com/deluan/navidrome/resources"
@@ -15,13 +17,35 @@ import (
 
 type MediaRetrievalController struct {
 	artwork core.Artwork
+	ds      model.DataStore
 }
 
-func NewMediaRetrievalController(artwork core.Artwork) *MediaRetrievalController {
-	return &MediaRetrievalController{artwork: artwork}
+func NewMediaRetrievalController(artwork core.Artwork, ds model.DataStore) *MediaRetrievalController {
+	return &MediaRetrievalController{artwork: artwork, ds: ds}
 }
 
 func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	if !conf.Server.EnableGravatar {
+		return c.getPlaceHolderAvatar(w, r)
+	}
+	username, err := requiredParamString(r, "username")
+	if err != nil {
+		return nil, err
+	}
+	ctx := r.Context()
+	u, err := c.ds.User(ctx).FindByUsername(username)
+	if err != nil {
+		return nil, err
+	}
+	if u.Email == "" {
+		log.Warn(ctx, "User needs an email for gravatar to work", "username", username)
+		return c.getPlaceHolderAvatar(w, r)
+	}
+	http.Redirect(w, r, gravatar.Url(u.Email, 0), http.StatusFound)
+	return nil, nil
+}
+
+func (c *MediaRetrievalController) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	f, err := resources.AssetFile().Open(consts.PlaceholderAvatar)
 	if err != nil {
 		log.Error(r, "Image not found", err)

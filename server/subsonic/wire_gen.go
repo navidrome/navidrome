@@ -57,7 +57,8 @@ func initUsersController(router *Router) *UsersController {
 
 func initMediaRetrievalController(router *Router) *MediaRetrievalController {
 	artwork := router.Artwork
-	mediaRetrievalController := NewMediaRetrievalController(artwork)
+	dataStore := router.DataStore
+	mediaRetrievalController := NewMediaRetrievalController(artwork, dataStore)
 	return mediaRetrievalController
 }
 
