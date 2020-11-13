@@ -18,9 +18,6 @@ import AccountCircle from '@material-ui/icons/AccountCircle'
 
 const useStyles = makeStyles((theme) => ({
   user: {},
-  userButton: {
-    textTransform: 'none',
-  },
   avatar: {
     width: theme.spacing(4),
     height: theme.spacing(4),
@@ -59,6 +56,7 @@ const UserMenu = (props) => {
           aria-haspopup={true}
           color="inherit"
           onClick={handleMenu}
+          size={'small'}
         >
           {loaded && identity.avatar ? (
             <Avatar
