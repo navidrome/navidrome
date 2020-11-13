@@ -28,6 +28,7 @@ const authProvider = {
         localStorage.setItem('token', response.token)
         localStorage.setItem('name', response.name)
         localStorage.setItem('username', response.username)
+        response.avatar && localStorage.setItem('avatar', response.avatar)
         localStorage.setItem('role', response.isAdmin ? 'admin' : 'regular')
         const salt = generateSubsonicSalt()
         localStorage.setItem('subsonic-salt', salt)
@@ -76,6 +77,7 @@ const authProvider = {
     return {
       id: localStorage.getItem('username'),
       fullName: localStorage.getItem('name'),
+      avatar: localStorage.getItem('avatar'),
     }
   },
 }
@@ -84,6 +86,7 @@ const removeItems = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('name')
   localStorage.removeItem('username')
+  localStorage.removeItem('avatar')
   localStorage.removeItem('role')
   localStorage.removeItem('subsonic-salt')
   localStorage.removeItem('subsonic-token')

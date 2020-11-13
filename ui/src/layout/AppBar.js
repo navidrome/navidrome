@@ -1,7 +1,6 @@
 import React, { createElement, forwardRef } from 'react'
 import {
   AppBar as RAAppBar,
-  UserMenu,
   MenuItemLink,
   useTranslate,
   usePermissions,
@@ -14,6 +13,7 @@ import InfoIcon from '@material-ui/icons/Info'
 import AboutDialog from './AboutDialog'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
+import UserMenu from './UserMenu'
 import config from '../config'
 
 const useStyles = makeStyles((theme) => ({

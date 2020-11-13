@@ -38,6 +38,7 @@ type configOptions struct {
 	CoverArtPriority string
 	CoverJpegQuality int
 	UIWelcomeMessage string
+	EnableGravatar   bool
 	GATrackingID     string
 	AuthRequestLimit int
 	AuthWindowLength time.Duration
@@ -124,6 +125,7 @@ func init() {
 	viper.SetDefault("coverartpriority", "embedded, cover.*, folder.*, front.*")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("uiwelcomemessage", "")
+	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
