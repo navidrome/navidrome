@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/deluan/navidrome/model"
+	"github.com/deluan/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -18,7 +19,7 @@ var _ = Describe("MediaRetrievalController", func() {
 
 	BeforeEach(func() {
 		artwork = &fakeArtwork{}
-		controller = NewMediaRetrievalController(artwork)
+		controller = NewMediaRetrievalController(artwork, &tests.MockDataStore{})
 		w = httptest.NewRecorder()
 	})
 

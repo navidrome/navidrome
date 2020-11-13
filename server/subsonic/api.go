@@ -171,7 +171,11 @@ func h(r chi.Router, path string, f handler) {
 		if err != nil {
 			// If it is not a Subsonic error, convert it to an ErrorGeneric
 			if _, ok := err.(subError); !ok {
-				err = newError(responses.ErrorGeneric, "Internal Error")
+				if err == model.ErrNotFound {
+					err = newError(responses.ErrorDataNotFound, "data not found")
+				} else {
+					err = newError(responses.ErrorGeneric, "Internal Error")
+				}
 			}
 			sendError(w, r, err)
 			return
