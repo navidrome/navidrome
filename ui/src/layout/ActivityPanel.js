@@ -2,15 +2,21 @@ import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchUtils } from 'react-admin'
 import {
-  Menu,
-  MenuItem,
+  Popover,
   Badge,
   CircularProgress,
   IconButton,
   makeStyles,
   Tooltip,
+  Card,
+  CardContent,
+  CardActions,
+  Divider,
+  Box,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
+import { VscSync } from 'react-icons/vsc'
+import { GiMagnifyingGlass } from 'react-icons/gi'
 import subsonic from '../subsonic'
 import { scanStatusUpdate } from '../actions'
 
@@ -29,9 +35,12 @@ const useStyles = makeStyles((theme) => ({
     color: 'inherit',
     zIndex: 2,
   },
+  counterStatus: {
+    minWidth: '16em',
+  },
 }))
 
-const ActivityMenu = () => {
+const ActivityPanel = () => {
   const classes = useStyles()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
@@ -39,8 +48,9 @@ const ActivityMenu = () => {
   const dispatch = useDispatch()
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
-  const handleCloseClose = () => setAnchorEl(null)
-  const triggerScan = () => fetch(subsonic.url('startScan'))
+  const handleMenuClose = () => setAnchorEl(null)
+  const triggerScan = (full) => () =>
+    fetch(subsonic.url('startScan', null, { fullScan: full }))
 
   // Get updated status on component mount
   useEffect(() => {
@@ -66,8 +76,8 @@ const ActivityMenu = () => {
       {scanStatus.scanning && (
         <CircularProgress size={24} className={classes.progress} />
       )}
-      <Menu
-        id="menu-activity"
+      <Popover
+        id="panel-activity"
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'bottom',
@@ -78,19 +88,36 @@ const ActivityMenu = () => {
           horizontal: 'right',
         }}
         open={open}
-        onClose={handleCloseClose}
+        onClose={handleMenuClose}
       >
-        <MenuItem
-          className={classes.root}
-          activeClassName={classes.active}
-          onClick={triggerScan}
-          sidebarIsOpen={true}
-        >
-          {`Scanned: ${scanStatus.count}`}
-        </MenuItem>
-      </Menu>
+        <Card>
+          <CardContent>
+            <Box display="flex" className={classes.counterStatus}>
+              <Box component="span" flex={2}>
+                Total Folders Scanned:
+              </Box>
+              <Box component="span" flex={1}>
+                {scanStatus.count}
+              </Box>
+            </Box>
+          </CardContent>
+          <Divider />
+          <CardActions>
+            <Tooltip title={'Quick Scan'}>
+              <IconButton onClick={triggerScan(false)}>
+                <VscSync />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={'Full Scan'}>
+              <IconButton onClick={triggerScan(true)}>
+                <GiMagnifyingGlass />
+              </IconButton>
+            </Tooltip>
+          </CardActions>
+        </Card>
+      </Popover>
     </div>
   )
 }
 
-export default ActivityMenu
+export default ActivityPanel
