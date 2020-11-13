@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchUtils } from 'react-admin'
+import { fetchUtils, useTranslate } from 'react-admin'
 import {
   Popover,
   Badge,
@@ -42,6 +42,7 @@ const useStyles = makeStyles((theme) => ({
 
 const ActivityPanel = () => {
   const classes = useStyles()
+  const translate = useTranslate()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
   const scanStatus = useSelector((state) => state.activity.scanStatus)
@@ -66,7 +67,7 @@ const ActivityPanel = () => {
 
   return (
     <div className={classes.wrapper}>
-      <Tooltip title={'Activity'}>
+      <Tooltip title={translate('activity.title')}>
         <IconButton className={classes.button} onClick={handleMenuOpen}>
           <Badge badgeContent={null} color="secondary">
             <FiActivity size={'20'} />
@@ -94,7 +95,7 @@ const ActivityPanel = () => {
           <CardContent>
             <Box display="flex" className={classes.counterStatus}>
               <Box component="span" flex={2}>
-                Total Folders Scanned:
+                {translate('activity.totalScanned')}:
               </Box>
               <Box component="span" flex={1}>
                 {scanStatus.count}
@@ -103,12 +104,12 @@ const ActivityPanel = () => {
           </CardContent>
           <Divider />
           <CardActions>
-            <Tooltip title={'Quick Scan'}>
+            <Tooltip title={translate('activity.quickScan')}>
               <IconButton onClick={triggerScan(false)}>
                 <VscSync />
               </IconButton>
             </Tooltip>
-            <Tooltip title={'Full Scan'}>
+            <Tooltip title={translate('activity.fullScan')}>
               <IconButton onClick={triggerScan(true)}>
                 <GiMagnifyingGlass />
               </IconButton>

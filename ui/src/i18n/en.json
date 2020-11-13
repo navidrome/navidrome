@@ -19,7 +19,8 @@
                 "updatedAt": "Updated at",
                 "bitRate": "Bit rate",
                 "discSubtitle": "Disc Subtitle",
-                "starred": "Starred"
+                "starred": "Starred",
+                "comment": "Comment"
             },
             "actions": {
                 "addToQueue": "Play Later",
@@ -42,7 +43,8 @@
                 "genre": "Genre",
                 "compilation": "Compilation",
                 "year": "Year",
-                "updatedAt": "Updated at"
+                "updatedAt": "Updated at",
+                "comment": "Comment"
             },
             "actions": {
                 "playAll": "Play",
@@ -284,6 +286,12 @@
             "source": "Source code",
             "featureRequests": "Feature requests"
         }
+    },
+    "activity": {
+        "title": "Activity",
+        "totalScanned": "Total Folders Scanned",
+        "quickScan": "Quick Scan",
+        "fullScan": "Full Scan"
     },
     "player": {
         "playListsText": "Play Queue",
