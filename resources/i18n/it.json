@@ -19,7 +19,8 @@
                 "updatedAt": "Ultimo aggiornamento",
                 "bitRate": "Bitrate",
                 "discSubtitle": "Sottotitoli disco",
-                "starred": "Preferita"
+                "starred": "Preferita",
+                "comment": "Commento"
             },
             "actions": {
                 "addToQueue": "Aggiungi alla coda",
@@ -42,7 +43,8 @@
                 "genre": "Genere",
                 "compilation": "Compilation",
                 "year": "Anno",
-                "updatedAt": "Ultimo aggiornamento"
+                "updatedAt": "Ultimo aggiornamento",
+                "comment": "Commento"
             },
             "actions": {
                 "playAll": "Riproduci",
@@ -275,7 +277,8 @@
                 "defaultView": "Vista Predefinita"
             }
         },
-        "albumList": "Album"
+        "albumList": "Album",
+        "about": "Info"
     },
     "player": {
         "playListsText": "Coda",
@@ -301,5 +304,18 @@
             "singleLoop": "Ripeti una volta",
             "shufflePlay": "Casuale"
         }
+    },
+    "about": {
+        "links": {
+            "homepage": "Sito web",
+            "source": "Codice sorgente",
+            "featureRequests": "Richieste"
+        }
+    },
+    "activity": {
+        "title": "Attività",
+        "totalScanned": "Cartelle scansionate",
+        "quickScan": "Scansione veloce",
+        "fullScan": "Scansione completa"
     }
 }
