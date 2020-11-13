@@ -32,5 +32,4 @@ export const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
 AddToPlaylistButton.propTypes = {
   resource: PropTypes.string.isRequired,
   selectedIds: PropTypes.arrayOf(PropTypes.string).isRequired,
-  className: PropTypes.object,
 }

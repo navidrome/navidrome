@@ -1,4 +1,10 @@
-import React, { useState, isValidElement, cloneElement, useMemo } from 'react'
+import React, {
+  useState,
+  isValidElement,
+  cloneElement,
+  useMemo,
+  useCallback,
+} from 'react'
 import { useDispatch } from 'react-redux'
 import { Datagrid, DatagridBody, DatagridRow } from 'react-admin'
 import { TableCell, TableRow, Typography } from '@material-ui/core'
@@ -106,7 +112,7 @@ export const SongDatagridRow = ({
 SongDatagridRow.propTypes = {
   record: PropTypes.object,
   children: PropTypes.node,
-  multiDisc: PropTypes.bool,
+  firstTracks: PropTypes.instanceOf(Set),
   contextAlwaysVisible: PropTypes.bool,
   onClickDiscSubtitle: PropTypes.func,
 }
@@ -123,10 +129,13 @@ export const SongDatagrid = ({
   const dispatch = useDispatch()
   const { ids, data } = rest
 
-  const playDisc = (discNumber) => {
-    const idsToPlay = ids.filter((id) => data[id].discNumber === discNumber)
-    dispatch(playTracks(data, idsToPlay))
-  }
+  const playDisc = useCallback(
+    (discNumber) => {
+      const idsToPlay = ids.filter((id) => data[id].discNumber === discNumber)
+      dispatch(playTracks(data, idsToPlay))
+    },
+    [dispatch, data, ids]
+  )
 
   const firstTracks = useMemo(() => {
     const set = new Set(
