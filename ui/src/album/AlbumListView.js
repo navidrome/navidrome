@@ -40,7 +40,9 @@ const AlbumDetails = (props) => {
         <BooleanField source="compilation" />
         <DateField source="updatedAt" showTime />
         <SizeField source="size" />
-        <MultiLineTextField source="comment" />
+        {props.record && props.record['comment'] && (
+          <MultiLineTextField source="comment" />
+        )}
       </SimpleShowLayout>
     </Show>
   )
