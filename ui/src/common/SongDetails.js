@@ -8,7 +8,7 @@ import TableRow from '@material-ui/core/TableRow'
 import { BooleanField, DateField, TextField, useTranslate } from 'react-admin'
 import inflection from 'inflection'
 import { BitrateField, SizeField } from './index'
-import MultiLineTextField from './MultiLineTextField'
+import { MultiLineTextField } from './MultiLineTextField'
 
 export const SongDetails = (props) => {
   const translate = useTranslate()

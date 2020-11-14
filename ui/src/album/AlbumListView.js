@@ -12,16 +12,16 @@ import {
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
+import { makeStyles } from '@material-ui/core/styles'
 import {
   ArtistLinkField,
   DurationField,
   RangeField,
   SimpleList,
   SizeField,
+  MultiLineTextField,
+  AlbumContextMenu,
 } from '../common'
-import { AlbumContextMenu } from '../common'
-import { makeStyles } from '@material-ui/core/styles'
-import MultiLineTextField from '../common/MultiLineTextField'
 
 const useStyles = makeStyles({
   columnIcon: {
