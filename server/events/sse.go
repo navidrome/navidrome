@@ -69,7 +69,6 @@ func (broker *broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Make sure that the writer supports flushing.
 	flusher, ok := rw.(http.Flusher)
 
-	fmt.Printf("%#v\n", req.Context())
 	user, _ := request.UserFrom(req.Context())
 	if !ok {
 		log.Error(rw, "Streaming unsupported! Events cannot be sent to this client", "address", req.RemoteAddr,
