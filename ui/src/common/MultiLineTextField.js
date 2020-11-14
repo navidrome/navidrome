@@ -4,10 +4,22 @@ import Typography from '@material-ui/core/Typography'
 import sanitizeFieldRestProps from './sanitizeFieldRestProps'
 import md5 from 'md5-hex'
 
-const MultiLineTextField = memo(
-  ({ className, emptyText, source, record = {}, stripTags, ...rest }) => {
+export const MultiLineTextField = memo(
+  ({
+    className,
+    emptyText,
+    source,
+    record,
+    firstLine,
+    maxLines,
+    addLabel,
+    ...rest
+  }) => {
     const value = get(record, source)
-    const lines = value ? value.split('\n') : []
+    let lines = value ? value.split('\n') : []
+    if (maxLines || firstLine) {
+      lines = lines.slice(firstLine, maxLines)
+    }
 
     return (
       <Typography
@@ -18,20 +30,24 @@ const MultiLineTextField = memo(
       >
         {lines.length === 0 && emptyText
           ? emptyText
-          : lines.map((line, idx) => (
-              <div
-                data-testid={`${source}.${idx}`}
-                key={md5(line)}
-                dangerouslySetInnerHTML={{ __html: line }}
-              />
-            ))}
+          : lines.map((line, idx) =>
+              line === '' ? (
+                <br key={md5(line + idx)} />
+              ) : (
+                <div
+                  data-testid={`${source}.${idx}`}
+                  key={md5(line + idx)}
+                  dangerouslySetInnerHTML={{ __html: line }}
+                />
+              )
+            )}
       </Typography>
     )
   }
 )
 
 MultiLineTextField.defaultProps = {
+  record: {},
   addLabel: true,
+  firstLine: 0,
 }
-
-export default MultiLineTextField

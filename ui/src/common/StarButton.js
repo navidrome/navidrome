@@ -15,7 +15,16 @@ const useStyles = makeStyles({
   },
 })
 
-export const StarButton = ({ resource, record, color, visible, size }) => {
+export const StarButton = ({
+  resource,
+  record,
+  color,
+  visible,
+  size,
+  component: Button,
+  addLabel,
+  ...rest
+}) => {
   const [loading, setLoading] = useState(false)
   const classes = useStyles({ color, visible, starred: record.starred })
   const notify = useNotify()
@@ -56,18 +65,19 @@ export const StarButton = ({ resource, record, color, visible, size }) => {
   }
 
   return (
-    <IconButton
+    <Button
       onClick={handleToggleStar}
       size={'small'}
       disabled={loading}
       className={classes.star}
+      {...rest}
     >
       {record.starred ? (
         <StarIcon fontSize={size} />
       ) : (
         <StarBorderIcon fontSize={size} />
       )}
-    </IconButton>
+    </Button>
   )
 }
 
@@ -77,6 +87,7 @@ StarButton.propTypes = {
   visible: PropTypes.bool,
   color: PropTypes.string,
   size: PropTypes.string,
+  component: PropTypes.object,
 }
 
 StarButton.defaultProps = {
@@ -85,4 +96,5 @@ StarButton.defaultProps = {
   visible: true,
   size: 'small',
   color: 'inherit',
+  component: IconButton,
 }
