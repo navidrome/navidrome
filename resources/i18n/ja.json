@@ -13,13 +13,14 @@
                 "album": "アルバム",
                 "path": "ファイルパス",
                 "genre": "ジャンル",
-                "compilation": "コンピレーション",
+                "compilation": "Compilation",
                 "year": "年",
                 "size": "ファイルサイズ",
                 "updatedAt": "更新日",
                 "bitRate": "ビットレート",
                 "discSubtitle": "ディスクサブタイトル",
-                "starred": "お気に入り"
+                "starred": "お気に入り",
+                "comment": "コメント"
             },
             "actions": {
                 "addToQueue": "最後に再生",
@@ -40,9 +41,10 @@
                 "playCount": "再生数",
                 "name": "名前",
                 "genre": "ジャンル",
-                "compilation": "コンピレーション",
+                "compilation": "Compilation",
                 "year": "年",
-                "updatedAt": "更新日"
+                "updatedAt": "更新日",
+                "comment": "コメント"
             },
             "actions": {
                 "playAll": "再生",
@@ -309,5 +311,13 @@
             "source": "ソースコード",
             "featureRequests": "機能リクエスト"
         }
+    },
+    "activity": {
+        "title": "活動",
+        "totalScanned": "スキャン済みフォルダー",
+        "quickScan": "クイックスキャン",
+        "fullScan": "フルスキャン",
+        "serverUptime": "サーバー稼働時間",
+        "serverDown": "サーバーオフライン"
     }
 }
