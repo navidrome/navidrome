@@ -69,10 +69,11 @@ func (broker *broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Make sure that the writer supports flushing.
 	flusher, ok := rw.(http.Flusher)
 
-	username, _ := request.UsernameFrom(req.Context())
+	fmt.Printf("%#v\n", req.Context())
+	user, _ := request.UserFrom(req.Context())
 	if !ok {
 		log.Error(rw, "Streaming unsupported! Events cannot be sent to this client", "address", req.RemoteAddr,
-			"userAgent", req.UserAgent(), "user", username)
+			"userAgent", req.UserAgent(), "user", user.UserName)
 		http.Error(rw, "Streaming unsupported!", http.StatusInternalServerError)
 		return
 	}
@@ -87,6 +88,9 @@ func (broker *broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	// Signal the broker that we have a new connection
 	broker.newClients <- messageChan
+
+	log.Debug(req.Context(), "New broker client", "address", req.RemoteAddr, "userAgent", req.UserAgent(),
+		"user", user.UserName)
 
 	// Remove this client from the map of connected clients
 	// when this handler exits.
