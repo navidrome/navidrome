@@ -19,7 +19,8 @@
                 "updatedAt": "Nahráno",
                 "bitRate": "Přenosová rychlost",
                 "discSubtitle": "Podtitul disku",
-                "starred": "Oblíbené"
+                "starred": "Oblíbené",
+                "comment": "Komentář"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -42,7 +43,8 @@
                 "genre": "Žánr",
                 "compilation": "Kompilace",
                 "year": "Rok",
-                "updatedAt": "Aktualizováno"
+                "updatedAt": "Aktualizováno",
+                "comment": "Komentář"
             },
             "actions": {
                 "playAll": "Přehrát",
@@ -309,5 +311,11 @@
             "source": "Zdrojový kód",
             "featureRequests": "Požadavky o funkce"
         }
+    },
+    "activity": {
+        "title": "Aktivita",
+        "totalScanned": "Naskenované složky",
+        "quickScan": "Rychlý sken",
+        "fullScan": "Úplný sken"
     }
 }
