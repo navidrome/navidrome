@@ -6,8 +6,8 @@ let es = null
 let dispatch = null
 let timeout = null
 const defaultIntervalCheck = 20000
-const errorIntervalCheck = 2000
-let currentIntervalCheck = defaultIntervalCheck
+const reconnectIntervalCheck = 2000
+let currentIntervalCheck = reconnectIntervalCheck
 
 const getEventStream = () => {
   if (es === null) {
@@ -37,7 +37,7 @@ export const startEventStream = (dispatchFunc) => {
   dispatch = dispatchFunc
   setTimeout(currentIntervalCheck)
   if (!localStorage.getItem('token')) {
-    console.log('Cannot create a unauthenticated EventSource')
+    console.log('Cannot create a unauthenticated EventSource connection')
     return
   }
   const es = getEventStream()
@@ -53,7 +53,7 @@ export const startEventStream = (dispatchFunc) => {
     { trailing: true }
   )
   es.onerror = (e) => {
-    setTimeout(errorIntervalCheck)
+    setTimeout(reconnectIntervalCheck)
     dispatch(serverDown())
   }
 
