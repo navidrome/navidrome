@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/deluan/navidrome/core"
@@ -29,6 +28,7 @@ type StatusInfo struct {
 	Scanning    bool
 	LastScan    time.Time
 	Count       uint32
+	FolderCount uint32
 }
 
 var (
@@ -54,9 +54,10 @@ type scanner struct {
 }
 
 type scanStatus struct {
-	active     bool
-	count      uint32
-	lastUpdate time.Time
+	active      bool
+	fileCount   uint32
+	folderCount uint32
+	lastUpdate  time.Time
 }
 
 func New(ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker) Scanner {
@@ -125,9 +126,13 @@ func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
 func (s *scanner) startProgressTracker(mediaFolder string) chan uint32 {
 	progress := make(chan uint32, 100)
 	go func() {
-		s.broker.SendMessage(&events.ScanStatus{Scanning: true, Count: 0})
+		s.broker.SendMessage(&events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 		defer func() {
-			s.broker.SendMessage(&events.ScanStatus{Scanning: false, Count: int64(s.status[mediaFolder].count)})
+			s.broker.SendMessage(&events.ScanStatus{
+				Scanning:    false,
+				Count:       int64(s.status[mediaFolder].fileCount),
+				FolderCount: int64(s.status[mediaFolder].folderCount),
+			})
 		}()
 		for {
 			count, more := <-progress
@@ -137,8 +142,12 @@ func (s *scanner) startProgressTracker(mediaFolder string) chan uint32 {
 			if count == 0 {
 				continue
 			}
-			total := atomic.AddUint32(&s.status[mediaFolder].count, count)
-			s.broker.SendMessage(&events.ScanStatus{Scanning: true, Count: int64(total)})
+			totalFolders, totalFiles := s.incStatusCounter(mediaFolder, count)
+			s.broker.SendMessage(&events.ScanStatus{
+				Scanning:    true,
+				Count:       int64(totalFiles),
+				FolderCount: int64(totalFolders),
+			})
 		}
 	}()
 	return progress
@@ -174,12 +183,25 @@ func (s *scanner) getStatus(folder string) *scanStatus {
 	return nil
 }
 
+func (s *scanner) incStatusCounter(folder string, numFiles uint32) (totalFolders uint32, totalFiles uint32) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if status, ok := s.status[folder]; ok {
+		status.fileCount += numFiles
+		status.folderCount++
+		totalFolders = status.folderCount
+		totalFiles = status.fileCount
+	}
+	return
+}
+
 func (s *scanner) setStatusStart(folder string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if status, ok := s.status[folder]; ok {
 		status.active = true
-		status.count = 0
+		status.fileCount = 0
+		status.folderCount = 0
 	}
 }
 
@@ -205,7 +227,8 @@ func (s *scanner) Status(mediaFolder string) (*StatusInfo, error) {
 		MediaFolder: mediaFolder,
 		Scanning:    status.active,
 		LastScan:    status.lastUpdate,
-		Count:       status.count,
+		Count:       status.fileCount,
+		FolderCount: status.folderCount,
 	}, nil
 }
 
@@ -234,9 +257,10 @@ func (s *scanner) loadFolders() {
 		log.Info("Configuring Media Folder", "name", f.Name, "path", f.Path)
 		s.folders[f.Path] = s.newScanner(f)
 		s.status[f.Path] = &scanStatus{
-			active:     false,
-			count:      0,
-			lastUpdate: s.getLastModifiedSince(f.Path),
+			active:      false,
+			fileCount:   0,
+			folderCount: 0,
+			lastUpdate:  s.getLastModifiedSince(f.Path),
 		}
 	}
 }

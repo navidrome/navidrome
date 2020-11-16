@@ -341,7 +341,8 @@ type Bookmarks struct {
 }
 
 type ScanStatus struct {
-	Scanning bool       `xml:"scanning,attr"            json:"scanning"`
-	Count    int64      `xml:"count,attr"               json:"count"`
-	LastScan *time.Time `xml:"lastScan,attr,omitempty"  json:"lastScan,omitempty"`
+	Scanning    bool       `xml:"scanning,attr"            json:"scanning"`
+	Count       int64      `xml:"count,attr"               json:"count"`
+	FolderCount int64      `xml:"folderCount,attr"         json:"folderCount"`
+	LastScan    *time.Time `xml:"lastScan,attr,omitempty"  json:"lastScan,omitempty"`
 }
