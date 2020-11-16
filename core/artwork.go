@@ -61,8 +61,10 @@ func (a *artwork) Get(ctx context.Context, id string, size int, out io.Writer) e
 		return err
 	}
 
-	if stat, err := os.Stat(path); err == nil {
-		lastUpdate = stat.ModTime()
+	if !conf.Server.DevFastAccessCoverArt {
+		if stat, err := os.Stat(path); err == nil {
+			lastUpdate = stat.ModTime()
+		}
 	}
 
 	info := &imageInfo{
@@ -115,7 +117,7 @@ func (a *artwork) getImagePath(ctx context.Context, id string) (path string, las
 	}
 
 	// If it is a mediaFile and it has cover art, return it (if feature is disabled, skip)
-	if !conf.Server.DevDisableTrackCoverArt && mf.HasCoverArt {
+	if !conf.Server.DevFastAccessCoverArt && mf.HasCoverArt {
 		return mf.Path, mf.UpdatedAt, nil
 	}
 
