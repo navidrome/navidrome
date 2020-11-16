@@ -134,12 +134,18 @@ const ActivityPanel = () => {
           <Divider />
           <CardActions>
             <Tooltip title={translate('activity.quickScan')}>
-              <IconButton onClick={triggerScan(false)}>
+              <IconButton
+                onClick={triggerScan(false)}
+                disabled={scanStatus.scanning}
+              >
                 <VscSync />
               </IconButton>
             </Tooltip>
             <Tooltip title={translate('activity.fullScan')}>
-              <IconButton onClick={triggerScan(true)}>
+              <IconButton
+                onClick={triggerScan(true)}
+                disabled={scanStatus.scanning}
+              >
                 <GiMagnifyingGlass />
               </IconButton>
             </Tooltip>
