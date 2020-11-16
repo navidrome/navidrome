@@ -19,7 +19,8 @@
                 "updatedAt": "更新于",
                 "bitRate": "比特率",
                 "discSubtitle": "字幕",
-                "starred": "收藏"
+                "starred": "收藏",
+                "comment": "评论"
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -42,7 +43,8 @@
                 "genre": "曲风",
                 "compilation": "合辑",
                 "year": "发布年份",
-                "updatedAt": "更新于"
+                "updatedAt": "更新于",
+                "comment": "评论"
             },
             "actions": {
                 "playAll": "立即播放",
@@ -309,5 +311,13 @@
             "source": "源代码",
             "featureRequests": "功能需求"
         }
+    },
+    "activity": {
+        "title": "运行情况",
+        "totalScanned": "已完成扫描目录",
+        "quickScan": "快速扫描",
+        "fullScan": "完全扫描",
+        "serverUptime": "服务器运行时间",
+        "serverDown": "离线"
     }
 }

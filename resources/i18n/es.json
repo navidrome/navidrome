@@ -19,7 +19,8 @@
                 "updatedAt": "Actualizado el",
                 "bitRate": "Tasa de bits",
                 "discSubtitle": "Subtítulo del disco",
-                "starred": "Favorito"
+                "starred": "Favorito",
+                "comment": ""
             },
             "actions": {
                 "addToQueue": "Reproducir después",
@@ -42,7 +43,8 @@
                 "genre": "Género",
                 "compilation": "Compilación",
                 "year": "Año",
-                "updatedAt": "Actualizado el"
+                "updatedAt": "Actualizado el",
+                "comment": ""
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -309,5 +311,11 @@
             "source": "Código fuente",
             "featureRequests": "Pedir funcionalidad"
         }
+    },
+    "activity": {
+        "title": "",
+        "totalScanned": "",
+        "quickScan": "",
+        "fullScan": ""
     }
 }

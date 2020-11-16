@@ -19,7 +19,8 @@
                 "updatedAt": "Обновлено",
                 "bitRate": "Битрейт",
                 "discSubtitle": "Название диска",
-                "starred": "Избранные"
+                "starred": "Избранные",
+                "comment": ""
             },
             "actions": {
                 "addToQueue": "В очередь",
@@ -42,7 +43,8 @@
                 "genre": "Стиль",
                 "compilation": "Сборник",
                 "year": "Год",
-                "updatedAt": "Обновлено"
+                "updatedAt": "Обновлено",
+                "comment": ""
             },
             "actions": {
                 "playAll": "Воспроизведение",
@@ -309,5 +311,11 @@
             "source": "Код",
             "featureRequests": "Предложения"
         }
+    },
+    "activity": {
+        "title": "",
+        "totalScanned": "",
+        "quickScan": "",
+        "fullScan": ""
     }
 }

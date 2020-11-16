@@ -19,7 +19,8 @@
                 "updatedAt": "Yüklendiği zaman",
                 "bitRate": "Bir sayısı",
                 "discSubtitle": "Disk Altyazısı",
-                "starred": "Yıldızlı"
+                "starred": "Yıldızlı",
+                "comment": ""
             },
             "actions": {
                 "addToQueue": "Sonra çal",
@@ -42,7 +43,8 @@
                 "genre": "Tür",
                 "compilation": "Derleme",
                 "year": "Yıl",
-                "updatedAt": "Güncellendi "
+                "updatedAt": "Güncellendi ",
+                "comment": ""
             },
             "actions": {
                 "playAll": "Çaldır",
@@ -275,7 +277,8 @@
                 "defaultView": "Varsayılan görünüm"
             }
         },
-        "albumList": "Albümler"
+        "albumList": "Albümler",
+        "about": "Hakkinda"
     },
     "player": {
         "playListsText": "Oynatma Sırası",
@@ -301,5 +304,18 @@
             "singleLoop": "Birini tekrarla",
             "shufflePlay": "Karıştır"
         }
+    },
+    "about": {
+        "links": {
+            "homepage": "Ana sayfa",
+            "source": "Kaynak kodu",
+            "featureRequests": "Özellik talepleri"
+        }
+    },
+    "activity": {
+        "title": "",
+        "totalScanned": "",
+        "quickScan": "",
+        "fullScan": ""
     }
 }
