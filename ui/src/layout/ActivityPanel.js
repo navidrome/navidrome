@@ -127,7 +127,7 @@ const ActivityPanel = () => {
                 {translate('activity.totalScanned')}:
               </Box>
               <Box component="span" flex={1}>
-                {scanStatus.count}
+                {scanStatus.folderCount || '-'}
               </Box>
             </Box>
           </CardContent>

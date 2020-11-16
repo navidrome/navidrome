@@ -30,9 +30,10 @@ func (c *LibraryScanningController) GetScanStatus(w http.ResponseWriter, r *http
 	}
 	response := newResponse()
 	response.ScanStatus = &responses.ScanStatus{
-		Scanning: status.Scanning,
-		Count:    int64(status.Count),
-		LastScan: &status.LastScan,
+		Scanning:    status.Scanning,
+		Count:       int64(status.Count),
+		FolderCount: int64(status.FolderCount),
+		LastScan:    &status.LastScan,
 	}
 	return response, nil
 }

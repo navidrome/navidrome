@@ -1,6 +1,8 @@
 import { EVENT_SCAN_STATUS, EVENT_SERVER_START } from '../actions'
 
-const defaultState = { scanStatus: { scanning: false, count: 0 } }
+const defaultState = {
+  scanStatus: { scanning: false, folderCount: 0, count: 0 },
+}
 
 export const activityReducer = (
   previousState = {
