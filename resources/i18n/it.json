@@ -316,6 +316,8 @@
         "title": "Attività",
         "totalScanned": "Cartelle scansionate",
         "quickScan": "Scansione veloce",
-        "fullScan": "Scansione completa"
+        "fullScan": "Scansione completa",
+        "serverUptime": "Periodo di attività",
+        "serverDown": "OFFLINE"
     }
 }
