@@ -16,12 +16,15 @@ alter table album
 	add size integer default 0 not null;
 create index if not exists album_size
 	on album(size);
-	`)
-	if err != nil {
-		return err
-	}
-	notice(tx, "A full rescan will be performed to calculate album sizes.")
-	return forceFullRescan(tx)
+
+update album set size = ifnull((
+select sum(f.size)
+from media_file f
+where f.album_id = album.id
+), 0)
+where id not null;`)
+
+	return err
 }
 
 func Down20201010162350(tx *sql.Tx) error {
