@@ -317,7 +317,7 @@
         "totalScanned": "โฟลเดอร์ทั้งหมด",
         "quickScan": "Quick Scan",
         "fullScan": "Full Scan",
-        "serverUptime": "เวลาออนไลน์",
+        "serverUptime": "เซิฟเวอร์ออนไลน์",
         "serverDown": "ออฟไลน์"
     }
 }
