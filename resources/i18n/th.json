@@ -4,10 +4,10 @@
         "song": {
             "name": "เพลง",
             "fields": {
-                "albumArtist": "ศิลปินของอัลบั้ม",
-                "duration": "เวลา",
+                "albumArtist": "ศิลปินอัลบั้ม",
+                "duration": "ความยาว",
                 "trackNumber": "#",
-                "playCount": "เล่นทั้งหมด",
+                "playCount": "เล่น",
                 "title": "ชื่อเพลง",
                 "artist": "ศิลปิน",
                 "album": "อัลบั้ม",
@@ -19,13 +19,13 @@
                 "updatedAt": "อัปเดตล่าสุด",
                 "bitRate": "บิตเรท",
                 "discSubtitle": "คำบรรยาย",
-                "starred": "ชอบ",
-                "comment": ""
+                "starred": "รายการโปรด",
+                "comment": "ความคิดเห็น"
             },
             "actions": {
                 "addToQueue": "เล่นหลังสุด",
                 "playNow": "เล่นทันที",
-                "addToPlaylist": "เพิ่มในเพลย์ลิส",
+                "addToPlaylist": "เพิ่มในเพลย์ลิสต์",
                 "shuffleAll": "สุ่มทั้งหมด",
                 "download": "ดาวน์โหลด",
                 "playNext": "เล่นเพลงถัดไป"
@@ -34,24 +34,24 @@
         "album": {
             "name": "อัลบั้ม",
             "fields": {
-                "albumArtist": "ศิลปินของอัลบั้ม",
+                "albumArtist": "ศิลปินอัลบั้ม",
                 "artist": "ศิลปิน",
                 "duration": "ความยาว",
-                "songCount": "เพลงทั้งหมด",
-                "playCount": "เล่นไปทั้งหมด",
+                "songCount": "เพลง",
+                "playCount": "เล่น",
                 "name": "ชื่อ",
                 "genre": "ประเภท",
                 "compilation": "รวมเพลง",
                 "year": "ปี",
                 "updatedAt": "อัพเดตเมื่อ",
-                "comment": ""
+                "comment": "ความคิดเห็น"
             },
             "actions": {
                 "playAll": "เล่นทั้งหมด",
                 "playNext": "เล่นถัดไป",
                 "addToQueue": "เล่นหลังสุด",
                 "shuffle": "เล่นแบบสุ่ม",
-                "addToPlaylist": "เพิ่งลงในเพลย์ลิสท์",
+                "addToPlaylist": "เพิ่งลงในเพลย์ลิสต์",
                 "download": "ดาวน์โหลด"
             },
             "lists": {
@@ -67,16 +67,16 @@
             "name": "ศิลปิน",
             "fields": {
                 "name": "ชื่อ",
-                "albumCount": "อัลบั้มที่",
+                "albumCount": "อัลบั้ม",
                 "songCount": "จำนวนเพลง",
-                "playCount": "เล่นทั้งหมด"
+                "playCount": "เล่น"
             }
         },
         "user": {
             "name": "ผู้ใช้",
             "fields": {
                 "userName": "ชื่อผู้ใช้งาน",
-                "isAdmin": "Admin",
+                "isAdmin": "เป็น Admin",
                 "lastLoginAt": "ล็อกอินล่าสุด",
                 "updatedAt": "อัปเดตล่าสุด",
                 "name": "ชื่อ",
@@ -90,7 +90,7 @@
                 "name": "ชื่อ",
                 "transcodingId": "Transcoding",
                 "maxBitRate": "บิตเรทสูงสุด",
-                "client": "ไคลแอนท์",
+                "client": "Client",
                 "userName": "ชื่อผู้ใช้งาน",
                 "lastSeen": "ใช้งานล่าสุดเมื่อ"
             }
@@ -99,13 +99,13 @@
             "name": "Transcoding |||| Transcodings",
             "fields": {
                 "name": "ชื่อ",
-                "targetFormat": "ไฟล์",
+                "targetFormat": "ฟอร์แมตปลายทาง",
                 "defaultBitRate": "บิตเรท",
-                "command": "Command"
+                "command": "คำสั่ง"
             }
         },
         "playlist": {
-            "name": "เพลย์ลิส",
+            "name": "เพลย์ลิสต์",
             "fields": {
                 "name": "ชื่อ",
                 "duration": "เวลา",
@@ -119,7 +119,7 @@
                 "path": "นำเข้าจาก"
             },
             "actions": {
-                "selectPlaylist": "เลือกเพลย์ลิสท์",
+                "selectPlaylist": "เลือกเพลย์ลิสต์",
                 "addNewPlaylist": "สร้าง \"%{name}\"",
                 "export": "ส่งออก"
             }
@@ -128,15 +128,15 @@
     "ra": {
         "auth": {
             "welcome1": "ขอบคุณที่ติดตั้ง Navidrome!",
-            "welcome2": "สร้างบัญชี admin เพื่อเริ่มใช้งาน",
+            "welcome2": "สร้างบัญชี Admin เพื่อเริ่มใช้งาน",
             "confirmPassword": "ยืนยันรหัสผ่าน",
-            "buttonCreateAdmin": "สร้างบัญชี admin",
-            "auth_check_error": "กรุณาล็อกอินเพื่อดำเนินการต่อ",
+            "buttonCreateAdmin": "สร้างบัญชี Admin",
+            "auth_check_error": "กรุณาลงชื่อเข้าใช้เพื่อดำเนินการต่อ",
             "user_menu": "โปรไฟล์",
             "username": "ชื่อผู้ใช้",
             "password": "รหัสผ่าน",
             "sign_in": "เข้าสู่ระบบ",
-            "sign_in_error": "การยืนยันตัวตนลมเหลว กรุณาลองอีกครั้ง",
+            "sign_in_error": "การยืนยันตัวตนล้มเหลว โปรดลองอีกครั้ง",
             "logout": "ลงชื่อออก"
         },
         "validation": {
@@ -146,11 +146,11 @@
             "minLength": "ต้องมี %{min} ตัวอักษรเป็นอย่างน้อย",
             "maxLength": "ต้องมีน้อยกว่าหรือเท่ากับ %{max} ตัวอักษร",
             "minValue": "ต้องมีอย่างน้อย %{min}",
-            "maxValue": "ต้องมี %{max} หรือน้อยกว่า ",
-            "number": "ตัวเลขเท่านั้น",
-            "email": "อีเมลที่ถูกต้องเท่านั้น",
+            "maxValue": "ต้องมี %{max} หรือน้อยกว่า",
+            "number": "เป็นตัวเลขเท่านั้น",
+            "email": "เป็นอีเมลที่ถูกต้องเท่านั้น",
             "oneOf": "ต้องเป็นหนึ่งใน %{options}",
-            "regex": "ต้องเป็นฟอร์แมตเพาะ (regexp): %{pattern}"
+            "regex": "ต้องเป็นฟอร์แมตเฉพาะ (regexp): %{pattern}"
         },
         "action": {
             "add_filter": "เพิ่มตัวกรอง",
@@ -198,17 +198,17 @@
         },
         "input": {
             "file": {
-                "upload_several": "ลากแล้ววางหรือคลิกเลือกไฟล์เพื่ออัปโหลด",
-                "upload_single": "ลากแล้ววางหรือคลิกไฟล์เพื่ออัปโหลด"
+                "upload_several": "ลากแล้ววางหรือเลือกไฟล์เพื่ออัปโหลด",
+                "upload_single": "ลากแล้ววางหรือเลือกไฟล์เพื่ออัปโหลด"
             },
             "image": {
-                "upload_several": "ลากแล้ววางหรือคลิกเลือกรูปภาพเพื่ออัปโหลด",
-                "upload_single": "ลากแล้ววางหรือคลิกรูปภาพเพื่ออัปโหลด"
+                "upload_several": "ลากแล้ววางหรือเลือกรูปภาพเพื่ออัปโหลด",
+                "upload_single": "ลากแล้ววางหรือเลือกรูปภาพเพื่ออัปโหลด"
             },
             "references": {
-                "all_missing": "ไม่สามารถหาข้อมูลอ้างอิงได้",
-                "many_missing": "ข้อมูลอ้างอิงอย่างน้อย 1 อย่างสูญหาย",
-                "single_missing": "ข้อมูลอ้างอิงที่เกี่ยวข้องสูญหาย"
+                "all_missing": "ไม่สามารถหาข้อมูลได้",
+                "many_missing": "ข้อมูลสูญหาย",
+                "single_missing": "ข้อมูลสูญหาย"
             },
             "password": {
                 "toggle_visible": "ซ่อนรหัสผ่าน",
@@ -218,51 +218,51 @@
         "message": {
             "about": "เกี่ยวกับ",
             "are_you_sure": "คุณแน่ใจหรือไม่?",
-            "bulk_delete_content": "คุณแน่ใจหรือไม่ที่จะลบ %{name}? |||| คุณแน่ใจหรือไม่ที่ต้องการลบข้อมูล %{smart_count} ชิ้นนี้?\n",
+            "bulk_delete_content": "คุณแน่ใจที่ต้องการลบ %{name}? |||| คุณแน่ใจที่ต้องการลบข้อมูล %{smart_count} ชิ้นนี้?\n",
             "bulk_delete_title": "ลบ %{name} |||| ลบ %{smart_count} %{name}",
-            "delete_content": "คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้",
+            "delete_content": "คุณแน่ใจที่จะลบข้อมูลนี้?",
             "delete_title": "ลบ %{name} #%{id}",
             "details": "รายละเอียด",
-            "error": "เกิดข้อผิดพลาดที่client ไม่สามารถดำเนินคำขอของท่านได้",
+            "error": "เกิดข้อผิดพลาดที่ Client ไม่สามารถดำเนินคำขอของท่านได้",
             "invalid_form": "แบบฟอร์มไม่ถูกต้อง กรุณาตรวจสอบข้อผิดพลาด",
             "loading": "กำลังโหลดหน้านี้ โปรดรอสักครู่",
             "no": "ไม่",
-            "not_found": "URL ผิดพลาดหรือไม่ทำงาน",
+            "not_found": "URL ผิดพลาดหรือลิงค์ไม่ทำงาน",
             "yes": "ใช่",
             "unsaved_changes": "การเปลี่ยนแปลงของบางส่วนจะไม่ถูกบันทึก คุณแน่ใจหรือไม่?"
         },
         "navigation": {
             "no_results": "ไม่พบผลการค้นหา",
             "no_more_results": "หน้าที่ %{page} เกินขีดจำกัดแล้ว กรุณาลองหน้าก่อนหน้า",
-            "page_out_of_boundaries": "หน้าที่ %{page} เกินจำนวนหน้าสูลสุด",
+            "page_out_of_boundaries": "หน้าที่ %{page} เกินจำนวนหน้าสูงสุด",
             "page_out_from_end": "ไม่สามารถไปต่อจากหน้าสุดท้ายได้",
             "page_out_from_begin": "ไม่สามารถไปก่อนหน้าที่ 1 ได้",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} จาก %{total}",
-            "page_rows_per_page": "จำนวนต่อหน้า:",
+            "page_rows_per_page": "จำนวนในหนึ่งหน้า:",
             "next": "ถัดไป",
             "prev": "ก่อนหน้า"
         },
         "notification": {
-            "updated": "%{smart_count} เอเลเมนท์ถูกอัพเดตแล้ว",
-            "created": "สร้างเอเลเมนท์แล้ว",
-            "deleted": "ลบ %{smart_count} เอเลเมนท์ สำเร็จ",
-            "bad_item": "เอเลเมนท์ไม่ถูกต้อง",
-            "item_doesnt_exist": "เอเลเมนท์นี้ไม่มีอยู่",
-            "http_error": "เชื่อมต่อเซิฟเวอร์ผิดพลาด",
-            "data_provider_error": "แหล่งข้อมูลผิดพลาด โปรดตรวจสอบ cosole เพื่อพูดรายละเอียด",
-            "i18n_error": "ไม่สามารถเรียกคำแปลของภาษษที่เลือกได้",
+            "updated": "อัพเดตองค์ประกอบเรียบร้อย |||| %{smart_count} องค์ประกอบถูกอัพเดตเรียบร้อย",
+            "created": "สร้างองค์ประกอบแล้ว",
+            "deleted": "ลบองค์ประกอบเสร็จสิ้น |||| องค์ลบ %{smart_count} องค์ประกอบเสร็จสิ้น",
+            "bad_item": "องค์ประกอบไม่ถูกต้อง",
+            "item_doesnt_exist": "ไม่มีองค์ประกอบนี้อยู่",
+            "http_error": "การเชื่อมต่อเซิฟเวอร์ผิดพลาด",
+            "data_provider_error": "dataProviderผิดพลาด โปรดตรวจสอบคอนโซลเพื่อดูรายละเอียด",
+            "i18n_error": "ไม่สามารถเรียกคำแปลของภาษาที่เลือกได้",
             "canceled": "ยกเลิกการกระทำแล้ว",
             "logged_out": "เซสชั่นของท่านสิ้นสุดแล้ว โปรดเชื่อมต่ออีกครั้ง"
         }
     },
     "message": {
         "note": "หมายเหตุ",
-        "transcodingDisabled": "การตั้งค่า transcoding บนเว็บไซต์ถูกปิดเพื่อความปลอดภัย หากต้องการเปลี่ยนแปลงการตั้งค่าให้ใช้ %{config} จากนั้นจึงรีสตาร์ทเซิฟเวอร์",
+        "transcodingDisabled": "การตั้งค่า transcoding บนเว็บไซต์ถูกปิดเพื่อความปลอดภัย หากต้องการเปลี่ยนแปลงการตั้งค่า ให้ใช้ %{config} จากนั้นจึงรีสตาร์ทเซิฟเวอร์",
         "transcodingEnabled": "Navidrome กำลังทำงานโดยใช้ %{config} ทำให้สามารถใช้งาน System Commands จากตั้งค่า transcoding บนหน้าเว็บได้ ทางเราแนะนำให้ท่านปิดการตั้งค่านี้เพื่อความปลอดภัยและเปิดเมื่อต้องการแก้ไขตั้งค่า Transcoding เท่านั้น",
         "songsAddedToPlaylist": "เลือก %{smart_count} เพลงเข้าในเพลย์ลิสท์",
         "noPlaylistsAvailable": "ไม่มีเพลย์ลิสต์",
         "delete_user_title": "ลบผู้ใช้ '%{name}'",
-        "delete_user_content": "คุณแน่ใจหรือไม่ที่จะลบผู้ใช้นี้และข้อมูลทั้งหมด(รวมถึงเพลย์ลิสท์และตั้งค่าต่างๆ)"
+        "delete_user_content": "คุณแน่ใจที่จะลบผู้ใช้นี้และข้อมูลทั้งหมด(รวมถึงเพลย์ลิสท์และตั้งค่าต่างๆ)?"
     },
     "menu": {
         "library": "ไลบรารี่",
@@ -284,7 +284,7 @@
         "playListsText": "เพลย์ลิสต์",
         "openText": "เปิด",
         "closeText": "ปิด",
-        "notContentText": "ไม่มีเพลงอยู่",
+        "notContentText": "ไม่มีเพลง",
         "clickToPlayText": "คลิกเพื่อเล่น",
         "clickToPauseText": "คลิกเพื่อหยุด",
         "nextTrackText": "เพลงถัดไป",
@@ -313,9 +313,11 @@
         }
     },
     "activity": {
-        "title": "",
-        "totalScanned": "",
-        "quickScan": "",
-        "fullScan": ""
+        "title": "กิจกรรม",
+        "totalScanned": "โฟลเดอร์ทั้งหมด",
+        "quickScan": "Quick Scan",
+        "fullScan": "Full Scan",
+        "serverUptime": "เวลาออนไลน์",
+        "serverDown": "ออฟไลน์"
     }
 }
