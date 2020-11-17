@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"io/ioutil"
 	"time"
 
 	"github.com/deluan/navidrome/conf"
@@ -78,7 +77,7 @@ func (w *warmer) execute(workload interface{}) {
 	ctx := context.Background()
 	item := workload.(artworkItem)
 	log.Trace(ctx, "Pre-caching album artwork", "albumID", item.albumID)
-	err := w.artwork.Get(ctx, item.albumID, 0, ioutil.Discard)
+	_, err := w.artwork.Get(ctx, item.albumID, 0)
 	if err != nil {
 		log.Warn("Error pre-caching artwork from album", "id", item.albumID, err)
 	}

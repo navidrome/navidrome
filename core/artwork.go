@@ -10,6 +10,7 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -29,7 +30,7 @@ import (
 )
 
 type Artwork interface {
-	Get(ctx context.Context, id string, size int, out io.Writer) error
+	Get(ctx context.Context, id string, size int) (io.ReadCloser, error)
 }
 
 type ArtworkCache cache.FileCache
@@ -55,10 +56,10 @@ func (ci *imageInfo) Key() string {
 	return fmt.Sprintf("%s.%d.%s.%d", ci.path, ci.size, ci.lastUpdate.Format(time.RFC3339Nano), conf.Server.CoverJpegQuality)
 }
 
-func (a *artwork) Get(ctx context.Context, id string, size int, out io.Writer) error {
+func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
 	path, lastUpdate, err := a.getImagePath(ctx, id)
 	if err != nil && err != model.ErrNotFound {
-		return err
+		return nil, err
 	}
 
 	if !conf.Server.DevFastAccessCoverArt {
@@ -78,12 +79,9 @@ func (a *artwork) Get(ctx context.Context, id string, size int, out io.Writer) e
 	r, err := a.cache.Get(ctx, info)
 	if err != nil {
 		log.Error(ctx, "Error accessing image cache", "path", path, "size", size, err)
-		return err
+		return nil, err
 	}
-	defer r.Close()
-
-	_, err = io.Copy(out, r)
-	return err
+	return r, err
 }
 
 func (a *artwork) getImagePath(ctx context.Context, id string) (path string, lastUpdated time.Time, err error) {
@@ -126,7 +124,7 @@ func (a *artwork) getImagePath(ctx context.Context, id string) (path string, las
 	return a.getImagePath(ctx, "al-"+mf.AlbumID)
 }
 
-func (a *artwork) getArtwork(ctx context.Context, id string, path string, size int) (reader io.Reader, err error) {
+func (a *artwork) getArtwork(ctx context.Context, id string, path string, size int) (reader io.ReadCloser, err error) {
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
@@ -138,35 +136,28 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 		return nil, errors.New("empty path given for artwork")
 	}
 
-	var data []byte
-
 	if size == 0 {
 		// If requested original size, just read from the file
 		if utils.IsAudioFile(path) {
-			data, err = readFromTag(path)
+			reader, err = readFromTag(path)
 		} else {
-			data, err = readFromFile(path)
+			reader, err = readFromFile(path)
 		}
 	} else {
 		// If requested a resized image, get the original (possibly from cache) and resize it
-		buf := new(bytes.Buffer)
-		err = a.Get(ctx, id, 0, buf)
+		var r io.ReadCloser
+		r, err = a.Get(ctx, id, 0)
 		if err != nil {
 			return
 		}
-		data, err = resizeImage(buf, size)
-	}
-
-	// Confirm the image is valid. Costly, but necessary
-	_, _, err = image.Decode(bytes.NewReader(data))
-	if err == nil {
-		reader = bytes.NewReader(data)
+		defer r.Close()
+		reader, err = resizeImage(r, size)
 	}
 
 	return
 }
 
-func resizeImage(reader io.Reader, size int) ([]byte, error) {
+func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 	img, _, err := image.Decode(reader)
 	if err != nil {
 		return nil, err
@@ -174,10 +165,10 @@ func resizeImage(reader io.Reader, size int) ([]byte, error) {
 	m := imaging.Resize(img, size, size, imaging.Lanczos)
 	buf := new(bytes.Buffer)
 	err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
-	return buf.Bytes(), err
+	return ioutil.NopCloser(buf), err
 }
 
-func readFromTag(path string) ([]byte, error) {
+func readFromTag(path string) (io.ReadCloser, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -193,22 +184,11 @@ func readFromTag(path string) ([]byte, error) {
 	if picture == nil {
 		return nil, errors.New("file does not contain embedded art")
 	}
-	return picture.Data, nil
+	return ioutil.NopCloser(bytes.NewReader(picture.Data)), nil
 }
 
-func readFromFile(path string) ([]byte, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(f); err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
+func readFromFile(path string) (io.ReadCloser, error) {
+	return os.Open(path)
 }
 
 var (
