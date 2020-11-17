@@ -19,7 +19,8 @@
                 "updatedAt": "Ĝisdatigita je",
                 "bitRate": "Bitrapido",
                 "discSubtitle": "Diska Subteksto",
-                "starred": "Stela"
+                "starred": "Stela",
+                "comment": "Komento"
             },
             "actions": {
                 "addToQueue": "Ludi Poste",
@@ -42,7 +43,8 @@
                 "genre": "Genro",
                 "compilation": "Kompilaĵo",
                 "year": "Jaro",
-                "updatedAt": "Ĝisdatigita je :"
+                "updatedAt": "Ĝisdatigita je :",
+                "comment": "Komento"
             },
             "actions": {
                 "playAll": "Ludi",
@@ -309,5 +311,13 @@
             "source": "Fontkodo",
             "featureRequests": "Trajta peto"
         }
+    },
+    "activity": {
+        "title": "Aktiveco",
+        "totalScanned": "Entute dosierujoj skanitaj",
+        "quickScan": "Rapida Skanado",
+        "fullScan": "Plena Skanado",
+        "serverUptime": "Servila daŭro de funkciado",
+        "serverDown": "SENKONEKTA"
     }
 }
