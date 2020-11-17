@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bytes"
 	"context"
 	"image"
 	"io/ioutil"
@@ -42,102 +41,100 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("retrieves the external artwork art for an album", func() {
-			buf := new(bytes.Buffer)
+			r, err := artwork.Get(ctx, "al-444", 0)
+			Expect(err).To(BeNil())
 
-			Expect(artwork.Get(ctx, "al-444", 0, buf)).To(BeNil())
-
-			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
+			_, format, err := image.Decode(r)
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("jpeg"))
+			Expect(r.Close()).To(BeNil())
 		})
 
 		It("retrieves the embedded artwork art for an album", func() {
-			buf := new(bytes.Buffer)
+			r, err := artwork.Get(ctx, "al-222", 0)
+			Expect(err).To(BeNil())
 
-			Expect(artwork.Get(ctx, "al-222", 0, buf)).To(BeNil())
-
-			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
+			_, format, err := image.Decode(r)
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("jpeg"))
+			Expect(r.Close()).To(BeNil())
 		})
 
 		It("returns the default artwork if album does not have artwork", func() {
-			buf := new(bytes.Buffer)
+			r, err := artwork.Get(ctx, "al-333", 0)
+			Expect(err).To(BeNil())
 
-			Expect(artwork.Get(ctx, "al-333", 0, buf)).To(BeNil())
-
-			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
+			_, format, err := image.Decode(r)
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("png"))
+			Expect(r.Close()).To(BeNil())
 		})
 
 		It("returns the default artwork if album is not found", func() {
-			buf := new(bytes.Buffer)
+			r, err := artwork.Get(ctx, "al-0101", 0)
+			Expect(err).To(BeNil())
 
-			Expect(artwork.Get(ctx, "al-0101", 0, buf)).To(BeNil())
-
-			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
+			_, format, err := image.Decode(r)
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("png"))
+			Expect(r.Close()).To(BeNil())
 		})
 
 		It("retrieves the original artwork art from a media_file", func() {
-			buf := new(bytes.Buffer)
+			r, err := artwork.Get(ctx, "123", 0)
+			Expect(err).To(BeNil())
 
-			Expect(artwork.Get(ctx, "123", 0, buf)).To(BeNil())
-
-			img, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
+			img, format, err := image.Decode(r)
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("jpeg"))
 			Expect(img.Bounds().Size().X).To(Equal(600))
 			Expect(img.Bounds().Size().Y).To(Equal(600))
+			Expect(r.Close()).To(BeNil())
 		})
 
 		It("retrieves the album artwork art if media_file does not have one", func() {
-			buf := new(bytes.Buffer)
+			r, err := artwork.Get(ctx, "456", 0)
+			Expect(err).To(BeNil())
 
-			Expect(artwork.Get(ctx, "456", 0, buf)).To(BeNil())
-
-			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
+			_, format, err := image.Decode(r)
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("jpeg"))
+			Expect(r.Close()).To(BeNil())
 		})
 
 		It("retrieves the album artwork by album id", func() {
-			buf := new(bytes.Buffer)
+			r, err := artwork.Get(ctx, "222", 0)
+			Expect(err).To(BeNil())
 
-			Expect(artwork.Get(ctx, "222", 0, buf)).To(BeNil())
-
-			_, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
+			_, format, err := image.Decode(r)
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("jpeg"))
+			Expect(r.Close()).To(BeNil())
 		})
 
 		It("resized artwork art as requested", func() {
-			buf := new(bytes.Buffer)
+			r, err := artwork.Get(ctx, "123", 200)
+			Expect(err).To(BeNil())
 
-			Expect(artwork.Get(ctx, "123", 200, buf)).To(BeNil())
-
-			img, format, err := image.Decode(bytes.NewReader(buf.Bytes()))
+			img, format, err := image.Decode(r)
 			Expect(err).To(BeNil())
 			Expect(format).To(Equal("jpeg"))
 			Expect(img.Bounds().Size().X).To(Equal(200))
 			Expect(img.Bounds().Size().Y).To(Equal(200))
+			Expect(r.Close()).To(BeNil())
 		})
 
 		Context("Errors", func() {
 			It("returns err if gets error from album table", func() {
 				ds.Album(ctx).(*tests.MockAlbum).SetError(true)
-				buf := new(bytes.Buffer)
-
-				Expect(artwork.Get(ctx, "al-222", 0, buf)).To(MatchError("Error!"))
+				_, err := artwork.Get(ctx, "al-222", 0)
+				Expect(err).To(MatchError("Error!"))
 			})
 
 			It("returns err if gets error from media_file table", func() {
 				ds.MediaFile(ctx).(*tests.MockMediaFile).SetError(true)
-				buf := new(bytes.Buffer)
-
-				Expect(artwork.Get(ctx, "123", 0, buf)).To(MatchError("Error!"))
+				_, err := artwork.Get(ctx, "123", 0)
+				Expect(err).To(MatchError("Error!"))
 			})
 		})
 	})

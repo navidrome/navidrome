@@ -1,9 +1,11 @@
 package subsonic
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http/httptest"
 
 	"github.com/deluan/navidrome/model"
@@ -67,12 +69,11 @@ type fakeArtwork struct {
 	recvSize int
 }
 
-func (c *fakeArtwork) Get(ctx context.Context, id string, size int, out io.Writer) error {
+func (c *fakeArtwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
 	if c.err != nil {
-		return c.err
+		return nil, c.err
 	}
 	c.recvId = id
 	c.recvSize = size
-	_, err := out.Write([]byte(c.data))
-	return err
+	return ioutil.NopCloser(bytes.NewReader([]byte(c.data))), nil
 }

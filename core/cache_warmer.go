@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"io"
 	"io/ioutil"
 	"time"
 
@@ -78,10 +79,13 @@ func (w *warmer) execute(workload interface{}) {
 	ctx := context.Background()
 	item := workload.(artworkItem)
 	log.Trace(ctx, "Pre-caching album artwork", "albumID", item.albumID)
-	err := w.artwork.Get(ctx, item.albumID, 0, ioutil.Discard)
+	r, err := w.artwork.Get(ctx, item.albumID, 0)
 	if err != nil {
 		log.Warn("Error pre-caching artwork from album", "id", item.albumID, err)
+		return
 	}
+	defer r.Close()
+	_, _ = io.Copy(ioutil.Discard, r)
 }
 
 type artworkItem struct {
