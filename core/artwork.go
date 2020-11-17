@@ -149,9 +149,8 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 		}
 	} else {
 		// If requested a resized image, get the original (possibly from cache) and resize it
-		a2 := NewArtwork(a.ds, a.cache)
 		buf := new(bytes.Buffer)
-		err = a2.Get(ctx, id, 0, buf)
+		err = a.Get(ctx, id, 0, buf)
 		if err != nil {
 			return
 		}
@@ -202,8 +201,8 @@ func readFromFile(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	defer f.Close()
+
 	var buf bytes.Buffer
 	if _, err := buf.ReadFrom(f); err != nil {
 		return nil, err
