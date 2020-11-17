@@ -250,6 +250,12 @@ const Player = () => {
     [dispatch, dataProvider]
   )
 
+  const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
+    if (mode === 'full') {
+      window.location.href = `#/album/${audioInfo.albumId}/show`
+    }
+  }, [])
+
   const onBeforeDestroy = useCallback(() => {
     return new Promise((resolve, reject) => {
       dispatch(clearQueue())
@@ -272,6 +278,7 @@ const Player = () => {
       onAudioPause={onAudioPause}
       onAudioEnded={onAudioEnded}
       onAudioVolumeChange={onAudioVolumeChange}
+      onCoverClick={onCoverClick}
       onBeforeDestroy={onBeforeDestroy}
       getAudioInstance={(instance) => {
         audioInstance = instance
