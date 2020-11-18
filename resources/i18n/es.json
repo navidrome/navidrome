@@ -20,7 +20,7 @@
                 "bitRate": "Tasa de bits",
                 "discSubtitle": "Subtítulo del disco",
                 "starred": "Favorito",
-                "comment": ""
+                "comment": "Comentario"
             },
             "actions": {
                 "addToQueue": "Reproducir después",
@@ -44,7 +44,7 @@
                 "compilation": "Compilación",
                 "year": "Año",
                 "updatedAt": "Actualizado el",
-                "comment": ""
+                "comment": "Comentario"
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -313,9 +313,11 @@
         }
     },
     "activity": {
-        "title": "",
-        "totalScanned": "",
-        "quickScan": "",
-        "fullScan": ""
+        "title": "Actividad",
+        "totalScanned": "Total de carpetas escaneadas",
+        "quickScan": "Escaneo rápido",
+        "fullScan": "Escaneo completo",
+        "serverUptime": "Uptime del servidor",
+        "serverDown": "OFFLINE"
     }
 }
