@@ -36,6 +36,7 @@ func serveIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"enableDownloads":         conf.Server.EnableDownloads,
 			"devActivityMenu":         conf.Server.DevActivityMenu,
+			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 		}
 		j, err := json.Marshal(appConfig)
 		if err != nil {
