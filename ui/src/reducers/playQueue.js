@@ -2,6 +2,7 @@ import 'react-jinke-music-player/assets/index.css'
 import get from 'lodash.get'
 import { v4 as uuidv4 } from 'uuid'
 import subsonic from '../subsonic'
+import config from '../config'
 
 import {
   PLAYER_CLEAR_QUEUE,
@@ -25,8 +26,12 @@ const mapToAudioLists = (item) => {
     albumId: item.albumId,
     artistId: item.albumArtistId,
     duration: item.duration,
-    cover: subsonic.url('getCoverArt', id, { size: 300 }),
     musicSrc: subsonic.url('stream', id, { ts: true }),
+    cover: subsonic.url(
+      'getCoverArt',
+      config.devFastAccessCoverArt ? item.albumId : id,
+      { size: 300 }
+    ),
     scrobbled: false,
     uuid: uuidv4(),
   }

@@ -11,6 +11,7 @@ const defaultConfig = {
   welcomeMessage: '',
   gaTrackingId: '',
   devActivityMenu: true,
+  devFastAccessCoverArt: false,
 }
 
 let config
