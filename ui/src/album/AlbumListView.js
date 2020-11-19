@@ -1,9 +1,7 @@
-import React, { cloneElement, isValidElement, useState } from 'react'
+import React from 'react'
 import {
   BooleanField,
   Datagrid,
-  DatagridBody,
-  DatagridRow,
   DateField,
   NumberField,
   Show,
@@ -29,6 +27,16 @@ const useStyles = makeStyles({
     marginTop: '-2px',
     verticalAlign: 'text-top',
   },
+  row: {
+    '&:hover': {
+      '& $contextMenu': {
+        visibility: 'visible',
+      },
+    },
+  },
+  contextMenu: {
+    visibility: 'hidden',
+  },
 })
 
 const AlbumDetails = (props) => {
@@ -47,37 +55,6 @@ const AlbumDetails = (props) => {
     </Show>
   )
 }
-
-const AlbumDatagridRow = ({ children, ...rest }) => {
-  const [visible, setVisible] = useState(false)
-  const childCount = React.Children.count(children)
-  return (
-    <DatagridRow
-      onMouseEnter={() => setVisible(true)}
-      onMouseLeave={() => setVisible(false)}
-      {...rest}
-    >
-      {React.Children.map(
-        children,
-        (child, index) =>
-          child &&
-          isValidElement(child) &&
-          (index < childCount - 1
-            ? child
-            : cloneElement(child, {
-                visible,
-              }))
-      )}
-    </DatagridRow>
-  )
-}
-
-const AlbumDatagridBody = (props) => (
-  <DatagridBody {...props} row={<AlbumDatagridRow />} />
-)
-const AlbumDatagrid = (props) => (
-  <Datagrid {...props} body={<AlbumDatagridBody />} />
-)
 
 const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
   const classes = useStyles()
@@ -98,7 +75,12 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
       {...rest}
     />
   ) : (
-    <AlbumDatagrid expand={<AlbumDetails />} rowClick={'show'} {...rest}>
+    <Datagrid
+      expand={<AlbumDetails />}
+      rowClick={'show'}
+      classes={{ row: classes.row }}
+      {...rest}
+    >
       <TextField source="name" />
       <ArtistLinkField source="artist" />
       {isDesktop && <NumberField source="songCount" sortByOrder={'DESC'} />}
@@ -109,11 +91,13 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
         sortByOrder={'DESC'}
+        className={classes.contextMenu}
         label={
           <StarBorderIcon fontSize={'small'} className={classes.columnIcon} />
         }
+        textAlign={'right'}
       />
-    </AlbumDatagrid>
+    </Datagrid>
   )
 }
 

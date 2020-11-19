@@ -7,6 +7,7 @@ import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, useNotify, useTranslate } from 'react-admin'
+import clsx from 'clsx'
 import {
   playNext,
   addTracks,
@@ -25,7 +26,6 @@ const useStyles = makeStyles({
   },
   menu: {
     color: (props) => props.color,
-    visibility: (props) => (props.visible ? 'visible' : 'hidden'),
   },
 })
 
@@ -34,10 +34,10 @@ const ContextMenu = ({
   showStar,
   record,
   color,
-  visible,
+  className,
   songQueryParams,
 }) => {
-  const classes = useStyles({ color, visible })
+  const classes = useStyles({ color })
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const translate = useTranslate()
@@ -129,11 +129,11 @@ const ContextMenu = ({
   const open = Boolean(anchorEl)
 
   return (
-    <span className={classes.noWrap}>
+    <span className={clsx(classes.noWrap, className)}>
       <StarButton
         record={record}
         resource={resource}
-        visible={visible && showStar}
+        visible={showStar}
         color={color}
       />
       <IconButton
@@ -181,13 +181,11 @@ export const AlbumContextMenu = (props) => (
 AlbumContextMenu.propTypes = {
   record: PropTypes.object,
   discNumber: PropTypes.number,
-  visible: PropTypes.bool,
   color: PropTypes.string,
   showStar: PropTypes.bool,
 }
 
 AlbumContextMenu.defaultProps = {
-  visible: true,
   showStar: true,
   addLabel: true,
 }
@@ -206,13 +204,11 @@ export const ArtistContextMenu = (props) => (
 
 ArtistContextMenu.propTypes = {
   record: PropTypes.object,
-  visible: PropTypes.bool,
   color: PropTypes.string,
   showStar: PropTypes.bool,
 }
 
 ArtistContextMenu.defaultProps = {
-  visible: true,
   showStar: true,
   addLabel: true,
 }
