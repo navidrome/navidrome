@@ -138,6 +138,9 @@ export const SongDatagrid = ({
   )
 
   const firstTracks = useMemo(() => {
+    if (!ids) {
+      return new Set()
+    }
     const set = new Set(
       ids
         .filter((i) => data[i])
