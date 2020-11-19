@@ -1,9 +1,7 @@
-import React, { cloneElement, isValidElement, useState } from 'react'
+import React from 'react'
 import { useHistory } from 'react-router-dom'
 import {
   Datagrid,
-  DatagridBody,
-  DatagridRow,
   Filter,
   NumberField,
   SearchInput,
@@ -28,6 +26,16 @@ const useStyles = makeStyles({
     marginTop: '-2px',
     verticalAlign: 'text-top',
   },
+  row: {
+    '&:hover': {
+      '& $contextMenu': {
+        visibility: 'visible',
+      },
+    },
+  },
+  contextMenu: {
+    visibility: 'hidden',
+  },
 })
 
 const ArtistFilter = (props) => (
@@ -39,37 +47,6 @@ const ArtistFilter = (props) => (
       defaultValue={true}
     />
   </Filter>
-)
-
-const ArtistDatagridRow = ({ children, ...rest }) => {
-  const [visible, setVisible] = useState(false)
-  const childCount = React.Children.count(children)
-  return (
-    <DatagridRow
-      onMouseEnter={() => setVisible(true)}
-      onMouseLeave={() => setVisible(false)}
-      {...rest}
-    >
-      {React.Children.map(
-        children,
-        (child, index) =>
-          child &&
-          isValidElement(child) &&
-          (index < childCount - 1
-            ? child
-            : cloneElement(child, {
-                visible,
-              }))
-      )}
-    </DatagridRow>
-  )
-}
-
-const ArtistDatagridBody = (props) => (
-  <DatagridBody {...props} row={<ArtistDatagridRow />} />
-)
-const ArtistDatagrid = (props) => (
-  <Datagrid {...props} body={<ArtistDatagridBody />} />
 )
 
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
@@ -87,7 +64,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
       {...rest}
     />
   ) : (
-    <ArtistDatagrid rowClick={handleArtistLink}>
+    <Datagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
       <TextField source="name" />
       <NumberField source="albumCount" sortByOrder={'DESC'} />
       <NumberField source="songCount" sortByOrder={'DESC'} />
@@ -96,11 +73,13 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
         sortByOrder={'DESC'}
+        className={classes.contextMenu}
         label={
           <StarBorderIcon fontSize={'small'} className={classes.columnIcon} />
         }
+        textAlign={'right'}
       />
-    </ArtistDatagrid>
+    </Datagrid>
   )
 }
 
