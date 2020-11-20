@@ -10,7 +10,7 @@ export const settingsReducer = (previousState = initialState, payload) => {
     case SET_NOTIFICATIONS_STATE:
       return {
         ...previousState,
-        notifications: data
+        notifications: data,
       }
     default:
       return previousState
