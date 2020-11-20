@@ -18,6 +18,7 @@ import themes from '../themes'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { sendNotification, baseUrl } from '../utils'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
@@ -54,6 +55,7 @@ const Player = () => {
   const queue = useSelector((state) => state.queue)
   const current = queue.current || {}
   const { authenticated } = useAuthState()
+  const showNotifications = useSelector((state) => state.settings.notifications || false)
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
@@ -230,9 +232,12 @@ const Player = () => {
             label: `${info.name} - ${info.singer}`,
           })
         }
+        if (showNotifications) {
+          sendNotification(info.name, `${info.singer} - ${info.album}`, baseUrl(info.cover))
+        }
       }
     },
-    [dispatch]
+    [dispatch, showNotifications]
   )
 
   const onAudioPause = useCallback(

@@ -262,7 +262,8 @@
         "songsAddedToPlaylist": "Added 1 song to playlist |||| Added %{smart_count} songs to playlist",
         "noPlaylistsAvailable": "None available",
         "delete_user_title": "Delete user '%{name}'",
-        "delete_user_content": "Are you sure you want to delete this user and all their data (including playlists and preferences)?"
+        "delete_user_content": "Are you sure you want to delete this user and all their data (including playlists and preferences)?",
+        "notifications_blocked": "You have blocked Notifications for this site in your browser's settings or your browser does not support notifications."
     },
     "menu": {
         "library": "Library",
@@ -274,7 +275,8 @@
             "options": {
                 "theme": "Theme",
                 "language": "Language",
-                "defaultView": "Default View"
+                "defaultView": "Default View",
+                "desktop_notifications": "Desktop Notifications"
             }
         },
         "albumList": "Albums",
