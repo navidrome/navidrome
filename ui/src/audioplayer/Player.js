@@ -55,7 +55,9 @@ const Player = () => {
   const queue = useSelector((state) => state.queue)
   const current = queue.current || {}
   const { authenticated } = useAuthState()
-  const showNotifications = useSelector((state) => state.settings.notifications || false)
+  const showNotifications = useSelector(
+    (state) => state.settings.notifications || false
+  )
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
@@ -233,7 +235,11 @@ const Player = () => {
           })
         }
         if (showNotifications) {
-          sendNotification(info.name, `${info.singer} - ${info.album}`, baseUrl(info.cover))
+          sendNotification(
+            info.name,
+            `${info.singer} - ${info.album}`,
+            baseUrl(info.cover)
+          )
         }
       }
     },
