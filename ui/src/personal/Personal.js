@@ -13,10 +13,7 @@ import {
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
-import { 
-  changeTheme,
-  setNotificationsState,
-} from '../actions'
+import { changeTheme, setNotificationsState } from '../actions'
 import themes from '../themes'
 import { docsUrl } from '../utils'
 import { useGetLanguageChoices } from '../i18n'
@@ -130,7 +127,7 @@ const NotificationsToggle = (props) => {
   const notify = useNotify()
   const currentSetting = useSelector((state) => state.settings.notifications)
   const current = (() => {
-    if (!("Notification" in window) || Notification.permission !== 'granted') {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
       return false
     }
     return currentSetting
@@ -139,12 +136,15 @@ const NotificationsToggle = (props) => {
   return (
     <BooleanInput
       {...props}
-      source='notifications'
+      source="notifications"
       label={translate('menu.personal.options.desktop_notifications')}
       defaultValue={current}
       onChange={async (notificationsEnabled) => {
         if (notificationsEnabled) {
-          if (!('Notification' in window) || Notification.permission === 'denied') {
+          if (
+            !('Notification' in window) ||
+            Notification.permission === 'denied'
+          ) {
             notify(translate('message.notifications_blocked'), 'warning')
             notificationsEnabled = false
           } else {
