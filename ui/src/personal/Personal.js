@@ -8,10 +8,15 @@ import {
   useLocale,
   useSetLocale,
   useTranslate,
+  BooleanInput,
+  useNotify,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
-import { changeTheme } from '../actions'
+import { 
+  changeTheme,
+  setNotificationsState,
+} from '../actions'
 import themes from '../themes'
 import { docsUrl } from '../utils'
 import { useGetLanguageChoices } from '../i18n'
@@ -119,6 +124,45 @@ const SelectDefaultView = (props) => {
   )
 }
 
+const NotificationsToggle = (props) => {
+  const translate = useTranslate()
+  const dispatch = useDispatch()
+  const notify = useNotify()
+  const currentSetting = useSelector((state) => state.settings.notifications)
+  const current = (() => {
+    if (!("Notification" in window) || Notification.permission !== 'granted') {
+      return false
+    }
+    return currentSetting
+  })()
+
+  return (
+    <BooleanInput
+      {...props}
+      source='notifications'
+      label={translate('menu.personal.options.desktop_notifications')}
+      defaultValue={current}
+      onChange={async (notificationsEnabled) => {
+        if (notificationsEnabled) {
+          if (!('Notification' in window) || Notification.permission === 'denied') {
+            notify(translate('message.notifications_blocked'), 'warning')
+            notificationsEnabled = false
+          } else {
+            const response = await Notification.requestPermission()
+            if (response !== 'granted') {
+              notificationsEnabled = false
+            }
+          }
+          if (!notificationsEnabled) {
+            // Need to turn switch off
+          }
+        }
+        dispatch(setNotificationsState(notificationsEnabled))
+      }}
+    />
+  )
+}
+
 const Personal = () => {
   const translate = useTranslate()
   const classes = useStyles()
@@ -130,6 +174,7 @@ const Personal = () => {
         <SelectTheme />
         <SelectLanguage />
         <SelectDefaultView />
+        <NotificationsToggle />
       </SimpleForm>
     </Card>
   )

@@ -50,6 +50,7 @@ export default ({
         theme: state.theme,
         queue: pick(state.queue, ['queue', 'volume']),
         albumView: state.albumView,
+        settings: state.settings,
       })
     }),
     1000

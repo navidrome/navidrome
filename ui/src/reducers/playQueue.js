@@ -23,6 +23,7 @@ const mapToAudioLists = (item) => {
     trackId: id,
     name: item.title,
     singer: item.artist,
+    album: item.album,
     albumId: item.albumId,
     artistId: item.albumArtistId,
     duration: item.duration,
