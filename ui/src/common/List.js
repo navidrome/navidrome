@@ -3,6 +3,8 @@ import { List as RAList } from 'react-admin'
 import { Pagination } from './Pagination'
 import { Title } from './index'
 
+export const LIST_PER_PAGE_DEFAULT = 15
+
 export const List = (props) => {
   const { resource } = props
   return (
@@ -13,7 +15,7 @@ export const List = (props) => {
           args={{ smart_count: 2 }}
         />
       }
-      perPage={15}
+      perPage={LIST_PER_PAGE_DEFAULT}
       pagination={<Pagination />}
       {...props}
     />
