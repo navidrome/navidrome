@@ -50,7 +50,7 @@
                 "playAll": "Riproduci",
                 "playNext": "Riproduci come successivo",
                 "addToQueue": "Aggiungi alla coda",
-                "shuffle": "Riprodici casualmente",
+                "shuffle": "Riproduci casualmente",
                 "addToPlaylist": "Aggiungi alla Playlist",
                 "download": "Scarica"
             },
@@ -92,7 +92,7 @@
                 "maxBitRate": "Bitrate massimo",
                 "client": "Applicazione",
                 "userName": "Nome utente",
-                "lastSeen": "Ultimo acesso"
+                "lastSeen": "Ultimo accesso"
             }
         },
         "transcoding": {
@@ -217,7 +217,7 @@
         },
         "message": {
             "about": "Informazioni",
-            "are_you_sure": "Sei sicuro ?",
+            "are_you_sure": "Sei sicuro?",
             "bulk_delete_content": "Sei sicuro di voler rimuovere questo %{name}? |||| Sei sicuro di voler rimuovere questi %{smart_count} elementi?",
             "bulk_delete_title": "Rimuovi %{name} |||| Rimuovi %{smart_count} %{name}",
             "delete_content": "Sei sicuro di voler eliminare questo elemento?",
