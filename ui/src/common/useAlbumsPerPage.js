@@ -4,7 +4,7 @@ import get from 'lodash.get'
 const getPerPage = (width) => {
   if (width === 'xs') return 12
   if (width === 'sm') return 12
-  if (width === 'md') return 15
+  if (width === 'md') return 12
   if (width === 'lg') return 18
   return 36
 }
