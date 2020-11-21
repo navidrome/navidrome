@@ -1,6 +1,3 @@
-import { useSelector } from 'react-redux'
-import get from 'lodash.get'
-
 const getPerPage = (width) => {
   if (width === 'xs') return 12
   if (width === 'sm') return 12
@@ -18,10 +15,5 @@ const getPerPageOptions = (width) => {
 }
 
 export const useAlbumsPerPage = (width) => {
-  const perPage =
-    useSelector((state) =>
-      get(state.admin.resources, ['album', 'list', 'params', 'perPage'])
-    ) || getPerPage(width)
-
-  return [perPage, getPerPageOptions(width)]
+  return [getPerPage(width), getPerPageOptions(width)]
 }
