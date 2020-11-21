@@ -41,12 +41,7 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
   const label = translate('menu.about')
   return (
     <>
-      <MenuItem
-        ref={ref}
-        onClick={handleOpen}
-        className={classes.root}
-        activeClassName={classes.active}
-      >
+      <MenuItem ref={ref} onClick={handleOpen} className={classes.root}>
         <ListItemIcon className={classes.icon}>
           <InfoIcon titleAccess={label} />
         </ListItemIcon>
