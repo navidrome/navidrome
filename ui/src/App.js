@@ -26,7 +26,7 @@ import {
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
-import { startEventStream } from './eventStream'
+import { setDispatch, startEventStream } from './eventStream'
 
 const history = createHashHistory()
 
@@ -60,7 +60,11 @@ const App = () => (
 const Admin = (props) => {
   const dispatch = useDispatch()
   if (config.devActivityMenu) {
-    startEventStream(dispatch)
+    setDispatch(dispatch)
+    authProvider
+      .checkAuth()
+      .then(() => startEventStream())
+      .catch(() => {}) // ignore if not logged in
   }
 
   return (
