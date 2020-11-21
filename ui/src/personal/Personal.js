@@ -1,15 +1,20 @@
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Card } from '@material-ui/core'
+import {
+  Card,
+  FormControl,
+  FormHelperText,
+  FormControlLabel,
+  Switch,
+} from '@material-ui/core'
 import {
   SelectInput,
   SimpleForm,
   Title,
   useLocale,
+  useNotify,
   useSetLocale,
   useTranslate,
-  BooleanInput,
-  useNotify,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
@@ -121,45 +126,58 @@ const SelectDefaultView = (props) => {
   )
 }
 
-const NotificationsToggle = (props) => {
+const NotificationsToggle = () => {
   const translate = useTranslate()
   const dispatch = useDispatch()
   const notify = useNotify()
   const currentSetting = useSelector((state) => state.settings.notifications)
-  const current = (() => {
-    if (!('Notification' in window) || Notification.permission !== 'granted') {
-      return false
+  const notAvailable = !('Notification' in window)
+
+  if (
+    (currentSetting && Notification.permission !== 'granted') ||
+    notAvailable
+  ) {
+    dispatch(setNotificationsState(false))
+  }
+
+  const toggleNotifications = (event) => {
+    if (currentSetting && !event.target.checked) {
+      dispatch(setNotificationsState(false))
+    } else {
+      if (Notification.permission === 'denied') {
+        notify(translate('message.notifications_blocked'), 'warning')
+      } else {
+        Notification.requestPermission().then((permission) => {
+          dispatch(setNotificationsState(permission === 'granted'))
+        })
+      }
     }
-    return currentSetting
-  })()
+  }
 
   return (
-    <BooleanInput
-      {...props}
-      source="notifications"
-      label={translate('menu.personal.options.desktop_notifications')}
-      defaultValue={current}
-      onChange={async (notificationsEnabled) => {
-        if (notificationsEnabled) {
-          if (
-            !('Notification' in window) ||
-            Notification.permission === 'denied'
-          ) {
-            notify(translate('message.notifications_blocked'), 'warning')
-            notificationsEnabled = false
-          } else {
-            const response = await Notification.requestPermission()
-            if (response !== 'granted') {
-              notificationsEnabled = false
-            }
-          }
-          if (!notificationsEnabled) {
-            // Need to turn switch off
-          }
+    <FormControl>
+      <FormControlLabel
+        control={
+          <Switch
+            id={'notifications'}
+            color="primary"
+            checked={currentSetting}
+            disabled={notAvailable}
+            onChange={toggleNotifications}
+          />
         }
-        dispatch(setNotificationsState(notificationsEnabled))
-      }}
-    />
+        label={
+          <span>
+            {translate('menu.personal.options.desktop_notifications')}
+          </span>
+        }
+      />
+      {notAvailable && (
+        <FormHelperText id="notifications-disabled-helper-text">
+          {translate('message.notifications_not_available')}
+        </FormHelperText>
+      )}
+    </FormControl>
   )
 }
 
