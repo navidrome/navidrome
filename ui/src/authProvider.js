@@ -1,8 +1,9 @@
 import jwtDecode from 'jwt-decode'
 import md5 from 'md5-hex'
+import { v4 as uuidv4 } from 'uuid'
 import { baseUrl } from './utils'
 import config from './config'
-import { v4 as uuidv4 } from 'uuid'
+import { startEventStream, stopEventStream } from './eventStream'
 
 const authProvider = {
   login: ({ username, password }) => {
@@ -38,6 +39,9 @@ const authProvider = {
         )
         // Avoid going to create admin dialog after logout/login without a refresh
         config.firstTime = false
+        startEventStream().catch((e) =>
+          console.log('error setting up event stream:', e)
+        )
         return response
       })
       .catch((error) => {
@@ -53,6 +57,7 @@ const authProvider = {
   },
 
   logout: () => {
+    stopEventStream()
     removeItems()
     return Promise.resolve()
   },

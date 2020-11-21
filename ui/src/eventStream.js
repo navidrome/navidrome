@@ -1,19 +1,24 @@
 import { baseUrl } from './utils'
 import throttle from 'lodash.throttle'
 import { processEvent, serverDown } from './actions'
+import { httpClient } from './dataProvider'
+import { REST_URL } from './consts'
 
-let es = null
-let dispatch = null
-let timeout = null
 const defaultIntervalCheck = 20000
 const reconnectIntervalCheck = 2000
 let currentIntervalCheck = reconnectIntervalCheck
+let es = null
+let dispatch = null
+let timeout = null
 
-const getEventStream = () => {
+const getEventStream = async () => {
   if (es === null) {
-    es = new EventSource(
-      baseUrl(`/app/api/events?jwt=${localStorage.getItem('token')}`)
-    )
+    return httpClient(`${REST_URL}/keepalive/`).then(() => {
+      es = new EventSource(
+        baseUrl(`/app/api/events?jwt=${localStorage.getItem('token')}`)
+      )
+      return es
+    })
   }
   return es
 }
@@ -33,29 +38,45 @@ const setTimeout = (value) => {
   }, currentIntervalCheck)
 }
 
-export const startEventStream = (dispatchFunc) => {
+const stopEventStream = () => {
+  if (es) {
+    es.close()
+  }
+  es = null
+  if (timeout != null) {
+    window.clearTimeout(timeout)
+  }
+  timeout = null
+}
+
+const setDispatch = (dispatchFunc) => {
   dispatch = dispatchFunc
+}
+
+const startEventStream = async () => {
   setTimeout(currentIntervalCheck)
   if (!localStorage.getItem('token')) {
     console.log('Cannot create a unauthenticated EventSource connection')
     return
   }
-  const es = getEventStream()
-  es.onmessage = throttle(
-    (msg) => {
-      const data = JSON.parse(msg.data)
-      if (data.name !== 'keepAlive') {
-        dispatch(processEvent(data))
-      }
-      setTimeout(defaultIntervalCheck) // Reset timeout on every received message
-    },
-    100,
-    { trailing: true }
-  )
-  es.onerror = (e) => {
-    setTimeout(reconnectIntervalCheck)
-    dispatch(serverDown())
-  }
-
-  return es
+  getEventStream().then((newStream) => {
+    newStream.onmessage = throttle(
+      (msg) => {
+        const data = JSON.parse(msg.data)
+        if (data.name !== 'keepAlive') {
+          dispatch(processEvent(data))
+        }
+        setTimeout(defaultIntervalCheck) // Reset timeout on every received message
+      },
+      100,
+      { trailing: true }
+    )
+    newStream.onerror = (e) => {
+      setTimeout(reconnectIntervalCheck)
+      dispatch(serverDown())
+    }
+    es = newStream
+  })
 }
+
+export { setDispatch, startEventStream, stopEventStream }
