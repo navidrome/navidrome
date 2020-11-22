@@ -168,8 +168,12 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 		case error:
 			logger = logger.WithField("error", name.Error())
 		case string:
-			value := keyValuePairs[i+1]
-			logger = logger.WithField(name, value)
+			if i+1 >= len(keyValuePairs) {
+				logger = logger.WithField(name, "!!!!Invalid number of arguments in log call!!!!")
+			} else {
+				value := keyValuePairs[i+1]
+				logger = logger.WithField(name, value)
+			}
 		}
 	}
 	return logger
