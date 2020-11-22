@@ -63,10 +63,11 @@ const useStyles = makeStyles((theme) => ({
     },
   },
   cover: {
+    objectFit: 'contain',
     cursor: 'pointer',
     display: 'block',
     width: '100%',
-    height: 'auto',
+    height: '100%',
   },
   starButton: {
     top: theme.spacing(-0.2),
