@@ -49,7 +49,7 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 		log.Info("Finished initializing cache", "cache", fc.name, "maxSize", fc.cacheSize, "elapsedTime", time.Since(start))
 		fc.ready = true
 		if fc.disabled {
-			log.Debug("Cache DISABLED", "cache", fc.name, "size")
+			log.Debug("Cache DISABLED", "cache", fc.name, "size", fc.cacheSize)
 		}
 	}()
 
