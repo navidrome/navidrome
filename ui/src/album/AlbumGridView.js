@@ -77,7 +77,7 @@ const useCoverStyles = makeStyles({
   cover: {
     display: 'inline-block',
     width: '100%',
-    'object-fit': 'contain',
+    objectFit: 'contain',
     height: (props) => props.height,
   },
 })
