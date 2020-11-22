@@ -171,7 +171,16 @@ func resizeImage(reader io.Reader, size int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := imaging.Resize(img, size, size, imaging.Lanczos)
+
+	// Preserve the aspect ratio of the image.
+	var m *image.NRGBA
+	bounds := img.Bounds()
+	if bounds.Max.X > bounds.Max.Y {
+		m = imaging.Resize(img, size, 0, imaging.Lanczos)
+	} else {
+		m = imaging.Resize(img, 0, size, imaging.Lanczos)
+	}
+
 	buf := new(bytes.Buffer)
 	err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
 	return buf.Bytes(), err
