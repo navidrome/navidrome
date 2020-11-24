@@ -110,6 +110,7 @@ const Admin = (props) => {
         <Resource name="albumSong" />,
         <Resource name="translation" />,
         <Resource name="playlistTrack" />,
+        <Resource name="keepalive" />,
 
         <Player />,
       ]}

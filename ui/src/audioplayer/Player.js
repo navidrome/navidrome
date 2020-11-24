@@ -256,7 +256,9 @@ const Player = () => {
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
       dispatch(currentPlaying(info))
-      dataProvider.getOne('keepalive', { id: info.trackId })
+      dataProvider
+        .getOne('keepalive', { id: info.trackId })
+        .catch((e) => console.log('Keepalive error:', e))
     },
     [dispatch, dataProvider]
   )
