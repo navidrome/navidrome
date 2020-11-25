@@ -61,7 +61,7 @@ const App = () => (
 
 const Admin = (props) => {
   const dispatch = useDispatch()
-  if (config.devActivityMenu) {
+  if (config.devActivityPanel) {
     setDispatch(dispatch)
     authProvider
       .checkAuth()
