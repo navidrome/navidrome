@@ -24,6 +24,15 @@ const useStyle = makeStyles((theme) => ({
   audioTitle: {
     textDecoration: 'none',
     color: theme.palette.primary.light,
+    '&.songTitle': {
+      fontWeight: 'bold',
+    },
+    '&.songInfo': {
+      // 768 is where the player swaps views
+      [theme.breakpoints.down(769)]: {
+        display: 'none',
+      },
+    },
   },
   player: {
     display: (props) => (props.visible ? 'block' : 'none'),
@@ -37,10 +46,17 @@ const audioTitle = (audioInfo) => {
 }
 
 const AudioTitle = ({ audioInfo, className }) => {
-  const title = audioTitle(audioInfo)
+  if (!audioInfo.name) {
+    return ''
+  }
+
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
-      {title}
+      <span className={`${className} songTitle`}>{audioInfo.name}</span>
+      <br />
+      <span className={`${className} songInfo`}>
+        {`${audioInfo.singer} - ${audioInfo.album}`}
+      </span>
     </Link>
   )
 }
