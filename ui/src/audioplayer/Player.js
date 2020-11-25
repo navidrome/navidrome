@@ -41,10 +41,6 @@ const useStyle = makeStyles((theme) => ({
 
 let audioInstance = null
 
-const audioTitle = (audioInfo) => {
-  return audioInfo.name ? `${audioInfo.name} - ${audioInfo.singer}` : ''
-}
-
 const AudioTitle = ({ audioInfo, className }) => {
   if (!audioInfo.name) {
     return ''
@@ -167,7 +163,6 @@ const Player = () => {
       destroyText: translate('player.destroyText'),
       downloadText: translate('player.downloadText'),
       removeAudioListsText: translate('player.removeAudioListsText'),
-      audioTitle: audioTitle,
       clickToDeleteText: (name) =>
         translate('player.clickToDeleteText', { name }),
       emptyLyricText: translate('player.emptyLyricText'),
