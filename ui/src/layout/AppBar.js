@@ -85,7 +85,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
-      {config.devActivityMenu && permissions === 'admin' && <ActivityPanel />}
+      {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
         <Divider />
