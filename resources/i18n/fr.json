@@ -316,6 +316,8 @@
         "title": "Activité",
         "totalScanned": "Nombre total de dossier scannés",
         "quickScan": "Scan rapide",
-        "fullScan": "Scan complet"
+        "fullScan": "Scan complet",
+        "serverUptime": "Disponibilité du serveur",
+        "serverDown": "HORS LIGNE"
     }
 }
