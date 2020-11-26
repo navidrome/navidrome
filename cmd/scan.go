@@ -4,6 +4,7 @@ import (
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 var fullRescan bool
@@ -26,7 +27,7 @@ func runScanner() {
 	conf.Server.DevPreCacheAlbumArtwork = false
 
 	scanner := GetScanner()
-	_ = scanner.RescanAll(fullRescan)
+	_ = scanner.RescanAll(context.Background(), fullRescan)
 	if fullRescan {
 		log.Info("Finished full rescan")
 	} else {
