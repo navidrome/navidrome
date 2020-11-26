@@ -14,13 +14,7 @@ import {
 } from 'react-admin'
 import StarIcon from '@material-ui/icons/Star'
 import { withWidth } from '@material-ui/core'
-import {
-  List,
-  LIST_PER_PAGE_DEFAULT,
-  QuickFilter,
-  Title,
-  useAlbumsPerPage,
-} from '../common'
+import { List, QuickFilter, Title, useAlbumsPerPage } from '../common'
 import AlbumListActions from './AlbumListActions'
 import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
@@ -69,24 +63,11 @@ const AlbumList = (props) => {
   const albumView = useSelector((state) => state.albumView)
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
-  let paginationProps
-  const queryListParams = {
-    perPage: LIST_PER_PAGE_DEFAULT,
-  }
-
-  if (albumView.grid) {
-    paginationProps = {
-      perPage: perPage,
-      pagination: <Pagination rowsPerPageOptions={perPageOptions} />,
-    }
-
-    queryListParams.perPage = perPage
-  }
 
   const [query] = useListParams({
     resource,
     location,
-    ...queryListParams,
+    perPage,
   })
   const isArtistView = !!(query.filter && query.filter.artist_id)
 
@@ -113,7 +94,8 @@ const AlbumList = (props) => {
         bulkActionButtons={false}
         actions={<AlbumListActions />}
         filters={<AlbumFilter />}
-        {...paginationProps}
+        perPage={perPage}
+        pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.grid ? (
