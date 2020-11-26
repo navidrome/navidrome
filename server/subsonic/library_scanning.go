@@ -39,7 +39,8 @@ func (c *LibraryScanningController) GetScanStatus(w http.ResponseWriter, r *http
 }
 
 func (c *LibraryScanningController) StartScan(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	loggedUser, ok := request.UserFrom(r.Context())
+	ctx := r.Context()
+	loggedUser, ok := request.UserFrom(ctx)
 	if !ok {
 		return nil, newError(responses.ErrorGeneric, "Internal error")
 	}
@@ -51,9 +52,9 @@ func (c *LibraryScanningController) StartScan(w http.ResponseWriter, r *http.Req
 	fullScan := utils.ParamBool(r, "fullScan", false)
 
 	go func() {
-		err := c.scanner.RescanAll(fullScan)
+		err := c.scanner.RescanAll(ctx, fullScan)
 		if err != nil {
-			log.Error(r.Context(), err)
+			log.Error(ctx, err)
 		}
 	}()
 
