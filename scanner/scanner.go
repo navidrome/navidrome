@@ -18,7 +18,7 @@ import (
 type Scanner interface {
 	Start(interval time.Duration)
 	Stop()
-	RescanAll(fullRescan bool) error
+	RescanAll(ctx context.Context, fullRescan bool) error
 	Status(mediaFolder string) (*StatusInfo, error)
 	Scanning() bool
 }
@@ -79,7 +79,7 @@ func (s *scanner) Start(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
-		err := s.RescanAll(false)
+		err := s.RescanAll(context.Background(), false)
 		if err != nil {
 			log.Error(err)
 		}
@@ -96,7 +96,7 @@ func (s *scanner) Stop() {
 	s.done <- true
 }
 
-func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
+func (s *scanner) rescan(ctx context.Context, mediaFolder string, fullRescan bool) error {
 	folderScanner := s.folders[mediaFolder]
 	start := time.Now()
 
@@ -105,16 +105,16 @@ func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
 
 	lastModifiedSince := time.Time{}
 	if !fullRescan {
-		lastModifiedSince = s.getLastModifiedSince(mediaFolder)
+		lastModifiedSince = s.getLastModifiedSince(ctx, mediaFolder)
 		log.Debug("Scanning folder", "folder", mediaFolder, "lastModifiedSince", lastModifiedSince)
 	} else {
 		log.Debug("Scanning folder (full scan)", "folder", mediaFolder)
 	}
 
-	progress := s.startProgressTracker(mediaFolder)
-	defer close(progress)
+	progress, cancel := s.startProgressTracker(mediaFolder)
+	defer cancel()
 
-	err := folderScanner.Scan(log.NewContext(context.TODO()), lastModifiedSince, progress)
+	err := folderScanner.Scan(ctx, lastModifiedSince, progress)
 	if err != nil {
 		log.Error("Error importing MediaFolder", "folder", mediaFolder, err)
 	}
@@ -123,7 +123,8 @@ func (s *scanner) rescan(mediaFolder string, fullRescan bool) error {
 	return err
 }
 
-func (s *scanner) startProgressTracker(mediaFolder string) chan uint32 {
+func (s *scanner) startProgressTracker(mediaFolder string) (chan uint32, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
 	progress := make(chan uint32, 100)
 	go func() {
 		s.broker.SendMessage(&events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
@@ -135,25 +136,26 @@ func (s *scanner) startProgressTracker(mediaFolder string) chan uint32 {
 			})
 		}()
 		for {
-			count, more := <-progress
-			if !more {
-				break
+			select {
+			case <-ctx.Done():
+				return
+			case count := <-progress:
+				if count == 0 {
+					continue
+				}
+				totalFolders, totalFiles := s.incStatusCounter(mediaFolder, count)
+				s.broker.SendMessage(&events.ScanStatus{
+					Scanning:    true,
+					Count:       int64(totalFiles),
+					FolderCount: int64(totalFolders),
+				})
 			}
-			if count == 0 {
-				continue
-			}
-			totalFolders, totalFiles := s.incStatusCounter(mediaFolder, count)
-			s.broker.SendMessage(&events.ScanStatus{
-				Scanning:    true,
-				Count:       int64(totalFiles),
-				FolderCount: int64(totalFolders),
-			})
 		}
 	}()
-	return progress
+	return progress, cancel
 }
 
-func (s *scanner) RescanAll(fullRescan bool) error {
+func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 	if s.Scanning() {
 		log.Debug("Scanner already running, ignoring request for rescan.")
 		return ErrAlreadyScanning
@@ -164,7 +166,7 @@ func (s *scanner) RescanAll(fullRescan bool) error {
 	defer s.cacheWarmer.Flush(context.Background())
 	var hasError bool
 	for folder := range s.folders {
-		err := s.rescan(folder, fullRescan)
+		err := s.rescan(ctx, folder, fullRescan)
 		hasError = hasError || err != nil
 	}
 	if hasError {
@@ -232,8 +234,8 @@ func (s *scanner) Status(mediaFolder string) (*StatusInfo, error) {
 	}, nil
 }
 
-func (s *scanner) getLastModifiedSince(folder string) time.Time {
-	ms, err := s.ds.Property(context.TODO()).Get(model.PropLastScan + "-" + folder)
+func (s *scanner) getLastModifiedSince(ctx context.Context, folder string) time.Time {
+	ms, err := s.ds.Property(ctx).Get(model.PropLastScan + "-" + folder)
 	if err != nil {
 		return time.Time{}
 	}
@@ -252,7 +254,8 @@ func (s *scanner) updateLastModifiedSince(folder string, t time.Time) {
 }
 
 func (s *scanner) loadFolders() {
-	fs, _ := s.ds.MediaFolder(context.TODO()).GetAll()
+	ctx := context.TODO()
+	fs, _ := s.ds.MediaFolder(ctx).GetAll()
 	for _, f := range fs {
 		log.Info("Configuring Media Folder", "name", f.Name, "path", f.Path)
 		s.folders[f.Path] = s.newScanner(f)
@@ -260,7 +263,7 @@ func (s *scanner) loadFolders() {
 			active:      false,
 			fileCount:   0,
 			folderCount: 0,
-			lastUpdate:  s.getLastModifiedSince(f.Path),
+			lastUpdate:  s.getLastModifiedSince(ctx, f.Path),
 		}
 	}
 }

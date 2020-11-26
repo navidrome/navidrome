@@ -18,11 +18,21 @@ import themes from '../themes'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { sendNotification, baseUrl } from '../utils'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
     textDecoration: 'none',
     color: theme.palette.primary.light,
+    '&.songTitle': {
+      fontWeight: 'bold',
+    },
+    '&.songInfo': {
+      // 768 is where the player swaps views
+      [theme.breakpoints.down(769)]: {
+        display: 'none',
+      },
+    },
   },
   player: {
     display: (props) => (props.visible ? 'block' : 'none'),
@@ -31,15 +41,18 @@ const useStyle = makeStyles((theme) => ({
 
 let audioInstance = null
 
-const audioTitle = (audioInfo) => {
-  return audioInfo.name ? `${audioInfo.name} - ${audioInfo.singer}` : ''
-}
-
 const AudioTitle = ({ audioInfo, className }) => {
-  const title = audioTitle(audioInfo)
+  if (!audioInfo.name) {
+    return ''
+  }
+
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
-      {title}
+      <span className={`${className} songTitle`}>{audioInfo.name}</span>
+      <br />
+      <span className={`${className} songInfo`}>
+        {`${audioInfo.singer} - ${audioInfo.album}`}
+      </span>
     </Link>
   )
 }
@@ -54,6 +67,9 @@ const Player = () => {
   const queue = useSelector((state) => state.queue)
   const current = queue.current || {}
   const { authenticated } = useAuthState()
+  const showNotifications = useSelector(
+    (state) => state.settings.notifications || false
+  )
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
@@ -147,7 +163,6 @@ const Player = () => {
       destroyText: translate('player.destroyText'),
       downloadText: translate('player.downloadText'),
       removeAudioListsText: translate('player.removeAudioListsText'),
-      audioTitle: audioTitle,
       clickToDeleteText: (name) =>
         translate('player.clickToDeleteText', { name }),
       emptyLyricText: translate('player.emptyLyricText'),
@@ -230,9 +245,16 @@ const Player = () => {
             label: `${info.name} - ${info.singer}`,
           })
         }
+        if (showNotifications) {
+          sendNotification(
+            info.name,
+            `${info.singer} - ${info.album}`,
+            baseUrl(info.cover)
+          )
+        }
       }
     },
-    [dispatch]
+    [dispatch, showNotifications]
   )
 
   const onAudioPause = useCallback(
@@ -245,7 +267,9 @@ const Player = () => {
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
       dispatch(currentPlaying(info))
-      dataProvider.getOne('keepalive', { id: info.trackId })
+      dataProvider
+        .getOne('keepalive', { id: info.trackId })
+        .catch((e) => console.log('Keepalive error:', e))
     },
     [dispatch, dataProvider]
   )

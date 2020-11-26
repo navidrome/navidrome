@@ -19,8 +19,15 @@ type Broker interface {
 
 const keepAliveFrequency = 15 * time.Second
 
+var eventId uint32
+
 type (
-	messageChan chan []byte
+	message struct {
+		ID    uint32
+		Event string
+		Data  string
+	}
+	messageChan chan message
 	clientsChan chan client
 	client      struct {
 		address   string
@@ -63,26 +70,19 @@ func NewBroker() Broker {
 	return broker
 }
 
-func (broker *broker) SendMessage(event Event) {
-	pkg := broker.preparePackage(event)
-
-	log.Trace("Broker received new event", "name", event.EventName(), "event", string(pkg))
-	broker.notifier <- pkg
+func (broker *broker) SendMessage(evt Event) {
+	msg := broker.preparePackage(evt)
+	log.Trace("Broker received new event", "event", msg)
+	broker.notifier <- msg
 }
 
-var eventId uint32
-
-func (broker *broker) preparePackage(event Event) []byte {
-	pkg := struct {
-		Event `json:"data"`
-		Id    uint32 `json:"id"`
-		Name  string `json:"name"`
-	}{}
-	pkg.Id = atomic.AddUint32(&eventId, 1)
-	pkg.Name = event.EventName()
-	pkg.Event = event
-	data, _ := json.Marshal(pkg)
-	return data
+func (broker *broker) preparePackage(event Event) message {
+	pkg := message{}
+	pkg.ID = atomic.AddUint32(&eventId, 1)
+	pkg.Event = event.EventName()
+	data, _ := json.Marshal(event)
+	pkg.Data = string(data)
+	return pkg
 }
 
 func (broker *broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -133,8 +133,8 @@ func (broker *broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		// Write to the ResponseWriter
 		// Server Sent Events compatible
 		event := <-client.channel
-		log.Trace(ctx, "Sending event to client", "event", string(event), "client", client.String())
-		_, _ = fmt.Fprintf(rw, "data: %s\n\n", event)
+		log.Trace(ctx, "Sending event to client", "event", event, "client", client.String())
+		_, _ = fmt.Fprintf(rw, "id: %d\nevent: %s\ndata: %s\n\n", event.ID, event.Event, event.Data)
 
 		// Flush the data immediately instead of buffering it for later.
 		flusher.Flush()
@@ -157,7 +157,7 @@ func (broker *broker) listen() {
 			s.channel <- broker.preparePackage(&ServerStart{serverStart})
 
 		case s := <-broker.closingClients:
-			// A client has dettached and we want to
+			// A client has detached and we want to
 			// stop sending them messages.
 			delete(broker.clients, s)
 			log.Debug("Removed client from event broker", "numClients", len(broker.clients), "client", s.String())
@@ -166,7 +166,7 @@ func (broker *broker) listen() {
 			// We got a new event from the outside!
 			// Send event to all connected clients
 			for client := range broker.clients {
-				log.Trace("Putting event on client's queue", "client", client.String(), "event", string(event))
+				log.Trace("Putting event on client's queue", "client", client.String(), "event", event)
 				client.channel <- event
 			}
 

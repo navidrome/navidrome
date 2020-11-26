@@ -22,6 +22,7 @@ import {
   playQueueReducer,
   albumViewReducer,
   activityReducer,
+  settingsReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
@@ -50,6 +51,7 @@ const App = () => (
         theme: themeReducer,
         addToPlaylistDialog: addToPlaylistDialogReducer,
         activity: activityReducer,
+        settings: settingsReducer,
       },
     })}
   >
@@ -59,7 +61,7 @@ const App = () => (
 
 const Admin = (props) => {
   const dispatch = useDispatch()
-  if (config.devActivityMenu) {
+  if (config.devActivityPanel) {
     setDispatch(dispatch)
     authProvider
       .checkAuth()
@@ -108,6 +110,7 @@ const Admin = (props) => {
         <Resource name="albumSong" />,
         <Resource name="translation" />,
         <Resource name="playlistTrack" />,
+        <Resource name="keepalive" />,
 
         <Player />,
       ]}
