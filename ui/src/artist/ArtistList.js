@@ -21,7 +21,7 @@ import {
 import { makeStyles } from '@material-ui/core/styles'
 
 const useStyles = makeStyles({
-  columnIcon: {
+  contextHeader: {
     marginLeft: '3px',
     marginTop: '-2px',
     verticalAlign: 'text-top',
@@ -75,9 +75,11 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
         sortByOrder={'DESC'}
         className={classes.contextMenu}
         label={
-          <StarBorderIcon fontSize={'small'} className={classes.columnIcon} />
+          <StarBorderIcon
+            fontSize={'small'}
+            className={classes.contextHeader}
+          />
         }
-        textAlign={'right'}
       />
     </Datagrid>
   )
