@@ -10,7 +10,6 @@ import AlbumDetails from './AlbumDetails'
 import AlbumActions from './AlbumActions'
 
 const AlbumShowLayout = (props) => {
-  console.log('show', props)
   const { loading, ...context } = useShowContext(props)
   const { record } = context
 

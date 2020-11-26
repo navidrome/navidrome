@@ -56,18 +56,26 @@ const useStyles = makeStyles(
     toolbar: {
       justifyContent: 'flex-start',
     },
+    row: {
+      '&:hover': {
+        '& $contextMenu': {
+          visibility: 'visible',
+        },
+      },
+    },
+    contextMenu: {
+      visibility: 'hidden',
+    },
   }),
   { name: 'RaList' }
 )
 
 const AlbumSongs = (props) => {
-  console.log('songs', props)
-  const listContext = props
   const classes = useStyles(props)
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-  const { id: album_id, data, ids } = listContext
+  const { id: album_id, data, ids } = props
   const version = useVersion()
   return (
     <>
@@ -75,25 +83,26 @@ const AlbumSongs = (props) => {
         classes={{ toolbar: classes.toolbar }}
         actions={props.actions}
         permanentFilter={{ album_id }}
-        {...listContext}
+        {...props}
       />
       <div className={classes.main}>
         <Card
           className={classnames(classes.content, {
-            [classes.bulkActionsDisplayed]: listContext.selectedIds.length > 0,
+            [classes.bulkActionsDisplayed]: props.selectedIds.length > 0,
           })}
           key={version}
         >
-          <BulkActionsToolbar {...listContext}>
+          <BulkActionsToolbar {...props}>
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
             expand={isXsmall ? null : <SongDetails />}
             rowClick={(id) => dispatch(playTracks(data, ids, id))}
-            {...listContext}
+            {...props}
             hasBulkActions={true}
             showDiscSubtitles={true}
             contextAlwaysVisible={!isDesktop}
+            classes={{ row: classes.row }}
           >
             {isDesktop && (
               <TextField
@@ -113,6 +122,7 @@ const AlbumSongs = (props) => {
             <SongContextMenu
               source={'starred'}
               sortable={false}
+              className={classes.contextMenu}
               label={
                 <StarBorderIcon
                   fontSize={'small'}

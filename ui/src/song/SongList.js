@@ -24,6 +24,26 @@ import { SongBulkActions } from '../common'
 import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
 import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
+import { makeStyles } from '@material-ui/core/styles'
+import StarBorderIcon from '@material-ui/icons/StarBorder'
+
+const useStyles = makeStyles({
+  contextHeader: {
+    marginLeft: '3px',
+    marginTop: '-2px',
+    verticalAlign: 'text-top',
+  },
+  row: {
+    '&:hover': {
+      '& $contextMenu': {
+        visibility: 'visible',
+      },
+    },
+  },
+  contextMenu: {
+    visibility: 'hidden',
+  },
+})
 
 const SongFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -37,6 +57,7 @@ const SongFilter = (props) => (
 )
 
 const SongList = (props) => {
+  const classes = useStyles()
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -74,6 +95,7 @@ const SongList = (props) => {
             expand={<SongDetails />}
             rowClick={handleRowClick}
             contextAlwaysVisible={!isDesktop}
+            classes={{ row: classes.row }}
           >
             <SongTitleField source="title" showTrackNumbers={false} />
             {isDesktop && <AlbumLinkField source="album" />}
@@ -94,6 +116,14 @@ const SongList = (props) => {
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}
               sortByOrder={'DESC'}
+              className={classes.contextMenu}
+              label={
+                <StarBorderIcon
+                  fontSize={'small'}
+                  className={classes.contextHeader}
+                />
+              }
+              textAlign={'right'}
             />
           </SongDatagrid>
         )}

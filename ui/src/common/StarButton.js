@@ -10,7 +10,12 @@ import subsonic from '../subsonic'
 const useStyles = makeStyles({
   star: {
     color: (props) => props.color,
-    visibility: (props) => (props.starred ? 'visible' : 'inherit'),
+    visibility: (props) =>
+      props.starred
+        ? 'visible'
+        : props.visible === false
+        ? 'hidden'
+        : 'inherit',
   },
 })
 
