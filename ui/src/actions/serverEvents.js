@@ -1,17 +1,11 @@
-export const EVENT_SCAN_STATUS = 'EVENT_SCAN_STATUS'
-export const EVENT_SERVER_START = 'EVENT_SERVER_START'
+export const EVENT_SCAN_STATUS = 'scanStatus'
+export const EVENT_SERVER_START = 'serverStart'
 
-const actionsMap = {
-  scanStatus: EVENT_SCAN_STATUS,
-  serverStart: EVENT_SERVER_START,
-}
-
-export const processEvent = (data) => {
-  let type = actionsMap[data.name]
-  if (!type) type = data.name
+export const processEvent = (type, event) => {
+  const data = JSON.parse(event)
   return {
     type,
-    data: data.data,
+    data: data,
   }
 }
 
