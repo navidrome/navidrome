@@ -14,7 +14,6 @@ const mapResource = (resource, params) => {
       let plsId = '0'
       if (params.filter) {
         plsId = params.filter.playlist_id
-        delete params.filter.playlist_id
       }
       return [`playlist/${plsId}/tracks`, params]
 

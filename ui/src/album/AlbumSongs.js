@@ -72,17 +72,16 @@ const useStyles = makeStyles(
 
 const AlbumSongs = (props) => {
   const classes = useStyles(props)
+  const { data, ids } = props
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-  const { id: album_id, data, ids } = props
   const version = useVersion()
   return (
     <>
       <ListToolbar
         classes={{ toolbar: classes.toolbar }}
         actions={props.actions}
-        permanentFilter={{ album_id }}
         {...props}
       />
       <div className={classes.main}>
