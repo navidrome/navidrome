@@ -50,7 +50,6 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
       httpClient(`${REST_URL}/playlist/${record.id}/tracks`, {
         headers: new Headers({ Accept: M3U_MIME_TYPE }),
       }).then((res) => {
-        console.log(res)
         const blob = new Blob([res.body], { type: M3U_MIME_TYPE })
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
