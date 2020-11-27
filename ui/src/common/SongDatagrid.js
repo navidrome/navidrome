@@ -1,6 +1,6 @@
 import React, { isValidElement, useMemo, useCallback } from 'react'
 import { useDispatch } from 'react-redux'
-import { Datagrid, DatagridBody, DatagridRow } from 'react-admin'
+import { Datagrid, PureDatagridBody, DatagridRow } from 'react-admin'
 import { TableCell, TableRow, Typography } from '@material-ui/core'
 import PropTypes from 'prop-types'
 import { makeStyles } from '@material-ui/core/styles'
@@ -119,10 +119,9 @@ SongDatagridRow.defaultProps = {
   onClickDiscSubtitle: () => {},
 }
 
-export const SongDatagrid = ({
+const SongDatagridBody = ({
   contextAlwaysVisible,
   showDiscSubtitles,
-  classes,
   ...rest
 }) => {
   const dispatch = useDispatch()
@@ -160,21 +159,36 @@ export const SongDatagrid = ({
     return set
   }, [ids, data, showDiscSubtitles])
 
-  const SongDatagridBody = (props) => {
-    return (
-      <DatagridBody
-        {...props}
-        row={
-          <SongDatagridRow
-            firstTracks={firstTracks}
-            contextAlwaysVisible={contextAlwaysVisible}
-            onClickDiscSubtitle={playDisc}
-          />
-        }
-      />
-    )
-  }
-  return <Datagrid {...rest} body={<SongDatagridBody />} classes={classes} />
+  return (
+    <PureDatagridBody
+      {...rest}
+      row={
+        <SongDatagridRow
+          firstTracks={firstTracks}
+          contextAlwaysVisible={contextAlwaysVisible}
+          onClickDiscSubtitle={playDisc}
+        />
+      }
+    />
+  )
+}
+
+export const SongDatagrid = ({
+  contextAlwaysVisible,
+  showDiscSubtitles,
+  ...rest
+}) => {
+  return (
+    <Datagrid
+      {...rest}
+      body={
+        <SongDatagridBody
+          contextAlwaysVisible={contextAlwaysVisible}
+          showDiscSubtitles={showDiscSubtitles}
+        />
+      }
+    />
+  )
 }
 
 SongDatagrid.propTypes = {
