@@ -82,7 +82,7 @@ export const SongDatagridRow = ({
   const fields = React.Children.toArray(children).filter((c) =>
     isValidElement(c)
   )
-  if (!record.title) {
+  if (!record || !record.title) {
     return null
   }
   const childCount = fields.length
