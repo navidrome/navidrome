@@ -95,7 +95,6 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
         label={
           <StarBorderIcon fontSize={'small'} className={classes.columnIcon} />
         }
-        textAlign={'right'}
       />
     </Datagrid>
   )
