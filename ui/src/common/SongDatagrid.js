@@ -1,6 +1,6 @@
 import React, { isValidElement, useMemo, useCallback } from 'react'
 import { useDispatch } from 'react-redux'
-import { Datagrid, PureDatagridBody, DatagridRow } from 'react-admin'
+import { Datagrid, PureDatagridBody, PureDatagridRow } from 'react-admin'
 import { TableCell, TableRow, Typography } from '@material-ui/core'
 import PropTypes from 'prop-types'
 import { makeStyles } from '@material-ui/core/styles'
@@ -96,13 +96,13 @@ export const SongDatagridRow = ({
           colSpan={childCount + (rest.expand ? 1 : 0)}
         />
       )}
-      <DatagridRow
+      <PureDatagridRow
         record={record}
         {...rest}
         className={clsx(className, classes.row)}
       >
         {fields}
-      </DatagridRow>
+      </PureDatagridRow>
     </>
   )
 }
