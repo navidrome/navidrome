@@ -2,7 +2,7 @@ import React from 'react'
 import DeleteIcon from '@material-ui/icons/Delete'
 import { makeStyles } from '@material-ui/core/styles'
 import { fade } from '@material-ui/core/styles/colorManipulator'
-import classnames from 'classnames'
+import clsx from 'clsx'
 import { useDeleteWithConfirmController, Button, Confirm } from 'react-admin'
 
 const useStyles = makeStyles(
@@ -51,11 +51,7 @@ const DeleteUserButton = (props) => {
       <Button
         onClick={handleDialogOpen}
         label="ra.action.delete"
-        className={classnames(
-          'ra-delete-button',
-          classes.deleteButton,
-          className
-        )}
+        className={clsx('ra-delete-button', classes.deleteButton, className)}
         key="button"
         {...rest}
       >

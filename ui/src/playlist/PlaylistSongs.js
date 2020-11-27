@@ -9,7 +9,7 @@ import {
   useVersion,
   useListContext,
 } from 'react-admin'
-import classnames from 'classnames'
+import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
@@ -133,7 +133,7 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
       />
       <div className={classes.main}>
         <Card
-          className={classnames(classes.content, {
+          className={clsx(classes.content, {
             [classes.bulkActionsDisplayed]: props.selectedIds.length > 0,
           })}
           key={version}
