@@ -11,10 +11,10 @@ const useStyles = makeStyles({
   star: {
     color: (props) => props.color,
     visibility: (props) =>
-      props.starred
-        ? 'visible'
-        : props.visible === false
+      props.visible === false
         ? 'hidden'
+        : props.starred
+        ? 'visible'
         : 'inherit',
   },
 })
