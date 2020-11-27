@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@material-ui/lab": "^4.0.0-alpha.56",
+    "clsx": "^1.1.1",
     "deepmerge": "^4.2.2",
     "jwt-decode": "^3.1.2",
     "lodash.get": "^4.4.2",
