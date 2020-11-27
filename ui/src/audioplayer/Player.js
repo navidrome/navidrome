@@ -27,12 +27,6 @@ const useStyle = makeStyles((theme) => ({
     '&.songTitle': {
       fontWeight: 'bold',
     },
-    '&.songInfo': {
-      // 768 is where the player swaps views
-      [theme.breakpoints.down(769)]: {
-        display: 'none',
-      },
-    },
   },
   player: {
     display: (props) => (props.visible ? 'block' : 'none'),
@@ -41,7 +35,7 @@ const useStyle = makeStyles((theme) => ({
 
 let audioInstance = null
 
-const AudioTitle = ({ audioInfo, className }) => {
+const AudioTitle = React.memo(({ audioInfo, isMobile, className }) => {
   if (!audioInfo.name) {
     return ''
   }
@@ -49,13 +43,17 @@ const AudioTitle = ({ audioInfo, className }) => {
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
       <span className={`${className} songTitle`}>{audioInfo.name}</span>
-      <br />
-      <span className={`${className} songInfo`}>
-        {`${audioInfo.singer} - ${audioInfo.album}`}
-      </span>
+      {!isMobile && (
+        <>
+          <br />
+          <span className={`${className} songInfo`}>
+            {`${audioInfo.singer} - ${audioInfo.album}`}
+          </span>
+        </>
+      )}
     </Link>
   )
-}
+})
 
 const Player = () => {
   const translate = useTranslate()
@@ -144,8 +142,12 @@ const Player = () => {
       top: 300,
       left: 120,
     },
-    renderAudioTitle: (audioInfo) => (
-      <AudioTitle audioInfo={audioInfo} className={classes.audioTitle} />
+    renderAudioTitle: (audioInfo, isMobile) => (
+      <AudioTitle
+        audioInfo={audioInfo}
+        isMobile={isMobile}
+        className={classes.audioTitle}
+      />
     ),
     locale: {
       playListsText: translate('player.playListsText'),
