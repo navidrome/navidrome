@@ -1,27 +1,23 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useCallback } from 'react'
 import {
   Card,
   CardContent,
   CardMedia,
-  Typography,
   Collapse,
   makeStyles,
-  IconButton,
+  Typography,
   useMediaQuery,
 } from '@material-ui/core'
-import classnames from 'classnames'
 import { useTranslate } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore'
 import subsonic from '../subsonic'
 import {
-  DurationField,
-  StarButton,
-  SizeField,
   ArtistLinkField,
+  DurationField,
   formatRange,
-  MultiLineTextField,
+  SizeField,
+  StarButton,
 } from '../common'
 
 const useStyles = makeStyles((theme) => ({
@@ -73,79 +69,45 @@ const useStyles = makeStyles((theme) => ({
     top: theme.spacing(-0.2),
     left: theme.spacing(0.5),
   },
-  comment: {
-    whiteSpace: 'nowrap',
-    marginTop: '1em',
+  commentBlock: {
     display: 'inline-block',
-    [theme.breakpoints.down('xs')]: {
-      width: '10em',
-    },
-    [theme.breakpoints.up('sm')]: {
-      width: '10em',
-    },
-    [theme.breakpoints.up('lg')]: {
-      width: '10em',
-    },
-  },
-  commentFirstLine: {
+    marginTop: '1em',
     float: 'left',
-    marginRight: '5px',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-  expand: {
-    marginTop: '-5px',
-    transform: 'rotate(0deg)',
-    marginLeft: 'auto',
-    transition: theme.transitions.create('transform', {
-      duration: theme.transitions.duration.shortest,
-    }),
-  },
-  expandOpen: {
-    transform: 'rotate(180deg)',
   },
 }))
 
-const AlbumComment = ({ classes, record, commentNumLines }) => {
+const AlbumComment = ({ record }) => {
+  const classes = useStyles()
   const [expanded, setExpanded] = React.useState(false)
 
-  const handleExpandClick = React.useCallback(() => {
-    commentNumLines > 1 && setExpanded(!expanded)
-  }, [expanded, setExpanded, commentNumLines])
+  const formatted = useMemo(() => {
+    return record.comment.split('\n').map((line) => (
+      <>
+        {line}
+        <br />
+      </>
+    ))
+  }, [record.comment])
+
+  const handleExpandClick = useCallback(() => {
+    setExpanded(!expanded)
+  }, [expanded, setExpanded])
 
   return (
-    <div className={classes.comment}>
-      <div onClick={handleExpandClick}>
-        <MultiLineTextField
-          record={record}
-          source={'comment'}
-          maxLines={1}
-          className={classes.commentFirstLine}
-        />
-      </div>
-      {commentNumLines > 1 && (
-        <IconButton
-          size={'small'}
-          className={classnames(classes.expand, {
-            [classes.expandOpen]: expanded,
-          })}
-          onClick={handleExpandClick}
-          aria-expanded={expanded}
-          aria-label="show more"
-        >
-          <ExpandMoreIcon />
-        </IconButton>
-      )}
-      <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <MultiLineTextField
-          record={record}
-          source={'comment'}
-          firstLine={1}
-          className={classes.commentFirstLine}
-        />
-      </Collapse>
-    </div>
+    <Collapse
+      collapsedHeight={'1.5em'}
+      in={expanded}
+      timeout={'auto'}
+      className={classes.commentBlock}
+    >
+      <Typography
+        variant={'body1'}
+        className={classes.commentText}
+        onClick={handleExpandClick}
+      >
+        {formatted}
+      </Typography>
+    </Collapse>
   )
 }
 
@@ -154,11 +116,6 @@ const AlbumDetails = ({ record }) => {
   const classes = useStyles()
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
   const translate = useTranslate()
-
-  const commentNumLines = useMemo(
-    () => record.comment && record.comment.split('\n').length,
-    [record]
-  )
 
   const genreYear = (record) => {
     let genreDateLine = []
@@ -228,23 +185,11 @@ const AlbumDetails = ({ record }) => {
               {' · '}
               <SizeField record={record} source="size" />
             </Typography>
-            {isDesktop && record['comment'] && (
-              <AlbumComment
-                classes={classes}
-                record={record}
-                commentNumLines={commentNumLines}
-              />
-            )}
+            {isDesktop && record['comment'] && <AlbumComment record={record} />}
           </CardContent>
         </div>
       </div>
-      {!isDesktop && record['comment'] && (
-        <AlbumComment
-          classes={classes}
-          record={record}
-          commentNumLines={commentNumLines}
-        />
-      )}
+      {!isDesktop && record['comment'] && <AlbumComment record={record} />}
       {isLightboxOpen && (
         <Lightbox
           imagePadding={50}
