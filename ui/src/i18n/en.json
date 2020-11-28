@@ -92,7 +92,8 @@
                 "maxBitRate": "Max. Bit Rate",
                 "client": "Client",
                 "userName": "Username",
-                "lastSeen": "Last Seen At"
+                "lastSeen": "Last Seen At",
+                "reportRealPath": "Report Real Path"
             }
         },
         "transcoding": {

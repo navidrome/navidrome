@@ -92,7 +92,8 @@
                 "maxBitRate": "Bitrate máx",
                 "client": "Cliente",
                 "userName": "Usuário",
-                "lastSeen": "Últ. acesso"
+                "lastSeen": "Últ. acesso",
+                "reportRealPath": "Use paths reais"
             }
         },
         "transcoding": {
