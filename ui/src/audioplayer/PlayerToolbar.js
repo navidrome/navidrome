@@ -1,26 +1,33 @@
 import React from 'react'
 import { useLocation } from 'react-router-dom'
 import { useGetOne } from 'react-admin'
-import IconButton from '@material-ui/core/IconButton'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
-import { StarButton } from '../common'
+import { StarButton, useToggleStar } from '../common'
+import { useHotkeys } from 'react-hotkeys-hook'
 
-const Placeholder = () => (
-  <IconButton>
-    <StarBorderIcon disabled={true} />
-  </IconButton>
-)
+const Placeholder = () => <StarButton disabled={true} />
 
 const Toolbar = ({ id }) => {
   const location = useLocation()
   const resource = location.pathname.startsWith('/song') ? 'song' : 'albumSong'
   const { data, loading } = useGetOne(resource, id)
+  const [toggleStar, toggling] = useToggleStar(resource, data)
 
-  if (loading) {
-    return <Placeholder />
-  }
+  useHotkeys(
+    's',
+    () => {
+      toggleStar()
+    },
+    {},
+    [toggleStar]
+  )
 
-  return <StarButton record={data} resource={resource} />
+  return (
+    <StarButton
+      record={data}
+      resource={resource}
+      disabled={loading || toggling}
+    />
+  )
 }
 
 const PlayerToolbar = ({ id }) => (id ? <Toolbar id={id} /> : <Placeholder />)
