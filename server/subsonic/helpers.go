@@ -147,7 +147,12 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.CoverArt = "al-" + mf.AlbumID
 	}
 	child.ContentType = mf.ContentType()
-	child.Path = fmt.Sprintf("%s/%s/%s.%s", realArtistName(mf), mf.Album, mf.Title, mf.Suffix)
+	player, ok := request.PlayerFrom(ctx)
+	if ok && player.ReportRealPath {
+		child.Path = mf.Path
+	} else {
+		child.Path = fmt.Sprintf("%s/%s/%s.%s", realArtistName(mf), mf.Album, mf.Title, mf.Suffix)
+	}
 	child.DiscNumber = mf.DiscNumber
 	child.Created = &mf.CreatedAt
 	child.AlbumId = mf.AlbumID

@@ -1,6 +1,7 @@
 import React from 'react'
 import {
   TextInput,
+  BooleanInput,
   TextField,
   Edit,
   required,
@@ -45,6 +46,7 @@ const PlayerEdit = (props) => (
           { id: 0, name: '-' },
         ]}
       />
+      <BooleanInput source="reportRealPath" fullWidth />
       <TextField source="client" />
       <TextField source="userName" />
     </SimpleForm>
