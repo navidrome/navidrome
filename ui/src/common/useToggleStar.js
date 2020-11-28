@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDataProvider, useNotify } from 'react-admin'
 import subsonic from '../subsonic'
 
-export const useToggleStar = (resource, record) => {
+export const useToggleStar = (resource, record = {}) => {
   const [loading, setLoading] = useState(false)
   const notify = useNotify()
 
