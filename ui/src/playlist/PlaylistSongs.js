@@ -63,7 +63,7 @@ const useStyles = makeStyles(
       },
     },
     contextMenu: {
-      visibility: 'hidden',
+      visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
     },
   }),
   { name: 'RaList' }
@@ -78,10 +78,10 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 
 const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
   const { data, ids } = props
-  const classes = useStyles(props)
-  const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const classes = useStyles({ isDesktop })
+  const dispatch = useDispatch()
   const dataProvider = useDataProvider()
   const refresh = useRefresh()
   const notify = useNotify()
