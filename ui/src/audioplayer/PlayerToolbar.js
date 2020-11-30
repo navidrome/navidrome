@@ -4,7 +4,7 @@ import { useGetOne } from 'react-admin'
 import { StarButton, useToggleStar } from '../common'
 import { useHotkeys } from 'react-hotkeys-hook'
 
-const Placeholder = () => <StarButton disabled={true} />
+const Placeholder = () => <StarButton disabled={true} resource={'song'} />
 
 const Toolbar = ({ id }) => {
   const location = useLocation()
