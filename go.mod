@@ -3,7 +3,7 @@ module github.com/deluan/navidrome
 go 1.15
 
 require (
-	github.com/Masterminds/squirrel v1.4.0
+	github.com/Masterminds/squirrel v1.5.0
 	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.0
