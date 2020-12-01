@@ -92,7 +92,8 @@
                 "maxBitRate": "Max. Bitrate",
                 "client": "Client",
                 "userName": "Nutzername",
-                "lastSeen": "Zuletzt gesehen um"
+                "lastSeen": "Zuletzt gesehen um",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -262,7 +263,9 @@
         "songsAddedToPlaylist": "Einen Song zur Playlist hinzugefügt |||| %{smart_count} Songs zur Playlist hinzugefügt",
         "noPlaylistsAvailable": "Keine Playlist verfügbar",
         "delete_user_title": "Benutzer \"% {name}\" löschen",
-        "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Playlisten und Einstellungen) wirklich löschen?"
+        "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Playlisten und Einstellungen) wirklich löschen?",
+        "notifications_blocked": "Sie haben Benachrichtigungen für diese Seite in den Einstellungen Ihres Browsers blockiert",
+        "notifications_not_available": "Dieser Browser unterstützt keine Desktop-Benachrichtigungen"
     },
     "menu": {
         "library": "Bibliothek",
@@ -274,7 +277,8 @@
             "options": {
                 "theme": "Design",
                 "language": "Sprache",
-                "defaultView": "Standard-Ansicht"
+                "defaultView": "Standard-Ansicht",
+                "desktop_notifications": "Desktop-Benachrichtigungen"
             }
         },
         "albumList": "Alben",
@@ -314,8 +318,10 @@
     },
     "activity": {
         "title": "Aktivität",
-        "totalScanned": "",
-        "quickScan": "",
-        "fullScan": ""
+        "totalScanned": "Insgesamt gescannte Ordner",
+        "quickScan": "Schneller Scan",
+        "fullScan": "Kompletter Scan",
+        "serverUptime": "Server Uptime",
+        "serverDown": "OFFLINE"
     }
 }

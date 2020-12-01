@@ -92,7 +92,8 @@
                 "maxBitRate": "最大ビットレート",
                 "client": "クライアント",
                 "userName": "ユーザ名",
-                "lastSeen": "最後のシーン"
+                "lastSeen": "最後のシーン",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -262,7 +263,9 @@
         "songsAddedToPlaylist": "プレイリストへ1曲追加しました |||| プレイリストへ%{smart_count}曲追加しました",
         "noPlaylistsAvailable": "利用不可",
         "delete_user_title": "'%{name}' を削除",
-        "delete_user_content": "このユーザーとその全てのデータ(プレイリストや設定)を削除してもよろしいですか？"
+        "delete_user_content": "このユーザーとその全てのデータ(プレイリストや設定)を削除してもよろしいですか？",
+        "notifications_blocked": "ブラウザの設定でこのサイトの通知がブロックされています",
+        "notifications_not_available": "このブラウザはデスクトップ通知をサポートしていません"
     },
     "menu": {
         "library": "ライブラリ",
@@ -274,7 +277,8 @@
             "options": {
                 "theme": "テーマ",
                 "language": "言語",
-                "defaultView": "デフォルト画面"
+                "defaultView": "デフォルト画面",
+                "desktop_notifications": "デスクトップ通知"
             }
         },
         "albumList": "アルバム",
