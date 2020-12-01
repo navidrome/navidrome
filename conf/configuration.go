@@ -113,7 +113,7 @@ func init() {
 	viper.SetDefault("uiloginbackgroundurl", "https://source.unsplash.com/random/1600x900?music")
 	viper.SetDefault("enabletranscodingconfig", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
-	viper.SetDefault("imagecachesize", "100MB")
+	viper.SetDefault("imagecachesize", "0")
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("enabledownloads", true)
 
