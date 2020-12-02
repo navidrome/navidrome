@@ -57,9 +57,9 @@ func (w *warmer) waitForCacheReady(ctx context.Context) {
 }
 
 func (w *warmer) Flush(ctx context.Context) {
-	w.waitForCacheReady(ctx)
-	if w.artworkCache.Available(ctx) {
-		if conf.Server.DevPreCacheAlbumArtwork {
+	if conf.Server.DevPreCacheAlbumArtwork {
+		w.waitForCacheReady(ctx)
+		if w.artworkCache.Available(ctx) {
 			if w.pool == nil || len(w.albums) == 0 {
 				return
 			}
@@ -67,9 +67,9 @@ func (w *warmer) Flush(ctx context.Context) {
 			for id := range w.albums {
 				w.pool.Submit(artworkItem{albumID: id})
 			}
+		} else {
+			log.Warn(ctx, "Cache warmer is not available as ImageCache is DISABLED")
 		}
-	} else {
-		log.Warn(ctx, "Pre-cache warmer is not available as ImageCache is DISABLED")
 	}
 	w.albums = map[string]struct{}{}
 }
