@@ -104,5 +104,5 @@ release:
 .PHONY: release
 
 snapshot:
-	 docker run -it -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.15.5-1 goreleaser release --rm-dist --skip-publish --snapshot
+	 docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.15.5-1 goreleaser release --rm-dist --skip-publish --snapshot
 .PHONY: snapshot
