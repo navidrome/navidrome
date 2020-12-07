@@ -14,7 +14,7 @@
     "prop-types": "^15.7.2",
     "ra-data-json-server": "^3.10.2",
     "react": "^16.14.0",
-    "react-admin": "^3.10.2",
+    "react-admin": "^3.10.4",
     "react-dom": "^16.14.0",
     "react-drag-listview": "^0.1.7",
     "react-ga": "^3.2.1",
