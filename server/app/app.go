@@ -71,7 +71,9 @@ func (app *Router) routes(path string) http.Handler {
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"response":"ok"}`)) })
 
-		r.Handle("/events", app.broker)
+		if conf.Server.DevActivityPanel {
+			r.Handle("/events", app.broker)
+		}
 	})
 
 	// Serve UI app assets
