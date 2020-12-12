@@ -1,15 +1,16 @@
-// Based on https://thoughtbot.com/blog/writing-a-server-sent-events-server-in-go
 package events
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model/request"
+	"github.com/google/uuid"
 )
 
 type Broker interface {
@@ -28,8 +29,8 @@ type (
 		Data  string
 	}
 	messageChan chan message
-	clientsChan chan client
-	client      struct {
+	consumer    struct {
+		id        string
 		address   string
 		username  string
 		userAgent string
@@ -37,140 +38,156 @@ type (
 	}
 )
 
-func (c client) String() string {
-	return fmt.Sprintf("%s (%s - %s)", c.username, c.address, c.userAgent)
+func (c consumer) String() string {
+	return fmt.Sprintf("%s (%s, %s - %s)", c.id, c.username, c.address, c.userAgent)
 }
 
+func newEventID() uint32 {
+	return atomic.AddUint32(&eventId, 1)
+}
+
+// Broker manages all SSE event transactions and contains a consumer pool
 type broker struct {
-	// Events are pushed to this channel by the main events-gathering routine
-	notifier messageChan
-
-	// New client connections
-	newClients clientsChan
-
-	// Closed client connections
-	closingClients clientsChan
-
-	// Client connections registry
-	clients map[client]bool
+	// consumers subscriber pool using which assigns a Distributed ID for each consumer
+	consumers map[messageChan]consumer
+	mtx       *sync.Mutex
+	done      chan bool
 }
 
+// NewBroker returns a valid SSE broker
 func NewBroker() Broker {
-	// Instantiate a broker
-	broker := &broker{
-		notifier:       make(messageChan, 100),
-		newClients:     make(clientsChan),
-		closingClients: make(clientsChan),
-		clients:        make(map[client]bool),
+	b := &broker{
+		consumers: make(map[messageChan]consumer),
+		mtx:       new(sync.Mutex),
+		done:      make(chan bool),
 	}
-
-	// Set it running - listening and broadcasting events
-	go broker.listen()
-
-	return broker
+	go b.keepAlive()
+	return b
 }
 
-func (broker *broker) SendMessage(evt Event) {
-	msg := broker.preparePackage(evt)
-	log.Trace("Broker received new event", "event", msg)
-	broker.notifier <- msg
-}
+// subscribe returns a new broker consumer; listens to broker's events and generates a
+// valid consumer ID
+func (b *broker) subscribe(r *http.Request) messageChan {
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
 
-func (broker *broker) preparePackage(event Event) message {
-	pkg := message{}
-	pkg.ID = atomic.AddUint32(&eventId, 1)
-	pkg.Event = event.EventName()
-	data, _ := json.Marshal(event)
-	pkg.Data = string(data)
-	return pkg
-}
-
-func (broker *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	// Make sure that the writer supports flushing.
-	flusher, ok := w.(http.Flusher)
-	user, _ := request.UserFrom(ctx)
-	if !ok {
-		log.Error(w, "Streaming unsupported! Events cannot be sent to this client", "address", r.RemoteAddr,
-			"userAgent", r.UserAgent(), "user", user.UserName)
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache, no-transform")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	// Each connection registers its own message channel with the Broker's connections registry
-	client := client{
+	// Generate unique id for each consumer
+	id, _ := uuid.NewRandom()
+	user, _ := request.UserFrom(r.Context())
+	c := consumer{
+		id:        id.String(),
 		username:  user.UserName,
 		address:   r.RemoteAddr,
 		userAgent: r.UserAgent(),
 		channel:   make(messageChan),
 	}
 
-	// Signal the broker that we have a new client
-	broker.newClients <- client
+	cm := make(messageChan)
+	b.consumers[cm] = c
 
-	log.Debug(ctx, "New broker client", "client", client.String())
+	log.Debug("New broker consumer", "consumer", c.String(), "numConsumers", len(b.consumers))
+	return cm
+}
 
-	// Remove this client from the map of connected clients
-	// when this handler exits.
-	defer func() {
-		broker.closingClients <- client
-	}()
+// unsubscribe removes a consumer from broker's pool
+func (b *broker) unsubscribe(cm messageChan) {
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
+
+	c := b.consumers[cm]
+	close(cm)
+	delete(b.consumers, cm)
+	log.Debug("Consumer removed", "consumer", c.String(), "numConsumers", len(b.consumers))
+}
+
+func (b *broker) preparePackage(event Event) message {
+	pkg := message{}
+	pkg.ID = newEventID()
+	pkg.Event = event.EventName()
+	data, _ := json.Marshal(event)
+	pkg.Data = string(data)
+	return pkg
+}
+
+// SendMessage issues a new event to either one or many consumers
+func (b *broker) SendMessage(event Event) {
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
+
+	msg := b.preparePackage(event)
+
+	pubMsg := 0
+	for s := range b.consumers {
+		// Push to specific consumer
+		s <- msg
+		pubMsg++
+		break
+	}
+
+	log.Trace("Sent message to all subscribers", "count", pubMsg)
+}
+
+// Close removes any channels leftovers from broker's pool
+func (b *broker) Close() {
+	b.done <- true
+	for k := range b.consumers {
+		close(k)
+		delete(b.consumers, k)
+	}
+}
+
+// ServeHTTP receives and attach a new broker subscription to every HTTP request
+// using required streaming HTTP headers
+func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := request.UserFrom(ctx)
+	f, ok := w.(http.Flusher)
+	if !ok {
+		log.Error(w, "Streaming unsupported! Events cannot be sent to this consumer", "address", r.RemoteAddr,
+			"userAgent", r.UserAgent(), "user", user.UserName)
+		http.Error(w, "Streaming is not supported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache, no-transform")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Send initial message, with server startTime
+	startMsg := b.preparePackage(&ServerStart{serverStart})
+	_, _ = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", startMsg.ID, startMsg.Event, startMsg.Data)
+	f.Flush()
+
+	// Create new consumer channel for stream events
+	c := b.subscribe(r)
+	defer b.unsubscribe(c)
 
 	for {
 		select {
-		case event := <-client.channel:
+		case msg := <-c:
 			// Write to the ResponseWriter
-			// Server Sent Events compatible
-			log.Trace(ctx, "Sending event to client", "event", event, "client", client.String())
-			_, _ = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.ID, event.Event, event.Data)
+			_, _ = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", msg.ID, msg.Event, msg.Data)
 
 			// Flush the data immediately instead of buffering it for later.
-			flusher.Flush()
+			f.Flush()
 		case <-ctx.Done():
-			log.Trace(ctx, "Closing event stream connection", "client", client.String())
 			return
 		}
 	}
 }
 
-func (broker *broker) listen() {
+// Send a keep alive message every 15 seconds
+func (b *broker) keepAlive() {
 	keepAlive := time.NewTicker(keepAliveFrequency)
 	defer keepAlive.Stop()
 
 	for {
 		select {
-		case s := <-broker.newClients:
-			// A new client has connected.
-			// Register their message channel
-			broker.clients[s] = true
-			log.Debug("Client added to event broker", "numClients", len(broker.clients), "newClient", s.String())
-
-			// Send a serverStart event to new client
-			s.channel <- broker.preparePackage(&ServerStart{serverStart})
-
-		case s := <-broker.closingClients:
-			// A client has detached and we want to
-			// stop sending them messages.
-			delete(broker.clients, s)
-			log.Debug("Removed client from event broker", "numClients", len(broker.clients), "client", s.String())
-
-		case event := <-broker.notifier:
-			// We got a new event from the outside!
-			// Send event to all connected clients
-			for client := range broker.clients {
-				log.Trace("Putting event on client's queue", "client", client.String(), "event", event)
-				client.channel <- event
-			}
-
 		case ts := <-keepAlive.C:
-			// Send a keep alive message every 15 seconds
-			broker.SendMessage(&KeepAlive{TS: ts.Unix()})
+			b.SendMessage(&KeepAlive{TS: ts.Unix()})
+		case <-b.done:
+			return
 		}
 	}
 }
