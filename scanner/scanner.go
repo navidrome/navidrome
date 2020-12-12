@@ -161,7 +161,7 @@ func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 		return ErrAlreadyScanning
 	}
 	isScanning.Set(true)
-	defer func() { isScanning.Set(false) }()
+	defer isScanning.Set(false)
 
 	defer s.cacheWarmer.Flush(context.Background())
 	var hasError bool
