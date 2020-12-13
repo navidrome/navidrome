@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -63,13 +64,7 @@ func yearFilter(field string, value interface{}) Sqlizer {
 }
 
 func artistFilter(field string, value interface{}) Sqlizer {
-	return exists("media_file", And{
-		ConcatExpr("album_id=album.id"),
-		Or{
-			Eq{"artist_id": value},
-			Eq{"album_artist_id": value},
-		},
-	})
+	return Like{"all_artist_ids": fmt.Sprintf("%%%s%%", value)}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
@@ -153,6 +148,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 		model.Album
 		CurrentId     string
 		SongArtists   string
+		SongArtistIds string
 		Years         string
 		DiscSubtitles string
 		Comments      string
@@ -167,7 +163,9 @@ func (r *albumRepository) refresh(ids ...string) error {
 		f.catalog_num, f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
 		count(f.id) as song_count, a.id as current_id, 
 		group_concat(f.disc_subtitle, ' ') as disc_subtitles,
-		group_concat(f.artist, ' ') as song_artists, group_concat(f.year, ' ') as years,
+		group_concat(f.artist, ' ') as song_artists, 
+		group_concat(f.artist_id, ' ') as song_artist_ids, 
+		group_concat(f.year, ' ') as years,
 		sum(f.size) as size`).
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
@@ -222,6 +220,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 			toInsert++
 			al.CreatedAt = time.Now()
 		}
+		al.AllArtistIDs = utils.SanitizeStrings(al.SongArtistIds, al.AlbumArtistID, al.ArtistID)
 		al.FullText = getFullText(al.Name, al.Artist, al.AlbumArtist, al.SongArtists,
 			al.SortAlbumName, al.SortArtistName, al.SortAlbumArtistName, al.DiscSubtitles)
 		_, err := r.put(al.ID, al.Album)

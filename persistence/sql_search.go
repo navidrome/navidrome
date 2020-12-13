@@ -1,40 +1,16 @@
 package persistence
 
 import (
-	"regexp"
-	"sort"
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/navidrome/conf"
-	"github.com/kennygrant/sanitize"
+	"github.com/deluan/navidrome/utils"
 )
 
-var quotesRegex = regexp.MustCompile("[“”‘’'\"\\[\\(\\{\\]\\)\\}]")
-
 func getFullText(text ...string) string {
-	fullText := sanitizeStrings(text...)
+	fullText := utils.SanitizeStrings(text...)
 	return " " + fullText
-}
-
-func sanitizeStrings(text ...string) string {
-	sanitizedText := strings.Builder{}
-	for _, txt := range text {
-		sanitizedText.WriteString(strings.TrimSpace(sanitize.Accents(strings.ToLower(txt))) + " ")
-	}
-	words := make(map[string]struct{})
-	for _, w := range strings.Fields(sanitizedText.String()) {
-		words[w] = struct{}{}
-	}
-	var fullText []string
-	for w := range words {
-		w = quotesRegex.ReplaceAllString(w, "")
-		if w != "" {
-			fullText = append(fullText, w)
-		}
-	}
-	sort.Strings(fullText)
-	return strings.Join(fullText, " ")
 }
 
 func (r sqlRepository) doSearch(q string, offset, size int, results interface{}, orderBys ...string) error {
@@ -59,7 +35,7 @@ func fullTextExpr(value string) Sqlizer {
 	if !conf.Server.SearchFullString {
 		sep = " "
 	}
-	q := sanitizeStrings(value)
+	q := utils.SanitizeStrings(value)
 	parts := strings.Split(q, " ")
 	filters := And{}
 	for _, part := range parts {
