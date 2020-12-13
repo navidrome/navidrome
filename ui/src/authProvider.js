@@ -40,9 +40,7 @@ const authProvider = {
         // Avoid going to create admin dialog after logout/login without a refresh
         config.firstTime = false
         if (config.devActivityPanel) {
-          startEventStream().catch((e) =>
-            console.log('error setting up event stream:', e)
-          )
+          startEventStream()
         }
         return response
       })

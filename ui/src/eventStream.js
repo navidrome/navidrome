@@ -13,12 +13,10 @@ let timeout = null
 
 const getEventStream = async () => {
   if (es === null) {
-    return httpClient(`${REST_URL}/keepalive/eventSource`).then(() => {
-      es = new EventSource(
-        baseUrl(`/app/api/events?jwt=${localStorage.getItem('token')}`)
-      )
-      return es
-    })
+    await httpClient(`${REST_URL}/keepalive/eventSource`)
+    es = new EventSource(
+      baseUrl(`${REST_URL}/events?jwt=${localStorage.getItem('token')}`)
+    )
   }
   return es
 }
@@ -70,18 +68,21 @@ const startEventStream = async () => {
     console.log('Cannot create a unauthenticated EventSource connection')
     return Promise.reject()
   }
-  getEventStream().then((newStream) => {
-    newStream.addEventListener('serverStart', eventHandler)
-    newStream.addEventListener('scanStatus', eventHandler)
-    newStream.addEventListener('keepAlive', eventHandler)
-    newStream.onerror = (e) => {
-      console.log('EventStream error', e)
-      setTimeout(reconnectIntervalCheck)
-      dispatch(serverDown())
-    }
-    es = newStream
-    return es
-  })
+  return getEventStream()
+    .then((newStream) => {
+      newStream.addEventListener('serverStart', eventHandler)
+      newStream.addEventListener('scanStatus', eventHandler)
+      newStream.addEventListener('keepAlive', eventHandler)
+      newStream.onerror = (e) => {
+        console.log('EventStream error', e)
+        setTimeout(reconnectIntervalCheck)
+        dispatch(serverDown())
+      }
+      return newStream
+    })
+    .catch((e) => {
+      console.log(`Error connecting to server:`, e)
+    })
 }
 
 export { setDispatch, startEventStream, stopEventStream }
