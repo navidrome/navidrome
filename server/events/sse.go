@@ -140,7 +140,7 @@ func (b *broker) subscribe(r *http.Request) client {
 		address:   r.RemoteAddr,
 		userAgent: r.UserAgent(),
 		channel:   make(messageChan, 5),
-		done:      make(chan struct{}),
+		done:      make(chan struct{}, 1),
 	}
 
 	// Signal the broker that we have a new client
