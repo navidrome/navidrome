@@ -12,7 +12,8 @@ let dispatch = null
 let timeout = null
 
 const getEventStream = async () => {
-  if (es === null) {
+  if (!es) {
+    // Call `keepalive` to refresh the jwt token
     await httpClient(`${REST_URL}/keepalive/eventSource`)
     es = new EventSource(
       baseUrl(`${REST_URL}/events?jwt=${localStorage.getItem('token')}`)
@@ -24,15 +25,15 @@ const getEventStream = async () => {
 // Reestablish the event stream after 20 secs of inactivity
 const setTimeout = (value) => {
   currentIntervalCheck = value
-  if (timeout != null) {
+  if (timeout) {
     window.clearTimeout(timeout)
   }
-  timeout = window.setTimeout(() => {
-    if (es != null) {
+  timeout = window.setTimeout(async () => {
+    if (es) {
       es.close()
     }
     es = null
-    startEventStream(dispatch)
+    await startEventStream(dispatch)
   }, currentIntervalCheck)
 }
 
@@ -41,7 +42,7 @@ const stopEventStream = () => {
     es.close()
   }
   es = null
-  if (timeout != null) {
+  if (timeout) {
     window.clearTimeout(timeout)
   }
   timeout = null
