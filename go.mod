@@ -31,7 +31,7 @@ require (
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.3
+	github.com/onsi/gomega v1.10.4
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/pressly/goose v2.6.0+incompatible
 	github.com/sirupsen/logrus v1.7.0
@@ -44,7 +44,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
-	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
 	golang.org/x/sys v0.0.0-20201113233024-12cec1faf1ba // indirect
 	golang.org/x/text v0.3.4 // indirect
 	golang.org/x/tools v0.0.0-20201013201025-64a9e34f3752
