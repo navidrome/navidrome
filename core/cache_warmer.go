@@ -22,7 +22,7 @@ func NewCacheWarmer(artwork Artwork, artworkCache ArtworkCache) CacheWarmer {
 		artworkCache: artworkCache,
 		albums:       map[string]struct{}{},
 	}
-	p, err := pool.NewPool("artwork", 3, &artworkItem{}, w.execute)
+	p, err := pool.NewPool("artwork", 3, w.execute)
 	if err != nil {
 		log.Error(context.Background(), "Error creating pool for Album Artwork Cache Warmer", err)
 	} else {
