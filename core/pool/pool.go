@@ -9,114 +9,83 @@ import (
 type Executor func(workload interface{})
 
 type Pool struct {
-	name          string
-	item          interface{}
-	workers       []worker
-	exec          Executor
-	logTicker     *time.Ticker
-	workerChannel chan chan work
-	queue         chan work // receives jobs to send to workers
-	end           chan bool // when receives bool stops workers
-	//queue *dque.DQue
+	name    string
+	workers []worker
+	exec    Executor
+	queue   chan work // receives jobs to send to workers
+	done    chan bool // when receives bool stops workers
+	working bool
 }
 
 // TODO This hardcoded value will go away when the queue is persisted in disk
 const bufferSize = 10000
 
-func NewPool(name string, workerCount int, item interface{}, exec Executor) (*Pool, error) {
+func NewPool(name string, workerCount int, exec Executor) (*Pool, error) {
 	p := &Pool{
-		name:  name,
-		item:  item,
-		exec:  exec,
-		queue: make(chan work, bufferSize),
-		end:   make(chan bool),
+		name:    name,
+		exec:    exec,
+		queue:   make(chan work, bufferSize),
+		done:    make(chan bool),
+		working: false,
 	}
 
-	//q, err := dque.NewOrOpen(name, filepath.Join(conf.Server.DataFolder, "queues", name), 50, p.itemBuilder)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//p.queue = q
-
-	p.workerChannel = make(chan chan work)
 	for i := 0; i < workerCount; i++ {
 		worker := worker{
-			p:             p,
-			id:            i,
-			channel:       make(chan work),
-			workerChannel: p.workerChannel,
-			end:           make(chan bool)}
+			p:  p,
+			id: i,
+		}
 		worker.Start()
 		p.workers = append(p.workers, worker)
 	}
 
-	// start pool
 	go func() {
-		p.logTicker = time.NewTicker(10 * time.Second)
-		running := false
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
 		for {
 			select {
-			case <-p.logTicker.C:
+			case <-ticker.C:
 				if len(p.queue) > 0 {
-					log.Debug("Queue status", "pool", p.name, "items", len(p.queue))
+					log.Debug("Queue status", "poolName", p.name, "items", len(p.queue))
 				} else {
-					if running {
-						log.Info("Queue empty", "pool", p.name)
+					if p.working {
+						log.Info("Queue is empty, all items processed", "poolName", p.name)
 					}
-					running = false
+					p.working = false
 				}
-			case <-p.end:
-				for _, w := range p.workers {
-					w.Stop() // stop worker
-				}
+			case <-p.done:
+				close(p.queue)
 				return
-			case work := <-p.queue:
-				running = true
-				worker := <-p.workerChannel // wait for available channel
-				worker <- work              // dispatch work to worker
 			}
 		}
 	}()
+
 	return p, nil
 }
 
 func (p *Pool) Submit(workload interface{}) {
+	p.working = true
 	p.queue <- work{workload}
 }
 
-//func (p *Pool) itemBuilder() interface{} {
-//	t := reflect.TypeOf(p.item)
-//	return reflect.New(t).Interface()
-//}
-//
 type work struct {
 	workload interface{}
 }
 
 type worker struct {
-	id            int
-	p             *Pool
-	workerChannel chan chan work // used to communicate between dispatcher and workers
-	channel       chan work
-	end           chan bool
+	id int
+	p  *Pool
 }
 
 // start worker
 func (w *worker) Start() {
 	go func() {
-		for {
-			w.workerChannel <- w.channel // when the worker is available place channel in queue
-			select {
-			case job := <-w.channel: // worker has received job
-				w.p.exec(job.workload) // do work
-			case <-w.end:
-				return
-			}
+		for job := range w.p.queue {
+			w.p.exec(job.workload) // do work
 		}
 	}()
 }
 
 // end worker
-func (w *worker) Stop() {
-	w.end <- true
+func (p *Pool) Stop() {
+	p.done <- true
 }
