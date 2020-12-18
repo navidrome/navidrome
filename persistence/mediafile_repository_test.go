@@ -42,8 +42,8 @@ var _ = Describe("MediaRepository", func() {
 
 	It("find mediafiles by album", func() {
 		Expect(mr.FindByAlbum("103")).To(Equal(model.MediaFiles{
-			songRadioactivity,
 			songAntenna,
+			songRadioactivity,
 		}))
 	})
 
