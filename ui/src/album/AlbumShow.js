@@ -22,7 +22,7 @@ const AlbumShowLayout = (props) => {
           addLabel={false}
           reference="albumSong"
           target="album_id"
-          sort={{ field: 'discNumber asc, trackNumber asc', order: 'ASC' }}
+          sort={{ field: 'album', order: 'ASC' }}
           perPage={0}
           pagination={null}
         >
