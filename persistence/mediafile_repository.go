@@ -27,7 +27,7 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 	r.tableName = "media_file"
 	r.sortMappings = map[string]string{
 		"artist": "order_artist_name asc, album asc, disc_number asc, track_number asc",
-		"album":  "order_album_name asc, disc_number asc, track_number asc",
+		"album":  "order_album_name asc, disc_number asc, track_number asc, artist asc, title asc",
 		"random": "RANDOM()",
 	}
 	r.filterMappings = map[string]filterFunc{
@@ -77,7 +77,7 @@ func (r mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaF
 }
 
 func (r mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, error) {
-	sel := r.selectMediaFile().Where(Eq{"album_id": albumId}).OrderBy("disc_number", "track_number")
+	sel := r.selectMediaFile().Where(Eq{"album_id": albumId}).OrderBy("disc_number", "track_number", "artist", "title")
 	res := model.MediaFiles{}
 	err := r.queryAll(sel, &res)
 	return res, err
