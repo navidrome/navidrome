@@ -18,10 +18,16 @@ const hour = 3600
 const minute = 60
 
 describe('formatDuration', () => {
-  it('format seconds', () => {
+  it('formats seconds', () => {
     expect(formatDuration(0)).toEqual('00:00')
     expect(formatDuration(59)).toEqual('00:59')
+    expect(formatDuration(59.99)).toEqual('00:59')
+  })
+
+  it('formats days, hours and minutes', () => {
     expect(formatDuration(hour + minute + 1)).toEqual('01:01:01')
-    expect(formatDuration(2 * day + 3 * hour + 7 * minute)).toEqual('51:07:00')
+    expect(formatDuration(3 * day + 3 * hour + 7 * minute)).toEqual(
+      '3:03:07:00'
+    )
   })
 })
