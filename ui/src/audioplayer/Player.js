@@ -196,14 +196,14 @@ const Player = () => {
     defaultOptions,
   ])
 
-  const OnAudioListsChange = useCallback(
+  const onAudioListsChange = useCallback(
     (currentPlayIndex, audioLists) => {
       dispatch(syncQueue(currentPlayIndex, audioLists))
     },
     [dispatch]
   )
 
-  const OnAudioProgress = useCallback(
+  const onAudioProgress = useCallback(
     (info) => {
       if (info.ended) {
         document.title = 'Navidrome'
@@ -233,7 +233,7 @@ const Player = () => {
     [dispatch]
   )
 
-  const OnAudioPlay = useCallback(
+  const onAudioPlay = useCallback(
     (info) => {
       dispatch(currentPlaying(info))
       if (info.duration) {
@@ -298,9 +298,9 @@ const Player = () => {
       {...options}
       quietUpdate
       className={classes.player}
-      onAudioListsChange={OnAudioListsChange}
-      onAudioProgress={OnAudioProgress}
-      onAudioPlay={OnAudioPlay}
+      onAudioListsChange={onAudioListsChange}
+      onAudioProgress={onAudioProgress}
+      onAudioPlay={onAudioPlay}
       onAudioPause={onAudioPause}
       onAudioEnded={onAudioEnded}
       onAudioVolumeChange={onAudioVolumeChange}
