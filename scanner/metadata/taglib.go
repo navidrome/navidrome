@@ -30,14 +30,13 @@ type taglibExtractor struct{}
 
 func (e *taglibExtractor) Extract(paths ...string) (map[string]Metadata, error) {
 	mds := map[string]Metadata{}
-	var err error
 	for _, path := range paths {
 		md, err := e.extractMetadata(path)
 		if err == nil {
 			mds[path] = md
 		}
 	}
-	return mds, err
+	return mds, nil
 }
 
 func (e *taglibExtractor) extractMetadata(filePath string) (*taglibMetadata, error) {
