@@ -69,4 +69,6 @@ var (
 	VariousArtists   = "Various Artists"
 	VariousArtistsID = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(VariousArtists))))
 	UnknownArtist    = "[Unknown Artist]"
+
+	ServerStart = time.Now()
 )
