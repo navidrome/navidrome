@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model/request"
 	"github.com/google/uuid"
@@ -186,7 +187,7 @@ func (b *broker) listen() {
 			log.Debug("Client added to event broker", "numClients", len(clients), "newClient", c.String())
 
 			// Send a serverStart event to new client
-			c.channel <- b.preparePackage(&ServerStart{serverStart})
+			c.channel <- b.preparePackage(&ServerStart{consts.ServerStart})
 
 		case c := <-b.unsubscribing:
 			// A client has detached and we want to
@@ -200,7 +201,7 @@ func (b *broker) listen() {
 			// Send event to all connected clients
 			for c := range clients {
 				log.Trace("Putting event on client's queue", "client", c.String(), "event", event)
-				// Use non-blocking send. If cannot send, terminate the client's connection
+				// Use non-blocking send. If cannot send, ignore the message
 				select {
 				case c.channel <- event:
 				default:
@@ -213,10 +214,4 @@ func (b *broker) listen() {
 			b.SendMessage(&KeepAlive{TS: ts.Unix()})
 		}
 	}
-}
-
-var serverStart time.Time
-
-func init() {
-	serverStart = time.Now()
 }
