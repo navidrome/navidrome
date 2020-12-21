@@ -20,14 +20,15 @@ type Broker interface {
 	SendMessage(event Event)
 }
 
-var errWriteTimeOut = errors.New("write timeout")
-
 const (
 	keepAliveFrequency = 15 * time.Second
 	writeTimeOut       = 5 * time.Second
 )
 
-var eventId uint32
+var (
+	errWriteTimeOut = errors.New("write timeout")
+	eventId         uint32
+)
 
 type (
 	message struct {
@@ -43,7 +44,6 @@ type (
 		username  string
 		userAgent string
 		channel   messageChan
-		done      chan struct{}
 	}
 )
 
@@ -144,9 +144,6 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if err == errWriteTimeOut {
 				return
 			}
-		case <-c.done:
-			log.Trace(ctx, "Closing event stream connection", "client", c.String())
-			return
 		case <-ctx.Done():
 			log.Trace(ctx, "Client closed the connection", "client", c.String())
 			return
@@ -163,7 +160,6 @@ func (b *broker) subscribe(r *http.Request) client {
 		address:   r.RemoteAddr,
 		userAgent: r.UserAgent(),
 		channel:   make(messageChan, 5),
-		done:      make(chan struct{}, 1),
 	}
 
 	// Signal the broker that we have a new client
