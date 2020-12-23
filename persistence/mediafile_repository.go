@@ -77,7 +77,7 @@ func (r mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaF
 }
 
 func (r mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, error) {
-	sel := r.selectMediaFile().Where(Eq{"album_id": albumId}).OrderBy("disc_number", "track_number", "artist", "title")
+	sel := r.selectMediaFile(model.QueryOptions{Sort: "album"}).Where(Eq{"album_id": albumId})
 	res := model.MediaFiles{}
 	err := r.queryAll(sel, &res)
 	return res, err
