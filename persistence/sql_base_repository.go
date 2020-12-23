@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"text/scanner"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -56,33 +55,44 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 			sq = sq.Offset(uint64(options[0].Offset))
 		}
 		if options[0].Sort != "" {
-			sort := toSnakeCase(options[0].Sort)
-			if mapping, ok := r.sortMappings[sort]; ok {
-				sort = mapping
-			}
-			if !strings.Contains(sort, "asc") && !strings.Contains(sort, "desc") {
-				sort = sort + " asc"
-			}
-			if options[0].Order == "desc" {
-				var s scanner.Scanner
-				s.Init(strings.NewReader(sort))
-				var newSort string
-				for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
-					switch s.TokenText() {
-					case "asc":
-						newSort += " " + "desc"
-					case "desc":
-						newSort += " " + "asc"
-					default:
-						newSort += " " + s.TokenText()
-					}
-				}
-				sort = newSort
-			}
-			sq = sq.OrderBy(sort)
+			sq = sq.OrderBy(r.buildSortOrder(options[0].Sort, options[0].Order))
 		}
 	}
 	return sq
+}
+
+func (r sqlRepository) buildSortOrder(sort, order string) string {
+	if mapping, ok := r.sortMappings[sort]; ok {
+		sort = mapping
+	}
+
+	sort = toSnakeCase(sort)
+	order = strings.ToLower(strings.TrimSpace(order))
+	var reverseOrder string
+	if order == "desc" {
+		reverseOrder = "asc"
+	} else {
+		order = "asc"
+		reverseOrder = "desc"
+	}
+
+	var newSort []string
+	parts := strings.FieldsFunc(sort, func(c rune) bool { return c == ',' })
+	for _, p := range parts {
+		f := strings.Fields(p)
+		newField := []string{f[0]}
+		if len(f) == 1 {
+			newField = append(newField, order)
+		} else {
+			if f[1] == "asc" {
+				newField = append(newField, order)
+			} else {
+				newField = append(newField, reverseOrder)
+			}
+		}
+		newSort = append(newSort, strings.Join(newField, " "))
+	}
+	return strings.Join(newSort, ", ")
 }
 
 func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOptions) SelectBuilder {
