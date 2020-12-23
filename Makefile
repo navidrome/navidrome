@@ -88,7 +88,7 @@ buildall: check_env
 	@(cd ./ui && npm run build)
 	go-bindata -fs -prefix "resources" -tags embed -ignore="\\\*.go" -pkg resources -o resources/embedded_gen.go resources/...
 	go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
-	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=embed
+	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=embed,netgo
 .PHONY: buildall
 
 pre-push: lint test
