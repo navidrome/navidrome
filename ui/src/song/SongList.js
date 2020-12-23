@@ -98,7 +98,15 @@ const SongList = (props) => {
             classes={{ row: classes.row }}
           >
             <SongTitleField source="title" showTrackNumbers={false} />
-            {isDesktop && <AlbumLinkField source="album" />}
+            {isDesktop && (
+              <AlbumLinkField
+                source="album"
+                sortBy={
+                  'album, order_album_artist_name, disc_number, track_number, title'
+                }
+                sortByOrder={'ASC'}
+              />
+            )}
             <TextField source="artist" />
             {isDesktop && <NumberField source="trackNumber" />}
             {isDesktop && (
