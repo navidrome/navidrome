@@ -33,7 +33,7 @@ const setTimeout = (value) => {
       es.close()
     }
     es = null
-    await startEventStream(dispatch)
+    await startEventStream()
   }, currentIntervalCheck)
 }
 
