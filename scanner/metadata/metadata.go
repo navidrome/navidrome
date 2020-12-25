@@ -151,7 +151,7 @@ func (m *baseMetadata) parseYear(tags ...string) int {
 		if v, ok := m.tags[t]; ok {
 			match := dateRegex.FindStringSubmatch(v)
 			if len(match) == 0 {
-				log.Warn("Error parsing year from ffmpeg date field", "file", m.filePath, "date", v)
+				log.Warn("Error parsing year date field", "file", m.filePath, "date", v)
 				return 0
 			}
 			year, _ := strconv.Atoi(match[1])
