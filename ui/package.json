@@ -18,7 +18,7 @@
     "react-dom": "^16.14.0",
     "react-drag-listview": "^0.1.7",
     "react-ga": "^3.3.0",
-    "react-hotkeys-hook": "^2.4.0",
+    "react-hotkeys-hook": "^3.0.0",
     "react-icons": "^3.11.0",
     "react-image-lightbox": "^5.1.1",
     "react-jinke-music-player": "^4.19.1",
