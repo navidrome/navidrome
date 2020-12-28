@@ -131,7 +131,7 @@ const NotificationsToggle = () => {
   const dispatch = useDispatch()
   const notify = useNotify()
   const currentSetting = useSelector((state) => state.settings.notifications)
-  const notAvailable = !('Notification' in window)
+  const notAvailable = !('Notification' in window) || !window.isSecureContext
 
   if (
     (currentSetting && Notification.permission !== 'granted') ||
