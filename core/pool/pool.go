@@ -67,6 +67,10 @@ func (p *Pool) Submit(workload interface{}) {
 	p.queue <- work{workload}
 }
 
+func (p *Pool) Stop() {
+	p.done <- true
+}
+
 type work struct {
 	workload interface{}
 }
@@ -83,9 +87,4 @@ func (w *worker) Start() {
 			w.p.exec(job.workload) // do work
 		}
 	}()
-}
-
-// end worker
-func (p *Pool) Stop() {
-	p.done <- true
 }
