@@ -19,7 +19,7 @@ require (
 	github.com/go-chi/httprate v0.4.0
 	github.com/go-chi/jwtauth v4.0.4+incompatible
 	github.com/golang/protobuf v1.4.3 // indirect
-	github.com/golangci/golangci-lint v1.33.0
+	github.com/golangci/golangci-lint v1.34.1
 	github.com/google/uuid v1.1.2
 	github.com/google/wire v0.4.0
 	github.com/karrick/godirwalk v1.16.1
@@ -47,7 +47,7 @@ require (
 	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
 	golang.org/x/sys v0.0.0-20201113233024-12cec1faf1ba // indirect
 	golang.org/x/text v0.3.4 // indirect
-	golang.org/x/tools v0.0.0-20201013201025-64a9e34f3752
+	golang.org/x/tools v0.0.0-20201121010211-780cb80bd7fb
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/djherbis/atime.v1 v1.0.0
 	gopkg.in/djherbis/stream.v1 v1.3.1
