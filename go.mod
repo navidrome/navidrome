@@ -20,7 +20,7 @@ require (
 	github.com/go-chi/jwtauth v4.0.4+incompatible
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/golangci/golangci-lint v1.33.0
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.1.3
 	github.com/google/wire v0.4.0
 	github.com/karrick/godirwalk v1.16.1
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
