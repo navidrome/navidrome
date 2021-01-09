@@ -92,7 +92,8 @@
                 "maxBitRate": "Bitrate massimo",
                 "client": "Applicazione",
                 "userName": "Nome utente",
-                "lastSeen": "Ultimo accesso"
+                "lastSeen": "Ultimo accesso",
+                "reportRealPath": "Percorso reale"
             }
         },
         "transcoding": {
@@ -262,7 +263,9 @@
         "songsAddedToPlaylist": "Aggiunta una traccia alla playlist |||| Aggiunte %{smart_count} tracce alla playlist",
         "noPlaylistsAvailable": "Nessuna playlist",
         "delete_user_title": "Rimuovi utente '%{name}'",
-        "delete_user_content": "Sei sicuro di voler rimuovere questo utente e tutti i suoi dati, incluse playlist e impostazioni?"
+        "delete_user_content": "Sei sicuro di voler rimuovere questo utente e tutti i suoi dati, incluse playlist e impostazioni?",
+        "notifications_blocked": "Hai le Notifiche bloccate per questo sito web nelle impostazioni del tuo browser",
+        "notifications_not_available": "Questo browser non gestisce le notifiche desktop oppure non stai accedendo a Navidrome su una connessione protetta https"
     },
     "menu": {
         "library": "Libreria",
@@ -274,12 +277,28 @@
             "options": {
                 "theme": "Tema",
                 "language": "Lingua",
-                "defaultView": "Vista Predefinita"
+                "defaultView": "Vista Predefinita",
+                "desktop_notifications": "Notifiche Desktop"
             }
         },
         "albumList": "Album",
         "about": "Info"
     },
+    "about": {
+        "links": {
+            "homepage": "Sito web",
+            "source": "Codice sorgente",
+            "featureRequests": "Richieste"
+        }
+    },
+    "activity": {
+        "title": "Attività",
+        "totalScanned": "Cartelle scansionate",
+        "quickScan": "Scansione veloce",
+        "fullScan": "Scansione completa",
+        "serverUptime": "Periodo di attività",
+        "serverDown": "OFFLINE"
+    }
     "player": {
         "playListsText": "Coda",
         "openText": "Apri",
@@ -304,20 +323,5 @@
             "singleLoop": "Ripeti una volta",
             "shufflePlay": "Casuale"
         }
-    },
-    "about": {
-        "links": {
-            "homepage": "Sito web",
-            "source": "Codice sorgente",
-            "featureRequests": "Richieste"
-        }
-    },
-    "activity": {
-        "title": "Attività",
-        "totalScanned": "Cartelle scansionate",
-        "quickScan": "Scansione veloce",
-        "fullScan": "Scansione completa",
-        "serverUptime": "Periodo di attività",
-        "serverDown": "OFFLINE"
     }
 }
