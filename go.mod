@@ -33,7 +33,7 @@ require (
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.4
 	github.com/pelletier/go-toml v1.8.0 // indirect
-	github.com/pressly/goose v2.6.0+incompatible
+	github.com/pressly/goose v2.7.0+incompatible
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/afero v1.3.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
