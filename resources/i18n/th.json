@@ -92,7 +92,8 @@
                 "maxBitRate": "บิตเรทสูงสุด",
                 "client": "Client",
                 "userName": "ชื่อผู้ใช้งาน",
-                "lastSeen": "ใช้งานล่าสุดเมื่อ"
+                "lastSeen": "ใช้งานล่าสุดเมื่อ",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -262,7 +263,9 @@
         "songsAddedToPlaylist": "เลือก %{smart_count} เพลงเข้าในเพลย์ลิสท์",
         "noPlaylistsAvailable": "ไม่มีเพลย์ลิสต์",
         "delete_user_title": "ลบผู้ใช้ '%{name}'",
-        "delete_user_content": "คุณแน่ใจที่จะลบผู้ใช้นี้และข้อมูลทั้งหมด(รวมถึงเพลย์ลิสท์และตั้งค่าต่างๆ)?"
+        "delete_user_content": "คุณแน่ใจที่จะลบผู้ใช้นี้และข้อมูลทั้งหมด(รวมถึงเพลย์ลิสท์และตั้งค่าต่างๆ)?",
+        "notifications_blocked": "",
+        "notifications_not_available": ""
     },
     "menu": {
         "library": "ไลบรารี่",
@@ -274,7 +277,8 @@
             "options": {
                 "theme": "ธีม",
                 "language": "ภาษา",
-                "defaultView": "หน้าเริ่มต้น"
+                "defaultView": "หน้าเริ่มต้น",
+                "desktop_notifications": ""
             }
         },
         "albumList": "อัลบั้ม",
