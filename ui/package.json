@@ -16,7 +16,7 @@
     "react": "^16.14.0",
     "react-admin": "^3.10.4",
     "react-dom": "^16.14.0",
-    "react-drag-listview": "^0.1.7",
+    "react-drag-listview": "^0.1.8",
     "react-ga": "^3.3.0",
     "react-hotkeys-hook": "^3.0.1",
     "react-icons": "^4.1.0",
