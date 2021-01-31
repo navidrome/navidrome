@@ -241,8 +241,7 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} of %{total}",
             "page_rows_per_page": "Items per page:",
             "next": "Next",
-            "prev": "Prev",
-            "skip_nav": "Skip to content"
+            "prev": "Prev"
         },
         "notification": {
             "updated": "Element updated |||| %{smart_count} elements updated",
@@ -285,21 +284,6 @@
         "albumList": "Albums",
         "about": "About"
     },
-    "about": {
-        "links": {
-            "homepage": "Home page",
-            "source": "Source code",
-            "featureRequests": "Feature requests"
-        }
-    },
-    "activity": {
-        "title": "Activity",
-        "totalScanned": "Total Folders Scanned",
-        "quickScan": "Quick Scan",
-        "fullScan": "Full Scan",
-        "serverUptime": "Server Uptime",
-        "serverDown": "OFFLINE"
-    },
     "player": {
         "playListsText": "Play Queue",
         "openText": "Open",
@@ -324,5 +308,20 @@
             "singleLoop": "Repeat One",
             "shufflePlay": "Shuffle"
         }
+    },
+    "about": {
+        "links": {
+            "homepage": "Home page",
+            "source": "Source code",
+            "featureRequests": "Feature requests"
+        }
+    },
+    "activity": {
+        "title": "Activity",
+        "totalScanned": "Total Folders Scanned",
+        "quickScan": "Quick Scan",
+        "fullScan": "Full Scan",
+        "serverUptime": "Server Uptime",
+        "serverDown": "OFFLINE"
     }
 }
