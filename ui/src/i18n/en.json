@@ -241,7 +241,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} of %{total}",
             "page_rows_per_page": "Items per page:",
             "next": "Next",
-            "prev": "Prev"
+            "prev": "Prev",
+            "skip_nav": "Skip to content"
         },
         "notification": {
             "updated": "Element updated |||| %{smart_count} elements updated",
