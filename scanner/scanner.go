@@ -16,8 +16,7 @@ import (
 )
 
 type Scanner interface {
-	Start(interval time.Duration)
-	Stop()
+	Run(ctx context.Context, interval time.Duration)
 	RescanAll(ctx context.Context, fullRescan bool) error
 	Status(mediaFolder string) (*StatusInfo, error)
 	Scanning() bool
@@ -49,7 +48,6 @@ type scanner struct {
 	ds          model.DataStore
 	cacheWarmer core.CacheWarmer
 	broker      events.Broker
-	done        chan bool
 	scan        chan bool
 }
 
@@ -68,32 +66,27 @@ func New(ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker)
 		folders:     map[string]FolderScanner{},
 		status:      map[string]*scanStatus{},
 		lock:        &sync.RWMutex{},
-		done:        make(chan bool),
 		scan:        make(chan bool),
 	}
 	s.loadFolders()
 	return s
 }
 
-func (s *scanner) Start(interval time.Duration) {
+func (s *scanner) Run(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
-		err := s.RescanAll(context.Background(), false)
+		err := s.RescanAll(ctx, false)
 		if err != nil {
 			log.Error(err)
 		}
 		select {
 		case <-ticker.C:
 			continue
-		case <-s.done:
+		case <-ctx.Done():
 			return
 		}
 	}
-}
-
-func (s *scanner) Stop() {
-	s.done <- true
 }
 
 func (s *scanner) rescan(ctx context.Context, mediaFolder string, fullRescan bool) error {
@@ -163,7 +156,7 @@ func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 	isScanning.Set(true)
 	defer isScanning.Set(false)
 
-	defer s.cacheWarmer.Flush(context.Background())
+	defer s.cacheWarmer.Flush(ctx)
 	var hasError bool
 	for folder := range s.folders {
 		err := s.rescan(ctx, folder, fullRescan)
