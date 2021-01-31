@@ -92,7 +92,8 @@
                 "maxBitRate": "Tasa de bits Máx.",
                 "client": "Cliente",
                 "userName": "Usuario",
-                "lastSeen": "Última conexión"
+                "lastSeen": "Última conexión",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -262,7 +263,9 @@
         "songsAddedToPlaylist": "1 canción agregada a la lista |||| %{smart_count} canciones agregadas a la lista",
         "noPlaylistsAvailable": "Ninguna lista disponible",
         "delete_user_title": "Eliminar usuario '%{name}'",
-        "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?"
+        "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?",
+        "notifications_blocked": "",
+        "notifications_not_available": ""
     },
     "menu": {
         "library": "Biblioteca",
@@ -274,7 +277,8 @@
             "options": {
                 "theme": "Tema",
                 "language": "Idioma",
-                "defaultView": "Vista por defecto"
+                "defaultView": "Vista por defecto",
+                "desktop_notifications": ""
             }
         },
         "albumList": "Álbumes",
