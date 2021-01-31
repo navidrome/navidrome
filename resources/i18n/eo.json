@@ -92,7 +92,8 @@
                 "maxBitRate": "Maksimuma Bitrapido",
                 "client": "Kliento",
                 "userName": "Uzantonomo",
-                "lastSeen": "Laste Vidita Je"
+                "lastSeen": "Laste Vidita Je",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -262,7 +263,9 @@
         "songsAddedToPlaylist": "Aldonis 1 kanton al ludlisto |||| Aldonis %{smart_count} kantojn al ludlisto",
         "noPlaylistsAvailable": "Neniu disponebla",
         "delete_user_title": "Forigi uzanto '%{name}'",
-        "delete_user_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun uzanton kaj ĉiujn iliajn datumojn (inkluzive ludlistojn kaj preferojn) ?"
+        "delete_user_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun uzanton kaj ĉiujn iliajn datumojn (inkluzive ludlistojn kaj preferojn) ?",
+        "notifications_blocked": "",
+        "notifications_not_available": ""
     },
     "menu": {
         "library": "Biblioteko",
@@ -274,7 +277,8 @@
             "options": {
                 "theme": "Temo",
                 "language": "Lingvo",
-                "defaultView": "Defaŭlta Vido"
+                "defaultView": "Defaŭlta Vido",
+                "desktop_notifications": ""
             }
         },
         "albumList": "Albumoj",
