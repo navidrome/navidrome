@@ -142,6 +142,7 @@ const Player = () => {
       top: 300,
       left: 120,
     },
+    volumeFade: { fadeIn: 200, fadeOut: 200 },
     renderAudioTitle: (audioInfo, isMobile) => (
       <AudioTitle
         audioInfo={audioInfo}
