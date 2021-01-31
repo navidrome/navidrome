@@ -34,7 +34,7 @@ testall: check_go_env test
 .PHONY: testall
 
 lint:
-	golangci-lint run -v
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint run -v
 .PHONY: lint
 
 update-snapshots: check_go_env
