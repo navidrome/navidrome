@@ -92,7 +92,8 @@
                 "maxBitRate": "Max. bitrate",
                 "client": "Client",
                 "userName": "Gebruikersnaam",
-                "lastSeen": "Laatst gezien op"
+                "lastSeen": "Laatst gezien op",
+                "reportRealPath": "Toon het echte bestandspad"
             }
         },
         "transcoding": {
@@ -262,7 +263,9 @@
         "songsAddedToPlaylist": "1 nummer toegevoegd aan afspeellijst |||| %{smart_count} nummers toegevoegd aan afspeellijst",
         "noPlaylistsAvailable": "Geen beschikbaar",
         "delete_user_title": "Verwijder gebruiker '%{name}'",
-        "delete_user_content": "Weet je zeker dat je deze gebruiker en al zijn gegevens wilt verwijderen (inclusief afspeellijsten en voorkeuren)?"
+        "delete_user_content": "Weet je zeker dat je deze gebruiker en al zijn gegevens wilt verwijderen (inclusief afspeellijsten en voorkeuren)?",
+        "notifications_blocked": "Je hebt bureaubladmeldingen geblokkeerd voor deze site in je browserinstellingen",
+        "notifications_not_available": "Deze browser ondersteunt bureaubladmeldingen niet"
     },
     "menu": {
         "library": "Bibliotheek",
@@ -274,7 +277,8 @@
             "options": {
                 "theme": "Thema",
                 "language": "Taal",
-                "defaultView": "Standaard weergave"
+                "defaultView": "Standaard weergave",
+                "desktop_notifications": "Bureaubladmeldingen"
             }
         },
         "albumList": "Albums",
