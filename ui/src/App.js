@@ -71,6 +71,7 @@ const Admin = (props) => {
 
   return (
     <RAAdmin
+      disableTelemetry
       dataProvider={dataProvider}
       authProvider={authProvider}
       i18nProvider={i18nProvider}
