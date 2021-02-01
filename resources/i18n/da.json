@@ -92,7 +92,8 @@
                 "maxBitRate": "Maks. bitrate",
                 "client": "Klient",
                 "userName": "Brugernavn",
-                "lastSeen": "Sidst set"
+                "lastSeen": "Sidst set",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -262,7 +263,9 @@
         "songsAddedToPlaylist": "Tilføjede 1 sang til afspilningsliste |||| Tilføjede %{smart_count} sange til afspilningsliste",
         "noPlaylistsAvailable": "Ingen tilgængelige",
         "delete_user_title": "Slet bruger '%{name}'",
-        "delete_user_content": "Er du sikker på at du vil slette denne bruger og tilhørende data (inklusive afspilningslister og indstillinger)?"
+        "delete_user_content": "Er du sikker på at du vil slette denne bruger og tilhørende data (inklusive afspilningslister og indstillinger)?",
+        "notifications_blocked": "",
+        "notifications_not_available": ""
     },
     "menu": {
         "library": "Bibliotek",
@@ -274,7 +277,8 @@
             "options": {
                 "theme": "Tema",
                 "language": "Sprog",
-                "defaultView": "Standardopsætning"
+                "defaultView": "Standardopsætning",
+                "desktop_notifications": ""
             }
         },
         "albumList": "Albums",
