@@ -14,15 +14,15 @@ dev: check_env
 .PHONY: dev
 
 server: check_go_env
-	@reflex -d none -c reflex.conf
+	@go run github.com/cespare/reflex -d none -c reflex.conf
 .PHONY: server
 
 wire: check_go_env
-	wire ./...
+	go run github.com/google/wire/cmd/wire ./...
 .PHONY: wire
 
 watch: check_go_env
-	ginkgo watch -notify ./...
+	go run github.com/onsi/ginkgo/ginkgo watch -notify ./...
 .PHONY: watch
 
 test: check_go_env
@@ -38,12 +38,12 @@ lint:
 .PHONY: lint
 
 update-snapshots: check_go_env
-	UPDATE_SNAPSHOTS=true ginkgo ./server/subsonic/...
+	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/ginkgo ./server/subsonic/...
 .PHONY: update-snapshots
 
 migration:
 	@if [ -z "${name}" ]; then echo "Usage: make migration name=name_of_migration_file"; exit 1; fi
-	goose -dir db/migration create ${name}
+	go run github.com/pressly/goose/cmd/goose -dir db/migration create ${name}
 .PHONY: migration
 
 setup: download-deps
@@ -86,8 +86,8 @@ build: check_go_env
 
 buildall: check_env
 	@(cd ./ui && npm run build)
-	go-bindata -fs -prefix "resources" -tags embed -ignore="\\\*.go" -pkg resources -o resources/embedded_gen.go resources/...
-	go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
+	go run github.com/go-bindata/go-bindata/go-bindata -fs -prefix "resources" -tags embed -ignore="\\\*.go" -pkg resources -o resources/embedded_gen.go resources/...
+	go run github.com/go-bindata/go-bindata/go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
 	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=embed,netgo
 .PHONY: buildall
 

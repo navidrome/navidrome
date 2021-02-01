@@ -10,11 +10,7 @@
 #
 # This script does not handle file names that contain spaces.
 
-if which goimports > /dev/null; then
-  gofmtcmd=goimports
-else
-  gofmtcmd=gofmt
-fi
+gofmtcmd=go run golang.org/x/tools/cmd/goimports
 
 gofiles=$(git diff --cached --name-only --diff-filter=ACM | grep '.go$')
 [ -z "$gofiles" ] && exit 0

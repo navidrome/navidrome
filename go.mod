@@ -3,11 +3,13 @@ module github.com/deluan/navidrome
 go 1.15
 
 require (
+	github.com/ClickHouse/clickhouse-go v1.4.3 // indirect
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.0
 	github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0
+	github.com/denisenkom/go-mssqldb v0.9.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27
 	github.com/disintegration/imaging v1.6.2
