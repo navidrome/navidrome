@@ -58,6 +58,8 @@ jobs:
   js:
     name: Build JS bundle
     runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: '--max_old_space_size=4096'
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
