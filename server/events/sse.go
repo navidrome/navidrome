@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"code.cloudfoundry.org/go-diodes"
 	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model/request"
@@ -44,7 +45,7 @@ type (
 		address   string
 		username  string
 		userAgent string
-		channel   messageChan
+		diode     *diode
 	}
 )
 
@@ -78,30 +79,30 @@ func NewBroker() Broker {
 }
 
 func (b *broker) SendMessage(evt Event) {
-	msg := b.preparePackage(evt)
+	msg := b.prepareMessage(evt)
 	log.Trace("Broker received new event", "event", msg)
 	b.publish <- msg
 }
 
-func (b *broker) newEventID() uint32 {
+func (b *broker) nextEventID() uint32 {
 	return atomic.AddUint32(&eventId, 1)
 }
 
-func (b *broker) preparePackage(event Event) message {
-	pkg := message{}
-	pkg.ID = b.newEventID()
-	pkg.Event = event.EventName()
+func (b *broker) prepareMessage(event Event) message {
+	msg := message{}
+	msg.ID = b.nextEventID()
+	msg.Event = event.EventName()
 	data, _ := json.Marshal(event)
-	pkg.Data = string(data)
-	return pkg
+	msg.Data = string(data)
+	return msg
 }
 
 // writeEvent Write to the ResponseWriter, Server Sent Events compatible
-func writeEvent(w io.Writer, event message, timeout time.Duration) (n int, err error) {
+func writeEvent(w io.Writer, event message, timeout time.Duration) (err error) {
 	flusher, _ := w.(http.Flusher)
 	complete := make(chan struct{}, 1)
 	go func() {
-		n, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.ID, event.Event, event.Data)
+		_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.ID, event.Event, event.Data)
 		// Flush the data immediately instead of buffering it for later.
 		flusher.Flush()
 		complete <- struct{}{}
@@ -110,7 +111,7 @@ func writeEvent(w io.Writer, event message, timeout time.Duration) (n int, err e
 	case <-complete:
 		return
 	case <-time.After(timeout):
-		return 0, errWriteTimeOut
+		return errWriteTimeOut
 	}
 }
 
@@ -138,15 +139,14 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Debug(ctx, "New broker client", "client", c.String())
 
 	for {
-		select {
-		case event := <-c.channel:
-			log.Trace(ctx, "Sending event to client", "event", event, "client", c.String())
-			_, err := writeEvent(w, event, writeTimeOut)
-			if err == errWriteTimeOut {
-				return
-			}
-		case <-ctx.Done():
-			log.Trace(ctx, "Client closed the connection", "client", c.String())
+		event := c.diode.next()
+		if event == nil {
+			log.Trace(ctx, "Client closed the EventStream connection", "client", c.String())
+			return
+		}
+		log.Trace(ctx, "Sending event to client", "event", *event, "client", c.String())
+		if err := writeEvent(w, *event, writeTimeOut); err == errWriteTimeOut {
+			log.Debug(ctx, "Timeout sending event to client", "event", *event, "client", c.String())
 			return
 		}
 	}
@@ -159,8 +159,10 @@ func (b *broker) subscribe(r *http.Request) client {
 		username:  user.UserName,
 		address:   r.RemoteAddr,
 		userAgent: r.UserAgent(),
-		channel:   make(messageChan, 5),
 	}
+	c.diode = newDiode(r.Context(), 1000, diodes.AlertFunc(func(missed int) {
+		log.Trace("Dropped SSE events", "client", c.String(), "missed", missed)
+	}))
 
 	// Signal the broker that we have a new client
 	b.subscribing <- c
@@ -186,12 +188,11 @@ func (b *broker) listen() {
 			log.Debug("Client added to event broker", "numClients", len(clients), "newClient", c.String())
 
 			// Send a serverStart event to new client
-			c.channel <- b.preparePackage(&ServerStart{consts.ServerStart})
+			c.diode.set(b.prepareMessage(&ServerStart{consts.ServerStart}))
 
 		case c := <-b.unsubscribing:
 			// A client has detached and we want to
 			// stop sending them messages.
-			close(c.channel)
 			delete(clients, c)
 			log.Debug("Removed client from event broker", "numClients", len(clients), "client", c.String())
 
@@ -200,12 +201,7 @@ func (b *broker) listen() {
 			// Send event to all connected clients
 			for c := range clients {
 				log.Trace("Putting event on client's queue", "client", c.String(), "event", event)
-				// Use non-blocking send. If cannot send, ignore the message
-				select {
-				case c.channel <- event:
-				default:
-					log.Warn("Could not send event to client", "client", c.String(), "event", event)
-				}
+				c.diode.set(event)
 			}
 
 		case ts := <-keepAlive.C:
