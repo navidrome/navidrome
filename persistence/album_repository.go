@@ -153,20 +153,27 @@ func (r *albumRepository) refresh(ids ...string) error {
 		DiscSubtitles string
 		Comments      string
 		Path          string
+		MaxUpdatedAt  string
+		MaxCreatedAt  string
 	}
 	var albums []refreshAlbum
 	const zwsp = string('\u200b')
 	sel := Select(`f.album_id as id, f.album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
-		f.sort_album_name, f.sort_artist_name, f.sort_album_artist_name,
-		f.order_album_name, f.order_album_artist_name, f.path, group_concat(f.comment, "` + zwsp + `") as comments,
-		group_concat(f.mbz_album_id, ' ') as mbz_album_id, f.mbz_album_artist_id, f.mbz_album_type, f.mbz_album_comment, 
-		f.catalog_num, f.compilation, f.genre, max(f.year) as max_year, sum(f.duration) as duration, 
-		count(f.id) as song_count, a.id as current_id, 
+		f.sort_album_name, f.sort_artist_name, f.sort_album_artist_name, f.order_album_name, f.order_album_artist_name, 
+		f.path, f.mbz_album_artist_id, f.mbz_album_type, f.mbz_album_comment, f.catalog_num, f.compilation, f.genre, 
+		count(f.id) as song_count,  
+		sum(f.duration) as duration,
+		sum(f.size) as size,
+		max(f.year) as max_year, 
+		max(f.updated_at) as max_updated_at,
+		max(f.created_at) as max_created_at,
+		a.id as current_id,  
+		group_concat(f.comment, "` + zwsp + `") as comments,
+		group_concat(f.mbz_album_id, ' ') as mbz_album_id, 
 		group_concat(f.disc_subtitle, ' ') as disc_subtitles,
 		group_concat(f.artist, ' ') as song_artists, 
 		group_concat(f.artist_id, ' ') as song_artist_ids, 
-		group_concat(f.year, ' ') as years,
-		sum(f.size) as size`).
+		group_concat(f.year, ' ') as years`).
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
 		Where(Eq{"f.album_id": ids}).GroupBy("f.album_id")
@@ -202,6 +209,14 @@ func (r *albumRepository) refresh(ids ...string) error {
 			log.Trace(r.ctx, "Could not find album art", "id", al.ID, "name", al.Name)
 		}
 
+		// Somehow, beego cannot parse the datetimes for the query above
+		if al.UpdatedAt, err = time.Parse(time.RFC3339Nano, al.MaxUpdatedAt); err != nil {
+			al.UpdatedAt = time.Now()
+		}
+		if al.CreatedAt, err = time.Parse(time.RFC3339Nano, al.MaxCreatedAt); err != nil {
+			al.CreatedAt = al.UpdatedAt
+		}
+
 		if al.Compilation {
 			al.AlbumArtist = consts.VariousArtists
 			al.AlbumArtistID = consts.VariousArtistsID
@@ -213,12 +228,10 @@ func (r *albumRepository) refresh(ids ...string) error {
 		al.MinYear = getMinYear(al.Years)
 		al.MbzAlbumID = getMbzId(r.ctx, al.MbzAlbumID, r.tableName, al.Name)
 		al.Comment = getComment(al.Comments, zwsp)
-		al.UpdatedAt = time.Now()
 		if al.CurrentId != "" {
 			toUpdate++
 		} else {
 			toInsert++
-			al.CreatedAt = time.Now()
 		}
 		al.AllArtistIDs = utils.SanitizeStrings(al.SongArtistIds, al.AlbumArtistID, al.ArtistID)
 		al.FullText = getFullText(al.Name, al.Artist, al.AlbumArtist, al.SongArtists,
