@@ -92,7 +92,8 @@
                 "maxBitRate": "Max. přenosová rychlost",
                 "client": "Klient",
                 "userName": "Uživatelské jméno",
-                "lastSeen": "Naposledy spatřen"
+                "lastSeen": "Naposledy spatřen",
+                "reportRealPath": "Zkutečná cesta hlášení"
             }
         },
         "transcoding": {
@@ -216,7 +217,7 @@
             }
         },
         "message": {
-            "about": "O",
+            "about": "O Navidrome",
             "are_you_sure": "Jste si jistý?",
             "bulk_delete_content": "Jste si jistý, že chcete smazat %{name}? |||| Jste si jistý, že chcete smazat těchto %{smart_count} položek?",
             "bulk_delete_title": "Smazat %{name} |||| Smazat %{smart_count} %{name} položek",
@@ -262,7 +263,9 @@
         "songsAddedToPlaylist": "1 skladba přidána na seznam skladeb |||| %{smart_count} skladeb přidáno na seznam skladeb",
         "noPlaylistsAvailable": "Žádné nejsou dostupné",
         "delete_user_title": "Odstranit uživatele '%{name}'",
-        "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?"
+        "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?",
+        "notifications_blocked": "Zablokovali jste si oznámení pro tuto stránku v nastavení vašeho prohlížeče",
+        "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše"
     },
     "menu": {
         "library": "Knihovna",
@@ -274,11 +277,12 @@
             "options": {
                 "theme": "Motiv",
                 "language": "Jazyk",
-                "defaultView": "Výchozí stránka"
+                "defaultView": "Výchozí stránka",
+                "desktop_notifications": "Oznámení na ploše"
             }
         },
         "albumList": "Alba",
-        "about": "O"
+        "about": "O Navidrome"
     },
     "player": {
         "playListsText": "Fronta",
@@ -316,6 +320,8 @@
         "title": "Aktivita",
         "totalScanned": "Naskenované složky",
         "quickScan": "Rychlý sken",
-        "fullScan": "Úplný sken"
+        "fullScan": "Úplný sken",
+        "serverUptime": "Doba od spuštění",
+        "serverDown": "OFFLINE"
     }
 }

@@ -19,7 +19,8 @@
                 "updatedAt": "Zaktualizowano",
                 "bitRate": "Szybkość transmisji danych",
                 "discSubtitle": "Podtytuł Płyty",
-                "starred": "Ulubione"
+                "starred": "Ulubione",
+                "comment": "Komentarz"
             },
             "actions": {
                 "addToQueue": "Odtwarzaj Później",
@@ -42,7 +43,8 @@
                 "genre": "Gatunek",
                 "compilation": "Kompilacja",
                 "year": "Rok",
-                "updatedAt": "Zaktualizowany"
+                "updatedAt": "Zaktualizowany",
+                "comment": "Komentarz"
             },
             "actions": {
                 "playAll": "Odtwarzaj",
@@ -90,7 +92,8 @@
                 "maxBitRate": "Maks. Bit Rate",
                 "client": "Klient",
                 "userName": "Nazwa użytkownika",
-                "lastSeen": "Ostatnio Widziany"
+                "lastSeen": "Ostatnio Widziany",
+                "reportRealPath": "Zgłoś Rzeczywistą Ścieżkę"
             }
         },
         "transcoding": {
@@ -260,7 +263,9 @@
         "songsAddedToPlaylist": "Dodano 1 utwór do listy odtwarzania |||| Dodano %{smart_count} utworów do listy odtwarzania",
         "noPlaylistsAvailable": "Niedostępne",
         "delete_user_title": "Usuń użytkownika '%{name}'",
-        "delete_user_content": "Czy jesteś pewien, że chcesz usunąć tego użytkownika oraz wszystkie jego dane (wliczając w to listy odtwarzania oraz ustawienia)?"
+        "delete_user_content": "Czy jesteś pewien, że chcesz usunąć tego użytkownika oraz wszystkie jego dane (wliczając w to listy odtwarzania oraz ustawienia)?",
+        "notifications_blocked": "Zablokowałeś Powiadomienia w ustawieniach swojej przeglądarki",
+        "notifications_not_available": "Ta przeglądarka nie obsługuje powiadomień"
     },
     "menu": {
         "library": "Biblioteka",
@@ -272,7 +277,8 @@
             "options": {
                 "theme": "Wygląd",
                 "language": "Język",
-                "defaultView": "Widok Podstawowy"
+                "defaultView": "Widok Podstawowy",
+                "desktop_notifications": "Powiadomienia"
             }
         },
         "albumList": "Albumy",
@@ -309,5 +315,13 @@
             "source": "Kod źródłowy",
             "featureRequests": "Prośby o nowe funkcjonalności"
         }
+    },
+    "activity": {
+        "title": "Aktywność",
+        "totalScanned": "Liczba Przeskanowanych Folderów",
+        "quickScan": "Szybkie Skanowanie",
+        "fullScan": "Pełne Skanowanie",
+        "serverUptime": "Czas Działania Serwera",
+        "serverDown": "NIEDOSTĘPNY"
     }
 }
