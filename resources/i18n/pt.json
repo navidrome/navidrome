@@ -241,7 +241,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} de %{total}",
             "page_rows_per_page": "Resultados por página:",
             "next": "Próximo",
-            "prev": "Anterior"
+            "prev": "Anterior",
+            "skip_nav": "Pular para o conteúdo"
         },
         "notification": {
             "updated": "Item atualizado com sucesso |||| %{smart_count} itens foram atualizados com sucesso",
