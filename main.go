@@ -1,7 +1,12 @@
 package main
 
-import "github.com/deluan/navidrome/cmd"
+import (
+	"runtime"
+
+	"github.com/deluan/navidrome/cmd"
+)
 
 func main() {
+	runtime.MemProfileRate = 0
 	cmd.Execute()
 }
