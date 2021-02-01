@@ -40,9 +40,8 @@ func (p *players) Register(ctx context.Context, id, client, typ, ip string) (*mo
 		if err == nil {
 			log.Debug("Found player by name", "id", plr.ID, "client", client, "username", userName)
 		} else {
-			r, _ := uuid.NewRandom()
 			plr = &model.Player{
-				ID:       r.String(),
+				ID:       uuid.NewString(),
 				Name:     fmt.Sprintf("%s (%s)", client, userName),
 				UserName: userName,
 				Client:   client,

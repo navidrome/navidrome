@@ -37,8 +37,7 @@ func (r sqlRepository) annUpsert(values map[string]interface{}, itemIDs ...strin
 	c, err := r.executeSQL(upd)
 	if c == 0 || err == orm.ErrNoRows {
 		for _, itemID := range itemIDs {
-			id, _ := uuid.NewRandom()
-			values["ann_id"] = id.String()
+			values["ann_id"] = uuid.NewString()
 			values["user_id"] = userId(r.ctx)
 			values["item_type"] = r.tableName
 			values["item_id"] = itemID
@@ -68,9 +67,8 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 	c, err := r.executeSQL(upd)
 
 	if c == 0 || err == orm.ErrNoRows {
-		id, _ := uuid.NewRandom()
 		values := map[string]interface{}{}
-		values["ann_id"] = id.String()
+		values["ann_id"] = uuid.NewString()
 		values["user_id"] = userId(r.ctx)
 		values["item_type"] = r.tableName
 		values["item_id"] = itemID
