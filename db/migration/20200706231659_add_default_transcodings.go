@@ -29,8 +29,7 @@ func upAddDefaultTranscodings(tx *sql.Tx) error {
 	}
 
 	for _, t := range consts.DefaultTranscodings {
-		r, _ := uuid.NewRandom()
-		_, err := stmt.Exec(r.String(), t["name"], t["targetFormat"], t["defaultBitRate"], t["command"])
+		_, err := stmt.Exec(uuid.NewString(), t["name"], t["targetFormat"], t["defaultBitRate"], t["command"])
 		if err != nil {
 			return err
 		}

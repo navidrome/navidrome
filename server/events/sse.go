@@ -154,9 +154,8 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (b *broker) subscribe(r *http.Request) client {
 	user, _ := request.UserFrom(r.Context())
-	id, _ := uuid.NewRandom()
 	c := client{
-		id:        id.String(),
+		id:        uuid.NewString(),
 		username:  user.UserName,
 		address:   r.RemoteAddr,
 		userAgent: r.UserAgent(),

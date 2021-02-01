@@ -186,8 +186,7 @@ func (r sqlRepository) put(id string, m interface{}) (newId string, err error) {
 	}
 	// If does not have an id OR could not update (new record with predefined id)
 	if id == "" {
-		rand, _ := uuid.NewRandom()
-		id = rand.String()
+		id = uuid.NewString()
 		values["id"] = id
 	}
 	// It is a insert. if there was a created_at, add it back to args
