@@ -81,13 +81,13 @@ const AlbumComment = ({ record }) => {
   const [expanded, setExpanded] = React.useState(false)
 
   const formatted = useMemo(() => {
-    return record.comment.split('\n').map((line) => (
-      <>
+    return record.comment.split('\n').map((line, idx) => (
+      <span key={record.id + '-comment-' + idx}>
         {line}
         <br />
-      </>
+      </span>
     ))
-  }, [record.comment])
+  }, [record.comment, record.id])
 
   const handleExpandClick = useCallback(() => {
     setExpanded(!expanded)
