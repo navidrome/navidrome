@@ -198,9 +198,8 @@ const Player = () => {
   ])
 
   const onAudioListsChange = useCallback(
-    (currentPlayIndex, audioLists) => {
-      dispatch(syncQueue(currentPlayIndex, audioLists))
-    },
+    (currentPlayIndex, audioLists) =>
+      dispatch(syncQueue(currentPlayIndex, audioLists)),
     [dispatch]
   )
 
@@ -230,7 +229,8 @@ const Player = () => {
   )
 
   const onAudioVolumeChange = useCallback(
-    (volume) => dispatch(setVolume(volume)),
+    // sqrt to compensate for the logarithmic volume
+    (volume) => dispatch(setVolume(Math.sqrt(volume))),
     [dispatch]
   )
 
@@ -260,12 +260,9 @@ const Player = () => {
     [dispatch, showNotifications]
   )
 
-  const onAudioPause = useCallback(
-    (info) => {
-      dispatch(currentPlaying(info))
-    },
-    [dispatch]
-  )
+  const onAudioPause = useCallback((info) => dispatch(currentPlaying(info)), [
+    dispatch,
+  ])
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
