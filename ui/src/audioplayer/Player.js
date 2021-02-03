@@ -6,6 +6,7 @@ import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import { makeStyles } from '@material-ui/core/styles'
+import { GlobalHotKeys } from 'react-hotkeys'
 import subsonic from '../subsonic'
 import {
   scrobble,
@@ -17,7 +18,6 @@ import {
 import themes from '../themes'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
-import { useHotkeys } from 'react-hotkeys-hook'
 import { sendNotification, baseUrl } from '../utils'
 
 const useStyle = makeStyles((theme) => ({
@@ -72,56 +72,47 @@ const Player = () => {
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
 
-  const nextSong = () => {
+  const nextSong = useCallback(() => {
     const idx = queue.queue.findIndex(
       (item) => item.uuid === queue.current.uuid
     )
     return idx !== null ? queue.queue[idx + 1] : null
-  }
+  }, [queue])
 
-  const prevSong = () => {
+  const prevSong = useCallback(() => {
     const idx = queue.queue.findIndex(
       (item) => item.uuid === queue.current.uuid
     )
     return idx !== null ? queue.queue[idx - 1] : null
+  }, [queue])
+
+  const keyMap = {
+    TOGGLE_PLAY: 'p',
+    PREV_SONG: 'left',
+    NEXT_SONG: 'right',
+    VOL_UP: '=',
+    VOL_DOWN: '-',
   }
 
-  useHotkeys('space', (e) => {
-    e.preventDefault()
-    audioInstance && audioInstance.togglePlay()
-  })
-
-  useHotkeys(
-    'left',
-    (e) => {
-      if (prevSong()) {
-        e.preventDefault()
-        audioInstance && audioInstance.playPrev()
-      }
-    },
-    {},
-    [queue]
-  )
-
-  useHotkeys('=', () => {
-    audioInstance.volume = Math.min(1, audioInstance.volume + 0.1)
-  })
-
-  useHotkeys('-', () => {
-    audioInstance.volume = Math.max(0, audioInstance.volume - 0.1)
-  })
-
-  useHotkeys(
-    'right',
-    (e) => {
-      if (nextSong()) {
-        e.preventDefault()
-        audioInstance && audioInstance.playNext()
-      }
-    },
-    {},
-    [queue]
-  )
+  const keyHandlers = {
+    TOGGLE_PLAY: useCallback(() => {
+      audioInstance && audioInstance.togglePlay()
+    }, []),
+    PREV_SONG: useCallback(() => {
+      if (prevSong()) audioInstance && audioInstance.playPrev()
+    }, [prevSong]),
+    NEXT_SONG: useCallback(() => {
+      if (nextSong()) audioInstance && audioInstance.playNext()
+    }, [nextSong]),
+    VOL_UP: useCallback(
+      () => (audioInstance.volume = Math.min(1, audioInstance.volume + 0.1)),
+      []
+    ),
+    VOL_DOWN: useCallback(
+      () => (audioInstance.volume = Math.max(0, audioInstance.volume - 0.1)),
+      []
+    ),
+  }
 
   const defaultOptions = {
     theme: playerTheme,
@@ -292,23 +283,26 @@ const Player = () => {
   }
 
   return (
-    <ReactJkMusicPlayer
-      {...options}
-      quietUpdate
-      className={classes.player}
-      onAudioListsChange={onAudioListsChange}
-      onAudioProgress={onAudioProgress}
-      onAudioPlay={onAudioPlay}
-      onAudioPause={onAudioPause}
-      onAudioEnded={onAudioEnded}
-      onAudioVolumeChange={onAudioVolumeChange}
-      onCoverClick={onCoverClick}
-      onBeforeDestroy={onBeforeDestroy}
-      getAudioInstance={(instance) => {
-        audioInstance = instance
-      }}
-    />
+    <>
+      <ReactJkMusicPlayer
+        {...options}
+        quietUpdate
+        className={classes.player}
+        onAudioListsChange={onAudioListsChange}
+        onAudioProgress={onAudioProgress}
+        onAudioPlay={onAudioPlay}
+        onAudioPause={onAudioPause}
+        onAudioEnded={onAudioEnded}
+        onAudioVolumeChange={onAudioVolumeChange}
+        onCoverClick={onCoverClick}
+        onBeforeDestroy={onBeforeDestroy}
+        getAudioInstance={(instance) => {
+          audioInstance = instance
+        }}
+      />
+      <GlobalHotKeys handlers={keyHandlers} keyMap={keyMap} allowChanges />
+    </>
   )
 }
 
-export default Player
+export { Player }
