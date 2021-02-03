@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
 import { StarButton, useToggleStar } from '../common'
+import { keyMap } from '../hotkeys'
 
 const Placeholder = () => <StarButton disabled={true} resource={'song'} />
 
@@ -12,7 +13,6 @@ const Toolbar = ({ id }) => {
   const { data, loading } = useGetOne(resource, id)
   const [toggleStar, toggling] = useToggleStar(resource, data)
 
-  const keyMap = { TOGGLE_STAR: 's' }
   const handlers = {
     TOGGLE_STAR: useCallback(() => toggleStar(), [toggleStar]),
   }
