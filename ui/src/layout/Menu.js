@@ -1,12 +1,7 @@
 import React, { useState, createElement } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
+import { useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
-import {
-  useTranslate,
-  MenuItemLink,
-  getResources,
-  toggleSidebar,
-} from 'react-admin'
+import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import ViewListIcon from '@material-ui/icons/ViewList'
@@ -14,7 +9,6 @@ import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
-import { useHotkeys } from 'react-hotkeys-hook'
 
 const translatedResourceName = (resource, translate) =>
   translate(`resources.${resource.name}.name`, {
@@ -33,11 +27,6 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
   const resources = useSelector(getResources)
-  const dispatch = useDispatch()
-
-  useHotkeys('m', () => {
-    dispatch(toggleSidebar())
-  })
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
