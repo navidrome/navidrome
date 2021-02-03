@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
@@ -52,10 +53,14 @@ func (c *LibraryScanningController) StartScan(w http.ResponseWriter, r *http.Req
 	fullScan := utils.ParamBool(r, "fullScan", false)
 
 	go func() {
+		start := time.Now()
+		log.Info(ctx, "Triggering manual scan", "fullScan", fullScan, "user", loggedUser.UserName)
 		err := c.scanner.RescanAll(ctx, fullScan)
 		if err != nil {
-			log.Error(ctx, err)
+			log.Error(ctx, "Error scanning", err)
+			return
 		}
+		log.Info(ctx, "Manual scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start).Round(100*time.Millisecond))
 	}()
 
 	return c.GetScanStatus(w, r)
