@@ -28,6 +28,8 @@ import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
 import { setDispatch, startEventStream } from './eventStream'
+import { HotKeys } from 'react-hotkeys'
+import { keyMap } from './hotkeys'
 
 const history = createHashHistory()
 
@@ -119,4 +121,10 @@ const Admin = (props) => {
   )
 }
 
-export default App
+const AppWithHotkeys = () => (
+  <HotKeys keyMap={keyMap}>
+    <App />
+  </HotKeys>
+)
+
+export default AppWithHotkeys

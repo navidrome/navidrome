@@ -18,13 +18,12 @@ export default (props) => {
   const classes = useStyles({ addPadding: queue.queue.length > 0 })
   const dispatch = useDispatch()
 
-  const keyMap = { TOGGLE_MENU: 'm' }
   const keyHandlers = {
     TOGGLE_MENU: useCallback(() => dispatch(toggleSidebar()), [dispatch]),
   }
 
   return (
-    <HotKeys handlers={keyHandlers} keyMap={keyMap}>
+    <HotKeys handlers={keyHandlers}>
       <Layout
         {...props}
         className={classes.root}

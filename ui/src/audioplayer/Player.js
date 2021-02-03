@@ -19,6 +19,7 @@ import themes from '../themes'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification, baseUrl } from '../utils'
+import { keyMap } from '../hotkeys'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
@@ -86,32 +87,18 @@ const Player = () => {
     return idx !== null ? queue.queue[idx - 1] : null
   }, [queue])
 
-  const keyMap = {
-    TOGGLE_PLAY: 'p',
-    PREV_SONG: 'left',
-    NEXT_SONG: 'right',
-    VOL_UP: '=',
-    VOL_DOWN: '-',
-  }
-
   const keyHandlers = {
-    TOGGLE_PLAY: useCallback(() => {
-      audioInstance && audioInstance.togglePlay()
-    }, []),
+    TOGGLE_PLAY: () => audioInstance && audioInstance.togglePlay(),
+    VOL_UP: () =>
+      (audioInstance.volume = Math.min(1, audioInstance.volume + 0.1)),
+    VOL_DOWN: () =>
+      (audioInstance.volume = Math.max(0, audioInstance.volume - 0.1)),
     PREV_SONG: useCallback(() => {
       if (prevSong()) audioInstance && audioInstance.playPrev()
     }, [prevSong]),
     NEXT_SONG: useCallback(() => {
       if (nextSong()) audioInstance && audioInstance.playNext()
     }, [nextSong]),
-    VOL_UP: useCallback(
-      () => (audioInstance.volume = Math.min(1, audioInstance.volume + 0.1)),
-      []
-    ),
-    VOL_DOWN: useCallback(
-      () => (audioInstance.volume = Math.max(0, audioInstance.volume - 0.1)),
-      []
-    ),
   }
 
   const defaultOptions = {
