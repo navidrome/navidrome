@@ -83,7 +83,7 @@ const AlbumComment = ({ record }) => {
   const formatted = useMemo(() => {
     return record.comment.split('\n').map((line, idx) => (
       <span key={record.id + '-comment-' + idx}>
-        {line}
+        <span dangerouslySetInnerHTML={{ __html: line }} />
         <br />
       </span>
     ))
