@@ -324,5 +324,18 @@
         "fullScan": "Scan completo",
         "serverUptime": "Uptime do servidor",
         "serverDown": "DESCONECTADO"
+    },
+    "help": {
+        "title": "Navidrome - Teclas de atalho",
+        "hotkeys": {
+            "show_help": "Mostra esta janela",
+            "toggle_menu": "Mostra o menu lateral",
+            "toggle_play": "Tocar / pausar",
+            "prev_song": "Música anterior",
+            "next_song": "Próxima música",
+            "vol_up": "Aumenta volume",
+            "vol_down": "Diminui volume",
+            "toggle_star": "Marca/desmarca favorita"
+        }
     }
 }
