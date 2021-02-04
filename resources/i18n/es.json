@@ -19,7 +19,8 @@
                 "updatedAt": "Actualizado el",
                 "bitRate": "Tasa de bits",
                 "discSubtitle": "Subtítulo del disco",
-                "starred": "Favorito"
+                "starred": "Favorito",
+                "comment": "Comentario"
             },
             "actions": {
                 "addToQueue": "Reproducir después",
@@ -42,7 +43,8 @@
                 "genre": "Género",
                 "compilation": "Compilación",
                 "year": "Año",
-                "updatedAt": "Actualizado el"
+                "updatedAt": "Actualizado el",
+                "comment": "Comentario"
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -90,7 +92,8 @@
                 "maxBitRate": "Tasa de bits Máx.",
                 "client": "Cliente",
                 "userName": "Usuario",
-                "lastSeen": "Última conexión"
+                "lastSeen": "Última conexión",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -260,7 +263,9 @@
         "songsAddedToPlaylist": "1 canción agregada a la lista |||| %{smart_count} canciones agregadas a la lista",
         "noPlaylistsAvailable": "Ninguna lista disponible",
         "delete_user_title": "Eliminar usuario '%{name}'",
-        "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?"
+        "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?",
+        "notifications_blocked": "",
+        "notifications_not_available": ""
     },
     "menu": {
         "library": "Biblioteca",
@@ -272,7 +277,8 @@
             "options": {
                 "theme": "Tema",
                 "language": "Idioma",
-                "defaultView": "Vista por defecto"
+                "defaultView": "Vista por defecto",
+                "desktop_notifications": ""
             }
         },
         "albumList": "Álbumes",
@@ -309,5 +315,13 @@
             "source": "Código fuente",
             "featureRequests": "Pedir funcionalidad"
         }
+    },
+    "activity": {
+        "title": "Actividad",
+        "totalScanned": "Total de carpetas escaneadas",
+        "quickScan": "Escaneo rápido",
+        "fullScan": "Escaneo completo",
+        "serverUptime": "Uptime del servidor",
+        "serverDown": "OFFLINE"
     }
 }

@@ -546,9 +546,10 @@ var _ = Describe("Responses", func() {
 			BeforeEach(func() {
 				t, _ := time.Parse(time.RFC822, time.RFC822)
 				response.ScanStatus = &ScanStatus{
-					Scanning: true,
-					Count:    123,
-					LastScan: &t,
+					Scanning:    true,
+					FolderCount: 123,
+					Count:       456,
+					LastScan:    &t,
 				}
 			})
 			It("should match .XML", func() {

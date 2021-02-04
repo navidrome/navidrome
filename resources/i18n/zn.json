@@ -19,7 +19,8 @@
                 "updatedAt": "更新于",
                 "bitRate": "比特率",
                 "discSubtitle": "字幕",
-                "starred": "收藏"
+                "starred": "收藏",
+                "comment": "评论"
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -42,7 +43,8 @@
                 "genre": "曲风",
                 "compilation": "合辑",
                 "year": "发布年份",
-                "updatedAt": "更新于"
+                "updatedAt": "更新于",
+                "comment": "评论"
             },
             "actions": {
                 "playAll": "立即播放",
@@ -90,7 +92,8 @@
                 "maxBitRate": "最大比特率",
                 "client": "客户端",
                 "userName": "用户名",
-                "lastSeen": "上次浏览"
+                "lastSeen": "上次浏览",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -260,7 +263,9 @@
         "songsAddedToPlaylist": "已添加一首歌到歌单||||已添加％{smart_count}首歌到歌单",
         "noPlaylistsAvailable": "没有有效的歌单",
         "delete_user_title": "删除用户 ％{name}",
-        "delete_user_content": "您确定要删除该用户及其相关数据（包括歌单和用户配置）吗？"
+        "delete_user_content": "您确定要删除该用户及其相关数据（包括歌单和用户配置）吗？",
+        "notifications_blocked": "您已在浏览器的设置中屏蔽了此网站的通知",
+        "notifications_not_available": "此浏览器不支持桌面通知"
     },
     "menu": {
         "library": "曲库",
@@ -272,7 +277,8 @@
             "options": {
                 "theme": "主题",
                 "language": "语言",
-                "defaultView": "默认界面"
+                "defaultView": "默认界面",
+                "desktop_notifications": "桌面通知"
             }
         },
         "albumList": "专辑",
@@ -309,5 +315,13 @@
             "source": "源代码",
             "featureRequests": "功能需求"
         }
+    },
+    "activity": {
+        "title": "运行情况",
+        "totalScanned": "已完成扫描的目录",
+        "quickScan": "快速扫描",
+        "fullScan": "完全扫描",
+        "serverUptime": "服务器已运行",
+        "serverDown": "离线"
     }
 }

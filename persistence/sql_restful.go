@@ -26,7 +26,7 @@ func (r sqlRestful) parseRestFilters(options rest.QueryOptions) Sqlizer {
 		}
 		if ff, ok := r.filterMappings[f]; ok {
 			filters = append(filters, ff(f, v))
-		} else if f == "id" {
+		} else if strings.HasSuffix(strings.ToLower(f), "id") {
 			filters = append(filters, eqFilter(f, v))
 		} else {
 			filters = append(filters, startsWithFilter(f, v))

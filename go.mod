@@ -3,11 +3,14 @@ module github.com/deluan/navidrome
 go 1.15
 
 require (
-	github.com/Masterminds/squirrel v1.4.0
-	github.com/astaxie/beego v1.12.2
+	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
+	github.com/ClickHouse/clickhouse-go v1.4.3 // indirect
+	github.com/Masterminds/squirrel v1.5.0
+	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.0
 	github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0
+	github.com/denisenkom/go-mssqldb v0.9.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27
 	github.com/disintegration/imaging v1.6.2
@@ -18,21 +21,21 @@ require (
 	github.com/go-chi/cors v1.1.1
 	github.com/go-chi/httprate v0.4.0
 	github.com/go-chi/jwtauth v4.0.4+incompatible
-	github.com/golangci/golangci-lint v1.32.1
-	github.com/google/uuid v1.1.2
-	github.com/google/wire v0.4.0
+	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/golangci/golangci-lint v1.36.0
+	github.com/google/uuid v1.2.0
+	github.com/google/wire v0.5.0
 	github.com/karrick/godirwalk v1.16.1
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.2.1
-	github.com/lib/pq v1.3.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/microcosm-cc/bluemonday v1.0.4
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.3
+	github.com/onsi/gomega v1.10.4
 	github.com/pelletier/go-toml v1.8.0 // indirect
-	github.com/pressly/goose v2.6.0+incompatible
+	github.com/pressly/goose v2.7.0+incompatible
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/afero v1.3.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
@@ -43,7 +46,9 @@ require (
 	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
-	golang.org/x/tools v0.0.0-20201013201025-64a9e34f3752
+	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
+	golang.org/x/sys v0.0.0-20201113233024-12cec1faf1ba // indirect
+	golang.org/x/tools v0.0.0-20210105210202-9ed45478a130
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/djherbis/atime.v1 v1.0.0
 	gopkg.in/djherbis/stream.v1 v1.3.1

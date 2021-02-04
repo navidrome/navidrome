@@ -10,7 +10,8 @@ const defaultConfig = {
   enableDownloads: true,
   welcomeMessage: '',
   gaTrackingId: '',
-  devActivityMenu: true,
+  devActivityPanel: true,
+  devFastAccessCoverArt: false,
 }
 
 let config

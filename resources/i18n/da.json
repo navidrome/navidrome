@@ -19,12 +19,16 @@
                 "updatedAt": "Opdateret den",
                 "bitRate": "Bitrate",
                 "discSubtitle": "Plade undernavn",
-                "starred": "Stjernemarkeret"
+                "starred": "Stjernemarkeret",
+                "comment": "Kommentar"
             },
             "actions": {
                 "addToQueue": "Afspil senere",
                 "playNow": "Afspil nu",
-                "addToPlaylist": "Tilføj til afspilningsliste"
+                "addToPlaylist": "Tilføj til afspilningsliste",
+                "shuffleAll": "Bland alle",
+                "download": "Hent",
+                "playNext": "Spil næste"
             }
         },
         "album": {
@@ -39,20 +43,24 @@
                 "genre": "Genre",
                 "compilation": "Samling",
                 "year": "År",
-                "updatedAt": "Opdateret den"
+                "updatedAt": "Opdateret den",
+                "comment": "Kommentar"
             },
             "actions": {
                 "playAll": "Afspil",
                 "playNext": "Afspil næste",
                 "addToQueue": "Afspil senere",
-                "shuffle": "Bland"
+                "shuffle": "Bland",
+                "addToPlaylist": "Tilføj til afspilningsliste",
+                "download": "Hent"
             },
             "lists": {
                 "all": "Alle",
                 "random": "Tilfældig",
                 "recentlyAdded": "Nyligt tilføjet",
                 "recentlyPlayed": "Nyligt Afspillet",
-                "mostPlayed": "Mest Afspillet"
+                "mostPlayed": "Mest Afspillet",
+                "starred": "Stjernemarkeret"
             }
         },
         "artist": {
@@ -60,7 +68,8 @@
             "fields": {
                 "name": "Navn",
                 "albumCount": "Antal album",
-                "songCount": "Antal sange"
+                "songCount": "Antal sange",
+                "playCount": "Afspilninger"
             }
         },
         "user": {
@@ -83,7 +92,8 @@
                 "maxBitRate": "Maks. bitrate",
                 "client": "Klient",
                 "userName": "Brugernavn",
-                "lastSeen": "Sidst set"
+                "lastSeen": "Sidst set",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -111,7 +121,8 @@
             },
             "actions": {
                 "selectPlaylist": "Vælg en afspilningsliste:",
-                "addNewPlaylist": "Opret \"%{name}\""
+                "addNewPlaylist": "Opret \"%{name}\"",
+                "export": "Eksporter"
             }
         }
     },
@@ -252,7 +263,9 @@
         "songsAddedToPlaylist": "Tilføjede 1 sang til afspilningsliste |||| Tilføjede %{smart_count} sange til afspilningsliste",
         "noPlaylistsAvailable": "Ingen tilgængelige",
         "delete_user_title": "Slet bruger '%{name}'",
-        "delete_user_content": "Er du sikker på at du vil slette denne bruger og tilhørende data (inklusive afspilningslister og indstillinger)?"
+        "delete_user_content": "Er du sikker på at du vil slette denne bruger og tilhørende data (inklusive afspilningslister og indstillinger)?",
+        "notifications_blocked": "",
+        "notifications_not_available": ""
     },
     "menu": {
         "library": "Bibliotek",
@@ -264,10 +277,12 @@
             "options": {
                 "theme": "Tema",
                 "language": "Sprog",
-                "defaultView": "Standardopsætning"
+                "defaultView": "Standardopsætning",
+                "desktop_notifications": ""
             }
         },
-        "albumList": "Albums"
+        "albumList": "Albums",
+        "about": "Om"
     },
     "player": {
         "playListsText": "Afspilnings kø",
@@ -293,5 +308,20 @@
             "singleLoop": "Gentag enkelt",
             "shufflePlay": "Bland"
         }
+    },
+    "about": {
+        "links": {
+            "homepage": "Hjme",
+            "source": "Kildekode",
+            "featureRequests": "Ønskede funktioner"
+        }
+    },
+    "activity": {
+        "title": "Aktivitet",
+        "totalScanned": "Antal sange fundet",
+        "quickScan": "Hurtig søgning",
+        "fullScan": "Fuld søgning\n",
+        "serverUptime": "Server uptime",
+        "serverDown": "OFFLINE"
     }
 }

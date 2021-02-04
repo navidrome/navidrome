@@ -1,42 +1,53 @@
 import React from 'react'
-import { useSelector } from 'react-redux'
-import { useGetOne } from 'react-admin'
+import {
+  ReferenceManyField,
+  ShowContextProvider,
+  useShowContext,
+  useShowController,
+} from 'react-admin'
 import PlaylistDetails from './PlaylistDetails'
-import { Title } from '../common'
 import PlaylistSongs from './PlaylistSongs'
 import PlaylistActions from './PlaylistActions'
-import PlaylistSongBulkActions from './PlaylistSongBulkActions'
-import { isReadOnly } from '../common/Writable'
+import { Title, isReadOnly } from '../common'
 
-const PlaylistShow = (props) => {
-  const viewVersion = useSelector((s) => s.admin.ui && s.admin.ui.viewVersion)
-  const { data: record, error } = useGetOne('playlist', props.id, {
-    v: viewVersion,
-  })
-
-  if (error) {
-    return <p>ERROR: {error}</p>
-  }
-
+const PlaylistShowLayout = (props) => {
+  const { loading, ...context } = useShowContext(props)
+  const { record } = context
   return (
     <>
-      <PlaylistDetails {...props} record={record} />
-      <PlaylistSongs
-        {...props}
-        playlistId={props.id}
-        readOnly={isReadOnly(record && record.owner)}
-        title={<Title subTitle={record && record.name} />}
-        actions={<PlaylistActions record={record} />}
-        filter={{ playlist_id: props.id }}
-        resource={'playlistTrack'}
-        exporter={false}
-        perPage={0}
-        pagination={null}
-        bulkActionButtons={
-          <PlaylistSongBulkActions playlistId={props.id} record={record} />
-        }
-      />
+      {record && <PlaylistDetails {...context} />}
+      {record && (
+        <ReferenceManyField
+          {...context}
+          addLabel={false}
+          reference="playlistTrack"
+          target="playlist_id"
+          sort={{ field: 'id', order: 'ASC' }}
+          perPage={0}
+          filter={{ playlist_id: props.id }}
+        >
+          <PlaylistSongs
+            {...props}
+            readOnly={isReadOnly(record.owner)}
+            title={<Title subTitle={record.name} />}
+            actions={<PlaylistActions record={record} />}
+            resource={'playlistTrack'}
+            exporter={false}
+            perPage={0}
+            pagination={null}
+          />
+        </ReferenceManyField>
+      )}
     </>
+  )
+}
+
+const PlaylistShow = (props) => {
+  const controllerProps = useShowController(props)
+  return (
+    <ShowContextProvider value={controllerProps}>
+      <PlaylistShowLayout {...props} {...controllerProps} />
+    </ShowContextProvider>
   )
 }
 

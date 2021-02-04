@@ -92,7 +92,8 @@
                 "maxBitRate": "Bitrate máx",
                 "client": "Cliente",
                 "userName": "Usuário",
-                "lastSeen": "Últ. acesso"
+                "lastSeen": "Últ. acesso",
+                "reportRealPath": "Use paths reais"
             }
         },
         "transcoding": {
@@ -240,7 +241,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} de %{total}",
             "page_rows_per_page": "Resultados por página:",
             "next": "Próximo",
-            "prev": "Anterior"
+            "prev": "Anterior",
+            "skip_nav": "Pular para o conteúdo"
         },
         "notification": {
             "updated": "Item atualizado com sucesso |||| %{smart_count} itens foram atualizados com sucesso",
@@ -262,10 +264,11 @@
         "songsAddedToPlaylist": "Música adicionada à playlist |||| %{smart_count} músicas adicionadas à playlist",
         "noPlaylistsAvailable": "Nenhuma playlist",
         "delete_user_title": "Excluir usuário '%{name}'",
-        "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?"
+        "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?",
+        "notifications_blocked": "Você bloqueou notificações para este site nas configurações do seu browser",
+        "notifications_not_available": "Este navegador não suporta notificações"
     },
     "menu": {
-        "about": "Info",
         "library": "Biblioteca",
         "settings": "Configurações",
         "version": "Versão",
@@ -275,25 +278,12 @@
             "options": {
                 "theme": "Tema",
                 "language": "Língua",
-                "defaultView": "Tela inicial"
+                "defaultView": "Tela inicial",
+                "desktop_notifications": "Notificações"
             }
         },
-        "albumList": "Álbuns"
-    },
-    "about": {
-        "links": {
-            "homepage": "Website",
-            "source": "Código fonte",
-            "featureRequests": "Solicitar funcionalidade"
-        }
-    },
-    "activity": {
-        "title": "Atividade",
-        "totalScanned": "Total de pastas encontradas",
-        "quickScan": "Scan rápido",
-        "fullScan": "Scan completo",
-        "serverUptime": "Uptime do servidor",
-        "serverDown": "DESCONECTADO"
+        "albumList": "Álbuns",
+        "about": "Info"
     },
     "player": {
         "playListsText": "Fila de Execução",
@@ -318,6 +308,34 @@
             "orderLoop": "Repetir tudo",
             "singleLoop": "Repetir",
             "shufflePlay": "Aleatório"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "Website",
+            "source": "Código fonte",
+            "featureRequests": "Solicitar funcionalidade"
+        }
+    },
+    "activity": {
+        "title": "Atividade",
+        "totalScanned": "Total de pastas analisadas",
+        "quickScan": "Scan rápido",
+        "fullScan": "Scan completo",
+        "serverUptime": "Uptime do servidor",
+        "serverDown": "DESCONECTADO"
+    },
+    "help": {
+        "title": "Teclas de atalho",
+        "hotkeys": {
+            "show_help": "Mostra esta janela",
+            "toggle_menu": "Mostra o menu lateral",
+            "toggle_play": "Tocar / pausar",
+            "prev_song": "Música anterior",
+            "next_song": "Próxima música",
+            "vol_up": "Aumenta volume",
+            "vol_down": "Diminui volume",
+            "toggle_star": "Marcar/desmarcar favorita"
         }
     }
 }

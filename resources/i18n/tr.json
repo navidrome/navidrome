@@ -19,7 +19,8 @@
                 "updatedAt": "Yüklendiği zaman",
                 "bitRate": "Bir sayısı",
                 "discSubtitle": "Disk Altyazısı",
-                "starred": "Yıldızlı"
+                "starred": "Yıldızlı",
+                "comment": ""
             },
             "actions": {
                 "addToQueue": "Sonra çal",
@@ -42,7 +43,8 @@
                 "genre": "Tür",
                 "compilation": "Derleme",
                 "year": "Yıl",
-                "updatedAt": "Güncellendi "
+                "updatedAt": "Güncellendi ",
+                "comment": ""
             },
             "actions": {
                 "playAll": "Çaldır",
@@ -90,7 +92,8 @@
                 "maxBitRate": "Maks. bit orani",
                 "client": "Cihaz",
                 "userName": "Kullanıcı adı",
-                "lastSeen": "Son Görülme"
+                "lastSeen": "Son Görülme",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -260,7 +263,9 @@
         "songsAddedToPlaylist": "Çalma listesine 1 şarkı eklendi |||| Çalma listesine %{smart_count} şarkı eklendi",
         "noPlaylistsAvailable": "Mevcut değil",
         "delete_user_title": "'%{name}' kullanıcısını sil",
-        "delete_user_content": "Bu kullanıcıyı ve tüm verilerini (çalma listesi ve tercihleri dahil) silmek istediğinden emin misin?"
+        "delete_user_content": "Bu kullanıcıyı ve tüm verilerini (çalma listesi ve tercihleri dahil) silmek istediğinden emin misin?",
+        "notifications_blocked": "",
+        "notifications_not_available": ""
     },
     "menu": {
         "library": "Müzik kütüphanesi",
@@ -272,10 +277,12 @@
             "options": {
                 "theme": "Tema",
                 "language": "Dil",
-                "defaultView": "Varsayılan görünüm"
+                "defaultView": "Varsayılan görünüm",
+                "desktop_notifications": ""
             }
         },
-        "albumList": "Albümler"
+        "albumList": "Albümler",
+        "about": "Hakkinda"
     },
     "player": {
         "playListsText": "Oynatma Sırası",
@@ -301,5 +308,20 @@
             "singleLoop": "Birini tekrarla",
             "shufflePlay": "Karıştır"
         }
+    },
+    "about": {
+        "links": {
+            "homepage": "Ana sayfa",
+            "source": "Kaynak kodu",
+            "featureRequests": "Özellik talepleri"
+        }
+    },
+    "activity": {
+        "title": "",
+        "totalScanned": "",
+        "quickScan": "",
+        "fullScan": "",
+        "serverUptime": "",
+        "serverDown": ""
     }
 }

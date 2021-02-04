@@ -19,7 +19,8 @@
                 "updatedAt": "Hochgeladen um",
                 "bitRate": "Bitrate",
                 "discSubtitle": "CD Untertitel",
-                "starred": "Favorit"
+                "starred": "Favorit",
+                "comment": "Kommentar"
             },
             "actions": {
                 "addToQueue": "Später abspielen",
@@ -42,7 +43,8 @@
                 "genre": "Genre",
                 "compilation": "Kompilation",
                 "year": "Jahr",
-                "updatedAt": "Aktualisiert um"
+                "updatedAt": "Aktualisiert um",
+                "comment": "Kommentar"
             },
             "actions": {
                 "playAll": "Abspielen",
@@ -90,7 +92,8 @@
                 "maxBitRate": "Max. Bitrate",
                 "client": "Client",
                 "userName": "Nutzername",
-                "lastSeen": "Zuletzt gesehen um"
+                "lastSeen": "Zuletzt gesehen um",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -260,7 +263,9 @@
         "songsAddedToPlaylist": "Einen Song zur Playlist hinzugefügt |||| %{smart_count} Songs zur Playlist hinzugefügt",
         "noPlaylistsAvailable": "Keine Playlist verfügbar",
         "delete_user_title": "Benutzer \"% {name}\" löschen",
-        "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Playlisten und Einstellungen) wirklich löschen?"
+        "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Playlisten und Einstellungen) wirklich löschen?",
+        "notifications_blocked": "Sie haben Benachrichtigungen für diese Seite in den Einstellungen Ihres Browsers blockiert",
+        "notifications_not_available": "Dieser Browser unterstützt keine Desktop-Benachrichtigungen"
     },
     "menu": {
         "library": "Bibliothek",
@@ -272,10 +277,12 @@
             "options": {
                 "theme": "Design",
                 "language": "Sprache",
-                "defaultView": "Standard-Ansicht"
+                "defaultView": "Standard-Ansicht",
+                "desktop_notifications": "Desktop-Benachrichtigungen"
             }
         },
-        "albumList": "Alben"
+        "albumList": "Alben",
+        "about": "Über"
     },
     "player": {
         "playListsText": "Wiedergabeliste abspielen",
@@ -301,5 +308,20 @@
             "singleLoop": "Eins wiederholen",
             "shufflePlay": "Zufallswiedergabe"
         }
+    },
+    "about": {
+        "links": {
+            "homepage": "Startseite",
+            "source": "Quellcode",
+            "featureRequests": "Feature-Request"
+        }
+    },
+    "activity": {
+        "title": "Aktivität",
+        "totalScanned": "Insgesamt gescannte Ordner",
+        "quickScan": "Schneller Scan",
+        "fullScan": "Kompletter Scan",
+        "serverUptime": "Server Uptime",
+        "serverDown": "OFFLINE"
     }
 }

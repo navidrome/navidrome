@@ -9,7 +9,7 @@ import {
 import { makeStyles } from '@material-ui/core/styles'
 import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
-import { linkToRecord, Loading } from 'react-admin'
+import { linkToRecord, Loading, useListContext } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
 import {
@@ -77,6 +77,7 @@ const useCoverStyles = makeStyles({
   cover: {
     display: 'inline-block',
     width: '100%',
+    objectFit: 'contain',
     height: (props) => props.height,
   },
 })
@@ -146,8 +147,10 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
   )
 }
 
-const LoadedAlbumGrid = ({ ids, data, basePath, width, isArtistView }) => {
+const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
+  const { filterValues } = useListContext()
+  const isArtistView = !!(filterValues && filterValues.artist_id)
 
   return (
     <div className={classes.root}>

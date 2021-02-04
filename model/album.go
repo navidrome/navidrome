@@ -13,12 +13,14 @@ type Album struct {
 	Artist               string    `json:"artist"`
 	AlbumArtistID        string    `json:"albumArtistId" orm:"column(album_artist_id)"`
 	AlbumArtist          string    `json:"albumArtist"`
+	AllArtistIDs         string    `json:"allArtistIds"  orm:"column(all_artist_ids)"`
 	MaxYear              int       `json:"maxYear"`
 	MinYear              int       `json:"minYear"`
 	Compilation          bool      `json:"compilation"`
 	Comment              string    `json:"comment"`
 	SongCount            int       `json:"songCount"`
 	Duration             float32   `json:"duration"`
+	Size                 int64     `json:"size"`
 	Genre                string    `json:"genre"`
 	FullText             string    `json:"fullText"`
 	SortAlbumName        string    `json:"sortAlbumName"`
@@ -33,7 +35,6 @@ type Album struct {
 	MbzAlbumComment      string    `json:"mbzAlbumComment"`
 	CreatedAt            time.Time `json:"createdAt"`
 	UpdatedAt            time.Time `json:"updatedAt"`
-	Size                 int64     `json:"size"`
 }
 
 type Albums []Album

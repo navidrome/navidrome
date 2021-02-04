@@ -7,8 +7,9 @@ type Event interface {
 }
 
 type ScanStatus struct {
-	Scanning bool  `json:"scanning"`
-	Count    int64 `json:"count"`
+	Scanning    bool  `json:"scanning"`
+	Count       int64 `json:"count"`
+	FolderCount int64 `json:"folderCount"`
 }
 
 func (s ScanStatus) EventName() string { return "scanStatus" }

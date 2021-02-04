@@ -14,9 +14,9 @@ import {
   DialogTitle,
 } from '@material-ui/core'
 import { closeAddToPlaylist } from '../actions'
-import SelectPlaylistInput from './SelectPlaylistInput'
+import { SelectPlaylistInput } from './SelectPlaylistInput'
 
-const AddToPlaylistDialog = () => {
+export const AddToPlaylistDialog = () => {
   const { open, selectedIds, onSuccess } = useSelector(
     (state) => state.addToPlaylistDialog
   )
@@ -96,5 +96,3 @@ const AddToPlaylistDialog = () => {
     </Dialog>
   )
 }
-
-export default AddToPlaylistDialog

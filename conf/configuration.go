@@ -51,9 +51,9 @@ type configOptions struct {
 	DevLogSourceLine           bool
 	DevAutoCreateAdminPassword string
 	DevPreCacheAlbumArtwork    bool
-	DevDisableTrackCoverArt    bool
+	DevFastAccessCoverArt      bool
 	DevOldCacheLayout          bool
-	DevActivityMenu            bool
+	DevActivityPanel           bool
 }
 
 type scannerOptions struct {
@@ -142,8 +142,8 @@ func init() {
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devprecachealbumartwork", false)
 	viper.SetDefault("devoldcachelayout", false)
-	viper.SetDefault("devdisabletrackcoverart", false)
-	viper.SetDefault("devactivitymenu", true)
+	viper.SetDefault("devFastAccessCoverArt", false)
+	viper.SetDefault("devactivitypanel", true)
 }
 
 func InitConfig(cfgFile string) {

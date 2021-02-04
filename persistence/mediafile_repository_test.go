@@ -42,8 +42,8 @@ var _ = Describe("MediaRepository", func() {
 
 	It("find mediafiles by album", func() {
 		Expect(mr.FindByAlbum("103")).To(Equal(model.MediaFiles{
-			songRadioactivity,
 			songAntenna,
+			songRadioactivity,
 		}))
 	})
 
@@ -92,8 +92,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("delete tracks by id", func() {
-		random, _ := uuid.NewRandom()
-		id := random.String()
+		id := uuid.NewString()
 		Expect(mr.Put(&model.MediaFile{ID: id})).To(BeNil())
 
 		Expect(mr.Delete(id)).To(BeNil())

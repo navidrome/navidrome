@@ -47,7 +47,7 @@ func walkFolder(ctx context.Context, rootPath string, currentFolder string, resu
 
 	dir := filepath.Clean(currentFolder)
 	log.Trace(ctx, "Found directory", "dir", dir, "audioCount", stats.AudioFilesCount,
-		"hasImages", stats.HasImages, "HasPlaylist", stats.HasPlaylist)
+		"hasImages", stats.HasImages, "hasPlaylist", stats.HasPlaylist)
 	stats.Path = dir
 	results <- stats
 

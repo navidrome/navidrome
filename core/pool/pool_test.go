@@ -27,7 +27,7 @@ var _ = Describe("Pool", func() {
 
 	BeforeEach(func() {
 		processed = nil
-		pool, _ = NewPool("test", 2, &testItem{}, execute)
+		pool, _ = NewPool("test", 2, execute)
 	})
 
 	It("processes items", func() {

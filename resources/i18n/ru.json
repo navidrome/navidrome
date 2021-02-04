@@ -19,7 +19,8 @@
                 "updatedAt": "Обновлено",
                 "bitRate": "Битрейт",
                 "discSubtitle": "Название диска",
-                "starred": "Избранные"
+                "starred": "Избранные",
+                "comment": ""
             },
             "actions": {
                 "addToQueue": "В очередь",
@@ -42,7 +43,8 @@
                 "genre": "Стиль",
                 "compilation": "Сборник",
                 "year": "Год",
-                "updatedAt": "Обновлено"
+                "updatedAt": "Обновлено",
+                "comment": ""
             },
             "actions": {
                 "playAll": "Воспроизведение",
@@ -90,7 +92,8 @@
                 "maxBitRate": "Макс. Битрейт",
                 "client": "Клиент",
                 "userName": "Пользователь",
-                "lastSeen": "Был на сайте"
+                "lastSeen": "Был на сайте",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -260,7 +263,9 @@
         "songsAddedToPlaylist": "Один трек добавлен в плейлист ||||   %{smart_count} треков добавлено в плейлист",
         "noPlaylistsAvailable": "Недоступно",
         "delete_user_title": "Удалить пользователя '%{name}'",
-        "delete_user_content": "Вы уверены, что вы хотите удалить пользователя и все его данные (включая плейлисты и настройки)?"
+        "delete_user_content": "Вы уверены, что вы хотите удалить пользователя и все его данные (включая плейлисты и настройки)?",
+        "notifications_blocked": "",
+        "notifications_not_available": ""
     },
     "menu": {
         "library": "Библиотека",
@@ -272,7 +277,8 @@
             "options": {
                 "theme": "Тема",
                 "language": "Язык",
-                "defaultView": "Вид по умолчанию"
+                "defaultView": "Вид по умолчанию",
+                "desktop_notifications": ""
             }
         },
         "albumList": "Альбомы",
@@ -309,5 +315,13 @@
             "source": "Код",
             "featureRequests": "Предложения"
         }
+    },
+    "activity": {
+        "title": "",
+        "totalScanned": "",
+        "quickScan": "",
+        "fullScan": "",
+        "serverUptime": "",
+        "serverDown": ""
     }
 }

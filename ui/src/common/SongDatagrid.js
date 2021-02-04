@@ -1,23 +1,15 @@
-import React, {
-  useState,
-  isValidElement,
-  cloneElement,
-  useMemo,
-  useCallback,
-} from 'react'
+import React, { isValidElement, useMemo, useCallback } from 'react'
 import { useDispatch } from 'react-redux'
-import { Datagrid, DatagridBody, DatagridRow } from 'react-admin'
+import { Datagrid, PureDatagridBody, PureDatagridRow } from 'react-admin'
 import { TableCell, TableRow, Typography } from '@material-ui/core'
 import PropTypes from 'prop-types'
 import { makeStyles } from '@material-ui/core/styles'
 import AlbumIcon from '@material-ui/icons/Album'
+import clsx from 'clsx'
 import { playTracks } from '../actions'
 import { AlbumContextMenu } from '../common'
 
 const useStyles = makeStyles({
-  row: {
-    cursor: 'pointer',
-  },
   subtitle: {
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -28,6 +20,17 @@ const useStyles = makeStyles({
     verticalAlign: 'text-top',
     marginRight: '4px',
   },
+  row: {
+    cursor: 'pointer',
+    '&:hover': {
+      '& $contextMenu': {
+        visibility: 'visible',
+      },
+    },
+  },
+  contextMenu: {
+    visibility: 'hidden',
+  },
 })
 
 const DiscSubtitleRow = ({
@@ -37,7 +40,6 @@ const DiscSubtitleRow = ({
   contextAlwaysVisible,
 }) => {
   const classes = useStyles()
-  const [visible, setVisible] = useState(false)
   const handlePlayDisc = (discNumber) => () => {
     onClick(discNumber)
   }
@@ -45,8 +47,6 @@ const DiscSubtitleRow = ({
     <TableRow
       hover
       onClick={handlePlayDisc(record.discNumber)}
-      onMouseEnter={() => setVisible(true)}
-      onMouseLeave={() => setVisible(false)}
       className={classes.row}
     >
       <TableCell colSpan={colSpan}>
@@ -61,7 +61,8 @@ const DiscSubtitleRow = ({
           record={{ id: record.albumId }}
           discNumber={record.discNumber}
           showStar={false}
-          visible={contextAlwaysVisible || visible}
+          className={classes.contextMenu}
+          visible={contextAlwaysVisible}
         />
       </TableCell>
     </TableRow>
@@ -74,12 +75,16 @@ export const SongDatagridRow = ({
   firstTracks,
   contextAlwaysVisible,
   onClickDiscSubtitle,
+  className,
   ...rest
 }) => {
-  const [visible, setVisible] = useState(false)
+  const classes = useStyles()
   const fields = React.Children.toArray(children).filter((c) =>
     isValidElement(c)
   )
+  if (!record || !record.title) {
+    return null
+  }
   const childCount = fields.length
   return (
     <>
@@ -91,20 +96,13 @@ export const SongDatagridRow = ({
           colSpan={childCount + (rest.expand ? 1 : 0)}
         />
       )}
-      <DatagridRow
+      <PureDatagridRow
         record={record}
-        onMouseMove={() => setVisible(true)}
-        onMouseLeave={() => setVisible(false)}
         {...rest}
+        className={clsx(className, classes.row)}
       >
-        {fields.map((child, index) =>
-          index < childCount - 1
-            ? child
-            : cloneElement(child, {
-                visible: contextAlwaysVisible || visible,
-              })
-        )}
-      </DatagridRow>
+        {fields}
+      </PureDatagridRow>
     </>
   )
 }
@@ -121,7 +119,7 @@ SongDatagridRow.defaultProps = {
   onClickDiscSubtitle: () => {},
 }
 
-export const SongDatagrid = ({
+const SongDatagridBody = ({
   contextAlwaysVisible,
   showDiscSubtitles,
   ...rest
@@ -138,6 +136,9 @@ export const SongDatagrid = ({
   )
 
   const firstTracks = useMemo(() => {
+    if (!ids) {
+      return new Set()
+    }
     const set = new Set(
       ids
         .filter((i) => data[i])
@@ -158,9 +159,9 @@ export const SongDatagrid = ({
     return set
   }, [ids, data, showDiscSubtitles])
 
-  const SongDatagridBody = (props) => (
-    <DatagridBody
-      {...props}
+  return (
+    <PureDatagridBody
+      {...rest}
       row={
         <SongDatagridRow
           firstTracks={firstTracks}
@@ -170,10 +171,28 @@ export const SongDatagrid = ({
       }
     />
   )
-  return <Datagrid {...rest} body={<SongDatagridBody />} />
+}
+
+export const SongDatagrid = ({
+  contextAlwaysVisible,
+  showDiscSubtitles,
+  ...rest
+}) => {
+  return (
+    <Datagrid
+      {...rest}
+      body={
+        <SongDatagridBody
+          contextAlwaysVisible={contextAlwaysVisible}
+          showDiscSubtitles={showDiscSubtitles}
+        />
+      }
+    />
+  )
 }
 
 SongDatagrid.propTypes = {
   contextAlwaysVisible: PropTypes.bool,
   showDiscSubtitles: PropTypes.bool,
+  classes: PropTypes.object,
 }

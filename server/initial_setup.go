@@ -26,7 +26,7 @@ func initialSetup(ds model.DataStore) {
 		}
 
 		if conf.Server.DevAutoCreateAdminPassword != "" {
-			if err = createInitialAdminUser(ds); err != nil {
+			if err = createInitialAdminUser(ds, conf.Server.DevAutoCreateAdminPassword); err != nil {
 				return err
 			}
 		}
@@ -36,22 +36,18 @@ func initialSetup(ds model.DataStore) {
 	})
 }
 
-func createInitialAdminUser(ds model.DataStore) error {
+func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
 	users := ds.User(context.TODO())
 	c, err := users.CountAll()
 	if err != nil {
 		panic(fmt.Sprintf("Could not access User table: %s", err))
 	}
 	if c == 0 {
-		id, _ := uuid.NewRandom()
-		random, _ := uuid.NewRandom()
-		initialPassword := random.String()
-		if conf.Server.DevAutoCreateAdminPassword != "" {
-			initialPassword = conf.Server.DevAutoCreateAdminPassword
-		}
-		log.Warn("Creating initial admin user. This should only be used for development purposes!!", "user", consts.DevInitialUserName, "password", initialPassword)
+		id := uuid.NewString()
+		log.Warn("Creating initial admin user. This should only be used for development purposes!!",
+			"user", consts.DevInitialUserName, "password", initialPassword, "id", id)
 		initialUser := model.User{
-			ID:       id.String(),
+			ID:       id,
 			UserName: consts.DevInitialUserName,
 			Name:     consts.DevInitialName,
 			Email:    "",
@@ -72,9 +68,8 @@ func createJWTSecret(ds model.DataStore) error {
 	if err == nil {
 		return nil
 	}
-	jwtSecret, _ := uuid.NewRandom()
 	log.Warn("Creating JWT secret, used for encrypting UI sessions")
-	err = properties.Put(consts.JWTSecretKey, jwtSecret.String())
+	err = properties.Put(consts.JWTSecretKey, uuid.NewString())
 	if err != nil {
 		log.Error("Could not save JWT secret in DB", err)
 	}

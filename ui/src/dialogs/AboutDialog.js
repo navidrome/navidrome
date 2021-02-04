@@ -1,13 +1,8 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import { withStyles } from '@material-ui/core/styles'
 import Link from '@material-ui/core/Link'
 import Dialog from '@material-ui/core/Dialog'
-import MuiDialogTitle from '@material-ui/core/DialogTitle'
-import MuiDialogContent from '@material-ui/core/DialogContent'
 import IconButton from '@material-ui/core/IconButton'
-import CloseIcon from '@material-ui/icons/Close'
-import Typography from '@material-ui/core/Typography'
 import TableContainer from '@material-ui/core/TableContainer'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
@@ -18,19 +13,8 @@ import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import inflection from 'inflection'
 import { useTranslate } from 'react-admin'
 import config from '../config'
-
-const styles = (theme) => ({
-  root: {
-    margin: 0,
-    padding: theme.spacing(2),
-  },
-  closeButton: {
-    position: 'absolute',
-    right: theme.spacing(1),
-    top: theme.spacing(1),
-    color: theme.palette.grey[500],
-  },
-})
+import { DialogTitle } from './DialogTitle'
+import { DialogContent } from './DialogContent'
 
 const links = {
   homepage: 'navidrome.org',
@@ -40,30 +24,6 @@ const links = {
   source: 'github.com/deluan/navidrome',
   featureRequests: 'github.com/deluan/navidrome/issues',
 }
-
-const DialogTitle = withStyles(styles)((props) => {
-  const { children, classes, onClose, ...other } = props
-  return (
-    <MuiDialogTitle disableTypography className={classes.root} {...other}>
-      <Typography variant="h5">{children}</Typography>
-      {onClose ? (
-        <IconButton
-          aria-label="close"
-          className={classes.closeButton}
-          onClick={onClose}
-        >
-          <CloseIcon />
-        </IconButton>
-      ) : null}
-    </MuiDialogTitle>
-  )
-})
-
-const DialogContent = withStyles((theme) => ({
-  root: {
-    padding: theme.spacing(2),
-  },
-}))(MuiDialogContent)
 
 const AboutDialog = ({ open, onClose }) => {
   const translate = useTranslate()
@@ -79,7 +39,7 @@ const AboutDialog = ({ open, onClose }) => {
       </DialogTitle>
       <DialogContent dividers>
         <TableContainer component={Paper}>
-          <Table aria-label="song details" size="small">
+          <Table aria-label={translate('menu.about')} size="small">
             <TableBody>
               <TableRow>
                 <TableCell align="right" component="th" scope="row">
@@ -143,4 +103,4 @@ AboutDialog.propTypes = {
   onClose: PropTypes.func.isRequired,
 }
 
-export default AboutDialog
+export { AboutDialog }
