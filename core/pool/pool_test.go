@@ -9,11 +9,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestCore(t *testing.T) {
+func TestPool(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Core Suite")
+	RunSpecs(t, "Pool Suite")
 }
 
 type testItem struct {
