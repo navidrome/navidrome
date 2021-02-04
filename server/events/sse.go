@@ -2,12 +2,10 @@
 package events
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/go-diodes"
@@ -29,14 +27,11 @@ const (
 
 var (
 	errWriteTimeOut = errors.New("write timeout")
-	eventId         uint32
 )
 
 type (
 	message struct {
-		ID    uint32
-		Event string
-		Data  string
+		Data string
 	}
 	messageChan chan message
 	clientsChan chan client
@@ -84,16 +79,9 @@ func (b *broker) SendMessage(evt Event) {
 	b.publish <- msg
 }
 
-func (b *broker) nextEventID() uint32 {
-	return atomic.AddUint32(&eventId, 1)
-}
-
 func (b *broker) prepareMessage(event Event) message {
 	msg := message{}
-	msg.ID = b.nextEventID()
-	msg.Event = event.EventName()
-	data, _ := json.Marshal(event)
-	msg.Data = string(data)
+	msg.Data = event.Prepare(event)
 	return msg
 }
 
@@ -102,7 +90,7 @@ func writeEvent(w io.Writer, event message, timeout time.Duration) (err error) {
 	flusher, _ := w.(http.Flusher)
 	complete := make(chan struct{}, 1)
 	go func() {
-		_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.ID, event.Event, event.Data)
+		_, err = fmt.Fprintf(w, "data: %s\n\n", event.Data)
 		// Flush the data immediately instead of buffering it for later.
 		flusher.Flush()
 		complete <- struct{}{}
@@ -188,7 +176,7 @@ func (b *broker) listen() {
 			log.Debug("Client added to event broker", "numClients", len(clients), "newClient", c.String())
 
 			// Send a serverStart event to new client
-			c.diode.set(b.prepareMessage(&ServerStart{consts.ServerStart}))
+			c.diode.set(b.prepareMessage(&ServerStart{StartTime: consts.ServerStart}))
 
 		case c := <-b.unsubscribing:
 			// A client has detached and we want to

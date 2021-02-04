@@ -1,8 +1,7 @@
 export const EVENT_SCAN_STATUS = 'scanStatus'
 export const EVENT_SERVER_START = 'serverStart'
 
-export const processEvent = (type, event) => {
-  const data = JSON.parse(event)
+export const processEvent = (type, data) => {
   return {
     type,
     data: data,
