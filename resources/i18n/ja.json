@@ -93,7 +93,7 @@
                 "client": "クライアント",
                 "userName": "ユーザ名",
                 "lastSeen": "最後のシーン",
-                "reportRealPath": ""
+                "reportRealPath": "実際のファイルパスを返す"
             }
         },
         "transcoding": {
@@ -241,7 +241,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
             "page_rows_per_page": "表示件数:",
             "next": "次",
-            "prev": "前"
+            "prev": "前",
+            "skip_nav": "スキップ"
         },
         "notification": {
             "updated": "更新しました |||| %{smart_count} 件更新しました",
@@ -323,5 +324,18 @@
         "fullScan": "フルスキャン",
         "serverUptime": "サーバー稼働時間",
         "serverDown": "サーバーオフライン"
+    },
+    "help": {
+        "title": "ホットキー",
+        "hotkeys": {
+            "show_help": "このヘルプを表示",
+            "toggle_menu": "サイドバーの表示/非表示",
+            "toggle_play": "再生/停止",
+            "prev_song": "前の曲",
+            "next_song": "次の曲",
+            "vol_up": "音量を上げる",
+            "vol_down": "音量を下げる",
+            "toggle_star": "星の付け外し"
+        }
     }
 }
