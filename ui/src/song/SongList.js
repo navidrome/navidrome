@@ -23,7 +23,7 @@ import { setTrack } from '../actions'
 import { SongBulkActions } from '../common'
 import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
-import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
+import { AddToPlaylistDialog } from '../dialogs'
 import { makeStyles } from '@material-ui/core/styles'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 

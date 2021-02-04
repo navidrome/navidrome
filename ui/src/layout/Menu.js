@@ -9,6 +9,7 @@ import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
+import { HelpDialog } from '../dialogs'
 
 const translatedResourceName = (resource, translate) =>
   translate(`resources.${resource.name}.name`, {
@@ -108,6 +109,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
       {isXsmall && logout}
+      <HelpDialog />
     </div>
   )
 }

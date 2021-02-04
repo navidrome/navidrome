@@ -324,5 +324,18 @@
         "fullScan": "Full Scan",
         "serverUptime": "Server Uptime",
         "serverDown": "OFFLINE"
+    },
+    "help": {
+        "title": "Navidrome Hotkeys",
+        "hotkeys": {
+            "show_help": "Show This Help",
+            "toggle_menu": "Toggle Menu Side Bar",
+            "toggle_play": "Play / Pause",
+            "prev_song": "Previous Song",
+            "next_song": "Next Song",
+            "vol_up": "Volume Up",
+            "vol_down": "Volume Down",
+            "toggle_star": "Toggle Current Song's Star"
+        }
     }
 }
