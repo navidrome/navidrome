@@ -326,7 +326,7 @@
         "serverDown": "DESCONECTADO"
     },
     "help": {
-        "title": "Navidrome - Teclas de atalho",
+        "title": "Teclas de atalho",
         "hotkeys": {
             "show_help": "Mostra esta janela",
             "toggle_menu": "Mostra o menu lateral",
@@ -335,7 +335,7 @@
             "next_song": "Próxima música",
             "vol_up": "Aumenta volume",
             "vol_down": "Diminui volume",
-            "toggle_star": "Marca/desmarca favorita"
+            "toggle_star": "Marcar/desmarcar favorita"
         }
     }
 }
