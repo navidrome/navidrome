@@ -15,7 +15,7 @@ builds:
     goarch:
       - amd64
     flags:
-      - -tags=embed
+      - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static -lz'"
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
@@ -28,7 +28,7 @@ builds:
     goarch:
       - 386
     flags:
-      - -tags=embed
+      - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
@@ -47,7 +47,7 @@ builds:
       - 6
       - 7
     flags:
-      - -tags=embed
+      - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
@@ -62,7 +62,7 @@ builds:
     goarch:
       - arm64
     flags:
-      - -tags=embed
+      - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
@@ -78,7 +78,7 @@ builds:
     goarch:
       - 386
     flags:
-      - -tags=embed
+      - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
@@ -94,7 +94,7 @@ builds:
     goarch:
       - amd64
     flags:
-      - -tags=embed
+      - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
@@ -110,7 +110,7 @@ builds:
     goarch:
       - amd64
     flags:
-      - -tags=embed
+      - -tags=embed,netgo
     ldflags:
       - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
 

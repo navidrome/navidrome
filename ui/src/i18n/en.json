@@ -92,7 +92,8 @@
                 "maxBitRate": "Max. Bit Rate",
                 "client": "Client",
                 "userName": "Username",
-                "lastSeen": "Last Seen At"
+                "lastSeen": "Last Seen At",
+                "reportRealPath": "Report Real Path"
             }
         },
         "transcoding": {
@@ -240,7 +241,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} of %{total}",
             "page_rows_per_page": "Items per page:",
             "next": "Next",
-            "prev": "Prev"
+            "prev": "Prev",
+            "skip_nav": "Skip to content"
         },
         "notification": {
             "updated": "Element updated |||| %{smart_count} elements updated",
@@ -262,7 +264,9 @@
         "songsAddedToPlaylist": "Added 1 song to playlist |||| Added %{smart_count} songs to playlist",
         "noPlaylistsAvailable": "None available",
         "delete_user_title": "Delete user '%{name}'",
-        "delete_user_content": "Are you sure you want to delete this user and all their data (including playlists and preferences)?"
+        "delete_user_content": "Are you sure you want to delete this user and all their data (including playlists and preferences)?",
+        "notifications_blocked": "You have blocked Notifications for this site in your browser's settings",
+        "notifications_not_available": "This browser does not support desktop notifications or you are not accessing Navidrome over https"
     },
     "menu": {
         "library": "Library",
@@ -274,26 +278,12 @@
             "options": {
                 "theme": "Theme",
                 "language": "Language",
-                "defaultView": "Default View"
+                "defaultView": "Default View",
+                "desktop_notifications": "Desktop Notifications"
             }
         },
         "albumList": "Albums",
         "about": "About"
-    },
-    "about": {
-        "links": {
-            "homepage": "Home page",
-            "source": "Source code",
-            "featureRequests": "Feature requests"
-        }
-    },
-    "activity": {
-        "title": "Activity",
-        "totalScanned": "Total Folders Scanned",
-        "quickScan": "Quick Scan",
-        "fullScan": "Full Scan",
-        "serverUptime": "Server Uptime",
-        "serverDown": "OFFLINE"
     },
     "player": {
         "playListsText": "Play Queue",
@@ -318,6 +308,34 @@
             "orderLoop": "Repeat",
             "singleLoop": "Repeat One",
             "shufflePlay": "Shuffle"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "Home page",
+            "source": "Source code",
+            "featureRequests": "Feature requests"
+        }
+    },
+    "activity": {
+        "title": "Activity",
+        "totalScanned": "Total Folders Scanned",
+        "quickScan": "Quick Scan",
+        "fullScan": "Full Scan",
+        "serverUptime": "Server Uptime",
+        "serverDown": "OFFLINE"
+    },
+    "help": {
+        "title": "Navidrome Hotkeys",
+        "hotkeys": {
+            "show_help": "Show This Help",
+            "toggle_menu": "Toggle Menu Side Bar",
+            "toggle_play": "Play / Pause",
+            "prev_song": "Previous Song",
+            "next_song": "Next Song",
+            "vol_up": "Volume Up",
+            "vol_down": "Volume Down",
+            "toggle_star": "Toggle Current Song's Star"
         }
     }
 }

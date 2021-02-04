@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/deluan/navidrome/conf"
 	"github.com/deluan/navidrome/log"
@@ -30,15 +31,17 @@ func (c *LibraryScanningController) GetScanStatus(w http.ResponseWriter, r *http
 	}
 	response := newResponse()
 	response.ScanStatus = &responses.ScanStatus{
-		Scanning: status.Scanning,
-		Count:    int64(status.Count),
-		LastScan: &status.LastScan,
+		Scanning:    status.Scanning,
+		Count:       int64(status.Count),
+		FolderCount: int64(status.FolderCount),
+		LastScan:    &status.LastScan,
 	}
 	return response, nil
 }
 
 func (c *LibraryScanningController) StartScan(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	loggedUser, ok := request.UserFrom(r.Context())
+	ctx := r.Context()
+	loggedUser, ok := request.UserFrom(ctx)
 	if !ok {
 		return nil, newError(responses.ErrorGeneric, "Internal error")
 	}
@@ -50,10 +53,14 @@ func (c *LibraryScanningController) StartScan(w http.ResponseWriter, r *http.Req
 	fullScan := utils.ParamBool(r, "fullScan", false)
 
 	go func() {
-		err := c.scanner.RescanAll(fullScan)
+		start := time.Now()
+		log.Info(ctx, "Triggering manual scan", "fullScan", fullScan, "user", loggedUser.UserName)
+		err := c.scanner.RescanAll(ctx, fullScan)
 		if err != nil {
-			log.Error(r.Context(), err)
+			log.Error(ctx, "Error scanning", err)
+			return
 		}
+		log.Info(ctx, "Manual scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start).Round(100*time.Millisecond))
 	}()
 
 	return c.GetScanStatus(w, r)

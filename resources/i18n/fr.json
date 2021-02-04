@@ -19,7 +19,8 @@
                 "updatedAt": "Mise à jour",
                 "bitRate": "Bitrate",
                 "discSubtitle": "Sous-titre du disque",
-                "starred": "Favoris"
+                "starred": "Favoris",
+                "comment": "Commentaire"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -42,7 +43,8 @@
                 "genre": "Genre",
                 "compilation": "Compilation",
                 "year": "Année",
-                "updatedAt": "Mise à jour le"
+                "updatedAt": "Mise à jour le",
+                "comment": "Commentaire"
             },
             "actions": {
                 "playAll": "Lire",
@@ -90,7 +92,8 @@
                 "maxBitRate": "Bitrate maximum",
                 "client": "Client",
                 "userName": "Nom d'utilisateur",
-                "lastSeen": "Vu pour la dernière fois"
+                "lastSeen": "Vu pour la dernière fois",
+                "reportRealPath": ""
             }
         },
         "transcoding": {
@@ -260,7 +263,9 @@
         "songsAddedToPlaylist": "Une piste ajoutée à la playlist |||| %{smart_count} pistes ajoutées à la playlist",
         "noPlaylistsAvailable": "Aucune playlist",
         "delete_user_title": "Supprimer l'utilisateur '%{name}'",
-        "delete_user_content": "Êtes-vous sûr de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?"
+        "delete_user_content": "Êtes-vous sûr de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
+        "notifications_blocked": "",
+        "notifications_not_available": ""
     },
     "menu": {
         "library": "Bibliothèque",
@@ -272,7 +277,8 @@
             "options": {
                 "theme": "Thème",
                 "language": "Langue",
-                "defaultView": "Vue par défaut"
+                "defaultView": "Vue par défaut",
+                "desktop_notifications": ""
             }
         },
         "albumList": "Albums",
@@ -309,5 +315,13 @@
             "source": "Code source",
             "featureRequests": "Demande de fonctionalités"
         }
+    },
+    "activity": {
+        "title": "Activité",
+        "totalScanned": "Nombre total de dossier scannés",
+        "quickScan": "Scan rapide",
+        "fullScan": "Scan complet",
+        "serverUptime": "Disponibilité du serveur",
+        "serverDown": "HORS LIGNE"
     }
 }

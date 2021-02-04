@@ -1,17 +1,20 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback } from 'react'
 import PropTypes from 'prop-types'
-import { useNotify, useDataProvider } from 'react-admin'
 import StarIcon from '@material-ui/icons/Star'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import IconButton from '@material-ui/core/IconButton'
 import { makeStyles } from '@material-ui/core/styles'
-import subsonic from '../subsonic'
+import { useToggleStar } from './useToggleStar'
 
 const useStyles = makeStyles({
   star: {
     color: (props) => props.color,
     visibility: (props) =>
-      props.visible || props.starred ? 'visible' : 'hidden',
+      props.visible === false
+        ? 'hidden'
+        : props.starred
+        ? 'visible'
+        : 'inherit',
   },
 })
 
@@ -23,52 +26,26 @@ export const StarButton = ({
   size,
   component: Button,
   addLabel,
+  disabled,
   ...rest
 }) => {
-  const [loading, setLoading] = useState(false)
   const classes = useStyles({ color, visible, starred: record.starred })
-  const notify = useNotify()
+  const [toggleStar, loading] = useToggleStar(resource, record)
 
-  const mountedRef = useRef(false)
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
-
-  const dataProvider = useDataProvider()
-
-  const refreshRecord = useCallback(() => {
-    dataProvider.getOne(resource, { id: record.id }).then(() => {
-      if (mountedRef.current) {
-        setLoading(false)
-      }
-    })
-  }, [dataProvider, record.id, resource])
-
-  const handleToggleStar = (e) => {
-    e.preventDefault()
-    const toggleStar = record.starred ? subsonic.unstar : subsonic.star
-
-    setLoading(true)
-    toggleStar(record.id)
-      .then(refreshRecord)
-      .catch((e) => {
-        console.log('Error toggling star: ', e)
-        notify('ra.page.error', 'warning')
-        if (mountedRef.current) {
-          setLoading(false)
-        }
-      })
-    e.stopPropagation()
-  }
+  const handleToggleStar = useCallback(
+    (e) => {
+      e.preventDefault()
+      toggleStar()
+      e.stopPropagation()
+    },
+    [toggleStar]
+  )
 
   return (
     <Button
       onClick={handleToggleStar}
       size={'small'}
-      disabled={loading}
+      disabled={disabled || loading}
       className={classes.star}
       {...rest}
     >
@@ -88,6 +65,7 @@ StarButton.propTypes = {
   color: PropTypes.string,
   size: PropTypes.string,
   component: PropTypes.object,
+  disabled: PropTypes.bool,
 }
 
 StarButton.defaultProps = {
@@ -97,4 +75,5 @@ StarButton.defaultProps = {
   size: 'small',
   color: 'inherit',
   component: IconButton,
+  disabled: false,
 }

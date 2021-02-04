@@ -19,13 +19,14 @@
                 "updatedAt": "Laatst bijgewerkt op",
                 "bitRate": "Bitrate",
                 "discSubtitle": "Schijfondertitel",
-                "starred": "Met Ster"
+                "starred": "Met Ster",
+                "comment": "Commentaar"
             },
             "actions": {
                 "addToQueue": "Voeg toe aan wachtrij",
-                "playNow": "Nu Afspelen",
-                "addToPlaylist": "Voeg toe aan Afspeellijst",
-                "shuffleAll": "Shuffle Alles",
+                "playNow": "Nu afspelen",
+                "addToPlaylist": "Voeg toe aan afspeellijst",
+                "shuffleAll": "Shuffle alles",
                 "download": "Downloaden",
                 "playNext": "Volgende"
             }
@@ -42,22 +43,23 @@
                 "genre": "Genre",
                 "compilation": "Compilatie",
                 "year": "Jaar",
-                "updatedAt": "Bijgewerkt op"
+                "updatedAt": "Bijgewerkt op",
+                "comment": "Commentaar"
             },
             "actions": {
                 "playAll": "Afspelen",
                 "playNext": "Hierna afspelen",
                 "addToQueue": "Voeg toe aan wachtrij",
                 "shuffle": "Shuffle",
-                "addToPlaylist": "Toevoegen aan Afspeellijst",
+                "addToPlaylist": "Toevoegen aan afspeellijst",
                 "download": "Downloaden"
             },
             "lists": {
                 "all": "Alle",
                 "random": "Willekeurig",
-                "recentlyAdded": "Onlangs Toegevoegd",
-                "recentlyPlayed": "Onlangs Afgespeeld",
-                "mostPlayed": "Meest Afgespeeld",
+                "recentlyAdded": "Onlangs toegevoegd",
+                "recentlyPlayed": "Onlangs afgespeeld",
+                "mostPlayed": "Meest afgespeeld",
                 "starred": "Met Ster"
             }
         },
@@ -65,8 +67,8 @@
             "name": "Artiest |||| Artiesten",
             "fields": {
                 "name": "Naam",
-                "albumCount": "Aantal Albums",
-                "songCount": "Aantal Nummers",
+                "albumCount": "Aantal albums",
+                "songCount": "Aantal nummers",
                 "playCount": "Afgespeeld"
             }
         },
@@ -74,7 +76,7 @@
             "name": "Gebruiker |||| Gebruikers",
             "fields": {
                 "userName": "Gebruikersnaam",
-                "isAdmin": "Is Beheerder",
+                "isAdmin": "Is beheerder",
                 "lastLoginAt": "Laatst ingelogd op",
                 "updatedAt": "Laatst gewijzigd op",
                 "name": "Naam",
@@ -90,7 +92,8 @@
                 "maxBitRate": "Max. bitrate",
                 "client": "Client",
                 "userName": "Gebruikersnaam",
-                "lastSeen": "Laatst gezien op"
+                "lastSeen": "Laatst gezien op",
+                "reportRealPath": "Toon het echte bestandspad"
             }
         },
         "transcoding": {
@@ -192,7 +195,7 @@
             "not_found": "Niet gevonden",
             "show": "%{name} #%{id}",
             "empty": "Nog geen %{name}.",
-            "invite": "Wil je er een toevoegen?"
+            "invite": "Wil je er één toevoegen?"
         },
         "input": {
             "file": {
@@ -255,12 +258,14 @@
     },
     "message": {
         "note": "Notitie",
-        "transcodingDisabled": "Het wijzigen van de transcodersconfiguratie via de web interface is om veiligheidsredenen uitgeschakeld. Als je transcoderopties wilt wijzigen (bewerken of toevoegen), start de server opnieuw op met de %{config} configuratie-optie.",
+        "transcodingDisabled": "Het wijzigen van de transcoderconfiguratie via de web interface is om veiligheidsredenen uitgeschakeld. Als je transcoderopties wilt wijzigen (bewerken of toevoegen), start de server opnieuw op met de %{config} configuratie-optie.",
         "transcodingEnabled": "Navidrome werkt momenteel met %{config}, waardoor het mogelijk is om systeemopdrachten uit te voeren vanuit de transcoderinstellingen via de web interface. We raden aan dit om veiligheidsredenen uit te schakelen en alleen in te schakelen bij het configureren van transcoderopties.",
         "songsAddedToPlaylist": "1 nummer toegevoegd aan afspeellijst |||| %{smart_count} nummers toegevoegd aan afspeellijst",
         "noPlaylistsAvailable": "Geen beschikbaar",
         "delete_user_title": "Verwijder gebruiker '%{name}'",
-        "delete_user_content": "Weet je zeker dat je deze gebruiker en al zijn gegevens wilt verwijderen (inclusief afspeellijsten en voorkeuren)?"
+        "delete_user_content": "Weet je zeker dat je deze gebruiker en al zijn gegevens wilt verwijderen (inclusief afspeellijsten en voorkeuren)?",
+        "notifications_blocked": "Je hebt bureaubladmeldingen geblokkeerd voor deze site in je browserinstellingen",
+        "notifications_not_available": "Deze browser ondersteunt bureaubladmeldingen niet"
     },
     "menu": {
         "library": "Bibliotheek",
@@ -272,7 +277,8 @@
             "options": {
                 "theme": "Thema",
                 "language": "Taal",
-                "defaultView": "Standaard Weergave"
+                "defaultView": "Standaard weergave",
+                "desktop_notifications": "Bureaubladmeldingen"
             }
         },
         "albumList": "Albums",
@@ -299,7 +305,7 @@
         "playModeText": {
             "order": "In volgorde",
             "orderLoop": "Herhalen",
-            "singleLoop": "Herhaal Eenmalig",
+            "singleLoop": "Herhaal eenmalig",
             "shufflePlay": "Shuffle"
         }
     },
@@ -309,5 +315,13 @@
             "source": "Broncode",
             "featureRequests": "Functie verzoeken"
         }
+    },
+    "activity": {
+        "title": "Activiteit",
+        "totalScanned": "Totaal gescande folders",
+        "quickScan": "Snelle scan",
+        "fullScan": "Volledige scan",
+        "serverUptime": "Server uptime",
+        "serverDown": "Offline"
     }
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -79,21 +80,20 @@ func startScanner() (func() error, func(err error)) {
 	interval := conf.Server.ScanInterval
 	log.Info("Starting scanner", "interval", interval.String())
 	scanner := GetScanner()
-	done := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
 
 	return func() error {
 			if interval != 0 {
 				time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
-				scanner.Start(interval)
+				scanner.Run(ctx, interval)
 			} else {
 				log.Warn("Periodic scan is DISABLED", "interval", interval)
+				<-ctx.Done()
 			}
 
-			<-done
 			return nil
 		}, func(err error) {
-			scanner.Stop()
-			done <- struct{}{}
+			cancel()
 			if err != nil {
 				log.Error("Shutting down Scanner due to error", err)
 			} else {

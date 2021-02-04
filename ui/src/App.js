@@ -22,11 +22,14 @@ import {
   playQueueReducer,
   albumViewReducer,
   activityReducer,
+  settingsReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
-import { startEventStream } from './eventStream'
+import { setDispatch, startEventStream } from './eventStream'
+import { HotKeys } from 'react-hotkeys'
+import { keyMap } from './hotkeys'
 
 const history = createHashHistory()
 
@@ -50,6 +53,7 @@ const App = () => (
         theme: themeReducer,
         addToPlaylistDialog: addToPlaylistDialogReducer,
         activity: activityReducer,
+        settings: settingsReducer,
       },
     })}
   >
@@ -59,12 +63,17 @@ const App = () => (
 
 const Admin = (props) => {
   const dispatch = useDispatch()
-  if (config.devActivityMenu) {
-    startEventStream(dispatch)
+  if (config.devActivityPanel) {
+    setDispatch(dispatch)
+    authProvider
+      .checkAuth()
+      .then(() => startEventStream())
+      .catch(() => {}) // ignore if not logged in
   }
 
   return (
     <RAAdmin
+      disableTelemetry
       dataProvider={dataProvider}
       authProvider={authProvider}
       i18nProvider={i18nProvider}
@@ -104,6 +113,7 @@ const Admin = (props) => {
         <Resource name="albumSong" />,
         <Resource name="translation" />,
         <Resource name="playlistTrack" />,
+        <Resource name="keepalive" />,
 
         <Player />,
       ]}
@@ -111,4 +121,10 @@ const Admin = (props) => {
   )
 }
 
-export default App
+const AppWithHotkeys = () => (
+  <HotKeys keyMap={keyMap}>
+    <App />
+  </HotKeys>
+)
+
+export default AppWithHotkeys

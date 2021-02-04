@@ -204,7 +204,7 @@ func sendError(w http.ResponseWriter, r *http.Request, err error) {
 	if e, ok := err.(subError); ok {
 		code = e.code
 	}
-	response.Status = "fail"
+	response.Status = "failed"
 	response.Error = &responses.Error{Code: code, Message: err.Error()}
 
 	sendResponse(w, r, response)

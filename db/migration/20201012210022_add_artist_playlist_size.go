@@ -17,6 +17,13 @@ alter table artist
 create index if not exists artist_size
 	on artist(size);
 
+update artist set size = ifnull((
+   select sum(f.size)
+   from album f
+   where f.album_artist_id = artist.id
+), 0)
+where id not null;
+
 alter table playlist
 	add size integer default 0 not null;
 create index if not exists playlist_size
@@ -29,11 +36,7 @@ update playlist set size = ifnull((
     where pt.playlist_id = playlist.id
 ), 0);`)
 
-	if err != nil {
-		return err
-	}
-	notice(tx, "A full rescan will be performed to calculate artists (discographies) and playlists sizes.")
-	return forceFullRescan(tx)
+	return err
 }
 
 func Down20201012210022(tx *sql.Tx) error {

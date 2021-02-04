@@ -10,7 +10,6 @@ import {
   SearchInput,
   Pagination,
   useTranslate,
-  useListParams,
 } from 'react-admin'
 import StarIcon from '@material-ui/icons/Star'
 import { withWidth } from '@material-ui/core'
@@ -18,7 +17,7 @@ import { List, QuickFilter, Title, useAlbumsPerPage } from '../common'
 import AlbumListActions from './AlbumListActions'
 import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
-import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
+import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 
 const AlbumFilter = (props) => {
@@ -59,17 +58,10 @@ const AlbumListTitle = ({ albumListType }) => {
 }
 
 const AlbumList = (props) => {
-  const { width, resource } = props
+  const { width } = props
   const albumView = useSelector((state) => state.albumView)
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
-
-  const [query] = useListParams({
-    resource,
-    location,
-    perPage,
-  })
-  const isArtistView = !!(query.filter && query.filter.artist_id)
 
   const albumListType = location.pathname
     .replace(/^\/album/, '')
@@ -99,7 +91,7 @@ const AlbumList = (props) => {
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.grid ? (
-          <AlbumGridView isArtistView={isArtistView} {...props} />
+          <AlbumGridView {...props} />
         ) : (
           <AlbumListView {...props} />
         )}

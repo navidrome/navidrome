@@ -78,9 +78,8 @@ func AssertPlayQueue(expected, actual *model.PlayQueue) {
 func aPlayQueue(userId, current string, position int64, items ...model.MediaFile) *model.PlayQueue {
 	createdAt := time.Now()
 	updatedAt := createdAt.Add(time.Minute)
-	id, _ := uuid.NewRandom()
 	return &model.PlayQueue{
-		ID:        id.String(),
+		ID:        uuid.NewString(),
 		UserID:    userId,
 		Current:   current,
 		Position:  position,

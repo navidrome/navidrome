@@ -112,7 +112,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 
 	deletedDirs := s.getDeletedDirs(ctx, allFSDirs, allDBDirs)
 	if len(deletedDirs)+len(changedDirs) == 0 {
-		log.Debug(ctx, "No changes found in Music Folder", "folder", s.rootFolder)
+		log.Debug(ctx, "No changes found in Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start))
 		return nil
 	}
 

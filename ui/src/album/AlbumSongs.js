@@ -1,12 +1,12 @@
 import React from 'react'
 import {
   BulkActionsToolbar,
-  DatagridLoading,
   ListToolbar,
   TextField,
-  useListController,
+  useVersion,
+  useListContext,
 } from 'react-admin'
-import classnames from 'classnames'
+import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
@@ -14,12 +14,13 @@ import StarBorderIcon from '@material-ui/icons/StarBorder'
 import { playTracks } from '../actions'
 import {
   DurationField,
+  SongBulkActions,
   SongContextMenu,
   SongDatagrid,
   SongDetails,
   SongTitleField,
 } from '../common'
-import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
+import { AddToPlaylistDialog } from '../dialogs'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -52,97 +53,83 @@ const useStyles = makeStyles(
       marginTop: '-2px',
       verticalAlign: 'text-top',
     },
+    toolbar: {
+      justifyContent: 'flex-start',
+    },
+    row: {
+      '&:hover': {
+        '& $contextMenu': {
+          visibility: 'visible',
+        },
+      },
+    },
+    contextMenu: {
+      visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
+    },
   }),
   { name: 'RaList' }
 )
 
-const useStylesListToolbar = makeStyles({
-  toolbar: {
-    justifyContent: 'flex-start',
-  },
-})
-
 const AlbumSongs = (props) => {
-  const classes = useStyles(props)
-  const classesToolbar = useStylesListToolbar(props)
-  const dispatch = useDispatch()
+  const { data, ids } = props
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-  const controllerProps = useListController(props)
-  const { bulkActionButtons, albumId, className } = props
-  const { data, ids, version } = controllerProps
-
-  const anySong = data[ids[0]]
-  const showPlaceholder = !anySong || anySong.albumId !== albumId
-  const hasBulkActions = props.bulkActionButtons !== false
-
+  const classes = useStyles({ isDesktop })
+  const dispatch = useDispatch()
+  const version = useVersion()
   return (
     <>
       <ListToolbar
-        classes={classesToolbar}
-        filters={props.filters}
-        {...controllerProps}
+        classes={{ toolbar: classes.toolbar }}
         actions={props.actions}
-        permanentFilter={props.filter}
+        {...props}
       />
       <div className={classes.main}>
         <Card
-          className={classnames(classes.content, {
-            [classes.bulkActionsDisplayed]:
-              controllerProps.selectedIds.length > 0,
+          className={clsx(classes.content, {
+            [classes.bulkActionsDisplayed]: props.selectedIds.length > 0,
           })}
           key={version}
         >
-          {bulkActionButtons !== false && bulkActionButtons && (
-            <BulkActionsToolbar {...controllerProps}>
-              {bulkActionButtons}
-            </BulkActionsToolbar>
-          )}
-          {showPlaceholder ? (
-            <DatagridLoading
-              classes={classes}
-              className={className}
-              expand={null}
-              hasBulkActions={hasBulkActions}
-              nbChildren={3}
-              size={'small'}
+          <BulkActionsToolbar {...props}>
+            <SongBulkActions />
+          </BulkActionsToolbar>
+          <SongDatagrid
+            expand={isXsmall ? null : <SongDetails />}
+            rowClick={(id) => dispatch(playTracks(data, ids, id))}
+            {...props}
+            hasBulkActions={true}
+            showDiscSubtitles={true}
+            contextAlwaysVisible={!isDesktop}
+            classes={{ row: classes.row }}
+          >
+            {isDesktop && (
+              <TextField
+                source="trackNumber"
+                sortBy="discNumber asc, trackNumber asc"
+                label="#"
+                sortable={false}
+              />
+            )}
+            <SongTitleField
+              source="title"
+              sortable={false}
+              showTrackNumbers={!isDesktop}
             />
-          ) : (
-            <SongDatagrid
-              expand={isXsmall ? null : <SongDetails />}
-              rowClick={(id) => dispatch(playTracks(data, ids, id))}
-              {...controllerProps}
-              hasBulkActions={hasBulkActions}
-              showDiscSubtitles={true}
-              contextAlwaysVisible={!isDesktop}
-            >
-              {isDesktop && (
-                <TextField
-                  source="trackNumber"
-                  sortBy="discNumber asc, trackNumber asc"
-                  label="#"
-                  sortable={false}
+            {isDesktop && <TextField source="artist" sortable={false} />}
+            <DurationField source="duration" sortable={false} />
+            <SongContextMenu
+              source={'starred'}
+              sortable={false}
+              className={classes.contextMenu}
+              label={
+                <StarBorderIcon
+                  fontSize={'small'}
+                  className={classes.columnIcon}
                 />
-              )}
-              <SongTitleField
-                source="title"
-                sortable={false}
-                showTrackNumbers={!isDesktop}
-              />
-              {isDesktop && <TextField source="artist" sortable={false} />}
-              <DurationField source="duration" sortable={false} />
-              <SongContextMenu
-                source={'starred'}
-                sortable={false}
-                label={
-                  <StarBorderIcon
-                    fontSize={'small'}
-                    className={classes.columnIcon}
-                  />
-                }
-              />
-            </SongDatagrid>
-          )}
+              }
+            />
+          </SongDatagrid>
         </Card>
       </div>
       <AddToPlaylistDialog />
@@ -150,4 +137,9 @@ const AlbumSongs = (props) => {
   )
 }
 
-export default AlbumSongs
+const SanitizedAlbumSongs = (props) => {
+  const { loaded, loading, total, ...rest } = useListContext(props)
+  return <>{loaded && <AlbumSongs {...rest} actions={props.actions} />}</>
+}
+
+export default SanitizedAlbumSongs

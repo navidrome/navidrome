@@ -19,7 +19,8 @@
                 "updatedAt": "Ultimo aggiornamento",
                 "bitRate": "Bitrate",
                 "discSubtitle": "Sottotitoli disco",
-                "starred": "Preferita"
+                "starred": "Preferita",
+                "comment": "Commento"
             },
             "actions": {
                 "addToQueue": "Aggiungi alla coda",
@@ -42,13 +43,14 @@
                 "genre": "Genere",
                 "compilation": "Compilation",
                 "year": "Anno",
-                "updatedAt": "Ultimo aggiornamento"
+                "updatedAt": "Ultimo aggiornamento",
+                "comment": "Commento"
             },
             "actions": {
                 "playAll": "Riproduci",
                 "playNext": "Riproduci come successivo",
                 "addToQueue": "Aggiungi alla coda",
-                "shuffle": "Riprodici casualmente",
+                "shuffle": "Riproduci casualmente",
                 "addToPlaylist": "Aggiungi alla Playlist",
                 "download": "Scarica"
             },
@@ -90,7 +92,8 @@
                 "maxBitRate": "Bitrate massimo",
                 "client": "Applicazione",
                 "userName": "Nome utente",
-                "lastSeen": "Ultimo acesso"
+                "lastSeen": "Ultimo accesso",
+                "reportRealPath": "Mostra percorso reale"
             }
         },
         "transcoding": {
@@ -215,7 +218,7 @@
         },
         "message": {
             "about": "Informazioni",
-            "are_you_sure": "Sei sicuro ?",
+            "are_you_sure": "Sei sicuro?",
             "bulk_delete_content": "Sei sicuro di voler rimuovere questo %{name}? |||| Sei sicuro di voler rimuovere questi %{smart_count} elementi?",
             "bulk_delete_title": "Rimuovi %{name} |||| Rimuovi %{smart_count} %{name}",
             "delete_content": "Sei sicuro di voler eliminare questo elemento?",
@@ -260,7 +263,9 @@
         "songsAddedToPlaylist": "Aggiunta una traccia alla playlist |||| Aggiunte %{smart_count} tracce alla playlist",
         "noPlaylistsAvailable": "Nessuna playlist",
         "delete_user_title": "Rimuovi utente '%{name}'",
-        "delete_user_content": "Sei sicuro di voler rimuovere questo utente e tutti i suoi dati, incluse playlist e impostazioni?"
+        "delete_user_content": "Sei sicuro di voler rimuovere questo utente e tutti i suoi dati, incluse playlist e impostazioni?",
+        "notifications_blocked": "Hai bloccato le notifiche per questo sito nelle tue impostazioni del browser",
+        "notifications_not_available": "Questo browser non supporta le notifiche desktop o non stai accedendo a Navidrome tramite HTTPS"
     },
     "menu": {
         "library": "Libreria",
@@ -272,10 +277,12 @@
             "options": {
                 "theme": "Tema",
                 "language": "Lingua",
-                "defaultView": "Vista Predefinita"
+                "defaultView": "Vista Predefinita",
+                "desktop_notifications": "Notifiche desktop"
             }
         },
-        "albumList": "Album"
+        "albumList": "Album",
+        "about": "Info"
     },
     "player": {
         "playListsText": "Coda",
@@ -301,5 +308,20 @@
             "singleLoop": "Ripeti una volta",
             "shufflePlay": "Casuale"
         }
+    },
+    "about": {
+        "links": {
+            "homepage": "Sito web",
+            "source": "Codice sorgente",
+            "featureRequests": "Richieste"
+        }
+    },
+    "activity": {
+        "title": "Attività",
+        "totalScanned": "Cartelle scansionate",
+        "quickScan": "Scansione veloce",
+        "fullScan": "Scansione completa",
+        "serverUptime": "Periodo di attività",
+        "serverDown": "OFFLINE"
     }
 }

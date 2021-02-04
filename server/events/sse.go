@@ -3,12 +3,18 @@ package events
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"sync/atomic"
 	"time"
 
+	"code.cloudfoundry.org/go-diodes"
+	"github.com/deluan/navidrome/consts"
 	"github.com/deluan/navidrome/log"
 	"github.com/deluan/navidrome/model/request"
+	"github.com/google/uuid"
 )
 
 type Broker interface {
@@ -16,29 +22,54 @@ type Broker interface {
 	SendMessage(event Event)
 }
 
-var serverStart time.Time
+const (
+	keepAliveFrequency = 15 * time.Second
+	writeTimeOut       = 5 * time.Second
+)
+
+var (
+	errWriteTimeOut = errors.New("write timeout")
+	eventId         uint32
+)
+
+type (
+	message struct {
+		ID    uint32
+		Event string
+		Data  string
+	}
+	messageChan chan message
+	clientsChan chan client
+	client      struct {
+		id        string
+		address   string
+		username  string
+		userAgent string
+		diode     *diode
+	}
+)
+
+func (c client) String() string {
+	return fmt.Sprintf("%s (%s - %s - %s)", c.id, c.username, c.address, c.userAgent)
+}
 
 type broker struct {
 	// Events are pushed to this channel by the main events-gathering routine
-	notifier chan []byte
+	publish messageChan
 
 	// New client connections
-	newClients chan chan []byte
+	subscribing clientsChan
 
 	// Closed client connections
-	closingClients chan chan []byte
-
-	// Client connections registry
-	clients map[chan []byte]bool
+	unsubscribing clientsChan
 }
 
 func NewBroker() Broker {
 	// Instantiate a broker
 	broker := &broker{
-		notifier:       make(chan []byte, 100),
-		newClients:     make(chan chan []byte),
-		closingClients: make(chan chan []byte),
-		clients:        make(map[chan []byte]bool),
+		publish:       make(messageChan, 100),
+		subscribing:   make(clientsChan, 1),
+		unsubscribing: make(clientsChan, 1),
 	}
 
 	// Set it running - listening and broadcasting events
@@ -47,109 +78,135 @@ func NewBroker() Broker {
 	return broker
 }
 
-func (broker *broker) SendMessage(event Event) {
-	data := broker.formatEvent(event)
-
-	log.Trace("Broker received new event", "name", event.EventName(), "payload", string(data))
-	broker.notifier <- data
+func (b *broker) SendMessage(evt Event) {
+	msg := b.prepareMessage(evt)
+	log.Trace("Broker received new event", "event", msg)
+	b.publish <- msg
 }
 
-func (broker *broker) formatEvent(event Event) []byte {
-	pkg := struct {
-		Event `json:"data"`
-		Name  string `json:"name"`
-	}{}
-	pkg.Name = event.EventName()
-	pkg.Event = event
-	data, _ := json.Marshal(pkg)
-	return data
+func (b *broker) nextEventID() uint32 {
+	return atomic.AddUint32(&eventId, 1)
 }
 
-func (broker *broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func (b *broker) prepareMessage(event Event) message {
+	msg := message{}
+	msg.ID = b.nextEventID()
+	msg.Event = event.EventName()
+	data, _ := json.Marshal(event)
+	msg.Data = string(data)
+	return msg
+}
+
+// writeEvent Write to the ResponseWriter, Server Sent Events compatible
+func writeEvent(w io.Writer, event message, timeout time.Duration) (err error) {
+	flusher, _ := w.(http.Flusher)
+	complete := make(chan struct{}, 1)
+	go func() {
+		_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.ID, event.Event, event.Data)
+		// Flush the data immediately instead of buffering it for later.
+		flusher.Flush()
+		complete <- struct{}{}
+	}()
+	select {
+	case <-complete:
+		return
+	case <-time.After(timeout):
+		return errWriteTimeOut
+	}
+}
+
+func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := request.UserFrom(ctx)
+
 	// Make sure that the writer supports flushing.
-	flusher, ok := rw.(http.Flusher)
-
-	fmt.Printf("%#v\n", req.Context())
-	user, _ := request.UserFrom(req.Context())
+	_, ok := w.(http.Flusher)
 	if !ok {
-		log.Error(rw, "Streaming unsupported! Events cannot be sent to this client", "address", req.RemoteAddr,
-			"userAgent", req.UserAgent(), "user", user.UserName)
-		http.Error(rw, "Streaming unsupported!", http.StatusInternalServerError)
+		log.Error(w, "Streaming unsupported! Events cannot be sent to this client", "address", r.RemoteAddr,
+			"userAgent", r.UserAgent(), "user", user.UserName)
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
 		return
 	}
 
-	rw.Header().Set("Content-Type", "text/event-stream")
-	rw.Header().Set("Cache-Control", "no-cache, no-transform")
-	rw.Header().Set("Connection", "keep-alive")
-	rw.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache, no-transform")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	// Each connection registers its own message channel with the Broker's connections registry
-	messageChan := make(chan []byte)
-
-	// Signal the broker that we have a new connection
-	broker.newClients <- messageChan
-
-	log.Debug(req.Context(), "New broker client", "address", req.RemoteAddr, "userAgent", req.UserAgent(),
-		"user", user.UserName)
-
-	// Remove this client from the map of connected clients
-	// when this handler exits.
-	defer func() {
-		broker.closingClients <- messageChan
-	}()
-
-	// Listen to connection close and un-register messageChan
-	notify := req.Context().Done()
-	go func() {
-		<-notify
-		broker.closingClients <- messageChan
-	}()
+	c := b.subscribe(r)
+	defer b.unsubscribe(c)
+	log.Debug(ctx, "New broker client", "client", c.String())
 
 	for {
-		// Write to the ResponseWriter
-		// Server Sent Events compatible
-		_, _ = fmt.Fprintf(rw, "data: %s\n\n", <-messageChan)
-
-		// Flush the data immediately instead of buffering it for later.
-		flusher.Flush()
-	}
-}
-
-func (broker *broker) listen() {
-	keepAlive := time.NewTicker(15 * time.Second)
-	defer keepAlive.Stop()
-
-	for {
-		select {
-		case s := <-broker.newClients:
-			// A new client has connected.
-			// Register their message channel
-			broker.clients[s] = true
-			log.Debug("Client added to event broker", "numClients", len(broker.clients))
-
-			// Send a serverStart event to new client
-			s <- broker.formatEvent(&ServerStart{serverStart})
-
-		case s := <-broker.closingClients:
-			// A client has dettached and we want to
-			// stop sending them messages.
-			delete(broker.clients, s)
-			log.Debug("Removed client from event broker", "numClients", len(broker.clients))
-
-		case event := <-broker.notifier:
-			// We got a new event from the outside!
-			// Send event to all connected clients
-			for clientMessageChan := range broker.clients {
-				clientMessageChan <- event
-			}
-
-		case ts := <-keepAlive.C:
-			// Send a keep alive packet every 15 seconds
-			broker.SendMessage(&KeepAlive{TS: ts.Unix()})
+		event := c.diode.next()
+		if event == nil {
+			log.Trace(ctx, "Client closed the EventStream connection", "client", c.String())
+			return
+		}
+		log.Trace(ctx, "Sending event to client", "event", *event, "client", c.String())
+		if err := writeEvent(w, *event, writeTimeOut); err == errWriteTimeOut {
+			log.Debug(ctx, "Timeout sending event to client", "event", *event, "client", c.String())
+			return
 		}
 	}
 }
 
-func init() {
-	serverStart = time.Now()
+func (b *broker) subscribe(r *http.Request) client {
+	user, _ := request.UserFrom(r.Context())
+	c := client{
+		id:        uuid.NewString(),
+		username:  user.UserName,
+		address:   r.RemoteAddr,
+		userAgent: r.UserAgent(),
+	}
+	c.diode = newDiode(r.Context(), 1000, diodes.AlertFunc(func(missed int) {
+		log.Trace("Dropped SSE events", "client", c.String(), "missed", missed)
+	}))
+
+	// Signal the broker that we have a new client
+	b.subscribing <- c
+	return c
+}
+
+func (b *broker) unsubscribe(c client) {
+	b.unsubscribing <- c
+}
+
+func (b *broker) listen() {
+	keepAlive := time.NewTicker(keepAliveFrequency)
+	defer keepAlive.Stop()
+
+	clients := map[client]struct{}{}
+
+	for {
+		select {
+		case c := <-b.subscribing:
+			// A new client has connected.
+			// Register their message channel
+			clients[c] = struct{}{}
+			log.Debug("Client added to event broker", "numClients", len(clients), "newClient", c.String())
+
+			// Send a serverStart event to new client
+			c.diode.set(b.prepareMessage(&ServerStart{consts.ServerStart}))
+
+		case c := <-b.unsubscribing:
+			// A client has detached and we want to
+			// stop sending them messages.
+			delete(clients, c)
+			log.Debug("Removed client from event broker", "numClients", len(clients), "client", c.String())
+
+		case event := <-b.publish:
+			// We got a new event from the outside!
+			// Send event to all connected clients
+			for c := range clients {
+				log.Trace("Putting event on client's queue", "client", c.String(), "event", event)
+				c.diode.set(event)
+			}
+
+		case ts := <-keepAlive.C:
+			// Send a keep alive message every 15 seconds
+			b.SendMessage(&KeepAlive{TS: ts.Unix()})
+		}
+	}
 }

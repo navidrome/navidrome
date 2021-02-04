@@ -10,7 +10,7 @@ import { useSelector } from 'react-redux'
 import { makeStyles, MenuItem, ListItemIcon, Divider } from '@material-ui/core'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import InfoIcon from '@material-ui/icons/Info'
-import AboutDialog from './AboutDialog'
+import { AboutDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
 import UserMenu from './UserMenu'
@@ -41,12 +41,7 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
   const label = translate('menu.about')
   return (
     <>
-      <MenuItem
-        ref={ref}
-        onClick={handleOpen}
-        className={classes.root}
-        activeClassName={classes.active}
-      >
+      <MenuItem ref={ref} onClick={handleOpen} className={classes.root}>
         <ListItemIcon className={classes.icon}>
           <InfoIcon titleAccess={label} />
         </ListItemIcon>
@@ -90,7 +85,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
-      {config.devActivityMenu && permissions === 'admin' && <ActivityPanel />}
+      {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
         <Divider />

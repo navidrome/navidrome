@@ -5,6 +5,7 @@ import { useTranslate } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
+import clsx from 'clsx'
 import { playNext, addTracks, setTrack, openAddToPlaylist } from '../actions'
 import subsonic from '../subsonic'
 import { StarButton } from './StarButton'
@@ -15,9 +16,6 @@ const useStyles = makeStyles({
   noWrap: {
     whiteSpace: 'nowrap',
   },
-  menu: {
-    visibility: (props) => (props.visible ? 'visible' : 'hidden'),
-  },
 })
 
 export const SongContextMenu = ({
@@ -25,9 +23,9 @@ export const SongContextMenu = ({
   record,
   showStar,
   onAddToPlaylist,
-  visible,
+  className,
 }) => {
-  const classes = useStyles({ visible })
+  const classes = useStyles()
   const dispatch = useDispatch()
   const translate = useTranslate()
   const [anchorEl, setAnchorEl] = useState(null)
@@ -88,11 +86,9 @@ export const SongContextMenu = ({
   const open = Boolean(anchorEl)
 
   return (
-    <span className={classes.noWrap}>
-      {showStar && (
-        <StarButton record={record} resource={resource} visible={visible} />
-      )}
-      <IconButton onClick={handleClick} size={'small'} className={classes.menu}>
+    <span className={clsx(classes.noWrap, className)}>
+      <StarButton record={record} resource={resource} visible={showStar} />
+      <IconButton onClick={handleClick} size={'small'}>
         <MoreVertIcon fontSize={'small'} />
       </IconButton>
       <Menu
@@ -118,7 +114,6 @@ SongContextMenu.propTypes = {
   resource: PropTypes.string.isRequired,
   record: PropTypes.object.isRequired,
   onAddToPlaylist: PropTypes.func,
-  visible: PropTypes.bool,
   showStar: PropTypes.bool,
 }
 
@@ -126,7 +121,6 @@ SongContextMenu.defaultProps = {
   onAddToPlaylist: () => {},
   record: {},
   resource: 'song',
-  visible: true,
   showStar: true,
   addLabel: true,
 }

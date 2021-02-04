@@ -1,39 +1,48 @@
 import React from 'react'
-import { useGetOne } from 'react-admin'
-import AlbumDetails from './AlbumDetails'
-import { Title } from '../common'
-import { SongBulkActions } from '../common'
-import AlbumActions from './AlbumActions'
+import {
+  ReferenceManyField,
+  ShowContextProvider,
+  useShowContext,
+  useShowController,
+} from 'react-admin'
 import AlbumSongs from './AlbumSongs'
+import AlbumDetails from './AlbumDetails'
+import AlbumActions from './AlbumActions'
 
-const AlbumShow = (props) => {
-  const { data: record, loading, error } = useGetOne('album', props.id)
-
-  if (loading) {
-    return null
-  }
-
-  if (error) {
-    return <p>ERROR: {error}</p>
-  }
+const AlbumShowLayout = (props) => {
+  const { loading, ...context } = useShowContext(props)
+  const { record } = context
 
   return (
     <>
-      <AlbumDetails {...props} record={record} />
-      <AlbumSongs
-        {...props}
-        albumId={props.id}
-        title={<Title subTitle={record.name} />}
-        actions={<AlbumActions record={record} />}
-        filter={{ album_id: props.id }}
-        resource={'albumSong'}
-        exporter={false}
-        perPage={0}
-        pagination={null}
-        sort={{ field: 'discNumber asc, trackNumber asc', order: 'ASC' }}
-        bulkActionButtons={<SongBulkActions />}
-      />
+      {record && <AlbumDetails {...context} />}
+      {record && (
+        <ReferenceManyField
+          {...context}
+          addLabel={false}
+          reference="albumSong"
+          target="album_id"
+          sort={{ field: 'album', order: 'ASC' }}
+          perPage={0}
+          pagination={null}
+        >
+          <AlbumSongs
+            resource={'albumSong'}
+            exporter={false}
+            actions={<AlbumActions record={record} />}
+          />
+        </ReferenceManyField>
+      )}
     </>
+  )
+}
+
+const AlbumShow = (props) => {
+  const controllerProps = useShowController(props)
+  return (
+    <ShowContextProvider value={controllerProps}>
+      <AlbumShowLayout {...props} {...controllerProps} />
+    </ShowContextProvider>
   )
 }
 

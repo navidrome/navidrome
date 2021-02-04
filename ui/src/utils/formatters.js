@@ -11,12 +11,15 @@ export const formatBytes = (bytes, decimals = 2) => {
 }
 
 export const formatDuration = (d) => {
-  const hours = Math.floor(d / 3600)
+  const days = Math.floor(d / 86400)
+  const hours = Math.floor(d / 3600) % 24
   const minutes = Math.floor(d / 60) % 60
-  const seconds = d % 60
-  return [hours, minutes, seconds]
-    .map((v) => Math.round(v).toString())
+  const seconds = Math.floor(d % 60)
+  const f = [hours, minutes, seconds]
+    .map((v) => v.toString())
     .map((v) => (v.length !== 2 ? '0' + v : v))
     .filter((v, i) => v !== '00' || i > 0)
     .join(':')
+
+  return `${days > 0 ? days + ':' : ''}${f}`
 }

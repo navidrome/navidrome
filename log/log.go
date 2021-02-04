@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -168,8 +169,16 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 		case error:
 			logger = logger.WithField("error", name.Error())
 		case string:
-			value := keyValuePairs[i+1]
-			logger = logger.WithField(name, value)
+			if i+1 >= len(keyValuePairs) {
+				logger = logger.WithField(name, "!!!!Invalid number of arguments in log call!!!!")
+			} else {
+				switch v := keyValuePairs[i+1].(type) {
+				case time.Duration:
+					logger = logger.WithField(name, ShortDur(v))
+				default:
+					logger = logger.WithField(name, v)
+				}
+			}
 		}
 	}
 	return logger

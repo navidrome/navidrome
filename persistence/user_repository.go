@@ -44,8 +44,7 @@ func (r *userRepository) GetAll(options ...model.QueryOptions) (model.Users, err
 
 func (r *userRepository) Put(u *model.User) error {
 	if u.ID == "" {
-		id, _ := uuid.NewRandom()
-		u.ID = id.String()
+		u.ID = uuid.NewString()
 	}
 	u.UpdatedAt = time.Now()
 	values, _ := toSqlArgs(*u)
