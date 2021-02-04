@@ -76,7 +76,7 @@ const ContextMenu = ({
       action: (data, ids) => dispatch(openAddToPlaylist({ selectedIds: ids })),
     },
     download: {
-      enabled: config.enableDownloads,
+      enabled: config.enableDownloads && record.size,
       needData: false,
       label: `${translate('resources.album.actions.download')} (${formatBytes(
         record.size
