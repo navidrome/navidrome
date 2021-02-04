@@ -148,7 +148,7 @@ func (b *broker) subscribe(r *http.Request) client {
 		address:   r.RemoteAddr,
 		userAgent: r.UserAgent(),
 	}
-	c.diode = newDiode(r.Context(), 1000, diodes.AlertFunc(func(missed int) {
+	c.diode = newDiode(r.Context(), 1024, diodes.AlertFunc(func(missed int) {
 		log.Trace("Dropped SSE events", "client", c.String(), "missed", missed)
 	}))
 

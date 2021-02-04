@@ -20,6 +20,14 @@ func (d *diode) set(data message) {
 	d.d.Set(diodes.GenericDataType(&data))
 }
 
+func (d *diode) tryNext() (*message, bool) {
+	data, ok := d.d.TryNext()
+	if !ok {
+		return nil, ok
+	}
+	return (*message)(data), true
+}
+
 func (d *diode) next() *message {
 	data := d.d.Next()
 	return (*message)(data)
