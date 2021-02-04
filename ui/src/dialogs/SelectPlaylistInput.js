@@ -6,11 +6,11 @@ import Autocomplete, {
 } from '@material-ui/lab/Autocomplete'
 import { useGetList, useTranslate } from 'react-admin'
 import PropTypes from 'prop-types'
-import { isWritable } from '../common/Writable'
+import { isWritable } from '../common'
 
 const filter = createFilterOptions()
 
-const SelectPlaylistInput = ({ onChange }) => {
+export const SelectPlaylistInput = ({ onChange }) => {
   const translate = useTranslate()
   const { ids, data } = useGetList(
     'playlist',
@@ -94,5 +94,3 @@ const SelectPlaylistInput = ({ onChange }) => {
 SelectPlaylistInput.propTypes = {
   onChange: PropTypes.func.isRequired,
 }
-
-export default SelectPlaylistInput

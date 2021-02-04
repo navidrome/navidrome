@@ -17,7 +17,7 @@ import { List, QuickFilter, Title, useAlbumsPerPage } from '../common'
 import AlbumListActions from './AlbumListActions'
 import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
-import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
+import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 
 const AlbumFilter = (props) => {

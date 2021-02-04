@@ -20,7 +20,7 @@ import {
   SongDetails,
   SongTitleField,
 } from '../common'
-import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
+import { AddToPlaylistDialog } from '../dialogs'
 
 const useStyles = makeStyles(
   (theme) => ({

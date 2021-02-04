@@ -10,7 +10,7 @@ import {
 import { useMediaQuery, withWidth } from '@material-ui/core'
 import StarIcon from '@material-ui/icons/Star'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
-import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
+import { AddToPlaylistDialog } from '../dialogs'
 import {
   ArtistContextMenu,
   List,

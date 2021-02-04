@@ -21,7 +21,7 @@ import {
   SongDatagrid,
   SongTitleField,
 } from '../common'
-import AddToPlaylistDialog from '../dialogs/AddToPlaylistDialog'
+import { AddToPlaylistDialog } from '../dialogs'
 import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
