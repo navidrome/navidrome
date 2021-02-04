@@ -1,27 +1,41 @@
 package events
 
-import "time"
+import (
+	"encoding/json"
+	"reflect"
+	"strings"
+	"time"
+	"unicode"
+)
 
 type Event interface {
-	EventName() string
+	Prepare(Event) string
+}
+
+type baseEvent struct {
+	Name string `json:"name"`
+}
+
+func (e *baseEvent) Prepare(evt Event) string {
+	str := strings.TrimPrefix(reflect.TypeOf(evt).String(), "*events.")
+	e.Name = str[:0] + string(unicode.ToLower(rune(str[0]))) + str[1:]
+	data, _ := json.Marshal(evt)
+	return string(data)
 }
 
 type ScanStatus struct {
+	baseEvent
 	Scanning    bool  `json:"scanning"`
 	Count       int64 `json:"count"`
 	FolderCount int64 `json:"folderCount"`
 }
 
-func (s ScanStatus) EventName() string { return "scanStatus" }
-
 type KeepAlive struct {
+	baseEvent
 	TS int64 `json:"ts"`
 }
 
-func (s KeepAlive) EventName() string { return "keepAlive" }
-
 type ServerStart struct {
+	baseEvent
 	StartTime time.Time `json:"startTime"`
 }
-
-func (s ServerStart) EventName() string { return "serverStart" }

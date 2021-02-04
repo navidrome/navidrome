@@ -54,8 +54,9 @@ const setDispatch = (dispatchFunc) => {
 
 const eventHandler = throttle(
   (event) => {
-    if (event.type !== 'keepAlive') {
-      dispatch(processEvent(event.type, event.data))
+    const data = JSON.parse(event.data)
+    if (data.name !== 'keepAlive') {
+      dispatch(processEvent(data.name, data))
     }
     setTimeout(defaultIntervalCheck) // Reset timeout on every received message
   },
@@ -71,9 +72,7 @@ const startEventStream = async () => {
   }
   return getEventStream()
     .then((newStream) => {
-      newStream.addEventListener('serverStart', eventHandler)
-      newStream.addEventListener('scanStatus', eventHandler)
-      newStream.addEventListener('keepAlive', eventHandler)
+      newStream.onmessage = eventHandler
       newStream.onerror = (e) => {
         console.log('EventStream error', e)
         setTimeout(reconnectIntervalCheck)
