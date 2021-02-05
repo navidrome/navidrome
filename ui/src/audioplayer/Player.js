@@ -93,12 +93,18 @@ const Player = () => {
       (audioInstance.volume = Math.min(1, audioInstance.volume + 0.1)),
     VOL_DOWN: () =>
       (audioInstance.volume = Math.max(0, audioInstance.volume - 0.1)),
-    PREV_SONG: useCallback(() => {
-      if (prevSong()) audioInstance && audioInstance.playPrev()
-    }, [prevSong]),
-    NEXT_SONG: useCallback(() => {
-      if (nextSong()) audioInstance && audioInstance.playNext()
-    }, [nextSong]),
+    PREV_SONG: useCallback(
+      (e) => {
+        if (!e.metaKey && prevSong()) audioInstance && audioInstance.playPrev()
+      },
+      [prevSong]
+    ),
+    NEXT_SONG: useCallback(
+      (e) => {
+        if (!e.metaKey && nextSong()) audioInstance && audioInstance.playNext()
+      },
+      [nextSong]
+    ),
   }
 
   const defaultOptions = {
