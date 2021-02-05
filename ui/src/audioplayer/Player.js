@@ -88,7 +88,10 @@ const Player = () => {
   }, [queue])
 
   const keyHandlers = {
-    TOGGLE_PLAY: () => audioInstance && audioInstance.togglePlay(),
+    TOGGLE_PLAY: (e) => {
+      e.preventDefault()
+      audioInstance && audioInstance.togglePlay()
+    },
     VOL_UP: () =>
       (audioInstance.volume = Math.min(1, audioInstance.volume + 0.1)),
     VOL_DOWN: () =>
