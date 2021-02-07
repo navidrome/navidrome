@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/deluan/navidrome/utils"
+	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

@@ -3,8 +3,8 @@
 package subsonic
 
 import (
-	"github.com/deluan/navidrome/core"
 	"github.com/google/wire"
+	"github.com/navidrome/navidrome/core"
 )
 
 var allProviders = wire.NewSet(

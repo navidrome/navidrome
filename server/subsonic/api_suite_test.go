@@ -3,7 +3,7 @@ package subsonic
 import (
 	"testing"
 
-	"github.com/deluan/navidrome/log"
+	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

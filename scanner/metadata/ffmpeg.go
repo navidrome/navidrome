@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/log"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 )
 
 type ffmpegMetadata struct {

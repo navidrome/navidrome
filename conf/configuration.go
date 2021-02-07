@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/log"
 	"github.com/kr/pretty"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/spf13/viper"
 )
 

@@ -21,8 +21,8 @@ const links = {
   reddit: 'reddit.com/r/Navidrome',
   twitter: 'twitter.com/navidrome',
   discord: 'discord.gg/xh7j7yF',
-  source: 'github.com/deluan/navidrome',
-  featureRequests: 'github.com/deluan/navidrome/issues',
+  source: 'github.com/navidrome/navidrome',
+  featureRequests: 'github.com/navidrome/navidrome/issues',
 }
 
 const AboutDialog = ({ open, onClose }) => {

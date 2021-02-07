@@ -1,9 +1,9 @@
 # Navidrome Music Server
 
-[![Last Release](https://img.shields.io/github/v/release/deluan/navidrome?label=latest&style=flat-square)](https://github.com/deluan/navidrome/releases)
-[![Build](https://img.shields.io/github/workflow/status/deluan/navidrome/Build?style=flat-square)](https://github.com/deluan/navidrome/actions)
-[![Downloads](https://img.shields.io/github/downloads/deluan/navidrome/total?style=flat-square)](https://github.com/deluan/navidrome/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
+[![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
+[![Build](https://img.shields.io/github/workflow/status/navidrome/navidrome/Build?style=flat-square)](https://github.com/navidrome/navidrome/actions)
+[![Downloads](https://img.shields.io/github/downloads/navidrome/navidrome/total?style=flat-square)](https://github.com/navidrome/navidrome/releases/latest)
+[![Docker Pulls](https://img.shields.io/docker/pulls/navidrome/navidrome?style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
 [![Dev Chat](https://img.shields.io/discord/671335427726114836?label=chat&style=flat-square)](https://discord.gg/xh7j7yF)
 [![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?style=flat-square)](https://www.reddit.com/r/navidrome/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg?style=flat-square)](code_of_conduct.md)
@@ -14,7 +14,7 @@ Navidrome is an open source web-based music collection server and streamer. It g
 music collection from any browser or mobile device. It's like your personal Spotify!
 
 __Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
-please file a [GitHub issue](https://github.com/deluan/navidrome/issues) or join the discussion in our 
+please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or join the discussion in our 
 [Subreddit](https://www.reddit.com/r/navidrome/). If you want to contribute to the project in any other way 
 ([ui/backend dev](https://www.navidrome.org/docs/developers/), 
 [translations](https://www.navidrome.org/docs/developers/translations/), 
@@ -56,8 +56,8 @@ Here are some useful direct links:
 ## Screenshots
 
 <p align="left">
-    <img height="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-login.png">
-    <img height="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-player.png">
-    <img height="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-mobile-album-view.png">
-    <img width="550" src="https://raw.githubusercontent.com/deluan/navidrome/master/.github/screenshots/ss-desktop-player.png">
+    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-login.png">
+    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-player.png">
+    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-album-view.png">
+    <img width="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-desktop-player.png">
 </p>

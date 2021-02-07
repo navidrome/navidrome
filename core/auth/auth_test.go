@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/deluan/navidrome/core/auth"
-	"github.com/deluan/navidrome/log"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

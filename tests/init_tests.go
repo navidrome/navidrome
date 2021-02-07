@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/log"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 )
 
 var once sync.Once

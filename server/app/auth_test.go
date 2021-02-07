@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/deluan/navidrome/consts"
+	"github.com/navidrome/navidrome/consts"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

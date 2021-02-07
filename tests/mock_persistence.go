@@ -3,7 +3,7 @@ package tests
 import (
 	"context"
 
-	"github.com/deluan/navidrome/model"
+	"github.com/navidrome/navidrome/model"
 )
 
 type MockDataStore struct {

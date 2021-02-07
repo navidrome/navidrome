@@ -1,7 +1,7 @@
 package scanner
 
 import (
-	"github.com/deluan/navidrome/conf"
+	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

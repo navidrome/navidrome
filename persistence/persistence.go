@@ -5,9 +5,9 @@ import (
 	"reflect"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/deluan/navidrome/db"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 type SQLStore struct {

@@ -5,10 +5,10 @@ import (
 	"os"
 	"sync"
 
-	"github.com/deluan/navidrome/conf"
-	_ "github.com/deluan/navidrome/db/migration"
-	"github.com/deluan/navidrome/log"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/navidrome/navidrome/conf"
+	_ "github.com/navidrome/navidrome/db/migration"
+	"github.com/navidrome/navidrome/log"
 	"github.com/pressly/goose"
 )
 

@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/log"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )

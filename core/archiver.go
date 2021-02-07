@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 type Archiver interface {

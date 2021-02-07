@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/core/lastfm"
-	"github.com/deluan/navidrome/core/spotify"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/lastfm"
+	"github.com/navidrome/navidrome/core/spotify"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/xrash/smetrics"
 )
 

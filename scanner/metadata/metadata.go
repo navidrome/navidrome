@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/log"
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 )
 
 type Extractor interface {

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deluan/navidrome/log"
 	"github.com/go-chi/chi/middleware"
+	"github.com/navidrome/navidrome/log"
 	"github.com/unrolled/secure"
 )
 

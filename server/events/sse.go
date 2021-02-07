@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/go-diodes"
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model/request"
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 type Broker interface {

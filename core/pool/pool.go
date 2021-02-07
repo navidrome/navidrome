@@ -3,7 +3,7 @@ package pool
 import (
 	"time"
 
-	"github.com/deluan/navidrome/log"
+	"github.com/navidrome/navidrome/log"
 )
 
 type Executor func(workload interface{})

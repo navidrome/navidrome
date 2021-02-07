@@ -3,7 +3,7 @@ package tests
 import (
 	"errors"
 
-	"github.com/deluan/navidrome/model"
+	"github.com/navidrome/navidrome/model"
 )
 
 func CreateMockAlbumRepo() *MockAlbum {

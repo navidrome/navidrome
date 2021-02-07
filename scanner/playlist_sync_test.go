@@ -3,8 +3,8 @@ package scanner
 import (
 	"context"
 
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/tests"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
