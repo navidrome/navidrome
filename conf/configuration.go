@@ -44,6 +44,8 @@ type configOptions struct {
 	AuthWindowLength time.Duration
 
 	Scanner scannerOptions
+
+	Agents  string
 	LastFM  lastfmOptions
 	Spotify spotifyOptions
 	LDAP    ldapOptions
@@ -82,7 +84,10 @@ type ldapOptions struct {
 	Name         string
 }
 
-var Server = &configOptions{}
+var (
+	Server = &configOptions{}
+	hooks  []func()
+)
 
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
@@ -110,6 +115,16 @@ func Load() {
 	if log.CurrentLevel() >= log.LevelDebug {
 		pretty.Printf("Loaded configuration from '%s': %# v\n", Server.ConfigFile, Server)
 	}
+
+	// Call init hooks
+	for _, hook := range hooks {
+		hook()
+	}
+}
+
+// AddHook is used to register initialization code that should run as soon as the config is loaded
+func AddHook(hook func()) {
+	hooks = append(hooks, hook)
 }
 
 func init() {
@@ -142,6 +157,7 @@ func init() {
 	viper.SetDefault("authwindowlength", 20*time.Second)
 
 	viper.SetDefault("scanner.extractor", "taglib")
+	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")

@@ -38,7 +38,7 @@ type externalInfo struct {
 	spf *spotify.Client
 }
 
-const UnavailableArtistID = "-1"
+const unavailableArtistID = "-1"
 
 func (e *externalInfo) UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error) {
 	artist, err := e.getArtist(ctx, id)
@@ -78,7 +78,7 @@ func (e *externalInfo) UpdateArtistInfo(ctx context.Context, id string, count in
 		similar := artist.SimilarArtists
 		artist.SimilarArtists = nil
 		for _, s := range similar {
-			if s.ID == UnavailableArtistID {
+			if s.ID == unavailableArtistID {
 				continue
 			}
 			artist.SimilarArtists = append(artist.SimilarArtists, s)
@@ -170,7 +170,7 @@ func (e *externalInfo) similarArtists(ctx context.Context, artistName string, co
 	// Then fill up with non-present artists
 	if includeNotPresent {
 		for _, s := range notPresent {
-			sa := model.Artist{ID: UnavailableArtistID, Name: s}
+			sa := model.Artist{ID: unavailableArtistID, Name: s}
 			result = append(result, sa)
 		}
 	}
@@ -382,7 +382,7 @@ func (e *externalInfo) setLargeImageUrl(artist *model.Artist, url string) {
 func (e *externalInfo) loadSimilar(ctx context.Context, artist *model.Artist, includeNotPresent bool) error {
 	var ids []string
 	for _, sa := range artist.SimilarArtists {
-		if sa.ID == UnavailableArtistID {
+		if sa.ID == unavailableArtistID {
 			continue
 		}
 		ids = append(ids, sa.ID)
@@ -409,7 +409,7 @@ func (e *externalInfo) loadSimilar(ctx context.Context, artist *model.Artist, in
 				continue
 			}
 			la = sa
-			la.ID = UnavailableArtistID
+			la.ID = unavailableArtistID
 		}
 		loaded = append(loaded, la)
 	}

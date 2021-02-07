@@ -44,7 +44,7 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	players := core.NewPlayers(dataStore)
 	client := core.LastFMNewClient()
 	spotifyClient := core.SpotifyNewClient()
-	externalInfo := core.NewExternalInfo(dataStore, client, spotifyClient)
+	externalInfo := core.NewExternalInfo2(dataStore, client, spotifyClient)
 	scanner := GetScanner()
 	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalInfo, scanner)
 	return router
