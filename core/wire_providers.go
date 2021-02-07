@@ -17,7 +17,7 @@ var Set = wire.NewSet(
 	GetImageCache,
 	NewArchiver,
 	NewNowPlayingRepository,
-	NewExternalInfo,
+	NewExternalInfo2,
 	NewCacheWarmer,
 	NewPlayers,
 	LastFMNewClient,
