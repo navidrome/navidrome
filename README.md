@@ -3,7 +3,7 @@
 [![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
 [![Build](https://img.shields.io/github/workflow/status/navidrome/navidrome/Build?style=flat-square)](https://github.com/navidrome/navidrome/actions)
 [![Downloads](https://img.shields.io/github/downloads/navidrome/navidrome/total?style=flat-square)](https://github.com/navidrome/navidrome/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/navidrome/navidrome?style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
+[![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
 [![Dev Chat](https://img.shields.io/discord/671335427726114836?label=chat&style=flat-square)](https://discord.gg/xh7j7yF)
 [![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?style=flat-square)](https://www.reddit.com/r/navidrome/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg?style=flat-square)](code_of_conduct.md)
