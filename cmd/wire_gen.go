@@ -6,15 +6,15 @@
 package cmd
 
 import (
-	"github.com/deluan/navidrome/core"
-	"github.com/deluan/navidrome/core/transcoder"
-	"github.com/deluan/navidrome/persistence"
-	"github.com/deluan/navidrome/scanner"
-	"github.com/deluan/navidrome/server"
-	"github.com/deluan/navidrome/server/app"
-	"github.com/deluan/navidrome/server/events"
-	"github.com/deluan/navidrome/server/subsonic"
 	"github.com/google/wire"
+	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/transcoder"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/scanner"
+	"github.com/navidrome/navidrome/server"
+	"github.com/navidrome/navidrome/server/app"
+	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/server/subsonic"
 	"sync"
 )
 

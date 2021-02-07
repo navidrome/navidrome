@@ -6,11 +6,11 @@ import (
 	"mime"
 	"net/http"
 
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/server/subsonic/responses"
-	"github.com/deluan/navidrome/utils"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils"
 )
 
 func newResponse() *responses.Subsonic {

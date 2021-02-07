@@ -4,9 +4,9 @@ import (
 	"errors"
 	"os"
 
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/scanner/metadata/taglib"
 	"github.com/dhowden/tag"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/scanner/metadata/taglib"
 )
 
 type taglibMetadata struct {

@@ -16,17 +16,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/deluan/navidrome/core/cache"
-	_ "golang.org/x/image/webp"
-
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/resources"
-	"github.com/deluan/navidrome/utils"
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/cache"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/utils"
+	_ "golang.org/x/image/webp"
 )
 
 type Artwork interface {

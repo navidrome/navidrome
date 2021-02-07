@@ -5,7 +5,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
-	"github.com/deluan/navidrome/model"
+	"github.com/navidrome/navidrome/model"
 )
 
 type genreRepository struct {

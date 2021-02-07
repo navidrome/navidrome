@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/server/subsonic/responses"
-	"github.com/deluan/navidrome/utils"
 	"github.com/kennygrant/sanitize"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type SearchingController struct {

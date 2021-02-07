@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/deluan/navidrome/model"
+	"github.com/navidrome/navidrome/model"
 )
 
 type Options model.QueryOptions

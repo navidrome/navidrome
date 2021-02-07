@@ -3,8 +3,8 @@ package subsonic
 import (
 	"net/http"
 
-	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
 type UsersController struct{}

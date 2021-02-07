@@ -3,7 +3,7 @@ package subsonic
 import (
 	"net/http"
 
-	"github.com/deluan/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
 type SystemController struct{}

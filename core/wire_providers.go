@@ -3,11 +3,11 @@ package core
 import (
 	"net/http"
 
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/core/lastfm"
-	"github.com/deluan/navidrome/core/spotify"
-	"github.com/deluan/navidrome/core/transcoder"
 	"github.com/google/wire"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/lastfm"
+	"github.com/navidrome/navidrome/core/spotify"
+	"github.com/navidrome/navidrome/core/transcoder"
 )
 
 var Set = wire.NewSet(

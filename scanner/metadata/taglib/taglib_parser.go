@@ -17,7 +17,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/deluan/navidrome/log"
+	"github.com/navidrome/navidrome/log"
 )
 
 func Read(filename string) (map[string]string, error) {

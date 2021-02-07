@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/deluan/navidrome/log"
+	"github.com/navidrome/navidrome/log"
 )
 
 var once sync.Once

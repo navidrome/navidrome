@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/resources"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/resources"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

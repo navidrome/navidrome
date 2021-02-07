@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/bradleyjkemp/cupaloy"
-	"github.com/deluan/navidrome/log"
+	"github.com/navidrome/navidrome/log"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"

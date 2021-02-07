@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/deluan/navidrome/resources"
+	"github.com/navidrome/navidrome/resources"
 )
 
 func getBanner() string {

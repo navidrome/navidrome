@@ -5,9 +5,9 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/model/request"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 const bookmarkTable = "bookmark"
