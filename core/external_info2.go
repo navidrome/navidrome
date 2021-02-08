@@ -131,8 +131,37 @@ func (e *externalInfo2) UpdateArtistInfo(ctx context.Context, id string, similar
 }
 
 func (e *externalInfo2) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
-	// TODO
-	return nil, nil
+	allAgents := e.initAgents(ctx)
+	artist, err := e.getArtist(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	wg := &sync.WaitGroup{}
+	e.callGetSimilar(ctx, allAgents, artist, count, wg)
+	wg.Wait()
+
+	if isDone(ctx) {
+		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
+		return nil, ctx.Err()
+	}
+
+	if len(artist.SimilarArtists) == 0 {
+		return nil, nil
+	}
+
+	var ids = []string{artist.ID}
+	for _, a := range artist.SimilarArtists {
+		if a.ID != unavailableArtistID {
+			ids = append(ids, a.ID)
+		}
+	}
+
+	return e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Eq{"artist_id": ids},
+		Max:     count,
+		Sort:    "random()",
+	})
 }
 
 func (e *externalInfo2) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
