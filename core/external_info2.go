@@ -10,8 +10,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/core/lastfm"
-	"github.com/navidrome/navidrome/core/spotify"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -20,7 +18,7 @@ type externalInfo2 struct {
 	ds model.DataStore
 }
 
-func NewExternalInfo2(ds model.DataStore, lfm *lastfm.Client, spf *spotify.Client) ExternalInfo {
+func NewExternalInfo2(ds model.DataStore) ExternalInfo {
 	return &externalInfo2{ds: ds}
 }
 
@@ -66,13 +64,14 @@ func (e *externalInfo2) UpdateArtistInfo(ctx context.Context, id string, similar
 	}
 
 	// If we have fresh info, just return it
-	if time.Since(artist.ExternalInfoUpdatedAt) < time.Second { //consts.ArtistInfoTimeToLive {
+	if time.Since(artist.ExternalInfoUpdatedAt) < time.Second { // TODO: consts.ArtistInfoTimeToLive {
 		log.Debug("Found cached ArtistInfo", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
 		err := e.loadSimilar(ctx, artist, includeNotPresent)
 		return artist, err
 	}
-	log.Debug(ctx, "ArtistInfo not cached", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
+	log.Debug(ctx, "ArtistInfo not cached or expired", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
 
+	// Call all registered agents and collect information
 	wg := &sync.WaitGroup{}
 	e.callGetMBID(ctx, allAgents, artist, wg)
 	e.callGetBiography(ctx, allAgents, artist, wg)
@@ -81,10 +80,15 @@ func (e *externalInfo2) UpdateArtistInfo(ctx context.Context, id string, similar
 	e.callGetSimilar(ctx, allAgents, artist, similarCount, wg)
 	wg.Wait()
 
+	if isDone(ctx) {
+		log.Warn(ctx, "ArtistInfo update canceled", ctx.Err())
+		return nil, ctx.Err()
+	}
+
 	artist.ExternalInfoUpdatedAt = time.Now()
 	err = e.ds.Artist(ctx).Put(artist)
 	if err != nil {
-		log.Error(ctx, "Error trying to update artistImageUrl", "id", id, err)
+		log.Error(ctx, "Error trying to update artist external information", "id", id, "name", artist.Name, err)
 	}
 
 	if !includeNotPresent {
@@ -99,15 +103,16 @@ func (e *externalInfo2) UpdateArtistInfo(ctx context.Context, id string, similar
 	}
 
 	log.Trace(ctx, "ArtistInfo collected", "artist", artist)
-
 	return artist, nil
 }
 
 func (e *externalInfo2) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+	// TODO
 	return nil, nil
 }
 
 func (e *externalInfo2) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
+	// TODO
 	return nil, nil
 }
 
@@ -124,6 +129,7 @@ func (e *externalInfo2) callGetMBID(ctx context.Context, allAgents []agents.Inte
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		start := time.Now()
 		for _, a := range allAgents {
 			if isDone(ctx) {
 				break
@@ -135,7 +141,7 @@ func (e *externalInfo2) callGetMBID(ctx context.Context, allAgents []agents.Inte
 			mbid, err := agent.GetMBID(artist.Name)
 			if mbid != "" && err == nil {
 				artist.MbzArtistID = mbid
-				log.Debug(ctx, "Got MBID", "agent", a.AgentName(), "artist", artist.Name, "mbid", mbid)
+				log.Debug(ctx, "Got MBID", "agent", a.AgentName(), "artist", artist.Name, "mbid", mbid, "elapsed", time.Since(start))
 				break
 			}
 		}
@@ -146,6 +152,7 @@ func (e *externalInfo2) callGetURL(ctx context.Context, allAgents []agents.Inter
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		start := time.Now()
 		for _, a := range allAgents {
 			if isDone(ctx) {
 				break
@@ -157,7 +164,7 @@ func (e *externalInfo2) callGetURL(ctx context.Context, allAgents []agents.Inter
 			url, err := agent.GetURL(artist.Name, artist.MbzArtistID)
 			if url != "" && err == nil {
 				artist.ExternalUrl = url
-				log.Debug(ctx, "Got External Url", "agent", a.AgentName(), "artist", artist.Name, "url", url)
+				log.Debug(ctx, "Got External Url", "agent", a.AgentName(), "artist", artist.Name, "url", url, "elapsed", time.Since(start))
 				break
 			}
 		}
@@ -168,6 +175,7 @@ func (e *externalInfo2) callGetBiography(ctx context.Context, allAgents []agents
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		start := time.Now()
 		for _, a := range allAgents {
 			if isDone(ctx) {
 				break
@@ -179,7 +187,7 @@ func (e *externalInfo2) callGetBiography(ctx context.Context, allAgents []agents
 			bio, err := agent.GetBiography(artist.Name, artist.MbzArtistID)
 			if bio != "" && err == nil {
 				artist.Biography = bio
-				log.Debug(ctx, "Got Biography", "agent", a.AgentName(), "artist", artist.Name, "len", len(bio))
+				log.Debug(ctx, "Got Biography", "agent", a.AgentName(), "artist", artist.Name, "len", len(bio), "elapsed", time.Since(start))
 				break
 			}
 		}
@@ -190,6 +198,7 @@ func (e *externalInfo2) callGetImage(ctx context.Context, allAgents []agents.Int
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		start := time.Now()
 		for _, a := range allAgents {
 			if isDone(ctx) {
 				break
@@ -202,7 +211,7 @@ func (e *externalInfo2) callGetImage(ctx context.Context, allAgents []agents.Int
 			if len(images) == 0 || err != nil {
 				continue
 			}
-			log.Debug(ctx, "Got Images", "agent", a.AgentName(), "artist", artist.Name, "images", images)
+			log.Debug(ctx, "Got Images", "agent", a.AgentName(), "artist", artist.Name, "images", images, "elapsed", time.Since(start))
 			sort.Slice(images, func(i, j int) bool { return images[i].Size > images[j].Size })
 			if len(images) >= 1 {
 				artist.LargeImageUrl = images[0].URL
@@ -222,6 +231,7 @@ func (e *externalInfo2) callGetSimilar(ctx context.Context, allAgents []agents.I
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		start := time.Now()
 		for _, a := range allAgents {
 			if isDone(ctx) {
 				break
@@ -238,7 +248,7 @@ func (e *externalInfo2) callGetSimilar(ctx context.Context, allAgents []agents.I
 			if err != nil {
 				continue
 			}
-			log.Debug(ctx, "Got Similar Artists", "agent", a.AgentName(), "artist", artist.Name, "similar", similar)
+			log.Debug(ctx, "Got Similar Artists", "agent", a.AgentName(), "artist", artist.Name, "similar", similar, "elapsed", time.Since(start))
 			artist.SimilarArtists = sa
 			break
 		}
