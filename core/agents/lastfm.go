@@ -106,7 +106,7 @@ func (l *lastfmAgent) GetTopSongs(artistName, mbid string, count int) ([]Track, 
 }
 
 func (l *lastfmAgent) callArtistGetInfo(name string, mbid string) (*lastfm.Artist, error) {
-	a, err := l.client.ArtistGetInfo(l.ctx, name)
+	a, err := l.client.ArtistGetInfo(l.ctx, name, mbid)
 	if err != nil {
 		log.Error(l.ctx, "Error calling LastFM/artist.getInfo", "artist", name, "mbid", mbid, err)
 		return nil, err
@@ -115,7 +115,7 @@ func (l *lastfmAgent) callArtistGetInfo(name string, mbid string) (*lastfm.Artis
 }
 
 func (l *lastfmAgent) callArtistGetSimilar(name string, mbid string, limit int) ([]lastfm.Artist, error) {
-	s, err := l.client.ArtistGetSimilar(l.ctx, name, limit)
+	s, err := l.client.ArtistGetSimilar(l.ctx, name, mbid, limit)
 	if err != nil {
 		log.Error(l.ctx, "Error calling LastFM/artist.getSimilar", "artist", name, "mbid", mbid, err)
 		return nil, err
@@ -124,7 +124,7 @@ func (l *lastfmAgent) callArtistGetSimilar(name string, mbid string, limit int) 
 }
 
 func (l *lastfmAgent) callArtistGetTopTracks(artistName, mbid string, count int) ([]lastfm.Track, error) {
-	t, err := l.client.ArtistGetTopTracks(l.ctx, artistName, count)
+	t, err := l.client.ArtistGetTopTracks(l.ctx, artistName, mbid, count)
 	if err != nil {
 		log.Error(l.ctx, "Error calling LastFM/artist.getTopTracks", "artist", artistName, "mbid", mbid, err)
 		return nil, err
