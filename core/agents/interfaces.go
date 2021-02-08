@@ -21,7 +21,7 @@ type ArtistImage struct {
 	Size int
 }
 
-type Track struct {
+type Song struct {
 	Name string
 	MBID string
 }
@@ -51,7 +51,7 @@ type ArtistImageRetriever interface {
 }
 
 type ArtistTopSongsRetriever interface {
-	GetTopSongs(artistName, mbid string, count int) ([]Track, error)
+	GetTopSongs(artistName, mbid string, count int) ([]Song, error)
 }
 
 var Map map[string]Constructor
