@@ -15,6 +15,8 @@ import (
 	"github.com/xrash/smetrics"
 )
 
+const spotifyAgentName = "spotify"
+
 type spotifyAgent struct {
 	ctx    context.Context
 	id     string
@@ -23,10 +25,6 @@ type spotifyAgent struct {
 }
 
 func spotifyConstructor(ctx context.Context) Interface {
-	if conf.Server.Spotify.ID == "" {
-		return nil
-	}
-
 	l := &spotifyAgent{
 		ctx:    ctx,
 		id:     conf.Server.Spotify.ID,
@@ -38,7 +36,7 @@ func spotifyConstructor(ctx context.Context) Interface {
 }
 
 func (s *spotifyAgent) AgentName() string {
-	return "spotify"
+	return spotifyAgentName
 }
 
 func (s *spotifyAgent) GetImages(name, mbid string) ([]ArtistImage, error) {
@@ -87,7 +85,7 @@ func init() {
 	conf.AddHook(func() {
 		if conf.Server.Spotify.ID != "" && conf.Server.Spotify.Secret != "" {
 			log.Info("Spotify integration is ENABLED")
-			Register("spotify", spotifyConstructor)
+			Register(spotifyAgentName, spotifyConstructor)
 		}
 	})
 }

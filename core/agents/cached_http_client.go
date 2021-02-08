@@ -15,7 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-const cacheSizeLimit = 1000
+const cacheSizeLimit = 100
 
 type CachedHTTPClient struct {
 	cache *ttlcache.Cache
