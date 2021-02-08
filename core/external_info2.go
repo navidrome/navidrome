@@ -65,13 +65,12 @@ func (e *externalInfo2) UpdateArtistInfo(ctx context.Context, id string, similar
 		return nil, err
 	}
 
-	// TODO Uncomment
 	// If we have fresh info, just return it
-	//if time.Since(artist.ExternalInfoUpdatedAt) < consts.ArtistInfoTimeToLive {
-	//	log.Debug("Found cached ArtistInfo", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
-	//	err := e.loadSimilar(ctx, artist, includeNotPresent)
-	//	return artist, err
-	//}
+	if time.Since(artist.ExternalInfoUpdatedAt) < time.Second { //consts.ArtistInfoTimeToLive {
+		log.Debug("Found cached ArtistInfo", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
+		err := e.loadSimilar(ctx, artist, includeNotPresent)
+		return artist, err
+	}
 	log.Debug(ctx, "ArtistInfo not cached", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
 
 	wg := &sync.WaitGroup{}

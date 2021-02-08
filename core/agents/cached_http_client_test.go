@@ -67,7 +67,7 @@ var _ = Describe("CachedHttpClient", func() {
 			body, err = ioutil.ReadAll(resp.Body)
 			Expect(err).To(BeNil())
 			Expect(string(body)).To(Equal("Hello, []"))
-			Expect(string(header)).To(Equal("this is a header"))
+			Expect(header).To(Equal("this is a header"))
 			Expect(requestsReceived).To(Equal(3))
 		})
 
