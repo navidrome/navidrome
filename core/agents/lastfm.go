@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/lastfm"
 	"github.com/navidrome/navidrome/log"
 )
@@ -26,7 +27,8 @@ func lastFMConstructor(ctx context.Context) Interface {
 		apiKey: conf.Server.LastFM.ApiKey,
 		lang:   conf.Server.LastFM.Language,
 	}
-	l.client = lastfm.NewClient(l.apiKey, l.lang, http.DefaultClient)
+	hc := NewCachedHTTPClient(http.DefaultClient, consts.DefaultCachedHttpClientTTL)
+	l.client = lastfm.NewClient(l.apiKey, l.lang, hc)
 	return l
 }
 
@@ -103,7 +105,7 @@ func (l *lastfmAgent) GetTopSongs(artistName, mbid string, count int) ([]Track, 
 func (l *lastfmAgent) callArtistGetInfo(name string, mbid string) (*lastfm.Artist, error) {
 	a, err := l.client.ArtistGetInfo(l.ctx, name)
 	if err != nil {
-		log.Error(l.ctx, "Error calling LastFM/artist.getInfo", "artist", name, "mbid", mbid)
+		log.Error(l.ctx, "Error calling LastFM/artist.getInfo", "artist", name, "mbid", mbid, err)
 		return nil, err
 	}
 	return a, nil
@@ -112,7 +114,7 @@ func (l *lastfmAgent) callArtistGetInfo(name string, mbid string) (*lastfm.Artis
 func (l *lastfmAgent) callArtistGetSimilar(name string, mbid string, limit int) ([]lastfm.Artist, error) {
 	s, err := l.client.ArtistGetSimilar(l.ctx, name, limit)
 	if err != nil {
-		log.Error(l.ctx, "Error calling LastFM/artist.getSimilar", "artist", name, "mbid", mbid)
+		log.Error(l.ctx, "Error calling LastFM/artist.getSimilar", "artist", name, "mbid", mbid, err)
 		return nil, err
 	}
 	return s, nil
@@ -121,7 +123,7 @@ func (l *lastfmAgent) callArtistGetSimilar(name string, mbid string, limit int) 
 func (l *lastfmAgent) callArtistGetTopTracks(artistName, mbid string, count int) ([]lastfm.Track, error) {
 	t, err := l.client.ArtistGetTopTracks(l.ctx, artistName, count)
 	if err != nil {
-		log.Error(l.ctx, "Error calling LastFM/artist.getTopTracks", "artist", artistName, "mbid", mbid)
+		log.Error(l.ctx, "Error calling LastFM/artist.getTopTracks", "artist", artistName, "mbid", mbid, err)
 		return nil, err
 	}
 	return t, nil

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/spotify"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -31,7 +32,8 @@ func spotifyConstructor(ctx context.Context) Interface {
 		id:     conf.Server.Spotify.ID,
 		secret: conf.Server.Spotify.Secret,
 	}
-	l.client = spotify.NewClient(l.id, l.secret, http.DefaultClient)
+	hc := NewCachedHTTPClient(http.DefaultClient, consts.DefaultCachedHttpClientTTL)
+	l.client = spotify.NewClient(l.id, l.secret, hc)
 	return l
 }
 
