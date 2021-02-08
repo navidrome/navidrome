@@ -71,9 +71,13 @@ func (e *externalInfo2) UpdateArtistInfo(ctx context.Context, id string, similar
 	}
 	log.Debug(ctx, "ArtistInfo not cached or expired", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
 
+	// Get MBID first, if it is not yet available
+	if artist.MbzArtistID == "" {
+		e.callGetMBID(ctx, allAgents, artist)
+	}
+
 	// Call all registered agents and collect information
 	wg := &sync.WaitGroup{}
-	e.callGetMBID(ctx, allAgents, artist, wg)
 	e.callGetBiography(ctx, allAgents, artist, wg)
 	e.callGetURL(ctx, allAgents, artist, wg)
 	e.callGetImage(ctx, allAgents, artist, wg)
@@ -125,27 +129,23 @@ func isDone(ctx context.Context) bool {
 	}
 }
 
-func (e *externalInfo2) callGetMBID(ctx context.Context, allAgents []agents.Interface, artist *model.Artist, wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		start := time.Now()
-		for _, a := range allAgents {
-			if isDone(ctx) {
-				break
-			}
-			agent, ok := a.(agents.ArtistMBIDRetriever)
-			if !ok {
-				continue
-			}
-			mbid, err := agent.GetMBID(artist.Name)
-			if mbid != "" && err == nil {
-				artist.MbzArtistID = mbid
-				log.Debug(ctx, "Got MBID", "agent", a.AgentName(), "artist", artist.Name, "mbid", mbid, "elapsed", time.Since(start))
-				break
-			}
+func (e *externalInfo2) callGetMBID(ctx context.Context, allAgents []agents.Interface, artist *model.Artist) {
+	start := time.Now()
+	for _, a := range allAgents {
+		if isDone(ctx) {
+			break
 		}
-	}()
+		agent, ok := a.(agents.ArtistMBIDRetriever)
+		if !ok {
+			continue
+		}
+		mbid, err := agent.GetMBID(artist.Name)
+		if mbid != "" && err == nil {
+			artist.MbzArtistID = mbid
+			log.Debug(ctx, "Got MBID", "agent", a.AgentName(), "artist", artist.Name, "mbid", mbid, "elapsed", time.Since(start))
+			break
+		}
+	}
 }
 
 func (e *externalInfo2) callGetURL(ctx context.Context, allAgents []agents.Interface, artist *model.Artist, wg *sync.WaitGroup) {
