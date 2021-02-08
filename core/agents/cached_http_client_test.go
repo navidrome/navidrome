@@ -13,14 +13,16 @@ import (
 )
 
 var _ = Describe("CachedHttpClient", func() {
-	Context("Default TTL", func() {
+	Context("GET", func() {
 		var chc *CachedHTTPClient
 		var ts *httptest.Server
 		var requestsReceived int
+		var header string
 
 		BeforeEach(func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				requestsReceived++
+				header = r.Header.Get("head")
 				_, _ = fmt.Fprintf(w, "Hello, %s", r.URL.Query()["name"])
 			}))
 			chc = NewCachedHTTPClient(http.DefaultClient, consts.DefaultCachedHttpClientTTL)
@@ -56,6 +58,17 @@ var _ = Describe("CachedHttpClient", func() {
 			Expect(err).To(BeNil())
 			Expect(string(body)).To(Equal("Hello, []"))
 			Expect(requestsReceived).To(Equal(2))
+
+			// Different again (same as before, but with header)
+			r, _ = http.NewRequest("GET", ts.URL, nil)
+			r.Header.Add("head", "this is a header")
+			resp, err = chc.Do(r)
+			Expect(err).To(BeNil())
+			body, err = ioutil.ReadAll(resp.Body)
+			Expect(err).To(BeNil())
+			Expect(string(body)).To(Equal("Hello, []"))
+			Expect(string(header)).To(Equal("this is a header"))
+			Expect(requestsReceived).To(Equal(3))
 		})
 
 		It("expires responses after TTL", func() {
@@ -77,5 +90,4 @@ var _ = Describe("CachedHttpClient", func() {
 			Expect(requestsReceived).To(Equal(2))
 		})
 	})
-
 })

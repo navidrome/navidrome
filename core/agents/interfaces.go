@@ -7,7 +7,9 @@ import (
 
 type Constructor func(ctx context.Context) Interface
 
-type Interface interface{}
+type Interface interface {
+	AgentName() string
+}
 
 type Artist struct {
 	Name string
