@@ -21,18 +21,18 @@ var (
 	ErrNotFound = errors.New("spotify: not found")
 )
 
-type HttpClient interface {
+type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func NewClient(id, secret string, hc HttpClient) *Client {
+func NewClient(id, secret string, hc httpDoer) *Client {
 	return &Client{id, secret, hc}
 }
 
 type Client struct {
 	id     string
 	secret string
-	hc     HttpClient
+	hc     httpDoer
 }
 
 func (c *Client) SearchArtists(ctx context.Context, name string, limit int) ([]Artist, error) {
@@ -66,9 +66,10 @@ func (c *Client) authorize(ctx context.Context) (string, error) {
 	payload := url.Values{}
 	payload.Add("grant_type", "client_credentials")
 
-	req, _ := http.NewRequest("POST", "https://accounts.spotify.com/api/token", strings.NewReader(payload.Encode()))
+	encodePayload := payload.Encode()
+	req, _ := http.NewRequest("POST", "https://accounts.spotify.com/api/token", strings.NewReader(encodePayload))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Content-Length", strconv.Itoa(len(payload.Encode())))
+	req.Header.Add("Content-Length", strconv.Itoa(len(encodePayload)))
 	auth := c.id + ":" + c.secret
 	req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(auth)))
 
