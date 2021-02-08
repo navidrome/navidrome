@@ -108,17 +108,6 @@ func (e *externalInfo) getArtist(ctx context.Context, id string) (*model.Artist,
 	return nil, model.ErrNotFound
 }
 
-// Replace some Unicode chars with their equivalent ASCII
-func clearName(name string) string {
-	name = strings.ReplaceAll(name, "–", "-")
-	name = strings.ReplaceAll(name, "‐", "-")
-	name = strings.ReplaceAll(name, "“", `"`)
-	name = strings.ReplaceAll(name, "”", `"`)
-	name = strings.ReplaceAll(name, "‘", `'`)
-	name = strings.ReplaceAll(name, "’", `'`)
-	return name
-}
-
 func (e *externalInfo) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	if e.lfm == nil {
 		log.Warn(ctx, "Last.FM client not configured")
