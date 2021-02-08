@@ -26,10 +26,10 @@ var _ = Describe("Client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			httpClient.res = http.Response{Body: f, StatusCode: 200}
 
-			artist, err := client.ArtistGetInfo(context.TODO(), "U2")
+			artist, err := client.ArtistGetInfo(context.TODO(), "U2", "123")
 			Expect(err).To(BeNil())
 			Expect(artist.Name).To(Equal("U2"))
-			Expect(httpClient.savedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
+			Expect(httpClient.savedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=123&method=artist.getInfo"))
 		})
 
 		It("fails if Last.FM returns an error", func() {
@@ -38,14 +38,14 @@ var _ = Describe("Client", func() {
 				StatusCode: 400,
 			}
 
-			_, err := client.ArtistGetInfo(context.TODO(), "U2")
+			_, err := client.ArtistGetInfo(context.TODO(), "U2", "123")
 			Expect(err).To(MatchError("last.fm error(3): Invalid Method - No method with that name in this package"))
 		})
 
 		It("fails if HttpClient.Do() returns error", func() {
 			httpClient.err = errors.New("generic error")
 
-			_, err := client.ArtistGetInfo(context.TODO(), "U2")
+			_, err := client.ArtistGetInfo(context.TODO(), "U2", "123")
 			Expect(err).To(MatchError("generic error"))
 		})
 
@@ -55,7 +55,7 @@ var _ = Describe("Client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.ArtistGetInfo(context.TODO(), "U2")
+			_, err := client.ArtistGetInfo(context.TODO(), "U2", "123")
 			Expect(err).To(MatchError("invalid character '<' looking for beginning of value"))
 		})
 
@@ -66,10 +66,10 @@ var _ = Describe("Client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.json")
 			httpClient.res = http.Response{Body: f, StatusCode: 200}
 
-			artists, err := client.ArtistGetSimilar(context.TODO(), "U2", 2)
+			artists, err := client.ArtistGetSimilar(context.TODO(), "U2", "123", 2)
 			Expect(err).To(BeNil())
 			Expect(len(artists)).To(Equal(2))
-			Expect(httpClient.savedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getSimilar"))
+			Expect(httpClient.savedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&mbid=123&method=artist.getSimilar"))
 		})
 
 		It("fails if Last.FM returns an error", func() {
@@ -78,14 +78,14 @@ var _ = Describe("Client", func() {
 				StatusCode: 400,
 			}
 
-			_, err := client.ArtistGetSimilar(context.TODO(), "U2", 2)
+			_, err := client.ArtistGetSimilar(context.TODO(), "U2", "123", 2)
 			Expect(err).To(MatchError("last.fm error(3): Invalid Method - No method with that name in this package"))
 		})
 
 		It("fails if HttpClient.Do() returns error", func() {
 			httpClient.err = errors.New("generic error")
 
-			_, err := client.ArtistGetSimilar(context.TODO(), "U2", 2)
+			_, err := client.ArtistGetSimilar(context.TODO(), "U2", "123", 2)
 			Expect(err).To(MatchError("generic error"))
 		})
 
@@ -95,7 +95,7 @@ var _ = Describe("Client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.ArtistGetSimilar(context.TODO(), "U2", 2)
+			_, err := client.ArtistGetSimilar(context.TODO(), "U2", "123", 2)
 			Expect(err).To(MatchError("invalid character '<' looking for beginning of value"))
 		})
 	})
@@ -105,10 +105,10 @@ var _ = Describe("Client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
 			httpClient.res = http.Response{Body: f, StatusCode: 200}
 
-			tracks, err := client.ArtistGetTopTracks(context.TODO(), "U2", 2)
+			tracks, err := client.ArtistGetTopTracks(context.TODO(), "U2", "123", 2)
 			Expect(err).To(BeNil())
 			Expect(len(tracks)).To(Equal(2))
-			Expect(httpClient.savedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getTopTracks"))
+			Expect(httpClient.savedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&mbid=123&method=artist.getTopTracks"))
 		})
 
 		It("fails if Last.FM returns an error", func() {
@@ -117,14 +117,14 @@ var _ = Describe("Client", func() {
 				StatusCode: 400,
 			}
 
-			_, err := client.ArtistGetTopTracks(context.TODO(), "U2", 2)
+			_, err := client.ArtistGetTopTracks(context.TODO(), "U2", "123", 2)
 			Expect(err).To(MatchError("last.fm error(3): Invalid Method - No method with that name in this package"))
 		})
 
 		It("fails if HttpClient.Do() returns error", func() {
 			httpClient.err = errors.New("generic error")
 
-			_, err := client.ArtistGetTopTracks(context.TODO(), "U2", 2)
+			_, err := client.ArtistGetTopTracks(context.TODO(), "U2", "123", 2)
 			Expect(err).To(MatchError("generic error"))
 		})
 
@@ -134,7 +134,7 @@ var _ = Describe("Client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.ArtistGetTopTracks(context.TODO(), "U2", 2)
+			_, err := client.ArtistGetTopTracks(context.TODO(), "U2", "123", 2)
 			Expect(err).To(MatchError("invalid character '<' looking for beginning of value"))
 		})
 	})

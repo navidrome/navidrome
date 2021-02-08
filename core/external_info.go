@@ -141,7 +141,7 @@ func (e *externalInfo) similarArtists(ctx context.Context, artistName string, co
 	var notPresent []string
 
 	log.Debug(ctx, "Calling Last.FM ArtistGetSimilar", "artist", artistName)
-	similar, err := e.lfm.ArtistGetSimilar(ctx, artistName, count)
+	similar, err := e.lfm.ArtistGetSimilar(ctx, artistName, "", count)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (e *externalInfo) TopSongs(ctx context.Context, artistName string, count in
 	artistName = clearName(artistName)
 
 	log.Debug(ctx, "Calling Last.FM ArtistGetTopTracks", "artist", artistName, "id", artist.ID)
-	tracks, err := e.lfm.ArtistGetTopTracks(ctx, artistName, count)
+	tracks, err := e.lfm.ArtistGetTopTracks(ctx, artistName, artist.MbzArtistID, count)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (e *externalInfo) callArtistInfo(ctx context.Context, artist *model.Artist,
 		go func() {
 			start := time.Now()
 			defer wg.Done()
-			lfmArtist, err := e.lfm.ArtistGetInfo(ctx, name)
+			lfmArtist, err := e.lfm.ArtistGetInfo(ctx, name, artist.MbzArtistID)
 			if err != nil {
 				log.Error(ctx, "Error calling Last.FM", "artist", name, err)
 			} else {

@@ -56,10 +56,11 @@ func (c *Client) makeRequest(params url.Values) (*Response, error) {
 	return &response, err
 }
 
-func (c *Client) ArtistGetInfo(ctx context.Context, name string) (*Artist, error) {
+func (c *Client) ArtistGetInfo(ctx context.Context, name string, mbid string) (*Artist, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getInfo")
 	params.Add("artist", name)
+	params.Add("mbid", mbid)
 	params.Add("lang", c.lang)
 	response, err := c.makeRequest(params)
 	if err != nil {
@@ -68,10 +69,11 @@ func (c *Client) ArtistGetInfo(ctx context.Context, name string) (*Artist, error
 	return &response.Artist, nil
 }
 
-func (c *Client) ArtistGetSimilar(ctx context.Context, name string, limit int) ([]Artist, error) {
+func (c *Client) ArtistGetSimilar(ctx context.Context, name string, mbid string, limit int) ([]Artist, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getSimilar")
 	params.Add("artist", name)
+	params.Add("mbid", mbid)
 	params.Add("limit", strconv.Itoa(limit))
 	response, err := c.makeRequest(params)
 	if err != nil {
@@ -80,10 +82,11 @@ func (c *Client) ArtistGetSimilar(ctx context.Context, name string, limit int) (
 	return response.SimilarArtists.Artists, nil
 }
 
-func (c *Client) ArtistGetTopTracks(ctx context.Context, name string, limit int) ([]Track, error) {
+func (c *Client) ArtistGetTopTracks(ctx context.Context, name string, mbid string, limit int) ([]Track, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getTopTracks")
 	params.Add("artist", name)
+	params.Add("mbid", mbid)
 	params.Add("limit", strconv.Itoa(limit))
 	response, err := c.makeRequest(params)
 	if err != nil {
