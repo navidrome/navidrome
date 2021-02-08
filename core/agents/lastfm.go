@@ -87,7 +87,7 @@ func (l *lastfmAgent) GetSimilar(name, mbid string, limit int) ([]Artist, error)
 	return res, nil
 }
 
-func (l *lastfmAgent) GetTopSongs(artistName, mbid string, count int) ([]Track, error) {
+func (l *lastfmAgent) GetTopSongs(artistName, mbid string, count int) ([]Song, error) {
 	resp, err := l.callArtistGetTopTracks(artistName, mbid, count)
 	if err != nil {
 		return nil, err
@@ -95,9 +95,9 @@ func (l *lastfmAgent) GetTopSongs(artistName, mbid string, count int) ([]Track, 
 	if len(resp) == 0 {
 		return nil, ErrNotFound
 	}
-	var res []Track
+	var res []Song
 	for _, t := range resp {
-		res = append(res, Track{
+		res = append(res, Song{
 			Name: t.Name,
 			MBID: t.MBID,
 		})

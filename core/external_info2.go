@@ -165,8 +165,52 @@ func (e *externalInfo2) SimilarSongs(ctx context.Context, id string, count int) 
 }
 
 func (e *externalInfo2) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
-	// TODO
-	return nil, nil
+	allAgents := e.initAgents(ctx)
+	artist, err := e.findArtistByName(ctx, artistName)
+	if err != nil {
+		log.Error(ctx, "Artist not found", "name", artistName, err)
+		return nil, nil
+	}
+
+	songs, err := e.callGetTopSongs(ctx, allAgents, artist, count)
+	if err != nil {
+		return nil, err
+	}
+
+	var mfs model.MediaFiles
+	for _, t := range songs {
+		mf, err := e.findMatchingTrack(ctx, t.MBID, artist.ID, t.Name)
+		if err != nil {
+			continue
+		}
+		mfs = append(mfs, *mf)
+	}
+	return mfs, nil
+}
+
+func (e *externalInfo2) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
+	if mbid != "" {
+		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.Eq{"mbz_track_id": mbid},
+		})
+		if err == nil && len(mfs) > 0 {
+			return &mfs[0], nil
+		}
+	}
+	mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.And{
+			squirrel.Or{
+				squirrel.Eq{"artist_id": artistID},
+				squirrel.Eq{"album_artist_id": artistID},
+			},
+			squirrel.Like{"title": title},
+		},
+		Sort: "starred desc, rating desc, year asc",
+	})
+	if err != nil || len(mfs) == 0 {
+		return nil, model.ErrNotFound
+	}
+	return &mfs[0], nil
 }
 
 func isDone(ctx context.Context) bool {
@@ -195,6 +239,26 @@ func (e *externalInfo2) callGetMBID(ctx context.Context, allAgents []agents.Inte
 			break
 		}
 	}
+}
+
+func (e *externalInfo2) callGetTopSongs(ctx context.Context, allAgents []agents.Interface, artist *auxArtist,
+	count int) ([]agents.Song, error) {
+	start := time.Now()
+	for _, a := range allAgents {
+		if isDone(ctx) {
+			break
+		}
+		agent, ok := a.(agents.ArtistTopSongsRetriever)
+		if !ok {
+			continue
+		}
+		songs, err := agent.GetTopSongs(artist.Name, artist.MbzArtistID, count)
+		if len(songs) > 0 && err == nil {
+			log.Debug(ctx, "Got Top Songs", "agent", a.AgentName(), "artist", artist.Name, "songs", songs, "elapsed", time.Since(start))
+			return songs, err
+		}
+	}
+	return nil, nil
 }
 
 func (e *externalInfo2) callGetURL(ctx context.Context, allAgents []agents.Interface, artist *auxArtist, wg *sync.WaitGroup) {
@@ -315,7 +379,7 @@ func (e *externalInfo2) mapSimilarArtists(ctx context.Context, similar []agents.
 			notPresent = append(notPresent, s.Name)
 			continue
 		}
-		result = append(result, *sa)
+		result = append(result, sa.Artist)
 	}
 
 	// Then fill up with non-present artists
@@ -329,7 +393,7 @@ func (e *externalInfo2) mapSimilarArtists(ctx context.Context, similar []agents.
 	return result, nil
 }
 
-func (e *externalInfo2) findArtistByName(ctx context.Context, artistName string) (*model.Artist, error) {
+func (e *externalInfo2) findArtistByName(ctx context.Context, artistName string) (*auxArtist, error) {
 	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.Like{"name": artistName},
 		Max:     1,
@@ -340,7 +404,11 @@ func (e *externalInfo2) findArtistByName(ctx context.Context, artistName string)
 	if len(artists) == 0 {
 		return nil, model.ErrNotFound
 	}
-	return &artists[0], nil
+	artist := &auxArtist{
+		Artist: artists[0],
+		Name:   clearName(artists[0].Name),
+	}
+	return artist, nil
 }
 
 func (e *externalInfo2) loadSimilar(ctx context.Context, artist *auxArtist, includeNotPresent bool) error {
