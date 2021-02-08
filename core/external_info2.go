@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -65,20 +66,20 @@ func (e *externalInfo2) UpdateArtistInfo(ctx context.Context, id string, similar
 	}
 
 	// TODO Uncomment
-	// If we have updated info, just return it
+	// If we have fresh info, just return it
 	//if time.Since(artist.ExternalInfoUpdatedAt) < consts.ArtistInfoTimeToLive {
 	//	log.Debug("Found cached ArtistInfo", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
 	//	err := e.loadSimilar(ctx, artist, includeNotPresent)
 	//	return artist, err
 	//}
-	log.Debug("ArtistInfo not cached", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id)
+	log.Debug(ctx, "ArtistInfo not cached", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
 
-	wg := sync.WaitGroup{}
-	e.callGetMBID(ctx, allAgents, artist, &wg)
-	e.callGetBiography(ctx, allAgents, artist, &wg)
-	e.callGetURL(ctx, allAgents, artist, &wg)
-	e.callGetSimilar(ctx, allAgents, artist, similarCount, &wg)
-	// TODO Images
+	wg := &sync.WaitGroup{}
+	e.callGetMBID(ctx, allAgents, artist, wg)
+	e.callGetBiography(ctx, allAgents, artist, wg)
+	e.callGetURL(ctx, allAgents, artist, wg)
+	e.callGetImage(ctx, allAgents, artist, wg)
+	e.callGetSimilar(ctx, allAgents, artist, similarCount, wg)
 	wg.Wait()
 
 	artist.ExternalInfoUpdatedAt = time.Now()
@@ -111,11 +112,23 @@ func (e *externalInfo2) TopSongs(ctx context.Context, artistName string, count i
 	return nil, nil
 }
 
+func isDone(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		return false
+	}
+}
+
 func (e *externalInfo2) callGetMBID(ctx context.Context, allAgents []agents.Interface, artist *model.Artist, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for _, a := range allAgents {
+			if isDone(ctx) {
+				break
+			}
 			agent, ok := a.(agents.ArtistMBIDRetriever)
 			if !ok {
 				continue
@@ -123,6 +136,8 @@ func (e *externalInfo2) callGetMBID(ctx context.Context, allAgents []agents.Inte
 			mbid, err := agent.GetMBID(artist.Name)
 			if mbid != "" && err == nil {
 				artist.MbzArtistID = mbid
+				log.Debug(ctx, "Got MBID", "agent", a.AgentName(), "artist", artist.Name, "mbid", mbid)
+				break
 			}
 		}
 	}()
@@ -133,6 +148,9 @@ func (e *externalInfo2) callGetURL(ctx context.Context, allAgents []agents.Inter
 	go func() {
 		defer wg.Done()
 		for _, a := range allAgents {
+			if isDone(ctx) {
+				break
+			}
 			agent, ok := a.(agents.ArtistURLRetriever)
 			if !ok {
 				continue
@@ -140,6 +158,8 @@ func (e *externalInfo2) callGetURL(ctx context.Context, allAgents []agents.Inter
 			url, err := agent.GetURL(artist.Name, artist.MbzArtistID)
 			if url != "" && err == nil {
 				artist.ExternalUrl = url
+				log.Debug(ctx, "Got External Url", "agent", a.AgentName(), "artist", artist.Name, "url", url)
+				break
 			}
 		}
 	}()
@@ -150,6 +170,9 @@ func (e *externalInfo2) callGetBiography(ctx context.Context, allAgents []agents
 	go func() {
 		defer wg.Done()
 		for _, a := range allAgents {
+			if isDone(ctx) {
+				break
+			}
 			agent, ok := a.(agents.ArtistBiographyRetriever)
 			if !ok {
 				continue
@@ -157,7 +180,41 @@ func (e *externalInfo2) callGetBiography(ctx context.Context, allAgents []agents
 			bio, err := agent.GetBiography(artist.Name, artist.MbzArtistID)
 			if bio != "" && err == nil {
 				artist.Biography = bio
+				log.Debug(ctx, "Got Biography", "agent", a.AgentName(), "artist", artist.Name, "len", len(bio))
+				break
 			}
+		}
+	}()
+}
+
+func (e *externalInfo2) callGetImage(ctx context.Context, allAgents []agents.Interface, artist *model.Artist, wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for _, a := range allAgents {
+			if isDone(ctx) {
+				break
+			}
+			agent, ok := a.(agents.ArtistImageRetriever)
+			if !ok {
+				continue
+			}
+			images, err := agent.GetImages(artist.Name, artist.MbzArtistID)
+			if len(images) == 0 || err != nil {
+				continue
+			}
+			log.Debug(ctx, "Got Images", "agent", a.AgentName(), "artist", artist.Name, "images", images)
+			sort.Slice(images, func(i, j int) bool { return images[i].Size > images[j].Size })
+			if len(images) >= 1 {
+				artist.LargeImageUrl = images[0].URL
+			}
+			if len(images) >= 2 {
+				artist.MediumImageUrl = images[1].URL
+			}
+			if len(images) >= 3 {
+				artist.SmallImageUrl = images[2].URL
+			}
+			break
 		}
 	}()
 }
@@ -167,6 +224,9 @@ func (e *externalInfo2) callGetSimilar(ctx context.Context, allAgents []agents.I
 	go func() {
 		defer wg.Done()
 		for _, a := range allAgents {
+			if isDone(ctx) {
+				break
+			}
 			agent, ok := a.(agents.ArtistSimilarRetriever)
 			if !ok {
 				continue
@@ -179,7 +239,9 @@ func (e *externalInfo2) callGetSimilar(ctx context.Context, allAgents []agents.I
 			if err != nil {
 				continue
 			}
+			log.Debug(ctx, "Got Similar Artists", "agent", a.AgentName(), "artist", artist.Name, "similar", similar)
 			artist.SimilarArtists = sa
+			break
 		}
 	}()
 }

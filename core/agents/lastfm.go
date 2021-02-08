@@ -32,6 +32,10 @@ func lastFMConstructor(ctx context.Context) Interface {
 	return l
 }
 
+func (l *lastfmAgent) AgentName() string {
+	return "lastfm"
+}
+
 func (l *lastfmAgent) GetMBID(name string) (string, error) {
 	a, err := l.callArtistGetInfo(name, "")
 	if err != nil {
