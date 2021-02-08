@@ -87,7 +87,12 @@ func (c *CachedHTTPClient) deserializeReq(reqStr string) (*http.Request, error) 
 		bodyStr, _ := base64.StdEncoding.DecodeString(*data.Body)
 		body = strings.NewReader(string(bodyStr))
 	}
-	return http.NewRequest(data.Method, data.URL, body)
+	req, err := http.NewRequest(data.Method, data.URL, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = data.Header
+	return req, nil
 }
 
 func (c *CachedHTTPClient) serializeResponse(resp *http.Response) string {

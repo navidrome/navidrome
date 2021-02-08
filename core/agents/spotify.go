@@ -37,6 +37,10 @@ func spotifyConstructor(ctx context.Context) Interface {
 	return l
 }
 
+func (s *spotifyAgent) AgentName() string {
+	return "spotify"
+}
+
 func (s *spotifyAgent) GetImages(name, mbid string) ([]ArtistImage, error) {
 	a, err := s.searchArtist(name)
 	if err != nil {
