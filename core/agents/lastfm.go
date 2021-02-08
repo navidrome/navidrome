@@ -56,7 +56,6 @@ func (l *lastfmAgent) GetURL(name, mbid string) (string, error) {
 		return "", ErrNotFound
 	}
 	return a.URL, nil
-
 }
 
 func (l *lastfmAgent) GetBiography(name, mbid string) (string, error) {
