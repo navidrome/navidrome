@@ -10,6 +10,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
+const lastFMAgentName = "lastfm"
+
 type lastfmAgent struct {
 	ctx    context.Context
 	apiKey string
@@ -18,10 +20,6 @@ type lastfmAgent struct {
 }
 
 func lastFMConstructor(ctx context.Context) Interface {
-	if conf.Server.LastFM.ApiKey == "" {
-		return nil
-	}
-
 	l := &lastfmAgent{
 		ctx:    ctx,
 		apiKey: conf.Server.LastFM.ApiKey,
@@ -33,7 +31,7 @@ func lastFMConstructor(ctx context.Context) Interface {
 }
 
 func (l *lastfmAgent) AgentName() string {
-	return "lastfm"
+	return lastFMAgentName
 }
 
 func (l *lastfmAgent) GetMBID(name string) (string, error) {
@@ -136,7 +134,7 @@ func init() {
 	conf.AddHook(func() {
 		if conf.Server.LastFM.ApiKey != "" {
 			log.Info("Last.FM integration is ENABLED")
-			Register("lastfm", lastFMConstructor)
+			Register(lastFMAgentName, lastFMConstructor)
 		}
 	})
 }
