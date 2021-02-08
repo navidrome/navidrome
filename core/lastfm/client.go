@@ -14,18 +14,18 @@ const (
 	apiBaseUrl = "https://ws.audioscrobbler.com/2.0/"
 )
 
-type HttpClient interface {
+type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func NewClient(apiKey string, lang string, hc HttpClient) *Client {
+func NewClient(apiKey string, lang string, hc httpDoer) *Client {
 	return &Client{apiKey, lang, hc}
 }
 
 type Client struct {
 	apiKey string
 	lang   string
-	hc     HttpClient
+	hc     httpDoer
 }
 
 func (c *Client) makeRequest(params url.Values) (*Response, error) {
