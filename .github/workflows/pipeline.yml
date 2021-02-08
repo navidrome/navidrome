@@ -157,13 +157,15 @@ jobs:
     env:
       DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
     steps:
+      - name: Set up QEMU
+        id: qemu
+        uses: docker/setup-qemu-action@v1
+        if: env.DOCKER_IMAGE != ''
+
       - name: Set up Docker Buildx
         id: buildx
-        uses: crazy-max/ghaction-docker-buildx@v1
+        uses: docker/setup-buildx-action@v1
         if: env.DOCKER_IMAGE != ''
-        with:
-          buildx-version: latest
-          qemu-version: latest
 
       - uses: actions/checkout@v2
         if: env.DOCKER_IMAGE != ''
