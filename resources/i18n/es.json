@@ -93,7 +93,7 @@
                 "client": "Cliente",
                 "userName": "Usuario",
                 "lastSeen": "Última conexión",
-                "reportRealPath": ""
+                "reportRealPath": "Reporta la ruta absoluta"
             }
         },
         "transcoding": {
@@ -241,7 +241,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} de %{total}",
             "page_rows_per_page": "Filas por página:",
             "next": "Siguiente",
-            "prev": "Anterior"
+            "prev": "Anterior",
+            "skip_nav": "Pasa al contenido"
         },
         "notification": {
             "updated": "Elemento actualizado |||| %{smart_count} elementos actualizados",
@@ -264,8 +265,8 @@
         "noPlaylistsAvailable": "Ninguna lista disponible",
         "delete_user_title": "Eliminar usuario '%{name}'",
         "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?",
-        "notifications_blocked": "",
-        "notifications_not_available": ""
+        "notifications_blocked": "Las notificaciones de este sitio estan bloqueadas en tu navegador",
+        "notifications_not_available": "Este navegador no soporta notificaciones o no ingresaste a Navidrome usando https"
     },
     "menu": {
         "library": "Biblioteca",
@@ -278,7 +279,7 @@
                 "theme": "Tema",
                 "language": "Idioma",
                 "defaultView": "Vista por defecto",
-                "desktop_notifications": ""
+                "desktop_notifications": "Notificaciones de escritorio"
             }
         },
         "albumList": "Álbumes",
@@ -323,5 +324,18 @@
         "fullScan": "Escaneo completo",
         "serverUptime": "Uptime del servidor",
         "serverDown": "OFFLINE"
+    },
+    "help": {
+        "title": "Atajos de teclado de Navidrome",
+        "hotkeys": {
+            "show_help": "Muestra esta ayuda",
+            "toggle_menu": "Activa/desactiva la barra lateral",
+            "toggle_play": "Reproducir / Pausar",
+            "prev_song": "Canción anterior",
+            "next_song": "Siguiente canción",
+            "vol_up": "Subir volumen",
+            "vol_down": "Bajar volumen",
+            "toggle_star": "Activa/desactiva esta canción como favorita"
+        }
     }
 }
