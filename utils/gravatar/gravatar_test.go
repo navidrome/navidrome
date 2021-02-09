@@ -3,9 +3,9 @@ package gravatar_test
 import (
 	"testing"
 
-	"github.com/navidrome/navidrome/core/gravatar"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/gravatar"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

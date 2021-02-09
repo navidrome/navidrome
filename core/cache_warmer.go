@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/pool"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/pool"
 )
 
 type CacheWarmer interface {

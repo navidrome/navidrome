@@ -7,12 +7,12 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/core/gravatar"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/gravatar"
 )
 
 type MediaRetrievalController struct {
