@@ -34,7 +34,7 @@ func (l *lastfmAgent) AgentName() string {
 	return lastFMAgentName
 }
 
-func (l *lastfmAgent) GetMBID(name string) (string, error) {
+func (l *lastfmAgent) GetMBID(id string, name string) (string, error) {
 	a, err := l.callArtistGetInfo(name, "")
 	if err != nil {
 		return "", err
@@ -45,7 +45,7 @@ func (l *lastfmAgent) GetMBID(name string) (string, error) {
 	return a.MBID, nil
 }
 
-func (l *lastfmAgent) GetURL(name, mbid string) (string, error) {
+func (l *lastfmAgent) GetURL(id, name, mbid string) (string, error) {
 	a, err := l.callArtistGetInfo(name, mbid)
 	if err != nil {
 		return "", err
@@ -56,7 +56,7 @@ func (l *lastfmAgent) GetURL(name, mbid string) (string, error) {
 	return a.URL, nil
 }
 
-func (l *lastfmAgent) GetBiography(name, mbid string) (string, error) {
+func (l *lastfmAgent) GetBiography(id, name, mbid string) (string, error) {
 	a, err := l.callArtistGetInfo(name, mbid)
 	if err != nil {
 		return "", err
@@ -67,7 +67,7 @@ func (l *lastfmAgent) GetBiography(name, mbid string) (string, error) {
 	return a.Bio.Summary, nil
 }
 
-func (l *lastfmAgent) GetSimilar(name, mbid string, limit int) ([]Artist, error) {
+func (l *lastfmAgent) GetSimilar(id, name, mbid string, limit int) ([]Artist, error) {
 	resp, err := l.callArtistGetSimilar(name, mbid, limit)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (l *lastfmAgent) GetSimilar(name, mbid string, limit int) ([]Artist, error)
 	return res, nil
 }
 
-func (l *lastfmAgent) GetTopSongs(artistName, mbid string, count int) ([]Song, error) {
+func (l *lastfmAgent) GetTopSongs(id, artistName, mbid string, count int) ([]Song, error) {
 	resp, err := l.callArtistGetTopTracks(artistName, mbid, count)
 	if err != nil {
 		return nil, err
