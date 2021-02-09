@@ -241,7 +241,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} van %{total}",
             "page_rows_per_page": "Rijen per pagina:",
             "next": "Volgende",
-            "prev": "Vorige"
+            "prev": "Vorige",
+            "skip_nav": "Doorgaan"
         },
         "notification": {
             "updated": "Element bijgewerkt |||| %{smart_count} elementen bijgewerkt",
@@ -323,5 +324,18 @@
         "fullScan": "Volledige scan",
         "serverUptime": "Server uptime",
         "serverDown": "Offline"
+    },
+    "help": {
+        "title": "Navidrome sneltoetsen",
+        "hotkeys": {
+            "show_help": "Help weergeven",
+            "toggle_menu": "Menu zijbalk Aan/Uit\n",
+            "toggle_play": "Afspelen / Pause",
+            "prev_song": "Vorig nummer",
+            "next_song": "Volgend nummer",
+            "vol_up": "Volume harder",
+            "vol_down": "Volume zachter",
+            "toggle_star": "Ster voor dit nummer Ja/Nee"
+        }
     }
 }
