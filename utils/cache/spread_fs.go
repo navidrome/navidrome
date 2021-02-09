@@ -19,9 +19,17 @@ type spreadFS struct {
 	init func() error
 }
 
-// NewSpreadFS returns a FileSystem rooted at directory dir. It
-// Dir is created with perms if it doesn't exist.
-func NewSpreadFS(dir string, mode os.FileMode) (fscache.FileSystem, error) {
+// NewSpreadFS returns a FileSystem rooted at directory dir. This FS hashes the key and
+// distributes all files in a layout like XX/XX/XXXXXXXXXX. Ex:
+// 		Key is abc123.300x300.jpg
+// 		Hash would be: c574aeb3caafcf93ee337f0cf34e31a428ba3f13
+// 		File in cache would be: c5 / 74 / c574aeb3caafcf93ee337f0cf34e31a428ba3f13
+// The idea is to avoid having too many files in one dir, which could potentially cause performance issues
+// and may hit limitations depending on the OS.
+// See discussion here: https://github.com/djherbis/fscache/issues/8#issuecomment-614319323
+//
+// dir is created with specified mode if it doesn't exist.
+func NewSpreadFS(dir string, mode os.FileMode) (*spreadFS, error) {
 	fs := &spreadFS{root: dir, mode: mode, init: func() error {
 		return os.MkdirAll(dir, mode)
 	}}
