@@ -12,7 +12,7 @@ var Set = wire.NewSet(
 	GetImageCache,
 	NewArchiver,
 	NewNowPlayingRepository,
-	NewExternalInfo2,
+	NewExternalMetadata,
 	NewCacheWarmer,
 	NewPlayers,
 	transcoder.New,

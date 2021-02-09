@@ -18,11 +18,11 @@ import (
 
 type BrowsingController struct {
 	ds model.DataStore
-	ei core.ExternalInfo
+	em core.ExternalMetadata
 }
 
-func NewBrowsingController(ds model.DataStore, ei core.ExternalInfo) *BrowsingController {
-	return &BrowsingController{ds: ds, ei: ei}
+func NewBrowsingController(ds model.DataStore, em core.ExternalMetadata) *BrowsingController {
+	return &BrowsingController{ds: ds, em: em}
 }
 
 func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -236,7 +236,7 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 	count := utils.ParamInt(r, "count", 20)
 	includeNotPresent := utils.ParamBool(r, "includeNotPresent", false)
 
-	artist, err := c.ei.UpdateArtistInfo(ctx, id, count, includeNotPresent)
+	artist, err := c.em.UpdateArtistInfo(ctx, id, count, includeNotPresent)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +285,7 @@ func (c *BrowsingController) GetSimilarSongs(w http.ResponseWriter, r *http.Requ
 	}
 	count := utils.ParamInt(r, "count", 50)
 
-	songs, err := c.ei.SimilarSongs(ctx, id, count)
+	songs, err := c.em.SimilarSongs(ctx, id, count)
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +318,7 @@ func (c *BrowsingController) GetTopSongs(w http.ResponseWriter, r *http.Request)
 	}
 	count := utils.ParamInt(r, "count", 50)
 
-	songs, err := c.ei.TopSongs(ctx, artist, count)
+	songs, err := c.em.TopSongs(ctx, artist, count)
 	if err != nil {
 		return nil, err
 	}
