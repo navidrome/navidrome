@@ -241,7 +241,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
             "page_rows_per_page": "每页行数:",
             "next": "下一页",
-            "prev": "上一页"
+            "prev": "上一页",
+            "skip_nav": ""
         },
         "notification": {
             "updated": "项已更新 |||| %{smart_count} 项已更新",
@@ -323,5 +324,18 @@
         "fullScan": "完全扫描",
         "serverUptime": "服务器已运行",
         "serverDown": "离线"
+    },
+    "help": {
+        "title": "",
+        "hotkeys": {
+            "show_help": "",
+            "toggle_menu": "",
+            "toggle_play": "",
+            "prev_song": "",
+            "next_song": "",
+            "vol_up": "",
+            "vol_down": "",
+            "toggle_star": ""
+        }
     }
 }
