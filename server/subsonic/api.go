@@ -23,27 +23,27 @@ const Version = "1.16.1"
 type handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
 type Router struct {
-	DataStore    model.DataStore
-	Artwork      core.Artwork
-	Streamer     core.MediaStreamer
-	Archiver     core.Archiver
-	Players      core.Players
-	ExternalInfo core.ExternalInfo
-	Scanner      scanner.Scanner
+	DataStore        model.DataStore
+	Artwork          core.Artwork
+	Streamer         core.MediaStreamer
+	Archiver         core.Archiver
+	Players          core.Players
+	ExternalMetadata core.ExternalMetadata
+	Scanner          scanner.Scanner
 
 	mux http.Handler
 }
 
 func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver, players core.Players,
-	externalInfo core.ExternalInfo, scanner scanner.Scanner) *Router {
+	externalMetadata core.ExternalMetadata, scanner scanner.Scanner) *Router {
 	r := &Router{
-		DataStore:    ds,
-		Artwork:      artwork,
-		Streamer:     streamer,
-		Archiver:     archiver,
-		Players:      players,
-		ExternalInfo: externalInfo,
-		Scanner:      scanner,
+		DataStore:        ds,
+		Artwork:          artwork,
+		Streamer:         streamer,
+		Archiver:         archiver,
+		Players:          players,
+		ExternalMetadata: externalMetadata,
+		Scanner:          scanner,
 	}
 	r.mux = r.routes()
 	return r
