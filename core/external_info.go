@@ -243,7 +243,7 @@ func (e *externalInfo) callGetMBID(ctx context.Context, allAgents []agents.Inter
 		if !ok {
 			continue
 		}
-		mbid, err := agent.GetMBID(artist.Name)
+		mbid, err := agent.GetMBID(artist.ID, artist.Name)
 		if mbid != "" && err == nil {
 			artist.MbzArtistID = mbid
 			log.Debug(ctx, "Got MBID", "agent", a.AgentName(), "artist", artist.Name, "mbid", mbid, "elapsed", time.Since(start))
@@ -263,7 +263,7 @@ func (e *externalInfo) callGetTopSongs(ctx context.Context, allAgents []agents.I
 		if !ok {
 			continue
 		}
-		songs, err := agent.GetTopSongs(artist.Name, artist.MbzArtistID, count)
+		songs, err := agent.GetTopSongs(artist.ID, artist.Name, artist.MbzArtistID, count)
 		if len(songs) > 0 && err == nil {
 			log.Debug(ctx, "Got Top Songs", "agent", a.AgentName(), "artist", artist.Name, "songs", songs, "elapsed", time.Since(start))
 			return songs, err
@@ -285,7 +285,7 @@ func (e *externalInfo) callGetURL(ctx context.Context, allAgents []agents.Interf
 			if !ok {
 				continue
 			}
-			url, err := agent.GetURL(artist.Name, artist.MbzArtistID)
+			url, err := agent.GetURL(artist.ID, artist.Name, artist.MbzArtistID)
 			if url != "" && err == nil {
 				artist.ExternalUrl = url
 				log.Debug(ctx, "Got External Url", "agent", a.AgentName(), "artist", artist.Name, "url", url, "elapsed", time.Since(start))
@@ -308,7 +308,7 @@ func (e *externalInfo) callGetBiography(ctx context.Context, allAgents []agents.
 			if !ok {
 				continue
 			}
-			bio, err := agent.GetBiography(clearName(artist.Name), artist.MbzArtistID)
+			bio, err := agent.GetBiography(artist.ID, clearName(artist.Name), artist.MbzArtistID)
 			if bio != "" && err == nil {
 				policy := bluemonday.UGCPolicy()
 				bio = policy.Sanitize(bio)
@@ -334,7 +334,7 @@ func (e *externalInfo) callGetImage(ctx context.Context, allAgents []agents.Inte
 			if !ok {
 				continue
 			}
-			images, err := agent.GetImages(artist.Name, artist.MbzArtistID)
+			images, err := agent.GetImages(artist.ID, artist.Name, artist.MbzArtistID)
 			if len(images) == 0 || err != nil {
 				continue
 			}
@@ -367,7 +367,7 @@ func (e *externalInfo) callGetSimilar(ctx context.Context, allAgents []agents.In
 			if !ok {
 				continue
 			}
-			similar, err := agent.GetSimilar(artist.Name, artist.MbzArtistID, limit)
+			similar, err := agent.GetSimilar(artist.ID, artist.Name, artist.MbzArtistID, limit)
 			if len(similar) == 0 || err != nil {
 				continue
 			}
