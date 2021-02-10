@@ -93,7 +93,7 @@
                 "client": "Client",
                 "userName": "Nom d'utilisateur",
                 "lastSeen": "Vu pour la dernière fois",
-                "reportRealPath": ""
+                "reportRealPath": "Rapporter le chemin absolu"
             }
         },
         "transcoding": {
@@ -241,12 +241,13 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} sur %{total}",
             "page_rows_per_page": "Lignes par page :",
             "next": "Suivant",
-            "prev": "Précédent"
+            "prev": "Précédent",
+            "skip_nav": "Avancer au contenu"
         },
         "notification": {
-            "updated": "Élément mis à jour |||| %{smart_count} élements mis à jour",
+            "updated": "Élément mis à jour |||| %{smart_count} éléments mis à jour",
             "created": "Élément créé",
-            "deleted": "Élément supprimé |||| %{smart_count} élements supprimés",
+            "deleted": "Élément supprimé |||| %{smart_count} éléments supprimés",
             "bad_item": "Élément inconnu",
             "item_doesnt_exist": "L'élément n'existe pas",
             "http_error": "Erreur de communication avec le serveur",
@@ -264,8 +265,8 @@
         "noPlaylistsAvailable": "Aucune playlist",
         "delete_user_title": "Supprimer l'utilisateur '%{name}'",
         "delete_user_content": "Êtes-vous sûr de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
-        "notifications_blocked": "",
-        "notifications_not_available": ""
+        "notifications_blocked": "Votre navigateur internet bloque les notifications de ce site",
+        "notifications_not_available": "Votre navigateur internet ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via https"
     },
     "menu": {
         "library": "Bibliothèque",
@@ -278,7 +279,7 @@
                 "theme": "Thème",
                 "language": "Langue",
                 "defaultView": "Vue par défaut",
-                "desktop_notifications": ""
+                "desktop_notifications": "Notifications de bureau"
             }
         },
         "albumList": "Albums",
@@ -313,7 +314,7 @@
         "links": {
             "homepage": "Page d'accueil",
             "source": "Code source",
-            "featureRequests": "Demande de fonctionalités"
+            "featureRequests": "Demande de fonctionnalités"
         }
     },
     "activity": {
@@ -323,5 +324,18 @@
         "fullScan": "Scan complet",
         "serverUptime": "Disponibilité du serveur",
         "serverDown": "HORS LIGNE"
+    },
+    "help": {
+        "title": "Raccourcis Navidrome",
+        "hotkeys": {
+            "show_help": "Montrer cette fenêtre d'aide",
+            "toggle_menu": "Afficher/Cacher le menu latéral",
+            "toggle_play": "Lecture / Pause",
+            "prev_song": "Morceau précédent",
+            "next_song": "Morceau suivant",
+            "vol_up": "Augmenter le volume",
+            "vol_down": "Baisser le volume",
+            "toggle_star": "Ajouter/Enlever la chanson des favoris"
+        }
     }
 }
