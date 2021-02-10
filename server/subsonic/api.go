@@ -154,12 +154,21 @@ func (api *Router) routes() http.Handler {
 		h(withPlayer, "download", c.Download)
 	})
 
-	// Deprecated/Out of scope endpoints
-	h410(r, "getChatMessages")
-	h410(r, "addChatMessage")
-	h410(r, "getVideos")
-	h410(r, "getVideoInfo")
-	h410(r, "getCaptions")
+	// Not Implemented (yet?)
+	h501(r, "getLyrics")
+	h501(r, "jukeboxControl")
+	h501(r, "getAlbumInfo", "getAlbumInfo2")
+	h501(r, "getShares", "createShare", "updateShare", "deleteShare")
+	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
+		"deletePodcastEpisode", "downloadPodcastEpisode")
+	h501(r, "getInternetRadioStations", "createInternetRadioStation", "updateInternetRadioStation",
+		"deleteInternetRadioStation")
+	h501(r, "createUser", "updateUser", "deleteUser", "changePassword")
+
+	// Deprecated/Won't implement/Out of scope endpoints
+	h410(r, "search")
+	h410(r, "getChatMessages", "addChatMessage")
+	h410(r, "getVideos", "getVideoInfo", "getCaptions", "hls")
 	return r
 }
 
@@ -188,14 +197,29 @@ func h(r chi.Router, path string, f handler) {
 	r.HandleFunc("/"+path+".view", handle)
 }
 
-// Add a handler that returns 410 - Gone. Used to signal that an endpoint will not be implemented
-func h410(r chi.Router, path string) {
-	handle := func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(410)
-		_, _ = w.Write([]byte("This endpoint will not be implemented"))
+// Add a handler that returns 510 - Not implemented. Used to signal that an endpoint is not implemented yet
+func h501(r *chi.Mux, paths ...string) {
+	for _, path := range paths {
+		handle := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Cache-Control", "no-cache")
+			w.WriteHeader(510)
+			_, _ = w.Write([]byte("This endpoint is not implemented, but may be in future releases"))
+		}
+		r.HandleFunc("/"+path, handle)
+		r.HandleFunc("/"+path+".view", handle)
 	}
-	r.HandleFunc("/"+path, handle)
-	r.HandleFunc("/"+path+".view", handle)
+}
+
+// Add a handler that returns 410 - Gone. Used to signal that an endpoint will not be implemented
+func h410(r chi.Router, paths ...string) {
+	for _, path := range paths {
+		handle := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(410)
+			_, _ = w.Write([]byte("This endpoint will not be implemented"))
+		}
+		r.HandleFunc("/"+path, handle)
+		r.HandleFunc("/"+path+".view", handle)
+	}
 }
 
 func sendError(w http.ResponseWriter, r *http.Request, err error) {
