@@ -37,13 +37,13 @@
                 "albumArtist": "Artiste",
                 "artist": "Artiste",
                 "duration": "Durée",
-                "songCount": "Numéro de piste",
+                "songCount": "Nombre de pistes",
                 "playCount": "Nombre d'écoutes",
                 "name": "Nom",
                 "genre": "Genre",
                 "compilation": "Compilation",
                 "year": "Année",
-                "updatedAt": "Mise à jour le",
+                "updatedAt": "Mis à jour le",
                 "comment": "Commentaire"
             },
             "actions": {
@@ -149,7 +149,7 @@
             "minValue": "Minimum %{min}",
             "maxValue": "Maximum %{max}",
             "number": "Doit être un nombre",
-            "email": "Doit être un email",
+            "email": "Doit être un e-mail",
             "oneOf": "Doit être au choix: %{options}",
             "regex": "Doit respecter un format spécifique (regexp): %{pattern}"
         },
@@ -217,7 +217,7 @@
             }
         },
         "message": {
-            "about": "Au sujet de",
+            "about": "A propos de",
             "are_you_sure": "Êtes-vous sûr ?",
             "bulk_delete_content": "Êtes-vous sûr(e) de vouloir supprimer cet élément ? |||| Êtes-vous sûr(e) de vouloir supprimer ces %{smart_count} éléments ?",
             "bulk_delete_title": "Supprimer %{name} |||| Supprimer %{smart_count} %{name}",
@@ -264,9 +264,9 @@
         "songsAddedToPlaylist": "Une piste ajoutée à la playlist |||| %{smart_count} pistes ajoutées à la playlist",
         "noPlaylistsAvailable": "Aucune playlist",
         "delete_user_title": "Supprimer l'utilisateur '%{name}'",
-        "delete_user_content": "Êtes-vous sûr de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
-        "notifications_blocked": "Votre navigateur internet bloque les notifications de ce site",
-        "notifications_not_available": "Votre navigateur internet ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via https"
+        "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
+        "notifications_blocked": "Votre navigateur bloque les notifications de ce site",
+        "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via https"
     },
     "menu": {
         "library": "Bibliothèque",
@@ -319,7 +319,7 @@
     },
     "activity": {
         "title": "Activité",
-        "totalScanned": "Nombre total de dossier scannés",
+        "totalScanned": "Nombre total de dossiers scannés",
         "quickScan": "Scan rapide",
         "fullScan": "Scan complet",
         "serverUptime": "Disponibilité du serveur",
@@ -335,7 +335,7 @@
             "next_song": "Morceau suivant",
             "vol_up": "Augmenter le volume",
             "vol_down": "Baisser le volume",
-            "toggle_star": "Ajouter/Enlever la chanson des favoris"
+            "toggle_star": "Ajouter/Enlever le morceau des favoris"
         }
     }
 }
