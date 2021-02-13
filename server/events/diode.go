@@ -7,12 +7,12 @@ import (
 )
 
 type diode struct {
-	d *diodes.Poller
+	d *diodes.Waiter
 }
 
 func newDiode(ctx context.Context, size int, alerter diodes.Alerter) *diode {
 	return &diode{
-		d: diodes.NewPoller(diodes.NewOneToOne(size, alerter), diodes.WithPollingContext(ctx)),
+		d: diodes.NewWaiter(diodes.NewOneToOne(size, alerter), diodes.WithWaiterContext(ctx)),
 	}
 }
 
