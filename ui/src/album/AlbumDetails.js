@@ -84,20 +84,19 @@ const AlbumComment = ({ record }) => {
   const classes = useStyles()
   const [expanded, setExpanded] = React.useState(false)
 
+  const lines = record.comment.split('\n')
   const formatted = useMemo(() => {
-    return record.comment.split('\n').map((line, idx) => (
+    return lines.map((line, idx) => (
       <span key={record.id + '-comment-' + idx}>
         <span dangerouslySetInnerHTML={{ __html: line }} />
         <br />
       </span>
     ))
-  }, [record.comment, record.id])
+  }, [lines, record.id])
 
   const handleExpandClick = useCallback(() => {
     setExpanded(!expanded)
   }, [expanded, setExpanded])
-
-  const numLines = record.comment.split('\n').length
 
   return (
     <Collapse
@@ -106,7 +105,7 @@ const AlbumComment = ({ record }) => {
       timeout={'auto'}
       className={clsx(
         classes.commentBlock,
-        numLines > 1 && classes.pointerCursor
+        lines.length > 1 && classes.pointerCursor
       )}
     >
       <Typography variant={'body1'} onClick={handleExpandClick}>
