@@ -9,6 +9,7 @@ import {
   useMediaQuery,
 } from '@material-ui/core'
 import { useTranslate } from 'react-admin'
+import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
@@ -74,6 +75,9 @@ const useStyles = makeStyles((theme) => ({
     marginTop: '1em',
     float: 'left',
   },
+  pointerCursor: {
+    cursor: 'pointer',
+  },
 }))
 
 const AlbumComment = ({ record }) => {
@@ -93,18 +97,19 @@ const AlbumComment = ({ record }) => {
     setExpanded(!expanded)
   }, [expanded, setExpanded])
 
+  const numLines = record.comment.split('\n').length
+
   return (
     <Collapse
       collapsedHeight={'1.5em'}
       in={expanded}
       timeout={'auto'}
-      className={classes.commentBlock}
+      className={clsx(
+        classes.commentBlock,
+        numLines > 1 && classes.pointerCursor
+      )}
     >
-      <Typography
-        variant={'body1'}
-        className={classes.commentText}
-        onClick={handleExpandClick}
-      >
+      <Typography variant={'body1'} onClick={handleExpandClick}>
         {formatted}
       </Typography>
     </Collapse>
