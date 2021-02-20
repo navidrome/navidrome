@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: [1.15.x, 1.16.0-rc1]
+        go_version: [1.15.x, 1.16.0]
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
