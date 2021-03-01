@@ -24,7 +24,7 @@
     "react-jinke-music-player": "^4.21.2",
     "react-measure": "^2.5.2",
     "react-redux": "^7.2.2",
-    "react-scripts": "^3.4.3",
+    "react-scripts": "^4.0.3",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
