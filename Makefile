@@ -9,11 +9,11 @@ default:
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=master"
 .PHONY: default
 
-dev: check_env
+dev: check_dev_env
 	npx foreman -j Procfile.dev -p 4533 start
 .PHONY: dev
 
-server: check_go_env
+server: check_go_dev_env
 	@go run github.com/cespare/reflex -d none -c reflex.conf
 .PHONY: server
 
@@ -66,6 +66,27 @@ setup-git:
 	@mkdir -p .git/hooks
 	@(cd .git/hooks && ln -sf ../../git/* .)
 .PHONY: setup-git
+
+check_dev_env: check_go_dev_env check_node_dev_env
+.PHONY: check_dev_env
+
+check_go_dev_env:
+	@(hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
+	@current_go_version=`go version | cut -d ' ' -f 3 | cut -c3-` && \
+		echo "$(GO_VERSION) $$current_go_version" | \
+		tr ' ' '\n' | sort -V | tail -1 | \
+		grep -q "^$${current_go_version}$$" || \
+		(echo "\nERROR: Please upgrade your GO version\nThis project requires at least the version $(GO_VERSION)"; exit 1)
+.PHONY: check_go_dev_env
+
+check_node_dev_env:
+	@(hash node) || (echo "\nERROR: Node environment not setup properly!\n"; exit 1)
+	@current_node_version=`node --version` && \
+		echo "$(NODE_VERSION) $$current_node_version" | \
+		tr ' ' '\n' | sort -V | tail -1 | \
+		grep -q "^$${current_node_version}$$" || \
+		(echo "\nERROR: Please check your Node version. Should be at least $(NODE_VERSION)\n"; exit 1)
+.PHONY: check_node_dev_env
 
 check_env: check_go_env check_node_env
 .PHONY: check_env
