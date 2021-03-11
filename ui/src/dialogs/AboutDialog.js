@@ -45,7 +45,7 @@ const AboutDialog = ({ open, onClose }) => {
                 <TableCell align="right" component="th" scope="row">
                   {translate('menu.version')}:
                 </TableCell>
-                {config.version == 'dev' ? (
+                {config.version === 'dev' ? (
                   <TableCell align="left"> {config.version} </TableCell>
                 ) : (
                   <TableCell align="left">
