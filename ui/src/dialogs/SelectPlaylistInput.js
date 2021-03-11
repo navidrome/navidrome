@@ -77,7 +77,7 @@ export const SelectPlaylistInput = ({ onChange }) => {
         return option.name
       }}
       renderOption={(option) => option.name}
-      style={{ width: 300 }}
+      style={{ width: '100%' }}
       freeSolo
       renderInput={(params) => (
         <TextField
