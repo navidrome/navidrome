@@ -127,7 +127,7 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
-			reader, err = resources.AssetFile().Open(consts.PlaceholderAlbumArt)
+			reader, err = resources.Assets().Open(consts.PlaceholderAlbumArt)
 		}
 	}()
 

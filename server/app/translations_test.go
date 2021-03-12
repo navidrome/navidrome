@@ -16,7 +16,7 @@ var _ = Describe("Translations", func() {
 	Describe("I18n files", func() {
 		var fs http.FileSystem
 		BeforeEach(func() {
-			fs = resources.AssetFile()
+			fs = http.FS(resources.Assets())
 		})
 		It("contains only valid json language files", func() {
 			dir, _ := fs.Open(consts.I18nFolder)

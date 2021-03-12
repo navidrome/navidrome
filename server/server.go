@@ -7,11 +7,11 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
-	"github.com/navidrome/navidrome/assets"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/ui"
 )
 
 type Handler interface {
@@ -59,7 +59,7 @@ func (a *Server) initRoutes() {
 	r.Use(middleware.Compress(5, "application/xml", "application/json", "application/javascript"))
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(injectLogger)
-	r.Use(robotsTXT(assets.AssetFile()))
+	r.Use(robotsTXT(ui.Assets()))
 
 	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI, "index.html")
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
