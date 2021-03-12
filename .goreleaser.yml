@@ -4,7 +4,6 @@ project_name: navidrome
 before:
   hooks:
     - go-bindata -fs -prefix resources -tags embed -ignore="\\\*.go" -pkg resources -o resources/embedded_gen.go resources/...
-    - go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
 
 builds:
   - id: navidrome_linux_amd64
