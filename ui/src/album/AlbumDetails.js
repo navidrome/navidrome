@@ -133,16 +133,8 @@ const AlbumDetails = ({ record }) => {
     return genreDateLine.join(' · ')
   }
 
-  const imageUrl = subsonic.url(
-    'getCoverArt',
-    record.coverArtId || 'not_found',
-    { size: 300 }
-  )
-
-  const fullImageUrl = subsonic.url(
-    'getCoverArt',
-    record.coverArtId || 'not_found'
-  )
+  const imageUrl = subsonic.getCoverArtUrl(record, 300)
+  const fullImageUrl = subsonic.getCoverArtUrl(record)
 
   const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
   const handleCloseLightbox = React.useCallback(

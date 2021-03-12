@@ -32,4 +32,19 @@ const unstar = (id) => fetchUtils.fetchJson(url('unstar', id))
 
 const download = (id) => (window.location.href = url('download', id))
 
-export default { url, scrobble, download, star, unstar }
+const getCoverArtUrl = (record, size) => {
+  const options = {
+    ...(record.updatedAt && { _: record.updatedAt }),
+    ...(size && { size }),
+  }
+  return url('getCoverArt', record.coverArtId || 'not_found', options)
+}
+
+export default {
+  url,
+  getCoverArtUrl: getCoverArtUrl,
+  scrobble,
+  download,
+  star,
+  unstar,
+}
