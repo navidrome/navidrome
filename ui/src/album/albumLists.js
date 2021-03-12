@@ -17,7 +17,7 @@ export default {
   },
   recentlyAdded: {
     icon: LibraryAddIcon,
-    params: 'sort=created_at&order=DESC',
+    params: 'sort=recently_added&order=DESC',
   },
   recentlyPlayed: {
     icon: VideoLibraryIcon,

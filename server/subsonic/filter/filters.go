@@ -10,7 +10,7 @@ import (
 type Options model.QueryOptions
 
 func AlbumsByNewest() Options {
-	return Options{Sort: "createdAt", Order: "desc"}
+	return Options{Sort: "recently_added", Order: "desc"}
 }
 
 func AlbumsByRecent() Options {
