@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/kennygrant/sanitize"
 	"github.com/microcosm-cc/bluemonday"
@@ -64,8 +65,7 @@ func (s *mediaFileMapper) toMediaFile(md metadata.Metadata) model.MediaFile {
 	mf.Comment = s.policy.Sanitize(md.Comment())
 	mf.Lyrics = s.policy.Sanitize(md.Lyrics())
 
-	// TODO Get Creation time. https://github.com/djherbis/times ?
-	mf.CreatedAt = md.ModificationTime()
+	mf.CreatedAt = time.Now()
 	mf.UpdatedAt = md.ModificationTime()
 
 	return *mf
