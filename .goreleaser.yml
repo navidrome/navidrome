@@ -1,10 +1,6 @@
 # GoReleaser config
 project_name: navidrome
 
-before:
-  hooks:
-    - go-bindata -fs -prefix resources -tags embed -ignore="\\\*.go" -pkg resources -o resources/embedded_gen.go resources/...
-
 builds:
   - id: navidrome_linux_amd64
     env:
