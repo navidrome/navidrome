@@ -88,6 +88,7 @@ export const SongDatagridRow = ({
   const childCount = fields.length
   return (
     <>
+      {console.log(childCount)}
       {firstTracks.has(record.id) && (
         <DiscSubtitleRow
           record={record}

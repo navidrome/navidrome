@@ -21,6 +21,7 @@ import {
   SongTitleField,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
+import SongPlayIcon from '../common/SongPlayIcon'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -109,6 +110,11 @@ const AlbumSongs = (props) => {
                 sortBy="discNumber asc, trackNumber asc"
                 label="#"
                 sortable={false}
+              />
+            )}
+            {isDesktop && (
+              <SongPlayIcon
+                onClick={(id) => dispatch(playTracks(data, ids, id))}
               />
             )}
             <SongTitleField
