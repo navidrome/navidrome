@@ -12,6 +12,7 @@ import (
 // overlay FS. The semantics are:
 // - Files from the overlay FS will override file s with the same name in the base FS
 // - Directories are combined, with priority for the overlay FS over the base FS for files with matching names
+// TODO Replace http.FileSystem with new fs.FS interface
 func NewMergeFS(base, overlay http.FileSystem) http.FileSystem {
 	return &mergeFS{
 		base:    base,
