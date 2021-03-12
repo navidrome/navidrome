@@ -45,7 +45,22 @@ const AboutDialog = ({ open, onClose }) => {
                 <TableCell align="right" component="th" scope="row">
                   {translate('menu.version')}:
                 </TableCell>
-                <TableCell align="left">{config.version}</TableCell>
+                {config.version === 'dev' ? (
+                  <TableCell align="left">{config.version}</TableCell>
+                ) : (
+                  <Tablecell align="left">
+                    <Link
+                      href={`https://github.com/navidrome/navidrome/releases/tag/${
+                        config.version.split('')[0]
+                      }`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {config.version.split(' ')[0]}
+                    </Link>
+                    {' ' + config.version.split(' ')[1]}
+                  </Tablecell>
+                )}
               </TableRow>
               {Object.keys(links).map((key) => {
                 return (
