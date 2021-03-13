@@ -87,7 +87,9 @@ const SongList = (props) => {
             </> 
           )} 
           tertiaryText={(r) => ( 
-            <>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</>
+            <>
+	      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+	    </>
           )} 
           linkType={(id, basePath, record) => dispatch(setTrack(record))} 
           rightIcon={(r) => <SongContextMenu record={r} visible={true} />} />
