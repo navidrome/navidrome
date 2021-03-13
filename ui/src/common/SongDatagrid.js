@@ -119,6 +119,8 @@ SongDatagridRow.propTypes = {
   firstTracks: PropTypes.instanceOf(Set),
   contextAlwaysVisible: PropTypes.bool,
   onClickDiscSubtitle: PropTypes.func,
+  hoverAction: PropTypes.func,
+  removeHoverAction: PropTypes.func,
 }
 
 SongDatagridRow.defaultProps = {
@@ -209,4 +211,6 @@ SongDatagrid.propTypes = {
   contextAlwaysVisible: PropTypes.bool,
   showDiscSubtitles: PropTypes.bool,
   classes: PropTypes.object,
+  hoverAction: PropTypes.func,
+  removeHoverAction: PropTypes.func,
 }
