@@ -7,6 +7,7 @@ export const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 export const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
 export const PLAYER_CURRENT = 'PLAYER_CURRENT'
 export const PLAYER_SET_VOLUME = 'PLAYER_SET_VOLUME'
+export const TOGGLE_PLAY = 'TOGGLE_PLAY'
 
 export const setTrack = (data) => ({
   type: PLAYER_SET_TRACK,
@@ -93,4 +94,8 @@ export const currentPlaying = (audioInfo) => ({
 export const setVolume = (volume) => ({
   type: PLAYER_SET_VOLUME,
   data: { volume },
+})
+
+export const togglePlayAction = () => ({
+  type: TOGGLE_PLAY,
 })

@@ -1,14 +1,7 @@
 import { makeStyles } from '@material-ui/core/styles'
 import React from 'react'
 import PropTypes from 'prop-types'
-import { useSelector } from 'react-redux'
 import { FunctionField } from 'react-admin'
-import get from 'lodash.get'
-import { useTheme } from '@material-ui/core/styles'
-import PlayingLight from '../icons/playing-light.gif'
-import PlayingDark from '../icons/playing-dark.gif'
-import PausedLight from '../icons/paused-light.png'
-import PausedDark from '../icons/paused-dark.png'
 
 const useStyles = makeStyles({
   icon: {
@@ -25,14 +18,7 @@ const useStyles = makeStyles({
 })
 
 export const SongTitleField = ({ showTrackNumbers, ...props }) => {
-  const theme = useTheme()
   const classes = useStyles()
-  const { record } = props
-  const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
-  const currentId = currentTrack.trackId
-  const paused = currentTrack.paused
-  const isCurrent =
-    currentId && (currentId === record.id || currentId === record.mediaFileId)
 
   const trackName = (r) => {
     const name = r.title
@@ -42,25 +28,8 @@ export const SongTitleField = ({ showTrackNumbers, ...props }) => {
     return name
   }
 
-  const Icon = () => {
-    let icon
-    if (paused) {
-      icon = theme.palette.type === 'light' ? PausedLight : PausedDark
-    } else {
-      icon = theme.palette.type === 'light' ? PlayingLight : PlayingDark
-    }
-    return (
-      <img
-        src={icon}
-        className={classes.icon}
-        alt={paused ? 'paused' : 'playing'}
-      />
-    )
-  }
-
   return (
     <>
-      {isCurrent && <Icon />}
       <FunctionField
         {...props}
         source="title"

@@ -76,6 +76,8 @@ export const SongDatagridRow = ({
   contextAlwaysVisible,
   onClickDiscSubtitle,
   className,
+  hoverAction,
+  removeHoverAction,
   ...rest
 }) => {
   const classes = useStyles()
@@ -100,6 +102,10 @@ export const SongDatagridRow = ({
         record={record}
         {...rest}
         className={clsx(className, classes.row)}
+        onMouseEnter={() => {
+          hoverAction(record.id)
+        }}
+        onMouseLeave={removeHoverAction}
       >
         {fields}
       </PureDatagridRow>
@@ -122,6 +128,8 @@ SongDatagridRow.defaultProps = {
 const SongDatagridBody = ({
   contextAlwaysVisible,
   showDiscSubtitles,
+  hoverAction,
+  removeHoverAction,
   ...rest
 }) => {
   const dispatch = useDispatch()
@@ -167,6 +175,8 @@ const SongDatagridBody = ({
           firstTracks={firstTracks}
           contextAlwaysVisible={contextAlwaysVisible}
           onClickDiscSubtitle={playDisc}
+          hoverAction={hoverAction}
+          removeHoverAction={removeHoverAction}
         />
       }
     />
@@ -176,6 +186,8 @@ const SongDatagridBody = ({
 export const SongDatagrid = ({
   contextAlwaysVisible,
   showDiscSubtitles,
+  hoverAction,
+  removeHoverAction,
   ...rest
 }) => {
   return (
@@ -185,6 +197,8 @@ export const SongDatagrid = ({
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
           showDiscSubtitles={showDiscSubtitles}
+          hoverAction={hoverAction}
+          removeHoverAction={removeHoverAction}
         />
       }
     />

@@ -14,6 +14,7 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_SCROBBLE,
   PLAYER_PLAY_TRACKS,
+  TOGGLE_PLAY,
 } from '../actions'
 
 const mapToAudioLists = (item) => {
@@ -46,6 +47,7 @@ const initialState = {
   current: {},
   volume: 1,
   playIndex: 0,
+  playing: false,
 }
 
 export const playQueueReducer = (previousState = initialState, payload) => {
@@ -153,6 +155,8 @@ export const playQueueReducer = (previousState = initialState, payload) => {
         playIndex: 0,
         clear: true,
       }
+    case TOGGLE_PLAY:
+      return { ...previousState, playing: !previousState.playing }
     default:
       return previousState
   }
