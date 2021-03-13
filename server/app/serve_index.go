@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"html/template"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -15,7 +16,7 @@ import (
 )
 
 // Injects the config in the `index.html` template
-func serveIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
+func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 	policy := bluemonday.UGCPolicy()
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := ds.User(r.Context()).CountAll()
@@ -61,7 +62,7 @@ func serveIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 	}
 }
 
-func getIndexTemplate(r *http.Request, fs http.FileSystem) (*template.Template, error) {
+func getIndexTemplate(r *http.Request, fs fs.FS) (*template.Template, error) {
 	t := template.New("initial state")
 	indexHtml, err := fs.Open("index.html")
 	if err != nil {

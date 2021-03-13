@@ -107,9 +107,7 @@ build: check_go_env
 
 buildall: check_env
 	@(cd ./ui && npm run build)
-	go run github.com/go-bindata/go-bindata/go-bindata -fs -prefix "resources" -tags embed -ignore="\\\*.go" -pkg resources -o resources/embedded_gen.go resources/...
-	go run github.com/go-bindata/go-bindata/go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=embed,netgo
+	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: buildall
 
 pre-push: lint test
@@ -125,5 +123,5 @@ release:
 .PHONY: release
 
 snapshot:
-	 docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.16.0-1 goreleaser release --rm-dist --skip-publish --snapshot
+	 docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.16.2-1 goreleaser release --rm-dist --skip-publish --snapshot
 .PHONY: snapshot

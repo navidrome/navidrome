@@ -10,12 +10,12 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/httprate"
 	"github.com/go-chi/jwtauth"
-	"github.com/navidrome/navidrome/assets"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/ui"
 )
 
 type Router struct {
@@ -77,8 +77,8 @@ func (app *Router) routes(path string) http.Handler {
 	})
 
 	// Serve UI app assets
-	r.Handle("/", serveIndex(app.ds, assets.AssetFile()))
-	r.Handle("/*", http.StripPrefix(path, http.FileServer(assets.AssetFile())))
+	r.Handle("/", serveIndex(app.ds, ui.Assets()))
+	r.Handle("/*", http.StripPrefix(path, http.FileServer(http.FS(ui.Assets()))))
 
 	return r
 }

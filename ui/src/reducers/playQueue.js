@@ -29,10 +29,12 @@ const mapToAudioLists = (item) => {
     artistId: item.albumArtistId,
     duration: item.duration,
     musicSrc: subsonic.url('stream', id, { ts: true }),
-    cover: subsonic.url(
-      'getCoverArt',
-      config.devFastAccessCoverArt ? item.albumId : id,
-      { size: 300 }
+    cover: subsonic.getCoverArtUrl(
+      {
+        coverArtId: config.devFastAccessCoverArt ? item.albumId : id,
+        updatedAt: item.updatedAt,
+      },
+      300
     ),
     scrobbled: false,
     uuid: uuidv4(),

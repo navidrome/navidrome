@@ -31,17 +31,18 @@ type configOptions struct {
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
 
-	SearchFullString bool
-	IgnoredArticles  string
-	IndexGroups      string
-	ProbeCommand     string
-	CoverArtPriority string
-	CoverJpegQuality int
-	UIWelcomeMessage string
-	EnableGravatar   bool
-	GATrackingID     string
-	AuthRequestLimit int
-	AuthWindowLength time.Duration
+	SearchFullString       bool
+	RecentlyAddedByModTime bool
+	IgnoredArticles        string
+	IndexGroups            string
+	ProbeCommand           string
+	CoverArtPriority       string
+	CoverJpegQuality       int
+	UIWelcomeMessage       string
+	EnableGravatar         bool
+	GATrackingID           string
+	AuthRequestLimit       int
+	AuthWindowLength       time.Duration
 
 	Scanner scannerOptions
 
@@ -134,6 +135,7 @@ func init() {
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)
+	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("probecommand", "ffmpeg %s -f ffmetadata")
