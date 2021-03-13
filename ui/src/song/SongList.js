@@ -78,18 +78,19 @@ const SongList = (props) => {
         perPage={isXsmall ? 50 : 15}
       >
         {isXsmall ? (
-          <SimpleList
-            primaryText={(r) => r.title}
-            secondaryText={(r) => r.artist}
-            tertiaryText={(r) => (
-              <>
-                <DurationField record={r} source={'duration'} />
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              </>
-            )}
-            linkType={(id, basePath, record) => dispatch(setTrack(record))}
-            rightIcon={(r) => <SongContextMenu record={r} visible={true} />}
-          />
+          <SimpleList 
+          primaryText={(r) => r.title.slice(0,35)} 
+          secondaryText={(r) => ( 
+            <> 
+              <span>{r.artist} &#8226; </span> 
+              <DurationField record={r} source={'duration'} /> 
+            </> 
+          )} 
+          tertiaryText={(r) => ( 
+            <>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</>
+          )} 
+          linkType={(id, basePath, record) => dispatch(setTrack(record))} 
+          rightIcon={(r) => <SongContextMenu record={r} visible={true} />} />
         ) : (
           <SongDatagrid
             expand={<SongDetails />}
