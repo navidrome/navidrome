@@ -31,13 +31,7 @@ export const addToPlaylistDialogReducer = (
         duplicateIds: payload.duplicateIds,
       }
     case DUPLICATE_SONG_WARNING_CLOSE:
-      return { ...previousState, duplicateSong: false, duplicateIds: undefined }
-    case DUPLICATE_SONG_SKIP:
-      return {
-        ...previousState,
-        duplicateSong: false,
-        selectedIds: payload.selectedIds,
-      }
+      return { ...previousState, duplicateSong: false }
     default:
       return previousState
   }

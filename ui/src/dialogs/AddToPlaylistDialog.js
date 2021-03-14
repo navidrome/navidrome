@@ -16,7 +16,6 @@ import {
 import {
   closeAddToPlaylist,
   closeDuplicateSongDialog,
-  duplicateSongSkip,
   openDuplicateSongWarning,
 } from '../actions'
 import { SelectPlaylistInput } from './SelectPlaylistInput'
@@ -50,14 +49,15 @@ export const AddToPlaylistDialog = () => {
     }
   )
 
-  const addToPlaylist = (playlistId) => {
+  const addToPlaylist = (playlistId, distinctIds = []) => {
+    const trackIds = distinctIds.length === 0 ? selectedIds : distinctIds
     dataProvider
       .create('playlistTrack', {
-        data: { ids: selectedIds },
+        data: { ids: trackIds },
         filter: { playlist_id: playlistId },
       })
       .then(() => {
-        const len = selectedIds.length
+        const len = trackIds.length
         notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
         onSuccess && onSuccess(value, len)
       })
@@ -102,6 +102,7 @@ export const AddToPlaylistDialog = () => {
   }
 
   const handleClickClose = (e) => {
+    setCheck(false)
     dispatch(closeAddToPlaylist())
     e.stopPropagation()
   }
@@ -119,7 +120,6 @@ export const AddToPlaylistDialog = () => {
   }
   const handleDuplicateSubmit = () => {
     addToPlaylist(value.id)
-    setCheck(false)
     dispatch(closeDuplicateSongDialog())
     dispatch(closeAddToPlaylist())
   }
@@ -127,8 +127,9 @@ export const AddToPlaylistDialog = () => {
     const distinctSongs = selectedIds.filter(
       (id) => duplicateIds.indexOf(id) < 0
     )
-    dispatch(duplicateSongSkip(distinctSongs))
-    setCheck(true)
+    addToPlaylist(value.id, distinctSongs)
+    dispatch(closeDuplicateSongDialog())
+    dispatch(closeAddToPlaylist())
   }
 
   return (
