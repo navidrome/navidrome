@@ -88,7 +88,7 @@ export const SongSimpleList = ({
                 <ListItemIcon>{leftIcon(data[id], id)}</ListItemIcon>
               )}
               <ListItemText
-                primary={<div>{title(data[id], id).slice(0, 70)}</div>}
+                primary={<div>{title(data[id], id)}</div>}
                 secondary={
                   <>
                     {author && author(data[id], id)}
