@@ -3,7 +3,6 @@ import {
   ADD_TO_PLAYLIST_OPEN,
   DUPLICATE_SONG_WARNING_OPEN,
   DUPLICATE_SONG_WARNING_CLOSE,
-  DUPLICATE_SONG_SKIP,
 } from '../actions'
 
 export const addToPlaylistDialogReducer = (
