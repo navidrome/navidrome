@@ -83,7 +83,7 @@ const SelectTheme = (props) => {
   })
   themeChoices.push({
     id: autoKey,
-    name: 'Auto'
+    name: 'Auto',
   })
   themeChoices.push({
     id: helpKey,
