@@ -1,7 +1,7 @@
 import green from '@material-ui/core/colors/green'
 
 export default {
-  themeName: 'Spotify',
+  themeName: 'Spotify-ish',
   palette: {
     primary: {
       light: green['300'],
