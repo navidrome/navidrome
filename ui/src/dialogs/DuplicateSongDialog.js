@@ -9,7 +9,12 @@ import {
 
 import { useTranslate } from 'react-admin'
 
-const DuplicateSongDialog = ({ open, handleClickClose, handleSubmit }) => {
+const DuplicateSongDialog = ({
+  open,
+  handleClickClose,
+  handleSubmit,
+  handleSkip,
+}) => {
   const translate = useTranslate()
 
   return (
@@ -27,6 +32,9 @@ const DuplicateSongDialog = ({ open, handleClickClose, handleSubmit }) => {
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClickClose} color="primary">
+          {translate('ra.action.cancel')}
+        </Button>
+        <Button onClick={handleSkip} color="primary">
           {translate('ra.action.skip')}
         </Button>
         <Button onClick={handleSubmit} color="primary">

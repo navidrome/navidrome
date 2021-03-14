@@ -16,6 +16,7 @@ import {
 import {
   closeAddToPlaylist,
   closeDuplicateSongDialog,
+  duplicateSongSkip,
   openDuplicateSongWarning,
 } from '../actions'
 import { SelectPlaylistInput } from './SelectPlaylistInput'
@@ -24,13 +25,18 @@ import { REST_URL } from '../consts'
 import DuplicateSongDialog from './DuplicateSongDialog'
 
 export const AddToPlaylistDialog = () => {
-  const { open, selectedIds, onSuccess, duplicateSong } = useSelector(
-    (state) => state.addToPlaylistDialog
-  )
+  const {
+    open,
+    selectedIds,
+    onSuccess,
+    duplicateSong,
+    duplicateIds,
+  } = useSelector((state) => state.addToPlaylistDialog)
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()
   const [value, setValue] = useState({})
+  const [check, setCheck] = useState(false)
   const dataProvider = useDataProvider()
   const [createAndAddToPlaylist] = useCreate(
     'playlist',
@@ -64,10 +70,22 @@ export const AddToPlaylistDialog = () => {
     httpClient(`${REST_URL}/playlist/${playlistId}`)
       .then((res) => {
         const { tracks } = JSON.parse(res.body)
-        const dupSng = tracks.filter((song) => song.id === selectedIds[0])
-        if (dupSng.length) dispatch(openDuplicateSongWarning())
+        if (tracks) {
+          const dupSng = tracks.filter((song) =>
+            selectedIds.some((id) => id === song.id)
+          )
+
+          if (dupSng.length) {
+            const dupIds = dupSng.map((song) => song.id)
+            return dispatch(openDuplicateSongWarning(dupIds))
+          }
+          return setCheck(true)
+        }
+
+        setCheck(true)
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error(error)
         notify('ra.page.error', 'warning')
       })
   }
@@ -78,6 +96,7 @@ export const AddToPlaylistDialog = () => {
     } else {
       createAndAddToPlaylist()
     }
+    setCheck(false)
     dispatch(closeAddToPlaylist())
     e.stopPropagation()
   }
@@ -88,20 +107,28 @@ export const AddToPlaylistDialog = () => {
   }
 
   const handleChange = (pls) => {
-     if (pls.id && selectedIds.length === 1) {
-       checkDuplicateSong(pls.id)
-     }
+    if (pls.id) {
+      checkDuplicateSong(pls.id)
+    }
     setValue(pls)
   }
 
   const handleDuplicateClose = () => {
-    setValue({});
     dispatch(closeDuplicateSongDialog())
+    dispatch(closeAddToPlaylist())
   }
   const handleDuplicateSubmit = () => {
     addToPlaylist(value.id)
+    setCheck(false)
     dispatch(closeDuplicateSongDialog())
     dispatch(closeAddToPlaylist())
+  }
+  const handleSkip = () => {
+    const distinctSongs = selectedIds.filter(
+      (id) => duplicateIds.indexOf(id) < 0
+    )
+    dispatch(duplicateSongSkip(distinctSongs))
+    setCheck(true)
   }
 
   return (
@@ -124,7 +151,7 @@ export const AddToPlaylistDialog = () => {
           <Button onClick={handleClickClose} color="primary">
             {translate('ra.action.cancel')}
           </Button>
-          <Button onClick={handleSubmit} color="primary" disabled={!value.name}>
+          <Button onClick={handleSubmit} color="primary" disabled={!check}>
             {translate('ra.action.add')}
           </Button>
         </DialogActions>
@@ -133,6 +160,7 @@ export const AddToPlaylistDialog = () => {
         open={duplicateSong}
         handleClickClose={handleDuplicateClose}
         handleSubmit={handleDuplicateSubmit}
+        handleSkip={handleSkip}
       />
     </>
   )

@@ -125,8 +125,8 @@
         "export": "Export"
       },
       "message": {
-        "duplicate_song": "Add duplicate song ?",
-        "song_exist": "This song is already in this playlist."
+        "duplicate_song": "Add duplicate song ",
+        "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them ?"
       }
     }
   },
