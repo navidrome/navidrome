@@ -37,7 +37,7 @@ The body of issue can be similar to:
 **Before opening a issue, please check that the issue is not opened earlier, as duplication of issues is not healthy**
 
 ## Questions
-We would like to have discussions and general queries related to Navidrome on our [IRC channel](https://discord.gg/2qMuMyHfSV).
+We would like to have discussions and general queries related to Navidrome on our [Discord channel](https://discord.gg/2qMuMyHfSV).
 
 ## Pull requests
 Before submitting a pull request, ensure that you go through the following:
@@ -89,7 +89,7 @@ The body is optional. It may contain short description of changes made.
 
 Following all the guidelines an ideal commit will look like:
 ```
-    git commit --signoff -m "feat(themes): New-theme - I219"
+    git commit --signoff -m "feat(themes): New-theme - I816"
 ```
 
 After commiting push your commits to your forked branch and create a Pull Request from there.
