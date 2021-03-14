@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Layout, toggleSidebar } from 'react-admin'
+import useMediaQuery from '@material-ui/core/useMediaQuery';
 import { makeStyles } from '@material-ui/core/styles'
 import { HotKeys } from 'react-hotkeys'
 import Menu from './Menu'
@@ -13,7 +14,13 @@ const useStyles = makeStyles({
 })
 
 export default (props) => {
-  const theme = useSelector((state) => themes[state.theme] || themes.DarkTheme)
+  const prefersLightMode = useMediaQuery('(prefers-color-scheme: light)')
+  const theme = useSelector((state) => {
+    if (state.theme === 'AUTO') {
+      return prefersLightMode ? themes.LightTheme : themes.DarkTheme
+    }
+    return (themes[state.theme] || themes.DarkTheme)
+  })
   const queue = useSelector((state) => state.queue)
   const classes = useStyles({ addPadding: queue.queue.length > 0 })
   const dispatch = useDispatch()

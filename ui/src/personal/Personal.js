@@ -28,6 +28,7 @@ const useStyles = makeStyles({
   root: { marginTop: '1em' },
 })
 
+const autoKey = 'AUTO'
 const helpKey = '_help'
 
 function openInNewTab(url) {
@@ -79,6 +80,10 @@ const SelectTheme = (props) => {
   const currentTheme = useSelector((state) => state.theme)
   const themeChoices = Object.keys(themes).map((key) => {
     return { id: key, name: themes[key].themeName }
+  })
+  themeChoices.push({
+    id: autoKey,
+    name: 'Auto'
   })
   themeChoices.push({
     id: helpKey,

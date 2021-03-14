@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
+import useMediaQuery from '@material-ui/core/useMediaQuery';
 import { makeStyles } from '@material-ui/core/styles'
 import { GlobalHotKeys } from 'react-hotkeys'
 import subsonic from '../subsonic'
@@ -58,7 +59,11 @@ const AudioTitle = React.memo(({ audioInfo, isMobile, className }) => {
 
 const Player = () => {
   const translate = useTranslate()
-  const currentTheme = useSelector((state) => state.theme)
+  let currentTheme = useSelector((state) => state.theme)
+  const prefersLightMode = useMediaQuery('(prefers-color-scheme: light)')
+  if (currentTheme === 'AUTO') {
+    currentTheme = prefersLightMode ? 'LightTheme' : 'DarkTheme'
+  }
   const theme = themes[currentTheme] || themes.DarkTheme
   const playerTheme = (theme.player && theme.player.theme) || 'dark'
   const dataProvider = useDataProvider()
