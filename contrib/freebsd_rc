@@ -1,0 +1,52 @@
+#!/bin/sh
+#
+# $FreeBSD: $
+#
+# PROVIDE: navidrome
+# REQUIRE: NETWORKING
+# KEYWORD:
+#
+# Add the following lines to /etc/rc.conf to enable navidrome:
+# navidrome_enable="YES"
+#
+# navidrome_enable (bool):              Set to YES to enable navidrome
+#                                       Default: NO
+# navidrome_config (str):               navidrome configration file
+#                                       Default: /usr/local/etc/navidrome/config.toml
+# navidrome_datafolder (str):   navidrome Folder to store application data 
+#                                       Default: www
+# navidrome_user (str):         navidrome daemon user
+#                                       Default: www
+# navidrome_group (str):                navidrome daemon group
+#                                       Default: www
+
+. /etc/rc.subr
+
+name="navidrome"
+rcvar="navidrome_enable"
+load_rc_config $name
+
+: ${navidrome_user:="www"}
+: ${navidrome_group:="www"}
+: ${navidrome_enable:="NO"}
+: ${navidrome_config:="/usr/local/etc/navidrome/config.toml"}
+: ${navidrome_flags=""}
+: ${navidrome_facility:="daemon"}
+: ${navidrome_priority:="debug"}
+: ${navidrome_datafolder:="/var/db/${name}"}
+
+required_dirs=${navidrome_datafolder}
+required_files=${navidrome_config}
+procname="/usr/local/bin/${name}"
+pidfile="/var/run/${name}.pid"
+start_precmd="${name}_precmd"
+command=/usr/sbin/daemon
+command_args="-S -l ${navidrome_facility} -s ${navidrome_priority} -T ${name} -t ${name} -p ${pidfile} \
+        ${procname} --configfile ${navidrome_config} --datafolder ${navidrome_datafolder} ${navidrome_flags}"
+
+navidrome_precmd()
+{
+        install -o ${navidrome_user} /dev/null ${pidfile}
+}
+
+run_rc_command "$1"
