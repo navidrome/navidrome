@@ -20,10 +20,10 @@ const useStyles = makeStyles(
     timeStamp: {
       float: 'right',
       color: '#fff',
-      fontWeight: '200', 
+      fontWeight: '200',
       opacity: 0.6,
       fontSize: '12px',
-    }
+    },
   },
   { name: 'RaSimpleList' }
 )
