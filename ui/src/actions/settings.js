@@ -8,5 +8,5 @@ export const setNotificationsState = (enabled) => ({
 
 export const setMobileResolution = (pixels) => ({
   type: SET_MOBILE_RESOLUTION,
-  data: pixels
+  data: pixels,
 })

@@ -18,7 +18,11 @@ import {
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
-import { changeTheme, setMobileResolution, setNotificationsState } from '../actions'
+import {
+  changeTheme,
+  setMobileResolution,
+  setNotificationsState,
+} from '../actions'
 import themes from '../themes'
 import { docsUrl } from '../utils'
 import { useGetLanguageChoices } from '../i18n'
@@ -112,18 +116,17 @@ const SelectMobilePlayerResolution = (props) => {
     return { id: key, name: resolution[key].value }
   })
 
-  return(
+  return (
     <SelectInput
       {...props}
-      label={"select mobile player resolution"}
+      label={'select mobile player resolution'}
       defaultValue={currentResolution}
-      source = "resolution"
+      source="resolution"
       translateChoice={false}
       choices={resChoices}
-      onChange = {(event) => {
+      onChange={(event) => {
         dispatch(setMobileResolution(event.target.value))
-        // window.location.reload()
-
+        window.location.reload()
       }}
     />
   )
@@ -218,7 +221,7 @@ const Personal = () => {
         <SelectTheme />
         <SelectLanguage />
         <SelectDefaultView />
-        <SelectMobilePlayerResolution/>
+        <SelectMobilePlayerResolution />
         <NotificationsToggle />
       </SimpleForm>
     </Card>
