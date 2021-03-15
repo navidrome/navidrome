@@ -19,7 +19,7 @@ import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification, baseUrl } from '../utils'
 import { keyMap } from '../hotkeys'
-import { useCurrentTheme } from '../layout/Layout'
+import useCurrentTheme from '../themes/useCurrentTheme'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {

@@ -23,7 +23,7 @@ import themes from '../themes'
 import { docsUrl } from '../utils'
 import { useGetLanguageChoices } from '../i18n'
 import albumLists, { defaultAlbumList } from '../album/albumLists'
-import { AUTO } from '../consts'
+import { AUTO_THEME_ID } from '../consts'
 
 const useStyles = makeStyles({
   root: { marginTop: '1em' },
@@ -80,7 +80,7 @@ const SelectTheme = (props) => {
   const currentTheme = useSelector((state) => state.theme)
   const themeChoices = [
     {
-      id: AUTO,
+      id: AUTO_THEME_ID,
       name: 'Auto',
     },
   ]
