@@ -125,7 +125,7 @@
         "export": "Export"
       },
       "message": {
-        "duplicate_song": "Add duplicate song ",
+        "duplicate_song": "Add duplicated songs",
         "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?"
       }
     }
