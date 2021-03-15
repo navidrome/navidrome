@@ -13,15 +13,19 @@ const useStyles = makeStyles(() => ({
   },
 }))
 
-const SongPlayIcon = ({ record, onClick }) => {
+const SongPlayIcon = ({ onClick, className, record, isCurrent }) => {
   const classes = useStyles()
   const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
   const currentId = currentTrack.trackId
   const paused = currentTrack.paused
   return (
     <>
-      <IconButton className={classes.playBtn} onClick={onClick} size="small">
-        {currentId === record.id && !paused ? (
+      <IconButton
+        className={`${classes.playBtn} ${className}`}
+        onClick={onClick}
+        size="small"
+      >
+        {(isCurrent && !paused) || (currentId === record?.id && !paused) ? (
           <PauseCircleOutlineIcon />
         ) : (
           <PlayCircleOutlineIcon />
@@ -34,6 +38,7 @@ const SongPlayIcon = ({ record, onClick }) => {
 SongPlayIcon.propTypes = {
   record: PropTypes.object,
   onClick: PropTypes.func,
+  className: PropTypes.object,
 }
 
 SongPlayIcon.defaultProps = {
