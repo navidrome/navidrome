@@ -78,13 +78,17 @@ const SelectTheme = (props) => {
   const translate = useTranslate()
   const dispatch = useDispatch()
   const currentTheme = useSelector((state) => state.theme)
-  const themeChoices = Object.keys(themes).map((key) => {
-    return { id: key, name: themes[key].themeName }
-  })
-  themeChoices.push({
-    id: AUTO,
-    name: 'Auto',
-  })
+  const themeChoices = [
+    {
+      id: AUTO,
+      name: 'Auto',
+    },
+  ]
+  themeChoices.push(
+    ...Object.keys(themes).map((key) => {
+      return { id: key, name: themes[key].themeName }
+    })
+  )
   themeChoices.push({
     id: helpKey,
     name: <HelpMsg caption={'Create your own'} />,
