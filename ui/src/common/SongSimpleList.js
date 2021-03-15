@@ -17,7 +17,7 @@ const useStyles = makeStyles(
       color: 'inherit',
     },
     listItem: {
-      padding: '2px',
+      padding: '10px',
     },
     title: {
       paddingRight: '10px',
