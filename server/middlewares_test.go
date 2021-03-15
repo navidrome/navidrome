@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -22,7 +23,7 @@ var _ = Describe("middlewares", func() {
 			r := httptest.NewRequest("GET", "/robots.txt", nil)
 			w := httptest.NewRecorder()
 
-			robotsTXT(http.Dir("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
+			robotsTXT(os.DirFS("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
 
 			Expect(nextCalled).To(BeFalse())
 			Expect(w.Body.String()).To(HavePrefix("User-agent:"))
@@ -32,7 +33,7 @@ var _ = Describe("middlewares", func() {
 			r := httptest.NewRequest("GET", "/app/robots.txt", nil)
 			w := httptest.NewRecorder()
 
-			robotsTXT(http.Dir("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
+			robotsTXT(os.DirFS("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
 
 			Expect(nextCalled).To(BeFalse())
 			Expect(w.Body.String()).To(HavePrefix("User-agent:"))
@@ -42,7 +43,7 @@ var _ = Describe("middlewares", func() {
 			r := httptest.NewRequest("GET", "/this_is_not_a_robots.txt_file", nil)
 			w := httptest.NewRecorder()
 
-			robotsTXT(http.Dir("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
+			robotsTXT(os.DirFS("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
 
 			Expect(nextCalled).To(BeTrue())
 		})

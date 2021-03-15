@@ -3,8 +3,8 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"strconv"
 
@@ -19,7 +19,7 @@ import (
 var _ = Describe("serveIndex", func() {
 	var ds model.DataStore
 	mockUser := &mockedUserRepo{}
-	fs := http.Dir("tests/fixtures")
+	fs := os.DirFS("tests/fixtures")
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{MockedUser: mockUser}

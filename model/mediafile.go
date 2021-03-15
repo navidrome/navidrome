@@ -46,8 +46,8 @@ type MediaFile struct {
 	MbzAlbumArtistID     string    `json:"mbzAlbumArtistId"   orm:"column(mbz_album_artist_id)"`
 	MbzAlbumType         string    `json:"mbzAlbumType"`
 	MbzAlbumComment      string    `json:"mbzAlbumComment"`
-	CreatedAt            time.Time `json:"createdAt"`
-	UpdatedAt            time.Time `json:"updatedAt"`
+	CreatedAt            time.Time `json:"createdAt"` // Time this entry was created in the DB
+	UpdatedAt            time.Time `json:"updatedAt"` // Time of file last update (mtime)
 }
 
 func (mf *MediaFile) ContentType() string {
