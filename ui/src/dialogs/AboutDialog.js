@@ -51,7 +51,7 @@ const AboutDialog = ({ open, onClose }) => {
                   <TableCell align="left">
                     <Link
                       href={`https://github.com/navidrome/navidrome/releases/tag/v${
-                        config.version.split(' ')[0]
+                        config.version.split(' ')[0].split('-')[0]
                       }`}
                       target="_blank"
                       rel="noopener noreferrer"
