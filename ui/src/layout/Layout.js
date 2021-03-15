@@ -8,6 +8,7 @@ import Menu from './Menu'
 import AppBar from './AppBar'
 import Notification from './Notification'
 import themes from '../themes'
+import { AUTO } from '../consts'
 
 const useStyles = makeStyles({
   root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
@@ -16,7 +17,7 @@ const useStyles = makeStyles({
 export default (props) => {
   const prefersLightMode = useMediaQuery('(prefers-color-scheme: light)')
   const theme = useSelector((state) => {
-    if (state.theme === 'AUTO') {
+    if (state.theme === AUTO) {
       return prefersLightMode ? themes.LightTheme : themes.DarkTheme
     }
     return themes[state.theme] || themes.DarkTheme

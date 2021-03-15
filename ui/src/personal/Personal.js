@@ -23,12 +23,12 @@ import themes from '../themes'
 import { docsUrl } from '../utils'
 import { useGetLanguageChoices } from '../i18n'
 import albumLists, { defaultAlbumList } from '../album/albumLists'
+import { AUTO } from '../consts'
 
 const useStyles = makeStyles({
   root: { marginTop: '1em' },
 })
 
-const autoKey = 'AUTO'
 const helpKey = '_help'
 
 function openInNewTab(url) {
@@ -82,7 +82,7 @@ const SelectTheme = (props) => {
     return { id: key, name: themes[key].themeName }
   })
   themeChoices.push({
-    id: autoKey,
+    id: AUTO,
     name: 'Auto',
   })
   themeChoices.push({

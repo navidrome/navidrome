@@ -21,6 +21,7 @@ import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification, baseUrl } from '../utils'
 import { keyMap } from '../hotkeys'
+import { AUTO } from '../consts'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
@@ -61,7 +62,7 @@ const Player = () => {
   const translate = useTranslate()
   let currentTheme = useSelector((state) => state.theme)
   const prefersLightMode = useMediaQuery('(prefers-color-scheme: light)')
-  if (currentTheme === 'AUTO') {
+  if (currentTheme === AUTO) {
     currentTheme = prefersLightMode ? 'LightTheme' : 'DarkTheme'
   }
   const theme = themes[currentTheme] || themes.DarkTheme
