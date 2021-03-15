@@ -57,8 +57,18 @@ const AboutDialog = ({ open, onClose }) => {
                       rel="noopener noreferrer"
                     >
                       {config.version.split(' ')[0]}
+                    </Link>{' '}
+                    (
+                    <Link
+                      href={`https://github.com/navidrome/navidrome/commit/${config.version
+                        .split(' ')[1]
+                        .replace(/[()]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {config.version.split(' ')[1].replace(/[()]/g, '')}
                     </Link>
-                    {' ' + config.version.split(' ')[1]}
+                    )
                   </TableCell>
                 )}
               </TableRow>
