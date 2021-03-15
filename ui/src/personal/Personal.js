@@ -80,7 +80,7 @@ const SelectTheme = (props) => {
   const themeChoices = Object.keys(themes).map((key) => {
     return { id: key, name: themes[key].themeName }
   })
-  themeChoices.push({
+  themeChoices.unshift({
     id: 'Auto Theme',
     name: 'Auto',
   })
