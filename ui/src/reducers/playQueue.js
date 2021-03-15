@@ -159,13 +159,6 @@ export const playQueueReducer = (previousState = initialState, payload) => {
         playIndex: 0,
         clear: true,
       }
-    // case TOGGLE_PLAY:
-    //   console.log('hello')
-    //   const newCurrent = { ...current, paused: !previousState.current.paused }
-    //   return { ...previousState, current: newCurrent }
-    // case TOGGLE_PLAY:
-    //   console.log(previousState, 'initial state')
-    //   return { ...previousState, playing: !previousState.playing }
     default:
       return previousState
   }
