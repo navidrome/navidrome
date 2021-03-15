@@ -14,14 +14,18 @@ const useStyles = makeStyles({
   root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
 })
 
-export default (props) => {
+export const useCurrentTheme = () => {
   const prefersLightMode = useMediaQuery('(prefers-color-scheme: light)')
-  const theme = useSelector((state) => {
+  return useSelector((state) => {
     if (state.theme === AUTO) {
       return prefersLightMode ? themes.LightTheme : themes.DarkTheme
     }
     return themes[state.theme] || themes.DarkTheme
   })
+}
+
+export default (props) => {
+  const theme = useCurrentTheme()
   const queue = useSelector((state) => state.queue)
   const classes = useStyles({ addPadding: queue.queue.length > 0 })
   const dispatch = useDispatch()

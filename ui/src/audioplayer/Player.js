@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
-import useMediaQuery from '@material-ui/core/useMediaQuery'
 import { makeStyles } from '@material-ui/core/styles'
 import { GlobalHotKeys } from 'react-hotkeys'
 import subsonic from '../subsonic'
@@ -16,12 +15,11 @@ import {
   setVolume,
   clearQueue,
 } from '../actions'
-import themes from '../themes'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification, baseUrl } from '../utils'
 import { keyMap } from '../hotkeys'
-import { AUTO } from '../consts'
+import { useCurrentTheme } from '../layout/Layout'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
@@ -60,12 +58,7 @@ const AudioTitle = React.memo(({ audioInfo, isMobile, className }) => {
 
 const Player = () => {
   const translate = useTranslate()
-  let currentTheme = useSelector((state) => state.theme)
-  const prefersLightMode = useMediaQuery('(prefers-color-scheme: light)')
-  if (currentTheme === AUTO) {
-    currentTheme = prefersLightMode ? 'LightTheme' : 'DarkTheme'
-  }
-  const theme = themes[currentTheme] || themes.DarkTheme
+  const theme = useCurrentTheme()
   const playerTheme = (theme.player && theme.player.theme) || 'dark'
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
