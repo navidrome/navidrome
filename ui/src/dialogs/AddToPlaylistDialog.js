@@ -51,7 +51,7 @@ export const AddToPlaylistDialog = () => {
 
   const addToPlaylist = (playlistId, distinctIds = []) => {
     const trackIds =
-      distinctIds.length === 0 && !duplicateSong ? selectedIds : distinctIds
+      distinctIds.length === 0 ? selectedIds : distinctIds
     dataProvider
       .create('playlistTrack', {
         data: { ids: trackIds },
