@@ -12,15 +12,15 @@
                 "artist": "歌手",
                 "album": "专辑",
                 "path": "文件路径",
-                "genre": "曲风",
+                "genre": "类型",
                 "compilation": "合辑",
-                "year": "发布年份",
-                "size": "大小",
+                "year": "发行年份",
+                "size": "文件大小",
                 "updatedAt": "更新于",
                 "bitRate": "比特率",
                 "discSubtitle": "字幕",
                 "starred": "收藏",
-                "comment": "评论"
+                "comment": "注释"
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -40,11 +40,11 @@
                 "songCount": "歌曲数量",
                 "playCount": "播放次数",
                 "name": "名称",
-                "genre": "曲风",
+                "genre": "类型",
                 "compilation": "合辑",
-                "year": "发布年份",
+                "year": "发行年份",
                 "updatedAt": "更新于",
-                "comment": "评论"
+                "comment": "注释"
             },
             "actions": {
                 "playAll": "立即播放",
@@ -59,7 +59,7 @@
                 "random": "随机",
                 "recentlyAdded": "最近添加",
                 "recentlyPlayed": "最近播放",
-                "mostPlayed": "最喜欢听的",
+                "mostPlayed": "最多播放",
                 "starred": "收藏"
             }
         },
@@ -69,7 +69,7 @@
                 "name": "名称",
                 "albumCount": "专辑数",
                 "songCount": "歌曲数",
-                "playCount": "播放量"
+                "playCount": "播放次数"
             }
         },
         "user": {
@@ -93,7 +93,7 @@
                 "client": "客户端",
                 "userName": "用户名",
                 "lastSeen": "上次浏览",
-                "reportRealPath": ""
+                "reportRealPath": "回报实际路径"
             }
         },
         "transcoding": {
@@ -111,7 +111,7 @@
                 "name": "名称",
                 "duration": "时长",
                 "owner": "所有者",
-                "public": "公共",
+                "public": "公开",
                 "updatedAt": "更新于",
                 "createdAt": "创建于",
                 "songCount": "歌曲数",
@@ -138,7 +138,7 @@
             "password": "密码",
             "sign_in": "登录",
             "sign_in_error": "验证失败, 请重试",
-            "logout": "退出"
+            "logout": "注销"
         },
         "validation": {
             "invalidChars": "请使用字母和数字",
@@ -149,7 +149,7 @@
             "minValue": "必须不小于 %{min}",
             "maxValue": "必须不大于 %{max}",
             "number": "必须为数字",
-            "email": "必须是有效的邮箱",
+            "email": "必须是有效的电子邮箱",
             "oneOf": "必须为: %{options}其中一项",
             "regex": "必须符合指定的格式 (正则表达式): %{pattern}"
         },
@@ -168,7 +168,7 @@
             "export": "导出",
             "list": "列表",
             "refresh": "刷新",
-            "remove_filter": "移除此条件",
+            "remove_filter": "取消筛选",
             "remove": "删除",
             "save": "保存",
             "search": "搜索",
@@ -187,7 +187,7 @@
         },
         "page": {
             "create": "新建 %{name}",
-            "dashboard": "概览",
+            "dashboard": "仪表盘",
             "edit": "%{name} #%{id}",
             "error": "发生错误",
             "list": "%{name}",
@@ -218,7 +218,7 @@
         },
         "message": {
             "about": "关于",
-            "are_you_sure": "您确定操作?",
+            "are_you_sure": "您确定要进行此操作?",
             "bulk_delete_content": "您确定要删除 %{name}? |||| 您确定要删除 %{smart_count} 项?",
             "bulk_delete_title": "删除 %{name} |||| 删除 %{smart_count}项 %{name}",
             "delete_content": "您确定要删除该条目?",
@@ -242,7 +242,7 @@
             "page_rows_per_page": "每页行数:",
             "next": "下一页",
             "prev": "上一页",
-            "skip_nav": ""
+            "skip_nav": "跳过"
         },
         "notification": {
             "updated": "项已更新 |||| %{smart_count} 项已更新",
@@ -251,14 +251,14 @@
             "bad_item": "不正确的项",
             "item_doesnt_exist": "项不存在",
             "http_error": "与服务通信出错",
-            "data_provider_error": "dataProvider错误. 请检查console的详细信息.",
+            "data_provider_error": "数据来源错误. 请检查控制台的详细信息",
             "i18n_error": "加载所选语言时出错",
             "canceled": "操作已取消",
-            "logged_out": "您的会话已结束，请重新登录。"
+            "logged_out": "您的会话已结束，请重新登录"
         }
     },
     "message": {
-        "note": "信息",
+        "note": "说明",
         "transcodingDisabled": "出于安全原因，禁用了从Web界面更改参数。要更改（编辑或删除）转码选项，请在启用％{config}选项的情况下重新启动服务器。",
         "transcodingEnabled": "Navidrome当前与％{config}一起使用，可以从Web界面执行任意命令。建议仅在配置Transcoding时启用此功能。",
         "songsAddedToPlaylist": "已添加一首歌到歌单||||已添加％{smart_count}首歌到歌单",
@@ -323,19 +323,19 @@
         "quickScan": "快速扫描",
         "fullScan": "完全扫描",
         "serverUptime": "服务器已运行",
-        "serverDown": "离线"
+        "serverDown": "服务器已离线"
     },
     "help": {
-        "title": "",
+        "title": "Navidrome快捷键",
         "hotkeys": {
-            "show_help": "",
-            "toggle_menu": "",
-            "toggle_play": "",
-            "prev_song": "",
-            "next_song": "",
-            "vol_up": "",
-            "vol_down": "",
-            "toggle_star": ""
+            "show_help": "显示此帮助",
+            "toggle_menu": "显示/隐藏菜单侧栏",
+            "toggle_play": "播放 / 暂停",
+            "prev_song": "上一首歌",
+            "next_song": "下一首歌",
+            "vol_up": "增大音量",
+            "vol_down": "减小音量",
+            "toggle_star": "添加/移除星标"
         }
     }
 }
