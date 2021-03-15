@@ -18,10 +18,12 @@ import {
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
-import { changeTheme, setNotificationsState } from '../actions'
+import { changeTheme, setMobileResolution, setNotificationsState } from '../actions'
 import themes from '../themes'
 import { docsUrl } from '../utils'
 import { useGetLanguageChoices } from '../i18n'
+import resolution from '../audioplayer/resolution'
+import player, { Player } from '../audioplayer/Player'
 import albumLists, { defaultAlbumList } from '../album/albumLists'
 
 const useStyles = makeStyles({
@@ -98,6 +100,30 @@ const SelectTheme = (props) => {
           return
         }
         dispatch(changeTheme(event.target.value))
+      }}
+    />
+  )
+}
+
+const SelectMobilePlayerResolution = (props) => {
+  const currentResolution = useSelector((state) => state.settings.resolution)
+  const dispatch = useDispatch()
+  const resChoices = Object.keys(resolution).map((key) => {
+    return { id: key, name: resolution[key].value }
+  })
+
+  return(
+    <SelectInput
+      {...props}
+      label={"select mobile player resolution"}
+      defaultValue={currentResolution}
+      source = "resolution"
+      translateChoice={false}
+      choices={resChoices}
+      onChange = {(event) => {
+        dispatch(setMobileResolution(event.target.value))
+        // window.location.reload()
+
       }}
     />
   )
@@ -192,6 +218,7 @@ const Personal = () => {
         <SelectTheme />
         <SelectLanguage />
         <SelectDefaultView />
+        <SelectMobilePlayerResolution/>
         <NotificationsToggle />
       </SimpleForm>
     </Card>

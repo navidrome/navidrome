@@ -1,8 +1,8 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import ReactGA from 'react-ga'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
-import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
+import { changeListParams, changeLocaleSuccess, useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
 import { makeStyles } from '@material-ui/core/styles'
@@ -19,6 +19,7 @@ import themes from '../themes'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification, baseUrl } from '../utils'
+import  {resolution}  from '../audioplayer/resolutionMap.js'
 import { keyMap } from '../hotkeys'
 
 const useStyle = makeStyles((theme) => ({
@@ -69,6 +70,9 @@ const Player = () => {
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
   )
+
+  const breakpoint = resolution[useSelector((state) => state.settings.resolution)]
+
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
@@ -213,6 +217,7 @@ const Player = () => {
       }
     },
     [dispatch, queue.queue]
+    
   )
 
   const onAudioVolumeChange = useCallback(
@@ -280,7 +285,7 @@ const Player = () => {
 
   return (
     <>
-      <ReactJkMusicPlayer
+      <ReactJkMusicPlayer 
         {...options}
         quietUpdate
         className={classes.player}
@@ -295,6 +300,7 @@ const Player = () => {
         getAudioInstance={(instance) => {
           audioInstance = instance
         }}
+        mobileMediaQuery={`(max-width:${breakpoint}`}
       />
       <GlobalHotKeys handlers={keyHandlers} keyMap={keyMap} allowChanges />
     </>
