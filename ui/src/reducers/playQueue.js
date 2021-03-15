@@ -14,7 +14,6 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_SCROBBLE,
   PLAYER_PLAY_TRACKS,
-  TOGGLE_PLAY,
 } from '../actions'
 
 const mapToAudioLists = (item) => {
@@ -47,7 +46,6 @@ const initialState = {
   current: {},
   volume: 1,
   playIndex: 0,
-  playing: false,
 }
 
 export const playQueueReducer = (previousState = initialState, payload) => {
@@ -83,7 +81,13 @@ export const playQueueReducer = (previousState = initialState, payload) => {
       Object.keys(data).forEach((id) => {
         queue.push(mapToAudioLists(data[id]))
       })
-      return { ...previousState, queue, clear: false, playIndex: undefined }
+      return {
+        ...previousState,
+        queue,
+        clear: false,
+        playIndex: undefined,
+        playing: true,
+      }
     case PLAYER_PLAY_NEXT:
       current = get(previousState.current, 'uuid', '')
       newQueue = []
@@ -155,8 +159,13 @@ export const playQueueReducer = (previousState = initialState, payload) => {
         playIndex: 0,
         clear: true,
       }
-    case TOGGLE_PLAY:
-      return { ...previousState, playing: !previousState.playing }
+    // case TOGGLE_PLAY:
+    //   console.log('hello')
+    //   const newCurrent = { ...current, paused: !previousState.current.paused }
+    //   return { ...previousState, current: newCurrent }
+    // case TOGGLE_PLAY:
+    //   console.log(previousState, 'initial state')
+    //   return { ...previousState, playing: !previousState.playing }
     default:
       return previousState
   }

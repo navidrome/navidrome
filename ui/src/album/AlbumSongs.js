@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
@@ -14,7 +14,7 @@ import { useTheme } from '@material-ui/core/styles'
 import { makeStyles } from '@material-ui/core/styles'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import get from 'lodash.get'
-import { playTracks } from '../actions'
+import { playTracks, togglePlayAction } from '../actions'
 import {
   DurationField,
   SongBulkActions,
@@ -69,21 +69,41 @@ const useStyles = makeStyles(
         '& $contextMenu': {
           visibility: 'visible',
         },
+        '& $trackNoText': {
+          display: 'none',
+        },
+        '& $playIcon': {
+          display: 'block',
+        },
+        '& $icon': {
+          display: 'none',
+        },
+        '& $pauseIcon': {
+          display: 'block',
+        },
       },
     },
     contextMenu: {
       visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
     },
     trackNoText: {
+      display: 'block',
       width: '24px',
     },
     icon: {
+      display: 'block',
       width: '32px',
       height: '32px',
       verticalAlign: 'text-top',
       marginLeft: '-8px',
       marginTop: '-7px',
       paddingRight: '3px',
+    },
+    playIcon: {
+      display: 'none',
+    },
+    pauseIcon: {
+      display: 'none',
     },
   }),
   { name: 'RaList' }
@@ -97,21 +117,9 @@ const AlbumSongs = (props) => {
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
   const version = useVersion()
-  const [isHoveredOn, setIsHoveredOn] = useState(false)
-  const [currentHoveredId, setCurrentHoveredId] = useState(null)
   const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
   const currentId = currentTrack.trackId
   const paused = currentTrack.paused
-
-  const handleHover = (id) => {
-    setIsHoveredOn(true)
-    setCurrentHoveredId(id)
-  }
-
-  const handleHoverRemove = () => {
-    setIsHoveredOn(false)
-    setCurrentHoveredId(null)
-  }
 
   const Icon = () => {
     let icon
@@ -121,56 +129,47 @@ const AlbumSongs = (props) => {
       icon = theme.palette.type === 'light' ? PlayingLight : PlayingDark
     }
     return (
-      <img
-        src={icon}
-        className={classes.icon}
-        alt={paused ? 'paused' : 'playing'}
-      />
+      <>
+        <img
+          src={icon}
+          className={classes.icon}
+          alt={paused ? 'paused' : 'playing'}
+        />
+        <SongPlayIcon
+          isCurrent={true}
+          onClick={() => {
+            dispatch(togglePlayAction(false))
+          }}
+          className={classes.playIcon}
+        />
+      </>
     )
   }
 
   const handletrackNumber = (record) => {
     const isCurrent =
       currentId && (currentId === record.id || currentId === record.mediaFileId)
-    if (
-      record.id !== currentId &&
-      !isHoveredOn &&
-      record.id !== currentHoveredId
-    ) {
-      return (
-        <Typography className={classes.trackNoText} variant="subtitle2">
-          {record.trackNumber}
-        </Typography>
-      )
-    } else if (
-      record.id === currentId &&
-      isHoveredOn &&
-      record.id === currentHoveredId
-    ) {
-      return (
-        <SongPlayIcon
-          record={record}
-          onClick={(id) => dispatch(playTracks(data, ids, id))}
-        />
-      )
-    } else if (
-      record.id !== currentId &&
-      isHoveredOn &&
-      record.id === currentHoveredId
-    ) {
-      return (
-        <SongPlayIcon
-          record={record}
-          onClick={(id) => dispatch(playTracks(data, ids, id))}
-        />
-      )
-    } else if (isCurrent) {
+    if (isCurrent) {
       return <Icon />
     } else {
       return (
-        <Typography className={classes.trackNoText} variant="subtitle2">
-          {record.trackNumber}
-        </Typography>
+        <>
+          <Typography className={classes.trackNoText} variant="subtitle2">
+            {record.trackNumber}
+          </Typography>
+          <SongPlayIcon
+            onClick={(id) => {
+              if (id === record.id) {
+                dispatch(togglePlayAction(false))
+              } else {
+                dispatch(playTracks(data, ids, id))
+                dispatch(togglePlayAction(true))
+              }
+            }}
+            record={record}
+            className={classes.playIcon}
+          />
+        </>
       )
     }
   }
@@ -194,14 +193,19 @@ const AlbumSongs = (props) => {
           </BulkActionsToolbar>
           <SongDatagrid
             expand={isXsmall ? null : <SongDetails />}
-            rowClick={(id) => dispatch(playTracks(data, ids, id))}
+            rowClick={(id) => {
+              if (id === currentId) {
+                dispatch(togglePlayAction(false))
+              } else {
+                dispatch(playTracks(data, ids, id))
+                dispatch(togglePlayAction(true))
+              }
+            }}
             {...props}
             hasBulkActions={true}
             showDiscSubtitles={true}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
-            hoverAction={handleHover}
-            removeHoverAction={handleHoverRemove}
           >
             {isDesktop && (
               <FunctionField

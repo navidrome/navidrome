@@ -23,6 +23,7 @@ import {
   albumViewReducer,
   activityReducer,
   settingsReducer,
+  togglePlayPauseReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
@@ -54,6 +55,7 @@ const App = () => (
         addToPlaylistDialog: addToPlaylistDialogReducer,
         activity: activityReducer,
         settings: settingsReducer,
+        togglePlay: togglePlayPauseReducer,
       },
     })}
   >

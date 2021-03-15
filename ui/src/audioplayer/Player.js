@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import ReactGA from 'react-ga'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
@@ -64,12 +64,12 @@ const Player = () => {
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const queue = useSelector((state) => state.queue)
+  const togglePlayState = useSelector((state) => state.togglePlay)
   const current = queue.current || {}
   const { authenticated } = useAuthState()
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
   )
-
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
 
@@ -86,6 +86,25 @@ const Player = () => {
     )
     return idx !== null ? queue.queue[idx - 1] : null
   }, [queue])
+
+  const togglePlayPause = () => {
+    if (current.paused === false) {
+      audioInstance && audioInstance.pause()
+    } else if (current.paused === true) {
+      audioInstance && audioInstance.play()
+    }
+  }
+
+  useEffect(() => {
+    // run the following function only if the current is not an empty object
+    if (
+      current &&
+      Object.keys(current).length !== 0 &&
+      current.constructor === Object
+    ) {
+      togglePlayPause()
+    }
+  }, [togglePlayState])
 
   const keyHandlers = {
     TOGGLE_PLAY: (e) => {
