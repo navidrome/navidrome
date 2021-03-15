@@ -16,12 +16,24 @@ const useStyles = makeStyles(
       textDecoration: 'none',
       color: 'inherit',
     },
+    listItem: {
+      padding: '2px',
+    },
+    title: {
+      paddingRight: '10px',
+      width: '80%',
+    },
+    secondary: {
+      paddingTop: '7px',
+      width: '92%',
+    },
     timeStamp: {
       float: 'right',
       color: '#fff',
       fontWeight: '200',
       opacity: 0.6,
       fontSize: '12px',
+      paddingTop: '5px',
     },
   },
   { name: 'RaSimpleList' }
@@ -82,21 +94,23 @@ export const SongSimpleList = ({
             key={id}
             record={data[id]}
           >
-            <ListItem button={!!linkType}>
+            <ListItem className={classes.listItem} button={!!linkType}>
               {leftIcon && (
                 <ListItemIcon>{leftIcon(data[id], id)}</ListItemIcon>
               )}
               <ListItemText
-                primary={<div>{title(data[id], id)}</div>}
+                primary={
+                  <div className={classes.title}>{title(data[id], id)}</div>
+                }
                 secondary={
-                  <>
+                  <div className={classes.secondary}>
                     {author && author(data[id], id)}
                     {songTime && (
                       <Typography className={classes.timeStamp} align="right">
                         {songTime(data[id], id)}
                       </Typography>
                     )}
-                  </>
+                  </div>
                 }
               />
               <ListItemSecondaryAction>
