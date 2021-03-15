@@ -50,7 +50,8 @@ export const AddToPlaylistDialog = () => {
   )
 
   const addToPlaylist = (playlistId, distinctIds = []) => {
-    const trackIds = distinctIds.length === 0 ? selectedIds : distinctIds
+    const trackIds =
+      distinctIds.length === 0 && !duplicateSong ? selectedIds : distinctIds
     dataProvider
       .create('playlistTrack', {
         data: { ids: trackIds },
@@ -110,6 +111,8 @@ export const AddToPlaylistDialog = () => {
   const handleChange = (pls) => {
     if (pls.id) {
       checkDuplicateSong(pls.id)
+    } else {
+      setCheck(true)
     }
     setValue(pls)
   }
