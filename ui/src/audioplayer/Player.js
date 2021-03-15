@@ -104,6 +104,7 @@ const Player = () => {
     ) {
       togglePlayPause()
     }
+    // eslint-disable-next-line
   }, [togglePlayState])
 
   const keyHandlers = {
