@@ -49,15 +49,29 @@ const AboutDialog = ({ open, onClose }) => {
                   <TableCell align="left"> {config.version} </TableCell>
                 ) : (
                   <TableCell align="left">
-                    <Link
-                      href={`https://github.com/navidrome/navidrome/releases/tag/v${
-                        config.version.split(' ')[0].split('-')[0]
-                      }`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {config.version.split(' ')[0]}
-                    </Link>
+                    {config.version.includes('SNAPSHOT') ? (
+                      <Link
+                        href={`https://github.com/navidrome/navidrome/compare/v${
+                          config.version.split(' ')[0].split('-')[0]
+                        }...${config.version
+                          .split(' ')[1]
+                          .replace(/[()]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {config.version.split(' ')[0]}
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`https://github.com/navidrome/navidrome/releases/tag/v${
+                          config.version.split(' ')[0].split('-')[0]
+                        }`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {config.version.split(' ')[0]}
+                      </Link>
+                    )}
                     {' ' + config.version.split(' ')[1]}
                   </TableCell>
                 )}
