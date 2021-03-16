@@ -27,7 +27,6 @@ import themes from '../themes'
 import { docsUrl } from '../utils'
 import { useGetLanguageChoices } from '../i18n'
 import resolution from '../audioplayer/resolution'
-import player, { Player } from '../audioplayer/Player'
 import albumLists, { defaultAlbumList } from '../album/albumLists'
 
 const useStyles = makeStyles({
