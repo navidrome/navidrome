@@ -1,12 +1,10 @@
 package core
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"mime"
 	"os"
 	"sync"
@@ -27,8 +25,8 @@ type MediaStreamer interface {
 
 type TranscodingCache cache.FileCache
 
-func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache TranscodingCache) MediaStreamer {
-	return &mediaStreamer{ds: ds, ffm: ffm, cache: cache}
+func NewMediaStreamer(ds model.DataStore, fsys fs.FS, ffm transcoder.Transcoder, cache TranscodingCache) MediaStreamer {
+	return &mediaStreamer{ds: ds, fsys: fsys, ffm: ffm, cache: cache}
 }
 
 type mediaStreamer struct {
@@ -72,18 +70,19 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 			"requestBitrate", reqBitRate, "requestFormat", reqFormat,
 			"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
 			"selectedBitrate", bitRate, "selectedFormat", format)
+
 		f, err := ms.fsys.Open(mf.Path)
 		if err != nil {
 			return nil, err
 		}
-		s.ReadCloser = f
 
-		data, err := ioutil.ReadAll(f)
-		if err != nil {
-			return nil, err
+		rsc, ok := f.(io.ReadSeeker)
+		if !ok {
+			return nil, fmt.Errorf("file interface does not implement io.ReadSeeker")
 		}
 
-		s.Seeker = bytes.NewReader(data)
+		s.ReadCloser = f
+		s.Seeker = rsc
 		s.format = mf.Suffix
 		return s, nil
 	}

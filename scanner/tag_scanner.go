@@ -33,7 +33,7 @@ func NewTagScanner(fsys fs.FS, rootFolder string, ds model.DataStore, cacheWarme
 		fsys:        fsys,
 		rootFolder:  rootFolder,
 		mapper:      newMediaFileMapper(rootFolder),
-		plsSync:     newPlaylistSync(ds),
+		plsSync:     newPlaylistSync(ds, fsys),
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
 	}

@@ -3,7 +3,6 @@ package persistence
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"strings"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 
 type sqlRepository struct {
 	ctx          context.Context
-	fsys         fs.FS
 	tableName    string
 	ormer        orm.Ormer
 	sortMappings map[string]string

@@ -4,16 +4,19 @@ import (
 	"context"
 	"image"
 	"io/ioutil"
+	"os"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Artwork", func() {
+	dirFS := os.DirFS(".")
 	var artwork Artwork
 	var ds model.DataStore
 	ctx := log.NewContext(context.TODO())
@@ -37,7 +40,7 @@ var _ = Describe("Artwork", func() {
 			conf.Server.ImageCacheSize = "100MB"
 			cache := GetImageCache()
 			Eventually(func() bool { return cache.Ready(context.TODO()) }).Should(BeTrue())
-			artwork = NewArtwork(ds, cache)
+			artwork = NewArtwork(ds, dirFS, cache)
 		})
 
 		It("retrieves the external artwork art for an album", func() {

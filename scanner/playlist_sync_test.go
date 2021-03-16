@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"os"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -10,6 +11,7 @@ import (
 )
 
 var _ = Describe("playlistSync", func() {
+	dirFS := os.DirFS(".")
 	Describe("parsePlaylist", func() {
 		var ds model.DataStore
 		var ps *playlistSync
@@ -18,7 +20,7 @@ var _ = Describe("playlistSync", func() {
 			ds = &tests.MockDataStore{
 				MockedMediaFile: &mockedMediaFile{},
 			}
-			ps = newPlaylistSync(ds)
+			ps = newPlaylistSync(ds, dirFS)
 		})
 
 		It("parses well-formed playlists", func() {

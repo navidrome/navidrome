@@ -24,6 +24,7 @@ import (
 type albumRepository struct {
 	sqlRepository
 	sqlRestful
+	fsys fs.FS
 }
 
 func NewAlbumRepository(ctx context.Context, fsys fs.FS, o orm.Ormer) model.AlbumRepository {
@@ -207,7 +208,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 		}
 
 		if !hasCoverArt || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
-			if path := getCoverFromPath(r.fsys, al.Path, al.CoverArtPath); path != "" {
+			if path, err := getCoverFromPath(r.fsys, al.Path, al.CoverArtPath); err != nil && path != "" {
 				al.CoverArtId = "al-" + al.ID
 				al.CoverArtPath = path
 			}
@@ -288,17 +289,17 @@ func getMinYear(years string) int {
 // available choices, or an error occurs, an empty string is returned. If HasEmbeddedCover is true,
 // and 'embedded' is matched among eligible choices, GetCoverFromPath will return early with an
 // empty path.
-func getCoverFromPath(fsys fs.FS, mediaPath string, embeddedPath string) string {
+func getCoverFromPath(fsys fs.FS, mediaPath string, embeddedPath string) (string, error) {
 	entries, err := fs.ReadDir(fsys, filepath.Dir(mediaPath))
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	for _, p := range strings.Split(conf.Server.CoverArtPriority, ",") {
 		pat := strings.ToLower(strings.TrimSpace(p))
 		if pat == "embedded" {
 			if embeddedPath != "" {
-				return ""
+				return "", nil
 			}
 			continue
 		}
@@ -306,12 +307,12 @@ func getCoverFromPath(fsys fs.FS, mediaPath string, embeddedPath string) string 
 		for _, entry := range entries {
 			match, _ := filepath.Match(pat, strings.ToLower(entry.Name()))
 			if match && utils.IsImageFile(entry.Name()) {
-				return filepath.Join(filepath.Dir(mediaPath), entry.Name())
+				return filepath.Join(filepath.Dir(mediaPath), entry.Name()), nil
 			}
 		}
 	}
 
-	return ""
+	return "", nil
 }
 
 func (r *albumRepository) purgeEmpty() error {

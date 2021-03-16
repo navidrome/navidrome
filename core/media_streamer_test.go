@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -20,6 +21,7 @@ var _ = Describe("MediaStreamer", func() {
 	var ds model.DataStore
 	ffmpeg := &fakeFFmpeg{Data: "fake data"}
 	ctx := log.NewContext(context.TODO())
+	dirFS := os.DirFS(".")
 
 	BeforeEach(func() {
 		conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
@@ -30,7 +32,7 @@ var _ = Describe("MediaStreamer", func() {
 		})
 		testCache := GetTranscodingCache()
 		Eventually(func() bool { return testCache.Ready(context.TODO()) }).Should(BeTrue())
-		streamer = NewMediaStreamer(ds, ffmpeg, testCache)
+		streamer = NewMediaStreamer(ds, dirFS, ffmpeg, testCache)
 	})
 
 	Context("NewStream", func() {

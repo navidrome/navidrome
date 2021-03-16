@@ -12,7 +12,6 @@ import (
 	"io"
 	"io/fs"
 	"io/ioutil"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -36,8 +35,8 @@ type Artwork interface {
 
 type ArtworkCache cache.FileCache
 
-func NewArtwork(ds model.DataStore, cache ArtworkCache) Artwork {
-	return &artwork{ds: ds, cache: cache}
+func NewArtwork(ds model.DataStore, fsys fs.FS, cache ArtworkCache) Artwork {
+	return &artwork{ds: ds, fsys: fsys, cache: cache}
 }
 
 type artwork struct {
@@ -65,7 +64,7 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, 
 	}
 
 	if !conf.Server.DevFastAccessCoverArt {
-		if stat, err := os.Stat(path); err == nil {
+		if stat, err := fs.Stat(a.fsys, path); err == nil {
 			lastUpdate = stat.ModTime()
 		}
 	}
@@ -186,12 +185,12 @@ func readFromTag(fsys fs.FS, path string) (io.ReadCloser, error) {
 	}
 	defer f.Close()
 
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
+	rsc, ok := f.(io.ReadSeeker)
+	if !ok {
+		return nil, fmt.Errorf("file interface does not implement io.ReadSeeker")
 	}
 
-	m, err := tag.ReadFrom(bytes.NewReader(data))
+	m, err := tag.ReadFrom(rsc)
 	if err != nil {
 		return nil, err
 	}

@@ -35,11 +35,12 @@ func CreateAppRouter() *app.Router {
 
 func CreateSubsonicAPIRouter() *subsonic.Router {
 	dataStore := persistence.New()
+	fs := core.NewFS()
 	artworkCache := core.GetImageCache()
-	artwork := core.NewArtwork(dataStore, artworkCache)
+	artwork := core.NewArtwork(dataStore, fs, artworkCache)
 	transcoderTranscoder := transcoder.New()
 	transcodingCache := core.GetTranscodingCache()
-	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
+	mediaStreamer := core.NewMediaStreamer(dataStore, fs, transcoderTranscoder, transcodingCache)
 	archiver := core.NewArchiver(dataStore)
 	players := core.NewPlayers(dataStore)
 	externalMetadata := core.NewExternalMetadata(dataStore)
@@ -52,7 +53,7 @@ func createScanner() scanner.Scanner {
 	fs := core.NewFS()
 	dataStore := persistence.New()
 	artworkCache := core.GetImageCache()
-	artwork := core.NewArtwork(dataStore, artworkCache)
+	artwork := core.NewArtwork(dataStore, fs, artworkCache)
 	cacheWarmer := core.NewCacheWarmer(artwork, artworkCache)
 	broker := GetBroker()
 	scannerScanner := scanner.New(fs, dataStore, cacheWarmer, broker)

@@ -21,8 +21,8 @@ type playlistSync struct {
 	fsys fs.FS
 }
 
-func newPlaylistSync(ds model.DataStore) *playlistSync {
-	return &playlistSync{ds: ds}
+func newPlaylistSync(ds model.DataStore, fsys fs.FS) *playlistSync {
+	return &playlistSync{ds: ds, fsys: fsys}
 }
 
 func (s *playlistSync) processPlaylists(ctx context.Context, dir string) int64 {
