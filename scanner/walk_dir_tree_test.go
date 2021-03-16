@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -11,6 +12,7 @@ import (
 )
 
 var _ = Describe("load_tree", func() {
+	dirFS := os.DirFS(".")
 
 	Describe("walkDirTree", func() {
 		It("reads all info correctly", func() {
@@ -18,7 +20,7 @@ var _ = Describe("load_tree", func() {
 			results := make(walkResults, 5000)
 			var err error
 			go func() {
-				err = walkDirTree(context.TODO(), "tests/fixtures", results)
+				err = walkDirTree(context.TODO(), dirFS, "tests/fixtures", results)
 			}()
 
 			for {
@@ -43,36 +45,36 @@ var _ = Describe("load_tree", func() {
 
 	Describe("isDirOrSymlinkToDir", func() {
 		It("returns true for normal dirs", func() {
-			dir, _ := os.Stat("tests/fixtures")
-			Expect(isDirOrSymlinkToDir("tests", dir)).To(BeTrue())
+			dir, _ := fs.Stat(dirFS, "tests/fixtures")
+			Expect(isDirOrSymlinkToDir(dirFS, "tests", dir)).To(BeTrue())
 		})
 		It("returns true for symlinks to dirs", func() {
-			dir, _ := os.Stat("tests/fixtures/symlink2dir")
-			Expect(isDirOrSymlinkToDir("tests/fixtures", dir)).To(BeTrue())
+			dir, _ := fs.Stat(dirFS, "tests/fixtures/symlink2dir")
+			Expect(isDirOrSymlinkToDir(dirFS, "tests/fixtures", dir)).To(BeTrue())
 		})
 		It("returns false for files", func() {
-			dir, _ := os.Stat("tests/fixtures/test.mp3")
-			Expect(isDirOrSymlinkToDir("tests/fixtures", dir)).To(BeFalse())
+			dir, _ := fs.Stat(dirFS, "tests/fixtures/test.mp3")
+			Expect(isDirOrSymlinkToDir(dirFS, "tests/fixtures", dir)).To(BeFalse())
 		})
 		It("returns false for symlinks to files", func() {
-			dir, _ := os.Stat("tests/fixtures/symlink")
-			Expect(isDirOrSymlinkToDir("tests/fixtures", dir)).To(BeFalse())
+			dir, _ := fs.Stat(dirFS, "tests/fixtures/symlink")
+			Expect(isDirOrSymlinkToDir(dirFS, "tests/fixtures", dir)).To(BeFalse())
 		})
 	})
 
 	Describe("isDirIgnored", func() {
 		baseDir := filepath.Join("tests", "fixtures")
 		It("returns false for normal dirs", func() {
-			dir, _ := os.Stat(filepath.Join(baseDir, "empty_folder"))
-			Expect(isDirIgnored(baseDir, dir)).To(BeFalse())
+			dir, _ := fs.Stat(dirFS, filepath.Join(baseDir, "empty_folder"))
+			Expect(isDirIgnored(dirFS, baseDir, dir)).To(BeFalse())
 		})
 		It("returns true when folder contains .ndignore file", func() {
-			dir, _ := os.Stat(filepath.Join(baseDir, "ignored_folder"))
-			Expect(isDirIgnored(baseDir, dir)).To(BeTrue())
+			dir, _ := fs.Stat(dirFS, filepath.Join(baseDir, "ignored_folder"))
+			Expect(isDirIgnored(dirFS, baseDir, dir)).To(BeTrue())
 		})
 		It("returns true when folder name starts with a `.`", func() {
-			dir, _ := os.Stat(filepath.Join(baseDir, ".hidden_folder"))
-			Expect(isDirIgnored(baseDir, dir)).To(BeTrue())
+			dir, _ := fs.Stat(dirFS, filepath.Join(baseDir, ".hidden_folder"))
+			Expect(isDirIgnored(dirFS, baseDir, dir)).To(BeTrue())
 		})
 	})
 })

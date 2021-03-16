@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/google/wire"
+
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"

@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -20,14 +21,16 @@ import (
 type TagScanner struct {
 	rootFolder  string
 	ds          model.DataStore
+	fsys        fs.FS
 	mapper      *mediaFileMapper
 	plsSync     *playlistSync
 	cnt         *counters
 	cacheWarmer core.CacheWarmer
 }
 
-func NewTagScanner(rootFolder string, ds model.DataStore, cacheWarmer core.CacheWarmer) *TagScanner {
+func NewTagScanner(fsys fs.FS, rootFolder string, ds model.DataStore, cacheWarmer core.CacheWarmer) *TagScanner {
 	return &TagScanner{
+		fsys:        fsys,
 		rootFolder:  rootFolder,
 		mapper:      newMediaFileMapper(rootFolder),
 		plsSync:     newPlaylistSync(ds),
@@ -155,7 +158,7 @@ func (s *TagScanner) getRootFolderWalker(ctx context.Context) (walkResults, chan
 	results := make(chan dirStats, 5000)
 	walkerError := make(chan error)
 	go func() {
-		err := walkDirTree(ctx, s.rootFolder, results)
+		err := walkDirTree(ctx, s.fsys, s.rootFolder, results)
 		if err != nil {
 			log.Error("There were errors reading directories from filesystem", err)
 		}
@@ -245,7 +248,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string) error {
 	}
 
 	// Load tracks FileInfo from the folder
-	files, err := loadAllAudioFiles(dir)
+	files, err := loadAllAudioFiles(s.fsys, dir)
 	if err != nil {
 		return err
 	}
@@ -359,7 +362,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, curr
 }
 
 func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
-	mds, err := metadata.Extract(filePaths...)
+	mds, err := metadata.Extract(s.fsys, filePaths...)
 	if err != nil {
 		return nil, err
 	}
@@ -383,12 +386,8 @@ func (s *TagScanner) withAdminUser(ctx context.Context) context.Context {
 	return request.WithUser(ctx, *u)
 }
 
-func loadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {
-	dir, err := os.Open(dirPath)
-	if err != nil {
-		return nil, err
-	}
-	files, err := dir.Readdir(-1)
+func loadAllAudioFiles(fsys fs.FS, dirPath string) (map[string]os.FileInfo, error) {
+	files, err := fs.ReadDir(fsys, dirPath)
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +17,8 @@ import (
 )
 
 type playlistSync struct {
-	ds model.DataStore
+	ds   model.DataStore
+	fsys fs.FS
 }
 
 func newPlaylistSync(ds model.DataStore) *playlistSync {
@@ -26,7 +27,7 @@ func newPlaylistSync(ds model.DataStore) *playlistSync {
 
 func (s *playlistSync) processPlaylists(ctx context.Context, dir string) int64 {
 	var count int64
-	files, err := ioutil.ReadDir(dir)
+	files, err := fs.ReadDir(s.fsys, dir)
 	if err != nil {
 		log.Error(ctx, "Error reading files", "dir", dir, err)
 		return count
@@ -52,7 +53,7 @@ func (s *playlistSync) processPlaylists(ctx context.Context, dir string) int64 {
 
 func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, baseDir string) (*model.Playlist, error) {
 	playlistPath := filepath.Join(baseDir, playlistFile)
-	file, err := os.Open(playlistPath)
+	file, err := s.fsys.Open(playlistPath)
 	if err != nil {
 		return nil, err
 	}

@@ -49,12 +49,13 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 }
 
 func createScanner() scanner.Scanner {
+	fs := core.NewFS()
 	dataStore := persistence.New()
 	artworkCache := core.GetImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
 	cacheWarmer := core.NewCacheWarmer(artwork, artworkCache)
 	broker := GetBroker()
-	scannerScanner := scanner.New(dataStore, cacheWarmer, broker)
+	scannerScanner := scanner.New(fs, dataStore, cacheWarmer, broker)
 	return scannerScanner
 }
 

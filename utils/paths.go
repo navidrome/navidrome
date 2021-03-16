@@ -1,13 +1,13 @@
 package utils
 
 import (
-	"os"
+	"io/fs"
 
 	"github.com/navidrome/navidrome/log"
 )
 
-func IsDirReadable(path string) (bool, error) {
-	dir, err := os.Open(path)
+func IsDirReadable(fsys fs.FS, path string) (bool, error) {
+	dir, err := fsys.Open(path)
 	if err != nil {
 		return false, err
 	}

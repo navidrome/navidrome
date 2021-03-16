@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"strconv"
 	"sync"
 	"time"
@@ -46,6 +47,7 @@ type scanner struct {
 	status      map[string]*scanStatus
 	lock        *sync.RWMutex
 	ds          model.DataStore
+	fsys        fs.FS
 	cacheWarmer core.CacheWarmer
 	broker      events.Broker
 	scan        chan bool
@@ -58,9 +60,10 @@ type scanStatus struct {
 	lastUpdate  time.Time
 }
 
-func New(ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker) Scanner {
+func New(fsys fs.FS, ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker) Scanner {
 	s := &scanner{
 		ds:          ds,
+		fsys:        fsys,
 		cacheWarmer: cacheWarmer,
 		broker:      broker,
 		folders:     map[string]FolderScanner{},
@@ -251,7 +254,7 @@ func (s *scanner) loadFolders() {
 	fs, _ := s.ds.MediaFolder(ctx).GetAll()
 	for _, f := range fs {
 		log.Info("Configuring Media Folder", "name", f.Name, "path", f.Path)
-		s.folders[f.Path] = s.newScanner(f)
+		s.folders[f.Path] = s.newScanner(s.fsys, f)
 		s.status[f.Path] = &scanStatus{
 			active:      false,
 			fileCount:   0,
@@ -261,6 +264,6 @@ func (s *scanner) loadFolders() {
 	}
 }
 
-func (s *scanner) newScanner(f model.MediaFolder) FolderScanner {
-	return NewTagScanner(f.Path, s.ds, s.cacheWarmer)
+func (s *scanner) newScanner(fsys fs.FS, f model.MediaFolder) FolderScanner {
+	return NewTagScanner(fsys, f.Path, s.ds, s.cacheWarmer)
 }

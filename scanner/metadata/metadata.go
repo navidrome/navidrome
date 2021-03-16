@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"regexp"
@@ -18,8 +19,10 @@ type Extractor interface {
 	Extract(files ...string) (map[string]Metadata, error)
 }
 
-func Extract(files ...string) (map[string]Metadata, error) {
+func Extract(fsys fs.FS, files ...string) (map[string]Metadata, error) {
 	var e Extractor
+
+	//panic("not implemented")
 
 	switch conf.Server.Scanner.Extractor {
 	case "taglib":

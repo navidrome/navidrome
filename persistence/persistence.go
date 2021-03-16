@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"io/fs"
 	"reflect"
 
 	"github.com/astaxie/beego/orm"
@@ -11,7 +12,8 @@ import (
 )
 
 type SQLStore struct {
-	orm orm.Ormer
+	orm  orm.Ormer
+	fsys fs.FS
 }
 
 func New() model.DataStore {
@@ -19,7 +21,7 @@ func New() model.DataStore {
 }
 
 func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
-	return NewAlbumRepository(ctx, s.getOrmer())
+	return NewAlbumRepository(ctx, s.fsys, s.getOrmer())
 }
 
 func (s *SQLStore) Artist(ctx context.Context) model.ArtistRepository {

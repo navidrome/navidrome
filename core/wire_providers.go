@@ -16,4 +16,5 @@ var Set = wire.NewSet(
 	NewCacheWarmer,
 	NewPlayers,
 	transcoder.New,
+	NewFS,
 )

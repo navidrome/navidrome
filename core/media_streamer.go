@@ -1,9 +1,12 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
+	"io/ioutil"
 	"mime"
 	"os"
 	"sync"
@@ -30,6 +33,7 @@ func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache Trans
 
 type mediaStreamer struct {
 	ds    model.DataStore
+	fsys  fs.FS
 	ffm   transcoder.Transcoder
 	cache cache.FileCache
 }
@@ -68,12 +72,18 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 			"requestBitrate", reqBitRate, "requestFormat", reqFormat,
 			"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
 			"selectedBitrate", bitRate, "selectedFormat", format)
-		f, err := os.Open(mf.Path)
+		f, err := ms.fsys.Open(mf.Path)
 		if err != nil {
 			return nil, err
 		}
 		s.ReadCloser = f
-		s.Seeker = f
+
+		data, err := ioutil.ReadAll(f)
+		if err != nil {
+			return nil, err
+		}
+
+		s.Seeker = bytes.NewReader(data)
 		s.format = mf.Suffix
 		return s, nil
 	}

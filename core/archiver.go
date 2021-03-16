@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
+	"io/fs"
 	"path/filepath"
 
 	"github.com/Masterminds/squirrel"
@@ -24,7 +24,8 @@ func NewArchiver(ds model.DataStore) Archiver {
 }
 
 type archiver struct {
-	ds model.DataStore
+	ds   model.DataStore
+	fsys fs.FS
 }
 
 type createHeader func(idx int, mf model.MediaFile) *zip.FileHeader
@@ -95,7 +96,7 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 		log.Error(ctx, "Error creating zip entry", "file", mf.Path, err)
 		return err
 	}
-	f, err := os.Open(mf.Path)
+	f, err := a.fsys.Open(mf.Path)
 	defer func() { _ = f.Close() }()
 	if err != nil {
 		log.Error(ctx, "Error opening file for zipping", "file", mf.Path, err)

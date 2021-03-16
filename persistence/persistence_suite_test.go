@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -81,6 +82,7 @@ func P(path string) string {
 }
 
 var _ = Describe("Initialize test DB", func() {
+	dirFS := os.DirFS(".")
 
 	// TODO Load this data setup from file(s)
 	BeforeSuite(func() {
@@ -96,7 +98,7 @@ var _ = Describe("Initialize test DB", func() {
 			}
 		}
 
-		alr := NewAlbumRepository(ctx, o).(*albumRepository)
+		alr := NewAlbumRepository(ctx, dirFS, o).(*albumRepository)
 		for i := range testAlbums {
 			a := testAlbums[i]
 			_, err := alr.put(a.ID, &a)

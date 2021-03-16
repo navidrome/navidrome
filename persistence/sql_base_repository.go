@@ -3,12 +3,14 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/google/uuid"
+
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -16,6 +18,7 @@ import (
 
 type sqlRepository struct {
 	ctx          context.Context
+	fsys         fs.FS
 	tableName    string
 	ormer        orm.Ormer
 	sortMappings map[string]string
