@@ -49,8 +49,8 @@ export const AddToPlaylistDialog = () => {
     }
   )
 
-  const addToPlaylist = (playlistId, distinctIds = []) => {
-    const trackIds = distinctIds.length === 0 ? selectedIds : distinctIds
+  const addToPlaylist = (playlistId, distinctIds) => {
+    const trackIds = Array.isArray(distinctIds) ? distinctIds : selectedIds
     dataProvider
       .create('playlistTrack', {
         data: { ids: trackIds },
