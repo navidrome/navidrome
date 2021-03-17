@@ -20,21 +20,29 @@ const useStyles = makeStyles(
       padding: '10px',
     },
     title: {
-      position: 'relative',
-      paddingRight: '110px',
+      paddingRight: '10px',
+      width: '80%',
     },
     secondary: {
-      opacity: 0.6,
+      marginTop: '-3px',
+      width: '96%',
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+    },
+    artist: {
+      paddingRight: '20px',
     },
     timeStamp: {
-      position: 'absolute',
-      right: '80px',
-      top: '50%',
-      transform: 'translate(0,-50%)',
+      float: 'right',
       color: '#fff',
-      fontWeight: '500',
-      opacity: 0.9,
+      fontWeight: '200',
+      opacity: 0.6,
       fontSize: '12px',
+      padding: '2px',
+    },
+    rightIcon: {
+      top: '26px',
     },
   },
   { name: 'RaSimpleList' }
@@ -96,25 +104,27 @@ export const SongSimpleList = ({
             record={data[id]}
           >
             <ListItem className={classes.listItem} button={!!linkType}>
+              {leftIcon && (
+                <ListItemIcon>{leftIcon(data[id], id)}</ListItemIcon>
+              )}
               <ListItemText
-                className={classes.title}
                 primary={
-                  <>
-                    <div>{title(data[id], id)}</div>
-                    {songTime && (
-                      <Typography className={classes.timeStamp} align="right">
-                        {songTime(data[id], id)}
-                      </Typography>
-                    )}
-                  </>
+                  <div className={classes.title}>{title(data[id], id)}</div>
                 }
                 secondary={
                   <div className={classes.secondary}>
-                    {author && author(data[id], id)}
+                    <div className={classes.artist}>
+                      {author && author(data[id], id)}
+                    </div>
+                    {songTime && (
+                      <span className={classes.timeStamp}>
+                        {songTime(data[id], id)}
+                      </span>
+                    )}
                   </div>
                 }
               />
-              <ListItemSecondaryAction>
+              <ListItemSecondaryAction className={classes.rightIcon}>
                 {rightIcon && (
                   <ListItemIcon>{rightIcon(data[id], id)}</ListItemIcon>
                 )}
@@ -153,3 +163,4 @@ SongSimpleList.defaultProps = {
   hasBulkActions: false,
   selectedIds: [],
 }
+
