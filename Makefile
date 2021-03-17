@@ -53,7 +53,7 @@ setup: download-deps
 
 download-deps:
 	@echo Downloading Go dependencies...
-	@go mod download
+	@go mod download -x
 	@go mod tidy # To revert any changes made by the `go mod download` command
 	@echo Downloading Node dependencies...
 	@(cd ./ui && npm ci)
