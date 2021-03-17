@@ -163,4 +163,3 @@ SongSimpleList.defaultProps = {
   hasBulkActions: false,
   selectedIds: [],
 }
-
