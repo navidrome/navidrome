@@ -1,8 +1,8 @@
 const resolution = {
-  MobileResolution: '600px',
-  TabletResolution: '1200px',
-  DesktopResolutionSm: '1500px',
-  DesktopResolutionBi: '4000px',
+  MobileResolution: 'sm',
+  TabletResolution: 'md',
+  DesktopResolutionSm: 'lg',
+  DesktopResolutionBi: 'xl',
 }
 
 export { resolution }

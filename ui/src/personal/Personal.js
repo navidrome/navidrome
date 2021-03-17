@@ -109,16 +109,21 @@ const SelectTheme = (props) => {
 }
 
 const SelectMobilePlayerResolution = (props) => {
-  const currentResolution = useSelector((state) => state.settings.resolution)
   const dispatch = useDispatch()
+  const translate = useTranslate()
+  let currentResolution =
+    useSelector((state) => state.settings.resolution) ||
+    dispatch(setMobileResolution('player.resolution.MobileResolution'))
+
+  currentResolution = useSelector((state) => state.settings.resolution)
   const resChoices = Object.keys(resolution).map((key) => {
-    return { id: key, name: resolution[key].value }
+    return { id: key, name: translate(`player.resolution.${key}`) }
   })
 
   return (
     <SelectInput
       {...props}
-      label={'select mobile player resolution'}
+      label={translate('menu.personal.options.select_resolution')}
       defaultValue={currentResolution}
       source="resolution"
       translateChoice={false}

@@ -279,7 +279,8 @@
                 "theme": "Theme",
                 "language": "Language",
                 "defaultView": "Default View",
-                "desktop_notifications": "Desktop Notifications"
+                "desktop_notifications": "Desktop Notifications",
+                "select_resolution" : "Player Breakpoint"
             }
         },
         "albumList": "Albums",
@@ -308,6 +309,12 @@
             "orderLoop": "Repeat",
             "singleLoop": "Repeat One",
             "shufflePlay": "Shuffle"
+        },
+        "resolution": {
+            "MobileResolution": "Mobile Devices",
+            "TabletResolution": "Tablets",
+            "DesktopResolutionSm": "Small Screens",
+            "DesktopResolutionBi":"Large Screens"
         }
     },
     "about": {
