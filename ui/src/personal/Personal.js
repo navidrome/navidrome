@@ -113,7 +113,7 @@ const SelectMobilePlayerResolution = (props) => {
   const translate = useTranslate()
   let currentResolution =
     useSelector((state) => state.settings.resolution) ||
-    dispatch(setMobileResolution('player.resolution.MobileResolution'))
+    dispatch(setMobileResolution('MobileResolution'))
 
   currentResolution = useSelector((state) => state.settings.resolution)
   const resChoices = Object.keys(resolution).map((key) => {
