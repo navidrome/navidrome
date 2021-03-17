@@ -20,20 +20,21 @@ const useStyles = makeStyles(
       padding: '10px',
     },
     title: {
-      paddingRight: '10px',
-      width: '80%',
+      position: 'relative',
+      paddingRight: '110px',
     },
     secondary: {
-      paddingTop: '7px',
-      width: '92%',
+      opacity: 0.6,
     },
     timeStamp: {
-      float: 'right',
+      position: 'absolute',
+      right: '80px',
+      top: '50%',
+      transform: 'translate(0,-50%)',
       color: '#fff',
-      fontWeight: '200',
-      opacity: 0.6,
+      fontWeight: '500',
+      opacity: 0.9,
       fontSize: '12px',
-      paddingTop: '5px',
     },
   },
   { name: 'RaSimpleList' }
@@ -95,21 +96,21 @@ export const SongSimpleList = ({
             record={data[id]}
           >
             <ListItem className={classes.listItem} button={!!linkType}>
-              {leftIcon && (
-                <ListItemIcon>{leftIcon(data[id], id)}</ListItemIcon>
-              )}
               <ListItemText
+                className={classes.title}
                 primary={
-                  <div className={classes.title}>{title(data[id], id)}</div>
-                }
-                secondary={
-                  <div className={classes.secondary}>
-                    {author && author(data[id], id)}
+                  <>
+                    <div>{title(data[id], id)}</div>
                     {songTime && (
                       <Typography className={classes.timeStamp} align="right">
                         {songTime(data[id], id)}
                       </Typography>
                     )}
+                  </>
+                }
+                secondary={
+                  <div className={classes.secondary}>
+                    {author && author(data[id], id)}
                   </div>
                 }
               />
