@@ -30,7 +30,7 @@ const useStyles = makeStyles(
       justifyContent: 'space-between',
     },
     artist: {
-      paddingRight: '20px',
+      paddingRight: '30px',
     },
     timeStamp: {
       float: 'right',
@@ -111,16 +111,16 @@ export const SongSimpleList = ({
                   <div className={classes.title}>{title(data[id], id)}</div>
                 }
                 secondary={
-                  <div className={classes.secondary}>
-                    <div className={classes.artist}>
+                  <span className={classes.secondary}>
+                    <span className={classes.artist}>
                       {author && author(data[id], id)}
-                    </div>
+                    </span>
                     {songTime && (
                       <span className={classes.timeStamp}>
                         {songTime(data[id], id)}
                       </span>
                     )}
-                  </div>
+                  </span>
                 }
               />
               <ListItemSecondaryAction className={classes.rightIcon}>
