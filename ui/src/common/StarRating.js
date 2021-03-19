@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import StarIcon from '@material-ui/icons/Star'
 import { makeStyles } from '@material-ui/core/styles'
 import { useStarRating } from "./useStarRating";
@@ -10,8 +10,10 @@ const useStyles = makeStyles({
     unrated: {
         color : '#e4e5e9'
     },
-    input: {
-        display: 'none'
+    radioBtn: {
+        opacity: 0,
+        width: 0,
+        height: 0,
     },
     star : {
         cursor: 'pointer',
@@ -21,8 +23,14 @@ const useStyles = makeStyles({
 
 
 export const StarRating = ({record = {}, source, resource}) => {
-    const [ rate, hoverRating, hover, rating] = useStarRating(resource, record, source)
+    const [ rate, hoverRating, hover] = useStarRating(resource, record, source)
     const classes = useStyles()
+
+    const handleRating = useCallback((e) => {
+            e.preventDefault()
+            rate(e.target.value)
+            e.stopPropagation()
+        }, [rate])
 
     return (
         <div>
@@ -30,20 +38,20 @@ export const StarRating = ({record = {}, source, resource}) => {
                 const ratingVal = i + 1
 
                 return (
-                    <span key={i}>
+                    <label key={i}>
                         <input 
-                            style={{display: 'none'}}
+                            className={classes.radioBtn}
                             type="radio" 
                             name="rating" 
-                            value={ratingVal > 0 ? true : false}
-                            onClick={() => rate(ratingVal)} 
+                            value={ratingVal}
+                            onClick={handleRating} 
                         />
                         <StarIcon 
-                            className={ratingVal <= (hover || rating) ? classes.rated : classes.unrated + " " + classes.star }
+                            className={ratingVal <= (hover || record[source]) ? classes.rated : classes.unrated + " " + classes.star }
                             onMouseEnter={() => hoverRating(ratingVal)}
                             onMouseLeave={() => hoverRating(null)} 
                         />
-                    </span>
+                    </label>
 
                 )
             })}
