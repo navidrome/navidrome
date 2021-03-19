@@ -17,6 +17,7 @@ import {
   SongDetails,
   QuickFilter,
   SongTitleField,
+  RatingField
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../actions'
@@ -120,6 +121,7 @@ const SongList = (props) => {
               />
             )}
             <DurationField source="duration" />
+            <RatingField source="rating" />
             <SongContextMenu
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}
