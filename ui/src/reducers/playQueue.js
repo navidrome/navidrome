@@ -86,7 +86,6 @@ export const playQueueReducer = (previousState = initialState, payload) => {
         queue,
         clear: false,
         playIndex: undefined,
-        playing: true,
       }
     case PLAYER_PLAY_NEXT:
       current = get(previousState.current, 'uuid', '')

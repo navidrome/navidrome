@@ -1,7 +1,14 @@
-import { makeStyles } from '@material-ui/core/styles'
 import React from 'react'
+import { useMediaQuery } from '@material-ui/core'
+import { makeStyles, useTheme } from '@material-ui/core/styles'
 import PropTypes from 'prop-types'
+import get from 'lodash.get'
+import { useSelector } from 'react-redux'
 import { FunctionField } from 'react-admin'
+import PlayingLight from '../icons/playing-light.gif'
+import PlayingDark from '../icons/playing-dark.gif'
+import PausedLight from '../icons/paused-light.png'
+import PausedDark from '../icons/paused-dark.png'
 
 const useStyles = makeStyles({
   icon: {
@@ -18,7 +25,16 @@ const useStyles = makeStyles({
 })
 
 export const SongTitleField = ({ showTrackNumbers, ...props }) => {
+  const theme = useTheme()
   const classes = useStyles()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const { record, pathname } = props
+  const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
+  const currentId = currentTrack.trackId
+  const paused = currentTrack.paused
+  const isCurrent =
+    currentId && (currentId === record.id || currentId === record.mediaFileId)
+  const albumPathRegex = /^\/album\/([a-z]|[0-9])+\/show$/
 
   const trackName = (r) => {
     const name = r.title
@@ -28,8 +44,28 @@ export const SongTitleField = ({ showTrackNumbers, ...props }) => {
     return name
   }
 
+  const Icon = () => {
+    let icon
+    if (paused) {
+      icon = theme.palette.type === 'light' ? PausedLight : PausedDark
+    } else {
+      icon = theme.palette.type === 'light' ? PlayingLight : PlayingDark
+    }
+    return (
+      <img
+        src={icon}
+        className={classes.icon}
+        alt={paused ? 'paused' : 'playing'}
+      />
+    )
+  }
+
   return (
     <>
+      {isCurrent && albumPathRegex.test(pathname) === false && <Icon />}
+      {isCurrent && albumPathRegex.test(pathname) === true && !isDesktop && (
+        <Icon />
+      )}
       <FunctionField
         {...props}
         source="title"

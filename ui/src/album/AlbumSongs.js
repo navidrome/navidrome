@@ -8,9 +8,9 @@ import {
   FunctionField,
 } from 'react-admin'
 import clsx from 'clsx'
+import { useHistory } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { Card, useMediaQuery, Typography } from '@material-ui/core'
-import { useTheme } from '@material-ui/core/styles'
 import { makeStyles } from '@material-ui/core/styles'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import get from 'lodash.get'
@@ -25,10 +25,6 @@ import {
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import SongPlayIcon from '../common/SongPlayIcon'
-import PlayingLight from '../icons/playing-light.gif'
-import PlayingDark from '../icons/playing-dark.gif'
-import PausedLight from '../icons/paused-light.png'
-import PausedDark from '../icons/paused-dark.png'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -97,10 +93,13 @@ const useStyles = makeStyles(
       verticalAlign: 'text-top',
       marginLeft: '-8px',
       marginTop: '-7px',
-      paddingRight: '3px',
     },
     playIcon: {
       display: 'none',
+      '& svg': {
+        fontSize: '1.1rem',
+        marginLeft: '-5px',
+      },
     },
     pauseIcon: {
       display: 'none',
@@ -111,46 +110,38 @@ const useStyles = makeStyles(
 
 const AlbumSongs = (props) => {
   const { data, ids } = props
-  const theme = useTheme()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const {
+    location: { pathname },
+  } = useHistory()
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
   const version = useVersion()
   const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
   const currentId = currentTrack.trackId
-  const paused = currentTrack.paused
 
-  const Icon = () => {
-    let icon
-    if (paused) {
-      icon = theme.palette.type === 'light' ? PausedLight : PausedDark
-    } else {
-      icon = theme.palette.type === 'light' ? PlayingLight : PlayingDark
-    }
-    return (
-      <>
-        <img
-          src={icon}
-          className={classes.icon}
-          alt={paused ? 'paused' : 'playing'}
-        />
-        <SongPlayIcon
-          isCurrent={true}
-          onClick={() => {
-            dispatch(togglePlayAction(false))
-          }}
-          className={classes.playIcon}
-        />
-      </>
-    )
-  }
-
-  const handletrackNumber = (record) => {
+  const renderTrackNumber = (record) => {
     const isCurrent =
       currentId && (currentId === record.id || currentId === record.mediaFileId)
     if (isCurrent) {
-      return <Icon />
+      return (
+        <SongPlayIcon
+          onClick={(id) => {
+            if (record.id === currentId) {
+              dispatch(togglePlayAction(false))
+            } else {
+              dispatch(playTracks(data, ids, id))
+              dispatch(togglePlayAction(true))
+            }
+          }}
+          record={record}
+          className={classes.playIcon}
+          iconClass={classes.icon}
+          isCurrent={isCurrent}
+          pauseClass={classes.pauseIcon}
+        />
+      )
     } else {
       return (
         <>
@@ -159,7 +150,7 @@ const AlbumSongs = (props) => {
           </Typography>
           <SongPlayIcon
             onClick={(id) => {
-              if (id === record.id) {
+              if (record.id === currentId) {
                 dispatch(togglePlayAction(false))
               } else {
                 dispatch(playTracks(data, ids, id))
@@ -168,6 +159,8 @@ const AlbumSongs = (props) => {
             }}
             record={record}
             className={classes.playIcon}
+            iconClass={classes.icon}
+            pauseClass={classes.pauseIcon}
           />
         </>
       )
@@ -213,13 +206,14 @@ const AlbumSongs = (props) => {
                 sortBy="discNumber asc, trackNumber asc"
                 label="#"
                 sortable={false}
-                render={handletrackNumber}
+                render={renderTrackNumber}
               />
             )}
             <SongTitleField
               source="title"
               sortable={false}
               showTrackNumbers={!isDesktop}
+              pathname={pathname}
             />
             {isDesktop && <TextField source="artist" sortable={false} />}
             <DurationField source="duration" sortable={false} />
