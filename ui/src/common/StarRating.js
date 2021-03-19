@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react'
+import PropTypes from 'prop-types'
 import StarIcon from '@material-ui/icons/Star'
 import { makeStyles } from '@material-ui/core/styles'
 import { useStarRating } from './useStarRating'
@@ -21,8 +22,8 @@ const useStyles = makeStyles({
   },
 })
 
-export const StarRating = ({ record = {}, source, resource }) => {
-  const [rate, hoverRating, hover] = useStarRating(resource, record, source)
+export const StarRating = ({ record = {}, resource }) => {
+  const [rate, hoverRating, hover] = useStarRating(resource, record)
   const classes = useStyles()
 
   const handleRating = useCallback(
@@ -35,7 +36,7 @@ export const StarRating = ({ record = {}, source, resource }) => {
   )
 
   return (
-    <div>
+    <>
       {[...Array(5)].map((star, i) => {
         const ratingVal = i + 1
 
@@ -50,9 +51,11 @@ export const StarRating = ({ record = {}, source, resource }) => {
             />
             <StarIcon
               className={
-                ratingVal <= (hover || record[source])
+                classes.star +
+                ' ' +
+                (ratingVal <= (hover || record.rating)
                   ? classes.rated
-                  : classes.unrated + ' ' + classes.star
+                  : classes.unrated)
               }
               onMouseEnter={() => hoverRating(ratingVal)}
               onMouseLeave={() => hoverRating(null)}
@@ -60,6 +63,15 @@ export const StarRating = ({ record = {}, source, resource }) => {
           </label>
         )
       })}
-    </div>
+    </>
   )
+}
+
+StarRating.propTypes = {
+  resource: PropTypes.string.isRequired,
+  record: PropTypes.object.isRequired,
+}
+
+StarRating.defaultProps = {
+  record: {},
 }

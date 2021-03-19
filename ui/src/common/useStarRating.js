@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useDataProvider, useNotify } from 'react-admin'
 import subsonic from '../subsonic'
 
-export const useStarRating = (resource, record = {}, source) => {
+export const useStarRating = (resource, record = {}) => {
   const [hover, setHover] = useState(null)
   const [loading, setLoading] = useState(false)
   const notify = useNotify()
@@ -38,9 +38,12 @@ export const useStarRating = (resource, record = {}, source) => {
       })
   }
 
-  const hoverRating = (val) => {
-    setHover(val)
-  }
+  const hoverRating = useCallback(
+    (val) => {
+      setHover(val)
+    },
+    [hover]
+  )
 
   return [rate, hoverRating, hover]
 }

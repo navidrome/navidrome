@@ -17,7 +17,7 @@ import {
   SongDetails,
   QuickFilter,
   SongTitleField,
-  RatingField
+  RatingField,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../actions'

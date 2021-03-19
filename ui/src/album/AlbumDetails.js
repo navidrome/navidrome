@@ -19,6 +19,7 @@ import {
   formatRange,
   SizeField,
   StarButton,
+  RatingField,
 } from '../common'
 
 const useStyles = makeStyles((theme) => ({
@@ -181,6 +182,7 @@ const AlbumDetails = ({ record }) => {
               {' · '}
               <SizeField record={record} source="size" />
             </Typography>
+            <RatingField source="rating" record={record} resource={'album'} />
             {isDesktop && record['comment'] && <AlbumComment record={record} />}
           </CardContent>
         </div>
