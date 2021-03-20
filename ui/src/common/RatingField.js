@@ -7,8 +7,8 @@ export const RatingField = ({ record = {}, resource, size }) => {
 }
 
 RatingField.propTypes = {
-  resource: PropTypes.string.isRequired,
   record: PropTypes.object.isRequired,
+  resource: PropTypes.string,
 }
 
 RatingField.defaultProps = {

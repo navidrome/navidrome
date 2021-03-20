@@ -81,7 +81,14 @@ const SongList = (props) => {
         {isXsmall ? (
           <SimpleList
             primaryText={(r) => r.title}
-            secondaryText={(r) => r.artist}
+            secondaryText={(r) => (
+              <>
+                {r.artist}
+                <div>
+                  <RatingField record={r} size={'small'} />
+                </div>
+              </>
+            )}
             tertiaryText={(r) => (
               <>
                 <DurationField record={r} source={'duration'} />

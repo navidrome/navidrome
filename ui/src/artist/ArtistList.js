@@ -57,7 +57,14 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return isXsmall ? (
     <SimpleList
-      primaryText={(r) => r.name}
+      primaryText={(r) => (
+        <>
+          {r.name}
+          <div>
+            <RatingField record={r} resource={'artist'} />
+          </div>
+        </>
+      )}
       linkType={(id) => {
         history.push(handleArtistLink(id))
       }}

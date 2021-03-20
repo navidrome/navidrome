@@ -129,7 +129,7 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
         className={classes.albumLink}
         to={linkToRecord(basePath, record.id, 'show')}
       >
-        <RatingField record={record} />
+        <RatingField record={record} resource={'album'} />
         <Typography className={classes.albumName}>{record.name}</Typography>
         {showArtist ? (
           <ArtistLinkField record={record} className={classes.albumSubtitle} />

@@ -17,11 +17,16 @@ export const useStarRating = (resource, record = {}) => {
   }, [])
 
   const refreshRating = useCallback(() => {
-    dataProvider.getOne(resource, { id: record.id }).then(() => {
-      if (mountedRef.current) {
-        setLoading(false)
-      }
-    })
+    dataProvider
+      .getOne(resource, { id: record.id })
+      .then(() => {
+        if (mountedRef.current) {
+          setLoading(false)
+        }
+      })
+      .catch((e) => {
+        console.log('Error encountered: ' + e)
+      })
   }, [dataProvider, record.id, resource])
 
   const rate = (val) => {
@@ -45,5 +50,5 @@ export const useStarRating = (resource, record = {}) => {
     [hover]
   )
 
-  return [rate, hoverRating, hover]
+  return [rate, hoverRating, hover, loading]
 }
