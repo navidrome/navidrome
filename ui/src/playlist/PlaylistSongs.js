@@ -140,7 +140,7 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
           key={version}
         >
           <BulkActionsToolbar {...props}>
-          <PlaylistSongBulkActions playlistId={playlistId} />
+            <PlaylistSongBulkActions playlistId={playlistId} />
           </BulkActionsToolbar>
           <ReorderableList
             readOnly={readOnly}
@@ -156,8 +156,8 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
               classes={{ row: classes.row }}
             >
               {isDesktop && <TextField source="id" label={'#'} />}
-              <TextField source="suffix" sortable={false} label="Type"/>
-              <BitrateField source="bitRate"/>
+              <TextField source="suffix" sortable={false} label="Type" />
+              <BitrateField source="bitRate" />
               <SongTitleField source="title" showTrackNumbers={false} />
               {isDesktop && <AlbumLinkField source="album" />}
               {isDesktop && <TextField source="artist" />}
