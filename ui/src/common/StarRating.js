@@ -12,17 +12,16 @@ const useStyles = makeStyles({
     color: '#e4e5e9',
   },
   radioBtn: {
-    opacity: 0,
-    width: 0,
-    height: 0,
+    display: 'none',
   },
   star: {
     cursor: 'pointer',
     transition: 'color 200ms',
+    paddingRight: '5px',
   },
 })
 
-export const StarRating = ({ record = {}, resource }) => {
+export const StarRating = ({ record = {}, resource, size }) => {
   const [rate, hoverRating, hover] = useStarRating(resource, record)
   const classes = useStyles()
   const handleRating = useCallback(
@@ -37,13 +36,6 @@ export const StarRating = ({ record = {}, resource }) => {
   const handleHover = (ratingVal) => {
     hoverRating(ratingVal)
   }
-
-  // const stopPropagation = (e, ratingVal) => {
-  //   e.preventDefault()
-  //   console.log('calling rate()')
-  //   rate(ratingVal)
-  //   e.stopPropagation()
-  // }
 
   return (
     <>
@@ -66,6 +58,7 @@ export const StarRating = ({ record = {}, resource }) => {
                   ? classes.rated
                   : classes.unrated)
               }
+              fontSize={size}
               onMouseEnter={() => handleHover(ratingVal)}
               onMouseLeave={() => handleHover(null)}
             />
@@ -83,4 +76,5 @@ StarRating.propTypes = {
 
 StarRating.defaultProps = {
   record: {},
+  size: 'default',
 }

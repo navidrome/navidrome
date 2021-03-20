@@ -17,6 +17,7 @@ import {
   PlayButton,
   ArtistLinkField,
   RangeField,
+  RatingField,
 } from '../common'
 
 const useStyles = makeStyles((theme) => ({
@@ -128,6 +129,7 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
         className={classes.albumLink}
         to={linkToRecord(basePath, record.id, 'show')}
       >
+        <RatingField record={record} />
         <Typography className={classes.albumName}>{record.name}</Typography>
         {showArtist ? (
           <ArtistLinkField record={record} className={classes.albumSubtitle} />
