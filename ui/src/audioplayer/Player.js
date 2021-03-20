@@ -46,7 +46,7 @@ const AudioTitle = React.memo(({ audioInfo, isMobile, className }) => {
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
       <div className={`${className} songTitle`}>{audioInfo.name}</div>
-      <span>{audioInfo.suffix + "/" + audioInfo.bitRate}</span>
+      <span>{audioInfo.suffix + '/' + audioInfo.bitRate}</span>
       {!isMobile && (
         <>
           <span className={`${className} songInfo`}>

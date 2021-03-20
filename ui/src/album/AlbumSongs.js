@@ -112,8 +112,8 @@ const AlbumSongs = (props) => {
                 sortable={false}
               />
             )}
-            <TextField source="suffix" sortable={false} label="Type"/>
-            <BitrateField source="bitRate"/>
+            <TextField source="suffix" sortable={false} label="Type" />
+            <BitrateField source="bitRate" />
             <SongTitleField
               source="title"
               sortable={false}
