@@ -140,7 +140,7 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
           key={version}
         >
           <BulkActionsToolbar {...props}>
-            <PlaylistSongBulkActions playlistId={playlistId} />
+          <PlaylistSongBulkActions playlistId={playlistId} />
           </BulkActionsToolbar>
           <ReorderableList
             readOnly={readOnly}
