@@ -40,7 +40,8 @@ const getCoverArtUrl = (record, size) => {
   return url('getCoverArt', record.coverArtId || 'not_found', options)
 }
 
-const setRating = (id, rating) => fetchUtils.fetchJson(url('setRating', id, { rating }))
+const setRating = (id, rating) =>
+  fetchUtils.fetchJson(url('setRating', id, { rating }))
 
 export default {
   url,
