@@ -157,7 +157,7 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
             >
               {isDesktop && <TextField source="id" label={'#'} />}
               <TextField source="suffix" sortable={false} label="Type"/>
-            <BitrateField source="bitRate"/>
+              <BitrateField source="bitRate"/>
               <SongTitleField source="title" showTrackNumbers={false} />
               {isDesktop && <AlbumLinkField source="album" />}
               {isDesktop && <TextField source="artist" />}
