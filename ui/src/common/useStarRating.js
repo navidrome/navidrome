@@ -43,12 +43,9 @@ export const useStarRating = (resource, record = {}) => {
       })
   }
 
-  const hoverRating = useCallback(
-    (val) => {
-      setHover(val)
-    },
-    [hover]
-  )
+  const hoverRating = (val) => {
+    setHover(val)
+  }
 
   return [rate, hoverRating, hover, loading]
 }
