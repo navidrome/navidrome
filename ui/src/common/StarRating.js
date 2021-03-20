@@ -25,15 +25,25 @@ const useStyles = makeStyles({
 export const StarRating = ({ record = {}, resource }) => {
   const [rate, hoverRating, hover] = useStarRating(resource, record)
   const classes = useStyles()
-
   const handleRating = useCallback(
-    (e) => {
+    (e, ratingVal) => {
       e.preventDefault()
-      rate(e.target.value)
+      rate(ratingVal)
       e.stopPropagation()
     },
     [rate]
   )
+
+  const handleHover = (ratingVal) => {
+    hoverRating(ratingVal)
+  }
+
+  // const stopPropagation = (e, ratingVal) => {
+  //   e.preventDefault()
+  //   console.log('calling rate()')
+  //   rate(ratingVal)
+  //   e.stopPropagation()
+  // }
 
   return (
     <>
@@ -41,13 +51,12 @@ export const StarRating = ({ record = {}, resource }) => {
         const ratingVal = i + 1
 
         return (
-          <label key={i}>
+          <label key={i} onClick={(e) => handleRating(e, ratingVal)}>
             <input
               className={classes.radioBtn}
               type="radio"
               name="rating"
               value={ratingVal}
-              onClick={handleRating}
             />
             <StarIcon
               className={
@@ -57,8 +66,8 @@ export const StarRating = ({ record = {}, resource }) => {
                   ? classes.rated
                   : classes.unrated)
               }
-              onMouseEnter={() => hoverRating(ratingVal)}
-              onMouseLeave={() => hoverRating(null)}
+              onMouseEnter={() => handleHover(ratingVal)}
+              onMouseLeave={() => handleHover(null)}
             />
           </label>
         )

@@ -17,6 +17,7 @@ import {
   QuickFilter,
   SimpleList,
   useGetHandleArtistClick,
+  RatingField,
 } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -69,6 +70,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
       <NumberField source="albumCount" sortByOrder={'DESC'} />
       <NumberField source="songCount" sortByOrder={'DESC'} />
       <NumberField source="playCount" sortByOrder={'DESC'} />
+      <RatingField source="rating" />
       <ArtistContextMenu
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
