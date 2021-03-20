@@ -13,6 +13,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import { playTracks } from '../actions'
 import {
+  BitrateField,
   DurationField,
   SongBulkActions,
   SongContextMenu,
@@ -111,6 +112,8 @@ const AlbumSongs = (props) => {
                 sortable={false}
               />
             )}
+            <TextField source="suffix" sortable={false} label="Type"/>
+            <BitrateField source="bitRate"/>
             <SongTitleField
               source="title"
               sortable={false}

@@ -15,6 +15,7 @@ import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import ReactDragListView from 'react-drag-listview'
 import {
+  BitrateField,
   DurationField,
   SongDetails,
   SongContextMenu,
@@ -155,6 +156,8 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
               classes={{ row: classes.row }}
             >
               {isDesktop && <TextField source="id" label={'#'} />}
+              <TextField source="suffix" sortable={false} label="Type"/>
+            <BitrateField source="bitRate"/>
               <SongTitleField source="title" showTrackNumbers={false} />
               {isDesktop && <AlbumLinkField source="album" />}
               {isDesktop && <TextField source="artist" />}

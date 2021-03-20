@@ -28,6 +28,9 @@ const useStyle = makeStyles((theme) => ({
     '&.songTitle': {
       fontWeight: 'bold',
     },
+    '&.songInfo': {
+      marginLeft: '5px',
+    },
   },
   player: {
     display: (props) => (props.visible ? 'block' : 'none'),
@@ -43,10 +46,10 @@ const AudioTitle = React.memo(({ audioInfo, isMobile, className }) => {
 
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
-      <span className={`${className} songTitle`}>{audioInfo.name}</span>
+      <div className={`${className} songTitle`}>{audioInfo.name}</div>
+      <span>{audioInfo.suffix+"/"+audioInfo.bitRate}</span>
       {!isMobile && (
         <>
-          <br />
           <span className={`${className} songInfo`}>
             {`${audioInfo.singer} - ${audioInfo.album}`}
           </span>

@@ -41,7 +41,7 @@ export const SongTitleField = ({ showTrackNumbers, ...props }) => {
     }
     return name
   }
-
+  
   const Icon = () => {
     let icon
     if (paused) {
