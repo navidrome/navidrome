@@ -27,6 +27,22 @@ const useStyles = makeStyles(
     root: {},
     main: {
       display: 'flex',
+      '@media screen and (min-width: 600px)': {
+        '& div[class*="RaBulkActionsToolbar-toolbar"]': {
+          display: 'grid',
+          height: '100px',
+        },
+        '& div[class*="RaBulkActionsToolbar-collapsed"]': {
+          height: '0',
+          minHeight: '0',
+        },
+        '& div[class*="RaBulkActionsToolbar-title"]': {
+          flex: '0 0 auto',
+          display: 'flex',
+          marginLeft: '0.7em',
+          marginTop: '0.6em',
+        },
+    },
     },
     content: {
       marginTop: 0,
@@ -40,12 +56,14 @@ const useStyles = makeStyles(
     bulkActionsDisplayed: {
       marginTop: -theme.spacing(8),
       transition: theme.transitions.create('margin-top'),
+      display: 'grid'
     },
     actions: {
       zIndex: 2,
       display: 'flex',
       justifyContent: 'flex-end',
       flexWrap: 'wrap',
+      marginTop: '50px'
     },
     noResults: { padding: 20 },
     columnIcon: {
@@ -91,7 +109,7 @@ const AlbumSongs = (props) => {
           })}
           key={version}
         >
-          <BulkActionsToolbar {...props}>
+          <BulkActionsToolbar  {...props}>
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
