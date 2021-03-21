@@ -23,6 +23,7 @@ import themes from '../themes'
 import { docsUrl } from '../utils'
 import { useGetLanguageChoices } from '../i18n'
 import albumLists, { defaultAlbumList } from '../album/albumLists'
+import { AUTO_THEME_ID } from '../consts'
 
 const useStyles = makeStyles({
   root: { marginTop: '1em' },
@@ -77,9 +78,17 @@ const SelectTheme = (props) => {
   const translate = useTranslate()
   const dispatch = useDispatch()
   const currentTheme = useSelector((state) => state.theme)
-  const themeChoices = Object.keys(themes).map((key) => {
-    return { id: key, name: themes[key].themeName }
-  })
+  const themeChoices = [
+    {
+      id: AUTO_THEME_ID,
+      name: 'Auto',
+    },
+  ]
+  themeChoices.push(
+    ...Object.keys(themes).map((key) => {
+      return { id: key, name: themes[key].themeName }
+    })
+  )
   themeChoices.push({
     id: helpKey,
     name: <HelpMsg caption={'Create your own'} />,
