@@ -13,17 +13,29 @@ import {
   DialogContent,
   DialogTitle,
 } from '@material-ui/core'
-import { closeAddToPlaylist } from '../actions'
+import {
+  closeAddToPlaylist,
+  closeDuplicateSongDialog,
+  openDuplicateSongWarning,
+} from '../actions'
 import { SelectPlaylistInput } from './SelectPlaylistInput'
+import { httpClient } from '../dataProvider'
+import { REST_URL } from '../consts'
+import DuplicateSongDialog from './DuplicateSongDialog'
 
 export const AddToPlaylistDialog = () => {
-  const { open, selectedIds, onSuccess } = useSelector(
-    (state) => state.addToPlaylistDialog
-  )
+  const {
+    open,
+    selectedIds,
+    onSuccess,
+    duplicateSong,
+    duplicateIds,
+  } = useSelector((state) => state.addToPlaylistDialog)
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()
   const [value, setValue] = useState({})
+  const [check, setCheck] = useState(false)
   const dataProvider = useDataProvider()
   const [createAndAddToPlaylist] = useCreate(
     'playlist',
@@ -37,18 +49,43 @@ export const AddToPlaylistDialog = () => {
     }
   )
 
-  const addToPlaylist = (playlistId) => {
+  const addToPlaylist = (playlistId, distinctIds) => {
+    const trackIds = Array.isArray(distinctIds) ? distinctIds : selectedIds
     dataProvider
       .create('playlistTrack', {
-        data: { ids: selectedIds },
+        data: { ids: trackIds },
         filter: { playlist_id: playlistId },
       })
       .then(() => {
-        const len = selectedIds.length
+        const len = trackIds.length
         notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
         onSuccess && onSuccess(value, len)
       })
       .catch(() => {
+        notify('ra.page.error', 'warning')
+      })
+  }
+
+  const checkDuplicateSong = (playlistId) => {
+    httpClient(`${REST_URL}/playlist/${playlistId}`)
+      .then((res) => {
+        const { tracks } = JSON.parse(res.body)
+        if (tracks) {
+          const dupSng = tracks.filter((song) =>
+            selectedIds.some((id) => id === song.id)
+          )
+
+          if (dupSng.length) {
+            const dupIds = dupSng.map((song) => song.id)
+            return dispatch(openDuplicateSongWarning(dupIds))
+          }
+          return setCheck(true)
+        }
+
+        setCheck(true)
+      })
+      .catch((error) => {
+        console.error(error)
         notify('ra.page.error', 'warning')
       })
   }
@@ -59,42 +96,75 @@ export const AddToPlaylistDialog = () => {
     } else {
       createAndAddToPlaylist()
     }
+    setCheck(false)
     dispatch(closeAddToPlaylist())
     e.stopPropagation()
   }
 
   const handleClickClose = (e) => {
+    setCheck(false)
     dispatch(closeAddToPlaylist())
     e.stopPropagation()
   }
 
   const handleChange = (pls) => {
+    if (pls.id) {
+      checkDuplicateSong(pls.id)
+    } else {
+      setCheck(true)
+    }
     setValue(pls)
   }
 
+  const handleDuplicateClose = () => {
+    dispatch(closeDuplicateSongDialog())
+    dispatch(closeAddToPlaylist())
+  }
+  const handleDuplicateSubmit = () => {
+    addToPlaylist(value.id)
+    dispatch(closeDuplicateSongDialog())
+    dispatch(closeAddToPlaylist())
+  }
+  const handleSkip = () => {
+    const distinctSongs = selectedIds.filter(
+      (id) => duplicateIds.indexOf(id) < 0
+    )
+    addToPlaylist(value.id, distinctSongs)
+    dispatch(closeDuplicateSongDialog())
+    dispatch(closeAddToPlaylist())
+  }
+
   return (
-    <Dialog
-      open={open}
-      onClose={handleClickClose}
-      onBackdropClick={handleClickClose}
-      aria-labelledby="form-dialog-new-playlist"
-      fullWidth={true}
-      maxWidth={'sm'}
-    >
-      <DialogTitle id="form-dialog-new-playlist">
-        {translate('resources.playlist.actions.selectPlaylist')}
-      </DialogTitle>
-      <DialogContent>
-        <SelectPlaylistInput onChange={handleChange} />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClickClose} color="primary">
-          {translate('ra.action.cancel')}
-        </Button>
-        <Button onClick={handleSubmit} color="primary" disabled={!value.name}>
-          {translate('ra.action.add')}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <>
+      <Dialog
+        open={open}
+        onClose={handleClickClose}
+        onBackdropClick={handleClickClose}
+        aria-labelledby="form-dialog-new-playlist"
+        fullWidth={true}
+        maxWidth={'sm'}
+      >
+        <DialogTitle id="form-dialog-new-playlist">
+          {translate('resources.playlist.actions.selectPlaylist')}
+        </DialogTitle>
+        <DialogContent>
+          <SelectPlaylistInput onChange={handleChange} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClickClose} color="primary">
+            {translate('ra.action.cancel')}
+          </Button>
+          <Button onClick={handleSubmit} color="primary" disabled={!check}>
+            {translate('ra.action.add')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <DuplicateSongDialog
+        open={duplicateSong}
+        handleClickClose={handleDuplicateClose}
+        handleSubmit={handleDuplicateSubmit}
+        handleSkip={handleSkip}
+      />
+    </>
   )
 }
