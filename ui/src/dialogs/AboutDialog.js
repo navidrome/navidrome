@@ -25,8 +25,42 @@ const links = {
   featureRequests: 'github.com/navidrome/navidrome/issues',
 }
 
+const LinkToVersion = ({ version, commitID, snapshotVersion }) => {
+  return version === 'dev' ? (
+    <TableCell align="left"> {version} </TableCell>
+  ) : (
+    <TableCell align="left">
+      {version.includes('SNAPSHOT') ? (
+        <Link
+          href={`https://github.com/navidrome/navidrome/compare/v${snapshotVersion}...${commitID}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {version}
+        </Link>
+      ) : (
+        <Link
+          href={`https://github.com/navidrome/navidrome/releases/tag/v${version}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {version}
+        </Link>
+      )}
+      {' (' + commitID + ')'}
+    </TableCell>
+  )
+}
+
 const AboutDialog = ({ open, onClose }) => {
   const translate = useTranslate()
+  const version =
+    config.version === 'dev' ? config.version : config.version.split(' ')[0]
+  const commitID =
+    version === 'dev' ? '' : config.version.split(' ')[1].replace(/[()]/g, '')
+  const snapshotVersion = version.includes('SNAPSHOT')
+    ? version.split('-')[0]
+    : ''
   return (
     <Dialog
       onClose={onClose}
@@ -45,36 +79,11 @@ const AboutDialog = ({ open, onClose }) => {
                 <TableCell align="right" component="th" scope="row">
                   {translate('menu.version')}:
                 </TableCell>
-                {config.version === 'dev' ? (
-                  <TableCell align="left"> {config.version} </TableCell>
-                ) : (
-                  <TableCell align="left">
-                    {config.version.includes('SNAPSHOT') ? (
-                      <Link
-                        href={`https://github.com/navidrome/navidrome/compare/v${
-                          config.version.split(' ')[0].split('-')[0]
-                        }...${config.version
-                          .split(' ')[1]
-                          .replace(/[()]/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {config.version.split(' ')[0]}
-                      </Link>
-                    ) : (
-                      <Link
-                        href={`https://github.com/navidrome/navidrome/releases/tag/v${
-                          config.version.split(' ')[0].split('-')[0]
-                        }`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {config.version.split(' ')[0]}
-                      </Link>
-                    )}
-                    {' ' + config.version.split(' ')[1]}
-                  </TableCell>
-                )}
+                <LinkToVersion
+                  version={version}
+                  commitID={commitID}
+                  snapshotVersion={snapshotVersion}
+                />
               </TableRow>
               {Object.keys(links).map((key) => {
                 return (
