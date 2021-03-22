@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"strings"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
@@ -151,7 +152,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	if ok && player.ReportRealPath {
 		child.Path = mf.Path
 	} else {
-		child.Path = fmt.Sprintf("%s/%s/%s.%s", realArtistName(mf), mf.Album, mf.Title, mf.Suffix)
+		child.Path = fmt.Sprintf("%s/%s/%s.%s", mapSlashToDash(realArtistName(mf)), mapSlashToDash(mf.Album), mapSlashToDash(mf.Title), mapSlashToDash(mf.Suffix))
 	}
 	child.DiscNumber = mf.DiscNumber
 	child.Created = &mf.CreatedAt
@@ -182,6 +183,10 @@ func realArtistName(mf model.MediaFile) string {
 	}
 
 	return mf.Artist
+}
+
+func mapSlashToDash(target string) string {
+	return strings.ReplaceAll(target, "/", "_")
 }
 
 func childrenFromMediaFiles(ctx context.Context, mfs model.MediaFiles) []responses.Child {
