@@ -123,6 +123,10 @@
                 "selectPlaylist": "Ajouter les pistes à la playlist",
                 "addNewPlaylist": "Créer \"%{name}\"",
                 "export": "Exporter"
+            },
+            "message": {
+              "duplicate_song": "Pistes déjà présentes dans la playlist",
+              "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
             }
         }
     },
@@ -179,7 +183,8 @@
             "close": "Fermer",
             "open_menu": "Ouvrir le menu",
             "close_menu": "Fermer le menu",
-            "unselect": "Désélectionner"
+            "unselect": "Désélectionner",
+            "skip": "Ignorer"
         },
         "boolean": {
             "true": "Oui",
