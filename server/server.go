@@ -58,6 +58,7 @@ func (a *Server) initRoutes() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5, "application/xml", "application/json", "application/javascript"))
 	r.Use(middleware.Heartbeat("/ping"))
+	r.Use(requestLogger)
 	r.Use(injectLogger)
 	r.Use(robotsTXT(ui.Assets()))
 
