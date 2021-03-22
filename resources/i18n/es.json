@@ -123,6 +123,10 @@
                 "selectPlaylist": "Seleccione una lista:",
                 "addNewPlaylist": "Creada \"%{name}\"",
                 "export": "Exportar"
+            },
+            "message": {
+              "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la lista de reproducción",
+              "song_exist": "Se están agregando duplicados a la lista de reproducción. ¿Quieres agregar los duplicados o omitirlos?"
             }
         }
     },
@@ -157,7 +161,7 @@
             "add_filter": "Añadir filtro",
             "add": "Añadir",
             "back": "Ir atrás",
-            "bulk_actions": "1 elemento seleccionado |||| %{smart_count} elementos selecccionados",
+            "bulk_actions": "1 elemento seleccionado |||| %{smart_count} elementos seleccionados",
             "cancel": "Cancelar",
             "clear_input_value": "Limpiar valor",
             "clone": "Duplicar",
@@ -179,7 +183,8 @@
             "close": "Cerrar",
             "open_menu": "Abrir menú",
             "close_menu": "Cerrar menú",
-            "unselect": "Deseleccionado"
+            "unselect": "Deseleccionado",
+            "skip": "Omitir"
         },
         "boolean": {
             "true": "Sí",
@@ -265,7 +270,7 @@
         "noPlaylistsAvailable": "Ninguna lista disponible",
         "delete_user_title": "Eliminar usuario '%{name}'",
         "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?",
-        "notifications_blocked": "Las notificaciones de este sitio estan bloqueadas en tu navegador",
+        "notifications_blocked": "Las notificaciones de este sitio están bloqueadas en tu navegador",
         "notifications_not_available": "Este navegador no soporta notificaciones o no ingresaste a Navidrome usando https"
     },
     "menu": {
