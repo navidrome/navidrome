@@ -6,8 +6,10 @@ import ListItemIcon from '@material-ui/core/ListItemIcon'
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
-import { Link } from 'react-router-dom'
-import { linkToRecord, sanitizeListRestProps } from 'ra-core'
+import { sanitizeListRestProps } from 'ra-core'
+import { DurationField, SongContextMenu } from './index'
+import { setTrack } from '../actions'
+import { useDispatch } from 'react-redux'
 
 const useStyles = makeStyles(
   {
@@ -44,37 +46,10 @@ const useStyles = makeStyles(
       top: '26px',
     },
   },
-  { name: 'RaSimpleList' }
+  { name: 'RaSongSimpleList' }
 )
 
-const LinkOrNot = ({
-  classes: classesOverride,
-  linkType,
-  basePath,
-  id,
-  record,
-  children,
-}) => {
-  const classes = useStyles({ classes: classesOverride })
-  return linkType === 'edit' || linkType === true ? (
-    <Link to={linkToRecord(basePath, id)} className={classes.link}>
-      {children}
-    </Link>
-  ) : linkType === 'show' ? (
-    <Link to={`${linkToRecord(basePath, id)}/show`} className={classes.link}>
-      {children}
-    </Link>
-  ) : typeof linkType === 'function' ? (
-    <span onClick={() => linkType(id, basePath, record)}>{children}</span>
-  ) : (
-    <span>{children}</span>
-  )
-}
-
 export const SongSimpleList = ({
-  title,
-  author,
-  songTime,
   basePath,
   className,
   classes: classesOverride,
@@ -82,55 +57,48 @@ export const SongSimpleList = ({
   hasBulkActions,
   ids,
   loading,
-  leftIcon,
-  linkType,
   onToggleItem,
-  rightIcon,
   selectedIds,
   total,
   ...rest
 }) => {
+  const dispatch = useDispatch()
   const classes = useStyles({ classes: classesOverride })
   return (
     (loading || total > 0) && (
       <List className={className} {...sanitizeListRestProps(rest)}>
-        {ids.map((id) => (
-          <LinkOrNot
-            linkType={linkType}
-            basePath={basePath}
-            id={id}
-            key={id}
-            record={data[id]}
-          >
-            <ListItem className={classes.listItem} button={!!linkType}>
-              {leftIcon && (
-                <ListItemIcon>{leftIcon(data[id], id)}</ListItemIcon>
-              )}
-              <ListItemText
-                primary={
-                  <div className={classes.title}>{title(data[id], id)}</div>
-                }
-                secondary={
-                  <span className={classes.secondary}>
-                    <span className={classes.artist}>
-                      {author && author(data[id], id)}
-                    </span>
-                    {songTime && (
-                      <span className={classes.timeStamp}>
-                        {songTime(data[id], id)}
+        {ids.map(
+          (id) =>
+            data[id] && (
+              <span key={id} onClick={() => dispatch(setTrack(data[id]))}>
+                <ListItem className={classes.listItem} button={true}>
+                  <ListItemText
+                    primary={
+                      <div className={classes.title}>{data[id].title}</div>
+                    }
+                    secondary={
+                      <span className={classes.secondary}>
+                        <span className={classes.artist}>
+                          {data[id].artist}
+                        </span>
+                        <span className={classes.timeStamp}>
+                          <DurationField
+                            record={data[id]}
+                            source={'duration'}
+                          />
+                        </span>
                       </span>
-                    )}
-                  </span>
-                }
-              />
-              <ListItemSecondaryAction className={classes.rightIcon}>
-                {rightIcon && (
-                  <ListItemIcon>{rightIcon(data[id], id)}</ListItemIcon>
-                )}
-              </ListItemSecondaryAction>
-            </ListItem>
-          </LinkOrNot>
-        ))}
+                    }
+                  />
+                  <ListItemSecondaryAction className={classes.rightIcon}>
+                    <ListItemIcon>
+                      <SongContextMenu record={data[id]} visible={true} />
+                    </ListItemIcon>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              </span>
+            )
+        )}
       </List>
     )
   )
@@ -143,22 +111,11 @@ SongSimpleList.propTypes = {
   data: PropTypes.object,
   hasBulkActions: PropTypes.bool.isRequired,
   ids: PropTypes.array,
-  leftIcon: PropTypes.func,
-  linkType: PropTypes.oneOfType([
-    PropTypes.string,
-    PropTypes.bool,
-    PropTypes.func,
-  ]).isRequired,
   onToggleItem: PropTypes.func,
-  title: PropTypes.func,
-  rightIcon: PropTypes.func,
-  author: PropTypes.func,
   selectedIds: PropTypes.arrayOf(PropTypes.any).isRequired,
-  songTime: PropTypes.func,
 }
 
 SongSimpleList.defaultProps = {
-  linkType: 'edit',
   hasBulkActions: false,
   selectedIds: [],
 }

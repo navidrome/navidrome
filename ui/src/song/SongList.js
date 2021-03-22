@@ -78,13 +78,7 @@ const SongList = (props) => {
         perPage={isXsmall ? 50 : 15}
       >
         {isXsmall ? (
-          <SongSimpleList
-            title={(r) => r.title}
-            author={(r) => r.artist}
-            songTime={(r) => <DurationField record={r} source={'duration'} />}
-            linkType={(id, basePath, record) => dispatch(setTrack(record))}
-            rightIcon={(r) => <SongContextMenu record={r} visible={true} />}
-          />
+          <SongSimpleList />
         ) : (
           <SongDatagrid
             expand={<SongDetails />}
