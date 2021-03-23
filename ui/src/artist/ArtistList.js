@@ -54,7 +54,6 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, syncWithLocation, ..
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
-  console.log(rest);
   return isXsmall ? (
     <ArtistSimpleList
       linkType={(id) => history.push(handleArtistLink(id))}
