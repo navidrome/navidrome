@@ -15,11 +15,11 @@ import {
   setVolume,
   clearQueue,
 } from '../actions'
-import themes from '../themes'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification, baseUrl } from '../utils'
 import { keyMap } from '../hotkeys'
+import useCurrentTheme from '../themes/useCurrentTheme'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
@@ -58,8 +58,7 @@ const AudioTitle = React.memo(({ audioInfo, isMobile, className }) => {
 
 const Player = () => {
   const translate = useTranslate()
-  const currentTheme = useSelector((state) => state.theme)
-  const theme = themes[currentTheme] || themes.DarkTheme
+  const theme = useCurrentTheme()
   const playerTheme = (theme.player && theme.player.theme) || 'dark'
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
