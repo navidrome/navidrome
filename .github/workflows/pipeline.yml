@@ -21,7 +21,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.36
+          version: v1.38
           github-token: ${{ secrets.GITHUB_TOKEN }}
           args: --timeout 2m
 

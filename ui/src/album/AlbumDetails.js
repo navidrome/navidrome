@@ -25,7 +25,7 @@ const useStyles = makeStyles((theme) => ({
   root: {
     [theme.breakpoints.down('xs')]: {
       padding: '0.7em',
-      minWidth: '24em',
+      minWidth: '20em',
     },
     [theme.breakpoints.up('sm')]: {
       padding: '1em',
