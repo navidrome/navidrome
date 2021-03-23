@@ -25,28 +25,24 @@ const links = {
   featureRequests: 'github.com/navidrome/navidrome/issues',
 }
 
-const LinkToVersion = ({ version, commitID, snapshotVersion }) => {
-  return version === 'dev' ? (
-    <TableCell align="left"> {version} </TableCell>
-  ) : (
+const LinkToVersion = ({ version }) => {
+  if (version === 'dev') {
+    return <TableCell align="left">{version}</TableCell>
+  }
+
+  const parts = version.split(' ')
+  const commitID = parts[1].replace(/[()]/g, '')
+  const isSnapshot = version.includes('SNAPSHOT')
+  const url = isSnapshot
+    ? `https://github.com/navidrome/navidrome/compare/v${
+        parts[0].split('-')[0]
+      }...${commitID}`
+    : `https://github.com/navidrome/navidrome/releases/tag/v${parts[0]}`
+  return (
     <TableCell align="left">
-      {version.includes('SNAPSHOT') ? (
-        <Link
-          href={`https://github.com/navidrome/navidrome/compare/v${snapshotVersion}...${commitID}`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {version}
-        </Link>
-      ) : (
-        <Link
-          href={`https://github.com/navidrome/navidrome/releases/tag/v${version}`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {version}
-        </Link>
-      )}
+      <Link href={url} target="_blank" rel="noopener noreferrer">
+        {parts[0]}
+      </Link>
       {' (' + commitID + ')'}
     </TableCell>
   )
@@ -54,13 +50,6 @@ const LinkToVersion = ({ version, commitID, snapshotVersion }) => {
 
 const AboutDialog = ({ open, onClose }) => {
   const translate = useTranslate()
-  const version =
-    config.version === 'dev' ? config.version : config.version.split(' ')[0]
-  const commitID =
-    version === 'dev' ? '' : config.version.split(' ')[1].replace(/[()]/g, '')
-  const snapshotVersion = version.includes('SNAPSHOT')
-    ? version.split('-')[0]
-    : ''
   return (
     <Dialog
       onClose={onClose}
@@ -79,11 +68,7 @@ const AboutDialog = ({ open, onClose }) => {
                 <TableCell align="right" component="th" scope="row">
                   {translate('menu.version')}:
                 </TableCell>
-                <LinkToVersion
-                  version={version}
-                  commitID={commitID}
-                  snapshotVersion={snapshotVersion}
-                />
+                <LinkToVersion version={config.version} />
               </TableRow>
               {Object.keys(links).map((key) => {
                 return (
@@ -141,4 +126,4 @@ AboutDialog.propTypes = {
   onClose: PropTypes.func.isRequired,
 }
 
-export { AboutDialog }
+export { AboutDialog, LinkToVersion }
