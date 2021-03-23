@@ -109,7 +109,6 @@ const SongList = (props) => {
               />
             )}
             <DurationField source="duration" />
-            <RatingField source="rating" />
             <SongContextMenu
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}
