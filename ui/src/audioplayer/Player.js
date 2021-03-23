@@ -74,7 +74,7 @@ const Player = () => {
   )
 
   const breakpoint = materialTheme.breakpoints.width(
-    resolution[useSelector((state) => state.settings.resolution)]
+    resolution[localStorage.getItem('resolution')]
   )
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })

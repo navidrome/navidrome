@@ -1,4 +1,4 @@
-import { SET_NOTIFICATIONS_STATE, SET_MOBILE_RESOLUTION } from '../actions'
+import { SET_NOTIFICATIONS_STATE } from '../actions'
 
 const initialState = {
   notifications: false,
@@ -11,11 +11,6 @@ export const settingsReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         notifications: data,
-      }
-    case SET_MOBILE_RESOLUTION:
-      return {
-        ...previousState,
-        resolution: data,
       }
 
     default:

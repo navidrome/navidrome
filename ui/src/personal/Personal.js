@@ -18,11 +18,7 @@ import {
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
-import {
-  changeTheme,
-  setMobileResolution,
-  setNotificationsState,
-} from '../actions'
+import { changeTheme, setNotificationsState } from '../actions'
 import themes from '../themes'
 import { docsUrl } from '../utils'
 import { useGetLanguageChoices } from '../i18n'
@@ -113,9 +109,10 @@ const SelectMobilePlayerResolution = (props) => {
   const translate = useTranslate()
   let currentResolution =
     useSelector((state) => state.settings.resolution) ||
-    dispatch(setMobileResolution('MobileResolution'))
+    // dispatch(setMobileResolution('MobileResolution'))
+    localStorage.setItem('resolution', 'MobileResolution')
 
-  currentResolution = useSelector((state) => state.settings.resolution)
+  currentResolution = localStorage.getItem('resolution')
   const resChoices = Object.keys(resolution).map((key) => {
     return { id: key, name: translate(`player.resolution.${key}`) }
   })
@@ -129,7 +126,7 @@ const SelectMobilePlayerResolution = (props) => {
       translateChoice={false}
       choices={resChoices}
       onChange={(event) => {
-        dispatch(setMobileResolution(event.target.value))
+        localStorage.setItem('resolution', event.target.value)
         window.location.reload()
       }}
     />
