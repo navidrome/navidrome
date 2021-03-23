@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,6 +35,18 @@ func NewTagScanner(rootFolder string, ds model.DataStore, cacheWarmer core.Cache
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
 	}
+}
+
+// Function to check if a directory is empty
+func IsDirectoryEmpty(name string) bool {
+	f, err := os.Open(name)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1) // Or f.Readdir(1)
+	return err == io.EOF
 }
 
 type (
@@ -105,7 +118,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	}
 
 	// If the media folder is empty, abort to avoid deleting all data
-	if len(allFSDirs) <= 1 {
+	if IsDirectoryEmpty(s.rootFolder) {
 		log.Error(ctx, "Media Folder is empty. Aborting scan.", "folder", s.rootFolder)
 		return nil
 	}
