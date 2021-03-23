@@ -37,20 +37,23 @@ export const ArtistSimpleList = ({
   total,
   ...rest
 }) => {
-  const classes = useStyles({ classes: classesOverride });
+  const classes = useStyles({ classes: classesOverride })
   return (
     (loading || total > 0) && (
       <List className={className} {...sanitizeListRestProps(rest)}>
         {ids.map(
-          (id) => data[id] && (
-            <span key={id} onClick={() => linkType(id)}>
+          (id) =>
+            data[id] && (
+              <span key={id} onClick={() => linkType(id)}>
                 <ListItem className={classes.listItem} button={true}>
                   <ListItemText
-                    primary={<div className={classes.title}>{data[id].name}</div>}
-                    />
+                    primary={
+                      <div className={classes.title}>{data[id].name}</div>
+                    }
+                  />
                   <ListItemSecondaryAction className={classes.rightIcon}>
                     <ListItemIcon>
-                        <ArtistContextMenu record={data[id]} />
+                      <ArtistContextMenu record={data[id]} />
                     </ListItemIcon>
                   </ListItemSecondaryAction>
                 </ListItem>

@@ -16,7 +16,7 @@ import {
   List,
   QuickFilter,
   useGetHandleArtistClick,
-  ArtistSimpleList
+  ArtistSimpleList,
 } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -49,7 +49,14 @@ const ArtistFilter = (props) => (
   </Filter>
 )
 
-const ArtistListView = ({ hasShow, hasEdit, hasList, width, syncWithLocation, ...rest }) => {
+const ArtistListView = ({
+  hasShow,
+  hasEdit,
+  hasList,
+  width,
+  syncWithLocation,
+  ...rest
+}) => {
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
