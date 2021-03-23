@@ -11,12 +11,12 @@ import StarIcon from '@material-ui/icons/Star'
 import {
   DurationField,
   List,
-  SimpleList,
   SongContextMenu,
   SongDatagrid,
   SongDetails,
   QuickFilter,
   SongTitleField,
+  SongSimpleList,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../actions'
@@ -78,18 +78,7 @@ const SongList = (props) => {
         perPage={isXsmall ? 50 : 15}
       >
         {isXsmall ? (
-          <SimpleList
-            primaryText={(r) => r.title}
-            secondaryText={(r) => r.artist}
-            tertiaryText={(r) => (
-              <>
-                <DurationField record={r} source={'duration'} />
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              </>
-            )}
-            linkType={(id, basePath, record) => dispatch(setTrack(record))}
-            rightIcon={(r) => <SongContextMenu record={r} visible={true} />}
-          />
+          <SongSimpleList />
         ) : (
           <SongDatagrid
             expand={<SongDetails />}
