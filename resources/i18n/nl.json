@@ -123,6 +123,10 @@
                 "selectPlaylist": "Selecteer een afspeellijst:",
                 "addNewPlaylist": "Creëer \"%{name}\"",
                 "export": "Exporteer"
+            },
+            "message": {
+                "duplicate_song": "Dubbele nummers toevoegen",
+                "song_exist": "Er komen nummers dubbel in de afspeellijst. Wil je de dubbele nummers toevoegen of overslaan?"
             }
         }
     },
@@ -179,7 +183,8 @@
             "close": "Sluiten",
             "open_menu": "Open menu",
             "close_menu": "Sluit menu",
-            "unselect": "Deselecteer"
+            "unselect": "Deselecteer",
+            "skip": "Overslaan"
         },
         "boolean": {
             "true": "Ja",
