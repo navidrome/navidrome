@@ -37,6 +37,10 @@ lint:
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run -v
 .PHONY: lint
 
+lintall: check_node_dev_env lint
+	@(cd ./ui && npm run check-formatting && npm run lint)
+.PHONY: lintall
+
 update-snapshots: check_go_env
 	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/ginkgo ./server/subsonic/...
 .PHONY: update-snapshots
@@ -111,7 +115,7 @@ buildall: check_env
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: buildall
 
-pre-push: lint test
+pre-push: lintall testall
 .PHONY: pre-push
 
 release:
