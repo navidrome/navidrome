@@ -8,6 +8,9 @@ export default {
     },
     secondary: blue,
     type: 'dark',
+    extraAttribute: {
+      theme: 'dark',
+    },
   },
   overrides: {
     MuiFormGroup: {

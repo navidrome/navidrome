@@ -18,6 +18,7 @@ import {
   ArtistLinkField,
   RangeField,
 } from '../common'
+import { themeColorSelector } from '../themes'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -53,7 +54,15 @@ const useStyles = makeStyles((theme) => ({
   },
   albumSubtitle: {
     fontSize: '12px',
-    color: theme.palette.type === 'dark' ? '#c5c5c5' : '#696969',
+    color: themeColorSelector(
+      '#696969',
+      [
+        theme.palette?.extraAttribute.theme,
+        'extradark',
+        theme.palette?.extraAttribute.subtitle,
+      ],
+      [theme.palette.type, 'dark', '#c5c5c5']
+    ),
     overflow: 'hidden',
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',

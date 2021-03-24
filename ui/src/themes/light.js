@@ -7,6 +7,10 @@ export default {
       main: '#3f51b5',
       contrastText: '#fff',
     },
+    type: 'light',
+    extraAttribute: {
+      theme: 'light',
+    },
   },
   overrides: {
     MuiFilledInput: {

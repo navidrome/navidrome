@@ -3,11 +3,14 @@ import { MenuItemLink, useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core'
 import TuneIcon from '@material-ui/icons/Tune'
 
-const useStyles = makeStyles((theme) => ({
-  menuItem: {
-    color: theme.palette.text.secondary,
-  },
-}))
+const useStyles = makeStyles((theme) => {
+  console.log('THEMEMEMEMEMEMEMMEMEMEMEME', theme.palette)
+  return {
+    menuItem: {
+      color: theme.palette.text.secondary,
+    },
+  }
+})
 
 const PersonalMenu = forwardRef(({ onClick, sidebarIsOpen, dense }, ref) => {
   const translate = useTranslate()
