@@ -93,7 +93,7 @@
                 "client": "Kliento",
                 "userName": "Uzantonomo",
                 "lastSeen": "Laste Vidita Je",
-                "reportRealPath": ""
+                "reportRealPath": "Raporti vera pado"
             }
         },
         "transcoding": {
@@ -123,6 +123,10 @@
                 "selectPlaylist": "Elektu ludliston :",
                 "addNewPlaylist": "Krei \"%{name}\"",
                 "export": "Eksporti"
+            },
+            "message": {
+                "duplicate_song": "",
+                "song_exist": ""
             }
         }
     },
@@ -179,7 +183,8 @@
             "close": "Fermi",
             "open_menu": "Malfermu menuon",
             "close_menu": "Fermu menuon",
-            "unselect": "Malelekti"
+            "unselect": "Malelekti",
+            "skip": ""
         },
         "boolean": {
             "true": "Jes",
@@ -241,7 +246,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} de %{total}",
             "page_rows_per_page": "Eroj por paĝo:",
             "next": "Poste",
-            "prev": "Antaŭ"
+            "prev": "Antaŭ",
+            "skip_nav": "Preterlasu al enhavo"
         },
         "notification": {
             "updated": "Elemento ĝisdatigita |||| %{smart_count} elementoj ĝisdatigitaj",
@@ -264,8 +270,8 @@
         "noPlaylistsAvailable": "Neniu disponebla",
         "delete_user_title": "Forigi uzanto '%{name}'",
         "delete_user_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun uzanton kaj ĉiujn iliajn datumojn (inkluzive ludlistojn kaj preferojn) ?",
-        "notifications_blocked": "",
-        "notifications_not_available": ""
+        "notifications_blocked": "Vi blokis sciigojn por ĉi tiu retejo en la agordoj de via retumilo",
+        "notifications_not_available": "Ĉi tiu retumilo ne subtenas labortablajn sciigojn aŭ vi ne aliras Navidrome per https"
     },
     "menu": {
         "library": "Biblioteko",
@@ -278,7 +284,7 @@
                 "theme": "Temo",
                 "language": "Lingvo",
                 "defaultView": "Defaŭlta Vido",
-                "desktop_notifications": ""
+                "desktop_notifications": "Labortablaj sciigoj"
             }
         },
         "albumList": "Albumoj",
@@ -323,5 +329,18 @@
         "fullScan": "Plena Skanado",
         "serverUptime": "Servila daŭro de funkciado",
         "serverDown": "SENKONEKTA"
+    },
+    "help": {
+        "title": "Navidrome klavkomando",
+        "hotkeys": {
+            "show_help": "Montru ĉi tiun helpon",
+            "toggle_menu": "Baskuli menuan flankobreton",
+            "toggle_play": "Ludi / Paŭzi",
+            "prev_song": "Antaŭa kanto",
+            "next_song": "Sekva kanto",
+            "vol_up": "Pli volumo",
+            "vol_down": "Malpli volumo",
+            "toggle_star": "Baskuli la stelon de nuna kanto"
+        }
     }
 }

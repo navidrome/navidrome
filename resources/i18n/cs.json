@@ -123,6 +123,10 @@
                 "selectPlaylist": "Přidat skladby do seznamu:",
                 "addNewPlaylist": "Vytvořit \"%{name}\"",
                 "export": "Export"
+            },
+            "message": {
+                "duplicate_song": "",
+                "song_exist": ""
             }
         }
     },
@@ -179,7 +183,8 @@
             "close": "Zavřít",
             "open_menu": "Otevřít nabídku",
             "close_menu": "Zavřít nabídku",
-            "unselect": "Zrušit výběr"
+            "unselect": "Zrušit výběr",
+            "skip": ""
         },
         "boolean": {
             "true": "Ano",
@@ -241,7 +246,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} z %{total}",
             "page_rows_per_page": "Položek na stránce:",
             "next": "Další",
-            "prev": "Předchozí"
+            "prev": "Předchozí",
+            "skip_nav": "Přeskočit na obsah"
         },
         "notification": {
             "updated": "Prvek aktualizován |||| %{smart_count} prvků aktualizováno",
@@ -323,5 +329,18 @@
         "fullScan": "Úplný sken",
         "serverUptime": "Doba od spuštění",
         "serverDown": "OFFLINE"
+    },
+    "help": {
+        "title": "Klávesové zkratky Navidrome",
+        "hotkeys": {
+            "show_help": "Ukázat tuto nápovědu",
+            "toggle_menu": "Přepnout postranní menu",
+            "toggle_play": "Přehrát / Pozastavit",
+            "prev_song": "Předchozí skladba",
+            "next_song": "Následující skladba",
+            "vol_up": "Zvýšit hlasitost",
+            "vol_down": "Snížit hlasitost",
+            "toggle_star": "Přepnout hvězdičku aktuální skladby"
+        }
     }
 }
