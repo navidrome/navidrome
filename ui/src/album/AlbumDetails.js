@@ -29,7 +29,7 @@ const useStyles = makeStyles((theme) => ({
     },
     [theme.breakpoints.up('sm')]: {
       padding: '1em',
-      minWidth: '100vw',
+      minWidth: '32em',
     },
   },
   cardContents: {

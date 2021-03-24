@@ -31,6 +31,11 @@ const useStyle = makeStyles((theme) => ({
   },
   player: {
     display: (props) => (props.visible ? 'block' : 'none'),
+    '@media screen and (max-width:810px)': {
+      '& .progress-bar-content': {
+        display: 'none!important',
+      },
+    },
   },
 }))
 
