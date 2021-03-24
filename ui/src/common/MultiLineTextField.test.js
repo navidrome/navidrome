@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { render, cleanup, screen } from '@testing-library/react'
+import { render, cleanup } from '@testing-library/react'
 import { MultiLineTextField } from './MultiLineTextField'
 
 describe('<MultiLineTextField />', () => {
