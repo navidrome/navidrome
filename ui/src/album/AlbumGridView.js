@@ -21,7 +21,20 @@ import {
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    margin: '20px',
+    margin: '10px',
+  },
+  gridList: {
+    width: '100%',
+    height: '100%',
+    transform: 'translateZ(0)',
+    padding: '19px'
+  },
+  tile: {
+    width: '9em',
+    height: '100%',
+    display: 'block',
+    overflow: 'hidden',
+    position: 'relative',
   },
   tileBar: {
     transition: 'all 150ms ease-out',
@@ -85,7 +98,7 @@ const useCoverStyles = makeStyles({
 const getColsForWidth = (width) => {
   if (width === 'xs') return 2
   if (width === 'sm') return 3
-  if (width === 'md') return 4
+  if (width === 'md') return 5
   if (width === 'lg') return 6
   return 9
 }
@@ -157,9 +170,10 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
         cellHeight={'auto'}
         cols={getColsForWidth(width)}
         spacing={20}
+        className={classes.gridList}
       >
         {ids.map((id) => (
-          <GridListTile className={classes.gridListTile} key={id}>
+          <GridListTile classes={{tile: classes.tile}} key={id}>
             <AlbumGridTile
               record={data[id]}
               basePath={basePath}
