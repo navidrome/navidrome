@@ -27,7 +27,7 @@ const useStyles = makeStyles((theme) => ({
     width: '100%',
     height: '100%',
     transform: 'translateZ(0)',
-    padding: '19px'
+    padding: '19px',
   },
   tile: {
     width: '9em',
@@ -173,7 +173,7 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
         className={classes.gridList}
       >
         {ids.map((id) => (
-          <GridListTile classes={{tile: classes.tile}} key={id}>
+          <GridListTile classes={{ tile: classes.tile }} key={id}>
             <AlbumGridTile
               record={data[id]}
               basePath={basePath}
