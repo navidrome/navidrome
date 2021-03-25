@@ -31,7 +31,7 @@ const useStyles = makeStyles({
 
 const ContextMenu = ({
   resource,
-  showStar,
+  showLove,
   record,
   color,
   className,
@@ -133,7 +133,7 @@ const ContextMenu = ({
       <LoveButton
         record={record}
         resource={resource}
-        visible={showStar}
+        visible={showLove}
         color={color}
       />
       <IconButton
@@ -183,11 +183,11 @@ AlbumContextMenu.propTypes = {
   record: PropTypes.object,
   discNumber: PropTypes.number,
   color: PropTypes.string,
-  showStar: PropTypes.bool,
+  showLove: PropTypes.bool,
 }
 
 AlbumContextMenu.defaultProps = {
-  showStar: true,
+  showLove: true,
   addLabel: true,
 }
 
@@ -207,10 +207,10 @@ export const ArtistContextMenu = (props) =>
 ArtistContextMenu.propTypes = {
   record: PropTypes.object,
   color: PropTypes.string,
-  showStar: PropTypes.bool,
+  showLove: PropTypes.bool,
 }
 
 ArtistContextMenu.defaultProps = {
-  showStar: true,
+  showLove: true,
   addLabel: true,
 }

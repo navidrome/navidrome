@@ -21,7 +21,7 @@ const useStyles = makeStyles({
 export const SongContextMenu = ({
   resource,
   record,
-  showStar,
+  showLove,
   onAddToPlaylist,
   className,
 }) => {
@@ -87,7 +87,7 @@ export const SongContextMenu = ({
 
   return (
     <span className={clsx(classes.noWrap, className)}>
-      <LoveButton record={record} resource={resource} visible={showStar} />
+      <LoveButton record={record} resource={resource} visible={showLove} />
       <IconButton onClick={handleClick} size={'small'}>
         <MoreVertIcon fontSize={'small'} />
       </IconButton>
@@ -114,13 +114,13 @@ SongContextMenu.propTypes = {
   resource: PropTypes.string.isRequired,
   record: PropTypes.object.isRequired,
   onAddToPlaylist: PropTypes.func,
-  showStar: PropTypes.bool,
+  showLove: PropTypes.bool,
 }
 
 SongContextMenu.defaultProps = {
   onAddToPlaylist: () => {},
   record: {},
   resource: 'song',
-  showStar: true,
+  showLove: true,
   addLabel: true,
 }

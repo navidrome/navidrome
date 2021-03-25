@@ -165,7 +165,7 @@ const AlbumDetails = ({ record }) => {
                 record={record}
                 resource={'album'}
                 size={isDesktop ? 'default' : 'small'}
-                aria-label="star"
+                aria-label="love"
                 color="primary"
               />
             </Typography>

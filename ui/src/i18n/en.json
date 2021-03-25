@@ -19,7 +19,7 @@
         "updatedAt": "Updated at",
         "bitRate": "Bit rate",
         "discSubtitle": "Disc Subtitle",
-        "starred": "Starred",
+        "starred": "Loved",
         "comment": "Comment"
       },
       "actions": {
@@ -60,7 +60,7 @@
         "recentlyAdded": "Recently Added",
         "recentlyPlayed": "Recently Played",
         "mostPlayed": "Most Played",
-        "starred": "Starred"
+        "starred": "Loved"
       }
     },
     "artist": {
