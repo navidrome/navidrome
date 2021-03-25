@@ -1,7 +1,7 @@
-import MicIcon from '@material-ui/icons/Mic'
+import MicNoneOutlinedIcon from '@material-ui/icons/MicNoneOutlined'
 import ArtistList from './ArtistList'
 
 export default {
   list: ArtistList,
-  icon: MicIcon,
+  icon: MicNoneOutlinedIcon,
 }

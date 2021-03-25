@@ -4,6 +4,9 @@ import 'react-jinke-music-player/assets/index.css'
 import { Provider, useDispatch } from 'react-redux'
 import { createHashHistory } from 'history'
 import { Admin as RAAdmin, Resource } from 'react-admin'
+import MusicNoteIcon from '@material-ui/icons/MusicNote'
+import MicIcon from '@material-ui/icons/Mic'
+import QueueMusicIcon from '@material-ui/icons/QueueMusic'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
 import { Layout, Login, Logout } from './layout'
@@ -86,12 +89,20 @@ const Admin = (props) => {
     >
       {(permissions) => [
         <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
-        <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
-        <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
+        <Resource
+          name="artist"
+          {...artist}
+          options={{ subMenu: 'library', onActive: MicIcon }}
+        />,
+        <Resource
+          name="song"
+          {...song}
+          options={{ subMenu: 'library', onActive: MusicNoteIcon }}
+        />,
         <Resource
           name="playlist"
           {...playlist}
-          options={{ subMenu: 'library' }}
+          options={{ subMenu: 'library', onActive: QueueMusicIcon }}
         />,
         permissions === 'admin' ? (
           <Resource name="user" {...user} options={{ subMenu: 'settings' }} />

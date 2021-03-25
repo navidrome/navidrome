@@ -1,7 +1,7 @@
-import MusicNoteIcon from '@material-ui/icons/MusicNote'
+import MusicNoteOutlinedIcon from '@material-ui/icons/MusicNoteOutlined'
 import SongList from './SongList'
 
 export default {
   list: SongList,
-  icon: MusicNoteIcon,
+  icon: MusicNoteOutlinedIcon,
 }
