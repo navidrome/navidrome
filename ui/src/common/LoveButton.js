@@ -4,7 +4,7 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import IconButton from '@material-ui/core/IconButton'
 import { makeStyles } from '@material-ui/core/styles'
-import { useToggleStar } from './useToggleStar'
+import { useToggleLove } from './useToggleLove'
 
 const useStyles = makeStyles({
   love: {
@@ -26,20 +26,20 @@ export const LoveButton = ({
   ...rest
 }) => {
   const classes = useStyles({ color, visible, loved: record.starred })
-  const [toggleStar, loading] = useToggleStar(resource, record)
+  const [toggleLove, loading] = useToggleLove(resource, record)
 
-  const handleToggleStar = useCallback(
+  const handleToggleLove = useCallback(
     (e) => {
       e.preventDefault()
-      toggleStar()
+      toggleLove()
       e.stopPropagation()
     },
-    [toggleStar]
+    [toggleLove]
   )
 
   return (
     <Button
-      onClick={handleToggleStar}
+      onClick={handleToggleLove}
       size={'small'}
       disabled={disabled || loading}
       className={classes.love}

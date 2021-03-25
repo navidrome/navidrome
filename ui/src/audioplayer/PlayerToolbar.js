@@ -2,7 +2,7 @@ import React, { useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
-import { LoveButton, useToggleStar } from '../common'
+import { LoveButton, useToggleLove } from '../common'
 import { keyMap } from '../hotkeys'
 
 const Placeholder = () => <LoveButton disabled={true} resource={'song'} />
@@ -11,10 +11,10 @@ const Toolbar = ({ id }) => {
   const location = useLocation()
   const resource = location.pathname.startsWith('/song') ? 'song' : 'albumSong'
   const { data, loading } = useGetOne(resource, id)
-  const [toggleStar, toggling] = useToggleStar(resource, data)
+  const [toggleLove, toggling] = useToggleLove(resource, data)
 
   const handlers = {
-    TOGGLE_STAR: useCallback(() => toggleStar(), [toggleStar]),
+    TOGGLE_STAR: useCallback(() => toggleLove(), [toggleLove]),
   }
 
   return (
