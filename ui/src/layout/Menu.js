@@ -1,6 +1,6 @@
 import React, { useState, createElement } from 'react'
 import { useSelector } from 'react-redux'
-import { useMediaQuery } from '@material-ui/core'
+import { makeStyles, useMediaQuery } from '@material-ui/core'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
@@ -10,6 +10,14 @@ import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
+import { GiClawSlashes } from 'react-icons/gi'
+
+const useStyles = makeStyles((theme) => ({
+  active: {
+    color: theme.palette.text.primary,
+    fontWeight: 'bold',
+  },
+}))
 
 const translatedResourceName = (resource, translate) =>
   translate(`resources.${resource.name}.name`, {
@@ -27,6 +35,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
+  const classes = useStyles()
   const resources = useSelector(getResources)
   const path = useSelector((state) => state.router.location.pathname)
 
@@ -45,6 +54,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     <MenuItemLink
       key={resource.name}
       to={`/${resource.name}`}
+      activeClassName={classes.active}
       primaryText={translatedResourceName(resource, translate)}
       leftIcon={
         path.search(resource.name) > -1
@@ -74,6 +84,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
       <MenuItemLink
         key={albumListAddress}
         to={albumListAddress}
+        activeClassName={classes.active}
         primaryText={name}
         leftIcon={
           path.search(type) > -1
