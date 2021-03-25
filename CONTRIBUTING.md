@@ -1,6 +1,6 @@
 # Navidrome Contribution Guide
 
-Navidrome is a streaming service which allows you to enjoy your music collection from anywhere. We'd welcome you to contribute to our open source and make Navidrome even better. There are some basic guidelines which you need to follow if you like to contribute to Navidrome.
+Navidrome is a streaming service which allows you to enjoy your music collection from anywhere. We'd welcome you to contribute to our open source project and make Navidrome even better. There are some basic guidelines which you need to follow if you like to contribute to Navidrome.
 
 - [Code of Conduct](#code-of-conduct)
 - [Issues](#issues)
