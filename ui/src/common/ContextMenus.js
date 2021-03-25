@@ -16,7 +16,7 @@ import {
   openAddToPlaylist,
 } from '../actions'
 import subsonic from '../subsonic'
-import { StarButton } from './StarButton'
+import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
 
@@ -130,7 +130,7 @@ const ContextMenu = ({
 
   return (
     <span className={clsx(classes.noWrap, className)}>
-      <StarButton
+      <LoveButton
         record={record}
         resource={resource}
         visible={showStar}

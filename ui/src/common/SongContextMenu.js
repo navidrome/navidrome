@@ -8,7 +8,7 @@ import MoreVertIcon from '@material-ui/icons/MoreVert'
 import clsx from 'clsx'
 import { playNext, addTracks, setTrack, openAddToPlaylist } from '../actions'
 import subsonic from '../subsonic'
-import { StarButton } from './StarButton'
+import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
 
@@ -87,7 +87,7 @@ export const SongContextMenu = ({
 
   return (
     <span className={clsx(classes.noWrap, className)}>
-      <StarButton record={record} resource={resource} visible={showStar} />
+      <LoveButton record={record} resource={resource} visible={showStar} />
       <IconButton onClick={handleClick} size={'small'}>
         <MoreVertIcon fontSize={'small'} />
       </IconButton>

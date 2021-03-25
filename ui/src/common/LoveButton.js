@@ -7,18 +7,14 @@ import { makeStyles } from '@material-ui/core/styles'
 import { useToggleStar } from './useToggleStar'
 
 const useStyles = makeStyles({
-  star: {
+  love: {
     color: (props) => props.color,
     visibility: (props) =>
-      props.visible === false
-        ? 'hidden'
-        : props.starred
-        ? 'visible'
-        : 'inherit',
+      props.visible === false ? 'hidden' : props.loved ? 'visible' : 'inherit',
   },
 })
 
-export const StarButton = ({
+export const LoveButton = ({
   resource,
   record,
   color,
@@ -29,7 +25,7 @@ export const StarButton = ({
   disabled,
   ...rest
 }) => {
-  const classes = useStyles({ color, visible, starred: record.starred })
+  const classes = useStyles({ color, visible, loved: record.starred })
   const [toggleStar, loading] = useToggleStar(resource, record)
 
   const handleToggleStar = useCallback(
@@ -46,7 +42,7 @@ export const StarButton = ({
       onClick={handleToggleStar}
       size={'small'}
       disabled={disabled || loading}
-      className={classes.star}
+      className={classes.love}
       {...rest}
     >
       {record.starred ? (
@@ -58,7 +54,7 @@ export const StarButton = ({
   )
 }
 
-StarButton.propTypes = {
+LoveButton.propTypes = {
   resource: PropTypes.string.isRequired,
   record: PropTypes.object.isRequired,
   visible: PropTypes.bool,
@@ -68,7 +64,7 @@ StarButton.propTypes = {
   disabled: PropTypes.bool,
 }
 
-StarButton.defaultProps = {
+LoveButton.defaultProps = {
   addLabel: true,
   record: {},
   visible: true,
