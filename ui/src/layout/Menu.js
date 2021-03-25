@@ -28,6 +28,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
   const resources = useSelector(getResources)
+  const path = useSelector((state) => state.router.location.pathname)
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
@@ -46,7 +47,10 @@ const Menu = ({ onMenuClick, dense, logout }) => {
       to={`/${resource.name}`}
       primaryText={translatedResourceName(resource, translate)}
       leftIcon={
-        (resource.icon && createElement(resource.icon)) || <ViewListIcon />
+        path.search(resource.name) > -1
+          ? resource.options.onActive &&
+            createElement(resource.options.onActive)
+          : (resource.icon && createElement(resource.icon)) || <ViewListIcon />
       }
       onClick={onMenuClick}
       sidebarIsOpen={open}
@@ -71,7 +75,11 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         key={albumListAddress}
         to={albumListAddress}
         primaryText={name}
-        leftIcon={(al.icon && createElement(al.icon)) || <ViewListIcon />}
+        leftIcon={
+          path.search(type) > -1
+            ? al.onActive && createElement(al.onActive)
+            : (al.icon && createElement(al.icon)) || <ViewListIcon />
+        }
         onClick={onMenuClick}
         sidebarIsOpen={open}
         dense={dense}
