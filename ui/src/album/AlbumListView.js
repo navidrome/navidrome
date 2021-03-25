@@ -9,7 +9,7 @@ import {
   TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles } from '@material-ui/core/styles'
 import {
   ArtistLinkField,
@@ -102,7 +102,10 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
         sortByOrder={'DESC'}
         className={classes.contextMenu}
         label={
-          <StarBorderIcon fontSize={'small'} className={classes.columnIcon} />
+          <FavoriteBorderIcon
+            fontSize={'small'}
+            className={classes.columnIcon}
+          />
         }
       />
     </Datagrid>

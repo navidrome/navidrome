@@ -8,8 +8,8 @@ import {
   TextField,
 } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
-import StarIcon from '@material-ui/icons/Star'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteIcon from '@material-ui/icons/Favorite'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { AddToPlaylistDialog } from '../dialogs'
 import {
   ArtistContextMenu,
@@ -43,7 +43,7 @@ const ArtistFilter = (props) => (
     <SearchInput source="name" alwaysOn />
     <QuickFilter
       source="starred"
-      label={<StarIcon fontSize={'small'} />}
+      label={<FavoriteIcon fontSize={'small'} />}
       defaultValue={true}
     />
   </Filter>
@@ -78,7 +78,7 @@ const ArtistListView = ({
         sortByOrder={'DESC'}
         className={classes.contextMenu}
         label={
-          <StarBorderIcon
+          <FavoriteBorderIcon
             fontSize={'small'}
             className={classes.contextHeader}
           />

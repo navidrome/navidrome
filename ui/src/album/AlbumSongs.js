@@ -10,7 +10,7 @@ import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { playTracks } from '../actions'
 import {
   DurationField,
@@ -123,7 +123,7 @@ const AlbumSongs = (props) => {
               sortable={false}
               className={classes.contextMenu}
               label={
-                <StarBorderIcon
+                <FavoriteBorderIcon
                   fontSize={'small'}
                   className={classes.columnIcon}
                 />

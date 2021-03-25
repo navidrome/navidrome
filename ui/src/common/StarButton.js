@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react'
 import PropTypes from 'prop-types'
-import StarIcon from '@material-ui/icons/Star'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteIcon from '@material-ui/icons/Favorite'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import IconButton from '@material-ui/core/IconButton'
 import { makeStyles } from '@material-ui/core/styles'
 import { useToggleStar } from './useToggleStar'
@@ -50,9 +50,9 @@ export const StarButton = ({
       {...rest}
     >
       {record.starred ? (
-        <StarIcon fontSize={size} />
+        <FavoriteIcon fontSize={size} />
       ) : (
-        <StarBorderIcon fontSize={size} />
+        <FavoriteBorderIcon fontSize={size} />
       )}
     </Button>
   )
