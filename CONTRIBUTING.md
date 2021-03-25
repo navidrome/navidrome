@@ -12,29 +12,12 @@ Navidrome is a streaming service which allows you to enjoy your music collection
 Please read the following [Code of Conduct](https://github.com/navidrome/navidrome/blob/master/CODE_OF_CONDUCT.md).
 
 ## Issues
-Found any issue or bug in our codebase. You can help by submitting a issue to the Github repository. We would like issues created to have a following format:
-`<Issue type>: <Issue Title>`
+Found any issue or bug in our codebase? Have a great idea you want to propose or discuss with 
+the developers? You can help by submitting an [issue](https://github.com/navidrome/navidrome/issues/new/choose)
+to the Github repository. 
 
-Issue type can be bug, feature or any other which is suitable for the issue.
-
-The body of issue can be similar to:
-```
-    Issue Type
-
-    Issue description
-    
-    Current Behaviour (If issue is bug)
-    Expected Behaviour  (If issue is bug)
-
-    Steps to reproduce
-
-    Any other issues(that might be related)
-
-    Context(Tell about the system used, browser, desktop version and any other details that might be needed)
-
-    Do you want to work on the issue?
-```
-**Before opening a issue, please check that the issue is not opened earlier, as duplication of issues is not healthy**
+**Before opening a new issue, please check if the issue has not been already made by searching 
+the [issues](https://github.com/navidrome/navidrome/issues)**
 
 ## Questions
 We would like to have discussions and general queries related to Navidrome on our [Discord channel](https://discord.gg/2qMuMyHfSV).
@@ -46,7 +29,7 @@ Before submitting a pull request, ensure that you go through the following:
 - Setup the [development environment](https://www.navidrome.org/docs/developers/dev-environment/)
 - Create a new branch on your forked repo and make the changes in it. Naming conventions for branch are: `<Issue Title>/<Issue Number>`. Example:
 ```
-    git checkout -b adding-docs/I200 master
+    git checkout -b adding-docs/834 master
 ```
 - The commits should follow a [specific convention](#commit-conventions)
 - Ensure that a DCO sign-off for commits is provided via `--signoff` option of git commit
@@ -89,10 +72,10 @@ The body is optional. It may contain short description of changes made.
 
 Following all the guidelines an ideal commit will look like:
 ```
-    git commit --signoff -m "feat(themes): New-theme - I816"
+    git commit --signoff -m "feat(themes): New-theme - #834"
 ```
 
-After commiting push your commits to your forked branch and create a Pull Request from there.
+After committing, push your commits to your forked branch and create a Pull Request from there.
 The Pull Request Title can be the same as `<type>(scope): <description> - <issue number>`
 A demo layout of how the Pull request body can look:
 ```
