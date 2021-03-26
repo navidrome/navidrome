@@ -14,7 +14,7 @@ const Toolbar = ({ id }) => {
   const [toggleLove, toggling] = useToggleLove(resource, data)
 
   const handlers = {
-    TOGGLE_STAR: useCallback(() => toggleLove(), [toggleLove]),
+    TOGGLE_LOVE: useCallback(() => toggleLove(), [toggleLove]),
   }
 
   return (
