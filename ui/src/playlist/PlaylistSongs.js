@@ -77,7 +77,7 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 }
 
 const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
-  const { data, ids } = props
+  const { data, ids, onUnselectItems } = props
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
@@ -139,7 +139,10 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
           key={version}
         >
           <BulkActionsToolbar {...props}>
-            <PlaylistSongBulkActions playlistId={playlistId} />
+            <PlaylistSongBulkActions
+              playlistId={playlistId}
+              onUnselectItems={onUnselectItems}
+            />
           </BulkActionsToolbar>
           <ReorderableList
             readOnly={readOnly}
