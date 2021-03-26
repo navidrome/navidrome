@@ -32,7 +32,6 @@ const useStyles = makeStyles((theme) => ({
   },
   tile: {
     [theme.breakpoints.only('md')]: {
-      // width: '9rem',
       height: '100%',
       display: 'block',
       overflow: 'hidden',
