@@ -15,8 +15,8 @@ import {
   ArtistContextMenu,
   List,
   QuickFilter,
-  SimpleList,
   useGetHandleArtistClick,
+  ArtistSimpleList,
 } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -49,18 +49,21 @@ const ArtistFilter = (props) => (
   </Filter>
 )
 
-const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
+const ArtistListView = ({
+  hasShow,
+  hasEdit,
+  hasList,
+  width,
+  syncWithLocation,
+  ...rest
+}) => {
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return isXsmall ? (
-    <SimpleList
-      primaryText={(r) => r.name}
-      linkType={(id) => {
-        history.push(handleArtistLink(id))
-      }}
-      rightIcon={(r) => <ArtistContextMenu record={r} />}
+    <ArtistSimpleList
+      linkType={(id) => history.push(handleArtistLink(id))}
       {...rest}
     />
   ) : (
