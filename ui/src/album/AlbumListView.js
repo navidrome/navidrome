@@ -19,7 +19,6 @@ import {
   SizeField,
   MultiLineTextField,
   AlbumContextMenu,
-  RatingField,
 } from '../common'
 
 const useStyles = makeStyles({
@@ -64,14 +63,7 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
   return isXsmall ? (
     <SimpleList
       primaryText={(r) => r.name}
-      secondaryText={(r) => (
-        <>
-          {r.albumArtist}
-          <div>
-            <RatingField record={r} resource={'album'} />
-          </div>
-        </>
-      )}
+      secondaryText={(r) => r.albumArtist}
       tertiaryText={(r) => (
         <>
           <RangeField record={r} source={'year'} sortBy={'maxYear'} />
@@ -95,7 +87,6 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
       {isDesktop && <NumberField source="playCount" sortByOrder={'DESC'} />}
       <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
       {isDesktop && <DurationField source="duration" />}
-      <RatingField source="rating" />
       <AlbumContextMenu
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
