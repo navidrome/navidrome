@@ -21,20 +21,26 @@ import {
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    margin: '10px',
+    margin: '20px',
   },
-  gridList: {
-    width: '100%',
-    height: '100%',
-    transform: 'translateZ(0)',
-    padding: '19px',
+  [theme.breakpoints.up('sm')]: {
+    gridList: {
+      width: '100%',
+      height: '100%',
+      transform: 'translateZ(0)',
+    },
   },
   tile: {
-    width: '9em',
-    height: '100%',
-    display: 'block',
-    overflow: 'hidden',
-    position: 'relative',
+    [theme.breakpoints.only('md')]: {
+      // width: '9rem',
+      height: '100%',
+      display: 'block',
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    [theme.breakpoints.only('xl')]: {
+      width: '10em',
+    },
   },
   tileBar: {
     transition: 'all 150ms ease-out',
