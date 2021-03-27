@@ -21,6 +21,7 @@ import {
   SongTitleField,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
+import config from '../config'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -123,10 +124,12 @@ const AlbumSongs = (props) => {
               sortable={false}
               className={classes.contextMenu}
               label={
-                <FavoriteBorderIcon
-                  fontSize={'small'}
-                  className={classes.columnIcon}
-                />
+                config.enableFavourites && (
+                  <FavoriteBorderIcon
+                    fontSize={'small'}
+                    className={classes.columnIcon}
+                  />
+                )
               }
             />
           </SongDatagrid>
