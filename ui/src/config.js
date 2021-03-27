@@ -12,7 +12,7 @@ const defaultConfig = {
   gaTrackingId: '',
   devActivityPanel: true,
   devFastAccessCoverArt: false,
-  enableFavourites: false,
+  enableFavourites: true,
 }
 
 let config
