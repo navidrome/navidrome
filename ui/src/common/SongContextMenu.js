@@ -87,7 +87,9 @@ export const SongContextMenu = ({
 
   return (
     <span className={clsx(classes.noWrap, className)}>
-      <LoveButton record={record} resource={resource} visible={showLove} />
+      {config.enableFavourites && (
+        <LoveButton record={record} resource={resource} visible={showLove} />
+      )}
       <IconButton onClick={handleClick} size={'small'}>
         <MoreVertIcon fontSize={'small'} />
       </IconButton>
