@@ -6,7 +6,7 @@ const keyMap = {
   NEXT_SONG: { name: 'next_song', sequence: 'right', group: 'Player' },
   VOL_UP: { name: 'vol_up', sequence: '=', group: 'Player' },
   VOL_DOWN: { name: 'vol_down', sequence: '-', group: 'Player' },
-  TOGGLE_STAR: { name: 'toggle_star', sequence: 's', group: 'Player' },
+  TOGGLE_LOVE: { name: 'toggle_love', sequence: 'l', group: 'Player' },
 }
 
 export { keyMap }
