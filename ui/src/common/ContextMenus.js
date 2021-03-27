@@ -130,12 +130,14 @@ const ContextMenu = ({
 
   return (
     <span className={clsx(classes.noWrap, className)}>
-      <LoveButton
-        record={record}
-        resource={resource}
-        visible={showLove}
-        color={color}
-      />
+      {config.enableFavourites && (
+        <LoveButton
+          record={record}
+          resource={resource}
+          visible={showLove}
+          color={color}
+        />
+      )}
       <IconButton
         aria-label="more"
         aria-controls="context-menu"

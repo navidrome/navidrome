@@ -114,17 +114,15 @@ const SongList = (props) => {
             <DurationField source="duration" />
             <SongContextMenu
               source={'starred'}
-              sortBy={'starred ASC, starredAt ASC'}
+              sortBy={config.enableFavourites && 'starred ASC, starredAt ASC'}
               sortByOrder={'DESC'}
               className={classes.contextMenu}
               label={
-                config.enableFavourites ? (
+                config.enableFavourites && (
                   <FavoriteBorderIcon
                     fontSize={'small'}
                     className={classes.contextHeader}
                   />
-                ) : (
-                  ''
                 )
               }
             />
