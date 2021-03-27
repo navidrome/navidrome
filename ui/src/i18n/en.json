@@ -19,7 +19,7 @@
         "updatedAt": "Updated at",
         "bitRate": "Bit rate",
         "discSubtitle": "Disc Subtitle",
-        "starred": "Starred",
+        "starred": "Favourite",
         "comment": "Comment"
       },
       "actions": {
@@ -60,7 +60,7 @@
         "recentlyAdded": "Recently Added",
         "recentlyPlayed": "Recently Played",
         "mostPlayed": "Most Played",
-        "starred": "Starred"
+        "starred": "Favourites"
       }
     },
     "artist": {
@@ -340,7 +340,7 @@
       "next_song": "Next Song",
       "vol_up": "Volume Up",
       "vol_down": "Volume Down",
-      "toggle_star": "Toggle Current Song's Star"
+      "toggle_love": "Add this track to favourites"
     }
   }
 }

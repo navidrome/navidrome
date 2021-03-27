@@ -1,24 +1,20 @@
 import React, { useCallback } from 'react'
 import PropTypes from 'prop-types'
-import StarIcon from '@material-ui/icons/Star'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteIcon from '@material-ui/icons/Favorite'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import IconButton from '@material-ui/core/IconButton'
 import { makeStyles } from '@material-ui/core/styles'
-import { useToggleStar } from './useToggleStar'
+import { useToggleLove } from './useToggleLove'
 
 const useStyles = makeStyles({
-  star: {
+  love: {
     color: (props) => props.color,
     visibility: (props) =>
-      props.visible === false
-        ? 'hidden'
-        : props.starred
-        ? 'visible'
-        : 'inherit',
+      props.visible === false ? 'hidden' : props.loved ? 'visible' : 'inherit',
   },
 })
 
-export const StarButton = ({
+export const LoveButton = ({
   resource,
   record,
   color,
@@ -29,36 +25,36 @@ export const StarButton = ({
   disabled,
   ...rest
 }) => {
-  const classes = useStyles({ color, visible, starred: record.starred })
-  const [toggleStar, loading] = useToggleStar(resource, record)
+  const classes = useStyles({ color, visible, loved: record.starred })
+  const [toggleLove, loading] = useToggleLove(resource, record)
 
-  const handleToggleStar = useCallback(
+  const handleToggleLove = useCallback(
     (e) => {
       e.preventDefault()
-      toggleStar()
+      toggleLove()
       e.stopPropagation()
     },
-    [toggleStar]
+    [toggleLove]
   )
 
   return (
     <Button
-      onClick={handleToggleStar}
+      onClick={handleToggleLove}
       size={'small'}
       disabled={disabled || loading}
-      className={classes.star}
+      className={classes.love}
       {...rest}
     >
       {record.starred ? (
-        <StarIcon fontSize={size} />
+        <FavoriteIcon fontSize={size} />
       ) : (
-        <StarBorderIcon fontSize={size} />
+        <FavoriteBorderIcon fontSize={size} />
       )}
     </Button>
   )
 }
 
-StarButton.propTypes = {
+LoveButton.propTypes = {
   resource: PropTypes.string.isRequired,
   record: PropTypes.object.isRequired,
   visible: PropTypes.bool,
@@ -68,7 +64,7 @@ StarButton.propTypes = {
   disabled: PropTypes.bool,
 }
 
-StarButton.defaultProps = {
+LoveButton.defaultProps = {
   addLabel: true,
   record: {},
   visible: true,

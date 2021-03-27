@@ -7,7 +7,7 @@ import {
   TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import StarIcon from '@material-ui/icons/Star'
+import FavoriteIcon from '@material-ui/icons/Favorite'
 import {
   DurationField,
   List,
@@ -25,7 +25,7 @@ import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
 import { AddToPlaylistDialog } from '../dialogs'
 import { makeStyles } from '@material-ui/core/styles'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -50,7 +50,7 @@ const SongFilter = (props) => (
     <SearchInput source="title" alwaysOn />
     <QuickFilter
       source="starred"
-      label={<StarIcon fontSize={'small'} />}
+      label={<FavoriteIcon fontSize={'small'} />}
       defaultValue={true}
     />
   </Filter>
@@ -115,7 +115,7 @@ const SongList = (props) => {
               sortByOrder={'DESC'}
               className={classes.contextMenu}
               label={
-                <StarBorderIcon
+                <FavoriteBorderIcon
                   fontSize={'small'}
                   className={classes.contextHeader}
                 />

@@ -3,7 +3,7 @@ import LibraryAddIcon from '@material-ui/icons/LibraryAdd'
 import VideoLibraryIcon from '@material-ui/icons/VideoLibrary'
 import RepeatIcon from '@material-ui/icons/Repeat'
 import AlbumIcon from '@material-ui/icons/Album'
-import StarIcon from '@material-ui/icons/Star'
+import FavoriteIcon from '@material-ui/icons/Favorite'
 
 export default {
   all: {
@@ -12,7 +12,7 @@ export default {
   },
   random: { icon: ShuffleIcon, params: 'sort=random' },
   starred: {
-    icon: StarIcon,
+    icon: FavoriteIcon,
     params: 'sort=starred_at&order=DESC&filter={"starred":true}',
   },
   recentlyAdded: {
