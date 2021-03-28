@@ -20,9 +20,17 @@ const musicListActions = {
       },
     },
     'button:first-child': {
+      '@media screen and (max-width: 720px)': {
+        transform: 'scale(1.5)',
+        margin: '1rem',
+        '&:hover': {
+          transform: 'scale(1.6) !important',
+        },
+      },
       transform: 'scale(2)',
       margin: '1.5rem',
       minWidth: 0,
+      padding: 5,
       transition: 'transform .3s ease',
       background: spotifyGreen['500'],
       color: '#fff',
@@ -60,7 +68,7 @@ export default {
       main: spotifyGreen['500'],
     },
     secondary: {
-      main: '#000',
+      main: '#fff',
       contrastText: '#fff',
     },
     background: {
@@ -95,11 +103,17 @@ export default {
         margin: '.75rem 0',
       },
     },
+    MuiIconButton: {
+      label: {
+        // color: '#fff'
+      },
+    },
     MuiButton: {
       root: {
         background: spotifyGreen['500'],
         color: '#fff',
         // margin: '5px',
+        border: '1px solid transparent',
         borderRadius: 500,
         '&:hover': {
           background: `${spotifyGreen['900']} !important`,
@@ -154,28 +168,24 @@ export default {
     },
     MuiAppBar: {
       positionFixed: {
-        backgroundColor: '#101420',
+        backgroundColor: '#000 !important',
         boxShadow: 'none',
       },
     },
     NDAlbumGridView: {
       albumName: {
-        fontSize: '1rem',
         marginTop: '0.5rem',
-        marginBottom: '0.25rem',
         fontWeight: 700,
-        lineHeight: '1.5rem',
         textTransform: 'none',
         color: '#fff',
       },
       albumSubtitle: {
         color: '#b3b3b3',
-        fontSize: '0.875rem',
       },
       albumContainer: {
         backgroundColor: '#181818',
         borderRadius: '.5rem',
-        padding: '1rem',
+        padding: '.75rem',
         transition: 'background-color .3s ease',
         '&:hover': {
           backgroundColor: '#282828',
@@ -214,11 +224,14 @@ export default {
       root: {
         background: 'linear-gradient(#1d1d1d, transparent)',
         borderRadius: 0,
-        paddingTop: '3.5rem !important',
         boxShadow: 'none',
       },
+      cardContents: {
+        alignItems: 'center',
+        paddingTop: '1.5rem',
+      },
       recordName: {
-        fontSize: 'calc(1.5rem + 1.5vw);',
+        fontSize: 'calc(1rem + 1.5vw);',
         fontWeight: 700,
       },
       recordArtist: {
@@ -257,13 +270,6 @@ export default {
       },
     },
     RaLayout: {
-      appFrame: {
-        '@global': {
-          '.panel-content': {
-            display: 'none',
-          },
-        },
-      },
       content: {
         padding: '0 !important',
         background: 'linear-gradient(#171717, #121212)',
@@ -276,11 +282,11 @@ export default {
     },
     RaSearchInput: {
       input: {
-        borderRadius: 500,
-        width: '20rem',
+        // borderRadius: 500,
+        // width: '20rem',
         paddingLeft: '.9rem',
         border: 0,
-        height: '2.5rem',
+        // height: '2.5rem',
       },
     },
     RaFilterButton: {
