@@ -9,7 +9,8 @@ import { createMuiTheme } from '@material-ui/core/styles'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 
-const Placeholder = () => <LoveButton disabled={true} resource={'song'} />
+const Placeholder = () =>
+  config.enableFavourites && <LoveButton disabled={true} resource={'song'} />
 
 const Toolbar = ({ id }) => {
   const location = useLocation()
@@ -36,7 +37,6 @@ const Toolbar = ({ id }) => {
   )
 }
 
-const PlayerToolbar = ({ id }) =>
-  id ? <Toolbar id={id} /> : config.enableFavourites && <Placeholder />
+const PlayerToolbar = ({ id }) => (id ? <Toolbar id={id} /> : <Placeholder />)
 
 export default PlayerToolbar
