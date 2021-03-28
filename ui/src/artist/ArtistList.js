@@ -54,7 +54,6 @@ const ArtistListView = ({
   hasEdit,
   hasList,
   width,
-  syncWithLocation,
   ...rest
 }) => {
   const classes = useStyles()
