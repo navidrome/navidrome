@@ -12,7 +12,6 @@ import {
   DateField,
   NumberField,
   Show,
-  SimpleShowLayout,
   TextField,
   useTranslate,
 } from 'react-admin'
@@ -24,7 +23,6 @@ import {
   DurationField,
   RangeField,
   SimpleList,
-  SizeField,
   MultiLineTextField,
   AlbumContextMenu,
 } from '../common'
