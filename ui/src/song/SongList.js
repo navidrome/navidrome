@@ -120,7 +120,6 @@ const SongList = (props) => {
                   className={classes.contextHeader}
                 />
               }
-              textAlign={'right'}
             />
           </SongDatagrid>
         )}
