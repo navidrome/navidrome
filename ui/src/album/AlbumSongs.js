@@ -21,6 +21,7 @@ import {
   SongTitleField,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
+import { QualityInfo } from '../common/QualityInfo'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -118,6 +119,7 @@ const AlbumSongs = (props) => {
             />
             {isDesktop && <TextField source="artist" sortable={false} />}
             <DurationField source="duration" sortable={false} />
+            <QualityInfo/>
             <SongContextMenu
               source={'starred'}
               sortable={false}
