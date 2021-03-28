@@ -49,14 +49,7 @@ const ArtistFilter = (props) => (
   </Filter>
 )
 
-const ArtistListView = ({
-  hasShow,
-  hasEdit,
-  hasList,
-  width,
-  syncWithLocation,
-  ...rest
-}) => {
+const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
