@@ -8,15 +8,15 @@ import {
   TextField,
 } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
-import StarIcon from '@material-ui/icons/Star'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteIcon from '@material-ui/icons/Favorite'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { AddToPlaylistDialog } from '../dialogs'
 import {
   ArtistContextMenu,
   List,
   QuickFilter,
-  SimpleList,
   useGetHandleArtistClick,
+  ArtistSimpleList,
 } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -43,24 +43,27 @@ const ArtistFilter = (props) => (
     <SearchInput source="name" alwaysOn />
     <QuickFilter
       source="starred"
-      label={<StarIcon fontSize={'small'} />}
+      label={<FavoriteIcon fontSize={'small'} />}
       defaultValue={true}
     />
   </Filter>
 )
 
-const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
+const ArtistListView = ({
+  hasShow,
+  hasEdit,
+  hasList,
+  width,
+  syncWithLocation,
+  ...rest
+}) => {
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return isXsmall ? (
-    <SimpleList
-      primaryText={(r) => r.name}
-      linkType={(id) => {
-        history.push(handleArtistLink(id))
-      }}
-      rightIcon={(r) => <ArtistContextMenu record={r} />}
+    <ArtistSimpleList
+      linkType={(id) => history.push(handleArtistLink(id))}
       {...rest}
     />
   ) : (
@@ -75,7 +78,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
         sortByOrder={'DESC'}
         className={classes.contextMenu}
         label={
-          <StarBorderIcon
+          <FavoriteBorderIcon
             fontSize={'small'}
             className={classes.contextHeader}
           />

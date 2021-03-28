@@ -38,7 +38,6 @@ func (a *Server) MountRouter(urlPath string, subRouter Handler) {
 	log.Info("Mounting routes", "path", urlPath)
 	subRouter.Setup(urlPath)
 	a.router.Group(func(r chi.Router) {
-		r.Use(requestLogger)
 		r.Mount(urlPath, subRouter)
 	})
 }
@@ -59,6 +58,7 @@ func (a *Server) initRoutes() {
 	r.Use(middleware.Compress(5, "application/xml", "application/json", "application/javascript"))
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(injectLogger)
+	r.Use(requestLogger)
 	r.Use(robotsTXT(ui.Assets()))
 
 	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI, "index.html")

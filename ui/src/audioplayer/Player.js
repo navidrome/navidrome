@@ -5,7 +5,8 @@ import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
-import { makeStyles } from '@material-ui/core/styles'
+import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
+import { ThemeProvider } from '@material-ui/styles'
 import { GlobalHotKeys } from 'react-hotkeys'
 import subsonic from '../subsonic'
 import {
@@ -15,16 +16,16 @@ import {
   setVolume,
   clearQueue,
 } from '../actions'
-import themes from '../themes'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification, baseUrl } from '../utils'
 import { keyMap } from '../hotkeys'
+import useCurrentTheme from '../themes/useCurrentTheme'
 
 const useStyle = makeStyles((theme) => ({
   audioTitle: {
     textDecoration: 'none',
-    color: theme.palette.primary.light,
+    color: theme.palette.primary.dark,
     '&.songTitle': {
       fontWeight: 'bold',
     },
@@ -36,7 +37,10 @@ const useStyle = makeStyles((theme) => ({
 
 let audioInstance = null
 
-const AudioTitle = React.memo(({ audioInfo, isMobile, className }) => {
+const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
+  const classes = useStyle()
+  const className = classes.audioTitle
+
   if (!audioInfo.name) {
     return ''
   }
@@ -58,8 +62,7 @@ const AudioTitle = React.memo(({ audioInfo, isMobile, className }) => {
 
 const Player = () => {
   const translate = useTranslate()
-  const currentTheme = useSelector((state) => state.theme)
-  const theme = themes[currentTheme] || themes.DarkTheme
+  const theme = useCurrentTheme()
   const playerTheme = (theme.player && theme.player.theme) || 'dark'
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
@@ -151,11 +154,9 @@ const Player = () => {
     },
     volumeFade: { fadeIn: 200, fadeOut: 200 },
     renderAudioTitle: (audioInfo, isMobile) => (
-      <AudioTitle
-        audioInfo={audioInfo}
-        isMobile={isMobile}
-        className={classes.audioTitle}
-      />
+      <ThemeProvider theme={createMuiTheme(theme)}>
+        <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
+      </ThemeProvider>
     ),
     locale: {
       playListsText: translate('player.playListsText'),

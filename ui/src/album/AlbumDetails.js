@@ -18,7 +18,7 @@ import {
   DurationField,
   formatRange,
   SizeField,
-  StarButton,
+  LoveButton,
 } from '../common'
 
 const useStyles = makeStyles((theme) => ({
@@ -66,7 +66,7 @@ const useStyles = makeStyles((theme) => ({
     width: '100%',
     height: '100%',
   },
-  starButton: {
+  loveButton: {
     top: theme.spacing(-0.2),
     left: theme.spacing(0.5),
   },
@@ -74,6 +74,7 @@ const useStyles = makeStyles((theme) => ({
     display: 'inline-block',
     marginTop: '1em',
     float: 'left',
+    wordBreak: 'break-all',
   },
   pointerCursor: {
     cursor: 'pointer',
@@ -159,12 +160,12 @@ const AlbumDetails = ({ record }) => {
           <CardContent className={classes.content}>
             <Typography variant="h5">
               {record.name}
-              <StarButton
-                className={classes.starButton}
+              <LoveButton
+                className={classes.loveButton}
                 record={record}
                 resource={'album'}
                 size={isDesktop ? 'default' : 'small'}
-                aria-label="star"
+                aria-label="love"
                 color="primary"
               />
             </Typography>

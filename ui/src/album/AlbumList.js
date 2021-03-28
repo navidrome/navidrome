@@ -11,7 +11,7 @@ import {
   Pagination,
   useTranslate,
 } from 'react-admin'
-import StarIcon from '@material-ui/icons/Star'
+import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
 import { List, QuickFilter, Title, useAlbumsPerPage } from '../common'
 import AlbumListActions from './AlbumListActions'
@@ -38,7 +38,7 @@ const AlbumFilter = (props) => {
       <NumberInput source="year" />
       <QuickFilter
         source="starred"
-        label={<StarIcon fontSize={'small'} />}
+        label={<FavoriteIcon fontSize={'small'} />}
         defaultValue={true}
       />
     </Filter>

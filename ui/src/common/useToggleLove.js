@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDataProvider, useNotify } from 'react-admin'
 import subsonic from '../subsonic'
 
-export const useToggleStar = (resource, record = {}) => {
+export const useToggleLove = (resource, record = {}) => {
   const [loading, setLoading] = useState(false)
   const notify = useNotify()
 
@@ -24,14 +24,14 @@ export const useToggleStar = (resource, record = {}) => {
     })
   }, [dataProvider, record.id, resource])
 
-  const toggleStar = () => {
+  const toggleLove = () => {
     const toggle = record.starred ? subsonic.unstar : subsonic.star
 
     setLoading(true)
     toggle(record.id)
       .then(refreshRecord)
       .catch((e) => {
-        console.log('Error toggling star: ', e)
+        console.log('Error toggling love: ', e)
         notify('ra.page.error', 'warning')
         if (mountedRef.current) {
           setLoading(false)
@@ -39,5 +39,5 @@ export const useToggleStar = (resource, record = {}) => {
       })
   }
 
-  return [toggleStar, loading]
+  return [toggleLove, loading]
 }

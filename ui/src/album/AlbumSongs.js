@@ -12,9 +12,9 @@ import { useHistory } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { Card, useMediaQuery, Typography } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
 import get from 'lodash.get'
 import { playTracks, togglePlayAction } from '../actions'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import {
   DurationField,
   SongBulkActions,
@@ -222,7 +222,7 @@ const AlbumSongs = (props) => {
               sortable={false}
               className={classes.contextMenu}
               label={
-                <StarBorderIcon
+                <FavoriteBorderIcon
                   fontSize={'small'}
                   className={classes.columnIcon}
                 />
