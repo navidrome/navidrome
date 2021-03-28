@@ -20,7 +20,6 @@ const useStyles = makeStyles({
   toolbar: {
     display: 'flex',
     justifyContent: 'space-between',
-    paddingLeft: '51px',
   },
 })
 
