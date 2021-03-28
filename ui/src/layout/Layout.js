@@ -9,7 +9,9 @@ import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 
 const useStyles = makeStyles({
-  root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
+  root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0),
+  '& .MuiAppBar-root': { paddingRight: '0!important' },
+ },
 })
 
 export default (props) => {
