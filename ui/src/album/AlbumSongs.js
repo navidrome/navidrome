@@ -119,7 +119,7 @@ const AlbumSongs = (props) => {
             />
             {isDesktop && <TextField source="artist" sortable={false} />}
             <DurationField source="duration" sortable={false} />
-            <QualityInfo/>
+            <QualityInfo />
             <SongContextMenu
               source={'starred'}
               sortable={false}
