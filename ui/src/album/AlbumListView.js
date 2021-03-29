@@ -40,7 +40,7 @@ const useStyles = makeStyles({
   },
 })
 
-const AlbumDetails = (props) => {
+const AlbumDetails = ({ syncWithLocation, ...props }) => {
   return (
     <Show {...props} title=" ">
       <SimpleShowLayout>
