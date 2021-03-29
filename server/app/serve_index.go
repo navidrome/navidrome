@@ -36,6 +36,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"enableDownloads":         conf.Server.EnableDownloads,
+			"enableFavourites":        conf.Server.EnableFavourites,
 			"devActivityPanel":        conf.Server.DevActivityPanel,
 			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 		}
