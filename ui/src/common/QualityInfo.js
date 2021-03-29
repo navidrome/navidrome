@@ -5,7 +5,7 @@ export const QualityInfo = (props) => {
   let { suffix, bitRate } = props.record
   suffix = suffix.toUpperCase()
   let info = suffix
-  if (bitRate !== ''){
+  if (bitRate !== '') {
     info += ' ' + bitRate
   }
 
