@@ -23,7 +23,7 @@
     "react-image-lightbox": "^5.1.1",
     "react-jinke-music-player": "^4.21.2",
     "react-measure": "^2.5.2",
-    "react-redux": "^7.2.2",
+    "react-redux": "^7.2.3",
     "react-scripts": "^3.4.3",
     "uuid": "^8.3.2"
   },
