@@ -1,7 +1,13 @@
+/* eslint-disable react/prop-types */
 import React, { useState, createElement } from 'react'
 import { useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
-import { useTranslate, MenuItemLink, getResources } from 'react-admin'
+import {
+  useTranslate,
+  MenuItemLink,
+  getResources,
+  useGetList,
+} from 'react-admin'
 import { withRouter } from 'react-router-dom'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import ViewListIcon from '@material-ui/icons/ViewList'
@@ -10,6 +16,7 @@ import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
+import Playlist from '../icons/Playlist'
 
 const translatedResourceName = (resource, translate) =>
   translate(`resources.${resource.name}.name`, {
@@ -28,11 +35,18 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
   const resources = useSelector(getResources)
+  const { ids, data } = useGetList(
+    'playlist',
+    { page: 1, perPage: -1 },
+    { field: 'name', order: 'ASC' },
+    {}
+  )
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
     menuAlbumList: true,
     menuLibrary: true,
+    menuPlaylists: true,
     menuSettings: false,
   })
 
@@ -80,11 +94,26 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     )
   }
 
-  const subItems = (subMenu) => (resource) =>
-    resource.hasList && resource.options && resource.options.subMenu === subMenu
+  const subItems = (subMenu) => (resource) => {
+    const { hasList, options, name } = resource
+    return hasList && name !== 'playlist' && options?.subMenu === subMenu
+  }
+
+  const RenderPlaylistLinks = ({ id, playlistItem }) => {
+    return (
+      <MenuItemLink
+        key={id}
+        to={`/playlist/${id}/show`}
+        primaryText={playlistItem.name}
+        onClick={onMenuClick}
+        sidebarIsOpen={open}
+        dense={dense}
+      />
+    )
+  }
 
   return (
-    <div>
+    <div style={{ maxHeight: '92vh' }}>
       <SubMenu
         handleToggle={() => handleToggle('menuAlbumList')}
         isOpen={state.menuAlbumList}
@@ -107,6 +136,22 @@ const Menu = ({ onMenuClick, dense, logout }) => {
       >
         {resources.filter(subItems('library')).map(renderResourceMenuItemLink)}
       </SubMenu>
+      <SubMenu
+        handleToggle={() => handleToggle('menuPlaylists')}
+        isOpen={state.menuPlaylists}
+        sidebarIsOpen={open}
+        name="resources.playlist.name"
+        icon={<Playlist />}
+        dense={dense}
+        goInto="/playlist"
+      >
+        {open && ids.length
+          ? ids.map((id) => (
+              <RenderPlaylistLinks key={id} id={id} playlistItem={data[id]} />
+            ))
+          : null}
+      </SubMenu>
+
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
       {isXsmall && logout}
       <HelpDialog />
