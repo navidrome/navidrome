@@ -163,7 +163,7 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
               {isDesktop && <AlbumLinkField source="album" />}
               {isDesktop && <TextField source="artist" />}
               <DurationField source="duration" className={classes.draggable} />
-              <QualityInfo label="Info" />
+              <QualityInfo label="Quality" />
               <SongContextMenu
                 onAddToPlaylist={onAddToPlaylist}
                 showStar={false}

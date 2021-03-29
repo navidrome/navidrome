@@ -24,7 +24,7 @@ const Toolbar = ({ id }) => {
 
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
-      <QualityInfo song={data} />
+      <QualityInfo record={data} />
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       <LoveButton
         record={data}
