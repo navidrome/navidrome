@@ -133,7 +133,7 @@ const ContextMenu = ({
       <LoveButton
         record={record}
         resource={resource}
-        visible={showLove}
+        visible={config.enableFavourites && showLove}
         color={color}
       />
       <IconButton

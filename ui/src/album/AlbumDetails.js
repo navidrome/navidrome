@@ -20,6 +20,7 @@ import {
   SizeField,
   LoveButton,
 } from '../common'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -160,14 +161,16 @@ const AlbumDetails = ({ record }) => {
           <CardContent className={classes.content}>
             <Typography variant="h5">
               {record.name}
-              <LoveButton
-                className={classes.loveButton}
-                record={record}
-                resource={'album'}
-                size={isDesktop ? 'default' : 'small'}
-                aria-label="love"
-                color="primary"
-              />
+              {config.enableFavourites && (
+                <LoveButton
+                  className={classes.loveButton}
+                  record={record}
+                  resource={'album'}
+                  size={isDesktop ? 'default' : 'small'}
+                  aria-label="love"
+                  color="primary"
+                />
+              )}
             </Typography>
             <Typography component="h6">
               <ArtistLinkField record={record} />

@@ -26,6 +26,7 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { AddToPlaylistDialog } from '../dialogs'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
+import config from '../config'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -48,11 +49,13 @@ const useStyles = makeStyles({
 const SongFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
     <SearchInput source="title" alwaysOn />
-    <QuickFilter
-      source="starred"
-      label={<FavoriteIcon fontSize={'small'} />}
-      defaultValue={true}
-    />
+    {config.enableFavourites && (
+      <QuickFilter
+        source="starred"
+        label={<FavoriteIcon fontSize={'small'} />}
+        defaultValue={true}
+      />
+    )}
   </Filter>
 )
 
@@ -113,12 +116,15 @@ const SongList = (props) => {
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}
               sortByOrder={'DESC'}
+              sortable={config.enableFavourites}
               className={classes.contextMenu}
               label={
-                <FavoriteBorderIcon
-                  fontSize={'small'}
-                  className={classes.contextHeader}
-                />
+                config.enableFavourites && (
+                  <FavoriteBorderIcon
+                    fontSize={'small'}
+                    className={classes.contextHeader}
+                  />
+                )
               }
             />
           </SongDatagrid>
