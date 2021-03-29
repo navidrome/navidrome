@@ -14,7 +14,7 @@ func upCreateSharesTable(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table share
 (
-    id             varchar(255) not null primary key,
+	id             varchar(255) not null primary key,
 	url            varchar(255) not null unique,
 	description    varchar(255),
 	expires        datetime,
