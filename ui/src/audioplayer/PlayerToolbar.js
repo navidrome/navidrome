@@ -7,8 +7,10 @@ import { keyMap } from '../hotkeys'
 import { ThemeProvider } from '@material-ui/styles'
 import { createMuiTheme } from '@material-ui/core/styles'
 import useCurrentTheme from '../themes/useCurrentTheme'
+import config from '../config'
 
-const Placeholder = () => <LoveButton disabled={true} resource={'song'} />
+const Placeholder = () =>
+  config.enableFavourites && <LoveButton disabled={true} resource={'song'} />
 
 const Toolbar = ({ id }) => {
   const location = useLocation()
@@ -24,11 +26,13 @@ const Toolbar = ({ id }) => {
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
-      <LoveButton
-        record={data}
-        resource={resource}
-        disabled={loading || toggling}
-      />
+      {config.enableFavourites && (
+        <LoveButton
+          record={data}
+          resource={resource}
+          disabled={loading || toggling}
+        />
+      )}
     </ThemeProvider>
   )
 }
