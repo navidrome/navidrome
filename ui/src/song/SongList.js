@@ -27,6 +27,7 @@ import { AddToPlaylistDialog } from '../dialogs'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import config from '../config'
+import { QualityInfo } from '../common/QualityInfo'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -111,6 +112,7 @@ const SongList = (props) => {
                 sortByOrder={'DESC'}
               />
             )}
+            <QualityInfo label="Quality" sortable={false} />
             <DurationField source="duration" />
             <SongContextMenu
               source={'starred'}

@@ -23,10 +23,9 @@ const Toolbar = ({ id }) => {
   const handlers = {
     TOGGLE_LOVE: useCallback(() => toggleLove(), [toggleLove]),
   }
-
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
-      <QualityInfo record={data} />
+      {data && <QualityInfo source="quality" record={data} sortable={false} />}
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       {config.enableFavourites && (
         <LoveButton

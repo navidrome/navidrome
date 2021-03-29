@@ -5,7 +5,8 @@ export const QualityInfo = (props) => {
   let { suffix, bitRate } = props.record
   suffix = suffix.toUpperCase()
   let info = suffix
-  if (bitRate !== '') {
+  let lossLessFormats = ['FLAC', 'WAV', 'DSF']
+  if (!lossLessFormats.includes(bitRate)) {
     info += ' ' + bitRate
   }
 
