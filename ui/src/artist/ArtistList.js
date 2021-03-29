@@ -19,6 +19,7 @@ import {
   ArtistSimpleList,
 } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
+import config from '../config'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -41,22 +42,17 @@ const useStyles = makeStyles({
 const ArtistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
     <SearchInput source="name" alwaysOn />
-    <QuickFilter
-      source="starred"
-      label={<FavoriteIcon fontSize={'small'} />}
-      defaultValue={true}
-    />
+    {config.enableFavourites && (
+      <QuickFilter
+        source="starred"
+        label={<FavoriteIcon fontSize={'small'} />}
+        defaultValue={true}
+      />
+    )}
   </Filter>
 )
 
-const ArtistListView = ({
-  hasShow,
-  hasEdit,
-  hasList,
-  width,
-  syncWithLocation,
-  ...rest
-}) => {
+const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
@@ -76,12 +72,15 @@ const ArtistListView = ({
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
         sortByOrder={'DESC'}
+        sortable={config.enableFavourites}
         className={classes.contextMenu}
         label={
-          <FavoriteBorderIcon
-            fontSize={'small'}
-            className={classes.contextHeader}
-          />
+          config.enableFavourites && (
+            <FavoriteBorderIcon
+              fontSize={'small'}
+              className={classes.contextHeader}
+            />
+          )
         }
       />
     </Datagrid>

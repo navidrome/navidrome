@@ -19,6 +19,7 @@ import AlbumListView from './AlbumListView'
 import AlbumGridView from './AlbumGridView'
 import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
+import config from '../config'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -36,11 +37,13 @@ const AlbumFilter = (props) => {
       </ReferenceInput>
       <NullableBooleanInput source="compilation" />
       <NumberInput source="year" />
-      <QuickFilter
-        source="starred"
-        label={<FavoriteIcon fontSize={'small'} />}
-        defaultValue={true}
-      />
+      {config.enableFavourites && (
+        <QuickFilter
+          source="starred"
+          label={<FavoriteIcon fontSize={'small'} />}
+          defaultValue={true}
+        />
+      )}
     </Filter>
   )
 }

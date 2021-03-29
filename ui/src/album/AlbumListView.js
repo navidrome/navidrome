@@ -20,6 +20,7 @@ import {
   MultiLineTextField,
   AlbumContextMenu,
 } from '../common'
+import config from '../config'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -91,12 +92,15 @@ const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
         sortByOrder={'DESC'}
+        sortable={config.enableFavourites}
         className={classes.contextMenu}
         label={
-          <FavoriteBorderIcon
-            fontSize={'small'}
-            className={classes.columnIcon}
-          />
+          config.enableFavourites && (
+            <FavoriteBorderIcon
+              fontSize={'small'}
+              className={classes.columnIcon}
+            />
+          )
         }
       />
     </Datagrid>
