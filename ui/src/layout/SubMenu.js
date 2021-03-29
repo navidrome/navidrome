@@ -8,7 +8,8 @@ import Divider from '@material-ui/core/Divider'
 import Collapse from '@material-ui/core/Collapse'
 import Tooltip from '@material-ui/core/Tooltip'
 import { makeStyles } from '@material-ui/core/styles'
-import { useTranslate } from 'react-admin'
+import { MenuItemLink, useTranslate } from 'react-admin'
+import ArrowForwardIcon from '@material-ui/icons/ArrowForward'
 
 const useStyles = makeStyles((theme) => ({
   icon: { minWidth: theme.spacing(5) },
@@ -30,19 +31,31 @@ const SubMenu = ({
   icon,
   children,
   dense,
+  goInto = '',
 }) => {
   const translate = useTranslate()
   const classes = useStyles()
 
   const header = (
-    <MenuItem dense={dense} button onClick={handleToggle}>
-      <ListItemIcon className={classes.icon}>
-        {isOpen ? <ExpandMore /> : icon}
-      </ListItemIcon>
-      <Typography variant="inherit" color="textSecondary">
-        {translate(name)}
-      </Typography>
-    </MenuItem>
+    <div style={{ display: 'flex' }}>
+      <MenuItem dense={dense} onClick={handleToggle}>
+        <ListItemIcon className={classes.icon}>
+          {isOpen ? <ExpandMore /> : icon}
+        </ListItemIcon>
+        <Typography variant="inherit" color="textSecondary">
+          {translate(name)}
+        </Typography>
+      </MenuItem>
+      <div>
+        {goInto ? (
+          <MenuItemLink
+            to={goInto}
+            primaryText={<ArrowForwardIcon />}
+            sidebarIsOpen={true}
+          />
+        ) : null}
+      </div>
+    </div>
   )
 
   return (
