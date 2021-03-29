@@ -10,7 +10,6 @@ import useCurrentTheme from '../themes/useCurrentTheme'
 import { QualityInfo } from '../common/QualityInfo'
 import config from '../config'
 
-
 const Placeholder = () =>
   config.enableFavourites && <LoveButton disabled={true} resource={'song'} />
 
