@@ -5,13 +5,13 @@ import (
 )
 
 type Share struct {
-	ID            string    `json:"id"          orm:"column(id)"`
+	ID            string    `json:"id"            orm:"column(id)"`
 	Url           string    `json:"url"`
 	Description   string    `json:"description"`
-	ExpiresAt     time.Time `json:"expires"`
-	CreatedAt     time.Time `json:"created"`
-	LastVisitedAt time.Time `json:"lastVisited"`
-	ResourceID    string    `json:"resourceID"`
+	ExpiresAt     time.Time `json:"expiresAt"`
+	CreatedAt     time.Time `json:"createdAt"`
+	LastVisitedAt time.Time `json:"lastVisitedAt"`
+	ResourceID    string    `json:"resourceID"    orm:"column(resource_id)"`
 	ResourceType  string    `json:"resourceType"`
 	VisitCount    string    `json:"visitCount"`
 }
@@ -19,8 +19,6 @@ type Share struct {
 type Shares []Share
 
 type ShareRepository interface {
-	Put(s *Share) (*Share, error)
+	Put(s *Share) error
 	GetAll(options ...QueryOptions) (Shares, error)
-	Update(s *Share) error
-	Delete(id string) error
 }
