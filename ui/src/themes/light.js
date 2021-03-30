@@ -7,6 +7,12 @@ export default {
       main: '#3f51b5',
       contrastText: '#fff',
     },
+    background: {
+      default: 'rgba(255, 255, 255, 0.8)',
+    },
+    error: {
+      main: '#ff9800',
+    },
   },
   overrides: {
     MuiFilledInput: {

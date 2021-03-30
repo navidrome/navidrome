@@ -11,7 +11,6 @@ import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
 import { ThemeProvider } from '@material-ui/styles'
 import Logo from '../icons/android-icon-72x72.png'
 import { useLogin, useNotify, useTranslate } from 'react-admin'
-
 import Notification from './Notification'
 import LightTheme from '../themes/light'
 import config from '../config'
@@ -24,7 +23,7 @@ const useStyles = makeStyles((theme) => ({
     minHeight: '100vh',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    background: `url(${config.loginBackgroundURL})`,
+    background: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${config.loginBackgroundURL})`,
     backgroundRepeat: 'no-repeat',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
@@ -32,6 +31,7 @@ const useStyles = makeStyles((theme) => ({
   card: {
     minWidth: 300,
     marginTop: '6em',
+    backgroundColor: theme.palette.background.default,
   },
   avatar: {
     margin: '1em',
@@ -39,7 +39,7 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
   },
   icon: {
-    backgroundColor: 'white',
+    //backgroundColor: 'white',
     width: '40px',
   },
   systemName: {
