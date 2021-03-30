@@ -269,6 +269,33 @@ export default {
         border: '10px solid blue',
       },
     },
+    NDLogin: {
+      main: {
+        boxShadow: 'inset 0 0 0 2000px rgba(0, 0, 0, .8)',
+      },
+      systemNameLink: {
+        color: '#fff',
+        textDecoration: 'none',
+      },
+      systemName: {
+        marginTop: '0.5em',
+        // borderBottom: '1px solid #282828',
+        marginBottom: '1em',
+      },
+      icon: {
+        backgroundColor: 'inherit',
+      },
+      card: {
+        // background: 'none',
+        background: 'none',
+        boxShadow: 'none',
+        padding: '10px 0',
+        minWidth: 360,
+      },
+      avatar: {
+        marginBottom: 0,
+      },
+    },
     RaLayout: {
       content: {
         padding: '0 !important',
@@ -316,14 +343,6 @@ export default {
             marginRight: 8,
           },
         },
-      },
-    },
-    NDLogin: {
-      systemNameLink: {
-        color: '#fff',
-      },
-      welcome: {
-        color: '#eee',
       },
     },
   },
