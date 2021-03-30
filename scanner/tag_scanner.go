@@ -105,7 +105,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	}
 
 	// If the media folder is empty, abort to avoid deleting all data
-	if len(allFSDirs) <= 1 {
+	if len(allFSDirs) <= 0 {
 		log.Error(ctx, "Media Folder is empty. Aborting scan.", "folder", s.rootFolder)
 		return nil
 	}
