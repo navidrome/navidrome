@@ -11,7 +11,6 @@ import useCurrentTheme from '../themes/useCurrentTheme'
 const useStyles = makeStyles({
   root: {
     paddingBottom: (props) => (props.addPadding ? '80px' : 0),
-    '& .MuiAppBar-root': { paddingRight: '0!important' },
   },
 })
 

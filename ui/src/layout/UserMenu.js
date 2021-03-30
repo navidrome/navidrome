@@ -45,7 +45,12 @@ const UserMenu = (props) => {
   const open = Boolean(anchorEl)
 
   const handleMenu = (event) => setAnchorEl(event.currentTarget)
-  const handleClose = () => setAnchorEl(null)
+  const handleClose = () => {setAnchorEl(null)
+    document.body.style.paddingRight = "0px"
+  }
+  const handleOpen = () => {
+    document.body.style.paddingRight = "0px"
+  }
 
   return (
     <div className={classes.user}>
@@ -82,6 +87,7 @@ const UserMenu = (props) => {
         }}
         open={open}
         onClose={handleClose}
+        onEntering={handleOpen}
       >
         <MenuList>
           {loaded && (
