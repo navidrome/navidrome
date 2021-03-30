@@ -41,7 +41,7 @@ const useStyles = makeStyles({
     },
   },
   tableCell: {
-    width: '20%',
+    width: '17.5%',
   },
   contextMenu: {
     visibility: 'hidden',
