@@ -40,7 +40,7 @@ const useStyles = makeStyles({
   },
 })
 
-const AlbumDetails = ({ syncWithLocation, ...props }) => {
+const AlbumDetails = (props) => {
   return (
     <Show {...props} title=" ">
       <SimpleShowLayout>
@@ -57,7 +57,13 @@ const AlbumDetails = ({ syncWithLocation, ...props }) => {
   )
 }
 
-const AlbumListView = ({ hasShow, hasEdit, hasList, ...rest }) => {
+const AlbumListView = ({
+  hasShow,
+  hasEdit,
+  hasList,
+  syncWithLocation,
+  ...rest
+}) => {
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
