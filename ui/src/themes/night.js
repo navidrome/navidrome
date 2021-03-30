@@ -13,10 +13,6 @@ export default {
     },
     secondary: blue,
     type: 'dark',
-    extraAttribute: {
-      theme: 'extradark',
-      subtitle: '#555555',
-    },
   },
   overrides: {
     MuiFormGroup: {
