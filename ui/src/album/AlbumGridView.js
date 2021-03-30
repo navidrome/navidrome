@@ -103,7 +103,7 @@ const useCoverStyles = makeStyles({
 const getColsForWidth = (width) => {
   if (width === 'xs') return 2
   if (width === 'sm') return 3
-  if (width === 'md') return 5
+  if (width === 'md') return 4
   if (width === 'lg') return 6
   return 9
 }
