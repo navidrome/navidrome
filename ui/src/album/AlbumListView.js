@@ -41,7 +41,7 @@ const useStyles = makeStyles({
     },
   },
   tableCell: {
-    width: '25%',
+    width: '20%',
   },
   contextMenu: {
     visibility: 'hidden',
@@ -52,7 +52,6 @@ const AlbumDetails = (props) => {
   const classes = useStyles()
   const translate = useTranslate()
   const { record } = props
-  console.log(props)
   const data = {
     albumArtist: <TextField record={record} source="albumArtist" />,
     genre: <TextField record={record} source="genre" />,
