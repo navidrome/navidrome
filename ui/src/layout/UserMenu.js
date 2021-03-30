@@ -45,11 +45,12 @@ const UserMenu = (props) => {
   const open = Boolean(anchorEl)
 
   const handleMenu = (event) => setAnchorEl(event.currentTarget)
-  const handleClose = () => {setAnchorEl(null)
-    document.body.style.paddingRight = "0px"
+  const handleClose = () => {
+    setAnchorEl(null)
+    document.body.style.paddingRight = '0px'
   }
   const handleOpen = () => {
-    document.body.style.paddingRight = "0px"
+    document.body.style.paddingRight = '0px'
   }
 
   return (
