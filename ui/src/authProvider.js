@@ -99,9 +99,10 @@ const removeItems = () => {
 }
 
 const clearServiceWorkerCache = () => {
-  caches.keys().then(function (keyList) {
-    for (let key of keyList) caches.delete(key)
-  })
+  window.caches &&
+    caches.keys().then(function (keyList) {
+      for (let key of keyList) caches.delete(key)
+    })
 }
 
 const generateSubsonicSalt = () => {
