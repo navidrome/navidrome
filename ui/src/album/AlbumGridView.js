@@ -129,18 +129,18 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
         to={linkToRecord(basePath, record.id, 'show')}
       >
         <Typography className={classes.albumName}>{record.name}</Typography>
-        {showArtist ? (
-          <ArtistLinkField record={record} className={classes.albumSubtitle} />
-        ) : (
-          <RangeField
-            record={record}
-            source={'year'}
-            sortBy={'maxYear'}
-            sortByOrder={'DESC'}
-            className={classes.albumSubtitle}
-          />
-        )}
       </Link>
+      {showArtist ? (
+        <ArtistLinkField record={record} className={classes.albumSubtitle} />
+      ) : (
+        <RangeField
+          record={record}
+          source={'year'}
+          sortBy={'maxYear'}
+          sortByOrder={'DESC'}
+          className={classes.albumSubtitle}
+        />
+      )}
     </div>
   )
 }
