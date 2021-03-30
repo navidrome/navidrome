@@ -26,6 +26,16 @@ var _ = Describe("serveIndex", func() {
 		conf.Server.UILoginBackgroundURL = ""
 	})
 
+	It("redirects bare /app path to /app/", func() {
+		r := httptest.NewRequest("GET", "/app", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		Expect(w.Code).To(Equal(302))
+		Expect(w.Header().Get("Location")).To(Equal("/app/"))
+	})
+
 	It("adds app_config to index.html", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
