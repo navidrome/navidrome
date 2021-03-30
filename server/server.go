@@ -61,7 +61,7 @@ func (a *Server) initRoutes() {
 	r.Use(injectLogger)
 	r.Use(robotsTXT(ui.Assets()))
 
-	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI, "index.html")
+	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI)
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, indexHtml, 302)
 	})
