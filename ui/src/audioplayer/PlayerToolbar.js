@@ -25,7 +25,7 @@ const Toolbar = ({ id }) => {
   }
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
-      {data && <QualityInfo source="quality" record={data} sortable={false} />}
+      {data && <QualityInfo record={data} sortable={false} />}
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       {config.enableFavourites && (
         <LoveButton

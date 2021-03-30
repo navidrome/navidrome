@@ -1,12 +1,12 @@
 import React from 'react'
 import Chip from '@material-ui/core/Chip'
+import LOSSLESS_FORMATS from './consts'
 
 export const QualityInfo = (props) => {
   let { suffix, bitRate } = props.record
   suffix = suffix.toUpperCase()
   let info = suffix
-  let lossLessFormats = ['FLAC', 'WAV', 'DSF']
-  if (!lossLessFormats.includes(bitRate)) {
+  if (!LOSSLESS_FORMATS.includes(suffix)) {
     info += ' ' + bitRate
   }
 

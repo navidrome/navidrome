@@ -112,7 +112,7 @@ const SongList = (props) => {
                 sortByOrder={'DESC'}
               />
             )}
-            <QualityInfo label="Quality" sortable={false} />
+            <QualityInfo source="quality" sortable={false} />
             <DurationField source="duration" />
             <SongContextMenu
               source={'starred'}

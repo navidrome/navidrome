@@ -1,0 +1,2 @@
+let LOSSLESS_FORMATS = ['FLAC', 'WAV', 'DSF']
+export default LOSSLESS_FORMATS
