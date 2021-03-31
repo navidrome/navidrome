@@ -40,7 +40,6 @@ const useStyles = makeStyles(
       justifyContent: 'center',
     },
     icon: {
-      backgroundColor: 'white',
       width: '40px',
     },
     systemName: {
