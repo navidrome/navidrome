@@ -5,7 +5,8 @@ const defaultConfig = {
   version: 'dev',
   firstTime: false,
   baseURL: '',
-  loginBackgroundURL: 'https://source.unsplash.com/random/1600x900?music',
+  // Login backgrounds from https://unsplash.com/collections/1065384/music-wallpapers
+  loginBackgroundURL: 'https://source.unsplash.com/collection/1065384/1600x900',
   enableTranscodingConfig: true,
   enableDownloads: true,
   welcomeMessage: '',
