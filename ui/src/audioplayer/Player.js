@@ -10,6 +10,7 @@ import {
   makeStyles,
   ThemeProvider,
 } from '@material-ui/core/styles'
+import { useMediaQuery } from '@material-ui/core'
 import { GlobalHotKeys } from 'react-hotkeys'
 import subsonic from '../subsonic'
 import {
@@ -78,6 +79,9 @@ const Player = () => {
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
+  // Match the medium breakpoint defined in the material-ui theme
+  // See https://material-ui.com/customization/breakpoints/#breakpoints
+  const isDesktop = useMediaQuery('(min-width:960px)')
 
   const nextSong = useCallback(() => {
     const idx = queue.queue.findIndex(
@@ -128,6 +132,7 @@ const Player = () => {
     showDestroy: true,
     showDownload: false,
     showReload: false,
+    toggleMode: !isDesktop,
     glassBg: false,
     showThemeSwitch: false,
     showMediaSession: true,
