@@ -12,7 +12,6 @@ const Placeholder = () =>
 
 const Toolbar = ({ id }) => {
   const location = useLocation()
-  const theme = useCurrentTheme()
   const resource = location.pathname.startsWith('/song') ? 'song' : 'albumSong'
   const { data, loading } = useGetOne(resource, id)
   const [toggleLove, toggling] = useToggleLove(resource, data)
