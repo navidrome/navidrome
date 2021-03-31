@@ -1,7 +1,7 @@
 import blue from '@material-ui/core/colors/blue'
 
 export default {
-  themeName: 'night',
+  themeName: 'Night',
   palette: {
     background: {
       paper: '#000000',
