@@ -32,9 +32,6 @@ export default {
           '& .MuiInput-underline:after': {
             borderBottom: '2px solid #0085ff',
           },
-          '& .MuiInput-underline:after': {
-            borderBottom: '2px solid #0085ff',
-          },
         },
       },
       card: {
