@@ -28,6 +28,13 @@ const useStyles = makeStyles({
       },
     },
   },
+  headerCell:{
+    fontWeight: 'bold',
+    padding:'15px',
+  },
+  headerLine:{
+    borderBottom: '2px solid rgb(0, 0, 0, .25)',
+  },
   contextMenu: {
     visibility: 'hidden',
   },
@@ -178,9 +185,11 @@ export const SongDatagrid = ({
   showDiscSubtitles,
   ...rest
 }) => {
+  const classes = useStyles();
   return (
     <Datagrid
       {...rest}
+      classes={{headerCell: classes.headerCell, headerRow: classes.headerLine }}
       body={
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
