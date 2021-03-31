@@ -22,6 +22,9 @@ export default {
       icon: {
         backgroundColor: 'inherit',
       },
+      welcome: {
+        color: '#eee',
+      },
     },
   },
   player: {
