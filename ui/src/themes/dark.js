@@ -19,9 +19,6 @@ export default {
       systemNameLink: {
         color: '#fff',
       },
-      icon: {
-        backgroundColor: 'inherit',
-      },
       welcome: {
         color: '#eee',
       },
