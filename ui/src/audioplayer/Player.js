@@ -5,8 +5,11 @@ import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
-import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
-import { ThemeProvider } from '@material-ui/styles'
+import {
+  createMuiTheme,
+  makeStyles,
+  ThemeProvider,
+} from '@material-ui/core/styles'
 import { GlobalHotKeys } from 'react-hotkeys'
 import subsonic from '../subsonic'
 import {
@@ -134,9 +137,7 @@ const Player = () => {
     },
     volumeFade: { fadeIn: 200, fadeOut: 200 },
     renderAudioTitle: (audioInfo, isMobile) => (
-      <ThemeProvider theme={createMuiTheme(theme)}>
-        <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
-      </ThemeProvider>
+      <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
     ),
     locale: {
       playListsText: translate('player.playListsText'),
@@ -280,7 +281,7 @@ const Player = () => {
   }
 
   return (
-    <>
+    <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
         {...options}
         quietUpdate
@@ -298,7 +299,7 @@ const Player = () => {
         }}
       />
       <GlobalHotKeys handlers={keyHandlers} keyMap={keyMap} allowChanges />
-    </>
+    </ThemeProvider>
   )
 }
 
