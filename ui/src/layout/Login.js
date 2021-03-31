@@ -65,6 +65,7 @@ const useStyles = makeStyles(
     actions: {
       padding: '0 1em 1em 1em',
     },
+    button: {},
     systemNameLink: {},
   }),
   { name: 'NDLogin' }
