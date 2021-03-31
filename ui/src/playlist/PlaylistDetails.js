@@ -4,36 +4,41 @@ import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
 import { DurationField, SizeField } from '../common'
 
-const useStyles = makeStyles((theme) => ({
-  container: {
-    [theme.breakpoints.down('xs')]: {
-      padding: '0.7em',
-      minWidth: '24em',
+const useStyles = makeStyles(
+  (theme) => ({
+    container: {
+      [theme.breakpoints.down('xs')]: {
+        padding: '0.7em',
+        minWidth: '24em',
+      },
+      [theme.breakpoints.up('sm')]: {
+        padding: '1em',
+        minWidth: '32em',
+      },
     },
-    [theme.breakpoints.up('sm')]: {
-      padding: '1em',
-      minWidth: '32em',
+    details: {
+      display: 'inline-block',
+      verticalAlign: 'top',
+      [theme.breakpoints.down('xs')]: {
+        width: '14em',
+      },
+      [theme.breakpoints.up('sm')]: {
+        width: '26em',
+      },
+      [theme.breakpoints.up('lg')]: {
+        width: '38em',
+      },
     },
-  },
-  details: {
-    display: 'inline-block',
-    verticalAlign: 'top',
-    [theme.breakpoints.down('xs')]: {
-      width: '14em',
+    title: {
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
     },
-    [theme.breakpoints.up('sm')]: {
-      width: '26em',
-    },
-    [theme.breakpoints.up('lg')]: {
-      width: '38em',
-    },
-  },
-  title: {
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-}))
+  }),
+  {
+    name: 'NDPlaylistDetails',
+  }
+)
 
 const PlaylistDetails = (props) => {
   const { record = {} } = props
