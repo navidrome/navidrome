@@ -33,7 +33,7 @@ const Toolbar = ({ id }) => {
           disabled={loading || toggling}
         />
       )}
-    </>
+    </ThemeProvider>
   )
 }
 
