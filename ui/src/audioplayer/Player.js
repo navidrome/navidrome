@@ -33,7 +33,7 @@ const useStyle = makeStyles((theme) => ({
     display: (props) => (props.visible ? 'block' : 'none'),
     '@media screen and (max-width:810px)': {
       '& .progress-bar-content': {
-        display: 'none!important',
+        display: 'none',
       },
     },
   },
