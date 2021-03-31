@@ -28,11 +28,11 @@ const useStyles = makeStyles({
       },
     },
   },
-  headerCell:{
+  headerCell: {
     fontWeight: 'bold',
-    padding:'15px',
+    padding: '15px',
   },
-  headerLine:{
+  headerLine: {
     borderBottom: '2px solid rgb(0, 0, 0, .25)',
   },
   contextMenu: {
@@ -185,11 +185,14 @@ export const SongDatagrid = ({
   showDiscSubtitles,
   ...rest
 }) => {
-  const classes = useStyles();
+  const classes = useStyles()
   return (
     <Datagrid
       {...rest}
-      classes={{headerCell: classes.headerCell, headerRow: classes.headerLine }}
+      classes={{
+        headerCell: classes.headerCell,
+        headerRow: classes.headerLine,
+      }}
       body={
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
