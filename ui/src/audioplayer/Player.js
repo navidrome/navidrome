@@ -26,18 +26,21 @@ import { sendNotification, baseUrl } from '../utils'
 import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
 
-const useStyle = makeStyles((theme) => ({
-  audioTitle: {
-    textDecoration: 'none',
-    color: theme.palette.primary.dark,
-    '&.songTitle': {
-      fontWeight: 'bold',
+const useStyle = makeStyles(
+  (theme) => ({
+    audioTitle: {
+      textDecoration: 'none',
+      color: theme.palette.primary.dark,
+      '&.songTitle': {
+        fontWeight: 'bold',
+      },
     },
-  },
-  player: {
-    display: (props) => (props.visible ? 'block' : 'none'),
-  },
-}))
+    player: {
+      display: (props) => (props.visible ? 'block' : 'none'),
+    },
+  }),
+  { name: 'NDAudioPlayer' }
+)
 
 let audioInstance = null
 
