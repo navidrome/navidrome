@@ -116,11 +116,10 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   }
 
   const classes = useStyles()
-
-  const [playLists, setPlaylists] = useState([])
   const refresh = useRefresh()
-
+  const [playLists, setPlaylists] = useState([])
   const { data } = useGetList('playlist', { page: 1, perPage: -1 }, {}, {})
+
   useEffect(() => {
     const isEmpty = !Object.keys(data).length
 
@@ -129,6 +128,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     } else if (isEmpty && playLists.length) {
       refresh()
     }
+    // eslint-disable-next-line
   }, [data])
 
   return (
