@@ -33,7 +33,7 @@ const translatedResourceName = (resource, translate) =>
 
 const useStyles = makeStyles({
   menuWrapper: {
-    maxHeight: 'calc(100vh - 48px)',
+    maxHeight: '100%',
     display: 'flex',
     flexDirection: 'column',
   },
