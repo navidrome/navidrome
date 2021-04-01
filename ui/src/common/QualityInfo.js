@@ -15,7 +15,6 @@ export const QualityInfo = ({ record, size, ...rest }) => {
 
 QualityInfo.propTypes = {
   record: PropTypes.object,
-  color: PropTypes.string,
   size: PropTypes.string,
 }
 
