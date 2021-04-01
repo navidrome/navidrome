@@ -24,6 +24,9 @@ const useStyles = makeStyles((theme) => ({
   menuHeader: {
     width: '100%',
   },
+  headerWrapper: {
+    display: 'flex',
+  },
 }))
 
 const SubMenu = ({
@@ -41,7 +44,7 @@ const SubMenu = ({
   const classes = useStyles()
 
   const header = (
-    <div style={{ display: 'flex' }}>
+    <div className={classes.headerWrapper}>
       <MenuItem
         dense={dense}
         onClick={handleToggle}
@@ -54,11 +57,14 @@ const SubMenu = ({
           {translate(name)}
         </Typography>
       </MenuItem>
-      {secondaryLink ? (
+      {secondaryLink && sidebarIsOpen ? (
         <MenuItemLink
           to={secondaryLink}
           primaryText={<ArrowForwardIcon />}
           onClick={secondaryAction}
+          tooltipProps={{
+            disableHoverListener: true,
+          }}
         />
       ) : null}
     </div>
