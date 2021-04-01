@@ -128,7 +128,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     } else if (isEmpty && playLists.length) {
       refresh()
     }
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
 
   return (
