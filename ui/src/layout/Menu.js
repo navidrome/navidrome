@@ -9,6 +9,7 @@ import {
   useGetList,
 } from 'react-admin'
 import { withRouter } from 'react-router-dom'
+import { makeStyles } from '@material-ui/core/styles'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
@@ -29,6 +30,14 @@ const translatedResourceName = (resource, translate) =>
           })
         : inflection.humanize(inflection.pluralize(resource.name)),
   })
+
+const useStyles = makeStyles({
+  menuWrapper: {
+    maxHeight: 'calc(100vh - 48px)',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+})
 
 const Menu = ({ onMenuClick, dense, logout }) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -112,67 +121,58 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     )
   }
 
+  const classes = useStyles()
+
   return (
-    <>
-      <div
-        style={{
-          maxHeight: '92,5vh',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div>
-          <SubMenu
-            handleToggle={() => handleToggle('menuAlbumList')}
-            isOpen={state.menuAlbumList}
-            sidebarIsOpen={open}
-            name="menu.albumList"
-            icon={<AlbumIcon />}
-            dense={dense}
-          >
-            {Object.keys(albumLists).map((type) =>
-              renderAlbumMenuItemLink(type, albumLists[type])
-            )}
-          </SubMenu>
-          <SubMenu
-            handleToggle={() => handleToggle('menuLibrary')}
-            isOpen={state.menuLibrary}
-            sidebarIsOpen={open}
-            name="menu.library"
-            icon={<LibraryMusicIcon />}
-            dense={dense}
-          >
-            {resources
-              .filter(subItems('library'))
-              .map(renderResourceMenuItemLink)}
-          </SubMenu>
-        </div>
-        <div style={{ overflowY: 'scroll' }}>
-          <SubMenu
-            handleToggle={() => handleToggle('menuPlaylists')}
-            isOpen={state.menuPlaylists}
-            sidebarIsOpen={open}
-            name="resources.playlist.name"
-            icon={<Playlist />}
-            dense={dense}
-            goInto="/playlist"
-          >
-            {open && !isXsmall && ids.length
-              ? ids.map((id) => (
-                  <RenderPlaylistLinks
-                    key={id}
-                    id={id}
-                    playlistItem={data[id]}
-                  />
-                ))
-              : null}
-          </SubMenu>
-        </div>
-        {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
-        {isXsmall && logout}
+    <div className={classes.menuWrapper}>
+      <div>
+        <SubMenu
+          handleToggle={() => handleToggle('menuAlbumList')}
+          isOpen={state.menuAlbumList}
+          sidebarIsOpen={open}
+          name="menu.albumList"
+          icon={<AlbumIcon />}
+          dense={dense}
+        >
+          {Object.keys(albumLists).map((type) =>
+            renderAlbumMenuItemLink(type, albumLists[type])
+          )}
+        </SubMenu>
+        <SubMenu
+          handleToggle={() => handleToggle('menuLibrary')}
+          isOpen={state.menuLibrary}
+          sidebarIsOpen={open}
+          name="menu.library"
+          icon={<LibraryMusicIcon />}
+          dense={dense}
+        >
+          {resources
+            .filter(subItems('library'))
+            .map(renderResourceMenuItemLink)}
+        </SubMenu>
       </div>
+      <div style={{ overflowY: 'scroll', overflowX: 'hidden' }}>
+        <SubMenu
+          handleToggle={() => handleToggle('menuPlaylists')}
+          isOpen={state.menuPlaylists}
+          sidebarIsOpen={open}
+          name="resources.playlist.name"
+          icon={<Playlist />}
+          dense={dense}
+          secondaryAction={onMenuClick}
+          secondaryLink="/playlist"
+        >
+          {open && ids.length
+            ? ids.map((id) => (
+                <RenderPlaylistLinks key={id} id={id} playlistItem={data[id]} />
+              ))
+            : null}
+        </SubMenu>
+      </div>
+      {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
+      {isXsmall && logout}
       <HelpDialog />
-    </>
+    </div>
   )
 }
 
