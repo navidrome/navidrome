@@ -21,6 +21,9 @@ const useStyles = makeStyles((theme) => ({
     paddingLeft: 0,
     transition: 'padding-left 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
   },
+  menuHeader: {
+    width: '100%',
+  },
 }))
 
 const SubMenu = ({
@@ -31,14 +34,19 @@ const SubMenu = ({
   icon,
   children,
   dense,
-  goInto = '',
+  secondaryLink = '',
+  secondaryAction,
 }) => {
   const translate = useTranslate()
   const classes = useStyles()
 
   const header = (
     <div style={{ display: 'flex' }}>
-      <MenuItem dense={dense} onClick={handleToggle}>
+      <MenuItem
+        dense={dense}
+        onClick={handleToggle}
+        className={classes.menuHeader}
+      >
         <ListItemIcon className={classes.icon}>
           {isOpen ? <ExpandMore /> : icon}
         </ListItemIcon>
@@ -46,15 +54,13 @@ const SubMenu = ({
           {translate(name)}
         </Typography>
       </MenuItem>
-      <div>
-        {goInto ? (
-          <MenuItemLink
-            to={goInto}
-            primaryText={<ArrowForwardIcon />}
-            sidebarIsOpen={true}
-          />
-        ) : null}
-      </div>
+      {secondaryLink ? (
+        <MenuItemLink
+          to={secondaryLink}
+          primaryText={<ArrowForwardIcon />}
+          onClick={secondaryAction}
+        />
+      ) : null}
     </div>
   )
 
