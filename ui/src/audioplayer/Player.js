@@ -37,17 +37,12 @@ const useStyle = makeStyles(
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
-    },
-  },
-  player: {
-    display: (props) => (props.visible ? 'block' : 'none'),
-    '@media screen and (max-width:810px)': {
-      '& .progress-bar-content': {
-        display: 'none',
+      '@media screen and (max-width:810px)': {
+        '& .progress-bar-content': {
+          display: 'none',
+        },
       },
     },
-  },
-}))
   }),
   { name: 'NDAudioPlayer' }
 )

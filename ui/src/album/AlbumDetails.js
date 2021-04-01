@@ -22,11 +22,6 @@ import {
 } from '../common'
 import config from '../config'
 
-const useStyles = makeStyles((theme) => ({
-  root: {
-    [theme.breakpoints.down('xs')]: {
-      padding: '0.7em',
-      minWidth: '20em',
 const useStyles = makeStyles(
   (theme) => ({
     root: {
