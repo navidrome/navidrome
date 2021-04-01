@@ -17,12 +17,10 @@ export default {
     },
     NDLogin: {
       systemNameLink: {
-        color: '#fff',
         textDecoration: 'none',
         color: '#0085ff',
       },
       icon: {
-        backgroundColor: 'inherit',
         backgroundColor: 'transparent',
         width: '100px',
       },
