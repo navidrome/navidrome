@@ -5,8 +5,12 @@ import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
-import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
-import { ThemeProvider } from '@material-ui/styles'
+import {
+  createMuiTheme,
+  makeStyles,
+  ThemeProvider,
+} from '@material-ui/core/styles'
+import { useMediaQuery } from '@material-ui/core'
 import { GlobalHotKeys } from 'react-hotkeys'
 import subsonic from '../subsonic'
 import {
@@ -22,18 +26,21 @@ import { sendNotification, baseUrl } from '../utils'
 import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
 
-const useStyle = makeStyles((theme) => ({
-  audioTitle: {
-    textDecoration: 'none',
-    color: theme.palette.primary.dark,
-    '&.songTitle': {
-      fontWeight: 'bold',
+const useStyle = makeStyles(
+  (theme) => ({
+    audioTitle: {
+      textDecoration: 'none',
+      color: theme.palette.primary.dark,
+      '&.songTitle': {
+        fontWeight: 'bold',
+      },
     },
-  },
-  player: {
-    display: (props) => (props.visible ? 'block' : 'none'),
-  },
-}))
+    player: {
+      display: (props) => (props.visible ? 'block' : 'none'),
+    },
+  }),
+  { name: 'NDAudioPlayer' }
+)
 
 let audioInstance = null
 
@@ -75,6 +82,9 @@ const Player = () => {
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
+  // Match the medium breakpoint defined in the material-ui theme
+  // See https://material-ui.com/customization/breakpoints/#breakpoints
+  const isDesktop = useMediaQuery('(min-width:960px)')
 
   const nextSong = useCallback(() => {
     const idx = queue.queue.findIndex(
@@ -125,6 +135,7 @@ const Player = () => {
     showDestroy: true,
     showDownload: false,
     showReload: false,
+    toggleMode: !isDesktop,
     glassBg: false,
     showThemeSwitch: false,
     showMediaSession: true,
@@ -134,9 +145,7 @@ const Player = () => {
     },
     volumeFade: { fadeIn: 200, fadeOut: 200 },
     renderAudioTitle: (audioInfo, isMobile) => (
-      <ThemeProvider theme={createMuiTheme(theme)}>
-        <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
-      </ThemeProvider>
+      <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
     ),
     locale: {
       playListsText: translate('player.playListsText'),
@@ -280,7 +289,7 @@ const Player = () => {
   }
 
   return (
-    <>
+    <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
         {...options}
         quietUpdate
@@ -298,7 +307,7 @@ const Player = () => {
         }}
       />
       <GlobalHotKeys handlers={keyHandlers} keyMap={keyMap} allowChanges />
-    </>
+    </ThemeProvider>
   )
 }
 

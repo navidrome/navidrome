@@ -4,9 +4,6 @@ import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
 import { LoveButton, useToggleLove } from '../common'
 import { keyMap } from '../hotkeys'
-import { ThemeProvider } from '@material-ui/styles'
-import { createMuiTheme } from '@material-ui/core/styles'
-import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 
 const Placeholder = () =>
@@ -14,7 +11,6 @@ const Placeholder = () =>
 
 const Toolbar = ({ id }) => {
   const location = useLocation()
-  const theme = useCurrentTheme()
   const resource = location.pathname.startsWith('/song') ? 'song' : 'albumSong'
   const { data, loading } = useGetOne(resource, id)
   const [toggleLove, toggling] = useToggleLove(resource, data)
@@ -24,7 +20,7 @@ const Toolbar = ({ id }) => {
   }
 
   return (
-    <ThemeProvider theme={createMuiTheme(theme)}>
+    <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       {config.enableFavourites && (
         <LoveButton
@@ -33,7 +29,7 @@ const Toolbar = ({ id }) => {
           disabled={loading || toggling}
         />
       )}
-    </ThemeProvider>
+    </>
   )
 }
 
