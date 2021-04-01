@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import React, { useState, createElement } from 'react'
+import React, { useState, createElement, useEffect } from 'react'
 import { useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import {
@@ -7,6 +6,7 @@ import {
   MenuItemLink,
   getResources,
   useGetList,
+  useRefresh,
 } from 'react-admin'
 import { withRouter } from 'react-router-dom'
 import { makeStyles } from '@material-ui/core/styles'
@@ -44,13 +44,6 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
   const resources = useSelector(getResources)
-  const { ids, data } = useGetList(
-    'playlist',
-    { page: 1, perPage: -1 },
-    { field: 'name', order: 'ASC' },
-    {}
-  )
-
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
     menuAlbumList: true,
@@ -108,12 +101,13 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     return hasList && name !== 'playlist' && options?.subMenu === subMenu
   }
 
-  const RenderPlaylistLinks = ({ id, playlistItem }) => {
+  const RenderPlaylistLinks = ({ playlist }) => {
+    const { id, name } = playlist
     return (
       <MenuItemLink
         key={id}
         to={`/playlist/${id}/show`}
-        primaryText={playlistItem.name}
+        primaryText={name}
         onClick={onMenuClick}
         sidebarIsOpen={open}
         dense={dense}
@@ -122,6 +116,20 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   }
 
   const classes = useStyles()
+
+  const [playLists, setPlaylists] = useState([])
+  const refresh = useRefresh()
+
+  const { data } = useGetList('playlist', { page: 1, perPage: -1 }, {}, {})
+  useEffect(() => {
+    const isEmpty = !Object.keys(data).length
+
+    if (!isEmpty) {
+      setPlaylists(Object.values(data))
+    } else if (isEmpty && playLists.length) {
+      refresh()
+    }
+  }, [data])
 
   return (
     <div className={classes.menuWrapper}>
@@ -151,7 +159,12 @@ const Menu = ({ onMenuClick, dense, logout }) => {
             .map(renderResourceMenuItemLink)}
         </SubMenu>
       </div>
-      <div style={{ overflowY: 'scroll', overflowX: 'hidden' }}>
+      <div
+        style={{
+          overflowY: open && state.menuPlaylists ? 'scroll' : 'auto',
+          overflowX: 'hidden',
+        }}
+      >
         <SubMenu
           handleToggle={() => handleToggle('menuPlaylists')}
           isOpen={state.menuPlaylists}
@@ -162,11 +175,10 @@ const Menu = ({ onMenuClick, dense, logout }) => {
           secondaryAction={onMenuClick}
           secondaryLink="/playlist"
         >
-          {open && ids.length
-            ? ids.map((id) => (
-                <RenderPlaylistLinks key={id} id={id} playlistItem={data[id]} />
-              ))
-            : null}
+          {open &&
+            playLists.map((playlist) => (
+              <RenderPlaylistLinks key={playlist.id} playlist={playlist} />
+            ))}
         </SubMenu>
       </div>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
