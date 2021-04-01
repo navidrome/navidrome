@@ -33,7 +33,7 @@ const useStyles = makeStyles({
     padding: '15px',
   },
   headerLine: {
-    borderBottom: '2px solid rgb(0, 0, 0, .25)',
+    boxShadow: '0px 3px 3px rgba(0, 0, 0, 0.25)',
   },
   contextMenu: {
     visibility: 'hidden',
