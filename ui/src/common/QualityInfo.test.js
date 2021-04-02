@@ -47,34 +47,34 @@ describe('<QualityInfo />', () => {
     const format = getByText('SHN')
     expect(format.innerHTML).toEqual('SHN')
   })
-  it('only render OCG', () => {
+  it('only render OCG 108', () => {
     const info = { suffix: 'OCG', bitRate: 108 }
     const { getByText } = render(<QualityInfo record={info} />)
     const format = getByText('OCG 108')
     expect(format.innerHTML).toEqual('OCG 108')
   })
-  it('only render MP3', () => {
+  it('only render MP3 108', () => {
     const info = { suffix: 'MP3', bitRate: 108 }
     const { getByText } = render(<QualityInfo record={info} />)
     const format = getByText('MP3 108')
     expect(format.innerHTML).toEqual('MP3 108')
   })
-  it('only render AAC', () => {
+  it('only render AAC 108', () => {
     const info = { suffix: 'AAC', bitRate: 108 }
     const { getByText } = render(<QualityInfo record={info} />)
     const format = getByText('AAC 108')
     expect(format.innerHTML).toEqual('AAC 108')
   })
-  it('only render OPUS', () => {
+  it('only render OPUS 108', () => {
     const info = { suffix: 'OPUS', bitRate: 108 }
     const { getByText } = render(<QualityInfo record={info} />)
     const format = getByText('OPUS 108')
     expect(format.innerHTML).toEqual('OPUS 108')
   })
   /* it('render nothing', () => {
-    const info = { }
+    const info = {}
     const { getByText } = render(<QualityInfo record={info} />)
     const format = getByText('OCG 108')
-    expect(format.innerHTML).toEqual('OCG 108')
+    expect(format).toBeNull()
   }) */
 })

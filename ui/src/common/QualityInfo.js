@@ -10,11 +10,11 @@ export const QualityInfo = ({ record, size, ...rest }) => {
   if (!LOSSLESS_FORMATS.includes(suffix)) {
     info += ' ' + bitRate
   }
-  return <Chip size={size} variant="outlined" label={info} />
+  return <Chip {...rest} size={size} variant="outlined" label={info} />
 }
 
 QualityInfo.propTypes = {
-  record: PropTypes.object,
+  record: PropTypes.object.isRequired,
   size: PropTypes.string,
 }
 
