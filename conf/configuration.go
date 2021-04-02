@@ -40,6 +40,7 @@ type configOptions struct {
 	CoverJpegQuality       int
 	UIWelcomeMessage       string
 	EnableGravatar         bool
+	EnableFavourites       bool
 	GATrackingID           string
 	AuthRequestLimit       int
 	AuthWindowLength       time.Duration
@@ -126,7 +127,7 @@ func init() {
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("scaninterval", time.Minute)
 	viper.SetDefault("baseurl", "")
-	viper.SetDefault("uiloginbackgroundurl", "https://source.unsplash.com/random/1600x900?music")
+	viper.SetDefault("uiloginbackgroundurl", consts.DefaultUILoginBackgroundURL)
 	viper.SetDefault("enabletranscodingconfig", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
@@ -143,6 +144,7 @@ func init() {
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("enablegravatar", false)
+	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)

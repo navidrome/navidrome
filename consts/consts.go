@@ -24,6 +24,9 @@ const (
 	URLPathUI          = "/app"
 	URLPathSubsonicAPI = "/rest"
 
+	// Login backgrounds from https://unsplash.com/collections/1065384/music-wallpapers
+	DefaultUILoginBackgroundURL = "https://source.unsplash.com/collection/1065384/1600x900"
+
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
 

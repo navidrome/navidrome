@@ -123,6 +123,10 @@
                 "selectPlaylist": "Songs zur Playlist hinzufügen",
                 "addNewPlaylist": "\"%{name}\" erstellen",
                 "export": "Exportieren"
+            },
+            "message": {
+                "duplicate_song": "",
+                "song_exist": ""
             }
         }
     },
@@ -179,7 +183,8 @@
             "close": "Schließen",
             "open_menu": "Menü öffnen",
             "close_menu": "Menü schließen",
-            "unselect": "Abwählen"
+            "unselect": "Abwählen",
+            "skip": ""
         },
         "boolean": {
             "true": "Ja",
@@ -241,7 +246,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} von %{total}",
             "page_rows_per_page": "Zeilen pro Seite:",
             "next": "Weiter",
-            "prev": "Zurück"
+            "prev": "Zurück",
+            "skip_nav": "Zum Inhalt springen"
         },
         "notification": {
             "updated": "Element wurde aktualisiert |||| %{smart_count} Elemente wurden aktualisiert",
@@ -323,5 +329,18 @@
         "fullScan": "Kompletter Scan",
         "serverUptime": "Server Uptime",
         "serverDown": "OFFLINE"
+    },
+    "help": {
+        "title": "Navidrome Hotkeys",
+        "hotkeys": {
+            "show_help": "Diese Hilfe anzeigen",
+            "toggle_menu": "Seitenleiste umschalten",
+            "toggle_play": "",
+            "prev_song": "vorheriger Song",
+            "next_song": "Nächster Song",
+            "vol_up": "",
+            "vol_down": "",
+            "toggle_star": ""
+        }
     }
 }

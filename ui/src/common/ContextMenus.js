@@ -16,7 +16,7 @@ import {
   openAddToPlaylist,
 } from '../actions'
 import subsonic from '../subsonic'
-import { StarButton } from './StarButton'
+import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
 
@@ -31,7 +31,7 @@ const useStyles = makeStyles({
 
 const ContextMenu = ({
   resource,
-  showStar,
+  showLove,
   record,
   color,
   className,
@@ -130,10 +130,10 @@ const ContextMenu = ({
 
   return (
     <span className={clsx(classes.noWrap, className)}>
-      <StarButton
+      <LoveButton
         record={record}
         resource={resource}
-        visible={showStar}
+        visible={config.enableFavourites && showLove}
         color={color}
       />
       <IconButton
@@ -183,11 +183,11 @@ AlbumContextMenu.propTypes = {
   record: PropTypes.object,
   discNumber: PropTypes.number,
   color: PropTypes.string,
-  showStar: PropTypes.bool,
+  showLove: PropTypes.bool,
 }
 
 AlbumContextMenu.defaultProps = {
-  showStar: true,
+  showLove: true,
   addLabel: true,
 }
 
@@ -207,10 +207,10 @@ export const ArtistContextMenu = (props) =>
 ArtistContextMenu.propTypes = {
   record: PropTypes.object,
   color: PropTypes.string,
-  showStar: PropTypes.bool,
+  showLove: PropTypes.bool,
 }
 
 ArtistContextMenu.defaultProps = {
-  showStar: true,
+  showLove: true,
   addLabel: true,
 }

@@ -8,17 +8,18 @@ import {
   TextField,
 } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
-import StarIcon from '@material-ui/icons/Star'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteIcon from '@material-ui/icons/Favorite'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { AddToPlaylistDialog } from '../dialogs'
 import {
   ArtistContextMenu,
   List,
   QuickFilter,
-  SimpleList,
   useGetHandleArtistClick,
+  ArtistSimpleList,
 } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
+import config from '../config'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -41,11 +42,13 @@ const useStyles = makeStyles({
 const ArtistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
     <SearchInput source="name" alwaysOn />
-    <QuickFilter
-      source="starred"
-      label={<StarIcon fontSize={'small'} />}
-      defaultValue={true}
-    />
+    {config.enableFavourites && (
+      <QuickFilter
+        source="starred"
+        label={<FavoriteIcon fontSize={'small'} />}
+        defaultValue={true}
+      />
+    )}
   </Filter>
 )
 
@@ -55,12 +58,8 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return isXsmall ? (
-    <SimpleList
-      primaryText={(r) => r.name}
-      linkType={(id) => {
-        history.push(handleArtistLink(id))
-      }}
-      rightIcon={(r) => <ArtistContextMenu record={r} />}
+    <ArtistSimpleList
+      linkType={(id) => history.push(handleArtistLink(id))}
       {...rest}
     />
   ) : (
@@ -73,12 +72,15 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
         sortByOrder={'DESC'}
+        sortable={config.enableFavourites}
         className={classes.contextMenu}
         label={
-          <StarBorderIcon
-            fontSize={'small'}
-            className={classes.contextHeader}
-          />
+          config.enableFavourites && (
+            <FavoriteBorderIcon
+              fontSize={'small'}
+              className={classes.contextHeader}
+            />
+          )
         }
       />
     </Datagrid>
