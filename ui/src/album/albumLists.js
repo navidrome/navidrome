@@ -11,7 +11,7 @@ export default {
     icon: AlbumIcon,
     params: 'sort=name&order=ASC',
   },
-  random: { icon: ShuffleIcon, params: 'sort=random' },
+  random: { icon: ShuffleIcon, params: 'sort=random&order=ASC' },
   ...(config.enableFavourites && {
     starred: {
       icon: FavoriteIcon,
