@@ -1,35 +1,17 @@
-import React, { useState, createElement, useEffect } from 'react'
+import React, { useState, createElement } from 'react'
 import { useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
-import {
-  useTranslate,
-  MenuItemLink,
-  getResources,
-  useGetList,
-  useRefresh,
-} from 'react-admin'
+import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
 import { makeStyles } from '@material-ui/core/styles'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
-import inflection from 'inflection'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
-import Playlist from '../icons/Playlist'
-
-const translatedResourceName = (resource, translate) =>
-  translate(`resources.${resource.name}.name`, {
-    smart_count: 2,
-    _:
-      resource.options && resource.options.label
-        ? translate(resource.options.label, {
-            smart_count: 2,
-            _: resource.options.label,
-          })
-        : inflection.humanize(inflection.pluralize(resource.name)),
-  })
+import PlaylistSubmenu from './PlaylistSubmenu'
+import { translatedResourceName } from '../utils'
 
 const useStyles = makeStyles({
   menuWrapper: {
@@ -40,6 +22,7 @@ const useStyles = makeStyles({
 })
 
 const Menu = ({ onMenuClick, dense, logout }) => {
+  console.log(dense)
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
@@ -96,40 +79,10 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     )
   }
 
-  const subItems = (subMenu) => (resource) => {
-    const { hasList, options, name } = resource
-    return hasList && name !== 'playlist' && options?.subMenu === subMenu
-  }
-
-  const RenderPlaylistLinks = ({ playlist }) => {
-    const { id, name } = playlist
-    return (
-      <MenuItemLink
-        key={id}
-        to={`/playlist/${id}/show`}
-        primaryText={name}
-        onClick={onMenuClick}
-        sidebarIsOpen={open}
-        dense={dense}
-      />
-    )
-  }
+  const subItems = (subMenu) => ({ hasList, options }) =>
+    hasList && options && options.subMenu === subMenu
 
   const classes = useStyles()
-  const refresh = useRefresh()
-  const [playLists, setPlaylists] = useState([])
-  const { data } = useGetList('playlist', { page: 1, perPage: -1 }, {}, {})
-
-  useEffect(() => {
-    const isEmpty = !Object.keys(data).length
-
-    if (!isEmpty) {
-      setPlaylists(Object.values(data))
-    } else if (isEmpty && playLists.length) {
-      refresh()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data])
 
   return (
     <div className={classes.menuWrapper}>
@@ -138,7 +91,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
           handleToggle={() => handleToggle('menuAlbumList')}
           isOpen={state.menuAlbumList}
           sidebarIsOpen={open}
-          name="menu.albumList"
+          name={translate('menu.albumList')}
           icon={<AlbumIcon />}
           dense={dense}
         >
@@ -150,7 +103,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
           handleToggle={() => handleToggle('menuLibrary')}
           isOpen={state.menuLibrary}
           sidebarIsOpen={open}
-          name="menu.library"
+          name={translate('menu.library')}
           icon={<LibraryMusicIcon />}
           dense={dense}
         >
@@ -159,28 +112,14 @@ const Menu = ({ onMenuClick, dense, logout }) => {
             .map(renderResourceMenuItemLink)}
         </SubMenu>
       </div>
-      <div
-        style={{
-          overflowY: open && state.menuPlaylists ? 'scroll' : 'auto',
-          overflowX: 'hidden',
-        }}
-      >
-        <SubMenu
-          handleToggle={() => handleToggle('menuPlaylists')}
-          isOpen={state.menuPlaylists}
-          sidebarIsOpen={open}
-          name="resources.playlist.name"
-          icon={<Playlist />}
-          dense={dense}
-          secondaryAction={onMenuClick}
-          secondaryLink="/playlist"
-        >
-          {open &&
-            playLists.map((playlist) => (
-              <RenderPlaylistLinks key={playlist.id} playlist={playlist} />
-            ))}
-        </SubMenu>
-      </div>
+      <PlaylistSubmenu
+        handleToggle={() => handleToggle('menuPlaylists')}
+        isToggled={state.menuPlaylists}
+        isSidebarOpen={open}
+        dense={dense}
+        onMenuClick={onMenuClick}
+        resources={resources}
+      />
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
       {isXsmall && logout}
       <HelpDialog />

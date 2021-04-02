@@ -107,7 +107,7 @@
       }
     },
     "playlist": {
-      "name": "Playlists",
+      "name": "Playlist |||| Playlists",
       "fields": {
         "name": "Name",
         "duration": "Duration",

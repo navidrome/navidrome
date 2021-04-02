@@ -8,8 +8,8 @@ import Divider from '@material-ui/core/Divider'
 import Collapse from '@material-ui/core/Collapse'
 import Tooltip from '@material-ui/core/Tooltip'
 import { makeStyles } from '@material-ui/core/styles'
-import { MenuItemLink, useTranslate } from 'react-admin'
-import ArrowForwardIcon from '@material-ui/icons/ArrowForward'
+import { MenuItemLink } from 'react-admin'
+import { RiEdit2Line } from 'react-icons/ri'
 
 const useStyles = makeStyles((theme) => ({
   icon: { minWidth: theme.spacing(5) },
@@ -37,12 +37,10 @@ const SubMenu = ({
   icon,
   children,
   dense,
-  secondaryLink = '',
+  secondaryLink,
   secondaryAction,
 }) => {
-  const translate = useTranslate()
   const classes = useStyles()
-
   const header = (
     <div className={classes.headerWrapper}>
       <MenuItem
@@ -54,13 +52,13 @@ const SubMenu = ({
           {isOpen ? <ExpandMore /> : icon}
         </ListItemIcon>
         <Typography variant="inherit" color="textSecondary">
-          {translate(name)}
+          {name}
         </Typography>
       </MenuItem>
       {secondaryLink && sidebarIsOpen ? (
         <MenuItemLink
           to={secondaryLink}
-          primaryText={<ArrowForwardIcon />}
+          primaryText={<RiEdit2Line />}
           onClick={secondaryAction}
           tooltipProps={{
             disableHoverListener: true,
@@ -75,7 +73,7 @@ const SubMenu = ({
       {sidebarIsOpen || isOpen ? (
         header
       ) : (
-        <Tooltip title={translate(name)} placement="right">
+        <Tooltip title={name} placement="right">
           {header}
         </Tooltip>
       )}
@@ -97,3 +95,8 @@ const SubMenu = ({
 }
 
 export default SubMenu
+
+SubMenu.defaultProps = {
+  secondaryLink: '',
+  dense: false,
+}
