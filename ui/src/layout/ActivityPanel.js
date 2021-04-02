@@ -94,8 +94,7 @@ const ActivityPanel = () => {
         .then((data) => {
           if (data.status === 'ok') {
             setUsersCurrentlyPlaying(
-              data.nowPlaying.entry.map((user) => {
-                console.log('hey')
+              data?.nowPlaying?.entry?.map((user) => {
                 return {
                   username: user.username,
                   coverArtId: user.coverArt,
@@ -108,7 +107,7 @@ const ActivityPanel = () => {
           }
         })
     }
-  }, [dispatch, anchorEl])
+  }, [dispatch, open])
 
   return (
     <div className={classes.wrapper}>
@@ -181,20 +180,19 @@ const ActivityPanel = () => {
           <List>
             {usersCurrentlyPlaying.map((user) => {
               return (
-                <ListItem key={user.coverArtId} key={user.coverArtId}>
+                <ListItem key={user.coverArtId}>
                   <ListItemAvatar>
                     <Avatar
                       alt={`${user.title} cover-art`}
-                      src={subsonic.getCoverArtUrl(user, 300)}
+                      src={subsonic.getCoverArtUrl(user)}
                     />
                   </ListItemAvatar>
                   <ListItemText
-                    primary={`${user.username} `}
+                    primary={`${user.username}`}
                     secondary={`
                           ${translate('activity.currentlyPlaying')} ${
                       user.title
-                    }
-                          `}
+                    }`}
                   />
                 </ListItem>
               )
