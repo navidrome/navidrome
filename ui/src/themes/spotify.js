@@ -309,16 +309,18 @@ export default {
     },
     RaSearchInput: {
       input: {
-        // borderRadius: 500,
-        // width: '20rem',
         paddingLeft: '.9rem',
         border: 0,
-        // height: '2.5rem',
       },
     },
     RaFilterButton: {
       root: {
         marginRight: '1rem',
+      },
+    },
+    RaAutocompleteSuggestionList: {
+      suggestionsPaper: {
+        backgroundColor: '#121212',
       },
     },
     RaPaginationActions: {
