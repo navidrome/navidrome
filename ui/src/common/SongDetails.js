@@ -9,8 +9,16 @@ import { BooleanField, DateField, TextField, useTranslate } from 'react-admin'
 import inflection from 'inflection'
 import { BitrateField, SizeField } from './index'
 import { MultiLineTextField } from './MultiLineTextField'
+import { makeStyles } from '@material-ui/core/styles'
+
+const useStyles = makeStyles({
+  tableCell: {
+    width: '17.5%',
+  },
+})
 
 export const SongDetails = (props) => {
+  const classes = useStyles()
   const translate = useTranslate()
   const { record } = props
   const data = {
@@ -42,7 +50,11 @@ export const SongDetails = (props) => {
           {Object.keys(data).map((key) => {
             return (
               <TableRow key={`${record.id}-${key}`}>
-                <TableCell component="th" scope="row">
+                <TableCell
+                  component="th"
+                  scope="row"
+                  className={classes.tableCell}
+                >
                   {translate(`resources.song.fields.${key}`, {
                     _: inflection.humanize(inflection.underscore(key)),
                   })}
