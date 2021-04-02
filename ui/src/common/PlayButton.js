@@ -46,8 +46,8 @@ export const PlayButton = ({ record, color, size, ...rest }) => {
         playAlbum(record)
       }}
       aria-label="play"
-      className={classes.icon}
       {...rest}
+      className={classes.icon}
       size={size}
     >
       <PlayArrowIcon fontSize={size} />
