@@ -13,6 +13,11 @@ import {
   CardActions,
   Divider,
   Box,
+  Avatar,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
 import { BiError } from 'react-icons/bi'
@@ -62,6 +67,7 @@ const ActivityPanel = () => {
   const classes = useStyles({ up })
   const translate = useTranslate()
   const [anchorEl, setAnchorEl] = useState(null)
+  const [usersCurrentlyPlaying, setUsersCurrentlyPlaying] = useState([])
   const open = Boolean(anchorEl)
   const dispatch = useDispatch()
   const scanStatus = useSelector((state) => state.activity.scanStatus)
@@ -81,7 +87,28 @@ const ActivityPanel = () => {
           dispatch(scanStatusUpdate(data.scanStatus))
         }
       })
-  }, [dispatch])
+    if (open) {
+      fetchUtils
+        .fetchJson(subsonic.url('getNowPlaying'))
+        .then((resp) => resp.json['subsonic-response'])
+        .then((data) => {
+          if (data.status === 'ok') {
+            setUsersCurrentlyPlaying(
+              data.nowPlaying.entry.map((user) => {
+                console.log('hey')
+                return {
+                  username: user.username,
+                  coverArtId: user.coverArt,
+                  title: user.title,
+                  album: user.album,
+                  artist: user.artist,
+                }
+              })
+            )
+          }
+        })
+    }
+  }, [dispatch, anchorEl])
 
   return (
     <div className={classes.wrapper}>
@@ -150,6 +177,29 @@ const ActivityPanel = () => {
               </IconButton>
             </Tooltip>
           </CardActions>
+          <Divider />
+          <List>
+            {usersCurrentlyPlaying.map((user) => {
+              return (
+                <ListItem key={user.coverArtId} key={user.coverArtId}>
+                  <ListItemAvatar>
+                    <Avatar
+                      alt={`${user.title} cover-art`}
+                      src={subsonic.getCoverArtUrl(user, 300)}
+                    />
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={`${user.username} `}
+                    secondary={`
+                          ${translate('activity.currentlyPlaying')} ${
+                      user.title
+                    }
+                          `}
+                  />
+                </ListItem>
+              )
+            })}
+          </List>
         </Card>
       </Popover>
     </div>
