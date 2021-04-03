@@ -5,7 +5,13 @@ import TableBody from '@material-ui/core/TableBody'
 import TableCell from '@material-ui/core/TableCell'
 import TableContainer from '@material-ui/core/TableContainer'
 import TableRow from '@material-ui/core/TableRow'
-import { BooleanField, DateField, TextField, useTranslate } from 'react-admin'
+import {
+  BooleanField,
+  DateField,
+  TextField,
+  useTranslate,
+  usePermissions,
+} from 'react-admin'
 import inflection from 'inflection'
 import { BitrateField, SizeField } from './index'
 import { MultiLineTextField } from './MultiLineTextField'
@@ -20,6 +26,7 @@ const useStyles = makeStyles({
 export const SongDetails = (props) => {
   const classes = useStyles()
   const translate = useTranslate()
+  const { permissions } = usePermissions()
   const { record } = props
   const data = {
     path: <TextField record={record} source="path" />,
@@ -34,7 +41,7 @@ export const SongDetails = (props) => {
     playCount: <TextField record={record} source="playCount" />,
     comment: <MultiLineTextField record={record} source="comment" />,
   }
-  if (localStorage.getItem('role') === 'regular') {
+  if (permissions !== 'admin') {
     delete data.path
   }
   if (!record.discSubtitle) {
