@@ -58,7 +58,7 @@ const AlbumDetails = (props) => {
     genre: <TextField record={record} source="genre" />,
     compilation: <BooleanField record={record} source="compilation" />,
     updatedAt: <DateField record={record} source="updatedAt" showTime />,
-    comment: <MultiLineTextField record={record} source="comment" multiline />,
+    comment: <MultiLineTextField record={record} source="comment" />,
   }
   if (!record.comment) {
     delete data.comment
