@@ -1,4 +1,4 @@
-import React, { useState, createElement } from 'react'
+import React, { useState, useEffect, createElement } from 'react'
 import { useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
@@ -7,11 +7,23 @@ import { makeStyles } from '@material-ui/core/styles'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
+import inflection from 'inflection'
 import SubMenu from './SubMenu'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
 import PlaylistSubmenu from './PlaylistSubmenu'
-import { translatedResourceName } from '../utils'
+
+const translatedResourceName = (resource, translate) =>
+  translate(`resources.${resource.name}.name`, {
+    smart_count: 2,
+    _:
+      resource.options && resource.options.label
+        ? translate(resource.options.label, {
+            smart_count: 2,
+            _: resource.options.label,
+          })
+        : inflection.humanize(inflection.pluralize(resource.name)),
+  })
 
 const useStyles = makeStyles({
   menuWrapper: {
@@ -24,8 +36,10 @@ const useStyles = makeStyles({
 const Menu = ({ onMenuClick, dense, logout }) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
+  const [playlistMenuName, setPlaylistMenuName] = useState('')
   const translate = useTranslate()
   const resources = useSelector(getResources)
+
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
     menuAlbumList: true,
@@ -37,6 +51,16 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const handleToggle = (menu) => {
     setState((state) => ({ ...state, [menu]: !state[menu] }))
   }
+
+  useEffect(() => {
+    if (resources?.length) {
+      const playListResource = resources.find(
+        (resource) => resource.name === 'playlist'
+      )
+      setPlaylistMenuName(translatedResourceName(playListResource, translate))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resources])
 
   const renderResourceMenuItemLink = (resource) => (
     <MenuItemLink
@@ -117,6 +141,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         isSidebarOpen={open}
         dense={dense}
         onMenuClick={onMenuClick}
+        name={playlistMenuName}
         resources={resources}
       />
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
