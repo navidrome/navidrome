@@ -32,7 +32,7 @@ export const SongDetails = (props) => {
     size: <SizeField record={record} source="size" />,
     updatedAt: <DateField record={record} source="updatedAt" showTime />,
     playCount: <TextField record={record} source="playCount" />,
-    comment: <MultiLineTextField record={record} source="comment" multiline />,
+    comment: <MultiLineTextField record={record} source="comment" />,
   }
   if (!record.discSubtitle) {
     delete data.discSubtitle
