@@ -178,16 +178,17 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
 
 const SanitizedPlaylistSongs = (props) => {
   const listContext = useListContext(props)
-  const { loaded, loading, total, ...rest } = listContext;
+  const { loaded, loading, total, ...rest } = listContext
   return (
     <>
-      {loaded && (<>
-        <PlaylistSongs
-          {...rest}
-          playlistId={props.id}
-          actions={props.actions}
-        />
-        {React.cloneElement(props.pagination,listContext)}
+      {loaded && (
+        <>
+          <PlaylistSongs
+            {...rest}
+            playlistId={props.id}
+            actions={props.actions}
+          />
+          {React.cloneElement(props.pagination, listContext)}
         </>
       )}
     </>
