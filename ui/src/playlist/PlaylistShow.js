@@ -4,6 +4,7 @@ import {
   ShowContextProvider,
   useShowContext,
   useShowController,
+  Pagination as RaPagination
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import PlaylistDetails from './PlaylistDetails'
@@ -35,7 +36,7 @@ const PlaylistShowLayout = (props) => {
           reference="playlistTrack"
           target="playlist_id"
           sort={{ field: 'id', order: 'ASC' }}
-          perPage={0}
+          perPage={10}
           filter={{ playlist_id: props.id }}
         >
           <PlaylistSongs
@@ -50,8 +51,7 @@ const PlaylistShowLayout = (props) => {
             }
             resource={'playlistTrack'}
             exporter={false}
-            perPage={0}
-            pagination={null}
+            pagination={<RaPagination/>}
           />
         </ReferenceManyField>
       )}
