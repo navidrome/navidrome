@@ -34,6 +34,9 @@ export const SongDetails = (props) => {
     playCount: <TextField record={record} source="playCount" />,
     comment: <MultiLineTextField record={record} source="comment" />,
   }
+  if (localStorage.getItem('role') === 'regular') {
+    delete data.path
+  }
   if (!record.discSubtitle) {
     delete data.discSubtitle
   }
