@@ -79,7 +79,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   }
 
   const subItems = (subMenu) => ({ hasList, options }) =>
-    hasList && options && options.subMenu === subMenu
+    hasList && options?.subMenu === subMenu
 
   const classes = useStyles()
 
