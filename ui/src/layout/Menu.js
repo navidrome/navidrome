@@ -22,7 +22,6 @@ const useStyles = makeStyles({
 })
 
 const Menu = ({ onMenuClick, dense, logout }) => {
-  console.log(dense)
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
