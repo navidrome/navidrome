@@ -34,12 +34,7 @@ const PlaylistSubmenu = ({
   }, [data])
 
   return (
-    <div
-      style={{
-        overflowY: isSidebarOpen && isToggled ? 'scroll' : 'auto',
-        overflowX: 'hidden',
-      }}
-    >
+    <div style={{ overflow: 'auto' }}>
       <SubMenu
         handleToggle={() => handleToggle('menuPlaylists')}
         isOpen={isToggled}
