@@ -6,6 +6,7 @@ import { useDispatch } from 'react-redux'
 import { useDataProvider } from 'react-admin'
 import { playTracks } from '../actions'
 import { makeStyles } from '@material-ui/core/styles'
+import useCurrentTheme from '../themes/useCurrentTheme'
 
 const useStyles = makeStyles({
   icon: {
@@ -14,6 +15,7 @@ const useStyles = makeStyles({
 })
 
 export const PlayButton = ({ record, color, size, ...rest }) => {
+  let theme = useCurrentTheme().themeName
   const classes = useStyles({ color })
   let extractSongsData = function (response) {
     const data = response.data.reduce(
@@ -46,8 +48,7 @@ export const PlayButton = ({ record, color, size, ...rest }) => {
         playAlbum(record)
       }}
       aria-label="play"
-      {...rest}
-      className={classes.icon}
+      className={theme === "Light" ? classes.icon : rest.className}
       size={size}
     >
       <PlayArrowIcon fontSize={size} />
