@@ -14,14 +14,21 @@ const PlaylistSubmenu = ({
 }) => {
   const refresh = useRefresh()
   const [playLists, setPlaylists] = useState([])
-  const { data } = useGetList('playlist', { page: 1, perPage: -1 }, {}, {})
+  const { data } = useGetList(
+    'playlist',
+    { page: 1, perPage: -1 },
+    { field: 'name', order: 'ASC' },
+    {}
+  )
 
   useEffect(() => {
-    const isEmpty = !Object.keys(data).length
-    if (!isEmpty) {
-      setPlaylists(Object.values(data))
-    } else if (isEmpty && playLists.length) {
-      refresh()
+    if (data && typeof data === 'object') {
+      const isEmpty = !Object.keys(data).length
+      if (!isEmpty) {
+        setPlaylists(Object.values(data))
+      } else if (isEmpty && playLists.length) {
+        refresh()
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])

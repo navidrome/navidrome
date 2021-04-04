@@ -1,4 +1,5 @@
 import React, { Fragment } from 'react'
+import { useHistory } from 'react-router-dom'
 import ExpandMore from '@material-ui/icons/ExpandMore'
 import List from '@material-ui/core/List'
 import MenuItem from '@material-ui/core/MenuItem'
@@ -8,8 +9,9 @@ import Divider from '@material-ui/core/Divider'
 import Collapse from '@material-ui/core/Collapse'
 import Tooltip from '@material-ui/core/Tooltip'
 import { makeStyles } from '@material-ui/core/styles'
+import { useMediaQuery } from '@material-ui/core'
+import ArrowRightOutlinedIcon from '@material-ui/icons/ArrowRightOutlined'
 import { MenuItemLink } from 'react-admin'
-import { RiEdit2Line } from 'react-icons/ri'
 
 const useStyles = makeStyles((theme) => ({
   icon: { minWidth: theme.spacing(5) },
@@ -21,11 +23,17 @@ const useStyles = makeStyles((theme) => ({
     paddingLeft: 0,
     transition: 'padding-left 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
   },
+  secondaryIcon: {
+    opacity: 0,
+  },
   menuHeader: {
     width: '100%',
   },
   headerWrapper: {
     display: 'flex',
+    '&:hover $secondaryIcon': {
+      opacity: 1,
+    },
   },
 }))
 
@@ -41,24 +49,45 @@ const SubMenu = ({
   secondaryAction,
 }) => {
   const classes = useStyles()
+  const history = useHistory()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+
+  if (secondaryLink) {
+    if (isOpen && sidebarIsOpen) {
+      icon = <ExpandMore />
+    }
+  } else {
+    if (isOpen) {
+      icon = <ExpandMore />
+    }
+  }
+
+  const handleClick = () => {
+    if (secondaryLink && !sidebarIsOpen) {
+      history.push(secondaryLink)
+    } else {
+      handleToggle()
+    }
+  }
+
   const header = (
     <div className={classes.headerWrapper}>
       <MenuItem
         dense={dense}
-        onClick={handleToggle}
+        button
         className={classes.menuHeader}
+        onClick={handleClick}
       >
-        <ListItemIcon className={classes.icon}>
-          {isOpen ? <ExpandMore /> : icon}
-        </ListItemIcon>
+        <ListItemIcon className={classes.icon}>{icon}</ListItemIcon>
         <Typography variant="inherit" color="textSecondary">
           {name}
         </Typography>
       </MenuItem>
       {secondaryLink && sidebarIsOpen ? (
         <MenuItemLink
+          className={isDesktop ? classes.secondaryIcon : null}
           to={secondaryLink}
-          primaryText={<RiEdit2Line />}
+          primaryText={<ArrowRightOutlinedIcon fontSize="small" />}
           onClick={secondaryAction}
           tooltipProps={{
             disableHoverListener: true,

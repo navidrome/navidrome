@@ -17,17 +17,6 @@ code {
     monospace;
 }
 
-.RaLayout-contentWithSidebar-13 {
-  max-height: 92vh; /* 100vh - height of appBar */
-  padding-bottom: 5px;
-}
-
-#main-content {
-  overflow-y: scroll;
-  overflow-x: hidden;
-  padding-bottom: 0;
-}
-
 .MuiCard-root {
   overflow: visible !important;
 }
