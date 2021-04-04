@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
   Datagrid,
@@ -6,6 +6,7 @@ import {
   NumberField,
   SearchInput,
   TextField,
+  ImageField,
 } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
@@ -18,10 +19,11 @@ import {
   useGetHandleArtistClick,
   ArtistSimpleList,
 } from '../common'
+import { fetchArtistInfoExtra } from '../subsonic'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
 
-const useStyles = makeStyles({
+const useStyles = makeStyles((theme) => ({
   contextHeader: {
     marginLeft: '3px',
     marginTop: '-2px',
@@ -37,7 +39,20 @@ const useStyles = makeStyles({
   contextMenu: {
     visibility: 'hidden',
   },
-})
+  artistImage: {
+    width: '100px',
+    [theme.breakpoints.up('lg')]: {
+      width: '150px',
+    },
+    height: 'auto',
+    '& img': {
+      width: '100%',
+      height: '100%',
+      borderRadius: '50%',
+      backgroundColor: 'red',
+    },
+  },
+}))
 
 const ArtistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -53,6 +68,18 @@ const ArtistFilter = (props) => (
 )
 
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
+  useEffect(() => {
+    const artists = rest.data
+    if (artists !== []) {
+      for (const id in artists) {
+        let artist = artists[id]
+        if (artist.smallImageUrl === '') {
+          fetchArtistInfoExtra(id)
+        }
+      }
+    }
+  }, [rest.data])
+
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
@@ -64,6 +91,11 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
     />
   ) : (
     <Datagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
+      <ImageField
+        source="smallImageUrl"
+        label="Image"
+        className={classes.artistImage}
+      />
       <TextField source="name" />
       <NumberField source="albumCount" sortByOrder={'DESC'} />
       <NumberField source="songCount" sortByOrder={'DESC'} />

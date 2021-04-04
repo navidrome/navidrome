@@ -40,6 +40,10 @@ const getCoverArtUrl = (record, size) => {
   return url('getCoverArt', record.coverArtId || 'not_found', options)
 }
 
+export const fetchArtistInfoExtra = (id) => {
+  fetchUtils.fetchJson(url('getArtistInfo', id))
+}
+
 export default {
   url,
   getCoverArtUrl: getCoverArtUrl,

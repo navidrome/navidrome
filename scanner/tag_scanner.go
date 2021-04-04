@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/scanner/metadata"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/pool"
 )
 
 type TagScanner struct {
@@ -326,8 +327,29 @@ func (s *TagScanner) deleteOrphanSongs(ctx context.Context, dir string, tracksTo
 	return numPurgedTracks, nil
 }
 
+type artistItem struct {
+	artistId string
+}
+
+func (s *TagScanner) execute(workload interface{}) {
+	es := core.NewExternalMetadata(s.ds)
+	ctx := context.Background()
+	item := workload.(artistItem)
+	_, err := es.UpdateArtistInfo(ctx, item.artistId, 0, false)
+	if err != nil {
+		log.Warn(err.Error())
+		return
+	}
+}
+
 func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, currentTracks map[string]model.MediaFile, filesToUpdate []string, buffer *refreshBuffer) (int, error) {
 	numUpdatedTracks := 0
+
+	p, err := pool.NewPool("artistInfo", 10, s.execute)
+
+	if err != nil {
+		log.Error(context.Background(), "Error creating pool for Artist Info", err)
+	}
 
 	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
 	// Break the file list in chunks to avoid calling ffmpeg with too many parameters
@@ -343,6 +365,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, curr
 		log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "files", chunk, "numFiles", len(chunk))
 		for i := range newTracks {
 			n := newTracks[i]
+
 			// Keep current annotations if the track is in the DB
 			if t, ok := currentTracks[n.Path]; ok {
 				n.Annotations = t.Annotations
@@ -353,6 +376,8 @@ func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, curr
 			}
 			buffer.accumulate(n)
 			numUpdatedTracks++
+
+			p.Submit(artistItem{artistId: n.ArtistID})
 		}
 	}
 	return numUpdatedTracks, nil
