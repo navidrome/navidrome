@@ -5,6 +5,7 @@ import {
   sanitizeListRestProps,
   TopToolbar,
   useTranslate,
+  useDataProvider,
 } from 'react-admin'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
@@ -23,11 +24,38 @@ import config from '../config'
 const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const dataProvider = useDataProvider()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const { id, songCount } = record
+
+  const getAllSongs = React.useCallback(
+    (type) => {
+      dataProvider
+        .getList('playlistTrack', {
+          pagination: { page: 1, perPage: 0 },
+          sort: { field: 'id', order: 'ASC' },
+          filter: { playlist_id: id },
+        })
+        .then((res) => {
+          const data = res.data.reduce(
+            (acc, curr) => ({ ...acc, [curr.id]: curr }),
+            {}
+          )
+          const ids = Object.keys(data)
+          type === 'play'
+            ? dispatch(playTracks(data, ids))
+            : dispatch(shuffleTracks(data, ids))
+        })
+    },
+    [dataProvider, dispatch, id]
+  )
 
   const handlePlay = React.useCallback(() => {
-    dispatch(playTracks(data, ids))
-  }, [dispatch, data, ids])
+    if (ids.length === songCount) {
+      return dispatch(playTracks(data, ids))
+    }
+    getAllSongs('play')
+  }, [dispatch, data, ids, getAllSongs, songCount])
 
   const handlePlayNext = React.useCallback(() => {
     dispatch(playNext(data, ids))
@@ -38,8 +66,11 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   }, [dispatch, data, ids])
 
   const handleShuffle = React.useCallback(() => {
-    dispatch(shuffleTracks(data, ids))
-  }, [dispatch, data, ids])
+    if (ids.length === songCount) {
+      return dispatch(shuffleTracks(data, ids))
+    }
+    getAllSongs('shuffle')
+  }, [dispatch, data, ids, getAllSongs, songCount])
 
   const handleDownload = React.useCallback(() => {
     subsonic.download(record.id)
