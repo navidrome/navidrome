@@ -18,8 +18,7 @@ const useStyles = makeStyles({
     paddingBottom: '5px',
   },
   mainContent: {
-    overflowY: 'scroll',
-    overflowX: 'hidden',
+    overflow: 'auto',
     paddingBottom: 0,
   },
 })
