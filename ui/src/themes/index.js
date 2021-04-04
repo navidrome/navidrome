@@ -1,7 +1,13 @@
 import LightTheme from './light'
 import DarkTheme from './dark'
 import ExtraDarkTheme from './extradark'
-import SpotifyTheme from './spotify'
 import GreenTheme from './green'
+import SpotifyTheme from './spotify'
 
-export default { LightTheme, DarkTheme, ExtraDarkTheme, GreenTheme, SpotifyTheme }
+export default {
+  LightTheme,
+  DarkTheme,
+  ExtraDarkTheme,
+  GreenTheme,
+  SpotifyTheme,
+}
