@@ -6,6 +6,7 @@ import {
   TopToolbar,
   useTranslate,
   useDataProvider,
+  useNotify,
 } from 'react-admin'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
@@ -25,6 +26,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const dataProvider = useDataProvider()
+  const notify = useNotify()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const { id, songCount } = record
 
@@ -46,8 +48,11 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
             ? dispatch(playTracks(data, ids))
             : dispatch(shuffleTracks(data, ids))
         })
+        .catch(() => {
+          notify('ra.page.error', 'warning')
+        })
     },
-    [dataProvider, dispatch, id]
+    [dataProvider, dispatch, id, notify]
   )
 
   const handlePlay = React.useCallback(() => {
