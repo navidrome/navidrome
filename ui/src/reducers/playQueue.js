@@ -138,19 +138,19 @@ export const playQueueReducer = (previousState = initialState, payload) => {
       }
     case PLAYER_PLAY_TRACKS:
       queue = []
+      let startIndex = 0
       let match = false
       Object.keys(data).forEach((id) => {
         if (id === payload.id) {
           match = true
         }
-        if (match) {
-          queue.push(mapToAudioLists(data[id]))
-        }
+        if (!match) startIndex++
+        queue.push(mapToAudioLists(data[id]))
       })
       return {
         ...previousState,
         queue,
-        playIndex: 0,
+        playIndex: startIndex,
         clear: true,
       }
     default:
