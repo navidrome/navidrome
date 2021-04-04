@@ -46,8 +46,6 @@ export default {
         width: '100px',
       },
       button: {
-        borderRadius: '25px',
-        backgroundColor: '#0085ff',
         boxShadow: '3px 3px 5px #000000a3',
       },
       systemNameLink: {
