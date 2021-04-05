@@ -128,7 +128,7 @@ const AlbumSongs = (props) => {
             {isDesktop && <TextField source="artist" sortable={false} />}
             <DurationField source="duration" sortable={false} />
             <QualityInfo source="quality" sortable={false} />
-            {isDesktop && (
+            {isDesktop && config.enableStarRating && (
               <RatingField
                 source="rating"
                 resource={'song'}

@@ -199,11 +199,13 @@ const AlbumDetails = ({ record }) => {
               {' · '}
               <SizeField record={record} source="size" />
             </Typography>
-            <RatingField
-              source={'rating'}
-              resource={'album'}
-              size={isDesktop ? 'medium' : 'small'}
-            />
+            {config.enableStarRating && (
+              <RatingField
+                source={'rating'}
+                resource={'album'}
+                size={isDesktop ? 'medium' : 'small'}
+              />
+            )}
             {isDesktop && record['comment'] && <AlbumComment record={record} />}
           </CardContent>
         </div>

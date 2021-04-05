@@ -115,13 +115,17 @@ const AlbumListView = ({
       secondaryText={(r) => (
         <>
           {r.albumArtist}
-          <br />
-          <RatingField
-            record={r}
-            source={'rating'}
-            resource={'album'}
-            size={'small'}
-          />
+          {config.enableStarRating && (
+            <>
+              <br />
+              <RatingField
+                record={r}
+                source={'rating'}
+                resource={'album'}
+                size={'small'}
+              />
+            </>
+          )}
         </>
       )}
       tertiaryText={(r) => (
@@ -147,11 +151,13 @@ const AlbumListView = ({
       {isDesktop && <NumberField source="playCount" sortByOrder={'DESC'} />}
       <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
       {isDesktop && <DurationField source="duration" />}
-      <RatingField
-        source="rating"
-        resource={'album'}
-        className={classes.ratingField}
-      />
+      {config.enableStarRating && (
+        <RatingField
+          source="rating"
+          resource={'album'}
+          className={classes.ratingField}
+        />
+      )}
       <AlbumContextMenu
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
