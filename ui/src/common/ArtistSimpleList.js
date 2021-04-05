@@ -8,6 +8,7 @@ import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
 import { sanitizeListRestProps } from 'ra-core'
 import { ArtistContextMenu, RatingField } from './index'
+import config from '../config'
 
 const useStyles = makeStyles(
   {
@@ -50,12 +51,14 @@ export const ArtistSimpleList = ({
                     primary={
                       <>
                         <div className={classes.title}>{data[id].name}</div>
-                        <RatingField
-                          record={data[id]}
-                          source={'rating'}
-                          resource={'artist'}
-                          size={'small'}
-                        />
+                        {config.enableStarRating && (
+                          <RatingField
+                            record={data[id]}
+                            source={'rating'}
+                            resource={'artist'}
+                            size={'small'}
+                          />
+                        )}
                       </>
                     }
                   />

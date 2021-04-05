@@ -75,11 +75,13 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
       <NumberField source="albumCount" sortByOrder={'DESC'} />
       <NumberField source="songCount" sortByOrder={'DESC'} />
       <NumberField source="playCount" sortByOrder={'DESC'} />
-      <RatingField
-        source="rating"
-        resource={'artist'}
-        className={classes.ratingField}
-      />
+      {config.enableStarRating && (
+        <RatingField
+          source="rating"
+          resource={'artist'}
+          className={classes.ratingField}
+        />
+      )}
       <ArtistContextMenu
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
