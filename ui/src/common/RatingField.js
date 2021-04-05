@@ -20,23 +20,27 @@ export const RatingField = ({ resource, record, visible, className, size }) => {
   const classes = useStyles({ visible, rating: record.rating })
   const [rate] = useRating(resource, record)
 
+  const stopPropagation = (e) => {
+    e.stopPropagation()
+  }
+
   const handleRating = useCallback(
     (e, val) => {
-      e.preventDefault()
       rate(val, e.target.name)
-      e.stopPropagation()
     },
     [rate]
   )
 
   return (
-    <Rating
-      name={record.id}
-      className={clsx(className, classes.rating)}
-      value={record.rating}
-      size={size}
-      onChange={(e, newValue) => handleRating(e, newValue)}
-    />
+    <span onClick={(e) => stopPropagation(e)}>
+      <Rating
+        name={record.id}
+        className={clsx(className, classes.rating)}
+        value={record.rating}
+        size={size}
+        onChange={(e, newValue) => handleRating(e, newValue)}
+      />
+    </span>
   )
 }
 RatingField.propTypes = {

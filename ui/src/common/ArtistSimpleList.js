@@ -7,7 +7,7 @@ import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
 import { sanitizeListRestProps } from 'ra-core'
-import { ArtistContextMenu } from './index'
+import { ArtistContextMenu, RatingField } from './index'
 
 const useStyles = makeStyles(
   {
@@ -48,7 +48,15 @@ export const ArtistSimpleList = ({
                 <ListItem className={classes.listItem} button={true}>
                   <ListItemText
                     primary={
-                      <div className={classes.title}>{data[id].name}</div>
+                      <>
+                        <div className={classes.title}>{data[id].name}</div>
+                        <RatingField
+                          record={data[id]}
+                          source={'rating'}
+                          resource={'artist'}
+                          size={'small'}
+                        />
+                      </>
                     }
                   />
                   <ListItemSecondaryAction className={classes.rightIcon}>
