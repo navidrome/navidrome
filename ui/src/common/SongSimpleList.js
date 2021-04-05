@@ -10,6 +10,7 @@ import { sanitizeListRestProps } from 'ra-core'
 import { DurationField, SongContextMenu, RatingField } from './index'
 import { setTrack } from '../actions'
 import { useDispatch } from 'react-redux'
+import config from '../config'
 
 const useStyles = makeStyles(
   {
@@ -89,12 +90,14 @@ export const SongSimpleList = ({
                             />
                           </span>
                         </span>
-                        <RatingField
-                          record={data[id]}
-                          source={'rating'}
-                          resource={'song'}
-                          size={'small'}
-                        />
+                        {config.enableStarRating && (
+                          <RatingField
+                            record={data[id]}
+                            source={'rating'}
+                            resource={'song'}
+                            size={'small'}
+                          />
+                        )}
                       </>
                     }
                   />
