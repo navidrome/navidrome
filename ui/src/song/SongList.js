@@ -17,6 +17,7 @@ import {
   QuickFilter,
   SongTitleField,
   SongSimpleList,
+  RatingField,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../actions'
@@ -40,9 +41,15 @@ const useStyles = makeStyles({
       '& $contextMenu': {
         visibility: 'visible',
       },
+      '& $ratingField': {
+        visibility: 'visible',
+      },
     },
   },
   contextMenu: {
+    visibility: 'hidden',
+  },
+  ratingField: {
     visibility: 'hidden',
   },
 })
@@ -114,6 +121,11 @@ const SongList = (props) => {
             )}
             <QualityInfo source="quality" sortable={false} />
             <DurationField source="duration" />
+            <RatingField
+              source="rating"
+              resource={'song'}
+              className={classes.ratingField}
+            />
             <SongContextMenu
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}
