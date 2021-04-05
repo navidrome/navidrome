@@ -5,18 +5,8 @@ import { IconButton } from '@material-ui/core'
 import { useDispatch } from 'react-redux'
 import { useDataProvider } from 'react-admin'
 import { playTracks } from '../actions'
-import { makeStyles } from '@material-ui/core/styles'
-import useCurrentTheme from '../themes/useCurrentTheme'
 
-const useStyles = makeStyles({
-  icon: {
-    color: (props) => props.color,
-  },
-})
-
-export const PlayButton = ({ record, color, size, ...rest }) => {
-  let theme = useCurrentTheme().themeName
-  const classes = useStyles({ color })
+export const PlayButton = ({ record, size, className }) => {
   let extractSongsData = function (response) {
     const data = response.data.reduce(
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
@@ -48,7 +38,7 @@ export const PlayButton = ({ record, color, size, ...rest }) => {
         playAlbum(record)
       }}
       aria-label="play"
-      className={theme === 'Light' ? classes.icon : rest.className}
+      className={className}
       size={size}
     >
       <PlayArrowIcon fontSize={size} />
