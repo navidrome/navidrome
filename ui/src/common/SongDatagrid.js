@@ -60,7 +60,7 @@ const DiscSubtitleRow = ({
         <AlbumContextMenu
           record={{ id: record.albumId }}
           discNumber={record.discNumber}
-          showStar={false}
+          showLove={false}
           className={classes.contextMenu}
           visible={contextAlwaysVisible}
         />
