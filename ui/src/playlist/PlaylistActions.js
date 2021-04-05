@@ -28,15 +28,18 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dataProvider = useDataProvider()
   const notify = useNotify()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-  const { id, songCount } = record
 
-  const getAllSongs = React.useCallback(
-    (type) => {
+  const getAllSongsAndDispatch = React.useCallback(
+    (action) => {
+      if (ids.length === record.songCount) {
+        return dispatch(action(data, ids))
+      }
+
       dataProvider
         .getList('playlistTrack', {
           pagination: { page: 1, perPage: 0 },
           sort: { field: 'id', order: 'ASC' },
-          filter: { playlist_id: id },
+          filter: { playlist_id: record.id },
         })
         .then((res) => {
           const data = res.data.reduce(
@@ -44,38 +47,30 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
             {}
           )
           const ids = Object.keys(data)
-          type === 'play'
-            ? dispatch(playTracks(data, ids))
-            : dispatch(shuffleTracks(data, ids))
+          dispatch(action(data, ids))
         })
         .catch(() => {
           notify('ra.page.error', 'warning')
         })
     },
-    [dataProvider, dispatch, id, notify]
+    [dataProvider, dispatch, record, data, ids, notify]
   )
 
   const handlePlay = React.useCallback(() => {
-    if (ids.length === songCount) {
-      return dispatch(playTracks(data, ids))
-    }
-    getAllSongs('play')
-  }, [dispatch, data, ids, getAllSongs, songCount])
+    getAllSongsAndDispatch(playTracks)
+  }, [getAllSongsAndDispatch])
 
   const handlePlayNext = React.useCallback(() => {
-    dispatch(playNext(data, ids))
-  }, [dispatch, data, ids])
+    getAllSongsAndDispatch(playNext)
+  }, [getAllSongsAndDispatch])
 
   const handlePlayLater = React.useCallback(() => {
-    dispatch(addTracks(data, ids))
-  }, [dispatch, data, ids])
+    getAllSongsAndDispatch(addTracks)
+  }, [getAllSongsAndDispatch])
 
   const handleShuffle = React.useCallback(() => {
-    if (ids.length === songCount) {
-      return dispatch(shuffleTracks(data, ids))
-    }
-    getAllSongs('shuffle')
-  }, [dispatch, data, ids, getAllSongs, songCount])
+    getAllSongsAndDispatch(shuffleTracks)
+  }, [getAllSongsAndDispatch])
 
   const handleDownload = React.useCallback(() => {
     subsonic.download(record.id)
