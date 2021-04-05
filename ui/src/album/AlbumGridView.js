@@ -73,9 +73,7 @@ const useStyles = makeStyles(
       textDecoration: 'none',
     },
     albumContainer: {},
-    albumPlayButton: {
-      color: 'white'
-    },
+    albumPlayButton: { color: 'white' },
   }),
   { name: 'NDAlbumGridView' }
 )
