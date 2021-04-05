@@ -8,6 +8,7 @@ import {
   useNotify,
   useVersion,
   useListContext,
+  ListBase,
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
@@ -76,8 +77,9 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
   return <ReactDragListView {...rest}>{children}</ReactDragListView>
 }
 
-const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
-  const { data, ids, onUnselectItems } = props
+const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
+  const listContext = useListContext()
+  const { data, ids, onUnselectItems } = listContext
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
@@ -128,17 +130,17 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
       <ListToolbar
         classes={{ toolbar: classes.toolbar }}
         filters={props.filters}
-        actions={props.actions}
-        {...props}
+        actions={actions}
+        {...listContext}
       />
       <div className={classes.main}>
         <Card
           className={clsx(classes.content, {
-            [classes.bulkActionsDisplayed]: props.selectedIds.length > 0,
+            [classes.bulkActionsDisplayed]: listContext.selectedIds.length > 0,
           })}
           key={version}
         >
-          <BulkActionsToolbar {...props}>
+          <BulkActionsToolbar {...listContext}>
             <PlaylistSongBulkActions
               playlistId={playlistId}
               onUnselectItems={onUnselectItems}
@@ -152,7 +154,7 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
             <SongDatagrid
               expand={!isXsmall && <SongDetails />}
               rowClick={(id) => dispatch(playTracks(data, ids, id))}
-              {...props}
+              {...listContext}
               hasBulkActions={true}
               contextAlwaysVisible={!isDesktop}
               classes={{ row: classes.row }}
@@ -172,20 +174,26 @@ const PlaylistSongs = ({ playlistId, readOnly, ...props }) => {
         </Card>
       </div>
       <AddToPlaylistDialog />
+      {React.cloneElement(props.pagination, listContext)}
     </>
   )
 }
 
 const SanitizedPlaylistSongs = (props) => {
-  const { loaded, loading, total, ...rest } = useListContext(props)
+  const { loaded, ...rest } = props
   return (
     <>
       {loaded && (
-        <PlaylistSongs
-          {...rest}
-          playlistId={props.id}
-          actions={props.actions}
-        />
+        <>
+          <ListBase {...props}>
+            <PlaylistSongs
+              playlistId={props.id}
+              actions={props.actions}
+              pagination={props.pagination}
+              {...rest}
+            />
+          </ListBase>
+        </>
       )}
     </>
   )
