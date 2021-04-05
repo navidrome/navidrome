@@ -29,10 +29,10 @@ const useStyles = makeStyles({
     },
   },
   headerStyle: {
-    '& thead':{
-    boxShadow: '0px 3px 3px rgba(0, 0, 0, 0.15)'
+    '& thead': {
+      boxShadow: '0px 3px 3px rgba(0, 0, 0, 0.15)',
     },
-    '& th':{
+    '& th': {
       fontWeight: 'bold',
       padding: '15px',
     },
@@ -189,7 +189,8 @@ export const SongDatagrid = ({
 }) => {
   const classes = useStyles()
   return (
-    <Datagrid className={classes.headerStyle}
+    <Datagrid
+      className={classes.headerStyle}
       {...rest}
       body={
         <SongDatagridBody
