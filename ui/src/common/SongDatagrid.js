@@ -145,7 +145,7 @@ const SongDatagridBody = ({
   )
 
   const firstTracks = useMemo(() => {
-    if (!ids) {
+    if (!ids || !data) {
       return new Set()
     }
     const set = new Set(
