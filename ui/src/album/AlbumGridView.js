@@ -25,10 +25,10 @@ const useStyles = makeStyles(
       margin: '20px',
     },
     [theme.breakpoints.up('sm')]: {
-      gridList: {
-        width: '100%',
-        height: '100%',
-        transform: 'translateZ(0)',
+    gridList: {
+      width: '100%',
+      height: '100%',
+      transform: 'translateZ(0)',
       },
     },
     tile: {
