@@ -25,6 +25,7 @@ import {
   SimpleList,
   MultiLineTextField,
   AlbumContextMenu,
+  RatingField,
 } from '../common'
 import config from '../config'
 
@@ -39,12 +40,18 @@ const useStyles = makeStyles({
       '& $contextMenu': {
         visibility: 'visible',
       },
+      '& $ratingField': {
+        visibility: 'visible',
+      },
     },
   },
   tableCell: {
     width: '17.5%',
   },
   contextMenu: {
+    visibility: 'hidden',
+  },
+  ratingField: {
     visibility: 'hidden',
   },
 })
@@ -105,7 +112,18 @@ const AlbumListView = ({
   return isXsmall ? (
     <SimpleList
       primaryText={(r) => r.name}
-      secondaryText={(r) => r.albumArtist}
+      secondaryText={(r) => (
+        <>
+          {r.albumArtist}
+          <br />
+          <RatingField
+            record={r}
+            source={'rating'}
+            resource={'album'}
+            size={'small'}
+          />
+        </>
+      )}
       tertiaryText={(r) => (
         <>
           <RangeField record={r} source={'year'} sortBy={'maxYear'} />
@@ -129,6 +147,11 @@ const AlbumListView = ({
       {isDesktop && <NumberField source="playCount" sortByOrder={'DESC'} />}
       <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
       {isDesktop && <DurationField source="duration" />}
+      <RatingField
+        source="rating"
+        resource={'album'}
+        className={classes.ratingField}
+      />
       <AlbumContextMenu
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
