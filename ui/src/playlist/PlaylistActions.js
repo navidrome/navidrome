@@ -46,8 +46,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
             (acc, curr) => ({ ...acc, [curr.id]: curr }),
             {}
           )
-          const ids = Object.keys(data)
-          dispatch(action(data, ids))
+          dispatch(action(data))
         })
         .catch(() => {
           notify('ra.page.error', 'warning')
