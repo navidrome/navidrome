@@ -4,8 +4,6 @@ import Chip from '@material-ui/core/Chip'
 import { LOSSLESS_FORMATS } from '../consts'
 
 export const QualityInfo = ({ record, size, ...rest }) => {
-  /* let suffix = 'NO_SUFFIX'
-  let bitRate = 'NO_BITRATE' */
   let { suffix = 'NO_SUFFIX', bitRate = 'NO_BITRATE' } = record
   suffix = suffix.toUpperCase()
   let info = suffix
