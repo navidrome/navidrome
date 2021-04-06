@@ -306,28 +306,34 @@ export default {
       },
     },
     NDLogin: {
-      main: {
-        boxShadow: 'inset 0 0 0 2000px rgba(0, 0, 0, .8)',
+      actions: {
+        '& button': {
+          backgroundColor: '#79d06f',
+        },
       },
       systemNameLink: {
-        color: '#fff',
         textDecoration: 'none',
+        color: tLight['500'],
       },
       systemName: {
         marginTop: '0.5em',
         marginBottom: '1em',
       },
       icon: {
-        backgroundColor: 'inherit',
+        backgroundColor: 'transparent',
+        width: '100px',
       },
       card: {
-        background: 'none',
-        boxShadow: 'none',
-        padding: '10px 0',
-        minWidth: 360,
+        minWidth: 300,
+        marginTop: '6em',
+        overflow: 'visible',
+        backgroundColor: '#ffffffe6',
       },
       avatar: {
-        marginBottom: 0,
+        marginTop: '-50px',
+      },
+      button: {
+        backgroundColor: 'green!important',
       },
     },
     RaLayout: {
