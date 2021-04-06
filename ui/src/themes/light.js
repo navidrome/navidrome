@@ -1,5 +1,3 @@
-import blue from '@material-ui/core/colors/blue'
-
 const tLight = {
   300: '#62ec83',
   500: '#48e208',
