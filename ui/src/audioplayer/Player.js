@@ -1,4 +1,11 @@
-import React, { useCallback, useMemo } from 'react'
+/**
+ * Things to do
+ * 1. Lazy Loding a component
+ * 2. Meanu pop up and loading
+ * 3. Butter Milk Visualization
+ * 4.
+ */
+import React, { useCallback, useMemo, Suspense, lazy } from 'react'
 import ReactGA from 'react-ga'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
@@ -25,6 +32,10 @@ import PlayerToolbar from './PlayerToolbar'
 import { sendNotification, baseUrl } from '../utils'
 import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
+import CircularProgress from '@material-ui/core/CircularProgress'
+
+const FSD = lazy(() => import('./VisualizationDialog'))
+// import FSD from './VisualizationDialog'
 
 const useStyle = makeStyles(
   (theme) => ({
@@ -290,6 +301,9 @@ const Player = () => {
 
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
+      <Suspense fallback={<CircularProgress />}>
+        <FSD />
+      </Suspense>
       <ReactJkMusicPlayer
         {...options}
         quietUpdate

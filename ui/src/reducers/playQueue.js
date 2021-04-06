@@ -14,6 +14,7 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_SCROBBLE,
   PLAYER_PLAY_TRACKS,
+  PLAYER_SHOW_VISUALIZATION,
 } from '../actions'
 
 const mapToAudioLists = (item) => {
@@ -46,6 +47,7 @@ const initialState = {
   current: {},
   volume: 1,
   playIndex: 0,
+  showVisualization: false,
 }
 
 export const playQueueReducer = (previousState = initialState, payload) => {
@@ -55,6 +57,11 @@ export const playQueueReducer = (previousState = initialState, payload) => {
   switch (type) {
     case PLAYER_CLEAR_QUEUE:
       return initialState
+    case PLAYER_SHOW_VISUALIZATION:
+      return {
+        ...previousState,
+        showVisualization: data,
+      }
     case PLAYER_SET_VOLUME:
       return {
         ...previousState,

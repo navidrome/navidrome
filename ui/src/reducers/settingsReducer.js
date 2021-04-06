@@ -1,7 +1,8 @@
-import { SET_NOTIFICATIONS_STATE } from '../actions'
+import { SET_NOTIFICATIONS_STATE, SET_VISUALIZATION_STATE } from '../actions'
 
 const initialState = {
   notifications: false,
+  visualization: false,
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -11,6 +12,11 @@ export const settingsReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         notifications: data,
+      }
+    case SET_VISUALIZATION_STATE:
+      return {
+        ...previousState,
+        visualization: data,
       }
     default:
       return previousState

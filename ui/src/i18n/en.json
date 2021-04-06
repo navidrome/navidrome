@@ -284,7 +284,8 @@
         "theme": "Theme",
         "language": "Language",
         "defaultView": "Default View",
-        "desktop_notifications": "Desktop Notifications"
+        "desktop_notifications": "Desktop Notifications",
+        "milkdrop_visualization": "Milkdrop Visualization"
       }
     },
     "albumList": "Albums",

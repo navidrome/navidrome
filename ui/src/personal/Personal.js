@@ -18,7 +18,11 @@ import {
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
-import { changeTheme, setNotificationsState } from '../actions'
+import {
+  changeTheme,
+  setNotificationsState,
+  setVisualizationState,
+} from '../actions'
 import themes from '../themes'
 import { docsUrl } from '../utils'
 import { useGetLanguageChoices } from '../i18n'
@@ -190,6 +194,37 @@ const NotificationsToggle = () => {
   )
 }
 
+const VisualizationToggle = () => {
+  const translate = useTranslate()
+  const dispatch = useDispatch()
+  const currentSetting = useSelector((state) => state.settings.visualization)
+
+  const toggleVisualization = (event) => {
+    // console.log(event.target.checked)
+    dispatch(setVisualizationState(event.target.checked))
+  }
+
+  return (
+    <FormControl>
+      <FormControlLabel
+        control={
+          <Switch
+            id={'notifications'}
+            color="primary"
+            checked={currentSetting}
+            onChange={toggleVisualization}
+          />
+        }
+        label={
+          <span>
+            {translate('menu.personal.options.milkdrop_visualization')}
+          </span>
+        }
+      />
+    </FormControl>
+  )
+}
+
 const Personal = () => {
   const translate = useTranslate()
   const classes = useStyles()
@@ -202,6 +237,7 @@ const Personal = () => {
         <SelectLanguage />
         <SelectDefaultView />
         <NotificationsToggle />
+        <VisualizationToggle />
       </SimpleForm>
     </Card>
   )
