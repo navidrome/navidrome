@@ -71,10 +71,10 @@ describe('<QualityInfo />', () => {
     const format = getByText('OPUS 108')
     expect(format.innerHTML).toEqual('OPUS 108')
   })
-  /* it('render nothing', () => {
+  it('render nothing', () => {
     const info = {}
     const { getByText } = render(<QualityInfo record={info} />)
-    const format = getByText('OCG 108')
-    expect(format).toBeNull()
-  }) */
+    const format = getByText('NO_SUFFIX NO_BITRATE')
+    expect(format.innerHTML).toEqual('NO_SUFFIX NO_BITRATE')
+  })
 })
