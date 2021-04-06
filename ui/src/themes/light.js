@@ -253,7 +253,7 @@ export default {
     },
     NDAlbumDetails: {
       root: {
-        background: 'linear-gradient(#d5f7c8, #ffffff)',
+        background: 'linear-gradient(#fbfff8, #c7ffb2)',
         borderRadius: 0,
         boxShadow: 'none',
       },
@@ -339,7 +339,7 @@ export default {
     RaLayout: {
       content: {
         padding: '0 !important',
-        background: 'linear-gradient(#d5f7c8, #ffffff)',
+        background: 'linear-gradient(#fbfff8, #c7ffb2)',
       },
     },
     RaListToolbar: {
