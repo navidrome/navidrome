@@ -304,7 +304,7 @@ export default {
     NDLogin: {
       actions: {
         '& button': {
-          backgroundColor: '#79d06f',
+          backgroundColor: '#5fb6e8',
         },
       },
       systemNameLink: {
