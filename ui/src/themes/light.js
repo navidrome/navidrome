@@ -1,7 +1,7 @@
 const tLight = {
-  300: '#62ec83',
-  500: '#48e208',
-  900: '#008827',
+  300: '#31b1c2',
+  500: '#04a7ff',
+  900: '#007588',
 }
 const musicListActions = {
   padding: '1rem 0',
@@ -9,7 +9,7 @@ const musicListActions = {
   '@global': {
     button: {
       margin: 5,
-      border: '1px solid transparent',
+      border: '1px solid #cccccc',
       backgroundColor: '#fff',
       color: '#b3b3b3',
       '&:hover': {
@@ -89,7 +89,7 @@ export default {
     },
     MuiDialog: {
       paper: {
-        backgroundColor: '#5f5fc4',
+        backgroundColor: '#5fadc4',
       },
     },
     MuiFormGroup: {
@@ -109,7 +109,7 @@ export default {
     },
     MuiFormLabel: {
       root: {
-        color: '#9ab191',
+        color: '#91b1b0',
       },
     },
     MuiIconButton: {
@@ -150,7 +150,7 @@ export default {
     },
     MuiDrawer: {
       root: {
-        background: '#48e208',
+        background: tLight['500'],
         paddingTop: '10px',
       },
       '&:hover': {
@@ -162,7 +162,7 @@ export default {
         padding: '10px 0',
         transition: 'background-color .3s ease',
         '&:hover': {
-          backgroundColor: '#48e208 !important',
+          backgroundColor: `${tLight['500']} !important`,
         },
         '@global': {
           'td:nth-child(4)': {
@@ -171,7 +171,7 @@ export default {
         },
       },
       head: {
-        backgroundColor: '#eefbe8',
+        backgroundColor: '#cdf4ff',
       },
     },
     MuiTableCell: {
@@ -189,7 +189,7 @@ export default {
     },
     MuiAppBar: {
       positionFixed: {
-        backgroundColor: '#48e208 !important',
+        background: `${tLight['500']} !important`,
         boxShadow: 'none',
       },
     },
@@ -210,12 +210,12 @@ export default {
         display: 'block',
       },
       albumContainer: {
-        backgroundColor: '#02ff0a14',
+        backgroundColor: '#02e8ff14',
         borderRadius: '.5rem',
         padding: '.75rem',
         transition: 'background-color .3s ease',
         '&:hover': {
-          backgroundColor: '#40ff0266',
+          backgroundColor: '#02c5ff66',
         },
       },
       albumPlayButton: {
@@ -234,7 +234,7 @@ export default {
     },
     NDPlaylistDetails: {
       container: {
-        background: 'linear-gradient(#edfff4, transparent)',
+        background: 'linear-gradient(#edfbff, transparent)',
         borderRadius: 0,
         paddingTop: '2.5rem !important',
         boxShadow: 'none',
@@ -251,7 +251,7 @@ export default {
     },
     NDAlbumDetails: {
       root: {
-        background: 'linear-gradient(#fbfff8, #c7ffb2)',
+        background: 'linear-gradient(#f8feff, #b2f1ff)',
         borderRadius: 0,
         boxShadow: 'none',
       },
@@ -269,11 +269,11 @@ export default {
       },
       recordMeta: {
         fontSize: '.875rem',
-        color: 'rgba(255,255,255, 0.8)',
+        color: 'rgb(113 113 113 / 80%)',
       },
       commentBlock: {
         fontSize: '.875rem',
-        color: 'rgba(255,255,255, 0.8)',
+        color: 'rgb(113 113 113 / 80%)',
       },
     },
     NDAlbumShow: {
@@ -299,9 +299,7 @@ export default {
           color: '#b3b3b3',
         },
       },
-      player: {
-        border: '10px solid blue',
-      },
+      player: {},
     },
     NDLogin: {
       actions: {
@@ -337,7 +335,7 @@ export default {
     RaLayout: {
       content: {
         padding: '0 !important',
-        background: 'linear-gradient(#fbfff8, #c7ffb2)',
+        background: 'linear-gradient(#f8feff, #b2f1ff)',
       },
     },
     RaListToolbar: {
@@ -387,7 +385,7 @@ export default {
         },
       },
       active: {
-        backgroundColor: '#b6ffc4',
+        backgroundColor: '#b6faff',
         color: '#000000b0 !important',
         '& .MuiListItemIcon-root': {
           color: '#000000b0',
@@ -397,7 +395,7 @@ export default {
     RaSidebar: {
       drawerPaper: {
         '@media (min-width: 0px) and (max-width: 599.95px)': {
-          backgroundColor: '#369912!important',
+          backgroundColor: '#128099!important',
         },
       },
     },
