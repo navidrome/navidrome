@@ -201,7 +201,7 @@ const AlbumDetails = ({ record }) => {
             </Typography>
             {config.enableStarRating && (
               <RatingField
-                source={'rating'}
+                record={record}
                 resource={'album'}
                 size={isDesktop ? 'medium' : 'small'}
               />

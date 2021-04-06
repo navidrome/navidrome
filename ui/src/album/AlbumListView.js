@@ -153,7 +153,7 @@ const AlbumListView = ({
       {isDesktop && <DurationField source="duration" />}
       {config.enableStarRating && (
         <RatingField
-          source="rating"
+          source={'rating'}
           resource={'album'}
           className={classes.ratingField}
         />

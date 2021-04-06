@@ -2,11 +2,12 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useDataProvider, useNotify } from 'react-admin'
 import subsonic from '../subsonic'
 
-export const useRating = (resource, record = {}) => {
+export const useRating = (resource, record) => {
   const [loading, setLoading] = useState(false)
   const notify = useNotify()
   const dataProvider = useDataProvider()
   const mountedRef = useRef(false)
+  const rating = record.rating
 
   useEffect(() => {
     mountedRef.current = true
@@ -26,7 +27,7 @@ export const useRating = (resource, record = {}) => {
       .catch((e) => {
         console.log('Error encountered: ' + e)
       })
-  }, [dataProvider, record.id, resource])
+  }, [dataProvider, record, resource])
 
   const rate = (val, id) => {
     setLoading(true)
@@ -42,5 +43,5 @@ export const useRating = (resource, record = {}) => {
       })
   }
 
-  return [rate, loading]
+  return [rate, rating, loading]
 }

@@ -7,18 +7,19 @@ import { useRating } from './useRating'
 
 const useStyles = makeStyles({
   rating: {
-    visibility: (props) =>
-      props.visible === false
-        ? 'hidden'
-        : props.rating > 0
-        ? 'visible !important'
-        : 'inherit',
+    visibility: (props) => (props.visible === false ? 'hidden' : 'inherit'),
+  },
+  show: {
+    visibility: 'visible !important',
+  },
+  hide: {
+    visibility: 'hidden',
   },
 })
 
 export const RatingField = ({ resource, record, visible, className, size }) => {
+  const [rate, rating] = useRating(resource, record)
   const classes = useStyles({ visible, rating: record.rating })
-  const [rate] = useRating(resource, record)
 
   const stopPropagation = (e) => {
     e.stopPropagation()
@@ -35,8 +36,12 @@ export const RatingField = ({ resource, record, visible, className, size }) => {
     <span onClick={(e) => stopPropagation(e)}>
       <Rating
         name={record.id}
-        className={clsx(className, classes.rating)}
-        value={record.rating}
+        className={clsx(
+          className,
+          classes.rating,
+          rating > 0 ? classes.show : classes.hide
+        )}
+        value={rating}
         size={size}
         onChange={(e, newValue) => handleRating(e, newValue)}
       />
