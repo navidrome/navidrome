@@ -73,7 +73,7 @@ const useStyles = makeStyles(
       textDecoration: 'none',
     },
     albumContainer: {},
-    albumPlayButton: {},
+    albumPlayButton: { color: 'white' },
   }),
   { name: 'NDAlbumGridView' }
 )
@@ -128,7 +128,6 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
           subtitle={
             <PlayButton
               className={classes.albumPlayButton}
-              color={'white'}
               record={record}
               size="small"
             />

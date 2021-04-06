@@ -5,16 +5,8 @@ import { IconButton } from '@material-ui/core'
 import { useDispatch } from 'react-redux'
 import { useDataProvider } from 'react-admin'
 import { playTracks } from '../actions'
-import { makeStyles } from '@material-ui/core/styles'
 
-const useStyles = makeStyles({
-  icon: {
-    color: (props) => props.color,
-  },
-})
-
-export const PlayButton = ({ record, color, size, ...rest }) => {
-  const classes = useStyles({ color })
+export const PlayButton = ({ record, size, className }) => {
   let extractSongsData = function (response) {
     const data = response.data.reduce(
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
@@ -46,8 +38,7 @@ export const PlayButton = ({ record, color, size, ...rest }) => {
         playAlbum(record)
       }}
       aria-label="play"
-      className={classes.icon}
-      {...rest}
+      className={className}
       size={size}
     >
       <PlayArrowIcon fontSize={size} />
@@ -56,9 +47,9 @@ export const PlayButton = ({ record, color, size, ...rest }) => {
 }
 
 PlayButton.propTypes = {
-  record: PropTypes.object,
-  color: PropTypes.string,
+  record: PropTypes.object.isRequired,
   size: PropTypes.string,
+  className: PropTypes.string,
 }
 
 PlayButton.defaultProps = {
