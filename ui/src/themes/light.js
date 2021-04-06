@@ -396,6 +396,13 @@ export default {
         },
       },
     },
+    RaSidebar: {
+      drawerPaper: {
+        '@media (min-width: 0px) and (max-width: 599.95px)': {
+          backgroundColor: '#369912!important',
+        },
+      },
+    },
     RaPaginationActions: {
       button: {
         backgroundColor: 'inherit',
