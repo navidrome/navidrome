@@ -166,7 +166,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
               <DurationField source="duration" className={classes.draggable} />
               <SongContextMenu
                 onAddToPlaylist={onAddToPlaylist}
-                showStar={false}
+                showLove={false}
                 className={classes.contextMenu}
               />
             </SongDatagrid>
