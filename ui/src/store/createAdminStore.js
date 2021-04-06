@@ -51,6 +51,7 @@ export default ({
         queue: pick(state.queue, ['queue', 'volume']),
         albumView: state.albumView,
         settings: state.settings,
+        visualizer: state.visualizer,
       })
     }),
     1000

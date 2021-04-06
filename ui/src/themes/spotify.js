@@ -71,6 +71,11 @@ export default {
       main: '#fff',
       contrastText: '#fff',
     },
+    // text: {
+    //   primary: '#fff',
+    //   secondary: 'rgba(255, 255, 255, 0.7)',
+    //   disabled: 'rgba(255, 255, 255, 0.5)',
+    // },
     background: {
       default: '#121212',
       paper: 'inherit',

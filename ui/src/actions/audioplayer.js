@@ -7,7 +7,6 @@ export const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 export const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
 export const PLAYER_CURRENT = 'PLAYER_CURRENT'
 export const PLAYER_SET_VOLUME = 'PLAYER_SET_VOLUME'
-export const PLAYER_SHOW_VISUALIZATION = 'PLAYER_SHOW_VISUALIZATION'
 
 export const setTrack = (data) => ({
   type: PLAYER_SET_TRACK,
@@ -94,9 +93,4 @@ export const currentPlaying = (audioInfo) => ({
 export const setVolume = (volume) => ({
   type: PLAYER_SET_VOLUME,
   data: { volume },
-})
-
-export const showMilkdropVisualizer = (checked) => ({
-  type: PLAYER_SHOW_VISUALIZATION,
-  data: checked,
 })

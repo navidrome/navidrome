@@ -34,9 +34,6 @@ import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import CircularProgress from '@material-ui/core/CircularProgress'
 
-const FSD = lazy(() => import('./VisualizationDialog'))
-// import FSD from './VisualizationDialog'
-
 const useStyle = makeStyles(
   (theme) => ({
     audioTitle: {
@@ -300,10 +297,7 @@ const Player = () => {
   }
 
   return (
-    <ThemeProvider theme={createMuiTheme(theme)}>
-      <Suspense fallback={<CircularProgress />}>
-        <FSD />
-      </Suspense>
+    <>
       <ReactJkMusicPlayer
         {...options}
         quietUpdate
@@ -321,8 +315,11 @@ const Player = () => {
         }}
       />
       <GlobalHotKeys handlers={keyHandlers} keyMap={keyMap} allowChanges />
-    </ThemeProvider>
+    </>
   )
 }
 
 export { Player }
+
+// <ThemeProvider theme={createMuiTheme(theme)}>
+// </ThemeProvider>

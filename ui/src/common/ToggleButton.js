@@ -18,7 +18,7 @@ const useStyles = makeStyles({
         : props.checked
         ? 'visible'
         : 'inherit',
-    '& .MuiSvgIcon-fontSizeLarge': {
+    '& .MuiSvgIcon': {
       fontSize: '2.1875rem !important',
     },
   },
@@ -32,15 +32,16 @@ export const ToggleButton = ({
   disabled,
   ...rest
 }) => {
-  const showVisualization = useSelector(
-    (state) => state.queue.showVisualization
-  )
+  const showVisualization = useSelector((state) => {
+    // console.log(state)
+    return state?.visualizer?.showVisualization
+  })
   const dispatch = useDispatch()
   const classes = useStyles({ color, visible, checked: showVisualization })
 
   return (
     <Button
-      onClick={(e) => {
+      onClick={() => {
         dispatch(showMilkdropVisualizer(!showVisualization))
       }}
       size={'small'}

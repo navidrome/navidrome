@@ -38,7 +38,7 @@ const Toolbar = ({ id, enableVisualization }) => {
           disabled={loading || toggling}
         />
       )}
-      {enableVisualization && <ToggleButton disabled={loading} />}
+      {enableVisualization && <ToggleButton />}
     </>
   )
 }
