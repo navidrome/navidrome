@@ -16,8 +16,7 @@ const PlaylistSongBulkActions = ({
   const unselectAll = useUnselectAll()
   useEffect(() => {
     unselectAll('playlistTrack')
-    // eslint-disable-next-line
-  }, [])
+  }, [unselectAll])
 
   const mappedResource = `playlist/${playlistId}/tracks`
   return (
