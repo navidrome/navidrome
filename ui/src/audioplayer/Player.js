@@ -1,11 +1,4 @@
-/**
- * Things to do
- * 1. Lazy Loding a component
- * 2. Meanu pop up and loading
- * 3. Butter Milk Visualization
- * 4.
- */
-import React, { useCallback, useMemo, Suspense, lazy } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import ReactGA from 'react-ga'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
@@ -32,7 +25,6 @@ import PlayerToolbar from './PlayerToolbar'
 import { sendNotification, baseUrl } from '../utils'
 import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
-import CircularProgress from '@material-ui/core/CircularProgress'
 
 const useStyle = makeStyles(
   (theme) => ({
@@ -297,7 +289,7 @@ const Player = () => {
   }
 
   return (
-    <>
+    <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
         {...options}
         quietUpdate
@@ -315,11 +307,8 @@ const Player = () => {
         }}
       />
       <GlobalHotKeys handlers={keyHandlers} keyMap={keyMap} allowChanges />
-    </>
+    </ThemeProvider>
   )
 }
 
 export { Player }
-
-// <ThemeProvider theme={createMuiTheme(theme)}>
-// </ThemeProvider>

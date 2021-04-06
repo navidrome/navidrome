@@ -18,7 +18,7 @@ const useStyles = makeStyles({
         : props.checked
         ? 'visible'
         : 'inherit',
-    '& .MuiSvgIcon': {
+    '&. MuiSvgIcon': {
       fontSize: '2.1875rem !important',
     },
   },
@@ -44,7 +44,6 @@ export const ToggleButton = ({
       onClick={() => {
         dispatch(showMilkdropVisualizer(!showVisualization))
       }}
-      size={'small'}
       disabled={disabled}
       className={classes.toggleButton}
       {...rest}

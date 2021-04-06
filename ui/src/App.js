@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react'
+import React from 'react'
 import ReactGA from 'react-ga'
 import 'react-jinke-music-player/assets/index.css'
 import { Provider, useDispatch } from 'react-redux'
@@ -15,7 +15,6 @@ import album from './album'
 import artist from './artist'
 import playlist from './playlist'
 import { Player } from './audioplayer'
-import { VisualizerWithTheme } from './milkdropvisualizer'
 import customRoutes from './routes'
 import {
   themeReducer,
@@ -32,9 +31,7 @@ import config from './config'
 import { setDispatch, startEventStream } from './eventStream'
 import { HotKeys } from 'react-hotkeys'
 import { keyMap } from './hotkeys'
-import CircularProgress from '@material-ui/core/CircularProgress'
-import useCurrentTheme from './themes/useCurrentTheme'
-import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles'
+import { Visualizer } from './milkdropvisualizer'
 
 const history = createHashHistory()
 
@@ -69,8 +66,6 @@ const App = () => (
 
 const Admin = (props) => {
   const dispatch = useDispatch()
-  const theme = useCurrentTheme()
-
   if (config.devActivityPanel) {
     setDispatch(dispatch)
     authProvider
@@ -80,74 +75,60 @@ const Admin = (props) => {
   }
 
   return (
-    <ThemeProvider theme={createMuiTheme(theme)}>
-      <RAAdmin
-        disableTelemetry
-        dataProvider={dataProvider}
-        authProvider={authProvider}
-        i18nProvider={i18nProvider}
-        customRoutes={customRoutes}
-        history={history}
-        layout={Layout}
-        loginPage={Login}
-        logoutButton={Logout}
-        {...props}
-      >
-        {(permissions) => [
+    <RAAdmin
+      disableTelemetry
+      dataProvider={dataProvider}
+      authProvider={authProvider}
+      i18nProvider={i18nProvider}
+      customRoutes={customRoutes}
+      history={history}
+      layout={Layout}
+      loginPage={Login}
+      logoutButton={Logout}
+      {...props}
+    >
+      {(permissions) => [
+        <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
+        <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
+        <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
+        <Resource
+          name="playlist"
+          {...playlist}
+          options={{ subMenu: 'library' }}
+        />,
+        permissions === 'admin' ? (
+          <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
+        ) : null,
+        <Resource
+          name="player"
+          {...player}
+          options={{ subMenu: 'settings' }}
+        />,
+        permissions === 'admin' ? (
           <Resource
-            name="album"
-            {...album}
-            options={{ subMenu: 'albumList' }}
-          />,
-          <Resource
-            name="artist"
-            {...artist}
-            options={{ subMenu: 'library' }}
-          />,
-          <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
-          <Resource
-            name="playlist"
-            {...playlist}
-            options={{ subMenu: 'library' }}
-          />,
-          permissions === 'admin' ? (
-            <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
-          ) : null,
-          <Resource
-            name="player"
-            {...player}
+            name="transcoding"
+            {...transcoding}
             options={{ subMenu: 'settings' }}
-          />,
-          permissions === 'admin' ? (
-            <Resource
-              name="transcoding"
-              {...transcoding}
-              options={{ subMenu: 'settings' }}
-            />
-          ) : (
-            <Resource name="transcoding" />
-          ),
-          <Resource name="albumSong" />,
-          <Resource name="translation" />,
-          <Resource name="playlistTrack" />,
-          <Resource name="keepalive" />,
+          />
+        ) : (
+          <Resource name="transcoding" />
+        ),
+        <Resource name="albumSong" />,
+        <Resource name="translation" />,
+        <Resource name="playlistTrack" />,
+        <Resource name="keepalive" />,
 
-          <Player />,
-          <Suspense fallback={<CircularProgress />}>
-            <VisualizerWithTheme />
-          </Suspense>,
-        ]}
-      </RAAdmin>
-    </ThemeProvider>
+        <Player />,
+        <Visualizer />,
+      ]}
+    </RAAdmin>
   )
 }
 
-const AppWithHotkeys = () => {
-  return (
-    <HotKeys keyMap={keyMap}>
-      <App />
-    </HotKeys>
-  )
-}
+const AppWithHotkeys = () => (
+  <HotKeys keyMap={keyMap}>
+    <App />
+  </HotKeys>
+)
 
 export default AppWithHotkeys
