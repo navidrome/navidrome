@@ -1,10 +1,11 @@
 import React, { cloneElement } from 'react'
 import { Button, sanitizeListRestProps, TopToolbar } from 'react-admin'
-import { ButtonGroup } from '@material-ui/core'
+import { ButtonGroup, useMediaQuery } from '@material-ui/core'
 import ViewHeadlineIcon from '@material-ui/icons/ViewHeadline'
 import ViewModuleIcon from '@material-ui/icons/ViewModule'
 import { useDispatch, useSelector } from 'react-redux'
 import { albumViewGrid, albumViewList } from '../actions'
+import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
 
 const AlbumListActions = ({
   currentSort,
@@ -26,6 +27,7 @@ const AlbumListActions = ({
 }) => {
   const dispatch = useDispatch()
   const albumView = useSelector((state) => state.albumView)
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
@@ -57,6 +59,7 @@ const AlbumListActions = ({
           <ViewHeadlineIcon fontSize="inherit" />
         </Button>
       </ButtonGroup>
+      {isDesktop && <ToggleFieldsMenu resource="album" />}
     </TopToolbar>
   )
 }

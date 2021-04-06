@@ -1,7 +1,8 @@
-import { SET_NOTIFICATIONS_STATE } from '../actions'
+import { SET_NOTIFICATIONS_STATE, SET_TOGGLEABLE_FIELDS } from '../actions'
 
 const initialState = {
   notifications: false,
+  toggleableFields: {},
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -11,6 +12,14 @@ export const settingsReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         notifications: data,
+      }
+    case SET_TOGGLEABLE_FIELDS:
+      return {
+        ...previousState,
+        toggleableFields: {
+          ...previousState.toggleableFields,
+          ...data,
+        },
       }
     default:
       return previousState

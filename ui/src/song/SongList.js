@@ -27,6 +27,7 @@ import { AddToPlaylistDialog } from '../dialogs'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import config from '../config'
+import useSelectedFields from '../common/useSelectedFields'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -69,6 +70,35 @@ const SongList = (props) => {
     dispatch(setTrack(record))
   }
 
+  const toggleableFields = {
+    album: isDesktop && (
+      <AlbumLinkField
+        source="album"
+        sortBy={
+          'album, order_album_artist_name, disc_number, track_number, title'
+        }
+        sortByOrder={'ASC'}
+      />
+    ),
+    artist: <TextField source="artist" />,
+    trackNumber: isDesktop && <NumberField source="trackNumber" />,
+    playCount: isDesktop && (
+      <NumberField source="playCount" sortByOrder={'DESC'} />
+    ),
+    year: isDesktop && (
+      <FunctionField
+        source="year"
+        render={(r) => r.year || ''}
+        sortByOrder={'DESC'}
+      />
+    ),
+    duration: <DurationField source="duration" />,
+  }
+  const columns = useSelectedFields({
+    resource: 'song',
+    columns: toggleableFields,
+  })
+
   return (
     <>
       <List
@@ -90,28 +120,7 @@ const SongList = (props) => {
             classes={{ row: classes.row }}
           >
             <SongTitleField source="title" showTrackNumbers={false} />
-            {isDesktop && (
-              <AlbumLinkField
-                source="album"
-                sortBy={
-                  'album, order_album_artist_name, disc_number, track_number, title'
-                }
-                sortByOrder={'ASC'}
-              />
-            )}
-            <TextField source="artist" />
-            {isDesktop && <NumberField source="trackNumber" />}
-            {isDesktop && (
-              <NumberField source="playCount" sortByOrder={'DESC'} />
-            )}
-            {isDesktop && (
-              <FunctionField
-                source="year"
-                render={(r) => r.year || ''}
-                sortByOrder={'DESC'}
-              />
-            )}
-            <DurationField source="duration" />
+            {columns}
             <SongContextMenu
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}

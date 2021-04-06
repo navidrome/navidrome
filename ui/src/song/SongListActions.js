@@ -1,6 +1,8 @@
 import React, { cloneElement } from 'react'
 import { sanitizeListRestProps, TopToolbar } from 'react-admin'
+import { useMediaQuery } from '@material-ui/core'
 import { ShuffleAllButton } from '../common'
+import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
 
 export const SongListActions = ({
   currentSort,
@@ -20,6 +22,7 @@ export const SongListActions = ({
   ids,
   ...rest
 }) => {
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       {filters &&
@@ -31,6 +34,7 @@ export const SongListActions = ({
           context: 'button',
         })}
       <ShuffleAllButton filters={filterValues} />
+      {isDesktop && <ToggleFieldsMenu resource="song" />}
     </TopToolbar>
   )
 }

@@ -27,6 +27,7 @@ import {
   AlbumContextMenu,
 } from '../common'
 import config from '../config'
+import useSelectedFields from '../common/useSelectedFields'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -102,6 +103,26 @@ const AlbumListView = ({
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+
+  const toggleableFields = {
+    artist: <ArtistLinkField source="artist" />,
+    songCount: isDesktop && (
+      <NumberField source="songCount" sortByOrder={'DESC'} />
+    ),
+    playCount: isDesktop && (
+      <NumberField source="playCount" sortByOrder={'DESC'} />
+    ),
+    year: (
+      <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
+    ),
+    duration: isDesktop && <DurationField source="duration" />,
+  }
+
+  const columns = useSelectedFields({
+    resource: 'album',
+    columns: toggleableFields,
+  })
+
   return isXsmall ? (
     <SimpleList
       primaryText={(r) => r.name}
@@ -124,11 +145,7 @@ const AlbumListView = ({
       {...rest}
     >
       <TextField source="name" />
-      <ArtistLinkField source="artist" />
-      {isDesktop && <NumberField source="songCount" sortByOrder={'DESC'} />}
-      {isDesktop && <NumberField source="playCount" sortByOrder={'DESC'} />}
-      <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
-      {isDesktop && <DurationField source="duration" />}
+      {columns}
       <AlbumContextMenu
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
