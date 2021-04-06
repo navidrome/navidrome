@@ -47,9 +47,9 @@ export const PlayButton = ({ record, size, className }) => {
 }
 
 PlayButton.propTypes = {
-  record: PropTypes.object,
-  color: PropTypes.string,
+  record: PropTypes.object.isRequired,
   size: PropTypes.string,
+  className: PropTypes.string,
 }
 
 PlayButton.defaultProps = {
