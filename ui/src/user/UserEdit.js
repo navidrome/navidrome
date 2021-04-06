@@ -44,10 +44,10 @@ const UserEdit = (props) => (
       <TextInput source="email" validate={[email()]} />
       <PasswordInput source="password" validate={[required()]} />
       <BooleanInput source="isAdmin" initialValue={false} />
-      <DateField source="lastLoginAt" showTime />
+      <DateField variant="body1" source="lastLoginAt" showTime />
       {/*<DateField source="lastAccessAt" showTime />*/}
-      <DateField source="updatedAt" showTime />
-      <DateField source="createdAt" showTime />
+      <DateField variant="body1" source="updatedAt" showTime />
+      <DateField variant="body1" source="createdAt" showTime />
     </SimpleForm>
   </Edit>
 )
