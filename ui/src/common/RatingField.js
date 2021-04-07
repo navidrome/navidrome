@@ -7,6 +7,7 @@ import { useRating } from './useRating'
 
 const useStyles = makeStyles({
   rating: {
+    color: (props) => props.color,
     visibility: (props) => (props.visible === false ? 'hidden' : 'inherit'),
   },
   show: {
@@ -17,9 +18,16 @@ const useStyles = makeStyles({
   },
 })
 
-export const RatingField = ({ resource, record, visible, className, size }) => {
+export const RatingField = ({
+  resource,
+  record,
+  visible,
+  className,
+  size,
+  color,
+}) => {
   const [rate, rating] = useRating(resource, record)
-  const classes = useStyles({ visible, rating: record.rating })
+  const classes = useStyles({ visible, rating: record.rating, color })
 
   const stopPropagation = (e) => {
     e.stopPropagation()
@@ -58,5 +66,6 @@ RatingField.propTypes = {
 RatingField.defaultProps = {
   record: {},
   visible: true,
-  size: 'medium',
+  size: 'small',
+  color: 'inherit',
 }
