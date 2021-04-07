@@ -44,6 +44,7 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 		"year":            yearFilter,
 		"recently_played": recentlyPlayedFilter,
 		"starred":         booleanFilter,
+		"has_rating":      hasRatingFilter,
 	}
 
 	return r
@@ -58,6 +59,10 @@ func recentlyAddedSort() string {
 
 func recentlyPlayedFilter(field string, value interface{}) Sqlizer {
 	return Gt{"play_count": 0}
+}
+
+func hasRatingFilter(field string, value interface{}) Sqlizer {
+	return Gt{"rating": 0}
 }
 
 func yearFilter(field string, value interface{}) Sqlizer {
