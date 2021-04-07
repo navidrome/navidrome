@@ -12,7 +12,7 @@ const useSelectedFields = ({ resource, columns }) => {
   useEffect(() => {
     if (
       !resourceFields ||
-      Object.keys(resourceFields)?.length !== Object.keys(columns).length
+      Object.keys(resourceFields).length !== Object.keys(columns).length
     ) {
       const obj = {}
       for (const key of Object.keys(columns)) {
