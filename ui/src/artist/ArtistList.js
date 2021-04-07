@@ -17,6 +17,7 @@ import {
   QuickFilter,
   useGetHandleArtistClick,
   ArtistSimpleList,
+  RatingField,
 } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
@@ -32,6 +33,9 @@ const useStyles = makeStyles({
       '& $contextMenu': {
         visibility: 'visible',
       },
+      '& $ratingField': {
+        visibility: 'visible',
+      },
     },
   },
   contextMenu: {
@@ -39,6 +43,9 @@ const useStyles = makeStyles({
   },
   headerCell: {
     position: 'static',
+  },
+  ratingField: {
+    visibility: 'hidden',
   },
 })
 
@@ -74,6 +81,14 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
       <NumberField source="albumCount" sortByOrder={'DESC'} />
       <NumberField source="songCount" sortByOrder={'DESC'} />
       <NumberField source="playCount" sortByOrder={'DESC'} />
+      {config.enableStarRating && (
+        <RatingField
+          source="rating"
+          sortByOrder={'DESC'}
+          resource={'artist'}
+          className={classes.ratingField}
+        />
+      )}
       <ArtistContextMenu
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}

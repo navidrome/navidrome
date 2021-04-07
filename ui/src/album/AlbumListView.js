@@ -25,6 +25,7 @@ import {
   SimpleList,
   MultiLineTextField,
   AlbumContextMenu,
+  RatingField,
 } from '../common'
 import config from '../config'
 
@@ -39,6 +40,9 @@ const useStyles = makeStyles({
       '& $contextMenu': {
         visibility: 'visible',
       },
+      '& $ratingField': {
+        visibility: 'visible',
+      },
     },
   },
   tableCell: {
@@ -49,6 +53,9 @@ const useStyles = makeStyles({
   },
   headerCell: {
     position: 'static',
+  },
+  ratingField: {
+    visibility: 'hidden',
   },
 })
 
@@ -108,7 +115,23 @@ const AlbumListView = ({
   return isXsmall ? (
     <SimpleList
       primaryText={(r) => r.name}
-      secondaryText={(r) => r.albumArtist}
+      secondaryText={(r) => (
+        <>
+          {r.albumArtist}
+          {config.enableStarRating && (
+            <>
+              <br />
+              <RatingField
+                record={r}
+                sortByOrder={'DESC'}
+                source={'rating'}
+                resource={'album'}
+                size={'small'}
+              />
+            </>
+          )}
+        </>
+      )}
       tertiaryText={(r) => (
         <>
           <RangeField record={r} source={'year'} sortBy={'maxYear'} />
@@ -132,6 +155,14 @@ const AlbumListView = ({
       {isDesktop && <NumberField source="playCount" sortByOrder={'DESC'} />}
       <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
       {isDesktop && <DurationField source="duration" />}
+      {config.enableStarRating && (
+        <RatingField
+          source={'rating'}
+          resource={'album'}
+          sortByOrder={'DESC'}
+          className={classes.ratingField}
+        />
+      )}
       <AlbumContextMenu
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
