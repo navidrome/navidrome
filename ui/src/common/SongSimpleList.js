@@ -94,7 +94,6 @@ export const SongSimpleList = ({
                           <RatingField
                             record={data[id]}
                             source={'rating'}
-                            sortByOrder={'DESC'}
                             resource={'song'}
                             size={'small'}
                           />

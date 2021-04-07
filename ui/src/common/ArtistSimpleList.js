@@ -54,7 +54,6 @@ export const ArtistSimpleList = ({
                         {config.enableStarRating && (
                           <RatingField
                             record={data[id]}
-                            sortByOrder={'DESC'}
                             source={'rating'}
                             resource={'artist'}
                             size={'small'}
