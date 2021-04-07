@@ -6,7 +6,7 @@ import config from '../config'
 const llFormats = new Set(config.losslessFormats.split(','))
 const placeholder = 'N/A'
 
-export const QualityInfo = ({ record, ...rest }) => {
+export const QualityInfo = ({ record, size }) => {
   let { suffix, bitRate } = record
   let info = placeholder
 
@@ -18,7 +18,7 @@ export const QualityInfo = ({ record, ...rest }) => {
     }
   }
 
-  return <Chip {...rest} variant="outlined" label={info} />
+  return <Chip variant="outlined" size={size} label={info} />
 }
 
 QualityInfo.propTypes = {
@@ -27,6 +27,6 @@ QualityInfo.propTypes = {
 }
 
 QualityInfo.defaultProps = {
-  size: 'small',
   record: {},
+  size: 'small',
 }
