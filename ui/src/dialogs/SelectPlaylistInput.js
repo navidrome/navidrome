@@ -29,16 +29,15 @@ export const SelectPlaylistInput = ({ onChange }) => {
   const handleOnChange = (event, newValue) => {
     let newState = []
     if (newValue && newValue.length) {
-      newValue.forEach(playlistObject => {
+      newValue.forEach((playlistObject) => {
         if (playlistObject.inputValue) {
           newState.push({
-            name: playlistObject.inputValue
+            name: playlistObject.inputValue,
           })
-        }
-        else {
+        } else {
           newState.push(playlistObject)
         }
-      });
+      })
     }
     onChange(newState)
   }

@@ -47,12 +47,12 @@ export const AddToPlaylistDialog = () => {
       },
       onFailure: (error) => notify(`Error: ${error.message}`, 'warning'),
     }
-    )
-    useEffect(() => {
-      if (newPlaylist.name) {
-        createAndAddToPlaylist()
-      }
-    }, [newPlaylist, createAndAddToPlaylist])
+  )
+  useEffect(() => {
+    if (newPlaylist.name) {
+      createAndAddToPlaylist()
+    }
+  }, [newPlaylist, createAndAddToPlaylist])
 
   const addToPlaylist = (playlistId, distinctIds) => {
     const trackIds = Array.isArray(distinctIds) ? distinctIds : selectedIds
@@ -93,13 +93,13 @@ export const AddToPlaylistDialog = () => {
   }
 
   const handleSubmit = (e) => {
-    value.forEach(playlistObject => {
+    value.forEach((playlistObject) => {
       if (playlistObject.id) {
         addToPlaylist(playlistObject.id, playlistObject.distinctIds)
       } else {
         setNewPlaylist(playlistObject)
       }
-    });
+    })
     setCheck(false)
     dispatch(closeAddToPlaylist())
     e.stopPropagation()
@@ -119,8 +119,7 @@ export const AddToPlaylistDialog = () => {
         checkDuplicateSong(newlyAdded)
       }
       setCheck(true)
-    }
-    else if (pls.length === 0) setCheck(false)
+    } else if (pls.length === 0) setCheck(false)
     console.log(pls)
     setValue(pls)
   }
