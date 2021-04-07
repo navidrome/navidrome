@@ -80,6 +80,11 @@ export default {
     },
   },
   overrides: {
+    MuiAutocomplete: {
+      popper: {
+        background: '#ffffff',
+      },
+    },
     MuiCard: {
       root: {
         marginLeft: '1%',
@@ -102,7 +107,7 @@ export default {
     },
     MuiDialog: {
       paper: {
-        backgroundColor: '#5fadc4',
+        backgroundColor: '#ffffff',
       },
     },
     MuiFormGroup: {
