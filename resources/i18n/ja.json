@@ -123,6 +123,10 @@
                 "selectPlaylist": "プレイリストを選択",
                 "addNewPlaylist": "'%{name}' を作成",
                 "export": "エクスポート"
+            },
+            "message": {
+                "duplicate_song": "重複する曲を追加",
+                "song_exist": "既にプレイリストに存在する曲です。追加しますか？"
             }
         }
     },
@@ -179,7 +183,8 @@
             "close": "閉じる",
             "open_menu": "開く",
             "close_menu": "閉じる",
-            "unselect": "選択解除"
+            "unselect": "選択解除",
+            "skip": "スキップ"
         },
         "boolean": {
             "true": "はい",
