@@ -38,8 +38,9 @@ export default function ToggleFieldsMenu({ resource }) {
     )
   }
 
-  if (!toggleableColumns || Object.keys(toggleableColumns).length === 0)
+  if (!toggleableColumns || !Object.keys(toggleableColumns).length) {
     return null
+  }
 
   return (
     <div style={{ position: 'relative', top: '-0.5em' }}>
