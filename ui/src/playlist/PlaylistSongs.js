@@ -26,6 +26,7 @@ import { AddToPlaylistDialog } from '../dialogs'
 import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
+import { QualityInfo } from '../common/QualityInfo'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -164,6 +165,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
               {isDesktop && <AlbumLinkField source="album" />}
               {isDesktop && <TextField source="artist" />}
               <DurationField source="duration" className={classes.draggable} />
+              <QualityInfo source="quality" sortable={false} />
               <SongContextMenu
                 onAddToPlaylist={onAddToPlaylist}
                 showLove={false}

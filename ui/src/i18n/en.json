@@ -20,7 +20,8 @@
         "bitRate": "Bit rate",
         "discSubtitle": "Disc Subtitle",
         "starred": "Favourite",
-        "comment": "Comment"
+        "comment": "Comment",
+        "quality": "Quality"
       },
       "actions": {
         "addToQueue": "Play Later",
