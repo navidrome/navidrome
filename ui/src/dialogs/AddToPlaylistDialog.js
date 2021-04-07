@@ -85,6 +85,7 @@ export const AddToPlaylistDialog = () => {
             dispatch(openDuplicateSongWarning(dupIds))
           }
         }
+        setCheck(true)
       })
       .catch((error) => {
         console.error(error)
@@ -115,11 +116,11 @@ export const AddToPlaylistDialog = () => {
     if (!value.length || pls.length > value.length) {
       let newlyAdded = pls.slice(-1).pop()
       if (newlyAdded.id) {
+        setCheck(false)
         checkDuplicateSong(newlyAdded)
       }
-      setCheck(true)
+      else setCheck(true)
     } else if (pls.length === 0) setCheck(false)
-    console.log(pls)
     setValue(pls)
   }
 
