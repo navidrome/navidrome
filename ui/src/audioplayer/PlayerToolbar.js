@@ -5,6 +5,7 @@ import { GlobalHotKeys } from 'react-hotkeys'
 import { LoveButton, useToggleLove, ToggleButton } from '../common'
 import { useSelector } from 'react-redux'
 import { keyMap } from '../hotkeys'
+import { QualityInfo } from '../common/QualityInfo'
 import config from '../config'
 
 const Placeholder = ({ enableVisualization }) => {
@@ -27,9 +28,9 @@ const Toolbar = ({ id, enableVisualization }) => {
   const handlers = {
     TOGGLE_LOVE: useCallback(() => toggleLove(), [toggleLove]),
   }
-
   return (
     <>
+      {data && <QualityInfo record={data} sortable={false} />}
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       {config.enableFavourites && (
         <LoveButton
