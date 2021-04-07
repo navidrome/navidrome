@@ -42,7 +42,7 @@ const getCoverArtUrl = (record, size) => {
 
 export default {
   url,
-  getCoverArtUrl: getCoverArtUrl,
+  getCoverArtUrl,
   scrobble,
   download,
   star,
