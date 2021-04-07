@@ -311,10 +311,6 @@ export default {
       input: {
         paddingLeft: '.9rem',
         border: 0,
-      },
-    },
-    RaFilter: {
-      form: {
         '& .MuiInputBase-root': {
           backgroundColor: 'white !important',
           borderRadius: '20px !important',
@@ -338,6 +334,14 @@ export default {
             '-webkit-box-shadow': '0 0 0 100px #c2c1c2 inset',
             '-webkit-text-fill-color': 'black',
           },
+        },
+      },
+    },
+    RaFilter: {
+      form: {
+        '& .MuiOutlinedInput-input:-webkit-autofill': {
+          '-webkit-box-shadow': '0 0 0 100px #28282b inset',
+          '-webkit-text-fill-color': 'white',
         },
       },
     },
