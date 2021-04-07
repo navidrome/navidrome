@@ -35,7 +35,8 @@ const PlaylistSubmenu = ({
   useEffect(() => {
     setPlaylistData()
     refresh()
-  }, [data, refresh])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data])
 
   return (
     <div style={{ overflow: 'auto' }}>

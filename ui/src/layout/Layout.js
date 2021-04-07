@@ -10,11 +10,11 @@ import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 
 const useStyles = makeStyles({
-  LayoutWrapper: {
-    height: '100vh', // whole React-Admin component
+  root: {
+    height: '100vh',
   },
   appFrame: {
-    paddingBottom: ({ addPadding }) => (addPadding ? '80px' : 0), // padding for musicPlayer
+    paddingBottom: ({ addPadding }) => (addPadding ? '80px' : 0),
     overflow: 'auto',
   },
   contentWithSidebar: {
@@ -41,7 +41,7 @@ export default (props) => {
     <HotKeys handlers={keyHandlers}>
       <Layout
         {...props}
-        className={classes.LayoutWrapper}
+        className={classes.root}
         menu={Menu}
         appBar={AppBar}
         theme={theme}

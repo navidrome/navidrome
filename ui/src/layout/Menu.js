@@ -141,7 +141,6 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         dense={dense}
         onMenuClick={onMenuClick}
         name={playlistMenuName}
-        resources={resources}
       />
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
       {isXsmall && logout}
