@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   useCreate,
@@ -35,19 +35,24 @@ export const AddToPlaylistDialog = () => {
   const translate = useTranslate()
   const notify = useNotify()
   const [value, setValue] = useState({})
+  const [newPlaylist, setNewPlaylist] = useState({})
   const [check, setCheck] = useState(false)
   const dataProvider = useDataProvider()
   const [createAndAddToPlaylist] = useCreate(
     'playlist',
-    { name: value.name },
+    { name: newPlaylist.name },
     {
       onSuccess: ({ data }) => {
-        setValue(data)
         addToPlaylist(data.id)
       },
       onFailure: (error) => notify(`Error: ${error.message}`, 'warning'),
     }
-  )
+    )
+    useEffect(() => {
+      if (newPlaylist.name) {
+        createAndAddToPlaylist()
+      }
+    }, [newPlaylist, createAndAddToPlaylist])
 
   const addToPlaylist = (playlistId, distinctIds) => {
     const trackIds = Array.isArray(distinctIds) ? distinctIds : selectedIds
@@ -66,8 +71,8 @@ export const AddToPlaylistDialog = () => {
       })
   }
 
-  const checkDuplicateSong = (playlistId) => {
-    httpClient(`${REST_URL}/playlist/${playlistId}`)
+  const checkDuplicateSong = (playlistObject) => {
+    httpClient(`${REST_URL}/playlist/${playlistObject.id}`)
       .then((res) => {
         const { tracks } = JSON.parse(res.body)
         if (tracks) {
@@ -77,12 +82,9 @@ export const AddToPlaylistDialog = () => {
 
           if (dupSng.length) {
             const dupIds = dupSng.map((song) => song.id)
-            return dispatch(openDuplicateSongWarning(dupIds))
+            dispatch(openDuplicateSongWarning(dupIds))
           }
-          return setCheck(true)
         }
-
-        setCheck(true)
       })
       .catch((error) => {
         console.error(error)
@@ -91,11 +93,13 @@ export const AddToPlaylistDialog = () => {
   }
 
   const handleSubmit = (e) => {
-    if (value.id) {
-      addToPlaylist(value.id)
-    } else {
-      createAndAddToPlaylist()
-    }
+    value.forEach(playlistObject => {
+      if (playlistObject.id) {
+        addToPlaylist(playlistObject.id, playlistObject.distinctIds)
+      } else {
+        setNewPlaylist(playlistObject)
+      }
+    });
     setCheck(false)
     dispatch(closeAddToPlaylist())
     e.stopPropagation()
@@ -108,30 +112,31 @@ export const AddToPlaylistDialog = () => {
   }
 
   const handleChange = (pls) => {
-    if (pls.id) {
-      checkDuplicateSong(pls.id)
-    } else {
+    if (!value.length || pls.length > value.length) {
+      let newlyAdded = pls.slice(-1).pop()
+      // console.log(newlyAdded)
+      if (newlyAdded.id) {
+        checkDuplicateSong(newlyAdded)
+      }
       setCheck(true)
     }
+    else if (pls.length === 0) setCheck(false)
+    console.log(pls)
     setValue(pls)
   }
 
   const handleDuplicateClose = () => {
     dispatch(closeDuplicateSongDialog())
-    dispatch(closeAddToPlaylist())
   }
   const handleDuplicateSubmit = () => {
-    addToPlaylist(value.id)
     dispatch(closeDuplicateSongDialog())
-    dispatch(closeAddToPlaylist())
   }
   const handleSkip = () => {
     const distinctSongs = selectedIds.filter(
       (id) => duplicateIds.indexOf(id) < 0
     )
-    addToPlaylist(value.id, distinctSongs)
+    value.slice(-1).pop().distinctIds = distinctSongs
     dispatch(closeDuplicateSongDialog())
-    dispatch(closeAddToPlaylist())
   }
 
   return (

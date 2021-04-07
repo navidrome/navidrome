@@ -1,6 +1,9 @@
 /* eslint-disable no-use-before-define */
 import React from 'react'
 import TextField from '@material-ui/core/TextField'
+import Checkbox from '@material-ui/core/Checkbox'
+import CheckBoxIcon from '@material-ui/icons/CheckBox'
+import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank'
 import Autocomplete, {
   createFilterOptions,
 } from '@material-ui/lab/Autocomplete'
@@ -24,24 +27,29 @@ export const SelectPlaylistInput = ({ onChange }) => {
     ids.map((id) => data[id]).filter((option) => isWritable(option.owner))
 
   const handleOnChange = (event, newValue) => {
-    if (newValue == null) {
-      onChange({})
-    } else if (typeof newValue === 'string') {
-      onChange({
-        name: newValue,
-      })
-    } else if (newValue && newValue.inputValue) {
-      // Create a new value from the user input
-      onChange({
-        name: newValue.inputValue,
-      })
-    } else {
-      onChange(newValue)
+    let newState = []
+    if (newValue && newValue.length) {
+      newValue.forEach(playlistObject => {
+        if (playlistObject.inputValue) {
+          newState.push({
+            name: playlistObject.inputValue
+          })
+        }
+        else {
+          newState.push(playlistObject)
+        }
+      });
     }
+    onChange(newState)
   }
+
+  const icon = <CheckBoxOutlineBlankIcon fontSize="small" />
+  const checkedIcon = <CheckBoxIcon fontSize="small" />
 
   return (
     <Autocomplete
+      multiple
+      disableCloseOnSelect
       onChange={handleOnChange}
       filterOptions={(options, params) => {
         const filtered = filter(options, params)
@@ -76,7 +84,17 @@ export const SelectPlaylistInput = ({ onChange }) => {
         // Regular option
         return option.name
       }}
-      renderOption={(option) => option.name}
+      renderOption={(option, { selected }) => (
+        <React.Fragment>
+          <Checkbox
+            icon={icon}
+            checkedIcon={checkedIcon}
+            style={{ marginRight: 8 }}
+            checked={selected}
+          />
+          {option.name}
+        </React.Fragment>
+      )}
       style={{ width: '100%' }}
       freeSolo
       renderInput={(params) => (
