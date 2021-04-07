@@ -22,21 +22,20 @@ const PlaylistSubmenu = ({
   const dataProvider = useDataProvider()
   const refresh = useRefresh()
 
-  const setData = () => {
+  const setPlaylistData = () => {
     dataProvider
       .getList('playlist', {
         pagination: { page: 1, perPage: -1 },
         sort: { field: 'name', order: 'ASC' },
       })
       .then((res) => {
-        console.log(res)
         if (res?.data) setPlaylists(Object.values(res.data))
       })
   }
   useEffect(() => {
-    setData()
+    setPlaylistData()
     refresh()
-  }, [data, setData, refresh])
+  }, [data, refresh])
 
   return (
     <div style={{ overflow: 'auto' }}>
