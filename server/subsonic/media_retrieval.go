@@ -4,15 +4,15 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/core"
-	"github.com/deluan/navidrome/core/gravatar"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/resources"
-	"github.com/deluan/navidrome/server/subsonic/responses"
-	"github.com/deluan/navidrome/utils"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/gravatar"
 )
 
 type MediaRetrievalController struct {
@@ -46,7 +46,7 @@ func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Requ
 }
 
 func (c *MediaRetrievalController) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	f, err := resources.AssetFile().Open(consts.PlaceholderAvatar)
+	f, err := resources.Assets().Open(consts.PlaceholderAvatar)
 	if err != nil {
 		log.Error(r, "Image not found", err)
 		return nil, newError(responses.ErrorDataNotFound, "Avatar image not found")

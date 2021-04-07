@@ -16,17 +16,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/deluan/navidrome/core/cache"
-	_ "golang.org/x/image/webp"
-
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/resources"
-	"github.com/deluan/navidrome/utils"
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/cache"
+	_ "golang.org/x/image/webp"
 )
 
 type Artwork interface {
@@ -128,7 +127,7 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
-			reader, err = resources.AssetFile().Open(consts.PlaceholderAlbumArt)
+			reader, err = resources.Assets().Open(consts.PlaceholderAlbumArt)
 		}
 	}()
 

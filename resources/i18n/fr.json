@@ -37,13 +37,13 @@
                 "albumArtist": "Artiste",
                 "artist": "Artiste",
                 "duration": "Durée",
-                "songCount": "Numéro de piste",
+                "songCount": "Nombre de pistes",
                 "playCount": "Nombre d'écoutes",
                 "name": "Nom",
                 "genre": "Genre",
                 "compilation": "Compilation",
                 "year": "Année",
-                "updatedAt": "Mise à jour le",
+                "updatedAt": "Mis à jour le",
                 "comment": "Commentaire"
             },
             "actions": {
@@ -93,7 +93,7 @@
                 "client": "Client",
                 "userName": "Nom d'utilisateur",
                 "lastSeen": "Vu pour la dernière fois",
-                "reportRealPath": ""
+                "reportRealPath": "Rapporter le chemin absolu"
             }
         },
         "transcoding": {
@@ -123,6 +123,10 @@
                 "selectPlaylist": "Ajouter les pistes à la playlist",
                 "addNewPlaylist": "Créer \"%{name}\"",
                 "export": "Exporter"
+            },
+            "message": {
+              "duplicate_song": "Pistes déjà présentes dans la playlist",
+              "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
             }
         }
     },
@@ -142,22 +146,22 @@
         },
         "validation": {
             "invalidChars": "Merci d'utiliser uniquement des chiffres et des lettres",
-            "passwordDoesNotMatch": "Les mots de passes ne correspondent pas",
+            "passwordDoesNotMatch": "Les mots de passe ne correspondent pas",
             "required": "Ce champ est requis",
             "minLength": "Minimum %{min} caractères",
             "maxLength": "Maximum %{max} caractères",
             "minValue": "Minimum %{min}",
             "maxValue": "Maximum %{max}",
             "number": "Doit être un nombre",
-            "email": "Doit être un email",
-            "oneOf": "Doit être au choix: %{options}",
-            "regex": "Doit respecter un format spécifique (regexp): %{pattern}"
+            "email": "Doit être un e-mail",
+            "oneOf": "Doit être au choix : %{options}",
+            "regex": "Doit respecter un format spécifique (regexp) : %{pattern}"
         },
         "action": {
             "add_filter": "Ajouter un filtre",
             "add": "Ajouter",
             "back": "Retour",
-            "bulk_actions": "%{smart_count} selectionné |||| %{smart_count} selectionnés",
+            "bulk_actions": "%{smart_count} sélectionné |||| %{smart_count} sélectionnés",
             "cancel": "Annuler",
             "clear_input_value": "Vider le champ",
             "clone": "Dupliquer",
@@ -179,7 +183,8 @@
             "close": "Fermer",
             "open_menu": "Ouvrir le menu",
             "close_menu": "Fermer le menu",
-            "unselect": "Désélectionner"
+            "unselect": "Désélectionner",
+            "skip": "Ignorer"
         },
         "boolean": {
             "true": "Oui",
@@ -199,12 +204,12 @@
         },
         "input": {
             "file": {
-                "upload_several": "Déposez les fichiers à uploader, ou cliquez pour en sélectionner.",
-                "upload_single": "Déposez le fichier à uploader, ou cliquez pour le sélectionner."
+                "upload_several": "Déposez les fichiers à téléverser, ou cliquez pour en sélectionner.",
+                "upload_single": "Déposez le fichier à téléverser, ou cliquez pour le sélectionner."
             },
             "image": {
-                "upload_several": "Déposez les images à uploader, ou cliquez pour en sélectionner.",
-                "upload_single": "Déposez l'image à uploader, ou cliquez pour la sélectionner."
+                "upload_several": "Déposez les images à téléverser, ou cliquez pour en sélectionner.",
+                "upload_single": "Déposez l'image à téléverser, ou cliquez pour la sélectionner."
             },
             "references": {
                 "all_missing": "Impossible de trouver des données de références.",
@@ -217,7 +222,7 @@
             }
         },
         "message": {
-            "about": "Au sujet de",
+            "about": "À propos de",
             "are_you_sure": "Êtes-vous sûr ?",
             "bulk_delete_content": "Êtes-vous sûr(e) de vouloir supprimer cet élément ? |||| Êtes-vous sûr(e) de vouloir supprimer ces %{smart_count} éléments ?",
             "bulk_delete_title": "Supprimer %{name} |||| Supprimer %{smart_count} %{name}",
@@ -241,12 +246,13 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} sur %{total}",
             "page_rows_per_page": "Lignes par page :",
             "next": "Suivant",
-            "prev": "Précédent"
+            "prev": "Précédent",
+            "skip_nav": "Avancer au contenu"
         },
         "notification": {
-            "updated": "Élément mis à jour |||| %{smart_count} élements mis à jour",
+            "updated": "Élément mis à jour |||| %{smart_count} éléments mis à jour",
             "created": "Élément créé",
-            "deleted": "Élément supprimé |||| %{smart_count} élements supprimés",
+            "deleted": "Élément supprimé |||| %{smart_count} éléments supprimés",
             "bad_item": "Élément inconnu",
             "item_doesnt_exist": "L'élément n'existe pas",
             "http_error": "Erreur de communication avec le serveur",
@@ -259,13 +265,13 @@
     "message": {
         "note": "NOTE",
         "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancer le serveur avec l'option %{config} activée.",
-        "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé d'activer cette fonctionnalité uniquement lors de la configuration du Transcodage.",
+        "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé d'activer cette fonctionnalité uniquement lors de la configuration du transcodage.",
         "songsAddedToPlaylist": "Une piste ajoutée à la playlist |||| %{smart_count} pistes ajoutées à la playlist",
         "noPlaylistsAvailable": "Aucune playlist",
         "delete_user_title": "Supprimer l'utilisateur '%{name}'",
-        "delete_user_content": "Êtes-vous sûr de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
-        "notifications_blocked": "",
-        "notifications_not_available": ""
+        "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
+        "notifications_blocked": "Votre navigateur bloque les notifications de ce site",
+        "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via HTTPS"
     },
     "menu": {
         "library": "Bibliothèque",
@@ -278,7 +284,7 @@
                 "theme": "Thème",
                 "language": "Langue",
                 "defaultView": "Vue par défaut",
-                "desktop_notifications": ""
+                "desktop_notifications": "Notifications de bureau"
             }
         },
         "albumList": "Albums",
@@ -313,15 +319,28 @@
         "links": {
             "homepage": "Page d'accueil",
             "source": "Code source",
-            "featureRequests": "Demande de fonctionalités"
+            "featureRequests": "Demande de fonctionnalités"
         }
     },
     "activity": {
         "title": "Activité",
-        "totalScanned": "Nombre total de dossier scannés",
+        "totalScanned": "Nombre total de dossiers scannés",
         "quickScan": "Scan rapide",
         "fullScan": "Scan complet",
         "serverUptime": "Disponibilité du serveur",
         "serverDown": "HORS LIGNE"
+    },
+    "help": {
+        "title": "Raccourcis Navidrome",
+        "hotkeys": {
+            "show_help": "Montrer cette fenêtre d'aide",
+            "toggle_menu": "Afficher/Cacher le menu latéral",
+            "toggle_play": "Lecture/Pause",
+            "prev_song": "Morceau précédent",
+            "next_song": "Morceau suivant",
+            "vol_up": "Augmenter le volume",
+            "vol_down": "Baisser le volume",
+            "toggle_star": "Ajouter/Enlever le morceau des favoris"
+        }
     }
 }

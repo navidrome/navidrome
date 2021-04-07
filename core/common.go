@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 
-	"github.com/deluan/navidrome/model/request"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 func userName(ctx context.Context) string {

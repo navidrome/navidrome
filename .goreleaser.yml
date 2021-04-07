@@ -1,11 +1,6 @@
 # GoReleaser config
 project_name: navidrome
 
-before:
-  hooks:
-    - go-bindata -fs -prefix resources -tags embed -ignore="\\\*.go" -pkg resources -o resources/embedded_gen.go resources/...
-    - go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
-
 builds:
   - id: navidrome_linux_amd64
     env:
@@ -18,7 +13,7 @@ builds:
       - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static -lz'"
-      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_386
     env:
@@ -31,7 +26,7 @@ builds:
       - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
-      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_arm
     env:
@@ -50,7 +45,7 @@ builds:
       - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
-      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_linux_arm64
     env:
@@ -65,7 +60,7 @@ builds:
       - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
-      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_windows_i686
     env:
@@ -81,7 +76,7 @@ builds:
       - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
-      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_windows_x64
     env:
@@ -97,7 +92,7 @@ builds:
       - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
-      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
   - id: navidrome_darwin
     env:
@@ -112,7 +107,7 @@ builds:
     flags:
       - -tags=embed,netgo
     ldflags:
-      - -s -w -X github.com/deluan/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/deluan/navidrome/consts.gitTag={{.Version}}
+      - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
 archives:
   - format_overrides:

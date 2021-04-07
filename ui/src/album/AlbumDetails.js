@@ -9,6 +9,7 @@ import {
   useMediaQuery,
 } from '@material-ui/core'
 import { useTranslate } from 'react-admin'
+import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
@@ -17,77 +18,91 @@ import {
   DurationField,
   formatRange,
   SizeField,
-  StarButton,
+  LoveButton,
 } from '../common'
+import config from '../config'
 
-const useStyles = makeStyles((theme) => ({
-  root: {
-    [theme.breakpoints.down('xs')]: {
-      padding: '0.7em',
-      minWidth: '24em',
+const useStyles = makeStyles(
+  (theme) => ({
+    root: {
+      [theme.breakpoints.down('xs')]: {
+        padding: '0.7em',
+        minWidth: '20em',
+      },
+      [theme.breakpoints.up('sm')]: {
+        padding: '1em',
+        minWidth: '32em',
+      },
     },
-    [theme.breakpoints.up('sm')]: {
-      padding: '1em',
-      minWidth: '32em',
+    cardContents: {
+      display: 'flex',
     },
-  },
-  cardContents: {
-    display: 'flex',
-  },
-  details: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  content: {
-    flex: '2 0 auto',
-  },
-  coverParent: {
-    [theme.breakpoints.down('xs')]: {
-      height: '8em',
-      width: '8em',
-      minWidth: '8em',
+    details: {
+      display: 'flex',
+      flexDirection: 'column',
     },
-    [theme.breakpoints.up('sm')]: {
-      height: '10em',
-      width: '10em',
-      minWidth: '10em',
+    content: {
+      flex: '2 0 auto',
     },
-    [theme.breakpoints.up('lg')]: {
-      height: '15em',
-      width: '15em',
-      minWidth: '15em',
+    coverParent: {
+      [theme.breakpoints.down('xs')]: {
+        height: '8em',
+        width: '8em',
+        minWidth: '8em',
+      },
+      [theme.breakpoints.up('sm')]: {
+        height: '10em',
+        width: '10em',
+        minWidth: '10em',
+      },
+      [theme.breakpoints.up('lg')]: {
+        height: '15em',
+        width: '15em',
+        minWidth: '15em',
+      },
     },
-  },
-  cover: {
-    objectFit: 'contain',
-    cursor: 'pointer',
-    display: 'block',
-    width: '100%',
-    height: '100%',
-  },
-  starButton: {
-    top: theme.spacing(-0.2),
-    left: theme.spacing(0.5),
-  },
-  commentBlock: {
-    display: 'inline-block',
-    marginTop: '1em',
-    float: 'left',
-  },
-}))
+    cover: {
+      objectFit: 'contain',
+      cursor: 'pointer',
+      display: 'block',
+      width: '100%',
+      height: '100%',
+    },
+    loveButton: {
+      top: theme.spacing(-0.2),
+      left: theme.spacing(0.5),
+    },
+    commentBlock: {
+      display: 'inline-block',
+      marginTop: '1em',
+      float: 'left',
+      wordBreak: 'break-all',
+    },
+    pointerCursor: {
+      cursor: 'pointer',
+    },
+    recordName: {},
+    recordArtist: {},
+    recordMeta: {},
+  }),
+  {
+    name: 'NDAlbumDetails',
+  }
+)
 
 const AlbumComment = ({ record }) => {
   const classes = useStyles()
   const [expanded, setExpanded] = React.useState(false)
 
+  const lines = record.comment.split('\n')
   const formatted = useMemo(() => {
-    return record.comment.split('\n').map((line, idx) => (
+    return lines.map((line, idx) => (
       <span key={record.id + '-comment-' + idx}>
         <span dangerouslySetInnerHTML={{ __html: line }} />
         <br />
       </span>
     ))
-  }, [record.comment, record.id])
+  }, [lines, record.id])
 
   const handleExpandClick = useCallback(() => {
     setExpanded(!expanded)
@@ -98,13 +113,12 @@ const AlbumComment = ({ record }) => {
       collapsedHeight={'1.5em'}
       in={expanded}
       timeout={'auto'}
-      className={classes.commentBlock}
+      className={clsx(
+        classes.commentBlock,
+        lines.length > 1 && classes.pointerCursor
+      )}
     >
-      <Typography
-        variant={'body1'}
-        className={classes.commentText}
-        onClick={handleExpandClick}
-      >
+      <Typography variant={'body1'} onClick={handleExpandClick}>
         {formatted}
       </Typography>
     </Collapse>
@@ -129,16 +143,8 @@ const AlbumDetails = ({ record }) => {
     return genreDateLine.join(' · ')
   }
 
-  const imageUrl = subsonic.url(
-    'getCoverArt',
-    record.coverArtId || 'not_found',
-    { size: 300 }
-  )
-
-  const fullImageUrl = subsonic.url(
-    'getCoverArt',
-    record.coverArtId || 'not_found'
-  )
+  const imageUrl = subsonic.getCoverArtUrl(record, 300)
+  const fullImageUrl = subsonic.getCoverArtUrl(record)
 
   const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
   const handleCloseLightbox = React.useCallback(
@@ -161,22 +167,26 @@ const AlbumDetails = ({ record }) => {
         </div>
         <div className={classes.details}>
           <CardContent className={classes.content}>
-            <Typography variant="h5">
+            <Typography variant="h5" className={classes.recordName}>
               {record.name}
-              <StarButton
-                className={classes.starButton}
-                record={record}
-                resource={'album'}
-                size={isDesktop ? 'default' : 'small'}
-                aria-label="star"
-                color="primary"
-              />
+              {config.enableFavourites && (
+                <LoveButton
+                  className={classes.loveButton}
+                  record={record}
+                  resource={'album'}
+                  size={isDesktop ? 'default' : 'small'}
+                  aria-label="love"
+                  color="primary"
+                />
+              )}
             </Typography>
-            <Typography component="h6">
+            <Typography component="h6" className={classes.recordArtist}>
               <ArtistLinkField record={record} />
             </Typography>
-            <Typography component="p">{genreYear(record)}</Typography>
-            <Typography component="p">
+            <Typography component="p" className={classes.recordMeta}>
+              {genreYear(record)}
+            </Typography>
+            <Typography component="p" className={classes.recordMeta}>
               {record.songCount}{' '}
               {translate('resources.song.name', {
                 smart_count: record.songCount,

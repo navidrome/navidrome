@@ -2,12 +2,13 @@ package server
 
 import (
 	"fmt"
+	"io/fs"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/deluan/navidrome/log"
 	"github.com/go-chi/chi/middleware"
+	"github.com/navidrome/navidrome/log"
 	"github.com/unrolled/secure"
 )
 
@@ -55,12 +56,12 @@ func injectLogger(next http.Handler) http.Handler {
 	})
 }
 
-func robotsTXT(fs http.FileSystem) func(next http.Handler) http.Handler {
+func robotsTXT(fs fs.FS) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasSuffix(r.URL.Path, "/robots.txt") {
 				r.URL.Path = "/robots.txt"
-				http.FileServer(fs).ServeHTTP(w, r)
+				http.FileServer(http.FS(fs)).ServeHTTP(w, r)
 			} else {
 				next.ServeHTTP(w, r)
 			}

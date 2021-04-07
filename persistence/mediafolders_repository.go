@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/model"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/model"
 )
 
 type mediaFolderRepository struct {

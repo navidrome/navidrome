@@ -6,9 +6,9 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/core/pool"
-	"github.com/deluan/navidrome/log"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/pool"
 )
 
 type CacheWarmer interface {

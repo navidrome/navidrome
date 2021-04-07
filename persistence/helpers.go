@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/utils"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 )
 
 func toSqlArgs(rec interface{}) (map[string]interface{}, error) {

@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/deluan/navidrome/model"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/model"
 )
 
 type filterFunc = func(field string, value interface{}) Sqlizer

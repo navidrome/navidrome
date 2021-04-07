@@ -10,13 +10,13 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/deluan/navidrome/core"
-	"github.com/deluan/navidrome/core/auth"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/server/subsonic/responses"
-	"github.com/deluan/navidrome/utils"
+	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils"
 )
 
 const (

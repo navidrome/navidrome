@@ -7,16 +7,16 @@ import {
   TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import StarIcon from '@material-ui/icons/Star'
+import FavoriteIcon from '@material-ui/icons/Favorite'
 import {
   DurationField,
   List,
-  SimpleList,
   SongContextMenu,
   SongDatagrid,
   SongDetails,
   QuickFilter,
   SongTitleField,
+  SongSimpleList,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../actions'
@@ -25,7 +25,9 @@ import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
 import { AddToPlaylistDialog } from '../dialogs'
 import { makeStyles } from '@material-ui/core/styles'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
+import config from '../config'
+import { QualityInfo } from '../common/QualityInfo'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -48,11 +50,13 @@ const useStyles = makeStyles({
 const SongFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
     <SearchInput source="title" alwaysOn />
-    <QuickFilter
-      source="starred"
-      label={<StarIcon fontSize={'small'} />}
-      defaultValue={true}
-    />
+    {config.enableFavourites && (
+      <QuickFilter
+        source="starred"
+        label={<FavoriteIcon fontSize={'small'} />}
+        defaultValue={true}
+      />
+    )}
   </Filter>
 )
 
@@ -78,18 +82,7 @@ const SongList = (props) => {
         perPage={isXsmall ? 50 : 15}
       >
         {isXsmall ? (
-          <SimpleList
-            primaryText={(r) => r.title}
-            secondaryText={(r) => r.artist}
-            tertiaryText={(r) => (
-              <>
-                <DurationField record={r} source={'duration'} />
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              </>
-            )}
-            linkType={(id, basePath, record) => dispatch(setTrack(record))}
-            rightIcon={(r) => <SongContextMenu record={r} visible={true} />}
-          />
+          <SongSimpleList />
         ) : (
           <SongDatagrid
             expand={<SongDetails />}
@@ -119,19 +112,22 @@ const SongList = (props) => {
                 sortByOrder={'DESC'}
               />
             )}
+            <QualityInfo source="quality" sortable={false} />
             <DurationField source="duration" />
             <SongContextMenu
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}
               sortByOrder={'DESC'}
+              sortable={config.enableFavourites}
               className={classes.contextMenu}
               label={
-                <StarBorderIcon
-                  fontSize={'small'}
-                  className={classes.contextHeader}
-                />
+                config.enableFavourites && (
+                  <FavoriteBorderIcon
+                    fontSize={'small'}
+                    className={classes.contextHeader}
+                  />
+                )
               }
-              textAlign={'right'}
             />
           </SongDatagrid>
         )}

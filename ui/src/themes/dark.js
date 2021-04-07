@@ -15,6 +15,14 @@ export default {
         color: 'white',
       },
     },
+    NDLogin: {
+      systemNameLink: {
+        color: '#fff',
+      },
+      welcome: {
+        color: '#eee',
+      },
+    },
   },
   player: {
     theme: 'dark',

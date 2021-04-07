@@ -1,10 +1,10 @@
-package migration
+package migrations
 
 import (
 	"database/sql"
 
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/utils"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/pressly/goose"
 )
 

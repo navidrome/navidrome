@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/deluan/navidrome/core"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/server/subsonic/responses"
-	"github.com/deluan/navidrome/utils"
+	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type MediaAnnotationController struct {
@@ -49,13 +49,21 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 }
 
 func (c *MediaAnnotationController) setRating(ctx context.Context, id string, rating int) error {
-	exist, err := c.ds.Album(ctx).Exists(id)
-	if err != nil {
+	var exist bool
+	var err error
+
+	if exist, err = c.ds.Artist(ctx).Exists(id); err != nil {
 		return err
+	} else if exist {
+		return c.ds.Artist(ctx).SetRating(rating, id)
 	}
-	if exist {
+
+	if exist, err = c.ds.Album(ctx).Exists(id); err != nil {
+		return err
+	} else if exist {
 		return c.ds.Album(ctx).SetRating(rating, id)
 	}
+
 	return c.ds.MediaFile(ctx).SetRating(rating, id)
 }
 

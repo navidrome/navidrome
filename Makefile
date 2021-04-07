@@ -6,14 +6,14 @@ GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
 
 ## Default target just build the Go project.
 default:
-	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=master"
+	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=master"
 .PHONY: default
 
-dev: check_env
+dev: check_dev_env
 	npx foreman -j Procfile.dev -p 4533 start
 .PHONY: dev
 
-server: check_go_env
+server: check_go_dev_env
 	@go run github.com/cespare/reflex -d none -c reflex.conf
 .PHONY: server
 
@@ -37,6 +37,10 @@ lint:
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run -v
 .PHONY: lint
 
+lintall: check_node_dev_env lint
+	@(cd ./ui && npm run check-formatting && npm run lint)
+.PHONY: lintall
+
 update-snapshots: check_go_env
 	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/ginkgo ./server/subsonic/...
 .PHONY: update-snapshots
@@ -52,9 +56,10 @@ setup: download-deps
 .PHONY: setup
 
 download-deps:
-	@echo Download Go dependencies
-	@go mod download
-	@echo Download Node dependencies
+	@echo Downloading Go dependencies...
+	@go mod download -x
+	@go mod tidy # To revert any changes made by the `go mod download` command
+	@echo Downloading Node dependencies...
 	@(cd ./ui && npm ci)
 .PHONY: download-deps
 
@@ -66,6 +71,27 @@ setup-git:
 	@mkdir -p .git/hooks
 	@(cd .git/hooks && ln -sf ../../git/* .)
 .PHONY: setup-git
+
+check_dev_env: check_go_dev_env check_node_dev_env
+.PHONY: check_dev_env
+
+check_go_dev_env:
+	@(hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
+	@current_go_version=`go version | cut -d ' ' -f 3 | cut -c3-` && \
+		echo "$(GO_VERSION) $$current_go_version" | \
+		tr ' ' '\n' | sort -V | tail -1 | \
+		grep -q "^$${current_go_version}$$" || \
+		(echo "\nERROR: Please upgrade your GO version\nThis project requires at least the version $(GO_VERSION)"; exit 1)
+.PHONY: check_go_dev_env
+
+check_node_dev_env:
+	@(hash node) || (echo "\nERROR: Node environment not setup properly!\n"; exit 1)
+	@current_node_version=`node --version` && \
+		echo "$(NODE_VERSION) $$current_node_version" | \
+		tr ' ' '\n' | sort -V | tail -1 | \
+		grep -q "^$${current_node_version}$$" || \
+		(echo "\nERROR: Please check your Node version. Should be at least $(NODE_VERSION)\n"; exit 1)
+.PHONY: check_node_dev_env
 
 check_env: check_go_env check_node_env
 .PHONY: check_env
@@ -81,17 +107,15 @@ check_node_env:
 .PHONY: check_node_env
 
 build: check_go_env
-	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT"
+	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT"
 .PHONY: build
 
 buildall: check_env
 	@(cd ./ui && npm run build)
-	go run github.com/go-bindata/go-bindata/go-bindata -fs -prefix "resources" -tags embed -ignore="\\\*.go" -pkg resources -o resources/embedded_gen.go resources/...
-	go run github.com/go-bindata/go-bindata/go-bindata -fs -prefix "ui/build" -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/...
-	go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/deluan/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=embed,netgo
+	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: buildall
 
-pre-push: lint test
+pre-push: lintall testall
 .PHONY: pre-push
 
 release:
@@ -104,5 +128,5 @@ release:
 .PHONY: release
 
 snapshot:
-	 docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.15.5-1 goreleaser release --rm-dist --skip-publish --snapshot
+	 docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.16.2-1 goreleaser release --rm-dist --skip-publish --snapshot
 .PHONY: snapshot

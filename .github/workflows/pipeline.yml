@@ -21,7 +21,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.36
+          version: v1.38
           github-token: ${{ secrets.GITHUB_TOKEN }}
           args: --timeout 2m
 
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: [1.15.x, 1.16.0-rc1]
+        go_version: [1.16.x]
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
@@ -128,7 +128,7 @@ jobs:
 
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
-        uses: docker://deluan/ci-goreleaser:1.15.5-1
+        uses: docker://deluan/ci-goreleaser:1.16.2-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -136,7 +136,7 @@ jobs:
 
       - name: Run GoReleaser - RELEASE
         if: startsWith(github.ref, 'refs/tags/')
-        uses: docker://deluan/ci-goreleaser:1.15.5-1
+        uses: docker://deluan/ci-goreleaser:1.16.2-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -157,13 +157,15 @@ jobs:
     env:
       DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
     steps:
+      - name: Set up QEMU
+        id: qemu
+        uses: docker/setup-qemu-action@v1
+        if: env.DOCKER_IMAGE != ''
+
       - name: Set up Docker Buildx
         id: buildx
-        uses: crazy-max/ghaction-docker-buildx@v1
+        uses: docker/setup-buildx-action@v1
         if: env.DOCKER_IMAGE != ''
-        with:
-          buildx-version: latest
-          qemu-version: latest
 
       - uses: actions/checkout@v2
         if: env.DOCKER_IMAGE != ''

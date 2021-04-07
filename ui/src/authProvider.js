@@ -59,6 +59,7 @@ const authProvider = {
   logout: () => {
     stopEventStream()
     removeItems()
+    clearServiceWorkerCache()
     return Promise.resolve()
   },
 
@@ -95,6 +96,13 @@ const removeItems = () => {
   localStorage.removeItem('role')
   localStorage.removeItem('subsonic-salt')
   localStorage.removeItem('subsonic-token')
+}
+
+const clearServiceWorkerCache = () => {
+  window.caches &&
+    caches.keys().then(function (keyList) {
+      for (let key of keyList) caches.delete(key)
+    })
 }
 
 const generateSubsonicSalt = () => {

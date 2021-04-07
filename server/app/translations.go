@@ -10,12 +10,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/resources"
-	"github.com/deluan/navidrome/utils"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type translation struct {
@@ -31,7 +31,7 @@ var (
 
 func newTranslationRepository(context.Context) rest.Repository {
 	dir := utils.NewMergeFS(
-		resources.AssetFile(),
+		http.FS(resources.Assets()),
 		http.Dir(filepath.Join(conf.Server.DataFolder, "resources")),
 	)
 	if err := loadTranslations(dir); err != nil {

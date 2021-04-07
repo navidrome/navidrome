@@ -10,7 +10,7 @@ import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { playTracks } from '../actions'
 import {
   DurationField,
@@ -21,6 +21,8 @@ import {
   SongTitleField,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
+import { QualityInfo } from '../common/QualityInfo'
+import config from '../config'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -118,15 +120,18 @@ const AlbumSongs = (props) => {
             />
             {isDesktop && <TextField source="artist" sortable={false} />}
             <DurationField source="duration" sortable={false} />
+            <QualityInfo source="quality" sortable={false} />
             <SongContextMenu
               source={'starred'}
               sortable={false}
               className={classes.contextMenu}
               label={
-                <StarBorderIcon
-                  fontSize={'small'}
-                  className={classes.columnIcon}
-                />
+                config.enableFavourites && (
+                  <FavoriteBorderIcon
+                    fontSize={'small'}
+                    className={classes.columnIcon}
+                  />
+                )
               }
             />
           </SongDatagrid>

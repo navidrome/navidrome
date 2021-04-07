@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 
-	"github.com/deluan/navidrome/model"
+	"github.com/navidrome/navidrome/model"
 )
 
 // TODO: Should the type be encoded in the ID?

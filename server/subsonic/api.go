@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"runtime"
 
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/core"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/scanner"
-	"github.com/deluan/navidrome/server/subsonic/responses"
-	"github.com/deluan/navidrome/utils"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/scanner"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils"
 )
 
 const Version = "1.16.1"
@@ -23,27 +23,27 @@ const Version = "1.16.1"
 type handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
 type Router struct {
-	DataStore    model.DataStore
-	Artwork      core.Artwork
-	Streamer     core.MediaStreamer
-	Archiver     core.Archiver
-	Players      core.Players
-	ExternalInfo core.ExternalInfo
-	Scanner      scanner.Scanner
+	DataStore        model.DataStore
+	Artwork          core.Artwork
+	Streamer         core.MediaStreamer
+	Archiver         core.Archiver
+	Players          core.Players
+	ExternalMetadata core.ExternalMetadata
+	Scanner          scanner.Scanner
 
 	mux http.Handler
 }
 
 func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver, players core.Players,
-	externalInfo core.ExternalInfo, scanner scanner.Scanner) *Router {
+	externalMetadata core.ExternalMetadata, scanner scanner.Scanner) *Router {
 	r := &Router{
-		DataStore:    ds,
-		Artwork:      artwork,
-		Streamer:     streamer,
-		Archiver:     archiver,
-		Players:      players,
-		ExternalInfo: externalInfo,
-		Scanner:      scanner,
+		DataStore:        ds,
+		Artwork:          artwork,
+		Streamer:         streamer,
+		Archiver:         archiver,
+		Players:          players,
+		ExternalMetadata: externalMetadata,
+		Scanner:          scanner,
 	}
 	r.mux = r.routes()
 	return r
@@ -154,12 +154,21 @@ func (api *Router) routes() http.Handler {
 		h(withPlayer, "download", c.Download)
 	})
 
-	// Deprecated/Out of scope endpoints
-	h410(r, "getChatMessages")
-	h410(r, "addChatMessage")
-	h410(r, "getVideos")
-	h410(r, "getVideoInfo")
-	h410(r, "getCaptions")
+	// Not Implemented (yet?)
+	h501(r, "getLyrics")
+	h501(r, "jukeboxControl")
+	h501(r, "getAlbumInfo", "getAlbumInfo2")
+	h501(r, "getShares", "createShare", "updateShare", "deleteShare")
+	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
+		"deletePodcastEpisode", "downloadPodcastEpisode")
+	h501(r, "getInternetRadioStations", "createInternetRadioStation", "updateInternetRadioStation",
+		"deleteInternetRadioStation")
+	h501(r, "createUser", "updateUser", "deleteUser", "changePassword")
+
+	// Deprecated/Won't implement/Out of scope endpoints
+	h410(r, "search")
+	h410(r, "getChatMessages", "addChatMessage")
+	h410(r, "getVideos", "getVideoInfo", "getCaptions", "hls")
 	return r
 }
 
@@ -188,14 +197,29 @@ func h(r chi.Router, path string, f handler) {
 	r.HandleFunc("/"+path+".view", handle)
 }
 
-// Add a handler that returns 410 - Gone. Used to signal that an endpoint will not be implemented
-func h410(r chi.Router, path string) {
-	handle := func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(410)
-		_, _ = w.Write([]byte("This endpoint will not be implemented"))
+// Add a handler that returns 510 - Not implemented. Used to signal that an endpoint is not implemented yet
+func h501(r *chi.Mux, paths ...string) {
+	for _, path := range paths {
+		handle := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Cache-Control", "no-cache")
+			w.WriteHeader(510)
+			_, _ = w.Write([]byte("This endpoint is not implemented, but may be in future releases"))
+		}
+		r.HandleFunc("/"+path, handle)
+		r.HandleFunc("/"+path+".view", handle)
 	}
-	r.HandleFunc("/"+path, handle)
-	r.HandleFunc("/"+path+".view", handle)
+}
+
+// Add a handler that returns 410 - Gone. Used to signal that an endpoint will not be implemented
+func h410(r chi.Router, paths ...string) {
+	for _, path := range paths {
+		handle := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(410)
+			_, _ = w.Write([]byte("This endpoint will not be implemented"))
+		}
+		r.HandleFunc("/"+path, handle)
+		r.HandleFunc("/"+path+".view", handle)
+	}
 }
 
 func sendError(w http.ResponseWriter, r *http.Request, err error) {

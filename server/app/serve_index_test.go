@@ -3,15 +3,16 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/tests"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -19,11 +20,21 @@ import (
 var _ = Describe("serveIndex", func() {
 	var ds model.DataStore
 	mockUser := &mockedUserRepo{}
-	fs := http.Dir("tests/fixtures")
+	fs := os.DirFS("tests/fixtures")
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{MockedUser: mockUser}
 		conf.Server.UILoginBackgroundURL = ""
+	})
+
+	It("redirects bare /app path to /app/", func() {
+		r := httptest.NewRequest("GET", "/app", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		Expect(w.Code).To(Equal(302))
+		Expect(w.Header().Get("Location")).To(Equal("/app/"))
 	})
 
 	It("adds app_config to index.html", func() {
@@ -114,6 +125,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("enableDownloads", true))
 	})
 
+	It("sets the enableLoved", func() {
+		conf.Server.EnableFavourites = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableFavourites", true))
+	})
+
 	It("sets the gaTrackingId", func() {
 		conf.Server.GATrackingID = "UA-12345"
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -133,6 +155,17 @@ var _ = Describe("serveIndex", func() {
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("version", consts.Version()))
+	})
+
+	It("sets the losslessFormats", func() {
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		expected := strings.ToUpper(strings.Join(consts.LosslessFormats, ","))
+		Expect(config).To(HaveKeyWithValue("losslessFormats", expected))
 	})
 })
 

@@ -6,13 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/scanner/metadata"
-	"github.com/deluan/navidrome/utils"
 	"github.com/kennygrant/sanitize"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type mediaFileMapper struct {
@@ -64,8 +65,7 @@ func (s *mediaFileMapper) toMediaFile(md metadata.Metadata) model.MediaFile {
 	mf.Comment = s.policy.Sanitize(md.Comment())
 	mf.Lyrics = s.policy.Sanitize(md.Lyrics())
 
-	// TODO Get Creation time. https://github.com/djherbis/times ?
-	mf.CreatedAt = md.ModificationTime()
+	mf.CreatedAt = time.Now()
 	mf.UpdatedAt = md.ModificationTime()
 
 	return *mf

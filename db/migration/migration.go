@@ -1,11 +1,11 @@
-package migration
+package migrations
 
 import (
 	"database/sql"
 	"fmt"
 	"sync"
 
-	"github.com/deluan/navidrome/consts"
+	"github.com/navidrome/navidrome/consts"
 )
 
 // Use this in migrations that need to communicate something important (braking changes, forced reindexes, etc...)

@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/deluan/navidrome/core"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/server/events"
-	"github.com/deluan/navidrome/utils"
+	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type Scanner interface {

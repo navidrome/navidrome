@@ -3,21 +3,24 @@ import LibraryAddIcon from '@material-ui/icons/LibraryAdd'
 import VideoLibraryIcon from '@material-ui/icons/VideoLibrary'
 import RepeatIcon from '@material-ui/icons/Repeat'
 import AlbumIcon from '@material-ui/icons/Album'
-import StarIcon from '@material-ui/icons/Star'
+import FavoriteIcon from '@material-ui/icons/Favorite'
+import config from '../config'
 
 export default {
   all: {
     icon: AlbumIcon,
     params: 'sort=name&order=ASC',
   },
-  random: { icon: ShuffleIcon, params: 'sort=random' },
-  starred: {
-    icon: StarIcon,
-    params: 'sort=starred_at&order=DESC&filter={"starred":true}',
-  },
+  random: { icon: ShuffleIcon, params: 'sort=random&order=ASC' },
+  ...(config.enableFavourites && {
+    starred: {
+      icon: FavoriteIcon,
+      params: 'sort=starred_at&order=DESC&filter={"starred":true}',
+    },
+  }),
   recentlyAdded: {
     icon: LibraryAddIcon,
-    params: 'sort=created_at&order=DESC',
+    params: 'sort=recently_added&order=DESC',
   },
   recentlyPlayed: {
     icon: VideoLibraryIcon,

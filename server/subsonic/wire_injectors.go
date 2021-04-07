@@ -3,8 +3,8 @@
 package subsonic
 
 import (
-	"github.com/deluan/navidrome/core"
 	"github.com/google/wire"
+	"github.com/navidrome/navidrome/core"
 )
 
 var allProviders = wire.NewSet(
@@ -20,7 +20,7 @@ var allProviders = wire.NewSet(
 	NewBookmarksController,
 	NewLibraryScanningController,
 	core.NewNowPlayingRepository,
-	wire.FieldsOf(new(*Router), "DataStore", "Artwork", "Streamer", "Archiver", "ExternalInfo", "Scanner"),
+	wire.FieldsOf(new(*Router), "DataStore", "Artwork", "Streamer", "Archiver", "ExternalMetadata", "Scanner"),
 )
 
 func initSystemController(router *Router) *SystemController {

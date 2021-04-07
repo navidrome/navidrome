@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/log"
 	"github.com/kr/pretty"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/spf13/viper"
 )
 
@@ -31,19 +31,23 @@ type configOptions struct {
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
 
-	SearchFullString bool
-	IgnoredArticles  string
-	IndexGroups      string
-	ProbeCommand     string
-	CoverArtPriority string
-	CoverJpegQuality int
-	UIWelcomeMessage string
-	EnableGravatar   bool
-	GATrackingID     string
-	AuthRequestLimit int
-	AuthWindowLength time.Duration
+	SearchFullString       bool
+	RecentlyAddedByModTime bool
+	IgnoredArticles        string
+	IndexGroups            string
+	ProbeCommand           string
+	CoverArtPriority       string
+	CoverJpegQuality       int
+	UIWelcomeMessage       string
+	EnableGravatar         bool
+	EnableFavourites       bool
+	GATrackingID           string
+	AuthRequestLimit       int
+	AuthWindowLength       time.Duration
 
 	Scanner scannerOptions
+
+	Agents  string
 	LastFM  lastfmOptions
 	Spotify spotifyOptions
 
@@ -71,7 +75,10 @@ type spotifyOptions struct {
 	Secret string
 }
 
-var Server = &configOptions{}
+var (
+	Server = &configOptions{}
+	hooks  []func()
+)
 
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
@@ -99,6 +106,16 @@ func Load() {
 	if log.CurrentLevel() >= log.LevelDebug {
 		pretty.Printf("Loaded configuration from '%s': %# v\n", Server.ConfigFile, Server)
 	}
+
+	// Call init hooks
+	for _, hook := range hooks {
+		hook()
+	}
+}
+
+// AddHook is used to register initialization code that should run as soon as the config is loaded
+func AddHook(hook func()) {
+	hooks = append(hooks, hook)
 }
 
 func init() {
@@ -110,7 +127,7 @@ func init() {
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("scaninterval", time.Minute)
 	viper.SetDefault("baseurl", "")
-	viper.SetDefault("uiloginbackgroundurl", "https://source.unsplash.com/random/1600x900?music")
+	viper.SetDefault("uiloginbackgroundurl", consts.DefaultUILoginBackgroundURL)
 	viper.SetDefault("enabletranscodingconfig", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
@@ -119,6 +136,7 @@ func init() {
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)
+	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("probecommand", "ffmpeg %s -f ffmetadata")
@@ -126,11 +144,13 @@ func init() {
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("enablegravatar", false)
+	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
 
 	viper.SetDefault("scanner.extractor", "taglib")
+	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")

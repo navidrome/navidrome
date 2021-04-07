@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/core"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
-	"github.com/deluan/navidrome/model/request"
-	"github.com/deluan/navidrome/scanner/metadata"
-	"github.com/deluan/navidrome/utils"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type TagScanner struct {

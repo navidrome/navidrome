@@ -28,6 +28,15 @@ const useStyles = makeStyles({
       },
     },
   },
+  headerStyle: {
+    '& thead': {
+      boxShadow: '0px 3px 3px rgba(0, 0, 0, 0.15)',
+    },
+    '& th': {
+      fontWeight: 'bold',
+      padding: '15px',
+    },
+  },
   contextMenu: {
     visibility: 'hidden',
   },
@@ -60,7 +69,7 @@ const DiscSubtitleRow = ({
         <AlbumContextMenu
           record={{ id: record.albumId }}
           discNumber={record.discNumber}
-          showStar={false}
+          showLove={false}
           className={classes.contextMenu}
           visible={contextAlwaysVisible}
         />
@@ -178,8 +187,10 @@ export const SongDatagrid = ({
   showDiscSubtitles,
   ...rest
 }) => {
+  const classes = useStyles()
   return (
     <Datagrid
+      className={classes.headerStyle}
       {...rest}
       body={
         <SongDatagridBody

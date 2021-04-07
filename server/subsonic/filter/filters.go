@@ -4,13 +4,13 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/deluan/navidrome/model"
+	"github.com/navidrome/navidrome/model"
 )
 
 type Options model.QueryOptions
 
 func AlbumsByNewest() Options {
-	return Options{Sort: "createdAt", Order: "desc"}
+	return Options{Sort: "recently_added", Order: "desc"}
 }
 
 func AlbumsByRecent() Options {

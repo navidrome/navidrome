@@ -16,7 +16,7 @@ import {
   openAddToPlaylist,
 } from '../actions'
 import subsonic from '../subsonic'
-import { StarButton } from './StarButton'
+import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
 
@@ -31,7 +31,7 @@ const useStyles = makeStyles({
 
 const ContextMenu = ({
   resource,
-  showStar,
+  showLove,
   record,
   color,
   className,
@@ -76,7 +76,7 @@ const ContextMenu = ({
       action: (data, ids) => dispatch(openAddToPlaylist({ selectedIds: ids })),
     },
     download: {
-      enabled: config.enableDownloads,
+      enabled: config.enableDownloads && record.size,
       needData: false,
       label: `${translate('resources.album.actions.download')} (${formatBytes(
         record.size
@@ -130,10 +130,10 @@ const ContextMenu = ({
 
   return (
     <span className={clsx(classes.noWrap, className)}>
-      <StarButton
+      <LoveButton
         record={record}
         resource={resource}
-        visible={showStar}
+        visible={config.enableFavourites && showLove}
         color={color}
       />
       <IconButton
@@ -166,49 +166,51 @@ const ContextMenu = ({
   )
 }
 
-export const AlbumContextMenu = (props) => (
-  <ContextMenu
-    {...props}
-    resource={'album'}
-    songQueryParams={{
-      pagination: { page: 1, perPage: -1 },
-      sort: { field: 'discNumber, trackNumber', order: 'ASC' },
-      filter: { album_id: props.record.id, disc_number: props.discNumber },
-    }}
-  />
-)
+export const AlbumContextMenu = (props) =>
+  props.record ? (
+    <ContextMenu
+      {...props}
+      resource={'album'}
+      songQueryParams={{
+        pagination: { page: 1, perPage: -1 },
+        sort: { field: 'discNumber, trackNumber', order: 'ASC' },
+        filter: { album_id: props.record.id, disc_number: props.discNumber },
+      }}
+    />
+  ) : null
 
 AlbumContextMenu.propTypes = {
   record: PropTypes.object,
   discNumber: PropTypes.number,
   color: PropTypes.string,
-  showStar: PropTypes.bool,
+  showLove: PropTypes.bool,
 }
 
 AlbumContextMenu.defaultProps = {
-  showStar: true,
+  showLove: true,
   addLabel: true,
 }
 
-export const ArtistContextMenu = (props) => (
-  <ContextMenu
-    {...props}
-    resource={'artist'}
-    songQueryParams={{
-      pagination: { page: 1, perPage: 200 },
-      sort: { field: 'album, discNumber, trackNumber', order: 'ASC' },
-      filter: { album_artist_id: props.record.id },
-    }}
-  />
-)
+export const ArtistContextMenu = (props) =>
+  props.record ? (
+    <ContextMenu
+      {...props}
+      resource={'artist'}
+      songQueryParams={{
+        pagination: { page: 1, perPage: 200 },
+        sort: { field: 'album, discNumber, trackNumber', order: 'ASC' },
+        filter: { album_artist_id: props.record.id },
+      }}
+    />
+  ) : null
 
 ArtistContextMenu.propTypes = {
   record: PropTypes.object,
   color: PropTypes.string,
-  showStar: PropTypes.bool,
+  showLove: PropTypes.bool,
 }
 
 ArtistContextMenu.defaultProps = {
-  showStar: true,
+  showLove: true,
   addLabel: true,
 }

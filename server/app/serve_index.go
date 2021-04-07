@@ -3,21 +3,28 @@ package app
 import (
 	"encoding/json"
 	"html/template"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"strings"
 
-	"github.com/deluan/navidrome/conf"
-	"github.com/deluan/navidrome/consts"
-	"github.com/deluan/navidrome/log"
-	"github.com/deluan/navidrome/model"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 // Injects the config in the `index.html` template
-func serveIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
+func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 	policy := bluemonday.UGCPolicy()
 	return func(w http.ResponseWriter, r *http.Request) {
+		base := path.Join(conf.Server.BaseURL, consts.URLPathUI)
+		if r.URL.Path == base {
+			http.Redirect(w, r, base+"/", 302)
+		}
+
 		c, err := ds.User(r.Context()).CountAll()
 		firstTime := c == 0 && err == nil
 
@@ -35,6 +42,8 @@ func serveIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"enableDownloads":         conf.Server.EnableDownloads,
+			"enableFavourites":        conf.Server.EnableFavourites,
+			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
 			"devActivityPanel":        conf.Server.DevActivityPanel,
 			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 		}
@@ -61,7 +70,7 @@ func serveIndex(ds model.DataStore, fs http.FileSystem) http.HandlerFunc {
 	}
 }
 
-func getIndexTemplate(r *http.Request, fs http.FileSystem) (*template.Template, error) {
+func getIndexTemplate(r *http.Request, fs fs.FS) (*template.Template, error) {
 	t := template.New("initial state")
 	indexHtml, err := fs.Open("index.html")
 	if err != nil {
