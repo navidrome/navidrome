@@ -22,13 +22,11 @@ const PlaylistSubmenu = ({
   )
 
   useEffect(() => {
-    if (data && typeof data === 'object') {
-      const isEmpty = !Object.keys(data).length
-      if (!isEmpty) {
-        setPlaylists(Object.values(data))
-      } else if (isEmpty && playLists.length) {
-        refresh()
-      }
+    const isEmpty = !Object.keys(data).length
+    if (!isEmpty) {
+      setPlaylists(Object.values(data))
+    } else if (isEmpty && playLists.length) {
+      refresh()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])

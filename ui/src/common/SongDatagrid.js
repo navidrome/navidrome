@@ -31,6 +31,7 @@ const useStyles = makeStyles({
   headerCell: {
     fontWeight: 'bold',
     padding: '15px',
+    position: 'static',
   },
   headerLine: {
     boxShadow: '0px 3px 3px rgba(0, 0, 0, 0.15)',

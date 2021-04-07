@@ -6,7 +6,7 @@ const spotifyGreen = {
 
 // For Album, Playlist
 const musicListActions = {
-  padding: '1rem 0',
+  padding: 0,
   alignItems: 'center',
   '@global': {
     button: {
@@ -28,7 +28,7 @@ const musicListActions = {
         },
       },
       transform: 'scale(2)',
-      margin: '1.5rem',
+      margin: '0 1.5rem',
       minWidth: 0,
       padding: 5,
       transition: 'transform .3s ease',

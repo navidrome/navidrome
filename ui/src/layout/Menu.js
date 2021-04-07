@@ -27,7 +27,7 @@ const translatedResourceName = (resource, translate) =>
 
 const useStyles = makeStyles({
   menuWrapper: {
-    maxHeight: '100%',
+    height: '100%',
     display: 'flex',
     flexDirection: 'column',
   },
@@ -59,8 +59,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
       )
       setPlaylistMenuName(translatedResourceName(playListResource, translate))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resources])
+  }, [resources, translatedResourceName])
 
   const renderResourceMenuItemLink = (resource) => (
     <MenuItemLink

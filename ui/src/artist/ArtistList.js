@@ -37,6 +37,9 @@ const useStyles = makeStyles({
   contextMenu: {
     visibility: 'hidden',
   },
+  headerCell: {
+    position: 'static',
+  },
 })
 
 const ArtistFilter = (props) => (
@@ -63,7 +66,10 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
       {...rest}
     />
   ) : (
-    <Datagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
+    <Datagrid
+      rowClick={handleArtistLink}
+      classes={{ row: classes.row, headerCell: classes.headerCell }}
+    >
       <TextField source="name" />
       <NumberField source="albumCount" sortByOrder={'DESC'} />
       <NumberField source="songCount" sortByOrder={'DESC'} />

@@ -33,6 +33,7 @@ const useStyles = makeStyles(
         padding: '1em',
         minWidth: '32em',
       },
+      overflow: 'visible',
     },
     cardContents: {
       display: 'flex',
