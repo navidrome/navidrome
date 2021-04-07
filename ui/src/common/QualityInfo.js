@@ -1,16 +1,24 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import Chip from '@material-ui/core/Chip'
-import { LOSSLESS_FORMATS } from '../consts'
+import config from '../config'
 
-export const QualityInfo = ({ record, size, ...rest }) => {
-  let { suffix = 'NO_SUFFIX', bitRate = 'NO_BITRATE' } = record
-  suffix = suffix.toUpperCase()
-  let info = suffix
-  if (!LOSSLESS_FORMATS.includes(suffix)) {
-    info += ' ' + bitRate
+const llFormats = new Set(config.losslessFormats.split(','))
+const placeholder = 'N/A'
+
+export const QualityInfo = ({ record, ...rest }) => {
+  let { suffix, bitRate } = record
+  let info = placeholder
+
+  if (suffix) {
+    suffix = suffix.toUpperCase()
+    info = suffix
+    if (!llFormats.has(suffix)) {
+      info += ' ' + bitRate
+    }
   }
-  return <Chip {...rest} size={size} variant="outlined" label={info} />
+
+  return <Chip {...rest} variant="outlined" label={info} />
 }
 
 QualityInfo.propTypes = {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -154,6 +155,17 @@ var _ = Describe("serveIndex", func() {
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("version", consts.Version()))
+	})
+
+	It("sets the losslessFormats", func() {
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		expected := strings.ToUpper(strings.Join(consts.LosslessFormats, ","))
+		Expect(config).To(HaveKeyWithValue("losslessFormats", expected))
 	})
 })
 
