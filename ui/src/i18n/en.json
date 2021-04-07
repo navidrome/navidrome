@@ -20,6 +20,7 @@
         "bitRate": "Bit rate",
         "discSubtitle": "Disc Subtitle",
         "starred": "Favourite",
+        "rating": "Rating",
         "comment": "Comment",
         "quality": "Quality"
       },
@@ -45,7 +46,8 @@
         "compilation": "Compilation",
         "year": "Year",
         "updatedAt": "Updated at",
-        "comment": "Comment"
+        "comment": "Comment",
+        "rating": "Rating"
       },
       "actions": {
         "playAll": "Play",
@@ -61,7 +63,8 @@
         "recentlyAdded": "Recently Added",
         "recentlyPlayed": "Recently Played",
         "mostPlayed": "Most Played",
-        "starred": "Favourites"
+        "starred": "Favourites",
+        "topRated": "Top Rated"
       }
     },
     "artist": {
@@ -70,7 +73,8 @@
         "name": "Name",
         "albumCount": "Album Count",
         "songCount": "Song Count",
-        "playCount": "Plays"
+        "playCount": "Plays",
+        "rating": "Rating"
       }
     },
     "user": {
