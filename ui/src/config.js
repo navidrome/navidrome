@@ -15,7 +15,6 @@ const defaultConfig = {
   gaTrackingId: '',
   devActivityPanel: true,
   devFastAccessCoverArt: false,
-  enableFavourites: true,
   enableStarRating: true,
 }
 
