@@ -20,9 +20,9 @@ export default {
     },
   }),
   ...(config.enableStarRating && {
-    rating: {
+    topRated: {
       icon: StarIcon,
-      params: 'sort=rating&order=DESC',
+      params: 'sort=rating&order=DESC&filter={"has_rating":true}',
     },
   }),
   recentlyAdded: {
