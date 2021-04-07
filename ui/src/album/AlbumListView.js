@@ -25,6 +25,7 @@ import {
   SimpleList,
   MultiLineTextField,
   AlbumContextMenu,
+  RatingField,
 } from '../common'
 import config from '../config'
 import useSelectedFields from '../common/useSelectedFields'
@@ -40,12 +41,18 @@ const useStyles = makeStyles({
       '& $contextMenu': {
         visibility: 'visible',
       },
+      '& $ratingField': {
+        visibility: 'visible',
+      },
     },
   },
   tableCell: {
     width: '17.5%',
   },
   contextMenu: {
+    visibility: 'hidden',
+  },
+  ratingField: {
     visibility: 'hidden',
   },
 })
@@ -116,6 +123,14 @@ const AlbumListView = ({
       <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
     ),
     duration: isDesktop && <DurationField source="duration" />,
+    rating: config.enableStarRating && (
+      <RatingField
+        source={'rating'}
+        resource={'album'}
+        sortByOrder={'DESC'}
+        className={classes.ratingField}
+      />
+    ),
   }
 
   const columns = useSelectedFields({
@@ -126,7 +141,23 @@ const AlbumListView = ({
   return isXsmall ? (
     <SimpleList
       primaryText={(r) => r.name}
-      secondaryText={(r) => r.albumArtist}
+      secondaryText={(r) => (
+        <>
+          {r.albumArtist}
+          {config.enableStarRating && (
+            <>
+              <br />
+              <RatingField
+                record={r}
+                sortByOrder={'DESC'}
+                source={'rating'}
+                resource={'album'}
+                size={'small'}
+              />
+            </>
+          )}
+        </>
+      )}
       tertiaryText={(r) => (
         <>
           <RangeField record={r} source={'year'} sortBy={'maxYear'} />

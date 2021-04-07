@@ -17,6 +17,7 @@ import {
   QuickFilter,
   SongTitleField,
   SongSimpleList,
+  RatingField,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../actions'
@@ -28,6 +29,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import config from '../config'
 import useSelectedFields from '../common/useSelectedFields'
+import { QualityInfo } from '../common/QualityInfo'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -40,9 +42,15 @@ const useStyles = makeStyles({
       '& $contextMenu': {
         visibility: 'visible',
       },
+      '& $ratingField': {
+        visibility: 'visible',
+      },
     },
   },
   contextMenu: {
+    visibility: 'hidden',
+  },
+  ratingField: {
     visibility: 'hidden',
   },
 })
@@ -93,6 +101,14 @@ const SongList = (props) => {
       />
     ),
     duration: <DurationField source="duration" />,
+    rating: config.enableStarRating && (
+      <RatingField
+        source="rating"
+        sortByOrder={'DESC'}
+        resource={'song'}
+        className={classes.ratingField}
+      />
+    ),
   }
   const columns = useSelectedFields({
     resource: 'song',

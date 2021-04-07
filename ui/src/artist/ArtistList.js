@@ -17,6 +17,7 @@ import {
   QuickFilter,
   useGetHandleArtistClick,
   ArtistSimpleList,
+  RatingField,
 } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
@@ -34,9 +35,15 @@ const useStyles = makeStyles({
       '& $contextMenu': {
         visibility: 'visible',
       },
+      '& $ratingField': {
+        visibility: 'visible',
+      },
     },
   },
   contextMenu: {
+    visibility: 'hidden',
+  },
+  ratingField: {
     visibility: 'hidden',
   },
 })
@@ -54,17 +61,25 @@ const ArtistFilter = (props) => (
   </Filter>
 )
 
-const toggleableFields = {
-  albumCount: <NumberField source="albumCount" sortByOrder={'DESC'} />,
-  songCount: <NumberField source="songCount" sortByOrder={'DESC'} />,
-  playCount: <NumberField source="playCount" sortByOrder={'DESC'} />,
-}
-
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+
+  const toggleableFields = {
+    albumCount: <NumberField source="albumCount" sortByOrder={'DESC'} />,
+    songCount: <NumberField source="songCount" sortByOrder={'DESC'} />,
+    playCount: <NumberField source="playCount" sortByOrder={'DESC'} />,
+    rating: config.enableStarRating && (
+      <RatingField
+        source="rating"
+        sortByOrder={'DESC'}
+        resource={'artist'}
+        className={classes.ratingField}
+      />
+    ),
+  }
 
   const columns = useSelectedFields({
     resource: 'artist',
