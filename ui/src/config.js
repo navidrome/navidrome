@@ -9,11 +9,12 @@ const defaultConfig = {
   loginBackgroundURL: 'https://source.unsplash.com/collection/1065384/1600x900',
   enableTranscodingConfig: true,
   enableDownloads: true,
+  enableFavourites: true,
+  losslessFormats: 'FLAC,WAV,ALAC,DSF',
   welcomeMessage: '',
   gaTrackingId: '',
   devActivityPanel: true,
   devFastAccessCoverArt: false,
-  enableFavourites: true,
 }
 
 let config

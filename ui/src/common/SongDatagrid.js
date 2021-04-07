@@ -28,13 +28,15 @@ const useStyles = makeStyles({
       },
     },
   },
-  headerCell: {
-    fontWeight: 'bold',
-    padding: '15px',
-    position: 'static',
-  },
-  headerLine: {
-    boxShadow: '0px 3px 3px rgba(0, 0, 0, 0.15)',
+  headerStyle: {
+    '& thead': {
+      boxShadow: '0px 3px 3px rgba(0, 0, 0, 0.15)',
+    },
+    '& th': {
+      fontWeight: 'bold',
+      padding: '15px',
+      position: 'static',
+    },
   },
   contextMenu: {
     visibility: 'hidden',
@@ -189,11 +191,9 @@ export const SongDatagrid = ({
   const classes = useStyles()
   return (
     <Datagrid
+      className={classes.headerStyle}
+      classes={{ headerCell: classes.headerCell }}
       {...rest}
-      classes={{
-        headerCell: classes.headerCell,
-        headerRow: classes.headerLine,
-      }}
       body={
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
