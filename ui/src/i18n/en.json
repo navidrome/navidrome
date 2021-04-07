@@ -20,6 +20,7 @@
         "bitRate": "Bit rate",
         "discSubtitle": "Disc Subtitle",
         "starred": "Favourite",
+        "rating": "Rating",
         "comment": "Comment",
         "quality": "Quality"
       },
@@ -61,7 +62,8 @@
         "recentlyAdded": "Recently Added",
         "recentlyPlayed": "Recently Played",
         "mostPlayed": "Most Played",
-        "starred": "Favourites"
+        "starred": "Favourites",
+        "rating": "Top Rated"
       }
     },
     "artist": {

@@ -4,6 +4,7 @@ import VideoLibraryIcon from '@material-ui/icons/VideoLibrary'
 import RepeatIcon from '@material-ui/icons/Repeat'
 import AlbumIcon from '@material-ui/icons/Album'
 import FavoriteIcon from '@material-ui/icons/Favorite'
+import StarIcon from '@material-ui/icons/Star'
 import config from '../config'
 
 export default {
@@ -16,6 +17,12 @@ export default {
     starred: {
       icon: FavoriteIcon,
       params: 'sort=starred_at&order=DESC&filter={"starred":true}',
+    },
+  }),
+  ...(config.enableStarRating && {
+    rating: {
+      icon: StarIcon,
+      params: 'sort=rating&order=DESC',
     },
   }),
   recentlyAdded: {
