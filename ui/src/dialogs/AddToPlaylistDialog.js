@@ -114,7 +114,6 @@ export const AddToPlaylistDialog = () => {
   const handleChange = (pls) => {
     if (!value.length || pls.length > value.length) {
       let newlyAdded = pls.slice(-1).pop()
-      // console.log(newlyAdded)
       if (newlyAdded.id) {
         checkDuplicateSong(newlyAdded)
       }
