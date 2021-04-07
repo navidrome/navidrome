@@ -111,6 +111,7 @@ const SongList = (props) => {
       />
     ),
   }
+
   const columns = useSelectedFields({
     resource: 'song',
     columns: toggleableFields,

@@ -10,19 +10,23 @@ const useSelectedFields = ({ resource, columns }) => {
   )?.[resource]
 
   useEffect(() => {
-    if (!resourceFields || !Object.keys(resourceFields).length) {
+    if (
+      !resourceFields ||
+      Object.keys(resourceFields)?.length !== Object.keys(columns).length
+    ) {
       const obj = {}
       for (const key of Object.keys(columns)) {
         obj[key] = true
       }
       dispatch(setToggleableFields({ [resource]: obj }))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resourceFields, dispatch])
 
   const filteredComponents = []
   if (resourceFields) {
     for (const [key, val] of Object.entries(columns)) {
-      if (val && (resourceFields[key] || !resourceFields.hasOwnProperty(key))) {
+      if (val && resourceFields[key]) {
         filteredComponents.push(val)
       }
     }

@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useTranslate } from 'react-admin'
 import { setToggleableFields } from '../actions'
 
-const ITEM_HEIGHT = 75
+const ITEM_HEIGHT = 70
 
 export default function ToggleFieldsMenu({ resource }) {
   const [anchorEl, setAnchorEl] = useState(null)
