@@ -120,6 +120,7 @@ const AlbumListView = ({
               <br />
               <RatingField
                 record={r}
+                sortByOrder={'DESC'}
                 source={'rating'}
                 resource={'album'}
                 size={'small'}
@@ -155,6 +156,7 @@ const AlbumListView = ({
         <RatingField
           source={'rating'}
           resource={'album'}
+          sortByOrder={'DESC'}
           className={classes.ratingField}
         />
       )}

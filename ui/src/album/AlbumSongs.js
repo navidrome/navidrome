@@ -132,6 +132,7 @@ const AlbumSongs = (props) => {
               <RatingField
                 source="rating"
                 resource={'albumSong'}
+                sortable={false}
                 className={classes.ratingField}
               />
             )}

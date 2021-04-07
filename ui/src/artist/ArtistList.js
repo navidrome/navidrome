@@ -78,6 +78,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
       {config.enableStarRating && (
         <RatingField
           source="rating"
+          sortByOrder={'DESC'}
           resource={'artist'}
           className={classes.ratingField}
         />

@@ -124,6 +124,7 @@ const SongList = (props) => {
             {config.enableStarRating && (
               <RatingField
                 source="rating"
+                sortByOrder={'DESC'}
                 resource={'song'}
                 className={classes.ratingField}
               />
