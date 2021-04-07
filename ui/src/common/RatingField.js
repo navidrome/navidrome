@@ -2,6 +2,7 @@ import React, { useCallback } from 'react'
 import PropTypes from 'prop-types'
 import Rating from '@material-ui/lab/Rating'
 import { makeStyles } from '@material-ui/core/styles'
+import StarBorderIcon from '@material-ui/icons/StarBorder'
 import clsx from 'clsx'
 import { useRating } from './useRating'
 
@@ -51,6 +52,7 @@ export const RatingField = ({
         )}
         value={rating}
         size={size}
+        emptyIcon={<StarBorderIcon fontSize="inherit" />}
         onChange={(e, newValue) => handleRating(e, newValue)}
       />
     </span>
