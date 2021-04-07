@@ -119,7 +119,7 @@ const SongList = (props) => {
                 sortByOrder={'DESC'}
               />
             )}
-            <QualityInfo source="quality" sortable={false} />
+            {isDesktop && <QualityInfo source="quality" sortable={false} />}
             <DurationField source="duration" />
             {config.enableStarRating && (
               <RatingField
