@@ -36,7 +36,7 @@ const PlaylistSubmenu = ({
   useEffect(() => {
     setData()
     refresh()
-  }, [data])
+  }, [data, setData, refresh])
 
   return (
     <div style={{ overflow: 'auto' }}>

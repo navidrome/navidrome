@@ -59,7 +59,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
       )
       setPlaylistMenuName(translatedResourceName(playListResource, translate))
     }
-  }, [resources, translatedResourceName])
+  }, [resources, translate, translatedResourceName])
 
   const renderResourceMenuItemLink = (resource) => (
     <MenuItemLink
