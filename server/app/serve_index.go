@@ -22,7 +22,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		base := path.Join(conf.Server.BaseURL, consts.URLPathUI)
 		if r.URL.Path == base {
-			http.Redirect(w, r, base+"/", 302)
+			http.Redirect(w, r, base+"/", http.StatusFound)
 		}
 
 		c, err := ds.User(r.Context()).CountAll()
