@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -36,7 +37,48 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 			handleExportPlaylist(ds)(w, r)
 			return
 		}
-		wrapper(rest.GetAll)(w, r)
+		wrapper(func(constructor rest.RepositoryConstructor, logger ...rest.Logger) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
+				repository := constructor(r.Context())
+				options := parseOptions(r.URL.Query())
+				var entities interface{}
+				var err error
+				if err != nil {
+					if err = rest.RespondWithError(w, http.StatusInternalServerError, err.Error()); err != nil {
+						log.Error(err)
+					}
+					return
+				}
+				if r.Context().Value(request.User).(model.User).IsAdmin {
+					var tEntities interface{}
+					tEntities, err = repository.ReadAll(options)
+					playlistTracks := tEntities.(model.PlaylistTracks)
+					adminPlaylistTracks := make(model.AdminPlaylistTracks, len(playlistTracks))
+					for i, v := range playlistTracks {
+						adminPlaylistTracks[i] = model.AdminPlaylistTrack{
+							ID:             v.ID,
+							PlaylistID:     v.PlaylistID,
+							MediaFileID:    v.MediaFileID,
+							AdminMediaFile: model.AdminMediaFile(v.MediaFile),
+						}
+					}
+					entities = adminPlaylistTracks
+				} else {
+					entities, err = repository.ReadAll(options)
+				}
+				if err != nil {
+					if err = rest.RespondWithError(w, http.StatusInternalServerError, err.Error()); err != nil {
+						log.Error(err)
+					}
+					return
+				}
+				count, _ := repository.Count(options)
+				w.Header().Set("X-Total-Count", strconv.FormatInt(count, 10))
+				if err = rest.RespondWithJSON(w, 200, &entities); err != nil {
+					log.Error(err)
+				}
+			}
+		})(w, r)
 	}
 }
 

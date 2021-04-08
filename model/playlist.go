@@ -40,7 +40,16 @@ type PlaylistTrack struct {
 	MediaFile
 }
 
+type AdminPlaylistTrack struct {
+	ID          string `json:"id"          orm:"column(id)"`
+	MediaFileID string `json:"mediaFileId" orm:"column(media_file_id)"`
+	PlaylistID  string `json:"playlistId" orm:"column(playlist_id)"`
+	AdminMediaFile
+}
+
 type PlaylistTracks []PlaylistTrack
+
+type AdminPlaylistTracks []AdminPlaylistTrack
 
 type PlaylistTrackRepository interface {
 	ResourceRepository
