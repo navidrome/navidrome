@@ -5,6 +5,8 @@ import {
   sanitizeListRestProps,
   TopToolbar,
   useTranslate,
+  useDataProvider,
+  useNotify,
 } from 'react-admin'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
@@ -23,23 +25,51 @@ import config from '../config'
 const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const dataProvider = useDataProvider()
+  const notify = useNotify()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
+  const getAllSongsAndDispatch = React.useCallback(
+    (action) => {
+      if (ids.length === record.songCount) {
+        return dispatch(action(data, ids))
+      }
+
+      dataProvider
+        .getList('playlistTrack', {
+          pagination: { page: 1, perPage: 0 },
+          sort: { field: 'id', order: 'ASC' },
+          filter: { playlist_id: record.id },
+        })
+        .then((res) => {
+          const data = res.data.reduce(
+            (acc, curr) => ({ ...acc, [curr.id]: curr }),
+            {}
+          )
+          dispatch(action(data))
+        })
+        .catch(() => {
+          notify('ra.page.error', 'warning')
+        })
+    },
+    [dataProvider, dispatch, record, data, ids, notify]
+  )
+
   const handlePlay = React.useCallback(() => {
-    dispatch(playTracks(data, ids))
-  }, [dispatch, data, ids])
+    getAllSongsAndDispatch(playTracks)
+  }, [getAllSongsAndDispatch])
 
   const handlePlayNext = React.useCallback(() => {
-    dispatch(playNext(data, ids))
-  }, [dispatch, data, ids])
+    getAllSongsAndDispatch(playNext)
+  }, [getAllSongsAndDispatch])
 
   const handlePlayLater = React.useCallback(() => {
-    dispatch(addTracks(data, ids))
-  }, [dispatch, data, ids])
+    getAllSongsAndDispatch(addTracks)
+  }, [getAllSongsAndDispatch])
 
   const handleShuffle = React.useCallback(() => {
-    dispatch(shuffleTracks(data, ids))
-  }, [dispatch, data, ids])
+    getAllSongsAndDispatch(shuffleTracks)
+  }, [getAllSongsAndDispatch])
 
   const handleDownload = React.useCallback(() => {
     subsonic.download(record.id)
