@@ -18,6 +18,8 @@ import {
   ArtistLinkField,
   RangeField,
 } from '../common'
+import { useDispatch } from 'react-redux'
+import { recentAlbum } from '../actions'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -115,12 +117,14 @@ const Cover = withContentRect('bounds')(
 const AlbumGridTile = ({ showArtist, record, basePath }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles()
+  const dispatch = useDispatch()
 
   return (
     <div className={classes.albumContainer}>
       <Link
         className={classes.link}
         to={linkToRecord(basePath, record.id, 'show')}
+        onClick={() => dispatch(recentAlbum())}
       >
         <Cover album={record} />
         <GridListTileBar

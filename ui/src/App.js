@@ -23,6 +23,7 @@ import {
   albumViewReducer,
   activityReducer,
   settingsReducer,
+  recentAlbumOrPlaylistReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
@@ -54,6 +55,7 @@ const App = () => (
         addToPlaylistDialog: addToPlaylistDialogReducer,
         activity: activityReducer,
         settings: settingsReducer,
+        recentAlbumOrPlaylist: recentAlbumOrPlaylistReducer,
       },
     })}
   >
@@ -68,7 +70,7 @@ const Admin = (props) => {
     authProvider
       .checkAuth()
       .then(() => startEventStream())
-      .catch(() => {}) // ignore if not logged in
+      .catch(() => { }) // ignore if not logged in
   }
 
   return (
