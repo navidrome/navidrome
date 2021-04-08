@@ -19,6 +19,7 @@ import {
   currentPlaying,
   setVolume,
   clearQueue,
+  recentReset,
 } from '../actions'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
@@ -280,6 +281,7 @@ const Player = () => {
   const onBeforeDestroy = useCallback(() => {
     return new Promise((resolve, reject) => {
       dispatch(clearQueue())
+      dispatch(recentReset())
       reject()
     })
   }, [dispatch])

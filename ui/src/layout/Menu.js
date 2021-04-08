@@ -1,5 +1,5 @@
 import React, { useState, createElement } from 'react'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
@@ -10,6 +10,7 @@ import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
+import { recentReset } from '../actions'
 
 const translatedResourceName = (resource, translate) =>
   translate(`resources.${resource.name}.name`, {
@@ -17,9 +18,9 @@ const translatedResourceName = (resource, translate) =>
     _:
       resource.options && resource.options.label
         ? translate(resource.options.label, {
-            smart_count: 2,
-            _: resource.options.label,
-          })
+          smart_count: 2,
+          _: resource.options.label,
+        })
         : inflection.humanize(inflection.pluralize(resource.name)),
   })
 
@@ -28,6 +29,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
   const resources = useSelector(getResources)
+  const dispatch = useDispatch()
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
@@ -51,6 +53,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
       onClick={onMenuClick}
       sidebarIsOpen={open}
       dense={dense}
+      onClick={() => dispatch(recentReset())}
     />
   )
 
@@ -76,6 +79,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         sidebarIsOpen={open}
         dense={dense}
         exact
+        onClick={() => dispatch(recentReset())}
       />
     )
   }

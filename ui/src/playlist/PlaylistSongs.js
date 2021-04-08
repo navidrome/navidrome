@@ -79,6 +79,7 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 }
 
 const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
+  console.log(props)
   const listContext = useListContext()
   const { data, ids, onUnselectItems } = listContext
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))

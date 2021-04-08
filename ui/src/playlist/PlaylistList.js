@@ -12,6 +12,8 @@ import {
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { DurationField, List, Writable, isWritable } from '../common'
+import { useDispatch } from 'react-redux'
+import { recentPlaylist } from '../actions'
 
 const PlaylistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -55,25 +57,27 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
   )
 }
 
-const PlaylistList = ({ permissions, ...props }) => (
-  <List {...props} exporter={false} filters={<PlaylistFilter />}>
-    <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r && r.owner)}>
-      <TextField source="name" />
-      <TextField source="owner" />
-      <NumberField source="songCount" />
-      <DurationField source="duration" />
-      <DateField source="updatedAt" sortByOrder={'DESC'} />
-      <TogglePublicInput
-        source="public"
-        permissions={permissions}
-        sortByOrder={'DESC'}
-      />
-      <Writable>
-        <EditButton />
-      </Writable>
-      />
-    </Datagrid>
-  </List>
-)
+const PlaylistList = ({ permissions, ...props }) => {
+  const dispatch = useDispatch()
+  return (
+    <List {...props} exporter={false} filters={<PlaylistFilter />}>
+      <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r && r.owner)} onClick={() => dispatch(recentPlaylist())}>
+        <TextField source="name" />
+        <TextField source="owner" />
+        <NumberField source="songCount" />
+        <DurationField source="duration" />
+        <DateField source="updatedAt" sortByOrder={'DESC'} />
+        <TogglePublicInput
+          source="public"
+          permissions={permissions}
+          sortByOrder={'DESC'}
+        />
+        <Writable>
+          <EditButton />
+        </Writable>
+      </Datagrid>
+    </List>
+  )
+}
 
 export default PlaylistList
