@@ -144,7 +144,7 @@ export default {
         border: '1px solid transparent',
         borderRadius: 500,
         '&:hover': {
-          background: `bLight['300'] !important`,
+          background: `${bLight['300']} !important`,
           color: '#fff',
         },
       },
@@ -157,7 +157,7 @@ export default {
           color: '#fff',
         },
         '&:hover': {
-          backgroundColor: '#3079ff',
+          backgroundColor: '#3079ff !important',
         },
       },
       textSecondary: {
@@ -256,7 +256,7 @@ export default {
         transition: 'padding .3s ease',
         color: bLight['300'],
         '&:hover': {
-          background: `bLight['300'] !important`,
+          background: `${bLight['300']} !important`,
           padding: '0.45rem',
           color: bLight['500'],
         },
@@ -356,9 +356,6 @@ export default {
       avatar: {
         marginTop: '-50px',
       },
-      button: {
-        backgroundColor: 'green!important',
-      },
     },
     RaLayout: {
       content: {
@@ -391,7 +388,7 @@ export default {
             color: '#101010',
           },
           '&:hover': {
-            backgroundColor: '#dedede',
+            backgroundColor: '#dedede !important',
           },
         },
       },
@@ -429,7 +426,7 @@ export default {
     RaSidebar: {
       drawerPaper: {
         '@media (min-width: 0px) and (max-width: 599.95px)': {
-          backgroundColor: `bLight['500'] !important`,
+          backgroundColor: `${bLight['500']} !important`,
         },
       },
     },
