@@ -2,8 +2,12 @@ package app
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"math"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/deluan/rest"
@@ -14,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/ui"
 )
@@ -58,7 +63,7 @@ func (app *Router) routes(path string) http.Handler {
 		r.Use(jwtauth.Verifier(auth.TokenAuth))
 		r.Use(authenticator(app.ds))
 		app.R(r, "/user", model.User{}, true)
-		app.R(r, "/song", model.MediaFile{}, true)
+		app.ServeMediaFiles(r, "/song", true)
 		app.R(r, "/album", model.Album{}, true)
 		app.R(r, "/artist", model.Artist{}, true)
 		app.R(r, "/player", model.Player{}, true)
@@ -105,6 +110,123 @@ func (app *Router) RX(r chi.Router, pathPrefix string, constructor rest.Reposito
 			}
 		})
 	})
+}
+
+func (app *Router) ServeMediaFiles(r chi.Router, pathPrefix string, persistable bool) {
+	constructor := func(ctx context.Context) rest.Repository {
+		return app.ds.Resource(ctx, model.MediaFile{})
+	}
+
+	r.Route(pathPrefix, func(r chi.Router) {
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			repository := constructor(r.Context())
+			options := parseOptions(r.URL.Query())
+			var entities interface{}
+			var err error
+			if err != nil {
+				if err = rest.RespondWithError(w, http.StatusInternalServerError, err.Error()); err != nil {
+					log.Error(err)
+				}
+				return
+			}
+			if r.Context().Value(request.User).(model.User).IsAdmin {
+				var tEntities interface{}
+				tEntities, err = repository.ReadAll(options)
+				mediaFiles := tEntities.(model.MediaFiles)
+				adminMediaFiles := make(model.AdminMediaFiles, len(mediaFiles))
+				for i, v := range mediaFiles {
+					adminMediaFiles[i] = model.AdminMediaFile(v)
+				}
+				entities = adminMediaFiles
+			} else {
+				entities, err = repository.ReadAll(options)
+			}
+			if err != nil {
+				if err = rest.RespondWithError(w, http.StatusInternalServerError, err.Error()); err != nil {
+					log.Error(err)
+				}
+				return
+			}
+			count, _ := repository.Count(options)
+			w.Header().Set("X-Total-Count", strconv.FormatInt(count, 10))
+			if err = rest.RespondWithJSON(w, 200, &entities); err != nil {
+				log.Error(err)
+			}
+		})
+		if persistable {
+			r.Post("/", rest.Post(constructor))
+		}
+		r.Route("/{id}", func(r chi.Router) {
+			r.Use(UrlParams)
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				id := r.URL.Query().Get(":id")
+				repository := constructor(r.Context())
+				entity, err := repository.Read(id)
+				if err == rest.ErrNotFound {
+					msg := fmt.Sprintf("%s(id:%s) not found", repository.EntityName(), id)
+					if err = rest.RespondWithError(w, http.StatusInternalServerError, msg); err != nil {
+						log.Error(err)
+					}
+					return
+				}
+				if err != nil {
+					if err = rest.RespondWithError(w, http.StatusInternalServerError, err.Error()); err != nil {
+						log.Error(err)
+					}
+					return
+				}
+				if r.Context().Value(request.User).(model.User).IsAdmin {
+					tEntity := entity.(model.MediaFile)
+					entity = model.AdminMediaFile(tEntity)
+				}
+				if err = rest.RespondWithJSON(w, 200, &entity); err != nil {
+					log.Error(err)
+				}
+			})
+			if persistable {
+				r.Put("/", rest.Put(constructor))
+				r.Delete("/", rest.Delete(constructor))
+			}
+		})
+	})
+}
+
+func parseFilters(params url.Values) map[string]interface{} {
+	var filterStr = params.Get("_filters")
+	filters := make(map[string]interface{})
+	if filterStr != "" {
+		filterStr, _ = url.QueryUnescape(filterStr)
+		if err := json.Unmarshal([]byte(filterStr), &filters); err != nil {
+			log.Error(err)
+		}
+	}
+	for k, v := range params {
+		if strings.HasPrefix(k, "_") {
+			continue
+		}
+		if len(v) == 1 {
+			filters[k] = v[0]
+		} else {
+			filters[k] = v
+		}
+	}
+	return filters
+}
+
+func parseOptions(params url.Values) rest.QueryOptions {
+	start, _ := strconv.Atoi(params.Get("_start"))
+	end, _ := strconv.Atoi(params.Get("_end"))
+
+	sortField := params.Get("_sort")
+	sortDir := params.Get("_order")
+
+	return rest.QueryOptions{
+		Sort:    sortField,
+		Order:   strings.ToLower(sortDir),
+		Offset:  start,
+		Max:     int(math.Max(0, float64(end-start))),
+		Filters: parseFilters(params),
+	}
 }
 
 type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc

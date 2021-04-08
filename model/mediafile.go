@@ -9,6 +9,51 @@ type MediaFile struct {
 	Annotations
 	Bookmarkable
 
+	ID                   string `json:"id"            orm:"pk;column(id)"`
+	Path                 string
+	Title                string    `json:"title"`
+	Album                string    `json:"album"`
+	ArtistID             string    `json:"artistId"      orm:"pk;column(artist_id)"`
+	Artist               string    `json:"artist"`
+	AlbumArtistID        string    `json:"albumArtistId" orm:"pk;column(album_artist_id)"`
+	AlbumArtist          string    `json:"albumArtist"`
+	AlbumID              string    `json:"albumId"       orm:"pk;column(album_id)"`
+	HasCoverArt          bool      `json:"hasCoverArt"`
+	TrackNumber          int       `json:"trackNumber"`
+	DiscNumber           int       `json:"discNumber"`
+	DiscSubtitle         string    `json:"discSubtitle"`
+	Year                 int       `json:"year"`
+	Size                 int64     `json:"size"`
+	Suffix               string    `json:"suffix"`
+	Duration             float32   `json:"duration"`
+	BitRate              int       `json:"bitRate"`
+	Genre                string    `json:"genre"`
+	FullText             string    `json:"fullText"`
+	SortTitle            string    `json:"sortTitle"`
+	SortAlbumName        string    `json:"sortAlbumName"`
+	SortArtistName       string    `json:"sortArtistName"`
+	SortAlbumArtistName  string    `json:"sortAlbumArtistName"`
+	OrderAlbumName       string    `json:"orderAlbumName"`
+	OrderArtistName      string    `json:"orderArtistName"`
+	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
+	Compilation          bool      `json:"compilation"`
+	Comment              string    `json:"comment"`
+	Lyrics               string    `json:"lyrics"`
+	CatalogNum           string    `json:"catalogNum"`
+	MbzTrackID           string    `json:"mbzTrackId"         orm:"column(mbz_track_id)"`
+	MbzAlbumID           string    `json:"mbzAlbumId"         orm:"column(mbz_album_id)"`
+	MbzArtistID          string    `json:"mbzArtistId"        orm:"column(mbz_artist_id)"`
+	MbzAlbumArtistID     string    `json:"mbzAlbumArtistId"   orm:"column(mbz_album_artist_id)"`
+	MbzAlbumType         string    `json:"mbzAlbumType"`
+	MbzAlbumComment      string    `json:"mbzAlbumComment"`
+	CreatedAt            time.Time `json:"createdAt"` // Time this entry was created in the DB
+	UpdatedAt            time.Time `json:"updatedAt"` // Time of file last update (mtime)
+}
+
+type AdminMediaFile struct {
+	Annotations
+	Bookmarkable
+
 	ID                   string    `json:"id"            orm:"pk;column(id)"`
 	Path                 string    `json:"path"`
 	Title                string    `json:"title"`
@@ -55,6 +100,8 @@ func (mf *MediaFile) ContentType() string {
 }
 
 type MediaFiles []MediaFile
+
+type AdminMediaFiles []AdminMediaFile
 
 type MediaFileRepository interface {
 	CountAll(options ...QueryOptions) (int64, error)
