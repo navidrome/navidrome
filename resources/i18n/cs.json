@@ -20,7 +20,9 @@
                 "bitRate": "Přenosová rychlost",
                 "discSubtitle": "Podtitul disku",
                 "starred": "Oblíbené",
-                "comment": "Komentář"
+                "comment": "Komentář",
+                "rating": "",
+                "quality": ""
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -44,7 +46,8 @@
                 "compilation": "Kompilace",
                 "year": "Rok",
                 "updatedAt": "Aktualizováno",
-                "comment": "Komentář"
+                "comment": "Komentář",
+                "rating": ""
             },
             "actions": {
                 "playAll": "Přehrát",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "Nedávno přidané",
                 "recentlyPlayed": "Nedávno přehrané",
                 "mostPlayed": "Nejpřehrávanější",
-                "starred": "Oblíbené"
+                "starred": "Oblíbené",
+                "topRated": ""
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "Název",
                 "albumCount": "Počet alb",
                 "songCount": "Počet skladeb",
-                "playCount": "Přehrání"
+                "playCount": "Přehrání",
+                "rating": ""
             }
         },
         "user": {
@@ -125,8 +130,8 @@
                 "export": "Export"
             },
             "message": {
-                "duplicate_song": "",
-                "song_exist": ""
+                "duplicate_song": "Přidat duplicitní skladby",
+                "song_exist": "Do seznamu skladeb se přidávají duplikáty. Chcete je přidat nebo přeskočit?"
             }
         }
     },
@@ -184,7 +189,7 @@
             "open_menu": "Otevřít nabídku",
             "close_menu": "Zavřít nabídku",
             "unselect": "Zrušit výběr",
-            "skip": ""
+            "skip": "Přeskočit"
         },
         "boolean": {
             "true": "Ano",
@@ -340,7 +345,7 @@
             "next_song": "Následující skladba",
             "vol_up": "Zvýšit hlasitost",
             "vol_down": "Snížit hlasitost",
-            "toggle_star": "Přepnout hvězdičku aktuální skladby"
+            "toggle_love": "Přepnout hvězdičku aktuální skladby"
         }
     }
 }
