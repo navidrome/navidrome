@@ -21,8 +21,8 @@
                 "discSubtitle": "光盤字幕",
                 "starred": "收藏",
                 "comment": "註釋",
-                "rating": "",
-                "quality": ""
+                "rating": "評分",
+                "quality": "品質"
             },
             "actions": {
                 "addToQueue": "加入至播放佇列",
@@ -47,7 +47,7 @@
                 "year": "發行年份",
                 "updatedAt": "更新於",
                 "comment": "註釋",
-                "rating": ""
+                "rating": "評分"
             },
             "actions": {
                 "playAll": "立即播放",
@@ -64,7 +64,7 @@
                 "recentlyPlayed": "最近播放",
                 "mostPlayed": "最多播放的",
                 "starred": "收藏",
-                "topRated": ""
+                "topRated": "最高評分"
             }
         },
         "artist": {
@@ -74,7 +74,7 @@
                 "albumCount": "專輯數",
                 "songCount": "歌曲數",
                 "playCount": "播放次數",
-                "rating": ""
+                "rating": "評分"
             }
         },
         "user": {
@@ -130,8 +130,8 @@
                 "export": "導出"
             },
             "message": {
-                "duplicate_song": "",
-                "song_exist": ""
+                "duplicate_song": "加入重複的歌曲",
+                "song_exist": "有重複歌曲正在播放清單裡。 您要加入或略過重複歌曲?"
             }
         }
     },
@@ -189,7 +189,7 @@
             "open_menu": "打開選單",
             "close_menu": "關閉選單",
             "unselect": "未選擇",
-            "skip": ""
+            "skip": "略過"
         },
         "boolean": {
             "true": "是",
@@ -308,7 +308,7 @@
         "volumeText": "音量",
         "toggleLyricText": "切換歌詞",
         "toggleMiniModeText": "最小化",
-        "destroyText": "削除",
+        "destroyText": "銷毀",
         "downloadText": "下載",
         "removeAudioListsText": "清空播放佇列",
         "clickToDeleteText": "點擊删除 %{name}",
