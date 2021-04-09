@@ -59,7 +59,9 @@ const AlbumListActions = ({
           <ViewHeadlineIcon fontSize="inherit" />
         </Button>
       </ButtonGroup>
-      {isDesktop && <ToggleFieldsMenu resource="album" />}
+      {isDesktop && !albumView.grid ? (
+        <ToggleFieldsMenu resource="album" />
+      ) : null}
     </TopToolbar>
   )
 }
