@@ -1,4 +1,3 @@
-/* eslint-disable no-use-before-define */
 import React from 'react'
 import TextField from '@material-ui/core/TextField'
 import Autocomplete, {
@@ -7,10 +6,16 @@ import Autocomplete, {
 import { useGetList, useTranslate } from 'react-admin'
 import PropTypes from 'prop-types'
 import { isWritable } from '../common'
+import { makeStyles } from '@material-ui/core'
 
 const filter = createFilterOptions()
 
+const useStyles = makeStyles({
+  root: { width: '100%' },
+})
+
 export const SelectPlaylistInput = ({ onChange }) => {
+  const classes = useStyles()
   const translate = useTranslate()
   const { ids, data } = useGetList(
     'playlist',
@@ -77,7 +82,7 @@ export const SelectPlaylistInput = ({ onChange }) => {
         return option.name
       }}
       renderOption={(option) => option.name}
-      style={{ width: '100%' }}
+      className={classes.root}
       freeSolo
       renderInput={(params) => (
         <TextField
