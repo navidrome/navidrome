@@ -13,7 +13,6 @@ import {
 import Switch from '@material-ui/core/Switch'
 import { DurationField, List, Writable, isWritable } from '../common'
 import { useDispatch } from 'react-redux'
-import { recentPlaylist } from '../actions'
 
 const PlaylistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -64,7 +63,6 @@ const PlaylistList = ({ permissions, ...props }) => {
       <Datagrid
         rowClick="show"
         isRowSelectable={(r) => isWritable(r && r.owner)}
-        onClick={() => dispatch(recentPlaylist())}
       >
         <TextField source="name" />
         <TextField source="owner" />

@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
-import { playTracks } from '../actions'
+import { playTracks, recentAlbum } from '../actions'
 import {
   DurationField,
   SongBulkActions,
@@ -87,10 +87,13 @@ const AlbumSongs = (props) => {
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
   const version = useVersion()
-  const params = useParams()
-  const { id } = params
+  const { id } = useParams()
   const albumId = id
-  console.log(params)
+
+  useEffect(() => {
+    dispatch(recentAlbum(albumId))
+  }, [])
+
   return (
     <>
       <ListToolbar

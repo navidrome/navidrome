@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
@@ -11,7 +11,7 @@ import {
   ListBase,
 } from 'react-admin'
 import clsx from 'clsx'
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import ReactDragListView from 'react-drag-listview'
@@ -24,10 +24,11 @@ import {
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import { AlbumLinkField } from '../song/AlbumLinkField'
-import { playTracks } from '../actions'
+import { playTracks, recentPlaylist } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import { QualityInfo } from '../common/QualityInfo'
 import get from 'lodash.get'
+import { useParams } from 'react-router'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -80,7 +81,6 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 }
 
 const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
-  console.log(props)
   const listContext = useListContext()
   const { data, ids, onUnselectItems } = listContext
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -91,7 +91,10 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const refresh = useRefresh()
   const notify = useNotify()
   const version = useVersion()
-  const playlistID = useSelector(state => get(state, 'recentAlbumOrPlaylist.id', ""))
+
+  useEffect(() => {
+    dispatch(recentPlaylist(playlistId))
+  }, [])
 
   const onAddToPlaylist = useCallback(
     (pls) => {
@@ -157,7 +160,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
           >
             <SongDatagrid
               expand={!isXsmall && <SongDetails />}
-              rowClick={(id) => dispatch(playTracks(data, ids, id, playlistID))}
+              rowClick={(id) => dispatch(playTracks(data, ids, id, playlistId))}
               {...listContext}
               hasBulkActions={true}
               contextAlwaysVisible={!isDesktop}
