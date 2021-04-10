@@ -148,7 +148,6 @@ const AlbumListView = ({
       rowClick={'show'}
       classes={{ row: classes.row }}
       {...rest}
-      onClick={() => dispatch(recentAlbum())}
     >
       <TextField source="name" />
       <ArtistLinkField source="artist" />

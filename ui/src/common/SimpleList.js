@@ -39,10 +39,7 @@ const LinkOrNot = ({
       {children}
     </Link>
   ) : linkType === 'show' ? (
-    <Link
-      to={`${linkToRecord(basePath, id)}/show`}
-      className={classes.link}
-    >
+    <Link to={`${linkToRecord(basePath, id)}/show`} className={classes.link}>
       {children}
     </Link>
   ) : typeof linkType === 'function' ? (

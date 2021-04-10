@@ -5,6 +5,7 @@ export const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
 export const PLAYER_CLEAR_QUEUE = 'PLAYER_CLEAR_QUEUE'
 export const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 export const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
+export const PLAYER_PAUSE_TRACKS = 'PLAYER_PAUSE_TRACKS'
 export const PLAYER_CURRENT = 'PLAYER_CURRENT'
 export const PLAYER_SET_VOLUME = 'PLAYER_SET_VOLUME'
 
@@ -40,7 +41,7 @@ export const shuffle = (data) => {
   const ids = Object.keys(data)
   for (let i = ids.length - 1; i > 0; i--) {
     let j = Math.floor(Math.random() * (i + 1))
-      ;[ids[i], ids[j]] = [ids[j], ids[i]]
+    ;[ids[i], ids[j]] = [ids[j], ids[i]]
   }
   const shuffled = {}
   // The "_" is to force the object key to be a string, so it keeps the order when adding to object
@@ -57,7 +58,7 @@ export const shuffleTracks = (data, ids, id) => {
     type: PLAYER_PLAY_TRACKS,
     id: firstId,
     data: shuffled,
-    albumOrPlaylistId: id
+    albumOrPlaylistId: id,
   }
 }
 
@@ -67,7 +68,13 @@ export const playTracks = (data, ids, selectedId, id) => {
     type: PLAYER_PLAY_TRACKS,
     id: selectedId || Object.keys(songs)[0],
     data: songs,
-    albumOrPlaylistId: id
+    albumOrPlaylistId: id,
+  }
+}
+
+export const pauseTracks = () => {
+  return {
+    type: PLAYER_PAUSE_TRACKS,
   }
 }
 

@@ -126,7 +126,7 @@ SongDatagridRow.propTypes = {
 }
 
 SongDatagridRow.defaultProps = {
-  onClickDiscSubtitle: () => { },
+  onClickDiscSubtitle: () => {},
 }
 
 const SongDatagridBody = ({
@@ -136,7 +136,9 @@ const SongDatagridBody = ({
 }) => {
   const dispatch = useDispatch()
   const { ids, data } = rest
-  const albumOrPlaylistId = useSelector(state => get(state, 'recentAlbumOrPlaylist.id', ""))
+  const albumOrPlaylistId = useSelector((state) =>
+    get(state, 'recentAlbumOrPlaylist.id', '')
+  )
 
   const playDisc = useCallback(
     (discNumber) => {

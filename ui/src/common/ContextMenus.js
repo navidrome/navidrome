@@ -49,7 +49,8 @@ const ContextMenu = ({
       enabled: true,
       needData: true,
       label: translate('resources.album.actions.playAll'),
-      action: (data, ids) => dispatch(playTracks(data, ids, undefined, record.id)),
+      action: (data, ids) =>
+        dispatch(playTracks(data, ids, undefined, record.id)),
     },
     playNext: {
       enabled: true,

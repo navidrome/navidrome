@@ -14,12 +14,12 @@ export const recentAlbumOrPlaylistReducer = (
     case RECENT_ALBUM:
       return {
         type: 'album',
-        id
+        id,
       }
     case RECENT_PLAYLIST:
       return {
         type: 'playlist',
-        id
+        id,
       }
     case RECENT_RESET:
       return initialState

@@ -14,6 +14,7 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_SCROBBLE,
   PLAYER_PLAY_TRACKS,
+  PLAYER_PAUSE_TRACKS,
 } from '../actions'
 
 const mapToAudioLists = (item) => {
@@ -66,10 +67,10 @@ export const playQueueReducer = (previousState = initialState, payload) => {
       current = data.ended
         ? {}
         : {
-          trackId: data.trackId,
-          uuid: data.uuid,
-          paused: data.paused,
-        }
+            trackId: data.trackId,
+            uuid: data.uuid,
+            paused: data.paused,
+          }
       return {
         ...previousState,
         current,
@@ -152,7 +153,15 @@ export const playQueueReducer = (previousState = initialState, payload) => {
         queue,
         playIndex: 0,
         clear: true,
-        albumOrPlaylistId
+        albumOrPlaylistId,
+      }
+    case PLAYER_PAUSE_TRACKS:
+      return {
+        ...previousState,
+        current: {
+          ...previousState.current,
+          paused: true,
+        },
       }
     default:
       return previousState

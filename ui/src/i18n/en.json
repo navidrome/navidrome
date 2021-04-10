@@ -51,6 +51,7 @@
       },
       "actions": {
         "playAll": "Play",
+        "pause": "Pause",
         "playNext": "Play Next",
         "addToQueue": "Play Later",
         "shuffle": "Shuffle",
