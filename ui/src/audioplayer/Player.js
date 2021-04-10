@@ -89,6 +89,7 @@ const Player = () => {
       case 'pause':
         audioInstance.pause()
         dispatch(resetPlayer())
+        break
       default:
         console.log()
     }
