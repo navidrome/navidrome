@@ -82,18 +82,18 @@ const useStyles = makeStyles(
     pointerCursor: {
       cursor: 'pointer',
     },
-    spanMeta:{
+    spanMeta: {
       [theme.breakpoints.down('xs')]: {
         display: 'none',
-      }
+      },
     },
     recordName: {},
     recordArtist: {},
     recordMeta: {
       [theme.breakpoints.down('xs')]: {
         display: 'flex',
-        flexDirection: 'column'
-      }
+        flexDirection: 'column',
+      },
     },
   }),
   {
