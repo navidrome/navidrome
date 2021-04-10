@@ -2,6 +2,10 @@ package consts
 
 import "mime"
 
+var LosslessFormats = []string{
+	"flac", "wav", "alac", "ape", "dsf", "wav", "shn", "wv", "wvp",
+}
+
 func init() {
 	mt := map[string]string{
 		".mp3":  "audio/mpeg",
@@ -9,6 +13,7 @@ func init() {
 		".oga":  "audio/ogg",
 		".opus": "audio/ogg",
 		".aac":  "audio/mp4",
+		".alac": "audio/mp4",
 		".m4a":  "audio/mp4",
 		".m4b":  "audio/mp4",
 		".flac": "audio/flac",

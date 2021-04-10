@@ -19,6 +19,7 @@ import {
   formatRange,
   SizeField,
   LoveButton,
+  RatingField,
 } from '../common'
 import config from '../config'
 
@@ -167,7 +168,10 @@ const AlbumDetails = ({ record }) => {
         </div>
         <div className={classes.details}>
           <CardContent className={classes.content}>
-            <Typography variant="h5" className={classes.recordName}>
+            <Typography
+              variant={isDesktop ? 'h5' : 'h6'}
+              className={classes.recordName}
+            >
               {record.name}
               {config.enableFavourites && (
                 <LoveButton
@@ -195,6 +199,15 @@ const AlbumDetails = ({ record }) => {
               {' · '}
               <SizeField record={record} source="size" />
             </Typography>
+            {config.enableStarRating && (
+              <div>
+                <RatingField
+                  record={record}
+                  resource={'album'}
+                  size={isDesktop ? 'medium' : 'small'}
+                />
+              </div>
+            )}
             {isDesktop && record['comment'] && <AlbumComment record={record} />}
           </CardContent>
         </div>
