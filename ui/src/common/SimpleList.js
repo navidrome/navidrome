@@ -10,8 +10,6 @@ import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
 import { Link } from 'react-router-dom'
 import { linkToRecord, sanitizeListRestProps } from 'ra-core'
-import { recentAlbum } from '../actions'
-import { useDispatch } from 'react-redux'
 
 const useStyles = makeStyles(
   {
@@ -32,7 +30,6 @@ const LinkOrNot = ({
   record,
   children,
 }) => {
-  const dispatch = useDispatch()
   const classes = useStyles({ classes: classesOverride })
   return linkType === 'edit' || linkType === true ? (
     <Link to={linkToRecord(basePath, id)} className={classes.link}>

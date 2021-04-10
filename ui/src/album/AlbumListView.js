@@ -28,8 +28,6 @@ import {
   RatingField,
 } from '../common'
 import config from '../config'
-import { useDispatch } from 'react-redux'
-import { recentAlbum } from '../actions'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -111,7 +109,6 @@ const AlbumListView = ({
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
-  const dispatch = useDispatch()
   return isXsmall ? (
     <SimpleList
       primaryText={(r) => r.name}

@@ -89,8 +89,10 @@ const Player = () => {
       case 'pause':
         audioInstance.pause()
         dispatch(resetPlayer())
+      default:
+        console.log()
     }
-  }, [action])
+  }, [action, dispatch])
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })

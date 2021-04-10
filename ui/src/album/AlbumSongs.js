@@ -7,7 +7,7 @@ import {
   useListContext,
 } from 'react-admin'
 import clsx from 'clsx'
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
@@ -92,7 +92,7 @@ const AlbumSongs = (props) => {
 
   useEffect(() => {
     dispatch(recentAlbum(albumId))
-  }, [])
+  }, [dispatch, albumId])
 
   return (
     <>

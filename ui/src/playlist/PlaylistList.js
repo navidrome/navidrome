@@ -12,7 +12,6 @@ import {
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { DurationField, List, Writable, isWritable } from '../common'
-import { useDispatch } from 'react-redux'
 
 const PlaylistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -57,7 +56,6 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
 }
 
 const PlaylistList = ({ permissions, ...props }) => {
-  const dispatch = useDispatch()
   return (
     <List {...props} exporter={false} filters={<PlaylistFilter />}>
       <Datagrid

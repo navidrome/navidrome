@@ -27,8 +27,6 @@ import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks, recentPlaylist } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import { QualityInfo } from '../common/QualityInfo'
-import get from 'lodash.get'
-import { useParams } from 'react-router'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -94,7 +92,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
 
   useEffect(() => {
     dispatch(recentPlaylist(playlistId))
-  }, [])
+  }, [dispatch, playlistId])
 
   const onAddToPlaylist = useCallback(
     (pls) => {

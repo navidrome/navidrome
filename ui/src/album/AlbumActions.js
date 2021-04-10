@@ -17,7 +17,6 @@ import {
   addTracks,
   playTracks,
   shuffleTracks,
-  pauseTracks,
   pausePlayer,
 } from '../actions'
 import subsonic from '../subsonic'
@@ -59,7 +58,7 @@ const AlbumActions = ({
 
   const handlePlay = React.useCallback(() => {
     dispatch(playTracks(data, ids, undefined, record.id))
-  }, [dispatch, data, ids])
+  }, [dispatch, data, ids, record.id])
 
   const handlePlayNext = React.useCallback(() => {
     dispatch(playNext(data, ids))
@@ -71,7 +70,7 @@ const AlbumActions = ({
 
   const handleShuffle = React.useCallback(() => {
     dispatch(shuffleTracks(data, ids, record.id))
-  }, [dispatch, data, ids])
+  }, [dispatch, data, ids, record.id])
 
   const handleDownload = React.useCallback(() => {
     subsonic.download(record.id)

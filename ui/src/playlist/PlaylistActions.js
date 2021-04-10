@@ -20,7 +20,6 @@ import {
   addTracks,
   playTracks,
   shuffleTracks,
-  pauseTracks,
   pausePlayer,
 } from '../actions'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'

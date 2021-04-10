@@ -50,10 +50,12 @@ const Menu = ({ onMenuClick, dense, logout }) => {
       leftIcon={
         (resource.icon && createElement(resource.icon)) || <ViewListIcon />
       }
-      onClick={onMenuClick}
+      onClick={() => {
+        onMenuClick()
+        dispatch(recentReset())
+      }}
       sidebarIsOpen={open}
       dense={dense}
-      onClick={() => dispatch(recentReset())}
     />
   )
 
@@ -75,11 +77,13 @@ const Menu = ({ onMenuClick, dense, logout }) => {
         to={albumListAddress}
         primaryText={name}
         leftIcon={(al.icon && createElement(al.icon)) || <ViewListIcon />}
-        onClick={onMenuClick}
+        onClick={() => {
+          onMenuClick()
+          dispatch(recentReset())
+        }}
         sidebarIsOpen={open}
         dense={dense}
         exact
-        onClick={() => dispatch(recentReset())}
       />
     )
   }

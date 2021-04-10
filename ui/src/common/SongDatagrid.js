@@ -145,7 +145,7 @@ const SongDatagridBody = ({
       const idsToPlay = ids.filter((id) => data[id].discNumber === discNumber)
       dispatch(playTracks(data, idsToPlay, undefined, albumOrPlaylistId))
     },
-    [dispatch, data, ids]
+    [dispatch, data, ids, albumOrPlaylistId]
   )
 
   const firstTracks = useMemo(() => {
