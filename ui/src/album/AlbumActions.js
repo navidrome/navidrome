@@ -47,7 +47,13 @@ const AlbumActions = ({
     get(state, 'queue.albumOrPlaylistId', '')
   )
   useEffect(() => {
-    setPlaying(playingInAlbumOrPlaylist(currentTrack, albumOrPlaylistId, songAlbumOrPlaylistId))
+    setPlaying(
+      playingInAlbumOrPlaylist(
+        currentTrack,
+        albumOrPlaylistId,
+        songAlbumOrPlaylistId
+      )
+    )
   }, [currentTrack, albumOrPlaylistId, songAlbumOrPlaylistId])
 
   const handlePlay = React.useCallback(() => {

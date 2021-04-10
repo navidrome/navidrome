@@ -15,7 +15,13 @@ import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
 import { httpClient } from '../dataProvider'
-import { playNext, addTracks, playTracks, shuffleTracks, pauseTracks } from '../actions'
+import {
+  playNext,
+  addTracks,
+  playTracks,
+  shuffleTracks,
+  pauseTracks,
+} from '../actions'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
 import subsonic from '../subsonic'
 import PropTypes from 'prop-types'
@@ -42,7 +48,13 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
     get(state, 'queue.albumOrPlaylistId', '')
   )
   useEffect(() => {
-    setPlaying(playingInAlbumOrPlaylist(currentTrack, albumOrPlaylistId, songAlbumOrPlaylistId))
+    setPlaying(
+      playingInAlbumOrPlaylist(
+        currentTrack,
+        albumOrPlaylistId,
+        songAlbumOrPlaylistId
+      )
+    )
   }, [currentTrack, albumOrPlaylistId, songAlbumOrPlaylistId])
 
   const getAllSongsAndDispatch = React.useCallback(
