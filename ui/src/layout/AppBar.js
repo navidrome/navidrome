@@ -16,15 +16,20 @@ import ActivityPanel from './ActivityPanel'
 import UserMenu from './UserMenu'
 import config from '../config'
 
-const useStyles = makeStyles((theme) => ({
-  root: {
-    color: theme.palette.text.secondary,
-  },
-  active: {
-    color: theme.palette.text.primary,
-  },
-  icon: { minWidth: theme.spacing(5) },
-}))
+const useStyles = makeStyles(
+  (theme) => ({
+    root: {
+      color: theme.palette.text.secondary,
+    },
+    active: {
+      color: theme.palette.text.primary,
+    },
+    icon: { minWidth: theme.spacing(5) },
+  }),
+  {
+    name: 'NDAppBar',
+  }
+)
 
 const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
   const classes = useStyles(rest)
