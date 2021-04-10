@@ -18,6 +18,7 @@ import {
   playTracks,
   shuffleTracks,
   pauseTracks,
+  pausePlayer,
 } from '../actions'
 import subsonic from '../subsonic'
 import { formatBytes } from '../utils'
@@ -79,8 +80,7 @@ const AlbumActions = ({
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <Button
-        //Should conditionally call handlePause or handlePlay
-        onClick={handlePlay}
+        onClick={playing ? () => dispatch(pausePlayer()) : handlePlay}
         label={
           playing
             ? translate('resources.album.actions.pause')

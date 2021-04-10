@@ -36,8 +36,7 @@ export const ShuffleAllButton = ({ filters }) => {
       onClick={handleOnClick}
       label={translate('resources.song.actions.shuffleAll')}
     >
-      {/* <ShuffleIcon /> */}
-      Hi
+      <ShuffleIcon />
     </Button>
   )
 }

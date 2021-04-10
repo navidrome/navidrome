@@ -24,6 +24,7 @@ import {
   activityReducer,
   settingsReducer,
   recentAlbumOrPlaylistReducer,
+  playerReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
@@ -56,6 +57,7 @@ const App = () => (
         activity: activityReducer,
         settings: settingsReducer,
         recentAlbumOrPlaylist: recentAlbumOrPlaylistReducer,
+        player: playerReducer,
       },
     })}
   >

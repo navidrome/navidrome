@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import ReactGA from 'react-ga'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
@@ -20,12 +20,14 @@ import {
   setVolume,
   clearQueue,
   recentReset,
+  resetPlayer,
 } from '../actions'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification, baseUrl } from '../utils'
 import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
+import { get } from 'lodash'
 
 const useStyle = makeStyles(
   (theme) => ({
@@ -80,6 +82,15 @@ const Player = () => {
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
   )
+  const action = useSelector((state) => get(state, 'player', ''))
+
+  useEffect(() => {
+    switch (action) {
+      case 'pause':
+        audioInstance.pause()
+        dispatch(resetPlayer())
+    }
+  }, [action])
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })

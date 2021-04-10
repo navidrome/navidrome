@@ -21,6 +21,7 @@ import {
   playTracks,
   shuffleTracks,
   pauseTracks,
+  pausePlayer,
 } from '../actions'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
 import subsonic from '../subsonic'
@@ -60,7 +61,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const getAllSongsAndDispatch = React.useCallback(
     (action) => {
       if (ids.length === record.songCount) {
-        return dispatch(action(data, ids))
+        return dispatch(action(data, ids, undefined, record.id))
       }
 
       dataProvider
@@ -74,7 +75,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
             (acc, curr) => ({ ...acc, [curr.id]: curr }),
             {}
           )
-          dispatch(action(data))
+          dispatch(action(data, undefined, undefined, record.id))
         })
         .catch(() => {
           notify('ra.page.error', 'warning')
@@ -96,6 +97,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   }, [getAllSongsAndDispatch])
 
   const handleShuffle = React.useCallback(() => {
+    console.log('SHUFFLE')
     getAllSongsAndDispatch(shuffleTracks)
   }, [getAllSongsAndDispatch])
 
@@ -123,8 +125,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <Button
-        //Should conditionally call handlePause or handlePlay
-        onClick={handlePlay}
+        onClick={playing ? () => dispatch(pausePlayer()) : handlePlay}
         label={
           playing
             ? translate('resources.album.actions.pause')

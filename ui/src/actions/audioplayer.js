@@ -50,7 +50,7 @@ export const shuffle = (data) => {
   return shuffled
 }
 
-export const shuffleTracks = (data, ids, id) => {
+export const shuffleTracks = (data, ids, id, albumOrPlaylistId = null) => {
   const songs = filterSongs(data, ids)
   const shuffled = shuffle(songs)
   const firstId = Object.keys(shuffled)[0]
@@ -58,7 +58,7 @@ export const shuffleTracks = (data, ids, id) => {
     type: PLAYER_PLAY_TRACKS,
     id: firstId,
     data: shuffled,
-    albumOrPlaylistId: id,
+    albumOrPlaylistId: id ? id : albumOrPlaylistId ? albumOrPlaylistId : '',
   }
 }
 
