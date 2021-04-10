@@ -70,7 +70,7 @@ const Admin = (props) => {
     authProvider
       .checkAuth()
       .then(() => startEventStream())
-      .catch(() => { }) // ignore if not logged in
+      .catch(() => {}) // ignore if not logged in
   }
 
   return (

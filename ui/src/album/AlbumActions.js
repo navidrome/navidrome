@@ -30,7 +30,7 @@ const AlbumActions = ({
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
   const handlePlay = React.useCallback(() => {
-    dispatch(playTracks(data, ids))
+    dispatch(playTracks(data, ids, undefined, record.id))
   }, [dispatch, data, ids])
 
   const handlePlayNext = React.useCallback(() => {
@@ -42,7 +42,7 @@ const AlbumActions = ({
   }, [dispatch, data, ids])
 
   const handleShuffle = React.useCallback(() => {
-    dispatch(shuffleTracks(data, ids))
+    dispatch(shuffleTracks(data, ids, record.id))
   }, [dispatch, data, ids])
 
   const handleDownload = React.useCallback(() => {

@@ -1,5 +1,5 @@
 import React, { isValidElement, useMemo, useCallback } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { Datagrid, PureDatagridBody, PureDatagridRow } from 'react-admin'
 import { TableCell, TableRow, Typography } from '@material-ui/core'
 import PropTypes from 'prop-types'
@@ -8,6 +8,7 @@ import AlbumIcon from '@material-ui/icons/Album'
 import clsx from 'clsx'
 import { playTracks } from '../actions'
 import { AlbumContextMenu } from '../common'
+import { get } from 'lodash'
 
 const useStyles = makeStyles({
   subtitle: {
@@ -125,7 +126,7 @@ SongDatagridRow.propTypes = {
 }
 
 SongDatagridRow.defaultProps = {
-  onClickDiscSubtitle: () => {},
+  onClickDiscSubtitle: () => { },
 }
 
 const SongDatagridBody = ({
@@ -135,11 +136,12 @@ const SongDatagridBody = ({
 }) => {
   const dispatch = useDispatch()
   const { ids, data } = rest
+  const albumOrPlaylistId = useSelector(state => get(state, 'recentAlbumOrPlaylist.id', ""))
 
   const playDisc = useCallback(
     (discNumber) => {
       const idsToPlay = ids.filter((id) => data[id].discNumber === discNumber)
-      dispatch(playTracks(data, idsToPlay))
+      dispatch(playTracks(data, idsToPlay, undefined, albumOrPlaylistId))
     },
     [dispatch, data, ids]
   )

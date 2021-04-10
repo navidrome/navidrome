@@ -30,7 +30,7 @@ const LinkOrNot = ({
   basePath,
   id,
   record,
-  children
+  children,
 }) => {
   const dispatch = useDispatch()
   const classes = useStyles({ classes: classesOverride })
@@ -39,7 +39,10 @@ const LinkOrNot = ({
       {children}
     </Link>
   ) : linkType === 'show' ? (
-    <Link to={`${linkToRecord(basePath, id)}/show`} className={classes.link} onClick={() => dispatch(recentAlbum())}>
+    <Link
+      to={`${linkToRecord(basePath, id)}/show`}
+      className={classes.link}
+    >
       {children}
     </Link>
   ) : typeof linkType === 'function' ? (

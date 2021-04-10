@@ -11,7 +11,7 @@ import {
   ListBase,
 } from 'react-admin'
 import clsx from 'clsx'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import ReactDragListView from 'react-drag-listview'
@@ -27,6 +27,7 @@ import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import { QualityInfo } from '../common/QualityInfo'
+import get from 'lodash.get'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -90,6 +91,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const refresh = useRefresh()
   const notify = useNotify()
   const version = useVersion()
+  const playlistID = useSelector(state => get(state, 'recentAlbumOrPlaylist.id', ""))
 
   const onAddToPlaylist = useCallback(
     (pls) => {
@@ -155,7 +157,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
           >
             <SongDatagrid
               expand={!isXsmall && <SongDetails />}
-              rowClick={(id) => dispatch(playTracks(data, ids, id))}
+              rowClick={(id) => dispatch(playTracks(data, ids, id, playlistID))}
               {...listContext}
               hasBulkActions={true}
               contextAlwaysVisible={!isDesktop}

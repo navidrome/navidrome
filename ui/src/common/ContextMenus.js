@@ -49,7 +49,7 @@ const ContextMenu = ({
       enabled: true,
       needData: true,
       label: translate('resources.album.actions.playAll'),
-      action: (data, ids) => dispatch(playTracks(data, ids)),
+      action: (data, ids) => dispatch(playTracks(data, ids, undefined, record.id)),
     },
     playNext: {
       enabled: true,
@@ -67,7 +67,7 @@ const ContextMenu = ({
       enabled: true,
       needData: true,
       label: translate('resources.album.actions.shuffle'),
-      action: (data, ids) => dispatch(shuffleTracks(data, ids)),
+      action: (data, ids) => dispatch(shuffleTracks(data, ids, record.id)),
     },
     addToPlaylist: {
       enabled: true,

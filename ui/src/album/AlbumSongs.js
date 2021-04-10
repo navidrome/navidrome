@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
@@ -7,7 +7,7 @@ import {
   useListContext,
 } from 'react-admin'
 import clsx from 'clsx'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
@@ -24,6 +24,7 @@ import {
 import { AddToPlaylistDialog } from '../dialogs'
 import { QualityInfo } from '../common/QualityInfo'
 import config from '../config'
+import { useParams } from 'react-router'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -86,6 +87,10 @@ const AlbumSongs = (props) => {
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
   const version = useVersion()
+  const params = useParams()
+  const { id } = params
+  const albumId = id
+  console.log(params)
   return (
     <>
       <ListToolbar
@@ -105,7 +110,7 @@ const AlbumSongs = (props) => {
           </BulkActionsToolbar>
           <SongDatagrid
             expand={isXsmall ? null : <SongDetails />}
-            rowClick={(id) => dispatch(playTracks(data, ids, id))}
+            rowClick={(id) => dispatch(playTracks(data, ids, id, albumId))}
             {...props}
             hasBulkActions={true}
             showDiscSubtitles={true}

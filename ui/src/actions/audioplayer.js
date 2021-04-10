@@ -40,7 +40,7 @@ export const shuffle = (data) => {
   const ids = Object.keys(data)
   for (let i = ids.length - 1; i > 0; i--) {
     let j = Math.floor(Math.random() * (i + 1))
-    ;[ids[i], ids[j]] = [ids[j], ids[i]]
+      ;[ids[i], ids[j]] = [ids[j], ids[i]]
   }
   const shuffled = {}
   // The "_" is to force the object key to be a string, so it keeps the order when adding to object
@@ -49,7 +49,7 @@ export const shuffle = (data) => {
   return shuffled
 }
 
-export const shuffleTracks = (data, ids) => {
+export const shuffleTracks = (data, ids, id) => {
   const songs = filterSongs(data, ids)
   const shuffled = shuffle(songs)
   const firstId = Object.keys(shuffled)[0]
@@ -57,15 +57,17 @@ export const shuffleTracks = (data, ids) => {
     type: PLAYER_PLAY_TRACKS,
     id: firstId,
     data: shuffled,
+    albumOrPlaylistId: id
   }
 }
 
-export const playTracks = (data, ids, selectedId) => {
+export const playTracks = (data, ids, selectedId, id) => {
   const songs = filterSongs(data, ids)
   return {
     type: PLAYER_PLAY_TRACKS,
     id: selectedId || Object.keys(songs)[0],
     data: songs,
+    albumOrPlaylistId: id
   }
 }
 

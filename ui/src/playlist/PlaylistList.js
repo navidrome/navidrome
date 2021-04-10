@@ -61,7 +61,11 @@ const PlaylistList = ({ permissions, ...props }) => {
   const dispatch = useDispatch()
   return (
     <List {...props} exporter={false} filters={<PlaylistFilter />}>
-      <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r && r.owner)} onClick={() => dispatch(recentPlaylist())}>
+      <Datagrid
+        rowClick="show"
+        isRowSelectable={(r) => isWritable(r && r.owner)}
+        onClick={() => dispatch(recentPlaylist())}
+      >
         <TextField source="name" />
         <TextField source="owner" />
         <NumberField source="songCount" />

@@ -26,7 +26,7 @@ export const PlayButton = ({ record, size, className }) => {
       })
       .then((response) => {
         let { data, ids } = extractSongsData(response)
-        dispatch(playTracks(data, ids))
+        dispatch(playTracks(data, ids, undefined, record.id))
       })
   }
 

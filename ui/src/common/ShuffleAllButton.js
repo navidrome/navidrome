@@ -23,6 +23,7 @@ export const ShuffleAllButton = ({ filters }) => {
         res.data.forEach((song) => {
           data[song.id] = song
         })
+        console.log(data)
         dispatch(playTracks(data))
       })
       .catch(() => {
@@ -35,7 +36,8 @@ export const ShuffleAllButton = ({ filters }) => {
       onClick={handleOnClick}
       label={translate('resources.song.actions.shuffleAll')}
     >
-      <ShuffleIcon />
+      {/* <ShuffleIcon /> */}
+      Hi
     </Button>
   )
 }

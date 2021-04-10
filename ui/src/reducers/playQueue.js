@@ -51,7 +51,7 @@ const initialState = {
 export const playQueueReducer = (previousState = initialState, payload) => {
   let queue, current
   let newQueue
-  const { type, data } = payload
+  const { type, data, albumOrPlaylistId } = payload
   switch (type) {
     case PLAYER_CLEAR_QUEUE:
       return initialState
@@ -66,10 +66,10 @@ export const playQueueReducer = (previousState = initialState, payload) => {
       current = data.ended
         ? {}
         : {
-            trackId: data.trackId,
-            uuid: data.uuid,
-            paused: data.paused,
-          }
+          trackId: data.trackId,
+          uuid: data.uuid,
+          paused: data.paused,
+        }
       return {
         ...previousState,
         current,
@@ -152,6 +152,7 @@ export const playQueueReducer = (previousState = initialState, payload) => {
         queue,
         playIndex: 0,
         clear: true,
+        albumOrPlaylistId
       }
     default:
       return previousState
