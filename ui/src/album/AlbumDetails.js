@@ -82,9 +82,19 @@ const useStyles = makeStyles(
     pointerCursor: {
       cursor: 'pointer',
     },
+    spanMeta:{
+      [theme.breakpoints.down('xs')]: {
+        display: 'none',
+      }
+    },
     recordName: {},
     recordArtist: {},
-    recordMeta: {},
+    recordMeta: {
+      [theme.breakpoints.down('xs')]: {
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    },
   }),
   {
     name: 'NDAlbumDetails',
@@ -195,8 +205,12 @@ const AlbumDetails = ({ record }) => {
               {translate('resources.song.name', {
                 smart_count: record.songCount,
               })}
-              {' · '} <DurationField record={record} source={'duration'} />{' '}
-              {' · '}
+              <span className={classes.spanMeta}> . </span>
+              {/* {' · '}  */}
+              <DurationField record={record} source={'duration'} />
+              {/* {' '} */}
+              {/* {' · '} */}
+              <span className={classes.spanMeta}> . </span>
               <SizeField record={record} source="size" />
             </Typography>
             {config.enableStarRating && (
