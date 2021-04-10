@@ -6,10 +6,13 @@ import SpotifyTheme from './spotify'
 import LigeraTheme from './ligera'
 
 export default {
+  // Classic default themes
   LightTheme,
-  LigeraTheme,
   DarkTheme,
+
+  // New themes should be added here, in alphabetic order
   ExtraDarkTheme,
   GreenTheme,
+  LigeraTheme,
   SpotifyTheme,
 }
