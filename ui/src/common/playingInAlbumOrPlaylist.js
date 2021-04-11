@@ -1,7 +1,12 @@
 import PropTypes from 'prop-types'
 
-//songId is the ID of the playlist or album corresponding to the song
-//activeId is the ID of the current album or playlist
+/**
+ * Description of the function
+ * @param {string} songID - the ID of the playlist or album corresponding to the song
+ * @param {string} activeID - the ID of the current album or playlist - the ID of the playlist or album corresponding to the song
+ * @returns {boolean}
+ */
+
 export const playingInAlbumOrPlaylist = (current, activeId, songId) => {
   if (Object.keys(current).length !== 0 && !current.paused) {
     if (activeId === songId) {
