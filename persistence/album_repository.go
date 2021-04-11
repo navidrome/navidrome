@@ -269,7 +269,7 @@ func getComment(comments string, separator string) string {
 		return ""
 	}
 	first := cs[0]
-	for _, c := range cs {
+	for _, c := range cs[1:] {
 		if first != c {
 			return ""
 		}
