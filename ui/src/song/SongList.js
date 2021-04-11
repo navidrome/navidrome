@@ -17,6 +17,7 @@ import {
   QuickFilter,
   SongTitleField,
   SongSimpleList,
+  RatingField,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../actions'
@@ -26,6 +27,8 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { AddToPlaylistDialog } from '../dialogs'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
+import config from '../config'
+import { QualityInfo } from '../common/QualityInfo'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -38,9 +41,15 @@ const useStyles = makeStyles({
       '& $contextMenu': {
         visibility: 'visible',
       },
+      '& $ratingField': {
+        visibility: 'visible',
+      },
     },
   },
   contextMenu: {
+    visibility: 'hidden',
+  },
+  ratingField: {
     visibility: 'hidden',
   },
 })
@@ -48,11 +57,13 @@ const useStyles = makeStyles({
 const SongFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
     <SearchInput source="title" alwaysOn />
-    <QuickFilter
-      source="starred"
-      label={<FavoriteIcon fontSize={'small'} />}
-      defaultValue={true}
-    />
+    {config.enableFavourites && (
+      <QuickFilter
+        source="starred"
+        label={<FavoriteIcon fontSize={'small'} />}
+        defaultValue={true}
+      />
+    )}
   </Filter>
 )
 
@@ -108,17 +119,29 @@ const SongList = (props) => {
                 sortByOrder={'DESC'}
               />
             )}
+            {isDesktop && <QualityInfo source="quality" sortable={false} />}
             <DurationField source="duration" />
+            {config.enableStarRating && (
+              <RatingField
+                source="rating"
+                sortByOrder={'DESC'}
+                resource={'song'}
+                className={classes.ratingField}
+              />
+            )}
             <SongContextMenu
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}
               sortByOrder={'DESC'}
+              sortable={config.enableFavourites}
               className={classes.contextMenu}
               label={
-                <FavoriteBorderIcon
-                  fontSize={'small'}
-                  className={classes.contextHeader}
-                />
+                config.enableFavourites && (
+                  <FavoriteBorderIcon
+                    fontSize={'small'}
+                    className={classes.contextHeader}
+                  />
+                )
               }
             />
           </SongDatagrid>

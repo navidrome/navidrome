@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -24,6 +25,16 @@ var _ = Describe("serveIndex", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{MockedUser: mockUser}
 		conf.Server.UILoginBackgroundURL = ""
+	})
+
+	It("redirects bare /app path to /app/", func() {
+		r := httptest.NewRequest("GET", "/app", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		Expect(w.Code).To(Equal(302))
+		Expect(w.Header().Get("Location")).To(Equal("/app/"))
 	})
 
 	It("adds app_config to index.html", func() {
@@ -114,6 +125,28 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("enableDownloads", true))
 	})
 
+	It("sets the enableLoved", func() {
+		conf.Server.EnableFavourites = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableFavourites", true))
+	})
+
+	It("sets the enableStarRating", func() {
+		conf.Server.EnableStarRating = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableStarRating", true))
+	})
+
 	It("sets the gaTrackingId", func() {
 		conf.Server.GATrackingID = "UA-12345"
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -133,6 +166,17 @@ var _ = Describe("serveIndex", func() {
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("version", consts.Version()))
+	})
+
+	It("sets the losslessFormats", func() {
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		expected := strings.ToUpper(strings.Join(consts.LosslessFormats, ","))
+		Expect(config).To(HaveKeyWithValue("losslessFormats", expected))
 	})
 })
 
