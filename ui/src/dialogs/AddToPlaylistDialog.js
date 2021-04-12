@@ -102,12 +102,14 @@ export const AddToPlaylistDialog = () => {
       }
     })
     setCheck(false)
+    setValue({})
     dispatch(closeAddToPlaylist())
     e.stopPropagation()
   }
 
   const handleClickClose = (e) => {
     setCheck(false)
+    setValue({})
     dispatch(closeAddToPlaylist())
     e.stopPropagation()
   }
