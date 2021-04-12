@@ -144,6 +144,9 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 	if err != nil {
 		return err
 	}
+	if _, ok := r.sortMappings["random-true"]; ok {
+		query = strings.Replace(query, r.sortMappings["random"]+" asc", r.sortMappings["random-true"], 1)
+	}
 	start := time.Now()
 	c, err := r.ormer.Raw(query, args...).QueryRows(response)
 	if err == orm.ErrNoRows {

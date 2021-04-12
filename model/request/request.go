@@ -9,12 +9,13 @@ import (
 type contextKey string
 
 const (
-	User        = contextKey("user")
-	Username    = contextKey("username")
-	Client      = contextKey("client")
-	Version     = contextKey("version")
-	Player      = contextKey("player")
-	Transcoding = contextKey("transcoding")
+	User            = contextKey("user")
+	Username        = contextKey("username")
+	Client          = contextKey("client")
+	Version         = contextKey("version")
+	Player          = contextKey("player")
+	Transcoding     = contextKey("transcoding")
+	AlbumRandomSeed = contextKey("albumRandomSeed")
 )
 
 func WithUser(ctx context.Context, u model.User) context.Context {

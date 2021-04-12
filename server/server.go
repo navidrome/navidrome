@@ -59,6 +59,7 @@ func (a *Server) initRoutes() {
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(injectLogger)
 	r.Use(requestLogger)
+	r.Use(randomSeedMiddleware)
 	r.Use(robotsTXT(ui.Assets()))
 
 	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI)

@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -26,6 +28,13 @@ type albumRepository struct {
 }
 
 func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository {
+	randomQuery := "RANDOM()"
+	if randomSeed := ctx.Value(request.AlbumRandomSeed); randomSeed != nil {
+		seed := randomSeed.(int64)
+		random := rand.New(rand.NewSource(seed)) // #nosec
+		randomQuery = fmt.Sprintf("substr((id%%%d)*%f+(album.rowid%%%d)*%f+%f,7) asc", random.Intn(34999)+10000, random.Float64(), random.Intn(34999)+10000, random.Float64(), random.Float64()+10000)
+	}
+
 	r := &albumRepository{}
 	r.ctx = ctx
 	r.ormer = o
@@ -33,7 +42,8 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 	r.sortMappings = map[string]string{
 		"name":           "order_album_name asc, order_album_artist_name asc",
 		"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
-		"random":         "RANDOM()",
+		"random":         "#random-sort#",
+		"random-true":    randomQuery,
 		"max_year":       "max_year asc, name, order_album_name asc",
 		"recently_added": recentlyAddedSort(),
 	}
@@ -120,8 +130,7 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 
 // TODO Keep order when paginating
 func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums, error) {
-	sq := r.selectAlbum(options...)
-	sq = sq.OrderBy("RANDOM()")
+	sq := r.selectAlbum(options...).OrderByClause(r.sortMappings["random"])
 	results := model.Albums{}
 	err := r.queryAll(sq, &results)
 	return results, err
