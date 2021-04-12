@@ -11,7 +11,6 @@ import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
 import { ThemeProvider } from '@material-ui/styles'
 import Logo from '../icons/android-icon-72x72.png'
 import { useLogin, useNotify, useTranslate } from 'react-admin'
-
 import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
@@ -33,6 +32,8 @@ const useStyles = makeStyles(
     card: {
       minWidth: 300,
       marginTop: '6em',
+      backgroundColor: theme.palette.background.default,
+	  opacity: 0.8,
     },
     avatar: {
       margin: '1em',

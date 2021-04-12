@@ -7,6 +7,9 @@ export default {
       main: '#3f51b5',
       contrastText: '#fff',
     },
+    error: {
+    main: '#ff9800',
+    },
   },
   overrides: {
     MuiFilledInput: {

@@ -8,6 +8,9 @@ export default {
     },
     secondary: blue,
     type: 'dark',
+    error: {
+    main: '#ff9800',
+    },
   },
   overrides: {
     MuiFormGroup: {
