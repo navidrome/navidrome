@@ -41,7 +41,7 @@ export const SelectPlaylistInput = ({ onChange }) => {
           })
         } else if (typeof playlistObject === 'string') {
           newState.push({
-            name: playlistObject
+            name: playlistObject,
           })
         } else {
           newState.push(playlistObject)
