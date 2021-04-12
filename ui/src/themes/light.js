@@ -8,7 +8,7 @@ export default {
       contrastText: '#fff',
     },
     error: {
-    main: '#ff9800',
+      main: '#ff9800',
     },
   },
   overrides: {

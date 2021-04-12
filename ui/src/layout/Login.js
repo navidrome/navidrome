@@ -33,7 +33,7 @@ const useStyles = makeStyles(
       minWidth: 300,
       marginTop: '6em',
       backgroundColor: theme.palette.background.default,
-	  opacity: 0.8,
+      opacity: 0.8,
     },
     avatar: {
       margin: '1em',
