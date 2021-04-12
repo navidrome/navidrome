@@ -34,7 +34,7 @@ testall: check_go_env test
 .PHONY: testall
 
 lint:
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint run -v --timeout
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint run -v
 .PHONY: lint
 
 lintall: check_node_dev_env lint
