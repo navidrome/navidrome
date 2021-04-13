@@ -14,10 +14,12 @@ import {
   Divider,
   Box,
   Avatar,
+  Typography,
   List,
   ListItem,
   ListItemText,
   ListItemAvatar,
+  ListItemSecondaryAction,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
 import { BiError } from 'react-icons/bi'
@@ -47,6 +49,31 @@ const useStyles = makeStyles((theme) => ({
   counterStatus: {
     minWidth: '15em',
   },
+  heading: {
+    padding: '0px 16px',
+  },
+  list: {
+    maxWidth: '300px',
+    textOverflow: 'ellipsis',
+    ' & .primary': {
+      '& .MuiListItemText-primary': {
+        marginRight: '80px',
+        wordWrap: 'break-word',
+      },
+      '& .MuiListItemText-secondary': {
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      },
+    },
+
+    '& .MuiListItemSecondaryAction-root': {
+      textAlign: 'right',
+      '& .MuiListItemText-secondary': {
+        visibility: 'hidden',
+      },
+    },
+  },
 }))
 
 const getUptime = (serverStart) =>
@@ -67,7 +94,7 @@ const ActivityPanel = () => {
   const classes = useStyles({ up })
   const translate = useTranslate()
   const [anchorEl, setAnchorEl] = useState(null)
-  const [usersCurrentlyPlaying, setUsersCurrentlyPlaying] = useState([])
+  const [nowPlaying, setNowPlaying] = useState([])
   const open = Boolean(anchorEl)
   const dispatch = useDispatch()
   const scanStatus = useSelector((state) => state.activity.scanStatus)
@@ -93,7 +120,7 @@ const ActivityPanel = () => {
         .then((resp) => resp.json['subsonic-response'])
         .then((data) => {
           if (data.status === 'ok') {
-            setUsersCurrentlyPlaying(
+            setNowPlaying(
               data?.nowPlaying?.entry?.map((user) => {
                 return {
                   username: user.username,
@@ -101,8 +128,9 @@ const ActivityPanel = () => {
                   title: user.title,
                   album: user.album,
                   artist: user.artist,
+                  minutesAgo: user.minutesAgo || 0,
                 }
-              })
+              }) || []
             )
           }
         })
@@ -177,23 +205,32 @@ const ActivityPanel = () => {
             </Tooltip>
           </CardActions>
           <Divider />
-          <List>
-            {usersCurrentlyPlaying.map((user) => {
+          <Typography className={classes.heading}>
+            {translate('activity.nowPlaying')}
+          </Typography>
+          <List className={classes.list}>
+            {nowPlaying.map((user) => {
               return (
                 <ListItem key={user.coverArtId}>
                   <ListItemAvatar>
                     <Avatar
-                      alt={`${user.title} cover-art`}
+                      alt={`${user.title} ${translate('activity.coverArt')}`}
                       src={subsonic.getCoverArtUrl(user)}
                     />
                   </ListItemAvatar>
                   <ListItemText
+                    className="primary"
                     primary={`${user.username}`}
-                    secondary={`
-                          ${translate('activity.currentlyPlaying')} ${
-                      user.title
-                    }`}
+                    secondary={`${user.title} - ${user.artist}`}
                   />
+                  <ListItemSecondaryAction>
+                    <ListItemText
+                      primary={`${user.minutesAgo} ${translate(
+                        'activity.minutesAgo'
+                      )}`}
+                      secondary="place-holder"
+                    ></ListItemText>
+                  </ListItemSecondaryAction>
                 </ListItem>
               )
             })}

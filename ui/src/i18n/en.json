@@ -329,7 +329,9 @@
     "fullScan": "Full Scan",
     "serverUptime": "Server Uptime",
     "serverDown": "OFFLINE",
-    "currentlyPlaying": "Currently Playing"
+    "nowPlaying": "Now Playing",
+    "minutesAgo": "minutes ago",
+    "coverArt": "cover art"
   },
   "help": {
     "title": "Navidrome Hotkeys",
