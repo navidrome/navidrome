@@ -17,6 +17,7 @@ import {
   QuickFilter,
   SongTitleField,
   SongSimpleList,
+  RatingField,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../actions'
@@ -27,6 +28,7 @@ import { AddToPlaylistDialog } from '../dialogs'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import config from '../config'
+import { QualityInfo } from '../common/QualityInfo'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -39,9 +41,15 @@ const useStyles = makeStyles({
       '& $contextMenu': {
         visibility: 'visible',
       },
+      '& $ratingField': {
+        visibility: 'visible',
+      },
     },
   },
   contextMenu: {
+    visibility: 'hidden',
+  },
+  ratingField: {
     visibility: 'hidden',
   },
 })
@@ -111,7 +119,16 @@ const SongList = (props) => {
                 sortByOrder={'DESC'}
               />
             )}
+            {isDesktop && <QualityInfo source="quality" sortable={false} />}
             <DurationField source="duration" />
+            {config.enableStarRating && (
+              <RatingField
+                source="rating"
+                sortByOrder={'DESC'}
+                resource={'song'}
+                className={classes.ratingField}
+              />
+            )}
             <SongContextMenu
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}

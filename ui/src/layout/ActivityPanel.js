@@ -68,7 +68,10 @@ const useStyles = makeStyles((theme) => ({
     },
 
     '& .MuiListItemSecondaryAction-root': {
-      textAlign: 'right',
+      '& .MuiListItemText-primary': {
+        textAlign: 'right',
+        fontSize: '12px',
+      },
       '& .MuiListItemText-secondary': {
         visibility: 'hidden',
       },

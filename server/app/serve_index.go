@@ -22,7 +22,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		base := path.Join(conf.Server.BaseURL, consts.URLPathUI)
 		if r.URL.Path == base {
-			http.Redirect(w, r, base+"/", 302)
+			http.Redirect(w, r, base+"/", http.StatusFound)
 		}
 
 		c, err := ds.User(r.Context()).CountAll()
@@ -43,6 +43,8 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"enableDownloads":         conf.Server.EnableDownloads,
 			"enableFavourites":        conf.Server.EnableFavourites,
+			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
+			"enableStarRating":        conf.Server.EnableStarRating,
 			"devActivityPanel":        conf.Server.DevActivityPanel,
 			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 		}
