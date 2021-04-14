@@ -12,9 +12,9 @@ import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
 import { makeStyles } from '@material-ui/core/styles'
 
-const useStyles = makeStyles((theme) => ({
-  fixedSidebarOpen: { position: 'fixed' },
-  fixedSidebarClose: { position: 'fixed', width: '48px' },
+const useStyles = makeStyles(() => ({
+  fixedSidebar: (props) =>
+    props.open ? { position: 'fixed' } : { position: 'fixed', maxWidth: '3em' },
 }))
 
 const translatedResourceName = (resource, translate) =>
@@ -34,7 +34,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
   const resources = useSelector(getResources)
-  const classes = useStyles()
+  const classes = useStyles({ open })
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
@@ -91,9 +91,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     resource.hasList && resource.options && resource.options.subMenu === subMenu
 
   return (
-    <div
-      className={open ? classes.fixedSidebarOpen : classes.fixedSidebarClose}
-    >
+    <div className={classes.fixedSidebar}>
       <SubMenu
         handleToggle={() => handleToggle('menuAlbumList')}
         isOpen={state.menuAlbumList}
