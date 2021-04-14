@@ -22,7 +22,7 @@ import {
 } from '../actions'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
-import { sendNotification, baseUrl } from '../utils'
+import { sendNotification } from '../utils'
 import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
 
@@ -249,7 +249,7 @@ const Player = () => {
           sendNotification(
             info.name,
             `${info.singer} - ${info.album}`,
-            baseUrl(info.cover)
+            info.cover
           )
         }
       }
