@@ -73,21 +73,11 @@ export default {
     },
     background: {
       default: '#121212',
-      paper: 'inherit',
+      paper: '#121212',
     },
     type: 'dark',
   },
   overrides: {
-    MuiPopover: {
-      paper: {
-        backgroundColor: '#121212',
-      },
-    },
-    MuiDialog: {
-      paper: {
-        backgroundColor: '#121212',
-      },
-    },
     MuiFormGroup: {
       root: {
         color: spotifyGreen['500'],
@@ -103,16 +93,10 @@ export default {
         margin: '.75rem 0',
       },
     },
-    MuiIconButton: {
-      label: {
-        // color: '#fff'
-      },
-    },
     MuiButton: {
       root: {
         background: spotifyGreen['500'],
         color: '#fff',
-        // margin: '5px',
         border: '1px solid transparent',
         borderRadius: 500,
         '&:hover': {
@@ -279,14 +263,12 @@ export default {
       },
       systemName: {
         marginTop: '0.5em',
-        // borderBottom: '1px solid #282828',
         marginBottom: '1em',
       },
       icon: {
         backgroundColor: 'inherit',
       },
       card: {
-        // background: 'none',
         background: 'none',
         boxShadow: 'none',
         padding: '10px 0',
@@ -300,6 +282,11 @@ export default {
       content: {
         padding: '0 !important',
         background: 'linear-gradient(#171717, #121212)',
+      },
+    },
+    RaList: {
+      content: {
+        backgroundColor: 'inherit',
       },
     },
     RaListToolbar: {
@@ -316,11 +303,6 @@ export default {
     RaFilterButton: {
       root: {
         marginRight: '1rem',
-      },
-    },
-    RaAutocompleteSuggestionList: {
-      suggestionsPaper: {
-        backgroundColor: '#121212',
       },
     },
     RaPaginationActions: {
