@@ -1,11 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import {
-  useCreate,
-  useDataProvider,
-  useNotify,
-  useTranslate,
-} from 'react-admin'
+import { useDataProvider, useNotify, useTranslate } from 'react-admin'
 import {
   Button,
   Dialog,
@@ -35,24 +30,18 @@ export const AddToPlaylistDialog = () => {
   const translate = useTranslate()
   const notify = useNotify()
   const [value, setValue] = useState({})
-  const [newPlaylist, setNewPlaylist] = useState({})
   const [check, setCheck] = useState(false)
   const dataProvider = useDataProvider()
-  const [createAndAddToPlaylist] = useCreate(
-    'playlist',
-    { name: newPlaylist.name },
-    {
-      onSuccess: ({ data }) => {
-        addToPlaylist(data.id)
-      },
-      onFailure: (error) => notify(`Error: ${error.message}`, 'warning'),
-    }
-  )
-  useEffect(() => {
-    if (newPlaylist.name) {
-      createAndAddToPlaylist()
-    }
-  }, [newPlaylist, createAndAddToPlaylist])
+  const createAndAddToPlaylist = (playlistObject) => {
+    dataProvider
+      .create('playlist', {
+        data: { name: playlistObject.name },
+      })
+      .then((res) => {
+        addToPlaylist(res.data.id)
+      })
+      .catch((error) => notify(`Error: ${error.message}`, 'warning'))
+  }
 
   const addToPlaylist = (playlistId, distinctIds) => {
     const trackIds = Array.isArray(distinctIds) ? distinctIds : selectedIds
@@ -98,7 +87,7 @@ export const AddToPlaylistDialog = () => {
       if (playlistObject.id) {
         addToPlaylist(playlistObject.id, playlistObject.distinctIds)
       } else {
-        setNewPlaylist(playlistObject)
+        createAndAddToPlaylist(playlistObject)
       }
     })
     setCheck(false)
