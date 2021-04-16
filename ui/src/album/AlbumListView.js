@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import Paper from '@material-ui/core/Paper'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
@@ -29,6 +29,8 @@ import {
 } from '../common'
 import config from '../config'
 import useSelectedFields from '../common/useSelectedFields'
+import { setOmittedFields } from '../actions'
+import { useDispatch } from 'react-redux'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -110,6 +112,7 @@ const AlbumListView = ({
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const dispatch = useDispatch()
 
   const toggleableFields = {
     artist: <ArtistLinkField source="artist" />,
@@ -133,10 +136,13 @@ const AlbumListView = ({
     ),
   }
 
-  const columns = useSelectedFields({
+  const [columns, omitted] = useSelectedFields({
     resource: 'album',
     columns: toggleableFields,
   })
+  useEffect(() => {
+    dispatch(setOmittedFields(omitted))
+  }, [omitted])
 
   return isXsmall ? (
     <SimpleList

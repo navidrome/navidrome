@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   Filter,
   FunctionField,
@@ -20,7 +20,7 @@ import {
   RatingField,
 } from '../common'
 import { useDispatch } from 'react-redux'
-import { setTrack } from '../actions'
+import { setOmittedFields, setTrack } from '../actions'
 import { SongBulkActions } from '../common'
 import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
@@ -112,10 +112,13 @@ const SongList = (props) => {
     ),
   }
 
-  const columns = useSelectedFields({
+  const [columns, omitted] = useSelectedFields({
     resource: 'song',
     columns: toggleableFields,
   })
+  useEffect(() => {
+    dispatch(setOmittedFields(omitted))
+  }, [omitted])
 
   return (
     <>

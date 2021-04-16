@@ -10,6 +10,7 @@ const useSelectedFields = ({ resource, columns }) => {
   )?.[resource]
 
   useEffect(() => {
+    // for rehydrating redux store with new release
     if (
       !resourceFields ||
       Object.keys(resourceFields).length !== Object.keys(columns).length
@@ -24,15 +25,18 @@ const useSelectedFields = ({ resource, columns }) => {
   }, [resourceFields, dispatch])
 
   const filteredComponents = []
+  const omitted = []
   if (resourceFields) {
     for (const [key, val] of Object.entries(columns)) {
-      if (val && resourceFields[key]) {
+      if (!val) {
+        omitted.push(key)
+      } else if (resourceFields[key]) {
         filteredComponents.push(val)
       }
     }
   }
 
-  return React.Children.toArray(filteredComponents)
+  return [React.Children.toArray(filteredComponents), { [resource]: omitted }]
 }
 
 export default useSelectedFields

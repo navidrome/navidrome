@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
   Datagrid,
@@ -23,6 +23,8 @@ import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
 import useSelectedFields from '../common/useSelectedFields'
+import { setOmittedFields } from '../actions'
+import { useDispatch } from 'react-redux'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -66,6 +68,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const dispatch = useDispatch()
 
   const toggleableFields = {
     albumCount: <NumberField source="albumCount" sortByOrder={'DESC'} />,
@@ -81,11 +84,14 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
     ),
   }
 
-  const columns = useSelectedFields({
+  const [columns, omitted] = useSelectedFields({
     resource: 'artist',
     columns: toggleableFields,
   })
 
+  useEffect(() => {
+    dispatch(setOmittedFields(omitted))
+  }, [omitted])
   return isXsmall ? (
     <ArtistSimpleList
       linkType={(id) => history.push(handleArtistLink(id))}
