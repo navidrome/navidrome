@@ -15,6 +15,7 @@ const filter = createFilterOptions()
 
 const useStyles = makeStyles({
   root: { width: '100%' },
+  checkbox: { marginRight: 8 },
 })
 
 export const SelectPlaylistInput = ({ onChange }) => {
@@ -97,7 +98,7 @@ export const SelectPlaylistInput = ({ onChange }) => {
           <Checkbox
             icon={icon}
             checkedIcon={checkedIcon}
-            style={{ marginRight: 8 }}
+            className={classes.checkbox}
             checked={selected}
           />
           {option.name}
