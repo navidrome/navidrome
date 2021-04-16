@@ -21,8 +21,8 @@
                 "discSubtitle": "Podtitul disku",
                 "starred": "Oblíbené",
                 "comment": "Komentář",
-                "rating": "",
-                "quality": ""
+                "rating": "Hodnocení",
+                "quality": "Kvalita"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -47,7 +47,7 @@
                 "year": "Rok",
                 "updatedAt": "Aktualizováno",
                 "comment": "Komentář",
-                "rating": ""
+                "rating": "Hodnocení"
             },
             "actions": {
                 "playAll": "Přehrát",
@@ -64,7 +64,7 @@
                 "recentlyPlayed": "Nedávno přehrané",
                 "mostPlayed": "Nejpřehrávanější",
                 "starred": "Oblíbené",
-                "topRated": ""
+                "topRated": "Nejlépe hodnocené"
             }
         },
         "artist": {
@@ -74,7 +74,7 @@
                 "albumCount": "Počet alb",
                 "songCount": "Počet skladeb",
                 "playCount": "Přehrání",
-                "rating": ""
+                "rating": "Hodnocení"
             }
         },
         "user": {
