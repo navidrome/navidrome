@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   Datagrid,
   DateField,
@@ -12,6 +12,10 @@ import {
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { DurationField, List, Writable, isWritable } from '../common'
+import useSelectedFields from '../common/useSelectedFields'
+import { setOmittedFields } from '../actions'
+import { useDispatch } from 'react-redux'
+import PlaylistListActions from './PlaylistListActions'
 
 const PlaylistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -55,25 +59,48 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
   )
 }
 
-const PlaylistList = ({ permissions, ...props }) => (
-  <List {...props} exporter={false} filters={<PlaylistFilter />}>
-    <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r && r.owner)}>
-      <TextField source="name" />
-      <TextField source="owner" />
-      <NumberField source="songCount" />
-      <DurationField source="duration" />
-      <DateField source="updatedAt" sortByOrder={'DESC'} />
+const PlaylistList = ({ permissions, ...props }) => {
+  const dispatch = useDispatch()
+  const toggleableFields = {
+    owner: <TextField source="owner" />,
+    songCount: <NumberField source="songCount" />,
+    duration: <DurationField source="duration" />,
+    updatedAt: <DateField source="updatedAt" sortByOrder={'DESC'} />,
+    public: (
       <TogglePublicInput
         source="public"
         permissions={permissions}
         sortByOrder={'DESC'}
       />
-      <Writable>
-        <EditButton />
-      </Writable>
-      />
-    </Datagrid>
-  </List>
-)
+    ),
+  }
+  const [columns, omitted] = useSelectedFields({
+    resource: 'playlist',
+    columns: toggleableFields,
+  })
+  useEffect(() => {
+    dispatch(setOmittedFields(omitted))
+  }, [omitted])
+
+  return (
+    <List
+      {...props}
+      exporter={false}
+      filters={<PlaylistFilter />}
+      actions={<PlaylistListActions />}
+    >
+      <Datagrid
+        rowClick="show"
+        isRowSelectable={(r) => isWritable(r && r.owner)}
+      >
+        <TextField source="name" />
+        {columns}
+        <Writable>
+          <EditButton />
+        </Writable>
+      </Datagrid>
+    </List>
+  )
+}
 
 export default PlaylistList

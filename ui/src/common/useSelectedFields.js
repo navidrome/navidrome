@@ -1,19 +1,22 @@
 import React, { useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch, useSelector } from 'react-redux'
-import { setToggleableFields } from '../actions'
+import { setOmittedFields, setToggleableFields } from '../actions'
 
-const useSelectedFields = ({ resource, columns }) => {
+const useSelectedFields = ({ resource, columns, omittedColumns }) => {
   const dispatch = useDispatch()
   const resourceFields = useSelector(
     (state) => state.settings.toggleableFields
   )?.[resource]
+  const omittedFields = useSelector((state) => state.settings.omittedFields)?.[
+    resource
+  ]
 
   useEffect(() => {
     // for rehydrating redux store with new release
     if (
       !resourceFields ||
-      Object.keys(resourceFields).length !== Object.keys(columns).length
+      Object.keys(columns).length !== Object.keys(resourceFields).length
     ) {
       const obj = {}
       for (const key of Object.keys(columns)) {
@@ -21,11 +24,14 @@ const useSelectedFields = ({ resource, columns }) => {
       }
       dispatch(setToggleableFields({ [resource]: obj }))
     }
+    if (!omittedFields) {
+      dispatch(setOmittedFields({ [resource]: [] }))
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resourceFields, dispatch])
+  }, [resourceFields, omittedFields, dispatch])
 
   const filteredComponents = []
-  const omitted = []
+  const omitted = omittedColumns
   if (resourceFields) {
     for (const [key, val] of Object.entries(columns)) {
       if (!val) {
@@ -44,4 +50,9 @@ export default useSelectedFields
 useSelectedFields.propTypes = {
   resource: PropTypes.string,
   columns: PropTypes.object,
+  omittedColumns: PropTypes.arrayOf(PropTypes.string),
+}
+
+useSelectedFields.defaultProps = {
+  omittedColumns: [],
 }

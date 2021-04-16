@@ -29,10 +29,8 @@ const ToggleFieldsMenu = ({ resource }) => {
   const toggleableColumns = useSelector(
     (state) => state.settings.toggleableFields[resource]
   )
-  const omittedColumns = useSelector(
-    (state) => state.settings.omittedFields[resource]
-  )
-  // const omittedColumns = []
+  const omittedColumns =
+    useSelector((state) => state.settings.omittedFields[resource]) || []
 
   const classes = useStyles()
   const open = Boolean(anchorEl)
@@ -80,7 +78,7 @@ const ToggleFieldsMenu = ({ resource }) => {
         }}
       >
         {Object.entries(toggleableColumns).map(([key, val]) =>
-          omittedColumns && !omittedColumns.includes(key) ? (
+          !omittedColumns.includes(key) ? (
             <MenuItem key={key} onClick={() => handleClick(key)}>
               <Checkbox checked={val} />
               {translate(`resources.${resource}.fields.${key}`)}

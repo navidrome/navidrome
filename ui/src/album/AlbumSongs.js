@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
@@ -7,11 +7,11 @@ import {
   useListContext,
 } from 'react-admin'
 import clsx from 'clsx'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
-import { playTracks } from '../actions'
+import { playTracks, setOmittedFields } from '../actions'
 import {
   DurationField,
   SongBulkActions,
@@ -23,6 +23,7 @@ import {
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import { QualityInfo } from '../common/QualityInfo'
+import useSelectedFields from '../common/useSelectedFields'
 import config from '../config'
 
 const useStyles = makeStyles(
@@ -84,8 +85,52 @@ const AlbumSongs = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
+  const omittedFields = useSelector((state) => state.settings.omittedFields)
+    ?.albumSong
   const dispatch = useDispatch()
   const version = useVersion()
+
+  const toggleableFields = {
+    trackNumber: isDesktop && (
+      <TextField
+        source="trackNumber"
+        sortBy="discNumber asc, trackNumber asc"
+        label="#"
+        sortable={false}
+      />
+    ),
+    title: (
+      <SongTitleField
+        source="title"
+        sortable={false}
+        showTrackNumbers={!isDesktop}
+      />
+    ),
+    artist: isDesktop && <TextField source="artist" sortable={false} />,
+    duration: <DurationField source="duration" sortable={false} />,
+    quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+    rating: isDesktop && config.enableStarRating && (
+      <RatingField
+        source="rating"
+        resource={'albumSong'}
+        sortable={false}
+        className={classes.ratingField}
+      />
+    ),
+  }
+
+  const [columns, omitted] = useSelectedFields({
+    resource: 'albumSong',
+    columns: toggleableFields,
+    omittedColumns: ['title'],
+  })
+
+  useEffect(() => {
+    if (omittedFields.length !== omitted.albumSong.length) {
+      dispatch(setOmittedFields(omitted))
+    }
+  }, [omitted])
+
   return (
     <>
       <ListToolbar
@@ -112,30 +157,7 @@ const AlbumSongs = (props) => {
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
           >
-            {isDesktop && (
-              <TextField
-                source="trackNumber"
-                sortBy="discNumber asc, trackNumber asc"
-                label="#"
-                sortable={false}
-              />
-            )}
-            <SongTitleField
-              source="title"
-              sortable={false}
-              showTrackNumbers={!isDesktop}
-            />
-            {isDesktop && <TextField source="artist" sortable={false} />}
-            <DurationField source="duration" sortable={false} />
-            {isDesktop && <QualityInfo source="quality" sortable={false} />}
-            {isDesktop && config.enableStarRating && (
-              <RatingField
-                source="rating"
-                resource={'albumSong'}
-                sortable={false}
-                className={classes.ratingField}
-              />
-            )}
+            {columns}
             <SongContextMenu
               source={'starred'}
               sortable={false}
