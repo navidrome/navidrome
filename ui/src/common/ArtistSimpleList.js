@@ -7,17 +7,11 @@ import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
 import { sanitizeListRestProps } from 'ra-core'
-import { DurationField, SongContextMenu, RatingField } from './index'
-import { setTrack } from '../actions'
-import { useDispatch } from 'react-redux'
+import { ArtistContextMenu, RatingField } from './index'
 import config from '../config'
 
 const useStyles = makeStyles(
   {
-    link: {
-      textDecoration: 'none',
-      color: 'inherit',
-    },
     listItem: {
       padding: '10px',
     },
@@ -25,45 +19,25 @@ const useStyles = makeStyles(
       paddingRight: '10px',
       width: '80%',
     },
-    secondary: {
-      marginTop: '-3px',
-      width: '96%',
-      display: 'flex',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-    },
-    artist: {
-      paddingRight: '30px',
-    },
-    timeStamp: {
-      float: 'right',
-      color: '#fff',
-      fontWeight: '200',
-      opacity: 0.6,
-      fontSize: '12px',
-      padding: '2px',
-    },
     rightIcon: {
       top: '26px',
     },
   },
-  { name: 'RaSongSimpleList' }
+  { name: 'RaArtistSimpleList' }
 )
 
-export const SongSimpleList = ({
-  basePath,
+export const ArtistSimpleList = ({
+  linkType,
   className,
   classes: classesOverride,
   data,
   hasBulkActions,
   ids,
   loading,
-  onToggleItem,
   selectedIds,
   total,
   ...rest
 }) => {
-  const dispatch = useDispatch()
   const classes = useStyles({ classes: classesOverride })
   return (
     (loading || total > 0) && (
@@ -71,30 +45,17 @@ export const SongSimpleList = ({
         {ids.map(
           (id) =>
             data[id] && (
-              <span key={id} onClick={() => dispatch(setTrack(data[id]))}>
+              <span key={id} onClick={() => linkType(id)}>
                 <ListItem className={classes.listItem} button={true}>
                   <ListItemText
                     primary={
-                      <div className={classes.title}>{data[id].title}</div>
-                    }
-                    secondary={
                       <>
-                        <span className={classes.secondary}>
-                          <span className={classes.artist}>
-                            {data[id].artist}
-                          </span>
-                          <span className={classes.timeStamp}>
-                            <DurationField
-                              record={data[id]}
-                              source={'duration'}
-                            />
-                          </span>
-                        </span>
+                        <div className={classes.title}>{data[id].name}</div>
                         {config.enableStarRating && (
                           <RatingField
                             record={data[id]}
                             source={'rating'}
-                            resource={'song'}
+                            resource={'artist'}
                             size={'small'}
                           />
                         )}
@@ -103,7 +64,7 @@ export const SongSimpleList = ({
                   />
                   <ListItemSecondaryAction className={classes.rightIcon}>
                     <ListItemIcon>
-                      <SongContextMenu record={data[id]} visible={true} />
+                      <ArtistContextMenu record={data[id]} />
                     </ListItemIcon>
                   </ListItemSecondaryAction>
                 </ListItem>
@@ -115,18 +76,16 @@ export const SongSimpleList = ({
   )
 }
 
-SongSimpleList.propTypes = {
-  basePath: PropTypes.string,
+ArtistSimpleList.propTypes = {
   className: PropTypes.string,
   classes: PropTypes.object,
   data: PropTypes.object,
   hasBulkActions: PropTypes.bool.isRequired,
   ids: PropTypes.array,
-  onToggleItem: PropTypes.func,
   selectedIds: PropTypes.arrayOf(PropTypes.any).isRequired,
 }
 
-SongSimpleList.defaultProps = {
+ArtistSimpleList.defaultProps = {
   hasBulkActions: false,
   selectedIds: [],
 }

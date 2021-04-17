@@ -18,68 +18,78 @@ import {
   DurationField,
   formatRange,
   SizeField,
-  StarButton,
+  LoveButton,
+  RatingField,
 } from '../common'
+import config from '../config'
 
-const useStyles = makeStyles((theme) => ({
-  root: {
-    [theme.breakpoints.down('xs')]: {
-      padding: '0.7em',
-      minWidth: '20em',
+const useStyles = makeStyles(
+  (theme) => ({
+    root: {
+      [theme.breakpoints.down('xs')]: {
+        padding: '0.7em',
+        minWidth: '20em',
+      },
+      [theme.breakpoints.up('sm')]: {
+        padding: '1em',
+        minWidth: '32em',
+      },
     },
-    [theme.breakpoints.up('sm')]: {
-      padding: '1em',
-      minWidth: '32em',
+    cardContents: {
+      display: 'flex',
     },
-  },
-  cardContents: {
-    display: 'flex',
-  },
-  details: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  content: {
-    flex: '2 0 auto',
-  },
-  coverParent: {
-    [theme.breakpoints.down('xs')]: {
-      height: '8em',
-      width: '8em',
-      minWidth: '8em',
+    details: {
+      display: 'flex',
+      flexDirection: 'column',
     },
-    [theme.breakpoints.up('sm')]: {
-      height: '10em',
-      width: '10em',
-      minWidth: '10em',
+    content: {
+      flex: '2 0 auto',
     },
-    [theme.breakpoints.up('lg')]: {
-      height: '15em',
-      width: '15em',
-      minWidth: '15em',
+    coverParent: {
+      [theme.breakpoints.down('xs')]: {
+        height: '8em',
+        width: '8em',
+        minWidth: '8em',
+      },
+      [theme.breakpoints.up('sm')]: {
+        height: '10em',
+        width: '10em',
+        minWidth: '10em',
+      },
+      [theme.breakpoints.up('lg')]: {
+        height: '15em',
+        width: '15em',
+        minWidth: '15em',
+      },
     },
-  },
-  cover: {
-    objectFit: 'contain',
-    cursor: 'pointer',
-    display: 'block',
-    width: '100%',
-    height: '100%',
-  },
-  starButton: {
-    top: theme.spacing(-0.2),
-    left: theme.spacing(0.5),
-  },
-  commentBlock: {
-    display: 'inline-block',
-    marginTop: '1em',
-    float: 'left',
-    wordBreak: 'break-all',
-  },
-  pointerCursor: {
-    cursor: 'pointer',
-  },
-}))
+    cover: {
+      objectFit: 'contain',
+      cursor: 'pointer',
+      display: 'block',
+      width: '100%',
+      height: '100%',
+    },
+    loveButton: {
+      top: theme.spacing(-0.2),
+      left: theme.spacing(0.5),
+    },
+    commentBlock: {
+      display: 'inline-block',
+      marginTop: '1em',
+      float: 'left',
+      wordBreak: 'break-all',
+    },
+    pointerCursor: {
+      cursor: 'pointer',
+    },
+    recordName: {},
+    recordArtist: {},
+    recordMeta: {},
+  }),
+  {
+    name: 'NDAlbumDetails',
+  }
+)
 
 const AlbumComment = ({ record }) => {
   const classes = useStyles()
@@ -158,22 +168,29 @@ const AlbumDetails = ({ record }) => {
         </div>
         <div className={classes.details}>
           <CardContent className={classes.content}>
-            <Typography variant="h5">
+            <Typography
+              variant={isDesktop ? 'h5' : 'h6'}
+              className={classes.recordName}
+            >
               {record.name}
-              <StarButton
-                className={classes.starButton}
-                record={record}
-                resource={'album'}
-                size={isDesktop ? 'default' : 'small'}
-                aria-label="star"
-                color="primary"
-              />
+              {config.enableFavourites && (
+                <LoveButton
+                  className={classes.loveButton}
+                  record={record}
+                  resource={'album'}
+                  size={isDesktop ? 'default' : 'small'}
+                  aria-label="love"
+                  color="primary"
+                />
+              )}
             </Typography>
-            <Typography component="h6">
+            <Typography component="h6" className={classes.recordArtist}>
               <ArtistLinkField record={record} />
             </Typography>
-            <Typography component="p">{genreYear(record)}</Typography>
-            <Typography component="p">
+            <Typography component="p" className={classes.recordMeta}>
+              {genreYear(record)}
+            </Typography>
+            <Typography component="p" className={classes.recordMeta}>
               {record.songCount}{' '}
               {translate('resources.song.name', {
                 smart_count: record.songCount,
@@ -182,6 +199,15 @@ const AlbumDetails = ({ record }) => {
               {' · '}
               <SizeField record={record} source="size" />
             </Typography>
+            {config.enableStarRating && (
+              <div>
+                <RatingField
+                  record={record}
+                  resource={'album'}
+                  size={isDesktop ? 'medium' : 'small'}
+                />
+              </div>
+            )}
             {isDesktop && record['comment'] && <AlbumComment record={record} />}
           </CardContent>
         </div>

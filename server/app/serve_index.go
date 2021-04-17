@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -19,6 +20,11 @@ import (
 func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 	policy := bluemonday.UGCPolicy()
 	return func(w http.ResponseWriter, r *http.Request) {
+		base := path.Join(conf.Server.BaseURL, consts.URLPathUI)
+		if r.URL.Path == base {
+			http.Redirect(w, r, base+"/", http.StatusFound)
+		}
+
 		c, err := ds.User(r.Context()).CountAll()
 		firstTime := c == 0 && err == nil
 
@@ -36,6 +42,9 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"enableDownloads":         conf.Server.EnableDownloads,
+			"enableFavourites":        conf.Server.EnableFavourites,
+			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
+			"enableStarRating":        conf.Server.EnableStarRating,
 			"devActivityPanel":        conf.Server.DevActivityPanel,
 			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 		}

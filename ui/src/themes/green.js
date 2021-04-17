@@ -1,12 +1,16 @@
-import blue from '@material-ui/core/colors/blue'
+import green from '@material-ui/core/colors/green'
 
 export default {
-  themeName: 'Dark',
+  themeName: 'Green',
   palette: {
     primary: {
-      main: '#90caf9',
+      light: green['300'],
+      main: green['500'],
     },
-    secondary: blue,
+    secondary: {
+      main: green['900'],
+      contrastText: '#fff',
+    },
     type: 'dark',
   },
   overrides: {
