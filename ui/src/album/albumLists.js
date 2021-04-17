@@ -1,3 +1,4 @@
+import React from 'react'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import LibraryAddIcon from '@material-ui/icons/LibraryAdd'
 import VideoLibraryIcon from '@material-ui/icons/VideoLibrary'
@@ -11,45 +12,69 @@ import AlbumOutlinedIcon from '@material-ui/icons/AlbumOutlined'
 import LibraryAddOutlinedIcon from '@material-ui/icons/LibraryAddOutlined'
 import VideoLibraryOutlinedIcon from '@material-ui/icons/VideoLibraryOutlined'
 import config from '../config'
+import DynamicMenuIcon from '../layout/DynamicMenuIcon'
 
 export default {
   all: {
-    icon: AlbumOutlinedIcon,
-    onActive: AlbumIcon,
+    icon: (
+      <DynamicMenuIcon
+        path={'album/all'}
+        icon={AlbumOutlinedIcon}
+        activeIcon={AlbumIcon}
+      />
+    ),
     params: 'sort=name&order=ASC',
   },
   random: {
-    icon: ShuffleIcon,
-    onActive: ShuffleIcon,
+    icon: <ShuffleIcon />,
     params: 'sort=random&order=ASC',
   },
   ...(config.enableFavourites && {
     starred: {
-      icon: FavoriteBorderIcon,
-      onActive: FavoriteIcon,
+      icon: (
+        <DynamicMenuIcon
+          path={'album/starred'}
+          icon={FavoriteBorderIcon}
+          activeIcon={FavoriteIcon}
+        />
+      ),
       params: 'sort=starred_at&order=DESC&filter={"starred":true}',
     },
   }),
   ...(config.enableStarRating && {
     topRated: {
-      icon: StarBorderIcon,
-      onActive: StarIcon,
+      icon: (
+        <DynamicMenuIcon
+          path={'album/topRated'}
+          icon={StarBorderIcon}
+          activeIcon={StarIcon}
+        />
+      ),
       params: 'sort=rating&order=DESC&filter={"has_rating":true}',
     },
   }),
   recentlyAdded: {
-    icon: LibraryAddOutlinedIcon,
-    onActive: LibraryAddIcon,
+    icon: (
+      <DynamicMenuIcon
+        path={'album/recentlyAdded'}
+        icon={LibraryAddOutlinedIcon}
+        activeIcon={LibraryAddIcon}
+      />
+    ),
     params: 'sort=recently_added&order=DESC',
   },
   recentlyPlayed: {
-    icon: VideoLibraryOutlinedIcon,
-    onActive: VideoLibraryIcon,
+    icon: (
+      <DynamicMenuIcon
+        path={'album/recentlyPlayed'}
+        icon={VideoLibraryOutlinedIcon}
+        activeIcon={VideoLibraryIcon}
+      />
+    ),
     params: 'sort=play_date&order=DESC&filter={"recently_played":true}',
   },
   mostPlayed: {
-    icon: RepeatIcon,
-    onActive: RepeatIcon,
+    icon: <RepeatIcon />,
     params: 'sort=play_count&order=DESC&filter={"recently_played":true}',
   },
 }
