@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch, useSelector } from 'react-redux'
 import { setOmittedFields, setToggleableFields } from '../actions'
@@ -12,12 +12,11 @@ const useSelectedFields = ({ resource, columns, omittedColumns }) => {
     resource
   ]
 
+  const [filteredComponents, setFilteredComponents] = useState([])
+
   useEffect(() => {
-    // for rehydrating redux store with new release
-    if (
-      !resourceFields ||
-      Object.keys(columns).length !== Object.keys(resourceFields).length
-    ) {
+    if (!resourceFields) {
+      console.log({ resourceFields })
       const obj = {}
       for (const key of Object.keys(columns)) {
         obj[key] = true
@@ -25,24 +24,30 @@ const useSelectedFields = ({ resource, columns, omittedColumns }) => {
       dispatch(setToggleableFields({ [resource]: obj }))
     }
     if (!omittedFields) {
-      dispatch(setOmittedFields({ [resource]: [] }))
+      console.log({ omittedFields })
+      dispatch(setOmittedFields({ [resource]: omittedColumns }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resourceFields, omittedFields, dispatch])
+  }, [])
 
-  const filteredComponents = []
-  const omitted = omittedColumns
-  if (resourceFields) {
-    for (const [key, val] of Object.entries(columns)) {
-      if (!val) {
-        omitted.push(key)
-      } else if (resourceFields[key]) {
-        filteredComponents.push(val)
+  useEffect(() => {
+    if (resourceFields) {
+      const filtered = []
+      const omitted = omittedColumns || []
+      for (const [key, val] of Object.entries(columns)) {
+        if (!val) omitted.push(key)
+        else if (resourceFields[key]) filtered.push(val)
       }
-    }
-  }
 
-  return [React.Children.toArray(filteredComponents), { [resource]: omitted }]
+      if (filteredComponents.length !== filtered.length)
+        setFilteredComponents(filtered)
+      if (omittedFields.length !== omitted.length)
+        dispatch(setOmittedFields({ [resource]: omitted }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resourceFields, columns])
+
+  return React.Children.toArray(filteredComponents)
 }
 
 export default useSelectedFields

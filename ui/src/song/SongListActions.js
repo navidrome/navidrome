@@ -22,7 +22,7 @@ export const SongListActions = ({
   ids,
   ...rest
 }) => {
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.up('xs'))
+  const isSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       {filters &&
@@ -34,7 +34,7 @@ export const SongListActions = ({
           context: 'button',
         })}
       <ShuffleAllButton filters={filterValues} />
-      {isXsmall && <ToggleFieldsMenu resource="song" />}
+      {isSmall && <ToggleFieldsMenu resource="song" />}
     </TopToolbar>
   )
 }

@@ -27,7 +27,7 @@ const AlbumListActions = ({
 }) => {
   const dispatch = useDispatch()
   const albumView = useSelector((state) => state.albumView)
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const isSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
@@ -59,7 +59,7 @@ const AlbumListActions = ({
           <ViewHeadlineIcon fontSize="inherit" />
         </Button>
       </ButtonGroup>
-      {isDesktop && !albumView.grid ? (
+      {isSmall && !albumView.grid ? (
         <ToggleFieldsMenu resource="album" />
       ) : null}
     </TopToolbar>

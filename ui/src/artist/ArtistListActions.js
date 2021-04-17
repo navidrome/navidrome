@@ -4,11 +4,11 @@ import { useMediaQuery } from '@material-ui/core'
 import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
 
 const ArtistListActions = ({ className, ...rest }) => {
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const isSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
-      {isDesktop && <ToggleFieldsMenu resource="artist" />}
+      {isSmall && <ToggleFieldsMenu resource="artist" />}
     </TopToolbar>
   )
 }

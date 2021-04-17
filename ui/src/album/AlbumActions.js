@@ -29,6 +29,7 @@ const AlbumActions = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const isSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   const handlePlay = React.useCallback(() => {
     dispatch(playTracks(data, ids))
@@ -96,7 +97,7 @@ const AlbumActions = ({
             </Button>
           )}
         </div>
-        <div>{isDesktop && <ToggleFieldsMenu resource="albumSong" />}</div>
+        <div>{isSmall && <ToggleFieldsMenu resource="albumSong" />}</div>
       </div>
     </TopToolbar>
   )

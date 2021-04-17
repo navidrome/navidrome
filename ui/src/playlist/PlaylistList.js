@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import {
   Datagrid,
   DateField,
@@ -13,8 +13,6 @@ import {
 import Switch from '@material-ui/core/Switch'
 import { DurationField, List, Writable, isWritable } from '../common'
 import useSelectedFields from '../common/useSelectedFields'
-import { setOmittedFields } from '../actions'
-import { useDispatch } from 'react-redux'
 import PlaylistListActions from './PlaylistListActions'
 
 const PlaylistFilter = (props) => (
@@ -60,7 +58,6 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
 }
 
 const PlaylistList = ({ permissions, ...props }) => {
-  const dispatch = useDispatch()
   const toggleableFields = {
     owner: <TextField source="owner" />,
     songCount: <NumberField source="songCount" />,
@@ -74,13 +71,10 @@ const PlaylistList = ({ permissions, ...props }) => {
       />
     ),
   }
-  const [columns, omitted] = useSelectedFields({
+  const columns = useSelectedFields({
     resource: 'playlist',
     columns: toggleableFields,
   })
-  useEffect(() => {
-    dispatch(setOmittedFields(omitted))
-  }, [omitted])
 
   return (
     <List

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
@@ -7,11 +7,11 @@ import {
   useListContext,
 } from 'react-admin'
 import clsx from 'clsx'
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
-import { playTracks, setOmittedFields } from '../actions'
+import { playTracks } from '../actions'
 import {
   DurationField,
   SongBulkActions,
@@ -85,8 +85,6 @@ const AlbumSongs = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
-  const omittedFields = useSelector((state) => state.settings.omittedFields)
-    ?.albumSong
   const dispatch = useDispatch()
   const version = useVersion()
 
@@ -119,17 +117,11 @@ const AlbumSongs = (props) => {
     ),
   }
 
-  const [columns, omitted] = useSelectedFields({
+  const columns = useSelectedFields({
     resource: 'albumSong',
     columns: toggleableFields,
     omittedColumns: ['title'],
   })
-
-  useEffect(() => {
-    if (omittedFields.length !== omitted.albumSong.length) {
-      dispatch(setOmittedFields(omitted))
-    }
-  }, [omitted])
 
   return (
     <>
