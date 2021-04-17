@@ -1,6 +1,6 @@
-import React, { useState, createElement } from 'react'
+import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { useMediaQuery } from '@material-ui/core'
+import { makeStyles, useMediaQuery } from '@material-ui/core'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
@@ -10,6 +10,13 @@ import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
+
+const useStyles = makeStyles((theme) => ({
+  active: {
+    color: theme.palette.text.primary,
+    fontWeight: 'bold',
+  },
+}))
 
 const translatedResourceName = (resource, translate) =>
   translate(`resources.${resource.name}.name`, {
@@ -27,6 +34,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
+  const classes = useStyles()
   const resources = useSelector(getResources)
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
@@ -44,10 +52,9 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     <MenuItemLink
       key={resource.name}
       to={`/${resource.name}`}
+      activeClassName={classes.active}
       primaryText={translatedResourceName(resource, translate)}
-      leftIcon={
-        (resource.icon && createElement(resource.icon)) || <ViewListIcon />
-      }
+      leftIcon={resource.icon || <ViewListIcon />}
       onClick={onMenuClick}
       sidebarIsOpen={open}
       dense={dense}
@@ -70,8 +77,9 @@ const Menu = ({ onMenuClick, dense, logout }) => {
       <MenuItemLink
         key={albumListAddress}
         to={albumListAddress}
+        activeClassName={classes.active}
         primaryText={name}
-        leftIcon={(al.icon && createElement(al.icon)) || <ViewListIcon />}
+        leftIcon={al.icon || <ViewListIcon />}
         onClick={onMenuClick}
         sidebarIsOpen={open}
         dense={dense}
