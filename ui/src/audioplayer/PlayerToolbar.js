@@ -4,7 +4,6 @@ import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
 import { LoveButton, useToggleLove } from '../common'
 import { keyMap } from '../hotkeys'
-import { QualityInfo } from '../common/QualityInfo'
 import config from '../config'
 
 const Placeholder = () =>
@@ -21,7 +20,6 @@ const Toolbar = ({ id }) => {
   }
   return (
     <>
-      {data && <QualityInfo record={data} sortable={false} />}
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       {config.enableFavourites && (
         <LoveButton
