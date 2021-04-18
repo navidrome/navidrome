@@ -16,6 +16,7 @@ const defaultConfig = {
   devActivityPanel: true,
   devFastAccessCoverArt: false,
   enableStarRating: true,
+  defaultTheme: 'Dark',
 }
 
 let config
