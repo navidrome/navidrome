@@ -9,7 +9,6 @@ import {
   SelectInput,
   ReferenceInput,
   useTranslate,
-  changeLocaleSuccess,
 } from 'react-admin'
 import { Title } from '../common'
 import { useHistory } from 'react-router-dom'
