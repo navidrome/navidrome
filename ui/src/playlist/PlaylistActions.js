@@ -96,7 +96,6 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   }, [getAllSongsAndDispatch])
 
   const handleShuffle = React.useCallback(() => {
-    console.log('SHUFFLE')
     getAllSongsAndDispatch(shuffleTracks)
   }, [getAllSongsAndDispatch])
 

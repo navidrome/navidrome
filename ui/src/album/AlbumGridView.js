@@ -115,7 +115,6 @@ const Cover = withContentRect('bounds')(
 const AlbumGridTile = ({ showArtist, record, basePath }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles()
-  // const current
 
   return (
     <div className={classes.albumContainer}>

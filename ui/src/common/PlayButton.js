@@ -1,12 +1,12 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
-import { IconButton } from '@material-ui/core'
+import { IconButton, Button } from '@material-ui/core'
 import { useDispatch } from 'react-redux'
 import { useDataProvider } from 'react-admin'
 import { playTracks } from '../actions'
 
-export const PlayButton = ({ record, size, className }) => {
+export const PlayButton = ({ record, size, className, button }) => {
   let extractSongsData = function (response) {
     const data = response.data.reduce(
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
@@ -30,7 +30,9 @@ export const PlayButton = ({ record, size, className }) => {
       })
   }
 
-  return (
+  return button ? (
+    button()
+  ) : (
     <IconButton
       onClick={(e) => {
         e.stopPropagation()

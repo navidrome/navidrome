@@ -24,7 +24,7 @@ import { formatBytes } from '../utils'
 import { useMediaQuery } from '@material-ui/core'
 import config from '../config'
 import { get } from 'lodash'
-import { playingInAlbumOrPlaylist } from '../common'
+import { PlayButton, playingInAlbumOrPlaylist } from '../common'
 
 const AlbumActions = ({
   className,
@@ -39,22 +39,22 @@ const AlbumActions = ({
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const [playing, setPlaying] = useState(false)
 
-  const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
-  const albumOrPlaylistId = useSelector((state) =>
-    get(state, 'recentAlbumOrPlaylist.id', '')
-  )
-  const songAlbumOrPlaylistId = useSelector((state) =>
-    get(state, 'queue.albumOrPlaylistId', '')
-  )
-  useEffect(() => {
-    setPlaying(
-      playingInAlbumOrPlaylist(
-        currentTrack,
-        albumOrPlaylistId,
-        songAlbumOrPlaylistId
-      )
-    )
-  }, [currentTrack, albumOrPlaylistId, songAlbumOrPlaylistId])
+  // const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
+  // const albumOrPlaylistId = useSelector((state) =>
+  //   get(state, 'recentAlbumOrPlaylist.id', '')
+  // )
+  // const songAlbumOrPlaylistId = useSelector((state) =>
+  //   get(state, 'queue.albumOrPlaylistId', '')
+  // )
+  // useEffect(() => {
+  //   setPlaying(
+  //     playingInAlbumOrPlaylist(
+  //       currentTrack,
+  //       albumOrPlaylistId,
+  //       songAlbumOrPlaylistId
+  //     )
+  //   )
+  // }, [currentTrack, albumOrPlaylistId, songAlbumOrPlaylistId])
 
   const handlePlay = React.useCallback(() => {
     dispatch(playTracks(data, ids, undefined, record.id))
@@ -78,16 +78,20 @@ const AlbumActions = ({
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
-      <Button
-        onClick={playing ? () => dispatch(pausePlayer()) : handlePlay}
-        label={
-          playing
-            ? translate('resources.album.actions.pause')
-            : translate('resources.album.actions.playAll')
-        }
-      >
-        {playing ? <PauseIcon /> : <PlayArrowIcon />}
-      </Button>
+      <PlayButton
+        button={() => (
+          <Button
+            onClick={playing ? () => dispatch(pausePlayer()) : handlePlay}
+            label={
+              playing
+                ? translate('resources.album.actions.pause')
+                : translate('resources.album.actions.playAll')
+            }
+          >
+            {playing ? <PauseIcon /> : <PlayArrowIcon />}
+          </Button>
+        )}
+      />
       <Button
         onClick={handleShuffle}
         label={translate('resources.album.actions.shuffle')}

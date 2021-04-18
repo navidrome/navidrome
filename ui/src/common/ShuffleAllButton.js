@@ -23,7 +23,6 @@ export const ShuffleAllButton = ({ filters }) => {
         res.data.forEach((song) => {
           data[song.id] = song
         })
-        console.log(data)
         dispatch(playTracks(data))
       })
       .catch(() => {
