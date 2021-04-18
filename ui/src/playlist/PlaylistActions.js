@@ -21,6 +21,7 @@ import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
 import { useMediaQuery } from '@material-ui/core'
 import config from '../config'
+import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
 
 const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
@@ -28,6 +29,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dataProvider = useDataProvider()
   const notify = useNotify()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const isSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   const getAllSongsAndDispatch = React.useCallback(
     (action) => {
@@ -94,47 +96,58 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
-      <Button
-        onClick={handlePlay}
-        label={translate('resources.album.actions.playAll')}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          width: '100%',
+        }}
       >
-        <PlayArrowIcon />
-      </Button>
-      <Button
-        onClick={handleShuffle}
-        label={translate('resources.album.actions.shuffle')}
-      >
-        <ShuffleIcon />
-      </Button>
-      <Button
-        onClick={handlePlayNext}
-        label={translate('resources.album.actions.playNext')}
-      >
-        <RiPlayList2Fill />
-      </Button>
-      <Button
-        onClick={handlePlayLater}
-        label={translate('resources.album.actions.addToQueue')}
-      >
-        <RiPlayListAddFill />
-      </Button>
-      {config.enableDownloads && (
-        <Button
-          onClick={handleDownload}
-          label={
-            translate('resources.album.actions.download') +
-            (isDesktop ? ` (${formatBytes(record.size)})` : '')
-          }
-        >
-          <CloudDownloadOutlinedIcon />
-        </Button>
-      )}
-      <Button
-        onClick={handleExport}
-        label={translate('resources.playlist.actions.export')}
-      >
-        <QueueMusicIcon />
-      </Button>
+        <div>
+          <Button
+            onClick={handlePlay}
+            label={translate('resources.album.actions.playAll')}
+          >
+            <PlayArrowIcon />
+          </Button>
+          <Button
+            onClick={handleShuffle}
+            label={translate('resources.album.actions.shuffle')}
+          >
+            <ShuffleIcon />
+          </Button>
+          <Button
+            onClick={handlePlayNext}
+            label={translate('resources.album.actions.playNext')}
+          >
+            <RiPlayList2Fill />
+          </Button>
+          <Button
+            onClick={handlePlayLater}
+            label={translate('resources.album.actions.addToQueue')}
+          >
+            <RiPlayListAddFill />
+          </Button>
+          {config.enableDownloads && (
+            <Button
+              onClick={handleDownload}
+              label={
+                translate('resources.album.actions.download') +
+                (isDesktop ? ` (${formatBytes(record.size)})` : '')
+              }
+            >
+              <CloudDownloadOutlinedIcon />
+            </Button>
+          )}
+          <Button
+            onClick={handleExport}
+            label={translate('resources.playlist.actions.export')}
+          >
+            <QueueMusicIcon />
+          </Button>
+        </div>
+        <div>{isSmall && <ToggleFieldsMenu resource="playlistTrack" />}</div>
+      </div>
     </TopToolbar>
   )
 }

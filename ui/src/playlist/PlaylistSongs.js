@@ -27,6 +27,7 @@ import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import { QualityInfo } from '../common/QualityInfo'
+import useSelectedFields from '../common/useSelectedFields'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -126,6 +127,20 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
     [playlistId, reorder, ids]
   )
 
+  const toggleableFields = {
+    trackNumber: isDesktop && <TextField source="id" label={'#'} />,
+    title: <SongTitleField source="title" showTrackNumbers={false} />,
+    album: isDesktop && <AlbumLinkField source="album" />,
+    artist: isDesktop && <TextField source="artist" />,
+    duration: <DurationField source="duration" className={classes.draggable} />,
+    quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+  }
+
+  const columns = useSelectedFields({
+    resource: 'playlistTrack',
+    columns: toggleableFields,
+  })
+
   return (
     <>
       <ListToolbar
@@ -160,12 +175,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
               contextAlwaysVisible={!isDesktop}
               classes={{ row: classes.row }}
             >
-              {isDesktop && <TextField source="id" label={'#'} />}
-              <SongTitleField source="title" showTrackNumbers={false} />
-              {isDesktop && <AlbumLinkField source="album" />}
-              {isDesktop && <TextField source="artist" />}
-              <DurationField source="duration" className={classes.draggable} />
-              {isDesktop && <QualityInfo source="quality" sortable={false} />}
+              {columns}
               <SongContextMenu
                 onAddToPlaylist={onAddToPlaylist}
                 showLove={false}
