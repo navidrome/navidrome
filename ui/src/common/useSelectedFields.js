@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import { useDispatch, useSelector } from 'react-redux'
 import { setOmittedFields, setToggleableFields } from '../actions'
 
-const useSelectedFields = ({ resource, columns, omittedColumns }) => {
+const useSelectedFields = ({ resource, columns, omittedColumns = [] }) => {
   const dispatch = useDispatch()
   const resourceFields = useSelector(
     (state) => state.settings.toggleableFields
@@ -24,7 +24,6 @@ const useSelectedFields = ({ resource, columns, omittedColumns }) => {
       dispatch(setToggleableFields({ [resource]: obj }))
     }
     if (!omittedFields) {
-      console.log({ omittedFields })
       dispatch(setOmittedFields({ [resource]: omittedColumns }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -33,7 +32,7 @@ const useSelectedFields = ({ resource, columns, omittedColumns }) => {
   useEffect(() => {
     if (resourceFields) {
       const filtered = []
-      const omitted = omittedColumns || []
+      const omitted = omittedColumns
       for (const [key, val] of Object.entries(columns)) {
         if (!val) omitted.push(key)
         else if (resourceFields[key]) filtered.push(val)
