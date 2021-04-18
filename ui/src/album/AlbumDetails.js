@@ -82,12 +82,12 @@ const useStyles = makeStyles(
     pointerCursor: {
       cursor: 'pointer',
     },
-    spanDotMeta: {
+    detailDivider: {
       [theme.breakpoints.down('xs')]: {
         display: 'none',
       },
     },
-    spanEmptyMeta:{
+    albumDetailDivider:{
       [theme.breakpoints.down('xs')]: {
           display: 'block',
         },
@@ -208,8 +208,8 @@ const AlbumDetails = ({ record }) => {
               {' · '} 
               <DurationField record={record} source={'duration'} />
               {' '}
-              <span className={classes.spanDotMeta}> · </span>
-              <span className={classes.spanEmptyMeta}></span>
+              <span className={classes.detailDivider}> · </span>
+              <span className={classes.albumDetailDivider}></span>
               <SizeField record={record} source="size" />
             </Typography>
             {config.enableStarRating && (
