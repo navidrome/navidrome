@@ -16,7 +16,6 @@ const useSelectedFields = ({ resource, columns, omittedColumns = [] }) => {
 
   useEffect(() => {
     if (!resourceFields) {
-      console.log({ resourceFields })
       const obj = {}
       for (const key of Object.keys(columns)) {
         obj[key] = true
