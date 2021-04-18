@@ -87,10 +87,10 @@ const useStyles = makeStyles(
         display: 'none',
       },
     },
-    albumDetailDivider:{
+    albumDetailDivider: {
       [theme.breakpoints.down('xs')]: {
-          display: 'block',
-        },
+        display: 'block',
+      },
     },
     recordName: {},
     recordArtist: {},
@@ -205,9 +205,8 @@ const AlbumDetails = ({ record }) => {
               {translate('resources.song.name', {
                 smart_count: record.songCount,
               })}
-              {' · '} 
-              <DurationField record={record} source={'duration'} />
-              {' '}
+              {' · '}
+              <DurationField record={record} source={'duration'} />{' '}
               <span className={classes.detailDivider}> · </span>
               <span className={classes.albumDetailDivider}></span>
               <SizeField record={record} source="size" />
