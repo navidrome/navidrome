@@ -25,6 +25,7 @@ import PlayerToolbar from './PlayerToolbar'
 import { sendNotification } from '../utils'
 import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
+import { QualityInfo } from '../common/QualityInfo'
 
 const useStyle = makeStyles(
   (theme) => ({
@@ -34,6 +35,9 @@ const useStyle = makeStyles(
       '&.songTitle': {
         fontWeight: 'bold',
       },
+    },
+    qualityInfo: {
+      marginTop: '-2px',
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
@@ -47,14 +51,22 @@ let audioInstance = null
 const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
   const classes = useStyle()
   const className = classes.audioTitle
+  const isDesktop = useMediaQuery('(min-width:960px)')
 
   if (!audioInfo.name) {
     return ''
   }
 
+  const qi = { suffix: audioInfo.suffix, bitRate: audioInfo.bitRate }
+
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
-      <span className={`${className} songTitle`}>{audioInfo.name}</span>
+      <span className={`${className} songTitle`}>
+        {audioInfo.name}
+        {isDesktop && (
+          <QualityInfo record={qi} className={classes.qualityInfo} />
+        )}
+      </span>
       {!isMobile && (
         <>
           <br />
