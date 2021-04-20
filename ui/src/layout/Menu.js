@@ -25,9 +25,9 @@ const translatedResourceName = (resource, translate) =>
     _:
       resource.options && resource.options.label
         ? translate(resource.options.label, {
-          smart_count: 2,
-          _: resource.options.label,
-        })
+            smart_count: 2,
+            _: resource.options.label,
+          })
         : inflection.humanize(inflection.pluralize(resource.name)),
   })
 
