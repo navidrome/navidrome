@@ -41,6 +41,8 @@ type configOptions struct {
 	UIWelcomeMessage       string
 	EnableGravatar         bool
 	EnableFavourites       bool
+	EnableStarRating       bool
+	DefaultTheme           string
 	GATrackingID           string
 	AuthRequestLimit       int
 	AuthWindowLength       time.Duration
@@ -145,6 +147,8 @@ func init() {
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
+	viper.SetDefault("enablestarrating", true)
+	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)

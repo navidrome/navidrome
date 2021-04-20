@@ -28,10 +28,10 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^5.11.9",
-    "@testing-library/react": "^11.2.5",
-    "@testing-library/react-hooks": "^5.1.0",
-    "@testing-library/user-event": "^13.0.7",
+    "@testing-library/jest-dom": "^5.11.10",
+    "@testing-library/react": "^11.2.6",
+    "@testing-library/react-hooks": "^5.1.1",
+    "@testing-library/user-event": "^13.1.2",
     "css-mediaquery": "^0.1.2",
     "prettier": "^2.2.1"
   },
