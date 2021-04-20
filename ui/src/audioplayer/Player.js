@@ -45,6 +45,7 @@ const useStyle = makeStyles(
         '& .progress-bar-content': {
           display: 'none',
         },
+      },
       '& .play-mode-title': {
         'pointer-events': 'none',
       },
