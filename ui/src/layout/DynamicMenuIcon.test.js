@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cleanup, render } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { createMemoryHistory } from 'history'
 import { Router } from 'react-router-dom'
 import StarIcon from '@material-ui/icons/Star'
