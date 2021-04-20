@@ -47,6 +47,10 @@ const useStyle = makeStyles(
       '& .play-mode-title': {
         'pointer-events': 'none',
       },
+      '& .progress-bar-content': {
+        display: 'flex',
+        flexDirection: 'column',
+      },
     },
   }),
   { name: 'NDAudioPlayer' }
@@ -75,7 +79,6 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
       </span>
       {!isMobile && (
         <>
-          <br />
           <span className={`${className} songInfo`}>
             {`${audioInfo.singer} - ${audioInfo.album}`}
           </span>
