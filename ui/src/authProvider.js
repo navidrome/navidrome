@@ -59,7 +59,11 @@ const authProvider = {
   logout: () => {
     stopEventStream()
     removeItems()
-    clearServiceWorkerCache()
+    try {
+      clearServiceWorkerCache()
+    } catch (e) {
+      console.log('Error clearing service worker cache:', e)
+    }
     return Promise.resolve()
   },
 
