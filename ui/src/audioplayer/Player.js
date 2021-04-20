@@ -44,6 +44,9 @@ const useStyle = makeStyles(
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
+      '& .play-mode-title': {
+        'pointer-events': 'none',
+      },
     },
   }),
   { name: 'NDAudioPlayer' }
