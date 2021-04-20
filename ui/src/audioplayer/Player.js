@@ -35,6 +35,9 @@ const useStyle = makeStyles(
       '&.songTitle': {
         fontWeight: 'bold',
       },
+      '&.songInfo': {
+        display: 'block',
+      },
     },
     qualityInfo: {
       marginTop: '-2px',
