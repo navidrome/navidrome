@@ -33,6 +33,8 @@ const mapToAudioLists = (item) => {
     albumId: item.albumId,
     artistId: item.albumArtistId,
     duration: item.duration,
+    suffix: item.suffix,
+    bitRate: item.bitRate,
     musicSrc: subsonic.url('stream', id, { ts: true }),
     cover: subsonic.getCoverArtUrl(
       {
