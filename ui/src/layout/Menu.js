@@ -10,7 +10,6 @@ import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
-import { recentReset } from '../actions'
 
 const useStyles = makeStyles((theme) => ({
   active: {
@@ -37,7 +36,6 @@ const Menu = ({ onMenuClick, dense, logout }) => {
   const translate = useTranslate()
   const classes = useStyles()
   const resources = useSelector(getResources)
-  const dispatch = useDispatch()
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
