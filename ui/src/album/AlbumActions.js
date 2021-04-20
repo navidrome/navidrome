@@ -2,7 +2,7 @@ import { useMediaQuery } from '@material-ui/core'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import PropTypes from 'prop-types'
-import React, { useState } from 'react'
+import React from 'react'
 import {
   Button,
   sanitizeListRestProps,
