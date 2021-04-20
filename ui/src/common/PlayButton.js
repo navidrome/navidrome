@@ -1,12 +1,22 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
-import { IconButton, Button } from '@material-ui/core'
-import { useDispatch } from 'react-redux'
-import { useDataProvider } from 'react-admin'
-import { playTracks } from '../actions'
+import PauseIcon from '@material-ui/icons/Pause'
+import { IconButton } from '@material-ui/core'
+import { useDispatch, useSelector } from 'react-redux'
+import { useDataProvider, useTranslate } from 'react-admin'
+import { pausePlayer, playTracks, recentAlbum } from '../actions'
+import { Button } from 'react-admin'
+import { get } from 'lodash'
+import { playingInAlbumOrPlaylist } from './index'
 
-export const PlayButton = ({ record, size, className, button }) => {
+export const PlayButton = ({
+  record,
+  size,
+  className,
+  buttonType,
+  handlePlay,
+}) => {
   let extractSongsData = function (response) {
     const data = response.data.reduce(
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
@@ -30,21 +40,57 @@ export const PlayButton = ({ record, size, className, button }) => {
       })
   }
 
-  return button ? (
-    button()
-  ) : (
-    <IconButton
+  const ButtonType = buttonType === 'button' ? Button : IconButton
+  const translate = useTranslate()
+  const [playing, setPlaying] = useState(false)
+
+  const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
+  const albumOrPlaylistId = useSelector((state) =>
+    get(state, 'queue.recentAlbumOrPlaylist.id', '')
+  )
+  const songAlbumOrPlaylistId = useSelector((state) =>
+    get(state, 'queue.albumOrPlaylistId', '')
+  )
+
+  useEffect(() => {
+    setPlaying(
+      playingInAlbumOrPlaylist(
+        currentTrack,
+        albumOrPlaylistId,
+        songAlbumOrPlaylistId
+      )
+    )
+  }, [currentTrack, albumOrPlaylistId, songAlbumOrPlaylistId])
+
+  console.log(playing)
+
+  return (
+    <ButtonType
       onClick={(e) => {
         e.stopPropagation()
         e.preventDefault()
-        playAlbum(record)
+        playing
+          ? dispatch(pausePlayer())
+          : buttonType === 'button'
+          ? handlePlay()
+          : playAlbum(record)
+        dispatch(recentAlbum(record.id))
       }}
       aria-label="play"
       className={className}
       size={size}
+      label={
+        playing
+          ? translate('resources.album.actions.pause')
+          : translate('resources.album.actions.playAll')
+      }
     >
-      <PlayArrowIcon fontSize={size} />
-    </IconButton>
+      {playing ? (
+        <PauseIcon fontSize={size} />
+      ) : (
+        <PlayArrowIcon fontSize={size} />
+      )}
+    </ButtonType>
   )
 }
 

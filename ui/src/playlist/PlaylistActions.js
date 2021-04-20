@@ -1,35 +1,26 @@
-import React, { useState, useEffect } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import { useMediaQuery } from '@material-ui/core'
+import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
+import QueueMusicIcon from '@material-ui/icons/QueueMusic'
+import ShuffleIcon from '@material-ui/icons/Shuffle'
+import PropTypes from 'prop-types'
+import React from 'react'
 import {
   Button,
   sanitizeListRestProps,
   TopToolbar,
-  useTranslate,
   useDataProvider,
   useNotify,
+  useTranslate,
 } from 'react-admin'
-import PlayArrowIcon from '@material-ui/icons/PlayArrow'
-import PauseIcon from '@material-ui/icons/Pause'
-import ShuffleIcon from '@material-ui/icons/Shuffle'
-import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
-import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
-import QueueMusicIcon from '@material-ui/icons/QueueMusic'
-import { httpClient } from '../dataProvider'
-import {
-  playNext,
-  addTracks,
-  playTracks,
-  shuffleTracks,
-  pausePlayer,
-} from '../actions'
-import { M3U_MIME_TYPE, REST_URL } from '../consts'
-import subsonic from '../subsonic'
-import PropTypes from 'prop-types'
-import { formatBytes } from '../utils'
-import { useMediaQuery } from '@material-ui/core'
+import { RiPlayList2Fill, RiPlayListAddFill } from 'react-icons/ri'
+import { useDispatch } from 'react-redux'
+import { addTracks, playNext, playTracks, shuffleTracks } from '../actions'
+import { PlayButton } from '../common'
 import config from '../config'
-import { get } from 'lodash'
-import { playingInAlbumOrPlaylist } from '../common'
+import { M3U_MIME_TYPE, REST_URL } from '../consts'
+import { httpClient } from '../dataProvider'
+import subsonic from '../subsonic'
+import { formatBytes } from '../utils'
 
 const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
@@ -37,25 +28,6 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dataProvider = useDataProvider()
   const notify = useNotify()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-
-  const [playing, setPlaying] = useState(false)
-
-  const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
-  const albumOrPlaylistId = useSelector((state) =>
-    get(state, 'recentAlbumOrPlaylist.id', '')
-  )
-  const songAlbumOrPlaylistId = useSelector((state) =>
-    get(state, 'queue.albumOrPlaylistId', '')
-  )
-  useEffect(() => {
-    setPlaying(
-      playingInAlbumOrPlaylist(
-        currentTrack,
-        albumOrPlaylistId,
-        songAlbumOrPlaylistId
-      )
-    )
-  }, [currentTrack, albumOrPlaylistId, songAlbumOrPlaylistId])
 
   const getAllSongsAndDispatch = React.useCallback(
     (action) => {
@@ -122,16 +94,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
-      <Button
-        onClick={playing ? () => dispatch(pausePlayer()) : handlePlay}
-        label={
-          playing
-            ? translate('resources.album.actions.pause')
-            : translate('resources.album.actions.playAll')
-        }
-      >
-        {playing ? <PauseIcon /> : <PlayArrowIcon />}
-      </Button>
+      <PlayButton record={record} buttonType="button" handlePlay={handlePlay} />
       <Button
         onClick={handleShuffle}
         label={translate('resources.album.actions.shuffle')}

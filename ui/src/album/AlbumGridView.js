@@ -1,23 +1,23 @@
-import React from 'react'
 import {
   GridList,
   GridListTile,
-  Typography,
   GridListTileBar,
+  Typography,
   useMediaQuery,
 } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import withWidth from '@material-ui/core/withWidth'
-import { Link } from 'react-router-dom'
+import React from 'react'
 import { linkToRecord, Loading, useListContext } from 'react-admin'
 import { withContentRect } from 'react-measure'
-import subsonic from '../subsonic'
+import { Link } from 'react-router-dom'
 import {
   AlbumContextMenu,
-  PlayButton,
   ArtistLinkField,
+  PlayButton,
   RangeField,
 } from '../common'
+import subsonic from '../subsonic'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -130,6 +130,7 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
               className={classes.albumPlayButton}
               record={record}
               size="small"
+              buttonType="iconButton"
             />
           }
           actionIcon={<AlbumContextMenu record={record} color={'white'} />}

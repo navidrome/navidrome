@@ -1,37 +1,35 @@
+import { createHashHistory } from 'history'
 import React from 'react'
+import { Admin as RAAdmin, Resource } from 'react-admin'
 import ReactGA from 'react-ga'
+import { HotKeys } from 'react-hotkeys'
 import 'react-jinke-music-player/assets/index.css'
 import { Provider, useDispatch } from 'react-redux'
-import { createHashHistory } from 'history'
-import { Admin as RAAdmin, Resource } from 'react-admin'
-import dataProvider from './dataProvider'
-import authProvider from './authProvider'
-import { Layout, Login, Logout } from './layout'
-import transcoding from './transcoding'
-import player from './player'
-import user from './user'
-import song from './song'
 import album from './album'
 import artist from './artist'
-import playlist from './playlist'
 import { Player } from './audioplayer'
-import customRoutes from './routes'
-import {
-  themeReducer,
-  addToPlaylistDialogReducer,
-  playQueueReducer,
-  albumViewReducer,
-  activityReducer,
-  settingsReducer,
-  recentAlbumOrPlaylistReducer,
-  playerReducer,
-} from './reducers'
-import createAdminStore from './store/createAdminStore'
-import { i18nProvider } from './i18n'
+import authProvider from './authProvider'
 import config from './config'
+import dataProvider from './dataProvider'
 import { setDispatch, startEventStream } from './eventStream'
-import { HotKeys } from 'react-hotkeys'
 import { keyMap } from './hotkeys'
+import { i18nProvider } from './i18n'
+import { Layout, Login, Logout } from './layout'
+import player from './player'
+import playlist from './playlist'
+import {
+  activityReducer,
+  addToPlaylistDialogReducer,
+  albumViewReducer,
+  playQueueReducer,
+  settingsReducer,
+  themeReducer,
+} from './reducers'
+import customRoutes from './routes'
+import song from './song'
+import createAdminStore from './store/createAdminStore'
+import transcoding from './transcoding'
+import user from './user'
 
 const history = createHashHistory()
 
@@ -56,8 +54,6 @@ const App = () => (
         addToPlaylistDialog: addToPlaylistDialogReducer,
         activity: activityReducer,
         settings: settingsReducer,
-        recentAlbumOrPlaylist: recentAlbumOrPlaylistReducer,
-        player: playerReducer,
       },
     })}
   >

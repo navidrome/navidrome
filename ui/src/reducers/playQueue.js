@@ -15,6 +15,11 @@ import {
   PLAYER_SCROBBLE,
   PLAYER_PLAY_TRACKS,
   PLAYER_PAUSE_TRACKS,
+  RECENT_ALBUM,
+  RECENT_PLAYLIST,
+  RECENT_RESET,
+  PAUSE_PLAYER,
+  RESET_PLAYER,
 } from '../actions'
 
 const mapToAudioLists = (item) => {
@@ -47,12 +52,15 @@ const initialState = {
   current: {},
   volume: 1,
   playIndex: 0,
+  albumOrPlaylistId: '',
+  recentAlbumOrPlaylist: {},
+  action: '',
 }
 
 export const playQueueReducer = (previousState = initialState, payload) => {
   let queue, current
   let newQueue
-  const { type, data, albumOrPlaylistId } = payload
+  const { type, data, albumOrPlaylistId, id } = payload
   switch (type) {
     case PLAYER_CLEAR_QUEUE:
       return initialState
@@ -162,6 +170,40 @@ export const playQueueReducer = (previousState = initialState, payload) => {
           ...previousState.current,
           paused: true,
         },
+      }
+    case RECENT_ALBUM:
+      return {
+        ...previousState,
+        recentAlbumOrPlaylist: {
+          type: 'album',
+          id,
+        },
+      }
+    case RECENT_PLAYLIST:
+      return {
+        ...previousState,
+        recentAlbumOrPlaylist: {
+          type: 'playlist',
+          id,
+        },
+      }
+    case RECENT_RESET:
+      return {
+        ...previousState,
+        recentAlbumOrPlaylist: {
+          type: '',
+          id: '',
+        },
+      }
+    case PAUSE_PLAYER:
+      return {
+        ...previousState,
+        action: 'pause',
+      }
+    case RESET_PLAYER:
+      return {
+        ...previousState,
+        action: '',
       }
     default:
       return previousState

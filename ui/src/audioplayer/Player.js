@@ -82,7 +82,7 @@ const Player = () => {
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
   )
-  const action = useSelector((state) => get(state, 'player', ''))
+  const action = useSelector((state) => get(state, 'queue.action', ''))
 
   useEffect(() => {
     switch (action) {
