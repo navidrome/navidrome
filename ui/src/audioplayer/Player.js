@@ -38,6 +38,13 @@ const useStyle = makeStyles(
     },
     qualityInfo: {
       marginTop: '-4px',
+      opacity: 0,
+      transition: 'all 500ms ease-out',
+    },
+    audioName: {
+      '&:hover + $qualityInfo': {
+        opacity: 1,
+      },
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
@@ -59,7 +66,6 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
   const classes = useStyle()
   const className = classes.audioTitle
   const isDesktop = useMediaQuery('(min-width:960px)')
-  const [songTitleHover, setSongTitleHover] = useState(false)
 
   if (!audioInfo.name) {
     return ''
@@ -70,18 +76,9 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
       <span className={`${className} songTitle`}>
-        <span
-          onMouseEnter={() => setSongTitleHover(true)}
-          onMouseLeave={() => setSongTitleHover(false)}
-        >
-          {audioInfo.name}
-        </span>
+        <span className={classes.audioName}>{audioInfo.name}</span>
         {isDesktop && (
-          <QualityInfo
-            record={qi}
-            className={classes.qualityInfo}
-            songTitleHover={songTitleHover}
-          />
+          <QualityInfo record={qi} className={classes.qualityInfo} />
         )}
       </span>
       {!isMobile && (

@@ -4,7 +4,6 @@ import Chip from '@material-ui/core/Chip'
 import config from '../config'
 import { makeStyles } from '@material-ui/core'
 import clsx from 'clsx'
-import Fade from '@material-ui/core/Fade'
 
 const llFormats = new Set(config.losslessFormats.split(','))
 const placeholder = 'N/A'
@@ -20,7 +19,7 @@ const useStyle = makeStyles(
   }
 )
 
-export const QualityInfo = ({ record, size, className, songTitleHover }) => {
+export const QualityInfo = ({ record, size, className }) => {
   const classes = useStyle()
   let { suffix, bitRate } = record
   let info = placeholder
@@ -34,14 +33,12 @@ export const QualityInfo = ({ record, size, className, songTitleHover }) => {
   }
 
   return (
-    <Fade in={songTitleHover} timeout={500}>
-      <Chip
-        className={clsx(classes.chip, className)}
-        variant="outlined"
-        size={size}
-        label={info}
-      />
-    </Fade>
+    <Chip
+      className={clsx(classes.chip, className)}
+      variant="outlined"
+      size={size}
+      label={info}
+    />
   )
 }
 
