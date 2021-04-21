@@ -197,12 +197,13 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		fs, err = NewSpreadFS(cacheFolder, 0755)
 	}
 	if err != nil {
-		log.Error(fmt.Sprintf("Error initializing %s cache", name), err)
+		log.Error(fmt.Sprintf("Error initializing %s cache FS", name), "newLayout", !conf.Server.DevOldCacheLayout, err)
 		return nil, err
 	}
 
 	ck, err := fscache.NewCacheWithHaunter(fs, h)
 	if err != nil {
+		log.Error(fmt.Sprintf("Error initializing %s cache", name), err)
 		return nil, err
 	}
 
