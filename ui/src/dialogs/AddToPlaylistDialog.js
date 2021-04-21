@@ -14,8 +14,6 @@ import {
   openDuplicateSongWarning,
 } from '../actions'
 import { SelectPlaylistInput } from './SelectPlaylistInput'
-import { httpClient } from '../dataProvider'
-import { REST_URL } from '../consts'
 import DuplicateSongDialog from './DuplicateSongDialog'
 
 export const AddToPlaylistDialog = () => {
@@ -61,9 +59,10 @@ export const AddToPlaylistDialog = () => {
   }
 
   const checkDuplicateSong = (playlistObject) => {
-    httpClient(`${REST_URL}/playlist/${playlistObject.id}`)
+    dataProvider
+      .getOne('playlist', { id: playlistObject.id } )
       .then((res) => {
-        const { tracks } = JSON.parse(res.body)
+        const tracks = res.data.tracks
         if (tracks) {
           const dupSng = tracks.filter((song) =>
             selectedIds.some((id) => id === song.id)
@@ -148,7 +147,12 @@ export const AddToPlaylistDialog = () => {
           <Button onClick={handleClickClose} color="primary">
             {translate('ra.action.cancel')}
           </Button>
-          <Button onClick={handleSubmit} color="primary" disabled={!check}>
+          <Button
+            onClick={handleSubmit}
+            color="primary"
+            disabled={!check}
+            data-testid="playlist-add"
+          >
             {translate('ra.action.add')}
           </Button>
         </DialogActions>
