@@ -60,7 +60,7 @@ export const AddToPlaylistDialog = () => {
 
   const checkDuplicateSong = (playlistObject) => {
     dataProvider
-      .getOne('playlist', { id: playlistObject.id } )
+      .getOne('playlist', { id: playlistObject.id })
       .then((res) => {
         const tracks = res.data.tracks
         if (tracks) {
