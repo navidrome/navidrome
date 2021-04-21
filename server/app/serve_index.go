@@ -22,7 +22,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		base := path.Join(conf.Server.BaseURL, consts.URLPathUI)
 		if r.URL.Path == base {
-			http.Redirect(w, r, base+"/", 302)
+			http.Redirect(w, r, base+"/", http.StatusFound)
 		}
 
 		c, err := ds.User(r.Context()).CountAll()
@@ -40,9 +40,12 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"loginBackgroundURL":      policy.Sanitize(conf.Server.UILoginBackgroundURL),
 			"welcomeMessage":          policy.Sanitize(conf.Server.UIWelcomeMessage),
 			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,
-			"gaTrackingId":            conf.Server.GATrackingID,
 			"enableDownloads":         conf.Server.EnableDownloads,
 			"enableFavourites":        conf.Server.EnableFavourites,
+			"enableStarRating":        conf.Server.EnableStarRating,
+			"defaultTheme":            conf.Server.DefaultTheme,
+			"gaTrackingId":            conf.Server.GATrackingID,
+			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
 			"devActivityPanel":        conf.Server.DevActivityPanel,
 			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 		}
