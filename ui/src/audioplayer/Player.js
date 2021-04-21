@@ -55,6 +55,9 @@ const useStyle = makeStyles(
     },
     artistAlbum: {
       marginTop: '2px',
+      '& .play-mode-title': {
+        'pointer-events': 'none',
+      },
     },
   }),
   { name: 'NDAudioPlayer' }
