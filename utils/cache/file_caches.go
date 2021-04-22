@@ -42,12 +42,13 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 		cache, err := newFSCache(fc.name, fc.cacheSize, fc.cacheFolder, fc.maxItems)
 		fc.mutex.Lock()
 		defer fc.mutex.Unlock()
-		if err == nil {
-			fc.cache = cache
-			fc.disabled = cache == nil
-		}
+		fc.cache = cache
+		fc.disabled = cache == nil || err != nil
 		log.Info("Finished initializing cache", "cache", fc.name, "maxSize", fc.cacheSize, "elapsedTime", time.Since(start))
 		fc.ready = true
+		if err != nil {
+			log.Error(fmt.Sprintf("Cache %s will be DISABLED due to previous errors", "name"), fc.name, err)
+		}
 		if fc.disabled {
 			log.Debug("Cache DISABLED", "cache", fc.name, "size", fc.cacheSize)
 		}
