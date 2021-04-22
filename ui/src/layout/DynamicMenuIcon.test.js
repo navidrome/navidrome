@@ -7,6 +7,8 @@ import StarBorderIcon from '@material-ui/icons/StarBorder'
 import DynamicMenuIcon from './DynamicMenuIcon'
 
 describe('<DynamicMenuIcon />', () => {
+  afterEach(cleanup)
+
   it('renders icon if no activeIcon is specified', () => {
     const history = createMemoryHistory()
     const route = '/test'
