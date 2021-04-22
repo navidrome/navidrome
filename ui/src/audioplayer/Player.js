@@ -48,10 +48,6 @@ const useStyle = makeStyles(
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
-      '& .music-player-panel': {
-        height: '100px',
-        paddingBottom: '10px',
-      },
     },
     artistAlbum: {
       marginTop: '2px',
