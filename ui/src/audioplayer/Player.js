@@ -51,16 +51,16 @@ const useStyle = makeStyles(
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
-    },
-    artistAlbum: {
-      marginTop: '2px',
-      '& .play-mode-title': {
-        'pointer-events': 'none',
-      },
       '& .progress-bar-content': {
         display: 'flex',
         flexDirection: 'column',
       },
+      '& .play-mode-title': {
+        'pointer-events': 'none',
+      },
+    },
+    artistAlbum: {
+      marginTop: '2px',
     },
   }),
   { name: 'NDAudioPlayer' }
@@ -88,13 +88,11 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
         )}
       </span>
       {!isMobile && (
-        <>
-          <div className={classes.artistAlbum}>
-            <span className={`${className} songInfo`}>
-              {`${audioInfo.singer} - ${audioInfo.album}`}
-            </span>
-          </div>
-        </>
+        <div className={classes.artistAlbum}>
+          <span className={`${className} songInfo`}>
+            {`${audioInfo.singer} - ${audioInfo.album}`}
+          </span>
+        </div>
       )}
     </Link>
   )
