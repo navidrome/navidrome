@@ -20,7 +20,9 @@
                 "bitRate": "位元率",
                 "discSubtitle": "光盤字幕",
                 "starred": "收藏",
-                "comment": "註釋"
+                "comment": "註釋",
+                "rating": "評分",
+                "quality": "品質"
             },
             "actions": {
                 "addToQueue": "加入至播放佇列",
@@ -44,7 +46,8 @@
                 "compilation": "合輯",
                 "year": "發行年份",
                 "updatedAt": "更新於",
-                "comment": "註釋"
+                "comment": "註釋",
+                "rating": "評分"
             },
             "actions": {
                 "playAll": "立即播放",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "最近加入",
                 "recentlyPlayed": "最近播放",
                 "mostPlayed": "最多播放的",
-                "starred": "收藏"
+                "starred": "收藏",
+                "topRated": "最高評分"
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "名稱",
                 "albumCount": "專輯數",
                 "songCount": "歌曲數",
-                "playCount": "播放次數"
+                "playCount": "播放次數",
+                "rating": "評分"
             }
         },
         "user": {
@@ -123,6 +128,10 @@
                 "selectPlaylist": "選擇播放清單",
                 "addNewPlaylist": "創建 %{name}",
                 "export": "導出"
+            },
+            "message": {
+                "duplicate_song": "加入重複的歌曲",
+                "song_exist": "有重複歌曲正在播放清單裡。 您要加入或略過重複歌曲?"
             }
         }
     },
@@ -179,7 +188,8 @@
             "close": "關閉",
             "open_menu": "打開選單",
             "close_menu": "關閉選單",
-            "unselect": "未選擇"
+            "unselect": "未選擇",
+            "skip": "略過"
         },
         "boolean": {
             "true": "是",
@@ -298,7 +308,7 @@
         "volumeText": "音量",
         "toggleLyricText": "切換歌詞",
         "toggleMiniModeText": "最小化",
-        "destroyText": "削除",
+        "destroyText": "銷毀",
         "downloadText": "下載",
         "removeAudioListsText": "清空播放佇列",
         "clickToDeleteText": "點擊删除 %{name}",
@@ -335,7 +345,7 @@
             "next_song": "下一首歌",
             "vol_up": "提高音量",
             "vol_down": "降低音量",
-            "toggle_star": "添加或移除星標"
+            "toggle_love": "添加或移除星標"
         }
     }
 }

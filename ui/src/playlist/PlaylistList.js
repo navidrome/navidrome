@@ -71,7 +71,6 @@ const PlaylistList = ({ permissions, ...props }) => (
       <Writable>
         <EditButton />
       </Writable>
-      />
     </Datagrid>
   </List>
 )
