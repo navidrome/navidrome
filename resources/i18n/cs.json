@@ -204,21 +204,21 @@
             "loading": "Načítání",
             "not_found": "Nenalezeno",
             "show": "%{name} #%{id}",
-            "empty": "Zatím žádný %{name}",
+            "empty": "Zatím žádný %{name}.",
             "invite": "Chcete jeden přidat?"
         },
         "input": {
             "file": {
-                "upload_several": "Přetáhněte soubory pro nahrání nebo klikněte pro výběr",
-                "upload_single": "Přetáhněte soubor pro nahrání nebo klikněte pro jeho výběr"
+                "upload_several": "Přetáhněte soubory pro nahrání nebo klikněte pro výběr.",
+                "upload_single": "Přetáhněte soubor pro nahrání nebo klikněte pro jeho výběr."
             },
             "image": {
-                "upload_several": "Přetáhněte obrázky pro nahrání nebo klikněte pro výběr",
-                "upload_single": "Přetáhněte obrázek pro nahrání nebo klikněte pro jeho výběr"
+                "upload_several": "Přetáhněte obrázky pro nahrání nebo klikněte pro výběr.",
+                "upload_single": "Přetáhněte obrázek pro nahrání nebo klikněte pro jeho výběr."
             },
             "references": {
-                "all_missing": "Nelze nalézt referencovaná data",
-                "many_missing": "Minimálně jedna z referencí se nezdá být nadále dostupná",
+                "all_missing": "Nelze nalézt referencovaná data.",
+                "many_missing": "Minimálně jedna z referencí už není dostupná.",
                 "single_missing": "Reference se nezdá být nadále dostupná."
             },
             "password": {
@@ -235,7 +235,7 @@
             "delete_title": "Smazat %{name} #%{id}",
             "details": "Detaily",
             "error": "Objevila se chyba klienta a váš požadavek nemohl být splněn.",
-            "invalid_form": "Formulář není platný. Prosím zkontrolujte chyby.",
+            "invalid_form": "Formulář není platný. Prosím překontrolujte ho.",
             "loading": "Stránka se načítá, prosím vyčkejte",
             "no": "Ne",
             "not_found": "Napsali jste špatnou adresu URL, nebo jste následovali špatný odkaz.",
