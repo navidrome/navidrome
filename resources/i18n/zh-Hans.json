@@ -20,7 +20,9 @@
                 "bitRate": "比特率",
                 "discSubtitle": "字幕",
                 "starred": "收藏",
-                "comment": "注释"
+                "comment": "注释",
+                "rating": "",
+                "quality": ""
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -44,7 +46,8 @@
                 "compilation": "合辑",
                 "year": "发行年份",
                 "updatedAt": "更新于",
-                "comment": "注释"
+                "comment": "注释",
+                "rating": ""
             },
             "actions": {
                 "playAll": "立即播放",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "最近添加",
                 "recentlyPlayed": "最近播放",
                 "mostPlayed": "最多播放",
-                "starred": "收藏"
+                "starred": "收藏",
+                "topRated": ""
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "名称",
                 "albumCount": "专辑数",
                 "songCount": "歌曲数",
-                "playCount": "播放次数"
+                "playCount": "播放次数",
+                "rating": ""
             }
         },
         "user": {
@@ -123,6 +128,10 @@
                 "selectPlaylist": "选择歌单",
                 "addNewPlaylist": "新建 %{name}",
                 "export": "导出"
+            },
+            "message": {
+                "duplicate_song": "",
+                "song_exist": ""
             }
         }
     },
@@ -179,7 +188,8 @@
             "close": "关闭",
             "open_menu": "打开菜单",
             "close_menu": "关闭菜单",
-            "unselect": "未选择"
+            "unselect": "未选择",
+            "skip": ""
         },
         "boolean": {
             "true": "是",
@@ -335,7 +345,7 @@
             "next_song": "下一首歌",
             "vol_up": "增大音量",
             "vol_down": "减小音量",
-            "toggle_star": "添加/移除星标"
+            "toggle_love": "添加/移除星标"
         }
     }
 }

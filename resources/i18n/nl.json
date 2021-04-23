@@ -19,8 +19,10 @@
                 "updatedAt": "Laatst bijgewerkt op",
                 "bitRate": "Bitrate",
                 "discSubtitle": "Schijfondertitel",
-                "starred": "Met Ster",
-                "comment": "Commentaar"
+                "starred": "Favoriet",
+                "comment": "Commentaar",
+                "rating": "Beoordeling",
+                "quality": "Kwaliteit"
             },
             "actions": {
                 "addToQueue": "Voeg toe aan wachtrij",
@@ -44,7 +46,8 @@
                 "compilation": "Compilatie",
                 "year": "Jaar",
                 "updatedAt": "Bijgewerkt op",
-                "comment": "Commentaar"
+                "comment": "Commentaar",
+                "rating": "Beoordeling"
             },
             "actions": {
                 "playAll": "Afspelen",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "Onlangs toegevoegd",
                 "recentlyPlayed": "Onlangs afgespeeld",
                 "mostPlayed": "Meest afgespeeld",
-                "starred": "Met Ster"
+                "starred": "Favoriet",
+                "topRated": "Best beoordeeld"
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "Naam",
                 "albumCount": "Aantal albums",
                 "songCount": "Aantal nummers",
-                "playCount": "Afgespeeld"
+                "playCount": "Afgespeeld",
+                "rating": "Beoordeling"
             }
         },
         "user": {
@@ -340,7 +345,7 @@
             "next_song": "Volgend nummer",
             "vol_up": "Volume harder",
             "vol_down": "Volume zachter",
-            "toggle_star": "Ster voor dit nummer Ja/Nee"
+            "toggle_love": "Voeg toe aan favorieten"
         }
     }
 }

@@ -20,7 +20,9 @@
                 "bitRate": "Přenosová rychlost",
                 "discSubtitle": "Podtitul disku",
                 "starred": "Oblíbené",
-                "comment": "Komentář"
+                "comment": "Komentář",
+                "rating": "Hodnocení",
+                "quality": "Kvalita"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -44,7 +46,8 @@
                 "compilation": "Kompilace",
                 "year": "Rok",
                 "updatedAt": "Aktualizováno",
-                "comment": "Komentář"
+                "comment": "Komentář",
+                "rating": "Hodnocení"
             },
             "actions": {
                 "playAll": "Přehrát",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "Nedávno přidané",
                 "recentlyPlayed": "Nedávno přehrané",
                 "mostPlayed": "Nejpřehrávanější",
-                "starred": "Oblíbené"
+                "starred": "Oblíbené",
+                "topRated": "Nejlépe hodnocené"
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "Název",
                 "albumCount": "Počet alb",
                 "songCount": "Počet skladeb",
-                "playCount": "Přehrání"
+                "playCount": "Přehrání",
+                "rating": "Hodnocení"
             }
         },
         "user": {
@@ -125,8 +130,8 @@
                 "export": "Export"
             },
             "message": {
-                "duplicate_song": "",
-                "song_exist": ""
+                "duplicate_song": "Přidat duplicitní skladby",
+                "song_exist": "Do seznamu skladeb se přidávají duplikáty. Chcete je přidat nebo přeskočit?"
             }
         }
     },
@@ -184,7 +189,7 @@
             "open_menu": "Otevřít nabídku",
             "close_menu": "Zavřít nabídku",
             "unselect": "Zrušit výběr",
-            "skip": ""
+            "skip": "Přeskočit"
         },
         "boolean": {
             "true": "Ano",
@@ -199,21 +204,21 @@
             "loading": "Načítání",
             "not_found": "Nenalezeno",
             "show": "%{name} #%{id}",
-            "empty": "Zatím žádný %{name}",
+            "empty": "Zatím žádný %{name}.",
             "invite": "Chcete jeden přidat?"
         },
         "input": {
             "file": {
-                "upload_several": "Přetáhněte soubory pro nahrání nebo klikněte pro výběr",
-                "upload_single": "Přetáhněte soubor pro nahrání nebo klikněte pro jeho výběr"
+                "upload_several": "Přetáhněte soubory pro nahrání nebo klikněte pro výběr.",
+                "upload_single": "Přetáhněte soubor pro nahrání nebo klikněte pro jeho výběr."
             },
             "image": {
-                "upload_several": "Přetáhněte obrázky pro nahrání nebo klikněte pro výběr",
-                "upload_single": "Přetáhněte obrázek pro nahrání nebo klikněte pro jeho výběr"
+                "upload_several": "Přetáhněte obrázky pro nahrání nebo klikněte pro výběr.",
+                "upload_single": "Přetáhněte obrázek pro nahrání nebo klikněte pro jeho výběr."
             },
             "references": {
-                "all_missing": "Nelze nalézt referencovaná data",
-                "many_missing": "Minimálně jedna z referencí se nezdá být nadále dostupná",
+                "all_missing": "Nelze nalézt referencovaná data.",
+                "many_missing": "Minimálně jedna z referencí už není dostupná.",
                 "single_missing": "Reference se nezdá být nadále dostupná."
             },
             "password": {
@@ -230,7 +235,7 @@
             "delete_title": "Smazat %{name} #%{id}",
             "details": "Detaily",
             "error": "Objevila se chyba klienta a váš požadavek nemohl být splněn.",
-            "invalid_form": "Formulář není platný. Prosím zkontrolujte chyby.",
+            "invalid_form": "Formulář není platný. Prosím překontrolujte ho.",
             "loading": "Stránka se načítá, prosím vyčkejte",
             "no": "Ne",
             "not_found": "Napsali jste špatnou adresu URL, nebo jste následovali špatný odkaz.",
@@ -340,7 +345,7 @@
             "next_song": "Následující skladba",
             "vol_up": "Zvýšit hlasitost",
             "vol_down": "Snížit hlasitost",
-            "toggle_star": "Přepnout hvězdičku aktuální skladby"
+            "toggle_love": "Přepnout hvězdičku aktuální skladby"
         }
     }
 }

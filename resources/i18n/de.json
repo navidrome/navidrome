@@ -20,7 +20,9 @@
                 "bitRate": "Bitrate",
                 "discSubtitle": "CD Untertitel",
                 "starred": "Favorit",
-                "comment": "Kommentar"
+                "comment": "Kommentar",
+                "rating": "",
+                "quality": ""
             },
             "actions": {
                 "addToQueue": "Später abspielen",
@@ -44,7 +46,8 @@
                 "compilation": "Kompilation",
                 "year": "Jahr",
                 "updatedAt": "Aktualisiert um",
-                "comment": "Kommentar"
+                "comment": "Kommentar",
+                "rating": ""
             },
             "actions": {
                 "playAll": "Abspielen",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "Kürzlich hinzugefügt",
                 "recentlyPlayed": "Kürzlich gespielt",
                 "mostPlayed": "Meist gespielt",
-                "starred": "Favorit"
+                "starred": "Favorit",
+                "topRated": ""
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "Name",
                 "albumCount": "Albumanzahl",
                 "songCount": "Songanzahl",
-                "playCount": "Wiedergaben"
+                "playCount": "Wiedergaben",
+                "rating": ""
             }
         },
         "user": {
@@ -340,7 +345,7 @@
             "next_song": "Nächster Song",
             "vol_up": "",
             "vol_down": "",
-            "toggle_star": ""
+            "toggle_love": ""
         }
     }
 }

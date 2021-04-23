@@ -20,7 +20,9 @@
                 "bitRate": "Tasa de bits",
                 "discSubtitle": "Subtítulo del disco",
                 "starred": "Favorito",
-                "comment": "Comentario"
+                "comment": "Comentario",
+                "rating": "Calificación",
+                "quality": "Cualidad"
             },
             "actions": {
                 "addToQueue": "Reproducir después",
@@ -44,7 +46,8 @@
                 "compilation": "Compilación",
                 "year": "Año",
                 "updatedAt": "Actualizado el",
-                "comment": "Comentario"
+                "comment": "Comentario",
+                "rating": "Calificación"
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "Recientes",
                 "recentlyPlayed": "Recientes",
                 "mostPlayed": "Más reproducidos",
-                "starred": "Favoritos"
+                "starred": "Favoritos",
+                "topRated": "Los mejores calificados"
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "Nombre",
                 "albumCount": "Número de álbumes",
                 "songCount": "Número de canciones",
-                "playCount": "Reproducciones"
+                "playCount": "Reproducciones",
+                "rating": "Calificación"
             }
         },
         "user": {
@@ -125,8 +130,8 @@
                 "export": "Exportar"
             },
             "message": {
-              "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la lista de reproducción",
-              "song_exist": "Se están agregando duplicados a la lista de reproducción. ¿Quieres agregar los duplicados o omitirlos?"
+                "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la lista de reproducción",
+                "song_exist": "Se están agregando duplicados a la lista de reproducción. ¿Quieres agregar los duplicados o omitirlos?"
             }
         }
     },
@@ -340,7 +345,7 @@
             "next_song": "Siguiente canción",
             "vol_up": "Subir volumen",
             "vol_down": "Bajar volumen",
-            "toggle_star": "Activa/desactiva esta canción como favorita"
+            "toggle_love": "Activa/desactiva esta canción como favorita"
         }
     }
 }
