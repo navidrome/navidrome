@@ -1,5 +1,8 @@
 import React from 'react'
 import TextField from '@material-ui/core/TextField'
+import Checkbox from '@material-ui/core/Checkbox'
+import CheckBoxIcon from '@material-ui/icons/CheckBox'
+import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank'
 import Autocomplete, {
   createFilterOptions,
 } from '@material-ui/lab/Autocomplete'
@@ -12,6 +15,7 @@ const filter = createFilterOptions()
 
 const useStyles = makeStyles({
   root: { width: '100%' },
+  checkbox: { marginRight: 8 },
 })
 
 export const SelectPlaylistInput = ({ onChange }) => {
@@ -29,24 +33,32 @@ export const SelectPlaylistInput = ({ onChange }) => {
     ids.map((id) => data[id]).filter((option) => isWritable(option.owner))
 
   const handleOnChange = (event, newValue) => {
-    if (newValue == null) {
-      onChange({})
-    } else if (typeof newValue === 'string') {
-      onChange({
-        name: newValue,
+    let newState = []
+    if (newValue && newValue.length) {
+      newValue.forEach((playlistObject) => {
+        if (playlistObject.inputValue) {
+          newState.push({
+            name: playlistObject.inputValue,
+          })
+        } else if (typeof playlistObject === 'string') {
+          newState.push({
+            name: playlistObject,
+          })
+        } else {
+          newState.push(playlistObject)
+        }
       })
-    } else if (newValue && newValue.inputValue) {
-      // Create a new value from the user input
-      onChange({
-        name: newValue.inputValue,
-      })
-    } else {
-      onChange(newValue)
     }
+    onChange(newState)
   }
+
+  const icon = <CheckBoxOutlineBlankIcon fontSize="small" />
+  const checkedIcon = <CheckBoxIcon fontSize="small" />
 
   return (
     <Autocomplete
+      multiple
+      disableCloseOnSelect
       onChange={handleOnChange}
       filterOptions={(options, params) => {
         const filtered = filter(options, params)
@@ -81,7 +93,17 @@ export const SelectPlaylistInput = ({ onChange }) => {
         // Regular option
         return option.name
       }}
-      renderOption={(option) => option.name}
+      renderOption={(option, { selected }) => (
+        <React.Fragment>
+          <Checkbox
+            icon={icon}
+            checkedIcon={checkedIcon}
+            className={classes.checkbox}
+            checked={selected}
+          />
+          {option.name}
+        </React.Fragment>
+      )}
       className={classes.root}
       freeSolo
       renderInput={(params) => (
