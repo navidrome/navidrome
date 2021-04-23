@@ -51,6 +51,11 @@ const useStyle = makeStyles(
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
+      '@media screen and (max-width:810px)': {
+        '& .sound-operation': {
+          display: 'none',
+        },
+      },
       '& .progress-bar-content': {
         display: 'flex',
         flexDirection: 'column',
@@ -71,7 +76,7 @@ let audioInstance = null
 const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
   const classes = useStyle()
   const className = classes.audioTitle
-  const isDesktop = useMediaQuery('(min-width:960px)')
+  const isDesktop = useMediaQuery('(min-width:810px)')
 
   if (!audioInfo.name) {
     return ''
@@ -115,7 +120,7 @@ const Player = () => {
   const classes = useStyle({ visible })
   // Match the medium breakpoint defined in the material-ui theme
   // See https://material-ui.com/customization/breakpoints/#breakpoints
-  const isDesktop = useMediaQuery('(min-width:960px)')
+  const isDesktop = useMediaQuery('(min-width:810px)')
 
   const nextSong = useCallback(() => {
     const idx = queue.queue.findIndex(
