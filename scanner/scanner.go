@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/signal"
 	"strconv"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/navidrome/navidrome/core"
@@ -74,10 +72,6 @@ func New(ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker)
 		lock:        &sync.RWMutex{},
 		scan:        make(chan bool),
 	}
-	signals := []os.Signal{
-		syscall.SIGUSR1,
-	}
-	signal.Notify(sigChan, signals...)
 	s.loadFolders()
 	return s
 }
