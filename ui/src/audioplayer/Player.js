@@ -32,22 +32,20 @@ const useStyle = makeStyles(
     audioTitle: {
       textDecoration: 'none',
       color: theme.palette.primary.dark,
-      '&.songTitle': {
-        fontWeight: 'bold',
+    },
+    songTitle: {
+      fontWeight: 'bold',
+      '&:hover + $qualityInfo': {
+        opacity: 1,
       },
-      '&.songInfo': {
-        display: 'block',
-      },
+    },
+    songInfo: {
+      display: 'block',
     },
     qualityInfo: {
       marginTop: '-4px',
       opacity: 0,
       transition: 'all 500ms ease-out',
-    },
-    audioName: {
-      '&:hover + $qualityInfo': {
-        opacity: 1,
-      },
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
@@ -86,15 +84,15 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
 
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
-      <span className={`${className} songTitle`}>
-        <span className={classes.audioName}>{audioInfo.name}</span>
+      <span>
+        <span className={classes.songTitle}>{audioInfo.name}</span>
         {isDesktop && (
           <QualityInfo record={qi} className={classes.qualityInfo} />
         )}
       </span>
       {!isMobile && (
         <div className={classes.artistAlbum}>
-          <span className={`${className} songInfo`}>
+          <span className={classes.songInfo}>
             {`${audioInfo.singer} - ${audioInfo.album}`}
           </span>
         </div>
