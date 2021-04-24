@@ -1,4 +1,5 @@
-// +build !windows !plan9
+// +build !windows
+// +build !plan9
 
 package scanner
 
