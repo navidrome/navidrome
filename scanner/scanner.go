@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/navidrome/navidrome/core"
@@ -39,7 +42,10 @@ type FolderScanner interface {
 	Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) error
 }
 
-var isScanning utils.AtomicBool
+var (
+	isScanning utils.AtomicBool
+	sigChan    = make(chan os.Signal, 1)
+)
 
 type scanner struct {
 	folders     map[string]FolderScanner
@@ -68,6 +74,10 @@ func New(ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker)
 		lock:        &sync.RWMutex{},
 		scan:        make(chan bool),
 	}
+	signals := []os.Signal{
+		syscall.SIGUSR1,
+	}
+	signal.Notify(sigChan, signals...)
 	s.loadFolders()
 	return s
 }
@@ -82,6 +92,9 @@ func (s *scanner) Run(ctx context.Context, interval time.Duration) {
 		}
 		select {
 		case <-ticker.C:
+			continue
+		case sig := <-sigChan:
+			log.Info(ctx, "Received signal, triggering a new scan", "signal", sig)
 			continue
 		case <-ctx.Done():
 			return
