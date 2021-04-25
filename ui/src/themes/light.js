@@ -35,21 +35,14 @@ export default {
       card: {
         minWidth: 300,
         marginTop: '6em',
-        overflow: 'visible',
         backgroundColor: '#ffffffe6',
       },
-      avatar: {
-        marginTop: '-50px',
-      },
-      icon: {
-        backgroundColor: 'transparent',
-        width: '100px',
-      },
+      avatar: {},
+      icon: {},
       button: {
         boxShadow: '3px 3px 5px #000000a3',
       },
       systemNameLink: {
-        textDecoration: 'none',
         color: '#0085ff',
       },
     },

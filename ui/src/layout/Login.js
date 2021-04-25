@@ -33,14 +33,17 @@ const useStyles = makeStyles(
     card: {
       minWidth: 300,
       marginTop: '6em',
+      overflow: 'visible',
     },
     avatar: {
       margin: '1em',
       display: 'flex',
       justifyContent: 'center',
+      marginTop: '-3em',
     },
     icon: {
-      width: '40px',
+      backgroundColor: 'transparent',
+      width: '6.3em',
     },
     systemName: {
       marginTop: '1em',
@@ -66,7 +69,9 @@ const useStyles = makeStyles(
       padding: '0 1em 1em 1em',
     },
     button: {},
-    systemNameLink: {},
+    systemNameLink: {
+      textDecoration: 'none',
+    },
   }),
   { name: 'NDLogin' }
 )

@@ -259,7 +259,6 @@ export default {
       },
       systemNameLink: {
         color: '#fff',
-        textDecoration: 'none',
       },
       systemName: {
         marginTop: '0.5em',
@@ -267,6 +266,7 @@ export default {
       },
       icon: {
         backgroundColor: 'inherit',
+        width: '5em',
       },
       card: {
         background: 'none',
