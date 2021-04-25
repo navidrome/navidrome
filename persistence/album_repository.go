@@ -263,15 +263,18 @@ func (r *albumRepository) refresh(ids ...string) error {
 	return err
 }
 
-// Return the first non empty comment, if any
 func getComment(comments string, separator string) string {
 	cs := strings.Split(comments, separator)
-	for _, c := range cs {
-		if c != "" {
-			return c
+	if len(cs) == 0 {
+		return ""
+	}
+	first := cs[0]
+	for _, c := range cs[1:] {
+		if first != c {
+			return ""
 		}
 	}
-	return ""
+	return first
 }
 
 func getMinYear(years string) int {
