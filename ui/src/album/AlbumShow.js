@@ -40,6 +40,7 @@ const AlbumShowLayout = (props) => {
           <AlbumSongs
             resource={'albumSong'}
             exporter={false}
+            album={record}
             actions={
               <AlbumActions className={classes.albumActions} record={record} />
             }

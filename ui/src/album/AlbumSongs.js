@@ -19,8 +19,10 @@ import {
   SongDatagrid,
   SongDetails,
   SongTitleField,
+  RatingField,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
+import { QualityInfo } from '../common/QualityInfo'
 import config from '../config'
 
 const useStyles = makeStyles(
@@ -62,10 +64,16 @@ const useStyles = makeStyles(
         '& $contextMenu': {
           visibility: 'visible',
         },
+        '& $ratingField': {
+          visibility: 'visible',
+        },
       },
     },
     contextMenu: {
       visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
+    },
+    ratingField: {
+      visibility: 'hidden',
     },
   }),
   { name: 'RaList' }
@@ -119,6 +127,15 @@ const AlbumSongs = (props) => {
             />
             {isDesktop && <TextField source="artist" sortable={false} />}
             <DurationField source="duration" sortable={false} />
+            {isDesktop && <QualityInfo source="quality" sortable={false} />}
+            {isDesktop && config.enableStarRating && (
+              <RatingField
+                source="rating"
+                resource={'albumSong'}
+                sortable={false}
+                className={classes.ratingField}
+              />
+            )}
             <SongContextMenu
               source={'starred'}
               sortable={false}
@@ -140,7 +157,17 @@ const AlbumSongs = (props) => {
   )
 }
 
+export const removeAlbumCommentsFromSongs = ({ album, data }) => {
+  if (album?.comment && data) {
+    Object.values(data).forEach((song) => {
+      song.comment = ''
+    })
+  }
+}
+
 const SanitizedAlbumSongs = (props) => {
+  removeAlbumCommentsFromSongs(props)
+
   const { loaded, loading, total, ...rest } = useListContext(props)
   return <>{loaded && <AlbumSongs {...rest} actions={props.actions} />}</>
 }

@@ -42,13 +42,14 @@ select a.id, a.name, a.artist_id, a.album_artist_id, group_concat(mf.artist_id, 
 		return err
 	}
 
-	var id, name, artistId, albumArtistId, songArtistIds string
+	var id, name, artistId, albumArtistId string
+	var songArtistIds sql.NullString
 	for rows.Next() {
-		err := rows.Scan(&id, &name, &artistId, &albumArtistId, &songArtistIds)
+		err = rows.Scan(&id, &name, &artistId, &albumArtistId, &songArtistIds)
 		if err != nil {
 			return err
 		}
-		all := utils.SanitizeStrings(artistId, albumArtistId, songArtistIds)
+		all := utils.SanitizeStrings(artistId, albumArtistId, songArtistIds.String)
 		_, err = stmt.Exec(all, id)
 		if err != nil {
 			log.Error("Error setting album's artist_ids", "album", name, "albumId", id, err)

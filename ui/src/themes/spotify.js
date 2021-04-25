@@ -73,21 +73,11 @@ export default {
     },
     background: {
       default: '#121212',
-      paper: 'inherit',
+      paper: '#121212',
     },
     type: 'dark',
   },
   overrides: {
-    MuiPopover: {
-      paper: {
-        backgroundColor: '#121212',
-      },
-    },
-    MuiDialog: {
-      paper: {
-        backgroundColor: '#121212',
-      },
-    },
     MuiFormGroup: {
       root: {
         color: spotifyGreen['500'],
@@ -103,16 +93,10 @@ export default {
         margin: '.75rem 0',
       },
     },
-    MuiIconButton: {
-      label: {
-        // color: '#fff'
-      },
-    },
     MuiButton: {
       root: {
         background: spotifyGreen['500'],
         color: '#fff',
-        // margin: '5px',
         border: '1px solid transparent',
         borderRadius: 500,
         '&:hover': {
@@ -257,13 +241,13 @@ export default {
       audioTitle: {
         color: '#fff',
         fontSize: '0.875rem',
-        '&.songTitle': {
-          fontWeight: 400,
-        },
-        '&.songInfo': {
-          fontSize: '0.675rem',
-          color: '#b3b3b3',
-        },
+      },
+      songTitle: {
+        fontWeight: 400,
+      },
+      songInfo: {
+        fontSize: '0.675rem',
+        color: '#b3b3b3',
       },
       player: {
         border: '10px solid blue',
@@ -279,14 +263,12 @@ export default {
       },
       systemName: {
         marginTop: '0.5em',
-        // borderBottom: '1px solid #282828',
         marginBottom: '1em',
       },
       icon: {
         backgroundColor: 'inherit',
       },
       card: {
-        // background: 'none',
         background: 'none',
         boxShadow: 'none',
         padding: '10px 0',
@@ -302,6 +284,11 @@ export default {
         background: 'linear-gradient(#171717, #121212)',
       },
     },
+    RaList: {
+      content: {
+        backgroundColor: 'inherit',
+      },
+    },
     RaListToolbar: {
       toolbar: {
         padding: '0 .55rem !important',
@@ -309,11 +296,8 @@ export default {
     },
     RaSearchInput: {
       input: {
-        // borderRadius: 500,
-        // width: '20rem',
         paddingLeft: '.9rem',
         border: 0,
-        // height: '2.5rem',
       },
     },
     RaFilterButton: {

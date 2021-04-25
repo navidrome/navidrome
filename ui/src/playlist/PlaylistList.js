@@ -12,6 +12,7 @@ import {
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { DurationField, List, Writable, isWritable } from '../common'
+import { useMediaQuery } from '@material-ui/core'
 
 const PlaylistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -55,25 +56,34 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
   )
 }
 
-const PlaylistList = ({ permissions, ...props }) => (
-  <List {...props} exporter={false} filters={<PlaylistFilter />}>
-    <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r && r.owner)}>
-      <TextField source="name" />
-      <TextField source="owner" />
-      <NumberField source="songCount" />
-      <DurationField source="duration" />
-      <DateField source="updatedAt" sortByOrder={'DESC'} />
-      <TogglePublicInput
-        source="public"
-        permissions={permissions}
-        sortByOrder={'DESC'}
-      />
-      <Writable>
-        <EditButton />
-      </Writable>
-      />
-    </Datagrid>
-  </List>
-)
+const PlaylistList = ({ permissions, ...props }) => {
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+
+  return (
+    <List {...props} exporter={false} filters={<PlaylistFilter />}>
+      <Datagrid
+        rowClick="show"
+        isRowSelectable={(r) => isWritable(r && r.owner)}
+      >
+        <TextField source="name" />
+        <TextField source="owner" />
+        {isDesktop && <NumberField source="songCount" />}
+        {isDesktop && <DurationField source="duration" />}
+        {isDesktop && <DateField source="updatedAt" sortByOrder={'DESC'} />}
+        {!isXsmall && (
+          <TogglePublicInput
+            source="public"
+            permissions={permissions}
+            sortByOrder={'DESC'}
+          />
+        )}
+        <Writable>
+          <EditButton />
+        </Writable>
+      </Datagrid>
+    </List>
+  )
+}
 
 export default PlaylistList

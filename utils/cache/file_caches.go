@@ -42,12 +42,13 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 		cache, err := newFSCache(fc.name, fc.cacheSize, fc.cacheFolder, fc.maxItems)
 		fc.mutex.Lock()
 		defer fc.mutex.Unlock()
-		if err == nil {
-			fc.cache = cache
-			fc.disabled = cache == nil
-		}
+		fc.cache = cache
+		fc.disabled = cache == nil || err != nil
 		log.Info("Finished initializing cache", "cache", fc.name, "maxSize", fc.cacheSize, "elapsedTime", time.Since(start))
 		fc.ready = true
+		if err != nil {
+			log.Error(fmt.Sprintf("Cache %s will be DISABLED due to previous errors", "name"), fc.name, err)
+		}
 		if fc.disabled {
 			log.Debug("Cache DISABLED", "cache", fc.name, "size", fc.cacheSize)
 		}
@@ -197,12 +198,13 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		fs, err = NewSpreadFS(cacheFolder, 0755)
 	}
 	if err != nil {
-		log.Error(fmt.Sprintf("Error initializing %s cache", name), err)
+		log.Error(fmt.Sprintf("Error initializing %s cache FS", name), "newLayout", !conf.Server.DevOldCacheLayout, err)
 		return nil, err
 	}
 
 	ck, err := fscache.NewCacheWithHaunter(fs, h)
 	if err != nil {
+		log.Error(fmt.Sprintf("Error initializing %s cache", name), err)
 		return nil, err
 	}
 

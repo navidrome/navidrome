@@ -44,6 +44,7 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 		"year":            yearFilter,
 		"recently_played": recentlyPlayedFilter,
 		"starred":         booleanFilter,
+		"has_rating":      hasRatingFilter,
 	}
 
 	return r
@@ -58,6 +59,10 @@ func recentlyAddedSort() string {
 
 func recentlyPlayedFilter(field string, value interface{}) Sqlizer {
 	return Gt{"play_count": 0}
+}
+
+func hasRatingFilter(field string, value interface{}) Sqlizer {
+	return Gt{"rating": 0}
 }
 
 func yearFilter(field string, value interface{}) Sqlizer {
@@ -258,15 +263,18 @@ func (r *albumRepository) refresh(ids ...string) error {
 	return err
 }
 
-// Return the first non empty comment, if any
 func getComment(comments string, separator string) string {
 	cs := strings.Split(comments, separator)
-	for _, c := range cs {
-		if c != "" {
-			return c
+	if len(cs) == 0 {
+		return ""
+	}
+	first := cs[0]
+	for _, c := range cs[1:] {
+		if first != c {
+			return ""
 		}
 	}
-	return ""
+	return first
 }
 
 func getMinYear(years string) int {
