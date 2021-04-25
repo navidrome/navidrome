@@ -12,6 +12,7 @@ import {
 } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import { GlobalHotKeys } from 'react-hotkeys'
+import clsx from 'clsx'
 import subsonic from '../subsonic'
 import {
   scrobble,
@@ -85,14 +86,16 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
       <span>
-        <span className={classes.songTitle}>{audioInfo.name}</span>
+        <span className={clsx(classes.songTitle, 'songTitle')}>
+          {audioInfo.name}
+        </span>
         {isDesktop && (
           <QualityInfo record={qi} className={classes.qualityInfo} />
         )}
       </span>
       {!isMobile && (
         <div className={classes.artistAlbum}>
-          <span className={classes.songInfo}>
+          <span className={clsx(classes.songInfo, 'songInfo')}>
             {`${audioInfo.singer} - ${audioInfo.album}`}
           </span>
         </div>
