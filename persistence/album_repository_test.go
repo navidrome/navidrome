@@ -96,8 +96,11 @@ var _ = Describe("AlbumRepository", func() {
 		It("returns empty string if there are no comments", func() {
 			Expect(getComment("", "")).To(Equal(""))
 		})
-		It("returns first occurrence of non-empty comment", func() {
-			Expect(getComment(zwsp+zwsp+"first"+zwsp+"second", zwsp)).To(Equal("first"))
+		It("returns empty string if comments are different", func() {
+			Expect(getComment("first"+zwsp+"second", zwsp)).To(Equal(""))
+		})
+		It("returns comment if all comments are the same", func() {
+			Expect(getComment("first"+zwsp+"first", zwsp)).To(Equal("first"))
 		})
 	})
 
