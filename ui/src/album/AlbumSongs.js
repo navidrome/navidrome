@@ -157,7 +157,17 @@ const AlbumSongs = (props) => {
   )
 }
 
+export const removeAlbumCommentsFromSongs = ({ album, data }) => {
+  if (album?.comment && data) {
+    Object.values(data).forEach((song) => {
+      song.comment = ''
+    })
+  }
+}
+
 const SanitizedAlbumSongs = (props) => {
+  removeAlbumCommentsFromSongs(props)
+
   const { loaded, loading, total, ...rest } = useListContext(props)
   return <>{loaded && <AlbumSongs {...rest} actions={props.actions} />}</>
 }
