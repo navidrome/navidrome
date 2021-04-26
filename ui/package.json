@@ -35,7 +35,7 @@
     "css-mediaquery": "^0.1.2",
     "jest-environment-jsdom-sixteen": "^2.0.0",
     "prettier": "^2.2.1",
-    "ra-test": "^3.14.3"
+    "ra-test": "^3.14.5"
   },
   "scripts": {
     "start": "react-scripts start",
