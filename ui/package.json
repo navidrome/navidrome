@@ -33,7 +33,7 @@
     "@testing-library/react-hooks": "^5.1.1",
     "@testing-library/user-event": "^13.1.5",
     "css-mediaquery": "^0.1.2",
-    "jest-environment-jsdom-sixteen": "^1.0.3",
+    "jest-environment-jsdom-sixteen": "^2.0.0",
     "prettier": "^2.2.1",
     "ra-test": "^3.14.3"
   },
