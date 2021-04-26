@@ -44,6 +44,7 @@ const useStyles = makeStyles(
     icon: {
       backgroundColor: 'transparent',
       width: '6.3em',
+      height: '6.3em',
     },
     systemName: {
       marginTop: '1em',
