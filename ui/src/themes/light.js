@@ -17,6 +17,35 @@ export default {
         },
       },
     },
+    NDLogin: {
+      main: {
+        '& .MuiFormLabel-root': {
+          color: '#000000',
+        },
+        '& .MuiFormLabel-root.Mui-focused': {
+          color: '#0085ff',
+        },
+        '& .MuiFormLabel-root.Mui-error': {
+          color: '#f44336',
+        },
+        '& .MuiInput-underline:after': {
+          borderBottom: '2px solid #0085ff',
+        },
+      },
+      card: {
+        minWidth: 300,
+        marginTop: '6em',
+        backgroundColor: '#ffffffe6',
+      },
+      avatar: {},
+      icon: {},
+      button: {
+        boxShadow: '3px 3px 5px #000000a3',
+      },
+      systemNameLink: {
+        color: '#0085ff',
+      },
+    },
   },
   player: {
     theme: 'light',
