@@ -346,6 +346,7 @@ export default {
       icon: {
         backgroundColor: 'transparent',
         width: '100px',
+        height: '100px',
       },
       card: {
         minWidth: 300,

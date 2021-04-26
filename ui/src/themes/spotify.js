@@ -267,6 +267,7 @@ export default {
       icon: {
         backgroundColor: 'inherit',
         width: '5em',
+        height: '5em',
       },
       card: {
         background: 'none',
