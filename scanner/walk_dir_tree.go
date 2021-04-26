@@ -2,11 +2,12 @@ package scanner
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"time"
+	"errors"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -62,68 +63,77 @@ func loadDir(ctx context.Context, dirPath string) (children []string, stats dirS
 	}
 	stats.ModTime = dirInfo.ModTime()
 
-	files, err := ioutil.ReadDir(dirPath)
-	if err != nil {
-		log.Error(ctx, "Error reading dir", "path", dirPath, err)
+	dirents, err := os.ReadDir(dirPath)
+	if errors.Is(err, fs.ErrPermission) {
+                err = nil
+	} else if err != nil {
+		log.Error(ctx, "Error in ReadDir", "path", dirPath, err)
 		return
 	}
-	for _, f := range files {
-		isDir, err := isDirOrSymlinkToDir(dirPath, f)
+	for _, d := range dirents {
+		isDir, err2 := isDirOrSymlinkToDir(dirPath, d)
 		// Skip invalid symlinks
-		if err != nil {
-			log.Error(ctx, "Invalid symlink", "dir", dirPath)
+		if err2 != nil {
+			log.Error(ctx, "Invalid symlink", "dir", filepath.Join(dirPath, d.Name()), err2)
 			continue
 		}
-		if isDir && !isDirIgnored(dirPath, f) && isDirReadable(dirPath, f) {
-			children = append(children, filepath.Join(dirPath, f.Name()))
+		if isDir && !isDirIgnored(dirPath, d) && isDirReadable(dirPath, d) {
+			children = append(children, filepath.Join(dirPath, d.Name()))
 		} else {
-			if f.ModTime().After(stats.ModTime) {
-				stats.ModTime = f.ModTime()
+                        fileInfo, err2 := d.Info()
+                        if err2 != nil {
+                                log.Error(ctx, "Error getting fileInfo", "name", d.Name(), err2)
+                                err = err2
+                                return
+                        }
+			if fileInfo.ModTime().After(stats.ModTime) {
+				stats.ModTime = fileInfo.ModTime()
 			}
-			if utils.IsAudioFile(f.Name()) {
+			if utils.IsAudioFile(d.Name()) {
 				stats.AudioFilesCount++
 			} else {
-				stats.HasPlaylist = stats.HasPlaylist || utils.IsPlaylist(f.Name())
-				stats.HasImages = stats.HasImages || utils.IsImageFile(f.Name())
+				stats.HasPlaylist = stats.HasPlaylist || utils.IsPlaylist(d.Name())
+				stats.HasImages = stats.HasImages || utils.IsImageFile(d.Name())
 			}
 		}
 	}
 	return
 }
 
-// isDirOrSymlinkToDir returns true if and only if the dirInfo represents a file
-// system directory, or a symbolic link to a directory. Note that if the dirInfo
+// isDirOrSymlinkToDir returns true if and only if the dirEnt represents a file
+// system directory, or a symbolic link to a directory. Note that if the dirEnt
 // is not a directory but is a symbolic link, this method will resolve by
 // sending a request to the operating system to follow the symbolic link.
-// Copied from github.com/karrick/godirwalk
-func isDirOrSymlinkToDir(baseDir string, dirInfo os.FileInfo) (bool, error) {
-	if dirInfo.IsDir() {
+// originally copied from github.com/karrick/godirwalk, modified to use dirEntry for efficiency
+//      for go 1.16 and beyond
+func isDirOrSymlinkToDir(baseDir string, dirEnt fs.DirEntry) (bool, error) {
+	if dirEnt.IsDir() {
 		return true, nil
 	}
-	if dirInfo.Mode()&os.ModeSymlink == 0 {
+	if dirEnt.Type()&os.ModeSymlink == 0 {
 		return false, nil
 	}
 	// Does this symlink point to a directory?
-	dirInfo, err := os.Stat(filepath.Join(baseDir, dirInfo.Name()))
+	fileInfo, err := os.Stat(filepath.Join(baseDir, dirEnt.Name()))
 	if err != nil {
 		return false, err
 	}
-	return dirInfo.IsDir(), nil
+	return fileInfo.IsDir(), nil
 }
 
-// isDirIgnored returns true if the directory represented by dirInfo contains an
+// isDirIgnored returns true if the directory represented by dirEnt contains an
 // `ignore` file (named after consts.SkipScanFile)
-func isDirIgnored(baseDir string, dirInfo os.FileInfo) bool {
-	if strings.HasPrefix(dirInfo.Name(), ".") {
+func isDirIgnored(baseDir string, dirEnt fs.DirEntry) bool {
+	if strings.HasPrefix(dirEnt.Name(), ".") {
 		return true
 	}
-	_, err := os.Stat(filepath.Join(baseDir, dirInfo.Name(), consts.SkipScanFile))
+	_, err := os.Stat(filepath.Join(baseDir, dirEnt.Name(), consts.SkipScanFile))
 	return err == nil
 }
 
-// isDirReadable returns true if the directory represented by dirInfo is readable
-func isDirReadable(baseDir string, dirInfo os.FileInfo) bool {
-	path := filepath.Join(baseDir, dirInfo.Name())
+// isDirReadable returns true if the directory represented by dirEnt is readable
+func isDirReadable(baseDir string, dirEnt fs.DirEntry) bool {
+	path := filepath.Join(baseDir, dirEnt.Name())
 	res, err := utils.IsDirReadable(path)
 	if !res {
 		log.Debug("Warning: Skipping unreadable directory", "path", path, err)
