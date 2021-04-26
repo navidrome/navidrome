@@ -128,5 +128,18 @@ release:
 .PHONY: release
 
 snapshot:
-	 docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.16.2-1 goreleaser release --rm-dist --skip-publish --snapshot
+	docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:1.16.3-1 \
+ 		goreleaser release --rm-dist --skip-publish --snapshot
+.PHONY: snapshot
+
+snapshot-single:
+	@if [ -z "${GOOS}" ]; then \
+		echo "Usage: GOOS=<os> GOARCH=<arch> make snapshot-single"; \
+		echo "Options:"; \
+		grep -- "- id: navidrome_" .goreleaser.yml | sed 's/- id: navidrome_//g'; \
+		exit 1; \
+	fi
+	@echo "Building binaries for ${GOOS}/${GOARCH}"
+	docker run -t -v $(PWD):/workspace -e GOOS -e GOARCH -w /workspace deluan/ci-goreleaser:1.16.3-1 \
+ 		goreleaser build --rm-dist --snapshot --single-target --id navidrome_${GOOS}_${GOARCH}
 .PHONY: snapshot
