@@ -9,7 +9,7 @@ import CircularProgress from '@material-ui/core/CircularProgress'
 import TextField from '@material-ui/core/TextField'
 import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
 import { ThemeProvider } from '@material-ui/styles'
-import Logo from '../icons/android-icon-72x72.png'
+import Logo from '../icons/android-icon-192x192.png'
 import { useLogin, useNotify, useTranslate } from 'react-admin'
 
 import Notification from './Notification'
