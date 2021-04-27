@@ -12,9 +12,9 @@
     "lodash.throttle": "^4.1.1",
     "md5-hex": "^3.0.1",
     "prop-types": "^15.7.2",
-    "ra-data-json-server": "^3.12.0",
+    "ra-data-json-server": "^3.14.5",
     "react": "^16.14.0",
-    "react-admin": "^3.12.0",
+    "react-admin": "^3.14.5",
     "react-dom": "^16.14.0",
     "react-drag-listview": "^0.1.8",
     "react-ga": "^3.3.0",
@@ -35,7 +35,7 @@
     "css-mediaquery": "^0.1.2",
     "jest-environment-jsdom-sixteen": "^2.0.0",
     "prettier": "^2.2.1",
-    "ra-test": "^3.14.3"
+    "ra-test": "^3.14.5"
   },
   "scripts": {
     "start": "react-scripts start",
