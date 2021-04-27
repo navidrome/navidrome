@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"errors"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -24,6 +23,27 @@ type (
 	}
 	walkResults = chan dirStats
 )
+
+func unsortedfullReadDir(name string) ([]os.DirEntry, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	allDirs := []os.DirEntry{}
+	for {
+		dirs, err := f.ReadDir(-1)
+		allDirs = append(allDirs, dirs...)
+		if err == nil {
+			break
+		}
+		if err != nil {
+			log.Warn("Skipping DirEntry", err)
+		}
+	}
+	return allDirs, nil
+}
 
 func walkDirTree(ctx context.Context, rootFolder string, results walkResults) error {
 	err := walkFolder(ctx, rootFolder, rootFolder, results)
@@ -63,10 +83,8 @@ func loadDir(ctx context.Context, dirPath string) (children []string, stats dirS
 	}
 	stats.ModTime = dirInfo.ModTime()
 
-	dirents, err := os.ReadDir(dirPath)
-	if errors.Is(err, fs.ErrPermission) {
-                err = nil
-	} else if err != nil {
+	dirents, err := unsortedfullReadDir(dirPath)
+	if err != nil {
 		log.Error(ctx, "Error in ReadDir", "path", dirPath, err)
 		return
 	}
@@ -80,12 +98,12 @@ func loadDir(ctx context.Context, dirPath string) (children []string, stats dirS
 		if isDir && !isDirIgnored(dirPath, d) && isDirReadable(dirPath, d) {
 			children = append(children, filepath.Join(dirPath, d.Name()))
 		} else {
-                        fileInfo, err2 := d.Info()
-                        if err2 != nil {
-                                log.Error(ctx, "Error getting fileInfo", "name", d.Name(), err2)
-                                err = err2
-                                return
-                        }
+			fileInfo, err2 := d.Info()
+			if err2 != nil {
+				log.Error(ctx, "Error getting fileInfo", "name", d.Name(), err2)
+				err = err2
+				return
+			}
 			if fileInfo.ModTime().After(stats.ModTime) {
 				stats.ModTime = fileInfo.ModTime()
 			}
@@ -124,7 +142,8 @@ func isDirOrSymlinkToDir(baseDir string, dirEnt fs.DirEntry) (bool, error) {
 // isDirIgnored returns true if the directory represented by dirEnt contains an
 // `ignore` file (named after consts.SkipScanFile)
 func isDirIgnored(baseDir string, dirEnt fs.DirEntry) bool {
-	if strings.HasPrefix(dirEnt.Name(), ".") {
+        // allows Album folders for albums which eg start with ellipses
+	if strings.HasPrefix(dirEnt.Name(), ".") && !strings.HasPrefix(dirEnt.Name(), "..") {
 		return true
 	}
 	_, err := os.Stat(filepath.Join(baseDir, dirEnt.Name(), consts.SkipScanFile))
@@ -136,7 +155,7 @@ func isDirReadable(baseDir string, dirEnt fs.DirEntry) bool {
 	path := filepath.Join(baseDir, dirEnt.Name())
 	res, err := utils.IsDirReadable(path)
 	if !res {
-		log.Debug("Warning: Skipping unreadable directory", "path", path, err)
+		log.Warn("Skipping unreadable directory", "path", path, err)
 	}
 	return res
 }
