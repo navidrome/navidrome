@@ -1,0 +1,10 @@
+.MuiTableCell-root {
+    overflow: hidden;
+    white-space : nowrap;
+    text-overflow: ellipsis;
+    max-width: 10em;
+}
+
+.MuiTableRow-root:hover .MuiTableCell-root{
+    white-space: unset;
+}

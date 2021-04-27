@@ -206,10 +206,6 @@ export default {
         borderBottom: '1px solid #1d1d1d',
         padding: '10px !important',
         color: '#656565 !important',
-        overflow: 'hidden',
-        whiteSpace: 'nowrap',
-        textOverflow: 'ellipsis',
-        maxWidth: '10em',
       },
       head: {
         borderBottom: '1px solid #282828',

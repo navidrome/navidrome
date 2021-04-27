@@ -28,6 +28,7 @@ import {
   RatingField,
 } from '../common'
 import config from '../config'
+import './Datag.css'
 
 const useStyles = makeStyles({
   columnIcon: {
