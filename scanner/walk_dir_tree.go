@@ -32,7 +32,7 @@ func fullReadDir(name string) ([]os.DirEntry, error) {
 	}
 	defer f.Close()
 
-	allDirs := []os.DirEntry{}
+	var allDirs []os.DirEntry
 	for {
 		dirs, err := f.ReadDir(-1)
 		allDirs = append(allDirs, dirs...)
@@ -70,60 +70,62 @@ func walkFolder(ctx context.Context, rootPath string, currentFolder string, resu
 	log.Trace(ctx, "Found directory", "dir", dir, "audioCount", stats.AudioFilesCount,
 		"hasImages", stats.HasImages, "hasPlaylist", stats.HasPlaylist)
 	stats.Path = dir
-	results <- stats
+	results <- *stats
 
 	return nil
 }
 
-func loadDir(ctx context.Context, dirPath string) (children []string, stats dirStats, err error) {
+func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
+	var children []string
+	stats := &dirStats{}
+
 	dirInfo, err := os.Stat(dirPath)
 	if err != nil {
 		log.Error(ctx, "Error stating dir", "path", dirPath, err)
-		return
+		return nil, nil, err
 	}
 	stats.ModTime = dirInfo.ModTime()
 
-	dirents, err := fullReadDir(dirPath)
+	dirEntries, err := fullReadDir(dirPath)
 	if err != nil {
 		log.Error(ctx, "Error in ReadDir", "path", dirPath, err)
-		return
+		return children, stats, err
 	}
-	for _, d := range dirents {
-		isDir, err2 := isDirOrSymlinkToDir(dirPath, d)
+	for _, entry := range dirEntries {
+		isDir, err := isDirOrSymlinkToDir(dirPath, entry)
 		// Skip invalid symlinks
-		if err2 != nil {
-			log.Error(ctx, "Invalid symlink", "dir", filepath.Join(dirPath, d.Name()), err2)
+		if err != nil {
+			log.Error(ctx, "Invalid symlink", "dir", filepath.Join(dirPath, entry.Name()), err)
 			continue
 		}
-		if isDir && !isDirIgnored(dirPath, d) && isDirReadable(dirPath, d) {
-			children = append(children, filepath.Join(dirPath, d.Name()))
+		if isDir && !isDirIgnored(dirPath, entry) && isDirReadable(dirPath, entry) {
+			children = append(children, filepath.Join(dirPath, entry.Name()))
 		} else {
-			fileInfo, err2 := d.Info()
-			if err2 != nil {
-				log.Error(ctx, "Error getting fileInfo", "name", d.Name(), err2)
-				err = err2
-				return
+			fileInfo, err := entry.Info()
+			if err != nil {
+				log.Error(ctx, "Error getting fileInfo", "name", entry.Name(), err)
+				return children, stats, err
 			}
 			if fileInfo.ModTime().After(stats.ModTime) {
 				stats.ModTime = fileInfo.ModTime()
 			}
-			if utils.IsAudioFile(d.Name()) {
+			if utils.IsAudioFile(entry.Name()) {
 				stats.AudioFilesCount++
 			} else {
-				stats.HasPlaylist = stats.HasPlaylist || utils.IsPlaylist(d.Name())
-				stats.HasImages = stats.HasImages || utils.IsImageFile(d.Name())
+				stats.HasPlaylist = stats.HasPlaylist || utils.IsPlaylist(entry.Name())
+				stats.HasImages = stats.HasImages || utils.IsImageFile(entry.Name())
 			}
 		}
 	}
-	return
+	return children, stats, nil
 }
 
 // isDirOrSymlinkToDir returns true if and only if the dirEnt represents a file
 // system directory, or a symbolic link to a directory. Note that if the dirEnt
 // is not a directory but is a symbolic link, this method will resolve by
 // sending a request to the operating system to follow the symbolic link.
-// originally copied from github.com/karrick/godirwalk, modified to use dirEntry for efficiency
-//      for go 1.16 and beyond
+// originally copied from github.com/karrick/godirwalk, modified to use dirEntry for
+// efficiency for go 1.16 and beyond
 func isDirOrSymlinkToDir(baseDir string, dirEnt fs.DirEntry) (bool, error) {
 	if dirEnt.IsDir() {
 		return true, nil
