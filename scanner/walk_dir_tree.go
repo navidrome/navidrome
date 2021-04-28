@@ -2,9 +2,10 @@ package scanner
 
 import (
 	"context"
-	"os"
 	"io/fs"
+	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -24,7 +25,7 @@ type (
 	walkResults = chan dirStats
 )
 
-func unsortedfullReadDir(name string) ([]os.DirEntry, error) {
+func fullReadDir(name string) ([]os.DirEntry, error) {
 	f, err := os.Open(name)
 	if err != nil {
 		return nil, err
@@ -38,10 +39,9 @@ func unsortedfullReadDir(name string) ([]os.DirEntry, error) {
 		if err == nil {
 			break
 		}
-		if err != nil {
-			log.Warn("Skipping DirEntry", err)
-		}
+		log.Warn("Skipping DirEntry", err)
 	}
+	sort.Slice(allDirs, func(i, j int) bool { return allDirs[i].Name() < allDirs[j].Name() })
 	return allDirs, nil
 }
 
@@ -83,7 +83,7 @@ func loadDir(ctx context.Context, dirPath string) (children []string, stats dirS
 	}
 	stats.ModTime = dirInfo.ModTime()
 
-	dirents, err := unsortedfullReadDir(dirPath)
+	dirents, err := fullReadDir(dirPath)
 	if err != nil {
 		log.Error(ctx, "Error in ReadDir", "path", dirPath, err)
 		return
@@ -142,7 +142,7 @@ func isDirOrSymlinkToDir(baseDir string, dirEnt fs.DirEntry) (bool, error) {
 // isDirIgnored returns true if the directory represented by dirEnt contains an
 // `ignore` file (named after consts.SkipScanFile)
 func isDirIgnored(baseDir string, dirEnt fs.DirEntry) bool {
-        // allows Album folders for albums which eg start with ellipses
+	// allows Album folders for albums which eg start with ellipses
 	if strings.HasPrefix(dirEnt.Name(), ".") && !strings.HasPrefix(dirEnt.Name(), "..") {
 		return true
 	}
