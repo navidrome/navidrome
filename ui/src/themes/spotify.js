@@ -307,6 +307,9 @@ export default {
       },
     },
     RaPaginationActions: {
+      currentPageButton: {
+        border: '1px solid #b3b3b3',
+      },
       button: {
         backgroundColor: 'inherit',
         minWidth: 48,
