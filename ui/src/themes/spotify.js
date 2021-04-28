@@ -279,6 +279,17 @@ export default {
         marginBottom: 0,
       },
     },
+    RaTopToolbar: {
+      root: {
+        '& button': {
+          backgroundColor: 'inherit',
+          '&:hover': {
+            border: '1px solid',
+            background: 'inherit!important',
+          },
+        },
+      },
+    },
     RaLayout: {
       content: {
         padding: '0 !important',
