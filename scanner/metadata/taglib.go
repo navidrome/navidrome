@@ -51,7 +51,6 @@ func (e *taglibExtractor) extractMetadata(filePath string) (*taglibMetadata, err
 	md.tags, err = taglib.Read(filePath)
 	if err != nil {
 		log.Warn("Error reading metadata from file. Skipping", "filePath", filePath, err)
-		return nil, errors.New("error reading tags")
 	}
 	md.hasPicture = hasEmbeddedImage(filePath)
 	return md, nil
