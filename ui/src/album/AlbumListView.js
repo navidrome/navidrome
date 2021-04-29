@@ -8,7 +8,6 @@ import TableContainer from '@material-ui/core/TableContainer'
 import TableRow from '@material-ui/core/TableRow'
 import {
   BooleanField,
-  Datagrid,
   DateField,
   NumberField,
   Show,
@@ -28,7 +27,7 @@ import {
   RatingField,
 } from '../common'
 import config from '../config'
-import './Datag.css'
+import { Datagrid } from '../common/Datagrid'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -132,7 +131,12 @@ const AlbumListView = ({
       )}
       tertiaryText={(r) => (
         <>
-          <RangeField record={r} source={'year'} sortBy={'maxYear'} />
+          <RangeField
+            title="test"
+            record={r}
+            source={'year'}
+            sortBy={'maxYear'}
+          />
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         </>
       )}
