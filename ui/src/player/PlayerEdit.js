@@ -9,22 +9,8 @@ import {
   SelectInput,
   ReferenceInput,
   useTranslate,
-  changeLocaleSuccess,
 } from 'react-admin'
 import { Title } from '../common'
-import { useHistory } from 'react-router-dom'
-import { makeStyles } from '@material-ui/core/styles'
-
-const useStyles = makeStyles({
-  button: {
-    backgroundColor: 'transparent',
-    border: '1px solid white',
-    borderRadius: 30,
-    padding: ' 5px 15px',
-    marginBottom: 20,
-    color: 'white',
-  },
-})
 
 const PlayerTitle = ({ record }) => {
   const translate = useTranslate()
@@ -32,20 +18,9 @@ const PlayerTitle = ({ record }) => {
   return <Title subTitle={`${resourceName} ${record ? record.name : ''}`} />
 }
 
-const BackButton = () => {
-  const history = useHistory()
-  const classes = useStyles()
-  return (
-    <button className={classes.button} onClick={() => history.goBack()}>
-      Back
-    </button>
-  )
-}
-
 const PlayerEdit = (props) => (
   <Edit title={<PlayerTitle />} {...props}>
     <SimpleForm variant={'outlined'}>
-      <BackButton />
       <TextInput source="name" validate={[required()]} />
       <ReferenceInput
         source="transcodingId"
