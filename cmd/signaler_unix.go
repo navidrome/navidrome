@@ -1,7 +1,7 @@
 // +build !windows
 // +build !plan9
 
-package scanner
+package cmd
 
 import (
 	"os"

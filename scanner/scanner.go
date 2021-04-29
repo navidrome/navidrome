@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -40,10 +39,7 @@ type FolderScanner interface {
 	Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) error
 }
 
-var (
-	isScanning utils.AtomicBool
-	sigChan    = make(chan os.Signal, 1)
-)
+var isScanning utils.AtomicBool
 
 type scanner struct {
 	folders     map[string]FolderScanner
@@ -86,9 +82,6 @@ func (s *scanner) Run(ctx context.Context, interval time.Duration) {
 		}
 		select {
 		case <-ticker.C:
-			continue
-		case sig := <-sigChan:
-			log.Info(ctx, "Received signal, triggering a new scan", "signal", sig)
 			continue
 		case <-ctx.Done():
 			return
