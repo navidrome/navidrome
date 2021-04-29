@@ -47,13 +47,8 @@ func (w *warmer) AddAlbum(ctx context.Context, albumID string) {
 }
 
 func (w *warmer) waitForCacheReady(ctx context.Context) {
-	tick := time.NewTicker(time.Second)
-	defer tick.Stop()
-	for {
-		<-tick.C
-		if w.artworkCache.Ready(ctx) {
-			return
-		}
+	for !w.artworkCache.Ready(ctx) {
+		time.Sleep(time.Second)
 	}
 }
 
