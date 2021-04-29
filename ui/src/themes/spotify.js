@@ -279,13 +279,13 @@ export default {
         marginBottom: 0,
       },
     },
-    RaTopToolbar: {
-      root: {
+    RaBulkActionsToolbar: {
+      toolbar: {
         '& button': {
           backgroundColor: 'inherit',
           '&:hover': {
             border: '1px solid',
-            background: 'inherit!important',
+            background: 'inherit',
           },
         },
       },
