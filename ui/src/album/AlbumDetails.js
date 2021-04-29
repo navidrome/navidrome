@@ -197,7 +197,7 @@ const AlbumDetails = ({ record }) => {
               })}
               {' · '} <DurationField record={record} source={'duration'} />{' '}
               {' · '}
-              <SizeField record={record} source="size"/>
+              <SizeField record={record} source="size" />
             </Typography>
             {config.enableStarRating && (
               <div>

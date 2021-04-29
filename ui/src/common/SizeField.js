@@ -3,13 +3,11 @@ import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
 import { makeStyles } from '@material-ui/core'
 
-const useStyles = makeStyles(
-  (theme) => ({
-    demo: {
-      display: 'inline-block'
-    }
-  })
-)
+const useStyles = makeStyles((theme) => ({
+  demo: {
+    display: 'inline-block',
+  },
+}))
 
 export const SizeField = ({ record = {}, source }) => {
   const classes = useStyles()
