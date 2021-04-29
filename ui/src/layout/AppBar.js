@@ -10,6 +10,8 @@ import { useSelector } from 'react-redux'
 import { makeStyles, MenuItem, ListItemIcon, Divider } from '@material-ui/core'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import InfoIcon from '@material-ui/icons/Info'
+import PersonIcon from '@material-ui/icons/Person'
+import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount'
 import { AboutDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
@@ -76,6 +78,11 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
     const userResource = resourceDefinition('user')
     if (!userResource) {
       return null
+    }
+    if (permissions !== 'admin') {
+      userResource.icon = PersonIcon
+    } else {
+      userResource.icon = SupervisorAccountIcon
     }
     return renderSettingsMenuItemLink(
       userResource,
