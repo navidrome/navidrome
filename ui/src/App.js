@@ -93,9 +93,7 @@ const Admin = (props) => {
           {...playlist}
           options={{ subMenu: 'library' }}
         />,
-        permissions === 'admin' ? (
-          <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
-        ) : null,
+        <Resource name="user" {...user} options={{ subMenu: 'settings' }} />,
         <Resource
           name="player"
           {...player}

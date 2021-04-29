@@ -37,6 +37,7 @@ func CreateToken(u *model.User) (string, error) {
 	claims := token.Claims.(jwt.MapClaims)
 	claims["iss"] = consts.JWTIssuer
 	claims["sub"] = u.UserName
+	claims["uid"] = u.ID
 	claims["adm"] = u.IsAdmin
 
 	return TouchToken(token)
