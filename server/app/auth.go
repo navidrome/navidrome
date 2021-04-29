@@ -60,6 +60,7 @@ func handleLogin(ds model.DataStore, username string, password string, w http.Re
 	payload := map[string]interface{}{
 		"message":  "User '" + username + "' authenticated successfully",
 		"token":    tokenString,
+		"id":       user.ID,
 		"name":     user.Name,
 		"username": username,
 		"isAdmin":  user.IsAdmin,

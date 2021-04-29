@@ -58,6 +58,7 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
 })
 
 const settingsResources = (resource) =>
+  resource.name !== 'user' &&
   resource.hasList &&
   resource.options &&
   resource.options.subMenu === 'settings'
@@ -68,16 +69,31 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   const classes = useStyles(rest)
   const { permissions } = usePermissions()
 
-  const renderSettingsMenuItemLink = (resource) => {
+  const resourceDefinition = (resourceName) =>
+    resources.find((r) => r?.name === resourceName)
+
+  const renderUserMenuItemLink = () => {
+    const userResource = resourceDefinition('user')
+    if (!userResource) {
+      return null
+    }
+    return renderSettingsMenuItemLink(
+      userResource,
+      permissions !== 'admin' ? localStorage.getItem('userId') : null
+    )
+  }
+
+  const renderSettingsMenuItemLink = (resource, id) => {
     const label = translate(`resources.${resource.name}.name`, {
-      smart_count: 2,
+      smart_count: id ? 1 : 2,
     })
+    const link = id ? `/${resource.name}/${id}` : `/${resource.name}`
     return (
       <MenuItemLink
         className={classes.root}
         activeClassName={classes.active}
         key={resource.name}
-        to={`/${resource.name}`}
+        to={link}
         primaryText={label}
         leftIcon={
           (resource.icon && createElement(resource.icon)) || <ViewListIcon />
@@ -94,6 +110,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
         <Divider />
+        {renderUserMenuItemLink()}
         {resources.filter(settingsResources).map(renderSettingsMenuItemLink)}
         <Divider />
         <AboutMenuItem />

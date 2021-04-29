@@ -31,25 +31,47 @@ const UserTitle = ({ record }) => {
 
 const UserToolbar = (props) => (
   <Toolbar {...props} classes={useStyles()}>
-    <SaveButton />
-    <DeleteUserButton />
+    <SaveButton disabled={props.pristine} />
+    {props.permissions === 'admin' && <DeleteUserButton />}
   </Toolbar>
 )
 
-const UserEdit = (props) => (
-  <Edit title={<UserTitle />} {...props}>
-    <SimpleForm variant={'outlined'} toolbar={<UserToolbar />}>
-      <TextInput source="userName" validate={[required()]} />
-      <TextInput source="name" validate={[required()]} />
-      <TextInput source="email" validate={[email()]} />
-      <PasswordInput source="password" validate={[required()]} />
-      <BooleanInput source="isAdmin" initialValue={false} />
-      <DateField variant="body1" source="lastLoginAt" showTime />
-      {/*<DateField source="lastAccessAt" showTime />*/}
-      <DateField variant="body1" source="updatedAt" showTime />
-      <DateField variant="body1" source="createdAt" showTime />
-    </SimpleForm>
-  </Edit>
-)
+const UserEdit = (props) => {
+  const { permissions } = props
+  const translate = useTranslate()
+
+  const getNameHelperText = () =>
+    props.id === localStorage.getItem('userId') && {
+      helperText: translate('resources.user.helperTexts.name'),
+    }
+
+  return (
+    <Edit title={<UserTitle />} {...props}>
+      <SimpleForm
+        variant={'outlined'}
+        toolbar={<UserToolbar />}
+        redirect={permissions === 'admin' ? 'list' : false}
+      >
+        {permissions === 'admin' && (
+          <TextInput source="userName" validate={[required()]} />
+        )}
+        <TextInput
+          source="name"
+          validate={[required()]}
+          {...getNameHelperText()}
+        />
+        <TextInput source="email" validate={[email()]} />
+        <PasswordInput source="password" validate={[required()]} />
+        {permissions === 'admin' && (
+          <BooleanInput source="isAdmin" initialValue={false} />
+        )}
+        <DateField variant="body1" source="lastLoginAt" showTime />
+        {/*<DateField source="lastAccessAt" showTime />*/}
+        <DateField variant="body1" source="updatedAt" showTime />
+        <DateField variant="body1" source="createdAt" showTime />
+      </SimpleForm>
+    </Edit>
+  )
+}
 
 export default UserEdit

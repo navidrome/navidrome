@@ -26,7 +26,9 @@ const authProvider = {
       .then((response) => {
         // Validate token
         jwtDecode(response.token)
+        // TODO Store all items in one object
         localStorage.setItem('token', response.token)
+        localStorage.setItem('userId', response.id)
         localStorage.setItem('name', response.name)
         localStorage.setItem('username', response.username)
         response.avatar && localStorage.setItem('avatar', response.avatar)
@@ -94,6 +96,7 @@ const authProvider = {
 
 const removeItems = () => {
   localStorage.removeItem('token')
+  localStorage.removeItem('userId')
   localStorage.removeItem('name')
   localStorage.removeItem('username')
   localStorage.removeItem('avatar')

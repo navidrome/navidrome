@@ -144,6 +144,10 @@ func (r *userRepository) Update(entity interface{}, cols ...string) error {
 	if !usr.IsAdmin && usr.ID != u.ID {
 		return rest.ErrPermissionDenied
 	}
+	if !usr.IsAdmin {
+		u.IsAdmin = false
+		u.UserName = usr.UserName
+	}
 	err := r.Put(u)
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
@@ -153,7 +157,7 @@ func (r *userRepository) Update(entity interface{}, cols ...string) error {
 
 func (r *userRepository) Delete(id string) error {
 	usr := loggedUser(r.ctx)
-	if !usr.IsAdmin && usr.ID != id {
+	if !usr.IsAdmin {
 		return rest.ErrPermissionDenied
 	}
 	err := r.delete(Eq{"id": id})
