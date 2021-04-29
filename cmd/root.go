@@ -59,7 +59,7 @@ func runNavidrome() {
 
 	interval := conf.Server.ScanInterval
 	if interval != 0 {
-		g.Add(startScanner(interval))
+		g.Add(startPeriodicScan(interval))
 	} else {
 		log.Warn("Periodic scan is DISABLED", "interval", interval)
 	}
@@ -115,7 +115,7 @@ func startSignaler() (func() error, func(err error)) {
 		}
 }
 
-func startScanner(interval time.Duration) (func() error, func(err error)) {
+func startPeriodicScan(interval time.Duration) (func() error, func(err error)) {
 	log.Info("Starting scanner", "interval", interval.String())
 	scanner := GetScanner()
 	ctx, cancel := context.WithCancel(context.Background())
