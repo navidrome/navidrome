@@ -86,7 +86,8 @@
                 "updatedAt": "Últ. Atualização",
                 "name": "Nome",
                 "password": "Senha",
-                "createdAt": "Data de Criação"
+                "createdAt": "Data de Criação",
+                "changePassword": "Trocar Senha"
             },
             "helperTexts": {
                 "name": "Alterações no seu nome só serão refletidas no próximo login"

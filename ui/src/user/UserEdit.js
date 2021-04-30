@@ -61,7 +61,10 @@ const UserEdit = (props) => {
           {...getNameHelperText()}
         />
         <TextInput source="email" validate={[email()]} />
-        <PasswordInput source="password" validate={[required()]} />
+        <PasswordInput
+          source="password"
+          label={translate('resources.user.fields.changePassword')}
+        />
         {permissions === 'admin' && (
           <BooleanInput source="isAdmin" initialValue={false} />
         )}
