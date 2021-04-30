@@ -1,6 +1,7 @@
 import { fetchUtils } from 'react-admin'
 import { baseUrl } from '../utils'
 import config from '../config'
+import jwtDecode from 'jwt-decode'
 
 const customAuthorizationHeader = 'X-ND-Authorization'
 
@@ -16,7 +17,9 @@ const httpClient = (url, options = {}) => {
   return fetchUtils.fetchJson(url, options).then((response) => {
     const token = response.headers.get(customAuthorizationHeader)
     if (token) {
+      const decoded = jwtDecode(token)
       localStorage.setItem('token', token)
+      localStorage.setItem('userId', decoded.uid)
       // Avoid going to create admin dialog after logout/login without a refresh
       config.firstTime = false
     }
