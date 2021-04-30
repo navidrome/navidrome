@@ -7,13 +7,13 @@ type User struct {
 	UserName     string     `json:"userName"`
 	Name         string     `json:"name"`
 	Email        string     `json:"email"`
-	Password     string     `json:"password"`
+	Password     string     `json:"-"`
 	IsAdmin      bool       `json:"isAdmin"`
 	LastLoginAt  *time.Time `json:"lastLoginAt"`
 	LastAccessAt *time.Time `json:"lastAccessAt"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
-	// TODO ChangePassword string     `json:"password"`
+	NewPassword  string     `json:"password,omitempty"`
 }
 
 type Users []User
