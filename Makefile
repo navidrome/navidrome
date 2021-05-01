@@ -9,11 +9,11 @@ default:
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=master"
 .PHONY: default
 
-dev: check_dev_env
+dev: check_env
 	npx foreman -j Procfile.dev -p 4533 start
 .PHONY: dev
 
-server: check_go_dev_env
+server: check_go_env
 	@go run github.com/cespare/reflex -d none -c reflex.conf
 .PHONY: server
 
@@ -21,15 +21,15 @@ wire: check_go_env
 	go run github.com/google/wire/cmd/wire ./...
 .PHONY: wire
 
-watch: check_go_env
+watch:
 	go run github.com/onsi/ginkgo/ginkgo watch -notify ./...
 .PHONY: watch
 
-test: check_go_env
+test:
 	go test ./... -v
 .PHONY: test
 
-testall: check_go_env test
+testall:
 	@(cd ./ui && npm test -- --watchAll=false)
 .PHONY: testall
 
@@ -37,11 +37,11 @@ lint:
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run -v --timeout 5m
 .PHONY: lint
 
-lintall: check_node_dev_env lint
+lintall: lint
 	@(cd ./ui && npm run check-formatting && npm run lint)
 .PHONY: lintall
 
-update-snapshots: check_go_env
+update-snapshots:
 	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/ginkgo ./server/subsonic/...
 .PHONY: update-snapshots
 
@@ -50,21 +50,15 @@ migration:
 	go run github.com/pressly/goose/cmd/goose -dir db/migration create ${name}
 .PHONY: migration
 
-setup: download-deps
-	@echo Installing tools from tools.go
-	@cat tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI % go install %
-.PHONY: setup
+setup-dev: check_env download-deps setup-git
+	@echo Downloading Node dependencies...
+	@(cd ./ui && npm install)
+.PHONY: setup-dev
 
-download-deps:
-	@echo Downloading Go dependencies...
-	@go mod download -x
-	@go mod tidy # To revert any changes made by the `go mod download` command
+setup: check_env download-deps
 	@echo Downloading Node dependencies...
 	@(cd ./ui && npm ci)
-.PHONY: download-deps
-
-setup-dev: setup setup-git
-.PHONY: setup-dev
+.PHONY: setup
 
 setup-git:
 	@echo Setting up git hooks
@@ -72,45 +66,38 @@ setup-git:
 	@(cd .git/hooks && ln -sf ../../git/* .)
 .PHONY: setup-git
 
-check_dev_env: check_go_dev_env check_node_dev_env
-.PHONY: check_dev_env
-
-check_go_dev_env:
-	@(hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
-	@current_go_version=`go version | cut -d ' ' -f 3 | cut -c3-` && \
-		echo "$(GO_VERSION) $$current_go_version" | \
-		tr ' ' '\n' | sort -V | tail -1 | \
-		grep -q "^$${current_go_version}$$" || \
-		(echo "\nERROR: Please upgrade your GO version\nThis project requires at least the version $(GO_VERSION)"; exit 1)
-.PHONY: check_go_dev_env
-
-check_node_dev_env:
-	@(hash node) || (echo "\nERROR: Node environment not setup properly!\n"; exit 1)
-	@current_node_version=`node --version` && \
-		echo "$(NODE_VERSION) $$current_node_version" | \
-		tr ' ' '\n' | sort -V | tail -1 | \
-		grep -q "^$${current_node_version}$$" || \
-		(echo "\nERROR: Please check your Node version. Should be at least $(NODE_VERSION)\n"; exit 1)
-.PHONY: check_node_dev_env
+download-deps:
+	@echo Downloading Go dependencies...
+	@go mod download -x
+	@go mod tidy # To revert any changes made by the `go mod download` command
+.PHONY: download-deps
 
 check_env: check_go_env check_node_env
 .PHONY: check_env
 
 check_go_env:
 	@(hash go) || (echo "\nERROR: GO environment not setup properly!\n"; exit 1)
-	@go version | grep -q $(GO_VERSION) || (echo "\nERROR: Please upgrade your GO version\nThis project requires version $(GO_VERSION)"; exit 1)
+	@current_go_version=`go version | cut -d ' ' -f 3 | cut -c3-` && \
+		echo "$(GO_VERSION) $$current_go_version" | \
+		tr ' ' '\n' | sort -V | tail -1 | \
+		grep -q "^$${current_go_version}$$" || \
+		(echo "\nERROR: Please upgrade your GO version\nThis project requires at least the version $(GO_VERSION)"; exit 1)
 .PHONY: check_go_env
 
 check_node_env:
 	@(hash node) || (echo "\nERROR: Node environment not setup properly!\n"; exit 1)
-	@node --version | grep -q $(NODE_VERSION) || (echo "\nERROR: Please check your Node version. Should be $(NODE_VERSION)\n"; exit 1)
+	@current_node_version=`node --version` && \
+		echo "$(NODE_VERSION) $$current_node_version" | \
+		tr ' ' '\n' | sort -V | tail -1 | \
+		grep -q "^$${current_node_version}$$" || \
+		(echo "\nERROR: Please check your Node version. Should be at least $(NODE_VERSION)\n"; exit 1)
 .PHONY: check_node_env
 
 build: check_go_env
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT"
 .PHONY: build
 
-buildall: check_env
+buildall: check_go_env
 	@(cd ./ui && npm run build)
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: buildall
@@ -142,4 +129,4 @@ snapshot-single:
 	@echo "Building binaries for ${GOOS}/${GOARCH}"
 	docker run -t -v $(PWD):/workspace -e GOOS -e GOARCH -w /workspace deluan/ci-goreleaser:1.16.3-1 \
  		goreleaser build --rm-dist --snapshot --single-target --id navidrome_${GOOS}_${GOARCH}
-.PHONY: snapshot
+.PHONY: snapshot-single
