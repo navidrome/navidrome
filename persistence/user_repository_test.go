@@ -19,12 +19,12 @@ var _ = Describe("UserRepository", func() {
 
 	Describe("Put/Get/FindByUsername", func() {
 		usr := model.User{
-			ID:       "123",
-			UserName: "AdMiN",
-			Name:     "Admin",
-			Email:    "admin@admin.com",
-			Password: "wordpass",
-			IsAdmin:  true,
+			ID:          "123",
+			UserName:    "AdMiN",
+			Name:        "Admin",
+			Email:       "admin@admin.com",
+			NewPassword: "wordpass",
+			IsAdmin:     true,
 		}
 		It("saves the user to the DB", func() {
 			Expect(repo.Put(&usr)).To(BeNil())
@@ -33,6 +33,7 @@ var _ = Describe("UserRepository", func() {
 			actual, err := repo.Get("123")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Name).To(Equal("Admin"))
+			Expect(actual.Password).To(Equal("wordpass"))
 		})
 		It("find the user by case-insensitive username", func() {
 			actual, err := repo.FindByUsername("aDmIn")

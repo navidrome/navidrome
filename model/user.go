@@ -7,13 +7,17 @@ type User struct {
 	UserName     string     `json:"userName"`
 	Name         string     `json:"name"`
 	Email        string     `json:"email"`
-	Password     string     `json:"-"`
 	IsAdmin      bool       `json:"isAdmin"`
 	LastLoginAt  *time.Time `json:"lastLoginAt"`
 	LastAccessAt *time.Time `json:"lastAccessAt"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
-	NewPassword  string     `json:"password,omitempty"`
+
+	// This is only available on the backend, and it is never sent over the wire
+	Password string `json:"-"`
+	// This is used to set or change a password when calling Put. If it is empty, the password is not changed.
+	// It is received from the UI with the name "password"
+	NewPassword string `json:"password,omitempty"`
 }
 
 type Users []User
