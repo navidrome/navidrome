@@ -4,9 +4,8 @@ NODE_VERSION=$(shell cat .nvmrc)
 GIT_SHA=$(shell git rev-parse --short HEAD)
 GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
 
-## Default target just build the Go project.
-default:
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=master"
+## Default target just build the project.
+default: buildall
 .PHONY: default
 
 dev: check_env
@@ -94,12 +93,14 @@ check_node_env:
 .PHONY: check_node_env
 
 build: check_go_env
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT"
+	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: build
 
-buildall: check_go_env
+buildjs: check_node_env
 	@(cd ./ui && npm run build)
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
+.PHONY: buildjs
+
+buildall: buildjs build
 .PHONY: buildall
 
 pre-push: lintall testall
