@@ -2,6 +2,8 @@ package tests
 
 import (
 	"context"
+	"encoding/base64"
+	"strings"
 
 	"github.com/navidrome/navidrome/model"
 )
@@ -95,15 +97,29 @@ func (db *MockDataStore) GC(ctx context.Context, rootFolder string) error {
 
 type mockedUserRepo struct {
 	model.UserRepository
+	data map[string]*model.User
+}
+
+func (u *mockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
+	return int64(len(u.data)), nil
+}
+
+func (u *mockedUserRepo) Put(usr *model.User) error {
+	if u.data == nil {
+		u.data = make(map[string]*model.User)
+	}
+	if usr.ID == "" {
+		usr.ID = base64.StdEncoding.EncodeToString([]byte(usr.UserName))
+	}
+	usr.Password = usr.NewPassword
+	u.data[strings.ToLower(usr.UserName)] = usr
+	return nil
 }
 
 func (u *mockedUserRepo) FindByUsername(username string) (*model.User, error) {
-	if username != "admin" {
+	usr, ok := u.data[strings.ToLower(username)]
+	if !ok {
 		return nil, model.ErrNotFound
 	}
-	return &model.User{UserName: "admin", Password: "wordpass"}, nil
-}
-
-func (u *mockedUserRepo) UpdateLastAccessAt(id string) error {
-	return nil
+	return usr, nil
 }

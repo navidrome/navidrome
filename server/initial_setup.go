@@ -47,12 +47,12 @@ func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
 		log.Warn("Creating initial admin user. This should only be used for development purposes!!",
 			"user", consts.DevInitialUserName, "password", initialPassword, "id", id)
 		initialUser := model.User{
-			ID:       id,
-			UserName: consts.DevInitialUserName,
-			Name:     consts.DevInitialName,
-			Email:    "",
-			Password: initialPassword,
-			IsAdmin:  true,
+			ID:          id,
+			UserName:    consts.DevInitialUserName,
+			Name:        consts.DevInitialName,
+			Email:       "",
+			NewPassword: initialPassword,
+			IsAdmin:     true,
 		}
 		err := users.Put(&initialUser)
 		if err != nil {
