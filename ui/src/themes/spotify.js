@@ -255,25 +255,13 @@ export default {
     },
     NDLogin: {
       main: {
-        boxShadow: 'inset 0 0 0 2000px rgba(0, 0, 0, .8)',
+        boxShadow: 'inset 0 0 0 2000px rgba(0, 0, 0, .75)',
       },
       systemNameLink: {
         color: '#fff',
       },
-      systemName: {
-        marginTop: '0.5em',
-        marginBottom: '1em',
-      },
-      icon: {
-        backgroundColor: 'inherit',
-        width: '5em',
-        height: '5em',
-      },
       card: {
-        background: 'none',
-        boxShadow: 'none',
-        padding: '10px 0',
-        minWidth: 360,
+        border: '1px solid #282828',
       },
       avatar: {
         marginBottom: 0,
