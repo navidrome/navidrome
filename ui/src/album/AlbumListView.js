@@ -132,7 +132,6 @@ const AlbumListView = ({
       tertiaryText={(r) => (
         <>
           <RangeField
-            title="test"
             record={r}
             source={'year'}
             sortBy={'maxYear'}
@@ -151,7 +150,7 @@ const AlbumListView = ({
       classes={{ row: classes.row }}
       {...rest}
     >
-      <TextField source="name" />
+      <TextField source="name"/>
       <ArtistLinkField source="artist" />
       {isDesktop && <NumberField source="songCount" sortByOrder={'DESC'} />}
       {isDesktop && <NumberField source="playCount" sortByOrder={'DESC'} />}
