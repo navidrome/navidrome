@@ -29,10 +29,10 @@ const UserTitle = ({ record }) => {
   return <Title subTitle={`${resourceName} ${record ? record.name : ''}`} />
 }
 
-const UserToolbar = (props) => (
+const UserToolbar = ({ showDelete, ...props }) => (
   <Toolbar {...props} classes={useStyles()}>
     <SaveButton disabled={props.pristine} />
-    {props.permissions === 'admin' && <DeleteUserButton />}
+    {showDelete && <DeleteUserButton />}
   </Toolbar>
 )
 
@@ -40,16 +40,18 @@ const UserEdit = (props) => {
   const { permissions } = props
   const translate = useTranslate()
 
+  const isMyself = props.id === localStorage.getItem('userId')
   const getNameHelperText = () =>
-    props.id === localStorage.getItem('userId') && {
+    isMyself && {
       helperText: translate('resources.user.helperTexts.name'),
     }
+  const canDelete = permissions === 'admin' && !isMyself
 
   return (
     <Edit title={<UserTitle />} {...props}>
       <SimpleForm
         variant={'outlined'}
-        toolbar={<UserToolbar />}
+        toolbar={<UserToolbar showDelete={canDelete} />}
         redirect={permissions === 'admin' ? 'list' : false}
       >
         {permissions === 'admin' && (
