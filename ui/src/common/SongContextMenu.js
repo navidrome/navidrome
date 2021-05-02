@@ -18,13 +18,15 @@ const useStyles = makeStyles({
   },
 })
 
-export const SongContextMenu = ({
-  resource,
-  record,
-  showLove,
-  onAddToPlaylist,
-  className,
-}) => {
+export const SongContextMenu = (props) => {
+  const {
+    resource,
+    record,
+    showLove,
+    onAddToPlaylist,
+    className,
+    refreshPage,
+  } = props
   const classes = useStyles()
   const dispatch = useDispatch()
   const translate = useTranslate()
@@ -64,7 +66,6 @@ export const SongContextMenu = ({
       action: (record) => subsonic.download(record.mediaFileId || record.id),
     },
   }
-
   const handleClick = (e) => {
     setAnchorEl(e.currentTarget)
     e.stopPropagation()
@@ -91,6 +92,7 @@ export const SongContextMenu = ({
         record={record}
         resource={resource}
         visible={config.enableFavourites && showLove}
+        refreshPage={refreshPage}
       />
       <IconButton onClick={handleClick} size={'small'}>
         <MoreVertIcon fontSize={'small'} />

@@ -5,7 +5,7 @@ import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import IconButton from '@material-ui/core/IconButton'
 import { makeStyles } from '@material-ui/core/styles'
 import { useToggleLove } from './useToggleLove'
-
+import { useRefresh } from 'react-admin'
 const useStyles = makeStyles({
   love: {
     color: (props) => props.color,
@@ -23,15 +23,17 @@ export const LoveButton = ({
   component: Button,
   addLabel,
   disabled,
+  refreshPage,
   ...rest
 }) => {
   const classes = useStyles({ color, visible, loved: record.starred })
   const [toggleLove, loading] = useToggleLove(resource, record)
-
+  const refresh = useRefresh()
   const handleToggleLove = useCallback(
     (e) => {
       e.preventDefault()
       toggleLove()
+      if (refreshPage) refresh()
       e.stopPropagation()
     },
     [toggleLove]

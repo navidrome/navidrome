@@ -30,6 +30,7 @@ import config from './config'
 import { setDispatch, startEventStream } from './eventStream'
 import { HotKeys } from 'react-hotkeys'
 import { keyMap } from './hotkeys'
+import FavouriteSongs from './FavouriteSongs'
 
 const history = createHashHistory()
 
@@ -88,6 +89,13 @@ const Admin = (props) => {
         <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
         <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
         <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
+        config.enableFavourites ? (
+          <Resource
+            name="favouriteSongs"
+            {...FavouriteSongs}
+            options={{ subMenu: 'library' }}
+          />
+        ) : null,
         <Resource
           name="playlist"
           {...playlist}

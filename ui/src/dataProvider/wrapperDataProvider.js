@@ -16,7 +16,8 @@ const mapResource = (resource, params) => {
         plsId = params.filter.playlist_id
       }
       return [`playlist/${plsId}/tracks`, params]
-
+    case 'favouriteSongs':
+      return ['song', params]
     default:
       return [resource, params]
   }

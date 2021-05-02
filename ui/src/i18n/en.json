@@ -33,6 +33,33 @@
         "playNext": "Play Next"
       }
     },
+    "favouriteSongs": {
+      "name": "Favourite Song |||| Favourite Songs",
+      "fields": {
+        "albumArtist": "Album Artist",
+        "duration": "Time",
+        "trackNumber": "#",
+        "playCount": "Plays",
+        "title": "Title",
+        "artist": "Artist",
+        "album": "Album",
+        "path": "File path",
+        "genre": "Genre",
+        "compilation": "Compilation",
+        "year": "Year",
+        "size": "File size",
+        "updatedAt": "Updated at",
+        "bitRate": "Bit rate",
+        "discSubtitle": "Disc Subtitle",
+        "starred": "Favourite",
+        "rating": "Rating",
+        "comment": "Comment",
+        "quality": "Quality"
+      },
+      "actions": {
+        "playAll": "Play All"
+      }
+    },
     "album": {
       "name": "Album |||| Albums",
       "fields": {

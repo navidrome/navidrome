@@ -11,7 +11,11 @@ const Placeholder = () =>
 
 const Toolbar = ({ id }) => {
   const location = useLocation()
-  const resource = location.pathname.startsWith('/song') ? 'song' : 'albumSong'
+  const resource = location.pathname.startsWith('/song')
+    ? 'song'
+    : location.pathname.startsWith('/favouriteSongs')
+    ? 'favouriteSongs'
+    : 'albumSong'
   const { data, loading } = useGetOne(resource, id)
   const [toggleLove, toggling] = useToggleLove(resource, data)
 
@@ -26,6 +30,7 @@ const Toolbar = ({ id }) => {
           record={data}
           resource={resource}
           disabled={loading || toggling}
+          refreshPage={resource === 'favouriteSongs' ? true : false}
         />
       )}
     </>
