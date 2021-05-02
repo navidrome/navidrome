@@ -48,6 +48,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
 			"devActivityPanel":        conf.Server.DevActivityPanel,
 			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
+			"enableUserEditing":       conf.Server.EnableUserEditing,
 		}
 		j, err := json.Marshal(appConfig)
 		if err != nil {

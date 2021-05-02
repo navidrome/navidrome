@@ -42,6 +42,7 @@ type configOptions struct {
 	EnableGravatar         bool
 	EnableFavourites       bool
 	EnableStarRating       bool
+	EnableUserEditing      bool
 	DefaultTheme           string
 	GATrackingID           string
 	EnableLogRedacting     bool
@@ -148,6 +149,7 @@ func init() {
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
+	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)

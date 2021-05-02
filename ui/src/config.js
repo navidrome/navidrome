@@ -17,6 +17,7 @@ const defaultConfig = {
   devFastAccessCoverArt: false,
   enableStarRating: true,
   defaultTheme: 'Dark',
+  enableUserEditing: true,
 }
 
 let config

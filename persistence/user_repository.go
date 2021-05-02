@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/rest"
@@ -145,6 +147,9 @@ func (r *userRepository) Update(entity interface{}, cols ...string) error {
 		return rest.ErrPermissionDenied
 	}
 	if !usr.IsAdmin {
+		if !conf.Server.EnableUserEditing {
+			return rest.ErrPermissionDenied
+		}
 		u.IsAdmin = false
 		u.UserName = usr.UserName
 	}

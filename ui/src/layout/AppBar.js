@@ -80,6 +80,9 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
       return null
     }
     if (permissions !== 'admin') {
+      if (!config.enableUserEditing) {
+        return null
+      }
       userResource.icon = PersonIcon
     } else {
       userResource.icon = SupervisorAccountIcon
