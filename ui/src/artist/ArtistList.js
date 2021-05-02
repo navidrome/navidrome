@@ -1,12 +1,6 @@
 import React from 'react'
 import { useHistory } from 'react-router-dom'
-import {
-  Datagrid,
-  Filter,
-  NumberField,
-  SearchInput,
-  TextField,
-} from 'react-admin'
+import { Filter, NumberField, SearchInput } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
@@ -21,6 +15,8 @@ import {
 } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
+import { Datagrid } from '../common/Datagrid'
+import { ArtistField } from '../common/ArtistField'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -71,7 +67,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
     />
   ) : (
     <Datagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
-      <TextField source="name" />
+      <ArtistField source="name" />
       <NumberField source="albumCount" sortByOrder={'DESC'} />
       <NumberField source="songCount" sortByOrder={'DESC'} />
       <NumberField source="playCount" sortByOrder={'DESC'} />

@@ -28,6 +28,7 @@ import {
 } from '../common'
 import config from '../config'
 import { Datagrid } from '../common/Datagrid'
+import { AlbumField } from '../common/AlbumNameField'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -146,7 +147,7 @@ const AlbumListView = ({
       classes={{ row: classes.row }}
       {...rest}
     >
-      <TextField source="name" />
+      <AlbumField source="name" />
       <ArtistLinkField source="artist" />
       {isDesktop && <NumberField source="songCount" sortByOrder={'DESC'} />}
       {isDesktop && <NumberField source="playCount" sortByOrder={'DESC'} />}

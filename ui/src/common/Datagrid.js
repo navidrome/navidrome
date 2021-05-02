@@ -9,9 +9,6 @@ const useStyles = makeStyles({
       whiteSpace: 'nowrap',
       textOverflow: 'ellipsis',
       maxWidth: '10em',
-      '&:hover': {
-        whiteSpace: 'unset',
-      },
     },
   },
 })

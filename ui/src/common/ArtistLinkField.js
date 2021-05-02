@@ -19,6 +19,7 @@ export const ArtistLinkField = withWidth()(({ record, className, width }) => {
       to={artistLink(record.albumArtistId)}
       onClick={(e) => e.stopPropagation()}
       className={className}
+      title={record.albumArtist}
     >
       {record.albumArtist}
     </Link>
