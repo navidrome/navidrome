@@ -161,7 +161,7 @@ func init() {
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("gatrackingid", "")
-	viper.SetDefault("EnableLogRedacting", true)
+	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
 
