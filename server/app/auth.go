@@ -120,7 +120,7 @@ func createDefaultUser(ctx context.Context, ds model.DataStore, username, passwo
 		UserName:    username,
 		Name:        strings.Title(username),
 		Email:       "",
-		Password:    password,
+		NewPassword: password,
 		IsAdmin:     true,
 		LastLoginAt: &now,
 	}
