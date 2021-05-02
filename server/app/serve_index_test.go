@@ -189,6 +189,16 @@ var _ = Describe("serveIndex", func() {
 		expected := strings.ToUpper(strings.Join(consts.LosslessFormats, ","))
 		Expect(config).To(HaveKeyWithValue("losslessFormats", expected))
 	})
+
+	It("sets the enableUserEditing", func() {
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableUserEditing", true))
+	})
 })
 
 var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__="([^"]*)`)
