@@ -36,7 +36,7 @@ export const LoveButton = ({
       if (refreshPage) refresh()
       e.stopPropagation()
     },
-    [toggleLove]
+    [toggleLove, refresh, refreshPage]
   )
 
   return (
