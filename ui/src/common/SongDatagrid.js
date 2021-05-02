@@ -27,6 +27,12 @@ const useStyles = makeStyles({
         visibility: 'visible',
       },
     },
+    '& .MuiTableCell-root': {
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      textOverflow: 'ellipsis',
+      maxWidth: '10em',
+    },
   },
   headerStyle: {
     '& thead': {

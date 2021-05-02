@@ -1,11 +1,5 @@
 import React from 'react'
-import {
-  Filter,
-  FunctionField,
-  NumberField,
-  SearchInput,
-  TextField,
-} from 'react-admin'
+import { Filter, FunctionField, NumberField, SearchInput } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import {
@@ -29,6 +23,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import config from '../config'
 import { QualityInfo } from '../common/QualityInfo'
+import { SongArtistField } from '../common/SongArtistField'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -107,7 +102,7 @@ const SongList = (props) => {
                 sortByOrder={'ASC'}
               />
             )}
-            <TextField source="artist" />
+            <SongArtistField source="artist" />
             {isDesktop && <NumberField source="trackNumber" />}
             {isDesktop && (
               <NumberField source="playCount" sortByOrder={'DESC'} />

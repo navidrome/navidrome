@@ -66,6 +66,7 @@ export const SongTitleField = ({ showTrackNumbers, ...props }) => {
         source="title"
         render={trackName}
         className={classes.text}
+        title={record.title}
       />
     </>
   )

@@ -6,6 +6,7 @@ export const AlbumLinkField = (props) => (
   <Link
     to={`/album/${props.record.albumId}/show`}
     onClick={(e) => e.stopPropagation()}
+    title={props.record.album}
   >
     {props.record.album}
   </Link>
