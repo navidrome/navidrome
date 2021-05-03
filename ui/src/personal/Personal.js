@@ -67,8 +67,9 @@ const SelectLanguage = (props) => {
           openInNewTab(docsUrl('/docs/developers/translations/'))
           return
         }
-        setLocale(event.target.value)
-        localStorage.setItem('locale', event.target.value)
+        setLocale(event.target.value).then(() => {
+          localStorage.setItem('locale', event.target.value)
+        })
       }}
     />
   )
