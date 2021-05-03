@@ -10,7 +10,7 @@ require (
 	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.0
-	github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0
+	github.com/deluan/rest v0.0.0-20210503015435-e7091d44f0ba
 	github.com/denisenkom/go-mssqldb v0.9.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27

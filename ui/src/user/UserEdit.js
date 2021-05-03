@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { makeStyles } from '@material-ui/core/styles'
 import {
   TextInput,
@@ -12,6 +12,12 @@ import {
   useTranslate,
   Toolbar,
   SaveButton,
+  useMutation,
+  useNotify,
+  useRedirect,
+  useRefresh,
+  FormDataConsumer,
+  usePermissions,
 } from 'react-admin'
 import { Title } from '../common'
 import DeleteUserButton from './DeleteUserButton'
@@ -36,9 +42,32 @@ const UserToolbar = ({ showDelete, ...props }) => (
   </Toolbar>
 )
 
+const CurrentPasswordInput = ({ formData, isMyself, ...rest }) => {
+  const { permissions } = usePermissions()
+  return formData.changePassword && (isMyself || permissions !== 'admin') ? (
+    <PasswordInput className="ra-input" source="currentPassword" {...rest} />
+  ) : null
+}
+
+const NewPasswordInput = ({ formData, ...rest }) => {
+  const translate = useTranslate()
+  return formData.changePassword ? (
+    <PasswordInput
+      source="password"
+      className="ra-input"
+      label={translate('resources.user.fields.newPassword')}
+      {...rest}
+    />
+  ) : null
+}
+
 const UserEdit = (props) => {
   const { permissions } = props
   const translate = useTranslate()
+  const [mutate] = useMutation()
+  const notify = useNotify()
+  const redirect = useRedirect()
+  const refresh = useRefresh()
 
   const isMyself = props.id === localStorage.getItem('userId')
   const getNameHelperText = () =>
@@ -47,12 +76,34 @@ const UserEdit = (props) => {
     }
   const canDelete = permissions === 'admin' && !isMyself
 
+  const save = useCallback(
+    async (values) => {
+      try {
+        await mutate(
+          {
+            type: 'update',
+            resource: 'user',
+            payload: { id: values.id, data: values },
+          },
+          { returnPromise: true }
+        )
+        notify('ra.notification.updated', 'info', { smart_count: 1 })
+        permissions === 'admin' ? redirect('/user') : refresh()
+      } catch (error) {
+        if (error.body.errors) {
+          return error.body.errors
+        }
+      }
+    },
+    [mutate, notify, permissions, redirect, refresh]
+  )
+
   return (
-    <Edit title={<UserTitle />} {...props}>
+    <Edit title={<UserTitle />} undoable={false} {...props}>
       <SimpleForm
         variant={'outlined'}
         toolbar={<UserToolbar showDelete={canDelete} />}
-        redirect={permissions === 'admin' ? 'list' : false}
+        save={save}
       >
         {permissions === 'admin' && (
           <TextInput source="userName" validate={[required()]} />
@@ -63,10 +114,16 @@ const UserEdit = (props) => {
           {...getNameHelperText()}
         />
         <TextInput source="email" validate={[email()]} />
-        <PasswordInput
-          source="password"
-          label={translate('resources.user.fields.changePassword')}
-        />
+        <BooleanInput source="changePassword" />
+        <FormDataConsumer>
+          {(formDataProps) => (
+            <CurrentPasswordInput isMyself={isMyself} {...formDataProps} />
+          )}
+        </FormDataConsumer>
+        <FormDataConsumer>
+          {(formDataProps) => <NewPasswordInput {...formDataProps} />}
+        </FormDataConsumer>
+
         {permissions === 'admin' && (
           <BooleanInput source="isAdmin" initialValue={false} />
         )}
