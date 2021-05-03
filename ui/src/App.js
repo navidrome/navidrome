@@ -30,6 +30,7 @@ import config from './config'
 import { setDispatch, startEventStream } from './eventStream'
 import { HotKeys } from 'react-hotkeys'
 import { keyMap } from './hotkeys'
+import ChangeColor from './common/PWA'
 
 const history = createHashHistory()
 
@@ -112,7 +113,7 @@ const Admin = (props) => {
         <Resource name="translation" />,
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
-
+        <ChangeColor />,
         <Player />,
       ]}
     </RAAdmin>
