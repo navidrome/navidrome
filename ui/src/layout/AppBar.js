@@ -121,7 +121,9 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
         <Divider />
         {renderUserMenuItemLink()}
-        {resources.filter(settingsResources).map(renderSettingsMenuItemLink)}
+        {resources
+          .filter(settingsResources)
+          .map((r) => renderSettingsMenuItemLink(r))}
         <Divider />
         <AboutMenuItem />
       </UserMenu>
