@@ -87,7 +87,9 @@
         "name": "Name",
         "password": "Password",
         "createdAt": "Created at",
-        "changePassword": "Change Password"
+        "currentPassword": "Current Password",
+        "newPassword": "New Password",
+        "changePassword": "Change Password?"
       },
       "helperTexts": {
         "name": "Changes to your name will only be reflected on next login"

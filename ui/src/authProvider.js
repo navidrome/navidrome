@@ -73,7 +73,7 @@ const authProvider = {
     localStorage.getItem('token') ? Promise.resolve() : Promise.reject(),
 
   checkError: ({ status }) => {
-    if (status === 401 || status === 403) {
+    if (status === 401) {
       removeItems()
       return Promise.reject()
     }
