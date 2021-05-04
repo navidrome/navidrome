@@ -23,11 +23,11 @@ export default {
         activeIcon={AlbumIcon}
       />
     ),
-    params: 'sort=name&order=ASC',
+    params: 'sort=name&order=ASC&filter={}',
   },
   random: {
     icon: <ShuffleIcon />,
-    params: 'sort=random&order=ASC',
+    params: 'sort=random&order=ASC&filter={}',
   },
   ...(config.enableFavourites && {
     starred: {
@@ -61,7 +61,7 @@ export default {
         activeIcon={LibraryAddIcon}
       />
     ),
-    params: 'sort=recently_added&order=DESC',
+    params: 'sort=recently_added&order=DESC&filter={}',
   },
   recentlyPlayed: {
     icon: (
