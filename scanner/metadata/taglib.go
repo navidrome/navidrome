@@ -24,7 +24,6 @@ func (m *taglibMetadata) TrackNumber() (int, int) {
 }
 func (m *taglibMetadata) Duration() float32 { return m.parseFloat("length") }
 func (m *taglibMetadata) BitRate() int      { return m.parseInt("bitrate") }
-func (m *taglibMetadata) Bpm() int          { return m.parseInt("bpm") }
 func (m *taglibMetadata) HasPicture() bool  { return m.hasPicture }
 
 type taglibExtractor struct{}
