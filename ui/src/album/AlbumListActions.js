@@ -59,9 +59,11 @@ const AlbumListActions = ({
           <ViewHeadlineIcon fontSize="inherit" />
         </Button>
       </ButtonGroup>
-      {isSmall && !albumView.grid ? (
-        <ToggleFieldsMenu resource="album" />
-      ) : null}
+      {isSmall && (
+        <div style={{ visibility: albumView.grid ? 'hidden' : 'visible' }}>
+          <ToggleFieldsMenu resource="album" />
+        </div>
+      )}
     </TopToolbar>
   )
 }
