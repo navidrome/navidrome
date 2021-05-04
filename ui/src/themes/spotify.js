@@ -241,13 +241,13 @@ export default {
       audioTitle: {
         color: '#fff',
         fontSize: '0.875rem',
-        '&.songTitle': {
-          fontWeight: 400,
-        },
-        '&.songInfo': {
-          fontSize: '0.675rem',
-          color: '#b3b3b3',
-        },
+      },
+      songTitle: {
+        fontWeight: 400,
+      },
+      songInfo: {
+        fontSize: '0.675rem',
+        color: '#b3b3b3',
       },
       player: {
         border: '10px solid blue',
@@ -255,24 +255,13 @@ export default {
     },
     NDLogin: {
       main: {
-        boxShadow: 'inset 0 0 0 2000px rgba(0, 0, 0, .8)',
+        boxShadow: 'inset 0 0 0 2000px rgba(0, 0, 0, .75)',
       },
       systemNameLink: {
         color: '#fff',
-        textDecoration: 'none',
-      },
-      systemName: {
-        marginTop: '0.5em',
-        marginBottom: '1em',
-      },
-      icon: {
-        backgroundColor: 'inherit',
       },
       card: {
-        background: 'none',
-        boxShadow: 'none',
-        padding: '10px 0',
-        minWidth: 360,
+        border: '1px solid #282828',
       },
       avatar: {
         marginBottom: 0,
@@ -306,6 +295,9 @@ export default {
       },
     },
     RaPaginationActions: {
+      currentPageButton: {
+        border: '1px solid #b3b3b3',
+      },
       button: {
         backgroundColor: 'inherit',
         minWidth: 48,

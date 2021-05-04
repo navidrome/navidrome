@@ -147,6 +147,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("enableStarRating", true))
 	})
 
+	It("sets the defaultTheme", func() {
+		conf.Server.DefaultTheme = "Light"
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("defaultTheme", "Light"))
+	})
+
 	It("sets the gaTrackingId", func() {
 		conf.Server.GATrackingID = "UA-12345"
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -177,6 +188,16 @@ var _ = Describe("serveIndex", func() {
 		config := extractAppConfig(w.Body.String())
 		expected := strings.ToUpper(strings.Join(consts.LosslessFormats, ","))
 		Expect(config).To(HaveKeyWithValue("losslessFormats", expected))
+	})
+
+	It("sets the enableUserEditing", func() {
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableUserEditing", true))
 	})
 })
 

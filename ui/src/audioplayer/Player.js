@@ -12,6 +12,7 @@ import {
 } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import { GlobalHotKeys } from 'react-hotkeys'
+import clsx from 'clsx'
 import subsonic from '../subsonic'
 import {
   scrobble,
@@ -25,18 +26,45 @@ import PlayerToolbar from './PlayerToolbar'
 import { sendNotification } from '../utils'
 import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
+import { QualityInfo } from '../common/QualityInfo'
 
 const useStyle = makeStyles(
   (theme) => ({
     audioTitle: {
       textDecoration: 'none',
       color: theme.palette.primary.dark,
-      '&.songTitle': {
-        fontWeight: 'bold',
+    },
+    songTitle: {
+      fontWeight: 'bold',
+      '&:hover + $qualityInfo': {
+        opacity: 1,
       },
+    },
+    songInfo: {
+      display: 'block',
+    },
+    qualityInfo: {
+      marginTop: '-4px',
+      opacity: 0,
+      transition: 'all 500ms ease-out',
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
+      '@media screen and (max-width:810px)': {
+        '& .sound-operation': {
+          display: 'none',
+        },
+      },
+      '& .progress-bar-content': {
+        display: 'flex',
+        flexDirection: 'column',
+      },
+      '& .play-mode-title': {
+        'pointer-events': 'none',
+      },
+    },
+    artistAlbum: {
+      marginTop: '2px',
     },
   }),
   { name: 'NDAudioPlayer' }
@@ -47,21 +75,30 @@ let audioInstance = null
 const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
   const classes = useStyle()
   const className = classes.audioTitle
+  const isDesktop = useMediaQuery('(min-width:810px)')
 
   if (!audioInfo.name) {
     return ''
   }
 
+  const qi = { suffix: audioInfo.suffix, bitRate: audioInfo.bitRate }
+
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
-      <span className={`${className} songTitle`}>{audioInfo.name}</span>
+      <span>
+        <span className={clsx(classes.songTitle, 'songTitle')}>
+          {audioInfo.name}
+        </span>
+        {isDesktop && (
+          <QualityInfo record={qi} className={classes.qualityInfo} />
+        )}
+      </span>
       {!isMobile && (
-        <>
-          <br />
-          <span className={`${className} songInfo`}>
+        <div className={classes.artistAlbum}>
+          <span className={clsx(classes.songInfo, 'songInfo')}>
             {`${audioInfo.singer} - ${audioInfo.album}`}
           </span>
-        </>
+        </div>
       )}
     </Link>
   )
@@ -84,7 +121,7 @@ const Player = () => {
   const classes = useStyle({ visible })
   // Match the medium breakpoint defined in the material-ui theme
   // See https://material-ui.com/customization/breakpoints/#breakpoints
-  const isDesktop = useMediaQuery('(min-width:960px)')
+  const isDesktop = useMediaQuery('(min-width:810px)')
 
   const nextSong = useCallback(() => {
     const idx = queue.queue.findIndex(

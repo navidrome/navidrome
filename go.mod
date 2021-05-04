@@ -10,7 +10,7 @@ require (
 	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.0
-	github.com/deluan/rest v0.0.0-20200327222046-b71e558c45d0
+	github.com/deluan/rest v0.0.0-20210503015435-e7091d44f0ba
 	github.com/denisenkom/go-mssqldb v0.9.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27
@@ -24,7 +24,6 @@ require (
 	github.com/golangci/golangci-lint v1.39.0
 	github.com/google/uuid v1.2.0
 	github.com/google/wire v0.5.0
-	github.com/karrick/godirwalk v1.16.1
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.2.1
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
@@ -41,6 +40,7 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.7.1
+	github.com/stretchr/testify v1.7.0
 	github.com/unrolled/secure v1.0.8
 	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
 	github.com/ziutek/mymysql v1.5.4 // indirect

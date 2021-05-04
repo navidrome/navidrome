@@ -16,6 +16,8 @@ const defaultConfig = {
   devActivityPanel: true,
   devFastAccessCoverArt: false,
   enableStarRating: true,
+  defaultTheme: 'Dark',
+  enableUserEditing: true,
 }
 
 let config

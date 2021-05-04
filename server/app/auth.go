@@ -60,6 +60,7 @@ func handleLogin(ds model.DataStore, username string, password string, w http.Re
 	payload := map[string]interface{}{
 		"message":  "User '" + username + "' authenticated successfully",
 		"token":    tokenString,
+		"id":       user.ID,
 		"name":     user.Name,
 		"username": username,
 		"isAdmin":  user.IsAdmin,
@@ -119,7 +120,7 @@ func createDefaultUser(ctx context.Context, ds model.DataStore, username, passwo
 		UserName:    username,
 		Name:        strings.Title(username),
 		Email:       "",
-		Password:    password,
+		NewPassword: password,
 		IsAdmin:     true,
 		LastLoginAt: &now,
 	}

@@ -42,7 +42,10 @@ type configOptions struct {
 	EnableGravatar         bool
 	EnableFavourites       bool
 	EnableStarRating       bool
+	EnableUserEditing      bool
+	DefaultTheme           string
 	GATrackingID           string
+	EnableLogRedacting     bool
 	AuthRequestLimit       int
 	AuthWindowLength       time.Duration
 
@@ -104,9 +107,8 @@ func Load() {
 
 	log.SetLevelString(Server.LogLevel)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
-	if log.CurrentLevel() >= log.LevelDebug {
-		pretty.Printf("Loaded configuration from '%s': %# v\n", Server.ConfigFile, Server)
-	}
+	log.SetRedacting(Server.EnableLogRedacting)
+	log.Debug(pretty.Sprintf("Loaded configuration from '%s': %# v\n", Server.ConfigFile, Server))
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -147,7 +149,10 @@ func init() {
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
+	viper.SetDefault("enableuserediting", true)
+	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("gatrackingid", "")
+	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
 

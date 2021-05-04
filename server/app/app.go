@@ -69,7 +69,9 @@ func (app *Router) routes(path string) http.Handler {
 		app.addPlaylistTrackRoute(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
-		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"response":"ok"}`)) })
+		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
+		})
 
 		if conf.Server.DevActivityPanel {
 			r.Handle("/events", app.broker)
@@ -97,7 +99,7 @@ func (app *Router) RX(r chi.Router, pathPrefix string, constructor rest.Reposito
 			r.Post("/", rest.Post(constructor))
 		}
 		r.Route("/{id}", func(r chi.Router) {
-			r.Use(UrlParams)
+			r.Use(urlParams)
 			r.Get("/", rest.Get(constructor))
 			if persistable {
 				r.Put("/", rest.Put(constructor))
@@ -115,7 +117,7 @@ func (app *Router) addPlaylistTrackRoute(r chi.Router) {
 			getPlaylist(app.ds)(w, r)
 		})
 		r.Route("/{id}", func(r chi.Router) {
-			r.Use(UrlParams)
+			r.Use(urlParams)
 			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
 				reorderItem(app.ds)(w, r)
 			})
@@ -123,14 +125,14 @@ func (app *Router) addPlaylistTrackRoute(r chi.Router) {
 				deleteFromPlaylist(app.ds)(w, r)
 			})
 		})
-		r.With(UrlParams).Post("/", func(w http.ResponseWriter, r *http.Request) {
+		r.With(urlParams).Post("/", func(w http.ResponseWriter, r *http.Request) {
 			addToPlaylist(app.ds)(w, r)
 		})
 	})
 }
 
 // Middleware to convert Chi URL params (from Context) to query params, as expected by our REST package
-func UrlParams(next http.Handler) http.Handler {
+func urlParams(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := chi.RouteContext(r.Context())
 		parts := make([]string, 0)

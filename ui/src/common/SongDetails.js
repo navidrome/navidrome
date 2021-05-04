@@ -50,11 +50,7 @@ export const SongDetails = (props) => {
           {Object.keys(data).map((key) => {
             return (
               <TableRow key={`${record.id}-${key}`}>
-                <TableCell
-                  component="th"
-                  scope="row"
-                  className={classes.tableCell}
-                >
+                <TableCell scope="row" className={classes.tableCell}>
                   {translate(`resources.song.fields.${key}`, {
                     _: inflection.humanize(inflection.underscore(key)),
                   })}

@@ -20,7 +20,9 @@
                 "bitRate": "Bitrate",
                 "discSubtitle": "Sub-título do disco",
                 "starred": "Favorita",
-                "comment": "Comentário"
+                "comment": "Comentário",
+                "rating": "Classificação",
+                "quality": "Qualidade"
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
@@ -44,7 +46,8 @@
                 "compilation": "Coletânea",
                 "year": "Ano",
                 "updatedAt": "Últ. Atualização",
-                "comment": "Comentário"
+                "comment": "Comentário",
+                "rating": "Classificação"
             },
             "actions": {
                 "playAll": "Tocar",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "Recém-adicionados",
                 "recentlyPlayed": "Recém-tocados",
                 "mostPlayed": "Mais tocados",
-                "starred": "Favoritos"
+                "starred": "Favoritos",
+                "topRated": "Melhor classificados"
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "Nome",
                 "albumCount": "Total de Álbuns",
                 "songCount": "Total de Músicas",
-                "playCount": "Execuções"
+                "playCount": "Execuções",
+                "rating": "Classificação"
             }
         },
         "user": {
@@ -81,7 +86,13 @@
                 "updatedAt": "Últ. Atualização",
                 "name": "Nome",
                 "password": "Senha",
-                "createdAt": "Data de Criação"
+                "createdAt": "Data de Criação",
+                "currentPassword": "Senha Atual",
+                "newPassword": "Nova Senha",
+                "changePassword": "Trocar Senha?"
+            },
+            "helperTexts": {
+                "name": "Alterações no seu nome só serão refletidas no próximo login"
             }
         },
         "player": {
@@ -123,6 +134,10 @@
                 "selectPlaylist": "Selecione a playlist:",
                 "addNewPlaylist": "Criar \"%{name}\"",
                 "export": "Exportar"
+            },
+            "message": {
+                "duplicate_song": "Adicionar músicas duplicadas",
+                "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?"
             }
         }
     },
@@ -179,7 +194,8 @@
             "close": "Fechar",
             "open_menu": "Abrir menu",
             "close_menu": "Fechar menu",
-            "unselect": "Deselecionar"
+            "unselect": "Deselecionar",
+            "skip": "Ignorar"
         },
         "boolean": {
             "true": "Sim",
@@ -335,7 +351,7 @@
             "next_song": "Próxima música",
             "vol_up": "Aumenta volume",
             "vol_down": "Diminui volume",
-            "toggle_star": "Marcar/desmarcar favorita"
+            "toggle_love": "Marcar/desmarcar favorita"
         }
     }
 }

@@ -11,6 +11,7 @@ import {
   useNotify,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
+import { useMediaQuery } from '@material-ui/core'
 import { DurationField, List, Writable, isWritable } from '../common'
 import useSelectedFields from '../common/useSelectedFields'
 import PlaylistListActions from './PlaylistListActions'
@@ -58,12 +59,17 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
 }
 
 const PlaylistList = ({ permissions, ...props }) => {
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+
   const toggleableFields = {
     owner: <TextField source="owner" />,
-    songCount: <NumberField source="songCount" />,
-    duration: <DurationField source="duration" />,
-    updatedAt: <DateField source="updatedAt" sortByOrder={'DESC'} />,
-    public: (
+    songCount: isDesktop && <NumberField source="songCount" />,
+    duration: isDesktop && <DurationField source="duration" />,
+    updatedAt: isDesktop && (
+      <DateField source="updatedAt" sortByOrder={'DESC'} />
+    ),
+    public: !isXsmall && (
       <TogglePublicInput
         source="public"
         permissions={permissions}

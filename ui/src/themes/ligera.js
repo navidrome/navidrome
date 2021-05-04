@@ -319,13 +319,13 @@ export default {
       audioTitle: {
         color: '#000',
         fontSize: '0.875rem',
-        '&.songTitle': {
-          fontWeight: 400,
-        },
-        '&.songInfo': {
-          fontSize: '0.675rem',
-          color: '#b3b3b3',
-        },
+      },
+      songTitle: {
+        fontWeight: 400,
+      },
+      songInfo: {
+        fontSize: '0.675rem',
+        color: '#b3b3b3',
       },
       player: {},
     },
@@ -346,6 +346,7 @@ export default {
       icon: {
         backgroundColor: 'transparent',
         width: '100px',
+        height: '100px',
       },
       card: {
         minWidth: 300,

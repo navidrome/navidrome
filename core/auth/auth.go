@@ -16,7 +16,7 @@ import (
 
 var (
 	once           sync.Once
-	JwtSecret      []byte
+	Secret         []byte
 	TokenAuth      *jwtauth.JWTAuth
 	sessionTimeOut time.Duration
 )
@@ -27,8 +27,8 @@ func InitTokenAuth(ds model.DataStore) {
 		if err != nil {
 			log.Error("No JWT secret found in DB. Setting a temp one, but please report this error", err)
 		}
-		JwtSecret = []byte(secret)
-		TokenAuth = jwtauth.New("HS256", JwtSecret, nil)
+		Secret = []byte(secret)
+		TokenAuth = jwtauth.New("HS256", Secret, nil)
 	})
 }
 
@@ -37,6 +37,7 @@ func CreateToken(u *model.User) (string, error) {
 	claims := token.Claims.(jwt.MapClaims)
 	claims["iss"] = consts.JWTIssuer
 	claims["sub"] = u.UserName
+	claims["uid"] = u.ID
 	claims["adm"] = u.IsAdmin
 
 	return TouchToken(token)
@@ -56,19 +57,21 @@ func TouchToken(token *jwt.Token) (string, error) {
 	claims := token.Claims.(jwt.MapClaims)
 	claims["exp"] = expireIn
 
-	return token.SignedString(JwtSecret)
+	return token.SignedString(Secret)
+}
+
+func keyFunc(token *jwt.Token) (interface{}, error) {
+	// Don't forget to validate the alg is what you expect:
+	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+	}
+
+	// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
+	return Secret, nil
 }
 
 func Validate(tokenStr string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		// Don't forget to validate the alg is what you expect:
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-
-		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
-		return JwtSecret, nil
-	})
+	token, err := jwt.Parse(tokenStr, keyFunc)
 	if err != nil {
 		return nil, err
 	}

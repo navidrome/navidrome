@@ -20,7 +20,9 @@
                 "bitRate": "Bitrate",
                 "discSubtitle": "Sous-titre du disque",
                 "starred": "Favoris",
-                "comment": "Commentaire"
+                "comment": "Commentaire",
+                "rating": "Classement",
+                "quality": "Qualité"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -44,7 +46,8 @@
                 "compilation": "Compilation",
                 "year": "Année",
                 "updatedAt": "Mis à jour le",
-                "comment": "Commentaire"
+                "comment": "Commentaire",
+                "rating": "Classement"
             },
             "actions": {
                 "playAll": "Lire",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "Récemment ajouté",
                 "recentlyPlayed": "Récemment joué",
                 "mostPlayed": "Plus joués",
-                "starred": "Favoris"
+                "starred": "Favoris",
+                "topRated": "Les mieux classés"
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "Nom",
                 "albumCount": "Nombre d'albums",
                 "songCount": "Nombre de pistes",
-                "playCount": "Lectures"
+                "playCount": "Lectures",
+                "rating": "Classement"
             }
         },
         "user": {
@@ -125,8 +130,8 @@
                 "export": "Exporter"
             },
             "message": {
-              "duplicate_song": "Pistes déjà présentes dans la playlist",
-              "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
+                "duplicate_song": "Pistes déjà présentes dans la playlist",
+                "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
             }
         }
     },
@@ -340,7 +345,7 @@
             "next_song": "Morceau suivant",
             "vol_up": "Augmenter le volume",
             "vol_down": "Baisser le volume",
-            "toggle_star": "Ajouter/Enlever le morceau des favoris"
+            "toggle_love": "Ajouter/Enlever le morceau des favoris"
         }
     }
 }
