@@ -1,351 +1,352 @@
 {
-    "languageName": "Nederlands",
-    "resources": {
-        "song": {
-            "name": "Nummer |||| Nummers",
-            "fields": {
-                "albumArtist": "Album Artiest",
-                "duration": "Lengte",
-                "trackNumber": "Nummer #",
-                "playCount": "Aantal keren afgespeeld",
-                "title": "Titel",
-                "artist": "Artiest",
-                "album": "Album",
-                "path": "Bestandspad",
-                "genre": "Genre",
-                "compilation": "Compilatie",
-                "year": "Jaar",
-                "size": "Bestandsgrootte",
-                "updatedAt": "Laatst bijgewerkt op",
-                "bitRate": "Bitrate",
-                "discSubtitle": "Schijfondertitel",
-                "starred": "Favoriet",
-                "comment": "Commentaar",
-                "rating": "Beoordeling",
-                "quality": "Kwaliteit"
-            },
-            "actions": {
-                "addToQueue": "Voeg toe aan wachtrij",
-                "playNow": "Nu afspelen",
-                "addToPlaylist": "Voeg toe aan afspeellijst",
-                "shuffleAll": "Shuffle alles",
-                "download": "Downloaden",
-                "playNext": "Volgende"
-            }
-        },
-        "album": {
-            "name": "Album |||| Albums",
-            "fields": {
-                "albumArtist": "Album Artiest",
-                "artist": "Artiest",
-                "duration": "Afspeelduur",
-                "songCount": "Nummers",
-                "playCount": "Aantal keren afgespeeld",
-                "name": "Naam",
-                "genre": "Genre",
-                "compilation": "Compilatie",
-                "year": "Jaar",
-                "updatedAt": "Bijgewerkt op",
-                "comment": "Commentaar",
-                "rating": "Beoordeling"
-            },
-            "actions": {
-                "playAll": "Afspelen",
-                "playNext": "Hierna afspelen",
-                "addToQueue": "Voeg toe aan wachtrij",
-                "shuffle": "Shuffle",
-                "addToPlaylist": "Toevoegen aan afspeellijst",
-                "download": "Downloaden"
-            },
-            "lists": {
-                "all": "Alle",
-                "random": "Willekeurig",
-                "recentlyAdded": "Onlangs toegevoegd",
-                "recentlyPlayed": "Onlangs afgespeeld",
-                "mostPlayed": "Meest afgespeeld",
-                "starred": "Favoriet",
-                "topRated": "Best beoordeeld"
-            }
-        },
-        "artist": {
-            "name": "Artiest |||| Artiesten",
-            "fields": {
-                "name": "Naam",
-                "albumCount": "Aantal albums",
-                "songCount": "Aantal nummers",
-                "playCount": "Afgespeeld",
-                "rating": "Beoordeling"
-            }
-        },
-        "user": {
-            "name": "Gebruiker |||| Gebruikers",
-            "fields": {
-                "userName": "Gebruikersnaam",
-                "isAdmin": "Is beheerder",
-                "lastLoginAt": "Laatst ingelogd op",
-                "updatedAt": "Laatst gewijzigd op",
-                "name": "Naam",
-                "password": "Wachtwoord",
-                "createdAt": "Aangemaakt op"
-            }
-        },
-        "player": {
-            "name": "Speler |||| Spelers",
-            "fields": {
-                "name": "Naam",
-                "transcodingId": "Transcoden",
-                "maxBitRate": "Max. bitrate",
-                "client": "Client",
-                "userName": "Gebruikersnaam",
-                "lastSeen": "Laatst gezien op",
-                "reportRealPath": "Toon het echte bestandspad"
-            }
-        },
-        "transcoding": {
-            "name": "Transcoden |||| Transcoderingen",
-            "fields": {
-                "name": "Naam",
-                "targetFormat": "Doelformaat",
-                "defaultBitRate": "Standaard bitrate",
-                "command": "Commando"
-            }
-        },
-        "playlist": {
-            "name": "Afspeellijst |||| Afspeellijsten",
-            "fields": {
-                "name": "Titel",
-                "duration": "Lengte",
-                "owner": "Eigenaar",
-                "public": "Publiek",
-                "updatedAt": "Laatst gewijzigd op",
-                "createdAt": "Aangemaakt op",
-                "songCount": "Nummers",
-                "comment": "Commentaar",
-                "sync": "Auto-importeren",
-                "path": "Importeer vanuit"
-            },
-            "actions": {
-                "selectPlaylist": "Selecteer een afspeellijst:",
-                "addNewPlaylist": "Creëer \"%{name}\"",
-                "export": "Exporteer"
-            },
-            "message": {
-                "duplicate_song": "Dubbele nummers toevoegen",
-                "song_exist": "Er komen nummers dubbel in de afspeellijst. Wil je de dubbele nummers toevoegen of overslaan?"
-            }
-        }
+  "languageName": "Nederlands",
+  "resources": {
+    "song": {
+      "name": "Nummer |||| Nummers",
+      "fields": {
+        "albumArtist": "Album Artiest",
+        "duration": "Lengte",
+        "trackNumber": "Nummer #",
+        "playCount": "Aantal keren afgespeeld",
+        "title": "Titel",
+        "artist": "Artiest",
+        "album": "Album",
+        "path": "Bestandspad",
+        "genre": "Genre",
+        "compilation": "Compilatie",
+        "year": "Jaar",
+        "size": "Bestandsgrootte",
+        "updatedAt": "Laatst bijgewerkt op",
+        "bitRate": "Bitrate",
+        "discSubtitle": "Schijfondertitel",
+        "starred": "Favoriet",
+        "comment": "Commentaar",
+        "rating": "Beoordeling",
+        "quality": "Kwaliteit",
+        "bpm": "BPM"
+      },
+      "actions": {
+        "addToQueue": "Voeg toe aan wachtrij",
+        "playNow": "Nu afspelen",
+        "addToPlaylist": "Voeg toe aan afspeellijst",
+        "shuffleAll": "Shuffle alles",
+        "download": "Downloaden",
+        "playNext": "Volgende"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Bedankt voor het installeren van Navidrome!",
-            "welcome2": "Maak om te beginnen een beheerdersaccount",
-            "confirmPassword": "Bevestig wachtwoord",
-            "buttonCreateAdmin": "Beheerder aanmaken",
-            "auth_check_error": "Log in om door te gaan",
-            "user_menu": "Profiel",
-            "username": "Gebruikersnaam",
-            "password": "Wachtwoord",
-            "sign_in": "Inloggen",
-            "sign_in_error": "Authenticatie mislukt, probeer opnieuw a.u.b.",
-            "logout": "Uitloggen"
-        },
-        "validation": {
-            "invalidChars": "Gebruik alleen letters en cijfers",
-            "passwordDoesNotMatch": "Wachtwoord komt niet overeen",
-            "required": "Verplicht",
-            "minLength": "Moet minimaal %{min} karakters bevatten",
-            "maxLength": "Mag maximaal %{max} karakters bevatten",
-            "minValue": "Moet minstens %{min} zijn",
-            "maxValue": "Mag maximaal %{max} zijn",
-            "number": "Moet een getal zijn",
-            "email": "Moet een geldig e-mailadres zijn",
-            "oneOf": "Moet een zijn van: %{options}",
-            "regex": "Moet overeenkomen met een specifiek format (regexp): %{pattern}"
-        },
-        "action": {
-            "add_filter": "Voeg filter toe",
-            "add": "Voeg toe",
-            "back": "Ga terug",
-            "bulk_actions": "1 geselecteerd |||| %{smart_count} geselecteerd",
-            "cancel": "Annuleer",
-            "clear_input_value": "Veld wissen",
-            "clone": "Kloon",
-            "confirm": "Bevestig",
-            "create": "Toevoegen",
-            "delete": "Verwijderen",
-            "edit": "Bewerk",
-            "export": "Exporteer",
-            "list": "Lijst",
-            "refresh": "Ververs",
-            "remove_filter": "Verwijder dit filter",
-            "remove": "Verwijder",
-            "save": "Opslaan",
-            "search": "Zoek",
-            "show": "Toon",
-            "sort": "Sorteer",
-            "undo": "Ongedaan maken",
-            "expand": "Uitklappen",
-            "close": "Sluiten",
-            "open_menu": "Open menu",
-            "close_menu": "Sluit menu",
-            "unselect": "Deselecteer",
-            "skip": "Overslaan"
-        },
-        "boolean": {
-            "true": "Ja",
-            "false": "Nee"
-        },
-        "page": {
-            "create": "%{name} toevoegen",
-            "dashboard": "Dashboard",
-            "edit": "%{name} #%{id}",
-            "error": "Er is iets misgegaan",
-            "list": "%{name}",
-            "loading": "Aan het laden",
-            "not_found": "Niet gevonden",
-            "show": "%{name} #%{id}",
-            "empty": "Nog geen %{name}.",
-            "invite": "Wil je er één toevoegen?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "Sleep bestanden hier om te uploaden, of klik om te selecteren.",
-                "upload_single": "Sleep een bestand hier om te uploaden, of klik om te selecteren."
-            },
-            "image": {
-                "upload_several": "Sleep afbeeldingen hier om te uploaden, of klik om te selecteren.",
-                "upload_single": "Sleep een afbeelding hier om te uploaden, of klik om te selecteren."
-            },
-            "references": {
-                "all_missing": "De gerefereerde elementen konden niet gevonden worden.",
-                "many_missing": "Een of meer van de gerefereerde elementen is niet meer beschikbaar.",
-                "single_missing": "Een van de bijbehorende elementen is niet meer beschikbaar"
-            },
-            "password": {
-                "toggle_visible": "Verberg wachtwoord",
-                "toggle_hidden": "Toon wachtwoord"
-            }
-        },
-        "message": {
-            "about": "Over",
-            "are_you_sure": "Weet je het zeker?",
-            "bulk_delete_content": "Weet je zeker dat je dit %{name} item wilt verwijderen? |||| Weet je zeker dat je deze %{smart_count} items wilt verwijderen?",
-            "bulk_delete_title": "Verwijder %{name} |||| Verwijder %{smart_count} %{name}",
-            "delete_content": "Weet je zeker dat je dit item wilt verwijderen?",
-            "delete_title": "Verwijder %{name} #%{id}",
-            "details": "Details",
-            "error": "Er is een clientfout opgetreden en je aanvraag kon niet worden voltooid.",
-            "invalid_form": "Het formulier is ongeldig. Controleer a.u.b. de foutmeldingen",
-            "loading": "De pagina is aan het laden, een moment a.u.b.",
-            "no": "Nee",
-            "not_found": "Je hebt een verkeerde URL ingevoerd of een defecte link aangeklikt.",
-            "yes": "Ja",
-            "unsaved_changes": "Sommige van uw wijzigingen zijn niet opgeslagen. Weet je zeker dat je ze wilt negeren?"
-        },
-        "navigation": {
-            "no_results": "Geen resultaten gevonden",
-            "no_more_results": "Pagina %{page} ligt buiten het bereik. Probeer de vorige pagina.",
-            "page_out_of_boundaries": "Paginanummer %{page} buiten bereik",
-            "page_out_from_end": "Laatste pagina",
-            "page_out_from_begin": "Eerste pagina",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} van %{total}",
-            "page_rows_per_page": "Rijen per pagina:",
-            "next": "Volgende",
-            "prev": "Vorige",
-            "skip_nav": "Doorgaan"
-        },
-        "notification": {
-            "updated": "Element bijgewerkt |||| %{smart_count} elementen bijgewerkt",
-            "created": "Element toegevoegd",
-            "deleted": "Element verwijderd |||| %{smart_count} elementen verwijderd",
-            "bad_item": "Incorrect element",
-            "item_doesnt_exist": "Element bestaat niet",
-            "http_error": "Server communicatie fout",
-            "data_provider_error": "dataProvider fout. Open de console voor meer details.",
-            "i18n_error": "Kan de vertalingen voor de opgegeven taal niet laden",
-            "canceled": "Actie geannuleerd",
-            "logged_out": "Uw sessie is beëindigd, maak opnieuw verbinding."
-        }
+    "album": {
+      "name": "Album |||| Albums",
+      "fields": {
+        "albumArtist": "Album Artiest",
+        "artist": "Artiest",
+        "duration": "Afspeelduur",
+        "songCount": "Nummers",
+        "playCount": "Aantal keren afgespeeld",
+        "name": "Naam",
+        "genre": "Genre",
+        "compilation": "Compilatie",
+        "year": "Jaar",
+        "updatedAt": "Bijgewerkt op",
+        "comment": "Commentaar",
+        "rating": "Beoordeling"
+      },
+      "actions": {
+        "playAll": "Afspelen",
+        "playNext": "Hierna afspelen",
+        "addToQueue": "Voeg toe aan wachtrij",
+        "shuffle": "Shuffle",
+        "addToPlaylist": "Toevoegen aan afspeellijst",
+        "download": "Downloaden"
+      },
+      "lists": {
+        "all": "Alle",
+        "random": "Willekeurig",
+        "recentlyAdded": "Onlangs toegevoegd",
+        "recentlyPlayed": "Onlangs afgespeeld",
+        "mostPlayed": "Meest afgespeeld",
+        "starred": "Favoriet",
+        "topRated": "Best beoordeeld"
+      }
     },
-    "message": {
-        "note": "Notitie",
-        "transcodingDisabled": "Het wijzigen van de transcoderconfiguratie via de web interface is om veiligheidsredenen uitgeschakeld. Als je transcoderopties wilt wijzigen (bewerken of toevoegen), start de server opnieuw op met de %{config} configuratie-optie.",
-        "transcodingEnabled": "Navidrome werkt momenteel met %{config}, waardoor het mogelijk is om systeemopdrachten uit te voeren vanuit de transcoderinstellingen via de web interface. We raden aan dit om veiligheidsredenen uit te schakelen en alleen in te schakelen bij het configureren van transcoderopties.",
-        "songsAddedToPlaylist": "1 nummer toegevoegd aan afspeellijst |||| %{smart_count} nummers toegevoegd aan afspeellijst",
-        "noPlaylistsAvailable": "Geen beschikbaar",
-        "delete_user_title": "Verwijder gebruiker '%{name}'",
-        "delete_user_content": "Weet je zeker dat je deze gebruiker en al zijn gegevens wilt verwijderen (inclusief afspeellijsten en voorkeuren)?",
-        "notifications_blocked": "Je hebt bureaubladmeldingen geblokkeerd voor deze site in je browserinstellingen",
-        "notifications_not_available": "Deze browser ondersteunt bureaubladmeldingen niet"
+    "artist": {
+      "name": "Artiest |||| Artiesten",
+      "fields": {
+        "name": "Naam",
+        "albumCount": "Aantal albums",
+        "songCount": "Aantal nummers",
+        "playCount": "Afgespeeld",
+        "rating": "Beoordeling"
+      }
     },
-    "menu": {
-        "library": "Bibliotheek",
-        "settings": "Instellingen",
-        "version": "Versie",
-        "theme": "Thema",
-        "personal": {
-            "name": "Persoonlijk",
-            "options": {
-                "theme": "Thema",
-                "language": "Taal",
-                "defaultView": "Standaard weergave",
-                "desktop_notifications": "Bureaubladmeldingen"
-            }
-        },
-        "albumList": "Albums",
-        "about": "Over"
+    "user": {
+      "name": "Gebruiker |||| Gebruikers",
+      "fields": {
+        "userName": "Gebruikersnaam",
+        "isAdmin": "Is beheerder",
+        "lastLoginAt": "Laatst ingelogd op",
+        "updatedAt": "Laatst gewijzigd op",
+        "name": "Naam",
+        "password": "Wachtwoord",
+        "createdAt": "Aangemaakt op"
+      }
     },
     "player": {
-        "playListsText": "Afspeellijst afspelen",
-        "openText": "Openen",
-        "closeText": "Sluiten",
-        "notContentText": "Geen muziek",
-        "clickToPlayText": "Klik om af te spelen",
-        "clickToPauseText": "Klik om te pauzeren",
-        "nextTrackText": "Volgende",
-        "previousTrackText": "Vorige",
-        "reloadText": "Herladen",
-        "volumeText": "Volume",
-        "toggleLyricText": "Songtekst aan/uit",
-        "toggleMiniModeText": "Minimaliseren",
-        "destroyText": "Vernietigen",
-        "downloadText": "Downloaden",
-        "removeAudioListsText": "Audiolijsten verwijderen",
-        "clickToDeleteText": "Klik om %{name} te verwijderen",
-        "emptyLyricText": "Geen songtekst",
-        "playModeText": {
-            "order": "In volgorde",
-            "orderLoop": "Herhalen",
-            "singleLoop": "Herhaal eenmalig",
-            "shufflePlay": "Shuffle"
-        }
+      "name": "Speler |||| Spelers",
+      "fields": {
+        "name": "Naam",
+        "transcodingId": "Transcoden",
+        "maxBitRate": "Max. bitrate",
+        "client": "Client",
+        "userName": "Gebruikersnaam",
+        "lastSeen": "Laatst gezien op",
+        "reportRealPath": "Toon het echte bestandspad"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "Thuispagina",
-            "source": "Broncode",
-            "featureRequests": "Functie verzoeken"
-        }
+    "transcoding": {
+      "name": "Transcoden |||| Transcoderingen",
+      "fields": {
+        "name": "Naam",
+        "targetFormat": "Doelformaat",
+        "defaultBitRate": "Standaard bitrate",
+        "command": "Commando"
+      }
     },
-    "activity": {
-        "title": "Activiteit",
-        "totalScanned": "Totaal gescande folders",
-        "quickScan": "Snelle scan",
-        "fullScan": "Volledige scan",
-        "serverUptime": "Server uptime",
-        "serverDown": "Offline"
-    },
-    "help": {
-        "title": "Navidrome sneltoetsen",
-        "hotkeys": {
-            "show_help": "Help weergeven",
-            "toggle_menu": "Menu zijbalk Aan/Uit\n",
-            "toggle_play": "Afspelen / Pause",
-            "prev_song": "Vorig nummer",
-            "next_song": "Volgend nummer",
-            "vol_up": "Volume harder",
-            "vol_down": "Volume zachter",
-            "toggle_love": "Voeg toe aan favorieten"
-        }
+    "playlist": {
+      "name": "Afspeellijst |||| Afspeellijsten",
+      "fields": {
+        "name": "Titel",
+        "duration": "Lengte",
+        "owner": "Eigenaar",
+        "public": "Publiek",
+        "updatedAt": "Laatst gewijzigd op",
+        "createdAt": "Aangemaakt op",
+        "songCount": "Nummers",
+        "comment": "Commentaar",
+        "sync": "Auto-importeren",
+        "path": "Importeer vanuit"
+      },
+      "actions": {
+        "selectPlaylist": "Selecteer een afspeellijst:",
+        "addNewPlaylist": "Creëer \"%{name}\"",
+        "export": "Exporteer"
+      },
+      "message": {
+        "duplicate_song": "Dubbele nummers toevoegen",
+        "song_exist": "Er komen nummers dubbel in de afspeellijst. Wil je de dubbele nummers toevoegen of overslaan?"
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Bedankt voor het installeren van Navidrome!",
+      "welcome2": "Maak om te beginnen een beheerdersaccount",
+      "confirmPassword": "Bevestig wachtwoord",
+      "buttonCreateAdmin": "Beheerder aanmaken",
+      "auth_check_error": "Log in om door te gaan",
+      "user_menu": "Profiel",
+      "username": "Gebruikersnaam",
+      "password": "Wachtwoord",
+      "sign_in": "Inloggen",
+      "sign_in_error": "Authenticatie mislukt, probeer opnieuw a.u.b.",
+      "logout": "Uitloggen"
+    },
+    "validation": {
+      "invalidChars": "Gebruik alleen letters en cijfers",
+      "passwordDoesNotMatch": "Wachtwoord komt niet overeen",
+      "required": "Verplicht",
+      "minLength": "Moet minimaal %{min} karakters bevatten",
+      "maxLength": "Mag maximaal %{max} karakters bevatten",
+      "minValue": "Moet minstens %{min} zijn",
+      "maxValue": "Mag maximaal %{max} zijn",
+      "number": "Moet een getal zijn",
+      "email": "Moet een geldig e-mailadres zijn",
+      "oneOf": "Moet een zijn van: %{options}",
+      "regex": "Moet overeenkomen met een specifiek format (regexp): %{pattern}"
+    },
+    "action": {
+      "add_filter": "Voeg filter toe",
+      "add": "Voeg toe",
+      "back": "Ga terug",
+      "bulk_actions": "1 geselecteerd |||| %{smart_count} geselecteerd",
+      "cancel": "Annuleer",
+      "clear_input_value": "Veld wissen",
+      "clone": "Kloon",
+      "confirm": "Bevestig",
+      "create": "Toevoegen",
+      "delete": "Verwijderen",
+      "edit": "Bewerk",
+      "export": "Exporteer",
+      "list": "Lijst",
+      "refresh": "Ververs",
+      "remove_filter": "Verwijder dit filter",
+      "remove": "Verwijder",
+      "save": "Opslaan",
+      "search": "Zoek",
+      "show": "Toon",
+      "sort": "Sorteer",
+      "undo": "Ongedaan maken",
+      "expand": "Uitklappen",
+      "close": "Sluiten",
+      "open_menu": "Open menu",
+      "close_menu": "Sluit menu",
+      "unselect": "Deselecteer",
+      "skip": "Overslaan"
+    },
+    "boolean": {
+      "true": "Ja",
+      "false": "Nee"
+    },
+    "page": {
+      "create": "%{name} toevoegen",
+      "dashboard": "Dashboard",
+      "edit": "%{name} #%{id}",
+      "error": "Er is iets misgegaan",
+      "list": "%{name}",
+      "loading": "Aan het laden",
+      "not_found": "Niet gevonden",
+      "show": "%{name} #%{id}",
+      "empty": "Nog geen %{name}.",
+      "invite": "Wil je er één toevoegen?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Sleep bestanden hier om te uploaden, of klik om te selecteren.",
+        "upload_single": "Sleep een bestand hier om te uploaden, of klik om te selecteren."
+      },
+      "image": {
+        "upload_several": "Sleep afbeeldingen hier om te uploaden, of klik om te selecteren.",
+        "upload_single": "Sleep een afbeelding hier om te uploaden, of klik om te selecteren."
+      },
+      "references": {
+        "all_missing": "De gerefereerde elementen konden niet gevonden worden.",
+        "many_missing": "Een of meer van de gerefereerde elementen is niet meer beschikbaar.",
+        "single_missing": "Een van de bijbehorende elementen is niet meer beschikbaar"
+      },
+      "password": {
+        "toggle_visible": "Verberg wachtwoord",
+        "toggle_hidden": "Toon wachtwoord"
+      }
+    },
+    "message": {
+      "about": "Over",
+      "are_you_sure": "Weet je het zeker?",
+      "bulk_delete_content": "Weet je zeker dat je dit %{name} item wilt verwijderen? |||| Weet je zeker dat je deze %{smart_count} items wilt verwijderen?",
+      "bulk_delete_title": "Verwijder %{name} |||| Verwijder %{smart_count} %{name}",
+      "delete_content": "Weet je zeker dat je dit item wilt verwijderen?",
+      "delete_title": "Verwijder %{name} #%{id}",
+      "details": "Details",
+      "error": "Er is een clientfout opgetreden en je aanvraag kon niet worden voltooid.",
+      "invalid_form": "Het formulier is ongeldig. Controleer a.u.b. de foutmeldingen",
+      "loading": "De pagina is aan het laden, een moment a.u.b.",
+      "no": "Nee",
+      "not_found": "Je hebt een verkeerde URL ingevoerd of een defecte link aangeklikt.",
+      "yes": "Ja",
+      "unsaved_changes": "Sommige van uw wijzigingen zijn niet opgeslagen. Weet je zeker dat je ze wilt negeren?"
+    },
+    "navigation": {
+      "no_results": "Geen resultaten gevonden",
+      "no_more_results": "Pagina %{page} ligt buiten het bereik. Probeer de vorige pagina.",
+      "page_out_of_boundaries": "Paginanummer %{page} buiten bereik",
+      "page_out_from_end": "Laatste pagina",
+      "page_out_from_begin": "Eerste pagina",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} van %{total}",
+      "page_rows_per_page": "Rijen per pagina:",
+      "next": "Volgende",
+      "prev": "Vorige",
+      "skip_nav": "Doorgaan"
+    },
+    "notification": {
+      "updated": "Element bijgewerkt |||| %{smart_count} elementen bijgewerkt",
+      "created": "Element toegevoegd",
+      "deleted": "Element verwijderd |||| %{smart_count} elementen verwijderd",
+      "bad_item": "Incorrect element",
+      "item_doesnt_exist": "Element bestaat niet",
+      "http_error": "Server communicatie fout",
+      "data_provider_error": "dataProvider fout. Open de console voor meer details.",
+      "i18n_error": "Kan de vertalingen voor de opgegeven taal niet laden",
+      "canceled": "Actie geannuleerd",
+      "logged_out": "Uw sessie is beëindigd, maak opnieuw verbinding."
+    }
+  },
+  "message": {
+    "note": "Notitie",
+    "transcodingDisabled": "Het wijzigen van de transcoderconfiguratie via de web interface is om veiligheidsredenen uitgeschakeld. Als je transcoderopties wilt wijzigen (bewerken of toevoegen), start de server opnieuw op met de %{config} configuratie-optie.",
+    "transcodingEnabled": "Navidrome werkt momenteel met %{config}, waardoor het mogelijk is om systeemopdrachten uit te voeren vanuit de transcoderinstellingen via de web interface. We raden aan dit om veiligheidsredenen uit te schakelen en alleen in te schakelen bij het configureren van transcoderopties.",
+    "songsAddedToPlaylist": "1 nummer toegevoegd aan afspeellijst |||| %{smart_count} nummers toegevoegd aan afspeellijst",
+    "noPlaylistsAvailable": "Geen beschikbaar",
+    "delete_user_title": "Verwijder gebruiker '%{name}'",
+    "delete_user_content": "Weet je zeker dat je deze gebruiker en al zijn gegevens wilt verwijderen (inclusief afspeellijsten en voorkeuren)?",
+    "notifications_blocked": "Je hebt bureaubladmeldingen geblokkeerd voor deze site in je browserinstellingen",
+    "notifications_not_available": "Deze browser ondersteunt bureaubladmeldingen niet"
+  },
+  "menu": {
+    "library": "Bibliotheek",
+    "settings": "Instellingen",
+    "version": "Versie",
+    "theme": "Thema",
+    "personal": {
+      "name": "Persoonlijk",
+      "options": {
+        "theme": "Thema",
+        "language": "Taal",
+        "defaultView": "Standaard weergave",
+        "desktop_notifications": "Bureaubladmeldingen"
+      }
+    },
+    "albumList": "Albums",
+    "about": "Over"
+  },
+  "player": {
+    "playListsText": "Afspeellijst afspelen",
+    "openText": "Openen",
+    "closeText": "Sluiten",
+    "notContentText": "Geen muziek",
+    "clickToPlayText": "Klik om af te spelen",
+    "clickToPauseText": "Klik om te pauzeren",
+    "nextTrackText": "Volgende",
+    "previousTrackText": "Vorige",
+    "reloadText": "Herladen",
+    "volumeText": "Volume",
+    "toggleLyricText": "Songtekst aan/uit",
+    "toggleMiniModeText": "Minimaliseren",
+    "destroyText": "Vernietigen",
+    "downloadText": "Downloaden",
+    "removeAudioListsText": "Audiolijsten verwijderen",
+    "clickToDeleteText": "Klik om %{name} te verwijderen",
+    "emptyLyricText": "Geen songtekst",
+    "playModeText": {
+      "order": "In volgorde",
+      "orderLoop": "Herhalen",
+      "singleLoop": "Herhaal eenmalig",
+      "shufflePlay": "Shuffle"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Thuispagina",
+      "source": "Broncode",
+      "featureRequests": "Functie verzoeken"
+    }
+  },
+  "activity": {
+    "title": "Activiteit",
+    "totalScanned": "Totaal gescande folders",
+    "quickScan": "Snelle scan",
+    "fullScan": "Volledige scan",
+    "serverUptime": "Server uptime",
+    "serverDown": "Offline"
+  },
+  "help": {
+    "title": "Navidrome sneltoetsen",
+    "hotkeys": {
+      "show_help": "Help weergeven",
+      "toggle_menu": "Menu zijbalk Aan/Uit\n",
+      "toggle_play": "Afspelen / Pause",
+      "prev_song": "Vorig nummer",
+      "next_song": "Volgend nummer",
+      "vol_up": "Volume harder",
+      "vol_down": "Volume zachter",
+      "toggle_love": "Voeg toe aan favorieten"
+    }
+  }
 }

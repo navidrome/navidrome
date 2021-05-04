@@ -22,7 +22,8 @@
         "starred": "Favourite",
         "rating": "Rating",
         "comment": "Comment",
-        "quality": "Quality"
+        "quality": "Quality",
+        "bpm": "BPM"
       },
       "actions": {
         "addToQueue": "Play Later",

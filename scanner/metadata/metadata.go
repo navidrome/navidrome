@@ -66,6 +66,7 @@ type Metadata interface {
 	FilePath() string
 	Suffix() string
 	Size() int64
+	Bpm() int
 }
 
 type baseMetadata struct {
@@ -127,6 +128,7 @@ func (m *baseMetadata) Suffix() string {
 func (m *baseMetadata) Duration() float32 { panic("not implemented") }
 func (m *baseMetadata) BitRate() int      { panic("not implemented") }
 func (m *baseMetadata) HasPicture() bool  { panic("not implemented") }
+func (m *baseMetadata) Bpm() int          { panic("not implemented") }
 
 func (m *baseMetadata) parseInt(tagName string) int {
 	if v, ok := m.tags[tagName]; ok {

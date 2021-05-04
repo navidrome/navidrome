@@ -3,6 +3,7 @@ import {
   BulkActionsToolbar,
   ListToolbar,
   TextField,
+  FunctionField,
   useRefresh,
   useDataProvider,
   useNotify,
@@ -166,6 +167,9 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
               {isDesktop && <TextField source="artist" />}
               <DurationField source="duration" className={classes.draggable} />
               {isDesktop && <QualityInfo source="quality" sortable={false} />}
+              {isDesktop && (
+                <FunctionField source="bpm" render={(r) => r.bpm || ''} />
+              )}
               <SongContextMenu
                 onAddToPlaylist={onAddToPlaylist}
                 showLove={false}

@@ -1,327 +1,328 @@
 {
-    "languageName": "ไทย",
-    "resources": {
-        "song": {
-            "name": "เพลง",
-            "fields": {
-                "albumArtist": "ศิลปินอัลบั้ม",
-                "duration": "ความยาว",
-                "trackNumber": "#",
-                "playCount": "เล่น",
-                "title": "ชื่อเพลง",
-                "artist": "ศิลปิน",
-                "album": "อัลบั้ม",
-                "path": "ที่อยู่ไฟล์",
-                "genre": "ประเภท",
-                "compilation": "รวมเพลง",
-                "year": "ปี",
-                "size": "ขนาด",
-                "updatedAt": "อัปเดตล่าสุด",
-                "bitRate": "บิตเรท",
-                "discSubtitle": "คำบรรยาย",
-                "starred": "รายการโปรด",
-                "comment": "ความคิดเห็น"
-            },
-            "actions": {
-                "addToQueue": "เล่นหลังสุด",
-                "playNow": "เล่นทันที",
-                "addToPlaylist": "เพิ่มในเพลย์ลิสต์",
-                "shuffleAll": "สุ่มทั้งหมด",
-                "download": "ดาวน์โหลด",
-                "playNext": "เล่นเพลงถัดไป"
-            }
-        },
-        "album": {
-            "name": "อัลบั้ม",
-            "fields": {
-                "albumArtist": "ศิลปินอัลบั้ม",
-                "artist": "ศิลปิน",
-                "duration": "ความยาว",
-                "songCount": "เพลง",
-                "playCount": "เล่น",
-                "name": "ชื่อ",
-                "genre": "ประเภท",
-                "compilation": "รวมเพลง",
-                "year": "ปี",
-                "updatedAt": "อัพเดตเมื่อ",
-                "comment": "ความคิดเห็น"
-            },
-            "actions": {
-                "playAll": "เล่นทั้งหมด",
-                "playNext": "เล่นถัดไป",
-                "addToQueue": "เล่นหลังสุด",
-                "shuffle": "เล่นแบบสุ่ม",
-                "addToPlaylist": "เพิ่งลงในเพลย์ลิสต์",
-                "download": "ดาวน์โหลด"
-            },
-            "lists": {
-                "all": "ทั้งหมด",
-                "random": "สุ่ม",
-                "recentlyAdded": "เพิ่มล่าสุด",
-                "recentlyPlayed": "เล่นล่าสุด",
-                "mostPlayed": "เล่นมากที่สุด",
-                "starred": "รายการโปรด"
-            }
-        },
-        "artist": {
-            "name": "ศิลปิน",
-            "fields": {
-                "name": "ชื่อ",
-                "albumCount": "อัลบั้ม",
-                "songCount": "จำนวนเพลง",
-                "playCount": "เล่น"
-            }
-        },
-        "user": {
-            "name": "ผู้ใช้",
-            "fields": {
-                "userName": "ชื่อผู้ใช้งาน",
-                "isAdmin": "เป็น Admin",
-                "lastLoginAt": "ล็อกอินล่าสุด",
-                "updatedAt": "อัปเดตล่าสุด",
-                "name": "ชื่อ",
-                "password": "รหัสผ่าน",
-                "createdAt": "สร้างเมื่อ"
-            }
-        },
-        "player": {
-            "name": "เพลย์เยอร์",
-            "fields": {
-                "name": "ชื่อ",
-                "transcodingId": "Transcoding",
-                "maxBitRate": "บิตเรทสูงสุด",
-                "client": "Client",
-                "userName": "ชื่อผู้ใช้งาน",
-                "lastSeen": "ใช้งานล่าสุดเมื่อ",
-                "reportRealPath": ""
-            }
-        },
-        "transcoding": {
-            "name": "Transcoding |||| Transcodings",
-            "fields": {
-                "name": "ชื่อ",
-                "targetFormat": "ฟอร์แมตปลายทาง",
-                "defaultBitRate": "บิตเรท",
-                "command": "คำสั่ง"
-            }
-        },
-        "playlist": {
-            "name": "เพลย์ลิสต์",
-            "fields": {
-                "name": "ชื่อ",
-                "duration": "เวลา",
-                "owner": "เจ้าของ",
-                "public": "สาธารณะ",
-                "updatedAt": "อัปเดตเมื่อ",
-                "createdAt": "สร้างขึ้นเมื่อ",
-                "songCount": "เพลง",
-                "comment": "ความคิดเห็น",
-                "sync": "นำเข้าอัตโนมัติ",
-                "path": "นำเข้าจาก"
-            },
-            "actions": {
-                "selectPlaylist": "เลือกเพลย์ลิสต์",
-                "addNewPlaylist": "สร้าง \"%{name}\"",
-                "export": "ส่งออก"
-            }
-        }
+  "languageName": "ไทย",
+  "resources": {
+    "song": {
+      "name": "เพลง",
+      "fields": {
+        "albumArtist": "ศิลปินอัลบั้ม",
+        "duration": "ความยาว",
+        "trackNumber": "#",
+        "playCount": "เล่น",
+        "title": "ชื่อเพลง",
+        "artist": "ศิลปิน",
+        "album": "อัลบั้ม",
+        "path": "ที่อยู่ไฟล์",
+        "genre": "ประเภท",
+        "compilation": "รวมเพลง",
+        "year": "ปี",
+        "size": "ขนาด",
+        "updatedAt": "อัปเดตล่าสุด",
+        "bitRate": "บิตเรท",
+        "discSubtitle": "คำบรรยาย",
+        "starred": "รายการโปรด",
+        "comment": "ความคิดเห็น",
+        "bpm": "BPM"
+      },
+      "actions": {
+        "addToQueue": "เล่นหลังสุด",
+        "playNow": "เล่นทันที",
+        "addToPlaylist": "เพิ่มในเพลย์ลิสต์",
+        "shuffleAll": "สุ่มทั้งหมด",
+        "download": "ดาวน์โหลด",
+        "playNext": "เล่นเพลงถัดไป"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "ขอบคุณที่ติดตั้ง Navidrome!",
-            "welcome2": "สร้างบัญชี Admin เพื่อเริ่มใช้งาน",
-            "confirmPassword": "ยืนยันรหัสผ่าน",
-            "buttonCreateAdmin": "สร้างบัญชี Admin",
-            "auth_check_error": "กรุณาลงชื่อเข้าใช้เพื่อดำเนินการต่อ",
-            "user_menu": "โปรไฟล์",
-            "username": "ชื่อผู้ใช้",
-            "password": "รหัสผ่าน",
-            "sign_in": "เข้าสู่ระบบ",
-            "sign_in_error": "การยืนยันตัวตนล้มเหลว โปรดลองอีกครั้ง",
-            "logout": "ลงชื่อออก"
-        },
-        "validation": {
-            "invalidChars": "กรุณาใช้ตัวอักษรภาษาอังกฤษและตัวเลขเท่านั้น",
-            "passwordDoesNotMatch": "รหัสผ่านไม่ตรงกัน",
-            "required": "ต้องการ",
-            "minLength": "ต้องมี %{min} ตัวอักษรเป็นอย่างน้อย",
-            "maxLength": "ต้องมีน้อยกว่าหรือเท่ากับ %{max} ตัวอักษร",
-            "minValue": "ต้องมีอย่างน้อย %{min}",
-            "maxValue": "ต้องมี %{max} หรือน้อยกว่า",
-            "number": "เป็นตัวเลขเท่านั้น",
-            "email": "เป็นอีเมลที่ถูกต้องเท่านั้น",
-            "oneOf": "ต้องเป็นหนึ่งใน %{options}",
-            "regex": "ต้องเป็นฟอร์แมตเฉพาะ (regexp): %{pattern}"
-        },
-        "action": {
-            "add_filter": "เพิ่มตัวกรอง",
-            "add": "เพิ่ม",
-            "back": "ย้อนกลับ",
-            "bulk_actions": "เลือก %{smart_count} ไฟล์",
-            "cancel": "ยกเลิก",
-            "clear_input_value": "ล้างค่า",
-            "clone": "Clone",
-            "confirm": "ยืนยัน",
-            "create": "สร้าง",
-            "delete": "ลบ",
-            "edit": "แก้ไข",
-            "export": "ส่งออก",
-            "list": "รายชื่อ",
-            "refresh": "รีเฟรช",
-            "remove_filter": "ลบตัวกรองนี้",
-            "remove": "ลบ",
-            "save": "บันทึก",
-            "search": "ค้นหา",
-            "show": "แสดง",
-            "sort": "เรียงลำดับ",
-            "undo": "ก่อนหน้า",
-            "expand": "ขยาย",
-            "close": "ปิด",
-            "open_menu": "เปิดเมนู",
-            "close_menu": "ปิดเมนู",
-            "unselect": "ยกเลิก"
-        },
-        "boolean": {
-            "true": "ใช่",
-            "false": "ไม่"
-        },
-        "page": {
-            "create": "สร้าง %{name}",
-            "dashboard": "แดชบอร์ด",
-            "edit": "%{name} #%{id}",
-            "error": "มีบางอย่างผิดพลาด",
-            "list": "%{name}",
-            "loading": "กำลังโหลด",
-            "not_found": "ไม่พบ",
-            "show": "%{name} #%{id}",
-            "empty": "ยังไม่มี %{name}",
-            "invite": "ต้องการที่จะเพิ่มหรือไม่?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "ลากแล้ววางหรือเลือกไฟล์เพื่ออัปโหลด",
-                "upload_single": "ลากแล้ววางหรือเลือกไฟล์เพื่ออัปโหลด"
-            },
-            "image": {
-                "upload_several": "ลากแล้ววางหรือเลือกรูปภาพเพื่ออัปโหลด",
-                "upload_single": "ลากแล้ววางหรือเลือกรูปภาพเพื่ออัปโหลด"
-            },
-            "references": {
-                "all_missing": "ไม่สามารถหาข้อมูลได้",
-                "many_missing": "ข้อมูลสูญหาย",
-                "single_missing": "ข้อมูลสูญหาย"
-            },
-            "password": {
-                "toggle_visible": "ซ่อนรหัสผ่าน",
-                "toggle_hidden": "แสดงรหัสผ่าน"
-            }
-        },
-        "message": {
-            "about": "เกี่ยวกับ",
-            "are_you_sure": "คุณแน่ใจหรือไม่?",
-            "bulk_delete_content": "คุณแน่ใจที่ต้องการลบ %{name}? |||| คุณแน่ใจที่ต้องการลบข้อมูล %{smart_count} ชิ้นนี้?\n",
-            "bulk_delete_title": "ลบ %{name} |||| ลบ %{smart_count} %{name}",
-            "delete_content": "คุณแน่ใจที่จะลบข้อมูลนี้?",
-            "delete_title": "ลบ %{name} #%{id}",
-            "details": "รายละเอียด",
-            "error": "เกิดข้อผิดพลาดที่ Client ไม่สามารถดำเนินคำขอของท่านได้",
-            "invalid_form": "แบบฟอร์มไม่ถูกต้อง กรุณาตรวจสอบข้อผิดพลาด",
-            "loading": "กำลังโหลดหน้านี้ โปรดรอสักครู่",
-            "no": "ไม่",
-            "not_found": "URL ผิดพลาดหรือลิงค์ไม่ทำงาน",
-            "yes": "ใช่",
-            "unsaved_changes": "การเปลี่ยนแปลงของบางส่วนจะไม่ถูกบันทึก คุณแน่ใจหรือไม่?"
-        },
-        "navigation": {
-            "no_results": "ไม่พบผลการค้นหา",
-            "no_more_results": "หน้าที่ %{page} เกินขีดจำกัดแล้ว กรุณาลองหน้าก่อนหน้า",
-            "page_out_of_boundaries": "หน้าที่ %{page} เกินจำนวนหน้าสูงสุด",
-            "page_out_from_end": "ไม่สามารถไปต่อจากหน้าสุดท้ายได้",
-            "page_out_from_begin": "ไม่สามารถไปก่อนหน้าที่ 1 ได้",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} จาก %{total}",
-            "page_rows_per_page": "จำนวนในหนึ่งหน้า:",
-            "next": "ถัดไป",
-            "prev": "ก่อนหน้า"
-        },
-        "notification": {
-            "updated": "อัพเดตองค์ประกอบเรียบร้อย |||| %{smart_count} องค์ประกอบถูกอัพเดตเรียบร้อย",
-            "created": "สร้างองค์ประกอบแล้ว",
-            "deleted": "ลบองค์ประกอบเสร็จสิ้น |||| องค์ลบ %{smart_count} องค์ประกอบเสร็จสิ้น",
-            "bad_item": "องค์ประกอบไม่ถูกต้อง",
-            "item_doesnt_exist": "ไม่มีองค์ประกอบนี้อยู่",
-            "http_error": "การเชื่อมต่อเซิฟเวอร์ผิดพลาด",
-            "data_provider_error": "dataProviderผิดพลาด โปรดตรวจสอบคอนโซลเพื่อดูรายละเอียด",
-            "i18n_error": "ไม่สามารถเรียกคำแปลของภาษาที่เลือกได้",
-            "canceled": "ยกเลิกการกระทำแล้ว",
-            "logged_out": "เซสชั่นของท่านสิ้นสุดแล้ว โปรดเชื่อมต่ออีกครั้ง"
-        }
+    "album": {
+      "name": "อัลบั้ม",
+      "fields": {
+        "albumArtist": "ศิลปินอัลบั้ม",
+        "artist": "ศิลปิน",
+        "duration": "ความยาว",
+        "songCount": "เพลง",
+        "playCount": "เล่น",
+        "name": "ชื่อ",
+        "genre": "ประเภท",
+        "compilation": "รวมเพลง",
+        "year": "ปี",
+        "updatedAt": "อัพเดตเมื่อ",
+        "comment": "ความคิดเห็น"
+      },
+      "actions": {
+        "playAll": "เล่นทั้งหมด",
+        "playNext": "เล่นถัดไป",
+        "addToQueue": "เล่นหลังสุด",
+        "shuffle": "เล่นแบบสุ่ม",
+        "addToPlaylist": "เพิ่งลงในเพลย์ลิสต์",
+        "download": "ดาวน์โหลด"
+      },
+      "lists": {
+        "all": "ทั้งหมด",
+        "random": "สุ่ม",
+        "recentlyAdded": "เพิ่มล่าสุด",
+        "recentlyPlayed": "เล่นล่าสุด",
+        "mostPlayed": "เล่นมากที่สุด",
+        "starred": "รายการโปรด"
+      }
     },
-    "message": {
-        "note": "หมายเหตุ",
-        "transcodingDisabled": "การตั้งค่า transcoding บนเว็บไซต์ถูกปิดเพื่อความปลอดภัย หากต้องการเปลี่ยนแปลงการตั้งค่า ให้ใช้ %{config} จากนั้นจึงรีสตาร์ทเซิฟเวอร์",
-        "transcodingEnabled": "Navidrome กำลังทำงานโดยใช้ %{config} ทำให้สามารถใช้งาน System Commands จากตั้งค่า transcoding บนหน้าเว็บได้ ทางเราแนะนำให้ท่านปิดการตั้งค่านี้เพื่อความปลอดภัยและเปิดเมื่อต้องการแก้ไขตั้งค่า Transcoding เท่านั้น",
-        "songsAddedToPlaylist": "เลือก %{smart_count} เพลงเข้าในเพลย์ลิสท์",
-        "noPlaylistsAvailable": "ไม่มีเพลย์ลิสต์",
-        "delete_user_title": "ลบผู้ใช้ '%{name}'",
-        "delete_user_content": "คุณแน่ใจที่จะลบผู้ใช้นี้และข้อมูลทั้งหมด(รวมถึงเพลย์ลิสท์และตั้งค่าต่างๆ)?",
-        "notifications_blocked": "",
-        "notifications_not_available": ""
+    "artist": {
+      "name": "ศิลปิน",
+      "fields": {
+        "name": "ชื่อ",
+        "albumCount": "อัลบั้ม",
+        "songCount": "จำนวนเพลง",
+        "playCount": "เล่น"
+      }
     },
-    "menu": {
-        "library": "ไลบรารี่",
-        "settings": "ตั้งค่า",
-        "version": "เวอร์ชั่น %{version}",
-        "theme": "ธีม",
-        "personal": {
-            "name": "ปรับแต่ง",
-            "options": {
-                "theme": "ธีม",
-                "language": "ภาษา",
-                "defaultView": "หน้าเริ่มต้น",
-                "desktop_notifications": ""
-            }
-        },
-        "albumList": "อัลบั้ม",
-        "about": "เกี่ยวกับ"
+    "user": {
+      "name": "ผู้ใช้",
+      "fields": {
+        "userName": "ชื่อผู้ใช้งาน",
+        "isAdmin": "เป็น Admin",
+        "lastLoginAt": "ล็อกอินล่าสุด",
+        "updatedAt": "อัปเดตล่าสุด",
+        "name": "ชื่อ",
+        "password": "รหัสผ่าน",
+        "createdAt": "สร้างเมื่อ"
+      }
     },
     "player": {
-        "playListsText": "เพลย์ลิสต์",
-        "openText": "เปิด",
-        "closeText": "ปิด",
-        "notContentText": "ไม่มีเพลง",
-        "clickToPlayText": "คลิกเพื่อเล่น",
-        "clickToPauseText": "คลิกเพื่อหยุด",
-        "nextTrackText": "เพลงถัดไป",
-        "previousTrackText": "เพลงก่อนหน้า",
-        "reloadText": "โหลดอีกครั้ง",
-        "volumeText": "เสียง",
-        "toggleLyricText": "เปิดปิดเนื้อเพลง",
-        "toggleMiniModeText": "ย่อ",
-        "destroyText": "ลบ",
-        "downloadText": "ดาวน์โหลด",
-        "removeAudioListsText": "ลบอัลบั้มเสียง",
-        "clickToDeleteText": "คลิกเพื่อลบ %{name}",
-        "emptyLyricText": "ไม่มีเนื้อเพลง",
-        "playModeText": {
-            "order": "ตามลำดับ",
-            "orderLoop": "เล่นซ้ำ",
-            "singleLoop": "เล่นซ้ำเพลงนี้",
-            "shufflePlay": "เล่นแบบสุ่ม"
-        }
+      "name": "เพลย์เยอร์",
+      "fields": {
+        "name": "ชื่อ",
+        "transcodingId": "Transcoding",
+        "maxBitRate": "บิตเรทสูงสุด",
+        "client": "Client",
+        "userName": "ชื่อผู้ใช้งาน",
+        "lastSeen": "ใช้งานล่าสุดเมื่อ",
+        "reportRealPath": ""
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "หน้าหลัก",
-            "source": "Source code",
-            "featureRequests": "ต้องการฟีเจอร์"
-        }
+    "transcoding": {
+      "name": "Transcoding |||| Transcodings",
+      "fields": {
+        "name": "ชื่อ",
+        "targetFormat": "ฟอร์แมตปลายทาง",
+        "defaultBitRate": "บิตเรท",
+        "command": "คำสั่ง"
+      }
     },
-    "activity": {
-        "title": "กิจกรรม",
-        "totalScanned": "โฟลเดอร์ทั้งหมด",
-        "quickScan": "Quick Scan",
-        "fullScan": "Full Scan",
-        "serverUptime": "เซิฟเวอร์ออนไลน์",
-        "serverDown": "ออฟไลน์"
+    "playlist": {
+      "name": "เพลย์ลิสต์",
+      "fields": {
+        "name": "ชื่อ",
+        "duration": "เวลา",
+        "owner": "เจ้าของ",
+        "public": "สาธารณะ",
+        "updatedAt": "อัปเดตเมื่อ",
+        "createdAt": "สร้างขึ้นเมื่อ",
+        "songCount": "เพลง",
+        "comment": "ความคิดเห็น",
+        "sync": "นำเข้าอัตโนมัติ",
+        "path": "นำเข้าจาก"
+      },
+      "actions": {
+        "selectPlaylist": "เลือกเพลย์ลิสต์",
+        "addNewPlaylist": "สร้าง \"%{name}\"",
+        "export": "ส่งออก"
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "ขอบคุณที่ติดตั้ง Navidrome!",
+      "welcome2": "สร้างบัญชี Admin เพื่อเริ่มใช้งาน",
+      "confirmPassword": "ยืนยันรหัสผ่าน",
+      "buttonCreateAdmin": "สร้างบัญชี Admin",
+      "auth_check_error": "กรุณาลงชื่อเข้าใช้เพื่อดำเนินการต่อ",
+      "user_menu": "โปรไฟล์",
+      "username": "ชื่อผู้ใช้",
+      "password": "รหัสผ่าน",
+      "sign_in": "เข้าสู่ระบบ",
+      "sign_in_error": "การยืนยันตัวตนล้มเหลว โปรดลองอีกครั้ง",
+      "logout": "ลงชื่อออก"
+    },
+    "validation": {
+      "invalidChars": "กรุณาใช้ตัวอักษรภาษาอังกฤษและตัวเลขเท่านั้น",
+      "passwordDoesNotMatch": "รหัสผ่านไม่ตรงกัน",
+      "required": "ต้องการ",
+      "minLength": "ต้องมี %{min} ตัวอักษรเป็นอย่างน้อย",
+      "maxLength": "ต้องมีน้อยกว่าหรือเท่ากับ %{max} ตัวอักษร",
+      "minValue": "ต้องมีอย่างน้อย %{min}",
+      "maxValue": "ต้องมี %{max} หรือน้อยกว่า",
+      "number": "เป็นตัวเลขเท่านั้น",
+      "email": "เป็นอีเมลที่ถูกต้องเท่านั้น",
+      "oneOf": "ต้องเป็นหนึ่งใน %{options}",
+      "regex": "ต้องเป็นฟอร์แมตเฉพาะ (regexp): %{pattern}"
+    },
+    "action": {
+      "add_filter": "เพิ่มตัวกรอง",
+      "add": "เพิ่ม",
+      "back": "ย้อนกลับ",
+      "bulk_actions": "เลือก %{smart_count} ไฟล์",
+      "cancel": "ยกเลิก",
+      "clear_input_value": "ล้างค่า",
+      "clone": "Clone",
+      "confirm": "ยืนยัน",
+      "create": "สร้าง",
+      "delete": "ลบ",
+      "edit": "แก้ไข",
+      "export": "ส่งออก",
+      "list": "รายชื่อ",
+      "refresh": "รีเฟรช",
+      "remove_filter": "ลบตัวกรองนี้",
+      "remove": "ลบ",
+      "save": "บันทึก",
+      "search": "ค้นหา",
+      "show": "แสดง",
+      "sort": "เรียงลำดับ",
+      "undo": "ก่อนหน้า",
+      "expand": "ขยาย",
+      "close": "ปิด",
+      "open_menu": "เปิดเมนู",
+      "close_menu": "ปิดเมนู",
+      "unselect": "ยกเลิก"
+    },
+    "boolean": {
+      "true": "ใช่",
+      "false": "ไม่"
+    },
+    "page": {
+      "create": "สร้าง %{name}",
+      "dashboard": "แดชบอร์ด",
+      "edit": "%{name} #%{id}",
+      "error": "มีบางอย่างผิดพลาด",
+      "list": "%{name}",
+      "loading": "กำลังโหลด",
+      "not_found": "ไม่พบ",
+      "show": "%{name} #%{id}",
+      "empty": "ยังไม่มี %{name}",
+      "invite": "ต้องการที่จะเพิ่มหรือไม่?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "ลากแล้ววางหรือเลือกไฟล์เพื่ออัปโหลด",
+        "upload_single": "ลากแล้ววางหรือเลือกไฟล์เพื่ออัปโหลด"
+      },
+      "image": {
+        "upload_several": "ลากแล้ววางหรือเลือกรูปภาพเพื่ออัปโหลด",
+        "upload_single": "ลากแล้ววางหรือเลือกรูปภาพเพื่ออัปโหลด"
+      },
+      "references": {
+        "all_missing": "ไม่สามารถหาข้อมูลได้",
+        "many_missing": "ข้อมูลสูญหาย",
+        "single_missing": "ข้อมูลสูญหาย"
+      },
+      "password": {
+        "toggle_visible": "ซ่อนรหัสผ่าน",
+        "toggle_hidden": "แสดงรหัสผ่าน"
+      }
+    },
+    "message": {
+      "about": "เกี่ยวกับ",
+      "are_you_sure": "คุณแน่ใจหรือไม่?",
+      "bulk_delete_content": "คุณแน่ใจที่ต้องการลบ %{name}? |||| คุณแน่ใจที่ต้องการลบข้อมูล %{smart_count} ชิ้นนี้?\n",
+      "bulk_delete_title": "ลบ %{name} |||| ลบ %{smart_count} %{name}",
+      "delete_content": "คุณแน่ใจที่จะลบข้อมูลนี้?",
+      "delete_title": "ลบ %{name} #%{id}",
+      "details": "รายละเอียด",
+      "error": "เกิดข้อผิดพลาดที่ Client ไม่สามารถดำเนินคำขอของท่านได้",
+      "invalid_form": "แบบฟอร์มไม่ถูกต้อง กรุณาตรวจสอบข้อผิดพลาด",
+      "loading": "กำลังโหลดหน้านี้ โปรดรอสักครู่",
+      "no": "ไม่",
+      "not_found": "URL ผิดพลาดหรือลิงค์ไม่ทำงาน",
+      "yes": "ใช่",
+      "unsaved_changes": "การเปลี่ยนแปลงของบางส่วนจะไม่ถูกบันทึก คุณแน่ใจหรือไม่?"
+    },
+    "navigation": {
+      "no_results": "ไม่พบผลการค้นหา",
+      "no_more_results": "หน้าที่ %{page} เกินขีดจำกัดแล้ว กรุณาลองหน้าก่อนหน้า",
+      "page_out_of_boundaries": "หน้าที่ %{page} เกินจำนวนหน้าสูงสุด",
+      "page_out_from_end": "ไม่สามารถไปต่อจากหน้าสุดท้ายได้",
+      "page_out_from_begin": "ไม่สามารถไปก่อนหน้าที่ 1 ได้",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} จาก %{total}",
+      "page_rows_per_page": "จำนวนในหนึ่งหน้า:",
+      "next": "ถัดไป",
+      "prev": "ก่อนหน้า"
+    },
+    "notification": {
+      "updated": "อัพเดตองค์ประกอบเรียบร้อย |||| %{smart_count} องค์ประกอบถูกอัพเดตเรียบร้อย",
+      "created": "สร้างองค์ประกอบแล้ว",
+      "deleted": "ลบองค์ประกอบเสร็จสิ้น |||| องค์ลบ %{smart_count} องค์ประกอบเสร็จสิ้น",
+      "bad_item": "องค์ประกอบไม่ถูกต้อง",
+      "item_doesnt_exist": "ไม่มีองค์ประกอบนี้อยู่",
+      "http_error": "การเชื่อมต่อเซิฟเวอร์ผิดพลาด",
+      "data_provider_error": "dataProviderผิดพลาด โปรดตรวจสอบคอนโซลเพื่อดูรายละเอียด",
+      "i18n_error": "ไม่สามารถเรียกคำแปลของภาษาที่เลือกได้",
+      "canceled": "ยกเลิกการกระทำแล้ว",
+      "logged_out": "เซสชั่นของท่านสิ้นสุดแล้ว โปรดเชื่อมต่ออีกครั้ง"
+    }
+  },
+  "message": {
+    "note": "หมายเหตุ",
+    "transcodingDisabled": "การตั้งค่า transcoding บนเว็บไซต์ถูกปิดเพื่อความปลอดภัย หากต้องการเปลี่ยนแปลงการตั้งค่า ให้ใช้ %{config} จากนั้นจึงรีสตาร์ทเซิฟเวอร์",
+    "transcodingEnabled": "Navidrome กำลังทำงานโดยใช้ %{config} ทำให้สามารถใช้งาน System Commands จากตั้งค่า transcoding บนหน้าเว็บได้ ทางเราแนะนำให้ท่านปิดการตั้งค่านี้เพื่อความปลอดภัยและเปิดเมื่อต้องการแก้ไขตั้งค่า Transcoding เท่านั้น",
+    "songsAddedToPlaylist": "เลือก %{smart_count} เพลงเข้าในเพลย์ลิสท์",
+    "noPlaylistsAvailable": "ไม่มีเพลย์ลิสต์",
+    "delete_user_title": "ลบผู้ใช้ '%{name}'",
+    "delete_user_content": "คุณแน่ใจที่จะลบผู้ใช้นี้และข้อมูลทั้งหมด(รวมถึงเพลย์ลิสท์และตั้งค่าต่างๆ)?",
+    "notifications_blocked": "",
+    "notifications_not_available": ""
+  },
+  "menu": {
+    "library": "ไลบรารี่",
+    "settings": "ตั้งค่า",
+    "version": "เวอร์ชั่น %{version}",
+    "theme": "ธีม",
+    "personal": {
+      "name": "ปรับแต่ง",
+      "options": {
+        "theme": "ธีม",
+        "language": "ภาษา",
+        "defaultView": "หน้าเริ่มต้น",
+        "desktop_notifications": ""
+      }
+    },
+    "albumList": "อัลบั้ม",
+    "about": "เกี่ยวกับ"
+  },
+  "player": {
+    "playListsText": "เพลย์ลิสต์",
+    "openText": "เปิด",
+    "closeText": "ปิด",
+    "notContentText": "ไม่มีเพลง",
+    "clickToPlayText": "คลิกเพื่อเล่น",
+    "clickToPauseText": "คลิกเพื่อหยุด",
+    "nextTrackText": "เพลงถัดไป",
+    "previousTrackText": "เพลงก่อนหน้า",
+    "reloadText": "โหลดอีกครั้ง",
+    "volumeText": "เสียง",
+    "toggleLyricText": "เปิดปิดเนื้อเพลง",
+    "toggleMiniModeText": "ย่อ",
+    "destroyText": "ลบ",
+    "downloadText": "ดาวน์โหลด",
+    "removeAudioListsText": "ลบอัลบั้มเสียง",
+    "clickToDeleteText": "คลิกเพื่อลบ %{name}",
+    "emptyLyricText": "ไม่มีเนื้อเพลง",
+    "playModeText": {
+      "order": "ตามลำดับ",
+      "orderLoop": "เล่นซ้ำ",
+      "singleLoop": "เล่นซ้ำเพลงนี้",
+      "shufflePlay": "เล่นแบบสุ่ม"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "หน้าหลัก",
+      "source": "Source code",
+      "featureRequests": "ต้องการฟีเจอร์"
+    }
+  },
+  "activity": {
+    "title": "กิจกรรม",
+    "totalScanned": "โฟลเดอร์ทั้งหมด",
+    "quickScan": "Quick Scan",
+    "fullScan": "Full Scan",
+    "serverUptime": "เซิฟเวอร์ออนไลน์",
+    "serverDown": "ออฟไลน์"
+  }
 }

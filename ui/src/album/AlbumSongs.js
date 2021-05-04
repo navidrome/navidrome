@@ -3,6 +3,7 @@ import {
   BulkActionsToolbar,
   ListToolbar,
   TextField,
+  FunctionField,
   useVersion,
   useListContext,
 } from 'react-admin'
@@ -128,6 +129,9 @@ const AlbumSongs = (props) => {
             {isDesktop && <TextField source="artist" sortable={false} />}
             <DurationField source="duration" sortable={false} />
             {isDesktop && <QualityInfo source="quality" sortable={false} />}
+            {isDesktop && (
+              <FunctionField source="bpm" render={(r) => r.bpm || ''} />
+            )}{' '}
             {isDesktop && config.enableStarRating && (
               <RatingField
                 source="rating"

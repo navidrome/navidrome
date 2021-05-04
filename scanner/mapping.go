@@ -64,7 +64,7 @@ func (s *mediaFileMapper) toMediaFile(md metadata.Metadata) model.MediaFile {
 	mf.MbzAlbumComment = md.MbzAlbumComment()
 	mf.Comment = s.policy.Sanitize(md.Comment())
 	mf.Lyrics = s.policy.Sanitize(md.Lyrics())
-
+	mf.Bpm = md.Bpm()
 	mf.CreatedAt = time.Now()
 	mf.UpdatedAt = md.ModificationTime()
 
