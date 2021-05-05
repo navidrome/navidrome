@@ -281,12 +281,10 @@ export default {
     },
     RaBulkActionsToolbar: {
       toolbar: {
-        '& button': {
-          backgroundColor: 'inherit',
-          '&:hover': {
-            border: '1px solid',
-            background: 'inherit',
-          },
+        backgroundColor: spotifyGreen['500'],
+        '& button:hover': {
+          border: '1px solid',
+          background: 'inherit',
         },
       },
     },
