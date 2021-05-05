@@ -3,7 +3,12 @@ import PropTypes from 'prop-types'
 import { useDispatch, useSelector } from 'react-redux'
 import { setOmittedFields, setToggleableFields } from '../actions'
 
-const useSelectedFields = ({ resource, columns, omittedColumns = [] }) => {
+const useSelectedFields = ({
+  resource,
+  columns,
+  omittedColumns = [],
+  defaultOff = [],
+}) => {
   const dispatch = useDispatch()
   const resourceFields = useSelector(
     (state) => state.settings.toggleableFields
@@ -21,7 +26,7 @@ const useSelectedFields = ({ resource, columns, omittedColumns = [] }) => {
     ) {
       const obj = {}
       for (const key of Object.keys(columns)) {
-        obj[key] = true
+        obj[key] = !defaultOff.includes(key)
       }
       dispatch(setToggleableFields({ [resource]: obj }))
     }
