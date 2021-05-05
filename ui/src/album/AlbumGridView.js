@@ -9,7 +9,7 @@ import {
 import { makeStyles } from '@material-ui/core/styles'
 import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
-import { linkToRecord, Loading, useListContext } from 'react-admin'
+import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
 import {
@@ -104,7 +104,7 @@ const Cover = withContentRect('bounds')(
       <div ref={measureRef}>
         <img
           src={subsonic.getCoverArtUrl(album, 300)}
-          alt={album.album}
+          alt={album.name}
           className={classes.cover}
         />
       </div>
@@ -113,8 +113,10 @@ const Cover = withContentRect('bounds')(
 )
 
 const AlbumGridTile = ({ showArtist, record, basePath }) => {
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'), {
+    noSsr: true,
+  })
 
   return (
     <div className={classes.albumContainer}>
@@ -183,7 +185,9 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   )
 }
 
-const AlbumGridView = ({ loading, ...props }) =>
-  loading ? <Loading /> : <LoadedAlbumGrid {...props} />
+const AlbumGridView = ({ albumListType, loading, ...props }) => {
+  const hide = loading && albumListType === 'random'
+  return hide ? <Loading /> : <LoadedAlbumGrid {...props} />
+}
 
 export default withWidth()(AlbumGridView)
