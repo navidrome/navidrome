@@ -78,8 +78,8 @@ all: ##@Cross_Compilation Build binaries for all supported platforms. It does no
 .PHONY: all
 
 single: ##@Cross_Compilation Build binaries for a single supported platforms. It does not build the frontend
-	@if [ -z "${GOOS}" ]; then \
-		echo "Usage: GOOS=<os> GOARCH=<arch> make snapshot-single"; \
+	@if [ -z "${GOOS}" -o -z "${GOARCH}" ]; then \
+		echo "Usage: GOOS=<os> GOARCH=<arch> make single"; \
 		echo "Options:"; \
 		grep -- "- id: navidrome_" .goreleaser.yml | sed 's/- id: navidrome_//g'; \
 		exit 1; \
