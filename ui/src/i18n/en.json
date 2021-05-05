@@ -271,6 +271,10 @@
       "i18n_error": "Cannot load the translations for the specified language",
       "canceled": "Action cancelled",
       "logged_out": "Your session has ended, please reconnect."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Columns To Display",
+      "layout": "Layout"
     }
   },
   "message": {
