@@ -9,7 +9,7 @@ import {
   BooleanField,
   DateField,
   TextField,
-  FunctionField,
+  NumberField,
   useTranslate,
 } from 'react-admin'
 import inflection from 'inflection'
@@ -38,20 +38,17 @@ export const SongDetails = (props) => {
     size: <SizeField record={record} source="size" />,
     updatedAt: <DateField record={record} source="updatedAt" showTime />,
     playCount: <TextField record={record} source="playCount" />,
+    bpm: <NumberField record={record} source="bpm" />,
     comment: <MultiLineTextField record={record} source="comment" />,
-    bpm: (
-      <FunctionField
-        record={record}
-        source="bpm"
-        render={(r) => r.bpm || '?'}
-      />
-    ),
   }
   if (!record.discSubtitle) {
     delete data.discSubtitle
   }
   if (!record.comment) {
     delete data.comment
+  }
+  if (!record.bpm) {
+    delete data.bpm
   }
   if (record.playCount > 0) {
     data.playDate = <DateField record={record} source="playDate" showTime />

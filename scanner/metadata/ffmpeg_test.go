@@ -295,12 +295,12 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 		Expect(md.Bpm()).To(Equal(123))
 	})
 
-	It("parses a floating point fBPM tag", func() {
+	It("parses and rounds a floating point fBPM tag", func() {
 		const output = `
 		Input #0, ogg, from 'tests/fixtures/test.ogg':
   		  Metadata:
 	        FBPM            : 141.7`
-		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+		md, _ := e.extractMetadata("tests/fixtures/test.ogg", output)
 		Expect(md.Bpm()).To(Equal(142))
 	})
 })
