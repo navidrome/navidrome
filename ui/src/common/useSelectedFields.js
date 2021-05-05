@@ -63,7 +63,3 @@ useSelectedFields.propTypes = {
   columns: PropTypes.object,
   omittedColumns: PropTypes.arrayOf(PropTypes.string),
 }
-
-useSelectedFields.defaultProps = {
-  omittedColumns: [],
-}

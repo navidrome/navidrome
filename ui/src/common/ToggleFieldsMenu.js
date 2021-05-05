@@ -108,4 +108,5 @@ export default ToggleFieldsMenu
 
 ToggleFieldsMenu.propTypes = {
   resource: PropTypes.string.isRequired,
+  TopBarComponent: PropTypes.element,
 }
