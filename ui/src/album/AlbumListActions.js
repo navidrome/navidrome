@@ -24,13 +24,13 @@ const useStyles = makeStyles({
   rightButton: { paddingLeft: '0.5rem' },
 })
 
-const AlbumViewToggler = () => {
+const AlbumViewToggler = React.forwardRef(({}, ref) => {
   const dispatch = useDispatch()
   const albumView = useSelector((state) => state.albumView)
   const classes = useStyles()
   const translate = useTranslate()
   return (
-    <>
+    <div ref={ref}>
       <Typography className={classes.title}>
         {translate('ra.toggleFieldsMenu.layout')}
       </Typography>
@@ -59,9 +59,9 @@ const AlbumViewToggler = () => {
           <ViewHeadlineIcon fontSize="inherit" />
         </Button>
       </ButtonGroup>
-    </>
+    </div>
   )
-}
+})
 
 const AlbumListActions = ({
   currentSort,

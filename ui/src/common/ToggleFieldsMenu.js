@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import IconButton from '@material-ui/core/IconButton'
 import Menu from '@material-ui/core/Menu'
@@ -8,7 +8,7 @@ import MoreVertIcon from '@material-ui/icons/MoreVert'
 import Checkbox from '@material-ui/core/Checkbox'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslate } from 'react-admin'
-import { setToggleableFields } from '../actions'
+import { setToggleableFields, albumViewList } from '../actions'
 
 const useStyles = makeStyles({
   menuIcon: {
@@ -58,6 +58,12 @@ const ToggleFieldsMenu = ({ resource, TopBarComponent }) => {
     )
   }
 
+  useEffect(() => {
+    if (!toggleableColumns && resource === 'album') {
+      dispatch(albumViewList())
+    }
+  }, [toggleableColumns])
+
   return (
     <div className={classes.menuIcon}>
       <IconButton
@@ -79,23 +85,20 @@ const ToggleFieldsMenu = ({ resource, TopBarComponent }) => {
         }}
       >
         {TopBarComponent && <TopBarComponent />}
-        {toggleableColumns && (
-          <>
-            <Typography className={classes.title}>
-              {translate('ra.toggleFieldsMenu.columnsToDisplay')}
-            </Typography>
-            <div className={classes.columns}>
-              {Object.entries(toggleableColumns).map(([key, val]) =>
-                !omittedColumns.includes(key) ? (
-                  <MenuItem key={key} onClick={() => handleClick(key)}>
-                    <Checkbox checked={val} />
-                    {translate(`resources.${resource}.fields.${key}`)}
-                  </MenuItem>
-                ) : null
-              )}
-            </div>
-          </>
-        )}
+        <Typography className={classes.title}>
+          {translate('ra.toggleFieldsMenu.columnsToDisplay')}
+        </Typography>
+        <div className={classes.columns}>
+          {toggleableColumns &&
+            Object.entries(toggleableColumns).map(([key, val]) =>
+              !omittedColumns.includes(key) ? (
+                <MenuItem key={key} onClick={() => handleClick(key)}>
+                  <Checkbox checked={val} />
+                  {translate(`resources.${resource}.fields.${key}`)}
+                </MenuItem>
+              ) : null
+            )}
+        </div>
       </Menu>
     </div>
   )
