@@ -24,7 +24,7 @@ const useStyles = makeStyles({
   rightButton: { paddingLeft: '0.5rem' },
 })
 
-const AlbumViewToggler = React.forwardRef(({}, ref) => {
+const AlbumViewToggler = React.forwardRef((props, ref) => {
   const dispatch = useDispatch()
   const albumView = useSelector((state) => state.albumView)
   const classes = useStyles()

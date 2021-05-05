@@ -62,7 +62,7 @@ const ToggleFieldsMenu = ({ resource, TopBarComponent }) => {
     if (!toggleableColumns && resource === 'album') {
       dispatch(albumViewList())
     }
-  }, [toggleableColumns])
+  }, [dispatch, resource, toggleableColumns])
 
   return (
     <div className={classes.menuIcon}>
