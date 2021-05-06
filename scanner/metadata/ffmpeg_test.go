@@ -286,4 +286,21 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 		Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/one.mp3", "-i", "/music library/two.mp3", "-f", "ffmetadata"}))
 	})
 
+	It("parses an integer TBPM tag", func() {
+		const output = `
+		Input #0, mp3, from 'tests/fixtures/test.mp3':
+		  Metadata:
+		    TBPM            : 123`
+		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+		Expect(md.Bpm()).To(Equal(123))
+	})
+
+	It("parses and rounds a floating point fBPM tag", func() {
+		const output = `
+		Input #0, ogg, from 'tests/fixtures/test.ogg':
+  		  Metadata:
+	        FBPM            : 141.7`
+		md, _ := e.extractMetadata("tests/fixtures/test.ogg", output)
+		Expect(md.Bpm()).To(Equal(142))
+	})
 })
