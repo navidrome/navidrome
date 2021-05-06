@@ -4,12 +4,12 @@
         "song": {
             "name": "Skladba |||| Skladby",
             "fields": {
-                "albumArtist": "Interpret alba",
+                "albumArtist": "Umělec alba",
                 "duration": "Délka",
                 "trackNumber": "#",
                 "playCount": "Přehrání",
                 "title": "Název",
-                "artist": "Interpret",
+                "artist": "Umělec",
                 "album": "Album",
                 "path": "Cesta k souboru",
                 "genre": "Žánr",
@@ -37,7 +37,7 @@
             "name": "Album |||| Alba",
             "fields": {
                 "albumArtist": "Interpret alba",
-                "artist": "Interpret",
+                "artist": "Umělec",
                 "duration": "Délka",
                 "songCount": "Skladby",
                 "playCount": "Přehrání",
@@ -68,7 +68,7 @@
             }
         },
         "artist": {
-            "name": "Interpret |||| Interpreti",
+            "name": "Umělec |||| Umělci",
             "fields": {
                 "name": "Název",
                 "albumCount": "Počet alb",
@@ -97,7 +97,7 @@
                 "maxBitRate": "Max. přenosová rychlost",
                 "client": "Klient",
                 "userName": "Uživatelské jméno",
-                "lastSeen": "Naposledy spatřen",
+                "lastSeen": "Naposledy viděn",
                 "reportRealPath": "Zkutečná cesta hlášení"
             }
         },
@@ -276,17 +276,17 @@
         "delete_user_title": "Odstranit uživatele '%{name}'",
         "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?",
         "notifications_blocked": "Zablokovali jste si oznámení pro tuto stránku v nastavení vašeho prohlížeče",
-        "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše"
+        "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše nebo nepřistupujete k Navidrome přes https"
     },
     "menu": {
         "library": "Knihovna",
         "settings": "Nastavení",
         "version": "Verze",
-        "theme": "Motiv",
+        "theme": "téma",
         "personal": {
             "name": "Osobní",
             "options": {
-                "theme": "Motiv",
+                "theme": "téma",
                 "language": "Jazyk",
                 "defaultView": "Výchozí stránka",
                 "desktop_notifications": "Oznámení na ploše"
