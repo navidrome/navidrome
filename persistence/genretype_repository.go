@@ -13,8 +13,6 @@ import (
 
 type genreTypeRepository struct {
 	sqlRepository
-	sqlRestful
-	genreRepo model.GenreRepository
 }
 
 func NewGenreTypeRepository(ctx context.Context, o orm.Ormer) model.GenreTypeRepository {
@@ -74,6 +72,9 @@ func (r *genreTypeRepository) refresh(cids ...string) error {
 		From("media_file").
 		Where(Eq{"genre": ids})
 	err = r.insertRelations(sel, "media_file")
+	if err != nil {
+		return err
+	}
 
 	sel = Select(`f.genre as genre_id, a.id as item_id`).
 		From("media_file as f").
@@ -81,6 +82,9 @@ func (r *genreTypeRepository) refresh(cids ...string) error {
 		LeftJoin("album a on f.album_id = a.id").
 		Where(Eq{"f.genre": ids})
 	err = r.insertRelations(sel, "album")
+	if err != nil {
+		return err
+	}
 
 	sel = Select(`f.genre as genre_id, a.id as item_id`).
 		From("media_file as f").
@@ -88,8 +92,11 @@ func (r *genreTypeRepository) refresh(cids ...string) error {
 		LeftJoin("artist a on f.artist_id = a.id").
 		Where(Eq{"f.genre": ids})
 	err = r.insertRelations(sel, "artist")
+	if err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }
 
 func (r *genreTypeRepository) insertRelations(sel SelectBuilder, itemType string) error {
@@ -110,7 +117,7 @@ func (r *genreTypeRepository) insertRelations(sel SelectBuilder, itemType string
 			return err
 		}
 	}
-	return err
+	return nil
 }
 
 var _ model.GenreTypeRepository = (*genreTypeRepository)(nil)
