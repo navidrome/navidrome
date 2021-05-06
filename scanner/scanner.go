@@ -16,7 +16,6 @@ import (
 )
 
 type Scanner interface {
-	Run(ctx context.Context, interval time.Duration)
 	RescanAll(ctx context.Context, fullRescan bool) error
 	Status(mediaFolder string) (*StatusInfo, error)
 	Scanning() bool
@@ -70,23 +69,6 @@ func New(ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker)
 	}
 	s.loadFolders()
 	return s
-}
-
-func (s *scanner) Run(ctx context.Context, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		err := s.RescanAll(ctx, false)
-		if err != nil {
-			log.Error(err)
-		}
-		select {
-		case <-ticker.C:
-			continue
-		case <-ctx.Done():
-			return
-		}
-	}
 }
 
 func (s *scanner) rescan(ctx context.Context, mediaFolder string, fullRescan bool) error {

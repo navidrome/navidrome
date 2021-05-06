@@ -6,16 +6,18 @@
 package cmd
 
 import (
+	"sync"
+
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/transcoder"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
+	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/app"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic"
-	"sync"
 )
 
 // Injectors from wire_injectors.go:
@@ -63,6 +65,11 @@ func createBroker() events.Broker {
 	return broker
 }
 
+func createScheduler() scheduler.Scheduler {
+	schedulerScheduler := scheduler.New()
+	return schedulerScheduler
+}
+
 // wire_injectors.go:
 
 var allProviders = wire.NewSet(core.Set, subsonic.New, app.New, persistence.New)
@@ -91,4 +98,17 @@ func GetBroker() events.Broker {
 		brokerInstance = createBroker()
 	})
 	return brokerInstance
+}
+
+// Scheduler must be a Singleton
+var (
+	onceScheduler     sync.Once
+	schedulerInstance scheduler.Scheduler
+)
+
+func GetScheduler() scheduler.Scheduler {
+	onceScheduler.Do(func() {
+		schedulerInstance = createScheduler()
+	})
+	return schedulerInstance
 }
