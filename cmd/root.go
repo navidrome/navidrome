@@ -56,12 +56,13 @@ func runNavidrome() {
 
 	g.Add(startServer())
 	g.Add(startSignaler())
+	g.Add(startScheduler())
 
-	interval := conf.Server.ScanInterval
-	if interval != 0 {
-		g.Add(startPeriodicScan(interval))
+	schedule := conf.Server.ScanSchedule
+	if schedule != "" {
+		go schedulePeriodicScan(schedule)
 	} else {
-		log.Warn("Periodic scan is DISABLED", "interval", interval)
+		log.Warn("Periodic scan is DISABLED", "schedule", schedule)
 	}
 
 	if err := g.Run(); err != nil {
@@ -115,22 +116,40 @@ func startSignaler() (func() error, func(err error)) {
 		}
 }
 
-func startPeriodicScan(interval time.Duration) (func() error, func(err error)) {
-	log.Info("Starting scanner", "interval", interval.String())
+func schedulePeriodicScan(schedule string) {
+	time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
 	scanner := GetScanner()
+	scheduler := GetScheduler()
+
+	log.Info("Executing initial scan")
+	if err := scanner.RescanAll(context.Background(), false); err != nil {
+		log.Error("Error executing initial scan", err)
+	}
+
+	log.Info("Scheduling periodic scan", "schedule", schedule)
+	err := scheduler.Add(schedule, func() {
+		_ = scanner.RescanAll(context.Background(), false)
+	})
+	if err != nil {
+		log.Error("Error scheduling periodic scan", err)
+	}
+}
+
+func startScheduler() (func() error, func(err error)) {
+	log.Info("Starting scheduler")
+	scheduler := GetScheduler()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return func() error {
-			time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
-			scanner.Run(ctx, interval)
+			scheduler.Run(ctx)
 
 			return nil
 		}, func(err error) {
 			cancel()
 			if err != nil {
-				log.Error("Shutting down Scanner due to error", err)
+				log.Error("Shutting down Scheduler due to error", err)
 			} else {
-				log.Info("Shutting down Scanner")
+				log.Info("Shutting down Scheduler")
 			}
 		}
 }
