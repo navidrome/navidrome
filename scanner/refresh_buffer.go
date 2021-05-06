@@ -9,10 +9,12 @@ import (
 )
 
 type refreshBuffer struct {
-	ctx    context.Context
-	ds     model.DataStore
-	album  map[string]struct{}
-	artist map[string]struct{}
+	ctx       context.Context
+	ds        model.DataStore
+	album     map[string]struct{}
+	artist    map[string]struct{}
+	genre     map[string]struct{}
+	genretype map[string]struct{}
 }
 
 func newRefreshBuffer(ctx context.Context, ds model.DataStore) *refreshBuffer {
@@ -30,6 +32,10 @@ func (f *refreshBuffer) accumulate(mf model.MediaFile) {
 	}
 	if mf.AlbumArtistID != "" {
 		f.artist[mf.AlbumArtistID] = struct{}{}
+	}
+	if mf.Genre != "" {
+		f.genre[mf.Genre] = struct{}{}
+		f.genretype[mf.Genre] = struct{}{}
 	}
 }
 
@@ -57,6 +63,14 @@ func (f *refreshBuffer) flush() error {
 		return err
 	}
 	err = f.flushMap(f.artist, "artist", f.ds.Artist(f.ctx).Refresh)
+	if err != nil {
+		return err
+	}
+	err = f.flushMap(f.genre, "genre", f.ds.Genre(f.ctx).Refresh)
+	if err != nil {
+		return err
+	}
+	err = f.flushMap(f.genretype, "genre_type", f.ds.GenreType(f.ctx).Refresh)
 	if err != nil {
 		return err
 	}

@@ -38,6 +38,10 @@ func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
 	return NewGenreRepository(ctx, s.getOrmer())
 }
 
+func (s *SQLStore) GenreType(ctx context.Context) model.GenreTypeRepository {
+	return NewGenreTypeRepository(ctx, s.getOrmer())
+}
+
 func (s *SQLStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
 	return NewPlayQueueRepository(ctx, s.getOrmer())
 }
@@ -78,6 +82,8 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.MediaFile(ctx).(model.ResourceRepository)
 	case model.Playlist:
 		return s.Playlist(ctx).(model.ResourceRepository)
+	case model.Genre:
+		return s.Genre(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil
