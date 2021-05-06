@@ -14,6 +14,7 @@ type MockDataStore struct {
 	MockedUser        model.UserRepository
 	MockedPlayer      model.PlayerRepository
 	MockedTranscoding model.TranscodingRepository
+	MockedGenreType   model.GenreTypeRepository
 }
 
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {
@@ -79,6 +80,13 @@ func (db *MockDataStore) Player(context.Context) model.PlayerRepository {
 		return db.MockedPlayer
 	}
 	return struct{ model.PlayerRepository }{}
+}
+
+func (db *MockDataStore) GenreType(context.Context) model.GenreTypeRepository {
+	if db.MockedPlayer != nil {
+		return db.MockedGenreType
+	}
+	return struct{ model.GenreTypeRepository }{}
 }
 
 func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {
