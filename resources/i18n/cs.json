@@ -282,11 +282,11 @@
         "library": "Knihovna",
         "settings": "Nastavení",
         "version": "Verze",
-        "theme": "téma",
+        "theme": "Téma",
         "personal": {
             "name": "Osobní",
             "options": {
-                "theme": "téma",
+                "theme": "Téma",
                 "language": "Jazyk",
                 "defaultView": "Výchozí stránka",
                 "desktop_notifications": "Oznámení na ploše"
