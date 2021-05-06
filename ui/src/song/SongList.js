@@ -121,6 +121,7 @@ const SongList = (props) => {
             )}
             {isDesktop && <QualityInfo source="quality" sortable={false} />}
             <DurationField source="duration" />
+            {isDesktop && <NumberField source="bpm" />}
             {config.enableStarRating && (
               <RatingField
                 source="rating"

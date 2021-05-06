@@ -33,19 +33,20 @@ var _ = Describe("taglibExtractor", func() {
 			Expect(m.BitRate()).To(Equal(192))
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.mp3"))
 			Expect(m.Suffix()).To(Equal("mp3"))
-			Expect(m.Size()).To(Equal(int64(60845)))
+			Expect(m.Size()).To(Equal(int64(51876)))
 			Expect(m.Comment()).To(Equal("Comment1\nComment2"))
+			Expect(m.Bpm()).To(Equal(123))
 
-			//TODO This file has some weird tags that makes the following tests fail sometimes.
-			//m = mds["tests/fixtures/test.ogg"]
-			//Expect(err).To(BeNil())
-			//Expect(m.Title()).To(BeEmpty())
-			//Expect(m.HasPicture()).To(BeFalse())
-			//Expect(m.Duration()).To(Equal(float32(3)))
-			//Expect(m.BitRate()).To(Equal(10))
-			//Expect(m.Suffix()).To(Equal("ogg"))
-			//Expect(m.FilePath()).To(Equal("tests/fixtures/test.ogg"))
-			//Expect(m.Size()).To(Equal(int64(4408)))
+			m = mds["tests/fixtures/test.ogg"]
+			Expect(err).To(BeNil())
+			Expect(m.Title()).To(BeEmpty())
+			Expect(m.HasPicture()).To(BeFalse())
+			Expect(m.Duration()).To(Equal(float32(1)))
+			Expect(m.BitRate()).To(Equal(39))
+			Expect(m.Suffix()).To(Equal("ogg"))
+			Expect(m.FilePath()).To(Equal("tests/fixtures/test.ogg"))
+			Expect(m.Size()).To(Equal(int64(5065)))
+			Expect(m.Bpm()).To(Equal(142)) // This file has a floating point BPM set to 141.7 under the fBPM tag. Ensure we parse and round correctly.
 		})
 	})
 })
