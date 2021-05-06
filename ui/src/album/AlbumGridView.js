@@ -185,8 +185,8 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   )
 }
 
-const AlbumGridView = ({ albumListType, loading, ...props }) => {
-  const hide = loading && albumListType === 'random'
+const AlbumGridView = ({ albumListType, loaded, loading, ...props }) => {
+  const hide = (loading && albumListType === 'random') || !props.data
   return hide ? <Loading /> : <LoadedAlbumGrid {...props} />
 }
 
