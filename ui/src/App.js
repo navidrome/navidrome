@@ -30,7 +30,7 @@ import config from './config'
 import { setDispatch, startEventStream } from './eventStream'
 import { HotKeys } from 'react-hotkeys'
 import { keyMap } from './hotkeys'
-import ChangeColor from './common/PWA'
+import ChangeColor from './ChangeColor'
 
 const history = createHashHistory()
 
