@@ -133,18 +133,18 @@ func validateScanSchedule() error {
 			log.Warn("Setting ScanSchedule", "schedule", Server.ScanSchedule)
 		}
 	}
-	if Server.ScanSchedule != "" {
-		if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
-			Server.ScanSchedule = "@every " + Server.ScanSchedule
-		}
-		c := cron.New()
-		_, err := c.AddFunc(Server.ScanSchedule, func() {})
-		if err != nil {
-			log.Error("Invalid ScanSchedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", Server.ScanSchedule, err)
-			return err
-		}
+	if Server.ScanSchedule == "" {
+		return nil
 	}
-	return nil
+	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
+		Server.ScanSchedule = "@every " + Server.ScanSchedule
+	}
+	c := cron.New()
+	_, err := c.AddFunc(Server.ScanSchedule, func() {})
+	if err != nil {
+		log.Error("Invalid ScanSchedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", Server.ScanSchedule, err)
+	}
+	return err
 }
 
 // AddHook is used to register initialization code that should run as soon as the config is loaded
