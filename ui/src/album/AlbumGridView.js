@@ -117,6 +117,9 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'), {
     noSsr: true,
   })
+  if (!record) {
+    return null
+  }
 
   return (
     <div className={classes.albumContainer}>
