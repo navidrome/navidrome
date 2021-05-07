@@ -170,7 +170,8 @@
       "number": "Must be a number",
       "email": "Must be a valid email",
       "oneOf": "Must be one of: %{options}",
-      "regex": "Must match a specific format (regexp): %{pattern}"
+      "regex": "Must match a specific format (regexp): %{pattern}",
+      "unique": "Must be unique"
     },
     "action": {
       "add_filter": "Add filter",
