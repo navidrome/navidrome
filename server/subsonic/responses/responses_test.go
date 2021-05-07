@@ -516,7 +516,7 @@ var _ = Describe("Responses", func() {
 					Created:  time.Time{},
 					Changed:  time.Time{},
 				}
-				bmk.Entry = []Child{{Id: "1", Title: "title", IsDir: false}}
+				bmk.Entry = Child{Id: "1", Title: "title", IsDir: false}
 				response.Bookmarks.Bookmark = []Bookmark{bmk}
 			})
 			It("should match .XML", func() {
