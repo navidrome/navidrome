@@ -284,7 +284,7 @@ export default {
         backgroundColor: spotifyGreen['500'],
         '& button:hover': {
           border: '1px solid',
-          background: 'inherit',
+          background: '#0088272e !important',
         },
       },
     },
