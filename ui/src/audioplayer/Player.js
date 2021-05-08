@@ -176,6 +176,7 @@ const Player = () => {
     glassBg: false,
     showThemeSwitch: false,
     showMediaSession: true,
+    restartCurrentOnPrev: true,
     defaultPosition: {
       top: 300,
       left: 120,
