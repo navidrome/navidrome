@@ -3,6 +3,7 @@ import {
   BulkActionsToolbar,
   ListToolbar,
   TextField,
+  NumberField,
   useRefresh,
   useDataProvider,
   useNotify,
@@ -134,6 +135,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
     artist: isDesktop && <TextField source="artist" />,
     duration: <DurationField source="duration" className={classes.draggable} />,
     quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+    bpm: isDesktop && <NumberField source="bpm" />,
   }
 
   const columns = useSelectedFields({

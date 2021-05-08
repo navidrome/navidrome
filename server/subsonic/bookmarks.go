@@ -31,7 +31,7 @@ func (c *BookmarksController) GetBookmarks(w http.ResponseWriter, r *http.Reques
 	response.Bookmarks = &responses.Bookmarks{}
 	for _, bmk := range bmks {
 		b := responses.Bookmark{
-			Entry:    []responses.Child{childFromMediaFile(r.Context(), bmk.Item)},
+			Entry:    childFromMediaFile(r.Context(), bmk.Item),
 			Position: bmk.Position,
 			Username: user.UserName,
 			Comment:  bmk.Comment,

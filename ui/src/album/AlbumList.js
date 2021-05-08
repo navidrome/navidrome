@@ -94,7 +94,7 @@ const AlbumList = (props) => {
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.grid ? (
-          <AlbumGridView {...props} />
+          <AlbumGridView albumListType={albumListType} {...props} />
         ) : (
           <AlbumListView {...props} />
         )}

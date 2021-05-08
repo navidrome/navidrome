@@ -10,6 +10,7 @@ import (
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
 
@@ -22,6 +23,7 @@ type configOptions struct {
 	DbPath                  string
 	LogLevel                string
 	ScanInterval            time.Duration
+	ScanSchedule            string
 	SessionTimeout          time.Duration
 	BaseURL                 string
 	UILoginBackgroundURL    string
@@ -108,12 +110,41 @@ func Load() {
 	log.SetLevelString(Server.LogLevel)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
+
+	if err := validateScanSchedule(); err != nil {
+		os.Exit(1)
+	}
+
 	log.Debug(pretty.Sprintf("Loaded configuration from '%s': %# v\n", Server.ConfigFile, Server))
 
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
 	}
+}
+
+func validateScanSchedule() error {
+	if Server.ScanInterval != 0 {
+		log.Warn("ScanInterval is DEPRECATED. Please use ScanSchedule. See docs at https://navidrome.org/docs/usage/configuration-options/")
+		if Server.ScanSchedule != "@every 1m" {
+			log.Error("You cannot specify both ScanInterval and ScanSchedule, ignoring ScanInterval")
+		} else {
+			Server.ScanSchedule = fmt.Sprintf("@every %s", Server.ScanInterval)
+			log.Warn("Setting ScanSchedule", "schedule", Server.ScanSchedule)
+		}
+	}
+	if Server.ScanSchedule == "" {
+		return nil
+	}
+	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
+		Server.ScanSchedule = "@every " + Server.ScanSchedule
+	}
+	c := cron.New()
+	_, err := c.AddFunc(Server.ScanSchedule, func() {})
+	if err != nil {
+		log.Error("Invalid ScanSchedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", Server.ScanSchedule, err)
+	}
+	return err
 }
 
 // AddHook is used to register initialization code that should run as soon as the config is loaded
@@ -128,7 +159,8 @@ func init() {
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
-	viper.SetDefault("scaninterval", time.Minute)
+	viper.SetDefault("scaninterval", 0)
+	viper.SetDefault("scanschedule", "@every 1m")
 	viper.SetDefault("baseurl", "")
 	viper.SetDefault("uiloginbackgroundurl", consts.DefaultUILoginBackgroundURL)
 	viper.SetDefault("enabletranscodingconfig", false)

@@ -110,6 +110,7 @@ const SongList = (props) => {
         className={classes.ratingField}
       />
     ),
+    bpm: isDesktop && <NumberField source="bpm" />,
   }
 
   const columns = useSelectedFields({
