@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Layout, toggleSidebar } from 'react-admin'
+import { Layout as RALayout, toggleSidebar } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { HotKeys } from 'react-hotkeys'
 import Menu from './Menu'
@@ -12,7 +12,7 @@ const useStyles = makeStyles({
   root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
 })
 
-export default (props) => {
+const Layout = (props) => {
   const theme = useCurrentTheme()
   const queue = useSelector((state) => state.queue)
   const classes = useStyles({ addPadding: queue.queue.length > 0 })
@@ -24,7 +24,7 @@ export default (props) => {
 
   return (
     <HotKeys handlers={keyHandlers}>
-      <Layout
+      <RALayout
         {...props}
         className={classes.root}
         menu={Menu}
@@ -35,3 +35,5 @@ export default (props) => {
     </HotKeys>
   )
 }
+
+export default Layout
