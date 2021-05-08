@@ -1,7 +1,7 @@
 // React Hook to get a list of all languages available. English is hardcoded
 import { useGetList } from 'react-admin'
 
-export default () => {
+const useGetLanguageChoices = () => {
   const { ids, data, loaded, loading } = useGetList(
     'translation',
     { page: 1, perPage: -1 },
@@ -17,3 +17,5 @@ export default () => {
 
   return { choices, loaded, loading }
 }
+
+export default useGetLanguageChoices

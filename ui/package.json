@@ -51,7 +51,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jest-environment-jsdom-sixteen",
-    "lint": "eslint -c node_modules/eslint-config-react-app/index.js src/**/*.js",
+    "lint": "eslint src/**/*.js",
     "eject": "react-scripts eject",
     "prettier": "prettier --write src/*.js src/**/*.js",
     "check-formatting": "prettier -c src/*.js src/**/*.js"
@@ -62,6 +62,17 @@
     "extends": [
       "react-app",
       "react-app/jest"
+    ],
+    "overrides": [
+      {
+        "files": [
+          "src/**/index.js",
+          "src/themes/*.js"
+        ],
+        "rules": {
+          "import/no-anonymous-default-export": "off"
+        }
+      }
     ]
   },
   "browserslist": {
