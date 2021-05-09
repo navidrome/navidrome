@@ -27,9 +27,9 @@ describe('SelectPlaylistInput', () => {
     }
 
     const mockDataProvider = {
-      getList: jest.fn(() =>
-        Promise.resolve({ data: mockData, total: mockData.length })
-      ),
+      getList: jest
+        .fn()
+        .mockResolvedValue({ data: mockData, total: mockData.length }),
     }
 
     render(
