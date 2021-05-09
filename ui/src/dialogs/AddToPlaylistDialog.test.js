@@ -100,17 +100,16 @@ describe('AddToPlaylistDialog', () => {
     })
   })
 
-  const mockDataProvider = {
-    getList: jest
-      .fn()
-      .mockResolvedValue({ data: mockData, total: mockData.length }),
-    getOne: jest.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
-    create: jest
-      .fn()
-      .mockResolvedValue({ data: { id: 'created-id1', name: 'created-name' } }),
-  }
-
   it('adds distinct songs to a new playlist', async () => {
+    const mockDataProvider = {
+      getList: jest
+        .fn()
+        .mockResolvedValue({ data: mockData, total: mockData.length }),
+      getOne: jest.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
+      create: jest.fn().mockResolvedValue({
+        data: { id: 'created-id1', name: 'created-name' },
+      }),
+    }
     const testutils = render(
       <DataProviderContext.Provider value={mockDataProvider}>
         <TestContext
@@ -169,6 +168,15 @@ describe('AddToPlaylistDialog', () => {
   })
 
   it('adds distinct songs to multiple new playlists', async () => {
+    const mockDataProvider = {
+      getList: jest
+        .fn()
+        .mockResolvedValue({ data: mockData, total: mockData.length }),
+      getOne: jest.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
+      create: jest.fn().mockResolvedValue({
+        data: { id: 'created-id1', name: 'created-name' },
+      }),
+    }
     const testutils = render(
       <DataProviderContext.Provider value={mockDataProvider}>
         <TestContext
