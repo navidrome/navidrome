@@ -3,7 +3,6 @@
 [Unit]
 Description=Navidrome Music Server and Streamer compatible with Subsonic/Airsonic
 After=remote-fs.target network.target
-AssertPathExists=/var/lib/navidrome
 
 [Install]
 WantedBy=multi-user.target
@@ -13,6 +12,7 @@ User=navidrome
 Group=navidrome
 Type=simple
 ExecStart=/usr/bin/navidrome
+StateDirectory=navidrome
 WorkingDirectory=/var/lib/navidrome
 TimeoutStopSec=20
 KillMode=process
@@ -21,18 +21,25 @@ Restart=on-failure
 EnvironmentFile=-/etc/sysconfig/navidrome
 
 # See https://www.freedesktop.org/software/systemd/man/systemd.exec.html
+CapabilityBoundingSet=
 DevicePolicy=closed
 NoNewPrivileges=yes
+LockPersonality=yes
 PrivateTmp=yes
 PrivateUsers=yes
 ProtectControlGroups=yes
 ProtectKernelModules=yes
 ProtectKernelTunables=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 RestrictNamespaces=yes
 RestrictRealtime=yes
-SystemCallFilter=~@clock @debug @module @mount @obsolete @privileged @reboot @setuid @swap
-ReadWritePaths=/var/lib/navidrome
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallArchitectures=native
+UMask=0066
 
 # You can uncomment the following line if you're not using the jukebox This
 # will prevent navidrome from accessing any real (physical) devices
