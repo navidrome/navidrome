@@ -105,11 +105,9 @@ describe('AddToPlaylistDialog', () => {
         .fn()
         .mockResolvedValue({ data: mockData, total: mockData.length }),
       getOne: jest.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
-      create: jest
-        .fn()
-        .mockResolvedValue({
-          data: { id: 'created-id1', name: 'created-name' },
-        }),
+      create: jest.fn().mockResolvedValue({
+        data: { id: 'created-id1', name: 'created-name' },
+      }),
     }
     const testutils = render(
       <DataProviderContext.Provider value={mockDataProvider}>
@@ -173,11 +171,9 @@ describe('AddToPlaylistDialog', () => {
         .fn()
         .mockResolvedValue({ data: mockData, total: mockData.length }),
       getOne: jest.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
-      create: jest
-        .fn()
-        .mockResolvedValue({
-          data: { id: 'created-id1', name: 'created-name' },
-        }),
+      create: jest.fn().mockResolvedValue({
+        data: { id: 'created-id1', name: 'created-name' },
+      }),
     }
     const testutils = render(
       <DataProviderContext.Provider value={mockDataProvider}>
