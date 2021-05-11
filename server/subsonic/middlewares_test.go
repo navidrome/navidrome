@@ -270,8 +270,8 @@ var _ = Describe("Middlewares", func() {
 		Context("JWT based authentication", func() {
 			var validToken string
 			BeforeEach(func() {
-				auth.InitTokenAuth(ds)
 				conf.Server.SessionTimeout = time.Minute
+				auth.Init(ds)
 
 				u := &model.User{UserName: "admin"}
 				var err error

@@ -14,14 +14,14 @@ import (
 )
 
 var (
-	once           sync.Once
-	Secret         []byte
-	TokenAuth      *jwtauth.JWTAuth
-	sessionTimeOut time.Duration
+	once      sync.Once
+	Secret    []byte
+	TokenAuth *jwtauth.JWTAuth
 )
 
-func InitTokenAuth(ds model.DataStore) {
+func Init(ds model.DataStore) {
 	once.Do(func() {
+		log.Info("Setting Session Timeout", "value", conf.Server.SessionTimeout)
 		secret, err := ds.Property(context.TODO()).DefaultGet(consts.JWTSecretKey, "not so secret")
 		if err != nil {
 			log.Error("No JWT secret found in DB. Setting a temp one, but please report this error", err)
@@ -46,22 +46,13 @@ func CreateToken(u *model.User) (string, error) {
 	return TouchToken(token)
 }
 
-func getSessionTimeOut() time.Duration {
-	if sessionTimeOut == 0 {
-		sessionTimeOut = conf.Server.SessionTimeout
-		log.Info("Setting Session Timeout", "value", sessionTimeOut)
-	}
-	return sessionTimeOut
-}
-
 func TouchToken(token jwt.Token) (string, error) {
 	claims, err := token.AsMap(context.Background())
 	if err != nil {
 		return "", err
 	}
 
-	timeout := getSessionTimeOut()
-	claims[jwt.ExpirationKey] = time.Now().UTC().Add(timeout).Unix()
+	claims[jwt.ExpirationKey] = time.Now().UTC().Add(conf.Server.SessionTimeout).Unix()
 	_, newToken, err := TokenAuth.Encode(claims)
 
 	return newToken, err
