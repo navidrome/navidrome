@@ -12,20 +12,20 @@ require (
 	github.com/cespare/reflex v0.3.0
 	github.com/deluan/rest v0.0.0-20210503015435-e7091d44f0ba
 	github.com/denisenkom/go-mssqldb v0.9.0 // indirect
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/fscache v0.10.2-0.20201024185917-a0daa9e52747
 	github.com/dustin/go-humanize v1.0.0
-	github.com/go-chi/chi v1.5.1
-	github.com/go-chi/cors v1.1.1
+	github.com/go-chi/chi/v5 v5.0.3
+	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/httprate v0.4.0
-	github.com/go-chi/jwtauth v4.0.4+incompatible
+	github.com/go-chi/jwtauth/v5 v5.0.1
 	github.com/golangci/golangci-lint v1.40.0
 	github.com/google/uuid v1.2.0
 	github.com/google/wire v0.5.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.2.1
+	github.com/lestrrat-go/jwx v1.1.6
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/microcosm-cc/bluemonday v1.0.9
 	github.com/mitchellh/mapstructure v1.3.2 // indirect

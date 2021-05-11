@@ -28,7 +28,7 @@ watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 .PHONY: watch
 
 test: ##@Development Run Go tests
-	go test ./... -v
+	go test ./...
 .PHONY: test
 
 testall: test ##@Development Run Go and JS tests
