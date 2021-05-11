@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"sync"
 
@@ -41,6 +42,7 @@ func Db() *sql.DB {
 
 func EnsureLatestVersion() {
 	db := Db()
+	goose.SetLogger(&logAdapter{})
 
 	// Disable foreign_keys to allow re-creating tables in migrations
 	_, err := db.Exec("PRAGMA foreign_keys=off")
@@ -64,4 +66,28 @@ func EnsureLatestVersion() {
 		log.Error("Failed to apply new migrations", err)
 		os.Exit(1)
 	}
+}
+
+type logAdapter struct{}
+
+func (l *logAdapter) Fatal(v ...interface{}) {
+	log.Error(fmt.Sprint(v...))
+	os.Exit(-1)
+}
+
+func (l *logAdapter) Fatalf(format string, v ...interface{}) {
+	log.Error(fmt.Sprintf(format, v...))
+	os.Exit(-1)
+}
+
+func (l *logAdapter) Print(v ...interface{}) {
+	log.Info(fmt.Sprint(v...))
+}
+
+func (l *logAdapter) Println(v ...interface{}) {
+	log.Info(fmt.Sprintln(v...))
+}
+
+func (l *logAdapter) Printf(format string, v ...interface{}) {
+	log.Info(fmt.Sprintf(format, v...))
 }
