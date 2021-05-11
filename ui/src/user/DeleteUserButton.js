@@ -31,19 +31,14 @@ const DeleteUserButton = (props) => {
     onClick,
     ...rest
   } = props
-  const {
-    open,
-    loading,
-    handleDialogOpen,
-    handleDialogClose,
-    handleDelete,
-  } = useDeleteWithConfirmController({
-    resource,
-    record,
-    redirect,
-    basePath,
-    onClick,
-  })
+  const { open, loading, handleDialogOpen, handleDialogClose, handleDelete } =
+    useDeleteWithConfirmController({
+      resource,
+      record,
+      redirect,
+      basePath,
+      onClick,
+    })
 
   const classes = useStyles(props)
   return (
