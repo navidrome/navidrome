@@ -26,7 +26,7 @@ var (
 )
 
 func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
-	auth.InitTokenAuth(ds)
+	auth.Init(ds)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
@@ -85,7 +85,7 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 }
 
 func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
-	auth.InitTokenAuth(ds)
+	auth.Init(ds)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
@@ -190,7 +190,7 @@ func verifier() func(http.Handler) http.Handler {
 }
 
 func authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
-	auth.InitTokenAuth(ds)
+	auth.Init(ds)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
