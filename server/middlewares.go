@@ -74,7 +74,7 @@ func secureMiddleware() func(h http.Handler) http.Handler {
 		ContentTypeNosniff: true,
 		FrameDeny:          true,
 		ReferrerPolicy:     "same-origin",
-		FeaturePolicy:      "autoplay 'none'; camera: 'none'; display-capture 'none'; microphone: 'none'; usb: 'none'",
+		PermissionsPolicy:  "autoplay=(), camera=(), microphone=(), usb=()",
 		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
