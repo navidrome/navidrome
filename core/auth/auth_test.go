@@ -4,14 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
-
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/model"
-
-	"github.com/dgrijalva/jwt-go"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -34,35 +32,37 @@ var _ = Describe("Auth", func() {
 
 	BeforeEach(func() {
 		auth.Secret = []byte(testJWTSecret)
+		auth.TokenAuth = jwtauth.New("HS256", auth.Secret, nil)
 	})
 
 	Describe("Validate", func() {
 		It("returns error with an invalid JWT token", func() {
 			_, err := auth.Validate("invalid.token")
-			Expect(err).To(Not(BeNil()))
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns the claims from a valid JWT token", func() {
-			token := jwt.New(jwt.SigningMethodHS256)
-			claims := token.Claims.(jwt.MapClaims)
+			claims := map[string]interface{}{}
 			claims["iss"] = "issuer"
+			claims["iat"] = time.Now().Unix()
 			claims["exp"] = time.Now().Add(1 * time.Minute).Unix()
-			tokenStr, _ := token.SignedString(auth.Secret)
+			_, tokenStr, err := auth.TokenAuth.Encode(claims)
+			Expect(err).NotTo(HaveOccurred())
 
 			decodedClaims, err := auth.Validate(tokenStr)
-			Expect(err).To(BeNil())
+			Expect(err).NotTo(HaveOccurred())
 			Expect(decodedClaims["iss"]).To(Equal("issuer"))
 		})
 
 		It("returns ErrExpired if the `exp` field is in the past", func() {
-			token := jwt.New(jwt.SigningMethodHS256)
-			claims := token.Claims.(jwt.MapClaims)
+			claims := map[string]interface{}{}
 			claims["iss"] = "issuer"
 			claims["exp"] = time.Now().Add(-1 * time.Minute).Unix()
-			tokenStr, _ := token.SignedString(auth.Secret)
+			_, tokenStr, err := auth.TokenAuth.Encode(claims)
+			Expect(err).NotTo(HaveOccurred())
 
-			_, err := auth.Validate(tokenStr)
-			Expect(err).To(MatchError("Token is expired"))
+			_, err = auth.Validate(tokenStr)
+			Expect(err).To(MatchError("token is expired"))
 		})
 	})
 
@@ -74,36 +74,35 @@ var _ = Describe("Auth", func() {
 				IsAdmin:  true,
 			}
 			tokenStr, err := auth.CreateToken(u)
-			Expect(err).To(BeNil())
+			Expect(err).NotTo(HaveOccurred())
 
 			claims, err := auth.Validate(tokenStr)
-			Expect(err).To(BeNil())
+			Expect(err).NotTo(HaveOccurred())
 
 			Expect(claims["iss"]).To(Equal(consts.JWTIssuer))
 			Expect(claims["sub"]).To(Equal("johndoe"))
 			Expect(claims["uid"]).To(Equal("123"))
 			Expect(claims["adm"]).To(Equal(true))
-
-			exp := time.Unix(int64(claims["exp"].(float64)), 0)
-			Expect(exp).To(BeTemporally(">", time.Now()))
+			Expect(claims["exp"]).To(BeTemporally(">", time.Now()))
 		})
 	})
 
 	Describe("TouchToken", func() {
 		It("updates the expiration time", func() {
 			yesterday := time.Now().Add(-oneDay)
-			token := jwt.New(jwt.SigningMethodHS256)
-			claims := token.Claims.(jwt.MapClaims)
+			claims := map[string]interface{}{}
 			claims["iss"] = "issuer"
 			claims["exp"] = yesterday.Unix()
+			token, _, err := auth.TokenAuth.Encode(claims)
+			Expect(err).NotTo(HaveOccurred())
 
 			touched, err := auth.TouchToken(token)
-			Expect(err).To(BeNil())
+			Expect(err).NotTo(HaveOccurred())
 
 			decodedClaims, err := auth.Validate(touched)
-			Expect(err).To(BeNil())
-			expiration := time.Unix(int64(decodedClaims["exp"].(float64)), 0)
-			Expect(expiration.Sub(yesterday)).To(BeNumerically(">=", oneDay))
+			Expect(err).NotTo(HaveOccurred())
+			exp := decodedClaims["exp"].(time.Time)
+			Expect(exp.Sub(yesterday)).To(BeNumerically(">=", oneDay))
 		})
 	})
 })
