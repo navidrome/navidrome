@@ -18,7 +18,7 @@ require (
 	github.com/djherbis/fscache v0.10.2-0.20201024185917-a0daa9e52747
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-chi/chi v1.5.1
-	github.com/go-chi/cors v1.1.1
+	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/httprate v0.4.0
 	github.com/go-chi/jwtauth v4.0.4+incompatible
 	github.com/golangci/golangci-lint v1.40.0
