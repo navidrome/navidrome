@@ -115,7 +115,9 @@ func Load() {
 		os.Exit(1)
 	}
 
-	log.Debug(pretty.Sprintf("Loaded configuration from '%s': %# v\n", Server.ConfigFile, Server))
+	if log.CurrentLevel() >= log.LevelDebug {
+		fmt.Println(log.Redact(pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)))
+	}
 
 	// Call init hooks
 	for _, hook := range hooks {

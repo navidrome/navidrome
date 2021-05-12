@@ -50,6 +50,17 @@ type levelThresholdTest struct {
 	description string
 }
 
+// levelThreshold returns a []logrus.Level including all levels
+// above and including the level given. If the provided level does not exit,
+// an empty slice is returned.
+func levelThreshold(l logrus.Level) []logrus.Level {
+	//nolint
+	if l < 0 || int(l) > len(logrus.AllLevels) {
+		return []logrus.Level{}
+	}
+	return logrus.AllLevels[:l+1]
+}
+
 func TestLevelThreshold(t *testing.T) {
 	tests := []levelThresholdTest{
 		{
@@ -68,7 +79,7 @@ func TestLevelThreshold(t *testing.T) {
 
 	for _, test := range tests {
 		fn := func(t *testing.T) {
-			levels := LevelThreshold(test.level)
+			levels := levelThreshold(test.level)
 			assert.Equal(t, test.expected, levels, test.description)
 		}
 
