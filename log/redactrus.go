@@ -16,6 +16,7 @@ type Hook struct {
 	// will not be dispatched. If empty, all messages will be dispatched.
 	AcceptedLevels []logrus.Level
 	RedactionList  []string
+	redactionKeys  []*regexp.Regexp
 }
 
 // Levels returns the user defined AcceptedLevels
@@ -27,26 +28,13 @@ func (h *Hook) Levels() []logrus.Level {
 	return h.AcceptedLevels
 }
 
-// LevelThreshold returns a []logrus.Level including all levels
-// above and including the level given. If the provided level does not exit,
-// an empty slice is returned.
-func LevelThreshold(l logrus.Level) []logrus.Level {
-	//nolint
-	if l < 0 || int(l) > len(logrus.AllLevels) {
-		return []logrus.Level{}
-	}
-	return logrus.AllLevels[:l+1]
-}
-
 // Fire redacts values in an log Entry that match
 // with keys defined in the RedactionList
 func (h *Hook) Fire(e *logrus.Entry) error {
-	for _, redactionKey := range h.RedactionList {
-		re, err := regexp.Compile(redactionKey)
-		if err != nil {
-			return err
-		}
-
+	if err := h.initRedaction(); err != nil {
+		return err
+	}
+	for _, re := range h.redactionKeys {
 		// Redact based on key matching in Data fields
 		for k, v := range e.Data {
 			if re.MatchString(k) {
@@ -67,4 +55,28 @@ func (h *Hook) Fire(e *logrus.Entry) error {
 	}
 
 	return nil
+}
+
+func (h *Hook) initRedaction() error {
+	if len(h.redactionKeys) == 0 {
+		for _, redactionKey := range h.RedactionList {
+			re, err := regexp.Compile(redactionKey)
+			if err != nil {
+				return err
+			}
+			h.redactionKeys = append(h.redactionKeys, re)
+		}
+	}
+	return nil
+}
+
+func (h *Hook) redact(msg string) (string, error) {
+	if err := h.initRedaction(); err != nil {
+		return msg, err
+	}
+	for _, re := range h.redactionKeys {
+		msg = re.ReplaceAllString(msg, "$1[REDACTED]$2")
+	}
+
+	return msg, nil
 }
