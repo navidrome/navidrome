@@ -28,7 +28,7 @@ var _ = Describe("Logger", func() {
 		SetDefaultLogger(l)
 	})
 
-	Context("Logging", func() {
+	Describe("Logging", func() {
 		It("logs a simple message", func() {
 			Error("Simple Message")
 			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
@@ -96,7 +96,7 @@ var _ = Describe("Logger", func() {
 		})
 	})
 
-	Context("Levels", func() {
+	Describe("Levels", func() {
 		BeforeEach(func() {
 			SetLevel(LevelTrace)
 		})
@@ -122,7 +122,7 @@ var _ = Describe("Logger", func() {
 		})
 	})
 
-	Context("extractLogger", func() {
+	Describe("extractLogger", func() {
 		It("returns an error if the context is nil", func() {
 			_, err := extractLogger(nil)
 			Expect(err).ToNot(BeNil())
@@ -151,7 +151,7 @@ var _ = Describe("Logger", func() {
 		})
 	})
 
-	Context("SetLevelString", func() {
+	Describe("SetLevelString", func() {
 		It("converts Critical level", func() {
 			SetLevelString("Critical")
 			Expect(CurrentLevel()).To(Equal(LevelCritical))
@@ -175,6 +175,13 @@ var _ = Describe("Logger", func() {
 		It("converts Trace level", func() {
 			SetLevelString("trace")
 			Expect(CurrentLevel()).To(Equal(LevelTrace))
+		})
+	})
+
+	Describe("Redact", func() {
+		Describe("Subsonic API password", func() {
+			msg := "getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=first%20and%20other%20words&title=Title"
+			Expect(Redact(msg)).To(Equal("getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=[REDACTED]&title=Title"))
 		})
 	})
 })
