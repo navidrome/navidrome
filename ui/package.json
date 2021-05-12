@@ -14,7 +14,7 @@
     "jwt-decode": "^3.1.2",
     "lodash.pick": "^4.4.0",
     "lodash.throttle": "^4.1.1",
-    "md5-hex": "^3.0.1",
+    "md5-hex": "^4.0.0",
     "prop-types": "^15.7.2",
     "ra-data-json-server": "^3.15.1",
     "ra-i18n-polyglot": "^3.15.1",
