@@ -1,5 +1,4 @@
 import React, { memo } from 'react'
-import get from 'lodash.get'
 import Typography from '@material-ui/core/Typography'
 import sanitizeFieldRestProps from './sanitizeFieldRestProps'
 import md5 from 'md5-hex'
@@ -15,7 +14,7 @@ export const MultiLineTextField = memo(
     addLabel,
     ...rest
   }) => {
-    const value = get(record, source)
+    const value = record && record[source]
     let lines = value ? value.split('\n') : []
     if (maxLines || firstLine) {
       lines = lines.slice(firstLine, maxLines)
