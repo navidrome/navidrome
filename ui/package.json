@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@material-ui/core": "^4.11.4",
+    "@material-ui/icons": "^4.11.2",
     "@material-ui/lab": "^4.0.0-alpha.57",
+    "@material-ui/styles": "^4.11.4",
     "clsx": "^1.1.1",
     "deepmerge": "^4.2.2",
+    "history": "^4.10.1",
     "jwt-decode": "^3.1.2",
     "lodash.get": "^4.4.2",
     "lodash.pick": "^4.4.0",
@@ -24,6 +28,7 @@
     "react-jinke-music-player": "^4.24.0",
     "react-measure": "^2.5.2",
     "react-redux": "^7.2.4",
+    "react-router-dom": "^5.2.0",
     "react-scripts": "^3.4.3",
     "uuid": "^8.3.2"
   },
