@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import ReactGA from 'react-ga'
 import 'react-jinke-music-player/assets/index.css'
 import { Provider, useDispatch } from 'react-redux'
@@ -65,13 +65,15 @@ const App = () => (
 const Admin = (props) => {
   useChangeThemeColor()
   const dispatch = useDispatch()
-  if (config.devActivityPanel) {
-    setDispatch(dispatch)
-    authProvider
-      .checkAuth()
-      .then(() => startEventStream())
-      .catch(() => {}) // ignore if not logged in
-  }
+  useEffect(() => {
+    if (config.devActivityPanel) {
+      setDispatch(dispatch)
+      authProvider
+        .checkAuth()
+        .then(() => startEventStream())
+        .catch(() => {}) // ignore if not logged in
+    }
+  }, [dispatch])
 
   return (
     <RAAdmin
