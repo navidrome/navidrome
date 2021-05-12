@@ -4,6 +4,7 @@ import 'react-jinke-music-player/assets/index.css'
 import { Provider, useDispatch } from 'react-redux'
 import { createHashHistory } from 'history'
 import { Admin as RAAdmin, Resource } from 'react-admin'
+import { HotKeys } from 'react-hotkeys'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
 import { Layout, Login, Logout } from './layout'
@@ -28,8 +29,8 @@ import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
 import { setDispatch, startEventStream } from './eventStream'
-import { HotKeys } from 'react-hotkeys'
 import { keyMap } from './hotkeys'
+import useChangeThemeColor from './useChangeThemeColor'
 
 const history = createHashHistory()
 
@@ -62,6 +63,7 @@ const App = () => (
 )
 
 const Admin = (props) => {
+  useChangeThemeColor()
   const dispatch = useDispatch()
   if (config.devActivityPanel) {
     setDispatch(dispatch)
@@ -112,7 +114,6 @@ const Admin = (props) => {
         <Resource name="translation" />,
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
-
         <Player />,
       ]}
     </RAAdmin>
