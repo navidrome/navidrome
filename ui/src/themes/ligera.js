@@ -181,9 +181,6 @@ export default {
         paddingTop: '10px',
         boxShadow: '-14px -7px 20px black',
       },
-      '&:hover': {
-        backgroundColor: '#000',
-      },
     },
     MuiTableRow: {
       root: {
