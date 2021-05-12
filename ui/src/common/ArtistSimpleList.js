@@ -6,7 +6,7 @@ import ListItemIcon from '@material-ui/core/ListItemIcon'
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
-import { sanitizeListRestProps } from 'ra-core'
+import { sanitizeListRestProps } from 'react-admin'
 import { ArtistContextMenu, RatingField } from './index'
 import config from '../config'
 
