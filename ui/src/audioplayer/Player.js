@@ -295,10 +295,9 @@ const Player = () => {
     [dispatch, showNotifications]
   )
 
-  const onAudioPause = useCallback(
-    (info) => dispatch(currentPlaying(info)),
-    [dispatch]
-  )
+  const onAudioPause = useCallback((info) => dispatch(currentPlaying(info)), [
+    dispatch,
+  ])
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
