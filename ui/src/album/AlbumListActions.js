@@ -42,13 +42,11 @@ const AlbumViewToggler = React.forwardRef(
           color="primary"
           aria-label="text primary button group"
           className={classes.buttonGroup}
-          disableElevation
-          fullWidth
         >
           <Button
             size="small"
             className={classes.leftButton}
-            label="Grid"
+            label={translate('ra.toggleFieldsMenu.grid')}
             color={albumView.grid ? 'primary' : 'secondary'}
             onClick={() => dispatch(albumViewGrid())}
           >
@@ -57,7 +55,7 @@ const AlbumViewToggler = React.forwardRef(
           <Button
             size="small"
             className={classes.rightButton}
-            label="Table"
+            label={translate('ra.toggleFieldsMenu.table')}
             color={albumView.grid ? 'secondary' : 'primary'}
             onClick={() => dispatch(albumViewList())}
           >

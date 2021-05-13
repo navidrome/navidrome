@@ -275,7 +275,9 @@
     },
     "toggleFieldsMenu": {
       "columnsToDisplay": "Columns To Display",
-      "layout": "Layout"
+      "layout": "Layout",
+      "grid": "Grid",
+      "table": "Table"
     }
   },
   "message": {
