@@ -35,10 +35,10 @@ const useStyles = makeStyles(
         '& div[class*="RaBulkActionsToolbar-toolbar"]': {
           '&:hover': {
             display: 'flex',
-            flexDirection: 'row-reverse'
+            flexDirection: 'row-reverse',
           },
         },
-    },
+      },
     },
     content: {
       marginTop: 0,
@@ -52,14 +52,14 @@ const useStyles = makeStyles(
     bulkActionsDisplayed: {
       marginTop: -theme.spacing(8),
       transition: theme.transitions.create('margin-top'),
-      display: 'grid'
+      display: 'grid',
     },
     actions: {
       zIndex: 2,
       display: 'flex',
       justifyContent: 'flex-end',
       flexWrap: 'wrap',
-      marginTop: '50px'
+      marginTop: '50px',
     },
     noResults: { padding: 20 },
     columnIcon: {
@@ -111,7 +111,7 @@ const AlbumSongs = (props) => {
           })}
           key={version}
         >
-          <BulkActionsToolbar  {...props}>
+          <BulkActionsToolbar {...props}>
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
