@@ -20,7 +20,9 @@
                 "bitRate": "ビットレート",
                 "discSubtitle": "ディスクサブタイトル",
                 "starred": "お気に入り",
-                "comment": "コメント"
+                "comment": "コメント",
+                "rating": "レート",
+                "quality": "品質"
             },
             "actions": {
                 "addToQueue": "最後に再生",
@@ -44,7 +46,8 @@
                 "compilation": "Compilation",
                 "year": "年",
                 "updatedAt": "更新日",
-                "comment": "コメント"
+                "comment": "コメント",
+                "rating": "レート"
             },
             "actions": {
                 "playAll": "再生",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "最近追加された",
                 "recentlyPlayed": "最近再生された",
                 "mostPlayed": "最も再生された",
-                "starred": "お気に入り"
+                "starred": "お気に入り",
+                "topRated": "高評価"
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "名前",
                 "albumCount": "アルバム枚数",
                 "songCount": "曲数",
-                "playCount": "再生数"
+                "playCount": "再生数",
+                "rating": "レート"
             }
         },
         "user": {
@@ -92,7 +97,7 @@
                 "maxBitRate": "最大ビットレート",
                 "client": "クライアント",
                 "userName": "ユーザ名",
-                "lastSeen": "最後のシーン",
+                "lastSeen": "最後の利用",
                 "reportRealPath": "実際のファイルパスを返す"
             }
         },
@@ -123,6 +128,10 @@
                 "selectPlaylist": "プレイリストを選択",
                 "addNewPlaylist": "'%{name}' を作成",
                 "export": "エクスポート"
+            },
+            "message": {
+                "duplicate_song": "重複する曲を追加",
+                "song_exist": "既にプレイリストに存在する曲です。追加しますか？"
             }
         }
     },
@@ -179,7 +188,8 @@
             "close": "閉じる",
             "open_menu": "開く",
             "close_menu": "閉じる",
-            "unselect": "選択解除"
+            "unselect": "選択解除",
+            "skip": "スキップ"
         },
         "boolean": {
             "true": "はい",
@@ -335,7 +345,7 @@
             "next_song": "次の曲",
             "vol_up": "音量を上げる",
             "vol_down": "音量を下げる",
-            "toggle_star": "星の付け外し"
+            "toggle_love": "星の付け外し"
         }
     }
 }

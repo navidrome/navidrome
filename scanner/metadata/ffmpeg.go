@@ -67,10 +67,10 @@ var (
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
 
 	//    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
-	bitRateRx = regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (Audio):.*, (\d+) kb/s`)
+	bitRateRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: (Audio):.*, (\d+) kb/s`)
 
 	//    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 600x600 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc`
-	coverRx = regexp.MustCompile(`^\s{4}Stream #\d+:\d+: (Video):.*`)
+	coverRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: (Video):.*`)
 )
 
 func (e *ffmpegExtractor) parseOutput(output string) map[string]string {

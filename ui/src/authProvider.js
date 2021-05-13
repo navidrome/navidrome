@@ -26,7 +26,9 @@ const authProvider = {
       .then((response) => {
         // Validate token
         jwtDecode(response.token)
+        // TODO Store all items in one object
         localStorage.setItem('token', response.token)
+        localStorage.setItem('userId', response.id)
         localStorage.setItem('name', response.name)
         localStorage.setItem('username', response.username)
         response.avatar && localStorage.setItem('avatar', response.avatar)
@@ -59,6 +61,11 @@ const authProvider = {
   logout: () => {
     stopEventStream()
     removeItems()
+    try {
+      clearServiceWorkerCache()
+    } catch (e) {
+      console.log('Error clearing service worker cache:', e)
+    }
     return Promise.resolve()
   },
 
@@ -66,7 +73,7 @@ const authProvider = {
     localStorage.getItem('token') ? Promise.resolve() : Promise.reject(),
 
   checkError: ({ status }) => {
-    if (status === 401 || status === 403) {
+    if (status === 401) {
       removeItems()
       return Promise.reject()
     }
@@ -89,12 +96,20 @@ const authProvider = {
 
 const removeItems = () => {
   localStorage.removeItem('token')
+  localStorage.removeItem('userId')
   localStorage.removeItem('name')
   localStorage.removeItem('username')
   localStorage.removeItem('avatar')
   localStorage.removeItem('role')
   localStorage.removeItem('subsonic-salt')
   localStorage.removeItem('subsonic-token')
+}
+
+const clearServiceWorkerCache = () => {
+  window.caches &&
+    caches.keys().then(function (keyList) {
+      for (let key of keyList) caches.delete(key)
+    })
 }
 
 const generateSubsonicSalt = () => {

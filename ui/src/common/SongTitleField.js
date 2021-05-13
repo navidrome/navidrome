@@ -3,7 +3,6 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { useSelector } from 'react-redux'
 import { FunctionField } from 'react-admin'
-import get from 'lodash.get'
 import { useTheme } from '@material-ui/core/styles'
 import PlayingLight from '../icons/playing-light.gif'
 import PlayingDark from '../icons/playing-dark.gif'
@@ -28,7 +27,7 @@ export const SongTitleField = ({ showTrackNumbers, ...props }) => {
   const theme = useTheme()
   const classes = useStyles()
   const { record } = props
-  const currentTrack = useSelector((state) => get(state, 'queue.current', {}))
+  const currentTrack = useSelector((state) => state?.queue?.current || {})
   const currentId = currentTrack.trackId
   const paused = currentTrack.paused
   const isCurrent =

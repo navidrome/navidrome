@@ -62,7 +62,7 @@ builds:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
-  - id: navidrome_windows_i686
+  - id: navidrome_windows_386
     env:
       - CGO_ENABLED=1
       - CC=i686-w64-mingw32-gcc
@@ -78,7 +78,7 @@ builds:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
-  - id: navidrome_windows_x64
+  - id: navidrome_windows_amd64
     env:
       - CGO_ENABLED=1
       - CC=x86_64-w64-mingw32-gcc
@@ -94,7 +94,7 @@ builds:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
-  - id: navidrome_darwin
+  - id: navidrome_darwin_amd64
     env:
       - CGO_ENABLED=1
       - CC=o64-clang

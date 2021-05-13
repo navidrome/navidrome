@@ -4,12 +4,12 @@
         "song": {
             "name": "Skladba |||| Skladby",
             "fields": {
-                "albumArtist": "Interpret alba",
+                "albumArtist": "Umělec alba",
                 "duration": "Délka",
                 "trackNumber": "#",
                 "playCount": "Přehrání",
                 "title": "Název",
-                "artist": "Interpret",
+                "artist": "Umělec",
                 "album": "Album",
                 "path": "Cesta k souboru",
                 "genre": "Žánr",
@@ -20,7 +20,9 @@
                 "bitRate": "Přenosová rychlost",
                 "discSubtitle": "Podtitul disku",
                 "starred": "Oblíbené",
-                "comment": "Komentář"
+                "comment": "Komentář",
+                "rating": "Hodnocení",
+                "quality": "Kvalita"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -35,7 +37,7 @@
             "name": "Album |||| Alba",
             "fields": {
                 "albumArtist": "Interpret alba",
-                "artist": "Interpret",
+                "artist": "Umělec",
                 "duration": "Délka",
                 "songCount": "Skladby",
                 "playCount": "Přehrání",
@@ -44,7 +46,8 @@
                 "compilation": "Kompilace",
                 "year": "Rok",
                 "updatedAt": "Aktualizováno",
-                "comment": "Komentář"
+                "comment": "Komentář",
+                "rating": "Hodnocení"
             },
             "actions": {
                 "playAll": "Přehrát",
@@ -60,16 +63,18 @@
                 "recentlyAdded": "Nedávno přidané",
                 "recentlyPlayed": "Nedávno přehrané",
                 "mostPlayed": "Nejpřehrávanější",
-                "starred": "Oblíbené"
+                "starred": "Oblíbené",
+                "topRated": "Nejlépe hodnocené"
             }
         },
         "artist": {
-            "name": "Interpret |||| Interpreti",
+            "name": "Umělec |||| Umělci",
             "fields": {
                 "name": "Název",
                 "albumCount": "Počet alb",
                 "songCount": "Počet skladeb",
-                "playCount": "Přehrání"
+                "playCount": "Přehrání",
+                "rating": "Hodnocení"
             }
         },
         "user": {
@@ -92,7 +97,7 @@
                 "maxBitRate": "Max. přenosová rychlost",
                 "client": "Klient",
                 "userName": "Uživatelské jméno",
-                "lastSeen": "Naposledy spatřen",
+                "lastSeen": "Naposledy viděn",
                 "reportRealPath": "Zkutečná cesta hlášení"
             }
         },
@@ -123,6 +128,10 @@
                 "selectPlaylist": "Přidat skladby do seznamu:",
                 "addNewPlaylist": "Vytvořit \"%{name}\"",
                 "export": "Export"
+            },
+            "message": {
+                "duplicate_song": "Přidat duplicitní skladby",
+                "song_exist": "Do seznamu skladeb se přidávají duplikáty. Chcete je přidat nebo přeskočit?"
             }
         }
     },
@@ -179,7 +188,8 @@
             "close": "Zavřít",
             "open_menu": "Otevřít nabídku",
             "close_menu": "Zavřít nabídku",
-            "unselect": "Zrušit výběr"
+            "unselect": "Zrušit výběr",
+            "skip": "Přeskočit"
         },
         "boolean": {
             "true": "Ano",
@@ -194,21 +204,21 @@
             "loading": "Načítání",
             "not_found": "Nenalezeno",
             "show": "%{name} #%{id}",
-            "empty": "Zatím žádný %{name}",
+            "empty": "Zatím žádný %{name}.",
             "invite": "Chcete jeden přidat?"
         },
         "input": {
             "file": {
-                "upload_several": "Přetáhněte soubory pro nahrání nebo klikněte pro výběr",
-                "upload_single": "Přetáhněte soubor pro nahrání nebo klikněte pro jeho výběr"
+                "upload_several": "Přetáhněte soubory pro nahrání nebo klikněte pro výběr.",
+                "upload_single": "Přetáhněte soubor pro nahrání nebo klikněte pro jeho výběr."
             },
             "image": {
-                "upload_several": "Přetáhněte obrázky pro nahrání nebo klikněte pro výběr",
-                "upload_single": "Přetáhněte obrázek pro nahrání nebo klikněte pro jeho výběr"
+                "upload_several": "Přetáhněte obrázky pro nahrání nebo klikněte pro výběr.",
+                "upload_single": "Přetáhněte obrázek pro nahrání nebo klikněte pro jeho výběr."
             },
             "references": {
-                "all_missing": "Nelze nalézt referencovaná data",
-                "many_missing": "Minimálně jedna z referencí se nezdá být nadále dostupná",
+                "all_missing": "Nelze nalézt referencovaná data.",
+                "many_missing": "Minimálně jedna z referencí už není dostupná.",
                 "single_missing": "Reference se nezdá být nadále dostupná."
             },
             "password": {
@@ -225,7 +235,7 @@
             "delete_title": "Smazat %{name} #%{id}",
             "details": "Detaily",
             "error": "Objevila se chyba klienta a váš požadavek nemohl být splněn.",
-            "invalid_form": "Formulář není platný. Prosím zkontrolujte chyby.",
+            "invalid_form": "Formulář není platný. Prosím překontrolujte ho.",
             "loading": "Stránka se načítá, prosím vyčkejte",
             "no": "Ne",
             "not_found": "Napsali jste špatnou adresu URL, nebo jste následovali špatný odkaz.",
@@ -241,7 +251,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} z %{total}",
             "page_rows_per_page": "Položek na stránce:",
             "next": "Další",
-            "prev": "Předchozí"
+            "prev": "Předchozí",
+            "skip_nav": "Přeskočit na obsah"
         },
         "notification": {
             "updated": "Prvek aktualizován |||| %{smart_count} prvků aktualizováno",
@@ -265,17 +276,17 @@
         "delete_user_title": "Odstranit uživatele '%{name}'",
         "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?",
         "notifications_blocked": "Zablokovali jste si oznámení pro tuto stránku v nastavení vašeho prohlížeče",
-        "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše"
+        "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše nebo nepřistupujete k Navidrome přes https"
     },
     "menu": {
         "library": "Knihovna",
         "settings": "Nastavení",
         "version": "Verze",
-        "theme": "Motiv",
+        "theme": "Téma",
         "personal": {
             "name": "Osobní",
             "options": {
-                "theme": "Motiv",
+                "theme": "Téma",
                 "language": "Jazyk",
                 "defaultView": "Výchozí stránka",
                 "desktop_notifications": "Oznámení na ploše"
@@ -323,5 +334,18 @@
         "fullScan": "Úplný sken",
         "serverUptime": "Doba od spuštění",
         "serverDown": "OFFLINE"
+    },
+    "help": {
+        "title": "Klávesové zkratky Navidrome",
+        "hotkeys": {
+            "show_help": "Ukázat tuto nápovědu",
+            "toggle_menu": "Přepnout postranní menu",
+            "toggle_play": "Přehrát / Pozastavit",
+            "prev_song": "Předchozí skladba",
+            "next_song": "Následující skladba",
+            "vol_up": "Zvýšit hlasitost",
+            "vol_down": "Snížit hlasitost",
+            "toggle_love": "Přepnout hvězdičku aktuální skladby"
+        }
     }
 }

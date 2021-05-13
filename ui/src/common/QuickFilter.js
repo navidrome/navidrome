@@ -1,6 +1,7 @@
 import React from 'react'
 import { Chip, makeStyles } from '@material-ui/core'
 import { useTranslate } from 'react-admin'
+import inflection from 'inflection'
 
 const useQuickFilterStyles = makeStyles((theme) => ({
   chip: {
@@ -8,9 +9,20 @@ const useQuickFilterStyles = makeStyles((theme) => ({
   },
 }))
 
-export const QuickFilter = ({ source, label }) => {
+export const QuickFilter = ({ source, resource, label, defaultValue }) => {
   const translate = useTranslate()
   const classes = useQuickFilterStyles()
-  const lbl = label || `resources.song.fields.${source}`
-  return <Chip className={classes.chip} label={translate(lbl)} />
+  let lbl = label || source
+  if (typeof lbl === 'string' || lbl instanceof String) {
+    if (label) {
+      lbl = translate(lbl, {
+        _: inflection.humanize(inflection.underscore(lbl)),
+      })
+    } else {
+      lbl = translate(`resources.${resource}.fields.${source}`, {
+        _: inflection.humanize(inflection.underscore(source)),
+      })
+    }
+  }
+  return <Chip className={classes.chip} label={lbl} />
 }

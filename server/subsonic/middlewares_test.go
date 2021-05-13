@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -36,10 +38,12 @@ func newPostRequest(queryParam string, formFields ...string) *http.Request {
 var _ = Describe("Middlewares", func() {
 	var next *mockHandler
 	var w *httptest.ResponseRecorder
+	var ds model.DataStore
 
 	BeforeEach(func() {
 		next = &mockHandler{}
 		w = httptest.NewRecorder()
+		ds = &tests.MockDataStore{}
 	})
 
 	Describe("ParsePostForm", func() {
@@ -115,11 +119,13 @@ var _ = Describe("Middlewares", func() {
 	})
 
 	Describe("Authenticate", func() {
-		var ds model.DataStore
 		BeforeEach(func() {
-			ds = &tests.MockDataStore{}
+			ur := ds.User(context.TODO())
+			_ = ur.Put(&model.User{
+				UserName:    "admin",
+				NewPassword: "wordpass",
+			})
 		})
-
 		It("passes authentication with correct credentials", func() {
 			r := newGetRequest("u=admin", "p=wordpass")
 			cp := authenticate(ds)(next)
@@ -220,16 +226,18 @@ var _ = Describe("Middlewares", func() {
 	})
 
 	Describe("validateUser", func() {
-		var ds model.DataStore
 		BeforeEach(func() {
-			ds = &tests.MockDataStore{}
+			ur := ds.User(context.TODO())
+			_ = ur.Put(&model.User{
+				UserName:    "admin",
+				NewPassword: "wordpass",
+			})
 		})
-
 		Context("Plaintext password", func() {
 			It("authenticates with plaintext password ", func() {
 				usr, err := validateUser(context.TODO(), ds, "admin", "wordpass", "", "", "")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(usr).To(Equal(&model.User{UserName: "admin", Password: "wordpass"}))
+				Expect(usr.UserName).To(Equal("admin"))
 			})
 
 			It("fails authentication with wrong password", func() {
@@ -242,7 +250,7 @@ var _ = Describe("Middlewares", func() {
 			It("authenticates with simple encoded password ", func() {
 				usr, err := validateUser(context.TODO(), ds, "admin", "enc:776f726470617373", "", "", "")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(usr).To(Equal(&model.User{UserName: "admin", Password: "wordpass"}))
+				Expect(usr.UserName).To(Equal("admin"))
 			})
 		})
 
@@ -250,7 +258,7 @@ var _ = Describe("Middlewares", func() {
 			It("authenticates with token based authentication", func() {
 				usr, err := validateUser(context.TODO(), ds, "admin", "", "23b342970e25c7928831c3317edd0b67", "retnlmjetrymazgkt", "")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(usr).To(Equal(&model.User{UserName: "admin", Password: "wordpass"}))
+				Expect(usr.UserName).To(Equal("admin"))
 			})
 
 			It("fails if salt is missing", func() {
@@ -262,6 +270,9 @@ var _ = Describe("Middlewares", func() {
 		Context("JWT based authentication", func() {
 			var validToken string
 			BeforeEach(func() {
+				conf.Server.SessionTimeout = time.Minute
+				auth.Init(ds)
+
 				u := &model.User{UserName: "admin"}
 				var err error
 				validToken, err = auth.CreateToken(u)
@@ -273,7 +284,7 @@ var _ = Describe("Middlewares", func() {
 				usr, err := validateUser(context.TODO(), ds, "admin", "", "", "", validToken)
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(usr).To(Equal(&model.User{UserName: "admin", Password: "wordpass"}))
+				Expect(usr.UserName).To(Equal("admin"))
 			})
 
 			It("fails if JWT token is invalid", func() {
