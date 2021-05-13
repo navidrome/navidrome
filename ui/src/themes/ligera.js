@@ -16,7 +16,7 @@ const musicListActions = {
         backgroundColor: 'inherit !important',
       },
     },
-    'button:first-child': {
+    'button:first-child:not(:only-child)': {
       '@media screen and (max-width: 720px)': {
         transform: 'scale(1.5)',
         margin: '1rem',
@@ -39,6 +39,9 @@ const musicListActions = {
         border: 0,
         boxShadow: '0px 0px 4px 0px #5656567d',
       },
+    },
+    'button:only-child': {
+      margin: '1.5rem',
     },
     'button:first-child>span:first-child': {
       padding: 0,
