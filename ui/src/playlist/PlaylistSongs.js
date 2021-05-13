@@ -141,6 +141,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const columns = useSelectedFields({
     resource: 'playlistTrack',
     columns: toggleableFields,
+    defaultOff: ['bpm'],
   })
 
   return (
