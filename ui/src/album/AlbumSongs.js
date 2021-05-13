@@ -33,18 +33,10 @@ const useStyles = makeStyles(
       display: 'flex',
       '@media screen and (min-width: 600px)': {
         '& div[class*="RaBulkActionsToolbar-toolbar"]': {
-          display: 'grid',
-          height: '100px',
-        },
-        '& div[class*="RaBulkActionsToolbar-collapsed"]': {
-          height: '0',
-          minHeight: '0',
-        },
-        '& div[class*="RaBulkActionsToolbar-title"]': {
-          flex: '0 0 auto',
-          display: 'flex',
-          marginLeft: '0.7em',
-          marginTop: '0.6em',
+          '&:hover': {
+            display: 'flex',
+            flexDirection: 'row-reverse'
+          },
         },
     },
     },
