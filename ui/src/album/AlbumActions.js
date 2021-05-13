@@ -14,9 +14,13 @@ import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import { playNext, addTracks, playTracks, shuffleTracks } from '../actions'
 import subsonic from '../subsonic'
 import { formatBytes } from '../utils'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery, makeStyles } from '@material-ui/core'
 import config from '../config'
 import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
+
+const useStyles = makeStyles({
+  toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
+})
 
 const AlbumActions = ({
   className,
@@ -28,8 +32,9 @@ const AlbumActions = ({
 }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-  const isSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   const handlePlay = React.useCallback(() => {
     dispatch(playTracks(data, ids))
@@ -53,13 +58,7 @@ const AlbumActions = ({
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          width: '100%',
-        }}
-      >
+      <div className={classes.toolbar}>
         <div>
           <Button
             onClick={handlePlay}
@@ -97,7 +96,7 @@ const AlbumActions = ({
             </Button>
           )}
         </div>
-        <div>{isSmall && <ToggleFieldsMenu resource="albumSong" />}</div>
+        <div>{isNotSmall && <ToggleFieldsMenu resource="albumSong" />}</div>
       </div>
     </TopToolbar>
   )

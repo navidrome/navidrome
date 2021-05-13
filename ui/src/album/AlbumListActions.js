@@ -24,44 +24,50 @@ const useStyles = makeStyles({
   rightButton: { paddingLeft: '0.5rem' },
 })
 
-const AlbumViewToggler = React.forwardRef((props, ref) => {
-  const dispatch = useDispatch()
-  const albumView = useSelector((state) => state.albumView)
-  const classes = useStyles()
-  const translate = useTranslate()
-  return (
-    <div ref={ref}>
-      <Typography className={classes.title}>
-        {translate('ra.toggleFieldsMenu.layout')}
-      </Typography>
-      <ButtonGroup
-        variant="text"
-        color="primary"
-        aria-label="text primary button group"
-        className={classes.buttonGroup}
-      >
-        <Button
-          size="small"
-          className={classes.leftButton}
-          label="Grid"
-          color={albumView.grid ? 'primary' : 'secondary'}
-          onClick={() => dispatch(albumViewGrid())}
+const AlbumViewToggler = React.forwardRef(
+  ({ showTitle = true, disableElevation, fullWidth }, ref) => {
+    const dispatch = useDispatch()
+    const albumView = useSelector((state) => state.albumView)
+    const classes = useStyles()
+    const translate = useTranslate()
+    return (
+      <div ref={ref}>
+        {showTitle && (
+          <Typography className={classes.title}>
+            {translate('ra.toggleFieldsMenu.layout')}
+          </Typography>
+        )}
+        <ButtonGroup
+          variant="text"
+          color="primary"
+          aria-label="text primary button group"
+          className={classes.buttonGroup}
+          disableElevation
+          fullWidth
         >
-          <ViewModuleIcon fontSize="inherit" />
-        </Button>
-        <Button
-          size="small"
-          className={classes.rightButton}
-          label="Table"
-          color={albumView.grid ? 'secondary' : 'primary'}
-          onClick={() => dispatch(albumViewList())}
-        >
-          <ViewHeadlineIcon fontSize="inherit" />
-        </Button>
-      </ButtonGroup>
-    </div>
-  )
-})
+          <Button
+            size="small"
+            className={classes.leftButton}
+            label="Grid"
+            color={albumView.grid ? 'primary' : 'secondary'}
+            onClick={() => dispatch(albumViewGrid())}
+          >
+            <ViewModuleIcon fontSize="inherit" />
+          </Button>
+          <Button
+            size="small"
+            className={classes.rightButton}
+            label="Table"
+            color={albumView.grid ? 'secondary' : 'primary'}
+            onClick={() => dispatch(albumViewList())}
+          >
+            <ViewHeadlineIcon fontSize="inherit" />
+          </Button>
+        </ButtonGroup>
+      </div>
+    )
+  }
+)
 
 const AlbumListActions = ({
   currentSort,
@@ -81,7 +87,7 @@ const AlbumListActions = ({
   fullWidth,
   ...rest
 }) => {
-  const isSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       {filters &&
@@ -92,8 +98,10 @@ const AlbumListActions = ({
           filterValues,
           context: 'button',
         })}
-      {isSmall && (
-        <ToggleFieldsMenu resource="album" TopBarComponent={AlbumViewToggler} />
+      {isNotSmall ? (
+        <ToggleFieldsMenu resource="album" topbarComponent={AlbumViewToggler} />
+      ) : (
+        <AlbumViewToggler showTitle={false} />
       )}
     </TopToolbar>
   )

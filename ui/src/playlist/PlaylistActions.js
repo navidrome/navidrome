@@ -19,17 +19,22 @@ import { M3U_MIME_TYPE, REST_URL } from '../consts'
 import subsonic from '../subsonic'
 import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery, makeStyles } from '@material-ui/core'
 import config from '../config'
 import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
+
+const useStyles = makeStyles({
+  toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
+})
 
 const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const classes = useStyles()
   const dataProvider = useDataProvider()
   const notify = useNotify()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-  const isSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   const getAllSongsAndDispatch = React.useCallback(
     (action) => {
@@ -96,13 +101,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          width: '100%',
-        }}
-      >
+      <div className={classes.toolbar}>
         <div>
           <Button
             onClick={handlePlay}
@@ -146,7 +145,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
             <QueueMusicIcon />
           </Button>
         </div>
-        <div>{isSmall && <ToggleFieldsMenu resource="playlistTrack" />}</div>
+        <div>{isNotSmall && <ToggleFieldsMenu resource="playlistTrack" />}</div>
       </div>
     </TopToolbar>
   )

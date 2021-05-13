@@ -123,7 +123,7 @@ const AlbumSongs = (props) => {
     resource: 'albumSong',
     columns: toggleableFields,
     omittedColumns: ['title'],
-    defaultOff: ['rating'],
+    defaultOff: ['bpm'],
   })
 
   return (

@@ -33,8 +33,15 @@ const useSelectedFields = ({
     if (!omittedFields) {
       dispatch(setOmittedFields({ [resource]: omittedColumns }))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [
+    columns,
+    defaultOff,
+    dispatch,
+    omittedColumns,
+    omittedFields,
+    resource,
+    resourceFields,
+  ])
 
   useEffect(() => {
     if (resourceFields) {
@@ -44,14 +51,20 @@ const useSelectedFields = ({
         if (!val) omitted.push(key)
         else if (resourceFields[key]) filtered.push(val)
       }
-
       if (filteredComponents.length !== filtered.length)
         setFilteredComponents(filtered)
       if (omittedFields.length !== omitted.length)
         dispatch(setOmittedFields({ [resource]: omitted }))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resourceFields, columns])
+  }, [
+    resourceFields,
+    columns,
+    dispatch,
+    omittedColumns,
+    omittedFields,
+    resource,
+    filteredComponents.length,
+  ])
 
   return React.Children.toArray(filteredComponents)
 }
@@ -62,4 +75,5 @@ useSelectedFields.propTypes = {
   resource: PropTypes.string,
   columns: PropTypes.object,
   omittedColumns: PropTypes.arrayOf(PropTypes.string),
+  defaultOff: PropTypes.arrayOf(PropTypes.string),
 }

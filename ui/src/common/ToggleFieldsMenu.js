@@ -27,7 +27,7 @@ const useStyles = makeStyles({
   },
 })
 
-const ToggleFieldsMenu = ({ resource, TopBarComponent }) => {
+const ToggleFieldsMenu = ({ resource, topbarComponent: TopBarComponent }) => {
   const [anchorEl, setAnchorEl] = useState(null)
   const dispatch = useDispatch()
   const translate = useTranslate()
@@ -85,20 +85,23 @@ const ToggleFieldsMenu = ({ resource, TopBarComponent }) => {
         }}
       >
         {TopBarComponent && <TopBarComponent />}
-        <Typography className={classes.title}>
-          {translate('ra.toggleFieldsMenu.columnsToDisplay')}
-        </Typography>
-        <div className={classes.columns}>
-          {toggleableColumns &&
-            Object.entries(toggleableColumns).map(([key, val]) =>
-              !omittedColumns.includes(key) ? (
-                <MenuItem key={key} onClick={() => handleClick(key)}>
-                  <Checkbox checked={val} />
-                  {translate(`resources.${resource}.fields.${key}`)}
-                </MenuItem>
-              ) : null
-            )}
-        </div>
+        {toggleableColumns ? (
+          <div>
+            <Typography className={classes.title}>
+              {translate('ra.toggleFieldsMenu.columnsToDisplay')}
+            </Typography>
+            <div className={classes.columns}>
+              {Object.entries(toggleableColumns).map(([key, val]) =>
+                !omittedColumns.includes(key) ? (
+                  <MenuItem key={key} onClick={() => handleClick(key)}>
+                    <Checkbox checked={val} />
+                    {translate(`resources.${resource}.fields.${key}`)}
+                  </MenuItem>
+                ) : null
+              )}
+            </div>
+          </div>
+        ) : null}
       </Menu>
     </div>
   )
@@ -108,5 +111,5 @@ export default ToggleFieldsMenu
 
 ToggleFieldsMenu.propTypes = {
   resource: PropTypes.string.isRequired,
-  TopBarComponent: PropTypes.elementType,
+  topbarComponent: PropTypes.elementType,
 }
