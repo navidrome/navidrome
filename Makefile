@@ -4,7 +4,7 @@ NODE_VERSION=$(shell cat .nvmrc)
 GIT_SHA=$(shell git rev-parse --short HEAD)
 GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
 
-CI_RELEASER_VERSION=1.16.3-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.16.4-1 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...

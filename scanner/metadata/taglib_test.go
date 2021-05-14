@@ -42,7 +42,7 @@ var _ = Describe("taglibExtractor", func() {
 			Expect(m.Title()).To(BeEmpty())
 			Expect(m.HasPicture()).To(BeFalse())
 			Expect(m.Duration()).To(Equal(float32(1)))
-			Expect(m.BitRate()).To(Equal(39))
+			Expect(m.BitRate()).To(Equal(18))
 			Expect(m.Suffix()).To(Equal("ogg"))
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.ogg"))
 			Expect(m.Size()).To(Equal(int64(5065)))
