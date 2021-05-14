@@ -87,7 +87,9 @@ const UserEdit = (props) => {
           },
           { returnPromise: true }
         )
-        notify('resources.user.updated', 'info', { smart_count: 1 })
+        notify('resources.user.notifications.updated', 'info', {
+          smart_count: 1,
+        })
         permissions === 'admin' ? redirect('/user') : refresh()
       } catch (error) {
         if (error.body.errors) {

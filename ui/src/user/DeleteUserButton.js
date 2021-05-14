@@ -34,23 +34,18 @@ const DeleteUserButton = (props) => {
   const redirect = useRedirect()
 
   const onSuccess = () => {
-    notify('resources.user.deleted')
+    notify('resources.user.notifications.deleted')
     redirect('/user')
   }
 
-  const {
-    open,
-    loading,
-    handleDialogOpen,
-    handleDialogClose,
-    handleDelete,
-  } = useDeleteWithConfirmController({
-    resource,
-    record,
-    basePath,
-    onClick,
-    onSuccess,
-  })
+  const { open, loading, handleDialogOpen, handleDialogClose, handleDelete } =
+    useDeleteWithConfirmController({
+      resource,
+      record,
+      basePath,
+      onClick,
+      onSuccess,
+    })
 
   const classes = useStyles(props)
   return (

@@ -35,7 +35,9 @@ const UserCreate = (props) => {
           },
           { returnPromise: true }
         )
-        notify('resources.user.created', 'info', { smart_count: 1 })
+        notify('resources.user.notifications.created', 'info', {
+          smart_count: 1,
+        })
         redirect('/user')
       } catch (error) {
         if (error.body.errors) {

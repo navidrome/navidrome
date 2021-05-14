@@ -92,11 +92,13 @@
         "newPassword": "New Password",
         "changePassword": "Change Password?"
       },
-      "updated": "User updated",
-      "created": "User created",
-      "deleted": "User deleted",
       "helperTexts": {
         "name": "Changes to your name will only be reflected on next login"
+      },
+      "notifications": {
+        "created": "User created",
+        "updated": "User updated",
+        "deleted": "User deleted"
       }
     },
     "player": {
