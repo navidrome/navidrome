@@ -24,13 +24,8 @@ import { REST_URL } from '../consts'
 import DuplicateSongDialog from './DuplicateSongDialog'
 
 export const AddToPlaylistDialog = () => {
-  const {
-    open,
-    selectedIds,
-    onSuccess,
-    duplicateSong,
-    duplicateIds,
-  } = useSelector((state) => state.addToPlaylistDialog)
+  const { open, selectedIds, onSuccess, duplicateSong, duplicateIds } =
+    useSelector((state) => state.addToPlaylistDialog)
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()

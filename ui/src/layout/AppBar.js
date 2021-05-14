@@ -8,7 +8,13 @@ import {
   HideOnScroll,
 } from 'react-admin'
 import { useSelector } from 'react-redux'
-import { makeStyles, MenuItem, ListItemIcon, Divider, useMediaQuery } from '@material-ui/core'
+import {
+  makeStyles,
+  MenuItem,
+  ListItemIcon,
+  Divider,
+  useMediaQuery,
+} from '@material-ui/core'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import InfoIcon from '@material-ui/icons/Info'
 import { AboutDialog } from '../dialogs'
@@ -100,7 +106,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
 const AppBar = (props) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-  const container = isDesktop ? Fragment : HideOnScroll;
+  const container = isDesktop ? Fragment : HideOnScroll
   return (
     <RAAppBar {...props} container={container} userMenu={<CustomUserMenu />} />
   )
