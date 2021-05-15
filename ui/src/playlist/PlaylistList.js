@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   Datagrid,
   DateField,
@@ -62,21 +62,24 @@ const PlaylistList = ({ permissions, ...props }) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
 
-  const toggleableFields = {
-    owner: <TextField source="owner" />,
-    songCount: isDesktop && <NumberField source="songCount" />,
-    duration: isDesktop && <DurationField source="duration" />,
-    updatedAt: isDesktop && (
-      <DateField source="updatedAt" sortByOrder={'DESC'} />
-    ),
-    public: !isXsmall && (
-      <TogglePublicInput
-        source="public"
-        permissions={permissions}
-        sortByOrder={'DESC'}
-      />
-    ),
-  }
+  const toggleableFields = useMemo(() => {
+    return {
+      owner: <TextField source="owner" />,
+      songCount: isDesktop && <NumberField source="songCount" />,
+      duration: isDesktop && <DurationField source="duration" />,
+      updatedAt: isDesktop && (
+        <DateField source="updatedAt" sortByOrder={'DESC'} />
+      ),
+      public: !isXsmall && (
+        <TogglePublicInput
+          source="public"
+          permissions={permissions}
+          sortByOrder={'DESC'}
+        />
+      ),
+    }
+  }, [isDesktop, isXsmall, permissions])
+
   const columns = useSelectedFields({
     resource: 'playlist',
     columns: toggleableFields,

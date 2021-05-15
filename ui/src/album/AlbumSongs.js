@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
@@ -89,35 +89,37 @@ const AlbumSongs = (props) => {
   const dispatch = useDispatch()
   const version = useVersion()
 
-  const toggleableFields = {
-    trackNumber: isDesktop && (
-      <TextField
-        source="trackNumber"
-        sortBy="discNumber asc, trackNumber asc"
-        label="#"
-        sortable={false}
-      />
-    ),
-    title: (
-      <SongTitleField
-        source="title"
-        sortable={false}
-        showTrackNumbers={!isDesktop}
-      />
-    ),
-    artist: isDesktop && <TextField source="artist" sortable={false} />,
-    duration: <DurationField source="duration" sortable={false} />,
-    quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
-    bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
-    rating: isDesktop && config.enableStarRating && (
-      <RatingField
-        source="rating"
-        resource={'albumSong'}
-        sortable={false}
-        className={classes.ratingField}
-      />
-    ),
-  }
+  const toggleableFields = useMemo(() => {
+    return {
+      trackNumber: isDesktop && (
+        <TextField
+          source="trackNumber"
+          sortBy="discNumber asc, trackNumber asc"
+          label="#"
+          sortable={false}
+        />
+      ),
+      title: (
+        <SongTitleField
+          source="title"
+          sortable={false}
+          showTrackNumbers={!isDesktop}
+        />
+      ),
+      artist: isDesktop && <TextField source="artist" sortable={false} />,
+      duration: <DurationField source="duration" sortable={false} />,
+      quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
+      rating: isDesktop && config.enableStarRating && (
+        <RatingField
+          source="rating"
+          resource={'albumSong'}
+          sortable={false}
+          className={classes.ratingField}
+        />
+      ),
+    }
+  }, [isDesktop, classes.ratingField])
 
   const columns = useSelectedFields({
     resource: 'albumSong',

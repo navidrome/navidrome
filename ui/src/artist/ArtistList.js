@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
   Datagrid,
@@ -67,19 +67,21 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
 
-  const toggleableFields = {
-    albumCount: <NumberField source="albumCount" sortByOrder={'DESC'} />,
-    songCount: <NumberField source="songCount" sortByOrder={'DESC'} />,
-    playCount: <NumberField source="playCount" sortByOrder={'DESC'} />,
-    rating: config.enableStarRating && (
-      <RatingField
-        source="rating"
-        sortByOrder={'DESC'}
-        resource={'artist'}
-        className={classes.ratingField}
-      />
-    ),
-  }
+  const toggleableFields = useMemo(() => {
+    return {
+      albumCount: <NumberField source="albumCount" sortByOrder={'DESC'} />,
+      songCount: <NumberField source="songCount" sortByOrder={'DESC'} />,
+      playCount: <NumberField source="playCount" sortByOrder={'DESC'} />,
+      rating: config.enableStarRating && (
+        <RatingField
+          source="rating"
+          sortByOrder={'DESC'}
+          resource={'artist'}
+          className={classes.ratingField}
+        />
+      ),
+    }
+  }, [classes.ratingField])
 
   const columns = useSelectedFields({
     resource: 'artist',

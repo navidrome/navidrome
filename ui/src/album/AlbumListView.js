@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import Paper from '@material-ui/core/Paper'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
@@ -111,27 +111,29 @@ const AlbumListView = ({
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
 
-  const toggleableFields = {
-    artist: <ArtistLinkField source="artist" />,
-    songCount: isDesktop && (
-      <NumberField source="songCount" sortByOrder={'DESC'} />
-    ),
-    playCount: isDesktop && (
-      <NumberField source="playCount" sortByOrder={'DESC'} />
-    ),
-    year: (
-      <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
-    ),
-    duration: isDesktop && <DurationField source="duration" />,
-    rating: config.enableStarRating && (
-      <RatingField
-        source={'rating'}
-        resource={'album'}
-        sortByOrder={'DESC'}
-        className={classes.ratingField}
-      />
-    ),
-  }
+  const toggleableFields = useMemo(() => {
+    return {
+      artist: <ArtistLinkField source="artist" />,
+      songCount: isDesktop && (
+        <NumberField source="songCount" sortByOrder={'DESC'} />
+      ),
+      playCount: isDesktop && (
+        <NumberField source="playCount" sortByOrder={'DESC'} />
+      ),
+      year: (
+        <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
+      ),
+      duration: isDesktop && <DurationField source="duration" />,
+      rating: config.enableStarRating && (
+        <RatingField
+          source={'rating'}
+          resource={'album'}
+          sortByOrder={'DESC'}
+          className={classes.ratingField}
+        />
+      ),
+    }
+  }, [classes.ratingField, isDesktop])
 
   const columns = useSelectedFields({
     resource: 'album',

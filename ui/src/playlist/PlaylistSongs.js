@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
@@ -128,15 +128,19 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
     [playlistId, reorder, ids]
   )
 
-  const toggleableFields = {
-    trackNumber: isDesktop && <TextField source="id" label={'#'} />,
-    title: <SongTitleField source="title" showTrackNumbers={false} />,
-    album: isDesktop && <AlbumLinkField source="album" />,
-    artist: isDesktop && <TextField source="artist" />,
-    duration: <DurationField source="duration" className={classes.draggable} />,
-    quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
-    bpm: isDesktop && <NumberField source="bpm" />,
-  }
+  const toggleableFields = useMemo(() => {
+    return {
+      trackNumber: isDesktop && <TextField source="id" label={'#'} />,
+      title: <SongTitleField source="title" showTrackNumbers={false} />,
+      album: isDesktop && <AlbumLinkField source="album" />,
+      artist: isDesktop && <TextField source="artist" />,
+      duration: (
+        <DurationField source="duration" className={classes.draggable} />
+      ),
+      quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      bpm: isDesktop && <NumberField source="bpm" />,
+    }
+  }, [isDesktop, classes.draggable])
 
   const columns = useSelectedFields({
     resource: 'playlistTrack',

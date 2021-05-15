@@ -78,40 +78,42 @@ const SongList = (props) => {
     dispatch(setTrack(record))
   }
 
-  const toggleableFields = {
-    album: isDesktop && (
-      <AlbumLinkField
-        source="album"
-        sortBy={
-          'album, order_album_artist_name, disc_number, track_number, title'
-        }
-        sortByOrder={'ASC'}
-      />
-    ),
-    artist: <TextField source="artist" />,
-    trackNumber: isDesktop && <NumberField source="trackNumber" />,
-    playCount: isDesktop && (
-      <NumberField source="playCount" sortByOrder={'DESC'} />
-    ),
-    year: isDesktop && (
-      <FunctionField
-        source="year"
-        render={(r) => r.year || ''}
-        sortByOrder={'DESC'}
-      />
-    ),
-    quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
-    duration: <DurationField source="duration" />,
-    rating: config.enableStarRating && (
-      <RatingField
-        source="rating"
-        sortByOrder={'DESC'}
-        resource={'song'}
-        className={classes.ratingField}
-      />
-    ),
-    bpm: isDesktop && <NumberField source="bpm" />,
-  }
+  const toggleableFields = React.useMemo(() => {
+    return {
+      album: isDesktop && (
+        <AlbumLinkField
+          source="album"
+          sortBy={
+            'album, order_album_artist_name, disc_number, track_number, title'
+          }
+          sortByOrder={'ASC'}
+        />
+      ),
+      artist: <TextField source="artist" />,
+      trackNumber: isDesktop && <NumberField source="trackNumber" />,
+      playCount: isDesktop && (
+        <NumberField source="playCount" sortByOrder={'DESC'} />
+      ),
+      year: isDesktop && (
+        <FunctionField
+          source="year"
+          render={(r) => r.year || ''}
+          sortByOrder={'DESC'}
+        />
+      ),
+      quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      duration: <DurationField source="duration" />,
+      rating: config.enableStarRating && (
+        <RatingField
+          source="rating"
+          sortByOrder={'DESC'}
+          resource={'song'}
+          className={classes.ratingField}
+        />
+      ),
+      bpm: isDesktop && <NumberField source="bpm" />,
+    }
+  }, [isDesktop, classes.ratingField])
 
   const columns = useSelectedFields({
     resource: 'song',
