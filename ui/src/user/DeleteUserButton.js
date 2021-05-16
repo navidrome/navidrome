@@ -3,7 +3,13 @@ import DeleteIcon from '@material-ui/icons/Delete'
 import { makeStyles } from '@material-ui/core/styles'
 import { fade } from '@material-ui/core/styles/colorManipulator'
 import clsx from 'clsx'
-import { useDeleteWithConfirmController, Button, Confirm } from 'react-admin'
+import {
+  useDeleteWithConfirmController,
+  Button,
+  Confirm,
+  useNotify,
+  useRedirect,
+} from 'react-admin'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -22,22 +28,23 @@ const useStyles = makeStyles(
 )
 
 const DeleteUserButton = (props) => {
-  const {
-    resource,
-    record,
-    basePath,
-    redirect = 'list',
-    className,
-    onClick,
-    ...rest
-  } = props
+  const { resource, record, basePath, className, onClick, ...rest } = props
+
+  const notify = useNotify()
+  const redirect = useRedirect()
+
+  const onSuccess = () => {
+    notify('resources.user.notifications.deleted')
+    redirect('/user')
+  }
+
   const { open, loading, handleDialogOpen, handleDialogClose, handleDelete } =
     useDeleteWithConfirmController({
       resource,
       record,
-      redirect,
       basePath,
       onClick,
+      onSuccess,
     })
 
   const classes = useStyles(props)

@@ -7,35 +7,48 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-type mockedUserRepo struct {
+func CreateMockUserRepo() *MockedUserRepo {
+	return &MockedUserRepo{
+		Data: map[string]*model.User{},
+	}
+}
+
+type MockedUserRepo struct {
 	model.UserRepository
-	data map[string]*model.User
+	Err  error
+	Data map[string]*model.User
 }
 
-func (u *mockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
-	return int64(len(u.data)), nil
+func (u *MockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
+	if u.Err != nil {
+		return 0, u.Err
+	}
+	return int64(len(u.Data)), nil
 }
 
-func (u *mockedUserRepo) Put(usr *model.User) error {
-	if u.data == nil {
-		u.data = make(map[string]*model.User)
+func (u *MockedUserRepo) Put(usr *model.User) error {
+	if u.Err != nil {
+		return u.Err
 	}
 	if usr.ID == "" {
 		usr.ID = base64.StdEncoding.EncodeToString([]byte(usr.UserName))
 	}
 	usr.Password = usr.NewPassword
-	u.data[strings.ToLower(usr.UserName)] = usr
+	u.Data[strings.ToLower(usr.UserName)] = usr
 	return nil
 }
 
-func (u *mockedUserRepo) FindByUsername(username string) (*model.User, error) {
-	usr, ok := u.data[strings.ToLower(username)]
+func (u *MockedUserRepo) FindByUsername(username string) (*model.User, error) {
+	if u.Err != nil {
+		return nil, u.Err
+	}
+	usr, ok := u.Data[strings.ToLower(username)]
 	if !ok {
 		return nil, model.ErrNotFound
 	}
 	return usr, nil
 }
 
-func (u *mockedUserRepo) UpdateLastLoginAt(id string) error {
-	return nil
+func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
+	return u.Err
 }

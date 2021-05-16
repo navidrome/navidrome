@@ -66,7 +66,7 @@ func (db *MockDataStore) Property(context.Context) model.PropertyRepository {
 
 func (db *MockDataStore) User(context.Context) model.UserRepository {
 	if db.MockedUser == nil {
-		db.MockedUser = &mockedUserRepo{}
+		db.MockedUser = CreateMockUserRepo()
 	}
 	return db.MockedUser
 }

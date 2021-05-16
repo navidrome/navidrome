@@ -134,6 +134,9 @@ func (r *userRepository) Save(entity interface{}) (string, error) {
 		return "", rest.ErrPermissionDenied
 	}
 	u := entity.(*model.User)
+	if err := validateUsernameUnique(r, u); err != nil {
+		return "", err
+	}
 	err := r.Put(u)
 	if err != nil {
 		return "", err
@@ -155,6 +158,9 @@ func (r *userRepository) Update(entity interface{}, cols ...string) error {
 		u.UserName = usr.UserName
 	}
 	if err := validatePasswordChange(u, usr); err != nil {
+		return err
+	}
+	if err := validateUsernameUnique(r, u); err != nil {
 		return err
 	}
 	err := r.Put(u)
@@ -182,6 +188,20 @@ func validatePasswordChange(newUser *model.User, logged *model.User) error {
 	}
 	if len(err.Errors) > 0 {
 		return err
+	}
+	return nil
+}
+
+func validateUsernameUnique(r model.UserRepository, u *model.User) error {
+	usr, err := r.FindByUsername(u.UserName)
+	if err == model.ErrNotFound {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if usr.ID != u.ID {
+		return &rest.ValidationError{Errors: map[string]string{"userName": "ra.validation.unique"}}
 	}
 	return nil
 }
