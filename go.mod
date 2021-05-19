@@ -33,6 +33,7 @@ require (
 	github.com/onsi/ginkgo v1.16.2
 	github.com/onsi/gomega v1.12.0
 	github.com/pelletier/go-toml v1.8.0 // indirect
+	github.com/pixiv/go-libjpeg v0.0.0-20190822045933-3da21a74767d // indirect
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.8.1

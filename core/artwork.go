@@ -1,13 +1,13 @@
 package core
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	// this must be early!  or the system image/jpeg is registered; image.RegisterFormat() appends
-	tolerantJpeg "github.com/navidrome/navidrome/tolerantJpeg"
 	"image"
+	"image/draw"
 	_ "image/gif"
 	_ "image/png"
 	"io"
@@ -26,6 +26,7 @@ import (
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/cache"
+	pixivJpeg "github.com/pixiv/go-libjpeg/jpeg"
 	_ "golang.org/x/image/webp"
 )
 
@@ -157,8 +158,51 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 	return
 }
 
+// This "bufio" idea is swiped from go/src/image/format.go for peeking at header without consuming 
+// stream
+
+// A reader is an io.Reader that can also peek ahead.
+type reader interface {
+	io.Reader
+	Peek(int) ([]byte, error)
+}
+
+// asReader converts an io.Reader to a reader.
+func asReader(r io.Reader) reader {
+	if rr, ok := r.(reader); ok {
+		return rr
+	}
+	return bufio.NewReader(r)
+}
+
+// Match reports whether magic matches b. Magic may contain "?" wildcards.
+func match(magic string, b []byte) bool {
+	if len(magic) != len(b) {
+		return false
+	}
+	for i, c := range b {
+		if magic[i] != c && magic[i] != '?' {
+			return false
+		}
+	}
+	return true
+}
+
 func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
-	img, _, err := image.Decode(reader)
+	// Is this a jpeg?  If so, use pixiv [and requires libjpeg-turbo because we want RGBA]
+	//	libjpeg-turbo is far more tolerant than the golang builtin, and is what is used
+	//	by mozilla and chrome, so "what users expect"
+	const jpegMagic = "\xff\xd8"
+	var img image.Image
+	var err error
+
+	peekReader := asReader(reader)
+	b, err := peekReader.Peek(len(jpegMagic))
+	if err == nil && match(jpegMagic, b) {
+		img, err = pixivJpeg.Decode(peekReader, &pixivJpeg.DecoderOptions{})
+	} else {
+		img, _, err = image.Decode(reader)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -172,8 +216,15 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 		m = imaging.Resize(img, 0, size, imaging.Lanczos)
 	}
 
+
+	// pixiv go-libjpeg does not handle NRGBA, so we convert to RGBA 
+	bounds = m.Bounds()
+	m_rgba := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
+	draw.Draw(m_rgba, m_rgba.Bounds(), m, bounds.Min, draw.Src)
+
+
 	buf := new(bytes.Buffer)
-	err = tolerantJpeg.Encode(buf, m, &tolerantJpeg.Options{Quality: conf.Server.CoverJpegQuality})
+	err = pixivJpeg.Encode(buf, m_rgba, &pixivJpeg.EncoderOptions{Quality: conf.Server.CoverJpegQuality})
 	return ioutil.NopCloser(buf), err
 }
 
