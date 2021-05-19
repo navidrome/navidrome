@@ -102,12 +102,12 @@ var testCase = []struct {
 	quality   int
 	tolerance int64
 }{
-	{"../testdata/video-001.png", 1, 24 << 8},
-	{"../testdata/video-001.png", 20, 12 << 8},
-	{"../testdata/video-001.png", 60, 8 << 8},
-	{"../testdata/video-001.png", 80, 6 << 8},
-	{"../testdata/video-001.png", 90, 4 << 8},
-	{"../testdata/video-001.png", 100, 2 << 8},
+	{"testdata/video-001.png", 1, 24 << 8},
+	{"testdata/video-001.png", 20, 12 << 8},
+	{"testdata/video-001.png", 60, 8 << 8},
+	{"testdata/video-001.png", 80, 6 << 8},
+	{"testdata/video-001.png", 90, 4 << 8},
+	{"testdata/video-001.png", 100, 2 << 8},
 }
 
 func delta(u0, u1 uint32) int64 {

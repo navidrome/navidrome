@@ -11,8 +11,9 @@ import (
 	"errors"
 	"image"
 	"image/color"
-	"github.com/navidrome/navidrome/tolerantJpeg/imageutil"
 	"io"
+
+	"github.com/navidrome/navidrome/tolerantJpeg/imageutil"
 )
 
 // TODO(nigeltao): fix up the doc comment style so that sentences start with
