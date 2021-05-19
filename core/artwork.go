@@ -5,9 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	// this must be early!  or the system image/jpeg is registered; image.RegisterFormat() appends
+	tolerantJpeg "github.com/navidrome/navidrome/tolerantJpeg"
 	"image"
 	_ "image/gif"
-	"image/jpeg"
 	_ "image/png"
 	"io"
 	"io/ioutil"
@@ -172,7 +173,7 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 	}
 
 	buf := new(bytes.Buffer)
-	err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
+	err = tolerantJpeg.Encode(buf, m, &tolerantJpeg.Options{Quality: conf.Server.CoverJpegQuality})
 	return ioutil.NopCloser(buf), err
 }
 
