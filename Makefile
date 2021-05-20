@@ -19,10 +19,6 @@ server: check_go_env  ##@Development Start the backend in development mode
 	@go run github.com/cespare/reflex -d none -c reflex.conf
 .PHONY: server
 
-wire: check_go_env ##@Development Update Dependency Injection
-	go run github.com/google/wire/cmd/wire ./...
-.PHONY: wire
-
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 	go run github.com/onsi/ginkgo/ginkgo watch -notify ./...
 .PHONY: watch
@@ -43,9 +39,13 @@ lintall: lint ##@Development Lint Go and JS code
 	@(cd ./ui && npm run check-formatting && npm run lint)
 .PHONY: lintall
 
-update-snapshots: ##@Development Update Snapshot tests
+wire: check_go_env ##@Development Update Dependency Injection
+	go run github.com/google/wire/cmd/wire ./...
+.PHONY: wire
+
+snapshots: ##@Development Update (GoLang) Snapshot tests
 	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/ginkgo ./server/subsonic/...
-.PHONY: update-snapshots
+.PHONY: snapshots
 
 migration: ##@Development Create an empty migration file
 	@if [ -z "${name}" ]; then echo "Usage: make migration name=name_of_migration_file"; exit 1; fi
