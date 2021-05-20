@@ -158,9 +158,6 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 	return
 }
 
-// This "bufio" idea is swiped from go/src/image/format.go for peeking at header without consuming 
-// stream
-
 // A reader is an io.Reader that can also peek ahead.
 type reader interface {
 	io.Reader
@@ -216,12 +213,10 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 		m = imaging.Resize(img, 0, size, imaging.Lanczos)
 	}
 
-
-	// pixiv go-libjpeg does not handle NRGBA, so we convert to RGBA 
+	// pixiv go-libjpeg does not handle NRGBA, so we convert to RGBA
 	bounds = m.Bounds()
 	m_rgba := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
 	draw.Draw(m_rgba, m_rgba.Bounds(), m, bounds.Min, draw.Src)
-
 
 	buf := new(bytes.Buffer)
 	err = pixivJpeg.Encode(buf, m_rgba, &pixivJpeg.EncoderOptions{Quality: conf.Server.CoverJpegQuality})
