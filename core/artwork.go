@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"image/draw"
 	_ "image/gif"
 	_ "image/png"
 	"io"
@@ -26,7 +25,7 @@ import (
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/cache"
-	pixivJpeg "github.com/pixiv/go-libjpeg/jpeg"
+	libjpegNRGBA "github.com/whorfin/go-libjpeg/jpeg"
 	_ "golang.org/x/image/webp"
 )
 
@@ -196,7 +195,7 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 	peekReader := asReader(reader)
 	b, err := peekReader.Peek(len(jpegMagic))
 	if err == nil && match(jpegMagic, b) {
-		img, err = pixivJpeg.Decode(peekReader, &pixivJpeg.DecoderOptions{})
+		img, err = libjpegNRGBA.Decode(peekReader, &libjpegNRGBA.DecoderOptions{})
 	} else {
 		img, _, err = image.Decode(peekReader)
 	}
@@ -213,13 +212,9 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 		m = imaging.Resize(img, 0, size, imaging.Lanczos)
 	}
 
-	// pixiv go-libjpeg does not handle NRGBA, so we convert to RGBA
-	bounds = m.Bounds()
-	m_rgba := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
-	draw.Draw(m_rgba, m_rgba.Bounds(), m, bounds.Min, draw.Src)
-
+	// we use the whorfin branch of pixiv go-libjpeg because it directly handles NRGBA
 	buf := new(bytes.Buffer)
-	err = pixivJpeg.Encode(buf, m_rgba, &pixivJpeg.EncoderOptions{Quality: conf.Server.CoverJpegQuality})
+	err = libjpegNRGBA.Encode(buf, m, &libjpegNRGBA.EncoderOptions{Quality: conf.Server.CoverJpegQuality})
 	return ioutil.NopCloser(buf), err
 }
 
