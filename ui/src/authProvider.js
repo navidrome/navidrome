@@ -1,5 +1,5 @@
 import jwtDecode from 'jwt-decode'
-import md5 from 'md5-hex'
+import md5 from 'blueimp-md5'
 import { v4 as uuidv4 } from 'uuid'
 import { baseUrl } from './utils'
 import config from './config'

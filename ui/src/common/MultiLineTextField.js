@@ -1,7 +1,7 @@
 import React, { memo } from 'react'
 import Typography from '@material-ui/core/Typography'
 import sanitizeFieldRestProps from './sanitizeFieldRestProps'
-import md5 from 'md5-hex'
+import md5 from 'blueimp-md5'
 
 export const MultiLineTextField = memo(
   ({
