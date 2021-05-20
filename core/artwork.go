@@ -198,7 +198,7 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 	if err == nil && match(jpegMagic, b) {
 		img, err = pixivJpeg.Decode(peekReader, &pixivJpeg.DecoderOptions{})
 	} else {
-		img, _, err = image.Decode(reader)
+		img, _, err = image.Decode(peekReader)
 	}
 	if err != nil {
 		return nil, err
