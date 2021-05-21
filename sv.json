@@ -179,7 +179,7 @@
             "add_filter": "Lägg till filter",
             "add": "Lägg till",
             "back": "Tillbaka",
-            "bulk_actions": "%{smart_count} vald",
+            "bulk_actions": "%{smart_count} valda",
             "cancel": "Avbryt",
             "clear_input_value": "Rensa",
             "clone": "Klona",
