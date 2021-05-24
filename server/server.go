@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"path"
 
@@ -33,9 +34,9 @@ func New(ds model.DataStore) *Server {
 	return a
 }
 
-func (a *Server) MountRouter(urlPath string, subRouter Handler) {
+func (a *Server) MountRouter(description, urlPath string, subRouter Handler) {
 	urlPath = path.Join(conf.Server.BaseURL, urlPath)
-	log.Info("Mounting routes", "path", urlPath)
+	log.Info(fmt.Sprintf("Mounting %s routes", description), "path", urlPath)
 	subRouter.Setup(urlPath)
 	a.router.Group(func(r chi.Router) {
 		r.Mount(urlPath, subRouter)
