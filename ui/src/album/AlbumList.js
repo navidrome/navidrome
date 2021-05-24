@@ -15,7 +15,7 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
 import { List, QuickFilter, Title, useAlbumsPerPage } from '../common'
 import AlbumListActions from './AlbumListActions'
-import AlbumListView from './AlbumListView'
+import AlbumTableView from './AlbumTableView'
 import AlbumGridView from './AlbumGridView'
 import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
@@ -112,7 +112,7 @@ const AlbumList = (props) => {
         {albumView.grid ? (
           <AlbumGridView albumListType={albumListType} {...props} />
         ) : (
-          <AlbumListView {...props} />
+          <AlbumTableView {...props} />
         )}
       </List>
       <AddToPlaylistDialog />

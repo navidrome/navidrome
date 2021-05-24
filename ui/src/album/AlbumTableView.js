@@ -100,7 +100,7 @@ const AlbumDetails = (props) => {
   )
 }
 
-const AlbumListView = ({
+const AlbumTableView = ({
   hasShow,
   hasEdit,
   hasList,
@@ -198,4 +198,4 @@ const AlbumListView = ({
   )
 }
 
-export default AlbumListView
+export default AlbumTableView

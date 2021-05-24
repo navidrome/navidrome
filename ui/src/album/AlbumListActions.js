@@ -14,7 +14,7 @@ import {
 import ViewHeadlineIcon from '@material-ui/icons/ViewHeadline'
 import ViewModuleIcon from '@material-ui/icons/ViewModule'
 import { useDispatch, useSelector } from 'react-redux'
-import { albumViewGrid, albumViewList } from '../actions'
+import { albumViewGrid, albumViewTable } from '../actions'
 import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
 
 const useStyles = makeStyles({
@@ -57,7 +57,7 @@ const AlbumViewToggler = React.forwardRef(
             className={classes.rightButton}
             label={translate('ra.toggleFieldsMenu.table')}
             color={albumView.grid ? 'secondary' : 'primary'}
-            onClick={() => dispatch(albumViewList())}
+            onClick={() => dispatch(albumViewTable())}
           >
             <ViewHeadlineIcon fontSize="inherit" />
           </Button>
