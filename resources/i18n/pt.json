@@ -22,7 +22,8 @@
                 "starred": "Favorita",
                 "comment": "Comentário",
                 "rating": "Classificação",
-                "quality": "Qualidade"
+                "quality": "Qualidade",
+                "bpm": "BPM"
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
@@ -87,9 +88,9 @@
                 "name": "Nome",
                 "password": "Senha",
                 "createdAt": "Data de Criação",
+                "changePassword": "Trocar Senha?",
                 "currentPassword": "Senha Atual",
-                "newPassword": "Nova Senha",
-                "changePassword": "Trocar Senha?"
+                "newPassword": "Nova Senha"
             },
             "helperTexts": {
                 "name": "Alterações no seu nome só serão refletidas no próximo login"
@@ -277,6 +278,12 @@
             "i18n_error": "Não foi possível carregar as traduções para o idioma especificado",
             "canceled": "Ação cancelada",
             "logged_out": "Sua sessão foi encerrada. Por favor, reconecte"
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Colunas visíveis",
+            "layout": "Layout",
+            "grid": "Grade",
+            "table": "Tabela"
         }
     },
     "message": {
