@@ -22,7 +22,8 @@
                 "starred": "Oblíbené",
                 "comment": "Komentář",
                 "rating": "Hodnocení",
-                "quality": "Kvalita"
+                "quality": "Kvalita",
+                "bpm": "BPM"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -86,7 +87,18 @@
                 "updatedAt": "Upraven",
                 "name": "Jméno",
                 "password": "Heslo",
-                "createdAt": "Vytvořen"
+                "createdAt": "Vytvořen",
+                "changePassword": "Změnit heslo?",
+                "currentPassword": "Současné heslo",
+                "newPassword": "Nové heslo"
+            },
+            "helperTexts": {
+                "name": "Změna jména se zobrazí až při dalším přihlášení"
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
             }
         },
         "player": {
@@ -160,7 +172,8 @@
             "number": "Musí být číslo",
             "email": "Musí být platná emailová adresa",
             "oneOf": "Musí splňovat jedno z: %{options}",
-            "regex": "Musí být ve specifickém formátu (regexp): %{pattern}"
+            "regex": "Musí být ve specifickém formátu (regexp): %{pattern}",
+            "unique": ""
         },
         "action": {
             "add_filter": "Přidat filtr",
