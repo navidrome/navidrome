@@ -22,7 +22,8 @@
                 "starred": "Favoriet",
                 "comment": "Commentaar",
                 "rating": "Beoordeling",
-                "quality": "Kwaliteit"
+                "quality": "Kwaliteit",
+                "bpm": "BPM"
             },
             "actions": {
                 "addToQueue": "Voeg toe aan wachtrij",
@@ -86,7 +87,18 @@
                 "updatedAt": "Laatst gewijzigd op",
                 "name": "Naam",
                 "password": "Wachtwoord",
-                "createdAt": "Aangemaakt op"
+                "createdAt": "Aangemaakt op",
+                "changePassword": "Wijzig wachtwoord?",
+                "currentPassword": "Huidig wachtwoord",
+                "newPassword": "Nieuw wachtwoord"
+            },
+            "helperTexts": {
+                "name": "Naamswijziging wordt pas zichtbaar bij de volgende login"
+            },
+            "notifications": {
+                "created": "Aangemaakt door gebruiker",
+                "updated": "Gewijzigd door gebruiker",
+                "deleted": "Gewist door gebruiker"
             }
         },
         "player": {
@@ -160,7 +172,8 @@
             "number": "Moet een getal zijn",
             "email": "Moet een geldig e-mailadres zijn",
             "oneOf": "Moet een zijn van: %{options}",
-            "regex": "Moet overeenkomen met een specifiek format (regexp): %{pattern}"
+            "regex": "Moet overeenkomen met een specifiek format (regexp): %{pattern}",
+            "unique": "Moet uniek zijn"
         },
         "action": {
             "add_filter": "Voeg filter toe",
