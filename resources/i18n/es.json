@@ -22,7 +22,8 @@
                 "starred": "Favorito",
                 "comment": "Comentario",
                 "rating": "Calificación",
-                "quality": "Cualidad"
+                "quality": "Cualidad",
+                "bpm": "BPM"
             },
             "actions": {
                 "addToQueue": "Reproducir después",
@@ -86,7 +87,18 @@
                 "updatedAt": "Actualizado el",
                 "name": "Nombre",
                 "password": "Contraseña",
-                "createdAt": "Creado el"
+                "createdAt": "Creado el",
+                "changePassword": "¿Cambiar contraseña?",
+                "currentPassword": "Contraseña actual",
+                "newPassword": "Nueva contraseña"
+            },
+            "helperTexts": {
+                "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión"
+            },
+            "notifications": {
+                "created": "Usuario creado",
+                "updated": "Usuario actulalizado",
+                "deleted": "Usuario eliminado"
             }
         },
         "player": {
@@ -160,7 +172,8 @@
             "number": "Debe ser un número",
             "email": "Debe ser un correo electrónico válido",
             "oneOf": "Debe ser uno de: %{options}",
-            "regex": "Debe coincidir con un formato específico (regexp): %{pattern}"
+            "regex": "Debe coincidir con un formato específico (regexp): %{pattern}",
+            "unique": "Tiene que ser único"
         },
         "action": {
             "add_filter": "Añadir filtro",
