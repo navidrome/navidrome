@@ -40,7 +40,7 @@
                 "albumArtist": "Avtor albuma",
                 "artist": "Izvajalec",
                 "duration": "Dolžina",
-                "songCount": "Število pesmi",
+                "songCount": "# pesmi",
                 "playCount": "Predvajano",
                 "name": "Naslov",
                 "genre": "Žanr",
@@ -51,7 +51,7 @@
                 "rating": "Ocena"
             },
             "actions": {
-                "playAll": "Predvajaj",
+                "playAll": "Predvajaj vse",
                 "playNext": "Naslednji",
                 "addToQueue": "Predvajaj kasneje",
                 "shuffle": "Premešaj",
@@ -72,8 +72,8 @@
             "name": "Izvajalec |||| Izvajalci",
             "fields": {
                 "name": "Ime",
-                "albumCount": "Število albumov",
-                "songCount": "Število pesmi",
+                "albumCount": "# albumov",
+                "songCount": "# pesmi",
                 "playCount": "# predvajanj",
                 "rating": "Ocena"
             }
@@ -94,6 +94,11 @@
             },
             "helperTexts": {
                 "name": "Sprememba imena bo vidna pri naslednjem vpisu"
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
             }
         },
         "player": {
@@ -167,7 +172,8 @@
             "number": "Mora biti številka",
             "email": "Veljaven e-poštni naslov",
             "oneOf": "Mora biti ena izmed %{options}",
-            "regex": "Mora se ujemati z določeno obliko (regexp): %{pattern}"
+            "regex": "Mora se ujemati z določeno obliko (regexp): %{pattern}",
+            "unique": ""
         },
         "action": {
             "add_filter": "Dodaj filter",
