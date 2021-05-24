@@ -22,7 +22,8 @@
                 "starred": "お気に入り",
                 "comment": "コメント",
                 "rating": "レート",
-                "quality": "品質"
+                "quality": "品質",
+                "bpm": ""
             },
             "actions": {
                 "addToQueue": "最後に再生",
@@ -86,7 +87,18 @@
                 "updatedAt": "更新日",
                 "name": "名前",
                 "password": "パスワード",
-                "createdAt": "作成日"
+                "createdAt": "作成日",
+                "changePassword": "",
+                "currentPassword": "",
+                "newPassword": ""
+            },
+            "helperTexts": {
+                "name": ""
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
             }
         },
         "player": {
@@ -160,7 +172,8 @@
             "number": "数字である必要があります",
             "email": "メールアドレスである必要があります",
             "oneOf": "次のいずれかである必要があります: %{options}",
-            "regex": "次の正規表現形式にする必要があります: %{pattern}"
+            "regex": "次の正規表現形式にする必要があります: %{pattern}",
+            "unique": ""
         },
         "action": {
             "add_filter": "検索条件",

@@ -20,7 +20,10 @@
                 "bitRate": "บิตเรท",
                 "discSubtitle": "คำบรรยาย",
                 "starred": "รายการโปรด",
-                "comment": "ความคิดเห็น"
+                "comment": "ความคิดเห็น",
+                "rating": "Rating",
+                "quality": "คุณภาพ",
+                "bpm": "BPM"
             },
             "actions": {
                 "addToQueue": "เล่นหลังสุด",
@@ -44,7 +47,8 @@
                 "compilation": "รวมเพลง",
                 "year": "ปี",
                 "updatedAt": "อัพเดตเมื่อ",
-                "comment": "ความคิดเห็น"
+                "comment": "ความคิดเห็น",
+                "rating": "Rating"
             },
             "actions": {
                 "playAll": "เล่นทั้งหมด",
@@ -60,7 +64,8 @@
                 "recentlyAdded": "เพิ่มล่าสุด",
                 "recentlyPlayed": "เล่นล่าสุด",
                 "mostPlayed": "เล่นมากที่สุด",
-                "starred": "รายการโปรด"
+                "starred": "รายการโปรด",
+                "topRated": "Top Rated"
             }
         },
         "artist": {
@@ -69,7 +74,8 @@
                 "name": "ชื่อ",
                 "albumCount": "อัลบั้ม",
                 "songCount": "จำนวนเพลง",
-                "playCount": "เล่น"
+                "playCount": "เล่น",
+                "rating": "Rating"
             }
         },
         "user": {
@@ -81,7 +87,18 @@
                 "updatedAt": "อัปเดตล่าสุด",
                 "name": "ชื่อ",
                 "password": "รหัสผ่าน",
-                "createdAt": "สร้างเมื่อ"
+                "createdAt": "สร้างเมื่อ",
+                "changePassword": "เปลี่ยนรหัสผ่าน",
+                "currentPassword": "รหัสผ่านปัจจุบัน",
+                "newPassword": "รหัสผ่านใหม่"
+            },
+            "helperTexts": {
+                "name": "การเปลี่ยนชื่อจะมีผลในการล็อกอินครั้งถัดไป"
+            },
+            "notifications": {
+                "created": "สร้างผู้ใช้งาน",
+                "updated": "อัพเดตผู้ใช้งาน",
+                "deleted": "ลบผู้ใช้งาน"
             }
         },
         "player": {
@@ -93,7 +110,7 @@
                 "client": "Client",
                 "userName": "ชื่อผู้ใช้งาน",
                 "lastSeen": "ใช้งานล่าสุดเมื่อ",
-                "reportRealPath": ""
+                "reportRealPath": "รายงาน Real Path"
             }
         },
         "transcoding": {
@@ -123,6 +140,10 @@
                 "selectPlaylist": "เลือกเพลย์ลิสต์",
                 "addNewPlaylist": "สร้าง \"%{name}\"",
                 "export": "ส่งออก"
+            },
+            "message": {
+                "duplicate_song": "เพิ่มเพลงที่ซ้ำ",
+                "song_exist": "มีเพลงที่ซ้ำกันเพิ่มในเพลยลิสต์ เพิ่มเพลงนั้นหรือข้าม"
             }
         }
     },
@@ -151,7 +172,8 @@
             "number": "เป็นตัวเลขเท่านั้น",
             "email": "เป็นอีเมลที่ถูกต้องเท่านั้น",
             "oneOf": "ต้องเป็นหนึ่งใน %{options}",
-            "regex": "ต้องเป็นฟอร์แมตเฉพาะ (regexp): %{pattern}"
+            "regex": "ต้องเป็นฟอร์แมตเฉพาะ (regexp): %{pattern}",
+            "unique": "ต้องมีความพิเศษ"
         },
         "action": {
             "add_filter": "เพิ่มตัวกรอง",
@@ -179,7 +201,8 @@
             "close": "ปิด",
             "open_menu": "เปิดเมนู",
             "close_menu": "ปิดเมนู",
-            "unselect": "ยกเลิก"
+            "unselect": "ยกเลิก",
+            "skip": "ข้าม"
         },
         "boolean": {
             "true": "ใช่",
@@ -241,7 +264,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} จาก %{total}",
             "page_rows_per_page": "จำนวนในหนึ่งหน้า:",
             "next": "ถัดไป",
-            "prev": "ก่อนหน้า"
+            "prev": "ก่อนหน้า",
+            "skip_nav": "ข้ามไปยังเนื้อหา"
         },
         "notification": {
             "updated": "อัพเดตองค์ประกอบเรียบร้อย |||| %{smart_count} องค์ประกอบถูกอัพเดตเรียบร้อย",
@@ -264,8 +288,8 @@
         "noPlaylistsAvailable": "ไม่มีเพลย์ลิสต์",
         "delete_user_title": "ลบผู้ใช้ '%{name}'",
         "delete_user_content": "คุณแน่ใจที่จะลบผู้ใช้นี้และข้อมูลทั้งหมด(รวมถึงเพลย์ลิสท์และตั้งค่าต่างๆ)?",
-        "notifications_blocked": "",
-        "notifications_not_available": ""
+        "notifications_blocked": "คุณบล็อกการแจ้งเตือนสำหรับเว็บไซต์นี้",
+        "notifications_not_available": "เบราเซอร์นี้ไม่รองรับการแจ้งเตือน Desktop หรือคุณไม่ได้เข้าถึง Navidrome ผ่าน https"
     },
     "menu": {
         "library": "ไลบรารี่",
@@ -278,7 +302,7 @@
                 "theme": "ธีม",
                 "language": "ภาษา",
                 "defaultView": "หน้าเริ่มต้น",
-                "desktop_notifications": ""
+                "desktop_notifications": "การแจ่งเตือน Desktop"
             }
         },
         "albumList": "อัลบั้ม",
@@ -323,5 +347,18 @@
         "fullScan": "Full Scan",
         "serverUptime": "เซิฟเวอร์ออนไลน์",
         "serverDown": "ออฟไลน์"
+    },
+    "help": {
+        "title": "คีย์ลัด Navidrome",
+        "hotkeys": {
+            "show_help": "แสดงความช่วยเหลือ",
+            "toggle_menu": "Toggle เมนูข้าง",
+            "toggle_play": "เล่น / หยุด",
+            "prev_song": "เพลงก่อนหน้า",
+            "next_song": "เพลงถัดไป",
+            "vol_up": "เพิ่มเสียง",
+            "vol_down": "ลดเสียง",
+            "toggle_love": "เพิ่มเพลงนี้ไปยังรายการโปรด"
+        }
     }
 }

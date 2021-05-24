@@ -20,7 +20,10 @@
                 "bitRate": "Szybkość transmisji danych",
                 "discSubtitle": "Podtytuł Płyty",
                 "starred": "Ulubione",
-                "comment": "Komentarz"
+                "comment": "Komentarz",
+                "rating": "Ocena",
+                "quality": "Jakość",
+                "bpm": ""
             },
             "actions": {
                 "addToQueue": "Odtwarzaj Później",
@@ -44,7 +47,8 @@
                 "compilation": "Kompilacja",
                 "year": "Rok",
                 "updatedAt": "Zaktualizowany",
-                "comment": "Komentarz"
+                "comment": "Komentarz",
+                "rating": "Ocena"
             },
             "actions": {
                 "playAll": "Odtwarzaj",
@@ -60,7 +64,8 @@
                 "recentlyAdded": "Ostatnio Dodane",
                 "recentlyPlayed": "Ostatnio Odtwarzane",
                 "mostPlayed": "Najczęściej Odtwarzane",
-                "starred": "Oznaczone Gwiazdką"
+                "starred": "Ulubione",
+                "topRated": "Najwyżej Oceniane"
             }
         },
         "artist": {
@@ -69,7 +74,8 @@
                 "name": "Tytuł",
                 "albumCount": "Liczba Albumów",
                 "songCount": "Liczba Utworów",
-                "playCount": "Liczba Odtworzeń"
+                "playCount": "Liczba Odtworzeń",
+                "rating": "Ocena"
             }
         },
         "user": {
@@ -81,7 +87,18 @@
                 "updatedAt": "Zaktualizowano",
                 "name": "Imię",
                 "password": "Hasło",
-                "createdAt": "Dodany"
+                "createdAt": "Dodany",
+                "changePassword": "",
+                "currentPassword": "",
+                "newPassword": ""
+            },
+            "helperTexts": {
+                "name": ""
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
             }
         },
         "player": {
@@ -97,7 +114,7 @@
             }
         },
         "transcoding": {
-            "name": "Transkodowanie |||| Transkodowania",
+            "name": "Transkodowanie |||| Transkodowanie",
             "fields": {
                 "name": "Nazwa",
                 "targetFormat": "Format Docelowy",
@@ -123,6 +140,10 @@
                 "selectPlaylist": "Wybierz listę odtwarzania:",
                 "addNewPlaylist": "Stwórz \"%{name}\"",
                 "export": "Wyeksportuj"
+            },
+            "message": {
+                "duplicate_song": "Dodaj zduplikowane utwory",
+                "song_exist": "Do listy odtwarzania dodawane są duplikaty. Czy chcesz je dodać czy pominąć?"
             }
         }
     },
@@ -151,7 +172,8 @@
             "number": "Musi być liczbą",
             "email": "Adres e-mail musi być poprawny",
             "oneOf": "Musi być jedną z: %{options}",
-            "regex": "Musi pasować do określonego formatu (regexp): %{pattern}"
+            "regex": "Musi pasować do określonego formatu (regexp): %{pattern}",
+            "unique": ""
         },
         "action": {
             "add_filter": "Dodaj filtr",
@@ -179,7 +201,8 @@
             "close": "Zamknij",
             "open_menu": "Otwórz menu",
             "close_menu": "Zamknij menu",
-            "unselect": "Odznacz"
+            "unselect": "Odznacz",
+            "skip": "Pomiń"
         },
         "boolean": {
             "true": "Tak",
@@ -241,7 +264,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} z %{total}",
             "page_rows_per_page": "Wierszy na stronie:",
             "next": "Następna",
-            "prev": "Poprzednia"
+            "prev": "Poprzednia",
+            "skip_nav": "Przejdź do treści"
         },
         "notification": {
             "updated": "Element zaktualizowany |||| %{smart_count} zaktualizowanych elementów",
@@ -323,5 +347,18 @@
         "fullScan": "Pełne Skanowanie",
         "serverUptime": "Czas Działania Serwera",
         "serverDown": "NIEDOSTĘPNY"
+    },
+    "help": {
+        "title": "Skróty Klawiszowe Navidrome",
+        "hotkeys": {
+            "show_help": "Wyświetl Pomoc",
+            "toggle_menu": "Pokaż Pasek Boczny",
+            "toggle_play": "Odtwórz / Wstrzymaj",
+            "prev_song": "Poprzedni Utwór",
+            "next_song": "Następny Utwór",
+            "vol_up": "Głośniej",
+            "vol_down": "Ciszej",
+            "toggle_love": "Dodaj ten utwór do ulubionych"
+        }
     }
 }
