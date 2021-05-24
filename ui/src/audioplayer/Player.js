@@ -176,6 +176,7 @@ const Player = () => {
     glassBg: false,
     showThemeSwitch: false,
     showMediaSession: true,
+    restartCurrentOnPrev: true,
     defaultPosition: {
       top: 300,
       left: 120,
@@ -294,9 +295,10 @@ const Player = () => {
     [dispatch, showNotifications]
   )
 
-  const onAudioPause = useCallback((info) => dispatch(currentPlaying(info)), [
-    dispatch,
-  ])
+  const onAudioPause = useCallback(
+    (info) => dispatch(currentPlaying(info)),
+    [dispatch]
+  )
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {

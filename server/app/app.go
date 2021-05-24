@@ -7,11 +7,9 @@ import (
 	"strings"
 
 	"github.com/deluan/rest"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
-	"github.com/go-chi/jwtauth"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
@@ -55,7 +53,7 @@ func (app *Router) routes(path string) http.Handler {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(mapAuthHeader())
-		r.Use(jwtauth.Verifier(auth.TokenAuth))
+		r.Use(verifier())
 		r.Use(authenticator(app.ds))
 		app.R(r, "/user", model.User{}, true)
 		app.R(r, "/song", model.MediaFile{}, true)

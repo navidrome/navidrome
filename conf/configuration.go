@@ -115,7 +115,9 @@ func Load() {
 		os.Exit(1)
 	}
 
-	log.Debug(pretty.Sprintf("Loaded configuration from '%s': %# v\n", Server.ConfigFile, Server))
+	if log.CurrentLevel() >= log.LevelDebug {
+		fmt.Println(log.Redact(pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)))
+	}
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -124,12 +126,16 @@ func Load() {
 }
 
 func validateScanSchedule() error {
-	if Server.ScanInterval != 0 {
+	if Server.ScanInterval != -1 {
 		log.Warn("ScanInterval is DEPRECATED. Please use ScanSchedule. See docs at https://navidrome.org/docs/usage/configuration-options/")
 		if Server.ScanSchedule != "@every 1m" {
 			log.Error("You cannot specify both ScanInterval and ScanSchedule, ignoring ScanInterval")
 		} else {
-			Server.ScanSchedule = fmt.Sprintf("@every %s", Server.ScanInterval)
+			if Server.ScanInterval == 0 {
+				Server.ScanSchedule = ""
+			} else {
+				Server.ScanSchedule = fmt.Sprintf("@every %s", Server.ScanInterval)
+			}
 			log.Warn("Setting ScanSchedule", "schedule", Server.ScanSchedule)
 		}
 	}
@@ -159,7 +165,7 @@ func init() {
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
-	viper.SetDefault("scaninterval", 0)
+	viper.SetDefault("scaninterval", -1)
 	viper.SetDefault("scanschedule", "@every 1m")
 	viper.SetDefault("baseurl", "")
 	viper.SetDefault("uiloginbackgroundurl", consts.DefaultUILoginBackgroundURL)

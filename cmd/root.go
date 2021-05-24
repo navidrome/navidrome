@@ -117,14 +117,8 @@ func startSignaler() (func() error, func(err error)) {
 }
 
 func schedulePeriodicScan(schedule string) {
-	time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
 	scanner := GetScanner()
 	scheduler := GetScheduler()
-
-	log.Info("Executing initial scan")
-	if err := scanner.RescanAll(context.Background(), false); err != nil {
-		log.Error("Error executing initial scan", err)
-	}
 
 	log.Info("Scheduling periodic scan", "schedule", schedule)
 	err := scheduler.Add(schedule, func() {
@@ -132,6 +126,12 @@ func schedulePeriodicScan(schedule string) {
 	})
 	if err != nil {
 		log.Error("Error scheduling periodic scan", err)
+	}
+
+	time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
+	log.Info("Executing initial scan")
+	if err := scanner.RescanAll(context.Background(), false); err != nil {
+		log.Error("Error executing initial scan", err)
 	}
 }
 

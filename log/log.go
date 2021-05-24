@@ -87,6 +87,12 @@ func SetRedacting(enabled bool) {
 	}
 }
 
+// Redact applies redaction to a single string
+func Redact(msg string) string {
+	r, _ := redacted.redact(msg)
+	return r
+}
+
 func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Context {
 	if ctx == nil {
 		ctx = context.Background()

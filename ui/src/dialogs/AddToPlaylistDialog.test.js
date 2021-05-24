@@ -53,10 +53,11 @@ describe('AddToPlaylistDialog', () => {
                   data: mockIndexedData,
                   list: {
                     cachedRequests: {
-                      '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{}}': {
-                        ids: ['sample-id1', 'sample-id2'],
-                        total: 2,
-                      },
+                      '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{}}':
+                        {
+                          ids: ['sample-id1', 'sample-id2'],
+                          total: 2,
+                        },
                     },
                   },
                 },
@@ -129,10 +130,11 @@ describe('AddToPlaylistDialog', () => {
                   data: mockIndexedData,
                   list: {
                     cachedRequests: {
-                      '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{}}': {
-                        ids: ['sample-id1', 'sample-id2'],
-                        total: 2,
-                      },
+                      '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{}}':
+                        {
+                          ids: ['sample-id1', 'sample-id2'],
+                          total: 2,
+                        },
                     },
                   },
                 },
@@ -186,10 +188,11 @@ describe('AddToPlaylistDialog', () => {
                   data: mockIndexedData,
                   list: {
                     cachedRequests: {
-                      '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{}}': {
-                        ids: ['sample-id1', 'sample-id2'],
-                        total: 2,
-                      },
+                      '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{}}':
+                        {
+                          ids: ['sample-id1', 'sample-id2'],
+                          total: 2,
+                        },
                     },
                   },
                 },

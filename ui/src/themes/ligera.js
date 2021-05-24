@@ -50,9 +50,10 @@ const musicListActions = {
     'button:first-child>span:first-child>span': {
       display: 'none',
     },
-    'button>span:first-child>span, button:not(:first-child)>span:first-child>svg': {
-      color: '#656565',
-    },
+    'button>span:first-child>span, button:not(:first-child)>span:first-child>svg':
+      {
+        color: '#656565',
+      },
   },
 }
 
@@ -182,9 +183,6 @@ export default {
         background: bLight['500'],
         paddingTop: '10px',
         boxShadow: '-14px -7px 20px black',
-      },
-      '&:hover': {
-        backgroundColor: '#000',
       },
     },
     MuiTableRow: {

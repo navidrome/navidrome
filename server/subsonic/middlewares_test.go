@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -268,6 +270,9 @@ var _ = Describe("Middlewares", func() {
 		Context("JWT based authentication", func() {
 			var validToken string
 			BeforeEach(func() {
+				conf.Server.SessionTimeout = time.Minute
+				auth.Init(ds)
+
 				u := &model.User{UserName: "admin"}
 				var err error
 				validToken, err = auth.CreateToken(u)

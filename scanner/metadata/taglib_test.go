@@ -42,11 +42,14 @@ var _ = Describe("taglibExtractor", func() {
 			Expect(m.Title()).To(BeEmpty())
 			Expect(m.HasPicture()).To(BeFalse())
 			Expect(m.Duration()).To(Equal(float32(1)))
-			Expect(m.BitRate()).To(Equal(39))
 			Expect(m.Suffix()).To(Equal("ogg"))
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.ogg"))
 			Expect(m.Size()).To(Equal(int64(5065)))
 			Expect(m.Bpm()).To(Equal(142)) // This file has a floating point BPM set to 141.7 under the fBPM tag. Ensure we parse and round correctly.
+
+			// TabLib 1.12 returns 18, previous versions return 39.
+			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
+			Expect(m.BitRate()).To(BeElementOf(18, 39))
 		})
 	})
 })

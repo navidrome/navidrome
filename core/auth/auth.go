@@ -2,12 +2,11 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/go-chi/jwtauth"
+	"github.com/go-chi/jwtauth/v5"
+	"github.com/lestrrat-go/jwx/jwt"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -15,14 +14,14 @@ import (
 )
 
 var (
-	once           sync.Once
-	Secret         []byte
-	TokenAuth      *jwtauth.JWTAuth
-	sessionTimeOut time.Duration
+	once      sync.Once
+	Secret    []byte
+	TokenAuth *jwtauth.JWTAuth
 )
 
-func InitTokenAuth(ds model.DataStore) {
+func Init(ds model.DataStore) {
 	once.Do(func() {
+		log.Info("Setting Session Timeout", "value", conf.Server.SessionTimeout)
 		secret, err := ds.Property(context.TODO()).DefaultGet(consts.JWTSecretKey, "not so secret")
 		if err != nil {
 			log.Error("No JWT secret found in DB. Setting a temp one, but please report this error", err)
@@ -33,47 +32,36 @@ func InitTokenAuth(ds model.DataStore) {
 }
 
 func CreateToken(u *model.User) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
-	claims := token.Claims.(jwt.MapClaims)
-	claims["iss"] = consts.JWTIssuer
-	claims["sub"] = u.UserName
+	claims := map[string]interface{}{}
+	claims[jwt.IssuerKey] = consts.JWTIssuer
+	claims[jwt.IssuedAtKey] = time.Now().UTC().Unix()
+	claims[jwt.SubjectKey] = u.UserName
 	claims["uid"] = u.ID
 	claims["adm"] = u.IsAdmin
+	token, _, err := TokenAuth.Encode(claims)
+	if err != nil {
+		return "", err
+	}
 
 	return TouchToken(token)
 }
 
-func getSessionTimeOut() time.Duration {
-	if sessionTimeOut == 0 {
-		sessionTimeOut = conf.Server.SessionTimeout
-		log.Info("Setting Session Timeout", "value", sessionTimeOut)
-	}
-	return sessionTimeOut
-}
-
-func TouchToken(token *jwt.Token) (string, error) {
-	timeout := getSessionTimeOut()
-	expireIn := time.Now().Add(timeout).Unix()
-	claims := token.Claims.(jwt.MapClaims)
-	claims["exp"] = expireIn
-
-	return token.SignedString(Secret)
-}
-
-func keyFunc(token *jwt.Token) (interface{}, error) {
-	// Don't forget to validate the alg is what you expect:
-	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-		return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+func TouchToken(token jwt.Token) (string, error) {
+	claims, err := token.AsMap(context.Background())
+	if err != nil {
+		return "", err
 	}
 
-	// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
-	return Secret, nil
+	claims[jwt.ExpirationKey] = time.Now().UTC().Add(conf.Server.SessionTimeout).Unix()
+	_, newToken, err := TokenAuth.Encode(claims)
+
+	return newToken, err
 }
 
-func Validate(tokenStr string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenStr, keyFunc)
+func Validate(tokenStr string) (map[string]interface{}, error) {
+	token, err := jwtauth.VerifyToken(TokenAuth, tokenStr)
 	if err != nil {
 		return nil, err
 	}
-	return token.Claims.(jwt.MapClaims), err
+	return token.AsMap(context.Background())
 }

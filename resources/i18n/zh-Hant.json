@@ -22,7 +22,8 @@
                 "starred": "收藏",
                 "comment": "註釋",
                 "rating": "評分",
-                "quality": "品質"
+                "quality": "品質",
+                "bpm": ""
             },
             "actions": {
                 "addToQueue": "加入至播放佇列",
@@ -86,7 +87,18 @@
                 "updatedAt": "更新於",
                 "name": "名稱",
                 "password": "密碼",
-                "createdAt": "創建於"
+                "createdAt": "創建於",
+                "changePassword": "",
+                "currentPassword": "",
+                "newPassword": ""
+            },
+            "helperTexts": {
+                "name": ""
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
             }
         },
         "player": {
@@ -160,7 +172,8 @@
             "number": "必須為數字",
             "email": "必須是有效的電子信箱",
             "oneOf": "必須為: %{options}其中一項",
-            "regex": "必須符合指定的格式 (正則表達式): %{pattern}"
+            "regex": "必須符合指定的格式 (正則表達式): %{pattern}",
+            "unique": ""
         },
         "action": {
             "add_filter": "加入篩選",

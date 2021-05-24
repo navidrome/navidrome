@@ -93,6 +93,11 @@
             },
             "helperTexts": {
                 "name": "Alterações no seu nome só serão refletidas no próximo login"
+            },
+            "notifications": {
+                "created": "Novo usuário criado",
+                "updated": "Usuário atualizado com sucesso",
+                "deleted": "Usuário deletado com sucesso"
             }
         },
         "player": {
@@ -166,7 +171,8 @@
             "number": "Deve ser um número",
             "email": "Deve ser um email válido",
             "oneOf": "Deve ser uma das seguintes opções: %{options}",
-            "regex": "Deve ter o formato específico (regexp): %{pattern}"
+            "regex": "Deve ter o formato específico (regexp): %{pattern}",
+            "unique": "Deve ser único"
         },
         "action": {
             "add_filter": "Adicionar Filtro",
