@@ -28,6 +28,7 @@ import { AddToPlaylistDialog } from '../dialogs'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import config from '../config'
+import useSelectedFields from '../common/useSelectedFields'
 import { QualityInfo } from '../common/QualityInfo'
 
 const useStyles = makeStyles({
@@ -77,6 +78,49 @@ const SongList = (props) => {
     dispatch(setTrack(record))
   }
 
+  const toggleableFields = React.useMemo(() => {
+    return {
+      album: isDesktop && (
+        <AlbumLinkField
+          source="album"
+          sortBy={
+            'album, order_album_artist_name, disc_number, track_number, title'
+          }
+          sortByOrder={'ASC'}
+        />
+      ),
+      artist: <TextField source="artist" />,
+      trackNumber: isDesktop && <NumberField source="trackNumber" />,
+      playCount: isDesktop && (
+        <NumberField source="playCount" sortByOrder={'DESC'} />
+      ),
+      year: isDesktop && (
+        <FunctionField
+          source="year"
+          render={(r) => r.year || ''}
+          sortByOrder={'DESC'}
+        />
+      ),
+      quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      duration: <DurationField source="duration" />,
+      rating: config.enableStarRating && (
+        <RatingField
+          source="rating"
+          sortByOrder={'DESC'}
+          resource={'song'}
+          className={classes.ratingField}
+        />
+      ),
+      bpm: isDesktop && <NumberField source="bpm" />,
+    }
+  }, [isDesktop, classes.ratingField])
+
+  const columns = useSelectedFields({
+    resource: 'song',
+    columns: toggleableFields,
+    defaultOff: ['bpm'],
+  })
+
   return (
     <>
       <List
@@ -98,38 +142,7 @@ const SongList = (props) => {
             classes={{ row: classes.row }}
           >
             <SongTitleField source="title" showTrackNumbers={false} />
-            {isDesktop && (
-              <AlbumLinkField
-                source="album"
-                sortBy={
-                  'album, order_album_artist_name, disc_number, track_number, title'
-                }
-                sortByOrder={'ASC'}
-              />
-            )}
-            <TextField source="artist" />
-            {isDesktop && <NumberField source="trackNumber" />}
-            {isDesktop && (
-              <NumberField source="playCount" sortByOrder={'DESC'} />
-            )}
-            {isDesktop && (
-              <FunctionField
-                source="year"
-                render={(r) => r.year || ''}
-                sortByOrder={'DESC'}
-              />
-            )}
-            {isDesktop && <QualityInfo source="quality" sortable={false} />}
-            <DurationField source="duration" />
-            {isDesktop && <NumberField source="bpm" />}
-            {config.enableStarRating && (
-              <RatingField
-                source="rating"
-                sortByOrder={'DESC'}
-                resource={'song'}
-                className={classes.ratingField}
-              />
-            )}
+            {columns}
             <SongContextMenu
               source={'starred'}
               sortBy={'starred ASC, starredAt ASC'}
