@@ -39,7 +39,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^5.12.0",
     "@testing-library/react": "^11.2.6",
-    "@testing-library/react-hooks": "^5.1.2",
+    "@testing-library/react-hooks": "^6.0.0",
     "@testing-library/user-event": "^13.1.8",
     "css-mediaquery": "^0.1.2",
     "jest-environment-jsdom-sixteen": "^2.0.0",
