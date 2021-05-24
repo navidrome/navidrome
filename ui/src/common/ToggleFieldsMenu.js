@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import IconButton from '@material-ui/core/IconButton'
 import Menu from '@material-ui/core/Menu'
@@ -8,7 +8,7 @@ import MoreVertIcon from '@material-ui/icons/MoreVert'
 import Checkbox from '@material-ui/core/Checkbox'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslate } from 'react-admin'
-import { setToggleableFields, albumViewList } from '../actions'
+import { setToggleableFields } from '../actions'
 
 const useStyles = makeStyles({
   menuIcon: {
@@ -57,12 +57,6 @@ const ToggleFieldsMenu = ({ resource, topbarComponent: TopBarComponent }) => {
       })
     )
   }
-
-  useEffect(() => {
-    if (!toggleableColumns && resource === 'album') {
-      dispatch(albumViewList())
-    }
-  }, [dispatch, resource, toggleableColumns])
 
   return (
     <div className={classes.menuIcon}>
