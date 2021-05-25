@@ -85,10 +85,10 @@ jobs:
           cd ui
           npm ci
 
-      - name: npm check-formatting
+      - name: npm lint
         run: |
           cd ui
-          npm run check-formatting
+          npm run check-formatting && npm run lint
 
       - name: npm test
         run: |
