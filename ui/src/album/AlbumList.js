@@ -20,7 +20,7 @@ import AlbumGridView from './AlbumGridView'
 import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
-import { setToggleableFields } from '../actions'
+import { setToggleableFields, setOmittedFields } from '../actions'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -92,6 +92,7 @@ const AlbumList = (props) => {
           },
         })
       )
+      dispatch(setOmittedFields({ album: [] }))
     }
   }, [dispatch, toggleableAlbumFields])
 
