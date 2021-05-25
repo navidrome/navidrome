@@ -23,7 +23,7 @@
                 "comment": "コメント",
                 "rating": "レート",
                 "quality": "品質",
-                "bpm": ""
+                "bpm": "BPM"
             },
             "actions": {
                 "addToQueue": "最後に再生",
@@ -88,17 +88,17 @@
                 "name": "名前",
                 "password": "パスワード",
                 "createdAt": "作成日",
-                "changePassword": "",
-                "currentPassword": "",
-                "newPassword": ""
+                "changePassword": "パスワードを変更しますか？",
+                "currentPassword": "現在のパスワード",
+                "newPassword": "新しいパスワード"
             },
             "helperTexts": {
-                "name": ""
+                "name": "名前の変更は次回ログイン以降反映されます"
             },
             "notifications": {
-                "created": "",
-                "updated": "",
-                "deleted": ""
+                "created": "ユーザーが作成されました",
+                "updated": "ユーザーが更新されました",
+                "deleted": "ユーザーが削除されました"
             }
         },
         "player": {
@@ -173,7 +173,7 @@
             "email": "メールアドレスである必要があります",
             "oneOf": "次のいずれかである必要があります: %{options}",
             "regex": "次の正規表現形式にする必要があります: %{pattern}",
-            "unique": ""
+            "unique": "一意である必要があります"
         },
         "action": {
             "add_filter": "検索条件",
@@ -278,6 +278,12 @@
             "i18n_error": "翻訳ファイルが読み込めませんでした",
             "canceled": "元に戻しました",
             "logged_out": "認証に失敗しました。再度ログインしてください"
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "表示列",
+            "layout": "レイアウト",
+            "grid": "グリッド",
+            "table": "テーブル"
         }
     },
     "message": {
