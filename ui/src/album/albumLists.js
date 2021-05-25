@@ -14,7 +14,7 @@ import VideoLibraryOutlinedIcon from '@material-ui/icons/VideoLibraryOutlined'
 import config from '../config'
 import DynamicMenuIcon from '../layout/DynamicMenuIcon'
 
-export default {
+const albumLists = {
   all: {
     icon: (
       <DynamicMenuIcon
@@ -79,4 +79,5 @@ export default {
   },
 }
 
+export default albumLists
 export const defaultAlbumList = 'recentlyAdded'

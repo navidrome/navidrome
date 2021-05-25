@@ -4,7 +4,7 @@ import themes from './index'
 import { AUTO_THEME_ID } from '../consts'
 import config from '../config'
 
-export default () => {
+const useCurrentTheme = () => {
   const prefersLightMode = useMediaQuery('(prefers-color-scheme: light)')
   return useSelector((state) => {
     if (state.theme === AUTO_THEME_ID) {
@@ -19,3 +19,5 @@ export default () => {
     return themes[themeName]
   })
 }
+
+export default useCurrentTheme

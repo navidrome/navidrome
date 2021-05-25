@@ -111,7 +111,6 @@ const Player = () => {
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const queue = useSelector((state) => state.queue)
-  const current = queue.current || {}
   const { authenticated } = useAuthState()
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
@@ -160,60 +159,64 @@ const Player = () => {
     ),
   }
 
-  const defaultOptions = {
-    theme: playerTheme,
-    bounds: 'body',
-    mode: 'full',
-    autoPlay: false,
-    preload: true,
-    autoPlayInitLoadPlayList: true,
-    loadAudioErrorPlayNext: false,
-    clearPriorAudioLists: false,
-    showDestroy: true,
-    showDownload: false,
-    showReload: false,
-    toggleMode: !isDesktop,
-    glassBg: false,
-    showThemeSwitch: false,
-    showMediaSession: true,
-    restartCurrentOnPrev: true,
-    defaultPosition: {
-      top: 300,
-      left: 120,
-    },
-    volumeFade: { fadeIn: 200, fadeOut: 200 },
-    renderAudioTitle: (audioInfo, isMobile) => (
-      <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
-    ),
-    locale: {
-      playListsText: translate('player.playListsText'),
-      openText: translate('player.openText'),
-      closeText: translate('player.closeText'),
-      notContentText: translate('player.notContentText'),
-      clickToPlayText: translate('player.clickToPlayText'),
-      clickToPauseText: translate('player.clickToPauseText'),
-      nextTrackText: translate('player.nextTrackText'),
-      previousTrackText: translate('player.previousTrackText'),
-      reloadText: translate('player.reloadText'),
-      volumeText: translate('player.volumeText'),
-      toggleLyricText: translate('player.toggleLyricText'),
-      toggleMiniModeText: translate('player.toggleMiniModeText'),
-      destroyText: translate('player.destroyText'),
-      downloadText: translate('player.downloadText'),
-      removeAudioListsText: translate('player.removeAudioListsText'),
-      clickToDeleteText: (name) =>
-        translate('player.clickToDeleteText', { name }),
-      emptyLyricText: translate('player.emptyLyricText'),
-      playModeText: {
-        order: translate('player.playModeText.order'),
-        orderLoop: translate('player.playModeText.orderLoop'),
-        singleLoop: translate('player.playModeText.singleLoop'),
-        shufflePlay: translate('player.playModeText.shufflePlay'),
+  const defaultOptions = useMemo(
+    () => ({
+      theme: playerTheme,
+      bounds: 'body',
+      mode: 'full',
+      autoPlay: false,
+      preload: true,
+      autoPlayInitLoadPlayList: true,
+      loadAudioErrorPlayNext: false,
+      clearPriorAudioLists: false,
+      showDestroy: true,
+      showDownload: false,
+      showReload: false,
+      toggleMode: !isDesktop,
+      glassBg: false,
+      showThemeSwitch: false,
+      showMediaSession: true,
+      restartCurrentOnPrev: true,
+      defaultPosition: {
+        top: 300,
+        left: 120,
       },
-    },
-  }
+      volumeFade: { fadeIn: 200, fadeOut: 200 },
+      renderAudioTitle: (audioInfo, isMobile) => (
+        <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
+      ),
+      locale: {
+        playListsText: translate('player.playListsText'),
+        openText: translate('player.openText'),
+        closeText: translate('player.closeText'),
+        notContentText: translate('player.notContentText'),
+        clickToPlayText: translate('player.clickToPlayText'),
+        clickToPauseText: translate('player.clickToPauseText'),
+        nextTrackText: translate('player.nextTrackText'),
+        previousTrackText: translate('player.previousTrackText'),
+        reloadText: translate('player.reloadText'),
+        volumeText: translate('player.volumeText'),
+        toggleLyricText: translate('player.toggleLyricText'),
+        toggleMiniModeText: translate('player.toggleMiniModeText'),
+        destroyText: translate('player.destroyText'),
+        downloadText: translate('player.downloadText'),
+        removeAudioListsText: translate('player.removeAudioListsText'),
+        clickToDeleteText: (name) =>
+          translate('player.clickToDeleteText', { name }),
+        emptyLyricText: translate('player.emptyLyricText'),
+        playModeText: {
+          order: translate('player.playModeText.order'),
+          orderLoop: translate('player.playModeText.orderLoop'),
+          singleLoop: translate('player.playModeText.singleLoop'),
+          shufflePlay: translate('player.playModeText.shufflePlay'),
+        },
+      },
+    }),
+    [isDesktop, playerTheme, translate]
+  )
 
   const options = useMemo(() => {
+    const current = queue.current || {}
     return {
       ...defaultOptions,
       clearPriorAudioLists: queue.clear,
@@ -223,14 +226,7 @@ const Player = () => {
       extendsContent: <PlayerToolbar id={current.trackId} />,
       defaultVolume: queue.volume,
     }
-  }, [
-    queue.clear,
-    queue.queue,
-    queue.volume,
-    queue.playIndex,
-    current,
-    defaultOptions,
-  ])
+  }, [queue, defaultOptions])
 
   const onAudioListsChange = useCallback(
     (currentPlayIndex, audioLists) =>
