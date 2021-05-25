@@ -6,7 +6,7 @@ require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
 	github.com/ClickHouse/clickhouse-go v1.4.3 // indirect
 	github.com/Masterminds/squirrel v1.5.0
-	github.com/ReneKroon/ttlcache/v2 v2.4.0
+	github.com/ReneKroon/ttlcache/v2 v2.5.0
 	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.0
