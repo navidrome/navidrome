@@ -1,5 +1,5 @@
-import React from 'react'
-import { useSelector } from 'react-redux'
+import React, { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
   AutocompleteInput,
@@ -20,7 +20,7 @@ import AlbumGridView from './AlbumGridView'
 import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
-import useSelectedFields from '../common/useSelectedFields'
+import { setOmittedFields, setToggleableFields } from '../actions'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -63,6 +63,7 @@ const AlbumListTitle = ({ albumListType }) => {
 
 const AlbumList = (props) => {
   const { width } = props
+  const dispatch = useDispatch()
   const albumView = useSelector((state) => state.albumView)
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
@@ -74,17 +75,21 @@ const AlbumList = (props) => {
   // Workaround to force album columns to appear the first time.
   // See https://github.com/navidrome/navidrome/pull/923#issuecomment-833004842
   // TODO: Find a better solution
-  useSelectedFields({
-    resource: 'album',
-    columns: {
-      artist: 'artist',
-      songCount: 'songCount',
-      playCount: 'playCount',
-      year: 'year',
-      duration: 'duration',
-      rating: 'rating',
-    },
-  })
+  useEffect(() => {
+    dispatch(
+      setToggleableFields({
+        album: {
+          artist: 'artist',
+          songCount: 'songCount',
+          playCount: 'playCount',
+          year: 'year',
+          duration: 'duration',
+          rating: 'rating',
+        },
+      })
+    )
+    dispatch(setOmittedFields({ album: [] }))
+  }, [dispatch])
 
   // If it does not have filter/sort params (usually coming from Menu),
   // reload with correct filter/sort params
