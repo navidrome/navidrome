@@ -23,7 +23,7 @@ require (
 	github.com/go-chi/jwtauth/v5 v5.0.1
 	github.com/go-ldap/ldap v3.0.3+incompatible
 	github.com/golang/protobuf v1.4.3 // indirect
-	github.com/golangci/golangci-lint v1.40.0
+	github.com/golangci/golangci-lint v1.40.1
 	github.com/google/uuid v1.2.0
 	github.com/google/wire v0.5.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
@@ -50,7 +50,7 @@ require (
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
-	golang.org/x/tools v0.1.0
+	golang.org/x/tools v0.1.2-0.20210512205948-8287d5da45e4
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
