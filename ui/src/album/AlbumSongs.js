@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
   TextField,
+  NumberField,
   useVersion,
   useListContext,
 } from 'react-admin'
@@ -19,8 +20,12 @@ import {
   SongDatagrid,
   SongDetails,
   SongTitleField,
+  RatingField,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
+import { QualityInfo } from '../common/QualityInfo'
+import useSelectedFields from '../common/useSelectedFields'
+import config from '../config'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -61,10 +66,16 @@ const useStyles = makeStyles(
         '& $contextMenu': {
           visibility: 'visible',
         },
+        '& $ratingField': {
+          visibility: 'visible',
+        },
       },
     },
     contextMenu: {
       visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
+    },
+    ratingField: {
+      visibility: 'hidden',
     },
   }),
   { name: 'RaList' }
@@ -77,6 +88,46 @@ const AlbumSongs = (props) => {
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
   const version = useVersion()
+
+  const toggleableFields = useMemo(() => {
+    return {
+      trackNumber: isDesktop && (
+        <TextField
+          source="trackNumber"
+          sortBy="discNumber asc, trackNumber asc"
+          label="#"
+          sortable={false}
+        />
+      ),
+      title: (
+        <SongTitleField
+          source="title"
+          sortable={false}
+          showTrackNumbers={!isDesktop}
+        />
+      ),
+      artist: isDesktop && <TextField source="artist" sortable={false} />,
+      duration: <DurationField source="duration" sortable={false} />,
+      quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
+      rating: isDesktop && config.enableStarRating && (
+        <RatingField
+          source="rating"
+          resource={'albumSong'}
+          sortable={false}
+          className={classes.ratingField}
+        />
+      ),
+    }
+  }, [isDesktop, classes.ratingField])
+
+  const columns = useSelectedFields({
+    resource: 'albumSong',
+    columns: toggleableFields,
+    omittedColumns: ['title'],
+    defaultOff: ['bpm'],
+  })
+
   return (
     <>
       <ListToolbar
@@ -103,30 +154,18 @@ const AlbumSongs = (props) => {
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
           >
-            {isDesktop && (
-              <TextField
-                source="trackNumber"
-                sortBy="discNumber asc, trackNumber asc"
-                label="#"
-                sortable={false}
-              />
-            )}
-            <SongTitleField
-              source="title"
-              sortable={false}
-              showTrackNumbers={!isDesktop}
-            />
-            {isDesktop && <TextField source="artist" sortable={false} />}
-            <DurationField source="duration" sortable={false} />
+            {columns}
             <SongContextMenu
               source={'starred'}
               sortable={false}
               className={classes.contextMenu}
               label={
-                <FavoriteBorderIcon
-                  fontSize={'small'}
-                  className={classes.columnIcon}
-                />
+                config.enableFavourites && (
+                  <FavoriteBorderIcon
+                    fontSize={'small'}
+                    className={classes.columnIcon}
+                  />
+                )
               }
             />
           </SongDatagrid>
@@ -137,7 +176,17 @@ const AlbumSongs = (props) => {
   )
 }
 
+export const removeAlbumCommentsFromSongs = ({ album, data }) => {
+  if (album?.comment && data) {
+    Object.values(data).forEach((song) => {
+      song.comment = ''
+    })
+  }
+}
+
 const SanitizedAlbumSongs = (props) => {
+  removeAlbumCommentsFromSongs(props)
+
   const { loaded, loading, total, ...rest } = useListContext(props)
   return <>{loaded && <AlbumSongs {...rest} actions={props.actions} />}</>
 }

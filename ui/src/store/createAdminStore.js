@@ -7,7 +7,7 @@ import throttle from 'lodash.throttle'
 import pick from 'lodash.pick'
 import { loadState, saveState } from './persistState'
 
-export default ({
+const createAdminStore = ({
   authProvider,
   dataProvider,
   history,
@@ -59,3 +59,5 @@ export default ({
   sagaMiddleware.run(saga)
   return store
 }
+
+export default createAdminStore

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
   Datagrid,
@@ -17,8 +17,12 @@ import {
   QuickFilter,
   useGetHandleArtistClick,
   ArtistSimpleList,
+  RatingField,
 } from '../common'
 import { makeStyles } from '@material-ui/core/styles'
+import config from '../config'
+import ArtistListActions from './ArtistListActions'
+import useSelectedFields from '../common/useSelectedFields'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -31,9 +35,15 @@ const useStyles = makeStyles({
       '& $contextMenu': {
         visibility: 'visible',
       },
+      '& $ratingField': {
+        visibility: 'visible',
+      },
     },
   },
   contextMenu: {
+    visibility: 'hidden',
+  },
+  ratingField: {
     visibility: 'hidden',
   },
 })
@@ -41,26 +51,43 @@ const useStyles = makeStyles({
 const ArtistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
     <SearchInput source="name" alwaysOn />
-    <QuickFilter
-      source="starred"
-      label={<FavoriteIcon fontSize={'small'} />}
-      defaultValue={true}
-    />
+    {config.enableFavourites && (
+      <QuickFilter
+        source="starred"
+        label={<FavoriteIcon fontSize={'small'} />}
+        defaultValue={true}
+      />
+    )}
   </Filter>
 )
 
-const ArtistListView = ({
-  hasShow,
-  hasEdit,
-  hasList,
-  width,
-  syncWithLocation,
-  ...rest
-}) => {
+const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+
+  const toggleableFields = useMemo(() => {
+    return {
+      albumCount: <NumberField source="albumCount" sortByOrder={'DESC'} />,
+      songCount: <NumberField source="songCount" sortByOrder={'DESC'} />,
+      playCount: <NumberField source="playCount" sortByOrder={'DESC'} />,
+      rating: config.enableStarRating && (
+        <RatingField
+          source="rating"
+          sortByOrder={'DESC'}
+          resource={'artist'}
+          className={classes.ratingField}
+        />
+      ),
+    }
+  }, [classes.ratingField])
+
+  const columns = useSelectedFields({
+    resource: 'artist',
+    columns: toggleableFields,
+  })
+
   return isXsmall ? (
     <ArtistSimpleList
       linkType={(id) => history.push(handleArtistLink(id))}
@@ -69,19 +96,20 @@ const ArtistListView = ({
   ) : (
     <Datagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
       <TextField source="name" />
-      <NumberField source="albumCount" sortByOrder={'DESC'} />
-      <NumberField source="songCount" sortByOrder={'DESC'} />
-      <NumberField source="playCount" sortByOrder={'DESC'} />
+      {columns}
       <ArtistContextMenu
         source={'starred'}
         sortBy={'starred ASC, starredAt ASC'}
         sortByOrder={'DESC'}
+        sortable={config.enableFavourites}
         className={classes.contextMenu}
         label={
-          <FavoriteBorderIcon
-            fontSize={'small'}
-            className={classes.contextHeader}
-          />
+          config.enableFavourites && (
+            <FavoriteBorderIcon
+              fontSize={'small'}
+              className={classes.contextHeader}
+            />
+          )
         }
       />
     </Datagrid>
@@ -97,6 +125,7 @@ const ArtistList = (props) => {
         exporter={false}
         bulkActionButtons={false}
         filters={<ArtistFilter />}
+        actions={<ArtistListActions />}
       >
         <ArtistListView {...props} />
       </List>

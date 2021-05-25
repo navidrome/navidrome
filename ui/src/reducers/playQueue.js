@@ -1,5 +1,4 @@
 import 'react-jinke-music-player/assets/index.css'
-import get from 'lodash.get'
 import { v4 as uuidv4 } from 'uuid'
 import subsonic from '../subsonic'
 import config from '../config'
@@ -27,6 +26,8 @@ const mapToAudioLists = (item) => {
     albumId: item.albumId,
     artistId: item.albumArtistId,
     duration: item.duration,
+    suffix: item.suffix,
+    bitRate: item.bitRate,
     musicSrc: subsonic.url('stream', id, { ts: true }),
     cover: subsonic.getCoverArtUrl(
       {
@@ -83,7 +84,7 @@ export const playQueueReducer = (previousState = initialState, payload) => {
       })
       return { ...previousState, queue, clear: false, playIndex: undefined }
     case PLAYER_PLAY_NEXT:
-      current = get(previousState.current, 'uuid', '')
+      current = previousState.current?.uuid || ''
       newQueue = []
       let foundPos = false
       previousState.queue.forEach((item) => {

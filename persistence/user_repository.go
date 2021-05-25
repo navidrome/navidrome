@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/rest"
@@ -48,6 +50,7 @@ func (r *userRepository) Put(u *model.User) error {
 	}
 	u.UpdatedAt = time.Now()
 	values, _ := toSqlArgs(*u)
+	delete(values, "current_password")
 	update := Update(r.tableName).Where(Eq{"id": u.ID}).SetMap(values)
 	count, err := r.executeSQL(update)
 	if err != nil {
@@ -131,6 +134,9 @@ func (r *userRepository) Save(entity interface{}) (string, error) {
 		return "", rest.ErrPermissionDenied
 	}
 	u := entity.(*model.User)
+	if err := validateUsernameUnique(r, u); err != nil {
+		return "", err
+	}
 	err := r.Put(u)
 	if err != nil {
 		return "", err
@@ -144,6 +150,19 @@ func (r *userRepository) Update(entity interface{}, cols ...string) error {
 	if !usr.IsAdmin && usr.ID != u.ID {
 		return rest.ErrPermissionDenied
 	}
+	if !usr.IsAdmin {
+		if !conf.Server.EnableUserEditing {
+			return rest.ErrPermissionDenied
+		}
+		u.IsAdmin = false
+		u.UserName = usr.UserName
+	}
+	if err := validatePasswordChange(u, usr); err != nil {
+		return err
+	}
+	if err := validateUsernameUnique(r, u); err != nil {
+		return err
+	}
 	err := r.Put(u)
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
@@ -151,9 +170,45 @@ func (r *userRepository) Update(entity interface{}, cols ...string) error {
 	return err
 }
 
+func validatePasswordChange(newUser *model.User, logged *model.User) error {
+	err := &rest.ValidationError{Errors: map[string]string{}}
+	if logged.IsAdmin && newUser.ID != logged.ID {
+		return nil
+	}
+	if newUser.NewPassword != "" && newUser.CurrentPassword == "" {
+		err.Errors["currentPassword"] = "ra.validation.required"
+	}
+	if newUser.CurrentPassword != "" {
+		if newUser.NewPassword == "" {
+			err.Errors["password"] = "ra.validation.required"
+		}
+		if newUser.CurrentPassword != logged.Password {
+			err.Errors["currentPassword"] = "ra.validation.passwordDoesNotMatch"
+		}
+	}
+	if len(err.Errors) > 0 {
+		return err
+	}
+	return nil
+}
+
+func validateUsernameUnique(r model.UserRepository, u *model.User) error {
+	usr, err := r.FindByUsername(u.UserName)
+	if err == model.ErrNotFound {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if usr.ID != u.ID {
+		return &rest.ValidationError{Errors: map[string]string{"userName": "ra.validation.unique"}}
+	}
+	return nil
+}
+
 func (r *userRepository) Delete(id string) error {
 	usr := loggedUser(r.ctx)
-	if !usr.IsAdmin && usr.ID != id {
+	if !usr.IsAdmin {
 		return rest.ErrPermissionDenied
 	}
 	err := r.delete(Eq{"id": id})

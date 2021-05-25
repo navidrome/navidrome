@@ -16,6 +16,22 @@ type Level uint8
 
 type LevelFunc = func(ctx interface{}, msg interface{}, keyValuePairs ...interface{})
 
+var redacted = &Hook{
+	AcceptedLevels: logrus.AllLevels,
+	RedactionList: []string{
+		// Keys from the config
+		"(ApiKey:\")[\\w]*",
+		"(Secret:\")[\\w]*",
+		"(Spotify.*ID:\")[\\w]*",
+
+		// Subsonic query params
+		"([^\\w]t=)[\\w]+",
+		"([^\\w]s=)[^&]+",
+		"([^\\w]p=)[^&]+",
+		"([^\\w]jwt=)[^&]+",
+	},
+}
+
 const (
 	LevelCritical = Level(logrus.FatalLevel)
 	LevelError    = Level(logrus.ErrorLevel)
@@ -63,6 +79,18 @@ func SetLevelString(l string) {
 
 func SetLogSourceLine(enabled bool) {
 	logSourceLine = enabled
+}
+
+func SetRedacting(enabled bool) {
+	if enabled {
+		defaultLogger.AddHook(redacted)
+	}
+}
+
+// Redact applies redaction to a single string
+func Redact(msg string) string {
+	r, _ := redacted.redact(msg)
+	return r
 }
 
 func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Context {

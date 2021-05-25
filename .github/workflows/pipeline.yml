@@ -21,7 +21,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.38
+          version: v1.40
           github-token: ${{ secrets.GITHUB_TOKEN }}
           args: --timeout 2m
 
@@ -85,10 +85,10 @@ jobs:
           cd ui
           npm ci
 
-      - name: npm check-formatting
+      - name: npm lint
         run: |
           cd ui
-          npm run check-formatting
+          npm run check-formatting && npm run lint
 
       - name: npm test
         run: |
@@ -128,7 +128,7 @@ jobs:
 
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
-        uses: docker://deluan/ci-goreleaser:1.16.2-1
+        uses: docker://deluan/ci-goreleaser:1.16.4-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -136,7 +136,7 @@ jobs:
 
       - name: Run GoReleaser - RELEASE
         if: startsWith(github.ref, 'refs/tags/')
-        uses: docker://deluan/ci-goreleaser:1.16.2-1
+        uses: docker://deluan/ci-goreleaser:1.16.4-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

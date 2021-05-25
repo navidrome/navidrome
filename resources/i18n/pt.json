@@ -20,7 +20,10 @@
                 "bitRate": "Bitrate",
                 "discSubtitle": "Sub-título do disco",
                 "starred": "Favorita",
-                "comment": "Comentário"
+                "comment": "Comentário",
+                "rating": "Classificação",
+                "quality": "Qualidade",
+                "bpm": "BPM"
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
@@ -44,7 +47,8 @@
                 "compilation": "Coletânea",
                 "year": "Ano",
                 "updatedAt": "Últ. Atualização",
-                "comment": "Comentário"
+                "comment": "Comentário",
+                "rating": "Classificação"
             },
             "actions": {
                 "playAll": "Tocar",
@@ -60,7 +64,8 @@
                 "recentlyAdded": "Recém-adicionados",
                 "recentlyPlayed": "Recém-tocados",
                 "mostPlayed": "Mais tocados",
-                "starred": "Favoritos"
+                "starred": "Favoritos",
+                "topRated": "Melhor classificados"
             }
         },
         "artist": {
@@ -69,7 +74,8 @@
                 "name": "Nome",
                 "albumCount": "Total de Álbuns",
                 "songCount": "Total de Músicas",
-                "playCount": "Execuções"
+                "playCount": "Execuções",
+                "rating": "Classificação"
             }
         },
         "user": {
@@ -81,7 +87,18 @@
                 "updatedAt": "Últ. Atualização",
                 "name": "Nome",
                 "password": "Senha",
-                "createdAt": "Data de Criação"
+                "createdAt": "Data de Criação",
+                "changePassword": "Trocar Senha?",
+                "currentPassword": "Senha Atual",
+                "newPassword": "Nova Senha"
+            },
+            "helperTexts": {
+                "name": "Alterações no seu nome só serão refletidas no próximo login"
+            },
+            "notifications": {
+                "created": "Novo usuário criado",
+                "updated": "Usuário atualizado com sucesso",
+                "deleted": "Usuário deletado com sucesso"
             }
         },
         "player": {
@@ -123,6 +140,10 @@
                 "selectPlaylist": "Selecione a playlist:",
                 "addNewPlaylist": "Criar \"%{name}\"",
                 "export": "Exportar"
+            },
+            "message": {
+                "duplicate_song": "Adicionar músicas duplicadas",
+                "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?"
             }
         }
     },
@@ -151,7 +172,8 @@
             "number": "Deve ser um número",
             "email": "Deve ser um email válido",
             "oneOf": "Deve ser uma das seguintes opções: %{options}",
-            "regex": "Deve ter o formato específico (regexp): %{pattern}"
+            "regex": "Deve ter o formato específico (regexp): %{pattern}",
+            "unique": "Deve ser único"
         },
         "action": {
             "add_filter": "Adicionar Filtro",
@@ -179,7 +201,8 @@
             "close": "Fechar",
             "open_menu": "Abrir menu",
             "close_menu": "Fechar menu",
-            "unselect": "Deselecionar"
+            "unselect": "Deselecionar",
+            "skip": "Ignorar"
         },
         "boolean": {
             "true": "Sim",
@@ -255,6 +278,12 @@
             "i18n_error": "Não foi possível carregar as traduções para o idioma especificado",
             "canceled": "Ação cancelada",
             "logged_out": "Sua sessão foi encerrada. Por favor, reconecte"
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Colunas visíveis",
+            "layout": "Layout",
+            "grid": "Grade",
+            "table": "Tabela"
         }
     },
     "message": {
@@ -335,7 +364,7 @@
             "next_song": "Próxima música",
             "vol_up": "Aumenta volume",
             "vol_down": "Diminui volume",
-            "toggle_star": "Marcar/desmarcar favorita"
+            "toggle_love": "Marcar/desmarcar favorita"
         }
     }
 }

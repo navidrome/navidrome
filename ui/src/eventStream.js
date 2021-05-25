@@ -14,7 +14,7 @@ let timeout = null
 const getEventStream = async () => {
   if (!es) {
     // Call `keepalive` to refresh the jwt token
-    await httpClient(`${REST_URL}/keepalive/eventSource`)
+    await httpClient(`${REST_URL}/keepalive/keepalive`)
     es = new EventSource(
       baseUrl(`${REST_URL}/events?jwt=${localStorage.getItem('token')}`)
     )

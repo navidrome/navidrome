@@ -21,9 +21,11 @@ const (
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 
-	URLPathUI                   = "/app"
-	URLPathSubsonicAPI          = "/rest"
-	DefaultUILoginBackgroundURL = "https://source.unsplash.com/random/1600x900?music"
+	URLPathUI          = "/app"
+	URLPathSubsonicAPI = "/rest"
+
+	// Login backgrounds from https://unsplash.com/collections/20072696/navidrome
+	DefaultUILoginBackgroundURL = "https://source.unsplash.com/collection/20072696/1600x900"
 
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute

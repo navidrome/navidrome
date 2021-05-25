@@ -12,6 +12,7 @@ type MockDataStore struct {
 	MockedArtist      model.ArtistRepository
 	MockedMediaFile   model.MediaFileRepository
 	MockedUser        model.UserRepository
+	MockedProperty    model.PropertyRepository
 	MockedPlayer      model.PlayerRepository
 	MockedShare       model.ShareRepository
 	MockedTranscoding model.TranscodingRepository
@@ -58,7 +59,10 @@ func (db *MockDataStore) PlayQueue(context.Context) model.PlayQueueRepository {
 }
 
 func (db *MockDataStore) Property(context.Context) model.PropertyRepository {
-	return struct{ model.PropertyRepository }{}
+	if db.MockedProperty == nil {
+		db.MockedProperty = &mockedPropertyRepo{}
+	}
+	return db.MockedProperty
 }
 
 func (db *MockDataStore) Share(context.Context) model.ShareRepository {
@@ -67,7 +71,7 @@ func (db *MockDataStore) Share(context.Context) model.ShareRepository {
 
 func (db *MockDataStore) User(context.Context) model.UserRepository {
 	if db.MockedUser == nil {
-		db.MockedUser = &mockedUserRepo{}
+		db.MockedUser = CreateMockUserRepo()
 	}
 	return db.MockedUser
 }
@@ -95,20 +99,5 @@ func (db *MockDataStore) Resource(ctx context.Context, m interface{}) model.Reso
 }
 
 func (db *MockDataStore) GC(ctx context.Context, rootFolder string) error {
-	return nil
-}
-
-type mockedUserRepo struct {
-	model.UserRepository
-}
-
-func (u *mockedUserRepo) FindByUsername(username string) (*model.User, error) {
-	if username != "admin" {
-		return nil, model.ErrNotFound
-	}
-	return &model.User{UserName: "admin", Password: "wordpass"}, nil
-}
-
-func (u *mockedUserRepo) UpdateLastAccessAt(id string) error {
 	return nil
 }

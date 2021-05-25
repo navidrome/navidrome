@@ -12,7 +12,7 @@ import {
 } from 'react-admin'
 import { Title } from '../common'
 
-const SyncFragment = ({ formData, ...rest }) => {
+const SyncFragment = ({ formData, variant, ...rest }) => {
   return (
     <Fragment>
       {formData.path && <BooleanInput source="sync" {...rest} />}

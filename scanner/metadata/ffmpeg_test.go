@@ -92,6 +92,21 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 			Expect(md.HasPicture()).To(BeTrue())
 		})
 
+		It("detects embedded cover art in ffmpeg 4.4 output", func() {
+			const output = `
+
+Input #0, flac, from '/run/media/naomi/Archivio/Musica/Katy Perry/Chained to the Rhythm/01 Katy Perry featuring Skip Marley - Chained to the Rhythm.flac':
+  Metadata:
+    ARTIST          : Katy Perry featuring Skip Marley
+  Duration: 00:03:57.91, start: 0.000000, bitrate: 983 kb/s
+  Stream #0:0: Audio: flac, 44100 Hz, stereo, s16
+  Stream #0:1: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 599x518, 90k tbr, 90k tbn, 90k tbc (attached pic)
+    Metadata:
+      comment         : Cover (front)`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md.HasPicture()).To(BeTrue())
+		})
+
 		It("detects embedded cover art in ogg containers", func() {
 			const output = `
 Input #0, ogg, from '/Users/deluan/Music/iTunes/iTunes Media/Music/_Testes/Jamaican In New York/01-02 Jamaican In New York (Album Version).opus':
@@ -271,4 +286,21 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 		Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/one.mp3", "-i", "/music library/two.mp3", "-f", "ffmetadata"}))
 	})
 
+	It("parses an integer TBPM tag", func() {
+		const output = `
+		Input #0, mp3, from 'tests/fixtures/test.mp3':
+		  Metadata:
+		    TBPM            : 123`
+		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+		Expect(md.Bpm()).To(Equal(123))
+	})
+
+	It("parses and rounds a floating point fBPM tag", func() {
+		const output = `
+		Input #0, ogg, from 'tests/fixtures/test.ogg':
+  		  Metadata:
+	        FBPM            : 141.7`
+		md, _ := e.extractMetadata("tests/fixtures/test.ogg", output)
+		Expect(md.Bpm()).To(Equal(142))
+	})
 })

@@ -20,7 +20,9 @@
                 "bitRate": "Bitrapido",
                 "discSubtitle": "Diska Subteksto",
                 "starred": "Stela",
-                "comment": "Komento"
+                "comment": "Komento",
+                "rating": "",
+                "quality": ""
             },
             "actions": {
                 "addToQueue": "Ludi Poste",
@@ -44,7 +46,8 @@
                 "compilation": "Kompilaĵo",
                 "year": "Jaro",
                 "updatedAt": "Ĝisdatigita je :",
-                "comment": "Komento"
+                "comment": "Komento",
+                "rating": ""
             },
             "actions": {
                 "playAll": "Ludi",
@@ -60,7 +63,8 @@
                 "recentlyAdded": "Lastatempe Aldonita",
                 "recentlyPlayed": "Lastatempe Ludita",
                 "mostPlayed": "Plej Luditaj",
-                "starred": "Stelplena"
+                "starred": "Stelplena",
+                "topRated": ""
             }
         },
         "artist": {
@@ -69,7 +73,8 @@
                 "name": "Nomo",
                 "albumCount": "Nombro da albumoj",
                 "songCount": "Kanto kalkula",
-                "playCount": "Teatraĵoj"
+                "playCount": "Teatraĵoj",
+                "rating": ""
             }
         },
         "user": {
@@ -340,7 +345,7 @@
             "next_song": "Sekva kanto",
             "vol_up": "Pli volumo",
             "vol_down": "Malpli volumo",
-            "toggle_star": "Baskuli la stelon de nuna kanto"
+            "toggle_love": "Baskuli la stelon de nuna kanto"
         }
     }
 }

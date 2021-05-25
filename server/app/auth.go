@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/go-chi/jwtauth"
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/jwt"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
@@ -26,7 +26,7 @@ var (
 )
 
 func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
-	auth.InitTokenAuth(ds)
+	auth.Init(ds)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
@@ -60,6 +60,7 @@ func handleLogin(ds model.DataStore, username string, password string, w http.Re
 	payload := map[string]interface{}{
 		"message":  "User '" + username + "' authenticated successfully",
 		"token":    tokenString,
+		"id":       user.ID,
 		"name":     user.Name,
 		"username": username,
 		"isAdmin":  user.IsAdmin,
@@ -84,7 +85,7 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 }
 
 func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
-	auth.InitTokenAuth(ds)
+	auth.Init(ds)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
@@ -119,7 +120,7 @@ func createDefaultUser(ctx context.Context, ds model.DataStore, username, passwo
 		UserName:    username,
 		Name:        strings.Title(username),
 		Email:       "",
-		Password:    password,
+		NewPassword: password,
 		IsAdmin:     true,
 		LastLoginAt: &now,
 	}
@@ -148,16 +149,16 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 	return u, nil
 }
 
-func contextWithUser(ctx context.Context, ds model.DataStore, claims jwt.MapClaims) context.Context {
-	userName := claims["sub"].(string)
+func contextWithUser(ctx context.Context, ds model.DataStore, token jwt.Token) context.Context {
+	userName := token.Subject()
 	user, _ := ds.User(ctx).FindByUsername(userName)
 	return request.WithUser(ctx, *user)
 }
 
-func getToken(ds model.DataStore, ctx context.Context) (*jwt.Token, error) {
+func getToken(ds model.DataStore, ctx context.Context) (jwt.Token, error) {
 	token, claims, err := jwtauth.FromContext(ctx)
 
-	valid := err == nil && token != nil && token.Valid
+	valid := err == nil && token != nil
 	valid = valid && claims["sub"] != nil
 	if valid {
 		return token, nil
@@ -182,8 +183,14 @@ func mapAuthHeader() func(next http.Handler) http.Handler {
 	}
 }
 
+func verifier() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return jwtauth.Verify(auth.TokenAuth, jwtauth.TokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
+	}
+}
+
 func authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
-	auth.InitTokenAuth(ds)
+	auth.Init(ds)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -197,9 +204,7 @@ func authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 				return
 			}
 
-			claims := token.Claims.(jwt.MapClaims)
-
-			newCtx := contextWithUser(r.Context(), ds, claims)
+			newCtx := contextWithUser(r.Context(), ds, token)
 			newTokenString, err := auth.TouchToken(token)
 			if err != nil {
 				log.Error(r, "signing new token", err)

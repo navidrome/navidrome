@@ -5,13 +5,26 @@ import {
   useShowContext,
   useShowController,
 } from 'react-admin'
+import { makeStyles } from '@material-ui/core/styles'
 import AlbumSongs from './AlbumSongs'
 import AlbumDetails from './AlbumDetails'
 import AlbumActions from './AlbumActions'
 
+const useStyles = makeStyles(
+  (theme) => ({
+    albumActions: {
+      width: '100%',
+    },
+  }),
+  {
+    name: 'NDAlbumShow',
+  }
+)
+
 const AlbumShowLayout = (props) => {
   const { loading, ...context } = useShowContext(props)
   const { record } = context
+  const classes = useStyles()
 
   return (
     <>
@@ -29,7 +42,10 @@ const AlbumShowLayout = (props) => {
           <AlbumSongs
             resource={'albumSong'}
             exporter={false}
-            actions={<AlbumActions record={record} />}
+            album={record}
+            actions={
+              <AlbumActions className={classes.albumActions} record={record} />
+            }
           />
         </ReferenceManyField>
       )}

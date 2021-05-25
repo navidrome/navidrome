@@ -20,7 +20,10 @@
         "bitRate": "Bit rate",
         "discSubtitle": "Disc Subtitle",
         "starred": "Favourite",
-        "comment": "Comment"
+        "rating": "Rating",
+        "comment": "Comment",
+        "quality": "Quality",
+        "bpm": "BPM"
       },
       "actions": {
         "addToQueue": "Play Later",
@@ -44,7 +47,8 @@
         "compilation": "Compilation",
         "year": "Year",
         "updatedAt": "Updated at",
-        "comment": "Comment"
+        "comment": "Comment",
+        "rating": "Rating"
       },
       "actions": {
         "playAll": "Play",
@@ -60,7 +64,8 @@
         "recentlyAdded": "Recently Added",
         "recentlyPlayed": "Recently Played",
         "mostPlayed": "Most Played",
-        "starred": "Favourites"
+        "starred": "Favourites",
+        "topRated": "Top Rated"
       }
     },
     "artist": {
@@ -69,7 +74,8 @@
         "name": "Name",
         "albumCount": "Album Count",
         "songCount": "Song Count",
-        "playCount": "Plays"
+        "playCount": "Plays",
+        "rating": "Rating"
       }
     },
     "user": {
@@ -81,7 +87,18 @@
         "updatedAt": "Updated at",
         "name": "Name",
         "password": "Password",
-        "createdAt": "Created at"
+        "createdAt": "Created at",
+        "currentPassword": "Current Password",
+        "newPassword": "New Password",
+        "changePassword": "Change Password?"
+      },
+      "helperTexts": {
+        "name": "Changes to your name will only be reflected on next login"
+      },
+      "notifications": {
+        "created": "User created",
+        "updated": "User updated",
+        "deleted": "User deleted"
       }
     },
     "player": {
@@ -155,7 +172,8 @@
       "number": "Must be a number",
       "email": "Must be a valid email",
       "oneOf": "Must be one of: %{options}",
-      "regex": "Must match a specific format (regexp): %{pattern}"
+      "regex": "Must match a specific format (regexp): %{pattern}",
+      "unique": "Must be unique"
     },
     "action": {
       "add_filter": "Add filter",
@@ -260,6 +278,12 @@
       "i18n_error": "Cannot load the translations for the specified language",
       "canceled": "Action cancelled",
       "logged_out": "Your session has ended, please reconnect."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Columns To Display",
+      "layout": "Layout",
+      "grid": "Grid",
+      "table": "Table"
     }
   },
   "message": {

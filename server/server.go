@@ -1,11 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"path"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -33,9 +34,9 @@ func New(ds model.DataStore) *Server {
 	return a
 }
 
-func (a *Server) MountRouter(urlPath string, subRouter Handler) {
+func (a *Server) MountRouter(description, urlPath string, subRouter Handler) {
 	urlPath = path.Join(conf.Server.BaseURL, urlPath)
-	log.Info("Mounting routes", "path", urlPath)
+	log.Info(fmt.Sprintf("Mounting %s routes", description), "path", urlPath)
 	subRouter.Setup(urlPath)
 	a.router.Group(func(r chi.Router) {
 		r.Mount(urlPath, subRouter)
@@ -61,7 +62,7 @@ func (a *Server) initRoutes() {
 	r.Use(requestLogger)
 	r.Use(robotsTXT(ui.Assets()))
 
-	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI, "index.html")
+	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI)
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, indexHtml, 302)
 	})

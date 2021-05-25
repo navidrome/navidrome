@@ -49,13 +49,21 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 }
 
 func (c *MediaAnnotationController) setRating(ctx context.Context, id string, rating int) error {
-	exist, err := c.ds.Album(ctx).Exists(id)
-	if err != nil {
+	var exist bool
+	var err error
+
+	if exist, err = c.ds.Artist(ctx).Exists(id); err != nil {
 		return err
+	} else if exist {
+		return c.ds.Artist(ctx).SetRating(rating, id)
 	}
-	if exist {
+
+	if exist, err = c.ds.Album(ctx).Exists(id); err != nil {
+		return err
+	} else if exist {
 		return c.ds.Album(ctx).SetRating(rating, id)
 	}
+
 	return c.ds.MediaFile(ctx).SetRating(rating, id)
 }
 

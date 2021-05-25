@@ -20,7 +20,10 @@
                 "bitRate": "ビットレート",
                 "discSubtitle": "ディスクサブタイトル",
                 "starred": "お気に入り",
-                "comment": "コメント"
+                "comment": "コメント",
+                "rating": "レート",
+                "quality": "品質",
+                "bpm": ""
             },
             "actions": {
                 "addToQueue": "最後に再生",
@@ -44,7 +47,8 @@
                 "compilation": "Compilation",
                 "year": "年",
                 "updatedAt": "更新日",
-                "comment": "コメント"
+                "comment": "コメント",
+                "rating": "レート"
             },
             "actions": {
                 "playAll": "再生",
@@ -60,7 +64,8 @@
                 "recentlyAdded": "最近追加された",
                 "recentlyPlayed": "最近再生された",
                 "mostPlayed": "最も再生された",
-                "starred": "お気に入り"
+                "starred": "お気に入り",
+                "topRated": "高評価"
             }
         },
         "artist": {
@@ -69,7 +74,8 @@
                 "name": "名前",
                 "albumCount": "アルバム枚数",
                 "songCount": "曲数",
-                "playCount": "再生数"
+                "playCount": "再生数",
+                "rating": "レート"
             }
         },
         "user": {
@@ -81,7 +87,18 @@
                 "updatedAt": "更新日",
                 "name": "名前",
                 "password": "パスワード",
-                "createdAt": "作成日"
+                "createdAt": "作成日",
+                "changePassword": "",
+                "currentPassword": "",
+                "newPassword": ""
+            },
+            "helperTexts": {
+                "name": ""
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
             }
         },
         "player": {
@@ -92,7 +109,7 @@
                 "maxBitRate": "最大ビットレート",
                 "client": "クライアント",
                 "userName": "ユーザ名",
-                "lastSeen": "最後のシーン",
+                "lastSeen": "最後の利用",
                 "reportRealPath": "実際のファイルパスを返す"
             }
         },
@@ -123,6 +140,10 @@
                 "selectPlaylist": "プレイリストを選択",
                 "addNewPlaylist": "'%{name}' を作成",
                 "export": "エクスポート"
+            },
+            "message": {
+                "duplicate_song": "重複する曲を追加",
+                "song_exist": "既にプレイリストに存在する曲です。追加しますか？"
             }
         }
     },
@@ -151,7 +172,8 @@
             "number": "数字である必要があります",
             "email": "メールアドレスである必要があります",
             "oneOf": "次のいずれかである必要があります: %{options}",
-            "regex": "次の正規表現形式にする必要があります: %{pattern}"
+            "regex": "次の正規表現形式にする必要があります: %{pattern}",
+            "unique": ""
         },
         "action": {
             "add_filter": "検索条件",
@@ -179,7 +201,8 @@
             "close": "閉じる",
             "open_menu": "開く",
             "close_menu": "閉じる",
-            "unselect": "選択解除"
+            "unselect": "選択解除",
+            "skip": "スキップ"
         },
         "boolean": {
             "true": "はい",
@@ -335,7 +358,7 @@
             "next_song": "次の曲",
             "vol_up": "音量を上げる",
             "vol_down": "音量を下げる",
-            "toggle_star": "星の付け外し"
+            "toggle_love": "星の付け外し"
         }
     }
 }

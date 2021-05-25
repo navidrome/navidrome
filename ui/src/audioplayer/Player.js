@@ -5,9 +5,14 @@ import { Link } from 'react-router-dom'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
-import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
-import { ThemeProvider } from '@material-ui/styles'
+import {
+  createMuiTheme,
+  makeStyles,
+  ThemeProvider,
+} from '@material-ui/core/styles'
+import { useMediaQuery } from '@material-ui/core'
 import { GlobalHotKeys } from 'react-hotkeys'
+import clsx from 'clsx'
 import subsonic from '../subsonic'
 import {
   scrobble,
@@ -18,43 +23,82 @@ import {
 } from '../actions'
 import config from '../config'
 import PlayerToolbar from './PlayerToolbar'
-import { sendNotification, baseUrl } from '../utils'
+import { sendNotification } from '../utils'
 import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
+import { QualityInfo } from '../common/QualityInfo'
 
-const useStyle = makeStyles((theme) => ({
-  audioTitle: {
-    textDecoration: 'none',
-    color: theme.palette.primary.dark,
-    '&.songTitle': {
-      fontWeight: 'bold',
+const useStyle = makeStyles(
+  (theme) => ({
+    audioTitle: {
+      textDecoration: 'none',
+      color: theme.palette.primary.dark,
     },
-  },
-  player: {
-    display: (props) => (props.visible ? 'block' : 'none'),
-  },
-}))
+    songTitle: {
+      fontWeight: 'bold',
+      '&:hover + $qualityInfo': {
+        opacity: 1,
+      },
+    },
+    songInfo: {
+      display: 'block',
+    },
+    qualityInfo: {
+      marginTop: '-4px',
+      opacity: 0,
+      transition: 'all 500ms ease-out',
+    },
+    player: {
+      display: (props) => (props.visible ? 'block' : 'none'),
+      '@media screen and (max-width:810px)': {
+        '& .sound-operation': {
+          display: 'none',
+        },
+      },
+      '& .progress-bar-content': {
+        display: 'flex',
+        flexDirection: 'column',
+      },
+      '& .play-mode-title': {
+        'pointer-events': 'none',
+      },
+    },
+    artistAlbum: {
+      marginTop: '2px',
+    },
+  }),
+  { name: 'NDAudioPlayer' }
+)
 
 let audioInstance = null
 
 const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
   const classes = useStyle()
   const className = classes.audioTitle
+  const isDesktop = useMediaQuery('(min-width:810px)')
 
   if (!audioInfo.name) {
     return ''
   }
 
+  const qi = { suffix: audioInfo.suffix, bitRate: audioInfo.bitRate }
+
   return (
     <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
-      <span className={`${className} songTitle`}>{audioInfo.name}</span>
+      <span>
+        <span className={clsx(classes.songTitle, 'songTitle')}>
+          {audioInfo.name}
+        </span>
+        {isDesktop && (
+          <QualityInfo record={qi} className={classes.qualityInfo} />
+        )}
+      </span>
       {!isMobile && (
-        <>
-          <br />
-          <span className={`${className} songInfo`}>
+        <div className={classes.artistAlbum}>
+          <span className={clsx(classes.songInfo, 'songInfo')}>
             {`${audioInfo.singer} - ${audioInfo.album}`}
           </span>
-        </>
+        </div>
       )}
     </Link>
   )
@@ -67,7 +111,6 @@ const Player = () => {
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const queue = useSelector((state) => state.queue)
-  const current = queue.current || {}
   const { authenticated } = useAuthState()
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
@@ -75,6 +118,9 @@ const Player = () => {
 
   const visible = authenticated && queue.queue.length > 0
   const classes = useStyle({ visible })
+  // Match the medium breakpoint defined in the material-ui theme
+  // See https://material-ui.com/customization/breakpoints/#breakpoints
+  const isDesktop = useMediaQuery('(min-width:810px)')
 
   const nextSong = useCallback(() => {
     const idx = queue.queue.findIndex(
@@ -113,60 +159,64 @@ const Player = () => {
     ),
   }
 
-  const defaultOptions = {
-    theme: playerTheme,
-    bounds: 'body',
-    mode: 'full',
-    autoPlay: false,
-    preload: true,
-    autoPlayInitLoadPlayList: true,
-    loadAudioErrorPlayNext: false,
-    clearPriorAudioLists: false,
-    showDestroy: true,
-    showDownload: false,
-    showReload: false,
-    glassBg: false,
-    showThemeSwitch: false,
-    showMediaSession: true,
-    defaultPosition: {
-      top: 300,
-      left: 120,
-    },
-    volumeFade: { fadeIn: 200, fadeOut: 200 },
-    renderAudioTitle: (audioInfo, isMobile) => (
-      <ThemeProvider theme={createMuiTheme(theme)}>
-        <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
-      </ThemeProvider>
-    ),
-    locale: {
-      playListsText: translate('player.playListsText'),
-      openText: translate('player.openText'),
-      closeText: translate('player.closeText'),
-      notContentText: translate('player.notContentText'),
-      clickToPlayText: translate('player.clickToPlayText'),
-      clickToPauseText: translate('player.clickToPauseText'),
-      nextTrackText: translate('player.nextTrackText'),
-      previousTrackText: translate('player.previousTrackText'),
-      reloadText: translate('player.reloadText'),
-      volumeText: translate('player.volumeText'),
-      toggleLyricText: translate('player.toggleLyricText'),
-      toggleMiniModeText: translate('player.toggleMiniModeText'),
-      destroyText: translate('player.destroyText'),
-      downloadText: translate('player.downloadText'),
-      removeAudioListsText: translate('player.removeAudioListsText'),
-      clickToDeleteText: (name) =>
-        translate('player.clickToDeleteText', { name }),
-      emptyLyricText: translate('player.emptyLyricText'),
-      playModeText: {
-        order: translate('player.playModeText.order'),
-        orderLoop: translate('player.playModeText.orderLoop'),
-        singleLoop: translate('player.playModeText.singleLoop'),
-        shufflePlay: translate('player.playModeText.shufflePlay'),
+  const defaultOptions = useMemo(
+    () => ({
+      theme: playerTheme,
+      bounds: 'body',
+      mode: 'full',
+      autoPlay: false,
+      preload: true,
+      autoPlayInitLoadPlayList: true,
+      loadAudioErrorPlayNext: false,
+      clearPriorAudioLists: false,
+      showDestroy: true,
+      showDownload: false,
+      showReload: false,
+      toggleMode: !isDesktop,
+      glassBg: false,
+      showThemeSwitch: false,
+      showMediaSession: true,
+      restartCurrentOnPrev: true,
+      defaultPosition: {
+        top: 300,
+        left: 120,
       },
-    },
-  }
+      volumeFade: { fadeIn: 200, fadeOut: 200 },
+      renderAudioTitle: (audioInfo, isMobile) => (
+        <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
+      ),
+      locale: {
+        playListsText: translate('player.playListsText'),
+        openText: translate('player.openText'),
+        closeText: translate('player.closeText'),
+        notContentText: translate('player.notContentText'),
+        clickToPlayText: translate('player.clickToPlayText'),
+        clickToPauseText: translate('player.clickToPauseText'),
+        nextTrackText: translate('player.nextTrackText'),
+        previousTrackText: translate('player.previousTrackText'),
+        reloadText: translate('player.reloadText'),
+        volumeText: translate('player.volumeText'),
+        toggleLyricText: translate('player.toggleLyricText'),
+        toggleMiniModeText: translate('player.toggleMiniModeText'),
+        destroyText: translate('player.destroyText'),
+        downloadText: translate('player.downloadText'),
+        removeAudioListsText: translate('player.removeAudioListsText'),
+        clickToDeleteText: (name) =>
+          translate('player.clickToDeleteText', { name }),
+        emptyLyricText: translate('player.emptyLyricText'),
+        playModeText: {
+          order: translate('player.playModeText.order'),
+          orderLoop: translate('player.playModeText.orderLoop'),
+          singleLoop: translate('player.playModeText.singleLoop'),
+          shufflePlay: translate('player.playModeText.shufflePlay'),
+        },
+      },
+    }),
+    [isDesktop, playerTheme, translate]
+  )
 
   const options = useMemo(() => {
+    const current = queue.current || {}
     return {
       ...defaultOptions,
       clearPriorAudioLists: queue.clear,
@@ -176,14 +226,7 @@ const Player = () => {
       extendsContent: <PlayerToolbar id={current.trackId} />,
       defaultVolume: queue.volume,
     }
-  }, [
-    queue.clear,
-    queue.queue,
-    queue.volume,
-    queue.playIndex,
-    current,
-    defaultOptions,
-  ])
+  }, [queue, defaultOptions])
 
   const onAudioListsChange = useCallback(
     (currentPlayIndex, audioLists) =>
@@ -240,7 +283,7 @@ const Player = () => {
           sendNotification(
             info.name,
             `${info.singer} - ${info.album}`,
-            baseUrl(info.cover)
+            info.cover
           )
         }
       }
@@ -248,9 +291,10 @@ const Player = () => {
     [dispatch, showNotifications]
   )
 
-  const onAudioPause = useCallback((info) => dispatch(currentPlaying(info)), [
-    dispatch,
-  ])
+  const onAudioPause = useCallback(
+    (info) => dispatch(currentPlaying(info)),
+    [dispatch]
+  )
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
@@ -280,7 +324,7 @@ const Player = () => {
   }
 
   return (
-    <>
+    <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
         {...options}
         quietUpdate
@@ -298,7 +342,7 @@ const Player = () => {
         }}
       />
       <GlobalHotKeys handlers={keyHandlers} keyMap={keyMap} allowChanges />
-    </>
+    </ThemeProvider>
   )
 }
 

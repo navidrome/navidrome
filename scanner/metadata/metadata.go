@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"regexp"
@@ -66,6 +67,7 @@ type Metadata interface {
 	FilePath() string
 	Suffix() string
 	Size() int64
+	Bpm() int
 }
 
 type baseMetadata struct {
@@ -127,6 +129,15 @@ func (m *baseMetadata) Suffix() string {
 func (m *baseMetadata) Duration() float32 { panic("not implemented") }
 func (m *baseMetadata) BitRate() int      { panic("not implemented") }
 func (m *baseMetadata) HasPicture() bool  { panic("not implemented") }
+func (m *baseMetadata) Bpm() int {
+	var bpmStr = m.getTag("tbpm", "bpm", "fbpm")
+	var bpmFloat, err = strconv.ParseFloat(bpmStr, 64)
+	if err == nil {
+		return (int)(math.Round(bpmFloat))
+	} else {
+		return 0
+	}
+}
 
 func (m *baseMetadata) parseInt(tagName string) int {
 	if v, ok := m.tags[tagName]; ok {

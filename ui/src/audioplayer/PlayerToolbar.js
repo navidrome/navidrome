@@ -4,8 +4,10 @@ import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
 import { LoveButton, useToggleLove } from '../common'
 import { keyMap } from '../hotkeys'
+import config from '../config'
 
-const Placeholder = () => <LoveButton disabled={true} resource={'song'} />
+const Placeholder = () =>
+  config.enableFavourites && <LoveButton disabled={true} resource={'song'} />
 
 const Toolbar = ({ id }) => {
   const location = useLocation()
@@ -16,15 +18,16 @@ const Toolbar = ({ id }) => {
   const handlers = {
     TOGGLE_LOVE: useCallback(() => toggleLove(), [toggleLove]),
   }
-
   return (
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
-      <LoveButton
-        record={data}
-        resource={resource}
-        disabled={loading || toggling}
-      />
+      {config.enableFavourites && (
+        <LoveButton
+          record={data}
+          resource={resource}
+          disabled={loading || toggling}
+        />
+      )}
     </>
   )
 }
