@@ -7,7 +7,7 @@
 			"VARIANT": "1.16",
 			// Options
 			"INSTALL_NODE": "true",
-			"NODE_VERSION": "v14"
+			"NODE_VERSION": "v16"
 		}
 	},
 	"runArgs": [
