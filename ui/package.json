@@ -50,7 +50,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "lint": "eslint src/**/*.js",
+    "lint": "eslint --max-warnings 0 src/**/*.js",
     "eject": "react-scripts eject",
     "prettier": "prettier --write src/*.js src/**/*.js",
     "check-formatting": "prettier -c src/*.js src/**/*.js"
