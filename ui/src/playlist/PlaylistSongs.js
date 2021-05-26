@@ -22,13 +22,13 @@ import {
   SongContextMenu,
   SongDatagrid,
   SongTitleField,
+  QualityInfo,
+  useSelectedFields,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
-import { QualityInfo } from '../common/QualityInfo'
-import useSelectedFields from '../common/useSelectedFields'
 
 const useStyles = makeStyles(
   (theme) => ({

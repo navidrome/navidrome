@@ -15,7 +15,7 @@ import ViewHeadlineIcon from '@material-ui/icons/ViewHeadline'
 import ViewModuleIcon from '@material-ui/icons/ViewModule'
 import { useDispatch, useSelector } from 'react-redux'
 import { albumViewGrid, albumViewTable } from '../actions'
-import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
+import { ToggleFieldsMenu } from '../common'
 
 const useStyles = makeStyles({
   title: { margin: '1rem' },

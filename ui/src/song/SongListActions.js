@@ -1,8 +1,7 @@
 import React, { cloneElement } from 'react'
 import { sanitizeListRestProps, TopToolbar } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { ShuffleAllButton } from '../common'
-import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
+import { ShuffleAllButton, ToggleFieldsMenu } from '../common'
 
 export const SongListActions = ({
   currentSort,

@@ -12,8 +12,13 @@ import {
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { useMediaQuery } from '@material-ui/core'
-import { DurationField, List, Writable, isWritable } from '../common'
-import useSelectedFields from '../common/useSelectedFields'
+import {
+  DurationField,
+  List,
+  Writable,
+  isWritable,
+  useSelectedFields,
+} from '../common'
 import PlaylistListActions from './PlaylistListActions'
 
 const PlaylistFilter = (props) => (

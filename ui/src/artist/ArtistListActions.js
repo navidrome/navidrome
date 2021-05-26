@@ -1,7 +1,7 @@
 import React from 'react'
 import { sanitizeListRestProps, TopToolbar } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
+import { ToggleFieldsMenu } from '../common'
 
 const ArtistListActions = ({ className, ...rest }) => {
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))

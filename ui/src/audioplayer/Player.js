@@ -26,7 +26,7 @@ import PlayerToolbar from './PlayerToolbar'
 import { sendNotification } from '../utils'
 import { keyMap } from '../hotkeys'
 import useCurrentTheme from '../themes/useCurrentTheme'
-import { QualityInfo } from '../common/QualityInfo'
+import { QualityInfo } from '../common'
 
 const useStyle = makeStyles(
   (theme) => ({

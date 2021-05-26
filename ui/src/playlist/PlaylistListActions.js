@@ -6,7 +6,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
+import { ToggleFieldsMenu } from '../common'
 
 const PlaylistListActions = ({ className, ...rest }) => {
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))

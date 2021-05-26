@@ -21,7 +21,7 @@ import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
 import config from '../config'
-import ToggleFieldsMenu from '../common/ToggleFieldsMenu'
+import { ToggleFieldsMenu } from '../common'
 
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },

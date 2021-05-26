@@ -21,10 +21,10 @@ import {
   SongDetails,
   SongTitleField,
   RatingField,
+  QualityInfo,
+  useSelectedFields,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
-import { QualityInfo } from '../common/QualityInfo'
-import useSelectedFields from '../common/useSelectedFields'
 import config from '../config'
 
 const useStyles = makeStyles(
