@@ -27,7 +27,10 @@ const useStyles = makeStyles({
   },
 })
 
-const ToggleFieldsMenu = ({ resource, topbarComponent: TopBarComponent }) => {
+export const ToggleFieldsMenu = ({
+  resource,
+  topbarComponent: TopBarComponent,
+}) => {
   const [anchorEl, setAnchorEl] = useState(null)
   const dispatch = useDispatch()
   const translate = useTranslate()
@@ -100,8 +103,6 @@ const ToggleFieldsMenu = ({ resource, topbarComponent: TopBarComponent }) => {
     </div>
   )
 }
-
-export default ToggleFieldsMenu
 
 ToggleFieldsMenu.propTypes = {
   resource: PropTypes.string.isRequired,

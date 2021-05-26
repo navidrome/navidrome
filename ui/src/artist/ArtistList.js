@@ -10,6 +10,7 @@ import {
 import { useMediaQuery, withWidth } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
+import { makeStyles } from '@material-ui/core/styles'
 import { AddToPlaylistDialog } from '../dialogs'
 import {
   ArtistContextMenu,
@@ -18,11 +19,10 @@ import {
   useGetHandleArtistClick,
   ArtistSimpleList,
   RatingField,
+  useSelectedFields,
 } from '../common'
-import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
-import useSelectedFields from '../common/useSelectedFields'
 
 const useStyles = makeStyles({
   contextHeader: {
