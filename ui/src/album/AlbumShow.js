@@ -12,7 +12,9 @@ import AlbumActions from './AlbumActions'
 
 const useStyles = makeStyles(
   (theme) => ({
-    albumActions: {},
+    albumActions: {
+      width: '100%',
+    },
   }),
   {
     name: 'NDAlbumShow',

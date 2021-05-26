@@ -73,8 +73,8 @@ func runNavidrome() {
 func startServer() (func() error, func(err error)) {
 	return func() error {
 			a := CreateServer(conf.Server.MusicFolder)
-			a.MountRouter(consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
-			a.MountRouter(consts.URLPathUI, CreateAppRouter())
+			a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
+			a.MountRouter("WebUI", consts.URLPathUI, CreateAppRouter())
 			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
 		}, func(err error) {
 			if err != nil {

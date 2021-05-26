@@ -4,7 +4,7 @@ NODE_VERSION=$(shell cat .nvmrc)
 GIT_SHA=$(shell git rev-parse --short HEAD)
 GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
 
-CI_RELEASER_VERSION=1.16.3-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.16.4-1 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
@@ -18,10 +18,6 @@ dev: check_env   ##@Development Start Navidrome in development mode, with hot-re
 server: check_go_env  ##@Development Start the backend in development mode
 	@go run github.com/cespare/reflex -d none -c reflex.conf
 .PHONY: server
-
-wire: check_go_env ##@Development Update Dependency Injection
-	go run github.com/google/wire/cmd/wire ./...
-.PHONY: wire
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 	go run github.com/onsi/ginkgo/ginkgo watch -notify ./...
@@ -43,9 +39,13 @@ lintall: lint ##@Development Lint Go and JS code
 	@(cd ./ui && npm run check-formatting && npm run lint)
 .PHONY: lintall
 
-update-snapshots: ##@Development Update Snapshot tests
+wire: check_go_env ##@Development Update Dependency Injection
+	go run github.com/google/wire/cmd/wire ./...
+.PHONY: wire
+
+snapshots: ##@Development Update (GoLang) Snapshot tests
 	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/ginkgo ./server/subsonic/...
-.PHONY: update-snapshots
+.PHONY: snapshots
 
 migration: ##@Development Create an empty migration file
 	@if [ -z "${name}" ]; then echo "Usage: make migration name=name_of_migration_file"; exit 1; fi

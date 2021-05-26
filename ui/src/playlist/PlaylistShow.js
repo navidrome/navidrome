@@ -13,7 +13,9 @@ import PlaylistActions from './PlaylistActions'
 import { Title, isReadOnly } from '../common'
 const useStyles = makeStyles(
   (theme) => ({
-    playlistActions: {},
+    playlistActions: {
+      width: '100%',
+    },
   }),
   {
     name: 'NDPlaylistShow',
