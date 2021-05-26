@@ -1,5 +1,5 @@
-import React from 'react'
-import { useSelector } from 'react-redux'
+import React, { useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
   AutocompleteInput,
@@ -20,7 +20,7 @@ import AlbumGridView from './AlbumGridView'
 import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
-import useSelectedFields from '../common/useSelectedFields'
+import { setToggleableFields, setOmittedFields } from '../actions'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -66,6 +66,10 @@ const AlbumList = (props) => {
   const albumView = useSelector((state) => state.albumView)
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
+  const toggleableAlbumFields = useSelector(
+    (state) => state.settings.toggleableFields
+  )?.album
+  const dispatch = useDispatch()
 
   const albumListType = location.pathname
     .replace(/^\/album/, '')
@@ -74,17 +78,24 @@ const AlbumList = (props) => {
   // Workaround to force album columns to appear the first time.
   // See https://github.com/navidrome/navidrome/pull/923#issuecomment-833004842
   // TODO: Find a better solution
-  useSelectedFields({
-    resource: 'album',
-    columns: {
-      artist: 'artist',
-      songCount: 'songCount',
-      playCount: 'playCount',
-      year: 'year',
-      duration: 'duration',
-      rating: 'rating',
-    },
-  })
+
+  useEffect(() => {
+    if (!toggleableAlbumFields) {
+      dispatch(
+        setToggleableFields({
+          album: {
+            artist: true,
+            songCount: true,
+            playCount: true,
+            year: true,
+            duration: true,
+            rating: true,
+          },
+        })
+      )
+      dispatch(setOmittedFields({ album: [] }))
+    }
+  }, [dispatch, toggleableAlbumFields])
 
   // If it does not have filter/sort params (usually coming from Menu),
   // reload with correct filter/sort params
