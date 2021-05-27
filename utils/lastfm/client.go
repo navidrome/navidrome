@@ -86,7 +86,7 @@ func (c *Client) ArtistGetInfo(ctx context.Context, name string, mbid string) (*
 	return &response.Artist, nil
 }
 
-func (c *Client) ArtistGetSimilar(ctx context.Context, name string, mbid string, limit int) ([]Artist, error) {
+func (c *Client) ArtistGetSimilar(ctx context.Context, name string, mbid string, limit int) (*SimilarArtists, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getSimilar")
 	params.Add("artist", name)
@@ -96,7 +96,7 @@ func (c *Client) ArtistGetSimilar(ctx context.Context, name string, mbid string,
 	if err != nil {
 		return nil, err
 	}
-	return response.SimilarArtists.Artists, nil
+	return &response.SimilarArtists, nil
 }
 
 func (c *Client) ArtistGetTopTracks(ctx context.Context, name string, mbid string, limit int) ([]Track, error) {

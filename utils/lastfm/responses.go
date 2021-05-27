@@ -27,6 +27,11 @@ type Artist struct {
 
 type SimilarArtists struct {
 	Artists []Artist `json:"artist"`
+	Attr    Attr     `json:"@attr"`
+}
+
+type Attr struct {
+	Artist string `json:"artist"`
 }
 
 type ArtistImage struct {
@@ -52,4 +57,5 @@ type Track struct {
 
 type TopTracks struct {
 	Track []Track `json:"track"`
+	Attr  Attr    `json:"@attr"`
 }
