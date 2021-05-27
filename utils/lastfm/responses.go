@@ -4,6 +4,8 @@ type Response struct {
 	Artist         Artist         `json:"artist"`
 	SimilarArtists SimilarArtists `json:"similarartists"`
 	TopTracks      TopTracks      `json:"toptracks"`
+	Error          int            `json:"error"`
+	Message        string         `json:"message"`
 }
 
 type Artist struct {
@@ -50,9 +52,4 @@ type Track struct {
 
 type TopTracks struct {
 	Track []Track `json:"track"`
-}
-
-type Error struct {
-	Code    int    `json:"error"`
-	Message string `json:"message"`
 }

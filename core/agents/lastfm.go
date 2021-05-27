@@ -114,8 +114,17 @@ func (l *lastfmAgent) GetTopSongs(id, artistName, mbid string, count int) ([]Son
 func (l *lastfmAgent) callArtistGetInfo(name string, mbid string) (*lastfm.Artist, error) {
 	a, err := l.client.ArtistGetInfo(l.ctx, name, mbid)
 	if err != nil {
+		lfErr, isLastFMError := err.(*lastfm.Error)
+		if isLastFMError && lfErr.Code == 6 && mbid != "" {
+			return l.callArtistGetInfo(name, "")
+		}
 		log.Error(l.ctx, "Error calling LastFM/artist.getInfo", "artist", name, "mbid", mbid, err)
 		return nil, err
+	}
+	if mbid != "" {
+		if a.Name == "[unknown]" {
+			return l.callArtistGetInfo(name, "")
+		}
 	}
 	return a, nil
 }
