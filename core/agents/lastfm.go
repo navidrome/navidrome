@@ -115,6 +115,7 @@ func (l *lastfmAgent) callArtistGetInfo(name string, mbid string) (*lastfm.Artis
 	a, err := l.client.ArtistGetInfo(l.ctx, name, mbid)
 	lfErr, isLastFMError := err.(*lastfm.Error)
 	if mbid != "" && (err == nil && a.Name == "[unknown]") || (isLastFMError && lfErr.Code == 6) {
+		log.Warn(l.ctx, "LastFM/artist.getInfo could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
 		return l.callArtistGetInfo(name, "")
 	}
 
@@ -129,6 +130,7 @@ func (l *lastfmAgent) callArtistGetSimilar(name string, mbid string, limit int) 
 	s, err := l.client.ArtistGetSimilar(l.ctx, name, mbid, limit)
 	lfErr, isLastFMError := err.(*lastfm.Error)
 	if mbid != "" && (err == nil && s.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6) {
+		log.Warn(l.ctx, "LastFM/artist.getSimilar could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
 		return l.callArtistGetSimilar(name, "", limit)
 	}
 	if err != nil {
@@ -140,11 +142,16 @@ func (l *lastfmAgent) callArtistGetSimilar(name string, mbid string, limit int) 
 
 func (l *lastfmAgent) callArtistGetTopTracks(artistName, mbid string, count int) ([]lastfm.Track, error) {
 	t, err := l.client.ArtistGetTopTracks(l.ctx, artistName, mbid, count)
+	lfErr, isLastFMError := err.(*lastfm.Error)
+	if mbid != "" && (err == nil && t.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6) {
+		log.Warn(l.ctx, "LastFM/artist.getTopTracks could not find artist by mbid, trying again", "artist", artistName, "mbid", mbid)
+		return l.callArtistGetTopTracks(artistName, "", count)
+	}
 	if err != nil {
 		log.Error(l.ctx, "Error calling LastFM/artist.getTopTracks", "artist", artistName, "mbid", mbid, err)
 		return nil, err
 	}
-	return t, nil
+	return t.Track, nil
 }
 
 func init() {

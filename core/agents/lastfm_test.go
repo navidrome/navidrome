@@ -59,7 +59,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.FM call returns an error", func() {
-			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.error3.json")
+			f, _ := os.Open("tests/fixtures/lastfm.artist.error3.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 			_, err := agent.GetBiography("123", "U2", "mbid-1234")
 			Expect(err).To(HaveOccurred())
@@ -71,14 +71,14 @@ var _ = Describe("lastfmAgent", func() {
 			It("calls again when the response is artist == [unknown]", func() {
 				f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.unknown.json")
 				httpClient.Res = http.Response{Body: f, StatusCode: 200}
-				agent.GetBiography("123", "U2", "mbid-1234")
+				_, _ = agent.GetBiography("123", "U2", "mbid-1234")
 				Expect(httpClient.RequestCount).To(Equal(2))
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 			})
 			It("calls again when last.fm returns an error 6", func() {
-				f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.error6.json")
+				f, _ := os.Open("tests/fixtures/lastfm.artist.error6.json")
 				httpClient.Res = http.Response{Body: f, StatusCode: 200}
-				agent.GetBiography("123", "U2", "mbid-1234")
+				_, _ = agent.GetBiography("123", "U2", "mbid-1234")
 				Expect(httpClient.RequestCount).To(Equal(2))
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 			})
@@ -115,7 +115,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.FM call returns an error", func() {
-			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.error3.json")
+			f, _ := os.Open("tests/fixtures/lastfm.artist.error3.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 			_, err := agent.GetSimilar("123", "U2", "mbid-1234", 2)
 			Expect(err).To(HaveOccurred())
@@ -127,14 +127,70 @@ var _ = Describe("lastfmAgent", func() {
 			It("calls again when the response is artist == [unknown]", func() {
 				f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.unknown.json")
 				httpClient.Res = http.Response{Body: f, StatusCode: 200}
-				agent.GetSimilar("123", "U2", "mbid-1234", 2)
+				_, _ = agent.GetSimilar("123", "U2", "mbid-1234", 2)
 				Expect(httpClient.RequestCount).To(Equal(2))
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 			})
 			It("calls again when last.fm returns an error 6", func() {
-				f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.error6.json")
+				f, _ := os.Open("tests/fixtures/lastfm.artist.error6.json")
 				httpClient.Res = http.Response{Body: f, StatusCode: 200}
-				agent.GetSimilar("123", "U2", "mbid-1234", 2)
+				_, _ = agent.GetSimilar("123", "U2", "mbid-1234", 2)
+				Expect(httpClient.RequestCount).To(Equal(2))
+				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
+			})
+		})
+	})
+
+	Describe("GetTopSongs", func() {
+		var agent *lastfmAgent
+		var httpClient *tests.FakeHttpClient
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client := lastfm.NewClient("API_KEY", "pt", httpClient)
+			agent = lastFMConstructor(context.TODO()).(*lastfmAgent)
+			agent.client = client
+		})
+
+		It("returns top songs", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			Expect(agent.GetTopSongs("123", "U2", "mbid-1234", 2)).To(Equal([]Song{
+				{Name: "Beautiful Day", MBID: "f7f264d0-a89b-4682-9cd7-a4e7c37637af"},
+				{Name: "With or Without You", MBID: "6b9a509f-6907-4a6e-9345-2f12da09ba4b"},
+			}))
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("mbid-1234"))
+		})
+
+		It("returns an error if Last.FM call fails", func() {
+			httpClient.Err = errors.New("error")
+			_, err := agent.GetTopSongs("123", "U2", "mbid-1234", 2)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("mbid-1234"))
+		})
+
+		It("returns an error if Last.FM call returns an error", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.artist.error3.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			_, err := agent.GetTopSongs("123", "U2", "mbid-1234", 2)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("mbid-1234"))
+		})
+
+		Context("MBID not existent in Last.FM", func() {
+			It("calls again when the response is artist == [unknown]", func() {
+				f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.unknown.json")
+				httpClient.Res = http.Response{Body: f, StatusCode: 200}
+				_, _ = agent.GetTopSongs("123", "U2", "mbid-1234", 2)
+				Expect(httpClient.RequestCount).To(Equal(2))
+				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
+			})
+			It("calls again when last.fm returns an error 6", func() {
+				f, _ := os.Open("tests/fixtures/lastfm.artist.error6.json")
+				httpClient.Res = http.Response{Body: f, StatusCode: 200}
+				_, _ = agent.GetTopSongs("123", "U2", "mbid-1234", 2)
 				Expect(httpClient.RequestCount).To(Equal(2))
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 			})
