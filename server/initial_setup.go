@@ -90,11 +90,15 @@ func checkFfmpegInstallation() {
 }
 
 func checkExternalCredentials() {
-	if conf.Server.LastFM.ApiKey == "" || conf.Server.LastFM.Secret == "" {
-		log.Info("Last.FM integration not available: missing ApiKey/Secret")
+	if !conf.Server.LastFM.Enabled {
+		log.Info("Last.FM integration is DISABLED")
+	} else {
+		log.Debug("Last.FM integration is ENABLED")
 	}
 
 	if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
-		log.Info("Spotify integration is not enabled: artist images will not be available")
+		log.Info("Spotify integration is not enabled: missing ID/Secret")
+	} else {
+		log.Debug("Spotify integration is ENABLED")
 	}
 }

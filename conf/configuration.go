@@ -72,6 +72,7 @@ type scannerOptions struct {
 }
 
 type lastfmOptions struct {
+	Enabled  bool
 	ApiKey   string
 	Secret   string
 	Language string
@@ -207,6 +208,7 @@ func init() {
 
 	viper.SetDefault("scanner.extractor", "taglib")
 	viper.SetDefault("agents", "lastfm,spotify")
+	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
