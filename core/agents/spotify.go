@@ -84,7 +84,6 @@ func (s *spotifyAgent) searchArtist(name string) (*spotify.Artist, error) {
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.Spotify.ID != "" && conf.Server.Spotify.Secret != "" {
-			log.Info("Spotify integration is ENABLED")
 			Register(spotifyAgentName, spotifyConstructor)
 		}
 	})
