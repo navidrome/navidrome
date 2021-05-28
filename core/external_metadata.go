@@ -99,7 +99,7 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 	// If we have fresh info, just return it and trigger a refresh in the background
 	if time.Since(artist.ExternalInfoUpdatedAt) < consts.ArtistInfoTimeToLive {
 		go func() {
-			err := e.refreshArtistInfo(ctx, artist)
+			err := e.refreshArtistInfo(context.Background(), artist)
 			if err != nil {
 				log.Error("Error refreshing ArtistInfo", "id", id, "name", artist.Name, err)
 			}
