@@ -16,7 +16,10 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-const unavailableArtistID = "-1"
+const (
+	unavailableArtistID = "-1"
+	maxSimilarArtists   = 100
+)
 
 type ExternalMetadata interface {
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
@@ -88,19 +91,35 @@ func clearName(name string) string {
 }
 
 func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, similarCount int, includeNotPresent bool) (*model.Artist, error) {
-	allAgents := e.initAgents(ctx)
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	// If we have fresh info, just return it
+	// If we have fresh info, just return it and trigger a refresh in the background
 	if time.Since(artist.ExternalInfoUpdatedAt) < consts.ArtistInfoTimeToLive {
-		log.Debug("Found cached ArtistInfo", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
-		err := e.loadSimilar(ctx, artist, includeNotPresent)
+		go func() {
+			err := e.refreshArtistInfo(ctx, artist)
+			if err != nil {
+				log.Error("Error refreshing ArtistInfo", "id", id, "name", artist.Name, err)
+			}
+		}()
+		log.Debug("Found cached ArtistInfo, refreshing in the background", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
+		err := e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
 		return &artist.Artist, err
 	}
+
 	log.Debug(ctx, "ArtistInfo not cached or expired", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
+	err = e.refreshArtistInfo(ctx, artist)
+	if err != nil {
+		return nil, err
+	}
+	err = e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
+	return &artist.Artist, err
+}
+
+func (e *externalMetadata) refreshArtistInfo(ctx context.Context, artist *auxArtist) error {
+	allAgents := e.initAgents(ctx)
 
 	// Get MBID first, if it is not yet available
 	if artist.MbzArtistID == "" {
@@ -112,33 +131,22 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 	e.callGetBiography(ctx, allAgents, artist, wg)
 	e.callGetURL(ctx, allAgents, artist, wg)
 	e.callGetImage(ctx, allAgents, artist, wg)
-	e.callGetSimilar(ctx, allAgents, artist, similarCount, wg)
+	e.callGetSimilar(ctx, allAgents, artist, maxSimilarArtists, wg)
 	wg.Wait()
 
 	if isDone(ctx) {
 		log.Warn(ctx, "ArtistInfo update canceled", ctx.Err())
-		return nil, ctx.Err()
+		return ctx.Err()
 	}
 
 	artist.ExternalInfoUpdatedAt = time.Now()
-	err = e.ds.Artist(ctx).Put(&artist.Artist)
+	err := e.ds.Artist(ctx).Put(&artist.Artist)
 	if err != nil {
-		log.Error(ctx, "Error trying to update artist external information", "id", id, "name", artist.Name, err)
-	}
-
-	if !includeNotPresent {
-		similar := artist.SimilarArtists
-		artist.SimilarArtists = nil
-		for _, s := range similar {
-			if s.ID == unavailableArtistID {
-				continue
-			}
-			artist.SimilarArtists = append(artist.SimilarArtists, s)
-		}
+		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artist.Name, err)
 	}
 
 	log.Trace(ctx, "ArtistInfo collected", "artist", artist)
-	return &artist.Artist, nil
+	return nil
 }
 
 func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
@@ -425,7 +433,7 @@ func (e *externalMetadata) findArtistByName(ctx context.Context, artistName stri
 	return artist, nil
 }
 
-func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, includeNotPresent bool) error {
+func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, count int, includeNotPresent bool) error {
 	var ids []string
 	for _, sa := range artist.SimilarArtists {
 		if sa.ID == unavailableArtistID {
@@ -449,6 +457,9 @@ func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, i
 
 	var loaded model.Artists
 	for _, sa := range artist.SimilarArtists {
+		if len(loaded) >= count {
+			break
+		}
 		la, ok := artistMap[sa.ID]
 		if !ok {
 			if !includeNotPresent {
