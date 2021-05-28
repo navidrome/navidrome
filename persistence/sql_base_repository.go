@@ -77,9 +77,9 @@ func (r sqlRepository) buildSortOrder(sort, order string) string {
 	}
 
 	var newSort []string
-	parts := strings.FieldsFunc(sort, func(c rune) bool { return c == ',' })
+	parts := strings.FieldsFunc(sort, splitFunc(','))
 	for _, p := range parts {
-		f := strings.Fields(p)
+		f := strings.FieldsFunc(p, splitFunc(' '))
 		newField := []string{f[0]}
 		if len(f) == 1 {
 			newField = append(newField, order)
@@ -93,6 +93,21 @@ func (r sqlRepository) buildSortOrder(sort, order string) string {
 		newSort = append(newSort, strings.Join(newField, " "))
 	}
 	return strings.Join(newSort, ", ")
+}
+
+func splitFunc(delimiter rune) func(c rune) bool {
+	open := false
+	return func(c rune) bool {
+		if open {
+			open = c != ')'
+			return false
+		}
+		if c == '(' {
+			open = true
+			return false
+		}
+		return c == delimiter
+	}
 }
 
 func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOptions) SelectBuilder {
