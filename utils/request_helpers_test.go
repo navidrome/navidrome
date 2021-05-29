@@ -27,6 +27,20 @@ var _ = Describe("Request Helpers", func() {
 		})
 	})
 
+	Describe("ParamStringDefault", func() {
+		BeforeEach(func() {
+			r = httptest.NewRequest("GET", "/ping?a=123", nil)
+		})
+
+		It("returns default string if param does not exist", func() {
+			Expect(ParamStringDefault(r, "xx", "default_value")).To(Equal("default_value"))
+		})
+
+		It("returns param as string", func() {
+			Expect(ParamStringDefault(r, "a", "default_value")).To(Equal("123"))
+		})
+	})
+
 	Describe("ParamStrings", func() {
 		BeforeEach(func() {
 			r = httptest.NewRequest("GET", "/ping?a=123&a=456", nil)
