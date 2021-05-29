@@ -37,11 +37,12 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(w.Body.String()).To(Equal(artwork.data))
 		})
 
-		It("should fail if missing id parameter", func() {
+		It("should return placeholder if id parameter is missing (mimicking Subsonic)", func() {
 			r := newGetRequest()
 			_, err := controller.GetCoverArt(w, r)
 
-			Expect(err).To(MatchError("required 'id' parameter is missing"))
+			Expect(err).To(BeNil())
+			Expect(w.Body.String()).To(Equal(artwork.data))
 		})
 
 		It("should fail when the file is not found", func() {
