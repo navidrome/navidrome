@@ -29,6 +29,9 @@ func (w *weightedChooser) Put(value interface{}, weight int) {
 
 // GetAndRemove choose a random entry based on their weights, and removes it from the list
 func (w *weightedChooser) GetAndRemove() (interface{}, error) {
+	if w.totalWeight == 0 {
+		return nil, errors.New("cannot choose from zero weight")
+	}
 	i, err := w.weightedChoice()
 	if err != nil {
 		return nil, err

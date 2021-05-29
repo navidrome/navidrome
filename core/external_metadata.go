@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/utils"
-
 	"github.com/Masterminds/squirrel"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/navidrome/navidrome/conf"
@@ -16,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 )
 
 const (
