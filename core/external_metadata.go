@@ -207,14 +207,14 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 }
 
 func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
-	agents := e.initAgents(ctx)
+	allAgents := e.initAgents(ctx)
 	artist, err := e.findArtistByName(ctx, artistName)
 	if err != nil {
 		log.Error(ctx, "Artist not found", "name", artistName, err)
 		return nil, nil
 	}
 
-	return e.getMatchingTopSongs(ctx, agents, artist, count)
+	return e.getMatchingTopSongs(ctx, allAgents, artist, count)
 }
 
 func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, allAgents []agents.Interface, artist *auxArtist, count int) (model.MediaFiles, error) {
