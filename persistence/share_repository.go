@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
@@ -24,7 +23,11 @@ func NewShareRepository(ctx context.Context, o orm.Ormer) model.ShareRepository 
 }
 
 func (r *shareRepository) Delete(id string) error {
-	return r.delete(Eq{"id": id})
+	err := r.delete(Eq{"id": id})
+	if err == model.ErrNotFound {
+		return rest.ErrNotFound
+	}
+	return err
 }
 
 func (r *shareRepository) selectShare(options ...model.QueryOptions) SelectBuilder {
@@ -39,32 +42,26 @@ func (r *shareRepository) GetAll(options ...model.QueryOptions) (model.Shares, e
 }
 
 func (r *shareRepository) Put(s *model.Share) error {
-	if s.ID == "" {
-		s.CreatedAt = time.Now()
-	}
-	id, err := r.put(s.ID, s)
-	if err != nil {
-		return err
-	}
-	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
-	var res model.Share
-	err = r.queryOne(sel, &res)
+	_, err := r.put(s.ID, s)
 	return err
 }
 
 func (r *shareRepository) Update(entity interface{}, cols ...string) error {
 	s := entity.(*model.Share)
 	_, err := r.put(s.ID, s)
+	if err == model.ErrNotFound {
+		return rest.ErrNotFound
+	}
 	return err
 }
 
 func (r *shareRepository) Save(entity interface{}) (string, error) {
 	s := entity.(*model.Share)
-	err := r.Put(s)
-	if err != nil {
-		return "", err
+	id, err := r.put(s.ID, s)
+	if err == model.ErrNotFound {
+		return "", rest.ErrNotFound
 	}
-	return s.ID, err
+	return id, err
 }
 
 func (r *shareRepository) CountAll(options ...model.QueryOptions) (int64, error) {

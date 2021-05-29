@@ -6,7 +6,7 @@ import (
 
 type Share struct {
 	ID            string    `json:"id"            orm:"column(id)"`
-	Url           string    `json:"url"`
+	JWT           string    `json:"jwt"           orm:"column(jwt)"`
 	Description   string    `json:"description"`
 	ExpiresAt     time.Time `json:"expiresAt"`
 	CreatedAt     time.Time `json:"createdAt"`
