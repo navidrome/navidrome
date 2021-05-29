@@ -141,7 +141,7 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 	return newResponse(), nil
 }
 
-func (c *PlaylistsController) update(ctx context.Context, playlistId string, name *string, idsToAdd []string, idxToRemove []int) error {
+func (c *PlaylistsController) update(ctx context.Context, playlistId string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error {
 	return c.ds.WithTx(func(tx model.DataStore) error {
 		pls, err := tx.Playlist(ctx).Get(playlistId)
 		if err != nil {
@@ -156,6 +156,13 @@ func (c *PlaylistsController) update(ctx context.Context, playlistId string, nam
 		if name != nil {
 			pls.Name = *name
 		}
+		if comment != nil {
+			pls.Comment = *comment
+		}
+		if public != nil {
+			pls.Public = *public
+		}
+
 		newTracks := model.MediaFiles{}
 		for i, t := range pls.Tracks {
 			if utils.IntInSlice(i, idxToRemove) {
@@ -180,11 +187,18 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	}
 	songsToAdd := utils.ParamStrings(r, "songIdToAdd")
 	songIndexesToRemove := utils.ParamInts(r, "songIndexToRemove")
-
 	var plsName *string
-	if len(r.URL.Query()["name"]) > 0 {
-		s := r.URL.Query()["name"][0]
-		plsName = &s
+	if s, ok := r.URL.Query()["name"]; ok {
+		plsName = &s[0]
+	}
+	var comment *string
+	if c, ok := r.URL.Query()["comment"]; ok {
+		comment = &c[0]
+	}
+	var public *bool
+	if _, ok := r.URL.Query()["public"]; ok {
+		p := utils.ParamBool(r, "public", false)
+		public = &p
 	}
 
 	log.Debug(r, "Updating playlist", "id", playlistId)
@@ -194,7 +208,7 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	log.Trace(r, fmt.Sprintf("-- Adding: '%v'", songsToAdd))
 	log.Trace(r, fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
-	err = c.update(r.Context(), playlistId, plsName, songsToAdd, songIndexesToRemove)
+	err = c.update(r.Context(), playlistId, plsName, comment, public, songsToAdd, songIndexesToRemove)
 	if err == model.ErrNotAuthorized {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
