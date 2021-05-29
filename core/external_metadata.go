@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/utils"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/navidrome/navidrome/conf"
@@ -133,7 +135,7 @@ func (e *externalMetadata) refreshArtistInfo(ctx context.Context, artist *auxArt
 	e.callGetBiography(ctx, allAgents, artist, wg)
 	e.callGetURL(ctx, allAgents, artist, wg)
 	e.callGetImage(ctx, allAgents, artist, wg)
-	e.callGetSimilar(ctx, allAgents, artist, maxSimilarArtists, wg)
+	e.callGetSimilar(ctx, allAgents, artist, maxSimilarArtists, true, wg)
 	wg.Wait()
 
 	if isDone(ctx) {
@@ -159,7 +161,7 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 	}
 
 	wg := &sync.WaitGroup{}
-	e.callGetSimilar(ctx, allAgents, artist, count, wg)
+	e.callGetSimilar(ctx, allAgents, artist, 15, false, wg)
 	wg.Wait()
 
 	if isDone(ctx) {
@@ -167,33 +169,56 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 		return nil, ctx.Err()
 	}
 
-	if len(artist.SimilarArtists) == 0 {
-		return nil, nil
-	}
+	artists := model.Artists{artist.Artist}
+	artists = append(artists, artist.SimilarArtists...)
 
-	var ids = []string{artist.ID}
-	for _, a := range artist.SimilarArtists {
-		if a.ID != unavailableArtistID {
-			ids = append(ids, a.ID)
+	weightedSongs := utils.NewWeightedRandomChooser()
+	for _, a := range artists {
+		if isDone(ctx) {
+			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
+			return nil, ctx.Err()
+		}
+
+		topCount := utils.MaxInt(count, 20)
+		topSongs, err := e.getMatchingTopSongs(ctx, allAgents, &auxArtist{Name: a.Name, Artist: a}, topCount)
+		if err != nil {
+			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)
+			continue
+		}
+
+		weight := topCount * 4
+		for _, mf := range topSongs {
+			weightedSongs.Put(mf, weight)
+			weight -= 4
 		}
 	}
 
-	return e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.Eq{"artist_id": ids},
-		Max:     count,
-		Sort:    "random()",
-	})
+	var similarSongs model.MediaFiles
+	for len(similarSongs) < count && weightedSongs.Size() > 0 {
+		s, err := weightedSongs.GetAndRemove()
+		if err != nil {
+			log.Warn(ctx, "Error getting weighted song", err)
+			continue
+		}
+		similarSongs = append(similarSongs, s.(model.MediaFile))
+	}
+
+	return similarSongs, nil
 }
 
 func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
-	allAgents := e.initAgents(ctx)
+	agents := e.initAgents(ctx)
 	artist, err := e.findArtistByName(ctx, artistName)
 	if err != nil {
 		log.Error(ctx, "Artist not found", "name", artistName, err)
 		return nil, nil
 	}
 
-	songs, err := e.callGetTopSongs(ctx, allAgents, artist, count)
+	return e.getMatchingTopSongs(ctx, agents, artist, count)
+}
+
+func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, allAgents []agents.Interface, artist *auxArtist, count int) (model.MediaFiles, error) {
+	songs, err := e.callGetTopSongs(ctx, allAgents, artist, 50)
 	if err != nil {
 		return nil, err
 	}
@@ -205,6 +230,9 @@ func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, coun
 			continue
 		}
 		mfs = append(mfs, *mf)
+		if len(mfs) == count {
+			break
+		}
 	}
 	return mfs, nil
 }
@@ -364,7 +392,7 @@ func (e *externalMetadata) callGetImage(ctx context.Context, allAgents []agents.
 	}()
 }
 
-func (e *externalMetadata) callGetSimilar(ctx context.Context, allAgents []agents.Interface, artist *auxArtist, limit int, wg *sync.WaitGroup) {
+func (e *externalMetadata) callGetSimilar(ctx context.Context, allAgents []agents.Interface, artist *auxArtist, limit int, includeNotPresent bool, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -381,7 +409,7 @@ func (e *externalMetadata) callGetSimilar(ctx context.Context, allAgents []agent
 			if len(similar) == 0 || err != nil {
 				continue
 			}
-			sa, err := e.mapSimilarArtists(ctx, similar, true)
+			sa, err := e.mapSimilarArtists(ctx, similar, includeNotPresent)
 			if err != nil {
 				continue
 			}
