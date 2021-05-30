@@ -49,6 +49,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"devActivityPanel":        conf.Server.DevActivityPanel,
 			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 			"enableUserEditing":       conf.Server.EnableUserEditing,
+			"devEnableShare":          conf.Server.DevEnableShare,
 		}
 		j, err := json.Marshal(appConfig)
 		if err != nil {
