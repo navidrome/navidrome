@@ -117,8 +117,13 @@ func Load() {
 		os.Exit(1)
 	}
 
+	// Print current configuration if log level is Debug
 	if log.CurrentLevel() >= log.LevelDebug {
-		fmt.Println(log.Redact(pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)))
+		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
+		if Server.EnableLogRedacting {
+			prettyConf = log.Redact(prettyConf)
+		}
+		fmt.Println(prettyConf)
 	}
 
 	// Call init hooks
