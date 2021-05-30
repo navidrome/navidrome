@@ -6,12 +6,12 @@ import (
 
 type Share struct {
 	ID            string    `json:"id"            orm:"column(id)"`
-	JWT           string    `json:"jwt"           orm:"column(jwt)"`
+	Name          string    `json:"name"`
 	Description   string    `json:"description"`
 	ExpiresAt     time.Time `json:"expiresAt"`
 	CreatedAt     time.Time `json:"createdAt"`
 	LastVisitedAt time.Time `json:"lastVisitedAt"`
-	ResourceID    string    `json:"resourceID"    orm:"column(resource_id)"`
+	ResourceIDs   string    `json:"resourceIDs"   orm:"column(resource_ids)"`
 	ResourceType  string    `json:"resourceType"`
 	VisitCount    string    `json:"visitCount"`
 }

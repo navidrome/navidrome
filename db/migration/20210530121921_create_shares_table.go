@@ -15,12 +15,12 @@ func upCreateSharesTable(tx *sql.Tx) error {
 create table share
 (
 	id             varchar(255) not null primary key,
-	jwt            varchar(255) not null unique,
+	name           varchar(255) not null unique,
 	description    varchar(255),
 	expires        datetime,
 	created        datetime,
 	last_visited   datetime,
-	resource_id    varchar(255) not null,
+	resource_ids   varchar not null,
 	resource_type  varchar(255) not null,
 	visit_count    integer default 0
 );
