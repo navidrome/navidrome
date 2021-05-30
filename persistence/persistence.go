@@ -50,6 +50,10 @@ func (s *SQLStore) Property(ctx context.Context) model.PropertyRepository {
 	return NewPropertyRepository(ctx, s.getOrmer())
 }
 
+func (s *SQLStore) Share(ctx context.Context) model.ShareRepository {
+	return NewShareRepository(ctx, s.getOrmer())
+}
+
 func (s *SQLStore) User(ctx context.Context) model.UserRepository {
 	return NewUserRepository(ctx, s.getOrmer())
 }
