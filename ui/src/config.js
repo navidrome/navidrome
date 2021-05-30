@@ -18,6 +18,7 @@ const defaultConfig = {
   enableStarRating: true,
   defaultTheme: 'Dark',
   enableUserEditing: true,
+  devEnableShare: true,
 }
 
 let config
