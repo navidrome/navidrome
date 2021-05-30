@@ -11,7 +11,7 @@ type Share struct {
 	ExpiresAt     time.Time `json:"expiresAt"`
 	CreatedAt     time.Time `json:"createdAt"`
 	LastVisitedAt time.Time `json:"lastVisitedAt"`
-	ResourceIDs   string    `json:"resourceIDs"   orm:"column(resource_ids)"`
+	ResourceIDs   string    `json:"resourceIds"   orm:"column(resource_ids)"`
 	ResourceType  string    `json:"resourceType"`
 	VisitCount    string    `json:"visitCount"`
 }
