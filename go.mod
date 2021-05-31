@@ -30,7 +30,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.9
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/oklog/run v1.1.0
-	github.com/onsi/ginkgo v1.16.2
+	github.com/onsi/ginkgo v1.16.3
 	github.com/onsi/gomega v1.12.0
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/pressly/goose v2.7.0+incompatible
