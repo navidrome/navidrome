@@ -26,9 +26,9 @@ import {
   MultiLineTextField,
   AlbumContextMenu,
   RatingField,
+  useSelectedFields,
 } from '../common'
 import config from '../config'
-import useSelectedFields from '../common/useSelectedFields'
 
 const useStyles = makeStyles({
   columnIcon: {

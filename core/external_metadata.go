@@ -14,9 +14,13 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 )
 
-const unavailableArtistID = "-1"
+const (
+	unavailableArtistID = "-1"
+	maxSimilarArtists   = 100
+)
 
 type ExternalMetadata interface {
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
@@ -88,19 +92,37 @@ func clearName(name string) string {
 }
 
 func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, similarCount int, includeNotPresent bool) (*model.Artist, error) {
-	allAgents := e.initAgents(ctx)
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	// If we have fresh info, just return it
+	// If we have fresh info, just return it and trigger a refresh in the background
 	if time.Since(artist.ExternalInfoUpdatedAt) < consts.ArtistInfoTimeToLive {
-		log.Debug("Found cached ArtistInfo", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
-		err := e.loadSimilar(ctx, artist, includeNotPresent)
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			err := e.refreshArtistInfo(ctx, artist)
+			if err != nil {
+				log.Error("Error refreshing ArtistInfo", "id", id, "name", artist.Name, err)
+			}
+		}()
+		log.Debug("Found cached ArtistInfo, refreshing in the background", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
+		err := e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
 		return &artist.Artist, err
 	}
+
 	log.Debug(ctx, "ArtistInfo not cached or expired", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
+	err = e.refreshArtistInfo(ctx, artist)
+	if err != nil {
+		return nil, err
+	}
+	err = e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
+	return &artist.Artist, err
+}
+
+func (e *externalMetadata) refreshArtistInfo(ctx context.Context, artist *auxArtist) error {
+	allAgents := e.initAgents(ctx)
 
 	// Get MBID first, if it is not yet available
 	if artist.MbzArtistID == "" {
@@ -112,33 +134,22 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 	e.callGetBiography(ctx, allAgents, artist, wg)
 	e.callGetURL(ctx, allAgents, artist, wg)
 	e.callGetImage(ctx, allAgents, artist, wg)
-	e.callGetSimilar(ctx, allAgents, artist, similarCount, wg)
+	e.callGetSimilar(ctx, allAgents, artist, maxSimilarArtists, true, wg)
 	wg.Wait()
 
 	if isDone(ctx) {
 		log.Warn(ctx, "ArtistInfo update canceled", ctx.Err())
-		return nil, ctx.Err()
+		return ctx.Err()
 	}
 
 	artist.ExternalInfoUpdatedAt = time.Now()
-	err = e.ds.Artist(ctx).Put(&artist.Artist)
+	err := e.ds.Artist(ctx).Put(&artist.Artist)
 	if err != nil {
-		log.Error(ctx, "Error trying to update artist external information", "id", id, "name", artist.Name, err)
-	}
-
-	if !includeNotPresent {
-		similar := artist.SimilarArtists
-		artist.SimilarArtists = nil
-		for _, s := range similar {
-			if s.ID == unavailableArtistID {
-				continue
-			}
-			artist.SimilarArtists = append(artist.SimilarArtists, s)
-		}
+		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artist.Name, err)
 	}
 
 	log.Trace(ctx, "ArtistInfo collected", "artist", artist)
-	return &artist.Artist, nil
+	return nil
 }
 
 func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
@@ -149,7 +160,7 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 	}
 
 	wg := &sync.WaitGroup{}
-	e.callGetSimilar(ctx, allAgents, artist, count, wg)
+	e.callGetSimilar(ctx, allAgents, artist, 15, false, wg)
 	wg.Wait()
 
 	if isDone(ctx) {
@@ -157,22 +168,41 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 		return nil, ctx.Err()
 	}
 
-	if len(artist.SimilarArtists) == 0 {
-		return nil, nil
-	}
+	artists := model.Artists{artist.Artist}
+	artists = append(artists, artist.SimilarArtists...)
 
-	var ids = []string{artist.ID}
-	for _, a := range artist.SimilarArtists {
-		if a.ID != unavailableArtistID {
-			ids = append(ids, a.ID)
+	weightedSongs := utils.NewWeightedRandomChooser()
+	for _, a := range artists {
+		if isDone(ctx) {
+			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
+			return nil, ctx.Err()
+		}
+
+		topCount := utils.MaxInt(count, 20)
+		topSongs, err := e.getMatchingTopSongs(ctx, allAgents, &auxArtist{Name: a.Name, Artist: a}, topCount)
+		if err != nil {
+			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)
+			continue
+		}
+
+		weight := topCount * 4
+		for _, mf := range topSongs {
+			weightedSongs.Put(mf, weight)
+			weight -= 4
 		}
 	}
 
-	return e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.Eq{"artist_id": ids},
-		Max:     count,
-		Sort:    "random()",
-	})
+	var similarSongs model.MediaFiles
+	for len(similarSongs) < count && weightedSongs.Size() > 0 {
+		s, err := weightedSongs.GetAndRemove()
+		if err != nil {
+			log.Warn(ctx, "Error getting weighted song", err)
+			continue
+		}
+		similarSongs = append(similarSongs, s.(model.MediaFile))
+	}
+
+	return similarSongs, nil
 }
 
 func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
@@ -183,7 +213,11 @@ func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, coun
 		return nil, nil
 	}
 
-	songs, err := e.callGetTopSongs(ctx, allAgents, artist, count)
+	return e.getMatchingTopSongs(ctx, allAgents, artist, count)
+}
+
+func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, allAgents []agents.Interface, artist *auxArtist, count int) (model.MediaFiles, error) {
+	songs, err := e.callGetTopSongs(ctx, allAgents, artist, 50)
 	if err != nil {
 		return nil, err
 	}
@@ -195,6 +229,9 @@ func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, coun
 			continue
 		}
 		mfs = append(mfs, *mf)
+		if len(mfs) == count {
+			break
+		}
 	}
 	return mfs, nil
 }
@@ -354,7 +391,7 @@ func (e *externalMetadata) callGetImage(ctx context.Context, allAgents []agents.
 	}()
 }
 
-func (e *externalMetadata) callGetSimilar(ctx context.Context, allAgents []agents.Interface, artist *auxArtist, limit int, wg *sync.WaitGroup) {
+func (e *externalMetadata) callGetSimilar(ctx context.Context, allAgents []agents.Interface, artist *auxArtist, limit int, includeNotPresent bool, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -371,7 +408,7 @@ func (e *externalMetadata) callGetSimilar(ctx context.Context, allAgents []agent
 			if len(similar) == 0 || err != nil {
 				continue
 			}
-			sa, err := e.mapSimilarArtists(ctx, similar, true)
+			sa, err := e.mapSimilarArtists(ctx, similar, includeNotPresent)
 			if err != nil {
 				continue
 			}
@@ -425,7 +462,7 @@ func (e *externalMetadata) findArtistByName(ctx context.Context, artistName stri
 	return artist, nil
 }
 
-func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, includeNotPresent bool) error {
+func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, count int, includeNotPresent bool) error {
 	var ids []string
 	for _, sa := range artist.SimilarArtists {
 		if sa.ID == unavailableArtistID {
@@ -449,6 +486,9 @@ func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, i
 
 	var loaded model.Artists
 	for _, sa := range artist.SimilarArtists {
+		if len(loaded) >= count {
+			break
+		}
 		la, ok := artistMap[sa.ID]
 		if !ok {
 			if !includeNotPresent {

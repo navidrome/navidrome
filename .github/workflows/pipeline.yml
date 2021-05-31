@@ -104,6 +104,7 @@ jobs:
         with:
           name: js-bundle
           path: ui/build
+          retention-days: 7
 
   binaries:
     name: Binaries
@@ -149,6 +150,7 @@ jobs:
             dist
             !dist/*.tar.gz
             !dist/*.zip
+          retention-days: 7
 
   docker:
     name: Docker images

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import { useDispatch, useSelector } from 'react-redux'
 import { setOmittedFields, setToggleableFields } from '../actions'
 
-const useSelectedFields = ({
+export const useSelectedFields = ({
   resource,
   columns,
   omittedColumns = [],
@@ -69,11 +69,39 @@ const useSelectedFields = ({
   return React.Children.toArray(filteredComponents)
 }
 
-export default useSelectedFields
-
 useSelectedFields.propTypes = {
   resource: PropTypes.string,
   columns: PropTypes.object,
   omittedColumns: PropTypes.arrayOf(PropTypes.string),
+  defaultOff: PropTypes.arrayOf(PropTypes.string),
+}
+
+export const useSetToggleableFields = (
+  resource,
+  toggleableColumns,
+  defaultOff = []
+) => {
+  const current = useSelector((state) => state.settings.toggleableFields)?.album
+  const dispatch = useDispatch()
+  useEffect(() => {
+    if (!current) {
+      dispatch(
+        setToggleableFields({
+          [resource]: toggleableColumns.reduce((acc, cur) => {
+            return {
+              ...acc,
+              ...{ [cur]: true },
+            }
+          }, {}),
+        })
+      )
+      dispatch(setOmittedFields({ [resource]: defaultOff }))
+    }
+  }, [resource, toggleableColumns, dispatch, current, defaultOff])
+}
+
+useSetToggleableFields.propTypes = {
+  resource: PropTypes.string,
+  toggleableColumns: PropTypes.arrayOf(PropTypes.string),
   defaultOff: PropTypes.arrayOf(PropTypes.string),
 }

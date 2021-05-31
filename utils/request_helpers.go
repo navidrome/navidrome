@@ -11,6 +11,14 @@ func ParamString(r *http.Request, param string) string {
 	return r.URL.Query().Get(param)
 }
 
+func ParamStringDefault(r *http.Request, param, def string) string {
+	v := ParamString(r, param)
+	if v == "" {
+		return def
+	}
+	return v
+}
+
 func ParamStrings(r *http.Request, param string) []string {
 	return r.URL.Query()[param]
 }

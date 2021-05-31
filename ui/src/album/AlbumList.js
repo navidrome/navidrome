@@ -13,14 +13,19 @@ import {
 } from 'react-admin'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
-import { List, QuickFilter, Title, useAlbumsPerPage } from '../common'
+import {
+  List,
+  QuickFilter,
+  Title,
+  useAlbumsPerPage,
+  useSetToggleableFields,
+} from '../common'
 import AlbumListActions from './AlbumListActions'
 import AlbumTableView from './AlbumTableView'
 import AlbumGridView from './AlbumGridView'
 import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
-import useSelectedFields from '../common/useSelectedFields'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -74,17 +79,14 @@ const AlbumList = (props) => {
   // Workaround to force album columns to appear the first time.
   // See https://github.com/navidrome/navidrome/pull/923#issuecomment-833004842
   // TODO: Find a better solution
-  useSelectedFields({
-    resource: 'album',
-    columns: {
-      artist: 'artist',
-      songCount: 'songCount',
-      playCount: 'playCount',
-      year: 'year',
-      duration: 'duration',
-      rating: 'rating',
-    },
-  })
+  useSetToggleableFields('album', [
+    'artist',
+    'songCount',
+    'playCount',
+    'year',
+    'duration',
+    'rating',
+  ])
 
   // If it does not have filter/sort params (usually coming from Menu),
   // reload with correct filter/sort params

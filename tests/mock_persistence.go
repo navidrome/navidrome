@@ -14,6 +14,7 @@ type MockDataStore struct {
 	MockedUser        model.UserRepository
 	MockedProperty    model.PropertyRepository
 	MockedPlayer      model.PlayerRepository
+	MockedShare       model.ShareRepository
 	MockedTranscoding model.TranscodingRepository
 }
 
@@ -62,6 +63,10 @@ func (db *MockDataStore) Property(context.Context) model.PropertyRepository {
 		db.MockedProperty = &mockedPropertyRepo{}
 	}
 	return db.MockedProperty
+}
+
+func (db *MockDataStore) Share(context.Context) model.ShareRepository {
+	return struct{ model.ShareRepository }{}
 }
 
 func (db *MockDataStore) User(context.Context) model.UserRepository {
