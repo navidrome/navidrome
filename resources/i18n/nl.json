@@ -278,6 +278,12 @@
             "i18n_error": "Kan de vertalingen voor de opgegeven taal niet laden",
             "canceled": "Actie geannuleerd",
             "logged_out": "Uw sessie is beëindigd, maak opnieuw verbinding."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Kolommen keuze",
+            "layout": "Layout",
+            "grid": "Raster",
+            "table": "Tabel"
         }
     },
     "message": {
