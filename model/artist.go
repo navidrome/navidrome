@@ -10,15 +10,15 @@ type Artist struct {
 	AlbumCount            int       `json:"albumCount"`
 	SongCount             int       `json:"songCount"`
 	FullText              string    `json:"fullText"`
-	SortArtistName        string    `json:"sortArtistName"`
+	SortArtistName        string    `json:"sortArtistName,omitempty"`
 	OrderArtistName       string    `json:"orderArtistName"`
 	Size                  int64     `json:"size"`
-	MbzArtistID           string    `json:"mbzArtistId"      orm:"column(mbz_artist_id)"`
-	Biography             string    `json:"biography"`
-	SmallImageUrl         string    `json:"smallImageUrl"`
-	MediumImageUrl        string    `json:"mediumImageUrl"`
-	LargeImageUrl         string    `json:"largeImageUrl"`
-	ExternalUrl           string    `json:"externalUrl"      orm:"column(external_url)"`
+	MbzArtistID           string    `json:"mbzArtistId,omitempty"      orm:"column(mbz_artist_id)"`
+	Biography             string    `json:"biography,omitempty"`
+	SmallImageUrl         string    `json:"smallImageUrl,omitempty"`
+	MediumImageUrl        string    `json:"mediumImageUrl,omitempty"`
+	LargeImageUrl         string    `json:"largeImageUrl,omitempty"`
+	ExternalUrl           string    `json:"externalUrl,omitempty"      orm:"column(external_url)"`
 	SimilarArtists        Artists   `json:"-"   orm:"-"`
 	ExternalInfoUpdatedAt time.Time `json:"externalInfoUpdatedAt"`
 }
