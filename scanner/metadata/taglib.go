@@ -25,9 +25,10 @@ func (e *taglibExtractor) extractMetadata(filePath string) (*Tags, error) {
 	parsedTags, err := taglib.Read(filePath)
 	if err != nil {
 		log.Warn("Error reading metadata from file. Skipping", "filePath", filePath, err)
-	}
-	if hasEmbeddedImage(filePath) {
-		parsedTags["has_picture"] = []string{"true"}
+	} else {
+		if hasEmbeddedImage(filePath) {
+			parsedTags["has_picture"] = []string{"true"}
+		}
 	}
 
 	tags := NewTag(filePath, parsedTags, map[string][]string{
