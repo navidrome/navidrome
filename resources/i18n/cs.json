@@ -96,9 +96,9 @@
                 "name": "Změna jména se zobrazí až při dalším přihlášení"
             },
             "notifications": {
-                "created": "",
-                "updated": "",
-                "deleted": ""
+                "created": "Uživatel vytvořen",
+                "updated": "Uživatel upraven",
+                "deleted": "Uživatel odstraněn"
             }
         },
         "player": {
@@ -173,7 +173,7 @@
             "email": "Musí být platná emailová adresa",
             "oneOf": "Musí splňovat jedno z: %{options}",
             "regex": "Musí být ve specifickém formátu (regexp): %{pattern}",
-            "unique": ""
+            "unique": "Musí být jedinečný"
         },
         "action": {
             "add_filter": "Přidat filtr",
@@ -278,6 +278,12 @@
             "i18n_error": "Nelze načíst překlady pro vybraný jazyk",
             "canceled": "Akce zrušena",
             "logged_out": "Vaše relace skončila, prosím připojte se znovu."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Sloupce na displej",
+            "layout": "Rozložení",
+            "grid": "Mřížka",
+            "table": "Tabulka"
         }
     },
     "message": {
@@ -358,7 +364,7 @@
             "next_song": "Následující skladba",
             "vol_up": "Zvýšit hlasitost",
             "vol_down": "Snížit hlasitost",
-            "toggle_love": "Přepnout hvězdičku aktuální skladby"
+            "toggle_love": "Přidat tuto skladbu do oblíbených"
         }
     }
 }
