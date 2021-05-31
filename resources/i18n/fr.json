@@ -22,7 +22,8 @@
                 "starred": "Favoris",
                 "comment": "Commentaire",
                 "rating": "Classement",
-                "quality": "Qualité"
+                "quality": "Qualité",
+                "bpm": ""
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -86,7 +87,18 @@
                 "updatedAt": "Dernière mise à jour",
                 "name": "Nom",
                 "password": "Mot de passe",
-                "createdAt": "Créé le"
+                "createdAt": "Créé le",
+                "changePassword": "Changer le mot de passe ?",
+                "currentPassword": "Mot de passe actuel",
+                "newPassword": ""
+            },
+            "helperTexts": {
+                "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion"
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
             }
         },
         "player": {
@@ -160,7 +172,8 @@
             "number": "Doit être un nombre",
             "email": "Doit être un e-mail",
             "oneOf": "Doit être au choix : %{options}",
-            "regex": "Doit respecter un format spécifique (regexp) : %{pattern}"
+            "regex": "Doit respecter un format spécifique (regexp) : %{pattern}",
+            "unique": ""
         },
         "action": {
             "add_filter": "Ajouter un filtre",
@@ -265,6 +278,12 @@
             "i18n_error": "Erreur de chargement des traductions pour la langue sélectionnée",
             "canceled": "Action annulée",
             "logged_out": "Votre session a pris fin, veuillez vous reconnecter."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "",
+            "layout": "",
+            "grid": "",
+            "table": ""
         }
     },
     "message": {
