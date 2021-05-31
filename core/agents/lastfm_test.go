@@ -73,7 +73,14 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("mbid-1234"))
 		})
 
-		Context("MBID not existent in Last.FM", func() {
+		It("returns an error if Last.FM call returns an error 6 and mbid is empty", func() {
+			httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+			_, err := agent.GetBiography("123", "U2", "")
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+		})
+
+		Context("MBID non existent in Last.FM", func() {
 			It("calls again when the response is artist == [unknown]", func() {
 				f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.unknown.json")
 				httpClient.Res = http.Response{Body: f, StatusCode: 200}
@@ -127,7 +134,14 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("mbid-1234"))
 		})
 
-		Context("MBID not existent in Last.FM", func() {
+		It("returns an error if Last.FM call returns an error 6 and mbid is empty", func() {
+			httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+			_, err := agent.GetSimilar("123", "U2", "", 2)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+		})
+
+		Context("MBID non existent in Last.FM", func() {
 			It("calls again when the response is artist == [unknown]", func() {
 				f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.unknown.json")
 				httpClient.Res = http.Response{Body: f, StatusCode: 200}
@@ -181,7 +195,14 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("mbid-1234"))
 		})
 
-		Context("MBID not existent in Last.FM", func() {
+		It("returns an error if Last.FM call returns an error 6 and mbid is empty", func() {
+			httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+			_, err := agent.GetTopSongs("123", "U2", "", 2)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+		})
+
+		Context("MBID non existent in Last.FM", func() {
 			It("calls again when the response is artist == [unknown]", func() {
 				f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.unknown.json")
 				httpClient.Res = http.Response{Body: f, StatusCode: 200}
