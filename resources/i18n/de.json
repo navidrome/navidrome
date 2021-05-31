@@ -177,7 +177,7 @@
         },
         "action": {
             "add_filter": "Filter hinzufügen",
-            "add": "Neu",
+            "add": "Hinzufügen",
             "back": "Zurück",
             "bulk_actions": "Ein Element ausgewählt |||| %{smart_count} Elemente ausgewählt",
             "cancel": "Abbrechen",
