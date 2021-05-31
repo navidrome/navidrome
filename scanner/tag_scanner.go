@@ -51,7 +51,7 @@ const (
 	filesBatchSize = 100
 )
 
-// TagScanner algorithm overview:
+// Scan algorithm overview:
 // Load all directories from the DB
 // Traverse the music folder, collecting each subfolder's ModTime (self or any non-dir children, whichever is newer)
 // For each changed folder: get all files from DB whose path starts with the changed folder (non-recursively), check each file:

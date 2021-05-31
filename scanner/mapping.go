@@ -25,7 +25,7 @@ func newMediaFileMapper(rootFolder string) *mediaFileMapper {
 	return &mediaFileMapper{rootFolder: rootFolder, policy: bluemonday.UGCPolicy()}
 }
 
-func (s *mediaFileMapper) toMediaFile(md metadata.Metadata) model.MediaFile {
+func (s *mediaFileMapper) toMediaFile(md *metadata.Tags) model.MediaFile {
 	mf := &model.MediaFile{}
 	mf.ID = s.trackID(md)
 	mf.Title = s.mapTrackTitle(md)
@@ -76,7 +76,7 @@ func sanitizeFieldForSorting(originalValue string) string {
 	return utils.NoArticle(v)
 }
 
-func (s *mediaFileMapper) mapTrackTitle(md metadata.Metadata) string {
+func (s *mediaFileMapper) mapTrackTitle(md *metadata.Tags) string {
 	if md.Title() == "" {
 		s := strings.TrimPrefix(md.FilePath(), s.rootFolder+string(os.PathSeparator))
 		e := filepath.Ext(s)
@@ -85,7 +85,7 @@ func (s *mediaFileMapper) mapTrackTitle(md metadata.Metadata) string {
 	return md.Title()
 }
 
-func (s *mediaFileMapper) mapAlbumArtistName(md metadata.Metadata) string {
+func (s *mediaFileMapper) mapAlbumArtistName(md *metadata.Tags) string {
 	switch {
 	case md.Compilation():
 		return consts.VariousArtists
@@ -98,14 +98,14 @@ func (s *mediaFileMapper) mapAlbumArtistName(md metadata.Metadata) string {
 	}
 }
 
-func (s *mediaFileMapper) mapArtistName(md metadata.Metadata) string {
+func (s *mediaFileMapper) mapArtistName(md *metadata.Tags) string {
 	if md.Artist() != "" {
 		return md.Artist()
 	}
 	return consts.UnknownArtist
 }
 
-func (s *mediaFileMapper) mapAlbumName(md metadata.Metadata) string {
+func (s *mediaFileMapper) mapAlbumName(md *metadata.Tags) string {
 	name := md.Album()
 	if name == "" {
 		return "[Unknown Album]"
@@ -113,19 +113,19 @@ func (s *mediaFileMapper) mapAlbumName(md metadata.Metadata) string {
 	return name
 }
 
-func (s *mediaFileMapper) trackID(md metadata.Metadata) string {
+func (s *mediaFileMapper) trackID(md *metadata.Tags) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(md.FilePath())))
 }
 
-func (s *mediaFileMapper) albumID(md metadata.Metadata) string {
+func (s *mediaFileMapper) albumID(md *metadata.Tags) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
 }
 
-func (s *mediaFileMapper) artistID(md metadata.Metadata) string {
+func (s *mediaFileMapper) artistID(md *metadata.Tags) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapArtistName(md)))))
 }
 
-func (s *mediaFileMapper) albumArtistID(md metadata.Metadata) string {
+func (s *mediaFileMapper) albumArtistID(md *metadata.Tags) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapAlbumArtistName(md)))))
 }
