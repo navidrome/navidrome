@@ -5,12 +5,6 @@ import { registerRoute, NavigationRoute } from 'workbox-routing'
 clientsClaim()
 self.skipWaiting()
 
-addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    skipWaiting()
-  }
-})
-
 const CACHE_NAME = 'offline-html'
 // This assumes /offline.html is a URL for your self-contained
 // (no external images or styles) offline page.

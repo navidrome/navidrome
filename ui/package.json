@@ -36,7 +36,6 @@
     "redux-saga": "^1.1.3",
     "uuid": "^8.3.2",
     "workbox-core": "^6.1.5",
-    "workbox-navigation-preload": "^6.1.5",
     "workbox-routing": "^6.1.5",
     "workbox-strategies": "^6.1.5"
   },
