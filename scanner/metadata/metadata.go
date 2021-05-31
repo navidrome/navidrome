@@ -16,10 +16,10 @@ import (
 )
 
 type Extractor interface {
-	Extract(files ...string) (map[string]Metadata, error)
+	Extract(files ...string) (map[string]*Tags, error)
 }
 
-func Extract(files ...string) (map[string]Metadata, error) {
+func Extract(files ...string) (map[string]*Tags, error) {
 	var e Extractor
 
 	switch conf.Server.Scanner.Extractor {
@@ -35,167 +35,97 @@ func Extract(files ...string) (map[string]Metadata, error) {
 	return e.Extract(files...)
 }
 
-type Metadata interface {
-	Title() string
-	Album() string
-	Artist() string
-	AlbumArtist() string
-	SortTitle() string
-	SortAlbum() string
-	SortArtist() string
-	SortAlbumArtist() string
-	Composer() string
-	Genre() string
-	Year() int
-	TrackNumber() (int, int)
-	DiscNumber() (int, int)
-	DiscSubtitle() string
-	HasPicture() bool
-	Comment() string
-	Lyrics() string
-	Compilation() bool
-	CatalogNum() string
-	MbzTrackID() string
-	MbzAlbumID() string
-	MbzArtistID() string
-	MbzAlbumArtistID() string
-	MbzAlbumType() string
-	MbzAlbumComment() string
-	Duration() float32
-	BitRate() int
-	ModificationTime() time.Time
-	FilePath() string
-	Suffix() string
-	Size() int64
-	Bpm() int
-}
-
-type baseMetadata struct {
+type Tags struct {
 	filePath string
+	suffix   string
 	fileInfo os.FileInfo
-	tags     map[string]string
+	tags     map[string][]string
+	custom   map[string][]string
 }
 
-func (m *baseMetadata) Title() string  { return m.getTag("title", "sort_name", "titlesort") }
-func (m *baseMetadata) Album() string  { return m.getTag("album", "sort_album", "albumsort") }
-func (m *baseMetadata) Artist() string { return m.getTag("artist", "sort_artist", "artistsort") }
-func (m *baseMetadata) AlbumArtist() string {
-	return m.getTag("album_artist", "album artist", "albumartist")
-}
-func (m *baseMetadata) SortTitle() string  { return m.getSortTag("", "title", "name") }
-func (m *baseMetadata) SortAlbum() string  { return m.getSortTag("", "album") }
-func (m *baseMetadata) SortArtist() string { return m.getSortTag("", "artist") }
-func (m *baseMetadata) SortAlbumArtist() string {
-	return m.getSortTag("tso2", "albumartist", "album_artist")
-}
-func (m *baseMetadata) Composer() string        { return m.getTag("composer", "tcm", "sort_composer") }
-func (m *baseMetadata) Genre() string           { return m.getTag("genre") }
-func (m *baseMetadata) Year() int               { return m.parseYear("date") }
-func (m *baseMetadata) Comment() string         { return m.getTag("comment") }
-func (m *baseMetadata) Lyrics() string          { return m.getTag("lyrics", "lyrics-eng") }
-func (m *baseMetadata) Compilation() bool       { return m.parseBool("tcmp", "compilation") }
-func (m *baseMetadata) TrackNumber() (int, int) { return m.parseTuple("track", "tracknumber") }
-func (m *baseMetadata) DiscNumber() (int, int)  { return m.parseTuple("disc", "discnumber") }
-func (m *baseMetadata) DiscSubtitle() string {
-	return m.getTag("tsst", "discsubtitle", "setsubtitle")
-}
-func (m *baseMetadata) CatalogNum() string { return m.getTag("catalognumber") }
-func (m *baseMetadata) MbzTrackID() string {
-	return m.getMbzID("musicbrainz_trackid", "musicbrainz track id")
-}
-func (m *baseMetadata) MbzAlbumID() string {
-	return m.getMbzID("musicbrainz_albumid", "musicbrainz album id")
-}
-func (m *baseMetadata) MbzArtistID() string {
-	return m.getMbzID("musicbrainz_artistid", "musicbrainz artist id")
-}
-func (m *baseMetadata) MbzAlbumArtistID() string {
-	return m.getMbzID("musicbrainz_albumartistid", "musicbrainz album artist id")
-}
-func (m *baseMetadata) MbzAlbumType() string {
-	return m.getTag("musicbrainz_albumtype", "musicbrainz album type")
-}
-func (m *baseMetadata) MbzAlbumComment() string {
-	return m.getTag("musicbrainz_albumcomment", "musicbrainz album comment")
-}
+func NewTag(filePath string, tags, custom map[string][]string) *Tags {
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		log.Warn("Error stating file. Skipping", "filePath", filePath, err)
+		return nil
+	}
 
-func (m *baseMetadata) ModificationTime() time.Time { return m.fileInfo.ModTime() }
-func (m *baseMetadata) Size() int64                 { return m.fileInfo.Size() }
-func (m *baseMetadata) FilePath() string            { return m.filePath }
-func (m *baseMetadata) Suffix() string {
-	return strings.ToLower(strings.TrimPrefix(path.Ext(m.FilePath()), "."))
-}
-
-func (m *baseMetadata) Duration() float32 { panic("not implemented") }
-func (m *baseMetadata) BitRate() int      { panic("not implemented") }
-func (m *baseMetadata) HasPicture() bool  { panic("not implemented") }
-func (m *baseMetadata) Bpm() int {
-	var bpmStr = m.getTag("tbpm", "bpm", "fbpm")
-	var bpmFloat, err = strconv.ParseFloat(bpmStr, 64)
-	if err == nil {
-		return (int)(math.Round(bpmFloat))
-	} else {
-		return 0
+	return &Tags{
+		filePath: filePath,
+		suffix:   strings.ToLower(strings.TrimPrefix(path.Ext(filePath), ".")),
+		fileInfo: fileInfo,
+		tags:     tags,
+		custom:   custom,
 	}
 }
 
-func (m *baseMetadata) parseInt(tagName string) int {
-	if v, ok := m.tags[tagName]; ok {
-		i, _ := strconv.Atoi(v)
-		return i
-	}
-	return 0
+// Common tags
+
+func (t *Tags) Title() string           { return t.getTag("title", "sort_name", "titlesort") }
+func (t *Tags) Album() string           { return t.getTag("album", "sort_album", "albumsort") }
+func (t *Tags) Artist() string          { return t.getTag("artist", "sort_artist", "artistsort") }
+func (t *Tags) AlbumArtist() string     { return t.getTag("album_artist", "album artist", "albumartist") }
+func (t *Tags) SortTitle() string       { return t.getSortTag("", "title", "name") }
+func (t *Tags) SortAlbum() string       { return t.getSortTag("", "album") }
+func (t *Tags) SortArtist() string      { return t.getSortTag("", "artist") }
+func (t *Tags) SortAlbumArtist() string { return t.getSortTag("tso2", "albumartist", "album_artist") }
+func (t *Tags) Genre() string           { return t.getTag("genre") }
+func (t *Tags) Year() int               { return t.getYear("date") }
+func (t *Tags) Comment() string         { return t.getTag("comment") }
+func (t *Tags) Lyrics() string          { return t.getTag("lyrics", "lyrics-eng") }
+func (t *Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
+func (t *Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
+func (t *Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }
+func (t *Tags) DiscSubtitle() string    { return t.getTag("tsst", "discsubtitle", "setsubtitle") }
+func (t *Tags) CatalogNum() string      { return t.getTag("catalognumber") }
+func (t *Tags) Bpm() int                { return (int)(math.Round(t.getFloat("tbpm", "bpm", "fbpm"))) }
+func (t *Tags) HasPicture() bool        { return t.getTag("has_picture") != "" }
+
+// MusicBrainz Identifiers
+
+func (t *Tags) MbzTrackID() string { return t.getMbzID("musicbrainz_trackid", "musicbrainz track id") }
+func (t *Tags) MbzAlbumID() string { return t.getMbzID("musicbrainz_albumid", "musicbrainz album id") }
+func (t *Tags) MbzArtistID() string {
+	return t.getMbzID("musicbrainz_artistid", "musicbrainz artist id")
+}
+func (t *Tags) MbzAlbumArtistID() string {
+	return t.getMbzID("musicbrainz_albumartistid", "musicbrainz album artist id")
+}
+func (t *Tags) MbzAlbumType() string {
+	return t.getTag("musicbrainz_albumtype", "musicbrainz album type")
+}
+func (t *Tags) MbzAlbumComment() string {
+	return t.getTag("musicbrainz_albumcomment", "musicbrainz album comment")
 }
 
-func (m *baseMetadata) parseFloat(tagName string) float32 {
-	if v, ok := m.tags[tagName]; ok {
-		f, _ := strconv.ParseFloat(v, 32)
-		return float32(f)
-	}
-	return 0
-}
+// File properties
 
-var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
+func (t *Tags) Duration() float32           { return float32(t.getFloat("duration")) }
+func (t *Tags) BitRate() int                { return t.getInt("bitrate") }
+func (t *Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
+func (t *Tags) Size() int64                 { return t.fileInfo.Size() }
+func (t *Tags) FilePath() string            { return t.filePath }
+func (t *Tags) Suffix() string              { return t.suffix }
 
-func (m *baseMetadata) parseYear(tags ...string) int {
-	for _, t := range tags {
-		if v, ok := m.tags[t]; ok {
-			match := dateRegex.FindStringSubmatch(v)
-			if len(match) == 0 {
-				log.Warn("Error parsing year date field", "file", m.filePath, "date", v)
-				return 0
-			}
-			year, _ := strconv.Atoi(match[1])
-			return year
-		}
-	}
-	return 0
-}
-
-func (m *baseMetadata) getMbzID(tags ...string) string {
-	var value string
-	for _, t := range tags {
-		if v, ok := m.tags[t]; ok {
-			value = v
-			break
-		}
-	}
-	if _, err := uuid.Parse(value); err != nil {
-		return ""
-	}
-	return value
-}
-
-func (m *baseMetadata) getTag(tags ...string) string {
-	for _, t := range tags {
-		if v, ok := m.tags[t]; ok {
+func (t *Tags) getTags(tags ...string) []string {
+	allTags := append(tags, t.custom[tags[0]]...)
+	for _, tag := range allTags {
+		if v, ok := t.tags[tag]; ok {
 			return v
 		}
+	}
+	return nil
+}
+
+func (t *Tags) getTag(tags ...string) string {
+	ts := t.getTags(tags...)
+	if len(ts) > 0 {
+		return ts[0]
 	}
 	return ""
 }
 
-func (m *baseMetadata) getSortTag(originalTag string, tags ...string) string {
+func (t *Tags) getSortTag(originalTag string, tags ...string) string {
 	formats := []string{"sort%s", "sort_%s", "sort-%s", "%ssort", "%s_sort", "%s-sort"}
 	all := []string{originalTag}
 	for _, tag := range tags {
@@ -204,45 +134,70 @@ func (m *baseMetadata) getSortTag(originalTag string, tags ...string) string {
 			all = append(all, name)
 		}
 	}
-	return m.getTag(all...)
+	return t.getTag(all...)
 }
 
-func (m *baseMetadata) parseTuple(tags ...string) (int, int) {
-	for _, tagName := range tags {
-		if v, ok := m.tags[tagName]; ok {
-			tuple := strings.Split(v, "/")
-			t1, t2 := 0, 0
-			t1, _ = strconv.Atoi(tuple[0])
-			if len(tuple) > 1 {
-				t2, _ = strconv.Atoi(tuple[1])
-			} else {
-				t2, _ = strconv.Atoi(m.tags[tagName+"total"])
-			}
-			return t1, t2
-		}
+var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
+
+func (t *Tags) getYear(tags ...string) int {
+	tag := t.getTag(tags...)
+	if tag == "" {
+		return 0
 	}
-	return 0, 0
+	match := dateRegex.FindStringSubmatch(tag)
+	if len(match) == 0 {
+		log.Warn("Error parsing year date field", "file", t.filePath, "date", tag)
+		return 0
+	}
+	year, _ := strconv.Atoi(match[1])
+	return year
 }
 
-func (m *baseMetadata) parseBool(tags ...string) bool {
-	for _, tagName := range tags {
-		if v, ok := m.tags[tagName]; ok {
-			i, _ := strconv.Atoi(strings.TrimSpace(v))
-			return i == 1
-		}
+func (t *Tags) getBool(tags ...string) bool {
+	tag := t.getTag(tags...)
+	if tag == "" {
+		return false
 	}
-	return false
+	i, _ := strconv.Atoi(strings.TrimSpace(tag))
+	return i == 1
 }
 
-var zeroTime = time.Date(0000, time.January, 1, 0, 0, 0, 0, time.UTC)
-
-func (m *baseMetadata) parseDuration(tagName string) float32 {
-	if v, ok := m.tags[tagName]; ok {
-		d, err := time.Parse("15:04:05", v)
-		if err != nil {
-			return 0
-		}
-		return float32(d.Sub(zeroTime).Seconds())
+func (t *Tags) getTuple(tags ...string) (int, int) {
+	tag := t.getTag(tags...)
+	if tag == "" {
+		return 0, 0
 	}
-	return 0
+	tuple := strings.Split(tag, "/")
+	t1, t2 := 0, 0
+	t1, _ = strconv.Atoi(tuple[0])
+	if len(tuple) > 1 {
+		t2, _ = strconv.Atoi(tuple[1])
+	} else {
+		t2tag := t.getTag(tags[0] + "total")
+		t2, _ = strconv.Atoi(t2tag)
+	}
+	return t1, t2
+}
+
+func (t *Tags) getMbzID(tags ...string) string {
+	tag := t.getTag(tags...)
+	if _, err := uuid.Parse(tag); err != nil {
+		return ""
+	}
+	return tag
+}
+
+func (t *Tags) getInt(tags ...string) int {
+	tag := t.getTag(tags...)
+	i, _ := strconv.Atoi(tag)
+	return i
+}
+
+func (t *Tags) getFloat(tags ...string) float64 {
+	var tag = t.getTag(tags...)
+	var value, err = strconv.ParseFloat(tag, 64)
+	if err != nil {
+		return 0
+	}
+	return value
 }

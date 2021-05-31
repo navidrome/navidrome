@@ -3,54 +3,37 @@ package metadata
 import (
 	"bufio"
 	"errors"
-	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 )
 
-type ffmpegMetadata struct {
-	baseMetadata
-}
-
-func (m *ffmpegMetadata) Duration() float32 { return m.parseDuration("duration") }
-func (m *ffmpegMetadata) BitRate() int      { return m.parseInt("bitrate") }
-func (m *ffmpegMetadata) HasPicture() bool {
-	return m.getTag("has_picture", "metadata_block_picture") != ""
-}
-func (m *ffmpegMetadata) DiscNumber() (int, int) { return m.parseTuple("tpa", "disc", "discnumber") }
-func (m *ffmpegMetadata) Comment() string {
-	comment := m.baseMetadata.Comment()
-	if comment == "Cover (front)" {
-		return ""
-	}
-	return comment
-}
-
 type ffmpegExtractor struct{}
 
-func (e *ffmpegExtractor) Extract(files ...string) (map[string]Metadata, error) {
+func (e *ffmpegExtractor) Extract(files ...string) (map[string]*Tags, error) {
 	args := e.createProbeCommand(files)
 
 	log.Trace("Executing command", "args", args)
 	cmd := exec.Command(args[0], args[1:]...) // #nosec
 	output, _ := cmd.CombinedOutput()
-	mds := map[string]Metadata{}
+	fileTags := map[string]*Tags{}
 	if len(output) == 0 {
-		return mds, errors.New("error extracting metadata files")
+		return fileTags, errors.New("error extracting metadata files")
 	}
 	infos := e.parseOutput(string(output))
 	for file, info := range infos {
-		md, err := e.extractMetadata(file, info)
+		tags, err := e.extractMetadata(file, info)
 		// Skip files with errors
 		if err == nil {
-			mds[file] = md
+			fileTags[file] = tags
 		}
 	}
-	return mds, nil
+	return fileTags, nil
 }
 
 var (
@@ -95,26 +78,23 @@ func (e *ffmpegExtractor) parseOutput(output string) map[string]string {
 	return outputs
 }
 
-func (e *ffmpegExtractor) extractMetadata(filePath, info string) (*ffmpegMetadata, error) {
-	m := &ffmpegMetadata{}
-	m.filePath = filePath
-	m.tags = map[string]string{}
-	var err error
-	m.fileInfo, err = os.Stat(filePath)
-	if err != nil {
-		log.Warn("Error stating file. Skipping", "filePath", filePath, err)
-		return nil, errors.New("error stating file")
-	}
-
-	m.parseInfo(info)
-	if len(m.tags) == 0 {
+func (e *ffmpegExtractor) extractMetadata(filePath, info string) (*Tags, error) {
+	parsedTags := e.parseInfo(info)
+	if len(parsedTags) == 0 {
 		log.Trace("Not a media file. Skipping", "filePath", filePath)
 		return nil, errors.New("not a media file")
 	}
-	return m, nil
+
+	tags := NewTag(filePath, parsedTags, map[string][]string{
+		"disc":        {"tpa"},
+		"has_picture": {"metadata_block_picture"},
+	})
+	return tags, nil
 }
 
-func (m *ffmpegMetadata) parseInfo(info string) {
+func (e *ffmpegExtractor) parseInfo(info string) map[string][]string {
+	tags := map[string][]string{}
+
 	reader := strings.NewReader(info)
 	scanner := bufio.NewScanner(reader)
 	lastTag := ""
@@ -128,11 +108,8 @@ func (m *ffmpegMetadata) parseInfo(info string) {
 			tagName := strings.TrimSpace(strings.ToLower(match[1]))
 			if tagName != "" {
 				tagValue := strings.TrimSpace(match[2])
-				// Skip when the tag was previously found
-				if _, ok := m.tags[tagName]; !ok {
-					m.tags[tagName] = tagValue
-					lastTag = tagName
-				}
+				tags[tagName] = append(tags[tagName], tagValue)
+				lastTag = tagName
 				continue
 			}
 		}
@@ -140,8 +117,11 @@ func (m *ffmpegMetadata) parseInfo(info string) {
 		if lastTag != "" {
 			match = continuationRx.FindStringSubmatch(line)
 			if len(match) > 0 {
-				tagValue := m.tags[lastTag]
-				m.tags[lastTag] = tagValue + "\n" + strings.TrimSpace(match[1])
+				if tags[lastTag] == nil {
+					tags[lastTag] = []string{""}
+				}
+				tagValue := tags[lastTag][0]
+				tags[lastTag][0] = tagValue + "\n" + strings.TrimSpace(match[1])
 				continue
 			}
 		}
@@ -149,24 +129,41 @@ func (m *ffmpegMetadata) parseInfo(info string) {
 		lastTag = ""
 		match = coverRx.FindStringSubmatch(line)
 		if len(match) > 0 {
-			m.tags["has_picture"] = "true"
+			tags["has_picture"] = []string{"true"}
 			continue
 		}
 
 		match = durationRx.FindStringSubmatch(line)
 		if len(match) > 0 {
-			m.tags["duration"] = match[1]
+			tags["duration"] = []string{e.parseDuration(match[1])}
 			if len(match) > 1 {
-				m.tags["bitrate"] = match[2]
+				tags["bitrate"] = []string{match[2]}
 			}
 			continue
 		}
 
 		match = bitRateRx.FindStringSubmatch(line)
 		if len(match) > 0 {
-			m.tags["bitrate"] = match[2]
+			tags["bitrate"] = []string{match[2]}
 		}
 	}
+
+	comment := tags["comment"]
+	if len(comment) > 0 && comment[0] == "Cover (front)" {
+		delete(tags, "comment")
+	}
+
+	return tags
+}
+
+var zeroTime = time.Date(0000, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+func (e *ffmpegExtractor) parseDuration(tag string) string {
+	d, err := time.Parse("15:04:05", tag)
+	if err != nil {
+		return "0"
+	}
+	return strconv.FormatFloat(d.Sub(zeroTime).Seconds(), 'f', 2, 32)
 }
 
 // Inputs will always be absolute paths
