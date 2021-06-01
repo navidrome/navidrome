@@ -278,6 +278,12 @@
             "i18n_error": "No se pudieron cargar las traducciones para el idioma especificado",
             "canceled": "Acción cancelada",
             "logged_out": "Su sesión ha finalizado, vuelva a conectarse."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Columnas para mostrar",
+            "layout": "Diseño",
+            "grid": "Cuadrícula",
+            "table": "Tabla"
         }
     },
     "message": {
