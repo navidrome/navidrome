@@ -1,7 +1,6 @@
 package metadata
 
 import (
-	"errors"
 	"os"
 
 	"github.com/dhowden/tag"
@@ -9,51 +8,40 @@ import (
 	"github.com/navidrome/navidrome/scanner/metadata/taglib"
 )
 
-type taglibMetadata struct {
-	baseMetadata
-	hasPicture bool
-}
-
-func (m *taglibMetadata) Title() string  { return m.getTag("title", "titlesort", "_track") }
-func (m *taglibMetadata) Album() string  { return m.getTag("album", "albumsort", "_album") }
-func (m *taglibMetadata) Artist() string { return m.getTag("artist", "artistsort", "_artist") }
-func (m *taglibMetadata) Genre() string  { return m.getTag("genre", "_genre") }
-func (m *taglibMetadata) Year() int      { return m.parseYear("date", "_year") }
-func (m *taglibMetadata) TrackNumber() (int, int) {
-	return m.parseTuple("track", "tracknumber", "_track")
-}
-func (m *taglibMetadata) Duration() float32 { return m.parseFloat("length") }
-func (m *taglibMetadata) BitRate() int      { return m.parseInt("bitrate") }
-func (m *taglibMetadata) HasPicture() bool  { return m.hasPicture }
-
 type taglibExtractor struct{}
 
-func (e *taglibExtractor) Extract(paths ...string) (map[string]Metadata, error) {
-	mds := map[string]Metadata{}
+func (e *taglibExtractor) Extract(paths ...string) (map[string]*Tags, error) {
+	fileTags := map[string]*Tags{}
 	for _, path := range paths {
-		md, err := e.extractMetadata(path)
+		tags, err := e.extractMetadata(path)
 		if err == nil {
-			mds[path] = md
+			fileTags[path] = tags
 		}
 	}
-	return mds, nil
+	return fileTags, nil
 }
 
-func (e *taglibExtractor) extractMetadata(filePath string) (*taglibMetadata, error) {
-	var err error
-	md := &taglibMetadata{}
-	md.filePath = filePath
-	md.fileInfo, err = os.Stat(filePath)
-	if err != nil {
-		log.Warn("Error stating file. Skipping", "filePath", filePath, err)
-		return nil, errors.New("error stating file")
-	}
-	md.tags, err = taglib.Read(filePath)
+func (e *taglibExtractor) extractMetadata(filePath string) (*Tags, error) {
+	parsedTags, err := taglib.Read(filePath)
 	if err != nil {
 		log.Warn("Error reading metadata from file. Skipping", "filePath", filePath, err)
+	} else {
+		if hasEmbeddedImage(filePath) {
+			parsedTags["has_picture"] = []string{"true"}
+		}
 	}
-	md.hasPicture = hasEmbeddedImage(filePath)
-	return md, nil
+
+	tags := NewTag(filePath, parsedTags, map[string][]string{
+		"title":    {"_track", "titlesort"},
+		"album":    {"_album", "albumsort"},
+		"artist":   {"_artist", "artistsort"},
+		"genre":    {"_genre"},
+		"date":     {"_year"},
+		"track":    {"_track"},
+		"duration": {"length"},
+	})
+
+	return tags, nil
 }
 
 func hasEmbeddedImage(path string) bool {
@@ -77,6 +65,3 @@ func hasEmbeddedImage(path string) bool {
 
 	return m.Picture() != nil
 }
-
-var _ Metadata = (*taglibMetadata)(nil)
-var _ Extractor = (*taglibExtractor)(nil)
