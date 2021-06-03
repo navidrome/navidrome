@@ -6,7 +6,6 @@ import (
 	"github.com/deluan/rest"
 	gonanoid "github.com/matoous/go-nanoid"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type Share interface {
@@ -41,7 +40,7 @@ type shareRepositoryWrapper struct {
 
 func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	s := entity.(*model.Share)
-	id, err := gonanoid.Nanoid()
+	id, err := gonanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 9)
 	s.Name = id
 	if err != nil {
 		return "", err
@@ -50,11 +49,9 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	return id, err
 }
 
-func (r *shareRepositoryWrapper) Update(entity interface{}, cols ...string) error {
+func (r *shareRepositoryWrapper) Update(entity interface{}, _ ...string) error {
 	s := entity.(*model.Share)
-	if len(cols) == 0 || (!utils.StringInSlice("description", cols) && !(utils.StringInSlice("last_visited_at", cols)) && !(utils.StringInSlice("visit_count", cols))) {
-		return rest.ErrNotFound
-	}
-	err := r.Put(s)
+	cols := []string{"description", "last_visited_at", "visit_count"}
+	err := r.Persistable.Update(s, cols...)
 	return err
 }
