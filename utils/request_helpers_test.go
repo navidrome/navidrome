@@ -147,7 +147,7 @@ var _ = Describe("Request Helpers", func() {
 	Describe("ParamBool", func() {
 		Context("value is true", func() {
 			BeforeEach(func() {
-				r = httptest.NewRequest("GET", "/ping?b=true&c=on&d=1", nil)
+				r = httptest.NewRequest("GET", "/ping?b=true&c=on&d=1&e=True", nil)
 			})
 
 			It("parses 'true'", func() {
@@ -160,6 +160,10 @@ var _ = Describe("Request Helpers", func() {
 
 			It("parses '1'", func() {
 				Expect(ParamBool(r, "d", false)).To(BeTrue())
+			})
+
+			It("parses 'True'", func() {
+				Expect(ParamBool(r, "e", false)).To(BeTrue())
 			})
 		})
 
