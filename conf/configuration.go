@@ -2,6 +2,7 @@ package conf
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,6 +51,8 @@ type configOptions struct {
 	EnableLogRedacting     bool
 	AuthRequestLimit       int
 	AuthWindowLength       time.Duration
+	ReverseProxyUserHeader string
+	ReverseProxyWhitelist  string
 
 	Scanner scannerOptions
 
@@ -116,6 +119,11 @@ func Load() {
 	if err := validateScanSchedule(); err != nil {
 		os.Exit(1)
 	}
+
+	if Server.ReverseProxyUserHeader == "" {
+		Server.ReverseProxyUserHeader = "Remote-User"
+	}
+	Server.ReverseProxyUserHeader = http.CanonicalHeaderKey(Server.ReverseProxyUserHeader)
 
 	// Print current configuration if log level is Debug
 	if log.CurrentLevel() >= log.LevelDebug {

@@ -20,6 +20,8 @@ import (
 func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 	policy := bluemonday.UGCPolicy()
 	return func(w http.ResponseWriter, r *http.Request) {
+		payload, _ := handleLoginFromHeaders(ds, r)
+
 		base := path.Join(conf.Server.BaseURL, consts.URLPathUI)
 		if r.URL.Path == base {
 			http.Redirect(w, r, base+"/", http.StatusFound)
@@ -37,6 +39,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"version":                 consts.Version(),
 			"firstTime":               firstTime,
 			"baseURL":                 policy.Sanitize(strings.TrimSuffix(conf.Server.BaseURL, "/")),
+			"auth":                    payload,
 			"loginBackgroundURL":      policy.Sanitize(conf.Server.UILoginBackgroundURL),
 			"welcomeMessage":          policy.Sanitize(conf.Server.UIWelcomeMessage),
 			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,

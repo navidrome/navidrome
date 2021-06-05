@@ -2,8 +2,14 @@ package app
 
 import (
 	"context"
+	"crypto/md5"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -40,6 +46,56 @@ func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleLoginFromHeaders(ds model.DataStore, r *http.Request) (payload map[string]interface{}, err error) {
+	var errIPNotInWhitelist = errors.New("IP is not whitelisted for reverse proxy login")
+	if !validateIPAgainstList(r.RemoteAddr, conf.Server.ReverseProxyWhitelist) {
+		log.Info(errIPNotInWhitelist.Error(), "ip", r.RemoteAddr)
+		return payload, errIPNotInWhitelist
+	}
+
+	username := r.Header.Get(conf.Server.ReverseProxyUserHeader)
+
+	userRepo := ds.User(r.Context())
+	user, err := userRepo.FindByUsername(username)
+	if user == nil || err != nil {
+		log.Info("User passed in header not found", "user", username)
+		return payload, err
+	}
+
+	err = userRepo.UpdateLastLoginAt(user.ID)
+	if err != nil {
+		log.Error("Could not update LastLoginAt", "user", username)
+		return payload, err
+	}
+
+	tokenString, err := auth.CreateToken(user)
+	if err != nil {
+		log.Error("Could not create token", "user", username)
+		return payload, err
+	}
+
+	payload = buildPayload(user, tokenString)
+
+	bytes := make([]byte, 3)
+	_, err = rand.Read(bytes)
+	if err != nil {
+		log.Error("Could not create subsonic salt", "user", username)
+		return payload, err
+	}
+	salt := hex.EncodeToString(bytes)
+	payload["subsonicSalt"] = salt
+
+	h := md5.New()
+	_, err = io.WriteString(h, user.Password+salt)
+	if err != nil {
+		log.Error("Could not create subsonic token", "user", username)
+		return payload, err
+	}
+	payload["subsonicToken"] = hex.EncodeToString(h.Sum(nil))
+
+	return payload, nil
+}
+
 func handleLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
 	user, err := validateLogin(ds.User(r.Context()), username, password)
 	if err != nil {
@@ -57,18 +113,45 @@ func handleLogin(ds model.DataStore, username string, password string, w http.Re
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authenticating user. Please try again")
 		return
 	}
+	payload := buildPayload(user, tokenString)
+	_ = rest.RespondWithJSON(w, http.StatusOK, payload)
+}
+
+func buildPayload(user *model.User, tokenString string) map[string]interface{} {
 	payload := map[string]interface{}{
-		"message":  "User '" + username + "' authenticated successfully",
+		"message":  "User '" + user.UserName + "' authenticated successfully",
 		"token":    tokenString,
 		"id":       user.ID,
 		"name":     user.Name,
-		"username": username,
+		"username": user.UserName,
 		"isAdmin":  user.IsAdmin,
 	}
 	if conf.Server.EnableGravatar && user.Email != "" {
 		payload["avatar"] = gravatar.Url(user.Email, 50)
 	}
-	_ = rest.RespondWithJSON(w, http.StatusOK, payload)
+	return payload
+}
+
+func validateIPAgainstList(ip string, comaSeparatedList string) bool {
+	if comaSeparatedList == "" || ip == "" {
+		return false
+	}
+	ip = strings.Split(ip, ":")[0]
+	cidrs := strings.Split(comaSeparatedList, ",")
+	testedIP, _, err := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
+
+	if err != nil {
+		return false
+	}
+
+	for _, cidr := range cidrs {
+		_, ipnet, err := net.ParseCIDR(cidr)
+		if err == nil && ipnet.Contains(testedIP) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func getCredentialsFromBody(r *http.Request) (username string, password string, err error) {
