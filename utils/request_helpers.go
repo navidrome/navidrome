@@ -84,7 +84,7 @@ func ParamInts(r *http.Request, param string) []int {
 }
 
 func ParamBool(r *http.Request, param string, def bool) bool {
-	p := ParamString(r, param)
+	p := strings.ToLower(ParamString(r, param))
 	if p == "" {
 		return def
 	}
