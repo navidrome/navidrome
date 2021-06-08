@@ -14,12 +14,12 @@ const (
 	apiBaseUrl = "https://ws.audioscrobbler.com/2.0/"
 )
 
-type Error struct {
+type lastFMError struct {
 	Code    int
 	Message string
 }
 
-func (e *Error) Error() string {
+func (e *lastFMError) Error() string {
 	return fmt.Sprintf("last.fm error(%d): %s", e.Code, e.Message)
 }
 
@@ -67,7 +67,7 @@ func (c *Client) makeRequest(params url.Values) (*Response, error) {
 	}
 
 	if response.Error != 0 {
-		return &response, &Error{Code: response.Error, Message: response.Message}
+		return &response, &lastFMError{Code: response.Error, Message: response.Message}
 	}
 
 	return &response, nil

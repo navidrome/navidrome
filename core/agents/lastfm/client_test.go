@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/navidrome/navidrome/tests"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -51,7 +50,7 @@ var _ = Describe("Client", func() {
 			}
 
 			_, err := client.ArtistGetInfo(context.TODO(), "U2", "123")
-			Expect(err).To(MatchError(&Error{Code: 3, Message: "Invalid Method - No method with that name in this package"}))
+			Expect(err).To(MatchError(&lastFMError{Code: 3, Message: "Invalid Method - No method with that name in this package"}))
 		})
 
 		It("fails if Last.FM returns an error", func() {
@@ -61,7 +60,7 @@ var _ = Describe("Client", func() {
 			}
 
 			_, err := client.ArtistGetInfo(context.TODO(), "U2", "123")
-			Expect(err).To(MatchError(&Error{Code: 6, Message: "The artist you supplied could not be found"}))
+			Expect(err).To(MatchError(&lastFMError{Code: 6, Message: "The artist you supplied could not be found"}))
 		})
 
 		It("fails if HttpClient.Do() returns error", func() {
