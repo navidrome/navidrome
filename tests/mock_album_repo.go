@@ -6,11 +6,11 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func CreateMockAlbumRepo() *MockAlbum {
-	return &MockAlbum{}
+func CreateMockAlbumRepo() *MockAlbumRepo {
+	return &MockAlbumRepo{}
 }
 
-type MockAlbum struct {
+type MockAlbumRepo struct {
 	model.AlbumRepository
 	data    map[string]model.Album
 	all     model.Albums
@@ -18,11 +18,11 @@ type MockAlbum struct {
 	Options model.QueryOptions
 }
 
-func (m *MockAlbum) SetError(err bool) {
+func (m *MockAlbumRepo) SetError(err bool) {
 	m.err = err
 }
 
-func (m *MockAlbum) SetData(albums model.Albums) {
+func (m *MockAlbumRepo) SetData(albums model.Albums) {
 	m.data = make(map[string]model.Album)
 	m.all = albums
 	for _, a := range m.all {
@@ -30,7 +30,7 @@ func (m *MockAlbum) SetData(albums model.Albums) {
 	}
 }
 
-func (m *MockAlbum) Exists(id string) (bool, error) {
+func (m *MockAlbumRepo) Exists(id string) (bool, error) {
 	if m.err {
 		return false, errors.New("Error!")
 	}
@@ -38,7 +38,7 @@ func (m *MockAlbum) Exists(id string) (bool, error) {
 	return found, nil
 }
 
-func (m *MockAlbum) Get(id string) (*model.Album, error) {
+func (m *MockAlbumRepo) Get(id string) (*model.Album, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
@@ -48,7 +48,7 @@ func (m *MockAlbum) Get(id string) (*model.Album, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockAlbum) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
+func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	if len(qo) > 0 {
 		m.Options = qo[0]
 	}
@@ -58,7 +58,7 @@ func (m *MockAlbum) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	return m.all, nil
 }
 
-func (m *MockAlbum) FindByArtist(artistId string) (model.Albums, error) {
+func (m *MockAlbumRepo) FindByArtist(artistId string) (model.Albums, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
@@ -74,4 +74,4 @@ func (m *MockAlbum) FindByArtist(artistId string) (model.Albums, error) {
 	return res, nil
 }
 
-var _ model.AlbumRepository = (*MockAlbum)(nil)
+var _ model.AlbumRepository = (*MockAlbumRepo)(nil)

@@ -6,28 +6,28 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func CreateMockMediaFileRepo() *MockMediaFile {
-	return &MockMediaFile{}
+func CreateMockMediaFileRepo() *MockMediaFileRepo {
+	return &MockMediaFileRepo{}
 }
 
-type MockMediaFile struct {
+type MockMediaFileRepo struct {
 	model.MediaFileRepository
 	data map[string]model.MediaFile
 	err  bool
 }
 
-func (m *MockMediaFile) SetError(err bool) {
+func (m *MockMediaFileRepo) SetError(err bool) {
 	m.err = err
 }
 
-func (m *MockMediaFile) SetData(mfs model.MediaFiles) {
+func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
 	m.data = make(map[string]model.MediaFile)
 	for _, mf := range mfs {
 		m.data[mf.ID] = mf
 	}
 }
 
-func (m *MockMediaFile) Exists(id string) (bool, error) {
+func (m *MockMediaFileRepo) Exists(id string) (bool, error) {
 	if m.err {
 		return false, errors.New("Error!")
 	}
@@ -35,7 +35,7 @@ func (m *MockMediaFile) Exists(id string) (bool, error) {
 	return found, nil
 }
 
-func (m *MockMediaFile) Get(id string) (*model.MediaFile, error) {
+func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
@@ -45,7 +45,7 @@ func (m *MockMediaFile) Get(id string) (*model.MediaFile, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockMediaFile) FindByAlbum(artistId string) (model.MediaFiles, error) {
+func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
@@ -61,4 +61,4 @@ func (m *MockMediaFile) FindByAlbum(artistId string) (model.MediaFiles, error) {
 	return res, nil
 }
 
-var _ model.MediaFileRepository = (*MockMediaFile)(nil)
+var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)

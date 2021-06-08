@@ -22,7 +22,7 @@ var _ = Describe("Players", func() {
 
 	BeforeEach(func() {
 		repo = &mockPlayerRepository{}
-		ds := &tests.MockDataStore{MockedPlayer: repo, MockedTranscoding: &tests.MockTranscodingRepository{}}
+		ds := &tests.MockDataStore{MockedPlayer: repo, MockedTranscoding: &tests.MockTranscodingRepo{}}
 		players = NewPlayers(ds)
 		beforeRegister = time.Now()
 	})

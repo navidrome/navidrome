@@ -60,13 +60,16 @@ func (db *MockDataStore) PlayQueue(context.Context) model.PlayQueueRepository {
 
 func (db *MockDataStore) Property(context.Context) model.PropertyRepository {
 	if db.MockedProperty == nil {
-		db.MockedProperty = &mockedPropertyRepo{}
+		db.MockedProperty = &MockedPropertyRepo{}
 	}
 	return db.MockedProperty
 }
 
 func (db *MockDataStore) Share(context.Context) model.ShareRepository {
-	return struct{ model.ShareRepository }{}
+	if db.MockedShare == nil {
+		db.MockedShare = &MockShareRepo{}
+	}
+	return db.MockedShare
 }
 
 func (db *MockDataStore) User(context.Context) model.UserRepository {
