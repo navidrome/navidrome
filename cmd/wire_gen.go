@@ -31,7 +31,8 @@ func CreateServer(musicFolder string) *server.Server {
 func CreateAppRouter() *app.Router {
 	dataStore := persistence.New()
 	broker := GetBroker()
-	router := app.New(dataStore, broker)
+	share := core.NewShare(dataStore)
+	router := app.New(dataStore, broker, share)
 	return router
 }
 

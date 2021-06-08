@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
@@ -20,10 +21,11 @@ type Router struct {
 	ds     model.DataStore
 	mux    http.Handler
 	broker events.Broker
+	share  core.Share
 }
 
-func New(ds model.DataStore, broker events.Broker) *Router {
-	return &Router{ds: ds, broker: broker}
+func New(ds model.DataStore, broker events.Broker, share core.Share) *Router {
+	return &Router{ds: ds, broker: broker, share: share}
 }
 
 func (app *Router) Setup(path string) {
@@ -62,6 +64,7 @@ func (app *Router) routes(path string) http.Handler {
 		app.R(r, "/player", model.Player{}, true)
 		app.R(r, "/playlist", model.Playlist{}, true)
 		app.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
+		app.RX(r, "/share", app.share.NewRepository, true)
 		app.RX(r, "/translation", newTranslationRepository, false)
 
 		app.addPlaylistTrackRoute(r)
