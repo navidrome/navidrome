@@ -41,17 +41,14 @@ type shareRepositoryWrapper struct {
 func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	s := entity.(*model.Share)
 	id, err := gonanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 9)
-	s.Name = id
 	if err != nil {
 		return "", err
 	}
+	s.Name = id
 	id, err = r.Persistable.Save(s)
 	return id, err
 }
 
 func (r *shareRepositoryWrapper) Update(entity interface{}, _ ...string) error {
-	s := entity.(*model.Share)
-	cols := []string{"description"}
-	err := r.Persistable.Update(s, cols...)
-	return err
+	return r.Persistable.Update(entity, "description")
 }
