@@ -46,11 +46,10 @@ func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleLoginFromHeaders(ds model.DataStore, r *http.Request) (payload map[string]interface{}, err error) {
-	var errIPNotInWhitelist = errors.New("IP is not whitelisted for reverse proxy login")
+func handleLoginFromHeaders(ds model.DataStore, r *http.Request) *map[string]interface{} {
 	if !validateIPAgainstList(r.RemoteAddr, conf.Server.ReverseProxyWhitelist) {
-		log.Info(errIPNotInWhitelist.Error(), "ip", r.RemoteAddr)
-		return payload, errIPNotInWhitelist
+		log.Warn("Ip is not whitelisted for reverse proxy login", "ip", r.RemoteAddr)
+		return nil
 	}
 
 	username := r.Header.Get(conf.Server.ReverseProxyUserHeader)
@@ -58,29 +57,29 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) (payload map[st
 	userRepo := ds.User(r.Context())
 	user, err := userRepo.FindByUsername(username)
 	if user == nil || err != nil {
-		log.Info("User passed in header not found", "user", username)
-		return payload, err
+		log.Warn("User passed in header not found", "user", username)
+		return nil
 	}
 
 	err = userRepo.UpdateLastLoginAt(user.ID)
 	if err != nil {
-		log.Error("Could not update LastLoginAt", "user", username)
-		return payload, err
+		log.Error("Could not update LastLoginAt", "user", username, err)
+		return nil
 	}
 
 	tokenString, err := auth.CreateToken(user)
 	if err != nil {
-		log.Error("Could not create token", "user", username)
-		return payload, err
+		log.Error("Could not create token", "user", username, err)
+		return nil
 	}
 
-	payload = buildPayload(user, tokenString)
+	payload := buildPayload(user, tokenString)
 
 	bytes := make([]byte, 3)
 	_, err = rand.Read(bytes)
 	if err != nil {
-		log.Error("Could not create subsonic salt", "user", username)
-		return payload, err
+		log.Error("Could not create subsonic salt", "user", username, err)
+		return nil
 	}
 	salt := hex.EncodeToString(bytes)
 	payload["subsonicSalt"] = salt
@@ -88,12 +87,12 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) (payload map[st
 	h := md5.New()
 	_, err = io.WriteString(h, user.Password+salt)
 	if err != nil {
-		log.Error("Could not create subsonic token", "user", username)
-		return payload, err
+		log.Error("Could not create subsonic token", "user", username, err)
+		return nil
 	}
 	payload["subsonicToken"] = hex.EncodeToString(h.Sum(nil))
 
-	return payload, nil
+	return &payload
 }
 
 func handleLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
@@ -136,7 +135,15 @@ func validateIPAgainstList(ip string, comaSeparatedList string) bool {
 	if comaSeparatedList == "" || ip == "" {
 		return false
 	}
-	ip = strings.Split(ip, ":")[0]
+
+	if net.ParseIP(ip) == nil {
+		ip, _, _ = net.SplitHostPort(ip)
+	}
+
+	if ip == "" {
+		return false
+	}
+
 	cidrs := strings.Split(comaSeparatedList, ",")
 	testedIP, _, err := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
 

@@ -2,7 +2,6 @@ package conf
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -120,11 +119,6 @@ func Load() {
 		os.Exit(1)
 	}
 
-	if Server.ReverseProxyUserHeader == "" {
-		Server.ReverseProxyUserHeader = "Remote-User"
-	}
-	Server.ReverseProxyUserHeader = http.CanonicalHeaderKey(Server.ReverseProxyUserHeader)
-
 	// Print current configuration if log level is Debug
 	if log.CurrentLevel() >= log.LevelDebug {
 		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
@@ -208,6 +202,8 @@ func init() {
 	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
+
+	viper.SetDefault("reverseproxyuserheader", "Remote-User")
 
 	viper.SetDefault("scanner.extractor", "taglib")
 	viper.SetDefault("agents", "lastfm,spotify")

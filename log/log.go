@@ -21,8 +21,10 @@ var redacted = &Hook{
 	RedactionList: []string{
 		// Keys from the config
 		"(ApiKey:\")[\\w]*",
+		"(Salt:\"?)[\\w]*",
 		"(Secret:\")[\\w]*",
 		"(Spotify.*ID:\")[\\w]*",
+		"(Token:\"?)[\\w]*",
 
 		// Subsonic query params
 		"([^\\w]t=)[\\w]+",
