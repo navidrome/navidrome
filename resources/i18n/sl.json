@@ -96,9 +96,9 @@
                 "name": "Sprememba imena bo vidna pri naslednjem vpisu"
             },
             "notifications": {
-                "created": "",
-                "updated": "",
-                "deleted": ""
+                "created": "Uporabnik ustvarjen",
+                "updated": "Uporabnik posodobljen",
+                "deleted": "Uporabnik izbrisan"
             }
         },
         "player": {
@@ -173,7 +173,7 @@
             "email": "Veljaven e-poštni naslov",
             "oneOf": "Mora biti ena izmed %{options}",
             "regex": "Mora se ujemati z določeno obliko (regexp): %{pattern}",
-            "unique": ""
+            "unique": "Mora biti edinstven"
         },
         "action": {
             "add_filter": "Dodaj filter",
@@ -278,6 +278,12 @@
             "i18n_error": "Ne uspem naložiti prevode za izbran jezik",
             "canceled": "Akcija preklicana",
             "logged_out": "Seja je potekla, prosim povežite se ponovno."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Prikaži stolpce",
+            "layout": "Razporeditev",
+            "grid": "Mreža",
+            "table": "Tabela"
         }
     },
     "message": {
