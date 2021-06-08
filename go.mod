@@ -28,7 +28,7 @@ require (
 	github.com/kr/pretty v0.2.1
 	github.com/lestrrat-go/jwx v1.2.0
 	github.com/lib/pq v1.10.2 // indirect
-	github.com/matoous/go-nanoid v1.5.0 // indirect
+	github.com/matoous/go-nanoid v1.5.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/microcosm-cc/bluemonday v1.0.9
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
