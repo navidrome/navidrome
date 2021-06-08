@@ -51,7 +51,7 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 
 func (r *shareRepositoryWrapper) Update(entity interface{}, _ ...string) error {
 	s := entity.(*model.Share)
-	cols := []string{"description", "last_visited_at", "visit_count"}
+	cols := []string{"description"}
 	err := r.Persistable.Update(s, cols...)
 	return err
 }
