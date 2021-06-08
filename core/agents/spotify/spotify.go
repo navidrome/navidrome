@@ -1,4 +1,4 @@
-package agents
+package spotify
 
 import (
 	"context"
@@ -9,9 +9,10 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/spotify"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/xrash/smetrics"
 )
 
@@ -21,17 +22,17 @@ type spotifyAgent struct {
 	ctx    context.Context
 	id     string
 	secret string
-	client *spotify.Client
+	client *Client
 }
 
-func spotifyConstructor(ctx context.Context) Interface {
+func spotifyConstructor(ctx context.Context) agents.Interface {
 	l := &spotifyAgent{
 		ctx:    ctx,
 		id:     conf.Server.Spotify.ID,
 		secret: conf.Server.Spotify.Secret,
 	}
-	hc := NewCachedHTTPClient(http.DefaultClient, consts.DefaultCachedHttpClientTTL)
-	l.client = spotify.NewClient(l.id, l.secret, hc)
+	hc := utils.NewCachedHTTPClient(http.DefaultClient, consts.DefaultCachedHttpClientTTL)
+	l.client = NewClient(l.id, l.secret, hc)
 	return l
 }
 
@@ -39,7 +40,7 @@ func (s *spotifyAgent) AgentName() string {
 	return spotifyAgentName
 }
 
-func (s *spotifyAgent) GetImages(id, name, mbid string) ([]ArtistImage, error) {
+func (s *spotifyAgent) GetImages(id, name, mbid string) ([]agents.ArtistImage, error) {
 	a, err := s.searchArtist(name)
 	if err != nil {
 		if err == model.ErrNotFound {
@@ -50,9 +51,9 @@ func (s *spotifyAgent) GetImages(id, name, mbid string) ([]ArtistImage, error) {
 		return nil, err
 	}
 
-	var res []ArtistImage
+	var res []agents.ArtistImage
 	for _, img := range a.Images {
-		res = append(res, ArtistImage{
+		res = append(res, agents.ArtistImage{
 			URL:  img.URL,
 			Size: img.Width,
 		})
@@ -60,7 +61,7 @@ func (s *spotifyAgent) GetImages(id, name, mbid string) ([]ArtistImage, error) {
 	return res, nil
 }
 
-func (s *spotifyAgent) searchArtist(name string) (*spotify.Artist, error) {
+func (s *spotifyAgent) searchArtist(name string) (*Artist, error) {
 	artists, err := s.client.SearchArtists(s.ctx, name, 40)
 	if err != nil || len(artists) == 0 {
 		return nil, model.ErrNotFound
@@ -84,7 +85,7 @@ func (s *spotifyAgent) searchArtist(name string) (*spotify.Artist, error) {
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.Spotify.ID != "" && conf.Server.Spotify.Secret != "" {
-			Register(spotifyAgentName, spotifyConstructor)
+			agents.Register(spotifyAgentName, spotifyConstructor)
 		}
 	})
 }

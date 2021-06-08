@@ -1,4 +1,4 @@
-package agents
+package lastfm
 
 import (
 	"bytes"
@@ -8,10 +8,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/lastfm"
-
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -44,7 +43,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := lastfm.NewClient("API_KEY", "pt", httpClient)
+			client := NewClient("API_KEY", "pt", httpClient)
 			agent = lastFMConstructor(context.TODO()).(*lastfmAgent)
 			agent.client = client
 		})
@@ -102,7 +101,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := lastfm.NewClient("API_KEY", "pt", httpClient)
+			client := NewClient("API_KEY", "pt", httpClient)
 			agent = lastFMConstructor(context.TODO()).(*lastfmAgent)
 			agent.client = client
 		})
@@ -110,7 +109,7 @@ var _ = Describe("lastfmAgent", func() {
 		It("returns similar artists", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			Expect(agent.GetSimilar("123", "U2", "mbid-1234", 2)).To(Equal([]Artist{
+			Expect(agent.GetSimilar("123", "U2", "mbid-1234", 2)).To(Equal([]agents.Artist{
 				{Name: "Passengers", MBID: "e110c11f-1c94-4471-a350-c38f46b29389"},
 				{Name: "INXS", MBID: "481bf5f9-2e7c-4c44-b08a-05b32bc7c00d"},
 			}))
@@ -163,7 +162,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := lastfm.NewClient("API_KEY", "pt", httpClient)
+			client := NewClient("API_KEY", "pt", httpClient)
 			agent = lastFMConstructor(context.TODO()).(*lastfmAgent)
 			agent.client = client
 		})
@@ -171,7 +170,7 @@ var _ = Describe("lastfmAgent", func() {
 		It("returns top songs", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			Expect(agent.GetTopSongs("123", "U2", "mbid-1234", 2)).To(Equal([]Song{
+			Expect(agent.GetTopSongs("123", "U2", "mbid-1234", 2)).To(Equal([]agents.Song{
 				{Name: "Beautiful Day", MBID: "f7f264d0-a89b-4682-9cd7-a4e7c37637af"},
 				{Name: "With or Without You", MBID: "6b9a509f-6907-4a6e-9345-2f12da09ba4b"},
 			}))
