@@ -13,8 +13,8 @@ import (
 
 const (
 	lastFMAgentName = "lastfm"
-	lastFMAPIKey    = "c2918986bf01b6ba353c0bc1bdd27bea"
-	//lastFMAPISecret = "3ff2aa214a6d8f2242515083bbb70e79" // Will be needed when implementing Scrobbling
+	lastFMAPIKey    = "9b94a5515ea66b2da3ec03c12300327e"
+	//lastFMAPISecret = "74cb6557cec7171d921af5d7d887c587" // Will be needed when implementing Scrobbling
 )
 
 type lastfmAgent struct {
