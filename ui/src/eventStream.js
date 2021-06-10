@@ -52,17 +52,15 @@ const setDispatch = (dispatchFunc) => {
   dispatch = dispatchFunc
 }
 
-const eventHandler = throttle(
-  (event) => {
-    const data = JSON.parse(event.data)
-    if (data.name !== 'keepAlive') {
-      dispatch(processEvent(data.name, data))
-    }
-    setTimeout(defaultIntervalCheck) // Reset timeout on every received message
-  },
-  100,
-  { trailing: true }
-)
+const eventHandler = (event) => {
+  const data = JSON.parse(event.data)
+  if (event.type !== 'keepAlive') {
+    dispatch(processEvent(event.type, data))
+  }
+  setTimeout(defaultIntervalCheck) // Reset timeout on every received message
+}
+
+const throttledEventHandler = throttle(eventHandler, 100, { trailing: true })
 
 const startEventStream = async () => {
   setTimeout(currentIntervalCheck)
@@ -72,7 +70,10 @@ const startEventStream = async () => {
   }
   return getEventStream()
     .then((newStream) => {
-      newStream.onmessage = eventHandler
+      newStream.addEventListener('serverStart', eventHandler)
+      newStream.addEventListener('scanStatus', throttledEventHandler)
+      newStream.addEventListener('refreshResource', eventHandler)
+      newStream.addEventListener('keepAlive', eventHandler)
       newStream.onerror = (e) => {
         console.log('EventStream error', e)
         setTimeout(reconnectIntervalCheck)

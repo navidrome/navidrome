@@ -18,6 +18,7 @@ import {
   SongTitleField,
   SongSimpleList,
   RatingField,
+  useResourceRefresh,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { makeStyles } from '@material-ui/core/styles'
@@ -71,6 +72,7 @@ const SongList = (props) => {
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  useResourceRefresh('song')
 
   const handleRowClick = (id, basePath, record) => {
     dispatch(setTrack(record))

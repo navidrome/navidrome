@@ -18,6 +18,7 @@ import {
   QuickFilter,
   Title,
   useAlbumsPerPage,
+  useResourceRefresh,
   useSetToggleableFields,
 } from '../common'
 import AlbumListActions from './AlbumListActions'
@@ -71,6 +72,7 @@ const AlbumList = (props) => {
   const albumView = useSelector((state) => state.albumView)
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
+  useResourceRefresh('album')
 
   const albumListType = location.pathname
     .replace(/^\/album/, '')

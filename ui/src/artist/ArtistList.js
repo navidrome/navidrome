@@ -20,6 +20,7 @@ import {
   ArtistSimpleList,
   RatingField,
   useSelectedFields,
+  useResourceRefresh,
 } from '../common'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
@@ -66,6 +67,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  useResourceRefresh('artist')
 
   const toggleableFields = useMemo(() => {
     return {

@@ -8,8 +8,10 @@ import (
 var _ = Describe("Event", func() {
 	It("marshals Event to JSON", func() {
 		testEvent := TestEvent{Test: "some data"}
-		json := testEvent.Prepare(&testEvent)
-		Expect(json).To(Equal(`{"name":"testEvent","Test":"some data"}`))
+		data := testEvent.Data(&testEvent)
+		Expect(data).To(Equal(`{"Test":"some data"}`))
+		name := testEvent.Name(&testEvent)
+		Expect(name).To(Equal("testEvent"))
 	})
 })
 
