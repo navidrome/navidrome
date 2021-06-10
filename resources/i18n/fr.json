@@ -23,7 +23,7 @@
                 "comment": "Commentaire",
                 "rating": "Classement",
                 "quality": "Qualité",
-                "bpm": ""
+                "bpm": "BPM"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -90,15 +90,15 @@
                 "createdAt": "Créé le",
                 "changePassword": "Changer le mot de passe ?",
                 "currentPassword": "Mot de passe actuel",
-                "newPassword": ""
+                "newPassword": "Nouveau mot de passe"
             },
             "helperTexts": {
                 "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion"
             },
             "notifications": {
-                "created": "",
-                "updated": "",
-                "deleted": ""
+                "created": "Utilisateur créé",
+                "updated": "Utilisateur mis à jour",
+                "deleted": "Utilisateur supprimé"
             }
         },
         "player": {
@@ -173,7 +173,7 @@
             "email": "Doit être un e-mail",
             "oneOf": "Doit être au choix : %{options}",
             "regex": "Doit respecter un format spécifique (regexp) : %{pattern}",
-            "unique": ""
+            "unique": "Doit être unique"
         },
         "action": {
             "add_filter": "Ajouter un filtre",
@@ -280,10 +280,10 @@
             "logged_out": "Votre session a pris fin, veuillez vous reconnecter."
         },
         "toggleFieldsMenu": {
-            "columnsToDisplay": "",
-            "layout": "",
-            "grid": "",
-            "table": ""
+            "columnsToDisplay": "Colonnes à afficher",
+            "layout": "Mise en page",
+            "grid": "Grille",
+            "table": "Table"
         }
     },
     "message": {
