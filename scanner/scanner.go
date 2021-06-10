@@ -35,7 +35,8 @@ var (
 )
 
 type FolderScanner interface {
-	Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) error
+	// Scan process finds any changes after `lastModifiedSince` and returns the number of changes found
+	Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) (int64, error)
 }
 
 var isScanning utils.AtomicBool
@@ -89,9 +90,15 @@ func (s *scanner) rescan(ctx context.Context, mediaFolder string, fullRescan boo
 	progress, cancel := s.startProgressTracker(mediaFolder)
 	defer cancel()
 
-	err := folderScanner.Scan(ctx, lastModifiedSince, progress)
+	changeCount, err := folderScanner.Scan(ctx, lastModifiedSince, progress)
 	if err != nil {
 		log.Error("Error importing MediaFolder", "folder", mediaFolder, err)
+	}
+
+	if changeCount > 0 {
+		log.Debug(ctx, "Detected changes in the music folder. Sending refresh event",
+			"folder", mediaFolder, "changeCount", changeCount)
+		s.broker.SendMessage(&events.RefreshResource{})
 	}
 
 	s.updateLastModifiedSince(mediaFolder, start)
