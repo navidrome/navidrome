@@ -24,6 +24,7 @@ import {
   SongTitleField,
   QualityInfo,
   useSelectedFields,
+  useResourceRefresh,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import { AlbumLinkField } from '../song/AlbumLinkField'
@@ -91,6 +92,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const refresh = useRefresh()
   const notify = useNotify()
   const version = useVersion()
+  useResourceRefresh('song', 'playlist')
 
   const onAddToPlaylist = useCallback(
     (pls) => {

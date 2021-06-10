@@ -34,7 +34,8 @@ func initAlbumListController(router *Router) *AlbumListController {
 func initMediaAnnotationController(router *Router) *MediaAnnotationController {
 	dataStore := router.DataStore
 	nowPlaying := core.NewNowPlayingRepository()
-	mediaAnnotationController := NewMediaAnnotationController(dataStore, nowPlaying)
+	broker := router.Broker
+	mediaAnnotationController := NewMediaAnnotationController(dataStore, nowPlaying, broker)
 	return mediaAnnotationController
 }
 
@@ -95,5 +96,5 @@ var allProviders = wire.NewSet(
 	NewMediaRetrievalController,
 	NewStreamController,
 	NewBookmarksController,
-	NewLibraryScanningController, core.NewNowPlayingRepository, wire.FieldsOf(new(*Router), "DataStore", "Artwork", "Streamer", "Archiver", "ExternalMetadata", "Scanner"),
+	NewLibraryScanningController, core.NewNowPlayingRepository, wire.FieldsOf(new(*Router), "DataStore", "Artwork", "Streamer", "Archiver", "ExternalMetadata", "Scanner", "Broker"),
 )

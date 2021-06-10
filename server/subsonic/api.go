@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
@@ -30,12 +31,13 @@ type Router struct {
 	Players          core.Players
 	ExternalMetadata core.ExternalMetadata
 	Scanner          scanner.Scanner
+	Broker           events.Broker
 
 	mux http.Handler
 }
 
 func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver, players core.Players,
-	externalMetadata core.ExternalMetadata, scanner scanner.Scanner) *Router {
+	externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker) *Router {
 	r := &Router{
 		DataStore:        ds,
 		Artwork:          artwork,
@@ -44,6 +46,7 @@ func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, 
 		Players:          players,
 		ExternalMetadata: externalMetadata,
 		Scanner:          scanner,
+		Broker:           broker,
 	}
 	r.mux = r.routes()
 	return r
