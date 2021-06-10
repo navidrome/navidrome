@@ -47,7 +47,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	players := core.NewPlayers(dataStore)
 	externalMetadata := core.NewExternalMetadata(dataStore)
 	scanner := GetScanner()
-	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalMetadata, scanner)
+	broker := GetBroker()
+	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker)
 	return router
 }
 
@@ -73,7 +74,7 @@ func createScheduler() scheduler.Scheduler {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, subsonic.New, app.New, persistence.New)
+var allProviders = wire.NewSet(core.Set, subsonic.New, app.New, persistence.New, GetBroker)
 
 // Scanner must be a Singleton
 var (
