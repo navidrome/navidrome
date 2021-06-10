@@ -51,28 +51,30 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 }
 
 func (c *MediaAnnotationController) setRating(ctx context.Context, id string, rating int) error {
-	var exist bool
-	var err error
+	var repo model.AnnotatedRepository
+	var resource string
 
-	if exist, err = c.ds.Artist(ctx).Exists(id); err != nil {
-		return err
-	} else if exist {
-		err = c.ds.Artist(ctx).SetRating(rating, id)
-		c.broker.SendMessage(&events.RefreshResource{Resource: "artist"})
+	entity, err := core.GetEntityByID(ctx, c.ds, id)
+	if err != nil {
 		return err
 	}
-
-	if exist, err = c.ds.Album(ctx).Exists(id); err != nil {
-		return err
-	} else if exist {
-		err = c.ds.Album(ctx).SetRating(rating, id)
-		c.broker.SendMessage(&events.RefreshResource{Resource: "album"})
+	switch entity.(type) {
+	case *model.Artist:
+		repo = c.ds.Artist(ctx)
+		resource = "artist"
+	case *model.Album:
+		repo = c.ds.Album(ctx)
+		resource = "album"
+	default:
+		repo = c.ds.MediaFile(ctx)
+		resource = "song"
+	}
+	err = repo.SetRating(rating, id)
+	if err != nil {
 		return err
 	}
-
-	err = c.ds.MediaFile(ctx).SetRating(rating, id)
-	c.broker.SendMessage(&events.RefreshResource{Resource: "song"})
-	return err
+	c.broker.SendMessage(&events.RefreshResource{Resource: resource})
+	return nil
 }
 
 func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
