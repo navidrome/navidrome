@@ -14,28 +14,30 @@ import (
 const (
 	lastFMAgentName = "lastfm"
 	lastFMAPIKey    = "9b94a5515ea66b2da3ec03c12300327e"
-	//lastFMAPISecret = "74cb6557cec7171d921af5d7d887c587" // Will be needed when implementing Scrobbling
+	lastFMAPISecret = "74cb6557cec7171d921af5d7d887c587" // nolint:gosec
 )
 
 type lastfmAgent struct {
 	ctx    context.Context
 	apiKey string
+	secret string
 	lang   string
 	client *Client
 }
 
 func lastFMConstructor(ctx context.Context) agents.Interface {
 	l := &lastfmAgent{
-		ctx:  ctx,
-		lang: conf.Server.LastFM.Language,
+		ctx:    ctx,
+		lang:   conf.Server.LastFM.Language,
+		apiKey: lastFMAPIKey,
+		secret: lastFMAPISecret,
 	}
 	if conf.Server.LastFM.ApiKey != "" {
 		l.apiKey = conf.Server.LastFM.ApiKey
-	} else {
-		l.apiKey = lastFMAPIKey
+		l.secret = conf.Server.LastFM.Secret
 	}
 	hc := utils.NewCachedHTTPClient(http.DefaultClient, consts.DefaultCachedHttpClientTTL)
-	l.client = NewClient(l.apiKey, l.lang, hc)
+	l.client = NewClient(l.apiKey, l.secret, l.lang, hc)
 	return l
 }
 

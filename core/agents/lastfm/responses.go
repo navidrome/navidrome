@@ -6,6 +6,8 @@ type Response struct {
 	TopTracks      TopTracks      `json:"toptracks"`
 	Error          int            `json:"error"`
 	Message        string         `json:"message"`
+	Token          string         `json:"token"`
+	Session        Session        `json:"session"`
 }
 
 type Artist struct {
@@ -58,4 +60,10 @@ type Track struct {
 type TopTracks struct {
 	Track []Track `json:"track"`
 	Attr  Attr    `json:"@attr"`
+}
+
+type Session struct {
+	Name       string `json:"name"`
+	Key        string `json:"key"`
+	Subscriber int    `json:"subscriber"`
 }
