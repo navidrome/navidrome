@@ -24,7 +24,7 @@ var _ = Describe("lastfmAgent", func() {
 	Describe("lastFMConstructor", func() {
 		It("uses default api key and language if not configured", func() {
 			conf.Server.LastFM.ApiKey = ""
-			agent := lastFMConstructor(context.TODO())
+			agent := lastFMConstructor(context.Background())
 			Expect(agent.(*lastfmAgent).apiKey).To(Equal(lastFMAPIKey))
 			Expect(agent.(*lastfmAgent).lang).To(Equal("en"))
 		})
@@ -32,7 +32,7 @@ var _ = Describe("lastfmAgent", func() {
 		It("uses configured api key and language", func() {
 			conf.Server.LastFM.ApiKey = "123"
 			conf.Server.LastFM.Language = "pt"
-			agent := lastFMConstructor(context.TODO())
+			agent := lastFMConstructor(context.Background())
 			Expect(agent.(*lastfmAgent).apiKey).To(Equal("123"))
 			Expect(agent.(*lastfmAgent).lang).To(Equal("pt"))
 		})
@@ -43,8 +43,8 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := NewClient("API_KEY", "pt", httpClient)
-			agent = lastFMConstructor(context.TODO()).(*lastfmAgent)
+			client := NewClient("API_KEY", "SECRET", "pt", httpClient)
+			agent = lastFMConstructor(context.Background()).(*lastfmAgent)
 			agent.client = client
 		})
 
@@ -101,8 +101,8 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := NewClient("API_KEY", "pt", httpClient)
-			agent = lastFMConstructor(context.TODO()).(*lastfmAgent)
+			client := NewClient("API_KEY", "SECRET", "pt", httpClient)
+			agent = lastFMConstructor(context.Background()).(*lastfmAgent)
 			agent.client = client
 		})
 
@@ -162,8 +162,8 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := NewClient("API_KEY", "pt", httpClient)
-			agent = lastFMConstructor(context.TODO()).(*lastfmAgent)
+			client := NewClient("API_KEY", "SECRET", "pt", httpClient)
+			agent = lastFMConstructor(context.Background()).(*lastfmAgent)
 			agent.client = client
 		})
 
