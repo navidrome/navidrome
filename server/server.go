@@ -8,8 +8,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/ui"
@@ -49,6 +51,8 @@ func (a *Server) Run(addr string) error {
 }
 
 func (a *Server) initRoutes() {
+	auth.Init(a.ds)
+
 	r := chi.NewRouter()
 
 	r.Use(secureMiddleware())
@@ -61,6 +65,21 @@ func (a *Server) initRoutes() {
 	r.Use(injectLogger)
 	r.Use(requestLogger)
 	r.Use(robotsTXT(ui.Assets()))
+	r.Use(mapAuthHeader())
+	r.Use(verifier())
+
+	if conf.Server.AuthRequestLimit > 0 {
+		log.Info("Login rate limit set", "requestLimit", conf.Server.AuthRequestLimit,
+			"windowLength", conf.Server.AuthWindowLength)
+
+		rateLimiter := httprate.LimitByIP(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
+		r.With(rateLimiter).Post("/login", Login(a.ds))
+	} else {
+		log.Warn("Login rate limit is disabled! Consider enabling it to be protected against brute-force attacks")
+
+		r.Post("/login", Login(a.ds))
+	}
+	r.Post("/createAdmin", CreateAdmin(a.ds))
 
 	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI)
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {

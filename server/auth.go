@@ -1,4 +1,4 @@
-package app
+package server
 
 import (
 	"context"
@@ -279,9 +279,7 @@ func verifier() func(http.Handler) http.Handler {
 	}
 }
 
-func authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
-	auth.Init(ds)
-
+func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, err := getToken(ds, r.Context())

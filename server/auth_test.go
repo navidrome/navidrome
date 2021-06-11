@@ -1,4 +1,4 @@
-package app
+package server
 
 import (
 	"context"
@@ -9,10 +9,9 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-
-	"github.com/navidrome/navidrome/consts"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

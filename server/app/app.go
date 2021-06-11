@@ -8,11 +8,10 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/httprate"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/ui"
 )
@@ -39,24 +38,8 @@ func (app *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (app *Router) routes(path string) http.Handler {
 	r := chi.NewRouter()
 
-	if conf.Server.AuthRequestLimit > 0 {
-		log.Info("Login rate limit set", "requestLimit", conf.Server.AuthRequestLimit,
-			"windowLength", conf.Server.AuthWindowLength)
-
-		rateLimiter := httprate.LimitByIP(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
-		r.With(rateLimiter).Post("/login", Login(app.ds))
-	} else {
-		log.Warn("Login rate limit is disabled! Consider enabling it to be protected against brute-force attacks")
-
-		r.Post("/login", Login(app.ds))
-	}
-
-	r.Post("/createAdmin", CreateAdmin(app.ds))
-
 	r.Route("/api", func(r chi.Router) {
-		r.Use(mapAuthHeader())
-		r.Use(verifier())
-		r.Use(authenticator(app.ds))
+		r.Use(server.Authenticator(app.ds))
 		app.R(r, "/user", model.User{}, true)
 		app.R(r, "/song", model.MediaFile{}, true)
 		app.R(r, "/album", model.Album{}, true)
