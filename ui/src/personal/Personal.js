@@ -5,6 +5,8 @@ import { SelectLanguage } from './SelectLanguage'
 import { SelectTheme } from './SelectTheme'
 import { SelectDefaultView } from './SelectDefaultView'
 import { NotificationsToggle } from './NotificationsToggle'
+import { ScrobbleToggle } from './ScrobbleToggle'
+import config from '../config'
 
 const useStyles = makeStyles({
   root: { marginTop: '1em' },
@@ -22,6 +24,7 @@ const Personal = () => {
         <SelectLanguage />
         <SelectDefaultView />
         <NotificationsToggle />
+        {config.devEnableScrobble && <ScrobbleToggle />}
       </SimpleForm>
     </Card>
   )
