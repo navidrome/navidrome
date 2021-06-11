@@ -199,6 +199,16 @@ var _ = Describe("serveIndex", func() {
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("devEnableShare", false))
 	})
+
+	It("sets the devEnableScrobble", func() {
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devEnableScrobble", false))
+	})
 })
 
 var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__="([^"]*)`)

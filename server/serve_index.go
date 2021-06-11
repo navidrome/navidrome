@@ -44,6 +44,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 			"enableUserEditing":       conf.Server.EnableUserEditing,
 			"devEnableShare":          conf.Server.DevEnableShare,
+			"devEnableScrobble":       conf.Server.DevEnableScrobble,
 		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {

@@ -19,6 +19,7 @@ const defaultConfig = {
   defaultTheme: 'Dark',
   enableUserEditing: true,
   devEnableShare: true,
+  devEnableScrobble: true,
 }
 
 let config
