@@ -5,6 +5,22 @@ import { baseUrl } from './utils'
 import config from './config'
 import { startEventStream, stopEventStream } from './eventStream'
 
+if (config.auth) {
+  try {
+    jwtDecode(config.auth.token)
+    localStorage.setItem('token', config.auth.token)
+    localStorage.setItem('userId', config.auth.id)
+    localStorage.setItem('name', config.auth.name)
+    localStorage.setItem('username', config.auth.username)
+    config.auth.avatar && config.auth.setItem('avatar', config.auth.avatar)
+    localStorage.setItem('role', config.auth.isAdmin ? 'admin' : 'regular')
+    localStorage.setItem('subsonic-salt', config.auth.subsonicSalt)
+    localStorage.setItem('subsonic-token', config.auth.subsonicToken)
+  } catch (e) {
+    console.log(e)
+  }
+}
+
 const authProvider = {
   login: ({ username, password }) => {
     let url = baseUrl('/app/login')

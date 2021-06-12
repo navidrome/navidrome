@@ -51,6 +51,10 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"enableUserEditing":       conf.Server.EnableUserEditing,
 			"devEnableShare":          conf.Server.DevEnableShare,
 		}
+		auth := handleLoginFromHeaders(ds, r)
+		if auth != nil {
+			appConfig["auth"] = *auth
+		}
 		j, err := json.Marshal(appConfig)
 		if err != nil {
 			log.Error(r, "Error converting config to JSON", "config", appConfig, err)
