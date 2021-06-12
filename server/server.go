@@ -62,7 +62,7 @@ func (a *Server) initRoutes() {
 	r.Use(authHeaderMapper)
 	r.Use(jwtVerifier)
 
-	r.Route("/auth", func(r chi.Router) {
+	r.Route(path.Join(conf.Server.BaseURL, "/auth"), func(r chi.Router) {
 		if conf.Server.AuthRequestLimit > 0 {
 			log.Info("Login rate limit set", "requestLimit", conf.Server.AuthRequestLimit,
 				"windowLength", conf.Server.AuthWindowLength)
@@ -86,7 +86,7 @@ func (a *Server) initRoutes() {
 		http.Redirect(w, r, appRoot+"/", 302)
 	})
 	r.Handle(appRoot+"/", serveIndex(a.ds, ui.Assets()))
-	r.Handle(appRoot+"/*", http.StripPrefix(consts.URLPathUI, http.FileServer(http.FS(ui.Assets()))))
+	r.Handle(appRoot+"/*", http.StripPrefix(appRoot, http.FileServer(http.FS(ui.Assets()))))
 
 	a.router = r
 }
