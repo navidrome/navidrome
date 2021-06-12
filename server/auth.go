@@ -31,9 +31,7 @@ var (
 	ErrFirstTime = errors.New("no users created")
 )
 
-func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
-	auth.Init(ds)
-
+func login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
 		if err != nil {
@@ -42,7 +40,7 @@ func Login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		handleLogin(ds, username, password, w, r)
+		doLogin(ds, username, password, w, r)
 	}
 }
 
@@ -95,7 +93,7 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) *map[string]int
 	return &payload
 }
 
-func handleLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
+func doLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
 	user, err := validateLogin(ds.User(r.Context()), username, password)
 	if err != nil {
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authentication user. Please try again")
@@ -174,7 +172,7 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 	return username, password, nil
 }
 
-func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
+func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 	auth.Init(ds)
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +196,7 @@ func CreateAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		handleLogin(ds, username, password, w, r)
+		doLogin(ds, username, password, w, r)
 	}
 }
 
@@ -263,20 +261,16 @@ func getToken(ds model.DataStore, ctx context.Context) (jwt.Token, error) {
 }
 
 // This method maps the custom authorization header to the default 'Authorization', used by the jwtauth library
-func mapAuthHeader() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			bearer := r.Header.Get(consts.UIAuthorizationHeader)
-			r.Header.Set("Authorization", bearer)
-			next.ServeHTTP(w, r)
-		})
-	}
+func authHeaderMapper(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bearer := r.Header.Get(consts.UIAuthorizationHeader)
+		r.Header.Set("Authorization", bearer)
+		next.ServeHTTP(w, r)
+	})
 }
 
-func verifier() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return jwtauth.Verify(auth.TokenAuth, jwtauth.TokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
-	}
+func jwtVerifier(next http.Handler) http.Handler {
+	return jwtauth.Verify(auth.TokenAuth, jwtauth.TokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
 }
 
 func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {

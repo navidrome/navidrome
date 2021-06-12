@@ -13,58 +13,45 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
-	"github.com/navidrome/navidrome/ui"
 )
 
 type Router struct {
+	http.Handler
 	ds     model.DataStore
-	mux    http.Handler
 	broker events.Broker
 	share  core.Share
 }
 
 func New(ds model.DataStore, broker events.Broker, share core.Share) *Router {
-	return &Router{ds: ds, broker: broker, share: share}
+	r := &Router{ds: ds, broker: broker, share: share}
+	r.Handler = r.routes()
+	return r
 }
 
-func (app *Router) Setup(path string) {
-	app.mux = app.routes(path)
-}
-
-func (app *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	app.mux.ServeHTTP(w, r)
-}
-
-func (app *Router) routes(path string) http.Handler {
+func (app *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
-	r.Route("/api", func(r chi.Router) {
-		r.Use(server.Authenticator(app.ds))
-		app.R(r, "/user", model.User{}, true)
-		app.R(r, "/song", model.MediaFile{}, true)
-		app.R(r, "/album", model.Album{}, true)
-		app.R(r, "/artist", model.Artist{}, true)
-		app.R(r, "/player", model.Player{}, true)
-		app.R(r, "/playlist", model.Playlist{}, true)
-		app.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
-		app.RX(r, "/share", app.share.NewRepository, true)
-		app.RX(r, "/translation", newTranslationRepository, false)
+	r.Use(server.Authenticator(app.ds))
+	app.R(r, "/user", model.User{}, true)
+	app.R(r, "/song", model.MediaFile{}, true)
+	app.R(r, "/album", model.Album{}, true)
+	app.R(r, "/artist", model.Artist{}, true)
+	app.R(r, "/player", model.Player{}, true)
+	app.R(r, "/playlist", model.Playlist{}, true)
+	app.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
+	app.RX(r, "/share", app.share.NewRepository, true)
+	app.RX(r, "/translation", newTranslationRepository, false)
 
-		app.addPlaylistTrackRoute(r)
+	app.addPlaylistTrackRoute(r)
 
-		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
-		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
-		})
-
-		if conf.Server.DevActivityPanel {
-			r.Handle("/events", app.broker)
-		}
+	// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
+	r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
 	})
 
-	// Serve UI app assets
-	r.Handle("/", serveIndex(app.ds, ui.Assets()))
-	r.Handle("/*", http.StripPrefix(path, http.FileServer(http.FS(ui.Assets()))))
+	if conf.Server.DevActivityPanel {
+		r.Handle("/events", app.broker)
+	}
 
 	return r
 }
@@ -92,8 +79,6 @@ func (app *Router) RX(r chi.Router, pathPrefix string, constructor rest.Reposito
 		})
 	})
 }
-
-type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
 
 func (app *Router) addPlaylistTrackRoute(r chi.Router) {
 	r.Route("/playlist/{playlistId}/tracks", func(r chi.Router) {

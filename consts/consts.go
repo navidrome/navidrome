@@ -22,6 +22,7 @@ const (
 	DevInitialName     = "Dev Admin"
 
 	URLPathUI          = "/app"
+	URLPathNativeAPI   = URLPathUI + "/api"
 	URLPathSubsonicAPI = "/rest"
 
 	// Login backgrounds from https://unsplash.com/collections/20072696/navidrome

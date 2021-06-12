@@ -17,7 +17,7 @@ import (
 )
 
 var _ = Describe("Auth", func() {
-	Describe("Public functions", func() {
+	Describe("User login", func() {
 		var ds model.DataStore
 		var req *http.Request
 		var resp *httptest.ResponseRecorder
@@ -26,11 +26,11 @@ var _ = Describe("Auth", func() {
 			ds = &tests.MockDataStore{}
 		})
 
-		Describe("CreateAdmin", func() {
+		Describe("createAdmin", func() {
 			BeforeEach(func() {
 				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
-				CreateAdmin(ds)(resp, req)
+				createAdmin(ds)(resp, req)
 			})
 
 			It("creates an admin user with the specified password", func() {
@@ -132,14 +132,14 @@ var _ = Describe("Auth", func() {
 			})
 
 		})
-		Describe("Login", func() {
+		Describe("login", func() {
 			BeforeEach(func() {
 				req = httptest.NewRequest("POST", "/login", strings.NewReader(`{"username":"janedoe", "password":"abc123"}`))
 				resp = httptest.NewRecorder()
 			})
 
 			It("fails if user does not exist", func() {
-				Login(ds)(resp, req)
+				login(ds)(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusUnauthorized))
 			})
 
@@ -147,7 +147,7 @@ var _ = Describe("Auth", func() {
 				usr := ds.User(context.TODO())
 				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
 
-				Login(ds)(resp, req)
+				login(ds)(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusOK))
 
 				var parsed map[string]interface{}
@@ -161,13 +161,13 @@ var _ = Describe("Auth", func() {
 		})
 	})
 
-	Describe("mapAuthHeader", func() {
+	Describe("authHeaderMapper", func() {
 		It("maps the custom header to Authorization header", func() {
 			r := httptest.NewRequest("GET", "/index.html", nil)
 			r.Header.Set(consts.UIAuthorizationHeader, "test authorization bearer")
 			w := httptest.NewRecorder()
 
-			mapAuthHeader()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeaderMapper(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				Expect(r.Header.Get("Authorization")).To(Equal("test authorization bearer"))
 				w.WriteHeader(200)
 			})).ServeHTTP(w, r)

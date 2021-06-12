@@ -23,9 +23,9 @@ if (config.auth) {
 
 const authProvider = {
   login: ({ username, password }) => {
-    let url = baseUrl('/login')
+    let url = baseUrl('/auth/login')
     if (config.firstTime) {
-      url = baseUrl('/createAdmin')
+      url = baseUrl('/auth/createAdmin')
     }
     const request = new Request(url, {
       method: 'POST',
