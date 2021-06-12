@@ -22,6 +22,7 @@ import {
   RatingField,
 } from '../common'
 import config from '../config'
+import { Anchorme } from 'react-anchorme'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -85,6 +86,10 @@ const useStyles = makeStyles(
     recordName: {},
     recordArtist: {},
     recordMeta: {},
+    commentLink:{
+       color:"white",
+       textDecoration:"none"
+    }
   }),
   {
     name: 'NDAlbumDetails',
@@ -208,11 +213,11 @@ const AlbumDetails = ({ record }) => {
                 />
               </div>
             )}
-            {isDesktop && record['comment'] && <AlbumComment record={record} />}
+            {isDesktop && record['comment'] && <Anchorme target="_blank" className={classes.commentLink}>{record.comment}</Anchorme>}
           </CardContent>
         </div>
       </div>
-      {!isDesktop && record['comment'] && <AlbumComment record={record} />}
+      {!isDesktop && record['comment'] && <Anchorme target="_blank" className={classes.commentLink}>{record.comment}</Anchorme> }
       {isLightboxOpen && (
         <Lightbox
           imagePadding={50}
