@@ -16,6 +16,8 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
+type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
+
 func getPlaylist(ds model.DataStore) http.HandlerFunc {
 	// Add a middleware to capture the playlistId
 	wrapper := func(handler restHandler) http.HandlerFunc {

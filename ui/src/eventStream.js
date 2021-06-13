@@ -15,9 +15,11 @@ const getEventStream = async () => {
   if (!es) {
     // Call `keepalive` to refresh the jwt token
     await httpClient(`${REST_URL}/keepalive/keepalive`)
-    es = new EventSource(
-      baseUrl(`${REST_URL}/events?jwt=${localStorage.getItem('token')}`)
-    )
+    let url = baseUrl(`${REST_URL}/events`)
+    if (localStorage.getItem('token')) {
+      url = url + `?jwt=${localStorage.getItem('token')}`
+    }
+    es = new EventSource(url)
   }
   return es
 }
@@ -64,7 +66,7 @@ const throttledEventHandler = throttle(eventHandler, 100, { trailing: true })
 
 const startEventStream = async () => {
   setTimeout(currentIntervalCheck)
-  if (!localStorage.getItem('token')) {
+  if (!localStorage.getItem('is-authenticated')) {
     console.log('Cannot create a unauthenticated EventSource connection')
     return Promise.reject()
   }

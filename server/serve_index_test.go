@@ -1,4 +1,4 @@
-package app
+package server
 
 import (
 	"encoding/json"
@@ -25,16 +25,6 @@ var _ = Describe("serveIndex", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{MockedUser: mockUser}
 		conf.Server.UILoginBackgroundURL = ""
-	})
-
-	It("redirects bare /app path to /app/", func() {
-		r := httptest.NewRequest("GET", "/app", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs)(w, r)
-
-		Expect(w.Code).To(Equal(302))
-		Expect(w.Header().Get("Location")).To(Equal("/app/"))
 	})
 
 	It("adds app_config to index.html", func() {

@@ -8,17 +8,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/ui"
 )
-
-type Handler interface {
-	http.Handler
-	Setup(path string)
-}
 
 type Server struct {
 	router *chi.Mux
@@ -34,10 +31,9 @@ func New(ds model.DataStore) *Server {
 	return a
 }
 
-func (a *Server) MountRouter(description, urlPath string, subRouter Handler) {
+func (a *Server) MountRouter(description, urlPath string, subRouter http.Handler) {
 	urlPath = path.Join(conf.Server.BaseURL, urlPath)
 	log.Info(fmt.Sprintf("Mounting %s routes", description), "path", urlPath)
-	subRouter.Setup(urlPath)
 	a.router.Group(func(r chi.Router) {
 		r.Mount(urlPath, subRouter)
 	})
@@ -49,6 +45,8 @@ func (a *Server) Run(addr string) error {
 }
 
 func (a *Server) initRoutes() {
+	auth.Init(a.ds)
+
 	r := chi.NewRouter()
 
 	r.Use(secureMiddleware())
@@ -61,11 +59,34 @@ func (a *Server) initRoutes() {
 	r.Use(injectLogger)
 	r.Use(requestLogger)
 	r.Use(robotsTXT(ui.Assets()))
+	r.Use(authHeaderMapper)
+	r.Use(jwtVerifier)
 
-	indexHtml := path.Join(conf.Server.BaseURL, consts.URLPathUI)
-	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, indexHtml, 302)
+	r.Route(path.Join(conf.Server.BaseURL, "/auth"), func(r chi.Router) {
+		if conf.Server.AuthRequestLimit > 0 {
+			log.Info("Login rate limit set", "requestLimit", conf.Server.AuthRequestLimit,
+				"windowLength", conf.Server.AuthWindowLength)
+
+			rateLimiter := httprate.LimitByIP(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
+			r.With(rateLimiter).Post("/login", login(a.ds))
+		} else {
+			log.Warn("Login rate limit is disabled! Consider enabling it to be protected against brute-force attacks")
+
+			r.Post("/login", login(a.ds))
+		}
+		r.Post("/createAdmin", createAdmin(a.ds))
 	})
+
+	// Serve UI app assets
+	appRoot := path.Join(conf.Server.BaseURL, consts.URLPathUI)
+	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, appRoot+"/", 302)
+	})
+	r.Get(appRoot, func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, appRoot+"/", 302)
+	})
+	r.Handle(appRoot+"/", serveIndex(a.ds, ui.Assets()))
+	r.Handle(appRoot+"/*", http.StripPrefix(appRoot, http.FileServer(http.FS(ui.Assets()))))
 
 	a.router = r
 }
