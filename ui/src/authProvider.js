@@ -1,24 +1,29 @@
 import jwtDecode from 'jwt-decode'
-import md5 from 'blueimp-md5'
-import { v4 as uuidv4 } from 'uuid'
 import { baseUrl } from './utils'
 import config from './config'
 import { startEventStream, stopEventStream } from './eventStream'
 
+// config sent from server may contain authentication info, for example when the user is authenticated
+// by a reverse proxy request header
 if (config.auth) {
   try {
-    jwtDecode(config.auth.token)
-    localStorage.setItem('token', config.auth.token)
-    localStorage.setItem('userId', config.auth.id)
-    localStorage.setItem('name', config.auth.name)
-    localStorage.setItem('username', config.auth.username)
-    config.auth.avatar && config.auth.setItem('avatar', config.auth.avatar)
-    localStorage.setItem('role', config.auth.isAdmin ? 'admin' : 'regular')
-    localStorage.setItem('subsonic-salt', config.auth.subsonicSalt)
-    localStorage.setItem('subsonic-token', config.auth.subsonicToken)
+    storeAuthenticationInfo(config.auth)
   } catch (e) {
     console.log(e)
   }
+}
+
+function storeAuthenticationInfo(authInfo) {
+  jwtDecode(authInfo.token) // Validate token
+  authInfo.token && localStorage.setItem('token', authInfo.token)
+  localStorage.setItem('userId', authInfo.id)
+  localStorage.setItem('name', authInfo.name)
+  localStorage.setItem('username', authInfo.username)
+  authInfo.avatar && localStorage.setItem('avatar', authInfo.avatar)
+  localStorage.setItem('role', authInfo.isAdmin ? 'admin' : 'regular')
+  localStorage.setItem('subsonic-salt', authInfo.subsonicSalt)
+  localStorage.setItem('subsonic-token', authInfo.subsonicToken)
+  localStorage.setItem('is-authenticated', 'true')
 }
 
 const authProvider = {
@@ -40,22 +45,8 @@ const authProvider = {
         return response.json()
       })
       .then((response) => {
-        // Validate token
-        jwtDecode(response.token)
-        // TODO Store all items in one object
-        localStorage.setItem('token', response.token)
-        localStorage.setItem('userId', response.id)
-        localStorage.setItem('name', response.name)
-        localStorage.setItem('username', response.username)
-        response.avatar && localStorage.setItem('avatar', response.avatar)
-        localStorage.setItem('role', response.isAdmin ? 'admin' : 'regular')
-        const salt = generateSubsonicSalt()
-        localStorage.setItem('subsonic-salt', salt)
-        localStorage.setItem(
-          'subsonic-token',
-          generateSubsonicToken(password, salt)
-        )
-        // Avoid going to create admin dialog after logout/login without a refresh
+        storeAuthenticationInfo(response)
+        // Avoid "going to create admin" dialog after logout/login without a refresh
         config.firstTime = false
         if (config.devActivityPanel) {
           startEventStream()
@@ -86,7 +77,9 @@ const authProvider = {
   },
 
   checkAuth: () =>
-    localStorage.getItem('token') ? Promise.resolve() : Promise.reject(),
+    localStorage.getItem('is-authenticated')
+      ? Promise.resolve()
+      : Promise.reject(),
 
   checkError: ({ status }) => {
     if (status === 401) {
@@ -119,6 +112,7 @@ const removeItems = () => {
   localStorage.removeItem('role')
   localStorage.removeItem('subsonic-salt')
   localStorage.removeItem('subsonic-token')
+  localStorage.removeItem('is-authenticated')
 }
 
 const clearServiceWorkerCache = () => {
@@ -126,15 +120,6 @@ const clearServiceWorkerCache = () => {
     caches.keys().then(function (keyList) {
       for (let key of keyList) caches.delete(key)
     })
-}
-
-const generateSubsonicSalt = () => {
-  const h = md5(uuidv4())
-  return h.slice(0, 6)
-}
-
-const generateSubsonicToken = (password, salt) => {
-  return md5(password + salt)
 }
 
 export default authProvider
