@@ -32,6 +32,7 @@ func (app *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(server.Authenticator(app.ds))
+	r.Use(server.JWTRefresher)
 	app.R(r, "/user", model.User{}, true)
 	app.R(r, "/song", model.MediaFile{}, true)
 	app.R(r, "/album", model.Album{}, true)

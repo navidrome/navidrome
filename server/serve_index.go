@@ -47,7 +47,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {
-			appConfig["auth"] = *auth
+			appConfig["auth"] = auth
 		}
 		j, err := json.Marshal(appConfig)
 		if err != nil {
