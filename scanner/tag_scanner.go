@@ -376,7 +376,12 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 func (s *TagScanner) withAdminUser(ctx context.Context) context.Context {
 	u, err := s.ds.User(ctx).FindFirstAdmin()
 	if err != nil {
-		log.Warn(ctx, "No admin user found!", err)
+		c, err := s.ds.User(ctx).CountAll()
+		if c == 0 && err == nil {
+			log.Debug(ctx, "Scanner: No admin user yet!", err)
+		} else {
+			log.Error(ctx, "Scanner: No admin user found!", err)
+		}
 		u = &model.User{}
 	}
 
