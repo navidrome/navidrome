@@ -14,7 +14,6 @@ if (config.auth) {
 }
 
 function storeAuthenticationInfo(authInfo) {
-  jwtDecode(authInfo.token) // Validate token
   authInfo.token && localStorage.setItem('token', authInfo.token)
   localStorage.setItem('userId', authInfo.id)
   localStorage.setItem('name', authInfo.name)
@@ -45,6 +44,7 @@ const authProvider = {
         return response.json()
       })
       .then((response) => {
+        jwtDecode(response.token) // Validate token
         storeAuthenticationInfo(response)
         // Avoid "going to create admin" dialog after logout/login without a refresh
         config.firstTime = false

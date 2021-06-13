@@ -60,14 +60,13 @@ func doLogin(ds model.DataStore, username string, password string, w http.Respon
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authenticating user. Please try again")
 		return
 	}
-	payload := buildAuthPayload(user, tokenString)
-	payload["message"] = "User '" + user.UserName + "' authenticated successfully"
+	payload := buildAuthPayload(user)
+	payload["token"] = tokenString
 	_ = rest.RespondWithJSON(w, http.StatusOK, payload)
 }
 
-func buildAuthPayload(user *model.User, tokenString string) map[string]interface{} {
+func buildAuthPayload(user *model.User) map[string]interface{} {
 	payload := map[string]interface{}{
-		"token":    tokenString,
 		"id":       user.ID,
 		"name":     user.Name,
 		"username": user.UserName,
@@ -297,13 +296,7 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 		return nil
 	}
 
-	tokenString, err := auth.CreateToken(user)
-	if err != nil {
-		log.Error(r, "Could not create token", "user", username, err)
-		return nil
-	}
-
-	return buildAuthPayload(user, tokenString)
+	return buildAuthPayload(user)
 }
 
 func validateIPAgainstList(ip string, comaSeparatedList string) bool {

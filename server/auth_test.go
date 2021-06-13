@@ -124,13 +124,14 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["isAdmin"]).To(BeFalse())
 				Expect(parsed["name"]).To(Equal("Jane"))
 				Expect(parsed["username"]).To(Equal("janedoe"))
-				Expect(parsed["token"]).ToNot(BeEmpty())
 				Expect(parsed["subsonicSalt"]).ToNot(BeEmpty())
 				Expect(parsed["subsonicToken"]).ToNot(BeEmpty())
 				salt := parsed["subsonicSalt"].(string)
 				token := fmt.Sprintf("%x", md5.Sum([]byte("abc123"+salt)))
 				Expect(parsed["subsonicToken"]).To(Equal(token))
 
+				// Request Header authentication should not generate a JWT token
+				Expect(parsed).ToNot(HaveKey("token"))
 			})
 
 		})
