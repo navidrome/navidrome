@@ -1,4 +1,4 @@
-package app
+package nativeapi
 
 import (
 	"context"
@@ -28,22 +28,22 @@ func New(ds model.DataStore, broker events.Broker, share core.Share) *Router {
 	return r
 }
 
-func (app *Router) routes() http.Handler {
+func (n *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
-	r.Use(server.Authenticator(app.ds))
+	r.Use(server.Authenticator(n.ds))
 	r.Use(server.JWTRefresher)
-	app.R(r, "/user", model.User{}, true)
-	app.R(r, "/song", model.MediaFile{}, true)
-	app.R(r, "/album", model.Album{}, true)
-	app.R(r, "/artist", model.Artist{}, true)
-	app.R(r, "/player", model.Player{}, true)
-	app.R(r, "/playlist", model.Playlist{}, true)
-	app.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
-	app.RX(r, "/share", app.share.NewRepository, true)
-	app.RX(r, "/translation", newTranslationRepository, false)
+	n.R(r, "/user", model.User{}, true)
+	n.R(r, "/song", model.MediaFile{}, true)
+	n.R(r, "/album", model.Album{}, true)
+	n.R(r, "/artist", model.Artist{}, true)
+	n.R(r, "/player", model.Player{}, true)
+	n.R(r, "/playlist", model.Playlist{}, true)
+	n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
+	n.RX(r, "/share", n.share.NewRepository, true)
+	n.RX(r, "/translation", newTranslationRepository, false)
 
-	app.addPlaylistTrackRoute(r)
+	n.addPlaylistTrackRoute(r)
 
 	// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 	r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
@@ -51,20 +51,20 @@ func (app *Router) routes() http.Handler {
 	})
 
 	if conf.Server.DevActivityPanel {
-		r.Handle("/events", app.broker)
+		r.Handle("/events", n.broker)
 	}
 
 	return r
 }
 
-func (app *Router) R(r chi.Router, pathPrefix string, model interface{}, persistable bool) {
+func (n *Router) R(r chi.Router, pathPrefix string, model interface{}, persistable bool) {
 	constructor := func(ctx context.Context) rest.Repository {
-		return app.ds.Resource(ctx, model)
+		return n.ds.Resource(ctx, model)
 	}
-	app.RX(r, pathPrefix, constructor, persistable)
+	n.RX(r, pathPrefix, constructor, persistable)
 }
 
-func (app *Router) RX(r chi.Router, pathPrefix string, constructor rest.RepositoryConstructor, persistable bool) {
+func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.RepositoryConstructor, persistable bool) {
 	r.Route(pathPrefix, func(r chi.Router) {
 		r.Get("/", rest.GetAll(constructor))
 		if persistable {
@@ -81,22 +81,22 @@ func (app *Router) RX(r chi.Router, pathPrefix string, constructor rest.Reposito
 	})
 }
 
-func (app *Router) addPlaylistTrackRoute(r chi.Router) {
+func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 	r.Route("/playlist/{playlistId}/tracks", func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			getPlaylist(app.ds)(w, r)
+			getPlaylist(n.ds)(w, r)
 		})
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(urlParams)
 			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
-				reorderItem(app.ds)(w, r)
+				reorderItem(n.ds)(w, r)
 			})
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				deleteFromPlaylist(app.ds)(w, r)
+				deleteFromPlaylist(n.ds)(w, r)
 			})
 		})
 		r.With(urlParams).Post("/", func(w http.ResponseWriter, r *http.Request) {
-			addToPlaylist(app.ds)(w, r)
+			addToPlaylist(n.ds)(w, r)
 		})
 	})
 }
