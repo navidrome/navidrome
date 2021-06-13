@@ -83,7 +83,7 @@ func (a *archiver) createHeader(idx int, mf model.MediaFile) *zip.FileHeader {
 func (a *archiver) createPlaylistHeader(idx int, mf model.MediaFile) *zip.FileHeader {
 	_, file := filepath.Split(mf.Path)
 	return &zip.FileHeader{
-		Name:     fmt.Sprintf("%d - %s-%s", idx, mf.AlbumArtist, file),
+		Name:     fmt.Sprintf("%d - %s - %s", idx+1, mf.AlbumArtist, file),
 		Modified: mf.UpdatedAt,
 		Method:   zip.Store,
 	}

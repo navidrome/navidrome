@@ -21,6 +21,7 @@ var allProviders = wire.NewSet(
 	subsonic.New,
 	app.New,
 	persistence.New,
+	GetBroker,
 )
 
 func CreateServer(musicFolder string) *server.Server {
@@ -33,7 +34,6 @@ func CreateServer(musicFolder string) *server.Server {
 func CreateAppRouter() *app.Router {
 	panic(wire.Build(
 		allProviders,
-		GetBroker,
 	))
 }
 
@@ -60,7 +60,6 @@ func GetScanner() scanner.Scanner {
 func createScanner() scanner.Scanner {
 	panic(wire.Build(
 		allProviders,
-		GetBroker,
 		scanner.New,
 	))
 }

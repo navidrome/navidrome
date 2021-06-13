@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/go-diodes"
@@ -26,12 +27,15 @@ const (
 )
 
 var (
+	eventId         uint32
 	errWriteTimeOut = errors.New("write timeout")
 )
 
 type (
 	message struct {
-		Data string
+		ID    uint32
+		Event string
+		Data  string
 	}
 	messageChan chan message
 	clientsChan chan client
@@ -81,7 +85,9 @@ func (b *broker) SendMessage(evt Event) {
 
 func (b *broker) prepareMessage(event Event) message {
 	msg := message{}
-	msg.Data = event.Prepare(event)
+	msg.ID = atomic.AddUint32(&eventId, 1)
+	msg.Data = event.Data(event)
+	msg.Event = event.Name(event)
 	return msg
 }
 
@@ -90,7 +96,7 @@ func writeEvent(w io.Writer, event message, timeout time.Duration) (err error) {
 	flusher, _ := w.(http.Flusher)
 	complete := make(chan struct{}, 1)
 	go func() {
-		_, err = fmt.Fprintf(w, "data: %s\n\n", event.Data)
+		_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.ID, event.Event, event.Data)
 		// Flush the data immediately instead of buffering it for later.
 		flusher.Flush()
 		complete <- struct{}{}

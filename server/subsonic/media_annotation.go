@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
@@ -17,10 +18,11 @@ import (
 type MediaAnnotationController struct {
 	ds     model.DataStore
 	npRepo core.NowPlaying
+	broker events.Broker
 }
 
-func NewMediaAnnotationController(ds model.DataStore, npr core.NowPlaying) *MediaAnnotationController {
-	return &MediaAnnotationController{ds: ds, npRepo: npr}
+func NewMediaAnnotationController(ds model.DataStore, npr core.NowPlaying, broker events.Broker) *MediaAnnotationController {
+	return &MediaAnnotationController{ds: ds, npRepo: npr, broker: broker}
 }
 
 func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -49,22 +51,30 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 }
 
 func (c *MediaAnnotationController) setRating(ctx context.Context, id string, rating int) error {
-	var exist bool
-	var err error
+	var repo model.AnnotatedRepository
+	var resource string
 
-	if exist, err = c.ds.Artist(ctx).Exists(id); err != nil {
+	entity, err := core.GetEntityByID(ctx, c.ds, id)
+	if err != nil {
 		return err
-	} else if exist {
-		return c.ds.Artist(ctx).SetRating(rating, id)
 	}
-
-	if exist, err = c.ds.Album(ctx).Exists(id); err != nil {
+	switch entity.(type) {
+	case *model.Artist:
+		repo = c.ds.Artist(ctx)
+		resource = "artist"
+	case *model.Album:
+		repo = c.ds.Album(ctx)
+		resource = "album"
+	default:
+		repo = c.ds.MediaFile(ctx)
+		resource = "song"
+	}
+	err = repo.SetRating(rating, id)
+	if err != nil {
 		return err
-	} else if exist {
-		return c.ds.Album(ctx).SetRating(rating, id)
 	}
-
-	return c.ds.MediaFile(ctx).SetRating(rating, id)
+	c.broker.SendMessage(&events.RefreshResource{Resource: resource})
+	return nil
 }
 
 func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -166,6 +176,7 @@ func (c *MediaAnnotationController) scrobblerRegister(ctx context.Context, playe
 	if err != nil {
 		log.Error("Error while scrobbling", "trackId", trackId, "user", username, err)
 	} else {
+		c.broker.SendMessage(&events.RefreshResource{})
 		log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
 	}
 
@@ -209,6 +220,7 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 				if err != nil {
 					return err
 				}
+				c.broker.SendMessage(&events.RefreshResource{Resource: "album"})
 				continue
 			}
 			exist, err = tx.Artist(ctx).Exists(id)
@@ -220,12 +232,14 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 				if err != nil {
 					return err
 				}
+				c.broker.SendMessage(&events.RefreshResource{Resource: "artist"})
 				continue
 			}
 			err = tx.MediaFile(ctx).SetStar(star, ids...)
 			if err != nil {
 				return err
 			}
+			c.broker.SendMessage(&events.RefreshResource{})
 		}
 		return nil
 	})

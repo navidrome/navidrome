@@ -6,28 +6,28 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func CreateMockArtistRepo() *MockArtist {
-	return &MockArtist{}
+func CreateMockArtistRepo() *MockArtistRepo {
+	return &MockArtistRepo{}
 }
 
-type MockArtist struct {
+type MockArtistRepo struct {
 	model.ArtistRepository
 	data map[string]model.Artist
 	err  bool
 }
 
-func (m *MockArtist) SetError(err bool) {
+func (m *MockArtistRepo) SetError(err bool) {
 	m.err = err
 }
 
-func (m *MockArtist) SetData(artists model.Artists) {
+func (m *MockArtistRepo) SetData(artists model.Artists) {
 	m.data = make(map[string]model.Artist)
 	for _, a := range artists {
 		m.data[a.ID] = a
 	}
 }
 
-func (m *MockArtist) Exists(id string) (bool, error) {
+func (m *MockArtistRepo) Exists(id string) (bool, error) {
 	if m.err {
 		return false, errors.New("Error!")
 	}
@@ -35,7 +35,7 @@ func (m *MockArtist) Exists(id string) (bool, error) {
 	return found, nil
 }
 
-func (m *MockArtist) Get(id string) (*model.Artist, error) {
+func (m *MockArtistRepo) Get(id string) (*model.Artist, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
@@ -45,4 +45,4 @@ func (m *MockArtist) Get(id string) (*model.Artist, error) {
 	return nil, model.ErrNotFound
 }
 
-var _ model.ArtistRepository = (*MockArtist)(nil)
+var _ model.ArtistRepository = (*MockArtistRepo)(nil)

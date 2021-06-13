@@ -18,6 +18,7 @@ import {
   Writable,
   isWritable,
   useSelectedFields,
+  useResourceRefresh,
 } from '../common'
 import PlaylistListActions from './PlaylistListActions'
 
@@ -66,6 +67,7 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
 const PlaylistList = ({ permissions, ...props }) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  useResourceRefresh('playlist')
 
   const toggleableFields = useMemo(() => {
     return {

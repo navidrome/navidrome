@@ -9,16 +9,18 @@ import (
 )
 
 type Event interface {
-	Prepare(Event) string
+	Name(Event) string
+	Data(Event) string
 }
 
-type baseEvent struct {
-	Name string `json:"name"`
-}
+type baseEvent struct{}
 
-func (e *baseEvent) Prepare(evt Event) string {
+func (e *baseEvent) Name(evt Event) string {
 	str := strings.TrimPrefix(reflect.TypeOf(evt).String(), "*events.")
-	e.Name = str[:0] + string(unicode.ToLower(rune(str[0]))) + str[1:]
+	return str[:0] + string(unicode.ToLower(rune(str[0]))) + str[1:]
+}
+
+func (e *baseEvent) Data(evt Event) string {
 	data, _ := json.Marshal(evt)
 	return string(data)
 }
@@ -33,6 +35,11 @@ type ScanStatus struct {
 type KeepAlive struct {
 	baseEvent
 	TS int64 `json:"ts"`
+}
+
+type RefreshResource struct {
+	baseEvent
+	Resource string `json:"resource"`
 }
 
 type ServerStart struct {
