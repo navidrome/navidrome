@@ -204,6 +204,7 @@ func init() {
 	viper.SetDefault("authwindowlength", 20*time.Second)
 
 	viper.SetDefault("reverseproxyuserheader", "Remote-User")
+	viper.SetDefault("reverseproxywhitelist", "")
 
 	viper.SetDefault("scanner.extractor", "taglib")
 	viper.SetDefault("agents", "lastfm,spotify")
