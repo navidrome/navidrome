@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo"
@@ -24,6 +27,7 @@ var _ = Describe("Auth", func() {
 
 		BeforeEach(func() {
 			ds = &tests.MockDataStore{}
+			auth.Init(ds)
 		})
 
 		Describe("createAdmin", func() {
@@ -34,7 +38,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("creates an admin user with the specified password", func() {
-				usr := ds.User(context.TODO())
+				usr := ds.User(context.Background())
 				u, err := usr.FindByUsername("johndoe")
 				Expect(err).To(BeNil())
 				Expect(u.Password).ToNot(BeEmpty())
@@ -56,6 +60,8 @@ var _ = Describe("Auth", func() {
 			fs := os.DirFS("tests/fixtures")
 
 			BeforeEach(func() {
+				usr := ds.User(context.Background())
+				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
 				req = httptest.NewRequest("GET", "/index.html", nil)
 				req.Header.Add("Remote-User", "janedoe")
 				resp = httptest.NewRecorder()
@@ -64,9 +70,6 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv4 matches whitelist", func() {
-				usr := ds.User(context.TODO())
-				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
-
 				req.RemoteAddr = "192.168.0.42:25293"
 				serveIndex(ds, fs)(resp, req)
 
@@ -77,9 +80,6 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv4 does not match whitelist", func() {
-				usr := ds.User(context.TODO())
-				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
-
 				req.RemoteAddr = "8.8.8.8:25293"
 				serveIndex(ds, fs)(resp, req)
 
@@ -88,9 +88,6 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv6 matches whitelist", func() {
-				usr := ds.User(context.TODO())
-				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
-
 				req.RemoteAddr = "[2001:4860:4860:1234:5678:0000:4242:8888]:25293"
 				serveIndex(ds, fs)(resp, req)
 
@@ -101,10 +98,15 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv6 does not match whitelist", func() {
-				usr := ds.User(context.TODO())
-				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
-
 				req.RemoteAddr = "[5005:0:3003]:25293"
+				serveIndex(ds, fs)(resp, req)
+
+				config := extractAppConfig(resp.Body.String())
+				Expect(config["auth"]).To(BeNil())
+			})
+
+			It("sets no auth data if user does not exist", func() {
+				req.Header.Set("Remote-User", "INVALID_USER")
 				serveIndex(ds, fs)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -113,10 +115,6 @@ var _ = Describe("Auth", func() {
 
 			It("sets auth data if user exists", func() {
 				req.RemoteAddr = "192.168.0.42:25293"
-
-				usr := ds.User(context.TODO())
-				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
-
 				serveIndex(ds, fs)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -129,6 +127,10 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["token"]).ToNot(BeEmpty())
 				Expect(parsed["subsonicSalt"]).ToNot(BeEmpty())
 				Expect(parsed["subsonicToken"]).ToNot(BeEmpty())
+				salt := parsed["subsonicSalt"].(string)
+				token := fmt.Sprintf("%x", md5.Sum([]byte("abc123"+salt)))
+				Expect(parsed["subsonicToken"]).To(Equal(token))
+
 			})
 
 		})
@@ -144,7 +146,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("logs in successfully if user exists", func() {
-				usr := ds.User(context.TODO())
+				usr := ds.User(context.Background())
 				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
 
 				login(ds)(resp, req)
