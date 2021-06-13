@@ -254,15 +254,6 @@ func validateLoginLDAP(userRepo model.UserRepository, userName, password string)
 	return u, nil
 }
 
-func contextWithUser(ctx context.Context, ds model.DataStore, username string) (context.Context, error) {
-	user, err := ds.User(ctx).FindByUsername(username)
-	if err != nil {
-		log.Error(ctx, "Authenticated username not found in DB", "username", username)
-		return ctx, err
-	}
-	return request.WithUser(ctx, *user), nil
-}
-
 // This method maps the custom authorization header to the default 'Authorization', used by the jwtauth library
 func authHeaderMapper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -301,14 +292,16 @@ func UsernameFromReverseProxyHeader(r *http.Request) string {
 	return username
 }
 
-func authenticateRequest(ds model.DataStore, r *http.Request, findUsernameFns ...func(r *http.Request) string) (context.Context, error) {
-	ctx := r.Context()
-	c, err := ds.User(ctx).CountAll()
-	firstTime := c == 0 && err == nil
-	if firstTime {
-		return nil, ErrNoUsers
+func contextWithUser(ctx context.Context, ds model.DataStore, username string) (context.Context, error) {
+	user, err := ds.User(ctx).FindByUsername(username)
+	if err == nil {
+		return request.WithUser(ctx, *user), nil
 	}
+	log.Error(ctx, "Authenticated username not found in DB", "username", username)
+	return ctx, err
+}
 
+func authenticateRequest(ds model.DataStore, r *http.Request, findUsernameFns ...func(r *http.Request) string) (context.Context, error) {
 	var username string
 	for _, fn := range findUsernameFns {
 		username = fn(r)
@@ -327,10 +320,6 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx, err := authenticateRequest(ds, r, UsernameFromToken, UsernameFromReverseProxyHeader)
-			if err == ErrNoUsers {
-				_ = rest.RespondWithJSON(w, http.StatusUnauthorized, map[string]string{"message": ErrNoUsers.Error()})
-				return
-			}
 			if err != nil {
 				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return
