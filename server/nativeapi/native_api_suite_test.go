@@ -1,4 +1,4 @@
-package app
+package nativeapi
 
 import (
 	"testing"
@@ -13,5 +13,5 @@ func TestNativeApi(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "RESTful API Suite")
+	RunSpecs(t, "Native RESTful API Suite")
 }

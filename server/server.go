@@ -18,34 +18,38 @@ import (
 )
 
 type Server struct {
-	router *chi.Mux
-	ds     model.DataStore
+	router  *chi.Mux
+	ds      model.DataStore
+	appRoot string
 }
 
 func New(ds model.DataStore) *Server {
-	a := &Server{ds: ds}
+	s := &Server{ds: ds}
 	initialSetup(ds)
-	a.initRoutes()
+	s.initRoutes()
 	checkFfmpegInstallation()
 	checkExternalCredentials()
-	return a
+	return s
 }
 
-func (a *Server) MountRouter(description, urlPath string, subRouter http.Handler) {
+func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler) {
 	urlPath = path.Join(conf.Server.BaseURL, urlPath)
 	log.Info(fmt.Sprintf("Mounting %s routes", description), "path", urlPath)
-	a.router.Group(func(r chi.Router) {
+	s.router.Group(func(r chi.Router) {
 		r.Mount(urlPath, subRouter)
 	})
 }
 
-func (a *Server) Run(addr string) error {
+func (s *Server) Run(addr string) error {
+	s.MountRouter("WebUI", consts.URLPathUI, s.frontendAssetsHandler())
 	log.Info("Navidrome server is accepting requests", "address", addr)
-	return http.ListenAndServe(addr, a.router)
+	return http.ListenAndServe(addr, s.router)
 }
 
-func (a *Server) initRoutes() {
-	auth.Init(a.ds)
+func (s *Server) initRoutes() {
+	auth.Init(s.ds)
+
+	s.appRoot = path.Join(conf.Server.BaseURL, consts.URLPathUI)
 
 	r := chi.NewRouter()
 
@@ -68,25 +72,31 @@ func (a *Server) initRoutes() {
 				"windowLength", conf.Server.AuthWindowLength)
 
 			rateLimiter := httprate.LimitByIP(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
-			r.With(rateLimiter).Post("/login", login(a.ds))
+			r.With(rateLimiter).Post("/login", login(s.ds))
 		} else {
 			log.Warn("Login rate limit is disabled! Consider enabling it to be protected against brute-force attacks")
 
-			r.Post("/login", login(a.ds))
+			r.Post("/login", login(s.ds))
 		}
-		r.Post("/createAdmin", createAdmin(a.ds))
+		r.Post("/createAdmin", createAdmin(s.ds))
 	})
 
-	// Serve UI app assets
-	appRoot := path.Join(conf.Server.BaseURL, consts.URLPathUI)
+	// Redirect root to UI URL
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, appRoot+"/", 302)
+		http.Redirect(w, r, s.appRoot+"/", http.StatusFound)
 	})
-	r.Get(appRoot, func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, appRoot+"/", 302)
+	r.Get(s.appRoot, func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, s.appRoot+"/", http.StatusFound)
 	})
-	r.Handle(appRoot+"/", serveIndex(a.ds, ui.Assets()))
-	r.Handle(appRoot+"/*", http.StripPrefix(appRoot, http.FileServer(http.FS(ui.Assets()))))
 
-	a.router = r
+	s.router = r
+}
+
+// Serve UI app assets
+func (s *Server) frontendAssetsHandler() http.Handler {
+	r := chi.NewRouter()
+
+	r.Handle("/", serveIndex(s.ds, ui.Assets()))
+	r.Handle("/*", http.StripPrefix(s.appRoot, http.FileServer(http.FS(ui.Assets()))))
+	return r
 }
