@@ -1,10 +1,12 @@
-// Based on https://thoughtbot.com/blog/writing-a-server-sent-events-server-in-go
+// Package events is based on https://thoughtbot.com/blog/writing-a-server-sent-events-server-in-go
 package events
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -18,7 +20,7 @@ import (
 
 type Broker interface {
 	http.Handler
-	SendMessage(event Event)
+	SendMessage(ctx context.Context, event Event)
 }
 
 const (
@@ -33,9 +35,10 @@ var (
 
 type (
 	message struct {
-		ID    uint32
-		Event string
-		Data  string
+		id        uint32
+		event     string
+		data      string
+		senderCtx context.Context
 	}
 	messageChan chan message
 	clientsChan chan client
@@ -77,17 +80,22 @@ func NewBroker() Broker {
 	return broker
 }
 
-func (b *broker) SendMessage(evt Event) {
+func (b *broker) SendMessage(ctx context.Context, evt Event) {
 	msg := b.prepareMessage(evt)
-	log.Trace("Broker received new event", "event", msg)
+	msg.senderCtx = ctx
+	if log.CurrentLevel() >= log.LevelTrace {
+		remoteAddress, _ := request.RemoteAddressFrom(ctx)
+		username, _ := request.UsernameFrom(ctx)
+		log.Trace("Broker received new event", "event", msg, "remoteAddress", remoteAddress, "username", username)
+	}
 	b.publish <- msg
 }
 
 func (b *broker) prepareMessage(event Event) message {
 	msg := message{}
-	msg.ID = atomic.AddUint32(&eventId, 1)
-	msg.Data = event.Data(event)
-	msg.Event = event.Name(event)
+	msg.id = atomic.AddUint32(&eventId, 1)
+	msg.data = event.Data(event)
+	msg.event = event.Name(event)
 	return msg
 }
 
@@ -96,7 +104,7 @@ func writeEvent(w io.Writer, event message, timeout time.Duration) (err error) {
 	flusher, _ := w.(http.Flusher)
 	complete := make(chan struct{}, 1)
 	go func() {
-		_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.ID, event.Event, event.Data)
+		_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data)
 		// Flush the data immediately instead of buffering it for later.
 		flusher.Flush()
 		complete <- struct{}{}
@@ -169,6 +177,21 @@ func (b *broker) unsubscribe(c client) {
 	b.unsubscribing <- c
 }
 
+func (b *broker) shouldSend(msg message, c client) bool {
+	originatorAddr, originatedFromClient := request.RemoteAddressFrom(msg.senderCtx)
+	if !originatedFromClient {
+		return true
+	}
+	clientAddr, _, _ := net.SplitHostPort(c.address)
+	if clientAddr == originatorAddr {
+		return false
+	}
+	if username, ok := request.UsernameFrom(msg.senderCtx); ok {
+		return username == c.username
+	}
+	return true
+}
+
 func (b *broker) listen() {
 	keepAlive := time.NewTicker(keepAliveFrequency)
 	defer keepAlive.Stop()
@@ -196,13 +219,15 @@ func (b *broker) listen() {
 			// We got a new event from the outside!
 			// Send event to all connected clients
 			for c := range clients {
-				log.Trace("Putting event on client's queue", "client", c.String(), "event", event)
-				c.diode.set(event)
+				if b.shouldSend(event, c) {
+					log.Trace("Putting event on client's queue", "client", c.String(), "event", event)
+					c.diode.set(event)
+				}
 			}
 
 		case ts := <-keepAlive.C:
 			// Send a keep alive message every 15 seconds
-			b.SendMessage(&KeepAlive{TS: ts.Unix()})
+			b.SendMessage(context.Background(), &KeepAlive{TS: ts.Unix()})
 		}
 	}
 }

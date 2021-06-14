@@ -73,7 +73,7 @@ func (c *MediaAnnotationController) setRating(ctx context.Context, id string, ra
 	if err != nil {
 		return err
 	}
-	c.broker.SendMessage(&events.RefreshResource{Resource: resource})
+	c.broker.SendMessage(ctx, &events.RefreshResource{Resource: resource})
 	return nil
 }
 
@@ -176,7 +176,7 @@ func (c *MediaAnnotationController) scrobblerRegister(ctx context.Context, playe
 	if err != nil {
 		log.Error("Error while scrobbling", "trackId", trackId, "user", username, err)
 	} else {
-		c.broker.SendMessage(&events.RefreshResource{})
+		c.broker.SendMessage(ctx, &events.RefreshResource{})
 		log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
 	}
 
@@ -220,7 +220,7 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 				if err != nil {
 					return err
 				}
-				c.broker.SendMessage(&events.RefreshResource{Resource: "album"})
+				c.broker.SendMessage(ctx, &events.RefreshResource{Resource: "album"})
 				continue
 			}
 			exist, err = tx.Artist(ctx).Exists(id)
@@ -232,14 +232,14 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 				if err != nil {
 					return err
 				}
-				c.broker.SendMessage(&events.RefreshResource{Resource: "artist"})
+				c.broker.SendMessage(ctx, &events.RefreshResource{Resource: "artist"})
 				continue
 			}
 			err = tx.MediaFile(ctx).SetStar(star, ids...)
 			if err != nil {
 				return err
 			}
-			c.broker.SendMessage(&events.RefreshResource{})
+			c.broker.SendMessage(ctx, &events.RefreshResource{})
 		}
 		return nil
 	})

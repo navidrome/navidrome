@@ -7,15 +7,15 @@ import (
 
 var _ = Describe("Event", func() {
 	It("marshals Event to JSON", func() {
-		testEvent := TestEvent{Test: "some data"}
+		testEvent := DummyEvent{Text: "some data"}
 		data := testEvent.Data(&testEvent)
-		Expect(data).To(Equal(`{"Test":"some data"}`))
+		Expect(data).To(Equal(`{"Text":"some data"}`))
 		name := testEvent.Name(&testEvent)
-		Expect(name).To(Equal("testEvent"))
+		Expect(name).To(Equal("dummyEvent"))
 	})
 })
 
-type TestEvent struct {
+type DummyEvent struct {
 	baseEvent
-	Test string
+	Text string
 }

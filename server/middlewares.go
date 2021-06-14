@@ -3,12 +3,14 @@ package server
 import (
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/unrolled/secure"
 )
 
@@ -48,10 +50,19 @@ func requestLogger(next http.Handler) http.Handler {
 	})
 }
 
-func injectLogger(next http.Handler) http.Handler {
+func loggerInjector(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		ctx = log.NewContext(r.Context(), "requestId", ctx.Value(middleware.RequestIDKey))
+		ctx = log.NewContext(r.Context(), "requestId", middleware.GetReqID(ctx))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func remoteAddressInjector(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		addr, _, _ := net.SplitHostPort(r.RemoteAddr)
+		ctx = request.WithRemoteAddress(ctx, addr)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
