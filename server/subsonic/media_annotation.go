@@ -74,7 +74,7 @@ func (c *MediaAnnotationController) setRating(ctx context.Context, id string, ra
 		return err
 	}
 	event := &events.RefreshResource{}
-	c.broker.SendMessage(event.With(resource, id))
+	c.broker.SendMessage(ctx, event.With(resource, id))
 	return nil
 }
 
@@ -177,7 +177,7 @@ func (c *MediaAnnotationController) scrobblerRegister(ctx context.Context, playe
 	if err != nil {
 		log.Error("Error while scrobbling", "trackId", trackId, "user", username, err)
 	} else {
-		c.broker.SendMessage(&events.RefreshResource{})
+		c.broker.SendMessage(ctx, &events.RefreshResource{})
 		log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
 	}
 
@@ -242,7 +242,7 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 			}
 			event = event.With("song", ids...)
 		}
-		c.broker.SendMessage(event)
+		c.broker.SendMessage(ctx, event)
 		return nil
 	})
 
