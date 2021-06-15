@@ -1,23 +1,36 @@
 import { useSelector } from 'react-redux'
 import { useState } from 'react'
-import { useRefresh } from 'react-admin'
+import { useRefresh, useDataProvider } from 'react-admin'
 
-export const useResourceRefresh = (...resources) => {
+export const useResourceRefresh = (...visibleResources) => {
   const [lastTime, setLastTime] = useState(Date.now())
-  const refreshData = useSelector(
-    (state) => state.activity?.refresh || { lastTime }
-  )
   const refresh = useRefresh()
+  const dataProvider = useDataProvider()
+  const refreshData = useSelector(
+    (state) => state.activity?.refresh || { lastReceived: lastTime }
+  )
+  const { resources, lastReceived } = refreshData
 
-  const resource = refreshData.resource
-  if (refreshData.lastTime > lastTime) {
-    if (
-      resource === '' ||
-      resources.length === 0 ||
-      resources.includes(resource)
-    ) {
-      refresh()
-    }
-    setLastTime(refreshData.lastTime)
+  if (lastReceived <= lastTime) {
+    return
+  }
+  setLastTime(lastReceived)
+
+  if (
+    resources &&
+    (resources['*'] === '*' ||
+      Object.values(resources).find((v) => v.find((v2) => v2 === '*')))
+  ) {
+    refresh()
+    return
+  }
+  if (resources) {
+    Object.keys(resources).forEach((r) => {
+      if (visibleResources.length === 0 || visibleResources?.includes(r)) {
+        resources[r]?.forEach((id) => {
+          dataProvider.getOne(r, { id })
+        })
+      }
+    })
   }
 }

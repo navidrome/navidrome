@@ -29,8 +29,8 @@ export const activityReducer = (
       return {
         ...previousState,
         refresh: {
-          lastTime: Date.now(),
-          resource: data.resource,
+          lastReceived: Date.now(),
+          resources: data,
         },
       }
     default:

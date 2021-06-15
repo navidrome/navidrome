@@ -37,12 +37,33 @@ type KeepAlive struct {
 	TS int64 `json:"ts"`
 }
 
-type RefreshResource struct {
-	baseEvent
-	Resource string `json:"resource"`
-}
-
 type ServerStart struct {
 	baseEvent
 	StartTime time.Time `json:"startTime"`
+}
+
+const Any = "*"
+
+type RefreshResource struct {
+	baseEvent
+	resources map[string][]string
+}
+
+func (rr *RefreshResource) With(resource string, ids ...string) *RefreshResource {
+	if rr.resources == nil {
+		rr.resources = make(map[string][]string)
+	}
+	for i := range ids {
+		rr.resources[resource] = append(rr.resources[resource], ids[i])
+	}
+	return rr
+}
+
+func (rr *RefreshResource) Data(evt Event) string {
+	if rr.resources == nil {
+		return `{"*":"*"}`
+	}
+	r := evt.(*RefreshResource)
+	data, _ := json.Marshal(r.resources)
+	return string(data)
 }
