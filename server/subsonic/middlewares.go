@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -17,10 +18,6 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
-)
-
-const (
-	cookieExpiry = 365 * 24 * 3600 // One year
 )
 
 func postFormToQueryParams(next http.Handler) http.Handler {
@@ -160,7 +157,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 				cookie := &http.Cookie{
 					Name:     playerIDCookieName(userName),
 					Value:    player.ID,
-					MaxAge:   cookieExpiry,
+					MaxAge:   consts.CookieExpiry,
 					HttpOnly: true,
 					Path:     "/",
 				}

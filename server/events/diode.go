@@ -16,7 +16,7 @@ func newDiode(ctx context.Context, size int, alerter diodes.Alerter) *diode {
 	}
 }
 
-func (d *diode) set(data message) {
+func (d *diode) put(data message) {
 	d.d.Set(diodes.GenericDataType(&data))
 }
 
