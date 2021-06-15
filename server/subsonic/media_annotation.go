@@ -73,7 +73,8 @@ func (c *MediaAnnotationController) setRating(ctx context.Context, id string, ra
 	if err != nil {
 		return err
 	}
-	c.broker.SendMessage(&events.RefreshResource{Resource: resource})
+	event := &events.RefreshResource{}
+	c.broker.SendMessage(event.With(resource, id))
 	return nil
 }
 
@@ -208,7 +209,7 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 		log.Warn(ctx, "Cannot star/unstar an empty list of ids")
 		return nil
 	}
-
+	event := &events.RefreshResource{}
 	err := c.ds.WithTx(func(tx model.DataStore) error {
 		for _, id := range ids {
 			exist, err := tx.Album(ctx).Exists(id)
@@ -220,7 +221,7 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 				if err != nil {
 					return err
 				}
-				c.broker.SendMessage(&events.RefreshResource{Resource: "album"})
+				event = event.With("album", ids...)
 				continue
 			}
 			exist, err = tx.Artist(ctx).Exists(id)
@@ -232,15 +233,16 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 				if err != nil {
 					return err
 				}
-				c.broker.SendMessage(&events.RefreshResource{Resource: "artist"})
+				event = event.With("artist", ids...)
 				continue
 			}
 			err = tx.MediaFile(ctx).SetStar(star, ids...)
 			if err != nil {
 				return err
 			}
-			c.broker.SendMessage(&events.RefreshResource{})
+			event = event.With("song", ids...)
 		}
+		c.broker.SendMessage(event)
 		return nil
 	})
 
