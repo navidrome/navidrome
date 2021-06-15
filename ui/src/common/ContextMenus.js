@@ -111,7 +111,7 @@ const ContextMenu = ({
     const key = e.target.getAttribute('value')
     if (options[key].needData) {
       dataProvider
-        .getList('albumSong', songQueryParams)
+        .getList('song', songQueryParams)
         .then((response) => {
           let { data, ids } = extractSongsData(response)
           options[key].action(data, ids)

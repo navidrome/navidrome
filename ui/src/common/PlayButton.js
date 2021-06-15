@@ -19,7 +19,7 @@ export const PlayButton = ({ record, size, className }) => {
   const dispatch = useDispatch()
   const playAlbum = (record) => {
     dataProvider
-      .getList('albumSong', {
+      .getList('song', {
         pagination: { page: 1, perPage: -1 },
         sort: { field: 'discNumber, trackNumber', order: 'ASC' },
         filter: { album_id: record.id, disc_number: record.discNumber },
