@@ -115,7 +115,6 @@ const AlbumSongs = (props) => {
       rating: isDesktop && config.enableStarRating && (
         <RatingField
           source="rating"
-          resource={'albumSong'}
           sortable={false}
           className={classes.ratingField}
         />

@@ -112,7 +112,6 @@ const Admin = (props) => {
         ) : (
           <Resource name="transcoding" />
         ),
-        <Resource name="albumSong" />,
         <Resource name="translation" />,
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,

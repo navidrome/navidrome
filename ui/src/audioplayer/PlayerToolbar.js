@@ -1,5 +1,4 @@
 import React, { useCallback } from 'react'
-import { useLocation } from 'react-router-dom'
 import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
 import { LoveButton, useToggleLove } from '../common'
@@ -10,10 +9,8 @@ const Placeholder = () =>
   config.enableFavourites && <LoveButton disabled={true} resource={'song'} />
 
 const Toolbar = ({ id }) => {
-  const location = useLocation()
-  const resource = location.pathname.startsWith('/song') ? 'song' : 'albumSong'
-  const { data, loading } = useGetOne(resource, id)
-  const [toggleLove, toggling] = useToggleLove(resource, data)
+  const { data, loading } = useGetOne('song', id)
+  const [toggleLove, toggling] = useToggleLove('song', data)
 
   const handlers = {
     TOGGLE_LOVE: useCallback(() => toggleLove(), [toggleLove]),
@@ -24,7 +21,7 @@ const Toolbar = ({ id }) => {
       {config.enableFavourites && (
         <LoveButton
           record={data}
-          resource={resource}
+          resource={'song'}
           disabled={loading || toggling}
         />
       )}
