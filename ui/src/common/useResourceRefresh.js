@@ -27,9 +27,9 @@ export const useResourceRefresh = (...visibleResources) => {
   if (resources) {
     Object.keys(resources).forEach((r) => {
       if (visibleResources.length === 0 || visibleResources?.includes(r)) {
-        resources[r]?.forEach((id) => {
-          dataProvider.getOne(r, { id })
-        })
+        if (resources[r]?.length > 0) {
+          dataProvider.getMany(r, { ids: resources[r] })
+        }
       }
     })
   }

@@ -24,8 +24,8 @@ describe('useResourceRefresh', () => {
   const useStateMock = (initState) => [initState, setState]
   const refresh = jest.fn()
   const useRefreshMock = () => refresh
-  const getOne = jest.fn()
-  const useDataProviderMock = () => ({ getOne })
+  const getMany = jest.fn()
+  const useDataProviderMock = () => ({ getMany })
   let lastTime
 
   beforeEach(() => {
@@ -69,7 +69,7 @@ describe('useResourceRefresh', () => {
       useResourceRefresh()
 
       expect(refresh).toHaveBeenCalledTimes(1)
-      expect(getOne).not.toHaveBeenCalled()
+      expect(getMany).not.toHaveBeenCalled()
     })
 
     it('triggers a UI refresh when received an "any" id', () => {
@@ -82,7 +82,7 @@ describe('useResourceRefresh', () => {
       useResourceRefresh()
 
       expect(refresh).toHaveBeenCalledTimes(1)
-      expect(getOne).not.toHaveBeenCalled()
+      expect(getMany).not.toHaveBeenCalled()
     })
 
     it('triggers a refetch of the resources received', () => {
@@ -95,11 +95,9 @@ describe('useResourceRefresh', () => {
       useResourceRefresh()
 
       expect(refresh).not.toHaveBeenCalled()
-      expect(getOne).toHaveBeenCalledTimes(4)
-      expect(getOne).toHaveBeenCalledWith('album', { id: 'al-1' })
-      expect(getOne).toHaveBeenCalledWith('album', { id: 'al-2' })
-      expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-1' })
-      expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-2' })
+      expect(getMany).toHaveBeenCalledTimes(2)
+      expect(getMany).toHaveBeenCalledWith('album', { ids: ['al-1', 'al-2'] })
+      expect(getMany).toHaveBeenCalledWith('song', { ids: ['sg-1', 'sg-2'] })
     })
   })
 
@@ -114,7 +112,7 @@ describe('useResourceRefresh', () => {
       useResourceRefresh('album')
 
       expect(refresh).toHaveBeenCalledTimes(1)
-      expect(getOne).not.toHaveBeenCalled()
+      expect(getMany).not.toHaveBeenCalled()
     })
 
     it('triggers a refetch of the resources received if they are visible', () => {
@@ -127,9 +125,8 @@ describe('useResourceRefresh', () => {
       useResourceRefresh('song')
 
       expect(refresh).not.toHaveBeenCalled()
-      expect(getOne).toHaveBeenCalledTimes(2)
-      expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-1' })
-      expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-2' })
+      expect(getMany).toHaveBeenCalledTimes(1)
+      expect(getMany).toHaveBeenCalledWith('song', { ids: ['sg-1', 'sg-2'] })
     })
   })
 })
