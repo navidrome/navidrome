@@ -20,6 +20,9 @@ const (
 	DefaultSessionTimeout  = 24 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
 
+	PasswordsEncryptedKey = "PasswordsEncryptedKey"
+	DefaultEncryptionKey  = "just for obfuscation"
+
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 
