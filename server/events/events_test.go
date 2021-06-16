@@ -37,8 +37,8 @@ var _ = Describe("Events", func() {
 			data := rr.Data(rr)
 			Expect(data).To(Equal(`{"album":["al-1","al-2","al-3"],"artist":["ar-1","ar-2"],"song":["sg-1","sg-2"]}`))
 		})
-		It("should send a * for when Any is used as id", func() {
-			rr.With("album", Any)
+		It("should send a * when no ids are specified", func() {
+			rr.With("album")
 			data := rr.Data(rr)
 			Expect(data).To(Equal(`{"album":["*"]}`))
 		})

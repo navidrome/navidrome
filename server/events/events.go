@@ -53,6 +53,9 @@ func (rr *RefreshResource) With(resource string, ids ...string) *RefreshResource
 	if rr.resources == nil {
 		rr.resources = make(map[string][]string)
 	}
+	if len(ids) == 0 {
+		rr.resources[resource] = append(rr.resources[resource], Any)
+	}
 	for i := range ids {
 		rr.resources[resource] = append(rr.resources[resource], ids[i])
 	}

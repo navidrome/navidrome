@@ -127,6 +127,9 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 	playerId := 1 // TODO Multiple players, based on playerName/username/clientIP(?)
 	playerName := utils.ParamString(r, "c")
 	username := utils.ParamString(r, "u")
+	ctx := r.Context()
+	event := &events.RefreshResource{}
+	submissions := 0
 
 	log.Debug(r, "Scrobbling tracks", "ids", ids, "times", times, "submission", submission)
 	for i, id := range ids {
@@ -137,18 +140,23 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 			t = time.Now()
 		}
 		if submission {
-			_, err := c.scrobblerRegister(r.Context(), playerId, id, t)
+			mf, err := c.scrobblerRegister(ctx, playerId, id, t)
 			if err != nil {
 				log.Error(r, "Error scrobbling track", "id", id, err)
 				continue
 			}
+			submissions++
+			event.With("song", mf.ID).With("album", mf.AlbumID).With("artist", mf.AlbumArtistID)
 		} else {
-			_, err := c.scrobblerNowPlaying(r.Context(), playerId, playerName, id, username)
+			_, err := c.scrobblerNowPlaying(ctx, playerId, playerName, id, username)
 			if err != nil {
 				log.Error(r, "Error setting current song", "id", id, err)
 				continue
 			}
 		}
+	}
+	if submissions > 0 {
+		c.broker.SendMessage(ctx, event)
 	}
 	return newResponse(), nil
 }
@@ -177,7 +185,6 @@ func (c *MediaAnnotationController) scrobblerRegister(ctx context.Context, playe
 	if err != nil {
 		log.Error("Error while scrobbling", "trackId", trackId, "user", username, err)
 	} else {
-		c.broker.SendMessage(ctx, &events.RefreshResource{})
 		log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
 	}
 
