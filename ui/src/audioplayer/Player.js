@@ -63,7 +63,6 @@ const useStyle = makeStyles(
         'pointer-events': 'none',
       },
       '& .music-player-panel': {
-        color: (props) => props.theme?.player.color,
         background: (props) => props.theme?.player.bgcolor,
         '& .audio-main': {
           color: (props) => props.theme?.player.durcolor,
