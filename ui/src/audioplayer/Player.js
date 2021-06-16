@@ -63,21 +63,21 @@ const useStyle = makeStyles(
         'pointer-events': 'none',
       },
       '& .music-player-panel': {
-        color: (props) => (props.theme?.player.color),
-        background: (props) => (props.theme?.player.bgcolor),
+        color: (props) => props.theme?.player.color,
+        background: (props) => props.theme?.player.bgcolor,
         '& .audio-main': {
-          color: (props) => (props.theme?.player.durcolor)
+          color: (props) => props.theme?.player.durcolor,
         },
         '& svg': {
-          color: (props) => (props.theme?.player.btncolor),
+          color: (props) => props.theme?.player.btncolor,
           '&:hover': {
-            color: (props) => (props.theme?.player.hovbtncolor)
+            color: (props) => props.theme?.player.hovbtncolor,
           },
         },
         '& .rc-slider-handle': {
-          background: (props) => (`${props.theme?.player.durcolor} !important`)
-        }
-      }
+          background: (props) => `${props.theme?.player.durcolor} !important`,
+        },
+      },
     },
     artistAlbum: {
       marginTop: '2px',
@@ -133,7 +133,7 @@ const Player = () => {
   )
 
   const visible = authenticated && queue.queue.length > 0
-  const playprops = {theme, visible}
+  const playprops = { theme, visible }
   const classes = useStyle(playprops)
   // Match the medium breakpoint defined in the material-ui theme
   // See https://material-ui.com/customization/breakpoints/#breakpoints
