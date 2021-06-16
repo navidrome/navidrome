@@ -217,11 +217,11 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 				return err
 			}
 			if exist {
-				err = tx.Album(ctx).SetStar(star, ids...)
+				err = tx.Album(ctx).SetStar(star, id)
 				if err != nil {
 					return err
 				}
-				event = event.With("album", ids...)
+				event = event.With("album", id)
 				continue
 			}
 			exist, err = tx.Artist(ctx).Exists(id)
@@ -229,18 +229,18 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 				return err
 			}
 			if exist {
-				err = tx.Artist(ctx).SetStar(star, ids...)
+				err = tx.Artist(ctx).SetStar(star, id)
 				if err != nil {
 					return err
 				}
-				event = event.With("artist", ids...)
+				event = event.With("artist", id)
 				continue
 			}
-			err = tx.MediaFile(ctx).SetStar(star, ids...)
+			err = tx.MediaFile(ctx).SetStar(star, id)
 			if err != nil {
 				return err
 			}
-			event = event.With("song", ids...)
+			event = event.With("song", id)
 		}
 		c.broker.SendMessage(ctx, event)
 		return nil
