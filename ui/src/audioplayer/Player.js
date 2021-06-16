@@ -117,7 +117,8 @@ const Player = () => {
   )
 
   const visible = authenticated && queue.queue.length > 0
-  const classes = useStyle({ visible })
+  const playprops = { theme, visible }
+  const classes = useStyle(playprops)
   // Match the medium breakpoint defined in the material-ui theme
   // See https://material-ui.com/customization/breakpoints/#breakpoints
   const isDesktop = useMediaQuery('(min-width:810px)')
