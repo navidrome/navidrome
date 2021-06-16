@@ -8,6 +8,7 @@
         "duration": "Time",
         "trackNumber": "#",
         "playCount": "Plays",
+        "playDate": "Last Played",
         "title": "Title",
         "artist": "Artist",
         "album": "Album",

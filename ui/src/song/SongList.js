@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  DateField,
   Filter,
   FunctionField,
   NumberField,
@@ -94,6 +95,7 @@ const SongList = (props) => {
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />
       ),
+      playDate: <DateField source="playDate" sortByOrder={'DESC'} showTime />,
       year: isDesktop && (
         <FunctionField
           source="year"
@@ -118,7 +120,7 @@ const SongList = (props) => {
   const columns = useSelectedFields({
     resource: 'song',
     columns: toggleableFields,
-    defaultOff: ['bpm'],
+    defaultOff: ['bpm', 'playDate'],
   })
 
   return (
