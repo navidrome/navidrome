@@ -56,7 +56,9 @@ func (s *Server) initRoutes() {
 	r.Use(secureMiddleware())
 	r.Use(cors.AllowAll().Handler)
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	if conf.Server.ReverseProxyWhitelist == "" {
+		r.Use(middleware.RealIP)
+	}
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5, "application/xml", "application/json", "application/javascript"))
 	r.Use(middleware.Heartbeat("/ping"))
