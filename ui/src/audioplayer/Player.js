@@ -74,9 +74,8 @@ const useStyle = makeStyles(
             color: (props) => (props.theme?.player.hovbtncolor)
           },
         },
-        '& .rc-slider-track': {
-          color: '#fff !important',
-          background: '#fff'
+        '& .rc-slider-handle': {
+          background: (props) => (`${props.theme?.player.durcolor} !important`)
         }
       }
     },
