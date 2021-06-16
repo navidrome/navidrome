@@ -1,4 +1,4 @@
-package app
+package nativeapi
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestApp(t *testing.T) {
+func TestNativeApi(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "RESTful API Suite")
+	RunSpecs(t, "Native RESTful API Suite")
 }

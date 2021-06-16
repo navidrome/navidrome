@@ -36,22 +36,23 @@ func NewTagScanner(rootFolder string, ds model.DataStore, cacheWarmer core.Cache
 	}
 }
 
-type (
-	counters struct {
-		added     int64
-		updated   int64
-		deleted   int64
-		playlists int64
-	}
-	dirMap map[string]dirStats
-)
+type dirMap map[string]dirStats
+
+type counters struct {
+	added     int64
+	updated   int64
+	deleted   int64
+	playlists int64
+}
+
+func (cnt *counters) total() int64 { return cnt.added + cnt.updated + cnt.deleted }
 
 const (
 	// filesBatchSize used for batching file metadata extraction
 	filesBatchSize = 100
 )
 
-// TagScanner algorithm overview:
+// Scan algorithm overview:
 // Load all directories from the DB
 // Traverse the music folder, collecting each subfolder's ModTime (self or any non-dir children, whichever is newer)
 // For each changed folder: get all files from DB whose path starts with the changed folder (non-recursively), check each file:
@@ -67,13 +68,13 @@ const (
 //      If the playlist is not in the DB, import it, setting sync = true
 //      If the playlist is in the DB and sync == true, import it, or else skip it
 // Delete all empty albums, delete all empty artists, clean-up playlists
-func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) error {
+func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) (int64, error) {
 	ctx = s.withAdminUser(ctx)
 	start := time.Now()
 
 	allDBDirs, err := s.getDBDirTree(ctx)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	allFSDirs := dirMap{}
@@ -101,19 +102,19 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 
 	if err := <-walkerError; err != nil {
 		log.Error("Scan was interrupted by error. See errors above", err)
-		return err
+		return 0, err
 	}
 
 	// If the media folder is empty, abort to avoid deleting all data
 	if len(allFSDirs) <= 1 {
 		log.Error(ctx, "Media Folder is empty. Aborting scan.", "folder", s.rootFolder)
-		return nil
+		return 0, nil
 	}
 
 	deletedDirs := s.getDeletedDirs(ctx, allFSDirs, allDBDirs)
 	if len(deletedDirs)+len(changedDirs) == 0 {
 		log.Debug(ctx, "No changes found in Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start))
-		return nil
+		return 0, nil
 	}
 
 	for _, dir := range deletedDirs {
@@ -146,7 +147,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	log.Info("Finished processing Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start),
 		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted, "playlistsImported", s.cnt.playlists)
 
-	return err
+	return s.cnt.total(), err
 }
 
 func (s *TagScanner) getRootFolderWalker(ctx context.Context) (walkResults, chan error) {
@@ -375,7 +376,12 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 func (s *TagScanner) withAdminUser(ctx context.Context) context.Context {
 	u, err := s.ds.User(ctx).FindFirstAdmin()
 	if err != nil {
-		log.Warn(ctx, "No admin user found!", err)
+		c, err := s.ds.User(ctx).CountAll()
+		if c == 0 && err == nil {
+			log.Debug(ctx, "Scanner: No admin user yet!", err)
+		} else {
+			log.Error(ctx, "Scanner: No admin user found!", err)
+		}
 		u = &model.User{}
 	}
 

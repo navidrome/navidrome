@@ -24,6 +24,11 @@ var redacted = &Hook{
 		"(Secret:\")[\\w]*",
 		"(Spotify.*ID:\")[\\w]*",
 
+		// UI appConfig
+		"(subsonicToken:)[\\w]+(\\s)",
+		"(subsonicSalt:)[\\w]+(\\s)",
+		"(token:)[^\\s]+",
+
 		// Subsonic query params
 		"([^\\w]t=)[\\w]+",
 		"([^\\w]s=)[^&]+",

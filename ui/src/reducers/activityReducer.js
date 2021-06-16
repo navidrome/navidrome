@@ -1,4 +1,8 @@
-import { EVENT_SCAN_STATUS, EVENT_SERVER_START } from '../actions'
+import {
+  EVENT_REFRESH_RESOURCE,
+  EVENT_SCAN_STATUS,
+  EVENT_SERVER_START,
+} from '../actions'
 
 const defaultState = {
   scanStatus: { scanning: false, folderCount: 0, count: 0 },
@@ -19,6 +23,14 @@ export const activityReducer = (
         ...previousState,
         serverStart: {
           startTime: data.startTime && Date.parse(data.startTime),
+        },
+      }
+    case EVENT_REFRESH_RESOURCE:
+      return {
+        ...previousState,
+        refresh: {
+          lastReceived: Date.now(),
+          resources: data,
         },
       }
     default:

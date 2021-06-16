@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchUtils, useTranslate } from 'react-admin'
+import { useTranslate } from 'react-admin'
 import {
   Popover,
   Badge,
@@ -68,13 +68,12 @@ const ActivityPanel = () => {
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
   const handleMenuClose = () => setAnchorEl(null)
-  const triggerScan = (full) => () =>
-    fetch(subsonic.url('startScan', null, { fullScan: full }))
+  const triggerScan = (full) => () => subsonic.startScan({ fullScan: full })
 
   // Get updated status on component mount
   useEffect(() => {
-    fetchUtils
-      .fetchJson(subsonic.url('getScanStatus'))
+    subsonic
+      .getScanStatus()
       .then((resp) => resp.json['subsonic-response'])
       .then((data) => {
         if (data.status === 'ok') {

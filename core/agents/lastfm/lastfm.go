@@ -1,4 +1,4 @@
-package agents
+package lastfm
 
 import (
 	"context"
@@ -6,24 +6,25 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/lastfm"
+	"github.com/navidrome/navidrome/utils"
 )
 
 const (
 	lastFMAgentName = "lastfm"
-	lastFMAPIKey    = "c2918986bf01b6ba353c0bc1bdd27bea"
-	//lastFMAPISecret = "3ff2aa214a6d8f2242515083bbb70e79" // Will be needed when implementing Scrobbling
+	lastFMAPIKey    = "9b94a5515ea66b2da3ec03c12300327e"
+	//lastFMAPISecret = "74cb6557cec7171d921af5d7d887c587" // Will be needed when implementing Scrobbling
 )
 
 type lastfmAgent struct {
 	ctx    context.Context
 	apiKey string
 	lang   string
-	client *lastfm.Client
+	client *Client
 }
 
-func lastFMConstructor(ctx context.Context) Interface {
+func lastFMConstructor(ctx context.Context) agents.Interface {
 	l := &lastfmAgent{
 		ctx:  ctx,
 		lang: conf.Server.LastFM.Language,
@@ -33,8 +34,8 @@ func lastFMConstructor(ctx context.Context) Interface {
 	} else {
 		l.apiKey = lastFMAPIKey
 	}
-	hc := NewCachedHTTPClient(http.DefaultClient, consts.DefaultCachedHttpClientTTL)
-	l.client = lastfm.NewClient(l.apiKey, l.lang, hc)
+	hc := utils.NewCachedHTTPClient(http.DefaultClient, consts.DefaultCachedHttpClientTTL)
+	l.client = NewClient(l.apiKey, l.lang, hc)
 	return l
 }
 
@@ -48,7 +49,7 @@ func (l *lastfmAgent) GetMBID(id string, name string) (string, error) {
 		return "", err
 	}
 	if a.MBID == "" {
-		return "", ErrNotFound
+		return "", agents.ErrNotFound
 	}
 	return a.MBID, nil
 }
@@ -59,7 +60,7 @@ func (l *lastfmAgent) GetURL(id, name, mbid string) (string, error) {
 		return "", err
 	}
 	if a.URL == "" {
-		return "", ErrNotFound
+		return "", agents.ErrNotFound
 	}
 	return a.URL, nil
 }
@@ -70,22 +71,22 @@ func (l *lastfmAgent) GetBiography(id, name, mbid string) (string, error) {
 		return "", err
 	}
 	if a.Bio.Summary == "" {
-		return "", ErrNotFound
+		return "", agents.ErrNotFound
 	}
 	return a.Bio.Summary, nil
 }
 
-func (l *lastfmAgent) GetSimilar(id, name, mbid string, limit int) ([]Artist, error) {
+func (l *lastfmAgent) GetSimilar(id, name, mbid string, limit int) ([]agents.Artist, error) {
 	resp, err := l.callArtistGetSimilar(name, mbid, limit)
 	if err != nil {
 		return nil, err
 	}
 	if len(resp) == 0 {
-		return nil, ErrNotFound
+		return nil, agents.ErrNotFound
 	}
-	var res []Artist
+	var res []agents.Artist
 	for _, a := range resp {
-		res = append(res, Artist{
+		res = append(res, agents.Artist{
 			Name: a.Name,
 			MBID: a.MBID,
 		})
@@ -93,17 +94,17 @@ func (l *lastfmAgent) GetSimilar(id, name, mbid string, limit int) ([]Artist, er
 	return res, nil
 }
 
-func (l *lastfmAgent) GetTopSongs(id, artistName, mbid string, count int) ([]Song, error) {
+func (l *lastfmAgent) GetTopSongs(id, artistName, mbid string, count int) ([]agents.Song, error) {
 	resp, err := l.callArtistGetTopTracks(artistName, mbid, count)
 	if err != nil {
 		return nil, err
 	}
 	if len(resp) == 0 {
-		return nil, ErrNotFound
+		return nil, agents.ErrNotFound
 	}
-	var res []Song
+	var res []agents.Song
 	for _, t := range resp {
-		res = append(res, Song{
+		res = append(res, agents.Song{
 			Name: t.Name,
 			MBID: t.MBID,
 		})
@@ -111,9 +112,9 @@ func (l *lastfmAgent) GetTopSongs(id, artistName, mbid string, count int) ([]Son
 	return res, nil
 }
 
-func (l *lastfmAgent) callArtistGetInfo(name string, mbid string) (*lastfm.Artist, error) {
+func (l *lastfmAgent) callArtistGetInfo(name string, mbid string) (*Artist, error) {
 	a, err := l.client.ArtistGetInfo(l.ctx, name, mbid)
-	lfErr, isLastFMError := err.(*lastfm.Error)
+	lfErr, isLastFMError := err.(*lastFMError)
 	if mbid != "" && ((err == nil && a.Name == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
 		log.Warn(l.ctx, "LastFM/artist.getInfo could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
 		return l.callArtistGetInfo(name, "")
@@ -126,9 +127,9 @@ func (l *lastfmAgent) callArtistGetInfo(name string, mbid string) (*lastfm.Artis
 	return a, nil
 }
 
-func (l *lastfmAgent) callArtistGetSimilar(name string, mbid string, limit int) ([]lastfm.Artist, error) {
+func (l *lastfmAgent) callArtistGetSimilar(name string, mbid string, limit int) ([]Artist, error) {
 	s, err := l.client.ArtistGetSimilar(l.ctx, name, mbid, limit)
-	lfErr, isLastFMError := err.(*lastfm.Error)
+	lfErr, isLastFMError := err.(*lastFMError)
 	if mbid != "" && ((err == nil && s.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
 		log.Warn(l.ctx, "LastFM/artist.getSimilar could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
 		return l.callArtistGetSimilar(name, "", limit)
@@ -140,9 +141,9 @@ func (l *lastfmAgent) callArtistGetSimilar(name string, mbid string, limit int) 
 	return s.Artists, nil
 }
 
-func (l *lastfmAgent) callArtistGetTopTracks(artistName, mbid string, count int) ([]lastfm.Track, error) {
+func (l *lastfmAgent) callArtistGetTopTracks(artistName, mbid string, count int) ([]Track, error) {
 	t, err := l.client.ArtistGetTopTracks(l.ctx, artistName, mbid, count)
-	lfErr, isLastFMError := err.(*lastfm.Error)
+	lfErr, isLastFMError := err.(*lastFMError)
 	if mbid != "" && ((err == nil && t.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
 		log.Warn(l.ctx, "LastFM/artist.getTopTracks could not find artist by mbid, trying again", "artist", artistName, "mbid", mbid)
 		return l.callArtistGetTopTracks(artistName, "", count)
@@ -157,7 +158,7 @@ func (l *lastfmAgent) callArtistGetTopTracks(artistName, mbid string, count int)
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.LastFM.Enabled {
-			Register(lastFMAgentName, lastFMConstructor)
+			agents.Register(lastFMAgentName, lastFMConstructor)
 		}
 	})
 }

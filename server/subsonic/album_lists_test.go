@@ -14,13 +14,13 @@ import (
 var _ = Describe("AlbumListController", func() {
 	var controller *AlbumListController
 	var ds model.DataStore
-	var mockRepo *tests.MockAlbum
+	var mockRepo *tests.MockAlbumRepo
 	var w *httptest.ResponseRecorder
 	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		mockRepo = ds.Album(ctx).(*tests.MockAlbum)
+		mockRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
 		controller = NewAlbumListController(ds, nil)
 		w = httptest.NewRecorder()
 	})

@@ -20,7 +20,7 @@ func initialSetup(ds model.DataStore) {
 		if err == nil {
 			return nil
 		}
-		log.Warn("Running initial setup")
+		log.Info("Running initial setup")
 		if err = createJWTSecret(ds); err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ func createJWTSecret(ds model.DataStore) error {
 	if err == nil {
 		return nil
 	}
-	log.Warn("Creating JWT secret, used for encrypting UI sessions")
+	log.Info("Creating new JWT secret, used for encrypting UI sessions")
 	err = properties.Put(consts.JWTSecretKey, uuid.NewString())
 	if err != nil {
 		log.Error("Could not save JWT secret in DB", err)

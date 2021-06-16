@@ -50,6 +50,8 @@ type configOptions struct {
 	EnableLogRedacting     bool
 	AuthRequestLimit       int
 	AuthWindowLength       time.Duration
+	ReverseProxyUserHeader string
+	ReverseProxyWhitelist  string
 
 	Scanner scannerOptions
 
@@ -200,6 +202,9 @@ func init() {
 	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
+
+	viper.SetDefault("reverseproxyuserheader", "Remote-User")
+	viper.SetDefault("reverseproxywhitelist", "")
 
 	viper.SetDefault("scanner.extractor", "taglib")
 	viper.SetDefault("agents", "lastfm,spotify")

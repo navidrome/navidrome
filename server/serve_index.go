@@ -1,4 +1,4 @@
-package app
+package server
 
 import (
 	"encoding/json"
@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"net/http"
-	"path"
 	"strings"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -18,13 +17,7 @@ import (
 
 // Injects the config in the `index.html` template
 func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
-	policy := bluemonday.UGCPolicy()
 	return func(w http.ResponseWriter, r *http.Request) {
-		base := path.Join(conf.Server.BaseURL, consts.URLPathUI)
-		if r.URL.Path == base {
-			http.Redirect(w, r, base+"/", http.StatusFound)
-		}
-
 		c, err := ds.User(r.Context()).CountAll()
 		firstTime := c == 0 && err == nil
 
@@ -33,6 +26,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
+		policy := bluemonday.UGCPolicy()
 		appConfig := map[string]interface{}{
 			"version":                 consts.Version(),
 			"firstTime":               firstTime,
@@ -50,6 +44,10 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 			"enableUserEditing":       conf.Server.EnableUserEditing,
 			"devEnableShare":          conf.Server.DevEnableShare,
+		}
+		auth := handleLoginFromHeaders(ds, r)
+		if auth != nil {
+			appConfig["auth"] = auth
 		}
 		j, err := json.Marshal(appConfig)
 		if err != nil {

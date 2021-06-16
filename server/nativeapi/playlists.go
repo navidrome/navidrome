@@ -1,4 +1,4 @@
-package app
+package nativeapi
 
 import (
 	"context"
@@ -15,6 +15,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
+
+type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
 
 func getPlaylist(ds model.DataStore) http.HandlerFunc {
 	// Add a middleware to capture the playlistId

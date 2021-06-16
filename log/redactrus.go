@@ -4,6 +4,7 @@ package log
 // Copyright (c) 2018 William Huang
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
 
@@ -46,6 +47,10 @@ func (h *Hook) Fire(e *logrus.Entry) error {
 			switch reflect.TypeOf(v).Kind() {
 			case reflect.String:
 				e.Data[k] = re.ReplaceAllString(v.(string), "$1[REDACTED]$2")
+				continue
+			case reflect.Map:
+				s := fmt.Sprintf("%+v", v)
+				e.Data[k] = re.ReplaceAllString(s, "$1[REDACTED]$2")
 				continue
 			}
 		}

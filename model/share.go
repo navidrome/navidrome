@@ -13,7 +13,7 @@ type Share struct {
 	LastVisitedAt time.Time `json:"lastVisitedAt"`
 	ResourceIDs   string    `json:"resourceIds"   orm:"column(resource_ids)"`
 	ResourceType  string    `json:"resourceType"`
-	VisitCount    string    `json:"visitCount"`
+	VisitCount    int       `json:"visitCount"`
 }
 
 type Shares []Share

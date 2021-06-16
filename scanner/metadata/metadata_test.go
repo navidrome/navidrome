@@ -5,8 +5,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ffmpegMetadata", func() {
-	Describe("parseYear", func() {
+var _ = Describe("Tags", func() {
+	Describe("getYear", func() {
 		It("parses the year correctly", func() {
 			var examples = map[string]int{
 				"1985":         1985,
@@ -19,27 +19,27 @@ var _ = Describe("ffmpegMetadata", func() {
 				"01/10/1990":   1990,
 			}
 			for tag, expected := range examples {
-				md := &baseMetadata{}
-				md.tags = map[string]string{"date": tag}
+				md := &Tags{}
+				md.tags = map[string][]string{"date": {tag}}
 				Expect(md.Year()).To(Equal(expected))
 			}
 		})
 
 		It("returns 0 if year is invalid", func() {
-			md := &baseMetadata{}
-			md.tags = map[string]string{"date": "invalid"}
+			md := &Tags{}
+			md.tags = map[string][]string{"date": {"invalid"}}
 			Expect(md.Year()).To(Equal(0))
 		})
 	})
 
 	Describe("getMbzID", func() {
 		It("return a valid MBID", func() {
-			md := &baseMetadata{}
-			md.tags = map[string]string{
-				"musicbrainz_trackid":       "8f84da07-09a0-477b-b216-cc982dabcde1",
-				"musicbrainz_albumid":       "f68c985d-f18b-4f4a-b7f0-87837cf3fbf9",
-				"musicbrainz_artistid":      "89ad4ac3-39f7-470e-963a-56509c546377",
-				"musicbrainz_albumartistid": "ada7a83c-e3e1-40f1-93f9-3e73dbc9298a",
+			md := &Tags{}
+			md.tags = map[string][]string{
+				"musicbrainz_trackid":       {"8f84da07-09a0-477b-b216-cc982dabcde1"},
+				"musicbrainz_albumid":       {"f68c985d-f18b-4f4a-b7f0-87837cf3fbf9"},
+				"musicbrainz_artistid":      {"89ad4ac3-39f7-470e-963a-56509c546377"},
+				"musicbrainz_albumartistid": {"ada7a83c-e3e1-40f1-93f9-3e73dbc9298a"},
 			}
 			Expect(md.MbzTrackID()).To(Equal("8f84da07-09a0-477b-b216-cc982dabcde1"))
 			Expect(md.MbzAlbumID()).To(Equal("f68c985d-f18b-4f4a-b7f0-87837cf3fbf9"))
@@ -47,12 +47,12 @@ var _ = Describe("ffmpegMetadata", func() {
 			Expect(md.MbzAlbumArtistID()).To(Equal("ada7a83c-e3e1-40f1-93f9-3e73dbc9298a"))
 		})
 		It("return empty string for invalid MBID", func() {
-			md := &baseMetadata{}
-			md.tags = map[string]string{
-				"musicbrainz_trackid":       "11406732-6",
-				"musicbrainz_albumid":       "11406732",
-				"musicbrainz_artistid":      "200455",
-				"musicbrainz_albumartistid": "194",
+			md := &Tags{}
+			md.tags = map[string][]string{
+				"musicbrainz_trackid":       {"11406732-6"},
+				"musicbrainz_albumid":       {"11406732"},
+				"musicbrainz_artistid":      {"200455"},
+				"musicbrainz_albumartistid": {"194"},
 			}
 			Expect(md.MbzTrackID()).To(Equal(""))
 			Expect(md.MbzAlbumID()).To(Equal(""))

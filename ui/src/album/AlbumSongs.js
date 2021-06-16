@@ -23,6 +23,7 @@ import {
   RatingField,
   QualityInfo,
   useSelectedFields,
+  useResourceRefresh,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import config from '../config'
@@ -88,6 +89,7 @@ const AlbumSongs = (props) => {
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
   const version = useVersion()
+  useResourceRefresh('song', 'album')
 
   const toggleableFields = useMemo(() => {
     return {
@@ -113,7 +115,6 @@ const AlbumSongs = (props) => {
       rating: isDesktop && config.enableStarRating && (
         <RatingField
           source="rating"
-          resource={'albumSong'}
           sortable={false}
           className={classes.ratingField}
         />

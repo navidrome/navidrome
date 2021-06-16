@@ -1,5 +1,5 @@
-import { fetchUtils } from 'react-admin'
 import { baseUrl } from '../utils'
+import { httpClient } from '../dataProvider'
 
 const url = (command, id, options) => {
   const params = new URLSearchParams()
@@ -19,36 +19,40 @@ const url = (command, id, options) => {
       params.append(k, options[k])
     })
   }
-  const url = `/rest/${command}?${params.toString()}`
-  return baseUrl(url)
+  return `/rest/${command}?${params.toString()}`
 }
 
 const scrobble = (id, submit) =>
-  fetchUtils.fetchJson(url('scrobble', id, { submission: submit }))
+  httpClient(url('scrobble', id, { submission: submit }))
 
-const star = (id) => fetchUtils.fetchJson(url('star', id))
+const star = (id) => httpClient(url('star', id))
 
-const unstar = (id) => fetchUtils.fetchJson(url('unstar', id))
+const unstar = (id) => httpClient(url('unstar', id))
 
-const download = (id) => (window.location.href = url('download', id))
+const setRating = (id, rating) => httpClient(url('setRating', id, { rating }))
+
+const download = (id) => (window.location.href = baseUrl(url('download', id)))
+
+const startScan = (options) => httpClient(url('startScan', null, options))
+
+const getScanStatus = () => httpClient(url('getScanStatus'))
 
 const getCoverArtUrl = (record, size) => {
   const options = {
     ...(record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
   }
-  return url('getCoverArt', record.coverArtId || 'not_found', options)
+  return baseUrl(url('getCoverArt', record.coverArtId || 'not_found', options))
 }
-
-const setRating = (id, rating) =>
-  fetchUtils.fetchJson(url('setRating', id, { rating }))
 
 export default {
   url,
-  getCoverArtUrl,
   scrobble,
   download,
   star,
   unstar,
   setRating,
+  startScan,
+  getScanStatus,
+  getCoverArtUrl,
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
@@ -23,6 +24,7 @@ const Version = "1.16.1"
 type handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
 type Router struct {
+	http.Handler
 	DataStore        model.DataStore
 	Artwork          core.Artwork
 	Streamer         core.MediaStreamer
@@ -30,12 +32,11 @@ type Router struct {
 	Players          core.Players
 	ExternalMetadata core.ExternalMetadata
 	Scanner          scanner.Scanner
-
-	mux http.Handler
+	Broker           events.Broker
 }
 
 func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver, players core.Players,
-	externalMetadata core.ExternalMetadata, scanner scanner.Scanner) *Router {
+	externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker) *Router {
 	r := &Router{
 		DataStore:        ds,
 		Artwork:          artwork,
@@ -44,15 +45,10 @@ func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, 
 		Players:          players,
 		ExternalMetadata: externalMetadata,
 		Scanner:          scanner,
+		Broker:           broker,
 	}
-	r.mux = r.routes()
+	r.Handler = r.routes()
 	return r
-}
-
-func (api *Router) Setup(path string) {}
-
-func (api *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	api.mux.ServeHTTP(w, r)
 }
 
 func (api *Router) routes() http.Handler {
