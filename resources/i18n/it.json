@@ -23,7 +23,8 @@
                 "comment": "Commento",
                 "rating": "Valutazione",
                 "quality": "Qualità",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "Ultima riproduzione"
             },
             "actions": {
                 "addToQueue": "Aggiungi alla coda",
