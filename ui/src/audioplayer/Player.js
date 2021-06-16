@@ -62,6 +62,23 @@ const useStyle = makeStyles(
       '& .play-mode-title': {
         'pointer-events': 'none',
       },
+      '& .music-player-panel': {
+        color: (props) => (props.theme?.player.color),
+        background: (props) => (props.theme?.player.bgcolor),
+        '& .audio-main': {
+          color: (props) => (props.theme?.player.durcolor)
+        },
+        '& svg': {
+          color: (props) => (props.theme?.player.btncolor),
+          '&:hover': {
+            color: (props) => (props.theme?.player.hovbtncolor)
+          },
+        },
+        '& .rc-slider-track': {
+          color: '#fff !important',
+          background: '#fff'
+        }
+      }
     },
     artistAlbum: {
       marginTop: '2px',
@@ -117,7 +134,8 @@ const Player = () => {
   )
 
   const visible = authenticated && queue.queue.length > 0
-  const classes = useStyle({ visible })
+  const playprops = {theme, visible}
+  const classes = useStyle(playprops)
   // Match the medium breakpoint defined in the material-ui theme
   // See https://material-ui.com/customization/breakpoints/#breakpoints
   const isDesktop = useMediaQuery('(min-width:810px)')
