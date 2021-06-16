@@ -45,6 +45,10 @@ const getCoverArtUrl = (record, size) => {
   return baseUrl(url('getCoverArt', record.coverArtId || 'not_found', options))
 }
 
+const streamUrl = (id) => {
+  return baseUrl(url('stream', id, { ts: true }))
+}
+
 export default {
   url,
   scrobble,
@@ -55,4 +59,5 @@ export default {
   startScan,
   getScanStatus,
   getCoverArtUrl,
+  streamUrl,
 }
