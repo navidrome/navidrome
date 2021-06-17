@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/ui"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type Server struct {
@@ -82,6 +83,15 @@ func (s *Server) initRoutes() {
 			r.Post("/login", login(s.ds))
 		}
 		r.Post("/createAdmin", createAdmin(s.ds))
+	})
+
+	r.Get("/api/lastfm/link/status", func(w http.ResponseWriter, r *http.Request) {
+		rs := "false"
+		c := utils.ParamInt(r, "c", 0)
+		if (c == 4) {
+			rs = "true"
+		}
+		_, _ = w.Write([]byte(rs))
 	})
 
 	// Redirect root to UI URL
