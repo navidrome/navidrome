@@ -23,7 +23,8 @@
                 "comment": "Opomba",
                 "rating": "Ocena",
                 "quality": "Kakovost",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "Zadnja predvajana"
             },
             "actions": {
                 "addToQueue": "Predvajaj kasneje",
