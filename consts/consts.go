@@ -20,8 +20,10 @@ const (
 	DefaultSessionTimeout  = 24 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
 
-	PasswordsEncryptedKey = "PasswordsEncryptedKey"
+	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option
+	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
 	DefaultEncryptionKey  = "just for obfuscation"
+	PasswordsEncryptedKey = "PasswordsEncryptedKey"
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"

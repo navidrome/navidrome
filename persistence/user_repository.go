@@ -48,9 +48,6 @@ func (r *userRepository) Get(id string) (*model.User, error) {
 	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
 	var res model.User
 	err := r.queryOne(sel, &res)
-	if err == nil {
-		_ = r.decryptPassword(&res)
-	}
 	return &res, err
 }
 
@@ -58,9 +55,6 @@ func (r *userRepository) GetAll(options ...model.QueryOptions) (model.Users, err
 	sel := r.newSelect(options...).Columns("*")
 	res := model.Users{}
 	err := r.queryAll(sel, &res)
-	if err == nil {
-		_ = r.decryptAllPasswords(res)
-	}
 	return res, err
 }
 
@@ -90,9 +84,6 @@ func (r *userRepository) FindFirstAdmin() (*model.User, error) {
 	sel := r.newSelect(model.QueryOptions{Sort: "updated_at", Max: 1}).Columns("*").Where(Eq{"is_admin": true})
 	var usr model.User
 	err := r.queryOne(sel, &usr)
-	if err == nil {
-		_ = r.decryptPassword(&usr)
-	}
 	return &usr, err
 }
 
@@ -100,10 +91,15 @@ func (r *userRepository) FindByUsername(username string) (*model.User, error) {
 	sel := r.newSelect().Columns("*").Where(Like{"user_name": username})
 	var usr model.User
 	err := r.queryOne(sel, &usr)
-	if err == nil {
-		_ = r.decryptPassword(&usr)
-	}
 	return &usr, err
+}
+
+func (r *userRepository) FindByUsernameWithPassword(username string) (*model.User, error) {
+	usr, err := r.FindByUsername(username)
+	if err == nil {
+		_ = r.decryptPassword(usr)
+	}
+	return usr, err
 }
 
 func (r *userRepository) UpdateLastLoginAt(id string) error {
@@ -281,7 +277,7 @@ func (r *userRepository) initPasswordEncryptionKey() error {
 		log.Error("Could not encrypt all passwords", err)
 		return err
 	}
-	log.Warn("Encrypting all passwords", "numUsers", len(users))
+	log.Warn("New PasswordEncryptionKey set. Encrypting all passwords", "numUsers", len(users))
 	if err = r.decryptAllPasswords(users); err != nil {
 		return err
 	}
@@ -293,9 +289,9 @@ func (r *userRepository) initPasswordEncryptionKey() error {
 			upd := Update(r.tableName).Set("password", u.NewPassword).Where(Eq{"id": u.ID})
 			_, err = r.executeSQL(upd)
 			if err != nil {
-				log.Error("Password NOT changed", "user", u.UserName, "id", u.ID, err)
+				log.Error("Password NOT encrypted! This may cause problems!", "user", u.UserName, "id", u.ID, err)
 			} else {
-				log.Warn("Password changed", "user", u.UserName, "id", u.ID)
+				log.Warn("Password encrypted successfully", "user", u.UserName, "id", u.ID)
 			}
 		}
 	}
