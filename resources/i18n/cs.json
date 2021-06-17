@@ -23,7 +23,8 @@
                 "comment": "Komentář",
                 "rating": "Hodnocení",
                 "quality": "Kvalita",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "Poslední přehravaná skladba"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
