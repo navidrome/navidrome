@@ -23,6 +23,7 @@ var redacted = &Hook{
 		"(ApiKey:\")[\\w]*",
 		"(Secret:\")[\\w]*",
 		"(Spotify.*ID:\")[\\w]*",
+		"(PasswordEncryptionKey:[\\s]*\")[^\"]*",
 
 		// UI appConfig
 		"(subsonicToken:)[\\w]+(\\s)",

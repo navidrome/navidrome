@@ -28,9 +28,11 @@ type UserRepository interface {
 	CountAll(...QueryOptions) (int64, error)
 	Get(id string) (*User, error)
 	Put(*User) error
+	UpdateLastLoginAt(id string) error
+	UpdateLastAccessAt(id string) error
 	FindFirstAdmin() (*User, error)
 	// FindByUsername must be case-insensitive
 	FindByUsername(username string) (*User, error)
-	UpdateLastLoginAt(id string) error
-	UpdateLastAccessAt(id string) error
+	// FindByUsernameWithPassword is the same as above, but also returns the decrypted password
+	FindByUsernameWithPassword(username string) (*User, error)
 }
