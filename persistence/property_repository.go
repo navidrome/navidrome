@@ -3,7 +3,7 @@ package persistence
 import (
 	"context"
 
-	"github.com/Masterminds/squirrel"
+	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/navidrome/navidrome/model"
 )
@@ -21,7 +21,7 @@ func NewPropertyRepository(ctx context.Context, o orm.Ormer) model.PropertyRepos
 }
 
 func (r propertyRepository) Put(id string, value string) error {
-	update := squirrel.Update(r.tableName).Set("value", value).Where(squirrel.Eq{"id": id})
+	update := Update(r.tableName).Set("value", value).Where(Eq{"id": id})
 	count, err := r.executeSQL(update)
 	if err != nil {
 		return nil
@@ -29,13 +29,13 @@ func (r propertyRepository) Put(id string, value string) error {
 	if count > 0 {
 		return nil
 	}
-	insert := squirrel.Insert(r.tableName).Columns("id", "value").Values(id, value)
+	insert := Insert(r.tableName).Columns("id", "value").Values(id, value)
 	_, err = r.executeSQL(insert)
 	return err
 }
 
 func (r propertyRepository) Get(id string) (string, error) {
-	sel := squirrel.Select("value").From(r.tableName).Where(squirrel.Eq{"id": id})
+	sel := Select("value").From(r.tableName).Where(Eq{"id": id})
 	resp := struct {
 		Value string
 	}{}
@@ -55,4 +55,8 @@ func (r propertyRepository) DefaultGet(id string, defaultValue string) (string, 
 		return defaultValue, err
 	}
 	return value, nil
+}
+
+func (r propertyRepository) Delete(id string) error {
+	return r.delete(Eq{"id": id})
 }
