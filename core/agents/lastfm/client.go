@@ -49,7 +49,7 @@ func (c *Client) ArtistGetInfo(ctx context.Context, name string, mbid string) (*
 	params.Add("artist", name)
 	params.Add("mbid", mbid)
 	params.Add("lang", c.lang)
-	response, err := c.makeRequest(params)
+	response, err := c.makeRequest(params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (c *Client) ArtistGetSimilar(ctx context.Context, name string, mbid string,
 	params.Add("artist", name)
 	params.Add("mbid", mbid)
 	params.Add("limit", strconv.Itoa(limit))
-	response, err := c.makeRequest(params)
+	response, err := c.makeRequest(params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (c *Client) ArtistGetTopTracks(ctx context.Context, name string, mbid strin
 	params.Add("artist", name)
 	params.Add("mbid", mbid)
 	params.Add("limit", strconv.Itoa(limit))
-	response, err := c.makeRequest(params)
+	response, err := c.makeRequest(params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 	params := url.Values{}
 	params.Add("method", "auth.getToken")
 	c.sign(params)
-	response, err := c.makeRequest(params)
+	response, err := c.makeRequest(params, true)
 	if err != nil {
 		return "", err
 	}
@@ -97,17 +97,20 @@ func (c *Client) GetSession(ctx context.Context, token string) (string, error) {
 	params := url.Values{}
 	params.Add("method", "auth.getSession")
 	params.Add("token", token)
-	c.sign(params)
-	response, err := c.makeRequest(params)
+	response, err := c.makeRequest(params, true)
 	if err != nil {
 		return "", err
 	}
 	return response.Session.Key, nil
 }
 
-func (c *Client) makeRequest(params url.Values) (*Response, error) {
+func (c *Client) makeRequest(params url.Values, signed bool) (*Response, error) {
 	params.Add("format", "json")
 	params.Add("api_key", c.apiKey)
+
+	if signed {
+		c.sign(params)
+	}
 
 	req, _ := http.NewRequest("GET", apiBaseUrl, nil)
 	req.URL.RawQuery = params.Encode()
