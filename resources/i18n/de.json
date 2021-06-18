@@ -23,7 +23,8 @@
                 "comment": "Kommentar",
                 "rating": "Bewertung",
                 "quality": "Qualität",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "Zuletzt gespielt"
             },
             "actions": {
                 "addToQueue": "Später abspielen",
