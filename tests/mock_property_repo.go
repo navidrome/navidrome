@@ -3,7 +3,7 @@ package tests
 import "github.com/navidrome/navidrome/model"
 
 type MockedPropertyRepo struct {
-	model.UserRepository
+	model.PropertyRepository
 	data map[string]string
 	err  error
 }

@@ -8,6 +8,7 @@ package cmd
 import (
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/transcoder"
 	"github.com/navidrome/navidrome/persistence"
@@ -53,6 +54,12 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	return router
 }
 
+func CreateLastFMRouter() *lastfm.Router {
+	dataStore := persistence.New()
+	router := lastfm.NewRouter(dataStore)
+	return router
+}
+
 func createScanner() scanner.Scanner {
 	dataStore := persistence.New()
 	artworkCache := core.GetImageCache()
@@ -75,7 +82,7 @@ func createScheduler() scheduler.Scheduler {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, subsonic.New, nativeapi.New, persistence.New, GetBroker)
+var allProviders = wire.NewSet(core.Set, subsonic.New, nativeapi.New, persistence.New, lastfm.NewRouter, GetBroker)
 
 // Scanner must be a Singleton
 var (
