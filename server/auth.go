@@ -274,7 +274,7 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 	}
 
 	userRepo := ds.User(r.Context())
-	user, err := userRepo.FindByUsername(username)
+	user, err := userRepo.FindByUsernameWithPassword(username)
 	if user == nil || err != nil {
 		log.Warn(r, "User passed in header not found", "user", username)
 		return nil
