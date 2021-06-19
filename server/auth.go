@@ -207,6 +207,10 @@ func UsernameFromReverseProxyHeader(r *http.Request) string {
 	return username
 }
 
+func UsernameFromConfig(r *http.Request) string {
+	return conf.Server.DevAutoLoginUsername
+}
+
 func contextWithUser(ctx context.Context, ds model.DataStore, username string) (context.Context, error) {
 	user, err := ds.User(ctx).FindByUsername(username)
 	if err == nil {
@@ -235,7 +239,7 @@ func authenticateRequest(ds model.DataStore, r *http.Request, findUsernameFns ..
 func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, err := authenticateRequest(ds, r, UsernameFromToken, UsernameFromReverseProxyHeader)
+			ctx, err := authenticateRequest(ds, r, UsernameFromConfig, UsernameFromToken, UsernameFromReverseProxyHeader)
 			if err != nil {
 				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return
@@ -268,9 +272,12 @@ func JWTRefresher(next http.Handler) http.Handler {
 }
 
 func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]interface{} {
-	username := UsernameFromReverseProxyHeader(r)
+	username := UsernameFromConfig(r)
 	if username == "" {
-		return nil
+		username = UsernameFromReverseProxyHeader(r)
+		if username == "" {
+			return nil
+		}
 	}
 
 	userRepo := ds.User(r.Context())

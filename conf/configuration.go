@@ -63,6 +63,7 @@ type configOptions struct {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
 	DevAutoCreateAdminPassword string
+	DevAutoLoginUsername       string
 	DevPreCacheAlbumArtwork    bool
 	DevFastAccessCoverArt      bool
 	DevOldCacheLayout          bool
@@ -220,6 +221,7 @@ func init() {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devautocreateadminpassword", "")
+	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devprecachealbumartwork", false)
 	viper.SetDefault("devoldcachelayout", false)
 	viper.SetDefault("devFastAccessCoverArt", false)
