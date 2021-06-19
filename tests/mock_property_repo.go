@@ -34,6 +34,18 @@ func (p *MockedPropertyRepo) Get(id string) (string, error) {
 	return "", model.ErrNotFound
 }
 
+func (p *MockedPropertyRepo) Delete(id string) error {
+	if p.err != nil {
+		return p.err
+	}
+	p.init()
+	if _, ok := p.data[id]; ok {
+		delete(p.data, id)
+		return nil
+	}
+	return model.ErrNotFound
+}
+
 func (p *MockedPropertyRepo) DefaultGet(id string, defaultValue string) (string, error) {
 	if p.err != nil {
 		return "", p.err
