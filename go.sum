@@ -538,8 +538,8 @@ github.com/mgechev/dots v0.0.0-20190921121421-c36f7dcfbb81 h1:QASJXOGm2RZ5Ardbc8
 github.com/mgechev/dots v0.0.0-20190921121421-c36f7dcfbb81/go.mod h1:KQ7+USdGKfpPjXk4Ga+5XxQM4Lm4e3gAogrreFAYpOg=
 github.com/mgechev/revive v1.0.6 h1:MgRQ3ys2uQCyVjelaDhVs8oSvOPYInzGA/nNGMa+MNU=
 github.com/mgechev/revive v1.0.6/go.mod h1:Lj5gIVxjBlH8REa3icEOkdfchwYc291nShzZ4QYWyMo=
-github.com/microcosm-cc/bluemonday v1.0.10 h1:hsW4ch5StWWscflW8orGkX3TP2AVelTmwYO26qwGjqg=
-github.com/microcosm-cc/bluemonday v1.0.10/go.mod h1:beubO5lmWoy1tU8niaMyXNriNgROO37H3U/tsrcZsy0=
+github.com/microcosm-cc/bluemonday v1.0.14 h1:Djd+GeTanVeA23todvVC0AO5hsI+vAwQMLTy794Zr5I=
+github.com/microcosm-cc/bluemonday v1.0.14/go.mod h1:beubO5lmWoy1tU8niaMyXNriNgROO37H3U/tsrcZsy0=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/miekg/dns v1.1.35/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/miekg/pkcs11 v1.0.2/go.mod h1:XsNlhZGX73bx86s2hdc/FuaLm2CPZJemRLMA+WTFxgs=
