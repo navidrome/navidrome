@@ -92,6 +92,8 @@ func clientUniqueIdAdder(next http.Handler) http.Handler {
 				Value:    clientUniqueId,
 				MaxAge:   consts.CookieExpiry,
 				HttpOnly: true,
+				Secure:   true,
+				SameSite: http.SameSiteNoneMode,
 				Path:     "/",
 			}
 			http.SetCookie(w, c)
