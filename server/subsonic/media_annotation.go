@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -16,13 +17,13 @@ import (
 )
 
 type MediaAnnotationController struct {
-	ds     model.DataStore
-	npRepo core.NowPlaying
-	broker events.Broker
+	ds        model.DataStore
+	scrobbler scrobbler.Scrobbler
+	broker    events.Broker
 }
 
-func NewMediaAnnotationController(ds model.DataStore, npr core.NowPlaying, broker events.Broker) *MediaAnnotationController {
-	return &MediaAnnotationController{ds: ds, npRepo: npr, broker: broker}
+func NewMediaAnnotationController(ds model.DataStore, scrobbler scrobbler.Scrobbler, broker events.Broker) *MediaAnnotationController {
+	return &MediaAnnotationController{ds: ds, scrobbler: scrobbler, broker: broker}
 }
 
 func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -148,7 +149,7 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 			submissions++
 			event.With("song", mf.ID).With("album", mf.AlbumID).With("artist", mf.AlbumArtistID)
 		} else {
-			_, err := c.scrobblerNowPlaying(ctx, playerId, playerName, id, username)
+			err := c.scrobblerNowPlaying(ctx, playerId, playerName, id, username)
 			if err != nil {
 				log.Error(r, "Error setting current song", "id", id, err)
 				continue
@@ -191,20 +192,20 @@ func (c *MediaAnnotationController) scrobblerRegister(ctx context.Context, playe
 	return mf, err
 }
 
-func (c *MediaAnnotationController) scrobblerNowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error) {
+func (c *MediaAnnotationController) scrobblerNowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) error {
 	mf, err := c.ds.MediaFile(ctx).Get(trackId)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if mf == nil {
-		return nil, fmt.Errorf(`ID "%s" not found`, trackId)
+		return fmt.Errorf(`ID "%s" not found`, trackId)
 	}
 
 	log.Info("Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username)
 
-	info := &core.NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
-	return mf, c.npRepo.Enqueue(info)
+	err = c.scrobbler.NowPlaying(ctx, playerId, playerName, trackId)
+	return err
 }
 
 func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids ...string) error {

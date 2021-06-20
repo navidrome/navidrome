@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
@@ -15,14 +15,14 @@ import (
 )
 
 type AlbumListController struct {
-	ds         model.DataStore
-	nowPlaying core.NowPlaying
+	ds        model.DataStore
+	scrobbler scrobbler.Scrobbler
 }
 
-func NewAlbumListController(ds model.DataStore, nowPlaying core.NowPlaying) *AlbumListController {
+func NewAlbumListController(ds model.DataStore, scrobbler scrobbler.Scrobbler) *AlbumListController {
 	c := &AlbumListController{
-		ds:         ds,
-		nowPlaying: nowPlaying,
+		ds:        ds,
+		scrobbler: scrobbler,
 	}
 	return c
 }
@@ -134,7 +134,7 @@ func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request
 
 func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	npInfo, err := c.nowPlaying.GetAll()
+	npInfo, err := c.scrobbler.GetNowPlaying(ctx)
 	if err != nil {
 		log.Error(r, "Error retrieving now playing list", "error", err)
 		return nil, err

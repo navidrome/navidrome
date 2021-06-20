@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner"
@@ -33,10 +34,11 @@ type Router struct {
 	ExternalMetadata core.ExternalMetadata
 	Scanner          scanner.Scanner
 	Broker           events.Broker
+	Scrobbler        scrobbler.Scrobbler
 }
 
 func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver, players core.Players,
-	externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker) *Router {
+	externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker, scrobbler scrobbler.Scrobbler) *Router {
 	r := &Router{
 		DataStore:        ds,
 		Artwork:          artwork,
@@ -46,6 +48,7 @@ func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, 
 		ExternalMetadata: externalMetadata,
 		Scanner:          scanner,
 		Broker:           broker,
+		Scrobbler:        scrobbler,
 	}
 	r.Handler = r.routes()
 	return r
