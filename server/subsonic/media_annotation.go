@@ -125,8 +125,6 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 		return nil, newError(responses.ErrorGeneric, "Wrong number of timestamps: %d, should be %d", len(times), len(ids))
 	}
 	submission := utils.ParamBool(r, "submission", true)
-	client := utils.ParamString(r, "c")
-	username := utils.ParamString(r, "u")
 	ctx := r.Context()
 	event := &events.RefreshResource{}
 	submissions := 0
@@ -147,8 +145,9 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 			}
 			submissions++
 			event.With("song", mf.ID).With("album", mf.AlbumID).With("artist", mf.AlbumArtistID)
-		} else {
-			err := c.scrobblerNowPlaying(ctx, client, id, username)
+		}
+		if !submission || len(times) == 0 {
+			err := c.scrobblerNowPlaying(ctx, id)
 			if err != nil {
 				log.Error(r, "Error setting current song", "id", id, err)
 				continue
@@ -191,20 +190,25 @@ func (c *MediaAnnotationController) scrobblerRegister(ctx context.Context, track
 	return mf, err
 }
 
-func (c *MediaAnnotationController) scrobblerNowPlaying(ctx context.Context, client, trackId, username string) error {
+func (c *MediaAnnotationController) scrobblerNowPlaying(ctx context.Context, trackId string) error {
 	mf, err := c.ds.MediaFile(ctx).Get(trackId)
 	if err != nil {
 		return err
 	}
-
-	player, _ := request.PlayerFrom(ctx)
 	if mf == nil {
 		return fmt.Errorf(`ID "%s" not found`, trackId)
 	}
 
-	log.Info("Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username)
+	player, _ := request.PlayerFrom(ctx)
+	username, _ := request.UsernameFrom(ctx)
+	client, _ := request.ClientFrom(ctx)
+	clientId, ok := request.ClientUniqueIdFrom(ctx)
+	if !ok {
+		clientId = player.ID
+	}
 
-	err = c.scrobbler.NowPlaying(ctx, player.ID, client, trackId)
+	log.Info("Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name)
+	err = c.scrobbler.NowPlaying(ctx, clientId, client, trackId)
 	return err
 }
 

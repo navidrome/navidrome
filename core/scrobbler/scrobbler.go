@@ -3,9 +3,9 @@ package scrobbler
 import (
 	"context"
 	"sort"
-	"sync"
 	"time"
 
+	"github.com/ReneKroon/ttlcache/v2"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/singleton"
@@ -28,14 +28,16 @@ type Scrobbler interface {
 }
 
 type scrobbler struct {
-	ds model.DataStore
+	ds      model.DataStore
+	playMap *ttlcache.Cache
 }
-
-var playMap = sync.Map{}
 
 func New(ds model.DataStore) Scrobbler {
 	instance := singleton.Get(scrobbler{}, func() interface{} {
-		return &scrobbler{ds: ds}
+		m := ttlcache.NewCache()
+		m.SkipTTLExtensionOnHit(true)
+		_ = m.SetTTL(nowPlayingExpire)
+		return &scrobbler{ds: ds, playMap: m}
 	})
 	return instance.(*scrobbler)
 }
@@ -49,19 +51,20 @@ func (s *scrobbler) NowPlaying(ctx context.Context, playerId string, playerName 
 		PlayerId:   playerId,
 		PlayerName: playerName,
 	}
-	playMap.Store(playerId, info)
+	_ = s.playMap.Set(playerId, info)
 	return nil
 }
 
 func (s *scrobbler) GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error) {
 	var res []NowPlayingInfo
-	playMap.Range(func(playerId, value interface{}) bool {
-		info := value.(NowPlayingInfo)
-		if time.Since(info.Start) < nowPlayingExpire {
-			res = append(res, info)
+	for _, playerId := range s.playMap.GetKeys() {
+		value, err := s.playMap.Get(playerId)
+		if err != nil {
+			continue
 		}
-		return true
-	})
+		info := value.(NowPlayingInfo)
+		res = append(res, info)
+	}
 	sort.Slice(res, func(i, j int) bool {
 		return res[i].Start.After(res[j].Start)
 	})
