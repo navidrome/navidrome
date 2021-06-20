@@ -17,12 +17,12 @@ type NowPlayingInfo struct {
 	TrackID    string
 	Start      time.Time
 	Username   string
-	PlayerId   int
+	PlayerId   string
 	PlayerName string
 }
 
 type Scrobbler interface {
-	NowPlaying(ctx context.Context, playerId int, playerName string, trackId string) error
+	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, playerId int, trackId string, playTime time.Time) error
 }
@@ -40,7 +40,7 @@ func New(ds model.DataStore) Scrobbler {
 	return instance.(*scrobbler)
 }
 
-func (s *scrobbler) NowPlaying(ctx context.Context, playerId int, playerName string, trackId string) error {
+func (s *scrobbler) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error {
 	username, _ := request.UsernameFrom(ctx)
 	info := NowPlayingInfo{
 		TrackID:    trackId,

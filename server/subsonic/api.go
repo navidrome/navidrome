@@ -99,10 +99,11 @@ func (api *Router) routes() http.Handler {
 	})
 	r.Group(func(r chi.Router) {
 		c := initMediaAnnotationController(api)
-		h(r, "setRating", c.SetRating)
-		h(r, "star", c.Star)
-		h(r, "unstar", c.Unstar)
-		h(r, "scrobble", c.Scrobble)
+		withPlayer := r.With(getPlayer(api.Players))
+		h(withPlayer, "setRating", c.SetRating)
+		h(withPlayer, "star", c.Star)
+		h(withPlayer, "unstar", c.Unstar)
+		h(withPlayer, "scrobble", c.Scrobble)
 	})
 	r.Group(func(r chi.Router) {
 		c := initPlaylistsController(api)

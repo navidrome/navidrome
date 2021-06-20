@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	ua "github.com/mileusna/useragent"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
@@ -143,10 +144,11 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 			userName, _ := request.UsernameFrom(ctx)
 			client, _ := request.ClientFrom(ctx)
 			playerId := playerIDFromCookie(r, userName)
-			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-			player, trc, err := players.Register(ctx, playerId, client, r.Header.Get("user-agent"), ip)
+			ip, _, _ := net.SplitHostPort(realIP(r))
+			userAgent := canonicalUserAgent(r)
+			player, trc, err := players.Register(ctx, playerId, client, userAgent, ip)
 			if err != nil {
-				log.Error("Could not register player", "username", userName, "client", client)
+				log.Error("Could not register player", "username", userName, "client", client, err)
 			} else {
 				ctx = request.WithPlayer(ctx, *player)
 				if trc != nil {
@@ -167,6 +169,28 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func canonicalUserAgent(r *http.Request) string {
+	u := ua.Parse(r.Header.Get("user-agent"))
+	userAgent := u.Name
+	if u.OS != "" {
+		userAgent = userAgent + "/" + u.OS
+	}
+	return userAgent
+}
+
+func realIP(r *http.Request) string {
+	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+		return xrip
+	} else if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		i := strings.Index(xff, ", ")
+		if i == -1 {
+			i = len(xff)
+		}
+		return xff[:i]
+	}
+	return r.RemoteAddr
 }
 
 func playerIDFromCookie(r *http.Request, userName string) string {
