@@ -7,7 +7,6 @@ package subsonic
 
 import (
 	"github.com/google/wire"
-	"github.com/navidrome/navidrome/core"
 )
 
 // Injectors from wire_injectors.go:
@@ -26,16 +25,16 @@ func initBrowsingController(router *Router) *BrowsingController {
 
 func initAlbumListController(router *Router) *AlbumListController {
 	dataStore := router.DataStore
-	nowPlaying := core.NewNowPlayingRepository()
-	albumListController := NewAlbumListController(dataStore, nowPlaying)
+	scrobbler := router.Scrobbler
+	albumListController := NewAlbumListController(dataStore, scrobbler)
 	return albumListController
 }
 
 func initMediaAnnotationController(router *Router) *MediaAnnotationController {
 	dataStore := router.DataStore
-	nowPlaying := core.NewNowPlayingRepository()
+	scrobbler := router.Scrobbler
 	broker := router.Broker
-	mediaAnnotationController := NewMediaAnnotationController(dataStore, nowPlaying, broker)
+	mediaAnnotationController := NewMediaAnnotationController(dataStore, scrobbler, broker)
 	return mediaAnnotationController
 }
 
@@ -96,5 +95,15 @@ var allProviders = wire.NewSet(
 	NewMediaRetrievalController,
 	NewStreamController,
 	NewBookmarksController,
-	NewLibraryScanningController, core.NewNowPlayingRepository, wire.FieldsOf(new(*Router), "DataStore", "Artwork", "Streamer", "Archiver", "ExternalMetadata", "Scanner", "Broker"),
+	NewLibraryScanningController, wire.FieldsOf(
+		new(*Router),
+		"DataStore",
+		"Artwork",
+		"Streamer",
+		"Archiver",
+		"ExternalMetadata",
+		"Scanner",
+		"Broker",
+		"Scrobbler",
+	),
 )

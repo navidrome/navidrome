@@ -6,10 +6,9 @@
 package cmd
 
 import (
-	"sync"
-
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/transcoder"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
@@ -18,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
 	"github.com/navidrome/navidrome/server/subsonic"
+	"sync"
 )
 
 // Injectors from wire_injectors.go:
@@ -48,7 +48,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	externalMetadata := core.NewExternalMetadata(dataStore)
 	scanner := GetScanner()
 	broker := GetBroker()
-	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker)
+	scrobblerScrobbler := scrobbler.New(dataStore)
+	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, scrobblerScrobbler)
 	return router
 }
 
