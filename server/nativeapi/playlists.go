@@ -25,7 +25,7 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 			constructor := func(ctx context.Context) rest.Repository {
 				plsRepo := ds.Playlist(ctx)
 				plsId := chi.URLParam(req, "playlistId")
-				return plsRepo.(model.PlaylistRepository).Tracks(plsId)
+				return plsRepo.Tracks(plsId)
 			}
 
 			handler(constructor).ServeHTTP(res, req)
