@@ -152,7 +152,7 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 		response.NowPlaying.Entry[i].Child = childFromMediaFile(ctx, *mf)
 		response.NowPlaying.Entry[i].UserName = np.Username
 		response.NowPlaying.Entry[i].MinutesAgo = int(time.Since(np.Start).Minutes())
-		response.NowPlaying.Entry[i].PlayerId = np.PlayerId
+		response.NowPlaying.Entry[i].PlayerId = i + 1 // Fake numeric playerId, it does not seem to be used for anything
 		response.NowPlaying.Entry[i].PlayerName = np.PlayerName
 	}
 	return response, nil

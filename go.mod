@@ -31,6 +31,7 @@ require (
 	github.com/matoous/go-nanoid v1.5.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/microcosm-cc/bluemonday v1.0.10
+	github.com/mileusna/useragent v1.0.2 // indirect
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.4
