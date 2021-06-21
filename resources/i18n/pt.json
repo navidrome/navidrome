@@ -8,7 +8,6 @@
                 "duration": "Duração",
                 "trackNumber": "#",
                 "playCount": "Execuções",
-                "playDate": "Últ. Execução",
                 "title": "Título",
                 "artist": "Artista",
                 "album": "Álbum",
@@ -24,7 +23,8 @@
                 "comment": "Comentário",
                 "rating": "Classificação",
                 "quality": "Qualidade",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "Últ. Execução"
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
@@ -278,7 +278,8 @@
             "data_provider_error": "Erro interno do servidor. Entre em contato",
             "i18n_error": "Não foi possível carregar as traduções para o idioma especificado",
             "canceled": "Ação cancelada",
-            "logged_out": "Sua sessão foi encerrada. Por favor, reconecte"
+            "logged_out": "Sua sessão foi encerrada. Por favor, reconecte",
+            "new_version": "Nova versão disponível! Por favor recarregue esta janela."
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "Colunas visíveis",
