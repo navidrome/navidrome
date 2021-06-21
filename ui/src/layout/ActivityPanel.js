@@ -85,7 +85,7 @@ const ActivityPanel = () => {
   }, [dispatch])
 
   useEffect(() => {
-    if (serverStart.version !== config.version) {
+    if (serverStart.version && serverStart.version !== config.version) {
       notify('ra.notification.new_version', 'info', {}, false, 604800000 * 50)
     }
   }, [serverStart, notify])
