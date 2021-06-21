@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 
+	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/robfig/cron/v3"
 )
 
@@ -11,11 +12,14 @@ type Scheduler interface {
 	Add(crontab string, cmd func()) error
 }
 
-func New() Scheduler {
-	c := cron.New(cron.WithLogger(&logger{}))
-	return &scheduler{
-		c: c,
-	}
+func GetInstance() Scheduler {
+	instance := singleton.Get(&scheduler{}, func() interface{} {
+		c := cron.New(cron.WithLogger(&logger{}))
+		return &scheduler{
+			c: c,
+		}
+	})
+	return instance.(*scheduler)
 }
 
 type scheduler struct {

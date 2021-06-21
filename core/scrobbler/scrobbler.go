@@ -32,7 +32,7 @@ type scrobbler struct {
 	playMap *ttlcache.Cache
 }
 
-func New(ds model.DataStore) Scrobbler {
+func GetInstance(ds model.DataStore) Scrobbler {
 	instance := singleton.Get(scrobbler{}, func() interface{} {
 		m := ttlcache.NewCache()
 		m.SkipTTLExtensionOnHit(true)
