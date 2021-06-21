@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/core/transcoder"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
@@ -31,7 +30,7 @@ func CreateServer(musicFolder string) *server.Server {
 
 func CreateNativeAPIRouter() *nativeapi.Router {
 	dataStore := persistence.New()
-	broker := GetBroker()
+	broker := events.GetBroker()
 	share := core.NewShare(dataStore)
 	router := nativeapi.New(dataStore, broker, share)
 	return router
@@ -48,8 +47,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	players := core.NewPlayers(dataStore)
 	externalMetadata := core.NewExternalMetadata(dataStore)
 	scanner := GetScanner()
-	broker := GetBroker()
-	scrobblerScrobbler := scrobbler.New(dataStore)
+	broker := events.GetBroker()
+	scrobblerScrobbler := scrobbler.GetInstance(dataStore)
 	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, scrobblerScrobbler)
 	return router
 }
@@ -65,24 +64,14 @@ func createScanner() scanner.Scanner {
 	artworkCache := core.GetImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
 	cacheWarmer := core.NewCacheWarmer(artwork, artworkCache)
-	broker := GetBroker()
+	broker := events.GetBroker()
 	scannerScanner := scanner.New(dataStore, cacheWarmer, broker)
 	return scannerScanner
 }
 
-func createBroker() events.Broker {
-	broker := events.NewBroker()
-	return broker
-}
-
-func createScheduler() scheduler.Scheduler {
-	schedulerScheduler := scheduler.New()
-	return schedulerScheduler
-}
-
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, subsonic.New, nativeapi.New, persistence.New, lastfm.NewRouter, GetBroker)
+var allProviders = wire.NewSet(core.Set, subsonic.New, nativeapi.New, persistence.New, lastfm.NewRouter, events.GetBroker)
 
 // Scanner must be a Singleton
 var (
@@ -95,30 +84,4 @@ func GetScanner() scanner.Scanner {
 		scannerInstance = createScanner()
 	})
 	return scannerInstance
-}
-
-// Broker must be a Singleton
-var (
-	onceBroker     sync.Once
-	brokerInstance events.Broker
-)
-
-func GetBroker() events.Broker {
-	onceBroker.Do(func() {
-		brokerInstance = createBroker()
-	})
-	return brokerInstance
-}
-
-// Scheduler must be a Singleton
-var (
-	onceScheduler     sync.Once
-	schedulerInstance scheduler.Scheduler
-)
-
-func GetScheduler() scheduler.Scheduler {
-	onceScheduler.Do(func() {
-		schedulerInstance = createScheduler()
-	})
-	return schedulerInstance
 }

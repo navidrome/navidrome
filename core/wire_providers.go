@@ -16,6 +16,6 @@ var Set = wire.NewSet(
 	NewCacheWarmer,
 	NewPlayers,
 	transcoder.New,
-	scrobbler.New,
+	scrobbler.GetInstance,
 	NewShare,
 )

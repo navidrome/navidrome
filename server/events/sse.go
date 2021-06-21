@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/navidrome/navidrome/utils/singleton"
+
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
@@ -69,18 +71,21 @@ type broker struct {
 	unsubscribing clientsChan
 }
 
-func NewBroker() Broker {
-	// Instantiate a broker
-	broker := &broker{
-		publish:       make(messageChan, 100),
-		subscribing:   make(clientsChan, 1),
-		unsubscribing: make(clientsChan, 1),
-	}
+func GetBroker() Broker {
+	instance := singleton.Get(&broker{}, func() interface{} {
+		// Instantiate a broker
+		broker := &broker{
+			publish:       make(messageChan, 100),
+			subscribing:   make(clientsChan, 1),
+			unsubscribing: make(clientsChan, 1),
+		}
 
-	// Set it running - listening and broadcasting events
-	go broker.listen()
+		// Set it running - listening and broadcasting events
+		go broker.listen()
+		return broker
+	})
 
-	return broker
+	return instance.(*broker)
 }
 
 func (b *broker) SendMessage(ctx context.Context, evt Event) {
