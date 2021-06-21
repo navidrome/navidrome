@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useTranslate } from 'react-admin'
+import { useNotify, useTranslate } from 'react-admin'
 import {
   Popover,
   Badge,
@@ -22,6 +22,7 @@ import subsonic from '../subsonic'
 import { scanStatusUpdate } from '../actions'
 import { useInterval } from '../common'
 import { formatDuration } from '../utils'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   wrapper: {
@@ -58,9 +59,10 @@ const Uptime = () => {
 
 const ActivityPanel = () => {
   const serverStart = useSelector((state) => state.activity.serverStart)
-  const up = serverStart && serverStart.startTime
+  const up = serverStart.startTime
   const classes = useStyles({ up })
   const translate = useTranslate()
+  const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
   const dispatch = useDispatch()
@@ -81,6 +83,12 @@ const ActivityPanel = () => {
         }
       })
   }, [dispatch])
+
+  useEffect(() => {
+    if (serverStart.version !== config.version) {
+      notify('ra.notification.new_version', 'info', {}, false, 604800000 * 50)
+    }
+  }, [serverStart, notify])
 
   return (
     <div className={classes.wrapper}>

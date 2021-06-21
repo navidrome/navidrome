@@ -278,7 +278,8 @@
       "data_provider_error": "dataProvider error. Check the console for details.",
       "i18n_error": "Cannot load the translations for the specified language",
       "canceled": "Action cancelled",
-      "logged_out": "Your session has ended, please reconnect."
+      "logged_out": "Your session has ended, please reconnect.",
+      "new_version": "New version available! Please refresh this window."
     },
     "toggleFieldsMenu": {
       "columnsToDisplay": "Columns To Display",
