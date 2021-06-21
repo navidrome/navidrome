@@ -40,6 +40,7 @@ type KeepAlive struct {
 type ServerStart struct {
 	baseEvent
 	StartTime time.Time `json:"startTime"`
+	Version   string    `json:"version"`
 }
 
 const Any = "*"

@@ -208,7 +208,7 @@ func (b *broker) listen() {
 			log.Debug("Client added to event broker", "numClients", len(clients), "newClient", c.String())
 
 			// Send a serverStart event to new client
-			c.diode.put(b.prepareMessage(&ServerStart{StartTime: consts.ServerStart}))
+			c.diode.put(b.prepareMessage(&ServerStart{StartTime: consts.ServerStart, Version: consts.Version()}))
 
 		case c := <-b.unsubscribing:
 			// A client has detached and we want to
