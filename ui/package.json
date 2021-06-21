@@ -17,7 +17,7 @@
     "lodash.pick": "^4.4.0",
     "lodash.throttle": "^4.1.1",
     "prop-types": "^15.7.2",
-    "ra-data-json-server": "^3.15.1",
+    "ra-data-json-server": "^3.16.3",
     "ra-i18n-polyglot": "^3.15.1",
     "react": "^17.0.2",
     "react-admin": "^3.15.1",
