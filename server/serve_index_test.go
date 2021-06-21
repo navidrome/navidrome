@@ -209,6 +209,17 @@ var _ = Describe("serveIndex", func() {
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("devEnableScrobble", false))
 	})
+
+	It("sets the lastFMApiKey", func() {
+		conf.Server.LastFM.ApiKey = "APIKEY-123"
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("lastFMApiKey", "APIKEY-123"))
+	})
 })
 
 var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__="([^"]*)`)

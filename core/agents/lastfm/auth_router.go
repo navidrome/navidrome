@@ -30,13 +30,13 @@ type Router struct {
 }
 
 func NewRouter(ds model.DataStore) *Router {
-	r := &Router{ds: ds, apiKey: lastFMAPIKey, secret: lastFMAPISecret}
+	r := &Router{
+		ds:     ds,
+		apiKey: conf.Server.LastFM.ApiKey,
+		secret: conf.Server.LastFM.Secret,
+	}
 	r.sessionKeys = &sessionKeys{ds: ds}
 	r.Handler = r.routes()
-	if conf.Server.LastFM.ApiKey != "" {
-		r.apiKey = conf.Server.LastFM.ApiKey
-		r.secret = conf.Server.LastFM.Secret
-	}
 	r.client = NewClient(r.apiKey, r.secret, "en", http.DefaultClient)
 	return r
 }

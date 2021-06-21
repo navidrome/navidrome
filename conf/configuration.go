@@ -214,8 +214,8 @@ func init() {
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
-	viper.SetDefault("lastfm.apikey", "")
-	viper.SetDefault("lastfm.secret", "")
+	viper.SetDefault("lastfm.apikey", consts.LastFMAPIKey)
+	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 
