@@ -18,11 +18,11 @@ import (
 
 type MediaAnnotationController struct {
 	ds        model.DataStore
-	scrobbler scrobbler.Scrobbler
+	scrobbler scrobbler.Broker
 	broker    events.Broker
 }
 
-func NewMediaAnnotationController(ds model.DataStore, scrobbler scrobbler.Scrobbler, broker events.Broker) *MediaAnnotationController {
+func NewMediaAnnotationController(ds model.DataStore, scrobbler scrobbler.Broker, broker events.Broker) *MediaAnnotationController {
 	return &MediaAnnotationController{ds: ds, scrobbler: scrobbler, broker: broker}
 }
 
