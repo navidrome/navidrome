@@ -8,13 +8,13 @@ import (
 )
 
 type Scrobble struct {
-	Track     *model.MediaFile
-	TimeStamp *time.Time
+	model.MediaFile
+	TimeStamp time.Time
 }
 
 type Scrobbler interface {
-	NowPlaying(context.Context, *model.MediaFile) error
-	Scrobble(context.Context, []Scrobble) error
+	NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error
+	Scrobble(ctx context.Context, userId string, scrobbles []Scrobble) error
 }
 
 type Constructor func(ds model.DataStore) Scrobbler

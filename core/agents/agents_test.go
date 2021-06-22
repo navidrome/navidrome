@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
+
 	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,15 +15,17 @@ import (
 var _ = Describe("Agents", func() {
 	var ctx context.Context
 	var cancel context.CancelFunc
+	var ds model.DataStore
 	BeforeEach(func() {
 		ctx, cancel = context.WithCancel(context.Background())
+		ds = &tests.MockDataStore{}
 	})
 
 	Describe("Placeholder", func() {
 		var ag *Agents
 		BeforeEach(func() {
 			conf.Server.Agents = ""
-			ag = New(ctx)
+			ag = New(ds)
 		})
 
 		It("calls the placeholder GetBiography", func() {
@@ -41,16 +46,16 @@ var _ = Describe("Agents", func() {
 		var mock *mockAgent
 		BeforeEach(func() {
 			mock = &mockAgent{}
-			Register("fake", func(ctx context.Context) Interface {
+			Register("fake", func(ds model.DataStore) Interface {
 				return mock
 			})
-			Register("empty", func(ctx context.Context) Interface {
+			Register("empty", func(ds model.DataStore) Interface {
 				return struct {
 					Interface
 				}{}
 			})
 			conf.Server.Agents = "empty,fake"
-			ag = New(ctx)
+			ag = New(ds)
 			Expect(ag.AgentName()).To(Equal("agents"))
 		})
 

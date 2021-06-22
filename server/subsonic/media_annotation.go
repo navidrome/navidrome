@@ -186,7 +186,7 @@ func (c *MediaAnnotationController) scrobblerRegister(ctx context.Context, track
 	} else {
 		log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
 	}
-
+	_ = c.scrobbler.Submit(ctx, trackId, playTime)
 	return mf, err
 }
 

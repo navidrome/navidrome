@@ -3,11 +3,15 @@ package tests
 import (
 	"errors"
 
+	"github.com/google/uuid"
+
 	"github.com/navidrome/navidrome/model"
 )
 
 func CreateMockMediaFileRepo() *MockMediaFileRepo {
-	return &MockMediaFileRepo{}
+	return &MockMediaFileRepo{
+		data: make(map[string]model.MediaFile),
+	}
 }
 
 type MockMediaFileRepo struct {
@@ -43,6 +47,17 @@ func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 		return &d, nil
 	}
 	return nil, model.ErrNotFound
+}
+
+func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
+	if m.err {
+		return errors.New("error!")
+	}
+	if mf.ID == "" {
+		mf.ID = uuid.NewString()
+	}
+	m.data[mf.ID] = *mf
+	return nil
 }
 
 func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, error) {

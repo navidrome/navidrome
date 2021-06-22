@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/navidrome/navidrome/consts"
+
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -32,13 +34,16 @@ type Router struct {
 
 func NewRouter(ds model.DataStore) *Router {
 	r := &Router{
-		ds:     ds,
-		apiKey: conf.Server.LastFM.ApiKey,
-		secret: conf.Server.LastFM.Secret,
+		ds:          ds,
+		apiKey:      conf.Server.LastFM.ApiKey,
+		secret:      conf.Server.LastFM.Secret,
+		sessionKeys: &sessionKeys{ds: ds},
 	}
-	r.sessionKeys = &sessionKeys{ds: ds}
 	r.Handler = r.routes()
-	r.client = NewClient(r.apiKey, r.secret, "en", http.DefaultClient)
+	hc := &http.Client{
+		Timeout: consts.DefaultHttpClientTimeOut,
+	}
+	r.client = NewClient(r.apiKey, r.secret, "en", hc)
 	return r
 }
 
