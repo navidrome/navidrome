@@ -19,15 +19,15 @@ import (
 const spotifyAgentName = "spotify"
 
 type spotifyAgent struct {
-	ctx    context.Context
+	ds     model.DataStore
 	id     string
 	secret string
 	client *Client
 }
 
-func spotifyConstructor(ctx context.Context) agents.Interface {
+func spotifyConstructor(ds model.DataStore) agents.Interface {
 	l := &spotifyAgent{
-		ctx:    ctx,
+		ds:     ds,
 		id:     conf.Server.Spotify.ID,
 		secret: conf.Server.Spotify.Secret,
 	}
@@ -40,13 +40,13 @@ func (s *spotifyAgent) AgentName() string {
 	return spotifyAgentName
 }
 
-func (s *spotifyAgent) GetImages(id, name, mbid string) ([]agents.ArtistImage, error) {
-	a, err := s.searchArtist(name)
+func (s *spotifyAgent) GetImages(ctx context.Context, id, name, mbid string) ([]agents.ArtistImage, error) {
+	a, err := s.searchArtist(ctx, name)
 	if err != nil {
 		if err == model.ErrNotFound {
-			log.Warn(s.ctx, "Artist not found in Spotify", "artist", name)
+			log.Warn(ctx, "Artist not found in Spotify", "artist", name)
 		} else {
-			log.Error(s.ctx, "Error calling Spotify", "artist", name, err)
+			log.Error(ctx, "Error calling Spotify", "artist", name, err)
 		}
 		return nil, err
 	}
@@ -61,8 +61,8 @@ func (s *spotifyAgent) GetImages(id, name, mbid string) ([]agents.ArtistImage, e
 	return res, nil
 }
 
-func (s *spotifyAgent) searchArtist(name string) (*Artist, error) {
-	artists, err := s.client.SearchArtists(s.ctx, name, 40)
+func (s *spotifyAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {
+	artists, err := s.client.SearchArtists(ctx, name, 40)
 	if err != nil || len(artists) == 0 {
 		return nil, model.ErrNotFound
 	}
