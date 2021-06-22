@@ -8,6 +8,8 @@ type Response struct {
 	Message        string         `json:"message"`
 	Token          string         `json:"token"`
 	Session        Session        `json:"session"`
+	NowPlaying     NowPlaying     `json:"nowplaying"`
+	Scrobbles      Scrobbles      `json:"scrobbles"`
 }
 
 type Artist struct {
@@ -66,4 +68,57 @@ type Session struct {
 	Name       string `json:"name"`
 	Key        string `json:"key"`
 	Subscriber int    `json:"subscriber"`
+}
+
+type NowPlaying struct {
+	Artist struct {
+		Corrected string `json:"corrected"`
+		Text      string `json:"#text"`
+	} `json:"artist"`
+	IgnoredMessage struct {
+		Code string `json:"code"`
+		Text string `json:"#text"`
+	} `json:"ignoredMessage"`
+	Album struct {
+		Corrected string `json:"corrected"`
+		Text      string `json:"#text"`
+	} `json:"album"`
+	AlbumArtist struct {
+		Corrected string `json:"corrected"`
+		Text      string `json:"#text"`
+	} `json:"albumArtist"`
+	Track struct {
+		Corrected string `json:"corrected"`
+		Text      string `json:"#text"`
+	} `json:"track"`
+}
+
+type Scrobbles struct {
+	Attr struct {
+		Accepted int `json:"accepted"`
+		Ignored  int `json:"ignored"`
+	} `json:"@attr"`
+	Scrobble struct {
+		Artist struct {
+			Corrected string `json:"corrected"`
+			Text      string `json:"#text"`
+		} `json:"artist"`
+		IgnoredMessage struct {
+			Code string `json:"code"`
+			Text string `json:"#text"`
+		} `json:"ignoredMessage"`
+		AlbumArtist struct {
+			Corrected string `json:"corrected"`
+			Text      string `json:"#text"`
+		} `json:"albumArtist"`
+		Timestamp string `json:"timestamp"`
+		Album     struct {
+			Corrected string `json:"corrected"`
+			Text      string `json:"#text"`
+		} `json:"album"`
+		Track struct {
+			Corrected string `json:"corrected"`
+			Text      string `json:"#text"`
+		} `json:"track"`
+	} `json:"scrobble"`
 }

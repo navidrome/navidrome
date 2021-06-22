@@ -6,12 +6,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -49,7 +52,7 @@ func (c *Client) ArtistGetInfo(ctx context.Context, name string, mbid string) (*
 	params.Add("artist", name)
 	params.Add("mbid", mbid)
 	params.Add("lang", c.lang)
-	response, err := c.makeRequest(params, false)
+	response, err := c.makeRequest(http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +65,7 @@ func (c *Client) ArtistGetSimilar(ctx context.Context, name string, mbid string,
 	params.Add("artist", name)
 	params.Add("mbid", mbid)
 	params.Add("limit", strconv.Itoa(limit))
-	response, err := c.makeRequest(params, false)
+	response, err := c.makeRequest(http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +78,7 @@ func (c *Client) ArtistGetTopTracks(ctx context.Context, name string, mbid strin
 	params.Add("artist", name)
 	params.Add("mbid", mbid)
 	params.Add("limit", strconv.Itoa(limit))
-	response, err := c.makeRequest(params, false)
+	response, err := c.makeRequest(http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +89,7 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 	params := url.Values{}
 	params.Add("method", "auth.getToken")
 	c.sign(params)
-	response, err := c.makeRequest(params, true)
+	response, err := c.makeRequest(http.MethodGet, params, true)
 	if err != nil {
 		return "", err
 	}
@@ -97,14 +100,74 @@ func (c *Client) GetSession(ctx context.Context, token string) (string, error) {
 	params := url.Values{}
 	params.Add("method", "auth.getSession")
 	params.Add("token", token)
-	response, err := c.makeRequest(params, true)
+	response, err := c.makeRequest(http.MethodGet, params, true)
 	if err != nil {
 		return "", err
 	}
 	return response.Session.Key, nil
 }
 
-func (c *Client) makeRequest(params url.Values, signed bool) (*Response, error) {
+type ScrobbleInfo struct {
+	artist      string
+	track       string
+	album       string
+	trackNumber int
+	mbid        string
+	duration    int
+	albumArtist string
+	timestamp   time.Time
+}
+
+func (c *Client) UpdateNowPlaying(ctx context.Context, sessionKey string, info ScrobbleInfo) error {
+	params := url.Values{}
+	params.Add("method", "track.updateNowPlaying")
+	params.Add("artist", info.artist)
+	params.Add("track", info.track)
+	params.Add("album", info.album)
+	params.Add("trackNumber", strconv.Itoa(info.trackNumber))
+	params.Add("mbid", info.mbid)
+	params.Add("duration", strconv.Itoa(info.duration))
+	params.Add("albumArtist", info.albumArtist)
+	params.Add("sk", sessionKey)
+	resp, err := c.makeRequest(http.MethodPost, params, true)
+	if err != nil {
+		return err
+	}
+	if resp.NowPlaying.IgnoredMessage.Code != "" {
+		log.Warn(ctx, "LastFM: NowPlaying was ignored", "code", resp.NowPlaying.IgnoredMessage.Code,
+			"text", resp.NowPlaying.IgnoredMessage.Text)
+	}
+	return nil
+}
+
+func (c *Client) Scrobble(ctx context.Context, sessionKey string, info ScrobbleInfo) error {
+	params := url.Values{}
+	params.Add("method", "track.scrobble")
+	params.Add("timestamp", strconv.FormatInt(info.timestamp.Unix(), 10))
+	params.Add("artist", info.artist)
+	params.Add("track", info.track)
+	params.Add("album", info.album)
+	params.Add("trackNumber", strconv.Itoa(info.trackNumber))
+	params.Add("mbid", info.mbid)
+	params.Add("duration", strconv.Itoa(info.duration))
+	params.Add("albumArtist", info.albumArtist)
+	params.Add("sk", sessionKey)
+	resp, err := c.makeRequest(http.MethodPost, params, true)
+	if err != nil {
+		return err
+	}
+	if resp.Scrobbles.Scrobble.IgnoredMessage.Code != "0" {
+		log.Warn(ctx, "LastFM: Scrobble was ignored", "code", resp.Scrobbles.Scrobble.IgnoredMessage.Code,
+			"text", resp.Scrobbles.Scrobble.IgnoredMessage.Text)
+	}
+	if resp.Scrobbles.Attr.Accepted != 1 {
+		log.Warn(ctx, "LastFM: Scrobble was not accepted", "code", resp.Scrobbles.Scrobble.IgnoredMessage.Code,
+			"text", resp.Scrobbles.Scrobble.IgnoredMessage.Text)
+	}
+	return nil
+}
+
+func (c *Client) makeRequest(method string, params url.Values, signed bool) (*Response, error) {
 	params.Add("format", "json")
 	params.Add("api_key", c.apiKey)
 
@@ -112,7 +175,7 @@ func (c *Client) makeRequest(params url.Values, signed bool) (*Response, error) 
 		c.sign(params)
 	}
 
-	req, _ := http.NewRequest("GET", apiBaseUrl, nil)
+	req, _ := http.NewRequest(method, apiBaseUrl, nil)
 	req.URL.RawQuery = params.Encode()
 
 	resp, err := c.hc.Do(req)
@@ -121,7 +184,8 @@ func (c *Client) makeRequest(params url.Values, signed bool) (*Response, error) 
 	}
 
 	defer resp.Body.Close()
-	decoder := json.NewDecoder(resp.Body)
+	body, _ := ioutil.ReadAll(resp.Body)
+	decoder := json.NewDecoder(strings.NewReader(string(body)))
 
 	var response Response
 	jsonErr := decoder.Decode(&response)

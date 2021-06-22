@@ -26,7 +26,7 @@ type NowPlayingInfo struct {
 type Broker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
-	Submit(ctx context.Context, playerId int, trackId string, playTime time.Time) error
+	Submit(ctx context.Context, trackId string, playTime time.Time) error
 }
 
 type broker struct {
@@ -45,20 +45,20 @@ func GetBroker(ds model.DataStore) Broker {
 }
 
 func (s *broker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error {
-	username, _ := request.UsernameFrom(ctx)
+	user, _ := request.UserFrom(ctx)
 	info := NowPlayingInfo{
 		TrackID:    trackId,
 		Start:      time.Now(),
-		Username:   username,
+		Username:   user.UserName,
 		PlayerId:   playerId,
 		PlayerName: playerName,
 	}
 	_ = s.playMap.Set(playerId, info)
-	s.dispatchNowPlaying(ctx, trackId)
+	s.dispatchNowPlaying(ctx, user.ID, trackId)
 	return nil
 }
 
-func (s *broker) dispatchNowPlaying(ctx context.Context, trackId string) {
+func (s *broker) dispatchNowPlaying(ctx context.Context, userId string, trackId string) {
 	t, err := s.ds.MediaFile(ctx).Get(trackId)
 	if err != nil {
 		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
@@ -68,10 +68,8 @@ func (s *broker) dispatchNowPlaying(ctx context.Context, trackId string) {
 	for name, constructor := range scrobblers {
 		log.Debug(ctx, "Sending NowPlaying info", "scrobbler", name, "track", t.Title, "artist", t.Artist)
 		err := func() error {
-			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
 			s := constructor(s.ds)
-			return s.NowPlaying(ctx, t)
+			return s.NowPlaying(ctx, userId, t)
 		}()
 		if err != nil {
 			log.Error(ctx, "Error sending NowPlayingInfo", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
@@ -96,8 +94,27 @@ func (s *broker) GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error) {
 	return res, nil
 }
 
-func (s *broker) Submit(ctx context.Context, playerId int, trackId string, playTime time.Time) error {
-	panic("implement me")
+func (s *broker) Submit(ctx context.Context, trackId string, playTime time.Time) error {
+	u, _ := request.UserFrom(ctx)
+	t, err := s.ds.MediaFile(ctx).Get(trackId)
+	if err != nil {
+		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
+		return err
+	}
+	scrobbles := []Scrobble{{MediaFile: *t, TimeStamp: playTime}}
+	// TODO Parallelize
+	for name, constructor := range scrobblers {
+		log.Debug(ctx, "Sending NowPlaying info", "scrobbler", name, "track", t.Title, "artist", t.Artist)
+		err := func() error {
+			s := constructor(s.ds)
+			return s.Scrobble(ctx, u.ID, scrobbles)
+		}()
+		if err != nil {
+			log.Error(ctx, "Error sending NowPlayingInfo", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
+			return err
+		}
+	}
+	return nil
 }
 
 var scrobblers map[string]Constructor
