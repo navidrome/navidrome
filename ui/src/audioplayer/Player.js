@@ -242,11 +242,7 @@ const Player = () => {
 
       // See https://www.last.fm/api/scrobbling#when-is-a-scrobble-a-scrobble
       const progress = (info.currentTime / info.duration) * 100
-      if (
-        isNaN(info.duration) ||
-        info.duration < 30 ||
-        (progress < 50 && info.currentTime < 240)
-      ) {
+      if (isNaN(info.duration) || (progress < 50 && info.currentTime < 240)) {
         return
       }
 
