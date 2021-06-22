@@ -31,6 +31,7 @@ type ExternalMetadata interface {
 
 type externalMetadata struct {
 	ds model.DataStore
+	ag *agents.Agents
 }
 
 type auxArtist struct {
@@ -38,8 +39,8 @@ type auxArtist struct {
 	Name string
 }
 
-func NewExternalMetadata(ds model.DataStore) ExternalMetadata {
-	return &externalMetadata{ds: ds}
+func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) ExternalMetadata {
+	return &externalMetadata{ds: ds, ag: agents}
 }
 
 func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist, error) {
@@ -106,11 +107,9 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 }
 
 func (e *externalMetadata) refreshArtistInfo(ctx context.Context, artist *auxArtist) error {
-	ag := agents.NewAgents(ctx)
-
 	// Get MBID first, if it is not yet available
 	if artist.MbzArtistID == "" {
-		mbid, err := ag.GetMBID(artist.ID, artist.Name)
+		mbid, err := e.ag.GetMBID(ctx, artist.ID, artist.Name)
 		if mbid != "" && err == nil {
 			artist.MbzArtistID = mbid
 		}
@@ -118,10 +117,10 @@ func (e *externalMetadata) refreshArtistInfo(ctx context.Context, artist *auxArt
 
 	// Call all registered agents and collect information
 	callParallel([]func(){
-		func() { e.callGetBiography(ctx, ag, artist) },
-		func() { e.callGetURL(ctx, ag, artist) },
-		func() { e.callGetImage(ctx, ag, artist) },
-		func() { e.callGetSimilar(ctx, ag, artist, maxSimilarArtists, true) },
+		func() { e.callGetBiography(ctx, e.ag, artist) },
+		func() { e.callGetURL(ctx, e.ag, artist) },
+		func() { e.callGetImage(ctx, e.ag, artist) },
+		func() { e.callGetSimilar(ctx, e.ag, artist, maxSimilarArtists, true) },
 	})
 
 	if utils.IsCtxDone(ctx) {
@@ -152,13 +151,12 @@ func callParallel(fs []func()) {
 }
 
 func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
-	ag := agents.NewAgents(ctx)
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	e.callGetSimilar(ctx, ag, artist, 15, false)
+	e.callGetSimilar(ctx, e.ag, artist, 15, false)
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
 		return nil, ctx.Err()
@@ -175,7 +173,7 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 		}
 
 		topCount := utils.MaxInt(count, 20)
-		topSongs, err := e.getMatchingTopSongs(ctx, ag, &auxArtist{Name: a.Name, Artist: a}, topCount)
+		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Name: a.Name, Artist: a}, topCount)
 		if err != nil {
 			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)
 			continue
@@ -202,18 +200,17 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 }
 
 func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
-	ag := agents.NewAgents(ctx)
 	artist, err := e.findArtistByName(ctx, artistName)
 	if err != nil {
 		log.Error(ctx, "Artist not found", "name", artistName, err)
 		return nil, nil
 	}
 
-	return e.getMatchingTopSongs(ctx, ag, artist, count)
+	return e.getMatchingTopSongs(ctx, e.ag, artist, count)
 }
 
 func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
-	songs, err := agent.GetTopSongs(artist.ID, artist.Name, artist.MbzArtistID, count)
+	songs, err := agent.GetTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +255,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 }
 
 func (e *externalMetadata) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) {
-	url, err := agent.GetURL(artist.ID, artist.Name, artist.MbzArtistID)
+	url, err := agent.GetURL(ctx, artist.ID, artist.Name, artist.MbzArtistID)
 	if url == "" || err != nil {
 		return
 	}
@@ -266,7 +263,7 @@ func (e *externalMetadata) callGetURL(ctx context.Context, agent agents.ArtistUR
 }
 
 func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) {
-	bio, err := agent.GetBiography(artist.ID, clearName(artist.Name), artist.MbzArtistID)
+	bio, err := agent.GetBiography(ctx, artist.ID, clearName(artist.Name), artist.MbzArtistID)
 	if bio == "" || err != nil {
 		return
 	}
@@ -277,7 +274,7 @@ func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.Ar
 }
 
 func (e *externalMetadata) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
-	images, err := agent.GetImages(artist.ID, artist.Name, artist.MbzArtistID)
+	images, err := agent.GetImages(ctx, artist.ID, artist.Name, artist.MbzArtistID)
 	if len(images) == 0 || err != nil {
 		return
 	}
@@ -296,7 +293,7 @@ func (e *externalMetadata) callGetImage(ctx context.Context, agent agents.Artist
 
 func (e *externalMetadata) callGetSimilar(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
 	limit int, includeNotPresent bool) {
-	similar, err := agent.GetSimilar(artist.ID, artist.Name, artist.MbzArtistID, limit)
+	similar, err := agent.GetSimilar(ctx, artist.ID, artist.Name, artist.MbzArtistID, limit)
 	if len(similar) == 0 || err != nil {
 		return
 	}

@@ -7,7 +7,9 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -17,15 +19,16 @@ const (
 
 type lastfmAgent struct {
 	ctx    context.Context
+	ds     model.DataStore
 	apiKey string
 	secret string
 	lang   string
 	client *Client
 }
 
-func lastFMConstructor(ctx context.Context) agents.Interface {
+func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 	l := &lastfmAgent{
-		ctx:    ctx,
+		ds:     ds,
 		lang:   conf.Server.LastFM.Language,
 		apiKey: conf.Server.LastFM.ApiKey,
 		secret: conf.Server.LastFM.Secret,
@@ -39,7 +42,7 @@ func (l *lastfmAgent) AgentName() string {
 	return lastFMAgentName
 }
 
-func (l *lastfmAgent) GetMBID(id string, name string) (string, error) {
+func (l *lastfmAgent) GetMBID(ctx context.Context, id string, name string) (string, error) {
 	a, err := l.callArtistGetInfo(name, "")
 	if err != nil {
 		return "", err
@@ -50,7 +53,7 @@ func (l *lastfmAgent) GetMBID(id string, name string) (string, error) {
 	return a.MBID, nil
 }
 
-func (l *lastfmAgent) GetURL(id, name, mbid string) (string, error) {
+func (l *lastfmAgent) GetURL(ctx context.Context, id, name, mbid string) (string, error) {
 	a, err := l.callArtistGetInfo(name, mbid)
 	if err != nil {
 		return "", err
@@ -61,7 +64,7 @@ func (l *lastfmAgent) GetURL(id, name, mbid string) (string, error) {
 	return a.URL, nil
 }
 
-func (l *lastfmAgent) GetBiography(id, name, mbid string) (string, error) {
+func (l *lastfmAgent) GetBiography(ctx context.Context, id, name, mbid string) (string, error) {
 	a, err := l.callArtistGetInfo(name, mbid)
 	if err != nil {
 		return "", err
@@ -72,7 +75,7 @@ func (l *lastfmAgent) GetBiography(id, name, mbid string) (string, error) {
 	return a.Bio.Summary, nil
 }
 
-func (l *lastfmAgent) GetSimilar(id, name, mbid string, limit int) ([]agents.Artist, error) {
+func (l *lastfmAgent) GetSimilar(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
 	resp, err := l.callArtistGetSimilar(name, mbid, limit)
 	if err != nil {
 		return nil, err
@@ -90,7 +93,7 @@ func (l *lastfmAgent) GetSimilar(id, name, mbid string, limit int) ([]agents.Art
 	return res, nil
 }
 
-func (l *lastfmAgent) GetTopSongs(id, artistName, mbid string, count int) ([]agents.Song, error) {
+func (l *lastfmAgent) GetTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
 	resp, err := l.callArtistGetTopTracks(artistName, mbid, count)
 	if err != nil {
 		return nil, err
@@ -151,10 +154,23 @@ func (l *lastfmAgent) callArtistGetTopTracks(artistName, mbid string, count int)
 	return t.Track, nil
 }
 
+func (l *lastfmAgent) NowPlaying(c context.Context, track *model.MediaFile) error {
+	return nil
+}
+
+func (l *lastfmAgent) Scrobble(ctx context.Context, scrobbles []scrobbler.Scrobble) error {
+	return nil
+}
+
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.LastFM.Enabled {
-			agents.Register(lastFMAgentName, lastFMConstructor)
+			agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {
+				return lastFMConstructor(ds)
+			})
+			scrobbler.Register(lastFMAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
+				return lastFMConstructor(ds)
+			})
 		}
 	})
 }
