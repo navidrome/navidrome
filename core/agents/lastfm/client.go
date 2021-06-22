@@ -133,7 +133,7 @@ func (c *Client) UpdateNowPlaying(ctx context.Context, sessionKey string, info S
 	if err != nil {
 		return err
 	}
-	if resp.NowPlaying.IgnoredMessage.Code != "" {
+	if resp.NowPlaying.IgnoredMessage.Code != "0" {
 		log.Warn(ctx, "LastFM: NowPlaying was ignored", "code", resp.NowPlaying.IgnoredMessage.Code,
 			"text", resp.NowPlaying.IgnoredMessage.Text)
 	}
