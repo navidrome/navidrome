@@ -9,6 +9,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -100,7 +101,9 @@ func (s *Router) callback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	err := s.fetchSessionKey(ctx, uid, token)
 	if err != nil {
-		_ = rest.RespondWithError(w, http.StatusBadRequest, err.Error())
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("An error occurred while authorizing with Last.fm. \n\nRequest ID: " + middleware.GetReqID(ctx)))
 		return
 	}
 
