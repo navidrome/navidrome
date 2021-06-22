@@ -46,7 +46,7 @@ const (
 	PlaceholderAlbumArt = "navidrome-600x600.png"
 	PlaceholderAvatar   = "logo-192x192.png"
 
-	DefaultCachedHttpClientTTL = 10 * time.Second
+	DefaultHttpClientTimeOut = 10 * time.Second
 )
 
 // Cache options

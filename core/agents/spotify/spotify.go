@@ -31,8 +31,11 @@ func spotifyConstructor(ds model.DataStore) agents.Interface {
 		id:     conf.Server.Spotify.ID,
 		secret: conf.Server.Spotify.Secret,
 	}
-	hc := utils.NewCachedHTTPClient(http.DefaultClient, consts.DefaultCachedHttpClientTTL)
-	l.client = NewClient(l.id, l.secret, hc)
+	hc := &http.Client{
+		Timeout: consts.DefaultHttpClientTimeOut,
+	}
+	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
+	l.client = NewClient(l.id, l.secret, chc)
 	return l
 }
 

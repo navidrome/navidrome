@@ -7,6 +7,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
+
+	"github.com/navidrome/navidrome/core/scrobbler"
+
+	"github.com/navidrome/navidrome/model/request"
+
+	"github.com/navidrome/navidrome/model"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
@@ -21,15 +29,21 @@ const (
 )
 
 var _ = Describe("lastfmAgent", func() {
+	var ds model.DataStore
+	var ctx context.Context
+	BeforeEach(func() {
+		ds = &tests.MockDataStore{}
+		ctx = context.Background()
+	})
 	Describe("lastFMConstructor", func() {
 		It("uses configured api key and language", func() {
 			conf.Server.LastFM.ApiKey = "123"
 			conf.Server.LastFM.Secret = "secret"
 			conf.Server.LastFM.Language = "pt"
-			agent := lastFMConstructor(context.Background())
-			Expect(agent.(*lastfmAgent).apiKey).To(Equal("123"))
-			Expect(agent.(*lastfmAgent).secret).To(Equal("secret"))
-			Expect(agent.(*lastfmAgent).lang).To(Equal("pt"))
+			agent := lastFMConstructor(ds)
+			Expect(agent.apiKey).To(Equal("123"))
+			Expect(agent.secret).To(Equal("secret"))
+			Expect(agent.lang).To(Equal("pt"))
 		})
 	})
 
@@ -39,7 +53,7 @@ var _ = Describe("lastfmAgent", func() {
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
 			client := NewClient("API_KEY", "SECRET", "pt", httpClient)
-			agent = lastFMConstructor(context.Background()).(*lastfmAgent)
+			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
 
@@ -97,7 +111,7 @@ var _ = Describe("lastfmAgent", func() {
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
 			client := NewClient("API_KEY", "SECRET", "pt", httpClient)
-			agent = lastFMConstructor(context.Background()).(*lastfmAgent)
+			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
 
@@ -158,7 +172,7 @@ var _ = Describe("lastfmAgent", func() {
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
 			client := NewClient("API_KEY", "SECRET", "pt", httpClient)
-			agent = lastFMConstructor(context.Background()).(*lastfmAgent)
+			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
 
@@ -212,4 +226,74 @@ var _ = Describe("lastfmAgent", func() {
 			})
 		})
 	})
+
+	Describe("Scrobbling", func() {
+		var agent *lastfmAgent
+		var httpClient *tests.FakeHttpClient
+		var track *model.MediaFile
+		BeforeEach(func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1"})
+			_ = ds.Property(ctx).Put(sessionKeyPropertyPrefix+"user-1", "SK-1")
+			httpClient = &tests.FakeHttpClient{}
+			client := NewClient("API_KEY", "SECRET", "en", httpClient)
+			agent = lastFMConstructor(ds)
+			agent.client = client
+			track = &model.MediaFile{
+				ID:          "123",
+				Title:       "Track Title",
+				Album:       "Track Album",
+				Artist:      "Track Artist",
+				AlbumArtist: "Track AlbumArtist",
+				TrackNumber: 1,
+				Duration:    180,
+				MbzTrackID:  "mbz-123",
+			}
+		})
+
+		Describe("NowPlaying", func() {
+			It("calls Last.fm with correct params", func() {
+				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.NowPlaying(ctx, "user-1", track)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
+				sentParams := httpClient.SavedRequest.URL.Query()
+				Expect(sentParams.Get("method")).To(Equal("track.updateNowPlaying"))
+				Expect(sentParams.Get("sk")).To(Equal("SK-1"))
+				Expect(sentParams.Get("track")).To(Equal(track.Title))
+				Expect(sentParams.Get("album")).To(Equal(track.Album))
+				Expect(sentParams.Get("artist")).To(Equal(track.Artist))
+				Expect(sentParams.Get("albumArtist")).To(Equal(track.AlbumArtist))
+				Expect(sentParams.Get("trackNumber")).To(Equal(strconv.Itoa(track.TrackNumber)))
+				Expect(sentParams.Get("duration")).To(Equal(strconv.FormatFloat(float64(track.Duration), 'G', -1, 32)))
+				Expect(sentParams.Get("mbid")).To(Equal(track.MbzTrackID))
+			})
+		})
+
+		Describe("Scrobble", func() {
+			It("calls Last.fm with correct params", func() {
+				ts := time.Now()
+				scrobbles := []scrobbler.Scrobble{{MediaFile: *track, TimeStamp: ts}}
+				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbles)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
+				sentParams := httpClient.SavedRequest.URL.Query()
+				Expect(sentParams.Get("method")).To(Equal("track.scrobble"))
+				Expect(sentParams.Get("sk")).To(Equal("SK-1"))
+				Expect(sentParams.Get("track")).To(Equal(track.Title))
+				Expect(sentParams.Get("album")).To(Equal(track.Album))
+				Expect(sentParams.Get("artist")).To(Equal(track.Artist))
+				Expect(sentParams.Get("albumArtist")).To(Equal(track.AlbumArtist))
+				Expect(sentParams.Get("trackNumber")).To(Equal(strconv.Itoa(track.TrackNumber)))
+				Expect(sentParams.Get("duration")).To(Equal(strconv.FormatFloat(float64(track.Duration), 'G', -1, 32)))
+				Expect(sentParams.Get("mbid")).To(Equal(track.MbzTrackID))
+				Expect(sentParams.Get("timestamp")).To(Equal(strconv.FormatInt(ts.Unix(), 10)))
+			})
+		})
+	})
+
 })

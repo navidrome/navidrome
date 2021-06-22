@@ -25,7 +25,7 @@ var _ = Describe("CachedHttpClient", func() {
 				header = r.Header.Get("head")
 				_, _ = fmt.Fprintf(w, "Hello, %s", r.URL.Query()["name"])
 			}))
-			chc = NewCachedHTTPClient(http.DefaultClient, consts.DefaultCachedHttpClientTTL)
+			chc = NewCachedHTTPClient(http.DefaultClient, consts.DefaultHttpClientTimeOut)
 		})
 
 		AfterEach(func() {
