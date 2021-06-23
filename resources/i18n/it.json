@@ -278,7 +278,8 @@
             "data_provider_error": "Errore del dataProvider. Controlla la console per i dettagli.",
             "i18n_error": "Impossibile caricare la traduzione per la lingua selezionata",
             "canceled": "Azione annullata",
-            "logged_out": "La sessione è scaduta, per favore accedi di nuovo."
+            "logged_out": "La sessione è scaduta, per favore accedi di nuovo.",
+            "new_version": "Una nuova versione è disponibile! Ricarica la pagina"
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "Colonne da mostrare",
@@ -296,7 +297,11 @@
         "delete_user_title": "Rimuovi utente '%{name}'",
         "delete_user_content": "Sei sicuro di voler rimuovere questo utente e tutti i suoi dati, incluse playlist e impostazioni?",
         "notifications_blocked": "Hai bloccato le notifiche per questo sito nelle tue impostazioni del browser",
-        "notifications_not_available": "Questo browser non supporta le notifiche desktop o non stai accedendo a Navidrome tramite HTTPS"
+        "notifications_not_available": "Questo browser non supporta le notifiche desktop o non stai accedendo a Navidrome tramite HTTPS",
+        "lastfmLinkSuccess": "Collegamento a Last.fm riuscito e scrobbling abilitato",
+        "lastfmLinkFailure": "Non è stato possible collegare Last.fm",
+        "lastfmUnlinkSuccess": "Lo scrobbling è stato disabilitato e Last.fm è stato disconnesso",
+        "lastfmUnlinkFailure": "Non è stato possibile scollegare Last.fm"
     },
     "menu": {
         "library": "Libreria",
@@ -309,7 +314,8 @@
                 "theme": "Tema",
                 "language": "Lingua",
                 "defaultView": "Vista Predefinita",
-                "desktop_notifications": "Notifiche desktop"
+                "desktop_notifications": "Notifiche desktop",
+                "lastfmScrobbling": "Esegui lo scrobbling tramite Last.fm"
             }
         },
         "albumList": "Album",
