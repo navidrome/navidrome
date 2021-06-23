@@ -22,8 +22,15 @@ const url = (command, id, options) => {
   return `/rest/${command}?${params.toString()}`
 }
 
-const scrobble = (id, submit) =>
-  httpClient(url('scrobble', id, { submission: submit }))
+const scrobble = (id, submission = false, time) =>
+  httpClient(
+    url('scrobble', id, {
+      ...(submission && time && { time }),
+      submission,
+    })
+  )
+
+const nowPlaying = (id) => scrobble(id, false)
 
 const star = (id) => httpClient(url('star', id))
 
@@ -52,6 +59,7 @@ const streamUrl = (id) => {
 export default {
   url,
   scrobble,
+  nowPlaying,
   download,
   star,
   unstar,
