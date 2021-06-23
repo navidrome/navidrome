@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+
 	"github.com/navidrome/navidrome/server/events"
 
 	"github.com/navidrome/navidrome/model"
@@ -22,7 +24,9 @@ var _ = Describe("PlayTracker", func() {
 	var album model.Album
 	var artist model.Artist
 	var fake *fakeScrobbler
+
 	BeforeEach(func() {
+		conf.Server.DevEnableScrobble = true
 		ctx = context.Background()
 		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 		ds = &tests.MockDataStore{}
