@@ -7,12 +7,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/navidrome/navidrome/consts"
-
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -64,11 +63,8 @@ func (s *Router) routes() http.Handler {
 }
 
 func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	u, _ := request.UserFrom(ctx)
-
 	resp := map[string]interface{}{"status": true}
-	key, err := s.sessionKeys.get(ctx, u.ID)
+	key, err := s.sessionKeys.get(r.Context())
 	if err != nil && err != model.ErrNotFound {
 		resp["error"] = err
 		resp["status"] = false
@@ -80,10 +76,7 @@ func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Router) unlink(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	u, _ := request.UserFrom(ctx)
-
-	err := s.sessionKeys.delete(ctx, u.ID)
+	err := s.sessionKeys.delete(r.Context())
 	if err != nil {
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 	} else {
@@ -103,7 +96,9 @@ func (s *Router) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
+	// Need to add user to context, as this is a non-authenticated endpoint, so it does not
+	// automatically contain any user info
+	ctx := request.WithUser(r.Context(), model.User{ID: uid})
 	err := s.fetchSessionKey(ctx, uid, token)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -118,32 +113,13 @@ func (s *Router) callback(w http.ResponseWriter, r *http.Request) {
 func (s *Router) fetchSessionKey(ctx context.Context, uid, token string) error {
 	sessionKey, err := s.client.GetSession(ctx, token)
 	if err != nil {
-		log.Error(ctx, "Could not fetch LastFM session key", "userId", uid, "token", token, err)
+		log.Error(ctx, "Could not fetch LastFM session key", "userId", uid, "token", token,
+			"requestId", middleware.GetReqID(ctx), err)
 		return err
 	}
-	err = s.sessionKeys.put(ctx, uid, sessionKey)
+	err = s.sessionKeys.put(ctx, sessionKey)
 	if err != nil {
-		log.Error("Could not save LastFM session key", "userId", uid, err)
+		log.Error("Could not save LastFM session key", "userId", uid, "requestId", middleware.GetReqID(ctx), err)
 	}
 	return err
-}
-
-const (
-	sessionKeyPropertyPrefix = "LastFMSessionKey_"
-)
-
-type sessionKeys struct {
-	ds model.DataStore
-}
-
-func (sk *sessionKeys) put(ctx context.Context, uid string, sessionKey string) error {
-	return sk.ds.Property(ctx).Put(sessionKeyPropertyPrefix+uid, sessionKey)
-}
-
-func (sk *sessionKeys) get(ctx context.Context, uid string) (string, error) {
-	return sk.ds.Property(ctx).Get(sessionKeyPropertyPrefix + uid)
-}
-
-func (sk *sessionKeys) delete(ctx context.Context, uid string) error {
-	return sk.ds.Property(ctx).Delete(sessionKeyPropertyPrefix + uid)
 }
