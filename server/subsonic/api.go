@@ -34,11 +34,11 @@ type Router struct {
 	ExternalMetadata core.ExternalMetadata
 	Scanner          scanner.Scanner
 	Broker           events.Broker
-	Scrobbler        scrobbler.Broker
+	Scrobbler        scrobbler.PlayTracker
 }
 
 func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver, players core.Players,
-	externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker, scrobbler scrobbler.Broker) *Router {
+	externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker, scrobbler scrobbler.PlayTracker) *Router {
 	r := &Router{
 		DataStore:        ds,
 		Artwork:          artwork,
