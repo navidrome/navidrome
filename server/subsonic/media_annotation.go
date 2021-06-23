@@ -18,11 +18,11 @@ import (
 
 type MediaAnnotationController struct {
 	ds        model.DataStore
-	scrobbler scrobbler.Broker
+	scrobbler scrobbler.PlayTracker
 	broker    events.Broker
 }
 
-func NewMediaAnnotationController(ds model.DataStore, scrobbler scrobbler.Broker, broker events.Broker) *MediaAnnotationController {
+func NewMediaAnnotationController(ds model.DataStore, scrobbler scrobbler.PlayTracker, broker events.Broker) *MediaAnnotationController {
 	return &MediaAnnotationController{ds: ds, scrobbler: scrobbler, broker: broker}
 }
 
@@ -126,10 +126,25 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 	}
 	submission := utils.ParamBool(r, "submission", true)
 	ctx := r.Context()
-	event := &events.RefreshResource{}
-	submissions := 0
 
-	log.Debug(r, "Scrobbling tracks", "ids", ids, "times", times, "submission", submission)
+	if submission {
+		err := c.scrobblerSubmit(ctx, ids, times)
+		if err != nil {
+			log.Error(ctx, "Error registering scrobbles", "ids", ids, "times", times, err)
+		}
+	} else {
+		err := c.scrobblerNowPlaying(ctx, ids[0])
+		if err != nil {
+			log.Error(ctx, "Error setting NowPlaying", "id", ids[0], err)
+		}
+	}
+
+	return newResponse(), nil
+}
+
+func (c *MediaAnnotationController) scrobblerSubmit(ctx context.Context, ids []string, times []time.Time) error {
+	var submissions []scrobbler.Submission
+	log.Debug(ctx, "Scrobbling tracks", "ids", ids, "times", times)
 	for i, id := range ids {
 		var t time.Time
 		if len(times) > 0 {
@@ -137,57 +152,10 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 		} else {
 			t = time.Now()
 		}
-		if submission {
-			mf, err := c.scrobblerRegister(ctx, id, t)
-			if err != nil {
-				log.Error(r, "Error scrobbling track", "id", id, err)
-				continue
-			}
-			submissions++
-			event.With("song", mf.ID).With("album", mf.AlbumID).With("artist", mf.AlbumArtistID)
-		}
-		if !submission || len(times) == 0 {
-			err := c.scrobblerNowPlaying(ctx, id)
-			if err != nil {
-				log.Error(r, "Error setting current song", "id", id, err)
-				continue
-			}
-		}
+		submissions = append(submissions, scrobbler.Submission{TrackID: id, Timestamp: t})
 	}
-	if submissions > 0 {
-		c.broker.SendMessage(ctx, event)
-	}
-	return newResponse(), nil
-}
 
-func (c *MediaAnnotationController) scrobblerRegister(ctx context.Context, trackId string, playTime time.Time) (*model.MediaFile, error) {
-	var mf *model.MediaFile
-	var err error
-	err = c.ds.WithTx(func(tx model.DataStore) error {
-		mf, err = c.ds.MediaFile(ctx).Get(trackId)
-		if err != nil {
-			return err
-		}
-		err = c.ds.MediaFile(ctx).IncPlayCount(trackId, playTime)
-		if err != nil {
-			return err
-		}
-		err = c.ds.Album(ctx).IncPlayCount(mf.AlbumID, playTime)
-		if err != nil {
-			return err
-		}
-		err = c.ds.Artist(ctx).IncPlayCount(mf.ArtistID, playTime)
-		return err
-	})
-
-	username, _ := request.UsernameFrom(ctx)
-	if err != nil {
-		log.Error("Error while scrobbling", "trackId", trackId, "user", username, err)
-	} else {
-		log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
-	}
-	_ = c.scrobbler.Submit(ctx, trackId, playTime)
-	return mf, err
+	return c.scrobbler.Submit(ctx, submissions)
 }
 
 func (c *MediaAnnotationController) scrobblerNowPlaying(ctx context.Context, trackId string) error {
