@@ -5,6 +5,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+
 	"github.com/navidrome/navidrome/server/events"
 
 	"github.com/navidrome/navidrome/log"
@@ -172,6 +174,9 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 var scrobblers map[string]Constructor
 
 func Register(name string, init Constructor) {
+	if !conf.Server.DevEnableScrobble {
+		return
+	}
 	if scrobblers == nil {
 		scrobblers = make(map[string]Constructor)
 	}

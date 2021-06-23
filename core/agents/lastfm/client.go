@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"sort"
@@ -184,8 +183,7 @@ func (c *Client) makeRequest(method string, params url.Values, signed bool) (*Re
 	}
 
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	decoder := json.NewDecoder(strings.NewReader(string(body)))
+	decoder := json.NewDecoder(resp.Body)
 
 	var response Response
 	jsonErr := decoder.Decode(&response)
