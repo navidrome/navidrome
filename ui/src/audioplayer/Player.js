@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import ReactGA from 'react-ga'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
@@ -121,6 +121,7 @@ const Player = () => {
   // Match the medium breakpoint defined in the material-ui theme
   // See https://material-ui.com/customization/breakpoints/#breakpoints
   const isDesktop = useMediaQuery('(min-width:810px)')
+  const [startTime, setStartTime] = useState(null)
 
   const nextSong = useCallback(() => {
     const idx = queue.queue.findIndex(
@@ -253,10 +254,10 @@ const Player = () => {
       const item = queue.queue.find((item) => item.trackId === info.trackId)
       if (item && !item.scrobbled) {
         dispatch(scrobble(info.trackId, true))
-        subsonic.scrobble(info.trackId, true)
+        subsonic.scrobble(info.trackId, true, startTime)
       }
     },
-    [dispatch, queue.queue]
+    [dispatch, queue.queue, startTime]
   )
 
   const onAudioVolumeChange = useCallback(
@@ -268,10 +269,11 @@ const Player = () => {
   const onAudioPlay = useCallback(
     (info) => {
       dispatch(currentPlaying(info))
+      setStartTime(Date.now())
       if (info.duration) {
         document.title = `${info.name} - ${info.singer} - Navidrome`
         dispatch(scrobble(info.trackId, false))
-        subsonic.scrobble(info.trackId, false)
+        subsonic.nowPlaying(info.trackId)
         if (config.gaTrackingId) {
           ReactGA.event({
             category: 'Player',
