@@ -29,6 +29,7 @@ var _ = Describe("PlayTracker", func() {
 		conf.Server.DevEnableScrobble = true
 		ctx = context.Background()
 		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
+		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
 		ds = &tests.MockDataStore{}
 		broker = GetPlayTracker(ds, events.GetBroker())
 		fake = &fakeScrobbler{Authorized: true}
@@ -65,6 +66,14 @@ var _ = Describe("PlayTracker", func() {
 		})
 		It("does not send track to agent if user has not authorized", func() {
 			fake.Authorized = false
+
+			err := broker.NowPlaying(ctx, "player-1", "player-one", "123")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.NowPlayingCalled).To(BeFalse())
+		})
+		It("does not send track to agent if player is not enabled to send scrobbles", func() {
+			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: false})
 
 			err := broker.NowPlaying(ctx, "player-1", "player-one", "123")
 
@@ -129,6 +138,15 @@ var _ = Describe("PlayTracker", func() {
 
 		It("does not send track to agent if user has not authorized", func() {
 			fake.Authorized = false
+
+			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled).To(BeFalse())
+		})
+
+		It("does not send track to agent player is not enabled to send scrobbles", func() {
+			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: false})
 
 			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 

@@ -111,7 +111,8 @@
         "client": "Client",
         "userName": "Username",
         "lastSeen": "Last Seen At",
-        "reportRealPath": "Report Real Path"
+        "reportRealPath": "Report Real Path",
+        "scrobbleEnabled": "Send Scrobbles to Last.fm?"
       }
     },
     "transcoding": {

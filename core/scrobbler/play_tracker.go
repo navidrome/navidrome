@@ -64,7 +64,10 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 		PlayerName: playerName,
 	}
 	_ = p.playMap.Set(playerId, info)
-	p.dispatchNowPlaying(ctx, user.ID, trackId)
+	player, _ := request.PlayerFrom(ctx)
+	if player.ScrobbleEnabled {
+		p.dispatchNowPlaying(ctx, user.ID, trackId)
+	}
 	return nil
 }
 
@@ -109,6 +112,10 @@ func (p *playTracker) GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, erro
 
 func (p *playTracker) Submit(ctx context.Context, submissions []Submission) error {
 	username, _ := request.UsernameFrom(ctx)
+	player, _ := request.PlayerFrom(ctx)
+	if !player.ScrobbleEnabled {
+		log.Debug(ctx, "External scrobbling disabled for this player", "player", player.Name, "ip", player.IPAddress, "user", username)
+	}
 	event := &events.RefreshResource{}
 	success := 0
 
@@ -125,7 +132,9 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 			success++
 			event.With("song", mf.ID).With("album", mf.AlbumID).With("artist", mf.AlbumArtistID)
 			log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
-			_ = p.dispatchScrobble(ctx, mf, s.Timestamp)
+			if player.ScrobbleEnabled {
+				_ = p.dispatchScrobble(ctx, mf, s.Timestamp)
+			}
 		}
 	}
 
