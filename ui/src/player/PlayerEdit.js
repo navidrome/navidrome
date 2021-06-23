@@ -47,6 +47,7 @@ const PlayerEdit = (props) => (
         ]}
       />
       <BooleanInput source="reportRealPath" fullWidth />
+      <BooleanInput source="scrobbleEnabled" fullWidth />
       <TextField source="client" />
       <TextField source="userName" />
     </SimpleForm>
