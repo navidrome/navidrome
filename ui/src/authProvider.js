@@ -68,11 +68,6 @@ const authProvider = {
   logout: () => {
     stopEventStream()
     removeItems()
-    try {
-      clearServiceWorkerCache()
-    } catch (e) {
-      console.log('Error clearing service worker cache:', e)
-    }
     return Promise.resolve()
   },
 
@@ -113,13 +108,6 @@ const removeItems = () => {
   localStorage.removeItem('subsonic-salt')
   localStorage.removeItem('subsonic-token')
   localStorage.removeItem('is-authenticated')
-}
-
-const clearServiceWorkerCache = () => {
-  window.caches &&
-    caches.keys().then(function (keyList) {
-      for (let key of keyList) caches.delete(key)
-    })
 }
 
 export default authProvider
