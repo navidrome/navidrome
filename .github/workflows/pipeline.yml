@@ -156,30 +156,26 @@ jobs:
     name: Docker images
     needs: [binaries]
     runs-on: ubuntu-latest
+    if: ${{ secrets.DOCKER_IMAGE != '' }}
     env:
       DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
     steps:
       - name: Set up QEMU
         id: qemu
         uses: docker/setup-qemu-action@v1
-        if: env.DOCKER_IMAGE != ''
 
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v1
-        if: env.DOCKER_IMAGE != ''
 
       - uses: actions/checkout@v2
-        if: env.DOCKER_IMAGE != ''
 
       - uses: actions/download-artifact@v2
-        if: env.DOCKER_IMAGE != ''
         with:
           name: binaries
           path: dist
 
       - name: Build the Docker image and push
-        if: env.DOCKER_IMAGE != ''
         env:
           DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
           DOCKER_PLATFORM: linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
