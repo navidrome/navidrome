@@ -23,7 +23,8 @@
                 "comment": "Comentario",
                 "rating": "Calificación",
                 "quality": "Cualidad",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "Últimas reproducciones"
             },
             "actions": {
                 "addToQueue": "Reproducir después",
@@ -277,7 +278,8 @@
             "data_provider_error": "Error del proveedor de datos. Consulte la consola para más detalles.",
             "i18n_error": "No se pudieron cargar las traducciones para el idioma especificado",
             "canceled": "Acción cancelada",
-            "logged_out": "Su sesión ha finalizado, vuelva a conectarse."
+            "logged_out": "Su sesión ha finalizado, vuelva a conectarse.",
+            "new_version": "¡Nueva versión disponible! Por favor refresca esta ventana."
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "Columnas para mostrar",
@@ -295,7 +297,11 @@
         "delete_user_title": "Eliminar usuario '%{name}'",
         "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?",
         "notifications_blocked": "Las notificaciones de este sitio están bloqueadas en tu navegador",
-        "notifications_not_available": "Este navegador no soporta notificaciones o no ingresaste a Navidrome usando https"
+        "notifications_not_available": "Este navegador no soporta notificaciones o no ingresaste a Navidrome usando https",
+        "lastfmLinkSuccess": "Last.fm esta conectado y el scrobbling esta activado",
+        "lastfmLinkFailure": "No se pudo conectar con Last.fm",
+        "lastfmUnlinkSuccess": "Last.fm se ha desconectado y el scrobbling se desactivo",
+        "lastfmUnlinkFailure": "No se pudo desconectar Last.fm"
     },
     "menu": {
         "library": "Biblioteca",
@@ -308,7 +314,8 @@
                 "theme": "Tema",
                 "language": "Idioma",
                 "defaultView": "Vista por defecto",
-                "desktop_notifications": "Notificaciones de escritorio"
+                "desktop_notifications": "Notificaciones de escritorio",
+                "lastfmScrobbling": "Scrobble a Last.fm"
             }
         },
         "albumList": "Álbumes",
@@ -364,7 +371,7 @@
             "next_song": "Siguiente canción",
             "vol_up": "Subir volumen",
             "vol_down": "Bajar volumen",
-            "toggle_love": "Activa/desactiva esta canción como favorita"
+            "toggle_love": "Marca esta canción como favorita"
         }
     }
 }
