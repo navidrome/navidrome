@@ -297,7 +297,11 @@
         "delete_user_title": "Excluir usuário '%{name}'",
         "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?",
         "notifications_blocked": "Você bloqueou notificações para este site nas configurações do seu browser",
-        "notifications_not_available": "Este navegador não suporta notificações"
+        "notifications_not_available": "Este navegador não suporta notificações",
+        "lastfmLinkSuccess": "Sua conta em Last.fm foi conectada com sucesso",
+        "lastfmLinkFailure": "Sua conta em Last.fm não pode ser conectada",
+        "lastfmUnlinkSuccess": "Sua conta em Last.fm foi desconectada",
+        "lastfmUnlinkFailure": "Sua conta em Last.fm não pode ser desconectada"
     },
     "menu": {
         "library": "Biblioteca",
@@ -310,7 +314,8 @@
                 "theme": "Tema",
                 "language": "Língua",
                 "defaultView": "Tela inicial",
-                "desktop_notifications": "Notificações"
+                "desktop_notifications": "Notificações",
+                "lastfmScrobbling": "Enviar scrobbles para Last.fm"
             }
         },
         "albumList": "Álbuns",
