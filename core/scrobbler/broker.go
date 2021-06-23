@@ -66,9 +66,12 @@ func (s *broker) dispatchNowPlaying(ctx context.Context, userId string, trackId 
 	}
 	// TODO Parallelize
 	for name, constructor := range scrobblers {
-		log.Debug(ctx, "Sending NowPlaying info", "scrobbler", name, "track", t.Title, "artist", t.Artist)
 		err := func() error {
 			s := constructor(s.ds)
+			if !s.IsAuthorized(ctx, userId) {
+				return nil
+			}
+			log.Debug(ctx, "Sending NowPlaying info", "scrobbler", name, "track", t.Title, "artist", t.Artist)
 			return s.NowPlaying(ctx, userId, t)
 		}()
 		if err != nil {
@@ -104,13 +107,16 @@ func (s *broker) Submit(ctx context.Context, trackId string, playTime time.Time)
 	scrobbles := []Scrobble{{MediaFile: *t, TimeStamp: playTime}}
 	// TODO Parallelize
 	for name, constructor := range scrobblers {
-		log.Debug(ctx, "Sending NowPlaying info", "scrobbler", name, "track", t.Title, "artist", t.Artist)
 		err := func() error {
 			s := constructor(s.ds)
+			if !s.IsAuthorized(ctx, u.ID) {
+				return nil
+			}
+			log.Debug(ctx, "Sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
 			return s.Scrobble(ctx, u.ID, scrobbles)
 		}()
 		if err != nil {
-			log.Error(ctx, "Error sending NowPlayingInfo", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
+			log.Error(ctx, "Error sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
 			return err
 		}
 	}

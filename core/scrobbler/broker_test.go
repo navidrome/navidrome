@@ -22,7 +22,7 @@ var _ = Describe("Broker", func() {
 		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 		ds = &tests.MockDataStore{}
 		broker = GetBroker(ds)
-		fake = &fakeScrobbler{}
+		fake = &fakeScrobbler{Authorized: true}
 		Register("fake", func(ds model.DataStore) Scrobbler {
 			return fake
 		})
@@ -44,8 +44,15 @@ var _ = Describe("Broker", func() {
 		It("sends track to agent", func() {
 			err := broker.NowPlaying(ctx, "player-1", "player-one", "123")
 			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.NowPlayingCalled).To(BeTrue())
 			Expect(fake.UserID).To(Equal("u-1"))
 			Expect(fake.Track.ID).To(Equal("123"))
+		})
+		It("does not send track to agent if user has not authorized", func() {
+			fake.Authorized = false
+			err := broker.NowPlaying(ctx, "player-1", "player-one", "123")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.NowPlayingCalled).ToNot(BeTrue())
 		})
 	})
 
@@ -86,21 +93,38 @@ var _ = Describe("Broker", func() {
 			err := broker.Submit(ctx, "123", ts)
 
 			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled).To(BeTrue())
 			Expect(fake.UserID).To(Equal("u-1"))
 			Expect(fake.Scrobbles[0].ID).To(Equal("123"))
 		})
+
+		It("does not send track to agent if user has not authorized", func() {
+			fake.Authorized = false
+			err := broker.Submit(ctx, "123", time.Now())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled).ToNot(BeTrue())
+		})
+
 	})
 
 })
 
 type fakeScrobbler struct {
-	UserID    string
-	Track     *model.MediaFile
-	Scrobbles []Scrobble
-	Error     error
+	Authorized       bool
+	NowPlayingCalled bool
+	ScrobbleCalled   bool
+	UserID           string
+	Track            *model.MediaFile
+	Scrobbles        []Scrobble
+	Error            error
+}
+
+func (f *fakeScrobbler) IsAuthorized(ctx context.Context, userId string) bool {
+	return f.Error == nil && f.Authorized
 }
 
 func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
+	f.NowPlayingCalled = true
 	if f.Error != nil {
 		return f.Error
 	}
@@ -110,6 +134,7 @@ func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *mo
 }
 
 func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, scrobbles []Scrobble) error {
+	f.ScrobbleCalled = true
 	if f.Error != nil {
 		return f.Error
 	}

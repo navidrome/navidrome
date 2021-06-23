@@ -203,6 +203,11 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, scrobbles []s
 	return nil
 }
 
+func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
+	sk, err := l.sessionKeys.get(ctx, userId)
+	return err == nil && sk != ""
+}
+
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.LastFM.Enabled {
