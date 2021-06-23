@@ -50,8 +50,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
 	scanner := GetScanner()
 	broker := events.GetBroker()
-	scrobblerBroker := scrobbler.GetBroker(dataStore)
-	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, scrobblerBroker)
+	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
+	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, playTracker)
 	return router
 }
 

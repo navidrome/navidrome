@@ -18,6 +18,6 @@ var Set = wire.NewSet(
 	NewPlayers,
 	agents.New,
 	transcoder.New,
-	scrobbler.GetBroker,
+	scrobbler.GetPlayTracker,
 	NewShare,
 )

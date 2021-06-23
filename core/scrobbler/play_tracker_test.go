@@ -2,7 +2,10 @@ package scrobbler
 
 import (
 	"context"
+	"errors"
 	"time"
+
+	"github.com/navidrome/navidrome/server/events"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -11,17 +14,19 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Broker", func() {
+var _ = Describe("PlayTracker", func() {
 	var ctx context.Context
 	var ds model.DataStore
-	var broker Broker
+	var broker PlayTracker
 	var track model.MediaFile
+	var album model.Album
+	var artist model.Artist
 	var fake *fakeScrobbler
 	BeforeEach(func() {
 		ctx = context.Background()
 		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 		ds = &tests.MockDataStore{}
-		broker = GetBroker(ds)
+		broker = GetPlayTracker(ds, events.GetBroker())
 		fake = &fakeScrobbler{Authorized: true}
 		Register("fake", func(ds model.DataStore) Scrobbler {
 			return fake
@@ -31,13 +36,19 @@ var _ = Describe("Broker", func() {
 			ID:          "123",
 			Title:       "Track Title",
 			Album:       "Track Album",
+			AlbumID:     "al-1",
 			Artist:      "Track Artist",
+			ArtistID:    "ar-1",
 			AlbumArtist: "Track AlbumArtist",
 			TrackNumber: 1,
 			Duration:    180,
 			MbzTrackID:  "mbz-123",
 		}
 		_ = ds.MediaFile(ctx).Put(&track)
+		artist = model.Artist{ID: "ar-1"}
+		_ = ds.Artist(ctx).Put(&artist)
+		album = model.Album{ID: "al-1"}
+		_ = ds.Album(ctx).(*tests.MockAlbumRepo).Put(&album)
 	})
 
 	Describe("NowPlaying", func() {
@@ -50,9 +61,11 @@ var _ = Describe("Broker", func() {
 		})
 		It("does not send track to agent if user has not authorized", func() {
 			fake.Authorized = false
+
 			err := broker.NowPlaying(ctx, "player-1", "player-one", "123")
+
 			Expect(err).ToNot(HaveOccurred())
-			Expect(fake.NowPlayingCalled).ToNot(BeTrue())
+			Expect(fake.NowPlayingCalled).To(BeFalse())
 		})
 	})
 
@@ -90,7 +103,7 @@ var _ = Describe("Broker", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
 			ts := time.Now()
 
-			err := broker.Submit(ctx, "123", ts)
+			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.ScrobbleCalled).To(BeTrue())
@@ -98,11 +111,38 @@ var _ = Describe("Broker", func() {
 			Expect(fake.Scrobbles[0].ID).To(Equal("123"))
 		})
 
+		It("increments play counts in the DB", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
+			ts := time.Now()
+
+			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(track.PlayCount).To(Equal(int64(1)))
+			Expect(album.PlayCount).To(Equal(int64(1)))
+			Expect(artist.PlayCount).To(Equal(int64(1)))
+		})
+
 		It("does not send track to agent if user has not authorized", func() {
 			fake.Authorized = false
-			err := broker.Submit(ctx, "123", time.Now())
+
+			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
 			Expect(err).ToNot(HaveOccurred())
-			Expect(fake.ScrobbleCalled).ToNot(BeTrue())
+			Expect(fake.ScrobbleCalled).To(BeFalse())
+		})
+
+		It("increments play counts even if it cannot scrobble", func() {
+			fake.Error = errors.New("error")
+
+			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled).To(BeFalse())
+
+			Expect(track.PlayCount).To(Equal(int64(1)))
+			Expect(album.PlayCount).To(Equal(int64(1)))
+			Expect(artist.PlayCount).To(Equal(int64(1)))
 		})
 
 	})
