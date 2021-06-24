@@ -23,7 +23,8 @@
                 "comment": "Commentaire",
                 "rating": "Classement",
                 "quality": "Qualité",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "Derniers joués"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -110,7 +111,8 @@
                 "client": "Client",
                 "userName": "Nom d'utilisateur",
                 "lastSeen": "Vu pour la dernière fois",
-                "reportRealPath": "Rapporter le chemin absolu"
+                "reportRealPath": "Rapporter le chemin absolu",
+                "scrobbleEnabled": "Envoyer les scrobbles à Last.fm"
             }
         },
         "transcoding": {
@@ -277,7 +279,8 @@
             "data_provider_error": "Erreur dans le dataProvider. Plus de détails dans la console.",
             "i18n_error": "Erreur de chargement des traductions pour la langue sélectionnée",
             "canceled": "Action annulée",
-            "logged_out": "Votre session a pris fin, veuillez vous reconnecter."
+            "logged_out": "Votre session a pris fin, veuillez vous reconnecter.",
+            "new_version": "Nouvelle version disponible ! Veuillez rafraîchir la fenêtre."
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "Colonnes à afficher",
@@ -295,7 +298,11 @@
         "delete_user_title": "Supprimer l'utilisateur '%{name}'",
         "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
         "notifications_blocked": "Votre navigateur bloque les notifications de ce site",
-        "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via HTTPS"
+        "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via HTTPS",
+        "lastfmLinkSuccess": "Last.fm a été correctement relié et le scrobble a été activé",
+        "lastfmLinkFailure": "Last.fm n'a pas pu être correctement relié",
+        "lastfmUnlinkSuccess": "Last.fm n'est plus relié et le scrobble a été désactivé",
+        "lastfmUnlinkFailure": "Erreur pendant la suppression du lien avec Last.fm"
     },
     "menu": {
         "library": "Bibliothèque",
@@ -308,7 +315,8 @@
                 "theme": "Thème",
                 "language": "Langue",
                 "defaultView": "Vue par défaut",
-                "desktop_notifications": "Notifications de bureau"
+                "desktop_notifications": "Notifications de bureau",
+                "lastfmScrobbling": "Scrobble vers Last.fm"
             }
         },
         "albumList": "Albums",
