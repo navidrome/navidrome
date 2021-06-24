@@ -149,7 +149,7 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	start := time.Now()
 	err = r.ormer.Raw(query, args...).QueryRow(response)
 	if err == orm.ErrNoRows {
-		r.logSQL(query, args, nil, 1, start)
+		r.logSQL(query, args, nil, 0, start)
 		return model.ErrNotFound
 	}
 	r.logSQL(query, args, err, 1, start)

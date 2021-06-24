@@ -264,15 +264,19 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(sentParams.Get("duration")).To(Equal(strconv.FormatFloat(float64(track.Duration), 'G', -1, 32)))
 				Expect(sentParams.Get("mbid")).To(Equal(track.MbzTrackID))
 			})
+
+			It("returns ErrNotAuthorized if user is not linked", func() {
+				err := agent.NowPlaying(ctx, "user-2", track)
+				Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
+			})
 		})
 
 		Describe("Scrobble", func() {
 			It("calls Last.fm with correct params", func() {
 				ts := time.Now()
-				scrobbles := []scrobbler.Scrobble{{MediaFile: *track, TimeStamp: ts}}
 				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
-				err := agent.Scrobble(ctx, "user-1", scrobbles)
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: ts})
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
@@ -291,13 +295,57 @@ var _ = Describe("lastfmAgent", func() {
 
 			It("skips songs with less than 31 seconds", func() {
 				track.Duration = 29
-				scrobbles := []scrobbler.Scrobble{{MediaFile: *track, TimeStamp: time.Now()}}
 				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
-				err := agent.Scrobble(ctx, "user-1", scrobbles)
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("returns ErrNotAuthorized if user is not linked", func() {
+				err := agent.Scrobble(ctx, "user-2", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+				Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
+			})
+
+			It("returns ErrRetryLater on error 11", func() {
+				httpClient.Res = http.Response{
+					Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":11,"message":"Service Offline - This service is temporarily offline. Try again later."}`)),
+					StatusCode: 400,
+				}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+			})
+
+			It("returns ErrRetryLater on error 16", func() {
+				httpClient.Res = http.Response{
+					Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":16,"message":"There was a temporary error processing your request. Please try again"}`)),
+					StatusCode: 400,
+				}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+			})
+
+			It("returns ErrRetryLater on http errors", func() {
+				httpClient.Res = http.Response{
+					Body:       ioutil.NopCloser(bytes.NewBufferString(`internal server error`)),
+					StatusCode: 500,
+				}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+			})
+
+			It("returns ErrUnrecoverable on other errors", func() {
+				httpClient.Res = http.Response{
+					Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":8,"message":"Operation failed - Something else went wrong"}`)),
+					StatusCode: 400,
+				}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+				Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
 			})
 		})
 	})

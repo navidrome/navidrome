@@ -6,11 +6,9 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-
-	"github.com/navidrome/navidrome/server/events"
-
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,11 +17,11 @@ import (
 var _ = Describe("PlayTracker", func() {
 	var ctx context.Context
 	var ds model.DataStore
-	var broker PlayTracker
+	var tracker PlayTracker
 	var track model.MediaFile
 	var album model.Album
 	var artist model.Artist
-	var fake *fakeScrobbler
+	var fake fakeScrobbler
 
 	BeforeEach(func() {
 		conf.Server.DevEnableScrobble = true
@@ -31,11 +29,18 @@ var _ = Describe("PlayTracker", func() {
 		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
 		ds = &tests.MockDataStore{}
-		broker = GetPlayTracker(ds, events.GetBroker())
-		fake = &fakeScrobbler{Authorized: true}
+		fake = fakeScrobbler{Authorized: true}
 		Register("fake", func(ds model.DataStore) Scrobbler {
-			return fake
+			return &fake
 		})
+		tracker = GetPlayTracker(ds, events.GetBroker())
+
+		// Remove buffering to simplify tests
+		for i, s := range tracker.(*playTracker).scrobblers {
+			if bs, ok := s.(*bufferedScrobbler); ok {
+				tracker.(*playTracker).scrobblers[i] = bs.wrapped
+			}
+		}
 
 		track = model.MediaFile{
 			ID:          "123",
@@ -58,7 +63,7 @@ var _ = Describe("PlayTracker", func() {
 
 	Describe("NowPlaying", func() {
 		It("sends track to agent", func() {
-			err := broker.NowPlaying(ctx, "player-1", "player-one", "123")
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.NowPlayingCalled).To(BeTrue())
 			Expect(fake.UserID).To(Equal("u-1"))
@@ -67,7 +72,7 @@ var _ = Describe("PlayTracker", func() {
 		It("does not send track to agent if user has not authorized", func() {
 			fake.Authorized = false
 
-			err := broker.NowPlaying(ctx, "player-1", "player-one", "123")
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.NowPlayingCalled).To(BeFalse())
@@ -75,7 +80,7 @@ var _ = Describe("PlayTracker", func() {
 		It("does not send track to agent if player is not enabled to send scrobbles", func() {
 			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: false})
 
-			err := broker.NowPlaying(ctx, "player-1", "player-one", "123")
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.NowPlayingCalled).To(BeFalse())
@@ -91,11 +96,11 @@ var _ = Describe("PlayTracker", func() {
 			track2.ID = "456"
 			_ = ds.MediaFile(ctx).Put(&track)
 			ctx = request.WithUser(ctx, model.User{UserName: "user-1"})
-			_ = broker.NowPlaying(ctx, "player-1", "player-one", "123")
+			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123")
 			ctx = request.WithUser(ctx, model.User{UserName: "user-2"})
-			_ = broker.NowPlaying(ctx, "player-2", "player-two", "456")
+			_ = tracker.NowPlaying(ctx, "player-2", "player-two", "456")
 
-			playing, err := broker.GetNowPlaying(ctx)
+			playing, err := tracker.GetNowPlaying(ctx)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(playing).To(HaveLen(2))
@@ -116,19 +121,19 @@ var _ = Describe("PlayTracker", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
 			ts := time.Now()
 
-			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.ScrobbleCalled).To(BeTrue())
 			Expect(fake.UserID).To(Equal("u-1"))
-			Expect(fake.Scrobbles[0].ID).To(Equal("123"))
+			Expect(fake.LastScrobble.ID).To(Equal("123"))
 		})
 
 		It("increments play counts in the DB", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
 			ts := time.Now()
 
-			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(track.PlayCount).To(Equal(int64(1)))
@@ -139,7 +144,7 @@ var _ = Describe("PlayTracker", func() {
 		It("does not send track to agent if user has not authorized", func() {
 			fake.Authorized = false
 
-			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.ScrobbleCalled).To(BeFalse())
@@ -148,7 +153,7 @@ var _ = Describe("PlayTracker", func() {
 		It("does not send track to agent player is not enabled to send scrobbles", func() {
 			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: false})
 
-			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.ScrobbleCalled).To(BeFalse())
@@ -157,7 +162,7 @@ var _ = Describe("PlayTracker", func() {
 		It("increments play counts even if it cannot scrobble", func() {
 			fake.Error = errors.New("error")
 
-			err := broker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.ScrobbleCalled).To(BeFalse())
@@ -177,7 +182,7 @@ type fakeScrobbler struct {
 	ScrobbleCalled   bool
 	UserID           string
 	Track            *model.MediaFile
-	Scrobbles        []Scrobble
+	LastScrobble     Scrobble
 	Error            error
 }
 
@@ -195,12 +200,12 @@ func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *mo
 	return nil
 }
 
-func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, scrobbles []Scrobble) error {
+func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {
 	f.ScrobbleCalled = true
 	if f.Error != nil {
 		return f.Error
 	}
 	f.UserID = userId
-	f.Scrobbles = scrobbles
+	f.LastScrobble = s
 	return nil
 }

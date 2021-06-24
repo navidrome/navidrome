@@ -7,16 +7,17 @@ import (
 )
 
 type MockDataStore struct {
-	MockedGenre       model.GenreRepository
-	MockedAlbum       model.AlbumRepository
-	MockedArtist      model.ArtistRepository
-	MockedMediaFile   model.MediaFileRepository
-	MockedUser        model.UserRepository
-	MockedProperty    model.PropertyRepository
-	MockedPlayer      model.PlayerRepository
-	MockedShare       model.ShareRepository
-	MockedTranscoding model.TranscodingRepository
-	MockedUserProps   model.UserPropsRepository
+	MockedGenre          model.GenreRepository
+	MockedAlbum          model.AlbumRepository
+	MockedArtist         model.ArtistRepository
+	MockedMediaFile      model.MediaFileRepository
+	MockedUser           model.UserRepository
+	MockedProperty       model.PropertyRepository
+	MockedPlayer         model.PlayerRepository
+	MockedShare          model.ShareRepository
+	MockedTranscoding    model.TranscodingRepository
+	MockedUserProps      model.UserPropsRepository
+	MockedScrobbleBuffer model.ScrobbleBufferRepository
 }
 
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {
@@ -99,6 +100,13 @@ func (db *MockDataStore) Player(context.Context) model.PlayerRepository {
 		return db.MockedPlayer
 	}
 	return struct{ model.PlayerRepository }{}
+}
+
+func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+	if db.MockedScrobbleBuffer == nil {
+		db.MockedScrobbleBuffer = CreateMockedScrobbleBufferRepo()
+	}
+	return db.MockedScrobbleBuffer
 }
 
 func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {
