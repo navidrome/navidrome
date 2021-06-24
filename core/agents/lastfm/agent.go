@@ -186,6 +186,10 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, scrobbles []s
 
 	// TODO Implement batch scrobbling
 	for _, s := range scrobbles {
+		if s.Duration <= 30 {
+			log.Debug(ctx, "Skipping Last.fm scrobble for short song", "track", s.Title, "duration", s.Duration)
+			continue
+		}
 		err = l.client.Scrobble(ctx, sk, ScrobbleInfo{
 			artist:      s.Artist,
 			track:       s.Title,
