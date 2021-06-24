@@ -52,6 +52,5 @@ func upEncodeAllPasswords(tx *sql.Tx) error {
 }
 
 func downEncodeAllPasswords(tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back.
 	return nil
 }

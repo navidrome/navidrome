@@ -160,9 +160,10 @@ func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName, mb
 
 func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
 	sk, err := l.sessionKeys.get(ctx, userId)
-	if err != nil {
-		return err
+	if err != nil || sk == "" {
+		return scrobbler.ErrNotAuthorized
 	}
+
 	err = l.client.UpdateNowPlaying(ctx, sk, ScrobbleInfo{
 		artist:      track.Artist,
 		track:       track.Title,
@@ -173,38 +174,44 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 		albumArtist: track.AlbumArtist,
 	})
 	if err != nil {
-		return err
+		log.Warn(ctx, "Last.fm client.updateNowPlaying returned error", "track", track.Title, err)
+		return scrobbler.ErrUnrecoverable
 	}
 	return nil
 }
 
-func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, scrobbles []scrobbler.Scrobble) error {
+func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.Scrobble) error {
 	sk, err := l.sessionKeys.get(ctx, userId)
-	if err != nil {
-		return err
+	if err != nil || sk == "" {
+		return scrobbler.ErrNotAuthorized
 	}
 
-	// TODO Implement batch scrobbling
-	for _, s := range scrobbles {
-		if s.Duration <= 30 {
-			log.Debug(ctx, "Skipping Last.fm scrobble for short song", "track", s.Title, "duration", s.Duration)
-			continue
-		}
-		err = l.client.Scrobble(ctx, sk, ScrobbleInfo{
-			artist:      s.Artist,
-			track:       s.Title,
-			album:       s.Album,
-			trackNumber: s.TrackNumber,
-			mbid:        s.MbzTrackID,
-			duration:    int(s.Duration),
-			albumArtist: s.AlbumArtist,
-			timestamp:   s.TimeStamp,
-		})
-		if err != nil {
-			return err
-		}
+	if s.Duration <= 30 {
+		log.Debug(ctx, "Skipping Last.fm scrobble for short song", "track", s.Title, "duration", s.Duration)
+		return nil
 	}
-	return nil
+	err = l.client.Scrobble(ctx, sk, ScrobbleInfo{
+		artist:      s.Artist,
+		track:       s.Title,
+		album:       s.Album,
+		trackNumber: s.TrackNumber,
+		mbid:        s.MbzTrackID,
+		duration:    int(s.Duration),
+		albumArtist: s.AlbumArtist,
+		timestamp:   s.TimeStamp,
+	})
+	if err == nil {
+		return nil
+	}
+	lfErr, isLastFMError := err.(*lastFMError)
+	if !isLastFMError {
+		log.Warn(ctx, "Last.fm client.scrobble returned error", "track", s.Title, err)
+		return scrobbler.ErrRetryLater
+	}
+	if lfErr.Code == 11 || lfErr.Code == 16 {
+		return scrobbler.ErrRetryLater
+	}
+	return scrobbler.ErrUnrecoverable
 }
 
 func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {

@@ -74,8 +74,8 @@ func runNavidrome() {
 func startServer() (func() error, func(err error)) {
 	return func() error {
 			a := CreateServer(conf.Server.MusicFolder)
-			a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
 			a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
+			a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
 			if conf.Server.DevEnableScrobble {
 				a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
 			}
