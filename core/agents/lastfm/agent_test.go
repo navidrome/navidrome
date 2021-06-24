@@ -293,6 +293,17 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(sentParams.Get("mbid")).To(Equal(track.MbzTrackID))
 				Expect(sentParams.Get("timestamp")).To(Equal(strconv.FormatInt(ts.Unix(), 10)))
 			})
+
+			It("skips songs with less than 31 seconds", func() {
+				track.Duration = 29
+				scrobbles := []scrobbler.Scrobble{{MediaFile: *track, TimeStamp: time.Now()}}
+				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbles)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).To(BeNil())
+			})
 		})
 	})
 
