@@ -24,7 +24,7 @@
                 "rating": "Bewertung",
                 "quality": "Qualität",
                 "bpm": "BPM",
-                "playDate": "Zuletzt gespielt"
+                "playDate": "Letzte Wiedergabe"
             },
             "actions": {
                 "addToQueue": "Später abspielen",
@@ -111,7 +111,8 @@
                 "client": "Client",
                 "userName": "Nutzername",
                 "lastSeen": "Zuletzt gesehen um",
-                "reportRealPath": "Echten Pfad anzeigen"
+                "reportRealPath": "Echten Pfad anzeigen",
+                "scrobbleEnabled": "Scrobbles an Last.fm senden"
             }
         },
         "transcoding": {
@@ -278,7 +279,8 @@
             "data_provider_error": "dataProvider Fehler. Prüfe die Konsole für Details.",
             "i18n_error": "Die Übersetzungen für die angegebene Sprache können nicht geladen werden",
             "canceled": "Aktion abgebrochen",
-            "logged_out": "Deine Session wurde beendet. Bitte erneut verbinden."
+            "logged_out": "Deine Session wurde beendet. Bitte erneut verbinden.",
+            "new_version": "Neue Version verfügbar! Bitte aktualisiere dieses Fenster."
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "Spalten auswählen",
@@ -296,7 +298,11 @@
         "delete_user_title": "Benutzer \"% {name}\" löschen",
         "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Playlisten und Einstellungen) wirklich löschen?",
         "notifications_blocked": "Sie haben Benachrichtigungen für diese Seite in den Einstellungen Ihres Browsers blockiert",
-        "notifications_not_available": "Dieser Browser unterstützt keine Desktop-Benachrichtigungen"
+        "notifications_not_available": "Dieser Browser unterstützt keine Desktop-Benachrichtigungen",
+        "lastfmLinkSuccess": "Last.fm Verbindung hergestellt und scrobbling aktiviert",
+        "lastfmLinkFailure": "Last.fm konnte nicht verbunden werden",
+        "lastfmUnlinkSuccess": "Last.fm Verbindung entfernt und scrobbling deaktiviert",
+        "lastfmUnlinkFailure": "Last.fm Verbindung konnte nicht entfernt werden"
     },
     "menu": {
         "library": "Bibliothek",
@@ -309,7 +315,8 @@
                 "theme": "Design",
                 "language": "Sprache",
                 "defaultView": "Standard-Ansicht",
-                "desktop_notifications": "Desktop-Benachrichtigungen"
+                "desktop_notifications": "Desktop-Benachrichtigungen",
+                "lastfmScrobbling": "Last.fm Scrobbling"
             }
         },
         "albumList": "Alben",
