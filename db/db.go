@@ -42,7 +42,6 @@ func Db() *sql.DB {
 
 func EnsureLatestVersion() {
 	db := Db()
-	goose.SetLogger(&logAdapter{})
 
 	// Disable foreign_keys to allow re-creating tables in migrations
 	_, err := db.Exec("PRAGMA foreign_keys=off")
@@ -56,6 +55,9 @@ func EnsureLatestVersion() {
 		log.Error("Error disabling foreign_keys", err)
 	}
 
+	gooseLogger := &logAdapter{silent: isSchemaEmpty(db)}
+	goose.SetLogger(gooseLogger)
+
 	err = goose.SetDialect(Driver)
 	if err != nil {
 		log.Error("Invalid DB driver", "driver", Driver, err)
@@ -68,7 +70,19 @@ func EnsureLatestVersion() {
 	}
 }
 
-type logAdapter struct{}
+func isSchemaEmpty(db *sql.DB) bool { // nolint:interfacer
+	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
+	if err != nil {
+		log.Error("Database could not be opened!", err)
+		os.Exit(1)
+	}
+	defer rows.Close()
+	return !rows.Next()
+}
+
+type logAdapter struct {
+	silent bool
+}
 
 func (l *logAdapter) Fatal(v ...interface{}) {
 	log.Error(fmt.Sprint(v...))
@@ -81,13 +95,19 @@ func (l *logAdapter) Fatalf(format string, v ...interface{}) {
 }
 
 func (l *logAdapter) Print(v ...interface{}) {
-	log.Info(fmt.Sprint(v...))
+	if !l.silent {
+		log.Info(fmt.Sprint(v...))
+	}
 }
 
 func (l *logAdapter) Println(v ...interface{}) {
-	log.Info(fmt.Sprintln(v...))
+	if !l.silent {
+		log.Info(fmt.Sprintln(v...))
+	}
 }
 
 func (l *logAdapter) Printf(format string, v ...interface{}) {
-	log.Info(fmt.Sprintf(format, v...))
+	if !l.silent {
+		log.Info(fmt.Sprintf(format, v...))
+	}
 }
