@@ -23,7 +23,8 @@
                 "comment": "コメント",
                 "rating": "レート",
                 "quality": "品質",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "最後の再生"
             },
             "actions": {
                 "addToQueue": "最後に再生",
@@ -110,7 +111,8 @@
                 "client": "クライアント",
                 "userName": "ユーザ名",
                 "lastSeen": "最後の利用",
-                "reportRealPath": "実際のファイルパスを返す"
+                "reportRealPath": "実際のファイルパスを返す",
+                "scrobbleEnabled": "Last.fmへscrobbleする"
             }
         },
         "transcoding": {
@@ -277,7 +279,8 @@
             "data_provider_error": "dataProviderエラー。詳細はコンソールを確認してください",
             "i18n_error": "翻訳ファイルが読み込めませんでした",
             "canceled": "元に戻しました",
-            "logged_out": "認証に失敗しました。再度ログインしてください"
+            "logged_out": "認証に失敗しました。再度ログインしてください",
+            "new_version": "新しいバージョンが利用可能です！ページを更新してください。"
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "表示列",
@@ -295,7 +298,11 @@
         "delete_user_title": "'%{name}' を削除",
         "delete_user_content": "このユーザーとその全てのデータ(プレイリストや設定)を削除してもよろしいですか？",
         "notifications_blocked": "ブラウザの設定でこのサイトの通知がブロックされています",
-        "notifications_not_available": "このブラウザはデスクトップ通知をサポートしていません"
+        "notifications_not_available": "このブラウザはデスクトップ通知をサポートしていません",
+        "lastfmLinkSuccess": "Last.fmとリンクしscrobbleが有効になりました",
+        "lastfmLinkFailure": "Last.fmとリンクできませんでした",
+        "lastfmUnlinkSuccess": "設定が解除され、Last.fmへのscrobbleは無効になっています",
+        "lastfmUnlinkFailure": "Last.fmとリンクできませんでした"
     },
     "menu": {
         "library": "ライブラリ",
@@ -308,7 +315,8 @@
                 "theme": "テーマ",
                 "language": "言語",
                 "defaultView": "デフォルト画面",
-                "desktop_notifications": "デスクトップ通知"
+                "desktop_notifications": "デスクトップ通知",
+                "lastfmScrobbling": "Last.fmへscrobbleする"
             }
         },
         "albumList": "アルバム",
