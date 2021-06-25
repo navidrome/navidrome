@@ -1,4 +1,3 @@
-import 'react-jinke-music-player/assets/index.css'
 import { v4 as uuidv4 } from 'uuid'
 import subsonic from '../subsonic'
 import config from '../config'

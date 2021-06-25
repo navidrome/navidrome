@@ -49,5 +49,6 @@ export default {
   },
   player: {
     theme: 'light',
+    stylesheet: require('./light.css.js'),
   },
 }
