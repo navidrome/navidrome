@@ -114,6 +114,7 @@ const AlbumSongs = (props) => {
       bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
       rating: isDesktop && config.enableStarRating && (
         <RatingField
+          resource={'song'}
           source="rating"
           sortable={false}
           className={classes.ratingField}
