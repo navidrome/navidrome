@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react'
 import ReactGA from 'react-ga'
-import 'react-jinke-music-player/assets/index.css'
 import { Provider, useDispatch } from 'react-redux'
 import { createHashHistory } from 'history'
 import { Admin as RAAdmin, Resource } from 'react-admin'
