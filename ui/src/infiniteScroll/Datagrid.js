@@ -1,33 +1,43 @@
-import React, { useEffect, useState } from 'react'
-import { connect } from 'react-redux'
+import React, { useEffect, useState, useRef } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
 import { useHistory } from 'react-router-dom'
-import { crudGetList } from 'react-admin'
+import { crudGetList, useListContext } from 'react-admin'
 import { linkToRecord } from 'ra-core'
 import VirtualTable from './VirtualTable'
 function Datagrid(props) {
   const {
     resource,
-    data,
-    ids,
     basePath,
     currentSort,
+    setSort,
     filterValues,
-    crudGetList,
     perPage,
-  } = props
+  } = useListContext();
+
+  const { data, ids, total } = useSelector(state => ({
+    ids: state.admin.resources[resource].list.ids,
+    data: state.admin.resources[resource].data,
+    total: state.admin.resources[resource].list.total,
+    loadedOnce: state.admin.resources[resource].list.loadedOnce,
+  }));
+
+  const dispatch = useDispatch();
 
   const history = useHistory()
-  const [loadPromiseResolver, setLoadPromiseResolver] = useState(null)
+  const loadPromiseResolver = useRef(null)
+
+  const getList = (...args) => dispatch(crudGetList(...args))
+  console.log('RenderGrid', Math.random());
 
   useEffect(() => {
-    if (loadPromiseResolver != null) {
-      loadPromiseResolver()
-      setLoadPromiseResolver(null)
+    if (loadPromiseResolver.current != null) {
+      loadPromiseResolver.current();
+      loadPromiseResolver.current = null;
     }
-  }, [props.loadedOnce, loadPromiseResolver])
+  }, [ids]);
 
-  const updateData = () =>
-    crudGetList(
+  const updateData = () => 
+    getList(
       resource,
       { page: 1, perPage: ids.length + perPage },
       currentSort,
@@ -60,21 +70,26 @@ function Datagrid(props) {
     }
   }
 
-  const handleLoadMore = () =>
-    new Promise((resolve) => {
-      setLoadPromiseResolver(resolve)
+  const handleLoadMore = () => {
+    return new Promise((resolve) => {
+      loadPromiseResolver.current = resolve;
       updateData()
     })
+  }
 
   return (
     <VirtualTable
-      dataSize={ids.length}
-      remoteDataCount={props.total || 0}
+      dataSize={ids.length || 0}
+      remoteDataCount={total || 0}
       loadMoreRows={handleLoadMore}
       isRowLoaded={({ index }) => ids.length > index}
       rowGetter={({ index }) => data[ids[index]]}
       onRowClick={onRowClick}
-      {...props}
+      classes={props.classes}
+      resource={resource}
+      currentSort={currentSort}
+      setSort={setSort}
+      basePath={basePath}
     >
       {props.children}
     </VirtualTable>
@@ -82,23 +97,7 @@ function Datagrid(props) {
 }
 
 Datagrid.defaultProps = {
-  ids: [],
-  data: {},
-  crudGetList: () => null,
-  perPage: 10,
-  sort: { field: 'id', order: 'ASC' },
-  filterValues: {},
+
 }
 
-const mapStateToProps = (state, ownProps) => {
-  const { resource } = ownProps
-
-  return {
-    ids: state.admin.resources[resource].list.ids,
-    data: state.admin.resources[resource].data,
-    total: state.admin.resources[resource].list.total,
-    loadedOnce: state.admin.resources[resource].list.loadedOnce,
-  }
-}
-
-export default connect(mapStateToProps, { crudGetList })(Datagrid)
+export default Datagrid;

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
-  Datagrid,
+  // Datagrid,
   Filter,
   NumberField,
   SearchInput,
@@ -24,6 +24,7 @@ import {
 } from '../common'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
+import Datagrid from '../infiniteScroll/Datagrid'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -123,6 +124,7 @@ const ArtistList = (props) => {
     <>
       <List
         {...props}
+        pagination={null}
         sort={{ field: 'name', order: 'ASC' }}
         exporter={false}
         bulkActionButtons={false}
