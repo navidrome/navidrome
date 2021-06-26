@@ -228,7 +228,7 @@ func init() {
 	viper.SetDefault("devFastAccessCoverArt", false)
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
-	viper.SetDefault("devenablescrobble", false)
+	viper.SetDefault("devenablescrobble", true)
 }
 
 func InitConfig(cfgFile string) {
