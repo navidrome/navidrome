@@ -1,9 +1,8 @@
 package model
 
-// UserPropsRepository is meant to be scoped for the user, that can be obtained from request.UserFrom(r.Context())
 type UserPropsRepository interface {
-	Put(key string, value string) error
-	Get(key string) (string, error)
-	Delete(key string) error
-	DefaultGet(key string, defaultValue string) (string, error)
+	Put(userId, key string, value string) error
+	Get(userId, key string) (string, error)
+	Delete(userId, key string) error
+	DefaultGet(userId, key string, defaultValue string) (string, error)
 }

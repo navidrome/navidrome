@@ -64,7 +64,8 @@ func (s *Router) routes() http.Handler {
 
 func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]interface{}{"status": true}
-	key, err := s.sessionKeys.get(r.Context())
+	u, _ := request.UserFrom(r.Context())
+	key, err := s.sessionKeys.get(r.Context(), u.ID)
 	if err != nil && err != model.ErrNotFound {
 		resp["error"] = err
 		resp["status"] = false
@@ -76,7 +77,8 @@ func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Router) unlink(w http.ResponseWriter, r *http.Request) {
-	err := s.sessionKeys.delete(r.Context())
+	u, _ := request.UserFrom(r.Context())
+	err := s.sessionKeys.delete(r.Context(), u.ID)
 	if err != nil {
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 	} else {
@@ -117,7 +119,7 @@ func (s *Router) fetchSessionKey(ctx context.Context, uid, token string) error {
 			"requestId", middleware.GetReqID(ctx), err)
 		return err
 	}
-	err = s.sessionKeys.put(ctx, sessionKey)
+	err = s.sessionKeys.put(ctx, uid, sessionKey)
 	if err != nil {
 		log.Error("Could not save LastFM session key", "userId", uid, "requestId", middleware.GetReqID(ctx), err)
 	}
