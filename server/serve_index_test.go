@@ -207,7 +207,7 @@ var _ = Describe("serveIndex", func() {
 		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("devEnableScrobble", false))
+		Expect(config).To(HaveKeyWithValue("devEnableScrobble", true))
 	})
 
 	It("sets the lastFMApiKey", func() {
