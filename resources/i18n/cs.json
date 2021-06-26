@@ -111,7 +111,8 @@
                 "client": "Klient",
                 "userName": "Uživatelské jméno",
                 "lastSeen": "Naposledy viděn",
-                "reportRealPath": "Zkutečná cesta hlášení"
+                "reportRealPath": "Zkutečná cesta hlášení",
+                "scrobbleEnabled": "Zaslat historii na Last.fm"
             }
         },
         "transcoding": {
@@ -298,9 +299,9 @@
         "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?",
         "notifications_blocked": "Zablokovali jste si oznámení pro tuto stránku v nastavení vašeho prohlížeče",
         "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše nebo nepřistupujete k Navidrome přes https",
-        "lastfmLinkSuccess": "Last.fm úspěšně připojeno a zasílání zapnuto",
+        "lastfmLinkSuccess": "Last.fm úspěšně připojeno a ukládání zapnuto",
         "lastfmLinkFailure": "Last.fm nemohlo být připojeno",
-        "lastfmUnlinkSuccess": "Last.fm odpojeno a získávání dat vypnuto",
+        "lastfmUnlinkSuccess": "Last.fm odpojeno a ukládání vypnuto",
         "lastfmUnlinkFailure": "Last.fm nemohlo být odpojeno"
     },
     "menu": {
@@ -315,7 +316,7 @@
                 "language": "Jazyk",
                 "defaultView": "Výchozí stránka",
                 "desktop_notifications": "Oznámení na ploše",
-                "lastfmScrobbling": "Zaslat na Last.fm"
+                "lastfmScrobbling": "Uložit na Last.fm"
             }
         },
         "albumList": "Alba",
