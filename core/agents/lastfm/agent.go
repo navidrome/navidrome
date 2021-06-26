@@ -159,7 +159,7 @@ func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName, mb
 }
 
 func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
-	sk, err := l.sessionKeys.get(ctx)
+	sk, err := l.sessionKeys.get(ctx, userId)
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 }
 
 func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, scrobbles []scrobbler.Scrobble) error {
-	sk, err := l.sessionKeys.get(ctx)
+	sk, err := l.sessionKeys.get(ctx, userId)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, scrobbles []s
 }
 
 func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
-	sk, err := l.sessionKeys.get(ctx)
+	sk, err := l.sessionKeys.get(ctx, userId)
 	return err == nil && sk != ""
 }
 

@@ -15,14 +15,14 @@ type sessionKeys struct {
 	ds model.DataStore
 }
 
-func (sk *sessionKeys) put(ctx context.Context, sessionKey string) error {
-	return sk.ds.UserProps(ctx).Put(sessionKeyProperty, sessionKey)
+func (sk *sessionKeys) put(ctx context.Context, userId, sessionKey string) error {
+	return sk.ds.UserProps(ctx).Put(userId, sessionKeyProperty, sessionKey)
 }
 
-func (sk *sessionKeys) get(ctx context.Context) (string, error) {
-	return sk.ds.UserProps(ctx).Get(sessionKeyProperty)
+func (sk *sessionKeys) get(ctx context.Context, userId string) (string, error) {
+	return sk.ds.UserProps(ctx).Get(userId, sessionKeyProperty)
 }
 
-func (sk *sessionKeys) delete(ctx context.Context) error {
-	return sk.ds.UserProps(ctx).Delete(sessionKeyProperty)
+func (sk *sessionKeys) delete(ctx context.Context, userId string) error {
+	return sk.ds.UserProps(ctx).Delete(userId, sessionKeyProperty)
 }

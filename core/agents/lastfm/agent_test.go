@@ -10,14 +10,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/navidrome/navidrome/core/scrobbler"
-
-	"github.com/navidrome/navidrome/model/request"
-
-	"github.com/navidrome/navidrome/model"
-
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -232,8 +228,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		var track *model.MediaFile
 		BeforeEach(func() {
-			ctx = request.WithUser(ctx, model.User{ID: "user-1"})
-			_ = ds.UserProps(ctx).Put(sessionKeyProperty, "SK-1")
+			_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
 			httpClient = &tests.FakeHttpClient{}
 			client := NewClient("API_KEY", "SECRET", "en", httpClient)
 			agent = lastFMConstructor(ds)
