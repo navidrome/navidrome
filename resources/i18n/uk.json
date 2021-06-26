@@ -23,7 +23,8 @@
                 "comment": "Коментар",
                 "rating": "Рейтинг",
                 "quality": "Якість",
-                "bpm": "Темп"
+                "bpm": "Темп",
+                "playDate": "Востаннє відтворено"
             },
             "actions": {
                 "addToQueue": "Прослухати пізніше",
@@ -110,7 +111,8 @@
                 "client": "Клієнт",
                 "userName": "Iм’я користувача",
                 "lastSeen": "Останній візит о",
-                "reportRealPath": "Повідомте про реальний шлях"
+                "reportRealPath": "Повідомте про реальний шлях",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -277,7 +279,8 @@
             "data_provider_error": "Помилка в dataProvider. Перевірте деталі в консолі.",
             "i18n_error": "Неможливо завантажити переклад для вказаної мови",
             "canceled": "Дія відмінена",
-            "logged_out": "Ваш сеанс закінчився, будь ласка, увійдіть ще раз."
+            "logged_out": "Ваш сеанс закінчився, будь ласка, увійдіть ще раз.",
+            "new_version": "Знайдено нову версію. Оновіть сторінку."
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "Колонок відображати",
@@ -295,7 +298,11 @@
         "delete_user_title": "Видалити користувача '%{name}'",
         "delete_user_content": "Ви справді хочете видалити цього користувача і усі його данні (включаючи списки відтворення і налаштування)?",
         "notifications_blocked": "У вас заблоковані Сповіщення для цього сайту у вашому браузері",
-        "notifications_not_available": "Ваш браузер не підтримує сповіщень або доступ до Navidrome не використовує https"
+        "notifications_not_available": "Ваш браузер не підтримує сповіщень або доступ до Navidrome не використовує https",
+        "lastfmLinkSuccess": "",
+        "lastfmLinkFailure": "",
+        "lastfmUnlinkSuccess": "",
+        "lastfmUnlinkFailure": ""
     },
     "menu": {
         "library": "Бібліотека",
@@ -308,7 +315,8 @@
                 "theme": "Тема",
                 "language": "Мова",
                 "defaultView": "Вигляд по замовчуванню",
-                "desktop_notifications": "Сповіщення"
+                "desktop_notifications": "Сповіщення",
+                "lastfmScrobbling": ""
             }
         },
         "albumList": "Альбом",
