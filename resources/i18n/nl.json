@@ -111,7 +111,8 @@
                 "client": "Client",
                 "userName": "Gebruikersnaam",
                 "lastSeen": "Laatst gezien op",
-                "reportRealPath": "Toon het echte bestandspad"
+                "reportRealPath": "Toon het echte bestandspad",
+                "scrobbleEnabled": "Verstuur scrobbles naar Last.fm"
             }
         },
         "transcoding": {
