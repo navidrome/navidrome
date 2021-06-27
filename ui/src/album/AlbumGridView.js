@@ -20,7 +20,6 @@ import {
 } from '../common'
 import Grid from '@material-ui/core/Grid'
 import Slider from '@material-ui/core/Slider'
-import Input from '@material-ui/core/Input'
 import ViewModuleIcon from '@material-ui/icons/ViewModule'
 
 const useStyles = makeStyles(
