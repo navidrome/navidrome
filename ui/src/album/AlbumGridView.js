@@ -18,11 +18,10 @@ import {
   ArtistLinkField,
   RangeField,
 } from '../common'
-import Grid from '@material-ui/core/Grid';
-import Slider from '@material-ui/core/Slider';
-import Input from '@material-ui/core/Input';
-import ViewModuleIcon from '@material-ui/icons/ViewModule';
-
+import Grid from '@material-ui/core/Grid'
+import Slider from '@material-ui/core/Slider'
+import Input from '@material-ui/core/Input'
+import ViewModuleIcon from '@material-ui/icons/ViewModule'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -83,7 +82,7 @@ const useStyles = makeStyles(
       width: 100,
       [theme.breakpoints.down('sm')]: {
         display: 'none',
-      }
+      },
     },
   }),
   { name: 'NDAlbumGridView' }
@@ -98,10 +97,10 @@ const useCoverStyles = makeStyles({
   },
 })
 
-const getColsForWidth = ({value, width}) => {
-  if (value<=40 && width.match(/^(lg|md)$/)) return 6
-  if (value>40 && value<80 && width.match(/^(lg|md)$/)) return 5
-  if (value>=80 && width.match(/^(lg|md)$/)) return 4
+const getColsForWidth = ({ value, width }) => {
+  if (value <= 40 && width.match(/^(lg|md)$/)) return 6
+  if (value > 40 && value < 80 && width.match(/^(lg|md)$/)) return 5
+  if (value >= 80 && width.match(/^(lg|md)$/)) return 4
   if (width === 'sm') return 3
   if (width === 'xs') return 2
 }
@@ -176,11 +175,11 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
   const { filterValues } = useListContext()
   const isArtistView = !!(filterValues && filterValues.artist_id)
-  const [value, setValue] = React.useState(30);
+  const [value, setValue] = React.useState(30)
 
   const handleSliderChange = (event, newValue) => {
-    setValue(newValue);
-  };
+    setValue(newValue)
+  }
 
   return (
     <div className={classes.root}>
@@ -202,7 +201,7 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
       <GridList
         component={'div'}
         cellHeight={'auto'}
-        cols={getColsForWidth({value, width})}
+        cols={getColsForWidth({ value, width })}
         spacing={20}
       >
         {ids.map((id) => (
