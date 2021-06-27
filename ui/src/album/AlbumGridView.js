@@ -80,10 +80,10 @@ const useStyles = makeStyles(
     albumContainer: {},
     albumPlayButton: { color: 'white' },
     slidroot: {
-      width: 250
-    },
-    input: {
-      width: 42
+      width: 100,
+      [theme.breakpoints.down('sm')]: {
+        display: 'none',
+      }
     },
   }),
   { name: 'NDAlbumGridView' }
@@ -98,72 +98,12 @@ const useCoverStyles = makeStyles({
   },
 })
 
-const InputSlider = () => {
-  const classes = useStyles();
-  const [value, setValue] = React.useState(30);
-
-  const handleSliderChange = (event, newValue) => {
-    setValue(newValue);
-  };
-
-  const handleInputChange = (event) => {
-    setValue(event.target.value === '' ? '' : Number(event.target.value));
-  };
-
-  const handleBlur = () => {
-    if (value < 0) {
-      setValue(0);
-    } else if (value > 100) {
-      setValue(100);
-    }
-  };
-
-  return (
-    <div className={classes.slidroot}>
-      <Typography id="input-slider" gutterBottom>
-        Volume
-      </Typography>
-      <Grid container spacing={2} alignItems="center">
-        <Grid item>
-          <ViewModuleIcon />
-        </Grid>
-        <Grid item xs>
-          <Slider
-            value={typeof value === 'number' ? value : 0}
-            onChange={handleSliderChange}
-            aria-labelledby="input-slider"
-          />
-        </Grid>
-        <Grid item>
-          <Input
-            className={classes.input}
-            value={value}
-            margin="dense"
-            onChange={handleInputChange}
-            onBlur={handleBlur}
-            inputProps={{
-              step: 10,
-              min: 0,
-              max: 100,
-              type: 'number',
-              'aria-labelledby': 'input-slider',
-            }}
-          />
-        </Grid>
-      </Grid>
-    </div>
-  );
-}
-
 const getColsForWidth = ({value, width}) => {
-  if (width === 'xs') return 2
+  if (value<=40 && width.match(/^(lg|md)$/)) return 6
+  if (value>40 && value<80 && width.match(/^(lg|md)$/)) return 5
+  if (value>=80 && width.match(/^(lg|md)$/)) return 4
   if (width === 'sm') return 3
-  // if (width === 'md') return 4
-  // if (width === 'lg') return 6
-  // return 9
-  if (value<=40 && width.match(/^(lg|md)$/)) return 7
-  if (value>40 && value<80 && width.match(/^(lg|md)$/)) return 6
-  if (value>=80 && width.match(/^(lg|md)$/)) return 5
+  if (width === 'xs') return 2
 }
 
 const Cover = withContentRect('bounds')(
@@ -263,7 +203,6 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
         component={'div'}
         cellHeight={'auto'}
         cols={getColsForWidth({value, width})}
-        // cols={value}
         spacing={20}
       >
         {ids.map((id) => (
