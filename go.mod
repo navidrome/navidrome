@@ -39,7 +39,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.1.3
-	github.com/spf13/viper v1.8.0
+	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
 	github.com/unrolled/secure v1.0.9
 	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
