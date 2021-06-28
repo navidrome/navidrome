@@ -62,6 +62,10 @@ const useStyle = makeStyles(
       '& .play-mode-title': {
         'pointer-events': 'none',
       },
+      '& .music-player-panel .panel-content div.img-rotate': {
+        'animation-duration': (props) =>
+          props.enableCoverAnimation ? null : '0s',
+      },
     },
     artistAlbum: {
       marginTop: '2px',
@@ -117,7 +121,10 @@ const Player = () => {
   )
 
   const visible = authenticated && queue.queue.length > 0
-  const classes = useStyle({ visible })
+  const classes = useStyle({
+    visible,
+    enableCoverAnimation: config.enableCoverAnimation,
+  })
   // Match the medium breakpoint defined in the material-ui theme
   // See https://material-ui.com/customization/breakpoints/#breakpoints
   const isDesktop = useMediaQuery('(min-width:810px)')
