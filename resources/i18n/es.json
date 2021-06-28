@@ -111,7 +111,8 @@
                 "client": "Cliente",
                 "userName": "Usuario",
                 "lastSeen": "Última conexión",
-                "reportRealPath": "Reporta la ruta absoluta"
+                "reportRealPath": "Reporta la ruta absoluta",
+                "scrobbleEnabled": "Enviá los Scrobbles a Last.fm"
             }
         },
         "transcoding": {
