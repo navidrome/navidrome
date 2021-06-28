@@ -6,6 +6,7 @@ import {
   NumberField,
   useVersion,
   useListContext,
+  FunctionField,
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
@@ -110,6 +111,13 @@ const AlbumSongs = (props) => {
       ),
       artist: isDesktop && <TextField source="artist" sortable={false} />,
       duration: <DurationField source="duration" sortable={false} />,
+      year: isDesktop && (
+        <FunctionField
+          source="year"
+          render={(r) => r.year || ''}
+          sortByOrder={'DESC'}
+        />
+      ),
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
       bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
       rating: isDesktop && config.enableStarRating && (
@@ -127,7 +135,7 @@ const AlbumSongs = (props) => {
     resource: 'albumSong',
     columns: toggleableFields,
     omittedColumns: ['title'],
-    defaultOff: ['bpm'],
+    defaultOff: ['bpm', 'year'],
   })
 
   return (

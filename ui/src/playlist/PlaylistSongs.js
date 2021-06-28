@@ -10,6 +10,7 @@ import {
   useVersion,
   useListContext,
   ListBase,
+  FunctionField,
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
@@ -139,6 +140,13 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       duration: (
         <DurationField source="duration" className={classes.draggable} />
       ),
+      year: isDesktop && (
+        <FunctionField
+          source="year"
+          render={(r) => r.year || ''}
+          sortByOrder={'DESC'}
+        />
+      ),
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
       bpm: isDesktop && <NumberField source="bpm" />,
     }
@@ -147,7 +155,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const columns = useSelectedFields({
     resource: 'playlistTrack',
     columns: toggleableFields,
-    defaultOff: ['bpm'],
+    defaultOff: ['bpm', 'year'],
   })
 
   return (
