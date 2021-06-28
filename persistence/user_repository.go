@@ -180,6 +180,11 @@ func (r *userRepository) Update(entity interface{}, cols ...string) error {
 		u.IsAdmin = false
 		u.UserName = usr.UserName
 	}
+
+	// Decrypt the user's existing password before validating. This is required otherwise the existing password entered by the user will never match.
+	if err := r.decryptPassword(usr); err != nil {
+		return err
+	}
 	if err := validatePasswordChange(u, usr); err != nil {
 		return err
 	}
