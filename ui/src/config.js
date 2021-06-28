@@ -21,7 +21,7 @@ const defaultConfig = {
   devEnableShare: true,
   devEnableScrobble: true,
   lastFMApiKey: '9b94a5515ea66b2da3ec03c12300327e',
-  enableCoverAnimation: false,
+  enableCoverAnimation: true,
 }
 
 let config
