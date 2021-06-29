@@ -8,6 +8,10 @@ module.exports = `
     background-color: #5f5fc4
 }
 
+.react-jinke-music-player-main ::-webkit-scrollbar-thumb {
+    background-color: #5f5fc4;
+}
+
 .react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-handle:active {
     box-shadow: 0 0 2px #5f5fc4
 }
