@@ -1,42 +1,36 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useHistory } from 'react-router-dom'
 import { crudGetList, useListContext } from 'react-admin'
 import { linkToRecord } from 'ra-core'
 import VirtualTable from './VirtualTable'
 function Datagrid(props) {
-  const {
-    resource,
-    basePath,
-    currentSort,
-    setSort,
-    filterValues,
-    perPage,
-  } = useListContext();
+  const { resource, basePath, currentSort, setSort, filterValues, perPage } =
+    useListContext()
 
-  const { data, ids, total } = useSelector(state => ({
+  const { data, ids, total } = useSelector((state) => ({
     ids: state.admin.resources[resource].list.ids,
     data: state.admin.resources[resource].data,
     total: state.admin.resources[resource].list.total,
     loadedOnce: state.admin.resources[resource].list.loadedOnce,
-  }));
+  }))
 
-  const dispatch = useDispatch();
+  const dispatch = useDispatch()
 
   const history = useHistory()
   const loadPromiseResolver = useRef(null)
 
   const getList = (...args) => dispatch(crudGetList(...args))
-  console.log('RenderGrid', Math.random());
+  console.log('RenderGrid', Math.random())
 
   useEffect(() => {
     if (loadPromiseResolver.current != null) {
-      loadPromiseResolver.current();
-      loadPromiseResolver.current = null;
+      loadPromiseResolver.current()
+      loadPromiseResolver.current = null
     }
-  }, [ids]);
+  }, [ids])
 
-  const updateData = () => 
+  const updateData = () =>
     getList(
       resource,
       { page: 1, perPage: ids.length + perPage },
@@ -72,7 +66,7 @@ function Datagrid(props) {
 
   const handleLoadMore = () => {
     return new Promise((resolve) => {
-      loadPromiseResolver.current = resolve;
+      loadPromiseResolver.current = resolve
       updateData()
     })
   }
@@ -96,8 +90,6 @@ function Datagrid(props) {
   )
 }
 
-Datagrid.defaultProps = {
+Datagrid.defaultProps = {}
 
-}
-
-export default Datagrid;
+export default Datagrid
