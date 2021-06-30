@@ -9,6 +9,7 @@ import Checkbox from '@material-ui/core/Checkbox'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslate } from 'react-admin'
 import { setToggleableFields } from '../actions'
+import { Slide } from './Slider'
 
 const useStyles = makeStyles({
   menuIcon: {
@@ -42,6 +43,7 @@ export const ToggleFieldsMenu = ({
 
   const classes = useStyles()
   const open = Boolean(anchorEl)
+  const albumView = useSelector((state) => state.albumView.grid)
 
   const handleOpen = (event) => {
     setAnchorEl(event.currentTarget)
@@ -82,6 +84,7 @@ export const ToggleFieldsMenu = ({
         }}
       >
         {TopBarComponent && <TopBarComponent />}
+        {albumView && <Slide />}
         {toggleableColumns ? (
           <div>
             <Typography className={classes.title}>

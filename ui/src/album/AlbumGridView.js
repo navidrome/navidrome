@@ -18,9 +18,7 @@ import {
   ArtistLinkField,
   RangeField,
 } from '../common'
-import Grid from '@material-ui/core/Grid'
-import Slider from '@material-ui/core/Slider'
-import ViewModuleIcon from '@material-ui/icons/ViewModule'
+import { useSelector } from 'react-redux'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -77,12 +75,6 @@ const useStyles = makeStyles(
     },
     albumContainer: {},
     albumPlayButton: { color: 'white' },
-    slidroot: {
-      width: 100,
-      [theme.breakpoints.down('sm')]: {
-        display: 'none',
-      },
-    },
   }),
   { name: 'NDAlbumGridView' }
 )
@@ -96,12 +88,15 @@ const useCoverStyles = makeStyles({
   },
 })
 
-const getColsForWidth = ({ value, width }) => {
-  if (value <= 40 && width.match(/^(lg|md)$/)) return 6
-  if (value > 40 && value < 80 && width.match(/^(lg|md)$/)) return 5
-  if (value >= 80 && width.match(/^(lg|md)$/)) return 4
-  if (width === 'sm') return 3
-  if (width === 'xs') return 2
+const getColsForWidth = ({ count, width }) => {
+  if (width.match(/^(lg|md)$/)) {
+    if (count <= 40) return 6
+    if (40 < count && count < 80) return 5
+    if (count >= 80) return 4
+  } else {
+    if (width === 'sm') return 3
+    if (width === 'xs') return 2
+  }
 }
 
 const Cover = withContentRect('bounds')(
@@ -171,36 +166,17 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
 }
 
 const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
+  const count = useSelector((state) => state.slider.value)
   const classes = useStyles()
   const { filterValues } = useListContext()
   const isArtistView = !!(filterValues && filterValues.artist_id)
-  const [value, setValue] = React.useState(30)
-
-  const handleSliderChange = (event, newValue) => {
-    setValue(newValue)
-  }
 
   return (
     <div className={classes.root}>
-      <div className={classes.slidroot}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item>
-            <ViewModuleIcon />
-          </Grid>
-          <Grid item xs>
-            <Slider
-              value={typeof value === 'number' ? value : 0}
-              onChange={handleSliderChange}
-              aria-labelledby="input-slider"
-            />
-          </Grid>
-        </Grid>
-      </div>
-
       <GridList
         component={'div'}
         cellHeight={'auto'}
-        cols={getColsForWidth({ value, width })}
+        cols={getColsForWidth({ count, width })}
         spacing={20}
       >
         {ids.map((id) => (
