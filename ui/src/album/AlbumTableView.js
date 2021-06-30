@@ -8,7 +8,7 @@ import TableContainer from '@material-ui/core/TableContainer'
 import TableRow from '@material-ui/core/TableRow'
 import {
   BooleanField,
-  // Datagrid,
+  Datagrid,
   DateField,
   NumberField,
   Show,
@@ -29,7 +29,6 @@ import {
   useSelectedFields,
 } from '../common'
 import config from '../config'
-import Datagrid from '../infiniteScroll/Datagrid'
 
 const useStyles = makeStyles({
   columnIcon: {
