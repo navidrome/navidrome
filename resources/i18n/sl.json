@@ -23,7 +23,8 @@
                 "comment": "Opomba",
                 "rating": "Ocena",
                 "quality": "Kakovost",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "Zadnja predvajana"
             },
             "actions": {
                 "addToQueue": "Predvajaj kasneje",
@@ -96,9 +97,9 @@
                 "name": "Sprememba imena bo vidna pri naslednjem vpisu"
             },
             "notifications": {
-                "created": "",
-                "updated": "",
-                "deleted": ""
+                "created": "Uporabnik ustvarjen",
+                "updated": "Uporabnik posodobljen",
+                "deleted": "Uporabnik izbrisan"
             }
         },
         "player": {
@@ -110,7 +111,8 @@
                 "client": "Klijent",
                 "userName": "Uporabnik",
                 "lastSeen": "Zadnjič viden",
-                "reportRealPath": "Zabeleži pravo pot"
+                "reportRealPath": "Zabeleži pravo pot",
+                "scrobbleEnabled": "Pošlji 'Scrobbles' do Last.fm"
             }
         },
         "transcoding": {
@@ -173,7 +175,7 @@
             "email": "Veljaven e-poštni naslov",
             "oneOf": "Mora biti ena izmed %{options}",
             "regex": "Mora se ujemati z določeno obliko (regexp): %{pattern}",
-            "unique": ""
+            "unique": "Mora biti edinstven"
         },
         "action": {
             "add_filter": "Dodaj filter",
@@ -277,7 +279,14 @@
             "data_provider_error": "Napaka dataProvider error. Preverite konzolo za podrobnosti.",
             "i18n_error": "Ne uspem naložiti prevode za izbran jezik",
             "canceled": "Akcija preklicana",
-            "logged_out": "Seja je potekla, prosim povežite se ponovno."
+            "logged_out": "Seja je potekla, prosim povežite se ponovno.",
+            "new_version": "Na voljo je nova verzija! Prosim osvežite okno."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Prikaži stolpce",
+            "layout": "Razporeditev",
+            "grid": "Mreža",
+            "table": "Tabela"
         }
     },
     "message": {
@@ -289,7 +298,11 @@
         "delete_user_title": "Odstrani uporabnika '%{name}'",
         "delete_user_content": "Ste prepričani o izbrisu uporabnika, vključno z njegovimi podatki (tudi seznami predvajanj in nastavitvami)?",
         "notifications_blocked": "V vašem brskljalniku Imate blokirana možnost obvestil za to spletno stran",
-        "notifications_not_available": "Vaš brskljalnik ne omogoča obvestil na namizju ali pa do Navidrome ne dostopate po varni povezavi (https)"
+        "notifications_not_available": "Vaš brskljalnik ne omogoča obvestil na namizju ali pa do Navidrome ne dostopate po varni povezavi (https)",
+        "lastfmLinkSuccess": "Last.fm uspešno povezan in 'scrobbling' omogočen",
+        "lastfmLinkFailure": "Last.fm ni uspešno povezan",
+        "lastfmUnlinkSuccess": "Last.fm povezava prekinjena in 'scrobbling' onemogočen",
+        "lastfmUnlinkFailure": "Last.fm povezava neuspešno prekinjena"
     },
     "menu": {
         "library": "Knjižnica",
@@ -302,7 +315,8 @@
                 "theme": "Tema",
                 "language": "Jezik",
                 "defaultView": "Privzet pogled",
-                "desktop_notifications": "Namizna obvestila"
+                "desktop_notifications": "Namizna obvestila",
+                "lastfmScrobbling": "'Scrobble' do Last.fm"
             }
         },
         "albumList": "Albumi",

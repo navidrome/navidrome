@@ -25,16 +25,16 @@ func initBrowsingController(router *Router) *BrowsingController {
 
 func initAlbumListController(router *Router) *AlbumListController {
 	dataStore := router.DataStore
-	scrobbler := router.Scrobbler
-	albumListController := NewAlbumListController(dataStore, scrobbler)
+	playTracker := router.Scrobbler
+	albumListController := NewAlbumListController(dataStore, playTracker)
 	return albumListController
 }
 
 func initMediaAnnotationController(router *Router) *MediaAnnotationController {
 	dataStore := router.DataStore
-	scrobbler := router.Scrobbler
+	playTracker := router.Scrobbler
 	broker := router.Broker
-	mediaAnnotationController := NewMediaAnnotationController(dataStore, scrobbler, broker)
+	mediaAnnotationController := NewMediaAnnotationController(dataStore, playTracker, broker)
 	return mediaAnnotationController
 }
 

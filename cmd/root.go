@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/scheduler"
 	"github.com/oklog/run"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -75,6 +76,9 @@ func startServer() (func() error, func(err error)) {
 			a := CreateServer(conf.Server.MusicFolder)
 			a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
 			a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
+			if conf.Server.DevEnableScrobble {
+				a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
+			}
 			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
 		}, func(err error) {
 			if err != nil {
@@ -118,10 +122,10 @@ func startSignaler() (func() error, func(err error)) {
 
 func schedulePeriodicScan(schedule string) {
 	scanner := GetScanner()
-	scheduler := GetScheduler()
+	schedulerInstance := scheduler.GetInstance()
 
 	log.Info("Scheduling periodic scan", "schedule", schedule)
-	err := scheduler.Add(schedule, func() {
+	err := schedulerInstance.Add(schedule, func() {
 		_ = scanner.RescanAll(context.Background(), false)
 	})
 	if err != nil {
@@ -137,11 +141,11 @@ func schedulePeriodicScan(schedule string) {
 
 func startScheduler() (func() error, func(err error)) {
 	log.Info("Starting scheduler")
-	scheduler := GetScheduler()
+	schedulerInstance := scheduler.GetInstance()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return func() error {
-			scheduler.Run(ctx)
+			schedulerInstance.Run(ctx)
 
 			return nil
 		}, func(err error) {

@@ -16,10 +16,10 @@ import (
 
 type AlbumListController struct {
 	ds        model.DataStore
-	scrobbler scrobbler.Scrobbler
+	scrobbler scrobbler.PlayTracker
 }
 
-func NewAlbumListController(ds model.DataStore, scrobbler scrobbler.Scrobbler) *AlbumListController {
+func NewAlbumListController(ds model.DataStore, scrobbler scrobbler.PlayTracker) *AlbumListController {
 	c := &AlbumListController{
 		ds:        ds,
 		scrobbler: scrobbler,

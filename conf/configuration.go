@@ -46,6 +46,7 @@ type configOptions struct {
 	EnableStarRating       bool
 	EnableUserEditing      bool
 	DefaultTheme           string
+	EnableCoverAnimation   bool
 	GATrackingID           string
 	EnableLogRedacting     bool
 	AuthRequestLimit       int
@@ -69,6 +70,7 @@ type configOptions struct {
 	DevOldCacheLayout          bool
 	DevActivityPanel           bool
 	DevEnableShare             bool
+	DevEnableScrobble          bool
 }
 
 type scannerOptions struct {
@@ -200,6 +202,7 @@ func init() {
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
+	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
@@ -213,8 +216,8 @@ func init() {
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
-	viper.SetDefault("lastfm.apikey", "")
-	viper.SetDefault("lastfm.secret", "")
+	viper.SetDefault("lastfm.apikey", consts.LastFMAPIKey)
+	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 
@@ -224,9 +227,10 @@ func init() {
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devprecachealbumartwork", false)
 	viper.SetDefault("devoldcachelayout", false)
-	viper.SetDefault("devFastAccessCoverArt", false)
+	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
+	viper.SetDefault("devenablescrobble", true)
 }
 
 func InitConfig(cfgFile string) {

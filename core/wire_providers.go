@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/google/wire"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/transcoder"
 )
@@ -15,7 +16,8 @@ var Set = wire.NewSet(
 	NewExternalMetadata,
 	NewCacheWarmer,
 	NewPlayers,
+	agents.New,
 	transcoder.New,
-	scrobbler.New,
+	scrobbler.GetPlayTracker,
 	NewShare,
 )

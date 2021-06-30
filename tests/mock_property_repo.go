@@ -3,7 +3,7 @@ package tests
 import "github.com/navidrome/navidrome/model"
 
 type MockedPropertyRepo struct {
-	model.UserRepository
+	model.PropertyRepository
 	data map[string]string
 	err  error
 }
@@ -32,6 +32,18 @@ func (p *MockedPropertyRepo) Get(id string) (string, error) {
 		return v, nil
 	}
 	return "", model.ErrNotFound
+}
+
+func (p *MockedPropertyRepo) Delete(id string) error {
+	if p.err != nil {
+		return p.err
+	}
+	p.init()
+	if _, ok := p.data[id]; ok {
+		delete(p.data, id)
+		return nil
+	}
+	return model.ErrNotFound
 }
 
 func (p *MockedPropertyRepo) DefaultGet(id string, defaultValue string) (string, error) {

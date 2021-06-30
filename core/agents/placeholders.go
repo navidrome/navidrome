@@ -2,6 +2,8 @@ package agents
 
 import (
 	"context"
+
+	"github.com/navidrome/navidrome/model"
 )
 
 const PlaceholderAgentName = "placeholder"
@@ -15,7 +17,7 @@ const (
 
 type placeholderAgent struct{}
 
-func placeholdersConstructor(ctx context.Context) Interface {
+func placeholdersConstructor(ds model.DataStore) Interface {
 	return &placeholderAgent{}
 }
 
@@ -23,11 +25,11 @@ func (p *placeholderAgent) AgentName() string {
 	return PlaceholderAgentName
 }
 
-func (p *placeholderAgent) GetBiography(id, name, mbid string) (string, error) {
+func (p *placeholderAgent) GetBiography(ctx context.Context, id, name, mbid string) (string, error) {
 	return placeholderBiography, nil
 }
 
-func (p *placeholderAgent) GetImages(id, name, mbid string) ([]ArtistImage, error) {
+func (p *placeholderAgent) GetImages(ctx context.Context, id, name, mbid string) ([]ArtistImage, error) {
 	return []ArtistImage{
 		{placeholderArtistImageLargeUrl, 300},
 		{placeholderArtistImageMediumUrl, 174},

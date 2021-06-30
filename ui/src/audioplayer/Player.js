@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import ReactGA from 'react-ga'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
@@ -62,6 +62,10 @@ const useStyle = makeStyles(
       '& .play-mode-title': {
         'pointer-events': 'none',
       },
+      '& .music-player-panel .panel-content div.img-rotate': {
+        'animation-duration': (props) =>
+          props.enableCoverAnimation ? null : '0s',
+      },
     },
     artistAlbum: {
       marginTop: '2px',
@@ -117,10 +121,14 @@ const Player = () => {
   )
 
   const visible = authenticated && queue.queue.length > 0
-  const classes = useStyle({ visible })
+  const classes = useStyle({
+    visible,
+    enableCoverAnimation: config.enableCoverAnimation,
+  })
   // Match the medium breakpoint defined in the material-ui theme
   // See https://material-ui.com/customization/breakpoints/#breakpoints
   const isDesktop = useMediaQuery('(min-width:810px)')
+  const [startTime, setStartTime] = useState(null)
 
   const nextSong = useCallback(() => {
     const idx = queue.queue.findIndex(
@@ -242,21 +250,17 @@ const Player = () => {
 
       // See https://www.last.fm/api/scrobbling#when-is-a-scrobble-a-scrobble
       const progress = (info.currentTime / info.duration) * 100
-      if (
-        isNaN(info.duration) ||
-        info.duration < 30 ||
-        (progress < 50 && info.currentTime < 240)
-      ) {
+      if (isNaN(info.duration) || (progress < 50 && info.currentTime < 240)) {
         return
       }
 
       const item = queue.queue.find((item) => item.trackId === info.trackId)
       if (item && !item.scrobbled) {
         dispatch(scrobble(info.trackId, true))
-        subsonic.scrobble(info.trackId, true)
+        subsonic.scrobble(info.trackId, true, startTime)
       }
     },
-    [dispatch, queue.queue]
+    [dispatch, queue.queue, startTime]
   )
 
   const onAudioVolumeChange = useCallback(
@@ -268,10 +272,11 @@ const Player = () => {
   const onAudioPlay = useCallback(
     (info) => {
       dispatch(currentPlaying(info))
+      setStartTime(Date.now())
       if (info.duration) {
         document.title = `${info.name} - ${info.singer} - Navidrome`
         dispatch(scrobble(info.trackId, false))
-        subsonic.scrobble(info.trackId, false)
+        subsonic.nowPlaying(info.trackId)
         if (config.gaTrackingId) {
           ReactGA.event({
             category: 'Player',

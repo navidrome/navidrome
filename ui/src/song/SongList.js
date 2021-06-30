@@ -91,6 +91,7 @@ const SongList = (props) => {
         />
       ),
       artist: <TextField source="artist" />,
+      albumArtist: <TextField source="albumArtist" />,
       trackNumber: isDesktop && <NumberField source="trackNumber" />,
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />
@@ -120,7 +121,7 @@ const SongList = (props) => {
   const columns = useSelectedFields({
     resource: 'song',
     columns: toggleableFields,
-    defaultOff: ['bpm', 'playDate'],
+    defaultOff: ['bpm', 'playDate', 'albumArtist'],
   })
 
   return (

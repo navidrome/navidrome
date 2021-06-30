@@ -3,7 +3,6 @@ import { useSelector } from 'react-redux'
 import { makeStyles } from '@material-ui/core'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
-import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
@@ -103,16 +102,6 @@ const Menu = ({ onMenuClick, dense }) => {
         {Object.keys(albumLists).map((type) =>
           renderAlbumMenuItemLink(type, albumLists[type])
         )}
-      </SubMenu>
-      <SubMenu
-        handleToggle={() => handleToggle('menuLibrary')}
-        isOpen={state.menuLibrary}
-        sidebarIsOpen={open}
-        name="menu.library"
-        icon={<LibraryMusicIcon />}
-        dense={dense}
-      >
-        {resources.filter(subItems('library')).map(renderResourceMenuItemLink)}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
       <HelpDialog />
