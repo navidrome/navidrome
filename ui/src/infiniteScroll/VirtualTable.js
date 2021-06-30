@@ -55,11 +55,11 @@ function VirtualTable(props) {
   const datagridClasses = useDatagridStyles()
   const children = React.Children.toArray(props.children)
 
-  const cellRenderer = ({ rowData, columnIndex, isScrolling }) => {
+  const cellRenderer = ({ rowData, cellData, columnIndex, isScrolling }) => {
     const { basePath, resource } = props
     const field = children[columnIndex]
 
-    if (isScrolling)
+    if (typeof cellData == 'undefined')
       return (
         <TableCell
           component="div"
@@ -157,20 +157,20 @@ function VirtualTable(props) {
       {({ onRowsRendered, registerChild }) => (
         <AutoSizer disableHeight>
           {({ width }) => (
-            <WindowScroller>
-              {({ height, isScrolling, scrollTop }) => (
+            // <WindowScroller>
+              // {({ height, isScrolling, scrollTop }) => (
                 <Table
                   ref={registerChild}
                   onRowsRendered={onRowsRendered}
-                  isScrolling={isScrolling}
-                  scrollTop={scrollTop}
+                  // isScrolling={isScrolling}
+                  // scrollTop={scrollTop}
                   width={width}
-                  height={height}
-                  autoHeight
+                  height={rowHeight * 10}
+                  // autoHeight
                   headerHeight={rowHeight}
                   rowHeight={rowHeight}
                   rowGetter={rowGetter}
-                  rowCount={dataSize}
+                  rowCount={remoteDataCount}
                   rowClassName={clsx(classes.row, datagridClasses.row)}
                   onRowClick={props.onRowClick}
                 >
@@ -202,8 +202,8 @@ function VirtualTable(props) {
                     ) : null
                   )}
                 </Table>
-              )}
-            </WindowScroller>
+              // )}
+            // </WindowScroller>
           )}
         </AutoSizer>
       )}

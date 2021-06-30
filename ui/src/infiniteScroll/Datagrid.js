@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useHistory } from 'react-router-dom'
 import { crudGetList, useListContext } from 'react-admin'
@@ -7,6 +7,13 @@ import VirtualTable from './VirtualTable'
 function Datagrid(props) {
   const { resource, basePath, currentSort, setSort, filterValues, perPage } =
     useListContext()
+
+  const [loadedRows, setLoadedRows] = useState({});
+  const [loadedRowsCount, setLoadedRowsCount] = useState(0);
+  const [lastFetchPosition, setLastFetchPosition] = useState({ 
+    startIndex: 0, 
+    stopIndex: perPage
+  })
 
   const { data, ids, total } = useSelector((state) => ({
     ids: state.admin.resources[resource].list.ids,
@@ -21,22 +28,29 @@ function Datagrid(props) {
   const loadPromiseResolver = useRef(null)
 
   const getList = (...args) => dispatch(crudGetList(...args))
-  console.log('RenderGrid', Math.random())
 
   useEffect(() => {
+    console.log('sort,filter')
+    if (loadedRowsCount > 0) {
+      setLoadedRowsCount(0);
+      setLoadedRows({})
+      handleLoadMore({ startIndex: 0, stopIndex: perPage })
+    }
+  }, [currentSort, filterValues]);
+  
+  useEffect(() => {
     if (loadPromiseResolver.current != null) {
+      const { startIndex, stopIndex } = lastFetchPosition;
+      console.log('LoadLog', 'Got', startIndex, stopIndex, ids.length)
+      for (let i = startIndex;i <= stopIndex;i++) {
+        if (!loadedRows[i])
+          loadedRows[i] = data[ids[i - startIndex]]
+      }
       loadPromiseResolver.current()
       loadPromiseResolver.current = null
+      setLoadedRowsCount(loadedRowsCount + ids.length)
     }
   }, [ids])
-
-  const updateData = () =>
-    getList(
-      resource,
-      { page: 1, perPage: ids.length + perPage },
-      currentSort,
-      filterValues
-    )
 
   const onRowClick = ({ index, rowData: record }) => {
     const { rowClick } = props
@@ -64,10 +78,24 @@ function Datagrid(props) {
     }
   }
 
-  const handleLoadMore = () => {
+  const handleLoadMore = ({ startIndex, stopIndex }) => {
+    const page = Math.floor(startIndex/perPage) + 1;
+
+    // if (startIndex >= lastFetchPosition.startIndex && stopIndex <= lastFetchPosition.stopIndex)
+    //   return null;
+
+    const newStopIndex = Math.min(total, stopIndex + perPage - 1);
+
+    getList(
+      resource,
+      { page: page, perPage },
+      currentSort,
+      filterValues
+    )
+
     return new Promise((resolve) => {
+      setLastFetchPosition({ startIndex, stopIndex: newStopIndex });
       loadPromiseResolver.current = resolve
-      updateData()
     })
   }
 
@@ -76,8 +104,9 @@ function Datagrid(props) {
       dataSize={ids.length || 0}
       remoteDataCount={total || 0}
       loadMoreRows={handleLoadMore}
-      isRowLoaded={({ index }) => ids.length > index}
-      rowGetter={({ index }) => data[ids[index]]}
+      isRowLoaded={({ index }) => !!loadedRows[index] }
+      // rowGetter={({ index }) => ids.length > index ? data[ids[index]] : { } }
+      rowGetter={({ index }) => loadedRows[index] || {}}
       onRowClick={onRowClick}
       classes={props.classes}
       resource={resource}
