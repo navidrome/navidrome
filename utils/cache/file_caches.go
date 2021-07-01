@@ -121,6 +121,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 			return &CachedStream{
 				Reader: sr,
 				Seeker: sr,
+				Closer: r,
 				Cached: true,
 			}, nil
 		} else {
@@ -135,11 +136,15 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 type CachedStream struct {
 	io.Reader
 	io.Seeker
+	io.Closer
 	Cached bool
 }
 
 func (s *CachedStream) Seekable() bool { return s.Seeker != nil }
 func (s *CachedStream) Close() error {
+	if s.Closer != nil {
+		return s.Closer.Close()
+	}
 	if c, ok := s.Reader.(io.Closer); ok {
 		return c.Close()
 	}
