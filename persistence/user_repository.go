@@ -63,7 +63,9 @@ func (r *userRepository) Put(u *model.User) error {
 		u.ID = uuid.NewString()
 	}
 	u.UpdatedAt = time.Now()
-	_ = r.encryptPassword(u)
+	if u.NewPassword != "" {
+		_ = r.encryptPassword(u)
+	}
 	values, _ := toSqlArgs(*u)
 	delete(values, "current_password")
 	update := Update(r.tableName).Where(Eq{"id": u.ID}).SetMap(values)

@@ -48,6 +48,24 @@ var _ = Describe("UserRepository", func() {
 			Expect(actual.Name).To(Equal("Admin"))
 			Expect(actual.Password).To(Equal("wordpass"))
 		})
+		It("updates the name and keep the same password", func() {
+			usr.Name = "Jane Doe"
+			usr.NewPassword = ""
+			Expect(repo.Put(&usr)).To(BeNil())
+
+			actual, err := repo.FindByUsernameWithPassword("admin")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual.Name).To(Equal("Jane Doe"))
+			Expect(actual.Password).To(Equal("wordpass"))
+		})
+		It("updates password if specified", func() {
+			usr.NewPassword = "newpass"
+			Expect(repo.Put(&usr)).To(BeNil())
+
+			actual, err := repo.FindByUsernameWithPassword("admin")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual.Password).To(Equal("newpass"))
+		})
 	})
 
 	Describe("validatePasswordChange", func() {
