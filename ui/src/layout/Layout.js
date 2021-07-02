@@ -14,8 +14,8 @@ const useStyles = makeStyles({
 
 const Layout = (props) => {
   const theme = useCurrentTheme()
-  const queue = useSelector((state) => state.queue)
-  const classes = useStyles({ addPadding: queue.queue.length > 0 })
+  const queue = useSelector((state) => state.player?.queue)
+  const classes = useStyles({ addPadding: queue.length > 0 })
   const dispatch = useDispatch()
 
   const keyHandlers = {
