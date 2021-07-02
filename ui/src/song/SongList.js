@@ -115,13 +115,15 @@ const SongList = (props) => {
         />
       ),
       bpm: isDesktop && <NumberField source="bpm" />,
+      genre: <TextField source="genre" />,
+      comment: <TextField source="comment" />,
     }
   }, [isDesktop, classes.ratingField])
 
   const columns = useSelectedFields({
     resource: 'song',
     columns: toggleableFields,
-    defaultOff: ['bpm', 'playDate', 'albumArtist'],
+    defaultOff: ['bpm', 'playDate', 'albumArtist', 'genre', 'comment'],
   })
 
   return (
