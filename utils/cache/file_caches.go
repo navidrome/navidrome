@@ -197,13 +197,9 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 
 	var fs fscache.FileSystem
 	log.Info(fmt.Sprintf("Creating %s cache", name), "path", cacheFolder, "maxSize", humanize.Bytes(size))
-	if conf.Server.DevOldCacheLayout {
-		fs, err = fscache.NewFs(cacheFolder, 0755)
-	} else {
-		fs, err = NewSpreadFS(cacheFolder, 0755)
-	}
+	fs, err = NewSpreadFS(cacheFolder, 0755)
 	if err != nil {
-		log.Error(fmt.Sprintf("Error initializing %s cache FS", name), "newLayout", !conf.Server.DevOldCacheLayout, err)
+		log.Error(fmt.Sprintf("Error initializing %s cache FS", name), err)
 		return nil, err
 	}
 
@@ -212,10 +208,7 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		log.Error(fmt.Sprintf("Error initializing %s cache", name), err)
 		return nil, err
 	}
-
-	if !conf.Server.DevOldCacheLayout {
-		ck.SetKeyMapper(fs.(*spreadFS).KeyMapper)
-	}
+	ck.SetKeyMapper(fs.(*spreadFS).KeyMapper)
 
 	return ck, nil
 }
