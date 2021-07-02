@@ -71,7 +71,6 @@ type configOptions struct {
 	DevOldCacheLayout          bool
 	DevActivityPanel           bool
 	DevEnableShare             bool
-	DevEnableScrobble          bool
 }
 
 type scannerOptions struct {
@@ -249,7 +248,6 @@ func init() {
 	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
-	viper.SetDefault("devenablescrobble", true)
 }
 
 func InitConfig(cfgFile string) {

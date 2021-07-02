@@ -5,15 +5,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-
-	"github.com/navidrome/navidrome/server/events"
-
-	"github.com/navidrome/navidrome/log"
-
 	"github.com/ReneKroon/ttlcache/v2"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -184,9 +180,6 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 var constructors map[string]Constructor
 
 func Register(name string, init Constructor) {
-	if !conf.Server.DevEnableScrobble {
-		return
-	}
 	if constructors == nil {
 		constructors = make(map[string]Constructor)
 	}
