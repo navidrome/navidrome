@@ -5,6 +5,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+
 	"github.com/ReneKroon/ttlcache/v2"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -50,7 +52,9 @@ func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
 		p.scrobblers = make(map[string]Scrobbler)
 		for name, constructor := range constructors {
 			s := constructor(ds)
-			s = NewBufferedScrobbler(ds, s, name)
+			if conf.Server.DevEnableBufferedScrobble {
+				s = NewBufferedScrobbler(ds, s, name)
+			}
 			p.scrobblers[name] = s
 		}
 		return p
