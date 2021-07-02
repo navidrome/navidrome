@@ -67,7 +67,6 @@ type configOptions struct {
 	DevAutoLoginUsername       string
 	DevPreCacheAlbumArtwork    bool
 	DevFastAccessCoverArt      bool
-	DevOldCacheLayout          bool
 	DevActivityPanel           bool
 	DevEnableShare             bool
 	DevEnableBufferedScrobble  bool
@@ -226,7 +225,6 @@ func init() {
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devprecachealbumartwork", false)
-	viper.SetDefault("devoldcachelayout", false)
 	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
