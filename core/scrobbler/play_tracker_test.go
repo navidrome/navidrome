@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
@@ -24,7 +23,6 @@ var _ = Describe("PlayTracker", func() {
 	var fake fakeScrobbler
 
 	BeforeEach(func() {
-		conf.Server.DevEnableScrobble = true
 		ctx = context.Background()
 		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
