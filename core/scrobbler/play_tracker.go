@@ -90,7 +90,7 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, tra
 		if !s.IsAuthorized(ctx, userId) {
 			continue
 		}
-		log.Debug(ctx, "Sending NowPlaying info", "scrobbler", name, "track", t.Title, "artist", t.Artist)
+		log.Debug(ctx, "Sending NowPlaying update", "scrobbler", name, "track", t.Title, "artist", t.Artist)
 		err := s.NowPlaying(ctx, userId, t)
 		if err != nil {
 			log.Error(ctx, "Error sending NowPlayingInfo", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
@@ -171,7 +171,11 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 		if !s.IsAuthorized(ctx, u.ID) {
 			continue
 		}
-		log.Debug(ctx, "Buffering scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
+		if conf.Server.DevEnableBufferedScrobble {
+			log.Debug(ctx, "Buffering scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
+		} else {
+			log.Debug(ctx, "Sending scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
+		}
 		err := s.Scrobble(ctx, u.ID, scrobble)
 		if err != nil {
 			log.Error(ctx, "Error sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
