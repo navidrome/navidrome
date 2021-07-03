@@ -18,11 +18,14 @@ import {
   ArtistLinkField,
   RangeField,
 } from '../common'
+import './scroll.css'
 
 const useStyles = makeStyles(
   (theme) => ({
     root: {
       margin: '20px',
+      position: 'relative',
+      height: 'calc(100vh - 230px)',
     },
     tileBar: {
       transition: 'all 150ms ease-out',

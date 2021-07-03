@@ -9,6 +9,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import AlbumSongs from './AlbumSongs'
 import AlbumDetails from './AlbumDetails'
 import AlbumActions from './AlbumActions'
+import './scroll.css'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -27,7 +28,7 @@ const AlbumShowLayout = (props) => {
   const classes = useStyles()
 
   return (
-    <>
+    <div className="customScroll">
       {record && <AlbumDetails {...context} />}
       {record && (
         <ReferenceManyField
@@ -49,7 +50,7 @@ const AlbumShowLayout = (props) => {
           />
         </ReferenceManyField>
       )}
-    </>
+    </div>
   )
 }
 

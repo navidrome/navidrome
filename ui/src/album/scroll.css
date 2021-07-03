@@ -1,0 +1,40 @@
+.MuiGridList-root {
+    height: 67vh;
+}
+
+.MuiGridList-root::-webkit-scrollbar {
+    width: 0.5em;
+}
+
+.MuiGridList-root::-webkit-scrollbar-thumb {
+    background: #a0a0a08a;
+    border-radius: 10px;
+}
+
+.MuiGridList-root::-webkit-scrollbar-thumb:hover {
+    background: #302f2f73;
+}
+
+.customScroll {
+    height: 90vh;
+    overflow-y: scroll;
+    margin-right: 4px;
+    margin-top: 1px;
+}
+
+.customScroll::-webkit-scrollbar {
+    width: 0.5em;
+}
+
+.customScroll::-webkit-scrollbar-thumb {
+    background: #a0a0a08a;
+    border-radius: 10px;
+}
+
+.customScroll::-webkit-scrollbar-thumb:hover {
+    background: #302f2f73;
+}
+
+body::-webkit-scrollbar {
+    display: none;
+}
