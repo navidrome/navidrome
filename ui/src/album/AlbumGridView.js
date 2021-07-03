@@ -122,6 +122,7 @@ const Cover = withContentRect('bounds')(
           className={classes.cover}
           data-use-lozad
           data-loaded="false"
+          alt=""
         />
       </div>
     )
