@@ -17,6 +17,7 @@ const initialState = {
   current: {},
   clear: false,
   volume: 1,
+  savedPlayIndex: 0,
 }
 
 const mapToAudioLists = (item) => {
@@ -58,15 +59,6 @@ const reducePlayTracks = (state, { data, id }) => {
   }
 }
 
-const reduceSyncQueue = (state, { data }) => {
-  const current = data.length > 0 ? state.current : {}
-  return {
-    ...state,
-    current,
-    queue: data,
-  }
-}
-
 const reduceSetTrack = (state, { data }) => {
   return {
     ...state,
@@ -103,13 +95,9 @@ const reducePlayNext = (state, { data }) => {
     })
   }
 
-  const playIndex = state.queue.findIndex((item) => item.uuid === current.uuid)
   return {
     ...state,
     queue: newQueue,
-    // TODO: This is a workaround for a bug in the player that resets the playIndex to 0 when the current playing
-    // song is not the first one. It is still not great, as it resets the current playing song
-    playIndex,
     clear: true,
   }
 }
@@ -121,21 +109,32 @@ const reduceSetVolume = (state, { data: { volume } }) => {
   }
 }
 
-const reduceCurrent = (state, { data }) => {
-  const current = data.ended
-    ? {}
-    : {
-        idx: data.idx,
-        trackId: data.trackId,
-        paused: data.paused,
-        uuid: data.uuid,
-        song: data.song,
-      }
-  const playIndex = state.queue.findIndex((item) => item.uuid === current.uuid)
+const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
+  const current = audioLists.length > 0 ? audioInfo : {}
+  const savedPlayIndex = audioLists.findIndex(
+    (item) => item.uuid === current.uuid
+  )
+
   return {
     ...state,
     current,
-    playIndex: playIndex > -1 ? playIndex : undefined,
+    savedPlayIndex,
+    queue: audioLists,
+    clear: false,
+    playIndex: undefined,
+  }
+}
+
+const reduceCurrent = (state, { data }) => {
+  const current = data.ended ? {} : data
+  const savedPlayIndex = state.queue.findIndex(
+    (item) => item.uuid === current.uuid
+  )
+  return {
+    ...state,
+    current,
+    playIndex: undefined,
+    savedPlayIndex,
     volume: data.volume,
   }
 }
@@ -153,10 +152,10 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceAddTracks(previousState, payload)
     case PLAYER_PLAY_NEXT:
       return reducePlayNext(previousState, payload)
-    case PLAYER_SYNC_QUEUE:
-      return reduceSyncQueue(previousState, payload)
     case PLAYER_SET_VOLUME:
       return reduceSetVolume(previousState, payload)
+    case PLAYER_SYNC_QUEUE:
+      return reduceSyncQueue(previousState, payload)
     case PLAYER_CURRENT:
       return reduceCurrent(previousState, payload)
     default:
