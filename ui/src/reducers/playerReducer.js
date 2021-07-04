@@ -62,7 +62,7 @@ const reducePlayTracks = (state, { data, id }) => {
 const reduceSetTrack = (state, { data }) => {
   return {
     ...state,
-    queue: [mapToAudioLists(0, data)],
+    queue: [mapToAudioLists(data)],
     playIndex: 0,
     clear: true,
   }
