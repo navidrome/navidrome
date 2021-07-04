@@ -13,15 +13,10 @@ type Response struct {
 }
 
 type Artist struct {
-	Name       string        `json:"name"`
-	MBID       string        `json:"mbid"`
-	URL        string        `json:"url"`
-	Image      []ArtistImage `json:"image"`
-	Streamable string        `json:"streamable"`
-	Stats      struct {
-		Listeners string `json:"listeners"`
-		Plays     string `json:"plays"`
-	} `json:"stats"`
+	Name    string         `json:"name"`
+	MBID    string         `json:"mbid"`
+	URL     string         `json:"url"`
+	Image   []ArtistImage  `json:"image"`
 	Similar SimilarArtists `json:"similar"`
 	Tags    struct {
 		Tag []ArtistTag `json:"tag"`
