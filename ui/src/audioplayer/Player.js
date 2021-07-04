@@ -82,8 +82,7 @@ const Player = () => {
   }, [playerState, defaultOptions])
 
   const onAudioListsChange = useCallback(
-    (currentPlayIndex, audioLists) =>
-      dispatch(syncQueue(currentPlayIndex, audioLists)),
+    (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
     [dispatch]
   )
 

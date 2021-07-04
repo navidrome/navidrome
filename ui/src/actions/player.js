@@ -68,10 +68,12 @@ export const playTracks = (data, ids, selectedId) => {
   }
 }
 
-export const syncQueue = (id, data) => ({
+export const syncQueue = (audioInfo, audioLists) => ({
   type: PLAYER_SYNC_QUEUE,
-  id,
-  data,
+  data: {
+    audioInfo,
+    audioLists,
+  },
 })
 
 export const clearQueue = () => ({
