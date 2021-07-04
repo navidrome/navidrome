@@ -1,7 +1,12 @@
 import React, { isValidElement, useMemo, useCallback } from 'react'
 import { useDispatch } from 'react-redux'
 import { Datagrid, PureDatagridBody, PureDatagridRow } from 'react-admin'
-import { TableCell, TableRow, Typography } from '@material-ui/core'
+import {
+  TableCell,
+  TableRow,
+  Typography,
+  useMediaQuery,
+} from '@material-ui/core'
 import PropTypes from 'prop-types'
 import { makeStyles } from '@material-ui/core/styles'
 import AlbumIcon from '@material-ui/icons/Album'
@@ -38,7 +43,7 @@ const useStyles = makeStyles({
     },
   },
   contextMenu: {
-    visibility: 'hidden',
+    visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
   },
 })
 
@@ -48,7 +53,8 @@ const DiscSubtitleRow = ({
   colSpan,
   contextAlwaysVisible,
 }) => {
-  const classes = useStyles()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const classes = useStyles({ isDesktop })
   const handlePlayDisc = (discNumber) => () => {
     onClick(discNumber)
   }
