@@ -35,8 +35,8 @@ const useStyle = makeStyles(
         'pointer-events': 'none',
       },
       '& .music-player-panel .panel-content div.img-rotate': {
-        'animation-duration': (props) =>
-          props.enableCoverAnimation ? null : '0s',
+        animationDuration: (props) => !props.enableCoverAnimation && '0s',
+        borderRadius: (props) => !props.enableCoverAnimation && '0',
       },
     },
     artistAlbum: {
