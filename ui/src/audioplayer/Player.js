@@ -113,6 +113,9 @@ const Player = () => {
 
   const onAudioPlay = useCallback(
     (info) => {
+      if (audioInstance) {
+        audioInstance.volume = playerState.volume
+      }
       dispatch(currentPlaying(info))
       setStartTime(Date.now())
       if (info.duration) {
@@ -136,7 +139,7 @@ const Player = () => {
         }
       }
     },
-    [dispatch, showNotifications]
+    [dispatch, showNotifications, audioInstance, playerState.volume]
   )
 
   const onAudioPause = useCallback(
