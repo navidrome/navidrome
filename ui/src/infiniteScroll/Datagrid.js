@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useHistory } from 'react-router-dom'
 import { crudGetList, useListContext } from 'react-admin'
@@ -30,19 +30,22 @@ function Datagrid(props) {
   const getList = (...args) => dispatch(crudGetList(...args))
 
   useEffect(() => {
-    // TODO: scrollToPosition(0)
-    updateLoadedRows({})
-    updateLastFetchPosition({ startIndex: 0, stopIndex: perPage })
-  }, [currentSort, filterValues])
+    let { startIndex, stopIndex } = lastFetchPosition
+    let newLoadedRows = loadedRows
 
-  useEffect(() => {
-    const { startIndex, stopIndex } = lastFetchPosition
+    if (loadPromiseResolver == null) {
+      startIndex = 0
+      stopIndex = perPage
+      newLoadedRows = {}
+      // TODO: scrollToPosition(0)
+    }
     // console.log('LoadLog', 'Got', startIndex, stopIndex, ids.length)
     for (let i = startIndex; i <= stopIndex; i++) {
-      loadedRows[i] = data[ids[i - startIndex]]
+      newLoadedRows[i] = data[ids[i - startIndex]]
     }
 
-    updateLoadedRows(loadedRows)
+    updateLoadedRows(newLoadedRows)
+    updateLastFetchPosition({ startIndex, stopIndex })
 
     if (loadPromiseResolver) {
       loadPromiseResolver()
@@ -53,7 +56,7 @@ function Datagrid(props) {
   const onRowClick = ({ index, rowData: record }) => {
     const { rowClick } = props
 
-    const id = ids[index]
+    const id = record.id
     const effect =
       typeof rowClick === 'function'
         ? rowClick(id, basePath || `/${resource}`, record)

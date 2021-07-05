@@ -1,4 +1,4 @@
-import React, { isValidElement, useRef, useCallback } from 'react'
+import React, { isValidElement, useCallback } from 'react'
 import { withStyles } from '@material-ui/core/styles'
 import { TableCell } from '@material-ui/core'
 import { AutoSizer, Column, InfiniteLoader, Table } from 'react-virtualized'
