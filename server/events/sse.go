@@ -7,16 +7,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync/atomic"
 	"time"
-
-	"github.com/navidrome/navidrome/utils/singleton"
 
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/singleton"
 )
 
 type Broker interface {
@@ -27,11 +25,6 @@ type Broker interface {
 const (
 	keepAliveFrequency = 15 * time.Second
 	writeTimeOut       = 5 * time.Second
-)
-
-var (
-	eventId         uint32
-	errWriteTimeOut = errors.New("write timeout")
 )
 
 type (
@@ -75,7 +68,7 @@ func GetBroker() Broker {
 	instance := singleton.Get(&broker{}, func() interface{} {
 		// Instantiate a broker
 		broker := &broker{
-			publish:       make(messageChan, 100),
+			publish:       make(messageChan, 2),
 			subscribing:   make(clientsChan, 1),
 			unsubscribing: make(clientsChan, 1),
 		}
@@ -89,19 +82,20 @@ func GetBroker() Broker {
 }
 
 func (b *broker) SendMessage(ctx context.Context, evt Event) {
-	msg := b.prepareMessage(evt)
-	msg.senderCtx = ctx
+	msg := b.prepareMessage(ctx, evt)
 	log.Trace("Broker received new event", "event", msg)
 	b.publish <- msg
 }
 
-func (b *broker) prepareMessage(event Event) message {
+func (b *broker) prepareMessage(ctx context.Context, event Event) message {
 	msg := message{}
-	msg.id = atomic.AddUint32(&eventId, 1)
 	msg.data = event.Data(event)
 	msg.event = event.Name(event)
+	msg.senderCtx = ctx
 	return msg
 }
+
+var errWriteTimeOut = errors.New("write timeout")
 
 // writeEvent Write to the ResponseWriter, Server Sent Events compatible
 func writeEvent(w io.Writer, event message, timeout time.Duration) (err error) {
@@ -172,7 +166,7 @@ func (b *broker) subscribe(r *http.Request) client {
 		clientUniqueId: clientUniqueId,
 	}
 	c.diode = newDiode(ctx, 1024, diodes.AlertFunc(func(missed int) {
-		log.Trace("Dropped SSE events", "client", c.String(), "missed", missed)
+		log.Debug("Dropped SSE events", "client", c.String(), "missed", missed)
 	}))
 
 	// Signal the broker that we have a new client
@@ -203,6 +197,12 @@ func (b *broker) listen() {
 	defer keepAlive.Stop()
 
 	clients := map[client]struct{}{}
+	var eventId uint32
+
+	getNextEventId := func() uint32 {
+		eventId++
+		return eventId
+	}
 
 	for {
 		select {
@@ -213,7 +213,9 @@ func (b *broker) listen() {
 			log.Debug("Client added to event broker", "numClients", len(clients), "newClient", c.String())
 
 			// Send a serverStart event to new client
-			c.diode.put(b.prepareMessage(&ServerStart{StartTime: consts.ServerStart, Version: consts.Version()}))
+			msg := b.prepareMessage(context.Background(),
+				&ServerStart{StartTime: consts.ServerStart, Version: consts.Version()})
+			c.diode.put(msg)
 
 		case c := <-b.unsubscribing:
 			// A client has detached and we want to
@@ -221,19 +223,29 @@ func (b *broker) listen() {
 			delete(clients, c)
 			log.Debug("Removed client from event broker", "numClients", len(clients), "client", c.String())
 
-		case event := <-b.publish:
+		case msg := <-b.publish:
+			msg.id = getNextEventId()
+			log.Trace("Got new published event", "event", msg)
 			// We got a new event from the outside!
 			// Send event to all connected clients
 			for c := range clients {
-				if b.shouldSend(event, c) {
-					log.Trace("Putting event on client's queue", "client", c.String(), "event", event)
-					c.diode.put(event)
+				if b.shouldSend(msg, c) {
+					log.Trace("Putting event on client's queue", "client", c.String(), "event", msg)
+					c.diode.put(msg)
 				}
 			}
 
 		case ts := <-keepAlive.C:
-			// Send a keep alive message every 15 seconds
-			b.SendMessage(context.Background(), &KeepAlive{TS: ts.Unix()})
+			// Send a keep alive message every 15 seconds to all connected clients
+			if len(clients) == 0 {
+				continue
+			}
+			msg := b.prepareMessage(context.Background(), &KeepAlive{TS: ts.Unix()})
+			msg.id = getNextEventId()
+			for c := range clients {
+				log.Trace("Putting a keepalive event on client's queue", "client", c.String(), "event", msg)
+				c.diode.put(msg)
+			}
 		}
 	}
 }

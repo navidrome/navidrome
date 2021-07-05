@@ -1,180 +1,50 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import ReactGA from 'react-ga'
 import { useDispatch, useSelector } from 'react-redux'
-import { Link } from 'react-router-dom'
+import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles'
+import { useMediaQuery } from '@material-ui/core'
 import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
+import ReactGA from 'react-ga'
+import { GlobalHotKeys } from 'react-hotkeys'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
 import 'react-jinke-music-player/assets/index.css'
-import {
-  createMuiTheme,
-  makeStyles,
-  ThemeProvider,
-} from '@material-ui/core/styles'
-import { useMediaQuery } from '@material-ui/core'
-import { GlobalHotKeys } from 'react-hotkeys'
-import clsx from 'clsx'
-import subsonic from '../subsonic'
-import {
-  scrobble,
-  syncQueue,
-  currentPlaying,
-  setVolume,
-  clearQueue,
-} from '../actions'
+import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
+import useStyle from './styles'
+import AudioTitle from './AudioTitle'
+import { clearQueue, currentPlaying, setVolume, syncQueue } from '../actions'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification } from '../utils'
+import subsonic from '../subsonic'
+import locale from './locale'
 import { keyMap } from '../hotkeys'
-import useCurrentTheme from '../themes/useCurrentTheme'
-import { QualityInfo } from '../common'
-
-const useStyle = makeStyles(
-  (theme) => ({
-    audioTitle: {
-      textDecoration: 'none',
-      color: theme.palette.primary.dark,
-    },
-    songTitle: {
-      fontWeight: 'bold',
-      '&:hover + $qualityInfo': {
-        opacity: 1,
-      },
-    },
-    songInfo: {
-      display: 'block',
-    },
-    qualityInfo: {
-      marginTop: '-4px',
-      opacity: 0,
-      transition: 'all 500ms ease-out',
-    },
-    player: {
-      display: (props) => (props.visible ? 'block' : 'none'),
-      '@media screen and (max-width:810px)': {
-        '& .sound-operation': {
-          display: 'none',
-        },
-      },
-      '& .progress-bar-content': {
-        display: 'flex',
-        flexDirection: 'column',
-      },
-      '& .play-mode-title': {
-        'pointer-events': 'none',
-      },
-      '& .music-player-panel .panel-content div.img-rotate': {
-        'animation-duration': (props) =>
-          props.enableCoverAnimation ? null : '0s',
-      },
-    },
-    artistAlbum: {
-      marginTop: '2px',
-    },
-  }),
-  { name: 'NDAudioPlayer' }
-)
-
-let audioInstance = null
-
-const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
-  const classes = useStyle()
-  const className = classes.audioTitle
-  const isDesktop = useMediaQuery('(min-width:810px)')
-
-  if (!audioInfo.name) {
-    return ''
-  }
-
-  const qi = { suffix: audioInfo.suffix, bitRate: audioInfo.bitRate }
-
-  return (
-    <Link to={`/album/${audioInfo.albumId}/show`} className={className}>
-      <span>
-        <span className={clsx(classes.songTitle, 'songTitle')}>
-          {audioInfo.name}
-        </span>
-        {isDesktop && (
-          <QualityInfo record={qi} className={classes.qualityInfo} />
-        )}
-      </span>
-      {!isMobile && (
-        <div className={classes.artistAlbum}>
-          <span className={clsx(classes.songInfo, 'songInfo')}>
-            {`${audioInfo.singer} - ${audioInfo.album}`}
-          </span>
-        </div>
-      )}
-    </Link>
-  )
-})
+import keyHandlers from './keyHandlers'
 
 const Player = () => {
-  const translate = useTranslate()
   const theme = useCurrentTheme()
-  const playerTheme = (theme.player && theme.player.theme) || 'dark'
+  const translate = useTranslate()
+  const playerTheme = theme.player?.theme || 'dark'
   const dataProvider = useDataProvider()
+  const playerState = useSelector((state) => state.player)
   const dispatch = useDispatch()
-  const queue = useSelector((state) => state.queue)
+  const [startTime, setStartTime] = useState(null)
+  const [scrobbled, setScrobbled] = useState(false)
+  const [audioInstance, setAudioInstance] = useState(null)
+  const isDesktop = useMediaQuery('(min-width:810px)')
   const { authenticated } = useAuthState()
-  const showNotifications = useSelector(
-    (state) => state.settings.notifications || false
-  )
-
-  const visible = authenticated && queue.queue.length > 0
+  const visible = authenticated && playerState.queue.length > 0
   const classes = useStyle({
     visible,
     enableCoverAnimation: config.enableCoverAnimation,
   })
-  // Match the medium breakpoint defined in the material-ui theme
-  // See https://material-ui.com/customization/breakpoints/#breakpoints
-  const isDesktop = useMediaQuery('(min-width:810px)')
-  const [startTime, setStartTime] = useState(null)
-
-  const nextSong = useCallback(() => {
-    const idx = queue.queue.findIndex(
-      (item) => item.uuid === queue.current.uuid
-    )
-    return idx !== null ? queue.queue[idx + 1] : null
-  }, [queue])
-
-  const prevSong = useCallback(() => {
-    const idx = queue.queue.findIndex(
-      (item) => item.uuid === queue.current.uuid
-    )
-    return idx !== null ? queue.queue[idx - 1] : null
-  }, [queue])
-
-  const keyHandlers = {
-    TOGGLE_PLAY: (e) => {
-      e.preventDefault()
-      audioInstance && audioInstance.togglePlay()
-    },
-    VOL_UP: () =>
-      (audioInstance.volume = Math.min(1, audioInstance.volume + 0.1)),
-    VOL_DOWN: () =>
-      (audioInstance.volume = Math.max(0, audioInstance.volume - 0.1)),
-    PREV_SONG: useCallback(
-      (e) => {
-        if (!e.metaKey && prevSong()) audioInstance && audioInstance.playPrev()
-      },
-      [prevSong]
-    ),
-    NEXT_SONG: useCallback(
-      (e) => {
-        if (!e.metaKey && nextSong()) audioInstance && audioInstance.playNext()
-      },
-      [nextSong]
-    ),
-  }
+  const showNotifications = useSelector(
+    (state) => state.settings.notifications || false
+  )
 
   const defaultOptions = useMemo(
     () => ({
       theme: playerTheme,
       bounds: 'body',
       mode: 'full',
-      autoPlay: false,
-      preload: true,
-      autoPlayInitLoadPlayList: true,
       loadAudioErrorPlayNext: false,
       clearPriorAudioLists: false,
       showDestroy: true,
@@ -185,6 +55,7 @@ const Player = () => {
       showThemeSwitch: false,
       showMediaSession: true,
       restartCurrentOnPrev: true,
+      quietUpdate: true,
       defaultPosition: {
         top: 300,
         left: 120,
@@ -193,52 +64,25 @@ const Player = () => {
       renderAudioTitle: (audioInfo, isMobile) => (
         <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
       ),
-      locale: {
-        playListsText: translate('player.playListsText'),
-        openText: translate('player.openText'),
-        closeText: translate('player.closeText'),
-        notContentText: translate('player.notContentText'),
-        clickToPlayText: translate('player.clickToPlayText'),
-        clickToPauseText: translate('player.clickToPauseText'),
-        nextTrackText: translate('player.nextTrackText'),
-        previousTrackText: translate('player.previousTrackText'),
-        reloadText: translate('player.reloadText'),
-        volumeText: translate('player.volumeText'),
-        toggleLyricText: translate('player.toggleLyricText'),
-        toggleMiniModeText: translate('player.toggleMiniModeText'),
-        destroyText: translate('player.destroyText'),
-        downloadText: translate('player.downloadText'),
-        removeAudioListsText: translate('player.removeAudioListsText'),
-        clickToDeleteText: (name) =>
-          translate('player.clickToDeleteText', { name }),
-        emptyLyricText: translate('player.emptyLyricText'),
-        playModeText: {
-          order: translate('player.playModeText.order'),
-          orderLoop: translate('player.playModeText.orderLoop'),
-          singleLoop: translate('player.playModeText.singleLoop'),
-          shufflePlay: translate('player.playModeText.shufflePlay'),
-        },
-      },
+      locale: locale(translate),
     }),
     [isDesktop, playerTheme, translate]
   )
 
   const options = useMemo(() => {
-    const current = queue.current || {}
+    const current = playerState.current || {}
     return {
       ...defaultOptions,
-      clearPriorAudioLists: queue.clear,
-      autoPlay: queue.clear || queue.playIndex === 0,
-      playIndex: queue.playIndex,
-      audioLists: queue.queue.map((item) => item),
+      audioLists: playerState.queue.map((item) => item),
+      playIndex: playerState.playIndex,
+      clearPriorAudioLists: playerState.clear,
       extendsContent: <PlayerToolbar id={current.trackId} />,
-      defaultVolume: queue.volume,
+      defaultVolume: playerState.volume,
     }
-  }, [queue, defaultOptions])
+  }, [playerState, defaultOptions])
 
   const onAudioListsChange = useCallback(
-    (currentPlayIndex, audioLists) =>
-      dispatch(syncQueue(currentPlayIndex, audioLists)),
+    (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
     [dispatch]
   )
 
@@ -248,19 +92,17 @@ const Player = () => {
         document.title = 'Navidrome'
       }
 
-      // See https://www.last.fm/api/scrobbling#when-is-a-scrobble-a-scrobble
       const progress = (info.currentTime / info.duration) * 100
       if (isNaN(info.duration) || (progress < 50 && info.currentTime < 240)) {
         return
       }
 
-      const item = queue.queue.find((item) => item.trackId === info.trackId)
-      if (item && !item.scrobbled) {
-        dispatch(scrobble(info.trackId, true))
+      if (!scrobbled) {
         subsonic.scrobble(info.trackId, true, startTime)
+        setScrobbled(true)
       }
     },
-    [dispatch, queue.queue, startTime]
+    [startTime, scrobbled]
   )
 
   const onAudioVolumeChange = useCallback(
@@ -271,29 +113,33 @@ const Player = () => {
 
   const onAudioPlay = useCallback(
     (info) => {
+      if (audioInstance) {
+        audioInstance.volume = playerState.volume
+      }
       dispatch(currentPlaying(info))
       setStartTime(Date.now())
       if (info.duration) {
-        document.title = `${info.name} - ${info.singer} - Navidrome`
-        dispatch(scrobble(info.trackId, false))
+        const song = info.song
+        document.title = `${song.title} - ${song.artist} - Navidrome`
         subsonic.nowPlaying(info.trackId)
+        setScrobbled(false)
         if (config.gaTrackingId) {
           ReactGA.event({
             category: 'Player',
             action: 'Play song',
-            label: `${info.name} - ${info.singer}`,
+            label: `${song.title} - ${song.artist}`,
           })
         }
         if (showNotifications) {
           sendNotification(
-            info.name,
-            `${info.singer} - ${info.album}`,
+            song.title,
+            `${song.artist} - ${song.album}`,
             info.cover
           )
         }
       }
     },
-    [dispatch, showNotifications]
+    [dispatch, showNotifications, audioInstance, playerState.volume]
   )
 
   const onAudioPause = useCallback(
@@ -312,8 +158,8 @@ const Player = () => {
   )
 
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
-    if (mode === 'full') {
-      window.location.href = `#/album/${audioInfo.albumId}/show`
+    if (mode === 'full' && audioInfo?.song?.albumId) {
+      window.location.href = `#/album/${audioInfo.song.albumId}/show`
     }
   }, [])
 
@@ -328,25 +174,27 @@ const Player = () => {
     document.title = 'Navidrome'
   }
 
+  const handlers = useMemo(
+    () => keyHandlers(audioInstance, playerState),
+    [audioInstance, playerState]
+  )
+
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
         {...options}
-        quietUpdate
         className={classes.player}
         onAudioListsChange={onAudioListsChange}
+        onAudioVolumeChange={onAudioVolumeChange}
         onAudioProgress={onAudioProgress}
         onAudioPlay={onAudioPlay}
         onAudioPause={onAudioPause}
         onAudioEnded={onAudioEnded}
-        onAudioVolumeChange={onAudioVolumeChange}
         onCoverClick={onCoverClick}
         onBeforeDestroy={onBeforeDestroy}
-        getAudioInstance={(instance) => {
-          audioInstance = instance
-        }}
+        getAudioInstance={setAudioInstance}
       />
-      <GlobalHotKeys handlers={keyHandlers} keyMap={keyMap} allowChanges />
+      <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>
   )
 }

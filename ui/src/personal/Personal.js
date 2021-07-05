@@ -24,7 +24,7 @@ const Personal = () => {
         <SelectLanguage />
         <SelectDefaultView />
         <NotificationsToggle />
-        {config.devEnableScrobble && <LastfmScrobbleToggle />}
+        {config.lastFMEnabled && <LastfmScrobbleToggle />}
       </SimpleForm>
     </Card>
   )

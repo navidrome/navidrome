@@ -48,7 +48,7 @@ const PlayerEdit = (props) => (
         ]}
       />
       <BooleanInput source="reportRealPath" fullWidth />
-      {config.devEnableScrobble && (
+      {config.lastFMEnabled && (
         <BooleanInput source="scrobbleEnabled" fullWidth />
       )}
       <TextField source="client" />

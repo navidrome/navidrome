@@ -27,7 +27,7 @@ export const SongTitleField = ({ showTrackNumbers, ...props }) => {
   const theme = useTheme()
   const classes = useStyles()
   const { record } = props
-  const currentTrack = useSelector((state) => state?.queue?.current || {})
+  const currentTrack = useSelector((state) => state?.player?.current || {})
   const currentId = currentTrack.trackId
   const paused = currentTrack.paused
   const isCurrent =
