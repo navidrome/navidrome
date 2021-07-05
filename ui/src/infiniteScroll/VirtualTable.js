@@ -6,7 +6,6 @@ import {
   Column,
   InfiniteLoader,
   Table,
-  WindowScroller,
 } from 'react-virtualized'
 import {
   DatagridHeaderCell,
@@ -38,9 +37,7 @@ const useStyles = (theme) => ({
 })
 
 function VirtualTable(props) {
-  const infiniteLoaderRef = useRef(null)
   const {
-    dataSize,
     loadMoreRows,
     isRowLoaded,
     remoteDataCount,
@@ -55,7 +52,7 @@ function VirtualTable(props) {
   const datagridClasses = useDatagridStyles()
   const children = React.Children.toArray(props.children)
 
-  const cellRenderer = ({ rowData, cellData, columnIndex, isScrolling }) => {
+  const cellRenderer = ({ rowData,  cellData, columnIndex, isScrolling }) => {
     const { basePath, resource } = props
     const field = children[columnIndex]
 
@@ -149,7 +146,7 @@ function VirtualTable(props) {
 
   return (
     <InfiniteLoader
-      ref={infiniteLoaderRef}
+      // ref={infiniteLoaderRef}
       isRowLoaded={isRowLoaded}
       loadMoreRows={loadMoreRows}
       rowCount={remoteDataCount}
