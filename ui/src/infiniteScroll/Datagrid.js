@@ -9,10 +9,10 @@ function Datagrid(props) {
   const { resource, basePath, setSort, perPage, currentSort, filterValues } =
     useListContext()
 
-  const [loadedRows, updateLoadedRows] = useInstance({});
-  const [lastFetchPosition, updateLastFetchPosition] = useInstance({ 
-    startIndex: 0, 
-    stopIndex: perPage
+  const [loadedRows, updateLoadedRows] = useInstance({})
+  const [lastFetchPosition, updateLastFetchPosition] = useInstance({
+    startIndex: 0,
+    stopIndex: perPage,
   })
 
   const { data, ids, total } = useSelector((state) => ({
@@ -34,11 +34,11 @@ function Datagrid(props) {
     updateLoadedRows({})
     updateLastFetchPosition({ startIndex: 0, stopIndex: perPage })
   }, [currentSort, filterValues])
-  
+
   useEffect(() => {
-    const { startIndex, stopIndex } = lastFetchPosition;
+    const { startIndex, stopIndex } = lastFetchPosition
     // console.log('LoadLog', 'Got', startIndex, stopIndex, ids.length)
-    for (let i = startIndex;i <= stopIndex;i++) {
+    for (let i = startIndex; i <= stopIndex; i++) {
       loadedRows[i] = data[ids[i - startIndex]]
     }
 
@@ -48,7 +48,6 @@ function Datagrid(props) {
       loadPromiseResolver()
       updateLoadPromiseResolver(null)
     }
-
   }, [ids])
 
   const onRowClick = ({ index, rowData: record }) => {
@@ -79,18 +78,13 @@ function Datagrid(props) {
   }
 
   const handleLoadMore = ({ startIndex, stopIndex }) => {
-    const page = Math.floor(startIndex/perPage) + 1;
-    const newStopIndex = Math.min(total, stopIndex + perPage - 1);
+    const page = Math.floor(startIndex / perPage) + 1
+    const newStopIndex = Math.min(total, stopIndex + perPage - 1)
 
     return new Promise((resolve) => {
       updateLoadPromiseResolver(resolve)
-      updateLastFetchPosition({ startIndex, stopIndex: newStopIndex });
-      getList(
-        resource,
-        { page: page, perPage },
-        currentSort,
-        filterValues
-      )
+      updateLastFetchPosition({ startIndex, stopIndex: newStopIndex })
+      getList(resource, { page: page, perPage }, currentSort, filterValues)
     })
   }
 
@@ -98,7 +92,7 @@ function Datagrid(props) {
     <VirtualTable
       remoteDataCount={total || 0}
       loadMoreRows={handleLoadMore}
-      isRowLoaded={({ index }) => !!loadedRows[index] }
+      isRowLoaded={({ index }) => !!loadedRows[index]}
       rowGetter={({ index }) => loadedRows[index] || {}}
       onRowClick={onRowClick}
       classes={props.classes}

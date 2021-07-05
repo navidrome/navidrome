@@ -1,12 +1,7 @@
 import React, { isValidElement, useRef, useCallback } from 'react'
 import { withStyles } from '@material-ui/core/styles'
 import { TableCell } from '@material-ui/core'
-import {
-  AutoSizer,
-  Column,
-  InfiniteLoader,
-  Table,
-} from 'react-virtualized'
+import { AutoSizer, Column, InfiniteLoader, Table } from 'react-virtualized'
 import {
   DatagridHeaderCell,
   DatagridCell,
@@ -52,7 +47,7 @@ function VirtualTable(props) {
   const datagridClasses = useDatagridStyles()
   const children = React.Children.toArray(props.children)
 
-  const cellRenderer = ({ rowData,  cellData, columnIndex, isScrolling }) => {
+  const cellRenderer = ({ rowData, cellData, columnIndex, isScrolling }) => {
     const { basePath, resource } = props
     const field = children[columnIndex]
 
@@ -155,51 +150,51 @@ function VirtualTable(props) {
         <AutoSizer disableHeight>
           {({ width }) => (
             // <WindowScroller>
-              // {({ height, isScrolling, scrollTop }) => (
-                <Table
-                  ref={registerChild}
-                  onRowsRendered={onRowsRendered}
-                  // isScrolling={isScrolling}
-                  // scrollTop={scrollTop}
-                  width={width}
-                  height={rowHeight * 10}
-                  // autoHeight
-                  headerHeight={rowHeight}
-                  rowHeight={rowHeight}
-                  rowGetter={rowGetter}
-                  rowCount={remoteDataCount}
-                  rowClassName={clsx(classes.row, datagridClasses.row)}
-                  onRowClick={props.onRowClick}
-                >
-                  {expand && (
-                    <Column
-                      key={'expand'}
-                      label={'Expand'}
-                      dataKey={null}
-                      width={60}
-                      cellRenderer={expandCellRenderer}
-                      headerRenderer={expandHeaderRenderer}
-                    />
-                  )}
-                  {React.Children.map(children, (c, i) =>
-                    isValidElement(c) && c.props ? (
-                      <Column
-                        key={i}
-                        label={c.props.source}
-                        dataKey={c.props.source}
-                        width={c.props.width || 100}
-                        flexGrow={c.props.flexGrow || defaultflexGrow}
-                        cellRenderer={(cellRenderProps) =>
-                          cellRenderer({ ...cellRenderProps, columnIndex: i })
-                        }
-                        headerRenderer={(headerProps) =>
-                          headerRenderer({ ...headerProps, columnIndex: i })
-                        }
-                      />
-                    ) : null
-                  )}
-                </Table>
-              // )}
+            // {({ height, isScrolling, scrollTop }) => (
+            <Table
+              ref={registerChild}
+              onRowsRendered={onRowsRendered}
+              // isScrolling={isScrolling}
+              // scrollTop={scrollTop}
+              width={width}
+              height={rowHeight * 10}
+              // autoHeight
+              headerHeight={rowHeight}
+              rowHeight={rowHeight}
+              rowGetter={rowGetter}
+              rowCount={remoteDataCount}
+              rowClassName={clsx(classes.row, datagridClasses.row)}
+              onRowClick={props.onRowClick}
+            >
+              {expand && (
+                <Column
+                  key={'expand'}
+                  label={'Expand'}
+                  dataKey={null}
+                  width={60}
+                  cellRenderer={expandCellRenderer}
+                  headerRenderer={expandHeaderRenderer}
+                />
+              )}
+              {React.Children.map(children, (c, i) =>
+                isValidElement(c) && c.props ? (
+                  <Column
+                    key={i}
+                    label={c.props.source}
+                    dataKey={c.props.source}
+                    width={c.props.width || 100}
+                    flexGrow={c.props.flexGrow || defaultflexGrow}
+                    cellRenderer={(cellRenderProps) =>
+                      cellRenderer({ ...cellRenderProps, columnIndex: i })
+                    }
+                    headerRenderer={(headerProps) =>
+                      headerRenderer({ ...headerProps, columnIndex: i })
+                    }
+                  />
+                ) : null
+              )}
+            </Table>
+            // )}
             // </WindowScroller>
           )}
         </AutoSizer>
