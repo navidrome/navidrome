@@ -110,15 +110,8 @@ const reduceSetVolume = (state, { data: { volume } }) => {
 }
 
 const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
-  const current = audioLists.length > 0 ? audioInfo : {}
-  const savedPlayIndex = audioLists.findIndex(
-    (item) => item.uuid === current.uuid
-  )
-
   return {
     ...state,
-    current,
-    savedPlayIndex,
     queue: audioLists,
     clear: false,
     playIndex: undefined,
