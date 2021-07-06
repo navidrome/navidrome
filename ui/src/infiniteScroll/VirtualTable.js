@@ -181,7 +181,7 @@ function VirtualTable(props) {
                   <Column
                     key={i}
                     label={c.props.source}
-                    dataKey={c.props.source}
+                    dataKey={c.props.dataKey || c.props.source}
                     width={c.props.width || 100}
                     flexGrow={c.props.flexGrow || defaultflexGrow}
                     cellRenderer={(cellRenderProps) =>

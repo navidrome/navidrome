@@ -156,6 +156,7 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
           sortBy={'maxYear'}
           sortByOrder={'DESC'}
           className={classes.albumSubtitle}
+          dataKey={'maxYear'}
         />
       )}
     </div>
