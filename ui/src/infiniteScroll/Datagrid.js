@@ -1,13 +1,26 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useHistory } from 'react-router-dom'
 import { crudGetList, useListContext } from 'react-admin'
 import { linkToRecord } from 'ra-core'
 import VirtualTable from './VirtualTable'
 import { useInstance } from './useInstance'
+import union from 'lodash.union'
+import difference from 'lodash.difference'
 function Datagrid(props) {
-  const { resource, basePath, setSort, perPage, currentSort, filterValues } =
-    useListContext()
+  const {
+    resource,
+    basePath,
+    setSort,
+    perPage,
+    currentSort,
+    filterValues,
+    onToggleItem,
+    selectedIds,
+    onSelect,
+  } = useListContext()
+
+  const { classes, isRowSelectable, rowClick, hasBulkActions } = props
 
   const [loadedRows, updateLoadedRows] = useInstance({})
   const [lastFetchPosition, updateLastFetchPosition] = useInstance({
@@ -54,9 +67,8 @@ function Datagrid(props) {
   }, [ids])
 
   const onRowClick = ({ index, rowData: record }) => {
-    const { rowClick } = props
-
     const id = record.id
+    // onToggleItem(id), from List Context can be used to toggle item in the list
     const effect =
       typeof rowClick === 'function'
         ? rowClick(id, basePath || `/${resource}`, record)
@@ -79,6 +91,61 @@ function Datagrid(props) {
         return
     }
   }
+  const [lastSelected, updateLastSelected] = useInstance(null)
+
+  useEffect(() => {
+    if (!selectedIds || selectedIds.length === 0) {
+      updateLastSelected(null)
+    }
+  }, [JSON.stringify(selectedIds)])
+
+  // const handleSelectAll = useCallback(
+  //   event => {
+  //       if (event.target.checked) {
+  //         const all = ids.concat(
+  //             selectedIds.filter(id => !ids.includes(id))
+  //         );
+  //         onSelect(
+  //             isRowSelectable
+  //                 ? all.filter(id => isRowSelectable(data[id]))
+  //                 : all
+  //         );
+  //       } else {
+  //         onSelect([]);
+  //       }
+  //   },
+  //   [data, ids, onSelect, isRowSelectable, selectedIds]
+  // );
+
+  const handleToggleItem = useCallback(
+    (id, event) => {
+      const lastSelectedIndex = lastSelected
+        ? Object.keys(loadedRows).find((i) => loadedRows[i].id === lastSelected)
+        : -1
+      updateLastSelected(event.target.checked ? id : null)
+
+      if (event.shiftKey && lastSelectedIndex !== -1) {
+        const index = ids.indexOf(id)
+        const idsBetweenSelections = ids.slice(
+          Math.min(lastSelectedIndex, index),
+          Math.max(lastSelectedIndex, index) + 1
+        )
+
+        const newSelectedIds = event.target.checked
+          ? union(selectedIds, idsBetweenSelections)
+          : difference(selectedIds, idsBetweenSelections)
+
+        onSelect(
+          isRowSelectable
+            ? newSelectedIds.filter((id) => isRowSelectable(data[id]))
+            : newSelectedIds
+        )
+      } else {
+        onToggleItem(id)
+      }
+    },
+    [data, ids, isRowSelectable, onSelect, onToggleItem, selectedIds]
+  )
 
   const handleLoadMore = ({ startIndex, stopIndex }) => {
     const page = Math.floor(startIndex / perPage) + 1
@@ -98,11 +165,14 @@ function Datagrid(props) {
       isRowLoaded={({ index }) => !!loadedRows[index]}
       rowGetter={({ index }) => loadedRows[index] || {}}
       onRowClick={onRowClick}
-      classes={props.classes}
+      classes={classes}
       resource={resource}
       currentSort={currentSort}
       setSort={setSort}
       basePath={basePath}
+      onToggleItem={handleToggleItem}
+      hasBulkActions={hasBulkActions}
+      selectedIds={selectedIds}
     >
       {props.children}
     </VirtualTable>

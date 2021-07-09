@@ -1,6 +1,6 @@
 import React, { isValidElement, useCallback } from 'react'
 import { withStyles } from '@material-ui/core/styles'
-import { TableCell } from '@material-ui/core'
+import { TableCell, Checkbox } from '@material-ui/core'
 import { AutoSizer, Column, InfiniteLoader, Table } from 'react-virtualized'
 import {
   DatagridHeaderCell,
@@ -42,16 +42,20 @@ function VirtualTable(props) {
     rowHeight,
     expand,
     classes,
+    isRowSelectable,
+    onToggleItem,
+    hasBulkActions,
+    selectedIds,
   } = props
 
   const datagridClasses = useDatagridStyles()
   const children = React.Children.toArray(props.children)
 
-  const cellRenderer = ({ rowData, cellData, columnIndex, isScrolling }) => {
+  const cellRenderer = ({ rowData, cellData, columnIndex, dataKey }) => {
     const { basePath, resource } = props
     const field = children[columnIndex]
 
-    if (typeof cellData == 'undefined')
+    if (dataKey && typeof cellData == 'undefined')
       return (
         <TableCell
           component="div"
@@ -91,13 +95,38 @@ function VirtualTable(props) {
     </TableCell>
   )
 
-  const expandHeaderRenderer = () => (
+  const bulkActionHeaderRederer = () => (
     <TableCell
       padding="none"
       component="div"
       style={{ height: rowHeight }}
       className={clsx(classes.tableCell, datagridClasses.headerCell)}
     />
+  )
+
+  const bulkActionCellRenderer = ({ rowData }) => (
+    <TableCell
+      padding="none"
+      component="div"
+      className={clsx(classes.tableCell, datagridClasses.expandIconCell)}
+      style={{ height: rowHeight }}
+    >
+      <Checkbox
+        color="primary"
+        className={`select-item ${datagridClasses.checkbox}`}
+        checked={selectedIds.includes(rowData.id)}
+        onClick={(e) => handleToggleSelection(rowData.id, e)}
+      />
+    </TableCell>
+  )
+
+  const handleToggleSelection = useCallback(
+    (id, event) => {
+      if (isRowSelectable && !isRowSelectable(id)) return
+      onToggleItem(id, event)
+      event.stopPropagation()
+    },
+    [isRowSelectable, onToggleItem]
   )
 
   const updateSortCallback = useCallback(
@@ -166,14 +195,14 @@ function VirtualTable(props) {
               rowClassName={clsx(classes.row, datagridClasses.row)}
               onRowClick={props.onRowClick}
             >
-              {expand && (
+              {hasBulkActions && (
                 <Column
-                  key={'expand'}
-                  label={'Expand'}
-                  dataKey={null}
+                  key={'bulkActions'}
+                  label={'Bulk Actions'}
+                  dataKey={'bulkAction'}
                   width={60}
-                  cellRenderer={expandCellRenderer}
-                  headerRenderer={expandHeaderRenderer}
+                  cellRenderer={bulkActionCellRenderer}
+                  headerRenderer={bulkActionHeaderRederer}
                 />
               )}
               {React.Children.map(children, (c, i) =>
