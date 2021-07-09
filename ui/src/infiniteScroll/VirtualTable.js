@@ -6,7 +6,6 @@ import {
   DatagridHeaderCell,
   DatagridCell,
   useDatagridStyles,
-  ExpandRowButton,
 } from 'react-admin'
 import clsx from 'clsx'
 
@@ -78,22 +77,6 @@ function VirtualTable(props) {
       />
     )
   }
-
-  const expandCellRenderer = () => (
-    <TableCell
-      padding="none"
-      component="div"
-      className={clsx(classes.tableCell, datagridClasses.expandIconCell)}
-      style={{ height: rowHeight }}
-    >
-      <ExpandRowButton
-        classes={datagridClasses}
-        expanded={false}
-        // TODO: onClick={/* handleToggleExpand */}
-        expandContentId={`row-expand`}
-      />
-    </TableCell>
-  )
 
   const bulkActionHeaderRederer = () => (
     <TableCell
