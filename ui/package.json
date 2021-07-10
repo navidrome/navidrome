@@ -42,7 +42,7 @@
     "@testing-library/react-hooks": "^7.0.0",
     "@testing-library/user-event": "^13.1.9",
     "css-mediaquery": "^0.1.2",
-    "prettier": "2.3.1",
+    "prettier": "2.3.2",
     "ra-test": "^3.15.1"
   },
   "scripts": {
