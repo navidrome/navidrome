@@ -64,6 +64,7 @@ type configOptions struct {
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
+	DevLogLevels               map[string]string
 	DevAutoCreateAdminPassword string
 	DevAutoLoginUsername       string
 	DevPreCacheAlbumArtwork    bool
@@ -126,6 +127,7 @@ func Load() {
 	}
 
 	log.SetLevelString(Server.LogLevel)
+	log.SetLogLevels(Server.DevLogLevels)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
 
