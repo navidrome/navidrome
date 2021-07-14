@@ -22,7 +22,7 @@ require (
 	github.com/go-chi/jwtauth/v5 v5.0.1
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/golangci/golangci-lint v1.41.1
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/google/wire v0.5.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.2.1
