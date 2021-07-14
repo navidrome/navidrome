@@ -1,8 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
-import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
+import { ThemeProvider } from '@material-ui/core/styles'
+import {
+  createMuiTheme,
+  useAuthState,
+  useDataProvider,
+  useTranslate,
+} from 'react-admin'
 import ReactGA from 'react-ga'
 import { GlobalHotKeys } from 'react-hotkeys'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
