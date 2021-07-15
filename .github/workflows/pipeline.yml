@@ -127,6 +127,9 @@ jobs:
       - name: Show Version
         run: git describe --tags
 
+      - name: Generate .gitinfo
+        run: make .gitinfo
+
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
         uses: docker://deluan/ci-goreleaser:1.16.4-1
