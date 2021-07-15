@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type Extractor interface {
@@ -43,7 +44,7 @@ type Tags struct {
 	custom   map[string][]string
 }
 
-func NewTag(filePath string, tags, custom map[string][]string) *Tags {
+func NewTags(filePath string, tags, custom map[string][]string) *Tags {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		log.Warn("Error stating file. Skipping", "filePath", filePath, err)
@@ -61,25 +62,29 @@ func NewTag(filePath string, tags, custom map[string][]string) *Tags {
 
 // Common tags
 
-func (t *Tags) Title() string           { return t.getTag("title", "sort_name", "titlesort") }
-func (t *Tags) Album() string           { return t.getTag("album", "sort_album", "albumsort") }
-func (t *Tags) Artist() string          { return t.getTag("artist", "sort_artist", "artistsort") }
-func (t *Tags) AlbumArtist() string     { return t.getTag("album_artist", "album artist", "albumartist") }
+func (t *Tags) Title() string  { return t.getFirstTagValue("title", "sort_name", "titlesort") }
+func (t *Tags) Album() string  { return t.getFirstTagValue("album", "sort_album", "albumsort") }
+func (t *Tags) Artist() string { return t.getFirstTagValue("artist", "sort_artist", "artistsort") }
+func (t *Tags) AlbumArtist() string {
+	return t.getFirstTagValue("album_artist", "album artist", "albumartist")
+}
 func (t *Tags) SortTitle() string       { return t.getSortTag("", "title", "name") }
 func (t *Tags) SortAlbum() string       { return t.getSortTag("", "album") }
 func (t *Tags) SortArtist() string      { return t.getSortTag("", "artist") }
 func (t *Tags) SortAlbumArtist() string { return t.getSortTag("tso2", "albumartist", "album_artist") }
-func (t *Tags) Genre() string           { return t.getTag("genre") }
+func (t *Tags) Genres() []string        { return t.getAllTagValues("genre") }
 func (t *Tags) Year() int               { return t.getYear("date") }
-func (t *Tags) Comment() string         { return t.getTag("comment") }
-func (t *Tags) Lyrics() string          { return t.getTag("lyrics", "lyrics-eng") }
+func (t *Tags) Comment() string         { return t.getFirstTagValue("comment") }
+func (t *Tags) Lyrics() string          { return t.getFirstTagValue("lyrics", "lyrics-eng") }
 func (t *Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
 func (t *Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
 func (t *Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }
-func (t *Tags) DiscSubtitle() string    { return t.getTag("tsst", "discsubtitle", "setsubtitle") }
-func (t *Tags) CatalogNum() string      { return t.getTag("catalognumber") }
-func (t *Tags) Bpm() int                { return (int)(math.Round(t.getFloat("tbpm", "bpm", "fbpm"))) }
-func (t *Tags) HasPicture() bool        { return t.getTag("has_picture") != "" }
+func (t *Tags) DiscSubtitle() string {
+	return t.getFirstTagValue("tsst", "discsubtitle", "setsubtitle")
+}
+func (t *Tags) CatalogNum() string { return t.getFirstTagValue("catalognumber") }
+func (t *Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "bpm", "fbpm"))) }
+func (t *Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
 
 // MusicBrainz Identifiers
 
@@ -92,10 +97,10 @@ func (t *Tags) MbzAlbumArtistID() string {
 	return t.getMbzID("musicbrainz_albumartistid", "musicbrainz album artist id")
 }
 func (t *Tags) MbzAlbumType() string {
-	return t.getTag("musicbrainz_albumtype", "musicbrainz album type")
+	return t.getFirstTagValue("musicbrainz_albumtype", "musicbrainz album type")
 }
 func (t *Tags) MbzAlbumComment() string {
-	return t.getTag("musicbrainz_albumcomment", "musicbrainz album comment")
+	return t.getFirstTagValue("musicbrainz_albumcomment", "musicbrainz album comment")
 }
 
 // File properties
@@ -107,8 +112,8 @@ func (t *Tags) Size() int64                 { return t.fileInfo.Size() }
 func (t *Tags) FilePath() string            { return t.filePath }
 func (t *Tags) Suffix() string              { return t.suffix }
 
-func (t *Tags) getTags(tags ...string) []string {
-	allTags := append(tags, t.custom[tags[0]]...)
+func (t *Tags) getTags(tagNames ...string) []string {
+	allTags := append(tagNames, t.custom[tagNames[0]]...)
 	for _, tag := range allTags {
 		if v, ok := t.tags[tag]; ok {
 			return v
@@ -117,30 +122,41 @@ func (t *Tags) getTags(tags ...string) []string {
 	return nil
 }
 
-func (t *Tags) getTag(tags ...string) string {
-	ts := t.getTags(tags...)
+func (t *Tags) getFirstTagValue(tagNames ...string) string {
+	ts := t.getTags(tagNames...)
 	if len(ts) > 0 {
 		return ts[0]
 	}
 	return ""
 }
 
-func (t *Tags) getSortTag(originalTag string, tags ...string) string {
+func (t *Tags) getAllTagValues(tagNames ...string) []string {
+	tagNames = append(tagNames, t.custom[tagNames[0]]...)
+	var values []string
+	for _, tag := range tagNames {
+		if v, ok := t.tags[tag]; ok {
+			values = append(values, v...)
+		}
+	}
+	return utils.UniqueStrings(values)
+}
+
+func (t *Tags) getSortTag(originalTag string, tagNamess ...string) string {
 	formats := []string{"sort%s", "sort_%s", "sort-%s", "%ssort", "%s_sort", "%s-sort"}
 	all := []string{originalTag}
-	for _, tag := range tags {
+	for _, tag := range tagNamess {
 		for _, format := range formats {
 			name := fmt.Sprintf(format, tag)
 			all = append(all, name)
 		}
 	}
-	return t.getTag(all...)
+	return t.getFirstTagValue(all...)
 }
 
 var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
 
-func (t *Tags) getYear(tags ...string) int {
-	tag := t.getTag(tags...)
+func (t *Tags) getYear(tagNames ...string) int {
+	tag := t.getFirstTagValue(tagNames...)
 	if tag == "" {
 		return 0
 	}
@@ -153,8 +169,8 @@ func (t *Tags) getYear(tags ...string) int {
 	return year
 }
 
-func (t *Tags) getBool(tags ...string) bool {
-	tag := t.getTag(tags...)
+func (t *Tags) getBool(tagNames ...string) bool {
+	tag := t.getFirstTagValue(tagNames...)
 	if tag == "" {
 		return false
 	}
@@ -162,8 +178,8 @@ func (t *Tags) getBool(tags ...string) bool {
 	return i == 1
 }
 
-func (t *Tags) getTuple(tags ...string) (int, int) {
-	tag := t.getTag(tags...)
+func (t *Tags) getTuple(tagNames ...string) (int, int) {
+	tag := t.getFirstTagValue(tagNames...)
 	if tag == "" {
 		return 0, 0
 	}
@@ -173,28 +189,28 @@ func (t *Tags) getTuple(tags ...string) (int, int) {
 	if len(tuple) > 1 {
 		t2, _ = strconv.Atoi(tuple[1])
 	} else {
-		t2tag := t.getTag(tags[0] + "total")
+		t2tag := t.getFirstTagValue(tagNames[0] + "total")
 		t2, _ = strconv.Atoi(t2tag)
 	}
 	return t1, t2
 }
 
-func (t *Tags) getMbzID(tags ...string) string {
-	tag := t.getTag(tags...)
+func (t *Tags) getMbzID(tagNames ...string) string {
+	tag := t.getFirstTagValue(tagNames...)
 	if _, err := uuid.Parse(tag); err != nil {
 		return ""
 	}
 	return tag
 }
 
-func (t *Tags) getInt(tags ...string) int {
-	tag := t.getTag(tags...)
+func (t *Tags) getInt(tagNames ...string) int {
+	tag := t.getFirstTagValue(tagNames...)
 	i, _ := strconv.Atoi(tag)
 	return i
 }
 
-func (t *Tags) getFloat(tags ...string) float64 {
-	var tag = t.getTag(tags...)
+func (t *Tags) getFloat(tagNames ...string) float64 {
+	var tag = t.getFirstTagValue(tagNames...)
 	var value, err = strconv.ParseFloat(tag, 64)
 	if err != nil {
 		return 0
