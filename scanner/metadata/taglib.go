@@ -31,7 +31,7 @@ func (e *taglibExtractor) extractMetadata(filePath string) (*Tags, error) {
 		}
 	}
 
-	tags := NewTag(filePath, parsedTags, map[string][]string{
+	tags := NewTags(filePath, parsedTags, map[string][]string{
 		"title":    {"_track", "titlesort"},
 		"album":    {"_album", "albumsort"},
 		"artist":   {"_artist", "artistsort"},
