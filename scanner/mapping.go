@@ -36,7 +36,9 @@ func (s *mediaFileMapper) toMediaFile(md *metadata.Tags) model.MediaFile {
 	mf.Artist = s.mapArtistName(md)
 	mf.AlbumArtistID = s.albumArtistID(md)
 	mf.AlbumArtist = s.mapAlbumArtistName(md)
-	mf.Genre = md.Genre()
+	if len(md.Genres()) > 0 {
+		mf.Genre = md.Genres()[0]
+	}
 	mf.Compilation = md.Compilation()
 	mf.Year = md.Year()
 	mf.TrackNumber, _ = md.TrackNumber()

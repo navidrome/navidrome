@@ -60,4 +60,17 @@ var _ = Describe("Tags", func() {
 			Expect(md.MbzAlbumArtistID()).To(Equal(""))
 		})
 	})
+
+	Describe("getAllTagValues", func() {
+		It("returns values from all tag names", func() {
+			md := &Tags{}
+			md.tags = map[string][]string{
+				"genre":  {"Rock", "Pop"},
+				"_genre": {"New Wave", "Rock"},
+			}
+			md.custom = map[string][]string{"genre": {"_genre"}}
+
+			Expect(md.Genres()).To(ConsistOf("Rock", "Pop", "New Wave"))
+		})
+	})
 })

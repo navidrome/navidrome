@@ -85,7 +85,7 @@ func (e *ffmpegExtractor) extractMetadata(filePath, info string) (*Tags, error) 
 		return nil, errors.New("not a media file")
 	}
 
-	tags := NewTag(filePath, parsedTags, map[string][]string{
+	tags := NewTags(filePath, parsedTags, map[string][]string{
 		"disc":        {"tpa"},
 		"has_picture": {"metadata_block_picture"},
 	})

@@ -75,7 +75,8 @@ type configOptions struct {
 }
 
 type scannerOptions struct {
-	Extractor string
+	Extractor       string
+	GenreSeparators string
 }
 
 type lastfmOptions struct {
@@ -225,6 +226,8 @@ func init() {
 	viper.SetDefault("reverseproxywhitelist", "")
 
 	viper.SetDefault("scanner.extractor", "taglib")
+	viper.SetDefault("scanner.genreseparators", ";/")
+
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
