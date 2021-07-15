@@ -98,7 +98,7 @@ func (r mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
 func cleanPath(path string) string {
 	path = filepath.Clean(path)
 	if !strings.HasSuffix(path, string(os.PathSeparator)) {
-		path = path + string(os.PathSeparator)
+		path += string(os.PathSeparator)
 	}
 	return path
 }

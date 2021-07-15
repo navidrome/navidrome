@@ -106,7 +106,7 @@ func (a *Agents) GetSimilar(ctx context.Context, id, name, mbid string, limit in
 			continue
 		}
 		similar, err := agent.GetSimilar(ctx, id, name, mbid, limit)
-		if len(similar) >= 0 && err == nil {
+		if len(similar) > 0 && err == nil {
 			log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similar", similar, "elapsed", time.Since(start))
 			return similar, err
 		}

@@ -47,8 +47,8 @@ func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate in
 func createTranscodeCommand(cmd, path string, maxBitRate int) []string {
 	split := strings.Split(cmd, " ")
 	for i, s := range split {
-		s = strings.Replace(s, "%s", path, -1)
-		s = strings.Replace(s, "%b", strconv.Itoa(maxBitRate), -1)
+		s = strings.ReplaceAll(s, "%s", path)
+		s = strings.ReplaceAll(s, "%b", strconv.Itoa(maxBitRate))
 		split[i] = s
 	}
 
