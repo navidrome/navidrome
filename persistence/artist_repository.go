@@ -213,14 +213,6 @@ func (r *artistRepository) refresh(ids ...string) error {
 	return err
 }
 
-func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Artists, error) {
-	sq := r.selectArtist(options...).Where("starred = true")
-	var dba []dbArtist
-	err := r.queryAll(sq, &dba)
-	starred := r.toModels(dba)
-	return starred, err
-}
-
 func (r *artistRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_artist_id) from album)")
 	c, err := r.executeSQL(del)
