@@ -25,26 +25,6 @@ type (
 	walkResults = chan dirStats
 )
 
-func fullReadDir(name string) ([]os.DirEntry, error) {
-	f, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	var allDirs []os.DirEntry
-	for {
-		dirs, err := f.ReadDir(-1)
-		allDirs = append(allDirs, dirs...)
-		if err == nil {
-			break
-		}
-		log.Warn("Skipping DirEntry", err)
-	}
-	sort.Slice(allDirs, func(i, j int) bool { return allDirs[i].Name() < allDirs[j].Name() })
-	return allDirs, nil
-}
-
 func walkDirTree(ctx context.Context, rootFolder string, results walkResults) error {
 	err := walkFolder(ctx, rootFolder, rootFolder, results)
 	if err != nil {
@@ -118,6 +98,22 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 		}
 	}
 	return children, stats, nil
+}
+
+func fullReadDir(name string) ([]os.DirEntry, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	dirs, err := f.ReadDir(-1)
+	if err != nil {
+		log.Warn("Skipping DirEntry", err)
+		return nil, nil
+	}
+	sort.Slice(dirs, func(i, j int) bool { return dirs[i].Name() < dirs[j].Name() })
+	return dirs, nil
 }
 
 // isDirOrSymlinkToDir returns true if and only if the dirEnt represents a file
