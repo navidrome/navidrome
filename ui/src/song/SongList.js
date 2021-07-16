@@ -1,10 +1,13 @@
 import React from 'react'
 import {
+  AutocompleteInput,
   Filter,
   FunctionField,
   NumberField,
+  ReferenceInput,
   SearchInput,
   TextField,
+  useTranslate,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
@@ -55,18 +58,30 @@ const useStyles = makeStyles({
   },
 })
 
-const SongFilter = (props) => (
-  <Filter {...props} variant={'outlined'}>
-    <SearchInput source="title" alwaysOn />
-    {config.enableFavourites && (
-      <QuickFilter
-        source="starred"
-        label={<FavoriteIcon fontSize={'small'} />}
-        defaultValue={true}
-      />
-    )}
-  </Filter>
-)
+const SongFilter = (props) => {
+  const translate = useTranslate()
+  return (
+    <Filter {...props} variant={'outlined'}>
+      <SearchInput source="title" alwaysOn />
+      <ReferenceInput
+        label={translate('resources.song.fields.genre')}
+        source="genre_id"
+        reference="genre"
+        sort={{ field: 'name', order: 'ASC' }}
+        filterToQuery={(searchText) => ({ name: [searchText] })}
+      >
+        <AutocompleteInput emptyText="-- None --" />
+      </ReferenceInput>
+      {config.enableFavourites && (
+        <QuickFilter
+          source="starred"
+          label={<FavoriteIcon fontSize={'small'} />}
+          defaultValue={true}
+        />
+      )}
+    </Filter>
+  )
+}
 
 const SongList = (props) => {
   const classes = useStyles()

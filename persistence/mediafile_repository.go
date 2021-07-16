@@ -38,7 +38,11 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 }
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.newSelectWithAnnotation("media_file.id"), options...)
+	sql := r.newSelectWithAnnotation("media_file.id")
+	sql = sql.LeftJoin("media_file_genres mfg on media_file.id = mfg.media_file_id").
+		LeftJoin("genre on mfg.genre_id = genre.id").
+		GroupBy("media_file.id")
+	return r.count(sql, options...)
 }
 
 func (r *mediaFileRepository) Exists(id string) (bool, error) {

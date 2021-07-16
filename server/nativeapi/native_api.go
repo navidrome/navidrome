@@ -37,6 +37,7 @@ func (n *Router) routes() http.Handler {
 	n.R(r, "/song", model.MediaFile{}, true)
 	n.R(r, "/album", model.Album{}, true)
 	n.R(r, "/artist", model.Artist{}, true)
+	n.R(r, "/genre", model.Genre{}, true)
 	n.R(r, "/player", model.Player{}, true)
 	n.R(r, "/playlist", model.Playlist{}, true)
 	n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
