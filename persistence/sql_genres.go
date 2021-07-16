@@ -81,3 +81,30 @@ func (r *sqlRepository) loadAlbumGenres(mfs *model.Albums) error {
 	}
 	return nil
 }
+
+func (r *sqlRepository) loadArtistGenres(mfs *model.Artists) error {
+	var ids []string
+	m := map[string]*model.Artist{}
+	for i := range *mfs {
+		mf := &(*mfs)[i]
+		ids = append(ids, mf.ID)
+		m[mf.ID] = mf
+	}
+
+	sql := Select("g.*", "ag.artist_id").From("genre g").Join("artist_genres ag on ag.genre_id = g.id").
+		Where(Eq{"ag.artist_id": ids}).OrderBy("ag.artist_id", "ag.rowid")
+	var genres []struct {
+		model.Genre
+		ArtistId string
+	}
+
+	err := r.queryAll(sql, &genres)
+	if err != nil {
+		return err
+	}
+	for _, g := range genres {
+		mf := m[g.ArtistId]
+		mf.Genres = append(mf.Genres, g.Genre)
+	}
+	return nil
+}

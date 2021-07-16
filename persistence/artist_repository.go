@@ -37,6 +37,7 @@ func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepositor
 		"name": "order_artist_name",
 	}
 	r.filterMappings = map[string]filterFunc{
+		"id":      idFilter(r.tableName),
 		"name":    fullTextFilter,
 		"starred": booleanFilter,
 	}
@@ -44,7 +45,7 @@ func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepositor
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelectWithAnnotation("artist.id", options...).Columns("*")
+	return r.newSelectWithAnnotation("artist.id", options...).Columns("artist.*")
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
@@ -52,18 +53,24 @@ func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"id": id}))
+	return r.exists(Select().Where(Eq{"artist.id": id}))
 }
 
 func (r *artistRepository) Put(a *model.Artist) error {
+	genres := a.Genres
+	a.Genres = nil
+	defer func() { a.Genres = genres }()
 	a.FullText = getFullText(a.Name, a.SortArtistName)
 	dba := r.fromModel(a)
 	_, err := r.put(dba.ID, dba)
-	return err
+	if err != nil {
+		return err
+	}
+	return r.updateGenres(a.ID, r.tableName, genres)
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
-	sel := r.selectArtist().Where(Eq{"id": id})
+	sel := r.selectArtist().Where(Eq{"artist.id": id})
 	var dba []dbArtist
 	if err := r.queryAll(sel, &dba); err != nil {
 		return nil, err
@@ -72,14 +79,22 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 		return nil, model.ErrNotFound
 	}
 	res := r.toModels(dba)
-	return &res[0], nil
+	err := r.loadArtistGenres(&res)
+	return &res[0], err
 }
 
 func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists, error) {
-	sel := r.selectArtist(options...)
+	sel := r.selectArtist(options...).
+		LeftJoin("artist_genres ag on artist.id = ag.artist_id").
+		LeftJoin("genre on ag.genre_id = genre.id").
+		GroupBy("artist.id")
 	var dba []dbArtist
 	err := r.queryAll(sel, &dba)
+	if err != nil {
+		return nil, err
+	}
 	res := r.toModels(dba)
+	err = r.loadArtistGenres(&res)
 	return res, err
 }
 
@@ -175,14 +190,17 @@ func (r *artistRepository) refresh(ids ...string) error {
 	type refreshArtist struct {
 		model.Artist
 		CurrentId string
+		GenreIds  string
 	}
 	var artists []refreshArtist
 	sel := Select("f.album_artist_id as id", "f.album_artist as name", "count(*) as album_count", "a.id as current_id",
 		"group_concat(f.mbz_album_artist_id , ' ') as mbz_artist_id",
 		"f.sort_album_artist_name as sort_artist_name", "f.order_album_artist_name as order_artist_name",
-		"sum(f.song_count) as song_count", "sum(f.size) as size").
+		"sum(f.song_count) as song_count", "sum(f.size) as size",
+		"group_concat(ag.genre_id, ' ') as genre_ids").
 		From("album f").
 		LeftJoin("artist a on f.album_artist_id = a.id").
+		LeftJoin("album_genres ag on ag.album_id = f.id").
 		Where(Eq{"f.album_artist_id": ids}).
 		GroupBy("f.album_artist_id").OrderBy("f.id")
 	err := r.queryAll(sel, &artists)
@@ -199,6 +217,7 @@ func (r *artistRepository) refresh(ids ...string) error {
 			toInsert++
 		}
 		ar.MbzArtistID = getMostFrequentMbzID(r.ctx, ar.MbzArtistID, r.tableName, ar.Name)
+		ar.Genres = getGenres(ar.GenreIds)
 		err := r.Put(&ar.Artist)
 		if err != nil {
 			return err
@@ -254,7 +273,7 @@ func (r *artistRepository) NewInstance() interface{} {
 }
 
 func (r artistRepository) Delete(id string) error {
-	return r.delete(Eq{"id": id})
+	return r.delete(Eq{"artist.id": id})
 }
 
 func (r artistRepository) Save(entity interface{}) (string, error) {

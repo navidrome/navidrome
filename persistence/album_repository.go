@@ -38,6 +38,7 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 		"recently_added": recentlyAddedSort(),
 	}
 	r.filterMappings = map[string]filterFunc{
+		"id":              idFilter(r.tableName),
 		"name":            fullTextFilter,
 		"compilation":     booleanFilter,
 		"artist_id":       artistFilter,
@@ -265,20 +266,6 @@ func (r *albumRepository) refresh(ids ...string) error {
 		log.Debug(r.ctx, "Updated albums", "totalUpdated", toUpdate)
 	}
 	return err
-}
-
-func getGenres(genreIds string) model.Genres {
-	ids := strings.Fields(genreIds)
-	var genres model.Genres
-	unique := map[string]struct{}{}
-	for _, id := range ids {
-		if _, ok := unique[id]; ok {
-			continue
-		}
-		genres = append(genres, model.Genre{ID: id})
-		unique[id] = struct{}{}
-	}
-	return genres
 }
 
 func getAlbumArtist(al refreshAlbum) (id, name string) {
