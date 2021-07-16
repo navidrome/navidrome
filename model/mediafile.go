@@ -28,6 +28,7 @@ type MediaFile struct {
 	Duration             float32   `json:"duration"`
 	BitRate              int       `json:"bitRate"`
 	Genre                string    `json:"genre"`
+	Genres               Genres    `json:"genres"`
 	FullText             string    `json:"fullText"`
 	SortTitle            string    `json:"sortTitle,omitempty"`
 	SortAlbumName        string    `json:"sortAlbumName,omitempty"`
