@@ -45,9 +45,7 @@ type AlbumRepository interface {
 	Exists(id string) (bool, error)
 	Put(*Album) error
 	Get(id string) (*Album, error)
-	FindByArtist(albumArtistId string) (Albums, error)
 	GetAll(...QueryOptions) (Albums, error)
-	GetRandom(...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
 	Refresh(ids ...string) error
 	AnnotatedRepository

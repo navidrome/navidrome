@@ -64,11 +64,9 @@ type MediaFileRepository interface {
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
-	FindByAlbum(albumId string) (MediaFiles, error)
 	FindAllByPath(path string) (MediaFiles, error)
 	FindByPath(path string) (*MediaFile, error)
 	FindPathsRecursively(basePath string) ([]string, error)
-	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	DeleteByPath(path string) (int64, error)

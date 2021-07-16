@@ -30,7 +30,10 @@ type archiver struct {
 type createHeader func(idx int, mf model.MediaFile) *zip.FileHeader
 
 func (a *archiver) ZipAlbum(ctx context.Context, id string, out io.Writer) error {
-	mfs, err := a.ds.MediaFile(ctx).FindByAlbum(id)
+	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Eq{"album_id": id},
+		Sort:    "album",
+	})
 	if err != nil {
 		log.Error(ctx, "Error loading mediafiles from album", "id", id, err)
 		return err

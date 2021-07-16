@@ -48,6 +48,13 @@ func AlbumsByGenre(genre string) Options {
 	}
 }
 
+func AlbumsByArtistID(artistId string) Options {
+	return Options{
+		Sort:    "max_year",
+		Filters: squirrel.Eq{"album_artist_id": artistId},
+	}
+}
+
 func AlbumsByYear(fromYear, toYear int) Options {
 	sortOption := "max_year, name"
 	if fromYear > toYear {
@@ -73,6 +80,13 @@ func SongsByGenre(genre string) Options {
 	return Options{
 		Sort:    "genre.name asc, title asc",
 		Filters: squirrel.Eq{"genre.name": genre},
+	}
+}
+
+func SongsByAlbum(albumId string) Options {
+	return Options{
+		Filters: squirrel.Eq{"album_id": albumId},
+		Sort:    "album",
 	}
 }
 

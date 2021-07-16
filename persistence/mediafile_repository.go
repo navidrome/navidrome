@@ -90,14 +90,6 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	return res, err
 }
 
-func (r *mediaFileRepository) FindByAlbum(albumId string) (model.MediaFiles, error) {
-	options := model.QueryOptions{
-		Filters: Eq{"album_id": albumId},
-		Sort:    "album",
-	}
-	return r.GetAll(options)
-}
-
 func (r *mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
 	sel := r.selectMediaFile().Where(Eq{"path": path})
 	var res model.MediaFiles
@@ -159,15 +151,6 @@ func (r *mediaFileRepository) deleteNotInPath(basePath string) error {
 		}
 	}
 	return err
-}
-
-// TODO Keep order when paginating
-func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
-	if len(options) == 0 {
-		options = []model.QueryOptions{{}}
-	}
-	options[0].Sort = "random()"
-	return r.GetAll(options...)
 }
 
 func (r *mediaFileRepository) Delete(id string) error {
