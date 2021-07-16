@@ -161,14 +161,6 @@ func (r *mediaFileRepository) deleteNotInPath(basePath string) error {
 	return err
 }
 
-func (r *mediaFileRepository) GetStarred(options ...model.QueryOptions) (model.MediaFiles, error) {
-	if len(options) == 0 {
-		options = []model.QueryOptions{{}}
-	}
-	options[0].Filters = Eq{"starred": true}
-	return r.GetAll(options...)
-}
-
 // TODO Keep order when paginating
 func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
 	if len(options) == 0 {
