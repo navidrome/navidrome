@@ -1,11 +1,14 @@
 import React, { useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
+  AutocompleteInput,
   Datagrid,
   Filter,
   NumberField,
+  ReferenceInput,
   SearchInput,
   TextField,
+  useTranslate,
 } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
@@ -49,18 +52,30 @@ const useStyles = makeStyles({
   },
 })
 
-const ArtistFilter = (props) => (
-  <Filter {...props} variant={'outlined'}>
-    <SearchInput source="name" alwaysOn />
-    {config.enableFavourites && (
-      <QuickFilter
-        source="starred"
-        label={<FavoriteIcon fontSize={'small'} />}
-        defaultValue={true}
-      />
-    )}
-  </Filter>
-)
+const ArtistFilter = (props) => {
+  const translate = useTranslate()
+  return (
+    <Filter {...props} variant={'outlined'}>
+      <SearchInput source="name" alwaysOn />
+      <ReferenceInput
+        label={translate('resources.artist.fields.genre')}
+        source="genre_id"
+        reference="genre"
+        sort={{ field: 'name', order: 'ASC' }}
+        filterToQuery={(searchText) => ({ name: [searchText] })}
+      >
+        <AutocompleteInput emptyText="-- None --" />
+      </ReferenceInput>
+      {config.enableFavourites && (
+        <QuickFilter
+          source="starred"
+          label={<FavoriteIcon fontSize={'small'} />}
+          defaultValue={true}
+        />
+      )}
+    </Filter>
+  )
+}
 
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const classes = useStyles()

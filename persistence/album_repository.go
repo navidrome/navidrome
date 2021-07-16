@@ -82,7 +82,12 @@ func artistFilter(field string, value interface{}) Sqlizer {
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.selectAlbum(), options...)
+	sql := r.selectAlbum()
+	sql = sql.LeftJoin("album_genres ag on album.id = ag.album_id").
+		LeftJoin("genre on ag.genre_id = genre.id").
+		GroupBy("album.id")
+
+	return r.count(sql, options...)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
