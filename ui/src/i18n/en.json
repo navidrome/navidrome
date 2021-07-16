@@ -76,6 +76,7 @@
         "albumCount": "Album Count",
         "songCount": "Song Count",
         "playCount": "Plays",
+        "genre": "Genre",
         "rating": "Rating"
       }
     },

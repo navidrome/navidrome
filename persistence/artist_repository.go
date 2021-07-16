@@ -49,7 +49,11 @@ func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBui
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.newSelectWithAnnotation("artist.id"), options...)
+	sql := r.newSelectWithAnnotation("artist.id")
+	sql = sql.LeftJoin("artist_genres ag on artist.id = ag.artist_id").
+		LeftJoin("genre on ag.genre_id = genre.id").
+		GroupBy("artist.id")
+	return r.count(sql, options...)
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {
