@@ -89,3 +89,17 @@ func getMostFrequentMbzID(ctx context.Context, mbzIDs, entityName, name string) 
 	}
 	return topId
 }
+
+func getGenres(genreIds string) model.Genres {
+	ids := strings.Fields(genreIds)
+	var genres model.Genres
+	unique := map[string]struct{}{}
+	for _, id := range ids {
+		if _, ok := unique[id]; ok {
+			continue
+		}
+		genres = append(genres, model.Genre{ID: id})
+		unique[id] = struct{}{}
+	}
+	return genres
+}

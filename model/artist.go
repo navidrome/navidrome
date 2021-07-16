@@ -9,6 +9,7 @@ type Artist struct {
 	Name                  string    `json:"name"`
 	AlbumCount            int       `json:"albumCount"`
 	SongCount             int       `json:"songCount"`
+	Genres                Genres    `json:"genres"`
 	FullText              string    `json:"fullText"`
 	SortArtistName        string    `json:"sortArtistName,omitempty"`
 	OrderArtistName       string    `json:"orderArtistName"`
