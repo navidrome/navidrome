@@ -66,7 +66,7 @@ var _ = Describe("Tags", func() {
 			md := &Tags{}
 			md.tags = map[string][]string{
 				"genre":  {"Rock", "Pop"},
-				"_genre": {"New Wave", "Rock"},
+				"_genre": {"New Wave"},
 			}
 			md.custom = map[string][]string{"genre": {"_genre"}}
 

@@ -71,8 +71,8 @@ func AlbumsByYear(fromYear, toYear int) Options {
 
 func SongsByGenre(genre string) Options {
 	return Options{
-		Sort:    "genre asc, title asc",
-		Filters: squirrel.Eq{"genre": genre},
+		Sort:    "genre.name asc, title asc",
+		Filters: squirrel.Eq{"genre.name": genre},
 	}
 }
 
@@ -82,7 +82,7 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	}
 	ff := squirrel.And{}
 	if genre != "" {
-		ff = append(ff, squirrel.Eq{"genre": genre})
+		ff = append(ff, squirrel.Eq{"genre.name": genre})
 	}
 	if fromYear != 0 {
 		ff = append(ff, squirrel.GtOrEq{"year": fromYear})
