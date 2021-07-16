@@ -3,6 +3,8 @@ package persistence
 import (
 	"context"
 
+	"github.com/navidrome/navidrome/log"
+
 	"github.com/deluan/rest"
 
 	. "github.com/Masterminds/squirrel"
@@ -66,6 +68,25 @@ func (r *genreRepository) EntityName() string {
 
 func (r *genreRepository) NewInstance() interface{} {
 	return &model.Genre{}
+}
+
+func (r *genreRepository) purgeEmpty() error {
+	del := Delete(r.tableName).Where(`id in (
+select genre.id from genre
+left join album_genres ag on genre.id = ag.genre_id
+left join artist_genres a on genre.id = a.genre_id
+left join media_file_genres mfg on genre.id = mfg.genre_id
+where ag.genre_id is null
+and a.genre_id is null
+and mfg.genre_id is null
+)`)
+	c, err := r.executeSQL(del)
+	if err == nil {
+		if c > 0 {
+			log.Debug(r.ctx, "Purged unused genres", "totalDeleted", c)
+		}
+	}
+	return err
 }
 
 var _ model.GenreRepository = (*genreRepository)(nil)
