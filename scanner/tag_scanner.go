@@ -20,16 +20,15 @@ import (
 type TagScanner struct {
 	rootFolder  string
 	ds          model.DataStore
-	mapper      *mediaFileMapper
+	cacheWarmer core.CacheWarmer
 	plsSync     *playlistSync
 	cnt         *counters
-	cacheWarmer core.CacheWarmer
+	mapper      *mediaFileMapper
 }
 
 func NewTagScanner(rootFolder string, ds model.DataStore, cacheWarmer core.CacheWarmer) *TagScanner {
 	return &TagScanner{
 		rootFolder:  rootFolder,
-		mapper:      newMediaFileMapper(rootFolder),
 		plsSync:     newPlaylistSync(ds),
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
@@ -83,6 +82,8 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	allFSDirs := dirMap{}
 	var changedDirs []string
 	s.cnt = &counters{}
+	genres := newCachedGenreRepository(ctx, s.ds.Genre(ctx))
+	s.mapper = newMediaFileMapper(s.rootFolder, genres)
 
 	foldersFound, walkerError := s.getRootFolderWalker(ctx)
 	for {

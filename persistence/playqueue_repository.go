@@ -119,7 +119,7 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 	mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
 	trackMap := map[string]model.MediaFile{}
 	for i := range chunks {
-		idsFilter := Eq{"id": chunks[i]}
+		idsFilter := Eq{"media_file.id": chunks[i]}
 		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: idsFilter})
 		if err != nil {
 			u := loggedUser(r.ctx)

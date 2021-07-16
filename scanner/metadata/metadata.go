@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type Extractor interface {
@@ -138,7 +137,7 @@ func (t *Tags) getAllTagValues(tagNames ...string) []string {
 			values = append(values, v...)
 		}
 	}
-	return utils.UniqueStrings(values)
+	return values
 }
 
 func (t *Tags) getSortTag(originalTag string, tagNamess ...string) string {

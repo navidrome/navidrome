@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
@@ -147,6 +148,17 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.FindAllByPath(P("/music/overlap/Ella Fitzgerald"))).To(HaveLen(2))
 		Expect(mr.DeleteByPath(P("/music/overlap/Ella Fitzgerald"))).To(Equal(int64(2)))
 		Expect(mr.FindAllByPath(P("/music/overlap"))).To(HaveLen(1))
+	})
+
+	It("filters by genre", func() {
+		Expect(mr.GetAll(model.QueryOptions{
+			Sort:    "genre.name asc, title asc",
+			Filters: squirrel.Eq{"genre.name": "Rock"},
+		})).To(Equal(model.MediaFiles{
+			songDayInALife,
+			songAntenna,
+			songComeTogether,
+		}))
 	})
 
 	Context("Annotations", func() {
