@@ -116,15 +116,6 @@ func (r *albumRepository) Put(m *model.Album) error {
 	return r.updateGenres(m.ID, r.tableName, genres)
 }
 
-func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
-	options := model.QueryOptions{
-		Sort:    "max_year",
-		Filters: Eq{"album_artist_id": artistId},
-	}
-
-	return r.GetAll(options)
-}
-
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
 	sq := r.selectAlbum(options...).
 		LeftJoin("album_genres ag on album.id = ag.album_id").
@@ -137,15 +128,6 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	}
 	err = r.loadAlbumGenres(&res)
 	return res, err
-}
-
-// TODO Keep order when paginating
-func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums, error) {
-	if len(options) == 0 {
-		options = []model.QueryOptions{{}}
-	}
-	options[0].Sort = "random()"
-	return r.GetAll(options...)
 }
 
 // Return a map of mediafiles that have embedded covers for the given album ids

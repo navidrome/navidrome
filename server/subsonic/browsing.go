@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
@@ -150,7 +151,7 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 		return nil, err
 	}
 
-	albums, err := c.ds.Album(ctx).FindByArtist(id)
+	albums, err := c.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(id))
 	if err != nil {
 		log.Error(ctx, "Error retrieving albums by artist", "id", id, "name", artist.Name, err)
 		return nil, err
@@ -175,7 +176,7 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 		return nil, err
 	}
 
-	mfs, err := c.ds.MediaFile(ctx).FindByAlbum(id)
+	mfs, err := c.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(id))
 	if err != nil {
 		log.Error(ctx, "Error retrieving tracks from album", "id", id, "name", album.Name, err)
 		return nil, err
@@ -341,7 +342,7 @@ func (c *BrowsingController) buildArtistDirectory(ctx context.Context, artist *m
 		dir.Starred = &artist.StarredAt
 	}
 
-	albums, err := c.ds.Album(ctx).FindByArtist(artist.ID)
+	albums, err := c.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +371,7 @@ func (c *BrowsingController) buildAlbumDirectory(ctx context.Context, album *mod
 		dir.Starred = &album.StarredAt
 	}
 
-	mfs, err := c.ds.MediaFile(ctx).FindByAlbum(album.ID)
+	mfs, err := c.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(album.ID))
 	if err != nil {
 		return nil, err
 	}

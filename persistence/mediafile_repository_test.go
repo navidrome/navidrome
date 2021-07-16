@@ -41,17 +41,6 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.Exists("666")).To(BeFalse())
 	})
 
-	It("find mediafiles by album", func() {
-		Expect(mr.FindByAlbum("103")).To(Equal(model.MediaFiles{
-			songAntenna,
-			songRadioactivity,
-		}))
-	})
-
-	It("returns empty array when no tracks are found", func() {
-		Expect(mr.FindByAlbum("67")).To(Equal(model.MediaFiles{}))
-	})
-
 	It("finds tracks by path when using wildcards chars", func() {
 		Expect(mr.Put(&model.MediaFile{ID: "7001", Path: P("/Find:By'Path/_/123.mp3")})).To(BeNil())
 		Expect(mr.Put(&model.MediaFile{ID: "7002", Path: P("/Find:By'Path/1/123.mp3")})).To(BeNil())
