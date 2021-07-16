@@ -89,7 +89,7 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelectWithAnnotation("album.id", options...).Columns("*")
+	return r.newSelectWithAnnotation("album.id", options...).Columns("album.*")
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
@@ -101,30 +101,51 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 	if len(res) == 0 {
 		return nil, model.ErrNotFound
 	}
-	return &res[0], nil
+	err := r.loadAlbumGenres(&res)
+	return &res[0], err
+}
+
+func (r *albumRepository) Put(m *model.Album) error {
+	genres := m.Genres
+	m.Genres = nil
+	defer func() { m.Genres = genres }()
+	_, err := r.put(m.ID, m)
+	if err != nil {
+		return err
+	}
+	return r.updateGenres(m.ID, r.tableName, genres)
 }
 
 func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
-	sq := r.selectAlbum().Where(Eq{"album_artist_id": artistId}).OrderBy("max_year")
-	res := model.Albums{}
-	err := r.queryAll(sq, &res)
-	return res, err
+	options := model.QueryOptions{
+		Sort:    "max_year",
+		Filters: Eq{"album_artist_id": artistId},
+	}
+
+	return r.GetAll(options)
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
-	sq := r.selectAlbum(options...)
+	sq := r.selectAlbum(options...).
+		LeftJoin("album_genres ag on album.id = ag.album_id").
+		LeftJoin("genre on ag.genre_id = genre.id").
+		GroupBy("album.id")
 	res := model.Albums{}
 	err := r.queryAll(sq, &res)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadAlbumGenres(&res)
 	return res, err
 }
 
 // TODO Keep order when paginating
 func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums, error) {
-	sq := r.selectAlbum(options...)
-	sq = sq.OrderBy("RANDOM()")
-	results := model.Albums{}
-	err := r.queryAll(sq, &results)
-	return results, err
+	if len(options) == 0 {
+		options = []model.QueryOptions{{}}
+	}
+	options[0].Sort = "random()"
+	return r.GetAll(options...)
 }
 
 // Return a map of mediafiles that have embedded covers for the given album ids
@@ -164,6 +185,7 @@ type refreshAlbum struct {
 	SongArtists    string
 	SongArtistIds  string
 	AlbumArtistIds string
+	GenreIds       string
 	Years          string
 	DiscSubtitles  string
 	Comments       string
@@ -190,9 +212,11 @@ func (r *albumRepository) refresh(ids ...string) error {
 		group_concat(f.artist, ' ') as song_artists, 
 		group_concat(f.artist_id, ' ') as song_artist_ids, 
 		group_concat(f.album_artist_id, ' ') as album_artist_ids, 
-		group_concat(f.year, ' ') as years`).
+		group_concat(f.year, ' ') as years,
+		group_concat(mg.genre_id, ' ') as genre_ids`).
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
+		LeftJoin("media_file_genres mg on mg.media_file_id = f.id").
 		Where(Eq{"f.album_id": ids}).GroupBy("f.album_id")
 	err := r.queryAll(sel, &albums)
 	if err != nil {
@@ -246,7 +270,8 @@ func (r *albumRepository) refresh(ids ...string) error {
 		al.AllArtistIDs = utils.SanitizeStrings(al.SongArtistIds, al.AlbumArtistID, al.ArtistID)
 		al.FullText = getFullText(al.Name, al.Artist, al.AlbumArtist, al.SongArtists,
 			al.SortAlbumName, al.SortArtistName, al.SortAlbumArtistName, al.DiscSubtitles)
-		_, err := r.put(al.ID, al.Album)
+		al.Genres = getGenres(al.GenreIds)
+		err := r.Put(&al.Album)
 		if err != nil {
 			return err
 		}
@@ -258,6 +283,20 @@ func (r *albumRepository) refresh(ids ...string) error {
 		log.Debug(r.ctx, "Updated albums", "totalUpdated", toUpdate)
 	}
 	return err
+}
+
+func getGenres(genreIds string) model.Genres {
+	ids := strings.Fields(genreIds)
+	var genres model.Genres
+	unique := map[string]struct{}{}
+	for _, id := range ids {
+		if _, ok := unique[id]; ok {
+			continue
+		}
+		genres = append(genres, model.Genre{ID: id})
+		unique[id] = struct{}{}
+	}
+	return genres
 }
 
 func getAlbumArtist(al refreshAlbum) (id, name string) {
@@ -356,13 +395,6 @@ func (r *albumRepository) purgeEmpty() error {
 		}
 	}
 	return err
-}
-
-func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Albums, error) {
-	sq := r.selectAlbum(options...).Where("starred = true")
-	starred := model.Albums{}
-	err := r.queryAll(sq, &starred)
-	return starred, err
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {

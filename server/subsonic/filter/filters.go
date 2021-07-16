@@ -7,7 +7,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-type Options model.QueryOptions
+type Options = model.QueryOptions
 
 func AlbumsByNewest() Options {
 	return Options{Sort: "recently_added", Order: "desc"}
@@ -43,8 +43,8 @@ func AlbumsByRating() Options {
 
 func AlbumsByGenre(genre string) Options {
 	return Options{
-		Sort:    "genre asc, name asc",
-		Filters: squirrel.Eq{"genre": genre},
+		Sort:    "genre.name asc, name asc",
+		Filters: squirrel.Eq{"genre.name": genre},
 	}
 }
 
@@ -92,4 +92,8 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	}
 	options.Filters = ff
 	return options
+}
+
+func Starred() Options {
+	return Options{Sort: "starred_at", Order: "desc", Filters: squirrel.Eq{"starred": true}}
 }
