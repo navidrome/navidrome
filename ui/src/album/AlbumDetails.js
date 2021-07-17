@@ -8,7 +8,13 @@ import {
   Typography,
   useMediaQuery,
 } from '@material-ui/core'
-import { useTranslate } from 'react-admin'
+import {
+  useRecordContext,
+  useTranslate,
+  ArrayField,
+  SingleFieldList,
+  ChipField,
+} from 'react-admin'
 import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
@@ -22,6 +28,7 @@ import {
   RatingField,
 } from '../common'
 import config from '../config'
+import { intersperse } from '../utils'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -85,6 +92,9 @@ const useStyles = makeStyles(
     recordName: {},
     recordArtist: {},
     recordMeta: {},
+    genreList: {
+      marginTop: theme.spacing(1),
+    },
   }),
   {
     name: 'NDAlbumDetails',
@@ -126,23 +136,49 @@ const AlbumComment = ({ record }) => {
   )
 }
 
-const AlbumDetails = ({ record }) => {
+const GenreList = () => {
+  const classes = useStyles()
+  return (
+    <ArrayField className={classes.genreList} source={'genres'}>
+      <SingleFieldList linkType={false}>
+        <ChipField source="name" />
+      </SingleFieldList>
+    </ArrayField>
+  )
+}
+
+const Details = (props) => {
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const translate = useTranslate()
+  const record = useRecordContext(props)
+  let details = []
+  const addDetail = (obj) => {
+    const id = details.length
+    details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>)
+  }
+
+  const year = formatRange(record, 'year')
+  year && addDetail(<>{year}</>)
+  addDetail(
+    <>
+      {record.songCount +
+        ' ' +
+        translate('resources.song.name', {
+          smart_count: record.songCount,
+        })}
+    </>
+  )
+  !isXsmall && addDetail(<DurationField source={'duration'} />)
+  !isXsmall && addDetail(<SizeField source="size" />)
+
+  return <>{intersperse(details, ' · ')}</>
+}
+
+const AlbumDetails = (props) => {
+  const record = useRecordContext(props)
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
-  const translate = useTranslate()
-
-  const genreYear = (record) => {
-    let genreDateLine = []
-    if (record.genre) {
-      genreDateLine.push(record.genre)
-    }
-    const year = formatRange(record, 'year')
-    if (year) {
-      genreDateLine.push(year)
-    }
-    return genreDateLine.join(' · ')
-  }
 
   const imageUrl = subsonic.getCoverArtUrl(record, 300)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
@@ -188,16 +224,7 @@ const AlbumDetails = ({ record }) => {
               <ArtistLinkField record={record} />
             </Typography>
             <Typography component="p" className={classes.recordMeta}>
-              {genreYear(record)}
-            </Typography>
-            <Typography component="p" className={classes.recordMeta}>
-              {record.songCount}{' '}
-              {translate('resources.song.name', {
-                smart_count: record.songCount,
-              })}
-              {' · '} <DurationField record={record} source={'duration'} />{' '}
-              {' · '}
-              <SizeField record={record} source="size" />
+              <Details />
             </Typography>
             {config.enableStarRating && (
               <div>
@@ -208,6 +235,7 @@ const AlbumDetails = ({ record }) => {
                 />
               </div>
             )}
+            <GenreList />
             {isDesktop && record['comment'] && <AlbumComment record={record} />}
           </CardContent>
         </div>

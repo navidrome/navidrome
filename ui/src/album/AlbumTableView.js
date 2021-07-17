@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react'
-import Paper from '@material-ui/core/Paper'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import inflection from 'inflection'
@@ -7,12 +6,15 @@ import TableCell from '@material-ui/core/TableCell'
 import TableContainer from '@material-ui/core/TableContainer'
 import TableRow from '@material-ui/core/TableRow'
 import {
+  ArrayField,
   BooleanField,
+  ChipField,
   Datagrid,
   DateField,
   NumberField,
-  Show,
+  SingleFieldList,
   TextField,
+  useRecordContext,
   useTranslate,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
@@ -60,43 +62,50 @@ const useStyles = makeStyles({
 const AlbumDetails = (props) => {
   const classes = useStyles()
   const translate = useTranslate()
-  const { record } = props
+  const record = useRecordContext(props)
   const data = {
-    albumArtist: <TextField record={record} source="albumArtist" />,
-    genre: <TextField record={record} source="genre" />,
-    compilation: <BooleanField record={record} source="compilation" />,
-    updatedAt: <DateField record={record} source="updatedAt" showTime />,
-    comment: <MultiLineTextField record={record} source="comment" />,
+    albumArtist: <TextField source={'albumArtist'} />,
+    genre: (
+      <ArrayField source={'genres'}>
+        <SingleFieldList linkType={false}>
+          <ChipField source={'name'} />
+        </SingleFieldList>
+      </ArrayField>
+    ),
+    compilation: <BooleanField source={'compilation'} />,
+    updatedAt: <DateField source={'updatedAt'} showTime />,
+    comment: <MultiLineTextField source={'comment'} />,
   }
-  if (!record.comment) {
-    delete data.comment
-  }
+
+  const optionalFields = ['comment', 'genre']
+  optionalFields.forEach((field) => {
+    !record[field] && delete data[field]
+  })
+
   return (
-    <Show {...props} title=" ">
-      <TableContainer component={Paper}>
-        <Table aria-label="album details" size="small">
-          <TableBody>
-            {Object.keys(data).map((key) => {
-              return (
-                <TableRow key={`${record.id}-${key}`}>
-                  <TableCell
-                    component="th"
-                    scope="row"
-                    className={classes.tableCell}
-                  >
-                    {translate(`resources.album.fields.${key}`, {
-                      _: inflection.humanize(inflection.underscore(key)),
-                    })}
-                    :
-                  </TableCell>
-                  <TableCell align="left">{data[key]}</TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Show>
+    <TableContainer>
+      <Table aria-label="album details" size="small">
+        <TableBody>
+          {Object.keys(data).map((key) => {
+            return (
+              <TableRow key={`${record.id}-${key}`}>
+                <TableCell
+                  component="th"
+                  scope="row"
+                  className={classes.tableCell}
+                >
+                  {translate(`resources.album.fields.${key}`, {
+                    _: inflection.humanize(inflection.underscore(key)),
+                  })}
+                  :
+                </TableCell>
+                <TableCell align="left">{data[key]}</TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
   )
 }
 
