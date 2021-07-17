@@ -20,11 +20,6 @@ var _ = Describe("LastFM responses", func() {
 			Expect(resp.Artist.MBID).To(Equal("a3cb23fc-acd3-4ce0-8f36-1e5aa6a18432"))
 			Expect(resp.Artist.URL).To(Equal("https://www.last.fm/music/U2"))
 			Expect(resp.Artist.Bio.Summary).To(ContainSubstring("U2 é uma das mais importantes bandas de rock de todos os tempos"))
-
-			similarArtists := []string{"Passengers", "INXS", "R.E.M.", "Simple Minds", "Bono"}
-			for i, similar := range similarArtists {
-				Expect(resp.Artist.Similar.Artists[i].Name).To(Equal(similar))
-			}
 		})
 	})
 
