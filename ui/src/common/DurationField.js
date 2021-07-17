@@ -1,8 +1,10 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { formatDuration } from '../utils'
+import { useRecordContext } from 'react-admin'
 
-export const DurationField = ({ record = {}, source }) => {
+export const DurationField = ({ source, ...rest }) => {
+  const record = useRecordContext(rest)
   try {
     return <span>{formatDuration(record[source])}</span>
   } catch (e) {

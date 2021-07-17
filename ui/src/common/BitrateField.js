@@ -1,7 +1,9 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import { useRecordContext } from 'react-admin'
 
-export const BitrateField = ({ record = {}, source }) => {
+export const BitrateField = ({ source, ...rest }) => {
+  const record = useRecordContext(rest)
   return <span>{`${record[source]} kbps`}</span>
 }
 

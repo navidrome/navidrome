@@ -1,5 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import { useRecordContext } from 'react-admin'
 
 export const formatRange = (record, source) => {
   const nameCapitalized = source.charAt(0).toUpperCase() + source.slice(1)
@@ -15,7 +16,8 @@ export const formatRange = (record, source) => {
   return range.join('-')
 }
 
-export const RangeField = ({ className, record = {}, source }) => {
+export const RangeField = ({ className, source, ...rest }) => {
+  const record = useRecordContext(rest)
   return <span className={className}>{formatRange(record, source)}</span>
 }
 

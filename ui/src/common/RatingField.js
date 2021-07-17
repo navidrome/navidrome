@@ -5,6 +5,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import clsx from 'clsx'
 import { useRating } from './useRating'
+import { useRecordContext } from 'react-admin'
 
 const useStyles = makeStyles({
   rating: {
@@ -21,14 +22,15 @@ const useStyles = makeStyles({
 
 export const RatingField = ({
   resource,
-  record,
   visible,
   className,
   size,
   color,
+  ...rest
 }) => {
+  const record = useRecordContext(rest) || {}
   const [rate, rating] = useRating(resource, record)
-  const classes = useStyles({ visible, rating: record.rating, color })
+  const classes = useStyles({ color, visible })
 
   const stopPropagation = (e) => {
     e.stopPropagation()
@@ -60,13 +62,12 @@ export const RatingField = ({
 }
 RatingField.propTypes = {
   resource: PropTypes.string.isRequired,
-  record: PropTypes.object.isRequired,
+  record: PropTypes.object,
   visible: PropTypes.bool,
   size: PropTypes.string,
 }
 
 RatingField.defaultProps = {
-  record: {},
   visible: true,
   size: 'small',
   color: 'inherit',
