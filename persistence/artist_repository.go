@@ -45,14 +45,13 @@ func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepositor
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelectWithAnnotation("artist.id", options...).Columns("artist.*")
+	sql := r.newSelectWithAnnotation("artist.id", options...).Columns("artist.*")
+	return r.withGenres(sql).GroupBy("artist.id")
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("artist.id")
-	sql = sql.LeftJoin("artist_genres ag on artist.id = ag.artist_id").
-		LeftJoin("genre on ag.genre_id = genre.id").
-		GroupBy("artist.id")
+	sql = r.withGenres(sql)
 	return r.count(sql, options...)
 }
 
@@ -88,10 +87,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 }
 
 func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists, error) {
-	sel := r.selectArtist(options...).
-		LeftJoin("artist_genres ag on artist.id = ag.artist_id").
-		LeftJoin("genre on ag.genre_id = genre.id").
-		GroupBy("artist.id")
+	sel := r.selectArtist(options...)
 	var dba []dbArtist
 	err := r.queryAll(sel, &dba)
 	if err != nil {

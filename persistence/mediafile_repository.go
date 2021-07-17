@@ -39,9 +39,7 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("media_file.id")
-	sql = sql.LeftJoin("media_file_genres mfg on media_file.id = mfg.media_file_id").
-		LeftJoin("genre on mfg.genre_id = genre.id").
-		GroupBy("media_file.id")
+	sql = r.withGenres(sql)
 	return r.count(sql, options...)
 }
 
@@ -64,7 +62,8 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
-	return r.withBookmark(sql, "media_file.id")
+	sql = r.withBookmark(sql, "media_file.id")
+	return r.withGenres(sql).GroupBy("media_file.id")
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
@@ -81,10 +80,7 @@ func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 }
 
 func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
-	sq := r.selectMediaFile(options...).
-		LeftJoin("media_file_genres mfg on media_file.id = mfg.media_file_id").
-		LeftJoin("genre on mfg.genre_id = genre.id").
-		GroupBy("media_file.id")
+	sq := r.selectMediaFile(options...)
 	res := model.MediaFiles{}
 	err := r.queryAll(sq, &res)
 	if err != nil {
