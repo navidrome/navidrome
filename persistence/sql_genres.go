@@ -5,6 +5,11 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
+func (r sqlRepository) withGenres(sql SelectBuilder) SelectBuilder {
+	return sql.LeftJoin(r.tableName + "_genres ag on " + r.tableName + ".id = ag." + r.tableName + "_id").
+		LeftJoin("genre on ag.genre_id = genre.id")
+}
+
 func (r *sqlRepository) updateGenres(id string, tableName string, genres model.Genres) error {
 	var ids []string
 	for _, g := range genres {
