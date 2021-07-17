@@ -142,7 +142,7 @@ func (s *mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 	var all []string
 	for i := range genres {
 		gs := strings.FieldsFunc(genres[i], func(r rune) bool {
-			return strings.IndexRune(conf.Server.Scanner.GenreSeparators, r) != -1
+			return strings.ContainsRune(conf.Server.Scanner.GenreSeparators, r)
 		})
 		for j := range gs {
 			g := strings.TrimSpace(gs[j])
