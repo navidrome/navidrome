@@ -82,24 +82,22 @@ func artistFilter(field string, value interface{}) Sqlizer {
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sql := r.selectAlbum()
-	sql = sql.LeftJoin("album_genres ag on album.id = ag.album_id").
-		LeftJoin("genre on ag.genre_id = genre.id").
-		GroupBy("album.id")
-
+	sql := r.newSelectWithAnnotation("album.id")
+	sql = r.withGenres(sql)
 	return r.count(sql, options...)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"id": id}))
+	return r.exists(Select().Where(Eq{"album.id": id}))
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelectWithAnnotation("album.id", options...).Columns("album.*")
+	sql := r.newSelectWithAnnotation("album.id", options...).Columns("album.*")
+	return r.withGenres(sql).GroupBy("album.id")
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
-	sq := r.selectAlbum().Where(Eq{"id": id})
+	sq := r.selectAlbum().Where(Eq{"album.id": id})
 	var res model.Albums
 	if err := r.queryAll(sq, &res); err != nil {
 		return nil, err
@@ -123,10 +121,7 @@ func (r *albumRepository) Put(m *model.Album) error {
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
-	sq := r.selectAlbum(options...).
-		LeftJoin("album_genres ag on album.id = ag.album_id").
-		LeftJoin("genre on ag.genre_id = genre.id").
-		GroupBy("album.id")
+	sq := r.selectAlbum(options...)
 	res := model.Albums{}
 	err := r.queryAll(sq, &res)
 	if err != nil {
@@ -398,7 +393,7 @@ func (r *albumRepository) NewInstance() interface{} {
 }
 
 func (r albumRepository) Delete(id string) error {
-	return r.delete(Eq{"id": id})
+	return r.delete(Eq{"album.id": id})
 }
 
 func (r albumRepository) Save(entity interface{}) (string, error) {
