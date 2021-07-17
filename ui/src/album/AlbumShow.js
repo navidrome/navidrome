@@ -12,7 +12,9 @@ import AlbumActions from './AlbumActions'
 
 const useStyles = makeStyles(
   (theme) => ({
-    albumActions: {},
+    albumActions: {
+      width: '100%',
+    },
   }),
   {
     name: 'NDAlbumShow',
@@ -31,14 +33,14 @@ const AlbumShowLayout = (props) => {
         <ReferenceManyField
           {...context}
           addLabel={false}
-          reference="albumSong"
+          reference="song"
           target="album_id"
           sort={{ field: 'album', order: 'ASC' }}
           perPage={0}
           pagination={null}
         >
           <AlbumSongs
-            resource={'albumSong'}
+            resource={'song'}
             exporter={false}
             album={record}
             actions={

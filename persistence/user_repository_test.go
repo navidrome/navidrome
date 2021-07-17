@@ -36,12 +36,35 @@ var _ = Describe("UserRepository", func() {
 			actual, err := repo.Get("123")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Name).To(Equal("Admin"))
-			Expect(actual.Password).To(Equal("wordpass"))
 		})
 		It("find the user by case-insensitive username", func() {
 			actual, err := repo.FindByUsername("aDmIn")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Name).To(Equal("Admin"))
+		})
+		It("find the user by username and decrypts the password", func() {
+			actual, err := repo.FindByUsernameWithPassword("aDmIn")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual.Name).To(Equal("Admin"))
+			Expect(actual.Password).To(Equal("wordpass"))
+		})
+		It("updates the name and keep the same password", func() {
+			usr.Name = "Jane Doe"
+			usr.NewPassword = ""
+			Expect(repo.Put(&usr)).To(BeNil())
+
+			actual, err := repo.FindByUsernameWithPassword("admin")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual.Name).To(Equal("Jane Doe"))
+			Expect(actual.Password).To(Equal("wordpass"))
+		})
+		It("updates password if specified", func() {
+			usr.NewPassword = "newpass"
+			Expect(repo.Put(&usr)).To(BeNil())
+
+			actual, err := repo.FindByUsernameWithPassword("admin")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual.Password).To(Equal("newpass"))
 		})
 	})
 

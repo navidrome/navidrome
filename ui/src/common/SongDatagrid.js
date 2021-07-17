@@ -1,7 +1,12 @@
 import React, { isValidElement, useMemo, useCallback } from 'react'
 import { useDispatch } from 'react-redux'
 import { Datagrid, PureDatagridBody, PureDatagridRow } from 'react-admin'
-import { TableCell, TableRow, Typography } from '@material-ui/core'
+import {
+  TableCell,
+  TableRow,
+  Typography,
+  useMediaQuery,
+} from '@material-ui/core'
 import PropTypes from 'prop-types'
 import { makeStyles } from '@material-ui/core/styles'
 import AlbumIcon from '@material-ui/icons/Album'
@@ -38,7 +43,7 @@ const useStyles = makeStyles({
     },
   },
   contextMenu: {
-    visibility: 'hidden',
+    visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
   },
 })
 
@@ -48,10 +53,20 @@ const DiscSubtitleRow = ({
   colSpan,
   contextAlwaysVisible,
 }) => {
-  const classes = useStyles()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const classes = useStyles({ isDesktop })
   const handlePlayDisc = (discNumber) => () => {
     onClick(discNumber)
   }
+
+  let subtitle = []
+  if (record.discNumber > 0) {
+    subtitle.push(record.discNumber)
+  }
+  if (record.discSubtitle) {
+    subtitle.push(record.discSubtitle)
+  }
+
   return (
     <TableRow
       hover
@@ -61,8 +76,7 @@ const DiscSubtitleRow = ({
       <TableCell colSpan={colSpan}>
         <Typography variant="h6" className={classes.subtitle}>
           <AlbumIcon className={classes.discIcon} fontSize={'small'} />
-          {record.discNumber}
-          {record.discSubtitle && `: ${record.discSubtitle}`}
+          {subtitle.join(': ')}
         </Typography>
       </TableCell>
       <TableCell>
@@ -148,11 +162,13 @@ const SongDatagridBody = ({
     if (!ids) {
       return new Set()
     }
+    let foundSubtitle = false
     const set = new Set(
       ids
         .filter((i) => data[i])
         .reduce((acc, id) => {
           const last = acc && acc[acc.length - 1]
+          foundSubtitle = foundSubtitle || data[id].discSubtitle
           if (
             acc.length === 0 ||
             (last && data[id].discNumber !== data[last].discNumber)
@@ -162,7 +178,7 @@ const SongDatagridBody = ({
           return acc
         }, [])
     )
-    if (!showDiscSubtitles || set.size < 2) {
+    if (!showDiscSubtitles || (set.size < 2 && !foundSubtitle)) {
       set.clear()
     }
     return set

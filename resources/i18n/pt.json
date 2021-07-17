@@ -22,7 +22,9 @@
                 "starred": "Favorita",
                 "comment": "Comentário",
                 "rating": "Classificação",
-                "quality": "Qualidade"
+                "quality": "Qualidade",
+                "bpm": "BPM",
+                "playDate": "Últ. Execução"
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
@@ -87,9 +89,9 @@
                 "name": "Nome",
                 "password": "Senha",
                 "createdAt": "Data de Criação",
+                "changePassword": "Trocar Senha?",
                 "currentPassword": "Senha Atual",
-                "newPassword": "Nova Senha",
-                "changePassword": "Trocar Senha?"
+                "newPassword": "Nova Senha"
             },
             "helperTexts": {
                 "name": "Alterações no seu nome só serão refletidas no próximo login"
@@ -276,7 +278,14 @@
             "data_provider_error": "Erro interno do servidor. Entre em contato",
             "i18n_error": "Não foi possível carregar as traduções para o idioma especificado",
             "canceled": "Ação cancelada",
-            "logged_out": "Sua sessão foi encerrada. Por favor, reconecte"
+            "logged_out": "Sua sessão foi encerrada. Por favor, reconecte",
+            "new_version": "Nova versão disponível! Por favor recarregue esta janela."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Colunas visíveis",
+            "layout": "Layout",
+            "grid": "Grade",
+            "table": "Tabela"
         }
     },
     "message": {
@@ -288,7 +297,11 @@
         "delete_user_title": "Excluir usuário '%{name}'",
         "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?",
         "notifications_blocked": "Você bloqueou notificações para este site nas configurações do seu browser",
-        "notifications_not_available": "Este navegador não suporta notificações"
+        "notifications_not_available": "Este navegador não suporta notificações",
+        "lastfmLinkSuccess": "Sua conta em Last.fm foi conectada com sucesso",
+        "lastfmLinkFailure": "Sua conta em Last.fm não pode ser conectada",
+        "lastfmUnlinkSuccess": "Sua conta em Last.fm foi desconectada",
+        "lastfmUnlinkFailure": "Sua conta em Last.fm não pode ser desconectada"
     },
     "menu": {
         "library": "Biblioteca",
@@ -301,7 +314,8 @@
                 "theme": "Tema",
                 "language": "Língua",
                 "defaultView": "Tela inicial",
-                "desktop_notifications": "Notificações"
+                "desktop_notifications": "Notificações",
+                "lastfmScrobbling": "Enviar scrobbles para Last.fm"
             }
         },
         "albumList": "Álbuns",

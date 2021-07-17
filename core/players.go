@@ -24,7 +24,7 @@ type players struct {
 	ds model.DataStore
 }
 
-func (p *players) Register(ctx context.Context, id, client, typ, ip string) (*model.Player, *model.Transcoding, error) {
+func (p *players) Register(ctx context.Context, id, client, userAgent, ip string) (*model.Player, *model.Transcoding, error) {
 	var plr *model.Player
 	var trc *model.Transcoding
 	var err error
@@ -36,22 +36,23 @@ func (p *players) Register(ctx context.Context, id, client, typ, ip string) (*mo
 		}
 	}
 	if err != nil || id == "" {
-		plr, err = p.ds.Player(ctx).FindByName(client, userName)
+		plr, err = p.ds.Player(ctx).FindMatch(userName, client, userAgent)
 		if err == nil {
-			log.Debug("Found player by name", "id", plr.ID, "client", client, "username", userName)
+			log.Debug("Found matching player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
 		} else {
 			plr = &model.Player{
-				ID:       uuid.NewString(),
-				Name:     fmt.Sprintf("%s (%s)", client, userName),
-				UserName: userName,
-				Client:   client,
+				ID:              uuid.NewString(),
+				UserName:        userName,
+				Client:          client,
+				ScrobbleEnabled: true,
 			}
-			log.Info("Registering new player", "id", plr.ID, "client", client, "username", userName)
+			log.Info("Registering new player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
 		}
 	}
-	plr.LastSeen = time.Now()
-	plr.Type = typ
+	plr.Name = fmt.Sprintf("%s [%s]", client, userAgent)
+	plr.UserAgent = userAgent
 	plr.IPAddress = ip
+	plr.LastSeen = time.Now()
 	err = p.ds.Player(ctx).Put(plr)
 	if err != nil {
 		return nil, nil, err

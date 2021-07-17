@@ -19,7 +19,7 @@ const musicListActions = {
         backgroundColor: 'inherit !important',
       },
     },
-    'button:first-child': {
+    'button:first-child:not(:only-child)': {
       '@media screen and (max-width: 720px)': {
         transform: 'scale(1.5)',
         margin: '1rem',
@@ -41,6 +41,9 @@ const musicListActions = {
         backgroundColor: `${spotifyGreen['500']} !important`,
         border: 0,
       },
+    },
+    'button:only-child': {
+      margin: '1.5rem',
     },
     'button:first-child>span:first-child': {
       padding: 0,

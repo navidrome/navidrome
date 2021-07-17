@@ -76,7 +76,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
         with:
-          node-version: 14
+          node-version: 16
 
       - uses: actions/cache@v2
         id: cache-npm
@@ -91,10 +91,10 @@ jobs:
           cd ui
           npm ci
 
-      - name: npm check-formatting
+      - name: npm lint
         run: |
           cd ui
-          npm run check-formatting
+          npm run check-formatting && npm run lint
 
       - name: npm test
         run: |
@@ -110,6 +110,7 @@ jobs:
         with:
           name: js-bundle
           path: ui/build
+          retention-days: 7
 
   binaries:
     name: Binaries
@@ -131,6 +132,9 @@ jobs:
 
       - name: Show Version
         run: git describe --tags
+
+      - name: Generate .gitinfo
+        run: make .gitinfo
 
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
@@ -155,6 +159,7 @@ jobs:
             dist
             !dist/*.tar.gz
             !dist/*.zip
+          retention-days: 7
 
   docker:
     name: Docker images

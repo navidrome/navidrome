@@ -1,5 +1,5 @@
-import { fetchUtils } from 'react-admin'
 import { baseUrl } from '../utils'
+import { httpClient } from '../dataProvider'
 
 const url = (command, id, options) => {
   const params = new URLSearchParams()
@@ -19,36 +19,53 @@ const url = (command, id, options) => {
       params.append(k, options[k])
     })
   }
-  const url = `/rest/${command}?${params.toString()}`
-  return baseUrl(url)
+  return `/rest/${command}?${params.toString()}`
 }
 
-const scrobble = (id, submit) =>
-  fetchUtils.fetchJson(url('scrobble', id, { submission: submit }))
+const scrobble = (id, submission = false, time) =>
+  httpClient(
+    url('scrobble', id, {
+      ...(submission && time && { time }),
+      submission,
+    })
+  )
 
-const star = (id) => fetchUtils.fetchJson(url('star', id))
+const nowPlaying = (id) => scrobble(id, false)
 
-const unstar = (id) => fetchUtils.fetchJson(url('unstar', id))
+const star = (id) => httpClient(url('star', id))
 
-const download = (id) => (window.location.href = url('download', id))
+const unstar = (id) => httpClient(url('unstar', id))
+
+const setRating = (id, rating) => httpClient(url('setRating', id, { rating }))
+
+const download = (id) => (window.location.href = baseUrl(url('download', id)))
+
+const startScan = (options) => httpClient(url('startScan', null, options))
+
+const getScanStatus = () => httpClient(url('getScanStatus'))
 
 const getCoverArtUrl = (record, size) => {
   const options = {
     ...(record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
   }
-  return url('getCoverArt', record.coverArtId || 'not_found', options)
+  return baseUrl(url('getCoverArt', record.coverArtId || 'not_found', options))
 }
 
-const setRating = (id, rating) =>
-  fetchUtils.fetchJson(url('setRating', id, { rating }))
+const streamUrl = (id) => {
+  return baseUrl(url('stream', id, { ts: true }))
+}
 
 export default {
   url,
-  getCoverArtUrl,
   scrobble,
+  nowPlaying,
   download,
   star,
   unstar,
   setRating,
+  startScan,
+  getScanStatus,
+  getCoverArtUrl,
+  streamUrl,
 }

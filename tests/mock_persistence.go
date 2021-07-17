@@ -7,14 +7,17 @@ import (
 )
 
 type MockDataStore struct {
-	MockedGenre       model.GenreRepository
-	MockedAlbum       model.AlbumRepository
-	MockedArtist      model.ArtistRepository
-	MockedMediaFile   model.MediaFileRepository
-	MockedUser        model.UserRepository
-	MockedProperty    model.PropertyRepository
-	MockedPlayer      model.PlayerRepository
-	MockedTranscoding model.TranscodingRepository
+	MockedGenre          model.GenreRepository
+	MockedAlbum          model.AlbumRepository
+	MockedArtist         model.ArtistRepository
+	MockedMediaFile      model.MediaFileRepository
+	MockedUser           model.UserRepository
+	MockedProperty       model.PropertyRepository
+	MockedPlayer         model.PlayerRepository
+	MockedShare          model.ShareRepository
+	MockedTranscoding    model.TranscodingRepository
+	MockedUserProps      model.UserPropsRepository
+	MockedScrobbleBuffer model.ScrobbleBufferRepository
 }
 
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {
@@ -57,11 +60,25 @@ func (db *MockDataStore) PlayQueue(context.Context) model.PlayQueueRepository {
 	return struct{ model.PlayQueueRepository }{}
 }
 
+func (db *MockDataStore) UserProps(context.Context) model.UserPropsRepository {
+	if db.MockedUserProps == nil {
+		db.MockedUserProps = &MockedUserPropsRepo{}
+	}
+	return db.MockedUserProps
+}
+
 func (db *MockDataStore) Property(context.Context) model.PropertyRepository {
 	if db.MockedProperty == nil {
-		db.MockedProperty = &mockedPropertyRepo{}
+		db.MockedProperty = &MockedPropertyRepo{}
 	}
 	return db.MockedProperty
+}
+
+func (db *MockDataStore) Share(context.Context) model.ShareRepository {
+	if db.MockedShare == nil {
+		db.MockedShare = &MockShareRepo{}
+	}
+	return db.MockedShare
 }
 
 func (db *MockDataStore) User(context.Context) model.UserRepository {
@@ -83,6 +100,13 @@ func (db *MockDataStore) Player(context.Context) model.PlayerRepository {
 		return db.MockedPlayer
 	}
 	return struct{ model.PlayerRepository }{}
+}
+
+func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+	if db.MockedScrobbleBuffer == nil {
+		db.MockedScrobbleBuffer = CreateMockedScrobbleBufferRepo()
+	}
+	return db.MockedScrobbleBuffer
 }
 
 func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {

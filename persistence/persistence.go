@@ -50,6 +50,14 @@ func (s *SQLStore) Property(ctx context.Context) model.PropertyRepository {
 	return NewPropertyRepository(ctx, s.getOrmer())
 }
 
+func (s *SQLStore) UserProps(ctx context.Context) model.UserPropsRepository {
+	return NewUserPropsRepository(ctx, s.getOrmer())
+}
+
+func (s *SQLStore) Share(ctx context.Context) model.ShareRepository {
+	return NewShareRepository(ctx, s.getOrmer())
+}
+
 func (s *SQLStore) User(ctx context.Context) model.UserRepository {
 	return NewUserRepository(ctx, s.getOrmer())
 }
@@ -60,6 +68,10 @@ func (s *SQLStore) Transcoding(ctx context.Context) model.TranscodingRepository 
 
 func (s *SQLStore) Player(ctx context.Context) model.PlayerRepository {
 	return NewPlayerRepository(ctx, s.getOrmer())
+}
+
+func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+	return NewScrobbleBufferRepository(ctx, s.getOrmer())
 }
 
 func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
@@ -78,6 +90,8 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.MediaFile(ctx).(model.ResourceRepository)
 	case model.Playlist:
 		return s.Playlist(ctx).(model.ResourceRepository)
+	case model.Share:
+		return s.Share(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil

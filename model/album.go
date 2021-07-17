@@ -17,22 +17,22 @@ type Album struct {
 	MaxYear              int       `json:"maxYear"`
 	MinYear              int       `json:"minYear"`
 	Compilation          bool      `json:"compilation"`
-	Comment              string    `json:"comment"`
+	Comment              string    `json:"comment,omitempty"`
 	SongCount            int       `json:"songCount"`
 	Duration             float32   `json:"duration"`
 	Size                 int64     `json:"size"`
 	Genre                string    `json:"genre"`
 	FullText             string    `json:"fullText"`
-	SortAlbumName        string    `json:"sortAlbumName"`
-	SortArtistName       string    `json:"sortArtistName"`
-	SortAlbumArtistName  string    `json:"sortAlbumArtistName"`
+	SortAlbumName        string    `json:"sortAlbumName,omitempty"`
+	SortArtistName       string    `json:"sortArtistName,omitempty"`
+	SortAlbumArtistName  string    `json:"sortAlbumArtistName,omitempty"`
 	OrderAlbumName       string    `json:"orderAlbumName"`
 	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
-	CatalogNum           string    `json:"catalogNum"`
-	MbzAlbumID           string    `json:"mbzAlbumId"         orm:"column(mbz_album_id)"`
-	MbzAlbumArtistID     string    `json:"mbzAlbumArtistId"   orm:"column(mbz_album_artist_id)"`
-	MbzAlbumType         string    `json:"mbzAlbumType"`
-	MbzAlbumComment      string    `json:"mbzAlbumComment"`
+	CatalogNum           string    `json:"catalogNum,omitempty"`
+	MbzAlbumID           string    `json:"mbzAlbumId,omitempty"         orm:"column(mbz_album_id)"`
+	MbzAlbumArtistID     string    `json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
+	MbzAlbumType         string    `json:"mbzAlbumType,omitempty"`
+	MbzAlbumComment      string    `json:"mbzAlbumComment,omitempty"`
 	CreatedAt            time.Time `json:"createdAt"`
 	UpdatedAt            time.Time `json:"updatedAt"`
 }

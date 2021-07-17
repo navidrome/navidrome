@@ -20,7 +20,7 @@ func initialSetup(ds model.DataStore) {
 		if err == nil {
 			return nil
 		}
-		log.Warn("Running initial setup")
+		log.Info("Running initial setup")
 		if err = createJWTSecret(ds); err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ func createJWTSecret(ds model.DataStore) error {
 	if err == nil {
 		return nil
 	}
-	log.Warn("Creating JWT secret, used for encrypting UI sessions")
+	log.Info("Creating new JWT secret, used for encrypting UI sessions")
 	err = properties.Put(consts.JWTSecretKey, uuid.NewString())
 	if err != nil {
 		log.Error("Could not save JWT secret in DB", err)
@@ -90,11 +90,15 @@ func checkFfmpegInstallation() {
 }
 
 func checkExternalCredentials() {
-	if conf.Server.LastFM.ApiKey == "" || conf.Server.LastFM.Secret == "" {
-		log.Info("Last.FM integration not available: missing ApiKey/Secret")
+	if !conf.Server.LastFM.Enabled {
+		log.Info("Last.FM integration is DISABLED")
+	} else {
+		log.Debug("Last.FM integration is ENABLED")
 	}
 
 	if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
-		log.Info("Spotify integration is not enabled: artist images will not be available")
+		log.Info("Spotify integration is not enabled: missing ID/Secret")
+	} else {
+		log.Debug("Spotify integration is ENABLED")
 	}
 }

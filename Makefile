@@ -1,8 +1,12 @@
 GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
 
+ifneq ("$(wildcard .git)","")
 GIT_SHA=$(shell git rev-parse --short HEAD)
 GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
+else ifneq ("$(wildcard .gitinfo)","")
+include .gitinfo
+endif
 
 CI_RELEASER_VERSION=1.16.4-1 ## https://github.com/navidrome/ci-goreleaser
 
@@ -18,10 +22,6 @@ dev: check_env   ##@Development Start Navidrome in development mode, with hot-re
 server: check_go_env  ##@Development Start the backend in development mode
 	@go run github.com/cespare/reflex -d none -c reflex.conf
 .PHONY: server
-
-wire: check_go_env ##@Development Update Dependency Injection
-	go run github.com/google/wire/cmd/wire ./...
-.PHONY: wire
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 	go run github.com/onsi/ginkgo/ginkgo watch -notify ./...
@@ -43,9 +43,13 @@ lintall: lint ##@Development Lint Go and JS code
 	@(cd ./ui && npm run check-formatting && npm run lint)
 .PHONY: lintall
 
-update-snapshots: ##@Development Update Snapshot tests
+wire: check_go_env ##@Development Update Dependency Injection
+	go run github.com/google/wire/cmd/wire ./...
+.PHONY: wire
+
+snapshots: ##@Development Update (GoLang) Snapshot tests
 	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/ginkgo ./server/subsonic/...
-.PHONY: update-snapshots
+.PHONY: snapshots
 
 migration: ##@Development Create an empty migration file
 	@if [ -z "${name}" ]; then echo "Usage: make migration name=name_of_migration_file"; exit 1; fi
@@ -91,6 +95,11 @@ single: ##@Cross_Compilation Build binaries for a single supported platforms. It
 
 ##########################################
 #### Miscellaneous
+
+.gitinfo:
+	@echo "export GIT_SHA=${GIT_SHA}" > .gitinfo
+	@echo "export GIT_TAG=${GIT_TAG}" >> .gitinfo
+.PHONY: .gitinfo
 
 release:
 	@if [[ ! "${V}" =~ ^[0-9]+\.[0-9]+\.[0-9]+.*$$ ]]; then echo "Usage: make release V=X.X.X"; exit 1; fi

@@ -2,4 +2,6 @@ import React from 'react'
 import { Route } from 'react-router-dom'
 import Personal from './personal/Personal'
 
-export default [<Route exact path="/personal" render={() => <Personal />} />]
+const routes = [<Route exact path="/personal" render={() => <Personal />} />]
+
+export default routes

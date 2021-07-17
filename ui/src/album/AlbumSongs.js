@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
@@ -6,6 +6,7 @@ import {
   NumberField,
   useVersion,
   useListContext,
+  FunctionField,
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
@@ -21,9 +22,11 @@ import {
   SongDetails,
   SongTitleField,
   RatingField,
+  QualityInfo,
+  useSelectedFields,
+  useResourceRefresh,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
-import { QualityInfo } from '../common/QualityInfo'
 import config from '../config'
 
 const useStyles = makeStyles(
@@ -87,6 +90,54 @@ const AlbumSongs = (props) => {
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
   const version = useVersion()
+  useResourceRefresh('song', 'album')
+
+  const toggleableFields = useMemo(() => {
+    return {
+      trackNumber: isDesktop && (
+        <TextField
+          source="trackNumber"
+          sortBy="discNumber asc, trackNumber asc"
+          label="#"
+          sortable={false}
+        />
+      ),
+      title: (
+        <SongTitleField
+          source="title"
+          sortable={false}
+          showTrackNumbers={!isDesktop}
+        />
+      ),
+      artist: isDesktop && <TextField source="artist" sortable={false} />,
+      duration: <DurationField source="duration" sortable={false} />,
+      year: isDesktop && (
+        <FunctionField
+          source="year"
+          render={(r) => r.year || ''}
+          sortByOrder={'DESC'}
+        />
+      ),
+      quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
+      rating: isDesktop && config.enableStarRating && (
+        <RatingField
+          resource={'song'}
+          source="rating"
+          sortable={false}
+          className={classes.ratingField}
+        />
+      ),
+    }
+  }, [isDesktop, classes.ratingField])
+
+  const columns = useSelectedFields({
+    resource: 'albumSong',
+    columns: toggleableFields,
+    omittedColumns: ['title'],
+    defaultOff: ['bpm', 'year'],
+  })
+
   return (
     <>
       <ListToolbar
@@ -113,31 +164,7 @@ const AlbumSongs = (props) => {
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
           >
-            {isDesktop && (
-              <TextField
-                source="trackNumber"
-                sortBy="discNumber asc, trackNumber asc"
-                label="#"
-                sortable={false}
-              />
-            )}
-            <SongTitleField
-              source="title"
-              sortable={false}
-              showTrackNumbers={!isDesktop}
-            />
-            {isDesktop && <TextField source="artist" sortable={false} />}
-            <DurationField source="duration" sortable={false} />
-            {isDesktop && <QualityInfo source="quality" sortable={false} />}
-            {isDesktop && <NumberField source="bpm" sortable={false} />}
-            {isDesktop && config.enableStarRating && (
-              <RatingField
-                source="rating"
-                resource={'albumSong'}
-                sortable={false}
-                className={classes.ratingField}
-              />
-            )}
+            {columns}
             <SongContextMenu
               source={'starred'}
               sortable={false}

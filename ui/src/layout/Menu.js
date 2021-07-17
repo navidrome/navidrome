@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { makeStyles, useMediaQuery } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
-import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
@@ -30,8 +29,7 @@ const translatedResourceName = (resource, translate) =>
         : inflection.humanize(inflection.pluralize(resource.name)),
   })
 
-const Menu = ({ onMenuClick, dense, logout }) => {
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+const Menu = ({ onMenuClick, dense }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
   const classes = useStyles()
@@ -105,18 +103,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
           renderAlbumMenuItemLink(type, albumLists[type])
         )}
       </SubMenu>
-      <SubMenu
-        handleToggle={() => handleToggle('menuLibrary')}
-        isOpen={state.menuLibrary}
-        sidebarIsOpen={open}
-        name="menu.library"
-        icon={<LibraryMusicIcon />}
-        dense={dense}
-      >
-        {resources.filter(subItems('library')).map(renderResourceMenuItemLink)}
-      </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
-      {isXsmall && logout}
       <HelpDialog />
     </div>
   )

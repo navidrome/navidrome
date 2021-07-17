@@ -11,6 +11,14 @@ func ParamString(r *http.Request, param string) string {
 	return r.URL.Query().Get(param)
 }
 
+func ParamStringDefault(r *http.Request, param, def string) string {
+	v := ParamString(r, param)
+	if v == "" {
+		return def
+	}
+	return v
+}
+
 func ParamStrings(r *http.Request, param string) []string {
 	return r.URL.Query()[param]
 }
@@ -76,7 +84,7 @@ func ParamInts(r *http.Request, param string) []int {
 }
 
 func ParamBool(r *http.Request, param string, def bool) bool {
-	p := ParamString(r, param)
+	p := strings.ToLower(ParamString(r, param))
 	if p == "" {
 		return def
 	}

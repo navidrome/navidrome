@@ -20,7 +20,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-func Read(filename string) (map[string]string, error) {
+func Read(filename string) (map[string][]string, error) {
 	fp := C.CString(filename)
 	defer C.free(unsafe.Pointer(fp))
 	id, m := newMap()
@@ -44,15 +44,15 @@ func Read(filename string) (map[string]string, error) {
 }
 
 var lock sync.RWMutex
-var maps = make(map[uint32]map[string]string)
+var maps = make(map[uint32]map[string][]string)
 var mapsNextID uint32
 
-func newMap() (id uint32, m map[string]string) {
+func newMap() (id uint32, m map[string][]string) {
 	lock.Lock()
 	defer lock.Unlock()
 	id = mapsNextID
 	mapsNextID++
-	m = make(map[string]string)
+	m = make(map[string][]string)
 	maps[id] = m
 	return
 }
@@ -69,10 +69,8 @@ func go_map_put_str(id C.ulong, key *C.char, val *C.char) {
 	defer lock.RUnlock()
 	m := maps[uint32(id)]
 	k := strings.ToLower(C.GoString(key))
-	if _, ok := m[k]; !ok {
-		v := strings.TrimSpace(C.GoString(val))
-		m[k] = v
-	}
+	v := strings.TrimSpace(C.GoString(val))
+	m[k] = append(m[k], v)
 }
 
 //export go_map_put_int

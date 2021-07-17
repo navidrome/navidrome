@@ -46,10 +46,14 @@ type configOptions struct {
 	EnableStarRating       bool
 	EnableUserEditing      bool
 	DefaultTheme           string
+	EnableCoverAnimation   bool
 	GATrackingID           string
 	EnableLogRedacting     bool
 	AuthRequestLimit       int
 	AuthWindowLength       time.Duration
+	PasswordEncryptionKey  string
+	ReverseProxyUserHeader string
+	ReverseProxyWhitelist  string
 
 	Scanner scannerOptions
 
@@ -59,11 +63,14 @@ type configOptions struct {
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
+	DevLogLevels               map[string]string
 	DevAutoCreateAdminPassword string
+	DevAutoLoginUsername       string
 	DevPreCacheAlbumArtwork    bool
 	DevFastAccessCoverArt      bool
-	DevOldCacheLayout          bool
 	DevActivityPanel           bool
+	DevEnableShare             bool
+	DevEnableBufferedScrobble  bool
 }
 
 type scannerOptions struct {
@@ -71,6 +78,7 @@ type scannerOptions struct {
 }
 
 type lastfmOptions struct {
+	Enabled  bool
 	ApiKey   string
 	Secret   string
 	Language string
@@ -108,6 +116,7 @@ func Load() {
 	}
 
 	log.SetLevelString(Server.LogLevel)
+	log.SetLogLevels(Server.DevLogLevels)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
 
@@ -115,8 +124,13 @@ func Load() {
 		os.Exit(1)
 	}
 
+	// Print current configuration if log level is Debug
 	if log.CurrentLevel() >= log.LevelDebug {
-		fmt.Println(log.Redact(pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)))
+		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
+		if Server.EnableLogRedacting {
+			prettyConf = log.Redact(prettyConf)
+		}
+		fmt.Println(prettyConf)
 	}
 
 	// Call init hooks
@@ -189,26 +203,34 @@ func init() {
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
+	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
+	viper.SetDefault("passwordencryptionkey", "")
+
+	viper.SetDefault("reverseproxyuserheader", "Remote-User")
+	viper.SetDefault("reverseproxywhitelist", "")
 
 	viper.SetDefault("scanner.extractor", "taglib")
 	viper.SetDefault("agents", "lastfm,spotify")
+	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
-	viper.SetDefault("lastfm.apikey", "")
-	viper.SetDefault("lastfm.secret", "")
+	viper.SetDefault("lastfm.apikey", consts.LastFMAPIKey)
+	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devautocreateadminpassword", "")
+	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devprecachealbumartwork", false)
-	viper.SetDefault("devoldcachelayout", false)
-	viper.SetDefault("devFastAccessCoverArt", false)
+	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
+	viper.SetDefault("devenableshare", false)
+	viper.SetDefault("devenablebufferedscrobble", false)
 }
 
 func InitConfig(cfgFile string) {

@@ -6,18 +6,19 @@
 package cmd
 
 import (
-	"sync"
-
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/agents/lastfm"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/transcoder"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/server/app"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/server/nativeapi"
 	"github.com/navidrome/navidrome/server/subsonic"
+	"sync"
 )
 
 // Injectors from wire_injectors.go:
@@ -28,10 +29,11 @@ func CreateServer(musicFolder string) *server.Server {
 	return serverServer
 }
 
-func CreateAppRouter() *app.Router {
+func CreateNativeAPIRouter() *nativeapi.Router {
 	dataStore := persistence.New()
-	broker := GetBroker()
-	router := app.New(dataStore, broker)
+	broker := events.GetBroker()
+	share := core.NewShare(dataStore)
+	router := nativeapi.New(dataStore, broker, share)
 	return router
 }
 
@@ -44,9 +46,18 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
 	archiver := core.NewArchiver(dataStore)
 	players := core.NewPlayers(dataStore)
-	externalMetadata := core.NewExternalMetadata(dataStore)
+	agentsAgents := agents.New(dataStore)
+	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
 	scanner := GetScanner()
-	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalMetadata, scanner)
+	broker := events.GetBroker()
+	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
+	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, playTracker)
+	return router
+}
+
+func CreateLastFMRouter() *lastfm.Router {
+	dataStore := persistence.New()
+	router := lastfm.NewRouter(dataStore)
 	return router
 }
 
@@ -55,24 +66,14 @@ func createScanner() scanner.Scanner {
 	artworkCache := core.GetImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
 	cacheWarmer := core.NewCacheWarmer(artwork, artworkCache)
-	broker := GetBroker()
+	broker := events.GetBroker()
 	scannerScanner := scanner.New(dataStore, cacheWarmer, broker)
 	return scannerScanner
 }
 
-func createBroker() events.Broker {
-	broker := events.NewBroker()
-	return broker
-}
-
-func createScheduler() scheduler.Scheduler {
-	schedulerScheduler := scheduler.New()
-	return schedulerScheduler
-}
-
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, subsonic.New, app.New, persistence.New)
+var allProviders = wire.NewSet(core.Set, subsonic.New, nativeapi.New, persistence.New, lastfm.NewRouter, events.GetBroker)
 
 // Scanner must be a Singleton
 var (
@@ -85,30 +86,4 @@ func GetScanner() scanner.Scanner {
 		scannerInstance = createScanner()
 	})
 	return scannerInstance
-}
-
-// Broker must be a Singleton
-var (
-	onceBroker     sync.Once
-	brokerInstance events.Broker
-)
-
-func GetBroker() events.Broker {
-	onceBroker.Do(func() {
-		brokerInstance = createBroker()
-	})
-	return brokerInstance
-}
-
-// Scheduler must be a Singleton
-var (
-	onceScheduler     sync.Once
-	schedulerInstance scheduler.Scheduler
-)
-
-func GetScheduler() scheduler.Scheduler {
-	onceScheduler.Do(func() {
-		schedulerInstance = createScheduler()
-	})
-	return schedulerInstance
 }

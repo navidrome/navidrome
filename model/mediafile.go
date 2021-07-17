@@ -21,7 +21,7 @@ type MediaFile struct {
 	HasCoverArt          bool      `json:"hasCoverArt"`
 	TrackNumber          int       `json:"trackNumber"`
 	DiscNumber           int       `json:"discNumber"`
-	DiscSubtitle         string    `json:"discSubtitle"`
+	DiscSubtitle         string    `json:"discSubtitle,omitempty"`
 	Year                 int       `json:"year"`
 	Size                 int64     `json:"size"`
 	Suffix               string    `json:"suffix"`
@@ -29,24 +29,24 @@ type MediaFile struct {
 	BitRate              int       `json:"bitRate"`
 	Genre                string    `json:"genre"`
 	FullText             string    `json:"fullText"`
-	SortTitle            string    `json:"sortTitle"`
-	SortAlbumName        string    `json:"sortAlbumName"`
-	SortArtistName       string    `json:"sortArtistName"`
-	SortAlbumArtistName  string    `json:"sortAlbumArtistName"`
+	SortTitle            string    `json:"sortTitle,omitempty"`
+	SortAlbumName        string    `json:"sortAlbumName,omitempty"`
+	SortArtistName       string    `json:"sortArtistName,omitempty"`
+	SortAlbumArtistName  string    `json:"sortAlbumArtistName,omitempty"`
 	OrderAlbumName       string    `json:"orderAlbumName"`
 	OrderArtistName      string    `json:"orderArtistName"`
 	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
 	Compilation          bool      `json:"compilation"`
-	Comment              string    `json:"comment"`
-	Lyrics               string    `json:"lyrics"`
+	Comment              string    `json:"comment,omitempty"`
+	Lyrics               string    `json:"lyrics,omitempty"`
 	Bpm                  int       `json:"bpm,omitempty"`
-	CatalogNum           string    `json:"catalogNum"`
-	MbzTrackID           string    `json:"mbzTrackId"         orm:"column(mbz_track_id)"`
-	MbzAlbumID           string    `json:"mbzAlbumId"         orm:"column(mbz_album_id)"`
-	MbzArtistID          string    `json:"mbzArtistId"        orm:"column(mbz_artist_id)"`
-	MbzAlbumArtistID     string    `json:"mbzAlbumArtistId"   orm:"column(mbz_album_artist_id)"`
-	MbzAlbumType         string    `json:"mbzAlbumType"`
-	MbzAlbumComment      string    `json:"mbzAlbumComment"`
+	CatalogNum           string    `json:"catalogNum,omitempty"`
+	MbzTrackID           string    `json:"mbzTrackId,omitempty"         orm:"column(mbz_track_id)"`
+	MbzAlbumID           string    `json:"mbzAlbumId,omitempty"         orm:"column(mbz_album_id)"`
+	MbzArtistID          string    `json:"mbzArtistId,omitempty"        orm:"column(mbz_artist_id)"`
+	MbzAlbumArtistID     string    `json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
+	MbzAlbumType         string    `json:"mbzAlbumType,omitempty"`
+	MbzAlbumComment      string    `json:"mbzAlbumComment,omitempty"`
 	CreatedAt            time.Time `json:"createdAt"` // Time this entry was created in the DB
 	UpdatedAt            time.Time `json:"updatedAt"` // Time of file last update (mtime)
 }

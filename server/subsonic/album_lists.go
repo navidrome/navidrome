@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
@@ -15,14 +15,14 @@ import (
 )
 
 type AlbumListController struct {
-	ds         model.DataStore
-	nowPlaying core.NowPlaying
+	ds        model.DataStore
+	scrobbler scrobbler.PlayTracker
 }
 
-func NewAlbumListController(ds model.DataStore, nowPlaying core.NowPlaying) *AlbumListController {
+func NewAlbumListController(ds model.DataStore, scrobbler scrobbler.PlayTracker) *AlbumListController {
 	c := &AlbumListController{
-		ds:         ds,
-		nowPlaying: nowPlaying,
+		ds:        ds,
+		scrobbler: scrobbler,
 	}
 	return c
 }
@@ -134,7 +134,7 @@ func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request
 
 func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	npInfo, err := c.nowPlaying.GetAll()
+	npInfo, err := c.scrobbler.GetNowPlaying(ctx)
 	if err != nil {
 		log.Error(r, "Error retrieving now playing list", "error", err)
 		return nil, err
@@ -152,7 +152,7 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 		response.NowPlaying.Entry[i].Child = childFromMediaFile(ctx, *mf)
 		response.NowPlaying.Entry[i].UserName = np.Username
 		response.NowPlaying.Entry[i].MinutesAgo = int(time.Since(np.Start).Minutes())
-		response.NowPlaying.Entry[i].PlayerId = np.PlayerId
+		response.NowPlaying.Entry[i].PlayerId = i + 1 // Fake numeric playerId, it does not seem to be used for anything
 		response.NowPlaying.Entry[i].PlayerName = np.PlayerName
 	}
 	return response, nil

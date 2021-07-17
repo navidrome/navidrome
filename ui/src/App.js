@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react'
 import ReactGA from 'react-ga'
-import 'react-jinke-music-player/assets/index.css'
 import { Provider, useDispatch } from 'react-redux'
 import { createHashHistory } from 'history'
 import { Admin as RAAdmin, Resource } from 'react-admin'
@@ -20,7 +19,7 @@ import customRoutes from './routes'
 import {
   themeReducer,
   addToPlaylistDialogReducer,
-  playQueueReducer,
+  playerReducer,
   albumViewReducer,
   activityReducer,
   settingsReducer,
@@ -49,7 +48,7 @@ const App = () => (
       dataProvider,
       history,
       customReducers: {
-        queue: playQueueReducer,
+        player: playerReducer,
         albumView: albumViewReducer,
         theme: themeReducer,
         addToPlaylistDialog: addToPlaylistDialogReducer,
@@ -90,13 +89,9 @@ const Admin = (props) => {
     >
       {(permissions) => [
         <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
-        <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
-        <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
-        <Resource
-          name="playlist"
-          {...playlist}
-          options={{ subMenu: 'library' }}
-        />,
+        <Resource name="artist" {...artist} />,
+        <Resource name="song" {...song} />,
+        <Resource name="playlist" {...playlist} />,
         <Resource name="user" {...user} options={{ subMenu: 'settings' }} />,
         <Resource
           name="player"
@@ -112,7 +107,6 @@ const Admin = (props) => {
         ) : (
           <Resource name="transcoding" />
         ),
-        <Resource name="albumSong" />,
         <Resource name="translation" />,
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,

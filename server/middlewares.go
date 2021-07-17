@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/unrolled/secure"
 )
 
@@ -48,10 +50,10 @@ func requestLogger(next http.Handler) http.Handler {
 	})
 }
 
-func injectLogger(next http.Handler) http.Handler {
+func loggerInjector(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		ctx = log.NewContext(r.Context(), "requestId", ctx.Value(middleware.RequestIDKey))
+		ctx = log.NewContext(r.Context(), "requestId", middleware.GetReqID(ctx))
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -78,4 +80,35 @@ func secureMiddleware() func(h http.Handler) http.Handler {
 		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
+}
+
+func clientUniqueIdAdder(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		clientUniqueId := r.Header.Get(consts.UIClientUniqueIDHeader)
+		if clientUniqueId != "" {
+			c := &http.Cookie{
+				Name:     consts.UIClientUniqueIDHeader,
+				Value:    clientUniqueId,
+				MaxAge:   consts.CookieExpiry,
+				HttpOnly: true,
+				Secure:   true,
+				SameSite: http.SameSiteNoneMode,
+				Path:     "/",
+			}
+			http.SetCookie(w, c)
+		} else {
+			c, err := r.Cookie(consts.UIClientUniqueIDHeader)
+			if err != http.ErrNoCookie {
+				clientUniqueId = c.Value
+			}
+		}
+
+		if clientUniqueId != "" {
+			ctx = request.WithClientUniqueId(ctx, clientUniqueId)
+			r = r.WithContext(ctx)
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

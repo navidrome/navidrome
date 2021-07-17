@@ -1,15 +1,35 @@
 import jwtDecode from 'jwt-decode'
-import md5 from 'md5-hex'
-import { v4 as uuidv4 } from 'uuid'
 import { baseUrl } from './utils'
 import config from './config'
 import { startEventStream, stopEventStream } from './eventStream'
 
+// config sent from server may contain authentication info, for example when the user is authenticated
+// by a reverse proxy request header
+if (config.auth) {
+  try {
+    storeAuthenticationInfo(config.auth)
+  } catch (e) {
+    console.log(e)
+  }
+}
+
+function storeAuthenticationInfo(authInfo) {
+  authInfo.token && localStorage.setItem('token', authInfo.token)
+  localStorage.setItem('userId', authInfo.id)
+  localStorage.setItem('name', authInfo.name)
+  localStorage.setItem('username', authInfo.username)
+  authInfo.avatar && localStorage.setItem('avatar', authInfo.avatar)
+  localStorage.setItem('role', authInfo.isAdmin ? 'admin' : 'regular')
+  localStorage.setItem('subsonic-salt', authInfo.subsonicSalt)
+  localStorage.setItem('subsonic-token', authInfo.subsonicToken)
+  localStorage.setItem('is-authenticated', 'true')
+}
+
 const authProvider = {
   login: ({ username, password }) => {
-    let url = baseUrl('/app/login')
+    let url = baseUrl('/auth/login')
     if (config.firstTime) {
-      url = baseUrl('/app/createAdmin')
+      url = baseUrl('/auth/createAdmin')
     }
     const request = new Request(url, {
       method: 'POST',
@@ -24,22 +44,9 @@ const authProvider = {
         return response.json()
       })
       .then((response) => {
-        // Validate token
-        jwtDecode(response.token)
-        // TODO Store all items in one object
-        localStorage.setItem('token', response.token)
-        localStorage.setItem('userId', response.id)
-        localStorage.setItem('name', response.name)
-        localStorage.setItem('username', response.username)
-        response.avatar && localStorage.setItem('avatar', response.avatar)
-        localStorage.setItem('role', response.isAdmin ? 'admin' : 'regular')
-        const salt = generateSubsonicSalt()
-        localStorage.setItem('subsonic-salt', salt)
-        localStorage.setItem(
-          'subsonic-token',
-          generateSubsonicToken(password, salt)
-        )
-        // Avoid going to create admin dialog after logout/login without a refresh
+        jwtDecode(response.token) // Validate token
+        storeAuthenticationInfo(response)
+        // Avoid "going to create admin" dialog after logout/login without a refresh
         config.firstTime = false
         if (config.devActivityPanel) {
           startEventStream()
@@ -61,16 +68,13 @@ const authProvider = {
   logout: () => {
     stopEventStream()
     removeItems()
-    try {
-      clearServiceWorkerCache()
-    } catch (e) {
-      console.log('Error clearing service worker cache:', e)
-    }
     return Promise.resolve()
   },
 
   checkAuth: () =>
-    localStorage.getItem('token') ? Promise.resolve() : Promise.reject(),
+    localStorage.getItem('is-authenticated')
+      ? Promise.resolve()
+      : Promise.reject(),
 
   checkError: ({ status }) => {
     if (status === 401) {
@@ -103,22 +107,7 @@ const removeItems = () => {
   localStorage.removeItem('role')
   localStorage.removeItem('subsonic-salt')
   localStorage.removeItem('subsonic-token')
-}
-
-const clearServiceWorkerCache = () => {
-  window.caches &&
-    caches.keys().then(function (keyList) {
-      for (let key of keyList) caches.delete(key)
-    })
-}
-
-const generateSubsonicSalt = () => {
-  const h = md5(uuidv4())
-  return h.slice(0, 6)
-}
-
-const generateSubsonicToken = (password, salt) => {
-  return md5(password + salt)
+  localStorage.removeItem('is-authenticated')
 }
 
 export default authProvider

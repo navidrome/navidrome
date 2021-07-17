@@ -6,9 +6,6 @@ const dataProvider = jsonServerProvider(REST_URL, httpClient)
 
 const mapResource = (resource, params) => {
   switch (resource) {
-    case 'albumSong':
-      return ['song', params]
-
     case 'playlistTrack':
       // /api/playlistTrack?playlist_id=123  => /api/playlist/123/tracks
       let plsId = '0'

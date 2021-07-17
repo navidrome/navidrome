@@ -15,9 +15,11 @@ const getEventStream = async () => {
   if (!es) {
     // Call `keepalive` to refresh the jwt token
     await httpClient(`${REST_URL}/keepalive/keepalive`)
-    es = new EventSource(
-      baseUrl(`${REST_URL}/events?jwt=${localStorage.getItem('token')}`)
-    )
+    let url = baseUrl(`${REST_URL}/events`)
+    if (localStorage.getItem('token')) {
+      url = url + `?jwt=${localStorage.getItem('token')}`
+    }
+    es = new EventSource(url)
   }
   return es
 }
@@ -52,27 +54,28 @@ const setDispatch = (dispatchFunc) => {
   dispatch = dispatchFunc
 }
 
-const eventHandler = throttle(
-  (event) => {
-    const data = JSON.parse(event.data)
-    if (data.name !== 'keepAlive') {
-      dispatch(processEvent(data.name, data))
-    }
-    setTimeout(defaultIntervalCheck) // Reset timeout on every received message
-  },
-  100,
-  { trailing: true }
-)
+const eventHandler = (event) => {
+  const data = JSON.parse(event.data)
+  if (event.type !== 'keepAlive') {
+    dispatch(processEvent(event.type, data))
+  }
+  setTimeout(defaultIntervalCheck) // Reset timeout on every received message
+}
+
+const throttledEventHandler = throttle(eventHandler, 100, { trailing: true })
 
 const startEventStream = async () => {
   setTimeout(currentIntervalCheck)
-  if (!localStorage.getItem('token')) {
+  if (!localStorage.getItem('is-authenticated')) {
     console.log('Cannot create a unauthenticated EventSource connection')
     return Promise.reject()
   }
   return getEventStream()
     .then((newStream) => {
-      newStream.onmessage = eventHandler
+      newStream.addEventListener('serverStart', eventHandler)
+      newStream.addEventListener('scanStatus', throttledEventHandler)
+      newStream.addEventListener('refreshResource', eventHandler)
+      newStream.addEventListener('keepAlive', eventHandler)
       newStream.onerror = (e) => {
         console.log('EventStream error', e)
         setTimeout(reconnectIntervalCheck)
