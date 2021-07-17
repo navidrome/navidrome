@@ -11,6 +11,7 @@ func init() {
 }
 
 func upAddGenreTables(tx *sql.Tx) error {
+	notice(tx, "A full rescan will be performed to import multiple genres!")
 	_, err := tx.Exec(`
 create table if not exists genre
 (
@@ -56,7 +57,10 @@ create table if not exists  artist_genres
 		unique (artist_id, genre_id)
 );
 `)
-	return err
+	if err != nil {
+		return err
+	}
+	return forceFullRescan(tx)
 }
 
 func downAddGenreTables(tx *sql.Tx) error {
