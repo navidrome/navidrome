@@ -16,6 +16,9 @@ jobs:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
 
+      - name: Install libjpeg-turbo8
+        run: sudo apt-get install libjpeg-turbo8-dev
+
       - uses: actions/checkout@v2
 
       - name: golangci-lint
@@ -34,6 +37,9 @@ jobs:
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
+
+      - name: Install libjpeg-turbo8
+        run: sudo apt-get install libjpeg-turbo8-dev
 
       - name: Set up Go ${{ matrix.go_version }}
         uses: actions/setup-go@v2
