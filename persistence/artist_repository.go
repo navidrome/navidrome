@@ -197,10 +197,9 @@ func (r *artistRepository) refresh(ids ...string) error {
 		"group_concat(f.mbz_album_artist_id , ' ') as mbz_artist_id",
 		"f.sort_album_artist_name as sort_artist_name", "f.order_album_artist_name as order_artist_name",
 		"sum(f.song_count) as song_count", "sum(f.size) as size",
-		"group_concat(ag.genre_id, ' ') as genre_ids").
+		"(select group_concat(genre_id, ' ') from album_genres where album_id = f.id) as genre_ids").
 		From("album f").
 		LeftJoin("artist a on f.album_artist_id = a.id").
-		LeftJoin("album_genres ag on ag.album_id = f.id").
 		Where(Eq{"f.album_artist_id": ids}).
 		GroupBy("f.album_artist_id").OrderBy("f.id")
 	err := r.queryAll(sel, &artists)

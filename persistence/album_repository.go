@@ -196,10 +196,9 @@ func (r *albumRepository) refresh(ids ...string) error {
 		group_concat(f.artist_id, ' ') as song_artist_ids, 
 		group_concat(f.album_artist_id, ' ') as album_artist_ids, 
 		group_concat(f.year, ' ') as years,
-		group_concat(mg.genre_id, ' ') as genre_ids`).
+		(select group_concat(genre_id, ' ') from media_file_genres where media_file_id = f.id) as genre_ids`).
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
-		LeftJoin("media_file_genres mg on mg.media_file_id = f.id").
 		Where(Eq{"f.album_id": ids}).GroupBy("f.album_id")
 	err := r.queryAll(sel, &albums)
 	if err != nil {
