@@ -198,7 +198,7 @@ func (r *artistRepository) refresh(ids ...string) error {
 		} else {
 			toInsert++
 		}
-		ar.MbzArtistID = getMbzId(r.ctx, ar.MbzArtistID, r.tableName, ar.Name)
+		ar.MbzArtistID = getMostFrequentMbzID(r.ctx, ar.MbzArtistID, r.tableName, ar.Name)
 		err := r.Put(&ar.Artist)
 		if err != nil {
 			return err

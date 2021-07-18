@@ -53,7 +53,7 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 
-	Describe("Exists", func() {
+	Describe("exists", func() {
 		It("constructs the correct EXISTS query", func() {
 			e := exists("album", squirrel.Eq{"id": 1})
 			sql, args, err := e.ToSql()
@@ -63,15 +63,15 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 
-	Describe("getMbzId", func() {
+	Describe("getMostFrequentMbzID", func() {
 		It(`returns "" when no ids are passed`, func() {
-			Expect(getMbzId(context.TODO(), " ", "", "")).To(Equal(""))
+			Expect(getMostFrequentMbzID(context.TODO(), " ", "", "")).To(Equal(""))
 		})
 		It(`returns the only id passed`, func() {
-			Expect(getMbzId(context.TODO(), "1234 ", "", "")).To(Equal("1234"))
+			Expect(getMostFrequentMbzID(context.TODO(), "111 ", "", "")).To(Equal("111"))
 		})
 		It(`returns the id with higher frequency`, func() {
-			Expect(getMbzId(context.TODO(), "1 2 3 4 1", "", "")).To(Equal("1"))
+			Expect(getMostFrequentMbzID(context.TODO(), "1 2 3 4 2", "", "")).To(Equal("2"))
 		})
 	})
 })

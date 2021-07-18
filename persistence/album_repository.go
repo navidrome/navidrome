@@ -236,7 +236,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 
 		al.AlbumArtistID, al.AlbumArtist = getAlbumArtist(al)
 		al.MinYear = getMinYear(al.Years)
-		al.MbzAlbumID = getMbzId(r.ctx, al.MbzAlbumID, r.tableName, al.Name)
+		al.MbzAlbumID = getMostFrequentMbzID(r.ctx, al.MbzAlbumID, r.tableName, al.Name)
 		al.Comment = getComment(al.Comments, zwsp)
 		if al.CurrentId != "" {
 			toUpdate++
