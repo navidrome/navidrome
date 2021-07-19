@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -58,7 +59,7 @@ var _ = Describe("Helpers", func() {
 			e := exists("album", squirrel.Eq{"id": 1})
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("exists (select 1 from album where id = ?)"))
-			Expect(args).To(Equal([]interface{}{1}))
+			Expect(args).To(ConsistOf(1))
 			Expect(err).To(BeNil())
 		})
 	})
@@ -72,6 +73,16 @@ var _ = Describe("Helpers", func() {
 		})
 		It(`returns the id with higher frequency`, func() {
 			Expect(getMostFrequentMbzID(context.TODO(), "1 2 3 4 2", "", "")).To(Equal("2"))
+		})
+	})
+
+	Describe("getGenres", func() {
+		It("returns unique genres", func() {
+			expected := model.Genres{{ID: "1"}, {ID: "2"}, {ID: "3"}, {ID: "5"}, {ID: "4"}}
+			Expect(getGenres("1 2 3  5 3 2 4 ")).To(Equal(expected))
+		})
+		It("returns empty list when there are no genres", func() {
+			Expect(getGenres("")).To(BeEmpty())
 		})
 	})
 })

@@ -6,7 +6,6 @@ import (
 	"github.com/astaxie/beego/orm"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
-
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo"
