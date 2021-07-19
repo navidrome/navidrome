@@ -175,6 +175,23 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 	return result, nil
 }
 
+func (r *artistRepository) getGenresForArtists(ids []string) (map[string]model.Genres, error) {
+	sql := Select("a.album_artist_id", "group_concat(ag.genre_id, ' ') as genre").From("album_genres ag").
+		LeftJoin("album a on a.id = ag.album_id").
+		Where(Eq{"a.album_artist_id": ids}).GroupBy("a.album_artist_id")
+	var als model.Albums
+	err := r.queryAll(sql, &als)
+	if err != nil {
+		return nil, err
+	}
+
+	result := map[string]model.Genres{}
+	for _, al := range als {
+		result[al.AlbumArtistID] = getGenres(al.Genre)
+	}
+	return result, nil
+}
+
 func (r *artistRepository) Refresh(ids ...string) error {
 	chunks := utils.BreakUpStringSlice(ids, 100)
 	for _, chunk := range chunks {
@@ -190,7 +207,6 @@ func (r *artistRepository) refresh(ids ...string) error {
 	type refreshArtist struct {
 		model.Artist
 		CurrentId string
-		GenreIds  string
 	}
 	var artists []refreshArtist
 	sel := Select("f.album_artist_id as id", "f.album_artist as name", "count(*) as album_count", "a.id as current_id",
@@ -207,6 +223,11 @@ func (r *artistRepository) refresh(ids ...string) error {
 		return err
 	}
 
+	allGenres, err := r.getGenresForArtists(ids)
+	if err != nil {
+		return err
+	}
+
 	toInsert := 0
 	toUpdate := 0
 	for _, ar := range artists {
@@ -216,7 +237,7 @@ func (r *artistRepository) refresh(ids ...string) error {
 			toInsert++
 		}
 		ar.MbzArtistID = getMostFrequentMbzID(r.ctx, ar.MbzArtistID, r.tableName, ar.Name)
-		ar.Genres = getGenres(ar.GenreIds)
+		ar.Genres = allGenres[ar.ID]
 		err := r.Put(&ar.Artist)
 		if err != nil {
 			return err
