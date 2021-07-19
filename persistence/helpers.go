@@ -65,28 +65,30 @@ func getMostFrequentMbzID(ctx context.Context, mbzIDs, entityName, name string) 
 	if len(ids) == 0 {
 		return ""
 	}
-	if len(ids) == 1 {
-		return ids[0]
-	}
-	idCounts := map[string]int{}
 	var topId string
 	var topCount int
-	for _, id := range ids {
-		c := idCounts[id] + 1
-		idCounts[id] = c
-		if c > topCount {
-			topId = id
-			topCount = c
+	idCounts := map[string]int{}
+
+	if len(ids) == 1 {
+		topId = ids[0]
+	} else {
+		for _, id := range ids {
+			c := idCounts[id] + 1
+			idCounts[id] = c
+			if c > topCount {
+				topId = id
+				topCount = c
+			}
 		}
 	}
 
 	if len(idCounts) > 1 && name != consts.VariousArtists {
-		if topId == consts.VariousArtistsMbzId {
-			log.Warn(ctx, "Artist with mbid of Various Artists", "name", name, "mbid", topId)
-		} else {
-			log.Warn(ctx, "Multiple MBIDs found for "+entityName, "name", name, "mbids", idCounts)
-		}
+		log.Warn(ctx, "Multiple MBIDs found for "+entityName, "name", name, "mbids", idCounts)
 	}
+	if topId == consts.VariousArtistsMbzId && name != consts.VariousArtists {
+		log.Warn(ctx, "Artist with mbid of 'Various Artists'", "name", name, "mbid", topId)
+	}
+
 	return topId
 }
 
