@@ -26,14 +26,10 @@ func NewGenreRepository(ctx context.Context, o orm.Ormer) model.GenreRepository 
 	return r
 }
 
-func (r *genreRepository) GetAll() (model.Genres, error) {
-	sq := Select("genre.*",
-		"count(distinct a.album_id) as album_count",
-		"count(distinct f.media_file_id) as song_count").
-		From(r.tableName).
-		LeftJoin("album_genres a on a.genre_id = genre.id").
-		LeftJoin("media_file_genres f on f.genre_id = genre.id").
-		GroupBy("genre.id")
+func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error) {
+	sq := r.newSelect(opt...).Columns("genre.id", "genre.name", "a.album_count", "m.song_count").
+		LeftJoin("(select ag.genre_id, count(ag.album_id) as album_count from album_genres ag group by ag.genre_id) a on a.genre_id = genre.id").
+		LeftJoin("(select mg.genre_id, count(mg.media_file_id) as song_count from media_file_genres mg group by mg.genre_id) m on m.genre_id = genre.id")
 	res := model.Genres{}
 	err := r.queryAll(sq, &res)
 	return res, err
