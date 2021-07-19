@@ -133,10 +133,11 @@ func schedulePeriodicScan(schedule string) {
 	}
 
 	time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
-	log.Info("Executing initial scan")
+	log.Debug("Executing initial scan")
 	if err := scanner.RescanAll(context.Background(), false); err != nil {
 		log.Error("Error executing initial scan", err)
 	}
+	log.Debug("Finished initial scan")
 }
 
 func startScheduler() (func() error, func(err error)) {
