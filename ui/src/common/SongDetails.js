@@ -9,10 +9,8 @@ import {
   DateField,
   TextField,
   NumberField,
+  FunctionField,
   useTranslate,
-  ArrayField,
-  SingleFieldList,
-  ChipField,
   useRecordContext,
 } from 'react-admin'
 import inflection from 'inflection'
@@ -36,11 +34,7 @@ export const SongDetails = (props) => {
     discSubtitle: <TextField source="discSubtitle" />,
     albumArtist: <TextField source="albumArtist" />,
     genre: (
-      <ArrayField source={'genres'}>
-        <SingleFieldList linkType={false}>
-          <ChipField source="name" />
-        </SingleFieldList>
-      </ArrayField>
+      <FunctionField render={(r) => r.genres?.map((g) => g.name).join(', ')} />
     ),
     compilation: <BooleanField source="compilation" />,
     bitRate: <BitrateField source="bitRate" />,
