@@ -132,7 +132,7 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 }
 
 // Return a map of mediafiles that have embedded covers for the given album ids
-func (r *albumRepository) getEmbeddedCovers(ids []string) (map[string]model.MediaFile, error) {
+func (r *albumRepository) getEmbeddedCoversForAlbums(ids []string) (map[string]model.MediaFile, error) {
 	var mfs model.MediaFiles
 	coverSql := Select("album_id", "id", "path").Distinct().From("media_file").
 		Where(And{Eq{"has_cover_art": true}, Eq{"album_id": ids}}).
@@ -145,6 +145,23 @@ func (r *albumRepository) getEmbeddedCovers(ids []string) (map[string]model.Medi
 	result := map[string]model.MediaFile{}
 	for _, mf := range mfs {
 		result[mf.AlbumID] = mf
+	}
+	return result, nil
+}
+
+func (r *albumRepository) getGenresForAlbums(ids []string) (map[string]model.Genres, error) {
+	sql := Select("mf.album_id", "group_concat(mfg.genre_id, ' ') as genre").From("media_file_genres mfg").
+		LeftJoin("media_file mf on mf.id = mfg.media_file_id").
+		Where(Eq{"mf.album_id": ids}).GroupBy("mf.album_id")
+	var mfs model.MediaFiles
+	err := r.queryAll(sql, &mfs)
+	if err != nil {
+		return nil, err
+	}
+
+	result := map[string]model.Genres{}
+	for _, mf := range mfs {
+		result[mf.AlbumID] = getGenres(mf.Genre)
 	}
 	return result, nil
 }
@@ -168,7 +185,6 @@ type refreshAlbum struct {
 	SongArtists    string
 	SongArtistIds  string
 	AlbumArtistIds string
-	GenreIds       string
 	Years          string
 	DiscSubtitles  string
 	Comments       string
@@ -195,8 +211,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 		group_concat(f.artist, ' ') as song_artists, 
 		group_concat(f.artist_id, ' ') as song_artist_ids, 
 		group_concat(f.album_artist_id, ' ') as album_artist_ids, 
-		group_concat(f.year, ' ') as years,
-		(select group_concat(genre_id, ' ') from media_file_genres where media_file_id = f.id) as genre_ids`).
+		group_concat(f.year, ' ') as years`).
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
 		Where(Eq{"f.album_id": ids}).GroupBy("f.album_id")
@@ -205,7 +220,12 @@ func (r *albumRepository) refresh(ids ...string) error {
 		return err
 	}
 
-	covers, err := r.getEmbeddedCovers(ids)
+	covers, err := r.getEmbeddedCoversForAlbums(ids)
+	if err != nil {
+		return nil
+	}
+
+	allGenres, err := r.getGenresForAlbums(ids)
 	if err != nil {
 		return nil
 	}
@@ -218,7 +238,6 @@ func (r *albumRepository) refresh(ids ...string) error {
 			al.CoverArtId = embedded.ID
 			al.CoverArtPath = embedded.Path
 		}
-
 		if !hasCoverArt || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
 			if path := getCoverFromPath(al.Path, al.CoverArtPath); path != "" {
 				al.CoverArtId = "al-" + al.ID
@@ -252,7 +271,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 		al.AllArtistIDs = utils.SanitizeStrings(al.SongArtistIds, al.AlbumArtistID, al.ArtistID)
 		al.FullText = getFullText(al.Name, al.Artist, al.AlbumArtist, al.SongArtists,
 			al.SortAlbumName, al.SortArtistName, al.SortAlbumArtistName, al.DiscSubtitles)
-		al.Genres = getGenres(al.GenreIds)
+		al.Genres = allGenres[al.ID]
 		err := r.Put(&al.Album)
 		if err != nil {
 			return err
