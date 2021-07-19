@@ -230,7 +230,7 @@ func init() {
 	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
-	viper.SetDefault("devenablebufferedscrobble", false)
+	viper.SetDefault("devenablebufferedscrobble", true)
 }
 
 func InitConfig(cfgFile string) {
