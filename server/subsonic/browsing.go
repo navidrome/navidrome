@@ -3,9 +3,7 @@ package subsonic
 import (
 	"context"
 	"net/http"
-	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -209,19 +207,16 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 
 func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	genres, err := c.ds.Genre(ctx).GetAll()
+	genres, err := c.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "name"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
 	}
 	for i, g := range genres {
-		if strings.TrimSpace(g.Name) == "" {
+		if g.Name == "" {
 			genres[i].Name = "<Empty>"
 		}
 	}
-	sort.Slice(genres, func(i, j int) bool {
-		return genres[i].Name < genres[j].Name
-	})
 
 	response := newResponse()
 	response.Genres = toGenres(genres)
