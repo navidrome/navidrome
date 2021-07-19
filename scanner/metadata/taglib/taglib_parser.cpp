@@ -23,7 +23,7 @@ int taglib_read(const char *filename, unsigned long id) {
 
   // Add audio properties to the tags
   const TagLib::AudioProperties *props(f.audioProperties());
-  go_map_put_int(id, (char *)"length", props->length());
+  go_map_put_int(id, (char *)"duration", props->length());
   go_map_put_int(id, (char *)"bitrate", props->bitrate());
 
   TagLib::PropertyMap tags = f.file()->properties();
@@ -39,9 +39,6 @@ int taglib_read(const char *filename, unsigned long id) {
     }
     if (!basic->album().isEmpty()) {
       tags.insert("_album", basic->album());
-    }
-    if (!basic->genre().isEmpty()) {
-      tags.insert("_genre", basic->genre());
     }
     if (basic->year() > 0) {
       tags.insert("_year", TagLib::String::number(basic->year()));
@@ -64,7 +61,6 @@ int taglib_read(const char *filename, unsigned long id) {
     }
   }
 
-  // Get only the first occurrence of each tag (for now)
   for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
        ++i) {
     for (TagLib::StringList::ConstIterator j = i->second.begin();

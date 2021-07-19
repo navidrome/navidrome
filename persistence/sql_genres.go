@@ -11,12 +11,7 @@ func (r sqlRepository) withGenres(sql SelectBuilder) SelectBuilder {
 }
 
 func (r *sqlRepository) updateGenres(id string, tableName string, genres model.Genres) error {
-	var ids []string
-	for _, g := range genres {
-		ids = append(ids, g.ID)
-	}
-	del := Delete(tableName + "_genres").Where(
-		And{Eq{tableName + "_id": id}, Eq{"genre_id": ids}})
+	del := Delete(tableName + "_genres").Where(Eq{tableName + "_id": id})
 	_, err := r.executeSQL(del)
 	if err != nil {
 		return err

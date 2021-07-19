@@ -32,13 +32,11 @@ func (e *taglibExtractor) extractMetadata(filePath string) (*Tags, error) {
 	}
 
 	tags := NewTags(filePath, parsedTags, map[string][]string{
-		"title":    {"_track", "titlesort"},
-		"album":    {"_album", "albumsort"},
-		"artist":   {"_artist", "artistsort"},
-		"genre":    {"_genre"},
-		"date":     {"_year"},
-		"track":    {"_track"},
-		"duration": {"length"},
+		"title":  {"_track", "titlesort"},
+		"album":  {"_album", "albumsort"},
+		"artist": {"_artist", "artistsort"},
+		"date":   {"_year"},
+		"track":  {"_track"},
 	})
 
 	return tags, nil

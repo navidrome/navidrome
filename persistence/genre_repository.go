@@ -27,7 +27,7 @@ func NewGenreRepository(ctx context.Context, o orm.Ormer) model.GenreRepository 
 }
 
 func (r *genreRepository) GetAll() (model.Genres, error) {
-	sq := Select("*",
+	sq := Select("genre.*",
 		"count(distinct a.album_id) as album_count",
 		"count(distinct f.media_file_id) as song_count").
 		From(r.tableName).
