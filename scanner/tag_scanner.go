@@ -72,6 +72,9 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	ctx = s.withAdminUser(ctx)
 	start := time.Now()
 
+	// Special case: if lastModifiedSInce is zero, re-import all files
+	fullScan := lastModifiedSince.IsZero()
+
 	allDBDirs, err := s.getDBDirTree(ctx)
 	if err != nil {
 		return 0, err
@@ -93,7 +96,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 		if s.folderHasChanged(ctx, folderStats, allDBDirs, lastModifiedSince) {
 			changedDirs = append(changedDirs, folderStats.Path)
 			log.Debug("Processing changed folder", "dir", folderStats.Path)
-			err := s.processChangedDir(ctx, folderStats.Path)
+			err := s.processChangedDir(ctx, folderStats.Path, fullScan)
 			if err != nil {
 				log.Error("Error updating folder in the DB", "dir", folderStats.Path, err)
 			}
@@ -231,7 +234,7 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string) error {
 	return err
 }
 
-func (s *TagScanner) processChangedDir(ctx context.Context, dir string) error {
+func (s *TagScanner) processChangedDir(ctx context.Context, dir string, fullScan bool) error {
 	start := time.Now()
 	buffer := newRefreshBuffer(ctx, s.ds)
 
@@ -270,7 +273,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string) error {
 			filesToUpdate = append(filesToUpdate, filePath)
 			s.cnt.added++
 		}
-		if ok && info.ModTime().After(c.UpdatedAt) {
+		if ok && (info.ModTime().After(c.UpdatedAt) || fullScan) {
 			filesToUpdate = append(filesToUpdate, filePath)
 			s.cnt.updated++
 		}
