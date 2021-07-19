@@ -207,7 +207,7 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 
 func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	genres, err := c.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "name"})
+	genres, err := c.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
