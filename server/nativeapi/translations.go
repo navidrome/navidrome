@@ -31,7 +31,7 @@ var (
 
 func newTranslationRepository(context.Context) rest.Repository {
 	dir := utils.NewMergeFS(
-		http.FS(resources.Assets()),
+		http.FS(resources.FS),
 		http.Dir(filepath.Join(conf.Server.DataFolder, "resources")),
 	)
 	if err := loadTranslations(dir); err != nil {
