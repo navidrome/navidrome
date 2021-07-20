@@ -131,24 +131,6 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return res, err
 }
 
-// Return a map of mediafiles that have embedded covers for the given album ids
-func (r *albumRepository) getEmbeddedCoversForAlbums(ids []string) (map[string]model.MediaFile, error) {
-	var mfs model.MediaFiles
-	coverSql := Select("album_id", "id", "path").Distinct().From("media_file").
-		Where(And{Eq{"has_cover_art": true}, Eq{"album_id": ids}}).
-		GroupBy("album_id")
-	err := r.queryAll(coverSql, &mfs)
-	if err != nil {
-		return nil, err
-	}
-
-	result := map[string]model.MediaFile{}
-	for _, mf := range mfs {
-		result[mf.AlbumID] = mf
-	}
-	return result, nil
-}
-
 func (r *albumRepository) Refresh(ids ...string) error {
 	chunks := utils.BreakUpStringSlice(ids, 100)
 	for _, chunk := range chunks {
@@ -178,6 +160,7 @@ type refreshAlbum struct {
 }
 
 func (r *albumRepository) refresh(ids ...string) error {
+	stringListIds := "('" + strings.Join(ids, "','") + "')"
 	var albums []refreshAlbum
 	sel := Select(`f.album_id as id, f.album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
 		f.sort_album_name, f.sort_artist_name, f.sort_album_artist_name, f.order_album_name, f.order_album_artist_name, 
@@ -196,32 +179,25 @@ func (r *albumRepository) refresh(ids ...string) error {
 		group_concat(f.artist_id, ' ') as song_artist_ids, 
 		group_concat(f.album_artist_id, ' ') as album_artist_ids, 
 		group_concat(f.year, ' ') as years`,
-		"mg.genre_ids").
+		"cf.cover_art_id", "cf.cover_art_path",
+		"mfg.genre_ids").
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
-		LeftJoin(`(select mf.album_id, group_concat(mfg.genre_id, ' ') as genre_ids from media_file_genres mfg
-			left join media_file mf on mf.id = mfg.media_file_id where mf.album_id in ('` +
-			strings.Join(ids, "','") + `') group by mf.album_id) mg on mg.album_id = f.album_id`).
+		LeftJoin(`(select album_id, id as cover_art_id, path as cover_art_path from media_file 
+			where has_cover_art = true and album_id in ` + stringListIds + ` group by album_id) cf 
+			on cf.album_id = f.album_id`).
+		LeftJoin(`(select mf.album_id, group_concat(genre_id, ' ') as genre_ids from media_file_genres
+			left join media_file mf on mf.id = media_file_id where mf.album_id in ` +
+			stringListIds + ` group by mf.album_id) mfg on mfg.album_id = f.album_id`).
 		Where(Eq{"f.album_id": ids}).GroupBy("f.album_id")
 	err := r.queryAll(sel, &albums)
 	if err != nil {
 		return err
 	}
-
-	covers, err := r.getEmbeddedCoversForAlbums(ids)
-	if err != nil {
-		return nil
-	}
-
 	toInsert := 0
 	toUpdate := 0
 	for _, al := range albums {
-		embedded, hasCoverArt := covers[al.ID]
-		if hasCoverArt {
-			al.CoverArtId = embedded.ID
-			al.CoverArtPath = embedded.Path
-		}
-		if !hasCoverArt || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
+		if al.CoverArtPath == "" || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
 			if path := getCoverFromPath(al.Path, al.CoverArtPath); path != "" {
 				al.CoverArtId = "al-" + al.ID
 				al.CoverArtPath = path
@@ -229,7 +205,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 		}
 
 		if al.CoverArtId != "" {
-			log.Trace(r.ctx, "Found album art", "id", al.ID, "name", al.Name, "coverArtPath", al.CoverArtPath, "coverArtId", al.CoverArtId, "hasCoverArt", hasCoverArt)
+			log.Trace(r.ctx, "Found album art", "id", al.ID, "name", al.Name, "coverArtPath", al.CoverArtPath, "coverArtId", al.CoverArtId)
 		} else {
 			log.Trace(r.ctx, "Could not find album art", "id", al.ID, "name", al.Name)
 		}
