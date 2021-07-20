@@ -175,23 +175,6 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 	return result, nil
 }
 
-func (r *artistRepository) getGenresForArtists(ids []string) (map[string]model.Genres, error) {
-	sql := Select("a.album_artist_id", "group_concat(ag.genre_id, ' ') as genre").From("album_genres ag").
-		LeftJoin("album a on a.id = ag.album_id").
-		Where(Eq{"a.album_artist_id": ids}).GroupBy("a.album_artist_id")
-	var als model.Albums
-	err := r.queryAll(sql, &als)
-	if err != nil {
-		return nil, err
-	}
-
-	result := map[string]model.Genres{}
-	for _, al := range als {
-		result[al.AlbumArtistID] = getGenres(al.Genre)
-	}
-	return result, nil
-}
-
 func (r *artistRepository) Refresh(ids ...string) error {
 	chunks := utils.BreakUpStringSlice(ids, 100)
 	for _, chunk := range chunks {
@@ -207,23 +190,22 @@ func (r *artistRepository) refresh(ids ...string) error {
 	type refreshArtist struct {
 		model.Artist
 		CurrentId string
+		GenreIds  string
 	}
 	var artists []refreshArtist
 	sel := Select("f.album_artist_id as id", "f.album_artist as name", "count(*) as album_count", "a.id as current_id",
 		"group_concat(f.mbz_album_artist_id , ' ') as mbz_artist_id",
 		"f.sort_album_artist_name as sort_artist_name", "f.order_album_artist_name as order_artist_name",
 		"sum(f.song_count) as song_count", "sum(f.size) as size",
-		"(select group_concat(genre_id, ' ') from album_genres where album_id = f.id) as genre_ids").
+		"alg.genre_ids").
 		From("album f").
 		LeftJoin("artist a on f.album_artist_id = a.id").
+		LeftJoin(`(select al.album_artist_id, group_concat(ag.genre_id, ' ') as genre_ids from album_genres ag
+				left join album al on al.id = ag.album_id where al.album_artist_id in ('` +
+			strings.Join(ids, "','") + `') group by al.album_artist_id) alg on alg.album_artist_id = f.album_artist_id`).
 		Where(Eq{"f.album_artist_id": ids}).
 		GroupBy("f.album_artist_id").OrderBy("f.id")
 	err := r.queryAll(sel, &artists)
-	if err != nil {
-		return err
-	}
-
-	allGenres, err := r.getGenresForArtists(ids)
 	if err != nil {
 		return err
 	}
@@ -237,7 +219,7 @@ func (r *artistRepository) refresh(ids ...string) error {
 			toInsert++
 		}
 		ar.MbzArtistID = getMostFrequentMbzID(r.ctx, ar.MbzArtistID, r.tableName, ar.Name)
-		ar.Genres = allGenres[ar.ID]
+		ar.Genres = getGenres(ar.GenreIds)
 		err := r.Put(&ar.Artist)
 		if err != nil {
 			return err
