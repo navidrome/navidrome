@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/consts"
@@ -37,7 +38,7 @@ var _ = Describe("Translations", func() {
 
 	Describe("loadTranslation", func() {
 		It("loads a translation file correctly", func() {
-			fs := http.Dir("ui/src")
+			fs := os.DirFS("ui/src")
 			tr, err := loadTranslation(fs, "en.json")
 			Expect(err).To(BeNil())
 			Expect(tr.ID).To(Equal("en"))
