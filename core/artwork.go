@@ -10,7 +10,6 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -173,7 +172,7 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 
 	buf := new(bytes.Buffer)
 	err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
-	return ioutil.NopCloser(buf), err
+	return io.NopCloser(buf), err
 }
 
 func readFromTag(path string) (io.ReadCloser, error) {
@@ -192,7 +191,7 @@ func readFromTag(path string) (io.ReadCloser, error) {
 	if picture == nil {
 		return nil, errors.New("file does not contain embedded art")
 	}
-	return ioutil.NopCloser(bytes.NewReader(picture.Data)), nil
+	return io.NopCloser(bytes.NewReader(picture.Data)), nil
 }
 
 func readFromFile(path string) (io.ReadCloser, error) {

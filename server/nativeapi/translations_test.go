@@ -2,7 +2,7 @@ package nativeapi
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -26,7 +26,7 @@ var _ = Describe("Translations", func() {
 				name := filepath.Base(f.Name())
 				filePath := filepath.Join(consts.I18nFolder, name)
 				file, _ := fs.Open(filePath)
-				data, _ := ioutil.ReadAll(file)
+				data, _ := io.ReadAll(file)
 				var out map[string]interface{}
 
 				Expect(filepath.Ext(filePath)).To(Equal(".json"), filePath)

@@ -2,7 +2,7 @@ package lastfm
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,7 +12,7 @@ var _ = Describe("LastFM responses", func() {
 	Describe("Artist", func() {
 		It("parses the response correctly", func() {
 			var resp Response
-			body, _ := ioutil.ReadFile("tests/fixtures/lastfm.artist.getinfo.json")
+			body, _ := os.ReadFile("tests/fixtures/lastfm.artist.getinfo.json")
 			err := json.Unmarshal(body, &resp)
 			Expect(err).To(BeNil())
 
@@ -26,7 +26,7 @@ var _ = Describe("LastFM responses", func() {
 	Describe("SimilarArtists", func() {
 		It("parses the response correctly", func() {
 			var resp Response
-			body, _ := ioutil.ReadFile("tests/fixtures/lastfm.artist.getsimilar.json")
+			body, _ := os.ReadFile("tests/fixtures/lastfm.artist.getsimilar.json")
 			err := json.Unmarshal(body, &resp)
 			Expect(err).To(BeNil())
 
@@ -39,7 +39,7 @@ var _ = Describe("LastFM responses", func() {
 	Describe("TopTracks", func() {
 		It("parses the response correctly", func() {
 			var resp Response
-			body, _ := ioutil.ReadFile("tests/fixtures/lastfm.artist.gettoptracks.json")
+			body, _ := os.ReadFile("tests/fixtures/lastfm.artist.gettoptracks.json")
 			err := json.Unmarshal(body, &resp)
 			Expect(err).To(BeNil())
 

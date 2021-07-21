@@ -2,7 +2,7 @@ package resources
 
 import (
 	"embed"
-	"io/ioutil"
+	"io"
 )
 
 //go:embed *
@@ -13,5 +13,5 @@ func Asset(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ioutil.ReadAll(f)
+	return io.ReadAll(f)
 }

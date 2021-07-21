@@ -1,8 +1,8 @@
 package utils_test
 
 import (
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -16,8 +16,8 @@ var _ = Describe("MergeFS", func() {
 	var baseDir, overlayDir, mergedDir fs.FS
 
 	BeforeEach(func() {
-		baseName, _ = ioutil.TempDir("", "merge_fs_base_test")
-		overlayName, _ = ioutil.TempDir("", "merge_fs_overlay_test")
+		baseName, _ = os.MkdirTemp("", "merge_fs_base_test")
+		overlayName, _ = os.MkdirTemp("", "merge_fs_overlay_test")
 		baseDir = os.DirFS(baseName)
 		overlayDir = os.DirFS(overlayName)
 		mergedDir = utils.MergeFS{Base: baseDir, Overlay: overlayDir}
@@ -41,7 +41,7 @@ var _ = Describe("MergeFS", func() {
 		file, err := mergedDir.Open("b.json")
 		Expect(err).To(BeNil())
 
-		content, err := ioutil.ReadAll(file)
+		content, err := io.ReadAll(file)
 		Expect(err).To(BeNil())
 		Expect(string(content)).To(Equal("overridden"))
 	})
