@@ -3,6 +3,7 @@ package persistence
 import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 )
 
 func (r sqlRepository) withGenres(sql SelectBuilder) SelectBuilder {
@@ -37,22 +38,24 @@ func (r *sqlRepository) loadMediaFileGenres(mfs *model.MediaFiles) error {
 		m[mf.ID] = mf
 	}
 
-	sql := Select("g.*", "mg.media_file_id").From("genre g").Join("media_file_genres mg on mg.genre_id = g.id").
-		Where(Eq{"mg.media_file_id": ids}).OrderBy("mg.media_file_id", "mg.rowid")
-	var genres []struct {
-		model.Genre
-		MediaFileId string
-	}
+	return utils.RangeByChunks(ids, 100, func(ids []string) error {
+		sql := Select("g.*", "mg.media_file_id").From("genre g").Join("media_file_genres mg on mg.genre_id = g.id").
+			Where(Eq{"mg.media_file_id": ids}).OrderBy("mg.media_file_id", "mg.rowid")
+		var genres []struct {
+			model.Genre
+			MediaFileId string
+		}
 
-	err := r.queryAll(sql, &genres)
-	if err != nil {
-		return err
-	}
-	for _, g := range genres {
-		mf := m[g.MediaFileId]
-		mf.Genres = append(mf.Genres, g.Genre)
-	}
-	return nil
+		err := r.queryAll(sql, &genres)
+		if err != nil {
+			return err
+		}
+		for _, g := range genres {
+			mf := m[g.MediaFileId]
+			mf.Genres = append(mf.Genres, g.Genre)
+		}
+		return nil
+	})
 }
 
 func (r *sqlRepository) loadAlbumGenres(mfs *model.Albums) error {
@@ -64,22 +67,24 @@ func (r *sqlRepository) loadAlbumGenres(mfs *model.Albums) error {
 		m[mf.ID] = mf
 	}
 
-	sql := Select("g.*", "ag.album_id").From("genre g").Join("album_genres ag on ag.genre_id = g.id").
-		Where(Eq{"ag.album_id": ids}).OrderBy("ag.album_id", "ag.rowid")
-	var genres []struct {
-		model.Genre
-		AlbumId string
-	}
+	return utils.RangeByChunks(ids, 100, func(ids []string) error {
+		sql := Select("g.*", "ag.album_id").From("genre g").Join("album_genres ag on ag.genre_id = g.id").
+			Where(Eq{"ag.album_id": ids}).OrderBy("ag.album_id", "ag.rowid")
+		var genres []struct {
+			model.Genre
+			AlbumId string
+		}
 
-	err := r.queryAll(sql, &genres)
-	if err != nil {
-		return err
-	}
-	for _, g := range genres {
-		mf := m[g.AlbumId]
-		mf.Genres = append(mf.Genres, g.Genre)
-	}
-	return nil
+		err := r.queryAll(sql, &genres)
+		if err != nil {
+			return err
+		}
+		for _, g := range genres {
+			mf := m[g.AlbumId]
+			mf.Genres = append(mf.Genres, g.Genre)
+		}
+		return nil
+	})
 }
 
 func (r *sqlRepository) loadArtistGenres(mfs *model.Artists) error {
@@ -91,20 +96,22 @@ func (r *sqlRepository) loadArtistGenres(mfs *model.Artists) error {
 		m[mf.ID] = mf
 	}
 
-	sql := Select("g.*", "ag.artist_id").From("genre g").Join("artist_genres ag on ag.genre_id = g.id").
-		Where(Eq{"ag.artist_id": ids}).OrderBy("ag.artist_id", "ag.rowid")
-	var genres []struct {
-		model.Genre
-		ArtistId string
-	}
+	return utils.RangeByChunks(ids, 100, func(ids []string) error {
+		sql := Select("g.*", "ag.artist_id").From("genre g").Join("artist_genres ag on ag.genre_id = g.id").
+			Where(Eq{"ag.artist_id": ids}).OrderBy("ag.artist_id", "ag.rowid")
+		var genres []struct {
+			model.Genre
+			ArtistId string
+		}
 
-	err := r.queryAll(sql, &genres)
-	if err != nil {
-		return err
-	}
-	for _, g := range genres {
-		mf := m[g.ArtistId]
-		mf.Genres = append(mf.Genres, g.Genre)
-	}
-	return nil
+		err := r.queryAll(sql, &genres)
+		if err != nil {
+			return err
+		}
+		for _, g := range genres {
+			mf := m[g.ArtistId]
+			mf.Genres = append(mf.Genres, g.Genre)
+		}
+		return nil
+	})
 }
