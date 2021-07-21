@@ -83,7 +83,7 @@ func getMostFrequentMbzID(ctx context.Context, mbzIDs, entityName, name string) 
 	}
 
 	if len(idCounts) > 1 && name != consts.VariousArtists {
-		log.Warn(ctx, "Multiple MBIDs found for "+entityName, "name", name, "mbids", idCounts)
+		log.Warn(ctx, "Multiple MBIDs found for "+entityName, "name", name, "mbids", idCounts, "selectedId", topId)
 	}
 	if topId == consts.VariousArtistsMbzId && name != consts.VariousArtists {
 		log.Warn(ctx, "Artist with mbid of 'Various Artists'", "name", name, "mbid", topId)
