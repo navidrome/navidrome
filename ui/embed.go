@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-//go:embed build
+//go:embed build/*
 var filesystem embed.FS
 
 func BuildAssets() fs.FS {
