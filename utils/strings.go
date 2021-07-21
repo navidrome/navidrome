@@ -34,17 +34,6 @@ func RemoveString(slice []string, index int) []string {
 	return append(slice[:index], slice[index+1:]...)
 }
 
-func UniqueStrings(slice []string) []string {
-	var unique []string
-	for _, s := range slice {
-		if StringInSlice(s, unique) {
-			continue
-		}
-		unique = append(unique, s)
-	}
-	return unique
-}
-
 func MoveString(slice []string, srcIndex int, dstIndex int) []string {
 	value := slice[srcIndex]
 	return InsertString(RemoveString(slice, srcIndex), value, dstIndex)
