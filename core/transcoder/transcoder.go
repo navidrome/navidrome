@@ -16,19 +16,15 @@ type Transcoder interface {
 }
 
 func New() Transcoder {
-	_, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		log.Error("Unable to find ffmpeg", err)
-	}
-	return &ffmpeg{}
+	return &externalTranscoder{}
 }
 
-type ffmpeg struct{}
+type externalTranscoder struct{}
 
-func (ff *ffmpeg) Start(ctx context.Context, command, path string, maxBitRate int) (f io.ReadCloser, err error) {
+func (e *externalTranscoder) Start(ctx context.Context, command, path string, maxBitRate int) (f io.ReadCloser, err error) {
 	args := createTranscodeCommand(command, path, maxBitRate)
 
-	log.Trace(ctx, "Executing ffmpeg command", "cmd", args)
+	log.Trace(ctx, "Executing transcoding command", "cmd", args)
 	cmd := exec.Command(args[0], args[1:]...) // #nosec
 	cmd.Stderr = os.Stderr
 	if f, err = cmd.StdoutPipe(); err != nil {
