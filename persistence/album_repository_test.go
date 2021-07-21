@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -89,7 +88,7 @@ var _ = Describe("AlbumRepository", func() {
 	})
 
 	Describe("getCoverFromPath", func() {
-		testFolder, _ := ioutil.TempDir("", "album_persistence_tests")
+		testFolder, _ := os.MkdirTemp("", "album_persistence_tests")
 		if err := os.MkdirAll(testFolder, 0777); err != nil {
 			panic(err)
 		}

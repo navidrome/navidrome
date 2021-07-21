@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 	"io"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -22,7 +22,7 @@ var _ = Describe("MediaStreamer", func() {
 	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
-		conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
+		conf.Server.DataFolder, _ = os.MkdirTemp("", "file_caches")
 		conf.Server.TranscodingCacheSize = "100MB"
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
 		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
@@ -58,7 +58,7 @@ var _ = Describe("MediaStreamer", func() {
 		It("returns a seekable stream if the file is complete in the cache", func() {
 			s, err := streamer.NewStream(ctx, "123", "mp3", 32)
 			Expect(err).To(BeNil())
-			_, _ = ioutil.ReadAll(s)
+			_, _ = io.ReadAll(s)
 			_ = s.Close()
 			Eventually(func() bool { return ffmpeg.closed }, "3s").Should(BeTrue())
 

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -70,7 +70,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.FM call returns an error", func() {
-			httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
 			_, err := agent.GetBiography(ctx, "123", "U2", "mbid-1234")
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -78,7 +78,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.FM call returns an error 6 and mbid is empty", func() {
-			httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
 			_, err := agent.GetBiography(ctx, "123", "U2", "")
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -93,7 +93,7 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 			})
 			It("calls again when last.fm returns an error 6", func() {
-				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
 				_, _ = agent.GetBiography(ctx, "123", "U2", "mbid-1234")
 				Expect(httpClient.RequestCount).To(Equal(2))
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
@@ -131,7 +131,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.FM call returns an error", func() {
-			httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
 			_, err := agent.GetSimilar(ctx, "123", "U2", "mbid-1234", 2)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -139,7 +139,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.FM call returns an error 6 and mbid is empty", func() {
-			httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
 			_, err := agent.GetSimilar(ctx, "123", "U2", "", 2)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -154,7 +154,7 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 			})
 			It("calls again when last.fm returns an error 6", func() {
-				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
 				_, _ = agent.GetSimilar(ctx, "123", "U2", "mbid-1234", 2)
 				Expect(httpClient.RequestCount).To(Equal(2))
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
@@ -192,7 +192,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.FM call returns an error", func() {
-			httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
 			_, err := agent.GetTopSongs(ctx, "123", "U2", "mbid-1234", 2)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -200,7 +200,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.FM call returns an error 6 and mbid is empty", func() {
-			httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
 			_, err := agent.GetTopSongs(ctx, "123", "U2", "", 2)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -215,7 +215,7 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 			})
 			It("calls again when last.fm returns an error 6", func() {
-				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
 				_, _ = agent.GetTopSongs(ctx, "123", "U2", "mbid-1234", 2)
 				Expect(httpClient.RequestCount).To(Equal(2))
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
@@ -247,7 +247,7 @@ var _ = Describe("lastfmAgent", func() {
 
 		Describe("NowPlaying", func() {
 			It("calls Last.fm with correct params", func() {
-				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
 				err := agent.NowPlaying(ctx, "user-1", track)
 
@@ -274,7 +274,7 @@ var _ = Describe("lastfmAgent", func() {
 		Describe("Scrobble", func() {
 			It("calls Last.fm with correct params", func() {
 				ts := time.Now()
-				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: ts})
 
@@ -295,7 +295,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			It("skips songs with less than 31 seconds", func() {
 				track.Duration = 29
-				httpClient.Res = http.Response{Body: ioutil.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 
@@ -310,7 +310,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			It("returns ErrRetryLater on error 11", func() {
 				httpClient.Res = http.Response{
-					Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":11,"message":"Service Offline - This service is temporarily offline. Try again later."}`)),
+					Body:       io.NopCloser(bytes.NewBufferString(`{"error":11,"message":"Service Offline - This service is temporarily offline. Try again later."}`)),
 					StatusCode: 400,
 				}
 
@@ -320,7 +320,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			It("returns ErrRetryLater on error 16", func() {
 				httpClient.Res = http.Response{
-					Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":16,"message":"There was a temporary error processing your request. Please try again"}`)),
+					Body:       io.NopCloser(bytes.NewBufferString(`{"error":16,"message":"There was a temporary error processing your request. Please try again"}`)),
 					StatusCode: 400,
 				}
 
@@ -330,7 +330,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			It("returns ErrRetryLater on http errors", func() {
 				httpClient.Res = http.Response{
-					Body:       ioutil.NopCloser(bytes.NewBufferString(`internal server error`)),
+					Body:       io.NopCloser(bytes.NewBufferString(`internal server error`)),
 					StatusCode: 500,
 				}
 
@@ -340,7 +340,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			It("returns ErrUnrecoverable on other errors", func() {
 				httpClient.Res = http.Response{
-					Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":8,"message":"Operation failed - Something else went wrong"}`)),
+					Body:       io.NopCloser(bytes.NewBufferString(`{"error":8,"message":"Operation failed - Something else went wrong"}`)),
 					StatusCode: 400,
 				}
 

@@ -3,7 +3,7 @@ package spotify
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 
@@ -26,7 +26,7 @@ var _ = Describe("Client", func() {
 			httpClient.mock("https://api.spotify.com/v1/search", http.Response{Body: f, StatusCode: 200})
 			httpClient.mock("https://accounts.spotify.com/api/token", http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"access_token": "NEW_ACCESS_TOKEN","token_type": "Bearer","expires_in": 3600}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"access_token": "NEW_ACCESS_TOKEN","token_type": "Bearer","expires_in": 3600}`)),
 			})
 
 			artists, err := client.SearchArtists(context.TODO(), "U2", 10)
@@ -44,7 +44,7 @@ var _ = Describe("Client", func() {
 		It("fails if artist was not found", func() {
 			httpClient.mock("https://api.spotify.com/v1/search", http.Response{
 				StatusCode: 200,
-				Body: ioutil.NopCloser(bytes.NewBufferString(`{
+				Body: io.NopCloser(bytes.NewBufferString(`{
 						  "artists" : {
 							"href" : "https://api.spotify.com/v1/search?query=dasdasdas%2Cdna&type=artist&offset=0&limit=20",
 							"items" : [ ], "limit" : 20, "next" : null, "offset" : 0, "previous" : null, "total" : 0
@@ -52,7 +52,7 @@ var _ = Describe("Client", func() {
 			})
 			httpClient.mock("https://accounts.spotify.com/api/token", http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"access_token": "NEW_ACCESS_TOKEN","token_type": "Bearer","expires_in": 3600}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"access_token": "NEW_ACCESS_TOKEN","token_type": "Bearer","expires_in": 3600}`)),
 			})
 
 			_, err := client.SearchArtists(context.TODO(), "U2", 10)
@@ -64,7 +64,7 @@ var _ = Describe("Client", func() {
 			httpClient.mock("https://api.spotify.com/v1/search", http.Response{Body: f, StatusCode: 200})
 			httpClient.mock("https://accounts.spotify.com/api/token", http.Response{
 				StatusCode: 400,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":"invalid_client","error_description":"Invalid client"}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"error":"invalid_client","error_description":"Invalid client"}`)),
 			})
 
 			_, err := client.SearchArtists(context.TODO(), "U2", 10)
@@ -76,7 +76,7 @@ var _ = Describe("Client", func() {
 		It("returns an access_token on successful authorization", func() {
 			httpClient.mock("https://accounts.spotify.com/api/token", http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"access_token": "NEW_ACCESS_TOKEN","token_type": "Bearer","expires_in": 3600}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"access_token": "NEW_ACCESS_TOKEN","token_type": "Bearer","expires_in": 3600}`)),
 			})
 
 			token, err := client.authorize(context.TODO())
@@ -89,7 +89,7 @@ var _ = Describe("Client", func() {
 		It("fails on unsuccessful authorization", func() {
 			httpClient.mock("https://accounts.spotify.com/api/token", http.Response{
 				StatusCode: 400,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":"invalid_client","error_description":"Invalid client"}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"error":"invalid_client","error_description":"Invalid client"}`)),
 			})
 
 			_, err := client.authorize(context.TODO())
@@ -99,7 +99,7 @@ var _ = Describe("Client", func() {
 		It("fails on invalid JSON response", func() {
 			httpClient.mock("https://accounts.spotify.com/api/token", http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`{NOT_VALID}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{NOT_VALID}`)),
 			})
 
 			_, err := client.authorize(context.TODO())

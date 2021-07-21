@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/model"
@@ -76,5 +75,5 @@ func (c *fakeArtwork) Get(ctx context.Context, id string, size int) (io.ReadClos
 	}
 	c.recvId = id
 	c.recvSize = size
-	return ioutil.NopCloser(bytes.NewReader([]byte(c.data))), nil
+	return io.NopCloser(bytes.NewReader([]byte(c.data))), nil
 }

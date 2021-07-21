@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 	"image"
-	"io/ioutil"
+	"os"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -33,7 +33,7 @@ var _ = Describe("Artwork", func() {
 
 	Context("Cache is configured", func() {
 		BeforeEach(func() {
-			conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
+			conf.Server.DataFolder, _ = os.MkdirTemp("", "file_caches")
 			conf.Server.ImageCacheSize = "100MB"
 			cache := GetImageCache()
 			Eventually(func() bool { return cache.Ready(context.TODO()) }).Should(BeTrue())

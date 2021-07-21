@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -36,7 +36,7 @@ var _ = Describe("CachedHttpClient", func() {
 			r, _ := http.NewRequest("GET", ts.URL+"?name=doe", nil)
 			resp, err := chc.Do(r)
 			Expect(err).To(BeNil())
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			Expect(err).To(BeNil())
 			Expect(string(body)).To(Equal("Hello, [doe]"))
 			Expect(requestsReceived).To(Equal(1))
@@ -45,7 +45,7 @@ var _ = Describe("CachedHttpClient", func() {
 			r, _ = http.NewRequest("GET", ts.URL+"?name=doe", nil)
 			resp, err = chc.Do(r)
 			Expect(err).To(BeNil())
-			body, err = ioutil.ReadAll(resp.Body)
+			body, err = io.ReadAll(resp.Body)
 			Expect(err).To(BeNil())
 			Expect(string(body)).To(Equal("Hello, [doe]"))
 			Expect(requestsReceived).To(Equal(1))
@@ -54,7 +54,7 @@ var _ = Describe("CachedHttpClient", func() {
 			r, _ = http.NewRequest("GET", ts.URL, nil)
 			resp, err = chc.Do(r)
 			Expect(err).To(BeNil())
-			body, err = ioutil.ReadAll(resp.Body)
+			body, err = io.ReadAll(resp.Body)
 			Expect(err).To(BeNil())
 			Expect(string(body)).To(Equal("Hello, []"))
 			Expect(requestsReceived).To(Equal(2))
@@ -64,7 +64,7 @@ var _ = Describe("CachedHttpClient", func() {
 			r.Header.Add("head", "this is a header")
 			resp, err = chc.Do(r)
 			Expect(err).To(BeNil())
-			body, err = ioutil.ReadAll(resp.Body)
+			body, err = io.ReadAll(resp.Body)
 			Expect(err).To(BeNil())
 			Expect(string(body)).To(Equal("Hello, []"))
 			Expect(header).To(Equal("this is a header"))

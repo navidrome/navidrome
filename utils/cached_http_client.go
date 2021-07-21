@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -71,7 +70,7 @@ func (c *CachedHTTPClient) serializeReq(req *http.Request) string {
 		URL:    req.URL.String(),
 	}
 	if req.Body != nil {
-		bodyData, _ := ioutil.ReadAll(req.Body)
+		bodyData, _ := io.ReadAll(req.Body)
 		bodyStr := base64.StdEncoding.EncodeToString(bodyData)
 		data.Body = &bodyStr
 	}
