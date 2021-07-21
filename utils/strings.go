@@ -53,6 +53,17 @@ func BreakUpStringSlice(items []string, chunkSize int) [][]string {
 	return chunks
 }
 
+func RangeByChunks(items []string, chunkSize int, cb func([]string) error) error {
+	chunks := BreakUpStringSlice(items, chunkSize)
+	for _, chunk := range chunks {
+		err := cb(chunk)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func LongestCommonPrefix(list []string) string {
 	if len(list) == 0 {
 		return ""
