@@ -8,7 +8,6 @@
     "@material-ui/lab": "^4.0.0-alpha.58",
     "@material-ui/styles": "^4.11.4",
     "blueimp-md5": "^2.18.0",
-    "chokidar": "^3.5.2",
     "clsx": "^1.1.1",
     "connected-react-router": "^6.9.1",
     "deepmerge": "^4.2.2",
