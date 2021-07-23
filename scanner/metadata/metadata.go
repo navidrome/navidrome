@@ -28,9 +28,9 @@ func Extract(files ...string) (map[string]*Tags, error) {
 	case "ffmpeg":
 		e = &ffmpegExtractor{}
 	default:
-		log.Warn("Invalid Scanner.Extractor option. Using default ffmpeg", "requested", conf.Server.Scanner.Extractor,
+		log.Warn("Invalid Scanner.Extractor option. Using default taglib", "requested", conf.Server.Scanner.Extractor,
 			"validOptions", "ffmpeg,taglib")
-		e = &ffmpegExtractor{}
+		e = &taglibExtractor{}
 	}
 	return e.Extract(files...)
 }
