@@ -33,6 +33,7 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { AddToPlaylistDialog } from '../dialogs'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -156,7 +157,6 @@ const SongList = (props) => {
           <SongSimpleList />
         ) : (
           <SongDatagrid
-            expand={<SongDetails />}
             rowClick={handleRowClick}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
@@ -182,6 +182,7 @@ const SongList = (props) => {
         )}
       </List>
       <AddToPlaylistDialog />
+      <ExpandInfoDialog content={<SongDetails />} />
     </>
   )
 }
