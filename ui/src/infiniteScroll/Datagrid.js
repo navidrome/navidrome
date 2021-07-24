@@ -22,7 +22,6 @@ function Datagrid(props) {
 
   const { classes, isRowSelectable, rowClick, hasBulkActions } = props
 
-  const [loadedRows, updateLoadedRows] = useInstance({})
   const [lastFetchPosition, updateLastFetchPosition] = useInstance({
     startIndex: 0,
     stopIndex: perPage,
@@ -40,24 +39,26 @@ function Datagrid(props) {
   const history = useHistory()
   const [loadPromiseResolver, updateLoadPromiseResolver] = useInstance(null)
 
+  const [loadedIds, updateLoadedIds] = useInstance({})
+
   const getList = (...args) => dispatch(crudGetList(...args))
 
   useEffect(() => {
     let { startIndex, stopIndex } = lastFetchPosition
-    let newLoadedRows = loadedRows
+    let newLoadedIds = loadedIds
 
     if (loadPromiseResolver == null) {
       startIndex = 0
       stopIndex = perPage
-      newLoadedRows = {}
+      newLoadedIds = {}
       // TODO: scrollToPosition(0)
     }
-    // console.log('LoadLog', 'Got', startIndex, stopIndex, ids.length)
+
     for (let i = startIndex; i <= stopIndex; i++) {
-      newLoadedRows[i] = data[ids[i - startIndex]]
+      newLoadedIds[i] = ids[i - startIndex]
     }
 
-    updateLoadedRows(newLoadedRows)
+    updateLoadedIds(newLoadedIds)
     updateLastFetchPosition({ startIndex, stopIndex })
 
     if (loadPromiseResolver) {
@@ -66,7 +67,7 @@ function Datagrid(props) {
     }
   }, [ids])
 
-  const onRowClick = ({ index, rowData: record }) => {
+  const onRowClick = ({ index, event, rowData: record }) => {
     const id = record.id
     // onToggleItem(id), from List Context can be used to toggle item in the list
     const effect =
@@ -80,12 +81,9 @@ function Datagrid(props) {
       case 'show':
         history.push(linkToRecord(basePath || `/${resource}`, id, 'show'))
         return
-      // case 'expand':
-      //     handleToggleExpand(event);
-      //     return;
-      // case 'toggleSelection':
-      //     handleToggleSelection(event);
-      //     return;
+      case 'toggleSelection':
+          handleToggleItem(id, event);
+          return;
       default:
         if (effect) history.push(effect)
         return
@@ -120,7 +118,7 @@ function Datagrid(props) {
   const handleToggleItem = useCallback(
     (id, event) => {
       const lastSelectedIndex = lastSelected
-        ? Object.keys(loadedRows).find((i) => loadedRows[i].id === lastSelected)
+        ? Object.keys(loadedIds).find((i) => loadedIds[i] === lastSelected)
         : -1
       updateLastSelected(event.target.checked ? id : null)
 
@@ -162,8 +160,8 @@ function Datagrid(props) {
     <VirtualTable
       remoteDataCount={total || 0}
       loadMoreRows={handleLoadMore}
-      isRowLoaded={({ index }) => !!loadedRows[index]}
-      rowGetter={({ index }) => loadedRows[index] || {}}
+      isRowLoaded={({ index }) => !!loadedIds[index]}
+      rowGetter={({ index }) => data[loadedIds[index]] || {}}
       onRowClick={onRowClick}
       classes={classes}
       resource={resource}
