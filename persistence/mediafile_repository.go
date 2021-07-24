@@ -31,6 +31,7 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 		"random": "RANDOM()",
 	}
 	r.filterMappings = map[string]filterFunc{
+		"id":      idFilter(r.tableName),
 		"title":   fullTextFilter,
 		"starred": booleanFilter,
 	}
@@ -44,7 +45,7 @@ func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, er
 }
 
 func (r *mediaFileRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"id": id}))
+	return r.exists(Select().Where(Eq{"media_file.id": id}))
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
