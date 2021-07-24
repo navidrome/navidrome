@@ -82,8 +82,8 @@ function Datagrid(props) {
         history.push(linkToRecord(basePath || `/${resource}`, id, 'show'))
         return
       case 'toggleSelection':
-          handleToggleItem(id, event);
-          return;
+        handleToggleItem(id, event)
+        return
       default:
         if (effect) history.push(effect)
         return
