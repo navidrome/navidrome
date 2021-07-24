@@ -23,20 +23,20 @@ type Parser interface {
 	Parse(files ...string) (map[string]map[string][]string, error)
 }
 
-func Extract(files ...string) (map[string]*Tags, error) {
-	var e Parser
+var parsers = map[string]Parser{
+	"ffmpeg": &ffmpeg.Parser{},
+	"taglib": &taglib.Parser{},
+}
 
-	switch conf.Server.Scanner.Extractor {
-	case "taglib":
-		e = &taglib.Parser{}
-	case "ffmpeg":
-		e = &ffmpeg.Parser{}
-	default:
-		log.Warn("Invalid 'Scanner.Extractor' option. Using default 'taglib'", "requested", conf.Server.Scanner.Extractor,
-			"validOptions", "ffmpeg,taglib")
-		e = &taglib.Parser{}
+func Extract(files ...string) (map[string]*Tags, error) {
+	p, ok := parsers[conf.Server.Scanner.Extractor]
+	if !ok {
+		log.Warn("Invalid 'Scanner.Extractor' option. Using default", "requested", conf.Server.Scanner.Extractor,
+			"validOptions", "ffmpeg,taglib", "default", conf.DefaultScannerExtractor)
+		p = parsers[conf.DefaultScannerExtractor]
 	}
-	extractedTags, err := e.Parse(files...)
+
+	extractedTags, err := p.Parse(files...)
 	if err != nil {
 		return nil, err
 	}
