@@ -7,7 +7,7 @@ package taglib
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "taglib_parser.h"
+#include "taglib_wrapper.h"
 */
 import "C"
 import (
