@@ -10,53 +10,59 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
+
+	"github.com/navidrome/navidrome/scanner/metadata/taglib"
+
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 )
 
-type Extractor interface {
-	Extract(files ...string) (map[string]*Tags, error)
+type Parser interface {
+	Parse(files ...string) (map[string]map[string][]string, error)
 }
 
 func Extract(files ...string) (map[string]*Tags, error) {
-	var e Extractor
+	var e Parser
 
 	switch conf.Server.Scanner.Extractor {
 	case "taglib":
-		e = &taglibExtractor{}
+		e = &taglib.Parser{}
 	case "ffmpeg":
-		e = &ffmpegExtractor{}
+		e = &ffmpeg.Parser{}
 	default:
-		log.Warn("Invalid Scanner.Extractor option. Using default taglib", "requested", conf.Server.Scanner.Extractor,
+		log.Warn("Invalid 'Scanner.Extractor' option. Using default 'taglib'", "requested", conf.Server.Scanner.Extractor,
 			"validOptions", "ffmpeg,taglib")
-		e = &taglibExtractor{}
+		e = &taglib.Parser{}
 	}
-	return e.Extract(files...)
+	extractedTags, err := e.Parse(files...)
+	if err != nil {
+		return nil, err
+	}
+
+	result := map[string]*Tags{}
+	for filePath, tags := range extractedTags {
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			log.Warn("Error stating file. Skipping", "filePath", filePath, err)
+			continue
+		}
+
+		result[filePath] = &Tags{
+			filePath: filePath,
+			fileInfo: fileInfo,
+			tags:     tags,
+		}
+	}
+
+	return result, nil
 }
 
 type Tags struct {
 	filePath string
-	suffix   string
 	fileInfo os.FileInfo
 	tags     map[string][]string
-	custom   map[string][]string
-}
-
-func NewTags(filePath string, tags, custom map[string][]string) *Tags {
-	fileInfo, err := os.Stat(filePath)
-	if err != nil {
-		log.Warn("Error stating file. Skipping", "filePath", filePath, err)
-		return nil
-	}
-
-	return &Tags{
-		filePath: filePath,
-		suffix:   strings.ToLower(strings.TrimPrefix(path.Ext(filePath), ".")),
-		fileInfo: fileInfo,
-		tags:     tags,
-		custom:   custom,
-	}
 }
 
 // Common tags
@@ -109,11 +115,10 @@ func (t *Tags) BitRate() int                { return t.getInt("bitrate") }
 func (t *Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
 func (t *Tags) Size() int64                 { return t.fileInfo.Size() }
 func (t *Tags) FilePath() string            { return t.filePath }
-func (t *Tags) Suffix() string              { return t.suffix }
+func (t *Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
 
 func (t *Tags) getTags(tagNames ...string) []string {
-	allTags := append(tagNames, t.custom[tagNames[0]]...)
-	for _, tag := range allTags {
+	for _, tag := range tagNames {
 		if v, ok := t.tags[tag]; ok {
 			return v
 		}
@@ -130,7 +135,6 @@ func (t *Tags) getFirstTagValue(tagNames ...string) string {
 }
 
 func (t *Tags) getAllTagValues(tagNames ...string) []string {
-	tagNames = append(tagNames, t.custom[tagNames[0]]...)
 	var values []string
 	for _, tag := range tagNames {
 		if v, ok := t.tags[tag]; ok {

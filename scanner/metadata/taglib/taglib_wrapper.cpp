@@ -13,7 +13,7 @@
 #include <tpropertymap.h>
 #include <vorbisfile.h>
 
-#include "taglib_parser.h"
+#include "taglib_wrapper.h"
 
 char has_cover(const TagLib::FileRef f);
 
@@ -39,16 +39,16 @@ int taglib_read(const char *filename, unsigned long id) {
   TagLib::Tag *basic = f.file()->tag();
   if (!basic->isEmpty()) {
     if (!basic->title().isEmpty()) {
-      tags.insert("_title", basic->title());
+      tags.insert("title", basic->title());
     }
     if (!basic->artist().isEmpty()) {
-      tags.insert("_artist", basic->artist());
+      tags.insert("artist", basic->artist());
     }
     if (!basic->album().isEmpty()) {
-      tags.insert("_album", basic->album());
+      tags.insert("album", basic->album());
     }
     if (basic->year() > 0) {
-      tags.insert("_year", TagLib::String::number(basic->year()));
+      tags.insert("date", TagLib::String::number(basic->year()));
     }
     if (basic->track() > 0) {
       tags.insert("_track", TagLib::String::number(basic->track()));

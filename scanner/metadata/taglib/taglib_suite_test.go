@@ -1,4 +1,4 @@
-package metadata
+package taglib
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestMetadata(t *testing.T) {
+func TestTagLib(t *testing.T) {
 	tests.Init(t, true)
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Metadata Suite")
+	RunSpecs(t, "TagLib Suite")
 }

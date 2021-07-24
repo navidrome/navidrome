@@ -1,11 +1,55 @@
 package metadata
 
 import (
+	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Tags", func() {
+	Context("Extract", func() {
+		BeforeEach(func() {
+			conf.Server.Scanner.Extractor = "taglib"
+		})
+
+		It("correctly parses metadata from all files in folder", func() {
+			mds, err := Extract("tests/fixtures/test.mp3", "tests/fixtures/test.ogg")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mds).To(HaveLen(2))
+
+			m := mds["tests/fixtures/test.mp3"]
+			Expect(m.Title()).To(Equal("Song"))
+			Expect(m.Album()).To(Equal("Album"))
+			Expect(m.Artist()).To(Equal("Artist"))
+			Expect(m.AlbumArtist()).To(Equal("Album Artist"))
+			Expect(m.Compilation()).To(BeTrue())
+			Expect(m.Genres()).To(Equal([]string{"Rock"}))
+			Expect(m.Year()).To(Equal(2014))
+			n, t := m.TrackNumber()
+			Expect(n).To(Equal(2))
+			Expect(t).To(Equal(10))
+			n, t = m.DiscNumber()
+			Expect(n).To(Equal(1))
+			Expect(t).To(Equal(2))
+			Expect(m.HasPicture()).To(BeTrue())
+			Expect(m.Duration()).To(BeNumerically("~", 1, 0.01))
+			Expect(m.BitRate()).To(Equal(192))
+			Expect(m.FilePath()).To(Equal("tests/fixtures/test.mp3"))
+			Expect(m.Suffix()).To(Equal("mp3"))
+			Expect(m.Size()).To(Equal(int64(51876)))
+
+			m = mds["tests/fixtures/test.ogg"]
+			Expect(err).To(BeNil())
+			Expect(m.Title()).To(BeEmpty())
+			Expect(m.HasPicture()).To(BeFalse())
+			Expect(m.Duration()).To(BeNumerically("~", 1.00, 0.01))
+			Expect(m.BitRate()).To(Equal(18))
+			Expect(m.Suffix()).To(Equal("ogg"))
+			Expect(m.FilePath()).To(Equal("tests/fixtures/test.ogg"))
+			Expect(m.Size()).To(Equal(int64(5065)))
+		})
+	})
+
 	Describe("getYear", func() {
 		It("parses the year correctly", func() {
 			var examples = map[string]int{
@@ -65,12 +109,23 @@ var _ = Describe("Tags", func() {
 		It("returns values from all tag names", func() {
 			md := &Tags{}
 			md.tags = map[string][]string{
-				"genre":  {"Rock", "Pop"},
-				"_genre": {"New Wave"},
+				"genre": {"Rock", "Pop", "New Wave"},
 			}
-			md.custom = map[string][]string{"genre": {"_genre"}}
 
 			Expect(md.Genres()).To(ConsistOf("Rock", "Pop", "New Wave"))
+		})
+	})
+
+	Describe("Bpm", func() {
+		var t *Tags
+		BeforeEach(func() {
+			t = &Tags{tags: map[string][]string{
+				"fbpm": []string{"141.7"},
+			}}
+		})
+
+		It("rounds a floating point fBPM tag", func() {
+			Expect(t.Bpm()).To(Equal(142))
 		})
 	})
 })
