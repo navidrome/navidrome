@@ -3,12 +3,19 @@
 #include <typeinfo>
 
 #define TAGLIB_STATIC
+#include <asffile.h>
 #include <fileref.h>
+#include <flacfile.h>
 #include <id3v2tag.h>
+#include <mp4file.h>
 #include <mpegfile.h>
+#include <opusfile.h>
 #include <tpropertymap.h>
+#include <vorbisfile.h>
 
 #include "taglib_parser.h"
+
+char has_cover(const TagLib::FileRef f);
 
 int taglib_read(const char *filename, unsigned long id) {
   TagLib::FileRef f(filename, true, TagLib::AudioProperties::Fast);
@@ -54,11 +61,15 @@ int taglib_read(const char *filename, unsigned long id) {
     if (mp3File->ID3v2Tag()) {
       const auto &frameListMap(mp3File->ID3v2Tag()->frameListMap());
 
-      for (const auto& kv : frameListMap) {
+      for (const auto &kv : frameListMap) {
         if (!kv.second.isEmpty())
           tags.insert(kv.first, kv.second.front()->toString());
       }
     }
+  }
+
+  if (has_cover(f)) {
+    go_map_put_str(id, (char *)"has_picture", (char *)"true");
   }
 
   for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
@@ -74,4 +85,46 @@ int taglib_read(const char *filename, unsigned long id) {
   }
 
   return 0;
+}
+
+char has_cover(const TagLib::FileRef f) {
+  char hasCover = 0;
+  // ----- MP3
+  if (TagLib::MPEG::File *
+      mp3File{dynamic_cast<TagLib::MPEG::File *>(f.file())}) {
+    if (mp3File->ID3v2Tag()) {
+      const auto &frameListMap{mp3File->ID3v2Tag()->frameListMap()};
+      hasCover = !frameListMap["APIC"].isEmpty();
+    }
+  }
+  // ----- FLAC
+  else if (TagLib::FLAC::File *
+           flacFile{dynamic_cast<TagLib::FLAC::File *>(f.file())}) {
+    hasCover = !flacFile->pictureList().isEmpty();
+  }
+  // ----- MP4
+  else if (TagLib::MP4::File *
+           mp4File{dynamic_cast<TagLib::MP4::File *>(f.file())}) {
+    auto &coverItem{mp4File->tag()->itemMap()["covr"]};
+    TagLib::MP4::CoverArtList coverArtList{coverItem.toCoverArtList()};
+    hasCover = !coverArtList.isEmpty();
+  }
+  // ----- Ogg
+  else if (TagLib::Ogg::Vorbis::File *
+           vorbisFile{dynamic_cast<TagLib::Ogg::Vorbis::File *>(f.file())}) {
+    hasCover = !vorbisFile->tag()->pictureList().isEmpty();
+  }
+  // ----- Opus
+  else if (TagLib::Ogg::Opus::File *
+           opusFile{dynamic_cast<TagLib::Ogg::Opus::File *>(f.file())}) {
+    hasCover = !opusFile->tag()->pictureList().isEmpty();
+  }
+  // ----- WMA
+  if (TagLib::ASF::File *
+      asfFile{dynamic_cast<TagLib::ASF::File *>(f.file())}) {
+    const TagLib::ASF::Tag *tag{asfFile->tag()};
+    hasCover = tag && tag->attributeListMap().contains("WM/Picture");
+  }
+
+  return hasCover;
 }
