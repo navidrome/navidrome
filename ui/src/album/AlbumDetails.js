@@ -5,6 +5,7 @@ import {
   CardMedia,
   Collapse,
   IconButton,
+  Tooltip,
   makeStyles,
   Typography,
   useMediaQuery,
@@ -201,9 +202,14 @@ const Links = (props) => {
       target="_blank"
       rel="noopener noreferrer"
     >
-      <IconButton size={'small'} title={translate('message.openIn.lastfm')}>
-        <ImLastfm2 />
-      </IconButton>
+      <Tooltip title={translate('message.openIn.lastfm')}>
+        <IconButton
+          size={'small'}
+          aria-label={translate('message.openIn.lastfm')}
+        >
+          <ImLastfm2 />
+        </IconButton>
+      </Tooltip>
     </Link>
   )
 
@@ -214,12 +220,14 @@ const Links = (props) => {
         target="_blank"
         rel="noopener noreferrer"
       >
-        <IconButton
-          size={'small'}
-          title={translate('message.openIn.musicbrainz')}
-        >
-          <MusicBrainz />
-        </IconButton>
+        <Tooltip title={translate('message.openIn.musicbrainz')}>
+          <IconButton
+            size={'small'}
+            aria-label={translate('message.openIn.musicbrainz')}
+          >
+            <MusicBrainz />
+          </IconButton>
+        </Tooltip>
       </Link>
     )
 
