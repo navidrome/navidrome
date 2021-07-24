@@ -67,6 +67,7 @@ const SongFilter = (props) => {
         label={translate('resources.song.fields.genre')}
         source="genre_id"
         reference="genre"
+        perPage={0}
         sort={{ field: 'name', order: 'ASC' }}
         filterToQuery={(searchText) => ({ name: [searchText] })}
       >
