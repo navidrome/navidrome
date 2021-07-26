@@ -4,8 +4,6 @@ import {
   CardContent,
   CardMedia,
   Collapse,
-  IconButton,
-  Tooltip,
   makeStyles,
   Typography,
   useMediaQuery,
@@ -31,9 +29,7 @@ import {
 } from '../common'
 import config from '../config'
 import { intersperse } from '../utils'
-import Link from '@material-ui/core/Link'
-import MusicBrainz from '../icons/MusicBrainz'
-import { ImLastfm2 } from 'react-icons/im'
+import AlbumExternalLinks from './AlbumExternalLinks'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -100,7 +96,7 @@ const useStyles = makeStyles(
     genreList: {
       marginTop: theme.spacing(0.5),
     },
-    links: {
+    externalLinks: {
       marginTop: theme.spacing(1.5),
     },
   }),
@@ -182,58 +178,6 @@ const Details = (props) => {
   return <>{intersperse(details, ' · ')}</>
 }
 
-const Links = (props) => {
-  const classes = useStyles()
-  const translate = useTranslate()
-  const record = useRecordContext(props)
-  let links = []
-  const addLink = (obj) => {
-    const id = links.length
-    links.push(<span key={`link-${record.id}-${id}`}>{obj}</span>)
-  }
-
-  addLink(
-    <Link
-      href={`https://last.fm/music/${
-        encodeURIComponent(record.albumArtist) +
-        '/' +
-        encodeURIComponent(record.name)
-      }`}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <Tooltip title={translate('message.openIn.lastfm')}>
-        <IconButton
-          size={'small'}
-          aria-label={translate('message.openIn.lastfm')}
-        >
-          <ImLastfm2 />
-        </IconButton>
-      </Tooltip>
-    </Link>
-  )
-
-  record.mbzAlbumId &&
-    addLink(
-      <Link
-        href={`https://musicbrainz.org/release/${record.mbzAlbumId}`}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Tooltip title={translate('message.openIn.musicbrainz')}>
-          <IconButton
-            size={'small'}
-            aria-label={translate('message.openIn.musicbrainz')}
-          >
-            <MusicBrainz />
-          </IconButton>
-        </Tooltip>
-      </Link>
-    )
-
-  return <div className={classes.links}>{intersperse(links, ' ')}</div>
-}
-
 const AlbumDetails = (props) => {
   const record = useRecordContext(props)
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
@@ -302,7 +246,7 @@ const AlbumDetails = (props) => {
             )}
             {isDesktop && (
               <Typography component={'p'} className={classes.recordMeta}>
-                <Links />
+                <AlbumExternalLinks className={classes.externalLinks} />
               </Typography>
             )}
             {isDesktop && record['comment'] && <AlbumComment record={record} />}
