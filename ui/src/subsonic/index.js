@@ -4,8 +4,6 @@ import { httpClient } from '../dataProvider'
 const url = (command, id, options) => {
   const params = new URLSearchParams()
   params.append('u', localStorage.getItem('username'))
-  params.append('t', localStorage.getItem('subsonic-token'))
-  params.append('s', localStorage.getItem('subsonic-salt'))
   params.append('f', 'json')
   params.append('v', '1.8.0')
   params.append('c', 'NavidromeUI')

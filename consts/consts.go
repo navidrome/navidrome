@@ -18,6 +18,7 @@ const (
 	JWTSecretKey           = "JWTSecret"
 	JWTIssuer              = "ND"
 	DefaultSessionTimeout  = 24 * time.Hour
+	SessionCookieExpiry	   = 24 * 3600 // Should be same as DefaultSessionTimeout
 	CookieExpiry           = 365 * 24 * 3600 // One year
 
 	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option

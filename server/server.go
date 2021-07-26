@@ -66,7 +66,6 @@ func (s *Server) initRoutes() {
 	r.Use(loggerInjector)
 	r.Use(requestLogger)
 	r.Use(robotsTXT(ui.BuildAssets()))
-	r.Use(authHeaderMapper)
 	r.Use(jwtVerifier)
 
 	r.Route(path.Join(conf.Server.BaseURL, "/auth"), func(r chi.Router) {
@@ -82,6 +81,7 @@ func (s *Server) initRoutes() {
 			r.Post("/login", login(s.ds))
 		}
 		r.Post("/createAdmin", createAdmin(s.ds))
+		r.Post("/logout", logout())
 	})
 
 	// Redirect root to UI URL

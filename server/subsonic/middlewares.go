@@ -70,12 +70,8 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			username := utils.ParamString(r, "u")
 
-			pass := utils.ParamString(r, "p")
-			token := utils.ParamString(r, "t")
-			salt := utils.ParamString(r, "s")
-			jwt := utils.ParamString(r, "jwt")
+			username, pass, token, salt, jwt := extractAuthParameters(r)
 
 			usr, err := validateUser(ctx, ds, username, pass, token, salt, jwt)
 			if err == model.ErrInvalidAuth {
@@ -105,6 +101,20 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 	}
 }
 
+func extractAuthParameters(r *http.Request) (string, string, string, string, string) {
+	username := utils.ParamString(r, "u")
+	pass := utils.ParamString(r, "p")
+	token := utils.ParamString(r, "t")
+	salt := utils.ParamString(r, "s")
+
+	jwt := ""
+	if c, err := r.Cookie(consts.UIAuthorizationHeader); err == nil {
+		jwt = c.Value
+	}
+
+	return username, pass, token, salt, jwt
+}
+
 func validateUser(ctx context.Context, ds model.DataStore, username, pass, token, salt, jwt string) (*model.User, error) {
 	user, err := ds.User(ctx).FindByUsernameWithPassword(username)
 	if err == model.ErrNotFound {
@@ -113,28 +123,58 @@ func validateUser(ctx context.Context, ds model.DataStore, username, pass, token
 	if err != nil {
 		return nil, err
 	}
-	valid := false
 
 	switch {
 	case jwt != "":
-		claims, err := auth.Validate(jwt)
-		valid = err == nil && claims["sub"] == user.UserName
+		log.Debug(ctx, "AUTH: Using Jwt to validate User", "user", user.UserName)
+		return validateJwt(user, jwt)
 	case pass != "":
-		if strings.HasPrefix(pass, "enc:") {
-			if dec, err := hex.DecodeString(pass[4:]); err == nil {
-				pass = string(dec)
-			}
-		}
-		valid = pass == user.Password
+		log.Debug(ctx, "AUTH: Using Password to validate User", "user", user.UserName)
+		return validatePass(user, pass)
 	case token != "":
-		t := fmt.Sprintf("%x", md5.Sum([]byte(user.Password+salt)))
-		valid = t == token
-	}
-
-	if !valid {
+		log.Debug(ctx, "AUTH: Using SubsonicToken to validate User", "user", user.UserName)
+		return validateToken(user, token, salt)
+	default:
+		log.Warn(ctx, "AUTH: Received no valid authentication method", "user", user.UserName)
 		return nil, model.ErrInvalidAuth
 	}
-	return user, nil
+}
+
+func validateJwt(user *model.User, jwt string) (*model.User, error) {
+	claims, err := auth.Validate(jwt)
+
+	if err == nil && claims["sub"] == user.UserName {
+		return user, nil
+	}
+
+	return nil, model.ErrInvalidAuth
+}
+
+func validatePass(user *model.User, pass string) (*model.User, error) {
+	if pass == user.Password {
+		return user, nil
+	}
+
+	if strings.HasPrefix(pass, "enc:") {
+		if dec, err := hex.DecodeString(pass[4:]); err == nil {
+			if string(dec) == user.Password {
+				return user, nil
+			}
+		}
+
+	}
+
+	return nil, model.ErrInvalidAuth
+}
+
+func validateToken(user *model.User, token string, salt string) (*model.User, error) {
+	t := fmt.Sprintf("%x", md5.Sum([]byte(user.Password+salt)))
+
+	if t == token {
+		return user, nil
+	}
+
+	return nil, model.ErrInvalidAuth
 }
 
 func getPlayer(players core.Players) func(next http.Handler) http.Handler {
@@ -160,6 +200,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 					Name:     playerIDCookieName(userName),
 					Value:    player.ID,
 					MaxAge:   consts.CookieExpiry,
+					SameSite: http.SameSiteStrictMode,
 					HttpOnly: true,
 					Path:     "/",
 				}

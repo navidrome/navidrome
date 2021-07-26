@@ -2,9 +2,7 @@ package server
 
 import (
 	"context"
-	"crypto/md5"
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,6 +41,13 @@ func login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func logout() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clearJWTCookie(w)
+		_ = rest.RespondWithJSON(w, http.StatusNoContent, "")
+	}
+}
+
 func doLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
 	user, err := validateLogin(ds.User(r.Context()), username, password)
 	if err != nil {
@@ -62,6 +67,9 @@ func doLogin(ds model.DataStore, username string, password string, w http.Respon
 	}
 	payload := buildAuthPayload(user)
 	payload["token"] = tokenString
+
+	setJWTCookie(w, tokenString)
+
 	_ = rest.RespondWithJSON(w, http.StatusOK, payload)
 }
 
@@ -82,11 +90,6 @@ func buildAuthPayload(user *model.User) map[string]interface{} {
 		log.Error("Could not create subsonic salt", "user", user.UserName, err)
 		return payload
 	}
-	subsonicSalt := hex.EncodeToString(bytes)
-	payload["subsonicSalt"] = subsonicSalt
-
-	subsonicToken := md5.Sum([]byte(user.Password + subsonicSalt))
-	payload["subsonicToken"] = hex.EncodeToString(subsonicToken[:])
 
 	return payload
 }
@@ -169,17 +172,16 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 	return u, nil
 }
 
-// This method maps the custom authorization header to the default 'Authorization', used by the jwtauth library
-func authHeaderMapper(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		bearer := r.Header.Get(consts.UIAuthorizationHeader)
-		r.Header.Set("Authorization", bearer)
-		next.ServeHTTP(w, r)
-	})
+func jwtVerifier(next http.Handler) http.Handler {
+	return jwtauth.Verify(auth.TokenAuth, jwtTokenFromCookie, jwtauth.TokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
 }
 
-func jwtVerifier(next http.Handler) http.Handler {
-	return jwtauth.Verify(auth.TokenAuth, jwtauth.TokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
+func jwtTokenFromCookie(r *http.Request) string {
+	cookie, err := r.Cookie(consts.UIAuthorizationHeader)
+	if err != nil {
+		return ""
+	}
+	return cookie.Value
 }
 
 func UsernameFromToken(r *http.Request) string {
@@ -255,20 +257,51 @@ func JWTRefresher(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		token, _, err := jwtauth.FromContext(ctx)
+
 		if err != nil {
 			next.ServeHTTP(w, r)
 			return
 		}
+
 		newTokenString, err := auth.TouchToken(token)
 		if err != nil {
 			log.Error(r, "Could not sign new token", err)
+			clearJWTCookie(w)
 			_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 			return
 		}
 
-		w.Header().Set(consts.UIAuthorizationHeader, newTokenString)
+		setJWTCookie(w, newTokenString)
 		next.ServeHTTP(w, r)
 	})
+}
+
+func setJWTCookie(w http.ResponseWriter, token string) {
+	c := &http.Cookie{
+		Name:     consts.UIAuthorizationHeader,
+		Value:    token,
+		MaxAge:   consts.SessionCookieExpiry,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	}
+	http.SetCookie(w, c)
+}
+
+
+func clearJWTCookie(w http.ResponseWriter) {
+	c := &http.Cookie{
+		Name:     consts.UIAuthorizationHeader,
+		Value:    "",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	}
+
+	http.SetCookie(w, c)
 }
 
 func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]interface{} {
