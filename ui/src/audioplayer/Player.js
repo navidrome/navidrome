@@ -103,7 +103,7 @@ const Player = () => {
       }
 
       if (!scrobbled) {
-        subsonic.scrobble(info.trackId, true, startTime)
+        info.trackId && subsonic.scrobble(info.trackId, startTime)
         setScrobbled(true)
       }
     },
