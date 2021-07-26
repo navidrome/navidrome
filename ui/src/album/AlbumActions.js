@@ -11,7 +11,14 @@ import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
-import { playNext, addTracks, playTracks, shuffleTracks } from '../actions'
+import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
+import {
+  playNext,
+  addTracks,
+  playTracks,
+  shuffleTracks,
+  openAddToPlaylist,
+} from '../actions'
 import subsonic from '../subsonic'
 import { formatBytes } from '../utils'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
@@ -52,6 +59,10 @@ const AlbumActions = ({
     dispatch(shuffleTracks(data, ids))
   }, [dispatch, data, ids])
 
+  const handleAddToPlaylist = React.useCallback(() => {
+    dispatch(openAddToPlaylist({ selectedIds: ids }))
+  }, [dispatch, ids])
+
   const handleDownload = React.useCallback(() => {
     subsonic.download(record.id)
   }, [record])
@@ -83,6 +94,12 @@ const AlbumActions = ({
             label={translate('resources.album.actions.addToQueue')}
           >
             <RiPlayListAddFill />
+          </Button>
+          <Button
+            onClick={handleAddToPlaylist}
+            label={translate('resources.album.actions.addToPlaylist')}
+          >
+            <PlaylistAddIcon />
           </Button>
           {config.enableDownloads && (
             <Button
