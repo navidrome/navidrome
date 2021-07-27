@@ -7,6 +7,7 @@ import {
   makeStyles,
   Typography,
   useMediaQuery,
+  withWidth,
 } from '@material-ui/core'
 import {
   useRecordContext,
@@ -14,6 +15,7 @@ import {
   ArrayField,
   SingleFieldList,
   ChipField,
+  Link,
 } from 'react-admin'
 import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
@@ -26,6 +28,7 @@ import {
   SizeField,
   LoveButton,
   RatingField,
+  useAlbumsPerPage,
 } from '../common'
 import config from '../config'
 import { intersperse } from '../utils'
@@ -140,12 +143,35 @@ const AlbumComment = ({ record }) => {
   )
 }
 
+export const useGetHandleGenreClick = (width) => {
+  const [perPage] = useAlbumsPerPage(width)
+
+  return (id) => {
+    return `/album?filter={"genre_id":"${id}"}&order=ASC&sort=name&perPage=${perPage}`
+  }
+}
+
+const GenreChipField = withWidth()(({ width, ...rest }) => {
+  const record = useRecordContext(rest)
+  const genreLink = useGetHandleGenreClick(width)
+
+  return (
+    <Link to={genreLink(record.id)} onClick={(e) => e.stopPropagation()}>
+      <ChipField
+        source="name"
+        // Workaround to force ChipField to be clickable
+        onClick={() => {}}
+      />
+    </Link>
+  )
+})
+
 const GenreList = () => {
   const classes = useStyles()
   return (
     <ArrayField className={classes.genreList} source={'genres'}>
       <SingleFieldList linkType={false}>
-        <ChipField source="name" />
+        <GenreChipField />
       </SingleFieldList>
     </ArrayField>
   )
