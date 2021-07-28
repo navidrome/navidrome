@@ -96,6 +96,8 @@ func (r *playerRepository) isPermitted(p *model.Player) bool {
 }
 
 func (r *playerRepository) Save(entity interface{}) (string, error) {
+	//log.Info("Got here SAVE", "entity", entity) // This is called on 'new Entry'
+
 	t := entity.(*model.Player)
 	if !r.isPermitted(t) {
 		return "", rest.ErrPermissionDenied
@@ -108,6 +110,8 @@ func (r *playerRepository) Save(entity interface{}) (string, error) {
 }
 
 func (r *playerRepository) Update(entity interface{}, cols ...string) error {
+	//log.Info("Got here UPDATE", "entity", entity, "cols", cols) // this is called on put (Update entry)
+
 	t := entity.(*model.Player)
 	if !r.isPermitted(t) {
 		return rest.ErrPermissionDenied

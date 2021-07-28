@@ -12,8 +12,8 @@ import {
     SimpleForm,
     TextField,
     TextInput,
+    useMutation,
     useTranslate,
-    useUpdate,
 } from 'react-admin'
 import {Title} from '../common'
 import config from '../config'
@@ -29,21 +29,30 @@ const PlayerTitle = ({record}) => {
 }
 
 const GenerateNewApiKey = ({record}) => {
-    const [generate, {loading}] = useUpdate(
-        'player',
-        {apiKey: uuidv4()},
-        record,
-    );
-    return <Button label="Generate new ApiKey" startIcon={<VpnKeyIcon/>} onClick={generate} disabled={loading}/>;
+    const [mutate, { loading }] = useMutation();
+    const generateNewKey = mutate({
+        type: 'update',
+        resource: 'player',
+        payload: {
+            id: record.id,
+            data: {...record, apiKey: uuidv4()}
+        }
+    });
+    return <Button label="Generate new ApiKey" startIcon={<VpnKeyIcon/>} onClick={generateNewKey} disabled={loading}/>;
 };
 
 const RemoveApiKey = ({record}) => {
-    const [remove, {loading}] = useUpdate(
-        'player',
-        {apiKey: ""},
-        record,
-    );
-    return <Button label="Remove ApiKey" startIcon={<CloseIcon/>} onClick={remove} disabled={loading}/>;
+    const [mutate, { loading }] = useMutation();
+    const removeOldKey = mutate({
+        type: 'update',
+        resource: 'player',
+        payload: {
+            id: record.id,
+            data: {...record, apiKey: ""}
+        }
+    });
+
+    return <Button label="Remove ApiKey" startIcon={<CloseIcon/>} onClick={removeOldKey} disabled={loading}/>;
 };
 
 const PostShowActions = ({basePath, data}) => (
