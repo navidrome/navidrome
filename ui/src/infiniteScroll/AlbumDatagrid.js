@@ -1,19 +1,14 @@
-import { InfiniteLoader, AutoSizer, List } from "react-virtualized"
-import { useInstance } from "./useInstance";
-import { useEffect } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { useListContext, crudGetList } from "ra-core";
-import { GridList } from "@material-ui/core";
+import { InfiniteLoader, AutoSizer, List } from 'react-virtualized'
+import { useInstance } from './useInstance'
+import { useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { useListContext, crudGetList } from 'ra-core'
+import { GridList } from '@material-ui/core'
 
 function AlbumDatagrid(props) {
-  const { children, tileHeight, columns } = props;
+  const { children, tileHeight, columns } = props
 
-  const {
-    resource,
-    perPage,
-    currentSort,
-    filterValues,
-  } = useListContext()
+  const { resource, perPage, currentSort, filterValues } = useListContext()
 
   const { data, ids, total } = useSelector((state) => ({
     ids: state.admin.resources[resource].list.ids,
@@ -21,7 +16,7 @@ function AlbumDatagrid(props) {
     total: state.admin.resources[resource].list.total,
     loadedOnce: state.admin.resources[resource].list.loadedOnce,
   }))
-  const dispatch = useDispatch();
+  const dispatch = useDispatch()
 
   const [loadedIds, updateLoadedIds] = useInstance({})
 
@@ -35,8 +30,8 @@ function AlbumDatagrid(props) {
   const [loadPromiseResolver, updateLoadPromiseResolver] = useInstance(null)
 
   const handleLoadMore = (query) => {
-    const startIndex = getIndexesForRow(query.startIndex)[0];
-    const stopIndex = getIndexesForRow(query.stopIndex).pop();
+    const startIndex = getIndexesForRow(query.startIndex)[0]
+    const stopIndex = getIndexesForRow(query.stopIndex).pop()
     console.log('LoadMore', startIndex, stopIndex)
     const page = Math.floor(startIndex / perPage) + 1
     const newStopIndex = Math.min(total, stopIndex + perPage - 1)
@@ -47,7 +42,6 @@ function AlbumDatagrid(props) {
       getList(resource, { page: page, perPage }, currentSort, filterValues)
     })
   }
-
 
   useEffect(() => {
     let { startIndex, stopIndex } = lastFetchPosition
@@ -74,26 +68,29 @@ function AlbumDatagrid(props) {
   }, [ids])
 
   const getIndexesForRow = (index) => {
-    const res = [];
-    for (let i = 0;i < columns;i++) {
-      if (columns * index + i === total - 1)
-        break;
-      res.push(columns * index + i);
+    const res = []
+    for (let i = 0; i < columns; i++) {
+      if (columns * index + i === total - 1) break
+      res.push(columns * index + i)
     }
-    return res;
+    return res
   }
 
   const rowRenderer = ({ index, style, key }) => {
-    const itemsForRow = getIndexesForRow(index, columns);
+    const itemsForRow = getIndexesForRow(index, columns)
     return (
       <div style={style} key={key}>
         <GridList
-         component={'div'}
-         cellHeight={'auto'}
-         cols={columns}
-         spacing={20}
+          component={'div'}
+          cellHeight={'auto'}
+          cols={columns}
+          spacing={20}
         >
-          { itemsForRow.map((itemIndex) => data[loadedIds[itemIndex]] ? children(data[loadedIds[itemIndex]]) : null) }
+          {itemsForRow.map((itemIndex) =>
+            data[loadedIds[itemIndex]]
+              ? children(data[loadedIds[itemIndex]])
+              : null
+          )}
         </GridList>
       </div>
     )
@@ -104,7 +101,7 @@ function AlbumDatagrid(props) {
     return indices.reduce((prev, curr) => prev && loadedIds[curr], true)
   }
 
-  const rowCount = Math.ceil(total/columns)
+  const rowCount = Math.ceil(total / columns)
 
   return (
     <InfiniteLoader
@@ -112,26 +109,26 @@ function AlbumDatagrid(props) {
       loadMoreRows={handleLoadMore}
       rowCount={rowCount}
     >
-        {({ onRowsRendered, registerChild }) => (
-          <AutoSizer disableHeight>
+      {({ onRowsRendered, registerChild }) => (
+        <AutoSizer disableHeight>
           {({ width }) => (
-              <List
-                ref={registerChild}
-                rowHeight={tileHeight}
-                height={tileHeight * 2}
-                width={width}
-                onRowsRendered={onRowsRendered}
-                rowRenderer={rowRenderer}
-                rowCount={rowCount}
-              />
+            <List
+              ref={registerChild}
+              rowHeight={tileHeight}
+              height={tileHeight * 2}
+              width={width}
+              onRowsRendered={onRowsRendered}
+              rowRenderer={rowRenderer}
+              rowCount={rowCount}
+            />
           )}
-           </AutoSizer> 
-        )}
+        </AutoSizer>
+      )}
     </InfiniteLoader>
-  );
+  )
 }
 
 AlbumDatagrid.defaultProps = {
-  tileHeight: 245
+  tileHeight: 245,
 }
-export default AlbumDatagrid;
+export default AlbumDatagrid

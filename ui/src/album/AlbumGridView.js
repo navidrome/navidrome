@@ -184,34 +184,47 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
               basePath={basePath}
               showArtist={!isArtistView}
             />
-          // </GridListTile>
+            //{' '}
+          </GridListTile>
         ))}
       </GridList>
     </div>
   )
 }
 
-const AlbumGridView = ({ albumListType, loaded, loading, basePath, width, ...props }) => {
+const AlbumGridView = ({
+  albumListType,
+  loaded,
+  loading,
+  basePath,
+  width,
+  ...props
+}) => {
   const classes = useStyles()
   const { filterValues } = useListContext()
   const isArtistView = !!(filterValues && filterValues.artist_id)
   const hide =
     (loading && albumListType === 'random') || !props.data || !props.ids
-  return hide ? <Loading /> : (
+  return hide ? (
+    <Loading />
+  ) : (
     <div className={classes.root}>
-        <AlbumDatagrid columns={getColsForWidth(width)} tileHeight={window.innerWidth < 600 ? 330 : 245}>
-          {(record) => 
-            <GridListTile className={classes.gridListTile} key={record.id}>
-              <AlbumGridTile
-                record={record}
-                basePath={basePath}
-                showArtist={!isArtistView}
-              />
-            </GridListTile>
-          }
-        </AlbumDatagrid>
+      <AlbumDatagrid
+        columns={getColsForWidth(width)}
+        tileHeight={window.innerWidth < 600 ? 330 : 245}
+      >
+        {(record) => (
+          <GridListTile className={classes.gridListTile} key={record.id}>
+            <AlbumGridTile
+              record={record}
+              basePath={basePath}
+              showArtist={!isArtistView}
+            />
+          </GridListTile>
+        )}
+      </AlbumDatagrid>
     </div>
-  );
+  )
 }
 
 export default withWidth()(AlbumGridView)
