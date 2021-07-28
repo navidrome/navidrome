@@ -224,18 +224,13 @@ func contextWithUser(ctx context.Context, ds model.DataStore, username string) (
 }
 
 func authenticateRequest(ds model.DataStore, r *http.Request, findUsernameFns ...func(r *http.Request) string) (context.Context, error) {
-	var username string
 	for _, fn := range findUsernameFns {
-		username = fn(r)
-		if username != "" {
-			break
+		if username := fn(r); username != "" {
+			return contextWithUser(r.Context(), ds, username)
 		}
 	}
-	if username == "" {
-		return nil, ErrUnauthenticated
-	}
 
-	return contextWithUser(r.Context(), ds, username)
+	return nil, ErrUnauthenticated
 }
 
 func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {

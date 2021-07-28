@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -161,21 +160,6 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["id"]).ToNot(BeEmpty())
 				Expect(parsed["token"]).ToNot(BeEmpty())
 			})
-		})
-	})
-
-	Describe("authHeaderMapper", func() {
-		It("maps the custom header to Authorization header", func() {
-			r := httptest.NewRequest("GET", "/index.html", nil)
-			r.Header.Set(consts.UIAuthorizationHeader, "test authorization bearer")
-			w := httptest.NewRecorder()
-
-			authHeaderMapper(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				Expect(r.Header.Get("Authorization")).To(Equal("test authorization bearer"))
-				w.WriteHeader(200)
-			})).ServeHTTP(w, r)
-
-			Expect(w.Code).To(Equal(200))
 		})
 	})
 })

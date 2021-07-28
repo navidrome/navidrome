@@ -7,6 +7,7 @@ import (
 type Player struct {
 	ID              string    `json:"id"            orm:"column(id)"`
 	Name            string    `json:"name"`
+	ApiKey          string    `json:"apiKey"`
 	UserAgent       string    `json:"userAgent"`
 	UserName        string    `json:"userName"`
 	Client          string    `json:"client"`
