@@ -25,42 +25,53 @@ type players struct {
 }
 
 func (p *players) Register(ctx context.Context, id, client, userAgent, ip string) (*model.Player, *model.Transcoding, error) {
-	var plr *model.Player
-	var trc *model.Transcoding
-	var err error
-	userName, _ := request.UsernameFrom(ctx)
-	if id != "" {
-		plr, err = p.ds.Player(ctx).Get(id)
-		if err == nil && plr.Client != client {
-			id = ""
-		}
-	}
-	if err != nil || id == "" {
-		plr, err = p.ds.Player(ctx).FindMatch(userName, client, userAgent)
-		if err == nil {
-			log.Debug("Found matching player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
-		} else {
-			plr = &model.Player{
-				ID:              uuid.NewString(),
-				UserName:        userName,
-				Client:          client,
-				ScrobbleEnabled: true,
-			}
-			log.Info("Registering new player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
-		}
-	}
+	plr := p.GetPlayerFromIdOrNewPlayerForUser(ctx, id, client, userAgent)
+
 	plr.Name = fmt.Sprintf("%s [%s]", client, userAgent)
 	plr.UserAgent = userAgent
 	plr.IPAddress = ip
 	plr.LastSeen = time.Now()
-	err = p.ds.Player(ctx).Put(plr)
-	if err != nil {
+
+	if err := p.ds.Player(ctx).Put(plr); err != nil {
 		return nil, nil, err
 	}
-	if plr.TranscodingId != "" {
-		trc, err = p.ds.Transcoding(ctx).Get(plr.TranscodingId)
-	}
+
+	trc, err := p.GetTranscodingOptionsForPlayer(ctx, plr.TranscodingId)
+
 	return plr, trc, err
+}
+
+func (p *players) GetPlayerFromIdOrNewPlayerForUser(ctx context.Context, id string, client string, userAgent string) *model.Player {
+	if id != "" {
+		plr, err := p.ds.Player(ctx).Get(id)
+		if err == nil && plr.Client == client {
+			return plr
+		}
+	}
+
+	userName, _ := request.UsernameFrom(ctx)
+
+	if plr, err := p.ds.Player(ctx).FindMatch(userName, client, userAgent); err == nil {
+		log.Debug("Found matching player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
+		return plr
+	}
+
+	plr := &model.Player{
+		ID:              uuid.NewString(),
+		UserName:        userName,
+		Client:          client,
+		ScrobbleEnabled: true,
+	}
+	log.Info("Registering new player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
+	return plr
+}
+
+func (p *players) GetTranscodingOptionsForPlayer(ctx context.Context, transcodingId string) (*model.Transcoding, error) {
+	if transcodingId == "" {
+		return nil, nil
+	}
+
+	return p.ds.Transcoding(ctx).Get(transcodingId)
 }
 
 func (p *players) Get(ctx context.Context, playerId string) (*model.Player, error) {
