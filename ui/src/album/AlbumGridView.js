@@ -98,29 +98,61 @@ const getColsForWidth = (width) => {
 }
 
 const Cover = withContentRect('bounds')(
-  ({ album, measureRef, contentRect }) => {
+  ({ album, isLoaded, measureRef, contentRect }) => {
     // Force height to be the same as the width determined by the GridList
     // noinspection JSSuspiciousNameCombination
     const classes = useCoverStyles({ height: contentRect.bounds.width })
     return (
       <div ref={measureRef}>
-        <img
-          src={subsonic.getCoverArtUrl(album, 300)}
-          alt={album.name}
-          className={classes.cover}
-        />
+        {isLoaded ? (
+          <img
+            src={subsonic.getCoverArtUrl(album, 300)}
+            alt={album.name}
+            className={classes.cover}
+          />
+        ) : (
+          <div
+            className={classes.cover}
+            style={{ backgroundColor: '#222', borderRadius: 4 }}
+          ></div>
+        )}
       </div>
     )
   }
 )
 
-const AlbumGridTile = ({ showArtist, record, basePath }) => {
+const AlbumGridTile = ({ showArtist, record, basePath, isLoaded }) => {
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'), {
     noSsr: true,
   })
-  if (!record) {
-    return null
+  if (!record || !isLoaded) {
+    return (
+      <div className={classes.albumContainer}>
+        <Cover album={record} isLoaded={false} />
+        <div
+          className={classes.albumName}
+          style={{
+            color: 'rgba(0,0,0,0)',
+            backgroundColor: '#222',
+            borderRadius: 4,
+          }}
+        >
+          Album Name
+        </div>
+        <div
+          className={classes.albumSubtitle}
+          style={{
+            color: 'rgba(0,0,0,0)',
+            backgroundColor: '#222',
+            borderRadius: 4,
+            marginTop: 10,
+          }}
+        >
+          Album Subtitle
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -129,7 +161,7 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
         className={classes.link}
         to={linkToRecord(basePath, record.id, 'show')}
       >
-        <Cover album={record} />
+        <Cover album={record} isLoaded={true} />
         <GridListTileBar
           className={isDesktop ? classes.tileBar : classes.tileBarMobile}
           subtitle={
@@ -213,12 +245,16 @@ const AlbumGridView = ({
         columns={getColsForWidth(width)}
         tileHeight={window.innerWidth < 600 ? 330 : 245}
       >
-        {(record) => (
-          <GridListTile className={classes.gridListTile} key={record.id}>
+        {({ isLoaded, record, itemIndex }) => (
+          <GridListTile
+            className={classes.gridListTile}
+            key={!!record ? record.id : itemIndex}
+          >
             <AlbumGridTile
               record={record}
               basePath={basePath}
               showArtist={!isArtistView}
+              isLoaded={isLoaded}
             />
           </GridListTile>
         )}

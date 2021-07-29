@@ -77,7 +77,9 @@ function AlbumDatagrid(props) {
   }
 
   const rowRenderer = ({ index, style, key }) => {
+    const isLoaded = isRowLoaded({ index })
     const itemsForRow = getIndexesForRow(index, columns)
+
     return (
       <div style={style} key={key}>
         <GridList
@@ -87,9 +89,11 @@ function AlbumDatagrid(props) {
           spacing={20}
         >
           {itemsForRow.map((itemIndex) =>
-            data[loadedIds[itemIndex]]
-              ? children(data[loadedIds[itemIndex]])
-              : null
+            children({
+              isLoaded: isLoaded && data[loadedIds[itemIndex]],
+              record: data[loadedIds[itemIndex]],
+              index: itemIndex,
+            })
           )}
         </GridList>
       </div>
