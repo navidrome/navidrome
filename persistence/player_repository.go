@@ -5,6 +5,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -96,10 +97,12 @@ func (r *playerRepository) isPermitted(p *model.Player) bool {
 }
 
 func (r *playerRepository) Save(entity interface{}) (string, error) {
-	//log.Info("Got here SAVE", "entity", entity) // This is called on 'new Entry'
-
 	t := entity.(*model.Player)
-	if !r.isPermitted(t) {
+	log.Info("Got here SAVE", "t", t) // This is called on 'new Entry'
+
+	if t.UserName == "" {
+		t.UserName = loggedUser(r.ctx).UserName
+	} else if !r.isPermitted(t) {
 		return "", rest.ErrPermissionDenied
 	}
 	id, err := r.put(t.ID, t)
@@ -110,9 +113,9 @@ func (r *playerRepository) Save(entity interface{}) (string, error) {
 }
 
 func (r *playerRepository) Update(entity interface{}, cols ...string) error {
-	//log.Info("Got here UPDATE", "entity", entity, "cols", cols) // this is called on put (Update entry)
-
 	t := entity.(*model.Player)
+	log.Info("Got here UPDATE", "t", t, "cols", cols) // this is called on put (Update entry)
+
 	if !r.isPermitted(t) {
 		return rest.ErrPermissionDenied
 	}

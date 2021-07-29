@@ -5,6 +5,7 @@ import { REST_URL } from '../consts'
 const dataProvider = jsonServerProvider(REST_URL, httpClient)
 
 const mapResource = (resource, params) => {
+  console.log(resource, params)
   switch (resource) {
     case 'playlistTrack':
       // /api/playlistTrack?playlist_id=123  => /api/playlist/123/tracks

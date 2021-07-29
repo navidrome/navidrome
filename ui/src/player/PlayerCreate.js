@@ -1,17 +1,22 @@
-import {Create, required, SimpleForm, TextInput, useGetIdentity} from "react-admin";
+import {Create, ReferenceInput, required, SelectInput, SimpleForm, TextInput} from "react-admin";
 import React from "react";
 
 const UserIdField = (() => {
-    const {identity, loading: identityLoading} = useGetIdentity();
-
-    return identityLoading ? null : <TextInput source="userName" defaultValue={identity.id} disabled={true}/>;
+    return (<ReferenceInput
+        source="userName"
+        reference="user"
+        sort={{field: 'name', order: 'ASC'}}
+        validate={[required()]}
+    >
+        <SelectInput optionText="name" optionValue="userName"/>
+    </ReferenceInput>)
 })
 
-const PlayerCreate = (props) => {
+const PlayerCreate = ({permissions, ...props}) => {
     return (<Create {...props}>
         <SimpleForm variant={'outlined'}>
-            <TextInput source="name" validate={[required()]}/>
-            <UserIdField/>
+            <TextInput label="Player name" source="name" validate={[required()]}/>
+            {permissions === 'admin' && <UserIdField />}
         </SimpleForm>
     </Create>)
 };
