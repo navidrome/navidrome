@@ -1,71 +1,16 @@
 import { InfiniteLoader, AutoSizer, List } from 'react-virtualized'
-import { useInstance } from './useInstance'
-import { useEffect } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
-import { useListContext, crudGetList } from 'ra-core'
 import { GridList } from '@material-ui/core'
+import useVirtualizedData from './useVirtualizedData'
 
 function AlbumDatagrid(props) {
-  const { children, tileHeight, columns } = props
+  const { children, itemHeight, columns } = props
+  const { data, loadedIds, total, handleLoadMore } = useVirtualizedData()
 
-  const { resource, perPage, currentSort, filterValues } = useListContext()
-
-  const { data, ids, total } = useSelector((state) => ({
-    ids: state.admin.resources[resource].list.ids,
-    data: state.admin.resources[resource].data,
-    total: state.admin.resources[resource].list.total,
-    loadedOnce: state.admin.resources[resource].list.loadedOnce,
-  }))
-  const dispatch = useDispatch()
-
-  const [loadedIds, updateLoadedIds] = useInstance({})
-
-  const getList = (...args) => dispatch(crudGetList(...args))
-
-  const [lastFetchPosition, updateLastFetchPosition] = useInstance({
-    startIndex: 0,
-    stopIndex: perPage,
-  })
-
-  const [loadPromiseResolver, updateLoadPromiseResolver] = useInstance(null)
-
-  const handleLoadMore = (query) => {
+  const loadMoreRows = (query) => {
     const startIndex = getIndexesForRow(query.startIndex)[0]
     const stopIndex = getIndexesForRow(query.stopIndex).pop()
-    console.log('LoadMore', startIndex, stopIndex)
-    const page = Math.floor(startIndex / perPage) + 1
-    const newStopIndex = Math.min(total, stopIndex + perPage - 1)
-
-    return new Promise((resolve) => {
-      updateLoadPromiseResolver(resolve)
-      updateLastFetchPosition({ startIndex, stopIndex: newStopIndex })
-      getList(resource, { page: page, perPage }, currentSort, filterValues)
-    })
+    return handleLoadMore({ startIndex, stopIndex })
   }
-
-  useEffect(() => {
-    let { startIndex, stopIndex } = lastFetchPosition
-    let newLoadedIds = loadedIds
-
-    if (loadPromiseResolver == null) {
-      startIndex = 0
-      stopIndex = perPage
-      newLoadedIds = {}
-      // TODO: scrollToPosition(0)
-    }
-
-    for (let i = startIndex; i <= stopIndex; i++) {
-      newLoadedIds[i] = ids[i - startIndex]
-    }
-
-    updateLoadedIds(newLoadedIds)
-    updateLastFetchPosition({ startIndex, stopIndex })
-
-    if (loadPromiseResolver) {
-      loadPromiseResolver()
-      updateLoadPromiseResolver(null)
-    }
-  }, [ids])
 
   const getIndexesForRow = (index) => {
     const res = []
@@ -74,6 +19,15 @@ function AlbumDatagrid(props) {
       res.push(columns * index + i)
     }
     return res
+  }
+
+  // For react-virtualized, the number of rows is total/columns, since each row
+  // displays "column" no. of items
+  const rowCount = Math.ceil(total / columns)
+
+  const isRowLoaded = ({ index }) => {
+    const indices = getIndexesForRow(index, columns)
+    return indices.reduce((prev, curr) => prev && loadedIds[curr], true)
   }
 
   const rowRenderer = ({ index, style, key }) => {
@@ -100,17 +54,10 @@ function AlbumDatagrid(props) {
     )
   }
 
-  const isRowLoaded = ({ index }) => {
-    const indices = getIndexesForRow(index, columns)
-    return indices.reduce((prev, curr) => prev && loadedIds[curr], true)
-  }
-
-  const rowCount = Math.ceil(total / columns)
-
   return (
     <InfiniteLoader
       isRowLoaded={isRowLoaded}
-      loadMoreRows={handleLoadMore}
+      loadMoreRows={loadMoreRows}
       rowCount={rowCount}
     >
       {({ onRowsRendered, registerChild }) => (
@@ -118,8 +65,8 @@ function AlbumDatagrid(props) {
           {({ width }) => (
             <List
               ref={registerChild}
-              rowHeight={tileHeight}
-              height={tileHeight * 2}
+              rowHeight={itemHeight}
+              height={itemHeight * 2}
               width={width}
               onRowsRendered={onRowsRendered}
               rowRenderer={rowRenderer}
@@ -133,6 +80,9 @@ function AlbumDatagrid(props) {
 }
 
 AlbumDatagrid.defaultProps = {
-  tileHeight: 245,
+  itemHeight: 245,
+  columns: 3,
+  children: () => null,
 }
+
 export default AlbumDatagrid

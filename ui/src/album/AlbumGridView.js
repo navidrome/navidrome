@@ -196,34 +196,6 @@ const AlbumGridTile = ({ showArtist, record, basePath, isLoaded }) => {
   )
 }
 
-const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
-  const classes = useStyles()
-  const { filterValues } = useListContext()
-  const isArtistView = !!(filterValues && filterValues.artist_id)
-
-  return (
-    <div className={classes.root}>
-      <GridList
-        component={'div'}
-        cellHeight={'auto'}
-        cols={getColsForWidth(width)}
-        spacing={20}
-      >
-        {ids.map((id) => (
-          <GridListTile className={classes.gridListTile} key={id}>
-            <AlbumGridTile
-              record={data[id]}
-              basePath={basePath}
-              showArtist={!isArtistView}
-            />
-            //{' '}
-          </GridListTile>
-        ))}
-      </GridList>
-    </div>
-  )
-}
-
 const AlbumGridView = ({
   albumListType,
   loaded,
@@ -243,7 +215,7 @@ const AlbumGridView = ({
     <div className={classes.root}>
       <AlbumDatagrid
         columns={getColsForWidth(width)}
-        tileHeight={window.innerWidth < 600 ? 330 : 245}
+        itemHeight={window.innerWidth < 600 ? 330 : 245}
       >
         {({ isLoaded, record, itemIndex }) => (
           <GridListTile

@@ -7,65 +7,22 @@ import VirtualTable from './VirtualTable'
 import { useInstance } from './useInstance'
 import union from 'lodash.union'
 import difference from 'lodash.difference'
+import useVirtualizedData from './useVirtualizedData'
 function Datagrid(props) {
   const {
     resource,
     basePath,
     setSort,
-    perPage,
     currentSort,
-    filterValues,
     onToggleItem,
     selectedIds,
     onSelect,
   } = useListContext()
 
+  const { data, loadedIds, total, handleLoadMore } = useVirtualizedData()
   const { classes, isRowSelectable, rowClick, hasBulkActions } = props
 
-  const [lastFetchPosition, updateLastFetchPosition] = useInstance({
-    startIndex: 0,
-    stopIndex: perPage,
-  })
-
-  const { data, ids, total } = useSelector((state) => ({
-    ids: state.admin.resources[resource].list.ids,
-    data: state.admin.resources[resource].data,
-    total: state.admin.resources[resource].list.total,
-    loadedOnce: state.admin.resources[resource].list.loadedOnce,
-  }))
-
-  const dispatch = useDispatch()
-
   const history = useHistory()
-  const [loadPromiseResolver, updateLoadPromiseResolver] = useInstance(null)
-
-  const [loadedIds, updateLoadedIds] = useInstance({})
-
-  const getList = (...args) => dispatch(crudGetList(...args))
-
-  useEffect(() => {
-    let { startIndex, stopIndex } = lastFetchPosition
-    let newLoadedIds = loadedIds
-
-    if (loadPromiseResolver == null) {
-      startIndex = 0
-      stopIndex = perPage
-      newLoadedIds = {}
-      // TODO: scrollToPosition(0)
-    }
-
-    for (let i = startIndex; i <= stopIndex; i++) {
-      newLoadedIds[i] = ids[i - startIndex]
-    }
-
-    updateLoadedIds(newLoadedIds)
-    updateLastFetchPosition({ startIndex, stopIndex })
-
-    if (loadPromiseResolver) {
-      loadPromiseResolver()
-      updateLoadPromiseResolver(null)
-    }
-  }, [ids])
 
   const onRowClick = ({ index, event, rowData: record }) => {
     const id = record.id
@@ -123,8 +80,8 @@ function Datagrid(props) {
       updateLastSelected(event.target.checked ? id : null)
 
       if (event.shiftKey && lastSelectedIndex !== -1) {
-        const index = ids.indexOf(id)
-        const idsBetweenSelections = ids.slice(
+        const index = Object.values(loadedIds).indexOf(id)
+        const idsBetweenSelections = Object.values(loadedIds).slice(
           Math.min(lastSelectedIndex, index),
           Math.max(lastSelectedIndex, index) + 1
         )
@@ -142,19 +99,8 @@ function Datagrid(props) {
         onToggleItem(id)
       }
     },
-    [data, ids, isRowSelectable, onSelect, onToggleItem, selectedIds]
+    [data, isRowSelectable, onSelect, onToggleItem, selectedIds]
   )
-
-  const handleLoadMore = ({ startIndex, stopIndex }) => {
-    const page = Math.floor(startIndex / perPage) + 1
-    const newStopIndex = Math.min(total, stopIndex + perPage - 1)
-
-    return new Promise((resolve) => {
-      updateLoadPromiseResolver(resolve)
-      updateLastFetchPosition({ startIndex, stopIndex: newStopIndex })
-      getList(resource, { page: page, perPage }, currentSort, filterValues)
-    })
-  }
 
   return (
     <VirtualTable
