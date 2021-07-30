@@ -4,7 +4,7 @@ import {
     Button,
     Edit,
     ListButton,
-    PasswordInput, ReferenceField,
+    ReferenceField,
     ReferenceInput,
     RefreshButton,
     required,
@@ -21,10 +21,27 @@ import VpnKeyIcon from '@material-ui/icons/VpnKey';
 import CloseIcon from '@material-ui/icons/Close';
 import {v4 as uuidv4} from 'uuid'
 
+const PostShowActions = ({basePath, data}) => (
+    <CardActions>
+        <ListButton label={'Back'} basePath={basePath}/>
+        <RefreshButton/>
+        <GenerateNewApiKey record={data}/>
+        <RemoveApiKey record={data}/>
+    </CardActions>
+);
+
 const PlayerTitle = ({record}) => {
     const translate = useTranslate()
     const resourceName = translate('resources.player.name', {smart_count: 1})
     return <Title subTitle={`${resourceName} ${record ? record.name : ''}`}/>
+}
+
+const HiddenApiUsernameField = ({record}) => {
+    return record && record.apiKey ? <TextInput label="Api username" source='id' aria-readonly="true"/>  : null;
+}
+
+const HiddenApiField = ({record}) => {
+    return record && record.apiKey ? <TextInput source='apiKey' aria-readonly="true"/> : null;
 }
 
 const GenerateNewApiKey = ({record}) => {
@@ -35,7 +52,7 @@ const GenerateNewApiKey = ({record}) => {
         {...record, apiKey: uuidv4()}
     );
 
-    return <Button label="Generate new ApiKey" startIcon={<VpnKeyIcon/>} onClick={generateNewKey} disabled={loading}/>;
+    return record && !record.apiKey ? <Button label="Generate new ApiKey" startIcon={<VpnKeyIcon/>} onClick={generateNewKey} disabled={loading}/> : null;
 };
 
 const RemoveApiKey = ({record}) => {
@@ -49,24 +66,10 @@ const RemoveApiKey = ({record}) => {
     return record && record.apiKey ? <Button label="Remove ApiKey" startIcon={<CloseIcon/>} onClick={removeOldKey} disabled={loading}/> : null;
 };
 
-const PostShowActions = ({basePath, data}) => (
-    <CardActions>
-        <ListButton label={'Back'} basePath={basePath}/>
-        <RefreshButton/>
-        <GenerateNewApiKey record={data}/>
-        <RemoveApiKey record={data}/>
-    </CardActions>
-);
-
-const HiddenApiField = ({record}) => {
-    return record && record.apiKey ? <PasswordInput source='apiKey' disabled={true}/> : null;
-}
-
 const PlayerEdit = (props) => (
     <Edit title={<PlayerTitle/>} actions={<PostShowActions/>} {...props}>
         <SimpleForm variant={'outlined'}>
             <TextInput source="name" validate={[required()]}/>
-            <HiddenApiField/>
             <ReferenceInput
                 source="transcodingId"
                 reference="transcoding"
@@ -99,6 +102,8 @@ const PlayerEdit = (props) => (
             <ReferenceField label="User" source="userId" reference="user">
                 <TextField source="name" />
             </ReferenceField>
+            <HiddenApiUsernameField />
+            <HiddenApiField />
         </SimpleForm>
     </Edit>
 )
