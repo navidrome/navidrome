@@ -115,8 +115,23 @@ func extractAuthParameters(r *http.Request) (string, string, string, string, str
 	return username, pass, token, salt, jwt
 }
 
-func validateUser(ctx context.Context, ds model.DataStore, username, pass, token, salt, jwt string) (*model.User, error) {
+func getUserFromUsername(ctx context.Context, ds model.DataStore, username string) (*model.User, *model.Player, error) {
 	user, err := ds.User(ctx).FindByUsernameWithPassword(username)
+	if err == nil {
+		return user, nil, nil
+	}
+
+	player, playerErr := ds.Player(ctx).Get(username)
+	if playerErr == nil {
+		user, _ := ds.User(ctx).Get(player.UserId)
+		return user, player, nil
+	}
+
+	return nil, nil, err
+}
+
+func validateUser(ctx context.Context, ds model.DataStore, username, pass, token, salt, jwt string) (*model.User, error) {
+	user, player, err := getUserFromUsername(ctx, ds, username)
 	if err == model.ErrNotFound {
 		return nil, model.ErrInvalidAuth
 	}
@@ -131,6 +146,13 @@ func validateUser(ctx context.Context, ds model.DataStore, username, pass, token
 	case pass != "":
 		log.Debug(ctx, "AUTH: Using Password to validate User", "user", user.UserName)
 		return validatePass(user, pass)
+	case token != "" && player != nil:
+		log.Debug(ctx, "AUTH: Using SubsonicToken with Player Apikey to validate User", "user", user.UserName)
+		if err := validateTokenWithApiKey(player, token, salt); err == nil  {
+			return user, nil
+		} else {
+			return nil, err
+		}
 	case token != "":
 		log.Debug(ctx, "AUTH: Using SubsonicToken to validate User", "user", user.UserName)
 		return validateToken(user, token, salt)
@@ -165,6 +187,20 @@ func validatePass(user *model.User, pass string) (*model.User, error) {
 	}
 
 	return nil, model.ErrInvalidAuth
+}
+
+func validateTokenWithApiKey(player *model.Player, token string, salt string) error {
+	if player.ApiKey == "" {
+		return model.ErrInvalidAuth
+	}
+
+	t := fmt.Sprintf("%x", md5.Sum([]byte(player.ApiKey+salt)))
+
+	if t == token {
+		return nil
+	}
+
+	return model.ErrInvalidAuth
 }
 
 func validateToken(user *model.User, token string, salt string) (*model.User, error) {
