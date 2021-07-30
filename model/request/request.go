@@ -56,6 +56,11 @@ func UsernameFrom(ctx context.Context) (string, bool) {
 	return v, ok
 }
 
+func UserIdFrom(ctx context.Context) (string, bool) {
+	v, ok := UserFrom(ctx)
+	return v.ID, ok
+}
+
 func ClientFrom(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(Client).(string)
 	return v, ok

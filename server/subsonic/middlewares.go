@@ -89,7 +89,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			//go func() {
 			//	err := ds.User(ctx).UpdateLastAccessAt(usr.ID)
 			//	if err != nil {
-			//		log.Error(ctx, "Could not update user's lastAccessAt", "user", usr.UserName)
+			//		log.Error(ctx, "Could not update user's lastAccessAt", "user", usr.UserId)
 			//	}
 			//}()
 

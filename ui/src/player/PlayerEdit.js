@@ -4,7 +4,7 @@ import {
     Button,
     Edit,
     ListButton,
-    PasswordInput,
+    PasswordInput, ReferenceField,
     ReferenceInput,
     RefreshButton,
     required,
@@ -96,7 +96,9 @@ const PlayerEdit = (props) => (
                 <BooleanInput source="scrobbleEnabled" fullWidth/>
             )}
             <TextField source="client"/>
-            <TextField source="userName"/>
+            <ReferenceField label="User" source="userId" reference="user">
+                <TextField source="name" />
+            </ReferenceField>
         </SimpleForm>
     </Edit>
 )

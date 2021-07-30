@@ -27,7 +27,6 @@ type players struct {
 func (p *players) Register(ctx context.Context, id, client, userAgent, ip string) (*model.Player, *model.Transcoding, error) {
 	plr := p.GetPlayerFromIdOrNewPlayerForUser(ctx, id, client, userAgent)
 
-	plr.Name = fmt.Sprintf("%s [%s]", client, userAgent)
 	plr.UserAgent = userAgent
 	plr.IPAddress = ip
 	plr.LastSeen = time.Now()
@@ -49,20 +48,21 @@ func (p *players) GetPlayerFromIdOrNewPlayerForUser(ctx context.Context, id stri
 		}
 	}
 
-	userName, _ := request.UsernameFrom(ctx)
+	userId, _ := request.UserIdFrom(ctx)
 
-	if plr, err := p.ds.Player(ctx).FindMatch(userName, client, userAgent); err == nil {
-		log.Debug("Found matching player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
+	if plr, err := p.ds.Player(ctx).FindMatch(userId, client, userAgent); err == nil {
+		log.Debug("Found matching player", "id", plr.ID, "client", client, "userId", userId, "type", userAgent)
 		return plr
 	}
 
 	plr := &model.Player{
 		ID:              uuid.NewString(),
-		UserName:        userName,
+		Name:            fmt.Sprintf("%s [%s]", client, userAgent),
+		UserId:          userId,
 		Client:          client,
 		ScrobbleEnabled: true,
 	}
-	log.Info("Registering new player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
+	log.Info("Registering new player", "id", plr.ID, "client", client, "userId", userId, "type", userAgent)
 	return plr
 }
 

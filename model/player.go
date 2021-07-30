@@ -9,7 +9,7 @@ type Player struct {
 	Name            string    `json:"name"`
 	ApiKey          string    `json:"apiKey"`
 	UserAgent       string    `json:"userAgent"`
-	UserName        string    `json:"userName"`
+	UserId          string    `json:"userId"`
 	Client          string    `json:"client"`
 	IPAddress       string    `json:"ipAddress"`
 	LastSeen        time.Time `json:"lastSeen"`
@@ -23,6 +23,6 @@ type Players []Player
 
 type PlayerRepository interface {
 	Get(id string) (*Player, error)
-	FindMatch(userName, client, typ string) (*Player, error)
+	FindMatch(userId, client, typ string) (*Player, error)
 	Put(p *Player) error
 }

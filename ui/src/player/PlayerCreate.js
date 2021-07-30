@@ -3,12 +3,12 @@ import React from "react";
 
 const UserIdField = (() => {
     return (<ReferenceInput
-        source="userName"
+        source="userId"
         reference="user"
         sort={{field: 'name', order: 'ASC'}}
         validate={[required()]}
     >
-        <SelectInput optionText="name" optionValue="userName"/>
+        <SelectInput source="userId" optionText="name" />
     </ReferenceInput>)
 })
 
