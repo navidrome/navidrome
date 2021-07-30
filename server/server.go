@@ -65,7 +65,7 @@ func (s *Server) initRoutes() {
 	r.Use(clientUniqueIdAdder)
 	r.Use(loggerInjector)
 	r.Use(requestLogger)
-	r.Use(robotsTXT(ui.Assets()))
+	r.Use(robotsTXT(ui.BuildAssets()))
 	r.Use(authHeaderMapper)
 	r.Use(jwtVerifier)
 
@@ -99,7 +99,7 @@ func (s *Server) initRoutes() {
 func (s *Server) frontendAssetsHandler() http.Handler {
 	r := chi.NewRouter()
 
-	r.Handle("/", serveIndex(s.ds, ui.Assets()))
-	r.Handle("/*", http.StripPrefix(s.appRoot, http.FileServer(http.FS(ui.Assets()))))
+	r.Handle("/", serveIndex(s.ds, ui.BuildAssets()))
+	r.Handle("/*", http.StripPrefix(s.appRoot, http.FileServer(http.FS(ui.BuildAssets()))))
 	return r
 }

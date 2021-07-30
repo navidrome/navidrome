@@ -19,7 +19,7 @@ import customRoutes from './routes'
 import {
   themeReducer,
   addToPlaylistDialogReducer,
-  playQueueReducer,
+  playerReducer,
   albumViewReducer,
   activityReducer,
   settingsReducer,
@@ -48,7 +48,7 @@ const App = () => (
       dataProvider,
       history,
       customReducers: {
-        queue: playQueueReducer,
+        player: playerReducer,
         albumView: albumViewReducer,
         theme: themeReducer,
         addToPlaylistDialog: addToPlaylistDialogReducer,
@@ -108,6 +108,7 @@ const Admin = (props) => {
           <Resource name="transcoding" />
         ),
         <Resource name="translation" />,
+        <Resource name="genre" />,
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
         <Player />,

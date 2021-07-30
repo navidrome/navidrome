@@ -25,6 +25,7 @@ const useStyles = makeStyles(
   (theme) => ({
     root: {
       margin: '20px',
+      display: 'grid',
     },
     tileBar: {
       transition: 'all 150ms ease-out',

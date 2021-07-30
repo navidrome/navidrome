@@ -9,6 +9,7 @@ type Artist struct {
 	Name                  string    `json:"name"`
 	AlbumCount            int       `json:"albumCount"`
 	SongCount             int       `json:"songCount"`
+	Genres                Genres    `json:"genres"`
 	FullText              string    `json:"fullText"`
 	SortArtistName        string    `json:"sortArtistName,omitempty"`
 	OrderArtistName       string    `json:"orderArtistName"`
@@ -47,7 +48,6 @@ type ArtistRepository interface {
 	Put(m *Artist) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
-	GetStarred(options ...QueryOptions) (Artists, error)
 	Search(q string, offset int, size int) (Artists, error)
 	Refresh(ids ...string) error
 	GetIndex() (ArtistIndexes, error)

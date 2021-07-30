@@ -3,7 +3,6 @@ package subsonic
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -67,7 +66,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 		}
 
 		if r.Method == "HEAD" {
-			go func() { _, _ = io.Copy(ioutil.Discard, stream) }()
+			go func() { _, _ = io.Copy(io.Discard, stream) }()
 		} else {
 			if c, err := io.Copy(w, stream); err != nil {
 				log.Error(ctx, "Error sending transcoded file", "id", id, err)

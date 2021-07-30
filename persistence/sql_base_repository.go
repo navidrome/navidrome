@@ -149,7 +149,7 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	start := time.Now()
 	err = r.ormer.Raw(query, args...).QueryRow(response)
 	if err == orm.ErrNoRows {
-		r.logSQL(query, args, nil, 1, start)
+		r.logSQL(query, args, nil, 0, start)
 		return model.ErrNotFound
 	}
 	r.logSQL(query, args, err, 1, start)
@@ -179,7 +179,7 @@ func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
 }
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
-	countQuery = countQuery.Columns("count(*) as count").From(r.tableName)
+	countQuery = countQuery.Columns("count(distinct " + r.tableName + ".id) as count").From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)

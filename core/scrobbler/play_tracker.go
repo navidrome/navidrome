@@ -7,13 +7,11 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 
-	"github.com/navidrome/navidrome/server/events"
-
-	"github.com/navidrome/navidrome/log"
-
 	"github.com/ReneKroon/ttlcache/v2"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -39,9 +37,10 @@ type PlayTracker interface {
 }
 
 type playTracker struct {
-	ds      model.DataStore
-	broker  events.Broker
-	playMap *ttlcache.Cache
+	ds         model.DataStore
+	broker     events.Broker
+	playMap    *ttlcache.Cache
+	scrobblers map[string]Scrobbler
 }
 
 func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
@@ -49,7 +48,16 @@ func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
 		m := ttlcache.NewCache()
 		m.SkipTTLExtensionOnHit(true)
 		_ = m.SetTTL(nowPlayingExpire)
-		return &playTracker{ds: ds, playMap: m, broker: broker}
+		p := &playTracker{ds: ds, playMap: m, broker: broker}
+		p.scrobblers = make(map[string]Scrobbler)
+		for name, constructor := range constructors {
+			s := constructor(ds)
+			if conf.Server.DevEnableBufferedScrobble {
+				s = newBufferedScrobbler(ds, s, name)
+			}
+			p.scrobblers[name] = s
+		}
+		return p
 	})
 	return instance.(*playTracker)
 }
@@ -78,15 +86,12 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, tra
 		return
 	}
 	// TODO Parallelize
-	for name, constructor := range scrobblers {
-		err := func() error {
-			s := constructor(p.ds)
-			if !s.IsAuthorized(ctx, userId) {
-				return nil
-			}
-			log.Debug(ctx, "Sending NowPlaying info", "scrobbler", name, "track", t.Title, "artist", t.Artist)
-			return s.NowPlaying(ctx, userId, t)
-		}()
+	for name, s := range p.scrobblers {
+		if !s.IsAuthorized(ctx, userId) {
+			continue
+		}
+		log.Debug(ctx, "Sending NowPlaying update", "scrobbler", name, "track", t.Title, "artist", t.Artist)
+		err := s.NowPlaying(ctx, userId, t)
 		if err != nil {
 			log.Error(ctx, "Error sending NowPlayingInfo", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
 			return
@@ -161,17 +166,17 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 
 func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, playTime time.Time) error {
 	u, _ := request.UserFrom(ctx)
-	scrobbles := []Scrobble{{MediaFile: *t, TimeStamp: playTime}}
-	// TODO Parallelize
-	for name, constructor := range scrobblers {
-		err := func() error {
-			s := constructor(p.ds)
-			if !s.IsAuthorized(ctx, u.ID) {
-				return nil
-			}
-			log.Debug(ctx, "Sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
-			return s.Scrobble(ctx, u.ID, scrobbles)
-		}()
+	scrobble := Scrobble{MediaFile: *t, TimeStamp: playTime}
+	for name, s := range p.scrobblers {
+		if !s.IsAuthorized(ctx, u.ID) {
+			continue
+		}
+		if conf.Server.DevEnableBufferedScrobble {
+			log.Debug(ctx, "Buffering scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
+		} else {
+			log.Debug(ctx, "Sending scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
+		}
+		err := s.Scrobble(ctx, u.ID, scrobble)
 		if err != nil {
 			log.Error(ctx, "Error sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
 			return err
@@ -180,14 +185,11 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 	return nil
 }
 
-var scrobblers map[string]Constructor
+var constructors map[string]Constructor
 
 func Register(name string, init Constructor) {
-	if !conf.Server.DevEnableScrobble {
-		return
+	if constructors == nil {
+		constructors = make(map[string]Constructor)
 	}
-	if scrobblers == nil {
-		scrobblers = make(map[string]Constructor)
-	}
-	scrobblers[name] = init
+	constructors[name] = init
 }

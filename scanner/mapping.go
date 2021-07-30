@@ -10,6 +10,7 @@ import (
 
 	"github.com/kennygrant/sanitize"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner/metadata"
@@ -19,10 +20,15 @@ import (
 type mediaFileMapper struct {
 	rootFolder string
 	policy     *bluemonday.Policy
+	genres     model.GenreRepository
 }
 
-func newMediaFileMapper(rootFolder string) *mediaFileMapper {
-	return &mediaFileMapper{rootFolder: rootFolder, policy: bluemonday.UGCPolicy()}
+func newMediaFileMapper(rootFolder string, genres model.GenreRepository) *mediaFileMapper {
+	return &mediaFileMapper{
+		rootFolder: rootFolder,
+		policy:     bluemonday.UGCPolicy(),
+		genres:     genres,
+	}
 }
 
 func (s *mediaFileMapper) toMediaFile(md *metadata.Tags) model.MediaFile {
@@ -36,7 +42,7 @@ func (s *mediaFileMapper) toMediaFile(md *metadata.Tags) model.MediaFile {
 	mf.Artist = s.mapArtistName(md)
 	mf.AlbumArtistID = s.albumArtistID(md)
 	mf.AlbumArtist = s.mapAlbumArtistName(md)
-	mf.Genre = md.Genre()
+	mf.Genre, mf.Genres = s.mapGenres(md.Genres())
 	mf.Compilation = md.Compilation()
 	mf.Year = md.Year()
 	mf.TrackNumber, _ = md.TrackNumber()
@@ -87,10 +93,10 @@ func (s *mediaFileMapper) mapTrackTitle(md *metadata.Tags) string {
 
 func (s *mediaFileMapper) mapAlbumArtistName(md *metadata.Tags) string {
 	switch {
-	case md.Compilation():
-		return consts.VariousArtists
 	case md.AlbumArtist() != "":
 		return md.AlbumArtist()
+	case md.Compilation():
+		return consts.VariousArtists
 	case md.Artist() != "":
 		return md.Artist()
 	default:
@@ -128,4 +134,33 @@ func (s *mediaFileMapper) artistID(md *metadata.Tags) string {
 
 func (s *mediaFileMapper) albumArtistID(md *metadata.Tags) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapAlbumArtistName(md)))))
+}
+
+func (s *mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
+	var result model.Genres
+	unique := map[string]struct{}{}
+	var all []string
+	for i := range genres {
+		gs := strings.FieldsFunc(genres[i], func(r rune) bool {
+			return strings.ContainsRune(conf.Server.Scanner.GenreSeparators, r)
+		})
+		for j := range gs {
+			g := strings.TrimSpace(gs[j])
+			key := strings.ToLower(g)
+			if _, ok := unique[key]; ok {
+				continue
+			}
+			all = append(all, g)
+			unique[key] = struct{}{}
+		}
+	}
+	for _, g := range all {
+		genre := model.Genre{Name: g}
+		_ = s.genres.Put(&genre)
+		result = append(result, genre)
+	}
+	if len(result) == 0 {
+		return "", nil
+	}
+	return result[0].Name, result
 }

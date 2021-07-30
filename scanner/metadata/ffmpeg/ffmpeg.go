@@ -1,4 +1,4 @@
-package metadata
+package ffmpeg
 
 import (
 	"bufio"
@@ -13,15 +13,17 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-type ffmpegExtractor struct{}
+type Parser struct{}
 
-func (e *ffmpegExtractor) Extract(files ...string) (map[string]*Tags, error) {
+type parsedTags = map[string][]string
+
+func (e *Parser) Parse(files ...string) (map[string]parsedTags, error) {
 	args := e.createProbeCommand(files)
 
 	log.Trace("Executing command", "args", args)
 	cmd := exec.Command(args[0], args[1:]...) // #nosec
 	output, _ := cmd.CombinedOutput()
-	fileTags := map[string]*Tags{}
+	fileTags := map[string]parsedTags{}
 	if len(output) == 0 {
 		return fileTags, errors.New("error extracting metadata files")
 	}
@@ -34,6 +36,27 @@ func (e *ffmpegExtractor) Extract(files ...string) (map[string]*Tags, error) {
 		}
 	}
 	return fileTags, nil
+}
+
+func (e *Parser) extractMetadata(filePath, info string) (parsedTags, error) {
+	tags := e.parseInfo(info)
+	if len(tags) == 0 {
+		log.Trace("Not a media file. Skipping", "filePath", filePath)
+		return nil, errors.New("not a media file")
+	}
+
+	alternativeTags := map[string][]string{
+		"disc":        {"tpa"},
+		"has_picture": {"metadata_block_picture"},
+	}
+	for tagName, alternatives := range alternativeTags {
+		for _, altName := range alternatives {
+			if altValue, ok := tags[altName]; ok {
+				tags[tagName] = append(tags[tagName], altValue...)
+			}
+		}
+	}
+	return tags, nil
 }
 
 var (
@@ -56,7 +79,7 @@ var (
 	coverRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: (Video):.*`)
 )
 
-func (e *ffmpegExtractor) parseOutput(output string) map[string]string {
+func (e *Parser) parseOutput(output string) map[string]string {
 	outputs := map[string]string{}
 	all := inputRegex.FindAllStringSubmatchIndex(output, -1)
 	for i, loc := range all {
@@ -78,21 +101,7 @@ func (e *ffmpegExtractor) parseOutput(output string) map[string]string {
 	return outputs
 }
 
-func (e *ffmpegExtractor) extractMetadata(filePath, info string) (*Tags, error) {
-	parsedTags := e.parseInfo(info)
-	if len(parsedTags) == 0 {
-		log.Trace("Not a media file. Skipping", "filePath", filePath)
-		return nil, errors.New("not a media file")
-	}
-
-	tags := NewTag(filePath, parsedTags, map[string][]string{
-		"disc":        {"tpa"},
-		"has_picture": {"metadata_block_picture"},
-	})
-	return tags, nil
-}
-
-func (e *ffmpegExtractor) parseInfo(info string) map[string][]string {
+func (e *Parser) parseInfo(info string) map[string][]string {
 	tags := map[string][]string{}
 
 	reader := strings.NewReader(info)
@@ -158,7 +167,7 @@ func (e *ffmpegExtractor) parseInfo(info string) map[string][]string {
 
 var zeroTime = time.Date(0000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-func (e *ffmpegExtractor) parseDuration(tag string) string {
+func (e *Parser) parseDuration(tag string) string {
 	d, err := time.Parse("15:04:05", tag)
 	if err != nil {
 		return "0"
@@ -167,7 +176,7 @@ func (e *ffmpegExtractor) parseDuration(tag string) string {
 }
 
 // Inputs will always be absolute paths
-func (e *ffmpegExtractor) createProbeCommand(inputs []string) []string {
+func (e *Parser) createProbeCommand(inputs []string) []string {
 	split := strings.Split(conf.Server.ProbeCommand, " ")
 	args := make([]string, 0)
 

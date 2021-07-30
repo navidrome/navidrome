@@ -74,9 +74,9 @@ func runNavidrome() {
 func startServer() (func() error, func(err error)) {
 	return func() error {
 			a := CreateServer(conf.Server.MusicFolder)
-			a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
 			a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
-			if conf.Server.DevEnableScrobble {
+			a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
+			if conf.Server.LastFM.Enabled {
 				a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
 			}
 			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
@@ -133,10 +133,11 @@ func schedulePeriodicScan(schedule string) {
 	}
 
 	time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
-	log.Info("Executing initial scan")
+	log.Debug("Executing initial scan")
 	if err := scanner.RescanAll(context.Background(), false); err != nil {
 		log.Error("Error executing initial scan", err)
 	}
+	log.Debug("Finished initial scan")
 }
 
 func startScheduler() (func() error, func(err error)) {

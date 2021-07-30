@@ -3,8 +3,8 @@ package server
 import (
 	"encoding/json"
 	"html/template"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -38,13 +38,14 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"enableFavourites":        conf.Server.EnableFavourites,
 			"enableStarRating":        conf.Server.EnableStarRating,
 			"defaultTheme":            conf.Server.DefaultTheme,
+			"enableCoverAnimation":    conf.Server.EnableCoverAnimation,
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
 			"devActivityPanel":        conf.Server.DevActivityPanel,
 			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 			"enableUserEditing":       conf.Server.EnableUserEditing,
 			"devEnableShare":          conf.Server.DevEnableShare,
-			"devEnableScrobble":       conf.Server.DevEnableScrobble,
+			"lastFMEnabled":           conf.Server.LastFM.Enabled,
 			"lastFMApiKey":            conf.Server.LastFM.ApiKey,
 		}
 		auth := handleLoginFromHeaders(ds, r)
@@ -81,7 +82,7 @@ func getIndexTemplate(r *http.Request, fs fs.FS) (*template.Template, error) {
 		log.Error(r, "Could not find `index.html` template", err)
 		return nil, err
 	}
-	indexStr, err := ioutil.ReadAll(indexHtml)
+	indexStr, err := io.ReadAll(indexHtml)
 	if err != nil {
 		log.Error(r, "Could not read from `index.html`", err)
 		return nil, err

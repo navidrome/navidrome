@@ -6,7 +6,7 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -38,7 +38,7 @@ var _ = Describe("Client", func() {
 
 		It("fails if Last.FM returns an http status != 200", func() {
 			httpClient.Res = http.Response{
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`Internal Server Error`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`Internal Server Error`)),
 				StatusCode: 500,
 			}
 
@@ -48,7 +48,7 @@ var _ = Describe("Client", func() {
 
 		It("fails if Last.FM returns an http status != 200", func() {
 			httpClient.Res = http.Response{
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":3,"message":"Invalid Method - No method with that name in this package"}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"error":3,"message":"Invalid Method - No method with that name in this package"}`)),
 				StatusCode: 400,
 			}
 
@@ -58,7 +58,7 @@ var _ = Describe("Client", func() {
 
 		It("fails if Last.FM returns an error", func() {
 			httpClient.Res = http.Response{
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"error":6,"message":"The artist you supplied could not be found"}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"error":6,"message":"The artist you supplied could not be found"}`)),
 				StatusCode: 200,
 			}
 
@@ -75,7 +75,7 @@ var _ = Describe("Client", func() {
 
 		It("fails if returned body is not a valid JSON", func() {
 			httpClient.Res = http.Response{
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`<xml>NOT_VALID_JSON</xml>`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`<xml>NOT_VALID_JSON</xml>`)),
 				StatusCode: 200,
 			}
 
@@ -112,7 +112,7 @@ var _ = Describe("Client", func() {
 	Describe("GetToken", func() {
 		It("returns a token when the request is successful", func() {
 			httpClient.Res = http.Response{
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"token":"TOKEN"}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"token":"TOKEN"}`)),
 				StatusCode: 200,
 			}
 
@@ -128,7 +128,7 @@ var _ = Describe("Client", func() {
 	Describe("GetSession", func() {
 		It("returns a session key when the request is successful", func() {
 			httpClient.Res = http.Response{
-				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"session":{"name":"Navidrome","key":"SESSION_KEY","subscriber":0}}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"session":{"name":"Navidrome","key":"SESSION_KEY","subscriber":0}}`)),
 				StatusCode: 200,
 			}
 

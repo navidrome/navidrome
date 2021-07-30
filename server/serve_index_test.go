@@ -148,6 +148,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("defaultTheme", "Light"))
 	})
 
+	It("sets the enableCoverAnimation", func() {
+		conf.Server.EnableCoverAnimation = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableCoverAnimation", true))
+	})
+
 	It("sets the gaTrackingId", func() {
 		conf.Server.GATrackingID = "UA-12345"
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -200,14 +211,14 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("devEnableShare", false))
 	})
 
-	It("sets the devEnableScrobble", func() {
+	It("sets the lastFMEnabled", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
 		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("devEnableScrobble", true))
+		Expect(config).To(HaveKeyWithValue("lastFMEnabled", true))
 	})
 
 	It("sets the lastFMApiKey", func() {

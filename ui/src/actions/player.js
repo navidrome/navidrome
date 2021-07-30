@@ -3,7 +3,6 @@ export const PLAYER_PLAY_NEXT = 'PLAYER_PLAY_NEXT'
 export const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
 export const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
 export const PLAYER_CLEAR_QUEUE = 'PLAYER_CLEAR_QUEUE'
-export const PLAYER_SCROBBLE = 'PLAYER_SCROBBLE'
 export const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
 export const PLAYER_CURRENT = 'PLAYER_CURRENT'
 export const PLAYER_SET_VOLUME = 'PLAYER_SET_VOLUME'
@@ -69,20 +68,16 @@ export const playTracks = (data, ids, selectedId) => {
   }
 }
 
-export const syncQueue = (id, data) => ({
+export const syncQueue = (audioInfo, audioLists) => ({
   type: PLAYER_SYNC_QUEUE,
-  id,
-  data,
+  data: {
+    audioInfo,
+    audioLists,
+  },
 })
 
 export const clearQueue = () => ({
   type: PLAYER_CLEAR_QUEUE,
-})
-
-export const scrobble = (id, submit) => ({
-  type: PLAYER_SCROBBLE,
-  id,
-  submit,
 })
 
 export const currentPlaying = (audioInfo) => ({

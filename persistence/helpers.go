@@ -7,8 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/consts"
+
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -59,31 +60,48 @@ func (e existsCond) ToSql() (string, []interface{}, error) {
 	return sql, args, err
 }
 
-func getMbzId(ctx context.Context, mbzIDS, entityName, name string) string {
-	ids := strings.Fields(mbzIDS)
+func getMostFrequentMbzID(ctx context.Context, mbzIDs, entityName, name string) string {
+	ids := strings.Fields(mbzIDs)
 	if len(ids) == 0 {
 		return ""
 	}
-	idCounts := map[string]int{}
-	for _, id := range ids {
-		if c, ok := idCounts[id]; ok {
-			idCounts[id] = c + 1
-		} else {
-			idCounts[id] = 1
-		}
-	}
-
-	var topKey string
+	var topId string
 	var topCount int
-	for k, v := range idCounts {
-		if v > topCount {
-			topKey = k
-			topCount = v
+	idCounts := map[string]int{}
+
+	if len(ids) == 1 {
+		topId = ids[0]
+	} else {
+		for _, id := range ids {
+			c := idCounts[id] + 1
+			idCounts[id] = c
+			if c > topCount {
+				topId = id
+				topCount = c
+			}
 		}
 	}
 
 	if len(idCounts) > 1 && name != consts.VariousArtists {
-		log.Warn(ctx, "Multiple MBIDs found for "+entityName, "name", name, "mbids", idCounts)
+		log.Warn(ctx, "Multiple MBIDs found for "+entityName, "name", name, "mbids", idCounts, "selectedId", topId)
 	}
-	return topKey
+	if topId == consts.VariousArtistsMbzId && name != consts.VariousArtists {
+		log.Warn(ctx, "Artist with mbid of 'Various Artists'", "name", name, "mbid", topId)
+	}
+
+	return topId
+}
+
+func getGenres(genreIds string) model.Genres {
+	ids := strings.Fields(genreIds)
+	var genres model.Genres
+	unique := map[string]struct{}{}
+	for _, id := range ids {
+		if _, ok := unique[id]; ok {
+			continue
+		}
+		genres = append(genres, model.Genre{ID: id})
+		unique[id] = struct{}{}
+	}
+	return genres
 }

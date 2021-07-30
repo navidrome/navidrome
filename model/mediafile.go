@@ -28,6 +28,7 @@ type MediaFile struct {
 	Duration             float32   `json:"duration"`
 	BitRate              int       `json:"bitRate"`
 	Genre                string    `json:"genre"`
+	Genres               Genres    `json:"genres"`
 	FullText             string    `json:"fullText"`
 	SortTitle            string    `json:"sortTitle,omitempty"`
 	SortAlbumName        string    `json:"sortAlbumName,omitempty"`
@@ -63,12 +64,9 @@ type MediaFileRepository interface {
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
-	FindByAlbum(albumId string) (MediaFiles, error)
 	FindAllByPath(path string) (MediaFiles, error)
 	FindByPath(path string) (*MediaFile, error)
 	FindPathsRecursively(basePath string) ([]string, error)
-	GetStarred(options ...QueryOptions) (MediaFiles, error)
-	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	DeleteByPath(path string) (int64, error)

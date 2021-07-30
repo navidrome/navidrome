@@ -70,6 +70,10 @@ func (s *SQLStore) Player(ctx context.Context) model.PlayerRepository {
 	return NewPlayerRepository(ctx, s.getOrmer())
 }
 
+func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+	return NewScrobbleBufferRepository(ctx, s.getOrmer())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
@@ -84,6 +88,8 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.Album(ctx).(model.ResourceRepository)
 	case model.MediaFile:
 		return s.MediaFile(ctx).(model.ResourceRepository)
+	case model.Genre:
+		return s.Genre(ctx).(model.ResourceRepository)
 	case model.Playlist:
 		return s.Playlist(ctx).(model.ResourceRepository)
 	case model.Share:
@@ -160,6 +166,11 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	err = s.Playlist(ctx).(*playlistRepository).removeOrphans()
 	if err != nil {
 		log.Error(ctx, "Error tidying up playlists", err)
+	}
+	err = s.Genre(ctx).(*genreRepository).purgeEmpty()
+	if err != nil {
+		log.Error(ctx, "Error removing unused genres", err)
+		return err
 	}
 	return err
 }

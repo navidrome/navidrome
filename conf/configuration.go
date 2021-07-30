@@ -46,6 +46,7 @@ type configOptions struct {
 	EnableStarRating       bool
 	EnableUserEditing      bool
 	DefaultTheme           string
+	EnableCoverAnimation   bool
 	GATrackingID           string
 	EnableLogRedacting     bool
 	AuthRequestLimit       int
@@ -62,18 +63,19 @@ type configOptions struct {
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
+	DevLogLevels               map[string]string
 	DevAutoCreateAdminPassword string
 	DevAutoLoginUsername       string
 	DevPreCacheAlbumArtwork    bool
 	DevFastAccessCoverArt      bool
-	DevOldCacheLayout          bool
 	DevActivityPanel           bool
 	DevEnableShare             bool
-	DevEnableScrobble          bool
+	DevEnableBufferedScrobble  bool
 }
 
 type scannerOptions struct {
-	Extractor string
+	Extractor       string
+	GenreSeparators string
 }
 
 type lastfmOptions struct {
@@ -101,12 +103,12 @@ func LoadFromFile(confFile string) {
 func Load() {
 	err := viper.Unmarshal(&Server)
 	if err != nil {
-		fmt.Println("Error parsing config:", err)
+		fmt.Println("FATAL: Error parsing config:", err)
 		os.Exit(1)
 	}
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
 	if err != nil {
-		fmt.Println("Error creating data path:", "path", Server.DataFolder, err)
+		fmt.Println("FATAL: Error creating data path:", "path", Server.DataFolder, err)
 		os.Exit(1)
 	}
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
@@ -115,6 +117,7 @@ func Load() {
 	}
 
 	log.SetLevelString(Server.LogLevel)
+	log.SetLogLevels(Server.DevLogLevels)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
 
@@ -201,6 +204,7 @@ func init() {
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
+	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
@@ -210,7 +214,9 @@ func init() {
 	viper.SetDefault("reverseproxyuserheader", "Remote-User")
 	viper.SetDefault("reverseproxywhitelist", "")
 
-	viper.SetDefault("scanner.extractor", "taglib")
+	viper.SetDefault("scanner.extractor", DefaultScannerExtractor)
+	viper.SetDefault("scanner.genreseparators", ";/,")
+
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
@@ -224,11 +230,10 @@ func init() {
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devprecachealbumartwork", false)
-	viper.SetDefault("devoldcachelayout", false)
-	viper.SetDefault("devFastAccessCoverArt", false)
+	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
-	viper.SetDefault("devenablescrobble", true)
+	viper.SetDefault("devenablebufferedscrobble", true)
 }
 
 func InitConfig(cfgFile string) {
@@ -249,8 +254,8 @@ func InitConfig(cfgFile string) {
 	viper.AutomaticEnv()
 
 	err := viper.ReadInConfig()
-	if cfgFile != "" && err != nil {
-		fmt.Println("Navidrome could not open config file: ", err)
+	if viper.ConfigFileUsed() != "" && err != nil {
+		fmt.Println("FATAL: Navidrome could not open config file: ", err)
 		os.Exit(1)
 	}
 }

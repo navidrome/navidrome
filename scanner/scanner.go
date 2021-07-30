@@ -48,7 +48,6 @@ type scanner struct {
 	ds          model.DataStore
 	cacheWarmer core.CacheWarmer
 	broker      events.Broker
-	scan        chan bool
 }
 
 type scanStatus struct {
@@ -66,7 +65,6 @@ func New(ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker)
 		folders:     map[string]FolderScanner{},
 		status:      map[string]*scanStatus{},
 		lock:        &sync.RWMutex{},
-		scan:        make(chan bool),
 	}
 	s.loadFolders()
 	return s

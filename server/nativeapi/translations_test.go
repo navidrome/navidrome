@@ -2,8 +2,9 @@ package nativeapi
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/consts"
@@ -16,7 +17,7 @@ var _ = Describe("Translations", func() {
 	Describe("I18n files", func() {
 		var fs http.FileSystem
 		BeforeEach(func() {
-			fs = http.FS(resources.Assets())
+			fs = http.FS(resources.FS)
 		})
 		It("contains only valid json language files", func() {
 			dir, _ := fs.Open(consts.I18nFolder)
@@ -25,7 +26,7 @@ var _ = Describe("Translations", func() {
 				name := filepath.Base(f.Name())
 				filePath := filepath.Join(consts.I18nFolder, name)
 				file, _ := fs.Open(filePath)
-				data, _ := ioutil.ReadAll(file)
+				data, _ := io.ReadAll(file)
 				var out map[string]interface{}
 
 				Expect(filepath.Ext(filePath)).To(Equal(".json"), filePath)
@@ -37,7 +38,7 @@ var _ = Describe("Translations", func() {
 
 	Describe("loadTranslation", func() {
 		It("loads a translation file correctly", func() {
-			fs := http.Dir("ui/src")
+			fs := os.DirFS("ui/src")
 			tr, err := loadTranslation(fs, "en.json")
 			Expect(err).To(BeNil())
 			Expect(tr.ID).To(Equal("en"))

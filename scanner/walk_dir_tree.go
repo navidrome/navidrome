@@ -25,26 +25,6 @@ type (
 	walkResults = chan dirStats
 )
 
-func fullReadDir(name string) ([]os.DirEntry, error) {
-	f, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	var allDirs []os.DirEntry
-	for {
-		dirs, err := f.ReadDir(-1)
-		allDirs = append(allDirs, dirs...)
-		if err == nil {
-			break
-		}
-		log.Warn("Skipping DirEntry", err)
-	}
-	sort.Slice(allDirs, func(i, j int) bool { return allDirs[i].Name() < allDirs[j].Name() })
-	return allDirs, nil
-}
-
 func walkDirTree(ctx context.Context, rootFolder string, results walkResults) error {
 	err := walkFolder(ctx, rootFolder, rootFolder, results)
 	if err != nil {
@@ -86,11 +66,14 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 	}
 	stats.ModTime = dirInfo.ModTime()
 
-	dirEntries, err := fullReadDir(dirPath)
+	dir, err := os.Open(dirPath)
 	if err != nil {
-		log.Error(ctx, "Error in ReadDir", "path", dirPath, err)
+		log.Error(ctx, "Error in Opening directory", "path", dirPath, err)
 		return children, stats, err
 	}
+	defer dir.Close()
+
+	dirEntries := fullReadDir(ctx, dir)
 	for _, entry := range dirEntries {
 		isDir, err := isDirOrSymlinkToDir(dirPath, entry)
 		// Skip invalid symlinks
@@ -118,6 +101,30 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 		}
 	}
 	return children, stats, nil
+}
+
+// fullReadDir reads all files in the folder, skipping the ones with errors.
+// It also detects when it is "stuck" with an error in the same directory over and over.
+// In this case, it and returns whatever it was able to read until it got stuck.
+// See discussion here: https://github.com/navidrome/navidrome/issues/1164#issuecomment-881922850
+func fullReadDir(ctx context.Context, dir fs.ReadDirFile) []os.DirEntry {
+	var allDirs []os.DirEntry
+	var prevErrStr = ""
+	for {
+		dirs, err := dir.ReadDir(-1)
+		allDirs = append(allDirs, dirs...)
+		if err == nil {
+			break
+		}
+		log.Warn(ctx, "Skipping DirEntry", err)
+		if prevErrStr == err.Error() {
+			log.Error(ctx, "Duplicate DirEntry failure, bailing", err)
+			break
+		}
+		prevErrStr = err.Error()
+	}
+	sort.Slice(allDirs, func(i, j int) bool { return allDirs[i].Name() < allDirs[j].Name() })
+	return allDirs
 }
 
 // isDirOrSymlinkToDir returns true if and only if the dirEnt represents a file

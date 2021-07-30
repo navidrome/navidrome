@@ -2,10 +2,10 @@ linters:
   enable:
     - bodyclose
     - deadcode
+    - depguard
     - dogsled
     - errcheck
     - gocyclo
-    - goimports
     - goprintffuncname
     - gosec
     - gosimple

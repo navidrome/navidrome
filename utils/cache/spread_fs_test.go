@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +15,7 @@ var _ = Describe("Spread FS", func() {
 
 	BeforeEach(func() {
 		var err error
-		rootDir, _ = ioutil.TempDir("", "spread_fs")
+		rootDir, _ = os.MkdirTemp("", "spread_fs")
 		fs, err = NewSpreadFS(rootDir, 0755)
 		Expect(err).To(BeNil())
 	})
@@ -54,7 +53,7 @@ var _ = Describe("Spread FS", func() {
 			var actual []string
 			err := fs.Reload(func(key string, name string) {
 				Expect(key).To(Equal(name))
-				data, err := ioutil.ReadFile(name)
+				data, err := os.ReadFile(name)
 				Expect(err).To(BeNil())
 				actual = append(actual, string(data))
 			})
