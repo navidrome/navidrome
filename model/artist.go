@@ -53,7 +53,3 @@ type ArtistRepository interface {
 	GetIndex() (ArtistIndexes, error)
 	AnnotatedRepository
 }
-
-func (a Artist) GetAnnotations() Annotations {
-	return a.Annotations
-}

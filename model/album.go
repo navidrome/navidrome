@@ -50,7 +50,3 @@ type AlbumRepository interface {
 	Refresh(ids ...string) error
 	AnnotatedRepository
 }
-
-func (a Album) GetAnnotations() Annotations {
-	return a.Annotations
-}
