@@ -69,7 +69,7 @@ const AlbumListTitle = ({ albumListType }) => {
 const AlbumList = (props) => {
   const { width } = props
   const albumView = useSelector((state) => state.albumView)
-  const [perPage, perPageOptions] = useAlbumsPerPage(width)
+  const [perPage] = useAlbumsPerPage(width)
   const location = useLocation()
   useResourceRefresh('album')
 
