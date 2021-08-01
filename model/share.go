@@ -5,15 +5,15 @@ import (
 )
 
 type Share struct {
-	ID            string    `json:"id"            orm:"column(id)"`
-	Name          string    `json:"name"`
-	Description   string    `json:"description"`
-	ExpiresAt     time.Time `json:"expiresAt"`
-	CreatedAt     time.Time `json:"createdAt"`
-	LastVisitedAt time.Time `json:"lastVisitedAt"`
-	ResourceIDs   string    `json:"resourceIds"   orm:"column(resource_ids)"`
-	ResourceType  string    `json:"resourceType"`
-	VisitCount    int       `json:"visitCount"`
+	ID            string    `structs:"id" json:"id"            orm:"column(id)"`
+	Name          string    `structs:"name" json:"name"`
+	Description   string    `structs:"description" json:"description"`
+	ExpiresAt     time.Time `structs:"expires_at" json:"expiresAt"`
+	CreatedAt     time.Time `structs:"created_at" json:"createdAt"`
+	LastVisitedAt time.Time `structs:"last_visited_at" json:"lastVisitedAt"`
+	ResourceIDs   string    `structs:"resource_ids" json:"resourceIds"   orm:"column(resource_ids)"`
+	ResourceType  string    `structs:"resource_type" json:"resourceType"`
+	VisitCount    int       `structs:"visit_count" json:"visitCount"`
 }
 
 type Shares []Share

@@ -23,8 +23,8 @@ type artistRepository struct {
 }
 
 type dbArtist struct {
-	model.Artist
-	SimilarArtists string `json:"similarArtists"`
+	model.Artist   `structs:",flatten"`
+	SimilarArtists string `structs:"similar_artists" json:"similarArtists"`
 }
 
 func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepository {
@@ -60,16 +60,13 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *artistRepository) Put(a *model.Artist) error {
-	genres := a.Genres
-	a.Genres = nil
-	defer func() { a.Genres = genres }()
 	a.FullText = getFullText(a.Name, a.SortArtistName)
 	dba := r.fromModel(a)
 	_, err := r.put(dba.ID, dba)
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(a.ID, r.tableName, genres)
+	return r.updateGenres(a.ID, r.tableName, a.Genres)
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {

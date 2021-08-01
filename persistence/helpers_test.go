@@ -26,31 +26,26 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 	Describe("toSqlArgs", func() {
+		type Embed struct{}
 		type Model struct {
-			ID        string `json:"id"`
-			AlbumId   string `json:"albumId"`
-			PlayCount int    `json:"playCount"`
-			CreatedAt *time.Time
+			Embed     `structs:"-"`
+			ID        string     `structs:"id" json:"id"`
+			AlbumId   string     `structs:"album_id" json:"albumId"`
+			PlayCount int        `structs:"play_count" json:"playCount"`
+			UpdatedAt *time.Time `structs:"updated_at"`
+			CreatedAt time.Time  `structs:"created_at"`
 		}
 
 		It("returns a map with snake_case keys", func() {
 			now := time.Now()
-			m := &Model{ID: "123", AlbumId: "456", CreatedAt: &now, PlayCount: 2}
+			m := &Model{ID: "123", AlbumId: "456", CreatedAt: now, UpdatedAt: &now, PlayCount: 2}
 			args, err := toSqlArgs(m)
 			Expect(err).To(BeNil())
 			Expect(args).To(HaveKeyWithValue("id", "123"))
 			Expect(args).To(HaveKeyWithValue("album_id", "456"))
-			Expect(args).To(HaveKey("created_at"))
-			Expect(args).To(HaveLen(3))
-		})
-
-		It("remove null fields", func() {
-			m := &Model{ID: "123", AlbumId: "456"}
-			args, err := toSqlArgs(m)
-			Expect(err).To(BeNil())
-			Expect(args).To(HaveKey("id"))
-			Expect(args).To(HaveKey("album_id"))
-			Expect(args).To(HaveLen(2))
+			Expect(args).To(HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)))
+			Expect(args).To(HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)))
+			Expect(args).ToNot(HaveKey("Embed"))
 		})
 	})
 

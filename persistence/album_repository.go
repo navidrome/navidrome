@@ -110,14 +110,11 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 }
 
 func (r *albumRepository) Put(m *model.Album) error {
-	genres := m.Genres
-	m.Genres = nil
-	defer func() { m.Genres = genres }()
 	_, err := r.put(m.ID, m)
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(m.ID, r.tableName, genres)
+	return r.updateGenres(m.ID, r.tableName, m.Genres)
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
