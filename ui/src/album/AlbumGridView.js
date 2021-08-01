@@ -196,45 +196,52 @@ const AlbumGridTile = ({ showArtist, record, basePath, isLoaded }) => {
   )
 }
 
-const AlbumGridView = ({
-  albumListType,
-  loaded,
-  loading,
-  basePath,
-  width,
-  ...props
-}) => {
-  const classes = useStyles()
-  const { filterValues } = useListContext()
-  const isArtistView = !!(filterValues && filterValues.artist_id)
-  const hide =
-    (loading && albumListType === 'random') || !props.data || !props.ids
-  const columns = getColsForWidth(width)
+const AlbumGridView = withContentRect('bounds')(
+  ({
+    albumListType,
+    loaded,
+    loading,
+    basePath,
+    width,
+    measureRef,
+    contentRect,
+    ...props
+  }) => {
+    const classes = useStyles()
+    const { filterValues } = useListContext()
+    const isArtistView = !!(filterValues && filterValues.artist_id)
+    const hide =
+      (loading && albumListType === 'random') || !props.data || !props.ids
+    const columns = getColsForWidth(width)
 
-  return hide ? (
-    <Loading />
-  ) : (
-    <div className={classes.root}>
-      <AlbumDatagrid
-        columns={columns}
-        itemHeight={(window.innerWidth * 0.95) / columns}
-      >
-        {({ isLoaded, record, itemIndex }) => (
-          <GridListTile
-            className={classes.gridListTile}
-            key={!!record ? record.id : itemIndex}
-          >
-            <AlbumGridTile
-              record={record}
-              basePath={basePath}
-              showArtist={!isArtistView}
-              isLoaded={isLoaded}
-            />
-          </GridListTile>
-        )}
-      </AlbumDatagrid>
-    </div>
-  )
-}
+    const tileImageHeight = contentRect.bounds.width / columns
+    const tileTextHeight = 40
+
+    return hide ? (
+      <Loading />
+    ) : (
+      <div ref={measureRef} className={classes.root}>
+        <AlbumDatagrid
+          columns={columns}
+          itemHeight={tileImageHeight + tileTextHeight || 300}
+        >
+          {({ isLoaded, record, itemIndex }) => (
+            <GridListTile
+              className={classes.gridListTile}
+              key={!!record ? record.id : itemIndex}
+            >
+              <AlbumGridTile
+                record={record}
+                basePath={basePath}
+                showArtist={!isArtistView}
+                isLoaded={isLoaded}
+              />
+            </GridListTile>
+          )}
+        </AlbumDatagrid>
+      </div>
+    )
+  }
+)
 
 export default withWidth()(AlbumGridView)
