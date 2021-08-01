@@ -16,8 +16,6 @@ const useStyle = makeStyles(
       display: 'block',
       marginTop: '2px',
     },
-    songArtist: {
-    },
     songAlbum: {
       fontStyle: 'italic',
       fontSize: 'smaller',
