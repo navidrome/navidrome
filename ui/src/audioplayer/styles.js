@@ -47,7 +47,8 @@ const useStyle = makeStyles(
       },
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover': {
         borderRadius: (props) => !props.enableCoverAnimation && '0',
-        width: (props) => !props.enableCoverAnimation && '80%',
+        width: (props) => !props.enableCoverAnimation && '85%',
+        maxWidth: (props) => !props.enableCoverAnimation && '600px',
         height: (props) => !props.enableCoverAnimation && 'auto',
       },
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover': {
