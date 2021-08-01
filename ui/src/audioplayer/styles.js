@@ -41,10 +41,12 @@ const useStyle = makeStyles(
       '& .play-mode-title': {
         'pointer-events': 'none',
       },
+      // Customize desktop player when cover animation is disabled
       '& .music-player-panel .panel-content div.img-rotate': {
         animationDuration: (props) => !props.enableCoverAnimation && '0s',
         borderRadius: (props) => !props.enableCoverAnimation && '0',
       },
+      // Customize mobile player when cover animation is disabled
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover': {
         borderRadius: (props) => !props.enableCoverAnimation && '0',
         width: (props) => !props.enableCoverAnimation && '85%',
@@ -54,9 +56,11 @@ const useStyle = makeStyles(
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover': {
         animationDuration: (props) => !props.enableCoverAnimation && '0s',
       },
+      // Hide old singer display
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-singer': {
         display: 'none',
       },
+      // Hide extra whitespace from switch div
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-switch': {
         display: 'none',
       },
