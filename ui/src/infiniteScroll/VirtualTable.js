@@ -159,8 +159,8 @@ function VirtualTable(props) {
       rowCount={remoteDataCount}
     >
       {({ onRowsRendered, registerChild }) => (
-        <AutoSizer disableHeight>
-          {({ width }) => (
+        <AutoSizer>
+          {({ width, height }) => (
             // <WindowScroller>
             // {({ height, isScrolling, scrollTop }) => (
             <Table
@@ -169,7 +169,7 @@ function VirtualTable(props) {
               // isScrolling={isScrolling}
               // scrollTop={scrollTop}
               width={width}
-              height={rowHeight * 10}
+              height={height}
               // autoHeight
               headerHeight={rowHeight}
               rowHeight={rowHeight}

@@ -61,12 +61,12 @@ function AlbumDatagrid(props) {
       rowCount={rowCount}
     >
       {({ onRowsRendered, registerChild }) => (
-        <AutoSizer disableHeight>
-          {({ width }) => (
+        <AutoSizer>
+          {({ width, height }) => (
             <List
               ref={registerChild}
               rowHeight={itemHeight}
-              height={itemHeight * 2}
+              height={height}
               width={width}
               onRowsRendered={onRowsRendered}
               rowRenderer={rowRenderer}

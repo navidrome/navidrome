@@ -25,6 +25,7 @@ const useStyles = makeStyles(
     root: {
       margin: '20px',
       display: 'grid',
+      height: 'calc(100% - 25px)',
     },
     tileBar: {
       transition: 'all 150ms ease-out',
@@ -209,13 +210,15 @@ const AlbumGridView = ({
   const isArtistView = !!(filterValues && filterValues.artist_id)
   const hide =
     (loading && albumListType === 'random') || !props.data || !props.ids
+  const columns = getColsForWidth(width)
+
   return hide ? (
     <Loading />
   ) : (
     <div className={classes.root}>
       <AlbumDatagrid
-        columns={getColsForWidth(width)}
-        itemHeight={window.innerWidth < 600 ? 330 : 245}
+        columns={columns}
+        itemHeight={(window.innerWidth * 0.95) / columns}
       >
         {({ isLoaded, record, itemIndex }) => (
           <GridListTile

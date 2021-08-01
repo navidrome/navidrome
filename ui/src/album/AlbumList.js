@@ -6,7 +6,6 @@ import {
   Filter,
   NullableBooleanInput,
   NumberInput,
-  Pagination,
   ReferenceInput,
   SearchInput,
   useTranslate,
@@ -14,7 +13,6 @@ import {
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
 import {
-  List,
   QuickFilter,
   Title,
   useAlbumsPerPage,
@@ -27,6 +25,7 @@ import AlbumGridView from './AlbumGridView'
 import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
+import { List } from '../infiniteScroll'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -110,7 +109,6 @@ const AlbumList = (props) => {
         actions={<AlbumListActions />}
         filters={<AlbumFilter />}
         perPage={perPage}
-        pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.grid ? (
