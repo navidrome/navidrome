@@ -38,7 +38,7 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
             {`${song.artist}`}
           </span>
           <span className={clsx(classes.songInfo, classes.songAlbum)}>
-            {`${song.album} - ${song.year}`}
+            {song.year ? `${song.album} - ${song.year}` : `${song.album}`}
           </span>
         </>
       )}
