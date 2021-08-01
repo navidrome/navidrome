@@ -10,10 +10,6 @@ type Annotations struct {
 	StarredAt time.Time `structs:"-" json:"starredAt"`
 }
 
-type AnnotatedModel interface {
-	GetAnnotations() Annotations
-}
-
 type AnnotatedRepository interface {
 	IncPlayCount(itemID string, ts time.Time) error
 	SetStar(starred bool, itemIDs ...string) error

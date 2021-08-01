@@ -74,7 +74,3 @@ type MediaFileRepository interface {
 	AnnotatedRepository
 	BookmarkableRepository
 }
-
-func (mf MediaFile) GetAnnotations() Annotations {
-	return mf.Annotations
-}
