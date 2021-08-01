@@ -38,6 +38,14 @@ const useStyle = makeStyles(
         animationDuration: (props) => !props.enableCoverAnimation && '0s',
         borderRadius: (props) => !props.enableCoverAnimation && '0',
       },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover': {
+        borderRadius: (props) => !props.enableCoverAnimation && '0',
+        width: (props) => !props.enableCoverAnimation && '80%',
+        height: (props) => !props.enableCoverAnimation && 'auto',
+      },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover': {
+        animationDuration: (props) => !props.enableCoverAnimation && '0s',
+      },
     },
     artistAlbum: {
       marginTop: '2px',
