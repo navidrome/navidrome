@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/transcoder"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
@@ -24,13 +25,15 @@ import (
 // Injectors from wire_injectors.go:
 
 func CreateServer(musicFolder string) *server.Server {
-	dataStore := persistence.New()
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
 	serverServer := server.New(dataStore)
 	return serverServer
 }
 
 func CreateNativeAPIRouter() *nativeapi.Router {
-	dataStore := persistence.New()
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
 	broker := events.GetBroker()
 	share := core.NewShare(dataStore)
 	router := nativeapi.New(dataStore, broker, share)
@@ -38,7 +41,8 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 }
 
 func CreateSubsonicAPIRouter() *subsonic.Router {
-	dataStore := persistence.New()
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
 	artworkCache := core.GetImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
 	transcoderTranscoder := transcoder.New()
@@ -56,13 +60,15 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 }
 
 func CreateLastFMRouter() *lastfm.Router {
-	dataStore := persistence.New()
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
 	router := lastfm.NewRouter(dataStore)
 	return router
 }
 
 func createScanner() scanner.Scanner {
-	dataStore := persistence.New()
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
 	artworkCache := core.GetImageCache()
 	artwork := core.NewArtwork(dataStore, artworkCache)
 	cacheWarmer := core.NewCacheWarmer(artwork, artworkCache)
@@ -73,7 +79,7 @@ func createScanner() scanner.Scanner {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, subsonic.New, nativeapi.New, persistence.New, lastfm.NewRouter, events.GetBroker)
+var allProviders = wire.NewSet(core.Set, subsonic.New, nativeapi.New, persistence.New, lastfm.NewRouter, events.GetBroker, db.Db)
 
 // Scanner must be a Singleton
 var (
