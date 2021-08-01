@@ -14,6 +14,13 @@ const useStyle = makeStyles(
     },
     songInfo: {
       display: 'block',
+      marginTop: '2px',
+    },
+    songArtist: {
+    },
+    songAlbum: {
+      fontStyle: 'italic',
+      fontSize: 'smaller',
     },
     qualityInfo: {
       marginTop: '-4px',
@@ -46,9 +53,6 @@ const useStyle = makeStyles(
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover': {
         animationDuration: (props) => !props.enableCoverAnimation && '0s',
       },
-    },
-    artistAlbum: {
-      marginTop: '2px',
     },
   }),
   { name: 'NDAudioPlayer' }
