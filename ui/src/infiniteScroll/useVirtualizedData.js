@@ -4,18 +4,16 @@
  * within a list
  */
 
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { useInstance } from './useInstance'
 import { useListContext, crudGetList } from 'ra-core'
 
 export default function useVirtualizedData() {
   const { resource, perPage, currentSort, filterValues } = useListContext()
 
-  const [loadPromiseResolver, updateLoadPromiseResolver] = useInstance(null)
-  const [loadedIds, updateLoadedIds] = useInstance({})
-
-  const [lastFetchPosition, updateLastFetchPosition] = useInstance({
+  const loadPromiseResolver = useRef(null)
+  const loadedIds = useRef({})
+  const lastFetchPosition = useRef({
     startIndex: 0,
     stopIndex: perPage,
   })
@@ -29,42 +27,41 @@ export default function useVirtualizedData() {
 
   const dispatch = useDispatch()
 
-  const getList = (...args) => dispatch(crudGetList(...args))
+  const getList = useCallback(
+    (...args) => dispatch(crudGetList(...args)),
+    [dispatch]
+  )
 
   useEffect(() => {
-    let { startIndex, stopIndex } = lastFetchPosition
-    let newLoadedIds = loadedIds
+    loadedIds.current = {}
+    lastFetchPosition.current = { startIndex: 0, stopIndex: perPage }
+    getList(resource, { page: 1, perPage }, currentSort, filterValues)
+  }, [currentSort, filterValues, getList, resource, perPage])
 
-    if (loadPromiseResolver == null) {
-      startIndex = 0
-      stopIndex = perPage
-      newLoadedIds = {}
-      // TODO: scrollToPosition(0)
-    }
-
+  useEffect(() => {
+    const { startIndex, stopIndex } = lastFetchPosition.current
     for (let i = startIndex; i <= stopIndex; i++) {
-      newLoadedIds[i] = ids[i - startIndex]
+      loadedIds.current[i] = ids[i - startIndex]
     }
 
-    updateLoadedIds(newLoadedIds)
-    updateLastFetchPosition({ startIndex, stopIndex })
+    lastFetchPosition.current = { startIndex, stopIndex }
 
-    if (loadPromiseResolver) {
-      loadPromiseResolver()
-      updateLoadPromiseResolver(null)
+    if (loadPromiseResolver.current) {
+      loadPromiseResolver.current()
+      loadPromiseResolver.current = null
     }
-  }, [ids])
+  }, [ids, perPage])
 
   const handleLoadMore = ({ startIndex, stopIndex }) => {
     const page = Math.floor(startIndex / perPage) + 1
-    const newStopIndex = Math.min(total, stopIndex + perPage - 1)
+    const newStopIndex = Math.min(total, startIndex + perPage - 1)
 
     return new Promise((resolve) => {
-      updateLoadPromiseResolver(resolve)
-      updateLastFetchPosition({ startIndex, stopIndex: newStopIndex })
+      loadPromiseResolver.current = resolve
+      lastFetchPosition.current = { startIndex, stopIndex: newStopIndex }
       getList(resource, { page: page, perPage }, currentSort, filterValues)
     })
   }
 
-  return { data, loadedIds, total, handleLoadMore }
+  return { data, loadedIds: loadedIds.current, total, handleLoadMore }
 }

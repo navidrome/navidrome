@@ -1,10 +1,8 @@
-import React, { useEffect, useCallback } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
+import React, { useEffect, useCallback, useRef } from 'react'
 import { useHistory } from 'react-router-dom'
-import { crudGetList, useListContext } from 'react-admin'
+import { useListContext } from 'react-admin'
 import { linkToRecord } from 'ra-core'
 import VirtualTable from './VirtualTable'
-import { useInstance } from './useInstance'
 import union from 'lodash.union'
 import difference from 'lodash.difference'
 import useVirtualizedData from './useVirtualizedData'
@@ -46,13 +44,13 @@ function Datagrid(props) {
         return
     }
   }
-  const [lastSelected, updateLastSelected] = useInstance(null)
+  const lastSelected = useRef(null)
 
   useEffect(() => {
     if (!selectedIds || selectedIds.length === 0) {
-      updateLastSelected(null)
+      lastSelected.current = null
     }
-  }, [JSON.stringify(selectedIds)])
+  }, [selectedIds])
 
   // const handleSelectAll = useCallback(
   //   event => {
@@ -74,10 +72,12 @@ function Datagrid(props) {
 
   const handleToggleItem = useCallback(
     (id, event) => {
-      const lastSelectedIndex = lastSelected
-        ? Object.keys(loadedIds).find((i) => loadedIds[i] === lastSelected)
+      const lastSelectedIndex = lastSelected.current
+        ? Object.keys(loadedIds).find(
+            (i) => loadedIds[i] === lastSelected.current
+          )
         : -1
-      updateLastSelected(event.target.checked ? id : null)
+      lastSelected.current = event.target.checked ? id : null
 
       if (event.shiftKey && lastSelectedIndex !== -1) {
         const index = Object.values(loadedIds).indexOf(id)
@@ -99,7 +99,7 @@ function Datagrid(props) {
         onToggleItem(id)
       }
     },
-    [data, isRowSelectable, onSelect, onToggleItem, selectedIds]
+    [data, isRowSelectable, onSelect, onToggleItem, selectedIds, loadedIds]
   )
 
   return (
