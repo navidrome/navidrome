@@ -1,10 +1,10 @@
 package model
 
 type Genre struct {
-	ID         string `json:"id"               orm:"column(id)"`
-	Name       string `json:"name"`
-	SongCount  int    `json:"-"`
-	AlbumCount int    `json:"-"`
+	ID         string `structs:"id" json:"id"               orm:"column(id)"`
+	Name       string `structs:"name" json:"name"`
+	SongCount  int    `structs:"-" json:"-"`
+	AlbumCount int    `structs:"-" json:"-"`
 }
 
 type Genres []Genre
