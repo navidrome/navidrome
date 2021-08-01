@@ -53,6 +53,12 @@ const useStyle = makeStyles(
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover': {
         animationDuration: (props) => !props.enableCoverAnimation && '0s',
       },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-singer': {
+        display: 'none',
+      },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-switch': {
+        display: 'none',
+      },
     },
   }),
   { name: 'NDAudioPlayer' }
