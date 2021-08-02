@@ -195,7 +195,7 @@ function VirtualTable(props) {
                     label={c.props.source}
                     dataKey={c.props.dataKey || c.props.source}
                     width={c.props.width || 100}
-                    flexGrow={c.props.flexGrow || defaultflexGrow}
+                    flexGrow={c.props.flexgrow || defaultflexGrow}
                     cellRenderer={(cellRenderProps) =>
                       cellRenderer({ ...cellRenderProps, columnIndex: i })
                     }
@@ -216,7 +216,7 @@ function VirtualTable(props) {
 }
 
 VirtualTable.defaultProps = {
-  rowHeight: 52,
+  rowHeight: 55,
 }
 
 export default withStyles(useStyles)(VirtualTable)

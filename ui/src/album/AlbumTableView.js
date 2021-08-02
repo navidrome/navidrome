@@ -188,7 +188,7 @@ const AlbumTableView = ({
       classes={{ row: classes.row }}
       {...rest}
     >
-      <TextField source="name" />
+      <TextField source="name" flexgrow={0.75} width={200}/>
       {columns}
       <AlbumContextMenu
         source={'starred'}
