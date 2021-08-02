@@ -36,6 +36,10 @@ export default function useVirtualizedData() {
     loadedIds.current = {}
     lastFetchPosition.current = { startIndex: 0, stopIndex: perPage }
     getList(resource, { page: 1, perPage }, currentSort, filterValues)
+    return () => {
+      loadedIds.current = { }
+      lastFetchPosition.current = { startIndex : 0, stopIndex : perPage }
+    }
   }, [currentSort, filterValues, getList, resource, perPage])
 
   useEffect(() => {
