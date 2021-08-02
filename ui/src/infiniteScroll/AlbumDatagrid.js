@@ -2,6 +2,14 @@ import { InfiniteLoader, AutoSizer, List } from 'react-virtualized'
 import { GridList } from '@material-ui/core'
 import useVirtualizedData from './useVirtualizedData'
 
+export const rowIndexGenerator = (columns, total) => (index) => {
+  const res = []
+  for (let i = 0; i < columns; i++) {
+    if (columns * index + i >= total) break
+    res.push(columns * index + i)
+  }
+  return res
+}
 function AlbumDatagrid(props) {
   const { children, itemHeight, columns } = props
   const { data, loadedIds, total, handleLoadMore } = useVirtualizedData()
@@ -12,14 +20,7 @@ function AlbumDatagrid(props) {
     return handleLoadMore({ startIndex, stopIndex })
   }
 
-  const getIndexesForRow = (index) => {
-    const res = []
-    for (let i = 0; i < columns; i++) {
-      if (columns * index + i === total - 1) break
-      res.push(columns * index + i)
-    }
-    return res
-  }
+  const getIndexesForRow = rowIndexGenerator(columns, total)
 
   // For react-virtualized, the number of rows is total/columns, since each row
   // displays "column" no. of items
