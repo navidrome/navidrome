@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -20,16 +21,15 @@ import (
 type TagScanner struct {
 	rootFolder  string
 	ds          model.DataStore
-	mapper      *mediaFileMapper
+	cacheWarmer core.CacheWarmer
 	plsSync     *playlistSync
 	cnt         *counters
-	cacheWarmer core.CacheWarmer
+	mapper      *mediaFileMapper
 }
 
 func NewTagScanner(rootFolder string, ds model.DataStore, cacheWarmer core.CacheWarmer) *TagScanner {
 	return &TagScanner{
 		rootFolder:  rootFolder,
-		mapper:      newMediaFileMapper(rootFolder),
 		plsSync:     newPlaylistSync(ds),
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
@@ -72,6 +72,9 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	ctx = s.withAdminUser(ctx)
 	start := time.Now()
 
+	// Special case: if lastModifiedSInce is zero, re-import all files
+	fullScan := lastModifiedSince.IsZero()
+
 	allDBDirs, err := s.getDBDirTree(ctx)
 	if err != nil {
 		return 0, err
@@ -80,6 +83,8 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	allFSDirs := dirMap{}
 	var changedDirs []string
 	s.cnt = &counters{}
+	genres := newCachedGenreRepository(ctx, s.ds.Genre(ctx))
+	s.mapper = newMediaFileMapper(s.rootFolder, genres)
 
 	foldersFound, walkerError := s.getRootFolderWalker(ctx)
 	for {
@@ -93,7 +98,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 		if s.folderHasChanged(ctx, folderStats, allDBDirs, lastModifiedSince) {
 			changedDirs = append(changedDirs, folderStats.Path)
 			log.Debug("Processing changed folder", "dir", folderStats.Path)
-			err := s.processChangedDir(ctx, folderStats.Path)
+			err := s.processChangedDir(ctx, folderStats.Path, fullScan)
 			if err != nil {
 				log.Error("Error updating folder in the DB", "dir", folderStats.Path, err)
 			}
@@ -231,7 +236,7 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string) error {
 	return err
 }
 
-func (s *TagScanner) processChangedDir(ctx context.Context, dir string) error {
+func (s *TagScanner) processChangedDir(ctx context.Context, dir string, fullScan bool) error {
 	start := time.Now()
 	buffer := newRefreshBuffer(ctx, s.ds)
 
@@ -245,7 +250,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string) error {
 		currentTracks[t.Path] = t
 	}
 
-	// Load tracks FileInfo from the folder
+	// Load track list from the folder
 	files, err := loadAllAudioFiles(dir)
 	if err != nil {
 		return err
@@ -264,15 +269,21 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string) error {
 	// If track from folder is newer than the one in DB, select for update/insert in DB
 	log.Trace(ctx, "Processing changed folder", "dir", dir, "tracksInDB", len(currentTracks), "tracksInFolder", len(files))
 	var filesToUpdate []string
-	for filePath, info := range files {
-		c, ok := currentTracks[filePath]
-		if !ok {
+	for filePath, entry := range files {
+		c, inDB := currentTracks[filePath]
+		if !inDB || fullScan {
 			filesToUpdate = append(filesToUpdate, filePath)
 			s.cnt.added++
-		}
-		if ok && info.ModTime().After(c.UpdatedAt) {
-			filesToUpdate = append(filesToUpdate, filePath)
-			s.cnt.updated++
+		} else {
+			info, err := entry.Info()
+			if err != nil {
+				log.Error("Could not stat file", "filePath", filePath, err)
+				continue
+			}
+			if info.ModTime().After(c.UpdatedAt) {
+				filesToUpdate = append(filesToUpdate, filePath)
+				s.cnt.updated++
+			}
 		}
 
 		// Force a refresh of the album and artist, to cater for cover art files
@@ -307,7 +318,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string) error {
 
 	err = buffer.flush()
 	log.Info(ctx, "Finished processing changed folder", "dir", dir, "updated", numUpdatedTracks,
-		"purged", numPurgedTracks, "elapsed", time.Since(start))
+		"deleted", numPurgedTracks, "elapsed", time.Since(start))
 	return err
 }
 
@@ -389,16 +400,12 @@ func (s *TagScanner) withAdminUser(ctx context.Context) context.Context {
 	return request.WithUser(ctx, *u)
 }
 
-func loadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {
-	dir, err := os.Open(dirPath)
+func loadAllAudioFiles(dirPath string) (map[string]fs.DirEntry, error) {
+	files, err := fs.ReadDir(os.DirFS(dirPath), ".")
 	if err != nil {
 		return nil, err
 	}
-	files, err := dir.Readdir(-1)
-	if err != nil {
-		return nil, err
-	}
-	audioFiles := make(map[string]os.FileInfo)
+	fileInfos := make(map[string]fs.DirEntry)
 	for _, f := range files {
 		if f.IsDir() {
 			continue
@@ -410,13 +417,8 @@ func loadAllAudioFiles(dirPath string) (map[string]os.FileInfo, error) {
 		if !utils.IsAudioFile(filePath) {
 			continue
 		}
-		fi, err := os.Stat(filePath)
-		if err != nil {
-			log.Error("Could not stat file", "filePath", filePath, err)
-		} else {
-			audioFiles[filePath] = fi
-		}
+		fileInfos[filePath] = f
 	}
 
-	return audioFiles, nil
+	return fileInfos, nil
 }

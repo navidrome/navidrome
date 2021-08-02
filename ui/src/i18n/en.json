@@ -76,6 +76,7 @@
         "albumCount": "Album Count",
         "songCount": "Song Count",
         "playCount": "Plays",
+        "genre": "Genre",
         "rating": "Rating"
       }
     },
@@ -302,7 +303,11 @@
     "lastfmLinkSuccess": "Last.fm successfully linked and scrobbling enabled",
     "lastfmLinkFailure": "Last.fm could not be linked",
     "lastfmUnlinkSuccess": "Last.fm unlinked and scrobbling disabled",
-    "lastfmUnlinkFailure": "Last.fm could not unlinked"
+    "lastfmUnlinkFailure": "Last.fm could not unlinked",
+    "openIn": {
+      "lastfm": "Open in Last.fm",
+      "musicbrainz": "Open in MusicBrainz"
+    }
   },
   "menu": {
     "library": "Library",

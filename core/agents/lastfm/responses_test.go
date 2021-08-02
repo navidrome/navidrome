@@ -2,7 +2,7 @@ package lastfm
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,7 +12,7 @@ var _ = Describe("LastFM responses", func() {
 	Describe("Artist", func() {
 		It("parses the response correctly", func() {
 			var resp Response
-			body, _ := ioutil.ReadFile("tests/fixtures/lastfm.artist.getinfo.json")
+			body, _ := os.ReadFile("tests/fixtures/lastfm.artist.getinfo.json")
 			err := json.Unmarshal(body, &resp)
 			Expect(err).To(BeNil())
 
@@ -20,18 +20,13 @@ var _ = Describe("LastFM responses", func() {
 			Expect(resp.Artist.MBID).To(Equal("a3cb23fc-acd3-4ce0-8f36-1e5aa6a18432"))
 			Expect(resp.Artist.URL).To(Equal("https://www.last.fm/music/U2"))
 			Expect(resp.Artist.Bio.Summary).To(ContainSubstring("U2 é uma das mais importantes bandas de rock de todos os tempos"))
-
-			similarArtists := []string{"Passengers", "INXS", "R.E.M.", "Simple Minds", "Bono"}
-			for i, similar := range similarArtists {
-				Expect(resp.Artist.Similar.Artists[i].Name).To(Equal(similar))
-			}
 		})
 	})
 
 	Describe("SimilarArtists", func() {
 		It("parses the response correctly", func() {
 			var resp Response
-			body, _ := ioutil.ReadFile("tests/fixtures/lastfm.artist.getsimilar.json")
+			body, _ := os.ReadFile("tests/fixtures/lastfm.artist.getsimilar.json")
 			err := json.Unmarshal(body, &resp)
 			Expect(err).To(BeNil())
 
@@ -44,7 +39,7 @@ var _ = Describe("LastFM responses", func() {
 	Describe("TopTracks", func() {
 		It("parses the response correctly", func() {
 			var resp Response
-			body, _ := ioutil.ReadFile("tests/fixtures/lastfm.artist.gettoptracks.json")
+			body, _ := os.ReadFile("tests/fixtures/lastfm.artist.gettoptracks.json")
 			err := json.Unmarshal(body, &resp)
 			Expect(err).To(BeNil())
 

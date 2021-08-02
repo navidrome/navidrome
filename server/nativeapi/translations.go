@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
-	"net/http"
+	"io"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -30,10 +31,10 @@ var (
 )
 
 func newTranslationRepository(context.Context) rest.Repository {
-	dir := utils.NewMergeFS(
-		http.FS(resources.Assets()),
-		http.Dir(filepath.Join(conf.Server.DataFolder, "resources")),
-	)
+	dir := utils.MergeFS{
+		Base:    resources.FS,
+		Overlay: os.DirFS(filepath.Join(conf.Server.DataFolder, "resources")),
+	}
 	if err := loadTranslations(dir); err != nil {
 		log.Error("Error loading translation files", err)
 	}
@@ -72,22 +73,22 @@ func (r *translationRepository) NewInstance() interface{} {
 	return &translation{}
 }
 
-func loadTranslations(fs http.FileSystem) (loadError error) {
+func loadTranslations(fsys fs.FS) (loadError error) {
 	once.Do(func() {
 		translations = make(map[string]translation)
-		dir, err := fs.Open(consts.I18nFolder)
+		dir, err := fsys.Open(consts.I18nFolder)
 		if err != nil {
 			loadError = err
 			return
 		}
-		files, err := dir.Readdir(0)
+		files, err := dir.(fs.ReadDirFile).ReadDir(-1)
 		if err != nil {
 			loadError = err
 			return
 		}
 		var languages []string
 		for _, f := range files {
-			t, err := loadTranslation(fs, f.Name())
+			t, err := loadTranslation(fsys, f.Name())
 			if err != nil {
 				log.Error("Error loading translation file", "file", f.Name(), err)
 				continue
@@ -100,18 +101,18 @@ func loadTranslations(fs http.FileSystem) (loadError error) {
 	return
 }
 
-func loadTranslation(fs http.FileSystem, fileName string) (translation translation, err error) {
+func loadTranslation(fsys fs.FS, fileName string) (translation translation, err error) {
 	// Get id and full path
 	name := filepath.Base(fileName)
 	id := strings.TrimSuffix(name, filepath.Ext(name))
 	filePath := filepath.Join(consts.I18nFolder, name)
 
 	// Load translation from json file
-	file, err := fs.Open(filePath)
+	file, err := fsys.Open(filePath)
 	if err != nil {
 		return
 	}
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return
 	}

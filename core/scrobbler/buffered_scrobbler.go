@@ -8,7 +8,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func NewBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *bufferedScrobbler {
+func newBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *bufferedScrobbler {
 	b := &bufferedScrobbler{ds: ds, wrapped: s, service: service}
 	b.wakeSignal = make(chan struct{}, 1)
 	go b.run()

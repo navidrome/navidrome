@@ -5,19 +5,19 @@ import (
 )
 
 type Playlist struct {
-	ID        string     `json:"id"          orm:"column(id)"`
-	Name      string     `json:"name"`
-	Comment   string     `json:"comment"`
-	Duration  float32    `json:"duration"`
-	Size      int64      `json:"size"`
-	SongCount int        `json:"songCount"`
-	Owner     string     `json:"owner"`
-	Public    bool       `json:"public"`
-	Tracks    MediaFiles `json:"tracks,omitempty"`
-	Path      string     `json:"path"`
-	Sync      bool       `json:"sync"`
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
+	ID        string     `structs:"id" json:"id"          orm:"column(id)"`
+	Name      string     `structs:"name" json:"name"`
+	Comment   string     `structs:"comment" json:"comment"`
+	Duration  float32    `structs:"duration" json:"duration"`
+	Size      int64      `structs:"size" json:"size"`
+	SongCount int        `structs:"song_count" json:"songCount"`
+	Owner     string     `structs:"owner" json:"owner"`
+	Public    bool       `structs:"public" json:"public"`
+	Tracks    MediaFiles `structs:"-" json:"tracks,omitempty"`
+	Path      string     `structs:"path" json:"path"`
+	Sync      bool       `structs:"sync" json:"sync"`
+	CreatedAt time.Time  `structs:"created_at" json:"createdAt"`
+	UpdatedAt time.Time  `structs:"updated_at" json:"updatedAt"`
 }
 
 type Playlists []Playlist

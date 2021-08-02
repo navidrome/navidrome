@@ -53,7 +53,7 @@ func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
 		for name, constructor := range constructors {
 			s := constructor(ds)
 			if conf.Server.DevEnableBufferedScrobble {
-				s = NewBufferedScrobbler(ds, s, name)
+				s = newBufferedScrobbler(ds, s, name)
 			}
 			p.scrobblers[name] = s
 		}

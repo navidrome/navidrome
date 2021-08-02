@@ -1,8 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
-import { useAuthState, useDataProvider, useTranslate } from 'react-admin'
+import { ThemeProvider } from '@material-ui/core/styles'
+import {
+  createMuiTheme,
+  useAuthState,
+  useDataProvider,
+  useTranslate,
+} from 'react-admin'
 import ReactGA from 'react-ga'
 import { GlobalHotKeys } from 'react-hotkeys'
 import ReactJkMusicPlayer from 'react-jinke-music-player'
@@ -46,6 +51,7 @@ const Player = () => {
       bounds: 'body',
       mode: 'full',
       loadAudioErrorPlayNext: false,
+      autoPlayInitLoadPlayList: true,
       clearPriorAudioLists: false,
       showDestroy: true,
       showDownload: false,
@@ -75,6 +81,7 @@ const Player = () => {
       ...defaultOptions,
       audioLists: playerState.queue.map((item) => item),
       playIndex: playerState.playIndex,
+      autoPlay: playerState.clear || playerState.playIndex === 0,
       clearPriorAudioLists: playerState.clear,
       extendsContent: <PlayerToolbar id={current.trackId} />,
       defaultVolume: playerState.volume,
@@ -98,7 +105,7 @@ const Player = () => {
       }
 
       if (!scrobbled) {
-        subsonic.scrobble(info.trackId, true, startTime)
+        info.trackId && subsonic.scrobble(info.trackId, startTime)
         setScrobbled(true)
       }
     },

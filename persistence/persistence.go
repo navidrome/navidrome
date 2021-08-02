@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"reflect"
 
 	"github.com/astaxie/beego/orm"
@@ -12,10 +13,11 @@ import (
 
 type SQLStore struct {
 	orm orm.Ormer
+	db  *sql.DB
 }
 
-func New() model.DataStore {
-	return &SQLStore{}
+func New(db *sql.DB) model.DataStore {
+	return &SQLStore{db: db}
 }
 
 func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
@@ -88,6 +90,8 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.Album(ctx).(model.ResourceRepository)
 	case model.MediaFile:
 		return s.MediaFile(ctx).(model.ResourceRepository)
+	case model.Genre:
+		return s.Genre(ctx).(model.ResourceRepository)
 	case model.Playlist:
 		return s.Playlist(ctx).(model.ResourceRepository)
 	case model.Share:
@@ -98,7 +102,7 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 }
 
 func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
-	o, err := orm.NewOrmWithDB(db.Driver, "default", db.Db())
+	o, err := orm.NewOrmWithDB(db.Driver, "default", s.db)
 	if err != nil {
 		return err
 	}
@@ -165,12 +169,17 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	if err != nil {
 		log.Error(ctx, "Error tidying up playlists", err)
 	}
+	err = s.Genre(ctx).(*genreRepository).purgeEmpty()
+	if err != nil {
+		log.Error(ctx, "Error removing unused genres", err)
+		return err
+	}
 	return err
 }
 
 func (s *SQLStore) getOrmer() orm.Ormer {
 	if s.orm == nil {
-		o, err := orm.NewOrmWithDB(db.Driver, "default", db.Db())
+		o, err := orm.NewOrmWithDB(db.Driver, "default", s.db)
 		if err != nil {
 			log.Error("Error obtaining new orm instance", err)
 		}
