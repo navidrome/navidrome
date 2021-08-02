@@ -365,7 +365,10 @@
     "quickScan": "Quick Scan",
     "fullScan": "Full Scan",
     "serverUptime": "Server Uptime",
-    "serverDown": "OFFLINE"
+    "serverDown": "OFFLINE",
+    "nowPlaying": "Now Playing",
+    "minutesAgo": "minutes ago",
+    "coverArt": "cover art"
   },
   "help": {
     "title": "Navidrome Hotkeys",
