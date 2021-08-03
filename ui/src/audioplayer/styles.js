@@ -45,23 +45,27 @@ const useStyle = makeStyles(
         borderRadius: (props) => !props.enableCoverAnimation && '0',
       },
       // Customize mobile player when cover animation is disabled
-      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover': {
-        borderRadius: (props) => !props.enableCoverAnimation && '0',
-        width: (props) => !props.enableCoverAnimation && '85%',
-        maxWidth: (props) => !props.enableCoverAnimation && '600px',
-        height: (props) => !props.enableCoverAnimation && 'auto',
-      },
-      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover': {
-        animationDuration: (props) => !props.enableCoverAnimation && '0s',
-      },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover':
+        {
+          borderRadius: (props) => !props.enableCoverAnimation && '0',
+          width: (props) => !props.enableCoverAnimation && '85%',
+          maxWidth: (props) => !props.enableCoverAnimation && '600px',
+          height: (props) => !props.enableCoverAnimation && 'auto',
+        },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover':
+        {
+          animationDuration: (props) => !props.enableCoverAnimation && '0s',
+        },
       // Hide old singer display
-      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-singer': {
-        display: 'none',
-      },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-singer':
+        {
+          display: 'none',
+        },
       // Hide extra whitespace from switch div
-      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-switch': {
-        display: 'none',
-      },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-switch':
+        {
+          display: 'none',
+        },
     },
   }),
   { name: 'NDAudioPlayer' }
