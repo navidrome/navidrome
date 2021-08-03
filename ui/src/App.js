@@ -19,6 +19,7 @@ import customRoutes from './routes'
 import {
   themeReducer,
   addToPlaylistDialogReducer,
+  expandInfoDialogReducer,
   playerReducer,
   albumViewReducer,
   activityReducer,
@@ -52,6 +53,7 @@ const App = () => (
         albumView: albumViewReducer,
         theme: themeReducer,
         addToPlaylistDialog: addToPlaylistDialogReducer,
+        expandInfoDialog: expandInfoDialogReducer,
         activity: activityReducer,
         settings: settingsReducer,
       },

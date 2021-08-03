@@ -28,6 +28,7 @@ import {
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import config from '../config'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -85,7 +86,6 @@ const useStyles = makeStyles(
 
 const AlbumSongs = (props) => {
   const { data, ids } = props
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
@@ -156,7 +156,6 @@ const AlbumSongs = (props) => {
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
-            expand={isXsmall ? null : <SongDetails />}
             rowClick={(id) => dispatch(playTracks(data, ids, id))}
             {...props}
             hasBulkActions={true}
@@ -182,6 +181,7 @@ const AlbumSongs = (props) => {
         </Card>
       </div>
       <AddToPlaylistDialog />
+      <ExpandInfoDialog content={<SongDetails />} />
     </>
   )
 }
