@@ -22,6 +22,15 @@ var _ = Describe("playlistSync", func() {
 		})
 
 		It("parses well-formed playlists", func() {
+			pls, err := ps.parsePlaylist(ctx, "playlists/pls1.m3u", "tests/fixtures")
+			Expect(err).To(BeNil())
+			Expect(pls.Tracks).To(HaveLen(3))
+			Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
+			Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/test.ogg"))
+			Expect(pls.Tracks[2].Path).To(Equal("/tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
+		})
+
+		It("parses playlists using LF ending", func() {
 			pls, err := ps.parsePlaylist(ctx, "lf-ended.m3u", "tests/fixtures/playlists")
 			Expect(err).To(BeNil())
 			Expect(pls.Tracks).To(HaveLen(2))
