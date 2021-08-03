@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,6 +82,10 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 		// Skip extended info
 		if strings.HasPrefix(path, "#") {
 			continue
+		}
+		if strings.HasPrefix(path, "file://") {
+			path = strings.TrimPrefix(path, "file://")
+			path, _ = url.QueryUnescape(path)
 		}
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(baseDir, path)
