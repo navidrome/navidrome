@@ -39,10 +39,13 @@ const useStyle = makeStyles(
       '& .play-mode-title': {
         'pointer-events': 'none',
       },
-      // Customize desktop player when cover animation is disabled
       '& .music-player-panel .panel-content div.img-rotate': {
+        // Customize desktop player when cover animation is disabled
         animationDuration: (props) => !props.enableCoverAnimation && '0s',
         borderRadius: (props) => !props.enableCoverAnimation && '0',
+        // Fix cover display when image is not square
+        backgroundSize: 'contain',
+        backgroundPosition: 'center',
       },
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover':
         {
