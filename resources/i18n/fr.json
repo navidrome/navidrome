@@ -76,7 +76,8 @@
                 "albumCount": "Nombre d'albums",
                 "songCount": "Nombre de pistes",
                 "playCount": "Lectures",
-                "rating": "Classement"
+                "rating": "Classement",
+                "genre": "Genre"
             }
         },
         "user": {
@@ -302,7 +303,11 @@
         "lastfmLinkSuccess": "Last.fm a été correctement relié et le scrobble a été activé",
         "lastfmLinkFailure": "Last.fm n'a pas pu être correctement relié",
         "lastfmUnlinkSuccess": "Last.fm n'est plus relié et le scrobble a été désactivé",
-        "lastfmUnlinkFailure": "Erreur pendant la suppression du lien avec Last.fm"
+        "lastfmUnlinkFailure": "Erreur pendant la suppression du lien avec Last.fm",
+        "openIn": {
+            "lastfm": "Ouvrir dans Last.fm",
+            "musicbrainz": "Ouvrir dans MusicBrainz"
+        }
     },
     "menu": {
         "library": "Bibliothèque",
@@ -316,7 +321,7 @@
                 "language": "Langue",
                 "defaultView": "Vue par défaut",
                 "desktop_notifications": "Notifications de bureau",
-                "lastfmScrobbling": "Scrobble vers Last.fm"
+                "lastfmScrobbling": "Scrobbler vers Last.fm"
             }
         },
         "albumList": "Albums",
