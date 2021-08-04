@@ -76,7 +76,8 @@
                 "albumCount": "Número de álbumes",
                 "songCount": "Número de canciones",
                 "playCount": "Reproducciones",
-                "rating": "Calificación"
+                "rating": "Calificación",
+                "genre": "Género"
             }
         },
         "user": {
@@ -302,7 +303,11 @@
         "lastfmLinkSuccess": "Last.fm esta conectado y el scrobbling esta activado",
         "lastfmLinkFailure": "No se pudo conectar con Last.fm",
         "lastfmUnlinkSuccess": "Last.fm se ha desconectado y el scrobbling se desactivo",
-        "lastfmUnlinkFailure": "No se pudo desconectar Last.fm"
+        "lastfmUnlinkFailure": "No se pudo desconectar Last.fm",
+        "openIn": {
+            "lastfm": "Ver en Last.fm",
+            "musicbrainz": "Ver en MusicBrainz"
+        }
     },
     "menu": {
         "library": "Biblioteca",
