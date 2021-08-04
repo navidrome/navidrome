@@ -23,7 +23,8 @@
                 "comment": "Komentarz",
                 "rating": "Ocena",
                 "quality": "Jakość",
-                "bpm": ""
+                "bpm": "",
+                "playDate": ""
             },
             "actions": {
                 "addToQueue": "Odtwarzaj Później",
@@ -75,7 +76,8 @@
                 "albumCount": "Liczba Albumów",
                 "songCount": "Liczba Utworów",
                 "playCount": "Liczba Odtworzeń",
-                "rating": "Ocena"
+                "rating": "Ocena",
+                "genre": "Gatunek"
             }
         },
         "user": {
@@ -110,7 +112,8 @@
                 "client": "Klient",
                 "userName": "Nazwa użytkownika",
                 "lastSeen": "Ostatnio Widziany",
-                "reportRealPath": "Zgłoś Rzeczywistą Ścieżkę"
+                "reportRealPath": "Zgłoś Rzeczywistą Ścieżkę",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -277,7 +280,14 @@
             "data_provider_error": "Błąd dostawcy danych. Sprawdź konsolę, aby uzyskać szczegółowe informacje.",
             "i18n_error": "Nie można załadować tłumaczenia dla tego języka",
             "canceled": "Akcja anulowana",
-            "logged_out": "Twoja sesja została zakończona, proszę o ponowne połączenie."
+            "logged_out": "Twoja sesja została zakończona, proszę o ponowne połączenie.",
+            "new_version": ""
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "",
+            "layout": "",
+            "grid": "",
+            "table": ""
         }
     },
     "message": {
@@ -289,7 +299,15 @@
         "delete_user_title": "Usuń użytkownika '%{name}'",
         "delete_user_content": "Czy jesteś pewien, że chcesz usunąć tego użytkownika oraz wszystkie jego dane (wliczając w to listy odtwarzania oraz ustawienia)?",
         "notifications_blocked": "Zablokowałeś Powiadomienia w ustawieniach swojej przeglądarki",
-        "notifications_not_available": "Ta przeglądarka nie obsługuje powiadomień"
+        "notifications_not_available": "Ta przeglądarka nie obsługuje powiadomień",
+        "lastfmLinkSuccess": "",
+        "lastfmLinkFailure": "",
+        "lastfmUnlinkSuccess": "",
+        "lastfmUnlinkFailure": "",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        }
     },
     "menu": {
         "library": "Biblioteka",
@@ -302,7 +320,8 @@
                 "theme": "Wygląd",
                 "language": "Język",
                 "defaultView": "Widok Podstawowy",
-                "desktop_notifications": "Powiadomienia"
+                "desktop_notifications": "Powiadomienia",
+                "lastfmScrobbling": ""
             }
         },
         "albumList": "Albumy",
