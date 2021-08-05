@@ -215,8 +215,4 @@ function VirtualTable(props) {
   )
 }
 
-VirtualTable.defaultProps = {
-  rowHeight: 55,
-}
-
 export default withStyles(useStyles)(VirtualTable)

@@ -117,12 +117,15 @@ function Datagrid(props) {
       onToggleItem={handleToggleItem}
       hasBulkActions={hasBulkActions}
       selectedIds={selectedIds}
+      rowHeight={props.rowHeight}
     >
       {props.children}
     </VirtualTable>
   )
 }
 
-Datagrid.defaultProps = {}
+Datagrid.defaultProps = {
+  rowHeight: 55
+}
 
 export default Datagrid

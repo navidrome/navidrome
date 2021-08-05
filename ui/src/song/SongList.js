@@ -14,9 +14,9 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import {
   DateField,
   DurationField,
-  List,
+  // List,
   SongContextMenu,
-  SongDatagrid,
+  // SongDatagrid,
   SongDetails,
   QuickFilter,
   SongTitleField,
@@ -33,6 +33,7 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { AddToPlaylistDialog } from '../dialogs'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
+import { Datagrid, List } from '../infiniteScroll'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -100,15 +101,17 @@ const SongList = (props) => {
       album: isDesktop && (
         <AlbumLinkField
           source="album"
+          flexGrow={0.5}
+          width={200}
           sortBy={
             'album, order_album_artist_name, disc_number, track_number, title'
           }
           sortByOrder={'ASC'}
         />
       ),
-      artist: <TextField source="artist" />,
-      albumArtist: <TextField source="albumArtist" />,
-      trackNumber: isDesktop && <NumberField source="trackNumber" />,
+      artist: <TextField source="artist" flexGrow={0.4} width={160}/>,
+      albumArtist: <TextField source="albumArtist" flexGrow={0.4} width={160} />,
+      trackNumber: isDesktop && <NumberField source="trackNumber" width={70} />,
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />
       ),
@@ -120,7 +123,7 @@ const SongList = (props) => {
           sortByOrder={'DESC'}
         />
       ),
-      quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      quality: isDesktop && <QualityInfo source="quality" dataKey="bitRate" sortable={false} />,
       duration: <DurationField source="duration" />,
       rating: config.enableStarRating && (
         <RatingField
@@ -156,13 +159,14 @@ const SongList = (props) => {
         {isXsmall ? (
           <SongSimpleList />
         ) : (
-          <SongDatagrid
+          <Datagrid
             expand={<SongDetails />}
             rowClick={handleRowClick}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
+            rowHeight={60}
           >
-            <SongTitleField source="title" showTrackNumbers={false} />
+            <SongTitleField source="title" showTrackNumbers={false} flexGrow={0.5} width={200} />
             {columns}
             <SongContextMenu
               source={'starred'}
@@ -179,7 +183,7 @@ const SongList = (props) => {
                 )
               }
             />
-          </SongDatagrid>
+          </Datagrid>
         )}
       </List>
       <AddToPlaylistDialog />
