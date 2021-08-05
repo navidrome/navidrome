@@ -154,7 +154,7 @@ func validateScanSchedule() error {
 			log.Warn("Setting ScanSchedule", "schedule", Server.ScanSchedule)
 		}
 	}
-	if Server.ScanSchedule == "" {
+	if Server.ScanSchedule == "0" || Server.ScanSchedule == "" {
 		return nil
 	}
 	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
