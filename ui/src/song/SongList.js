@@ -109,8 +109,10 @@ const SongList = (props) => {
           sortByOrder={'ASC'}
         />
       ),
-      artist: <TextField source="artist" flexGrow={0.4} width={160}/>,
-      albumArtist: <TextField source="albumArtist" flexGrow={0.4} width={160} />,
+      artist: <TextField source="artist" flexGrow={0.4} width={160} />,
+      albumArtist: (
+        <TextField source="albumArtist" flexGrow={0.4} width={160} />
+      ),
       trackNumber: isDesktop && <NumberField source="trackNumber" width={70} />,
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />
@@ -123,7 +125,9 @@ const SongList = (props) => {
           sortByOrder={'DESC'}
         />
       ),
-      quality: isDesktop && <QualityInfo source="quality" dataKey="bitRate" sortable={false} />,
+      quality: isDesktop && (
+        <QualityInfo source="quality" dataKey="bitRate" sortable={false} />
+      ),
       duration: <DurationField source="duration" />,
       rating: config.enableStarRating && (
         <RatingField
@@ -166,7 +170,12 @@ const SongList = (props) => {
             classes={{ row: classes.row }}
             rowHeight={60}
           >
-            <SongTitleField source="title" showTrackNumbers={false} flexGrow={0.5} width={200} />
+            <SongTitleField
+              source="title"
+              showTrackNumbers={false}
+              flexGrow={0.5}
+              width={200}
+            />
             {columns}
             <SongContextMenu
               source={'starred'}

@@ -125,7 +125,7 @@ function Datagrid(props) {
 }
 
 Datagrid.defaultProps = {
-  rowHeight: 55
+  rowHeight: 55,
 }
 
 export default Datagrid
