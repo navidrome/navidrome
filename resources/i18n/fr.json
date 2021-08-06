@@ -62,8 +62,8 @@
             "lists": {
                 "all": "Tous",
                 "random": "Aléatoire",
-                "recentlyAdded": "Récemment ajouté",
-                "recentlyPlayed": "Récemment joué",
+                "recentlyAdded": "Récemment ajoutés",
+                "recentlyPlayed": "Récemment joués",
                 "mostPlayed": "Plus joués",
                 "starred": "Favoris",
                 "topRated": "Les mieux classés"
@@ -132,7 +132,7 @@
                 "owner": "Propriétaire",
                 "public": "Public",
                 "updatedAt": "Mise à jour le",
-                "createdAt": "Créé le",
+                "createdAt": "Créée le",
                 "songCount": "Titres",
                 "comment": "Commentaire",
                 "sync": "Import automatique",
@@ -153,7 +153,7 @@
         "auth": {
             "welcome1": "Merci d'avoir installé Navidrome !",
             "welcome2": "Pour commencer, créez un compte administrateur",
-            "confirmPassword": "Confirmer votre mot de passe",
+            "confirmPassword": "Confirmez votre mot de passe",
             "buttonCreateAdmin": "Créer un compte administrateur",
             "auth_check_error": "Merci de vous connecter pour continuer",
             "user_menu": "Profil",
@@ -190,7 +190,7 @@
             "delete": "Supprimer",
             "edit": "Éditer",
             "export": "Exporter",
-            "list": "Liste",
+            "list": "Lister",
             "refresh": "Actualiser",
             "remove_filter": "Supprimer ce filtre",
             "remove": "Supprimer",
