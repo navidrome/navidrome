@@ -1,4 +1,4 @@
-import React, { isValidElement, useCallback } from 'react'
+import React, { isValidElement, useCallback, useMemo } from 'react'
 import { withStyles } from '@material-ui/core/styles'
 import { TableCell, Checkbox } from '@material-ui/core'
 import { AutoSizer, Column, InfiniteLoader, Table } from 'react-virtualized'
@@ -48,7 +48,7 @@ function VirtualTable(props) {
   } = props
 
   const datagridClasses = useDatagridStyles()
-  const children = React.Children.toArray(props.children)
+  const children = useMemo(() => React.Children.toArray(props.children), [props.children])
 
   const cellRenderer = ({ rowData, cellData, columnIndex, dataKey }) => {
     const { basePath, resource } = props
@@ -153,7 +153,6 @@ function VirtualTable(props) {
 
   return (
     <InfiniteLoader
-      // ref={infiniteLoaderRef}
       isRowLoaded={isRowLoaded}
       loadMoreRows={loadMoreRows}
       rowCount={remoteDataCount}
@@ -161,16 +160,11 @@ function VirtualTable(props) {
       {({ onRowsRendered, registerChild }) => (
         <AutoSizer>
           {({ width, height }) => (
-            // <WindowScroller>
-            // {({ height, isScrolling, scrollTop }) => (
             <Table
               ref={registerChild}
               onRowsRendered={onRowsRendered}
-              // isScrolling={isScrolling}
-              // scrollTop={scrollTop}
               width={width}
               height={height}
-              // autoHeight
               headerHeight={rowHeight}
               rowHeight={rowHeight}
               rowGetter={rowGetter}
@@ -206,8 +200,6 @@ function VirtualTable(props) {
                 ) : null
               )}
             </Table>
-            // )}
-            // </WindowScroller>
           )}
         </AutoSizer>
       )}
