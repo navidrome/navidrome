@@ -101,7 +101,6 @@ const SongList = (props) => {
       album: isDesktop && (
         <AlbumLinkField
           source="album"
-          flexGrow={0.5}
           width={200}
           sortBy={
             'album, order_album_artist_name, disc_number, track_number, title'
@@ -109,9 +108,9 @@ const SongList = (props) => {
           sortByOrder={'ASC'}
         />
       ),
-      artist: <TextField source="artist" flexGrow={0.4} width={160} />,
+      artist: <TextField source="artist" width={200} />,
       albumArtist: (
-        <TextField source="albumArtist" flexGrow={0.4} width={160} />
+        <TextField source="albumArtist" width={200} />
       ),
       trackNumber: isDesktop && <NumberField source="trackNumber" width={70} />,
       playCount: isDesktop && (
@@ -173,8 +172,7 @@ const SongList = (props) => {
             <SongTitleField
               source="title"
               showTrackNumbers={false}
-              flexGrow={0.5}
-              width={200}
+              width={250}
             />
             {columns}
             <SongContextMenu
