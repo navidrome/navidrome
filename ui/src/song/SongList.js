@@ -109,9 +109,7 @@ const SongList = (props) => {
         />
       ),
       artist: <TextField source="artist" width={200} />,
-      albumArtist: (
-        <TextField source="albumArtist" width={200} />
-      ),
+      albumArtist: <TextField source="albumArtist" width={200} />,
       trackNumber: isDesktop && <NumberField source="trackNumber" width={70} />,
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />

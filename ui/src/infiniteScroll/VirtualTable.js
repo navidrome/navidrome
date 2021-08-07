@@ -48,7 +48,10 @@ function VirtualTable(props) {
   } = props
 
   const datagridClasses = useDatagridStyles()
-  const children = useMemo(() => React.Children.toArray(props.children), [props.children])
+  const children = useMemo(
+    () => React.Children.toArray(props.children),
+    [props.children]
+  )
 
   const cellRenderer = ({ rowData, cellData, columnIndex, dataKey }) => {
     const { basePath, resource } = props
