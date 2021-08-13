@@ -17,10 +17,10 @@
     "lodash.pick": "^4.4.0",
     "lodash.throttle": "^4.1.1",
     "prop-types": "^15.7.2",
-    "ra-data-json-server": "^3.17.0",
-    "ra-i18n-polyglot": "^3.17.0",
+    "ra-data-json-server": "^3.17.2",
+    "ra-i18n-polyglot": "^3.17.2",
     "react": "^17.0.2",
-    "react-admin": "^3.17.0",
+    "react-admin": "^3.17.2",
     "react-dom": "^17.0.2",
     "react-drag-listview": "^0.1.8",
     "react-ga": "^3.3.0",
@@ -43,7 +43,7 @@
     "@testing-library/user-event": "^13.2.1",
     "css-mediaquery": "^0.1.2",
     "prettier": "2.3.2",
-    "ra-test": "^3.17.0"
+    "ra-test": "^3.17.2"
   },
   "scripts": {
     "start": "react-scripts start",
