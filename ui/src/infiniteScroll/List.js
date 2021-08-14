@@ -10,6 +10,9 @@ const useStyles = makeStyles((theme) => ({
   main: {
     flexGrow: 1,
   },
+  content: {
+    maxHeight: '100%'
+  }
 }))
 
 function InfiniteList({ pagination, children, ...rest }) {
@@ -18,10 +21,7 @@ function InfiniteList({ pagination, children, ...rest }) {
   return (
     <List
       pagination={null}
-      classes={{
-        root: classes.root,
-        main: classes.main,
-      }}
+      classes={classes}
       {...rest}
     >
       {children}
