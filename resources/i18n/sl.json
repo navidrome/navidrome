@@ -76,7 +76,8 @@
                 "albumCount": "# albumov",
                 "songCount": "# pesmi",
                 "playCount": "# predvajanj",
-                "rating": "Ocena"
+                "rating": "Ocena",
+                "genre": "Žanr"
             }
         },
         "user": {
@@ -302,7 +303,11 @@
         "lastfmLinkSuccess": "Last.fm uspešno povezan in 'scrobbling' omogočen",
         "lastfmLinkFailure": "Last.fm ni uspešno povezan",
         "lastfmUnlinkSuccess": "Last.fm povezava prekinjena in 'scrobbling' onemogočen",
-        "lastfmUnlinkFailure": "Last.fm povezava neuspešno prekinjena"
+        "lastfmUnlinkFailure": "Last.fm povezava neuspešno prekinjena",
+        "openIn": {
+            "lastfm": "Odpri v Last.fm",
+            "musicbrainz": "Odpri v MusicBrainz"
+        }
     },
     "menu": {
         "library": "Knjižnica",

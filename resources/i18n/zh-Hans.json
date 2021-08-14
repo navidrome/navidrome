@@ -66,7 +66,7 @@
                 "recentlyPlayed": "最近播放",
                 "mostPlayed": "最多播放",
                 "starred": "收藏",
-                "topRated": "最高评分"
+                "topRated": "排行榜"
             }
         },
         "artist": {
@@ -76,7 +76,8 @@
                 "albumCount": "专辑数",
                 "songCount": "歌曲数",
                 "playCount": "播放次数",
-                "rating": "评分"
+                "rating": "评分",
+                "genre": "类型"
             }
         },
         "user": {
@@ -302,7 +303,11 @@
         "lastfmLinkSuccess": "Last.fm已关联并启用喜好记录",
         "lastfmLinkFailure": "Last.fm无法关联",
         "lastfmUnlinkSuccess": "Last.fm未关联并禁止喜好记录",
-        "lastfmUnlinkFailure": "Last.fm无法取消关联"
+        "lastfmUnlinkFailure": "Last.fm无法取消关联",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        }
     },
     "menu": {
         "library": "曲库",

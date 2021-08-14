@@ -76,7 +76,8 @@
                 "albumCount": "Aantal albums",
                 "songCount": "Aantal nummers",
                 "playCount": "Afgespeeld",
-                "rating": "Beoordeling"
+                "rating": "Beoordeling",
+                "genre": "Genre"
             }
         },
         "user": {
@@ -302,7 +303,11 @@
         "lastfmLinkSuccess": "Last.fm succesvol gekoppeld en scrobbling actief",
         "lastfmLinkFailure": "Last.fm kon niet worden gekoppeld",
         "lastfmUnlinkSuccess": "Last.fm ontkoppeld en scrobbling uitgezet",
-        "lastfmUnlinkFailure": "Last.fm kon niet worden ontkoppeld"
+        "lastfmUnlinkFailure": "Last.fm kon niet worden ontkoppeld",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        }
     },
     "menu": {
         "library": "Bibliotheek",
@@ -316,7 +321,7 @@
                 "language": "Taal",
                 "defaultView": "Standaard weergave",
                 "desktop_notifications": "Bureaubladmeldingen",
-                "lastfmScrobbling": "Scrobbling naar Last.fm"
+                "lastfmScrobbling": "Scrobble naar Last.fm"
             }
         },
         "albumList": "Albums",

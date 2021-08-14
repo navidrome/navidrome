@@ -76,7 +76,8 @@
                 "albumCount": "Počet alb",
                 "songCount": "Počet skladeb",
                 "playCount": "Přehrání",
-                "rating": "Hodnocení"
+                "rating": "Hodnocení",
+                "genre": "Žánr"
             }
         },
         "user": {
@@ -302,7 +303,11 @@
         "lastfmLinkSuccess": "Last.fm úspěšně připojeno a ukládání zapnuto",
         "lastfmLinkFailure": "Last.fm nemohlo být připojeno",
         "lastfmUnlinkSuccess": "Last.fm odpojeno a ukládání vypnuto",
-        "lastfmUnlinkFailure": "Last.fm nemohlo být odpojeno"
+        "lastfmUnlinkFailure": "Last.fm nemohlo být odpojeno",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        }
     },
     "menu": {
         "library": "Knihovna",
