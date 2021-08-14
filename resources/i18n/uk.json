@@ -76,7 +76,8 @@
                 "albumCount": "Кількість альбомів",
                 "songCount": "Кількість пісень",
                 "playCount": "Відтворено",
-                "rating": "Рейтинг"
+                "rating": "Рейтинг",
+                "genre": "Жанр"
             }
         },
         "user": {
@@ -302,7 +303,11 @@
         "lastfmLinkSuccess": "",
         "lastfmLinkFailure": "",
         "lastfmUnlinkSuccess": "",
-        "lastfmUnlinkFailure": ""
+        "lastfmUnlinkFailure": "",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        }
     },
     "menu": {
         "library": "Бібліотека",
