@@ -27,7 +27,7 @@ require (
 	github.com/google/wire v0.5.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.3.0
-	github.com/lestrrat-go/jwx v1.2.4
+	github.com/lestrrat-go/jwx v1.2.5
 	github.com/lib/pq v1.10.2 // indirect
 	github.com/matoous/go-nanoid v1.5.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
@@ -35,7 +35,7 @@ require (
 	github.com/mileusna/useragent v1.0.2
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.4
-	github.com/onsi/gomega v1.14.0
+	github.com/onsi/gomega v1.15.0
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.8.1

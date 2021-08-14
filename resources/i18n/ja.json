@@ -76,7 +76,8 @@
                 "albumCount": "アルバム枚数",
                 "songCount": "曲数",
                 "playCount": "再生数",
-                "rating": "レート"
+                "rating": "レート",
+                "genre": "ジャンル"
             }
         },
         "user": {
@@ -302,7 +303,11 @@
         "lastfmLinkSuccess": "Last.fmとリンクしscrobbleが有効になりました",
         "lastfmLinkFailure": "Last.fmとリンクできませんでした",
         "lastfmUnlinkSuccess": "設定が解除され、Last.fmへのscrobbleは無効になっています",
-        "lastfmUnlinkFailure": "Last.fmとリンクできませんでした"
+        "lastfmUnlinkFailure": "Last.fmとリンクできませんでした",
+        "openIn": {
+            "lastfm": "Last.fmで開く",
+            "musicbrainz": "MusicBrainzで開く"
+        }
     },
     "menu": {
         "library": "ライブラリ",

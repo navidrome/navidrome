@@ -76,7 +76,8 @@
                 "albumCount": "Album",
                 "songCount": "Numero tracce",
                 "playCount": "Riproduzioni",
-                "rating": "Valutazione"
+                "rating": "Valutazione",
+                "genre": "Genere"
             }
         },
         "user": {
@@ -111,7 +112,8 @@
                 "client": "Applicazione",
                 "userName": "Nome utente",
                 "lastSeen": "Ultimo accesso",
-                "reportRealPath": "Mostra percorso reale"
+                "reportRealPath": "Mostra percorso reale",
+                "scrobbleEnabled": "Manda gli scrobble a Last.fm"
             }
         },
         "transcoding": {
@@ -301,7 +303,11 @@
         "lastfmLinkSuccess": "Collegamento a Last.fm riuscito e scrobbling abilitato",
         "lastfmLinkFailure": "Non è stato possible collegare Last.fm",
         "lastfmUnlinkSuccess": "Lo scrobbling è stato disabilitato e Last.fm è stato disconnesso",
-        "lastfmUnlinkFailure": "Non è stato possibile scollegare Last.fm"
+        "lastfmUnlinkFailure": "Non è stato possibile scollegare Last.fm",
+        "openIn": {
+            "lastfm": "Apri in Last.fm",
+            "musicbrainz": "Apri in MusicBrainz"
+        }
     },
     "menu": {
         "library": "Libreria",

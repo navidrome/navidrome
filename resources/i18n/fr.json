@@ -62,8 +62,8 @@
             "lists": {
                 "all": "Tous",
                 "random": "Aléatoire",
-                "recentlyAdded": "Récemment ajouté",
-                "recentlyPlayed": "Récemment joué",
+                "recentlyAdded": "Récemment ajoutés",
+                "recentlyPlayed": "Récemment joués",
                 "mostPlayed": "Plus joués",
                 "starred": "Favoris",
                 "topRated": "Les mieux classés"
@@ -76,7 +76,8 @@
                 "albumCount": "Nombre d'albums",
                 "songCount": "Nombre de pistes",
                 "playCount": "Lectures",
-                "rating": "Classement"
+                "rating": "Classement",
+                "genre": "Genre"
             }
         },
         "user": {
@@ -132,7 +133,7 @@
                 "owner": "Propriétaire",
                 "public": "Public",
                 "updatedAt": "Mise à jour le",
-                "createdAt": "Créé le",
+                "createdAt": "Créée le",
                 "songCount": "Titres",
                 "comment": "Commentaire",
                 "sync": "Import automatique",
@@ -153,7 +154,7 @@
         "auth": {
             "welcome1": "Merci d'avoir installé Navidrome !",
             "welcome2": "Pour commencer, créez un compte administrateur",
-            "confirmPassword": "Confirmer votre mot de passe",
+            "confirmPassword": "Confirmez votre mot de passe",
             "buttonCreateAdmin": "Créer un compte administrateur",
             "auth_check_error": "Merci de vous connecter pour continuer",
             "user_menu": "Profil",
@@ -190,7 +191,7 @@
             "delete": "Supprimer",
             "edit": "Éditer",
             "export": "Exporter",
-            "list": "Liste",
+            "list": "Lister",
             "refresh": "Actualiser",
             "remove_filter": "Supprimer ce filtre",
             "remove": "Supprimer",
@@ -302,7 +303,11 @@
         "lastfmLinkSuccess": "Last.fm a été correctement relié et le scrobble a été activé",
         "lastfmLinkFailure": "Last.fm n'a pas pu être correctement relié",
         "lastfmUnlinkSuccess": "Last.fm n'est plus relié et le scrobble a été désactivé",
-        "lastfmUnlinkFailure": "Erreur pendant la suppression du lien avec Last.fm"
+        "lastfmUnlinkFailure": "Erreur pendant la suppression du lien avec Last.fm",
+        "openIn": {
+            "lastfm": "Ouvrir dans Last.fm",
+            "musicbrainz": "Ouvrir dans MusicBrainz"
+        }
     },
     "menu": {
         "library": "Bibliothèque",
@@ -316,7 +321,7 @@
                 "language": "Langue",
                 "defaultView": "Vue par défaut",
                 "desktop_notifications": "Notifications de bureau",
-                "lastfmScrobbling": "Scrobble vers Last.fm"
+                "lastfmScrobbling": "Scrobbler vers Last.fm"
             }
         },
         "albumList": "Albums",
