@@ -1,15 +1,14 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
 import ListItemIcon from '@material-ui/core/ListItemIcon'
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
-import { sanitizeListRestProps } from 'react-admin'
 import { DurationField, SongContextMenu, RatingField } from './index'
 import { setTrack } from '../actions'
 import { useDispatch } from 'react-redux'
+import VirtualList from '../infiniteScroll/VirtualList'
 import config from '../config'
 
 const useStyles = makeStyles(
@@ -67,50 +66,44 @@ export const SongSimpleList = ({
   const classes = useStyles({ classes: classesOverride })
   return (
     (loading || total > 0) && (
-      <List className={className} {...sanitizeListRestProps(rest)}>
-        {ids.map(
-          (id) =>
-            data[id] && (
-              <span key={id} onClick={() => dispatch(setTrack(data[id]))}>
-                <ListItem className={classes.listItem} button={true}>
-                  <ListItemText
-                    primary={
-                      <div className={classes.title}>{data[id].title}</div>
-                    }
-                    secondary={
-                      <>
-                        <span className={classes.secondary}>
-                          <span className={classes.artist}>
-                            {data[id].artist}
-                          </span>
-                          <span className={classes.timeStamp}>
-                            <DurationField
-                              record={data[id]}
-                              source={'duration'}
-                            />
-                          </span>
+      <VirtualList
+        className={className}
+        itemHeight={100}
+        renderItem={(record) =>
+          record && (
+            <span key={record.id} onClick={() => dispatch(setTrack(record))}>
+              <ListItem className={classes.listItem} button={true}>
+                <ListItemText
+                  primary={<div className={classes.title}>{record.title}</div>}
+                  secondary={
+                    <>
+                      <span className={classes.secondary}>
+                        <span className={classes.artist}>{record.artist}</span>
+                        <span className={classes.timeStamp}>
+                          <DurationField record={record} source={'duration'} />
                         </span>
-                        {config.enableStarRating && (
-                          <RatingField
-                            record={data[id]}
-                            source={'rating'}
-                            resource={'song'}
-                            size={'small'}
-                          />
-                        )}
-                      </>
-                    }
-                  />
-                  <ListItemSecondaryAction className={classes.rightIcon}>
-                    <ListItemIcon>
-                      <SongContextMenu record={data[id]} visible={true} />
-                    </ListItemIcon>
-                  </ListItemSecondaryAction>
-                </ListItem>
-              </span>
-            )
-        )}
-      </List>
+                      </span>
+                      {config.enableStarRating && (
+                        <RatingField
+                          record={record}
+                          source={'rating'}
+                          resource={'song'}
+                          size={'small'}
+                        />
+                      )}
+                    </>
+                  }
+                />
+                <ListItemSecondaryAction className={classes.rightIcon}>
+                  <ListItemIcon>
+                    <SongContextMenu record={record} visible={true} />
+                  </ListItemIcon>
+                </ListItemSecondaryAction>
+              </ListItem>
+            </span>
+          )
+        }
+      />
     )
   )
 }

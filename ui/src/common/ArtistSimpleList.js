@@ -1,19 +1,19 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
 import ListItemIcon from '@material-ui/core/ListItemIcon'
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
-import { sanitizeListRestProps } from 'react-admin'
 import { ArtistContextMenu, RatingField } from './index'
+import VirtualList from '../infiniteScroll/VirtualList'
 import config from '../config'
 
 const useStyles = makeStyles(
   {
     listItem: {
       padding: '10px',
+      listStyleType: 'none',
     },
     title: {
       paddingRight: '10px',
@@ -41,37 +41,38 @@ export const ArtistSimpleList = ({
   const classes = useStyles({ classes: classesOverride })
   return (
     (loading || total > 0) && (
-      <List className={className} {...sanitizeListRestProps(rest)}>
-        {ids.map(
-          (id) =>
-            data[id] && (
-              <span key={id} onClick={() => linkType(id)}>
-                <ListItem className={classes.listItem} button={true}>
-                  <ListItemText
-                    primary={
-                      <>
-                        <div className={classes.title}>{data[id].name}</div>
-                        {config.enableStarRating && (
-                          <RatingField
-                            record={data[id]}
-                            source={'rating'}
-                            resource={'artist'}
-                            size={'small'}
-                          />
-                        )}
-                      </>
-                    }
-                  />
-                  <ListItemSecondaryAction className={classes.rightIcon}>
-                    <ListItemIcon>
-                      <ArtistContextMenu record={data[id]} />
-                    </ListItemIcon>
-                  </ListItemSecondaryAction>
-                </ListItem>
-              </span>
-            )
-        )}
-      </List>
+      <VirtualList
+        className={className}
+        itemHeight={75}
+        renderItem={(record) =>
+          record && (
+            <span key={record.id} onClick={() => linkType(record.id)}>
+              <ListItem className={classes.listItem} button={true}>
+                <ListItemText
+                  primary={
+                    <>
+                      <div className={classes.title}>{record.name}</div>
+                      {config.enableStarRating && (
+                        <RatingField
+                          record={record}
+                          source={'rating'}
+                          resource={'artist'}
+                          size={'small'}
+                        />
+                      )}
+                    </>
+                  }
+                />
+                <ListItemSecondaryAction className={classes.rightIcon}>
+                  <ListItemIcon>
+                    <ArtistContextMenu record={record} />
+                  </ListItemIcon>
+                </ListItemSecondaryAction>
+              </ListItem>
+            </span>
+          )
+        }
+      />
     )
   )
 }
