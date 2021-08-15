@@ -4,10 +4,9 @@ import { Link } from 'react-admin'
 import { useAlbumsPerPage } from './index'
 import { withWidth } from '@material-ui/core'
 import ArtistView from './ArtistDetail'
-import { Route } from 'react-router-dom'
 
 export const useGetHandleArtistClick = (width) => {
-  const [perPage] = useAlbumsPerPage(width)
+  // const [perPage] = useAlbumsPerPage(width)
 
   // return (id) => {
   //   return `/album?filter={"artist_id":"${id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`

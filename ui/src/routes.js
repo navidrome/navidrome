@@ -1,7 +1,6 @@
 import React from 'react'
 import { Route } from 'react-router-dom'
 import Personal from './personal/Personal'
-import ImgMediaCard from './common/ArtistDetail'
 import ArtistView from './common/ArtistDetail'
 
 const routes = [
