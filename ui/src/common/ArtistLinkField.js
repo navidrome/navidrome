@@ -21,7 +21,7 @@ export const ArtistLinkField = withWidth()(({ record, className, width }) => {
   const artistLink = useGetHandleArtistClick(width)
 
   const handleclick = (props) => {
-    <ArtistView artist={props.artistId} />
+    ;<ArtistView artist={props.artistId} />
   }
 
   return (

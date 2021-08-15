@@ -72,5 +72,5 @@ export default {
   getScanStatus,
   getCoverArtUrl,
   streamUrl,
-  getArtistInfo
+  getArtistInfo,
 }

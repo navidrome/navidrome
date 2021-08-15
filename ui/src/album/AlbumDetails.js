@@ -205,7 +205,6 @@ const Details = (props) => {
   return <>{intersperse(details, ' · ')}</>
 }
 
-
 const AlbumDetails = (props) => {
   const record = useRecordContext(props)
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
@@ -214,9 +213,8 @@ const AlbumDetails = (props) => {
 
   const imageUrl = subsonic.getCoverArtUrl(record, 300)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
-  
-  console.log(props.data.artistId)
 
+  console.log(props.data.artistId)
 
   const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
   const handleCloseLightbox = React.useCallback(
