@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { Link } from 'react-admin'
-import { useAlbumsPerPage } from './index'
+// import { useAlbumsPerPage } from './index'
 import { withWidth } from '@material-ui/core'
 import ArtistView from './ArtistDetail'
 
