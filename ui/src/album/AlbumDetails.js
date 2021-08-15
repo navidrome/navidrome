@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback, useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -33,6 +33,7 @@ import {
 import config from '../config'
 import { intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
+import ArtistView from '../common/ArtistDetail'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -204,6 +205,7 @@ const Details = (props) => {
   return <>{intersperse(details, ' · ')}</>
 }
 
+
 const AlbumDetails = (props) => {
   const record = useRecordContext(props)
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
@@ -212,6 +214,9 @@ const AlbumDetails = (props) => {
 
   const imageUrl = subsonic.getCoverArtUrl(record, 300)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
+  
+  console.log(props.data.artistId)
+
 
   const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
   const handleCloseLightbox = React.useCallback(
@@ -231,6 +236,7 @@ const AlbumDetails = (props) => {
             onClick={handleOpenLightbox}
             title={record.name}
           />
+          <ArtistView artist={props.data.artistId} />
         </div>
         <div className={classes.details}>
           <CardContent className={classes.content}>

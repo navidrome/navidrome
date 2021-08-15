@@ -162,11 +162,11 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
   )
 }
 
-const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
+const LoadedAlbumGrid = ({ ids, data, basePath, width, ...props }) => {
   const classes = useStyles()
   const { filterValues } = useListContext()
   const isArtistView = !!(filterValues && filterValues.artist_id)
-
+  console.log({...props})
   return (
     <div className={classes.root}>
       <GridList
