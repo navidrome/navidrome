@@ -1,16 +1,10 @@
 import React from 'react'
-import {
-  GridList,
-  GridListTile,
-  Typography,
-  GridListTileBar,
-  useMediaQuery,
-} from '@material-ui/core'
+import { Typography } from '@material-ui/core'
 import { makeStyles, useTheme } from '@material-ui/core/styles'
 import withWidth from '@material-ui/core/withWidth'
-import { Link } from 'react-router-dom'
-import { linkToRecord, useListContext, Loading } from 'react-admin'
-import { withContentRect } from 'react-measure'
+// import { Link } from 'react-router-dom'
+// import { linkToRecord, useListContext, Loading } from 'react-admin'
+// import { withContentRect } from 'react-measure'
 import subsonic from '../subsonic'
 
 import Card from '@material-ui/core/Card'
