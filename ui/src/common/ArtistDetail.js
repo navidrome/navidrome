@@ -111,7 +111,7 @@ function ImgMediaCard({ artId, artist }) {
     console.error('err on Artistpage', error)
   }
 
-  if (link != undefined) {
+  if (link !== undefined) {
     lastLink = link[2]
   }
 
@@ -184,6 +184,7 @@ const ArtistAlbum = ({ artId, width }) => {
             setartist(data.artist.album.map((s) => [...artist, { ...s }]))
           }
         })
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [artId])
   } catch (error) {
     console.error('err on Artistpage', error)
