@@ -226,6 +226,11 @@ func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents
 			break
 		}
 	}
+	if len(mfs) == 0 {
+		log.Debug(ctx, "No matching top songs found", "name", artist.Name)
+	} else {
+		log.Debug(ctx, "Found matching top songs", "name", artist.Name, "numSongs", len(mfs))
+	}
 	return mfs, nil
 }
 
@@ -331,7 +336,7 @@ func (e *externalMetadata) mapSimilarArtists(ctx context.Context, similar []agen
 
 func (e *externalMetadata) findArtistByName(ctx context.Context, artistName string) (*auxArtist, error) {
 	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.Like{"name": artistName},
+		Filters: squirrel.Like{"artist.name": artistName},
 		Max:     1,
 	})
 	if err != nil {
