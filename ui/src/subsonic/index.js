@@ -49,11 +49,21 @@ const getCoverArtUrl = (record, size) => {
     ...(record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
   }
-  return baseUrl(url('getCoverArt', record.coverArtId || 'not_found', options))
+  return baseUrl(
+    url(
+      'getCoverArt',
+      record.coverArtId || record.coverArt || 'not_found',
+      options
+    )
+  )
 }
 
 const getArtistInfo = (id) => {
   return httpClient(url('getArtistInfo', id))
+}
+
+const getArtist = (id) => {
+  return httpClient(url('getArtist', id))
 }
 
 const streamUrl = (id) => {
@@ -73,4 +83,5 @@ export default {
   getCoverArtUrl,
   streamUrl,
   getArtistInfo,
+  getArtist,
 }

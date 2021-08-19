@@ -1,24 +1,37 @@
-import React from 'react'
-import { Typography } from '@material-ui/core'
-import { makeStyles, useTheme } from '@material-ui/core/styles'
-// import withWidth from '@material-ui/core/withWidth'
-import { Link } from 'react-router-dom'
-// import { linkToRecord, useListContext, Loading } from 'react-admin'
-// import { withContentRect } from 'react-measure'
+import React, { useState, useEffect, useCallback } from 'react'
+import {
+  GridList,
+  GridListTile,
+  Typography,
+  Collapse,
+  withWidth,
+  Link,
+} from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
+
 import subsonic from '../subsonic'
 
 import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
-import IconButton from '@material-ui/core/IconButton'
-import SkipPreviousIcon from '@material-ui/icons/SkipPrevious'
-import PlayArrowIcon from '@material-ui/icons/PlayArrow'
-import SkipNextIcon from '@material-ui/icons/SkipNext'
+import PropTypes from 'prop-types'
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore'
+import ExpandLessIcon from '@material-ui/icons/ExpandLess'
+import Button from '@material-ui/core/Button'
+
+import { AlbumGridTile } from '../album/AlbumGridView'
+import { getColsForWidth } from '../album/AlbumGridView'
+import { useTranslate } from 'react-admin'
 
 const useStyles = makeStyles(
   (theme) => ({
     root: {
       display: 'flex',
+      padding: '1em',
+    },
+    iroot: {
+      margin: '20px',
+      display: 'grid',
     },
     details: {
       display: 'flex',
@@ -29,101 +42,189 @@ const useStyles = makeStyles(
     },
     cover: {
       width: 151,
+      boxShadow: '1px 1px 20px 0px #565656',
+      borderRadius: '5px',
     },
-    controls: {
+    artImage: {
+      marginTop: '1rem',
+      maxHeight: '10rem',
+      backgroundColor: 'inherit',
       display: 'flex',
-      alignItems: 'center',
-      paddingLeft: theme.spacing(1),
-      paddingBottom: theme.spacing(1),
     },
-    playIcon: {
-      height: 38,
-      width: 38,
+    artDetail: {
+      margin: '1rem',
+      flex: '1',
+      display: 'flex',
+      minHeight: '10rem',
+    },
+    expand: {
+      display: 'flex',
+      padding: '0',
+      boxShadow: 'none',
+      backgroundColor: 'inherit',
+      fontSize: '0.77rem',
+      color: '#a0a0a0',
+      border: 'none',
+      '& .MuiButton-label': {
+        display: 'contents',
+      },
+      '&.MuiButton-contained:hover': {
+        boxShadow: 'none',
+        backgroundColor: 'inherit !important',
+        color: '#dbdada',
+      },
+    },
+    album: {
+      marginBottom: '1em',
     },
   }),
   { name: 'NDArtistPage' }
 )
 
-function ImgMediaCard() {
+function ImgMediaCard({ artId, artist }) {
   const classes = useStyles()
-  const theme = useTheme()
+  const [lastInfo, setlastInfo] = useState()
+  const [expanded, setExpanded] = useState(false)
 
-  return (
-    <Card className={classes.root}>
-      <CardMedia
-        className={classes.cover}
-        image="https://images.unsplash.com/photo-1494548162494-384bba4ab999?ixlib=rb-1.2.1&w=1000&q=80"
-        title="Live from space album cover"
-      />
-      <div className={classes.details}>
-        <CardContent className={classes.content}>
-          <Typography component="h5" variant="h5">
-            Live From Space
-          </Typography>
-          <Typography variant="subtitle1" color="textSecondary">
-            Mac Miller
-          </Typography>
-        </CardContent>
-        <div className={classes.controls}>
-          <IconButton aria-label="previous">
-            {theme.direction === 'rtl' ? (
-              <SkipNextIcon />
-            ) : (
-              <SkipPreviousIcon />
-            )}
-          </IconButton>
-          <IconButton aria-label="play/pause">
-            <PlayArrowIcon className={classes.playIcon} />
-          </IconButton>
-          <IconButton aria-label="next">
-            {theme.direction === 'rtl' ? (
-              <SkipPreviousIcon />
-            ) : (
-              <SkipNextIcon />
-            )}
-          </IconButton>
-        </div>
-      </div>
-    </Card>
+  const props = { ...artist }
+  const artistProps = props['0']
+  var title = artistProps?.artist
+  var lastLink = ''
+
+  const link = lastInfo?.biography?.match(
+    /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
   )
-}
+  const biography = lastInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
 
-const Api = ({ artId }) => {
-  console.log('props', artId)
   try {
-    subsonic
-      .getArtistInfo(artId)
-      .then((resp) => resp.json['subsonic-response'])
-      .then((data) => {
-        console.log('bedata', { data })
-        if (data.status === 'ok') {
-          console.log('data', data.artistInfo.biography)
-        }
-      })
+    useEffect(() => {
+      subsonic
+        .getArtistInfo(artId)
+        .then((resp) => resp.json['subsonic-response'])
+        .then((data) => {
+          if (data.status === 'ok') {
+            setlastInfo(data.artistInfo)
+          }
+        })
+    }, [artId])
   } catch (error) {
     console.error('err on Artistpage', error)
   }
 
-  return <></>
-}
+  if (link != undefined) {
+    lastLink = link[2]
+  }
 
-const ArtistView = ({ artist }) => {
-  const classes = useStyles()
-  console.log('ch is', artist)
+  const handleExpandClick = useCallback(() => {
+    setExpanded(!expanded)
+  }, [expanded, setExpanded])
+
   return (
-    <Link className={classes.link} to={`/iartist/${artist}`}>
-      <div>
-        <Api artId={artist} />
-        <div>
-          <p>This is a Artist Detail page of</p>
-          <div>
-            <ImgMediaCard />
-          </div>
+    <div classsName={classes.root} style={{ display: 'flex' }}>
+      <Card className={classes.artImage}>
+        <CardMedia
+          className={classes.cover}
+          image={`${lastInfo?.mediumImageUrl}`}
+          title={title}
+        />
+      </Card>
+      <Card className={classes.artDetail}>
+        <div className={classes.details}>
+          <CardContent className={classes.content}>
+            <Typography component="h5" variant="h5">
+              {title}
+            </Typography>
+            <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
+              <Typography variant={'body1'} onClick={handleExpandClick}>
+                {biography}
+                <Link href={lastLink} target="_blank" rel="nofollow">
+                  Read more...
+                </Link>
+              </Typography>
+            </Collapse>
+            {expanded ? (
+              <Button
+                variant="contained"
+                color="inherit"
+                className={classes.expand}
+                endIcon={<ExpandLessIcon />}
+                onClick={handleExpandClick}
+              >
+                Read less
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                color="inherit"
+                className={classes.expand}
+                endIcon={<ExpandMoreIcon />}
+                onClick={handleExpandClick}
+              >
+                Read More
+              </Button>
+            )}
+          </CardContent>
         </div>
-      </div>
-    </Link>
-    // <div>The artist id is </div>
+      </Card>
+    </div>
   )
 }
 
-export default ArtistView
+const ArtistAlbum = ({ artId, width }) => {
+  const [artist, setartist] = useState([])
+  const classes = useStyles()
+  const translate = useTranslate()
+  try {
+    useEffect(() => {
+      subsonic
+        .getArtist(artId)
+        .then((resp) => resp.json['subsonic-response'])
+        .then((data) => {
+          if (data.status === 'ok') {
+            setartist(data.artist.album.map((s) => [...artist, { ...s }]))
+          }
+        })
+    }, [artId])
+  } catch (error) {
+    console.error('err on Artistpage', error)
+  }
+
+  return (
+    <>
+      <ImgMediaCard artId={artId} artist={artist[0]} />
+      <div className={classes.iroot}>
+        <div className={classes.album}>
+          {artist.length +
+            ' ' +
+            translate('resources.album.name', { smart_count: artist.length })}
+        </div>
+        <GridList
+          component={'div'}
+          cellHeight={'auto'}
+          cols={getColsForWidth(width)}
+          spacing={20}
+        >
+          {artist.map((artist) => (
+            <GridListTile className={classes.gridListTile} key={artist[0].id}>
+              <AlbumGridTile
+                record={artist[0]}
+                basePath={'/album'}
+                showArtist={true}
+              />
+            </GridListTile>
+          ))}
+        </GridList>
+      </div>
+    </>
+  )
+}
+
+const ArtistView = ({ artist, width }) => {
+  return <ArtistAlbum artId={artist} width={width} />
+}
+
+ArtistView.propTypes = {
+  width: PropTypes.oneOf(['lg', 'md', 'sm', 'xl', 'xs']),
+}
+
+export default withWidth()(ArtistView)
