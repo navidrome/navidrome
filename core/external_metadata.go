@@ -362,9 +362,10 @@ func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, c
 	}
 
 	similar, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.Eq{"id": ids},
+		Filters: squirrel.Eq{"artist.id": ids},
 	})
 	if err != nil {
+		log.Error("Error loading similar artists", "id", artist.ID, "name", artist.Name, err)
 		return err
 	}
 
