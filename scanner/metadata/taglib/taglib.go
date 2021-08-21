@@ -1,6 +1,8 @@
 package taglib
 
 import (
+	"strconv"
+
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -30,6 +32,13 @@ func (e *Parser) extractMetadata(filePath string) (parsedTags, error) {
 		"album":       {"albumsort"},
 		"artist":      {"artistsort"},
 		"tracknumber": {"trck", "_track"},
+	}
+
+	if length, ok := tags["lengthinmilliseconds"]; ok && len(length) > 0 {
+		millis, _ := strconv.Atoi(length[0])
+		if duration := float64(millis) / 1000.0; duration > 0 {
+			tags["duration"] = []string{strconv.FormatFloat(duration, 'f', 2, 32)}
+		}
 	}
 
 	for tagName, alternatives := range alternativeTags {
