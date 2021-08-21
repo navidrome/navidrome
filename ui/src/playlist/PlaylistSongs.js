@@ -148,6 +148,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
         />
       ),
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      channels: isDesktop && <NumberField source="channels" sortable={true} />,
       bpm: isDesktop && <NumberField source="bpm" />,
     }
   }, [isDesktop, classes.draggable])
@@ -155,7 +156,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const columns = useSelectedFields({
     resource: 'playlistTrack',
     columns: toggleableFields,
-    defaultOff: ['bpm', 'year'],
+    defaultOff: ['channels', 'bpm', 'year'],
   })
 
   return (

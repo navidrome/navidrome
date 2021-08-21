@@ -119,6 +119,7 @@ const AlbumSongs = (props) => {
         />
       ),
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      channels: isDesktop && <NumberField source="channels" sortable={true} />,
       bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
       rating: isDesktop && config.enableStarRating && (
         <RatingField
@@ -135,7 +136,7 @@ const AlbumSongs = (props) => {
     resource: 'albumSong',
     columns: toggleableFields,
     omittedColumns: ['title'],
-    defaultOff: ['bpm', 'year'],
+    defaultOff: ['channels', 'bpm', 'year'],
   })
 
   return (
