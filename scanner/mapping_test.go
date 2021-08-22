@@ -3,10 +3,9 @@ package scanner
 import (
 	"context"
 
-	"github.com/astaxie/beego/orm"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -33,8 +32,8 @@ var _ = Describe("mapping", func() {
 		var ctx context.Context
 		BeforeEach(func() {
 			ctx = context.Background()
-			o := orm.NewOrm()
-			gr = persistence.NewGenreRepository(ctx, o)
+			ds := &tests.MockDataStore{}
+			gr = ds.Genre(ctx)
 			gr = newCachedGenreRepository(ctx, gr)
 			mapper = newMediaFileMapper("/", gr)
 		})

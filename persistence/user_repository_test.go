@@ -190,7 +190,7 @@ var _ = Describe("UserRepository", func() {
 			Expect(err.(*rest.ValidationError).Errors).To(HaveKeyWithValue("userName", "ra.validation.unique"))
 		})
 		It("returns generic error if repository call fails", func() {
-			repo.Err = errors.New("fake error")
+			repo.Error = errors.New("fake error")
 
 			var newUser = &model.User{ID: "2", UserName: "newuser"}
 			err := validateUsernameUnique(repo, newUser)
