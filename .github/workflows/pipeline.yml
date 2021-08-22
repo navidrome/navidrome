@@ -10,7 +10,7 @@ on:
       - master
 jobs:
   golangci-lint:
-    name: Lint Server
+    name: Lint Go code
     runs-on: ubuntu-latest
     steps:
       - name: Install taglib
@@ -26,7 +26,7 @@ jobs:
           args: --timeout 2m
 
   go:
-    name: Test Server with Go ${{ matrix.go_version }}
+    name: Test with Go ${{ matrix.go_version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -107,7 +107,7 @@ jobs:
           retention-days: 7
 
   binaries:
-    name: Binaries
+    name: Build binaries
     needs: [js, go, golangci-lint]
     runs-on: ubuntu-latest
     steps:
@@ -156,7 +156,7 @@ jobs:
           retention-days: 7
 
   docker:
-    name: Docker images
+    name: Build Docker images
     needs: [binaries]
     runs-on: ubuntu-latest
     env:
