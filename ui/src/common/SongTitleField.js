@@ -15,11 +15,13 @@ const useStyles = makeStyles({
     height: '32px',
     verticalAlign: 'text-top',
     marginLeft: '-8px',
-    marginTop: '-7px',
-    paddingRight: '3px',
+    marginTop: '-5px',
+    position: 'absolute',
+    scale: '1.2',
   },
   text: {
     verticalAlign: 'text-top',
+    paddingLeft: '32px',
   },
 })
 
