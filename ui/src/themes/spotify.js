@@ -292,6 +292,38 @@ export default {
       input: {
         paddingLeft: '.9rem',
         border: 0,
+        '& .MuiInputBase-root': {
+          backgroundColor: 'white !important',
+          borderRadius: '20px !important',
+          color: 'black',
+          border: '0px',
+          '& fieldset': {
+            borderColor: 'white',
+          },
+          '&:hover fieldset': {
+            borderColor: 'white',
+          },
+          '&.Mui-focused fieldset': {
+            borderColor: 'white',
+          },
+          '& svg': {
+            color: 'black !important',
+          },
+
+          '& .MuiOutlinedInput-input:-webkit-autofill': {
+            borderRadius: '20px 0px 0px 20px',
+            '-webkit-box-shadow': '0 0 0 100px #c2c1c2 inset',
+            '-webkit-text-fill-color': 'black',
+          },
+        },
+      },
+    },
+    RaFilter: {
+      form: {
+        '& .MuiOutlinedInput-input:-webkit-autofill': {
+          '-webkit-box-shadow': '0 0 0 100px #28282b inset',
+          '-webkit-text-fill-color': 'white',
+        },
       },
     },
     RaFilterButton: {
@@ -316,6 +348,20 @@ export default {
       },
       actions: {
         '@global': {
+          '@global': {
+            '*::-webkit-scrollbar': {
+              width: '12px',
+            },
+            '*::-webkit-scrollbar-track': {
+              background: 'rgb(15, 15, 15)',
+            },
+            '*::-webkit-scrollbar-thumb': {
+              backgroundColor: '#555',
+              '&:hover': {
+                background: '#898989',
+              },
+            },
+          },
           '.next-page': {
             marginLeft: 8,
             marginRight: 8,
