@@ -1,5 +1,5 @@
 import React, { Fragment } from 'react'
-import ExpandMore from '@material-ui/icons/ExpandMore'
+import ExpandLessIcon from '@material-ui/icons/ExpandLess'
 import List from '@material-ui/core/List'
 import MenuItem from '@material-ui/core/MenuItem'
 import ListItemIcon from '@material-ui/core/ListItemIcon'
@@ -9,6 +9,7 @@ import Collapse from '@material-ui/core/Collapse'
 import Tooltip from '@material-ui/core/Tooltip'
 import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
+import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -42,7 +43,17 @@ const SubMenu = ({
   const header = (
     <MenuItem dense={dense} button onClick={handleToggle}>
       <ListItemIcon className={classes.icon}>
-        {isOpen ? <ExpandMore /> : icon}
+        {sidebarIsOpen ? (
+          isOpen ? (
+            <ExpandLessIcon />
+          ) : (
+            <ChevronRightIcon />
+          )
+        ) : isOpen ? (
+          <ExpandLessIcon />
+        ) : (
+          icon
+        )}
       </ListItemIcon>
       <Typography variant="inherit" color="textSecondary">
         {translate(name)}
