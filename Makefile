@@ -8,7 +8,7 @@ else ifneq ("$(wildcard .gitinfo)","")
 include .gitinfo
 endif
 
-CI_RELEASER_VERSION=1.16.4-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.17.0-1 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
