@@ -34,6 +34,14 @@ const useStyles = makeStyles(
     root: {},
     main: {
       display: 'flex',
+      '@media screen and (min-width: 600px)': {
+        '& div[class*="RaBulkActionsToolbar-toolbar"]': {
+          '&:hover': {
+            display: 'flex',
+            flexDirection: 'row-reverse',
+          },
+        },
+      },
     },
     content: {
       marginTop: 0,
@@ -47,12 +55,14 @@ const useStyles = makeStyles(
     bulkActionsDisplayed: {
       marginTop: -theme.spacing(8),
       transition: theme.transitions.create('margin-top'),
+      display: 'grid',
     },
     actions: {
       zIndex: 2,
       display: 'flex',
       justifyContent: 'flex-end',
       flexWrap: 'wrap',
+      marginTop: '50px',
     },
     noResults: { padding: 20 },
     columnIcon: {
