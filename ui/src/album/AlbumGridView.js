@@ -1,4 +1,4 @@
-import React from 'react'
+import { React, useEffect } from 'react'
 import {
   GridList,
   GridListTile,
@@ -18,6 +18,7 @@ import {
   ArtistLinkField,
   RangeField,
 } from '../common'
+import lozad from 'lozad'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -79,14 +80,25 @@ const useStyles = makeStyles(
   { name: 'NDAlbumGridView' }
 )
 
-const useCoverStyles = makeStyles({
+const useCoverStyles = makeStyles((theme) => ({
   cover: {
     display: 'inline-block',
     width: '100%',
     objectFit: 'contain',
     height: (props) => props.height,
   },
-})
+  nfade: {
+    animation: `$fadein 2s ${theme.transitions.easing.easeIn}`,
+  },
+  '@keyframes fadein': {
+    '0%': {
+      opacity: 0,
+    },
+    '100%': {
+      opacity: 1,
+    },
+  },
+}))
 
 const getColsForWidth = (width) => {
   if (width === 'xs') return 2
@@ -101,12 +113,28 @@ const Cover = withContentRect('bounds')(
     // Force height to be the same as the width determined by the GridList
     // noinspection JSSuspiciousNameCombination
     const classes = useCoverStyles({ height: contentRect.bounds.width })
+    const cls = [classes.nfade]
+    console.log(classes.nfade)
+    const { observe } = lozad('[data-use-lozad]', {
+      rootMargin: '0px 0px -30% 0px',
+      threshold: 0.1,
+      loaded: (el) => {
+        el.classList.add(...cls)
+      },
+    })
+    useEffect(() => {
+      observe()
+    }, [observe])
     return (
-      <div ref={measureRef}>
+      <div className={classes.cover} ref={measureRef}>
         <img
-          src={subsonic.getCoverArtUrl(album, 300)}
-          alt={album.name}
+          data-src={subsonic.getCoverArtUrl(album, 300)}
+          src={subsonic.getCoverArtUrl(album, 10)}
+          data-alt={album.name}
           className={classes.cover}
+          data-use-lozad
+          data-loaded="false"
+          alt=""
         />
       </div>
     )
@@ -121,7 +149,6 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
   if (!record) {
     return null
   }
-
   return (
     <div className={classes.albumContainer}>
       <Link
