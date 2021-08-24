@@ -25,6 +25,24 @@ const useStyles = makeStyles(
       margin: '20px',
       display: 'grid',
     },
+    [theme.breakpoints.up('sm')]: {
+      gridList: {
+        width: '100%',
+        height: '100%',
+        transform: 'translateZ(0)',
+      },
+    },
+    tile: {
+      [theme.breakpoints.only('md')]: {
+        height: '100%',
+        display: 'block',
+        overflow: 'hidden',
+        position: 'relative',
+      },
+      [theme.breakpoints.only('xl')]: {
+        width: '10em',
+      },
+    },
     tileBar: {
       transition: 'all 150ms ease-out',
       opacity: 0,
@@ -174,9 +192,10 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
         cellHeight={'auto'}
         cols={getColsForWidth(width)}
         spacing={20}
+        className={classes.gridList}
       >
         {ids.map((id) => (
-          <GridListTile className={classes.gridListTile} key={id}>
+          <GridListTile classes={{ tile: classes.tile }} key={id}>
             <AlbumGridTile
               record={data[id]}
               basePath={basePath}
