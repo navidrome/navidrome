@@ -18,6 +18,7 @@
                 "size": "File size",
                 "updatedAt": "Updated at",
                 "bitRate": "Bit rate",
+                "channels": "Channels",
                 "discSubtitle": "Disc Subtitle",
                 "starred": "Favourite",
                 "comment": "Comment",
