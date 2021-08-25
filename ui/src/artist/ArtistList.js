@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
   AutocompleteInput,
-  Datagrid,
+  // Datagrid,
   Filter,
   NumberField,
   ReferenceInput,
@@ -17,7 +17,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { AddToPlaylistDialog } from '../dialogs'
 import {
   ArtistContextMenu,
-  List,
+  // List,
   QuickFilter,
   useGetHandleArtistClick,
   ArtistSimpleList,
@@ -27,6 +27,7 @@ import {
 } from '../common'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
+import { List, Datagrid } from '../infiniteScroll'
 
 const useStyles = makeStyles({
   contextHeader: {
