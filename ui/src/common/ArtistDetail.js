@@ -18,6 +18,8 @@ import PropTypes from 'prop-types'
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore'
 import ExpandLessIcon from '@material-ui/icons/ExpandLess'
 import Button from '@material-ui/core/Button'
+import Paper from '@material-ui/core/Paper'
+import Fab from '@material-ui/core/Fab'
 
 import { AlbumGridTile } from '../album/AlbumGridView'
 import { getColsForWidth } from '../album/AlbumGridView'
@@ -28,6 +30,25 @@ const useStyles = makeStyles(
     root: {
       display: 'flex',
       padding: '1em',
+      '& .MuiTypography-h5': {
+        wordBreak: 'break-word',
+      },
+      [theme.breakpoints.down('xs')]: {
+        padding: 'unset',
+        background: ({ img }) => `url(${img})`,
+      },
+    },
+    bgContainer: {
+      display: 'flex',
+      width: '100%',
+      [theme.breakpoints.down('xs')]: {
+        height: '15rem',
+        width: '100vw',
+        padding: 'unset',
+        backdropFilter: 'blur(1px)',
+        backgroundPosition: '50% 30%',
+        background: `linear-gradient(to bottom, rgba(52 52 52 / 72%), rgba(21 21 21))`,
+      },
     },
     iroot: {
       margin: '20px',
@@ -36,6 +57,24 @@ const useStyles = makeStyles(
     details: {
       display: 'flex',
       flexDirection: 'column',
+    },
+    mdetails: {
+      display: 'none',
+      [theme.breakpoints.down('xs')]: {
+        display: 'flex',
+        alignItems: 'center',
+        width: '7rem',
+        marginLeft: '0.5rem',
+        flex: '1',
+      },
+    },
+    mbio: {
+      display: 'none',
+      [theme.breakpoints.down('xs')]: {
+        display: 'flex',
+        marginLeft: '3%',
+        zIndex: '1',
+      },
     },
     content: {
       flex: '1 0 auto',
@@ -47,15 +86,24 @@ const useStyles = makeStyles(
     },
     artImage: {
       marginTop: '1rem',
+      marginLeft: '1em',
       maxHeight: '10rem',
       backgroundColor: 'inherit',
       display: 'flex',
+      [theme.breakpoints.down('xs')]: {
+        marginTop: '4rem',
+        maxHeight: '7rem',
+        width: '7rem',
+      },
     },
     artDetail: {
       margin: '1rem',
       flex: '1',
       display: 'flex',
       minHeight: '10rem',
+      [theme.breakpoints.down('xs')]: {
+        display: 'none',
+      },
     },
     expand: {
       display: 'flex',
@@ -74,6 +122,54 @@ const useStyles = makeStyles(
         color: '#dbdada',
       },
     },
+    less: {
+      display: 'none',
+      [theme.breakpoints.down('xs')]: {
+        display: 'flex',
+        alignItems: 'center',
+        width: '7rem',
+        marginLeft: '-10%',
+        flex: '1',
+        alignItems: 'flex-end',
+        padding: '0',
+        marginTop: 'auto',
+        border: 'none',
+        boxShadow: '-10px 0px 18px 5px black',
+        background: 'inherit',
+        textTransform: 'capitalize',
+        '&:hover': {
+          background: 'black',
+          boxShadow: '-10px 0px 18px 5px black',
+        },
+        '& .MuiButton-label': {
+          color: `${theme.palette.primary.main}!important`,
+        },
+      },
+    },
+    more: {
+      display: 'none',
+      [theme.breakpoints.down('xs')]: {
+        display: 'flex',
+        alignItems: 'center',
+        width: '7rem',
+        marginLeft: '-10%',
+        flex: '1',
+        alignItems: 'flex-start',
+        padding: '0',
+        marginBottom: 'auto',
+        border: 'none',
+        boxShadow: '-10px 0px 18px 5px black',
+        background: 'inherit',
+        textTransform: 'capitalize',
+        '&:hover': {
+          background: 'black',
+          boxShadow: '-10px 0px 18px 5px black',
+        },
+        '& .MuiButton-label': {
+          color: `${theme.palette.primary.main}!important`,
+        },
+      },
+    },
     album: {
       marginBottom: '1em',
     },
@@ -81,8 +177,7 @@ const useStyles = makeStyles(
   { name: 'NDArtistPage' }
 )
 
-function ImgMediaCard({ artId, artist }) {
-  const classes = useStyles()
+function ImgMediaCard({ artId, artist, width }) {
   const [lastInfo, setlastInfo] = useState()
   const [expanded, setExpanded] = useState(false)
 
@@ -118,55 +213,99 @@ function ImgMediaCard({ artId, artist }) {
   const handleExpandClick = useCallback(() => {
     setExpanded(!expanded)
   }, [expanded, setExpanded])
+  const img = lastInfo?.largeImageUrl
+  const classes = useStyles({ img })
 
   return (
-    <div classsName={classes.root} style={{ display: 'flex' }}>
-      <Card className={classes.artImage}>
-        <CardMedia
-          className={classes.cover}
-          image={`${lastInfo?.mediumImageUrl}`}
-          title={title}
-        />
-      </Card>
-      <Card className={classes.artDetail}>
-        <div className={classes.details}>
-          <CardContent className={classes.content}>
+    <>
+      <div className={classes.root}>
+        <div className={classes.bgContainer}>
+          <Card className={classes.artImage}>
+            <CardMedia
+              className={classes.cover}
+              image={`${lastInfo?.mediumImageUrl}`}
+              title={title}
+            />
+          </Card>
+          <div className={classes.mdetails}>
             <Typography component="h5" variant="h5">
               {title}
             </Typography>
-            <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
-              <Typography variant={'body1'} onClick={handleExpandClick}>
-                {biography}
-                <Link href={lastLink} target="_blank" rel="nofollow">
-                  Read more...
-                </Link>
-              </Typography>
-            </Collapse>
-            {expanded ? (
-              <Button
-                variant="contained"
-                color="inherit"
-                className={classes.expand}
-                endIcon={<ExpandLessIcon />}
-                onClick={handleExpandClick}
-              >
-                Read less
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                color="inherit"
-                className={classes.expand}
-                endIcon={<ExpandMoreIcon />}
-                onClick={handleExpandClick}
-              >
-                Read More
-              </Button>
-            )}
-          </CardContent>
+          </div>
+          <Card className={classes.artDetail}>
+            <div className={classes.details}>
+              <CardContent className={classes.content}>
+                <Typography component="h5" variant="h5">
+                  {title}
+                </Typography>
+                <Collapse
+                  collapsedHeight={'1.5em'}
+                  in={expanded}
+                  timeout={'auto'}
+                >
+                  <Typography variant={'body1'} onClick={handleExpandClick}>
+                    {biography}
+                    <Link href={lastLink} target="_blank" rel="nofollow">
+                      Read more...
+                    </Link>
+                  </Typography>
+                </Collapse>
+                {expanded ? (
+                  <Button
+                    variant="contained"
+                    color="inherit"
+                    className={classes.expand}
+                    endIcon={<ExpandLessIcon />}
+                    onClick={handleExpandClick}
+                  >
+                    Read less
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    color="inherit"
+                    className={classes.expand}
+                    endIcon={<ExpandMoreIcon />}
+                    onClick={handleExpandClick}
+                  >
+                    Read More
+                  </Button>
+                )}
+              </CardContent>
+            </div>
+          </Card>
         </div>
-      </Card>
-    </div>
+      </div>
+      <div className={classes.mbio}>
+        <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
+          <Typography variant={'body1'} onClick={handleExpandClick}>
+            {biography}
+            <Link href={lastLink} target="_blank" rel="nofollow">
+              Read more...
+            </Link>
+          </Typography>
+        </Collapse>
+        {expanded ? (
+          <Button
+            variant="contained"
+            color="inherit"
+            className={classes.less}
+            onClick={handleExpandClick}
+          >
+            less
+          </Button>
+        ) : (
+          <Button
+            variant="contained"
+            color="inherit"
+            className={classes.more}
+            onClick={handleExpandClick}
+          >
+            More
+          </Button>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -192,7 +331,7 @@ const ArtistAlbum = ({ artId, width }) => {
 
   return (
     <>
-      <ImgMediaCard artId={artId} artist={artist[0]} />
+      <ImgMediaCard artId={artId} artist={artist[0]} width={width} />
       <div className={classes.iroot}>
         <div className={classes.album}>
           {artist.length +

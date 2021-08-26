@@ -110,7 +110,6 @@ const AlbumList = (props) => {
       return <Redirect to={`/album/${type}?${listParams.params}`} />
     }
   }
-  console.log(albumListType)
 
   return (
     <>

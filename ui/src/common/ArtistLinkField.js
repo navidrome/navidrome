@@ -1,16 +1,10 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { Link } from 'react-admin'
-// import { useAlbumsPerPage } from './index'
 import { withWidth } from '@material-ui/core'
 import ArtistView from './ArtistDetail'
 
 export const useGetHandleArtistClick = (width) => {
-  // const [perPage] = useAlbumsPerPage(width)
-
-  // return (id) => {
-  //   return `/album?filter={"artist_id":"${id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`
-  // }
   return (id) => {
     return `/iartist/${id}`
   }
@@ -19,14 +13,10 @@ export const useGetHandleArtistClick = (width) => {
 export const ArtistLinkField = withWidth()(({ record, className, width }) => {
   const artistLink = useGetHandleArtistClick(width)
 
-  const handleclick = (record) => {
-    ;<ArtistView artist={record.artistId} />
-  }
-
   return (
     <Link
       to={artistLink(record.albumArtistId)}
-      onClick={handleclick(record)}
+      onClick={(e) => e.stopPropagation()}
       className={className}
     >
       {record.albumArtist}
