@@ -18,8 +18,6 @@ import PropTypes from 'prop-types'
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore'
 import ExpandLessIcon from '@material-ui/icons/ExpandLess'
 import Button from '@material-ui/core/Button'
-import Paper from '@material-ui/core/Paper'
-import Fab from '@material-ui/core/Fab'
 
 import { AlbumGridTile } from '../album/AlbumGridView'
 import { getColsForWidth } from '../album/AlbumGridView'
@@ -126,7 +124,6 @@ const useStyles = makeStyles(
       display: 'none',
       [theme.breakpoints.down('xs')]: {
         display: 'flex',
-        alignItems: 'center',
         width: '7rem',
         marginLeft: '-10%',
         flex: '1',
@@ -150,7 +147,6 @@ const useStyles = makeStyles(
       display: 'none',
       [theme.breakpoints.down('xs')]: {
         display: 'flex',
-        alignItems: 'center',
         width: '7rem',
         marginLeft: '-10%',
         flex: '1',

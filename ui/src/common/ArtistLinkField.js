@@ -2,7 +2,6 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { Link } from 'react-admin'
 import { withWidth } from '@material-ui/core'
-import ArtistView from './ArtistDetail'
 
 export const useGetHandleArtistClick = (width) => {
   return (id) => {
