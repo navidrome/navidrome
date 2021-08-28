@@ -2,7 +2,6 @@ package metadata
 
 import (
 	"fmt"
-	"github.com/navidrome/navidrome/consts"
 	"math"
 	"os"
 	"path"
@@ -11,13 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
-
-	"github.com/navidrome/navidrome/scanner/metadata/taglib"
-
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
+	"github.com/navidrome/navidrome/scanner/metadata/taglib"
 )
 
 type Parser interface {
