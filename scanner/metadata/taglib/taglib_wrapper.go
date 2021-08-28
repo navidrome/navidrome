@@ -21,7 +21,7 @@ import (
 )
 
 func Read(filename string) (map[string][]string, error) {
-	fp := C.CString(filename)
+	fp := getFilename(filename)
 	defer C.free(unsafe.Pointer(fp))
 	id, m := newMap()
 	defer deleteMap(id)

@@ -10,13 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
-
-	"github.com/navidrome/navidrome/scanner/metadata/taglib"
-
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
+	"github.com/navidrome/navidrome/scanner/metadata/taglib"
 )
 
 type Parser interface {
@@ -32,8 +31,8 @@ func Extract(files ...string) (map[string]Tags, error) {
 	p, ok := parsers[conf.Server.Scanner.Extractor]
 	if !ok {
 		log.Warn("Invalid 'Scanner.Extractor' option. Using default", "requested", conf.Server.Scanner.Extractor,
-			"validOptions", "ffmpeg,taglib", "default", conf.DefaultScannerExtractor)
-		p = parsers[conf.DefaultScannerExtractor]
+			"validOptions", "ffmpeg,taglib", "default", consts.DefaultScannerExtractor)
+		p = parsers[consts.DefaultScannerExtractor]
 	}
 
 	extractedTags, err := p.Parse(files...)

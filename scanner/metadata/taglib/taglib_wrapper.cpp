@@ -17,7 +17,11 @@
 
 char has_cover(const TagLib::FileRef f);
 
+#ifdef WIN32
+int taglib_read(const wchar_t *filename, unsigned long id) {
+#else
 int taglib_read(const char *filename, unsigned long id) {
+#endif
   TagLib::FileRef f(filename, true, TagLib::AudioProperties::Fast);
 
   if (f.isNull()) {
