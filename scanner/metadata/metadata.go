@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"fmt"
+	"github.com/navidrome/navidrome/consts"
 	"math"
 	"os"
 	"path"
@@ -32,8 +33,8 @@ func Extract(files ...string) (map[string]Tags, error) {
 	p, ok := parsers[conf.Server.Scanner.Extractor]
 	if !ok {
 		log.Warn("Invalid 'Scanner.Extractor' option. Using default", "requested", conf.Server.Scanner.Extractor,
-			"validOptions", "ffmpeg,taglib", "default", conf.DefaultScannerExtractor)
-		p = parsers[conf.DefaultScannerExtractor]
+			"validOptions", "ffmpeg,taglib", "default", consts.DefaultScannerExtractor)
+		p = parsers[consts.DefaultScannerExtractor]
 	}
 
 	extractedTags, err := p.Parse(files...)

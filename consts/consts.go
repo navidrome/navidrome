@@ -47,6 +47,8 @@ const (
 	PlaceholderAvatar   = "logo-192x192.png"
 
 	DefaultHttpClientTimeOut = 10 * time.Second
+
+	DefaultScannerExtractor = "taglib"
 )
 
 // Cache options
