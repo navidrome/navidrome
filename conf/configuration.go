@@ -214,7 +214,7 @@ func init() {
 	viper.SetDefault("reverseproxyuserheader", "Remote-User")
 	viper.SetDefault("reverseproxywhitelist", "")
 
-	viper.SetDefault("scanner.extractor", DefaultScannerExtractor)
+	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
 
 	viper.SetDefault("agents", "lastfm,spotify")
