@@ -9,7 +9,7 @@ import {
   ArrayField,
   BooleanField,
   ChipField,
-  Datagrid,
+  // Datagrid,
   DateField,
   NumberField,
   SingleFieldList,
@@ -31,6 +31,7 @@ import {
   useSelectedFields,
 } from '../common'
 import config from '../config'
+import Datagrid from '../infiniteScroll/Datagrid'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -130,7 +131,12 @@ const AlbumTableView = ({
         <NumberField source="playCount" sortByOrder={'DESC'} />
       ),
       year: (
-        <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
+        <RangeField
+          source={'year'}
+          sortBy={'maxYear'}
+          sortByOrder={'DESC'}
+          dataKey={'maxYear'}
+        />
       ),
       duration: isDesktop && <DurationField source="duration" />,
       rating: config.enableStarRating && (
@@ -171,7 +177,12 @@ const AlbumTableView = ({
       )}
       tertiaryText={(r) => (
         <>
-          <RangeField record={r} source={'year'} sortBy={'maxYear'} />
+          <RangeField
+            record={r}
+            source={'year'}
+            sortBy={'maxYear'}
+            dataKey={'maxYear'}
+          />
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         </>
       )}
@@ -186,7 +197,7 @@ const AlbumTableView = ({
       classes={{ row: classes.row }}
       {...rest}
     >
-      <TextField source="name" />
+      <TextField source="name" flexgrow={0.75} width={200} />
       {columns}
       <AlbumContextMenu
         source={'starred'}

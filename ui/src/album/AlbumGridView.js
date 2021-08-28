@@ -1,6 +1,5 @@
 import React from 'react'
 import {
-  GridList,
   GridListTile,
   Typography,
   GridListTileBar,
@@ -18,12 +17,14 @@ import {
   ArtistLinkField,
   RangeField,
 } from '../common'
+import AlbumDatagrid from '../infiniteScroll/AlbumDatagrid'
 
 const useStyles = makeStyles(
   (theme) => ({
     root: {
       margin: '20px',
       display: 'grid',
+      height: 'calc(100% - 25px)',
     },
     tileBar: {
       transition: 'all 150ms ease-out',
@@ -97,29 +98,61 @@ const getColsForWidth = (width) => {
 }
 
 const Cover = withContentRect('bounds')(
-  ({ album, measureRef, contentRect }) => {
+  ({ album, isLoaded, measureRef, contentRect }) => {
     // Force height to be the same as the width determined by the GridList
     // noinspection JSSuspiciousNameCombination
     const classes = useCoverStyles({ height: contentRect.bounds.width })
     return (
       <div ref={measureRef}>
-        <img
-          src={subsonic.getCoverArtUrl(album, 300)}
-          alt={album.name}
-          className={classes.cover}
-        />
+        {isLoaded ? (
+          <img
+            src={subsonic.getCoverArtUrl(album, 300)}
+            alt={album.name}
+            className={classes.cover}
+          />
+        ) : (
+          <div
+            className={classes.cover}
+            style={{ backgroundColor: '#222', borderRadius: 4 }}
+          ></div>
+        )}
       </div>
     )
   }
 )
 
-const AlbumGridTile = ({ showArtist, record, basePath }) => {
+const AlbumGridTile = ({ showArtist, record, basePath, isLoaded }) => {
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'), {
     noSsr: true,
   })
-  if (!record) {
-    return null
+  if (!record || !isLoaded) {
+    return (
+      <div className={classes.albumContainer}>
+        <Cover album={record} isLoaded={false} />
+        <div
+          className={classes.albumName}
+          style={{
+            color: 'rgba(0,0,0,0)',
+            backgroundColor: '#222',
+            borderRadius: 4,
+          }}
+        >
+          Album Name
+        </div>
+        <div
+          className={classes.albumSubtitle}
+          style={{
+            color: 'rgba(0,0,0,0)',
+            backgroundColor: '#222',
+            borderRadius: 4,
+            marginTop: 10,
+          }}
+        >
+          Album Subtitle
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -128,7 +161,7 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
         className={classes.link}
         to={linkToRecord(basePath, record.id, 'show')}
       >
-        <Cover album={record} />
+        <Cover album={record} isLoaded={true} />
         <GridListTileBar
           className={isDesktop ? classes.tileBar : classes.tileBarMobile}
           subtitle={
@@ -156,43 +189,59 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
           sortBy={'maxYear'}
           sortByOrder={'DESC'}
           className={classes.albumSubtitle}
+          dataKey={'maxYear'}
         />
       )}
     </div>
   )
 }
 
-const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
-  const classes = useStyles()
-  const { filterValues } = useListContext()
-  const isArtistView = !!(filterValues && filterValues.artist_id)
+const AlbumGridView = withContentRect('bounds')(
+  ({
+    albumListType,
+    loaded,
+    loading,
+    basePath,
+    width,
+    measureRef,
+    contentRect,
+    ...props
+  }) => {
+    const classes = useStyles()
+    const { filterValues } = useListContext()
+    const isArtistView = !!(filterValues && filterValues.artist_id)
+    const hide =
+      (loading && albumListType === 'random') || !props.data || !props.ids
+    const columns = getColsForWidth(width)
 
-  return (
-    <div className={classes.root}>
-      <GridList
-        component={'div'}
-        cellHeight={'auto'}
-        cols={getColsForWidth(width)}
-        spacing={20}
-      >
-        {ids.map((id) => (
-          <GridListTile className={classes.gridListTile} key={id}>
-            <AlbumGridTile
-              record={data[id]}
-              basePath={basePath}
-              showArtist={!isArtistView}
-            />
-          </GridListTile>
-        ))}
-      </GridList>
-    </div>
-  )
-}
+    const tileImageHeight = contentRect.bounds.width / columns
+    const tileTextHeight = 40
 
-const AlbumGridView = ({ albumListType, loaded, loading, ...props }) => {
-  const hide =
-    (loading && albumListType === 'random') || !props.data || !props.ids
-  return hide ? <Loading /> : <LoadedAlbumGrid {...props} />
-}
+    return hide ? (
+      <Loading />
+    ) : (
+      <div ref={measureRef} className={classes.root}>
+        <AlbumDatagrid
+          columns={columns}
+          itemHeight={tileImageHeight + tileTextHeight || 300}
+        >
+          {({ isLoaded, record, itemIndex }) => (
+            <GridListTile
+              className={classes.gridListTile}
+              key={!!record ? record.id : itemIndex}
+            >
+              <AlbumGridTile
+                record={record}
+                basePath={basePath}
+                showArtist={!isArtistView}
+                isLoaded={isLoaded}
+              />
+            </GridListTile>
+          )}
+        </AlbumDatagrid>
+      </div>
+    )
+  }
+)
 
 export default withWidth()(AlbumGridView)

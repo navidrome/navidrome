@@ -1,7 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import Avatar from '@material-ui/core/Avatar'
-import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
 import ListItemAvatar from '@material-ui/core/ListItemAvatar'
 import ListItemIcon from '@material-ui/core/ListItemIcon'
@@ -9,7 +8,8 @@ import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
 import { Link } from 'react-router-dom'
-import { linkToRecord, sanitizeListRestProps } from 'react-admin'
+import { linkToRecord } from 'react-admin'
+import VirtualList from '../infiniteScroll/VirtualList'
 
 const useStyles = makeStyles(
   {
@@ -70,49 +70,56 @@ export const SimpleList = ({
   const classes = useStyles({ classes: classesOverride })
   return (
     (loading || total > 0) && (
-      <List className={className} {...sanitizeListRestProps(rest)}>
-        {ids.map((id) => (
-          <LinkOrNot
-            linkType={linkType}
-            basePath={basePath}
-            id={id}
-            key={id}
-            record={data[id]}
-          >
-            <ListItem button={!!linkType}>
-              {leftIcon && (
-                <ListItemIcon>{leftIcon(data[id], id)}</ListItemIcon>
-              )}
-              {leftAvatar && (
-                <ListItemAvatar>
-                  <Avatar>{leftAvatar(data[id], id)}</Avatar>
-                </ListItemAvatar>
-              )}
-              <ListItemText
-                primary={
-                  <div>
-                    {primaryText(data[id], id)}
-                    {tertiaryText && (
-                      <span className={classes.tertiary}>
-                        {tertiaryText(data[id], id)}
-                      </span>
+      <VirtualList
+        className={className}
+        renderItem={(record) =>
+          record && (
+            <LinkOrNot
+              linkType={linkType}
+              basePath={basePath}
+              id={record.id}
+              key={record.id}
+              record={record}
+            >
+              <ListItem button={!!linkType}>
+                {leftIcon && (
+                  <ListItemIcon>{leftIcon(record, record.id)}</ListItemIcon>
+                )}
+                {leftAvatar && (
+                  <ListItemAvatar>
+                    <Avatar>{leftAvatar(record, record.id)}</Avatar>
+                  </ListItemAvatar>
+                )}
+                <ListItemText
+                  primary={
+                    <div>
+                      {primaryText(record, record.id)}
+                      {tertiaryText && (
+                        <span className={classes.tertiary}>
+                          {tertiaryText(record, record.id)}
+                        </span>
+                      )}
+                    </div>
+                  }
+                  secondary={secondaryText && secondaryText(record, record.id)}
+                />
+                {(rightAvatar || rightIcon) && (
+                  <ListItemSecondaryAction>
+                    {rightAvatar && (
+                      <Avatar>{rightAvatar(record, record.id)}</Avatar>
                     )}
-                  </div>
-                }
-                secondary={secondaryText && secondaryText(data[id], id)}
-              />
-              {(rightAvatar || rightIcon) && (
-                <ListItemSecondaryAction>
-                  {rightAvatar && <Avatar>{rightAvatar(data[id], id)}</Avatar>}
-                  {rightIcon && (
-                    <ListItemIcon>{rightIcon(data[id], id)}</ListItemIcon>
-                  )}
-                </ListItemSecondaryAction>
-              )}
-            </ListItem>
-          </LinkOrNot>
-        ))}
-      </List>
+                    {rightIcon && (
+                      <ListItemIcon>
+                        {rightIcon(record, record.id)}
+                      </ListItemIcon>
+                    )}
+                  </ListItemSecondaryAction>
+                )}
+              </ListItem>
+            </LinkOrNot>
+          )
+        }
+      />
     )
   )
 }
