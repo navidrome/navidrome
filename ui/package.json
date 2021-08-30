@@ -30,7 +30,7 @@
     "react-jinke-music-player": "^4.24.0",
     "react-measure": "^2.5.2",
     "react-redux": "^7.2.4",
-    "react-router-dom": "^5.2.0",
+    "react-router-dom": "^5.2.1",
     "react-scripts": "^4.0.3",
     "redux": "^4.1.1",
     "redux-saga": "^1.1.3",
