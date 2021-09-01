@@ -359,6 +359,18 @@ export default {
         marginTop: '-50px',
       },
     },
+    NDArtistPage: {
+      bgContainer: {
+        background:
+          'linear-gradient(to bottom, rgb(255 255 255 / 51%), rgb(240 242 245))!important',
+      },
+      more: {
+        boxShadow: '-10px 0px 18px 5px #f0f2f5!important',
+      },
+      less: {
+        boxShadow: '-10px 0px 18px 5px #f0f2f5!important',
+      },
+    },
     RaLayout: {
       content: {
         padding: '0 !important',

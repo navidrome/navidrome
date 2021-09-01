@@ -71,6 +71,7 @@ const useStyles = makeStyles(
       [theme.breakpoints.down('xs')]: {
         display: 'flex',
         marginLeft: '3%',
+        marginRight: '3%',
         zIndex: '1',
       },
     },
@@ -123,9 +124,8 @@ const useStyles = makeStyles(
     less: {
       display: 'none',
       [theme.breakpoints.down('xs')]: {
-        display: 'flex',
+        display: ({ link }) => (link ? 'flex' : 'none'),
         width: '7rem',
-        marginLeft: '-10%',
         flex: '1',
         alignItems: 'flex-end',
         padding: '0',
@@ -146,9 +146,8 @@ const useStyles = makeStyles(
     more: {
       display: 'none',
       [theme.breakpoints.down('xs')]: {
-        display: 'flex',
+        display: ({ link }) => (link ? 'flex' : 'none'),
         width: '7rem',
-        marginLeft: '-10%',
         flex: '1',
         alignItems: 'flex-start',
         padding: '0',
@@ -162,7 +161,7 @@ const useStyles = makeStyles(
           boxShadow: '-10px 0px 18px 5px black',
         },
         '& .MuiButton-label': {
-          color: `${theme.palette.primary.main}!important`,
+          color: `${theme.palette.primary.main}`,
         },
       },
     },
@@ -202,7 +201,7 @@ function ImgMediaCard({ artId, artist, width }) {
     console.error('err on Artistpage', error)
   }
 
-  if (link !== undefined) {
+  if (link) {
     lastLink = link[2]
   }
 
@@ -210,7 +209,7 @@ function ImgMediaCard({ artId, artist, width }) {
     setExpanded(!expanded)
   }, [expanded, setExpanded])
   const img = lastInfo?.largeImageUrl
-  const classes = useStyles({ img })
+  const classes = useStyles({ img, link })
 
   return (
     <>
@@ -241,7 +240,12 @@ function ImgMediaCard({ artId, artist, width }) {
                 >
                   <Typography variant={'body1'} onClick={handleExpandClick}>
                     {biography}
-                    <Link href={lastLink} target="_blank" rel="nofollow">
+                    <Link
+                      href={lastLink}
+                      style={{ margin: '1px' }}
+                      target="_blank"
+                      rel="nofollow"
+                    >
                       Read more...
                     </Link>
                   </Typography>
