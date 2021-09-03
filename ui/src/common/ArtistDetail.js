@@ -323,7 +323,7 @@ const ArtistAlbum = ({ artId, width }) => {
             setartist(data.artist.album.map((s) => [...artist, { ...s }]))
           }
         })
-    }, [artId])
+    }, [])
   } catch (error) {
     console.error('err on ArtistDetail', error)
   }
