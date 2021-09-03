@@ -22,6 +22,8 @@ import Button from '@material-ui/core/Button'
 import { AlbumGridTile } from '../album/AlbumGridView'
 import { getColsForWidth } from '../album/AlbumGridView'
 import { useTranslate } from 'react-admin'
+import { useAlbumsPerPage } from '.'
+import { Redirect } from 'react-router'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -180,11 +182,14 @@ function ImgMediaCard({ artId, artist, width }) {
   const artistProps = props['0']
   var title = artistProps?.artist
   var lastLink = ''
-
   const link = lastInfo?.biography?.match(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
   )
   const biography = lastInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
+
+  const handleExpandClick = useCallback(() => {
+    setExpanded(!expanded)
+  }, [expanded, setExpanded])
 
   try {
     useEffect(() => {
@@ -205,9 +210,6 @@ function ImgMediaCard({ artId, artist, width }) {
     lastLink = link[2]
   }
 
-  const handleExpandClick = useCallback(() => {
-    setExpanded(!expanded)
-  }, [expanded, setExpanded])
   const img = lastInfo?.largeImageUrl
   const classes = useStyles({ img, link })
 
@@ -313,6 +315,7 @@ const ArtistAlbum = ({ artId, width }) => {
   const [artist, setartist] = useState([])
   const classes = useStyles()
   const translate = useTranslate()
+  const [perPage] = useAlbumsPerPage(width)
   try {
     useEffect(() => {
       subsonic
@@ -327,11 +330,16 @@ const ArtistAlbum = ({ artId, width }) => {
     }, [artId])
   } catch (error) {
     console.error('err on ArtistDetail', error)
+    return (
+      <Redirect
+        to={`/album?filter={"artist_id":"${artId}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`}
+      />
+    )
   }
 
   return (
     <>
-      <ImgMediaCard artId={artId} artist={artist[0]} width={width} />
+      <ImgMediaCard artId={artId} artist={artist[0]} width={perPage} />
       <div className={classes.iroot}>
         <div className={classes.album}>
           {artist.length +
