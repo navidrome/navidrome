@@ -323,7 +323,8 @@ const ArtistAlbum = ({ artId, width }) => {
             setartist(data.artist.album.map((s) => [...artist, { ...s }]))
           }
         })
-    })
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [artId])
   } catch (error) {
     console.error('err on ArtistDetail', error)
   }
