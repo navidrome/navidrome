@@ -6,7 +6,7 @@ import ArtistView from './common/ArtistDetail'
 const routes = [
   <Route exact path="/personal" render={() => <Personal />} />,
   <Route
-    path="/iartist/:id"
+    path="/artist/:id"
     render={(props) => (
       <>
         <ArtistView artist={props.match.params.id} />
