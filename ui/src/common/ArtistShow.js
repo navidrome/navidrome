@@ -371,7 +371,7 @@ const ArtistAlbum = ({ record, width }) => {
   )
 }
 
-const ArtistView = (props) => {
+const ArtistShow = (props) => {
   const { width } = props
   const controllerProps = useShowController(props)
   return (
@@ -381,8 +381,8 @@ const ArtistView = (props) => {
   )
 }
 
-ArtistView.propTypes = {
+ArtistShow.propTypes = {
   width: PropTypes.oneOf(['lg', 'md', 'sm', 'xl', 'xs']),
 }
 
-export default withWidth()(ArtistView)
+export default withWidth()(ArtistShow)
