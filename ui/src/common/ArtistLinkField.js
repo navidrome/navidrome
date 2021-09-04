@@ -5,7 +5,7 @@ import { withWidth } from '@material-ui/core'
 
 export const useGetHandleArtistClick = (width) => {
   return (id) => {
-    return `/artist/${id}`
+    return `/artist/${id}/show`
   }
 }
 

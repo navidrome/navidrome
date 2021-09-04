@@ -4,10 +4,10 @@ import {
   GridListTile,
   Typography,
   Collapse,
-  withWidth,
   Link,
 } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
+import withWidth from '@material-ui/core/withWidth'
 
 import subsonic from '../subsonic'
 
@@ -21,7 +21,11 @@ import Button from '@material-ui/core/Button'
 
 import { AlbumGridTile } from '../album/AlbumGridView'
 import { getColsForWidth } from '../album/AlbumGridView'
-import { useTranslate } from 'react-admin'
+import {
+  useTranslate,
+  useShowController,
+  ShowContextProvider,
+} from 'react-admin'
 import { useAlbumsPerPage } from '.'
 import { Redirect } from 'react-router'
 
@@ -174,7 +178,7 @@ const useStyles = makeStyles(
   { name: 'NDArtistPage' }
 )
 
-function ImgMediaCard({ artId, artist, width }) {
+function ImgMediaCard({ artId, artist }) {
   const [lastInfo, setlastInfo] = useState()
   const [expanded, setExpanded] = useState(false)
 
@@ -198,10 +202,11 @@ function ImgMediaCard({ artId, artist, width }) {
         .then((resp) => resp.json['subsonic-response'])
         .then((data) => {
           if (data.status === 'ok') {
+            console.log('data', data)
             setlastInfo(data.artistInfo)
           }
         })
-    }, [artId])
+    }, [artId, artist])
   } catch (error) {
     console.error('err on Artistpage', error)
   }
@@ -311,7 +316,7 @@ function ImgMediaCard({ artId, artist, width }) {
   )
 }
 
-const ArtistAlbum = ({ artId, width }) => {
+const ArtistAlbum = ({ record, width }) => {
   const [artist, setartist] = useState([])
   const classes = useStyles()
   const translate = useTranslate()
@@ -319,7 +324,7 @@ const ArtistAlbum = ({ artId, width }) => {
   try {
     useEffect(() => {
       subsonic
-        .getArtist(artId)
+        .getArtist(record?.id)
         .then((resp) => resp.json['subsonic-response'])
         .then((data) => {
           if (data.status === 'ok') {
@@ -327,19 +332,18 @@ const ArtistAlbum = ({ artId, width }) => {
           }
         })
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [artId])
+    }, [record])
   } catch (error) {
     console.error('err on ArtistDetail', error)
     return (
       <Redirect
-        to={`/album?filter={"artist_id":"${artId}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`}
+        to={`/album?filter={"artist_id":"${record?.id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`}
       />
     )
   }
-
   return (
     <>
-      <ImgMediaCard artId={artId} artist={artist[0]} width={perPage} />
+      <ImgMediaCard artId={record?.id} artist={artist[0]} />
       <div className={classes.iroot}>
         <div className={classes.album}>
           {artist.length +
@@ -367,8 +371,14 @@ const ArtistAlbum = ({ artId, width }) => {
   )
 }
 
-const ArtistView = ({ artist, width }) => {
-  return <ArtistAlbum artId={artist} width={width} />
+const ArtistView = (props) => {
+  const { width } = props
+  const controllerProps = useShowController(props)
+  return (
+    <ShowContextProvider value={controllerProps}>
+      <ArtistAlbum width={width} {...props} {...controllerProps} />
+    </ShowContextProvider>
+  )
 }
 
 ArtistView.propTypes = {
