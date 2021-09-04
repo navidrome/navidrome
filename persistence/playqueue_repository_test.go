@@ -42,13 +42,13 @@ var _ = Describe("PlayQueueRepository", func() {
 
 			By("Storing a new playqueue for the same user")
 
-			new := aPlayQueue("user1", songRadioactivity.ID, 321, songAntenna, songRadioactivity)
-			Expect(repo.Store(new)).To(BeNil())
+			another := aPlayQueue("user1", songRadioactivity.ID, 321, songAntenna, songRadioactivity)
+			Expect(repo.Store(another)).To(BeNil())
 
 			actual, err = repo.Retrieve("user1")
 			Expect(err).To(BeNil())
 
-			AssertPlayQueue(new, actual)
+			AssertPlayQueue(another, actual)
 			Expect(countPlayQueues(repo, "user1")).To(Equal(1))
 		})
 	})

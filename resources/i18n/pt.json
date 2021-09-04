@@ -76,7 +76,8 @@
                 "albumCount": "Total de Álbuns",
                 "songCount": "Total de Músicas",
                 "playCount": "Execuções",
-                "rating": "Classificação"
+                "rating": "Classificação",
+                "genre": "Gênero"
             }
         },
         "user": {
@@ -111,7 +112,8 @@
                 "client": "Cliente",
                 "userName": "Usuário",
                 "lastSeen": "Últ. acesso",
-                "reportRealPath": "Use paths reais"
+                "reportRealPath": "Use paths reais",
+                "scrobbleEnabled": "Enviar scrobbles para Last.fm"
             }
         },
         "transcoding": {
@@ -301,7 +303,11 @@
         "lastfmLinkSuccess": "Sua conta em Last.fm foi conectada com sucesso",
         "lastfmLinkFailure": "Sua conta em Last.fm não pode ser conectada",
         "lastfmUnlinkSuccess": "Sua conta em Last.fm foi desconectada",
-        "lastfmUnlinkFailure": "Sua conta em Last.fm não pode ser desconectada"
+        "lastfmUnlinkFailure": "Sua conta em Last.fm não pode ser desconectada",
+        "openIn": {
+            "lastfm": "Abrir em Last.fm",
+            "musicbrainz": "Abrir em MusicBrainz"
+        }
     },
     "menu": {
         "library": "Biblioteca",

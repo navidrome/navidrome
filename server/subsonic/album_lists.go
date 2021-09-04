@@ -62,7 +62,7 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (model.Albums, error
 
 	opts.Offset = utils.ParamInt(r, "offset", 0)
 	opts.Max = utils.MinInt(utils.ParamInt(r, "size", 10), 500)
-	albums, err := c.ds.Album(r.Context()).GetAll(model.QueryOptions(opts))
+	albums, err := c.ds.Album(r.Context()).GetAll(opts)
 
 	if err != nil {
 		log.Error(r, "Error retrieving albums", "error", err)
@@ -96,18 +96,18 @@ func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Reque
 
 func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	options := model.QueryOptions{Sort: "starred_at", Order: "desc"}
-	artists, err := c.ds.Artist(ctx).GetStarred(options)
+	options := filter.Starred()
+	artists, err := c.ds.Artist(ctx).GetAll(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred artists", "error", err)
 		return nil, err
 	}
-	albums, err := c.ds.Album(ctx).GetStarred(options)
+	albums, err := c.ds.Album(ctx).GetAll(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred albums", "error", err)
 		return nil, err
 	}
-	mediaFiles, err := c.ds.MediaFile(ctx).GetStarred(options)
+	mediaFiles, err := c.ds.MediaFile(ctx).GetAll(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred mediaFiles", "error", err)
 		return nil, err
@@ -196,5 +196,5 @@ func (c *AlbumListController) GetSongsByGenre(w http.ResponseWriter, r *http.Req
 func (c *AlbumListController) getSongs(ctx context.Context, offset, size int, opts filter.Options) (model.MediaFiles, error) {
 	opts.Offset = offset
 	opts.Max = size
-	return c.ds.MediaFile(ctx).GetAll(model.QueryOptions(opts))
+	return c.ds.MediaFile(ctx).GetAll(opts)
 }

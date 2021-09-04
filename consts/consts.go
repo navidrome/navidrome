@@ -47,6 +47,8 @@ const (
 	PlaceholderAvatar   = "logo-192x192.png"
 
 	DefaultHttpClientTimeOut = 10 * time.Second
+
+	DefaultScannerExtractor = "taglib"
 )
 
 // Cache options
@@ -85,9 +87,10 @@ var (
 )
 
 var (
-	VariousArtists   = "Various Artists"
-	VariousArtistsID = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(VariousArtists))))
-	UnknownArtist    = "[Unknown Artist]"
+	VariousArtists      = "Various Artists"
+	VariousArtistsID    = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(VariousArtists))))
+	UnknownArtist       = "[Unknown Artist]"
+	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
 	ServerStart = time.Now()
 )

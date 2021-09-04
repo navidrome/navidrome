@@ -2,7 +2,7 @@ package spotify
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,7 +12,7 @@ var _ = Describe("Responses", func() {
 	Describe("Search type=artist", func() {
 		It("parses the artist search result correctly ", func() {
 			var resp SearchResults
-			body, _ := ioutil.ReadFile("tests/fixtures/spotify.search.artist.json")
+			body, _ := os.ReadFile("tests/fixtures/spotify.search.artist.json")
 			err := json.Unmarshal(body, &resp)
 			Expect(err).To(BeNil())
 

@@ -10,7 +10,7 @@ endif
 
 CI_RELEASER_VERSION=1.16.4-1 ## https://github.com/navidrome/ci-goreleaser
 
-setup: check_env download-deps ##@1_Run_First Install dependencies and prepare development environment
+setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
 	@(cd ./ui && npm ci)
 .PHONY: setup

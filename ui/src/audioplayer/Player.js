@@ -51,6 +51,7 @@ const Player = () => {
       bounds: 'body',
       mode: 'full',
       loadAudioErrorPlayNext: false,
+      autoPlayInitLoadPlayList: true,
       clearPriorAudioLists: false,
       showDestroy: true,
       showDownload: false,
@@ -80,6 +81,7 @@ const Player = () => {
       ...defaultOptions,
       audioLists: playerState.queue.map((item) => item),
       playIndex: playerState.playIndex,
+      autoPlay: playerState.clear || playerState.playIndex === 0,
       clearPriorAudioLists: playerState.clear,
       extendsContent: <PlayerToolbar id={current.trackId} />,
       defaultVolume: playerState.volume,
@@ -103,7 +105,7 @@ const Player = () => {
       }
 
       if (!scrobbled) {
-        subsonic.scrobble(info.trackId, true, startTime)
+        info.trackId && subsonic.scrobble(info.trackId, startTime)
         setScrobbled(true)
       }
     },
@@ -118,9 +120,6 @@ const Player = () => {
 
   const onAudioPlay = useCallback(
     (info) => {
-      if (audioInstance) {
-        audioInstance.volume = playerState.volume
-      }
       dispatch(currentPlaying(info))
       setStartTime(Date.now())
       if (info.duration) {
@@ -144,7 +143,7 @@ const Player = () => {
         }
       }
     },
-    [dispatch, showNotifications, audioInstance, playerState.volume]
+    [dispatch, showNotifications]
   )
 
   const onAudioPause = useCallback(

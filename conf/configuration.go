@@ -74,7 +74,8 @@ type configOptions struct {
 }
 
 type scannerOptions struct {
-	Extractor string
+	Extractor       string
+	GenreSeparators string
 }
 
 type lastfmOptions struct {
@@ -102,12 +103,12 @@ func LoadFromFile(confFile string) {
 func Load() {
 	err := viper.Unmarshal(&Server)
 	if err != nil {
-		fmt.Println("Error parsing config:", err)
+		fmt.Println("FATAL: Error parsing config:", err)
 		os.Exit(1)
 	}
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
 	if err != nil {
-		fmt.Println("Error creating data path:", "path", Server.DataFolder, err)
+		fmt.Println("FATAL: Error creating data path:", "path", Server.DataFolder, err)
 		os.Exit(1)
 	}
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
@@ -153,7 +154,7 @@ func validateScanSchedule() error {
 			log.Warn("Setting ScanSchedule", "schedule", Server.ScanSchedule)
 		}
 	}
-	if Server.ScanSchedule == "" {
+	if Server.ScanSchedule == "0" || Server.ScanSchedule == "" {
 		return nil
 	}
 	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
@@ -213,7 +214,9 @@ func init() {
 	viper.SetDefault("reverseproxyuserheader", "Remote-User")
 	viper.SetDefault("reverseproxywhitelist", "")
 
-	viper.SetDefault("scanner.extractor", "taglib")
+	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
+	viper.SetDefault("scanner.genreseparators", ";/,")
+
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
@@ -230,7 +233,7 @@ func init() {
 	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
-	viper.SetDefault("devenablebufferedscrobble", false)
+	viper.SetDefault("devenablebufferedscrobble", true)
 }
 
 func InitConfig(cfgFile string) {
@@ -251,8 +254,8 @@ func InitConfig(cfgFile string) {
 	viper.AutomaticEnv()
 
 	err := viper.ReadInConfig()
-	if cfgFile != "" && err != nil {
-		fmt.Println("Navidrome could not open config file: ", err)
+	if viper.ConfigFileUsed() != "" && err != nil {
+		fmt.Println("FATAL: Navidrome could not open config file: ", err)
 		os.Exit(1)
 	}
 }

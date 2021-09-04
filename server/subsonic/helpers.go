@@ -110,7 +110,11 @@ func toArtistID3(ctx context.Context, a model.Artist) responses.ArtistID3 {
 func toGenres(genres model.Genres) *responses.Genres {
 	response := make([]responses.Genre, len(genres))
 	for i, g := range genres {
-		response[i] = responses.Genre(g)
+		response[i] = responses.Genre{
+			Name:       g.Name,
+			SongCount:  g.SongCount,
+			AlbumCount: g.AlbumCount,
+		}
 	}
 	return &responses.Genres{Genre: response}
 }

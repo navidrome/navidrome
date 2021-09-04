@@ -7,7 +7,7 @@ package taglib
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "taglib_parser.h"
+#include "taglib_wrapper.h"
 */
 import "C"
 import (
@@ -21,7 +21,7 @@ import (
 )
 
 func Read(filename string) (map[string][]string, error) {
-	fp := C.CString(filename)
+	fp := getFilename(filename)
 	defer C.free(unsafe.Pointer(fp))
 	id, m := newMap()
 	defer deleteMap(id)

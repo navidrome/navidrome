@@ -141,6 +141,7 @@ func (r *playlistRepository) loadTracks(pls *model.Playlist) error {
 	if err != nil {
 		log.Error("Error loading playlist tracks", "playlist", pls.Name, "id", pls.ID)
 	}
+	err = r.loadMediaFileGenres(&pls.Tracks)
 	return err
 }
 

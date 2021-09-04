@@ -10,7 +10,6 @@ import (
 	_ "image/gif"
 	_ "image/png"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -128,7 +127,7 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
-			reader, err = resources.Assets().Open(consts.PlaceholderAlbumArt)
+			reader, err = resources.FS.Open(consts.PlaceholderAlbumArt)
 		}
 	}()
 
@@ -215,7 +214,7 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 	// we use the whorfin branch of pixiv go-libjpeg because it directly handles NRGBA
 	buf := new(bytes.Buffer)
 	err = libjpegNRGBA.Encode(buf, m, &libjpegNRGBA.EncoderOptions{Quality: conf.Server.CoverJpegQuality})
-	return ioutil.NopCloser(buf), err
+	return io.NopCloser(buf), err
 }
 
 func readFromTag(path string) (io.ReadCloser, error) {
@@ -234,7 +233,7 @@ func readFromTag(path string) (io.ReadCloser, error) {
 	if picture == nil {
 		return nil, errors.New("file does not contain embedded art")
 	}
-	return ioutil.NopCloser(bytes.NewReader(picture.Data)), nil
+	return io.NopCloser(bytes.NewReader(picture.Data)), nil
 }
 
 func readFromFile(path string) (io.ReadCloser, error) {

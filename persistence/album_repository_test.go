@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -62,23 +61,6 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
-	Describe("GetStarred", func() {
-		It("returns all starred records", func() {
-			Expect(repo.GetStarred(model.QueryOptions{})).To(Equal(model.Albums{
-				albumRadioactivity,
-			}))
-		})
-	})
-
-	Describe("FindByArtist", func() {
-		It("returns all records from a given ArtistID", func() {
-			Expect(repo.FindByArtist("3")).To(Equal(model.Albums{
-				albumSgtPeppers,
-				albumAbbeyRoad,
-			}))
-		})
-	})
-
 	Describe("getMinYear", func() {
 		It("returns 0 when there's no valid year", func() {
 			Expect(getMinYear("a b c")).To(Equal(0))
@@ -106,7 +88,7 @@ var _ = Describe("AlbumRepository", func() {
 	})
 
 	Describe("getCoverFromPath", func() {
-		testFolder, _ := ioutil.TempDir("", "album_persistence_tests")
+		testFolder, _ := os.MkdirTemp("", "album_persistence_tests")
 		if err := os.MkdirAll(testFolder, 0777); err != nil {
 			panic(err)
 		}
