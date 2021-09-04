@@ -178,7 +178,7 @@ func resizeImage(reader io.Reader, size int, usePng bool) (io.ReadCloser, error)
 	}
 
 	buf := new(bytes.Buffer)
-	if usePng == true {
+	if usePng {
 		err = png.Encode(buf, m)
 	} else {
 		err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
