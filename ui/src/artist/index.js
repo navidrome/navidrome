@@ -3,7 +3,7 @@ import ArtistList from './ArtistList'
 import DynamicMenuIcon from '../layout/DynamicMenuIcon'
 import MicNoneOutlinedIcon from '@material-ui/icons/MicNoneOutlined'
 import MicIcon from '@material-ui/icons/Mic'
-import ArtistShow from '../common/ArtistDetail'
+import ArtistShow from '../common/ArtistShow'
 
 export default {
   list: ArtistList,
