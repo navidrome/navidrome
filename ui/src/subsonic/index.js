@@ -49,7 +49,10 @@ const getCoverArtUrl = (record, size) => {
     ...(record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
   }
-  return baseUrl(url('getCoverArt', record.coverArtId || 'not_found', options))
+  if (record.coverArtId)
+    return baseUrl(url('getCoverArt', record.coverArtId, options))
+  else
+    return baseUrl(url('getCoverArt', 'not_found', (size && { size })))
 }
 
 const streamUrl = (id) => {
