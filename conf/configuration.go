@@ -45,6 +45,7 @@ type configOptions struct {
 	EnableFavourites       bool
 	EnableStarRating       bool
 	EnableUserEditing      bool
+	EnableInfiniteScroll   bool
 	DefaultTheme           string
 	EnableCoverAnimation   bool
 	GATrackingID           string
