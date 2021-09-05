@@ -4,8 +4,9 @@ NODE_VERSION=$(shell cat .nvmrc)
 ifneq ("$(wildcard .git)","")
 GIT_SHA=$(shell git rev-parse --short HEAD)
 GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
-else ifneq ("$(wildcard .gitinfo)","")
-include .gitinfo
+else
+GIT_SHA=source_archive
+GIT_TAG=$(shell echo $${PWD##*-})
 endif
 
 CI_RELEASER_VERSION=1.16.4-1 ## https://github.com/navidrome/ci-goreleaser
@@ -95,11 +96,6 @@ single: ##@Cross_Compilation Build binaries for a single supported platforms. It
 
 ##########################################
 #### Miscellaneous
-
-.gitinfo:
-	@echo "export GIT_SHA=${GIT_SHA}" > .gitinfo
-	@echo "export GIT_TAG=${GIT_TAG}" >> .gitinfo
-.PHONY: .gitinfo
 
 release:
 	@if [[ ! "${V}" =~ ^[0-9]+\.[0-9]+\.[0-9]+.*$$ ]]; then echo "Usage: make release V=X.X.X"; exit 1; fi
