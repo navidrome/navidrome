@@ -6,7 +6,7 @@ GIT_SHA=$(shell git rev-parse --short HEAD)
 GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
 else
 GIT_SHA=source_archive
-GIT_TAG=$(shell echo $${PWD##*-})
+GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
 CI_RELEASER_VERSION=1.16.4-1 ## https://github.com/navidrome/ci-goreleaser
