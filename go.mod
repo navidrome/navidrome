@@ -9,7 +9,7 @@ require (
 	github.com/ReneKroon/ttlcache/v2 v2.8.0
 	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
-	github.com/cespare/reflex v0.3.0
+	github.com/cespare/reflex v0.3.1
 	github.com/deluan/rest v0.0.0-20210503015435-e7091d44f0ba
 	github.com/denisenkom/go-mssqldb v0.10.0 // indirect
 	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27
