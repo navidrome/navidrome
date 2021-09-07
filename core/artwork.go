@@ -8,6 +8,7 @@ import (
 	"image"
 	_ "image/gif"
 	"image/jpeg"
+	"image/png"
 	_ "image/png"
 	"io"
 	"os"
@@ -127,6 +128,12 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
 			reader, err = resources.FS.Open(consts.PlaceholderAlbumArt)
+
+			if size != 0 && err == nil {
+				var r io.ReadCloser
+				r, err = resources.FS.Open(consts.PlaceholderAlbumArt)
+				reader, err = resizeImage(r, size, true)
+			}
 		}
 	}()
 
@@ -149,13 +156,13 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 			return
 		}
 		defer r.Close()
-		reader, err = resizeImage(r, size)
+		reader, err = resizeImage(r, size, false)
 	}
 
 	return
 }
 
-func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
+func resizeImage(reader io.Reader, size int, usePng bool) (io.ReadCloser, error) {
 	img, _, err := image.Decode(reader)
 	if err != nil {
 		return nil, err
@@ -171,7 +178,11 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 	}
 
 	buf := new(bytes.Buffer)
-	err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
+	if usePng {
+		err = png.Encode(buf, m)
+	} else {
+		err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
+	}
 	return io.NopCloser(buf), err
 }
 
