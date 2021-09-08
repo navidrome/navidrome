@@ -4,8 +4,9 @@ NODE_VERSION=$(shell cat .nvmrc)
 ifneq ("$(wildcard .git)","")
 GIT_SHA=$(shell git rev-parse --short HEAD)
 GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
-else ifneq ("$(wildcard .gitinfo)","")
-include .gitinfo
+else
+GIT_SHA=source_archive
+GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
 CI_RELEASER_VERSION=1.16.4-1 ## https://github.com/navidrome/ci-goreleaser
@@ -69,6 +70,7 @@ buildall: buildjs build ##@Build Build the project, both frontend and backend
 .PHONY: buildall
 
 build: check_go_env  ##@Build Build only backend
+	@echo "WARNING: This command does not build the frontend, it uses the latest one built by 'make buildjs'"
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: build
 
@@ -77,11 +79,13 @@ buildjs: check_node_env ##@Build Build only frontend
 .PHONY: buildjs
 
 all: ##@Cross_Compilation Build binaries for all supported platforms. It does not build the frontend
+	@echo "WARNING: This command does not builds the frontend, it uses the latest one built by 'make buildjs'"
 	docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
  		goreleaser release --rm-dist --skip-publish --snapshot
 .PHONY: all
 
 single: ##@Cross_Compilation Build binaries for a single supported platforms. It does not build the frontend
+	@echo "WARNING: This command does not build the frontend, it uses the latest one built by 'make buildjs'"
 	@if [ -z "${GOOS}" -o -z "${GOARCH}" ]; then \
 		echo "Usage: GOOS=<os> GOARCH=<arch> make single"; \
 		echo "Options:"; \
@@ -95,11 +99,6 @@ single: ##@Cross_Compilation Build binaries for a single supported platforms. It
 
 ##########################################
 #### Miscellaneous
-
-.gitinfo:
-	@echo "export GIT_SHA=${GIT_SHA}" > .gitinfo
-	@echo "export GIT_TAG=${GIT_TAG}" >> .gitinfo
-.PHONY: .gitinfo
 
 release:
 	@if [[ ! "${V}" =~ ^[0-9]+\.[0-9]+\.[0-9]+.*$$ ]]; then echo "Usage: make release V=X.X.X"; exit 1; fi

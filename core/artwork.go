@@ -128,6 +128,12 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
 			reader, err = resources.FS.Open(consts.PlaceholderAlbumArt)
+
+			if size != 0 && err == nil {
+				var r io.ReadCloser
+				r, err = resources.FS.Open(consts.PlaceholderAlbumArt)
+				reader, err = resizeImage(r, size, true)
+			}
 		}
 	}()
 
@@ -150,7 +156,7 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 			return
 		}
 		defer r.Close()
-		reader, err = resizeImage(r, size)
+		reader, err = resizeImage(r, size, false)
 	}
 
 	return
@@ -183,7 +189,7 @@ func match(magic string, b []byte) bool {
 	return true
 }
 
-func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
+func resizeImage(reader io.Reader, size int, usePng bool) (io.ReadCloser, error) {
 	// Is this a jpeg?  If so, use pixiv [and requires libjpeg-turbo because we want RGBA]
 	//	libjpeg-turbo is far more tolerant than the golang builtin, and is what is used
 	//	by mozilla and chrome, so "what users expect"
@@ -213,7 +219,11 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 
 	// we use the whorfin branch of pixiv go-libjpeg because it directly handles NRGBA
 	buf := new(bytes.Buffer)
-	err = libjpegNRGBA.Encode(buf, m, &libjpegNRGBA.EncoderOptions{Quality: conf.Server.CoverJpegQuality})
+	if usePng {
+		err = png.Encode(buf, m)
+	} else {
+                err = libjpegNRGBA.Encode(buf, m, &libjpegNRGBA.EncoderOptions{Quality: conf.Server.CoverJpegQuality})
+	}
 	return io.NopCloser(buf), err
 }
 
