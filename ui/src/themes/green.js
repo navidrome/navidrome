@@ -35,9 +35,6 @@ export default {
       more: {
         boxShadow: '-10px 0px 18px 5px #303030!important',
       },
-      less: {
-        boxShadow: '-10px 0px 18px 5px #303030!important',
-      },
     },
   },
   player: {

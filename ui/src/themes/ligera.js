@@ -367,9 +367,6 @@ export default {
       more: {
         boxShadow: '-10px 0px 18px 5px #f0f2f5!important',
       },
-      less: {
-        boxShadow: '-10px 0px 18px 5px #f0f2f5!important',
-      },
     },
     RaLayout: {
       content: {

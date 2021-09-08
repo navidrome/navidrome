@@ -15,8 +15,6 @@ import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
 import PropTypes from 'prop-types'
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore'
-import ExpandLessIcon from '@material-ui/icons/ExpandLess'
 import Button from '@material-ui/core/Button'
 
 import { AlbumGridTile } from '../album/AlbumGridView'
@@ -26,6 +24,7 @@ import {
   useShowController,
   ShowContextProvider,
 } from 'react-admin'
+
 import { useAlbumsPerPage } from '.'
 import { Redirect } from 'react-router'
 
@@ -60,6 +59,7 @@ const useStyles = makeStyles(
     },
     details: {
       display: 'flex',
+      flex: '1',
       flexDirection: 'column',
     },
     mdetails: {
@@ -83,16 +83,34 @@ const useStyles = makeStyles(
     },
     content: {
       flex: '1 0 auto',
+      '& .MuiTypography-root': {
+        display: ({ expanded }) => (expanded ? 'block' : '-webkit-inline-box'),
+        boxOrient: 'vertical',
+        lineClamp: '3',
+      },
     },
     cover: {
       width: 151,
-      boxShadow: '1px 1px 20px 0px #565656',
+      boxShadow: '0px 0px 6px 0px #565656',
       borderRadius: '5px',
+      [theme.breakpoints.up('sm')]: {
+        borderRadius: '7em',
+      },
     },
-    artImage: {
-      marginTop: '1rem',
+    martImage: {
       marginLeft: '1em',
       maxHeight: '10rem',
+      backgroundColor: 'inherit',
+      display: 'none',
+      [theme.breakpoints.down('xs')]: {
+        marginTop: '4rem',
+        maxHeight: '7rem',
+        width: '7rem',
+        display: 'flex',
+      },
+    },
+    artImage: {
+      maxHeight: '9.5rem',
       backgroundColor: 'inherit',
       display: 'flex',
       [theme.breakpoints.down('xs')]: {
@@ -102,10 +120,14 @@ const useStyles = makeStyles(
       },
     },
     artDetail: {
-      margin: '1rem',
       flex: '1',
+      padding: '3%',
       display: 'flex',
       minHeight: '10rem',
+      '& .MuiPaper-elevation1': {
+        boxShadow: 'none',
+        padding: '4px',
+      },
       [theme.breakpoints.down('xs')]: {
         display: 'none',
       },
@@ -125,28 +147,6 @@ const useStyles = makeStyles(
         boxShadow: 'none',
         backgroundColor: 'inherit !important',
         color: '#dbdada',
-      },
-    },
-    less: {
-      display: 'none',
-      [theme.breakpoints.down('xs')]: {
-        display: ({ link }) => (link ? 'flex' : 'none'),
-        width: '7rem',
-        flex: '1',
-        alignItems: 'flex-end',
-        padding: '0',
-        marginTop: 'auto',
-        border: 'none',
-        boxShadow: '-10px 0px 18px 5px black',
-        background: 'inherit',
-        textTransform: 'capitalize',
-        '&:hover': {
-          background: 'black',
-          boxShadow: '-10px 0px 18px 5px black',
-        },
-        '& .MuiButton-label': {
-          color: `${theme.palette.primary.main}!important`,
-        },
       },
     },
     more: {
@@ -179,53 +179,49 @@ const useStyles = makeStyles(
 )
 
 function ImgMediaCard({ artId, artist }) {
-  const [lastInfo, setlastInfo] = useState()
+  const [artisteInfo, setartisteInfo] = useState()
   const [expanded, setExpanded] = useState(false)
 
   const props = { ...artist }
   const artistProps = props['0']
-  var title = artistProps?.artist
-  var lastLink = ''
-  const link = lastInfo?.biography?.match(
+  let title = artistProps?.artist
+  let lastLink = ''
+  const link = artisteInfo?.biography?.match(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
   )
-  const biography = lastInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
+  const biography = artisteInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
 
   const handleExpandClick = useCallback(() => {
     setExpanded(!expanded)
   }, [expanded, setExpanded])
 
-  try {
-    useEffect(() => {
-      subsonic
-        .getArtistInfo(artId)
-        .then((resp) => resp.json['subsonic-response'])
-        .then((data) => {
-          if (data.status === 'ok') {
-            console.log('data', data)
-            setlastInfo(data.artistInfo)
-          }
-        })
-    }, [artId, artist])
-  } catch (error) {
-    console.error('err on Artistpage', error)
-  }
+  useEffect(() => {
+    subsonic
+      .getArtistInfo(artId)
+      .then((resp) => resp.json['subsonic-response'])
+      .then((data) => {
+        if (data.status === 'ok') {
+          setartisteInfo(data.artistInfo)
+        }
+      })
+      .catch((e) => console.error('error on artist page', e))
+  }, [artId, artist])
 
   if (link) {
     lastLink = link[2]
   }
 
-  const img = lastInfo?.largeImageUrl
-  const classes = useStyles({ img, link })
+  const img = artisteInfo?.largeImageUrl
+  const classes = useStyles({ img, link, expanded })
 
   return (
     <>
       <div className={classes.root}>
         <div className={classes.bgContainer}>
-          <Card className={classes.artImage}>
+          <Card className={classes.martImage}>
             <CardMedia
               className={classes.cover}
-              image={`${lastInfo?.mediumImageUrl}`}
+              image={`${artisteInfo?.mediumImageUrl}`}
               title={title}
             />
           </Card>
@@ -235,13 +231,20 @@ function ImgMediaCard({ artId, artist }) {
             </Typography>
           </div>
           <Card className={classes.artDetail}>
+            <Card className={classes.artImage}>
+              <CardMedia
+                className={classes.cover}
+                image={`${artisteInfo?.mediumImageUrl}`}
+                title={title}
+              />
+            </Card>
             <div className={classes.details}>
               <CardContent className={classes.content}>
                 <Typography component="h5" variant="h5">
                   {title}
                 </Typography>
                 <Collapse
-                  collapsedHeight={'1.5em'}
+                  collapsedHeight={'4.5em'}
                   in={expanded}
                   timeout={'auto'}
                 >
@@ -257,27 +260,6 @@ function ImgMediaCard({ artId, artist }) {
                     </Link>
                   </Typography>
                 </Collapse>
-                {expanded ? (
-                  <Button
-                    variant="contained"
-                    color="inherit"
-                    className={classes.expand}
-                    endIcon={<ExpandLessIcon />}
-                    onClick={handleExpandClick}
-                  >
-                    Read less
-                  </Button>
-                ) : (
-                  <Button
-                    variant="contained"
-                    color="inherit"
-                    className={classes.expand}
-                    endIcon={<ExpandMoreIcon />}
-                    onClick={handleExpandClick}
-                  >
-                    Read More
-                  </Button>
-                )}
               </CardContent>
             </div>
           </Card>
@@ -292,16 +274,7 @@ function ImgMediaCard({ artId, artist }) {
             </Link>
           </Typography>
         </Collapse>
-        {expanded ? (
-          <Button
-            variant="contained"
-            color="inherit"
-            className={classes.less}
-            onClick={handleExpandClick}
-          >
-            less
-          </Button>
-        ) : (
+        {!expanded && (
           <Button
             variant="contained"
             color="inherit"
@@ -321,26 +294,26 @@ const ArtistAlbum = ({ record, width }) => {
   const classes = useStyles()
   const translate = useTranslate()
   const [perPage] = useAlbumsPerPage(width)
-  try {
-    useEffect(() => {
-      subsonic
-        .getArtist(record?.id)
-        .then((resp) => resp.json['subsonic-response'])
-        .then((data) => {
-          if (data.status === 'ok') {
-            setartist(data.artist.album.map((s) => [...artist, { ...s }]))
-          }
-        })
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [record])
-  } catch (error) {
-    console.error('err on ArtistDetail', error)
-    return (
-      <Redirect
-        to={`/album?filter={"artist_id":"${record?.id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`}
-      />
-    )
-  }
+  useEffect(() => {
+    subsonic
+      .getArtist(record?.id)
+      .then((resp) => resp.json['subsonic-response'])
+      .then((data) => {
+        if (data.status === 'ok') {
+          setartist(data.artist.album.map((s) => [...artist, { ...s }]))
+        }
+      })
+      .catch((e) => {
+        console.error('err on ArtistDetail', e)
+        return (
+          <Redirect
+            to={`/album?filter={"artist_id":"${record?.id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`}
+          />
+        )
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record])
+
   return (
     <>
       <ImgMediaCard artId={record?.id} artist={artist[0]} />

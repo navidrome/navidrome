@@ -54,9 +54,6 @@ export default {
       more: {
         boxShadow: '-10px 0px 18px 5px #fafafa!important',
       },
-      less: {
-        boxShadow: '-10px 0px 18px 5px #fafafa!important',
-      },
     },
   },
   player: {
