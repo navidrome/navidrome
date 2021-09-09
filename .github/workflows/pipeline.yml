@@ -10,7 +10,7 @@ on:
       - master
 jobs:
   golangci-lint:
-    name: Lint Server
+    name: Lint Go code
     runs-on: ubuntu-latest
     steps:
       - name: Install taglib
@@ -26,11 +26,11 @@ jobs:
           args: --timeout 2m
 
   go:
-    name: Test Server with Go ${{ matrix.go_version }}
+    name: Test with Go ${{ matrix.go_version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: [1.16.x]
+        go_version: [1.16.x, 1.17.x]
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
@@ -107,7 +107,7 @@ jobs:
           retention-days: 7
 
   binaries:
-    name: Binaries
+    name: Build binaries
     needs: [js, go, golangci-lint]
     runs-on: ubuntu-latest
     steps:
@@ -129,7 +129,7 @@ jobs:
 
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
-        uses: docker://deluan/ci-goreleaser:1.16.4-1
+        uses: docker://deluan/ci-goreleaser:1.17.0-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -137,7 +137,7 @@ jobs:
 
       - name: Run GoReleaser - RELEASE
         if: startsWith(github.ref, 'refs/tags/')
-        uses: docker://deluan/ci-goreleaser:1.16.4-1
+        uses: docker://deluan/ci-goreleaser:1.17.0-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -153,7 +153,7 @@ jobs:
           retention-days: 7
 
   docker:
-    name: Docker images
+    name: Build Docker images
     needs: [binaries]
     runs-on: ubuntu-latest
     env:
