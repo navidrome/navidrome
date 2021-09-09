@@ -23,7 +23,8 @@
                 "comment": "ความคิดเห็น",
                 "rating": "Rating",
                 "quality": "คุณภาพ",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": ""
             },
             "actions": {
                 "addToQueue": "เล่นหลังสุด",
@@ -75,7 +76,8 @@
                 "albumCount": "อัลบั้ม",
                 "songCount": "จำนวนเพลง",
                 "playCount": "เล่น",
-                "rating": "Rating"
+                "rating": "Rating",
+                "genre": "ประเภท"
             }
         },
         "user": {
@@ -110,7 +112,8 @@
                 "client": "Client",
                 "userName": "ชื่อผู้ใช้งาน",
                 "lastSeen": "ใช้งานล่าสุดเมื่อ",
-                "reportRealPath": "รายงาน Real Path"
+                "reportRealPath": "รายงาน Real Path",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -277,7 +280,14 @@
             "data_provider_error": "dataProviderผิดพลาด โปรดตรวจสอบคอนโซลเพื่อดูรายละเอียด",
             "i18n_error": "ไม่สามารถเรียกคำแปลของภาษาที่เลือกได้",
             "canceled": "ยกเลิกการกระทำแล้ว",
-            "logged_out": "เซสชั่นของท่านสิ้นสุดแล้ว โปรดเชื่อมต่ออีกครั้ง"
+            "logged_out": "เซสชั่นของท่านสิ้นสุดแล้ว โปรดเชื่อมต่ออีกครั้ง",
+            "new_version": ""
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "",
+            "layout": "",
+            "grid": "",
+            "table": ""
         }
     },
     "message": {
@@ -289,7 +299,15 @@
         "delete_user_title": "ลบผู้ใช้ '%{name}'",
         "delete_user_content": "คุณแน่ใจที่จะลบผู้ใช้นี้และข้อมูลทั้งหมด(รวมถึงเพลย์ลิสท์และตั้งค่าต่างๆ)?",
         "notifications_blocked": "คุณบล็อกการแจ้งเตือนสำหรับเว็บไซต์นี้",
-        "notifications_not_available": "เบราเซอร์นี้ไม่รองรับการแจ้งเตือน Desktop หรือคุณไม่ได้เข้าถึง Navidrome ผ่าน https"
+        "notifications_not_available": "เบราเซอร์นี้ไม่รองรับการแจ้งเตือน Desktop หรือคุณไม่ได้เข้าถึง Navidrome ผ่าน https",
+        "lastfmLinkSuccess": "",
+        "lastfmLinkFailure": "",
+        "lastfmUnlinkSuccess": "",
+        "lastfmUnlinkFailure": "",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        }
     },
     "menu": {
         "library": "ไลบรารี่",
@@ -302,7 +320,8 @@
                 "theme": "ธีม",
                 "language": "ภาษา",
                 "defaultView": "หน้าเริ่มต้น",
-                "desktop_notifications": "การแจ่งเตือน Desktop"
+                "desktop_notifications": "การแจ่งเตือน Desktop",
+                "lastfmScrobbling": ""
             }
         },
         "albumList": "อัลบั้ม",

@@ -46,10 +46,10 @@ func (db *MockDataStore) MediaFolder(context.Context) model.MediaFolderRepositor
 }
 
 func (db *MockDataStore) Genre(context.Context) model.GenreRepository {
-	if db.MockedGenre != nil {
-		return db.MockedGenre
+	if db.MockedGenre == nil {
+		db.MockedGenre = &MockedGenreRepo{}
 	}
-	return struct{ model.GenreRepository }{}
+	return db.MockedGenre
 }
 
 func (db *MockDataStore) Playlist(context.Context) model.PlaylistRepository {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
 import { makeStyles } from '@material-ui/core'
+import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
 import ViewListIcon from '@material-ui/icons/ViewList'
@@ -11,6 +12,20 @@ import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
 
 const useStyles = makeStyles((theme) => ({
+  root: {
+    marginTop: theme.spacing(1),
+    marginBottom: theme.spacing(1),
+    transition: theme.transitions.create('width', {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.leavingScreen,
+    }),
+  },
+  open: {
+    width: 200,
+  },
+  closed: {
+    width: 55,
+  },
   active: {
     color: theme.palette.text.primary,
     fontWeight: 'bold',
@@ -90,7 +105,12 @@ const Menu = ({ onMenuClick, dense }) => {
     resource.hasList && resource.options && resource.options.subMenu === subMenu
 
   return (
-    <div>
+    <div
+      className={clsx(classes.root, {
+        [classes.open]: open,
+        [classes.closed]: !open,
+      })}
+    >
       <SubMenu
         handleToggle={() => handleToggle('menuAlbumList')}
         isOpen={state.menuAlbumList}

@@ -17,7 +17,11 @@
 
 char has_cover(const TagLib::FileRef f);
 
+#ifdef WIN32
+int taglib_read(const wchar_t *filename, unsigned long id) {
+#else
 int taglib_read(const char *filename, unsigned long id) {
+#endif
   TagLib::FileRef f(filename, true, TagLib::AudioProperties::Fast);
 
   if (f.isNull()) {
@@ -31,6 +35,7 @@ int taglib_read(const char *filename, unsigned long id) {
   // Add audio properties to the tags
   const TagLib::AudioProperties *props(f.audioProperties());
   go_map_put_int(id, (char *)"duration", props->length());
+  go_map_put_int(id, (char *)"lengthinmilliseconds", props->lengthInMilliseconds());
   go_map_put_int(id, (char *)"bitrate", props->bitrate());
 
   TagLib::PropertyMap tags = f.file()->properties();
