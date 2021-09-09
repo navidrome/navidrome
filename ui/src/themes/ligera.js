@@ -426,6 +426,9 @@ export default {
       },
     },
     RaSidebar: {
+      root: {
+        height: 'initial'
+      },
       drawerPaper: {
         '@media (min-width: 0px) and (max-width: 599.95px)': {
           backgroundColor: `${bLight['500']} !important`,
