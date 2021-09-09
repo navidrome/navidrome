@@ -427,7 +427,7 @@ export default {
     },
     RaSidebar: {
       root: {
-        height: 'initial'
+        height: 'initial',
       },
       drawerPaper: {
         '@media (min-width: 0px) and (max-width: 599.95px)': {

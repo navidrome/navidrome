@@ -328,9 +328,9 @@ export default {
     },
     RaSidebar: {
       root: {
-        height: 'initial'
-      }
-    }
+        height: 'initial',
+      },
+    },
   },
   player: {
     theme: 'dark',
