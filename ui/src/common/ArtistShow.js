@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useContext } from 'react'
 import {
   GridList,
   GridListTile,
@@ -23,9 +23,8 @@ import {
   useTranslate,
   useShowController,
   ShowContextProvider,
+  DataProviderContext,
 } from 'react-admin'
-
-import { useAlbumsPerPage } from '.'
 import { Redirect } from 'react-router'
 
 const useStyles = makeStyles(
@@ -132,23 +131,6 @@ const useStyles = makeStyles(
         display: 'none',
       },
     },
-    expand: {
-      display: 'flex',
-      padding: '0',
-      boxShadow: 'none',
-      backgroundColor: 'inherit',
-      fontSize: '0.77rem',
-      color: '#a0a0a0',
-      border: 'none',
-      '& .MuiButton-label': {
-        display: 'contents',
-      },
-      '&.MuiButton-contained:hover': {
-        boxShadow: 'none',
-        backgroundColor: 'inherit !important',
-        color: '#dbdada',
-      },
-    },
     more: {
       display: 'none',
       [theme.breakpoints.down('xs')]: {
@@ -182,9 +164,7 @@ function ImgMediaCard({ artId, artist }) {
   const [artisteInfo, setartisteInfo] = useState()
   const [expanded, setExpanded] = useState(false)
 
-  const props = { ...artist }
-  const artistProps = props['0']
-  let title = artistProps?.artist
+  let title = artist?.artist
   let lastLink = ''
   const link = artisteInfo?.biography?.match(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
@@ -204,7 +184,15 @@ function ImgMediaCard({ artId, artist }) {
           setartisteInfo(data.artistInfo)
         }
       })
-      .catch((e) => console.error('error on artist page', e))
+      .catch((e) => {
+        console.error('error on artist page', e)
+        return (
+          <Redirect
+            to={`/album?filter={"artist_id":"${artId}"}&order=ASC&sort=maxYear&
+              displayedFilters={"compilation":true}`}
+          />
+        )
+      })
   }, [artId, artist])
 
   if (link) {
@@ -291,28 +279,29 @@ function ImgMediaCard({ artId, artist }) {
 
 const ArtistAlbum = ({ record, width }) => {
   const [artist, setartist] = useState([])
+
   const classes = useStyles()
   const translate = useTranslate()
-  const [perPage] = useAlbumsPerPage(width)
+
+  const datas = useContext(DataProviderContext)
   useEffect(() => {
-    subsonic
-      .getArtist(record?.id)
-      .then((resp) => resp.json['subsonic-response'])
-      .then((data) => {
-        if (data.status === 'ok') {
-          setartist(data.artist.album.map((s) => [...artist, { ...s }]))
+    const payload = {
+      pagination: { page: 1, perPage: 12 },
+      sort: { field: 'name', order: 'ASC' },
+      filter: { artist_id: record?.id },
+    }
+
+    datas
+      .getList('album', payload)
+      .then(({ data }) => {
+        if (record) {
+          setartist(data)
         }
       })
       .catch((e) => {
-        console.error('err on ArtistDetail', e)
-        return (
-          <Redirect
-            to={`/album?filter={"artist_id":"${record?.id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`}
-          />
-        )
+        console.error('err', e)
       })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [record])
+  }, [record, datas])
 
   return (
     <>
@@ -330,9 +319,9 @@ const ArtistAlbum = ({ record, width }) => {
           spacing={20}
         >
           {artist.map((artist) => (
-            <GridListTile className={classes.gridListTile} key={artist[0].id}>
+            <GridListTile className={classes.gridListTile} key={artist.id}>
               <AlbumGridTile
-                record={artist[0]}
+                record={artist}
                 basePath={'/album'}
                 showArtist={true}
               />
