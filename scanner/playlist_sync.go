@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +26,7 @@ func newPlaylistSync(ds model.DataStore) *playlistSync {
 
 func (s *playlistSync) processPlaylists(ctx context.Context, dir string) int64 {
 	var count int64
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		log.Error(ctx, "Error reading files", "dir", dir, err)
 		return count
@@ -82,6 +82,10 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 		// Skip extended info
 		if strings.HasPrefix(path, "#") {
 			continue
+		}
+		if strings.HasPrefix(path, "file://") {
+			path = strings.TrimPrefix(path, "file://")
+			path, _ = url.QueryUnescape(path)
 		}
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(baseDir, path)

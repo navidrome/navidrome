@@ -243,9 +243,9 @@ type Starred struct {
 
 type NowPlayingEntry struct {
 	Child
-	UserName   string `xml:"username,attr"                        json:"username,omitempty"`
-	MinutesAgo int    `xml:"minutesAgo,attr"                      json:"minutesAgo,omitempty"`
-	PlayerId   int    `xml:"playerId,attr"                        json:"playerId,omitempty"`
+	UserName   string `xml:"username,attr"                        json:"username"`
+	MinutesAgo int    `xml:"minutesAgo,attr"                      json:"minutesAgo"`
+	PlayerId   int    `xml:"playerId,attr"                        json:"playerId"`
 	PlayerName string `xml:"playerName,attr"                      json:"playerName,omitempty"`
 }
 
@@ -328,7 +328,7 @@ type PlayQueue struct {
 }
 
 type Bookmark struct {
-	Entry    []Child   `xml:"entry,omitempty"         json:"entry,omitempty"`
+	Entry    Child     `xml:"entry,omitempty"         json:"entry,omitempty"`
 	Position int64     `xml:"position,attr,omitempty" json:"position,omitempty"`
 	Username string    `xml:"username,attr"           json:"username"`
 	Comment  string    `xml:"comment,attr"            json:"comment"`

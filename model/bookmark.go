@@ -3,7 +3,7 @@ package model
 import "time"
 
 type Bookmarkable struct {
-	BookmarkPosition int64 `json:"bookmarkPosition"`
+	BookmarkPosition int64 `structs:"-" json:"bookmarkPosition"`
 }
 
 type BookmarkableRepository interface {
@@ -13,16 +13,12 @@ type BookmarkableRepository interface {
 }
 
 type Bookmark struct {
-	Item      MediaFile `json:"item"`
-	Comment   string    `json:"comment"`
-	Position  int64     `json:"position"`
-	ChangedBy string    `json:"changed_by"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Item      MediaFile `structs:"item" json:"item"`
+	Comment   string    `structs:"comment" json:"comment"`
+	Position  int64     `structs:"position" json:"position"`
+	ChangedBy string    `structs:"changed_by" json:"changed_by"`
+	CreatedAt time.Time `structs:"created_at" json:"createdAt"`
+	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"`
 }
 
 type Bookmarks []Bookmark
-
-// While I can't find a better way to make these fields optional in the models, I keep this list here
-// to be used in other packages
-var BookmarkFields = []string{"bookmarkPosition"}

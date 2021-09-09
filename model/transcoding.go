@@ -1,11 +1,11 @@
 package model
 
 type Transcoding struct {
-	ID             string `json:"id"            orm:"column(id)"`
-	Name           string `json:"name"`
-	TargetFormat   string `json:"targetFormat"`
-	Command        string `json:"command"`
-	DefaultBitRate int    `json:"defaultBitRate"`
+	ID             string `structs:"id" json:"id"            orm:"column(id)"`
+	Name           string `structs:"name" json:"name"`
+	TargetFormat   string `structs:"target_format" json:"targetFormat"`
+	Command        string `structs:"command" json:"command"`
+	DefaultBitRate int    `structs:"default_bit_rate" json:"defaultBitRate"`
 }
 
 type Transcodings []Transcoding

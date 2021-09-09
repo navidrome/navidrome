@@ -20,7 +20,11 @@
                 "bitRate": "位元率",
                 "discSubtitle": "光盤字幕",
                 "starred": "收藏",
-                "comment": "註釋"
+                "comment": "註釋",
+                "rating": "評分",
+                "quality": "品質",
+                "bpm": "",
+                "playDate": ""
             },
             "actions": {
                 "addToQueue": "加入至播放佇列",
@@ -44,7 +48,8 @@
                 "compilation": "合輯",
                 "year": "發行年份",
                 "updatedAt": "更新於",
-                "comment": "註釋"
+                "comment": "註釋",
+                "rating": "評分"
             },
             "actions": {
                 "playAll": "立即播放",
@@ -60,7 +65,8 @@
                 "recentlyAdded": "最近加入",
                 "recentlyPlayed": "最近播放",
                 "mostPlayed": "最多播放的",
-                "starred": "收藏"
+                "starred": "收藏",
+                "topRated": "最高評分"
             }
         },
         "artist": {
@@ -69,7 +75,9 @@
                 "name": "名稱",
                 "albumCount": "專輯數",
                 "songCount": "歌曲數",
-                "playCount": "播放次數"
+                "playCount": "播放次數",
+                "rating": "評分",
+                "genre": "類型"
             }
         },
         "user": {
@@ -81,7 +89,18 @@
                 "updatedAt": "更新於",
                 "name": "名稱",
                 "password": "密碼",
-                "createdAt": "創建於"
+                "createdAt": "創建於",
+                "changePassword": "",
+                "currentPassword": "",
+                "newPassword": ""
+            },
+            "helperTexts": {
+                "name": ""
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
             }
         },
         "player": {
@@ -93,7 +112,8 @@
                 "client": "用戶端",
                 "userName": "使用者名稱",
                 "lastSeen": "上次瀏覽",
-                "reportRealPath": "回報實際路徑"
+                "reportRealPath": "回報實際路徑",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -123,6 +143,10 @@
                 "selectPlaylist": "選擇播放清單",
                 "addNewPlaylist": "創建 %{name}",
                 "export": "導出"
+            },
+            "message": {
+                "duplicate_song": "加入重複的歌曲",
+                "song_exist": "有重複歌曲正在播放清單裡。 您要加入或略過重複歌曲?"
             }
         }
     },
@@ -151,7 +175,8 @@
             "number": "必須為數字",
             "email": "必須是有效的電子信箱",
             "oneOf": "必須為: %{options}其中一項",
-            "regex": "必須符合指定的格式 (正則表達式): %{pattern}"
+            "regex": "必須符合指定的格式 (正則表達式): %{pattern}",
+            "unique": ""
         },
         "action": {
             "add_filter": "加入篩選",
@@ -179,7 +204,8 @@
             "close": "關閉",
             "open_menu": "打開選單",
             "close_menu": "關閉選單",
-            "unselect": "未選擇"
+            "unselect": "未選擇",
+            "skip": "略過"
         },
         "boolean": {
             "true": "是",
@@ -254,7 +280,14 @@
             "data_provider_error": "dataProvider錯誤. 請檢查console的詳細訊息.",
             "i18n_error": "無法載入所選語言",
             "canceled": "操作已取消",
-            "logged_out": "您的Session已結束，請重新登入。"
+            "logged_out": "您的Session已結束，請重新登入。",
+            "new_version": ""
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "",
+            "layout": "",
+            "grid": "",
+            "table": ""
         }
     },
     "message": {
@@ -266,7 +299,15 @@
         "delete_user_title": "刪除使用者 ％{name}",
         "delete_user_content": "您確定要刪除該使用者及其相關數據（包括播放清單和使用者配置）嗎？",
         "notifications_blocked": "您已在瀏覽器的設置中封鎖了此網站的通知",
-        "notifications_not_available": "此瀏覽器不支援桌面通知"
+        "notifications_not_available": "此瀏覽器不支援桌面通知",
+        "lastfmLinkSuccess": "",
+        "lastfmLinkFailure": "",
+        "lastfmUnlinkSuccess": "",
+        "lastfmUnlinkFailure": "",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        }
     },
     "menu": {
         "library": "音樂庫",
@@ -279,7 +320,8 @@
                 "theme": "主題",
                 "language": "語言",
                 "defaultView": "預設畫面",
-                "desktop_notifications": "桌面通知"
+                "desktop_notifications": "桌面通知",
+                "lastfmScrobbling": ""
             }
         },
         "albumList": "專輯",
@@ -298,7 +340,7 @@
         "volumeText": "音量",
         "toggleLyricText": "切換歌詞",
         "toggleMiniModeText": "最小化",
-        "destroyText": "削除",
+        "destroyText": "銷毀",
         "downloadText": "下載",
         "removeAudioListsText": "清空播放佇列",
         "clickToDeleteText": "點擊删除 %{name}",
@@ -335,7 +377,7 @@
             "next_song": "下一首歌",
             "vol_up": "提高音量",
             "vol_down": "降低音量",
-            "toggle_star": "添加或移除星標"
+            "toggle_love": "添加或移除星標"
         }
     }
 }

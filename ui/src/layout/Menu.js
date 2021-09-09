@@ -1,15 +1,36 @@
-import React, { useState, createElement } from 'react'
+import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { useMediaQuery } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core'
+import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
-import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
+
+const useStyles = makeStyles((theme) => ({
+  root: {
+    marginTop: theme.spacing(1),
+    marginBottom: theme.spacing(1),
+    transition: theme.transitions.create('width', {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.leavingScreen,
+    }),
+  },
+  open: {
+    width: 200,
+  },
+  closed: {
+    width: 55,
+  },
+  active: {
+    color: theme.palette.text.primary,
+    fontWeight: 'bold',
+  },
+}))
 
 const translatedResourceName = (resource, translate) =>
   translate(`resources.${resource.name}.name`, {
@@ -23,10 +44,10 @@ const translatedResourceName = (resource, translate) =>
         : inflection.humanize(inflection.pluralize(resource.name)),
   })
 
-const Menu = ({ onMenuClick, dense, logout }) => {
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+const Menu = ({ onMenuClick, dense }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
+  const classes = useStyles()
   const resources = useSelector(getResources)
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
@@ -44,10 +65,9 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     <MenuItemLink
       key={resource.name}
       to={`/${resource.name}`}
+      activeClassName={classes.active}
       primaryText={translatedResourceName(resource, translate)}
-      leftIcon={
-        (resource.icon && createElement(resource.icon)) || <ViewListIcon />
-      }
+      leftIcon={resource.icon || <ViewListIcon />}
       onClick={onMenuClick}
       sidebarIsOpen={open}
       dense={dense}
@@ -70,8 +90,9 @@ const Menu = ({ onMenuClick, dense, logout }) => {
       <MenuItemLink
         key={albumListAddress}
         to={albumListAddress}
+        activeClassName={classes.active}
         primaryText={name}
-        leftIcon={(al.icon && createElement(al.icon)) || <ViewListIcon />}
+        leftIcon={al.icon || <ViewListIcon />}
         onClick={onMenuClick}
         sidebarIsOpen={open}
         dense={dense}
@@ -84,7 +105,12 @@ const Menu = ({ onMenuClick, dense, logout }) => {
     resource.hasList && resource.options && resource.options.subMenu === subMenu
 
   return (
-    <div>
+    <div
+      className={clsx(classes.root, {
+        [classes.open]: open,
+        [classes.closed]: !open,
+      })}
+    >
       <SubMenu
         handleToggle={() => handleToggle('menuAlbumList')}
         isOpen={state.menuAlbumList}
@@ -97,18 +123,7 @@ const Menu = ({ onMenuClick, dense, logout }) => {
           renderAlbumMenuItemLink(type, albumLists[type])
         )}
       </SubMenu>
-      <SubMenu
-        handleToggle={() => handleToggle('menuLibrary')}
-        isOpen={state.menuLibrary}
-        sidebarIsOpen={open}
-        name="menu.library"
-        icon={<LibraryMusicIcon />}
-        dense={dense}
-      >
-        {resources.filter(subItems('library')).map(renderResourceMenuItemLink)}
-      </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
-      {isXsmall && logout}
       <HelpDialog />
     </div>
   )

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/model"
@@ -37,11 +36,12 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(w.Body.String()).To(Equal(artwork.data))
 		})
 
-		It("should fail if missing id parameter", func() {
+		It("should return placeholder if id parameter is missing (mimicking Subsonic)", func() {
 			r := newGetRequest()
 			_, err := controller.GetCoverArt(w, r)
 
-			Expect(err).To(MatchError("required 'id' parameter is missing"))
+			Expect(err).To(BeNil())
+			Expect(w.Body.String()).To(Equal(artwork.data))
 		})
 
 		It("should fail when the file is not found", func() {
@@ -75,5 +75,5 @@ func (c *fakeArtwork) Get(ctx context.Context, id string, size int) (io.ReadClos
 	}
 	c.recvId = id
 	c.recvSize = size
-	return ioutil.NopCloser(bytes.NewReader([]byte(c.data))), nil
+	return io.NopCloser(bytes.NewReader([]byte(c.data))), nil
 }

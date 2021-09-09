@@ -7,10 +7,9 @@ import Card from '@material-ui/core/Card'
 import CardActions from '@material-ui/core/CardActions'
 import CircularProgress from '@material-ui/core/CircularProgress'
 import TextField from '@material-ui/core/TextField'
-import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
-import { ThemeProvider } from '@material-ui/styles'
-import Logo from '../icons/android-icon-72x72.png'
-import { useLogin, useNotify, useTranslate } from 'react-admin'
+import { ThemeProvider, makeStyles } from '@material-ui/core/styles'
+import { createMuiTheme, useLogin, useNotify, useTranslate } from 'react-admin'
+import Logo from '../icons/android-icon-192x192.png'
 
 import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
@@ -33,14 +32,18 @@ const useStyles = makeStyles(
     card: {
       minWidth: 300,
       marginTop: '6em',
+      overflow: 'visible',
     },
     avatar: {
       margin: '1em',
       display: 'flex',
       justifyContent: 'center',
+      marginTop: '-3em',
     },
     icon: {
-      width: '40px',
+      backgroundColor: 'transparent',
+      width: '6.3em',
+      height: '6.3em',
     },
     systemName: {
       marginTop: '1em',
@@ -53,6 +56,7 @@ const useStyles = makeStyles(
       padding: '0 1em 1em 1em',
       display: 'flex',
       justifyContent: 'center',
+      flexWrap: 'wrap',
       color: '#3f51b5', //theme.palette.grey[500]
     },
     form: {
@@ -64,7 +68,10 @@ const useStyles = makeStyles(
     actions: {
       padding: '0 1em 1em 1em',
     },
-    systemNameLink: {},
+    button: {},
+    systemNameLink: {
+      textDecoration: 'none',
+    },
   }),
   { name: 'NDLogin' }
 )

@@ -67,3 +67,9 @@ func booleanFilter(field string, value interface{}) Sqlizer {
 func fullTextFilter(field string, value interface{}) Sqlizer {
 	return fullTextExpr(value.(string))
 }
+
+func idFilter(tableName string) func(string, interface{}) Sqlizer {
+	return func(field string, value interface{}) Sqlizer {
+		return Eq{tableName + ".id": value}
+	}
+}

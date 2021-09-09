@@ -27,6 +27,20 @@ var _ = Describe("Request Helpers", func() {
 		})
 	})
 
+	Describe("ParamStringDefault", func() {
+		BeforeEach(func() {
+			r = httptest.NewRequest("GET", "/ping?a=123", nil)
+		})
+
+		It("returns default string if param does not exist", func() {
+			Expect(ParamStringDefault(r, "xx", "default_value")).To(Equal("default_value"))
+		})
+
+		It("returns param as string", func() {
+			Expect(ParamStringDefault(r, "a", "default_value")).To(Equal("123"))
+		})
+	})
+
 	Describe("ParamStrings", func() {
 		BeforeEach(func() {
 			r = httptest.NewRequest("GET", "/ping?a=123&a=456", nil)
@@ -133,7 +147,7 @@ var _ = Describe("Request Helpers", func() {
 	Describe("ParamBool", func() {
 		Context("value is true", func() {
 			BeforeEach(func() {
-				r = httptest.NewRequest("GET", "/ping?b=true&c=on&d=1", nil)
+				r = httptest.NewRequest("GET", "/ping?b=true&c=on&d=1&e=True", nil)
 			})
 
 			It("parses 'true'", func() {
@@ -146,6 +160,10 @@ var _ = Describe("Request Helpers", func() {
 
 			It("parses '1'", func() {
 				Expect(ParamBool(r, "d", false)).To(BeTrue())
+			})
+
+			It("parses 'True'", func() {
+				Expect(ParamBool(r, "e", false)).To(BeTrue())
 			})
 		})
 

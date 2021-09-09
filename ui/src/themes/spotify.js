@@ -19,7 +19,7 @@ const musicListActions = {
         backgroundColor: 'inherit !important',
       },
     },
-    'button:first-child': {
+    'button:first-child:not(:only-child)': {
       '@media screen and (max-width: 720px)': {
         transform: 'scale(1.5)',
         margin: '1rem',
@@ -42,15 +42,19 @@ const musicListActions = {
         border: 0,
       },
     },
+    'button:only-child': {
+      margin: '1.5rem',
+    },
     'button:first-child>span:first-child': {
       padding: 0,
     },
     'button:first-child>span:first-child>span': {
       display: 'none',
     },
-    'button>span:first-child>span, button:not(:first-child)>span:first-child>svg': {
-      color: '#b3b3b3',
-    },
+    'button>span:first-child>span, button:not(:first-child)>span:first-child>svg':
+      {
+        color: '#b3b3b3',
+      },
   },
 }
 
@@ -73,21 +77,11 @@ export default {
     },
     background: {
       default: '#121212',
-      paper: 'inherit',
+      paper: '#121212',
     },
     type: 'dark',
   },
   overrides: {
-    MuiPopover: {
-      paper: {
-        backgroundColor: '#121212',
-      },
-    },
-    MuiDialog: {
-      paper: {
-        backgroundColor: '#121212',
-      },
-    },
     MuiFormGroup: {
       root: {
         color: spotifyGreen['500'],
@@ -103,16 +97,10 @@ export default {
         margin: '.75rem 0',
       },
     },
-    MuiIconButton: {
-      label: {
-        // color: '#fff'
-      },
-    },
     MuiButton: {
       root: {
         background: spotifyGreen['500'],
         color: '#fff',
-        // margin: '5px',
         border: '1px solid transparent',
         borderRadius: 500,
         '&:hover': {
@@ -217,6 +205,7 @@ export default {
       },
       details: {
         fontSize: '.875rem',
+        minWidth: '75vw',
         color: 'rgba(255,255,255, 0.8)',
       },
     },
@@ -257,13 +246,13 @@ export default {
       audioTitle: {
         color: '#fff',
         fontSize: '0.875rem',
-        '&.songTitle': {
-          fontWeight: 400,
-        },
-        '&.songInfo': {
-          fontSize: '0.675rem',
-          color: '#b3b3b3',
-        },
+      },
+      songTitle: {
+        fontWeight: 400,
+      },
+      songInfo: {
+        fontSize: '0.675rem',
+        color: '#b3b3b3',
       },
       player: {
         border: '10px solid blue',
@@ -271,26 +260,13 @@ export default {
     },
     NDLogin: {
       main: {
-        boxShadow: 'inset 0 0 0 2000px rgba(0, 0, 0, .8)',
+        boxShadow: 'inset 0 0 0 2000px rgba(0, 0, 0, .75)',
       },
       systemNameLink: {
         color: '#fff',
-        textDecoration: 'none',
-      },
-      systemName: {
-        marginTop: '0.5em',
-        // borderBottom: '1px solid #282828',
-        marginBottom: '1em',
-      },
-      icon: {
-        backgroundColor: 'inherit',
       },
       card: {
-        // background: 'none',
-        background: 'none',
-        boxShadow: 'none',
-        padding: '10px 0',
-        minWidth: 360,
+        border: '1px solid #282828',
       },
       avatar: {
         marginBottom: 0,
@@ -300,6 +276,11 @@ export default {
       content: {
         padding: '0 !important',
         background: 'linear-gradient(#171717, #121212)',
+      },
+    },
+    RaList: {
+      content: {
+        backgroundColor: 'inherit',
       },
     },
     RaListToolbar: {
@@ -318,12 +299,10 @@ export default {
         marginRight: '1rem',
       },
     },
-    RaAutocompleteSuggestionList: {
-      suggestionsPaper: {
-        backgroundColor: '#121212',
-      },
-    },
     RaPaginationActions: {
+      currentPageButton: {
+        border: '1px solid #b3b3b3',
+      },
       button: {
         backgroundColor: 'inherit',
         minWidth: 48,
@@ -345,6 +324,11 @@ export default {
             marginRight: 8,
           },
         },
+      },
+    },
+    RaSidebar: {
+      root: {
+        height: 'initial',
       },
     },
   },

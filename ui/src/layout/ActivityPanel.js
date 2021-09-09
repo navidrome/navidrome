@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchUtils, useTranslate } from 'react-admin'
+import { useNotify, useTranslate } from 'react-admin'
 import {
   Popover,
   Badge,
@@ -22,6 +22,7 @@ import subsonic from '../subsonic'
 import { scanStatusUpdate } from '../actions'
 import { useInterval } from '../common'
 import { formatDuration } from '../utils'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   wrapper: {
@@ -58,9 +59,10 @@ const Uptime = () => {
 
 const ActivityPanel = () => {
   const serverStart = useSelector((state) => state.activity.serverStart)
-  const up = serverStart && serverStart.startTime
+  const up = serverStart.startTime
   const classes = useStyles({ up })
   const translate = useTranslate()
+  const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
   const dispatch = useDispatch()
@@ -68,13 +70,12 @@ const ActivityPanel = () => {
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
   const handleMenuClose = () => setAnchorEl(null)
-  const triggerScan = (full) => () =>
-    fetch(subsonic.url('startScan', null, { fullScan: full }))
+  const triggerScan = (full) => () => subsonic.startScan({ fullScan: full })
 
   // Get updated status on component mount
   useEffect(() => {
-    fetchUtils
-      .fetchJson(subsonic.url('getScanStatus'))
+    subsonic
+      .getScanStatus()
       .then((resp) => resp.json['subsonic-response'])
       .then((data) => {
         if (data.status === 'ok') {
@@ -82,6 +83,12 @@ const ActivityPanel = () => {
         }
       })
   }, [dispatch])
+
+  useEffect(() => {
+    if (serverStart.version && serverStart.version !== config.version) {
+      notify('ra.notification.new_version', 'info', {}, false, 604800000 * 50)
+    }
+  }, [serverStart, notify])
 
   return (
     <div className={classes.wrapper}>

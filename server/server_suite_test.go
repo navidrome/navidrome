@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestSubsonicApi(t *testing.T) {
+func TestServer(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)

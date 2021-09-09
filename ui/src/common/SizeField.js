@@ -1,18 +1,19 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
+import { useRecordContext } from 'react-admin'
 import { makeStyles } from '@material-ui/core'
 
 const useStyles = makeStyles((theme) => ({
-  demo: {
+  root: {
     display: 'inline-block',
   },
 }))
 
-export const SizeField = ({ record = {}, source }) => {
+export const SizeField = ({ source, ...rest }) => {
   const classes = useStyles()
-
-  return <span className={classes.demo}>{formatBytes(record[source])}</span>
+  const record = useRecordContext(rest)
+  return <span className={classes.root}>{formatBytes(record[source])}</span>
 }
 
 SizeField.propTypes = {

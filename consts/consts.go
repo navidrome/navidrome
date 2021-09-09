@@ -13,24 +13,32 @@ const (
 	DefaultDbPath       = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on"
 	InitialSetupFlagKey = "InitialSetup"
 
-	UIAuthorizationHeader = "X-ND-Authorization"
-	JWTSecretKey          = "JWTSecret"
-	JWTIssuer             = "ND"
-	DefaultSessionTimeout = 24 * time.Hour
+	UIAuthorizationHeader  = "X-ND-Authorization"
+	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
+	JWTSecretKey           = "JWTSecret"
+	JWTIssuer              = "ND"
+	DefaultSessionTimeout  = 24 * time.Hour
+	CookieExpiry           = 365 * 24 * 3600 // One year
+
+	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option
+	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
+	DefaultEncryptionKey  = "just for obfuscation"
+	PasswordsEncryptedKey = "PasswordsEncryptedKey"
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 
 	URLPathUI          = "/app"
+	URLPathNativeAPI   = "/api"
 	URLPathSubsonicAPI = "/rest"
 
-	// Login backgrounds from https://unsplash.com/collections/1065384/music-wallpapers
-	DefaultUILoginBackgroundURL = "https://source.unsplash.com/collection/1065384/1600x900"
+	// Login backgrounds from https://unsplash.com/collections/20072696/navidrome
+	DefaultUILoginBackgroundURL = "https://source.unsplash.com/collection/20072696/1600x900"
 
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
 
-	ArtistInfoTimeToLive = 1 * time.Hour
+	ArtistInfoTimeToLive = 3 * 24 * time.Hour
 
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
@@ -38,7 +46,9 @@ const (
 	PlaceholderAlbumArt = "navidrome-600x600.png"
 	PlaceholderAvatar   = "logo-192x192.png"
 
-	DefaultCachedHttpClientTTL = 10 * time.Second
+	DefaultHttpClientTimeOut = 10 * time.Second
+
+	DefaultScannerExtractor = "taglib"
 )
 
 // Cache options
@@ -51,6 +61,12 @@ const (
 
 	DefaultCacheSize            = 100 * 1024 * 1024 // 100MB
 	DefaultCacheCleanUpInterval = 10 * time.Minute
+)
+
+// Shared secrets (only add here "secrets" that can be public)
+const (
+	LastFMAPIKey    = "9b94a5515ea66b2da3ec03c12300327e"
+	LastFMAPISecret = "74cb6557cec7171d921af5d7d887c587" // nolint:gosec
 )
 
 var (
@@ -71,9 +87,10 @@ var (
 )
 
 var (
-	VariousArtists   = "Various Artists"
-	VariousArtistsID = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(VariousArtists))))
-	UnknownArtist    = "[Unknown Artist]"
+	VariousArtists      = "Various Artists"
+	VariousArtistsID    = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(VariousArtists))))
+	UnknownArtist       = "[Unknown Artist]"
+	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
 	ServerStart = time.Now()
 )
