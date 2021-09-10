@@ -1,17 +1,20 @@
 import React from 'react'
-import { MenuItemLink, useGetList } from 'react-admin'
+import { MenuItemLink, useQueryWithStore } from 'react-admin'
 import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import SubMenu from './SubMenu'
 
 const PlaylistsSubMenu = ({ open, sidebarIsOpen, dense, handleToggle }) => {
-  const { data, ids } = useGetList(
-    'playlist',
-    {
-      page: 0,
-      perPage: 0,
+  const { data, loaded } = useQueryWithStore({
+    type: 'getList',
+    resource: 'playlist',
+    payload: {
+      pagination: {
+        page: 0,
+        perPage: 0,
+      },
+      sort: { field: 'name' },
     },
-    { order: 'name' }
-  )
+  })
 
   const renderPlaylistMenuItemLink = (pls) => {
     return (
@@ -34,7 +37,8 @@ const PlaylistsSubMenu = ({ open, sidebarIsOpen, dense, handleToggle }) => {
       icon={<QueueMusicOutlinedIcon />}
       dense={dense}
     >
-      {ids.map((id) => renderPlaylistMenuItemLink(data[id]))}
+      {loaded &&
+        Object.keys(data).map((id) => renderPlaylistMenuItemLink(data[id]))}
     </SubMenu>
   )
 }
