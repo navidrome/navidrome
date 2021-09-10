@@ -14,12 +14,16 @@ const useStyles = makeStyles(
   (theme) => ({
     icon: { minWidth: theme.spacing(5) },
     sidebarIsOpen: {
-      paddingLeft: 25,
-      transition: 'padding-left 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+      '& a': {
+        transition: 'padding-left 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+        paddingLeft: theme.spacing(4),
+      },
     },
     sidebarIsClosed: {
-      paddingLeft: 0,
-      transition: 'padding-left 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+      '& a': {
+        transition: 'padding-left 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+        paddingLeft: theme.spacing(2),
+      },
     },
   }),
   {
