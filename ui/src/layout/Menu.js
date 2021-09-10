@@ -10,6 +10,7 @@ import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
+import PlaylistsSubMenu from './PlaylistsSubMenu'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -53,8 +54,7 @@ const Menu = ({ dense = false }) => {
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
     menuAlbumList: true,
-    menuLibrary: true,
-    menuSettings: false,
+    menuPlaylists: true,
   })
 
   const handleToggle = (menu) => {
@@ -122,6 +122,13 @@ const Menu = ({ dense = false }) => {
         )}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
+      <PlaylistsSubMenu
+        open={state.menuPlaylists}
+        sidebarIsOpen={open}
+        dense={dense}
+        onMenuClick={onMenuClick}
+        handleToggle={() => handleToggle('menuPlaylists')}
+      />
       <HelpDialog />
     </div>
   )
