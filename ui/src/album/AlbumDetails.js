@@ -253,7 +253,7 @@ const AlbumDetails = (props) => {
             <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />
             </Typography>
-            <Typography component={'p'} className={classes.recordMeta}>
+            <Typography component={'div'} className={classes.recordMeta}>
               <Details />
             </Typography>
             {config.enableStarRating && (
@@ -271,7 +271,7 @@ const AlbumDetails = (props) => {
               <Typography component={'p'}>{record.genre}</Typography>
             )}
             {isDesktop && (
-              <Typography component={'p'} className={classes.recordMeta}>
+              <Typography component={'div'} className={classes.recordMeta}>
                 <AlbumExternalLinks className={classes.externalLinks} />
               </Typography>
             )}
