@@ -1,17 +1,9 @@
 import React from 'react'
-import { MenuItemLink, useGetList, useTranslate } from 'react-admin'
-import Playlist from '../icons/Playlist'
+import { MenuItemLink, useGetList } from 'react-admin'
+import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import SubMenu from './SubMenu'
 
-const PlaylistsSubMenu = ({
-  open,
-  sidebarIsOpen,
-  dense,
-  handleToggle,
-  onMenuClick,
-}) => {
-  const translate = useTranslate()
-  const name = translate('resources.playlist.name', { smart_count: 2 })
+const PlaylistsSubMenu = ({ open, sidebarIsOpen, dense, handleToggle }) => {
   const { data, ids } = useGetList(
     'playlist',
     {
@@ -27,8 +19,6 @@ const PlaylistsSubMenu = ({
         key={pls.id}
         to={`/playlist/${pls.id}/show`}
         primaryText={pls.name}
-        onClick={onMenuClick}
-        // leftIcon={<QueueMusicIcon />}
         sidebarIsOpen={sidebarIsOpen}
         dense={false}
       />
@@ -40,8 +30,8 @@ const PlaylistsSubMenu = ({
       handleToggle={handleToggle}
       isOpen={open}
       sidebarIsOpen={sidebarIsOpen}
-      name={name}
-      icon={<Playlist />}
+      name={'menu.playlist'}
+      icon={<QueueMusicOutlinedIcon />}
       dense={dense}
     >
       {ids.map((id) => renderPlaylistMenuItemLink(data[id]))}

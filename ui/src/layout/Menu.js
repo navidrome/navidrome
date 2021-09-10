@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { makeStyles } from '@material-ui/core'
+import { Divider, makeStyles } from '@material-ui/core'
 import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
@@ -122,13 +122,19 @@ const Menu = ({ dense = false }) => {
         )}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
-      <PlaylistsSubMenu
-        open={state.menuPlaylists}
-        sidebarIsOpen={open}
-        dense={dense}
-        onMenuClick={onMenuClick}
-        handleToggle={() => handleToggle('menuPlaylists')}
-      />
+      {open ? (
+        <>
+          <Divider />
+          <PlaylistsSubMenu
+            open={state.menuPlaylists}
+            sidebarIsOpen={open}
+            dense={dense}
+            handleToggle={() => handleToggle('menuPlaylists')}
+          />
+        </>
+      ) : (
+        resources.filter(subItems('playlist')).map(renderResourceMenuItemLink)
+      )}
       <HelpDialog />
     </div>
   )
