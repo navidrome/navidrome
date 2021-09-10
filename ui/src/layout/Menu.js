@@ -21,7 +21,7 @@ const useStyles = makeStyles((theme) => ({
     }),
   },
   open: {
-    width: 200,
+    width: 240,
   },
   closed: {
     width: 55,
@@ -44,7 +44,7 @@ const translatedResourceName = (resource, translate) =>
         : inflection.humanize(inflection.pluralize(resource.name)),
   })
 
-const Menu = ({ onMenuClick, dense }) => {
+const Menu = ({ dense = false }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
   const classes = useStyles()
@@ -68,7 +68,6 @@ const Menu = ({ onMenuClick, dense }) => {
       activeClassName={classes.active}
       primaryText={translatedResourceName(resource, translate)}
       leftIcon={resource.icon || <ViewListIcon />}
-      onClick={onMenuClick}
       sidebarIsOpen={open}
       dense={dense}
     />
@@ -93,7 +92,6 @@ const Menu = ({ onMenuClick, dense }) => {
         activeClassName={classes.active}
         primaryText={name}
         leftIcon={al.icon || <ViewListIcon />}
-        onClick={onMenuClick}
         sidebarIsOpen={open}
         dense={dense}
         exact
