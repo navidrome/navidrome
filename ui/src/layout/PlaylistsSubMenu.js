@@ -1,11 +1,14 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { MenuItemLink, useQueryWithStore } from 'react-admin'
-import SubMenu from './SubMenu'
+import { useHistory } from 'react-router-dom'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
-import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import { Typography } from '@material-ui/core'
+import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
+import { BiCog } from 'react-icons/all'
+import SubMenu from './SubMenu'
 
 const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
+  const history = useHistory()
   const { data, loaded } = useQueryWithStore({
     type: 'getList',
     resource: 'playlist',
@@ -54,6 +57,11 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
     })
   }
 
+  const onPlaylistConfig = useCallback(
+    () => history.push('/playlist'),
+    [history]
+  )
+
   return (
     <>
       <SubMenu
@@ -63,6 +71,8 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         name={'menu.playlists'}
         icon={<QueueMusicIcon />}
         dense={dense}
+        actionIcon={<BiCog />}
+        onAction={onPlaylistConfig}
       >
         {myPlaylists.map(renderPlaylistMenuItemLink)}
       </SubMenu>
