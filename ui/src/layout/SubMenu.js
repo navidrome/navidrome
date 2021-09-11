@@ -1,14 +1,15 @@
 import React, { Fragment } from 'react'
 import ExpandMore from '@material-ui/icons/ExpandMore'
+import ArrowRightOutlined from '@material-ui/icons/ArrowRightOutlined'
 import List from '@material-ui/core/List'
 import MenuItem from '@material-ui/core/MenuItem'
 import ListItemIcon from '@material-ui/core/ListItemIcon'
 import Typography from '@material-ui/core/Typography'
-import Divider from '@material-ui/core/Divider'
 import Collapse from '@material-ui/core/Collapse'
 import Tooltip from '@material-ui/core/Tooltip'
 import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
+import { IconButton, useMediaQuery } from '@material-ui/core'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -25,6 +26,18 @@ const useStyles = makeStyles(
         paddingLeft: theme.spacing(2),
       },
     },
+    actionIcon: {
+      opacity: 0,
+    },
+    menuHeader: {
+      width: '100%',
+    },
+    headerWrapper: {
+      display: 'flex',
+      '&:hover $actionIcon': {
+        opacity: 1,
+      },
+    },
   }),
   {
     name: 'NDSubMenu',
@@ -39,19 +52,43 @@ const SubMenu = ({
   icon,
   children,
   dense,
+  onAction,
+  actionIcon,
 }) => {
   const translate = useTranslate()
   const classes = useStyles()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+
+  const handleOnClick = (e) => {
+    e.stopPropagation()
+    onAction(e)
+  }
 
   const header = (
-    <MenuItem dense={dense} button onClick={handleToggle}>
-      <ListItemIcon className={classes.icon}>
-        {isOpen ? <ExpandMore /> : icon}
-      </ListItemIcon>
-      <Typography variant="inherit" color="textSecondary">
-        {translate(name)}
-      </Typography>
-    </MenuItem>
+    <div className={classes.headerWrapper}>
+      <MenuItem
+        dense={dense}
+        button
+        className={classes.menuHeader}
+        onClick={handleToggle}
+      >
+        <ListItemIcon className={classes.icon}>
+          {isOpen ? <ExpandMore /> : icon}
+        </ListItemIcon>
+        <Typography variant="inherit" color="textSecondary">
+          {translate(name)}
+        </Typography>
+        {onAction && sidebarIsOpen && (
+          <IconButton
+            size={'small'}
+            className={isDesktop ? classes.actionIcon : null}
+            onClick={handleOnClick}
+          >
+            {actionIcon}
+          </IconButton>
+        )}
+      </MenuItem>
+    </div>
   )
 
   return (
@@ -74,10 +111,14 @@ const SubMenu = ({
         >
           {children}
         </List>
-        <Divider />
       </Collapse>
     </Fragment>
   )
+}
+
+SubMenu.defaultProps = {
+  action: null,
+  actionIcon: <ArrowRightOutlined fontSize={'small'} />,
 }
 
 export default SubMenu

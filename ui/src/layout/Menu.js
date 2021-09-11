@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { makeStyles } from '@material-ui/core'
+import { Divider, makeStyles } from '@material-ui/core'
 import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import { withRouter } from 'react-router-dom'
@@ -10,6 +10,8 @@ import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
+import PlaylistsSubMenu from './PlaylistsSubMenu'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -53,8 +55,8 @@ const Menu = ({ dense = false }) => {
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
     menuAlbumList: true,
-    menuLibrary: true,
-    menuSettings: false,
+    menuPlaylists: true,
+    menuSharedPlaylists: true,
   })
 
   const handleToggle = (menu) => {
@@ -122,6 +124,19 @@ const Menu = ({ dense = false }) => {
         )}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
+      {config.devSidebarPlaylists && open ? (
+        <>
+          <Divider />
+          <PlaylistsSubMenu
+            state={state}
+            setState={setState}
+            sidebarIsOpen={open}
+            dense={dense}
+          />
+        </>
+      ) : (
+        resources.filter(subItems('playlist')).map(renderResourceMenuItemLink)
+      )}
       <HelpDialog />
     </div>
   )

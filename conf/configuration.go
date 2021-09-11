@@ -71,6 +71,7 @@ type configOptions struct {
 	DevFastAccessCoverArt      bool
 	DevActivityPanel           bool
 	DevEnableShare             bool
+	DevSidebarPlaylists        bool
 	DevEnableBufferedScrobble  bool
 }
 
@@ -253,6 +254,7 @@ func init() {
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
+	viper.SetDefault("devsidebarplaylists", false)
 }
 
 func InitConfig(cfgFile string) {

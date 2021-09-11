@@ -1,6 +1,11 @@
 import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useDataProvider, useNotify, useTranslate } from 'react-admin'
+import {
+  useDataProvider,
+  useNotify,
+  useRefresh,
+  useTranslate,
+} from 'react-admin'
 import {
   Button,
   Dialog,
@@ -22,6 +27,7 @@ export const AddToPlaylistDialog = () => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()
+  const refresh = useRefresh()
   const [value, setValue] = useState({})
   const [check, setCheck] = useState(false)
   const dataProvider = useDataProvider()
@@ -47,6 +53,7 @@ export const AddToPlaylistDialog = () => {
         const len = trackIds.length
         notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
         onSuccess && onSuccess(value, len)
+        refresh()
       })
       .catch(() => {
         notify('ra.page.error', 'warning')

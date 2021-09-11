@@ -19,6 +19,7 @@ const defaultConfig = {
   defaultTheme: 'Dark',
   enableUserEditing: true,
   devEnableShare: true,
+  devSidebarPlaylists: true,
   lastFMEnabled: true,
   lastFMApiKey: '9b94a5515ea66b2da3ec03c12300327e',
   enableCoverAnimation: true,

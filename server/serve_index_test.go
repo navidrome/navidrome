@@ -211,6 +211,18 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("devEnableShare", false))
 	})
 
+	It("sets the devSidebarPlaylists", func() {
+		conf.Server.DevSidebarPlaylists = true
+
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devSidebarPlaylists", true))
+	})
+
 	It("sets the lastFMEnabled", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
