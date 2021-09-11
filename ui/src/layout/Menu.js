@@ -55,6 +55,7 @@ const Menu = ({ dense = false }) => {
   const [state, setState] = useState({
     menuAlbumList: true,
     menuPlaylists: true,
+    menuSharedPlaylists: true,
   })
 
   const handleToggle = (menu) => {
@@ -126,10 +127,10 @@ const Menu = ({ dense = false }) => {
         <>
           <Divider />
           <PlaylistsSubMenu
-            open={state.menuPlaylists}
+            state={state}
+            setState={setState}
             sidebarIsOpen={open}
             dense={dense}
-            handleToggle={() => handleToggle('menuPlaylists')}
           />
         </>
       ) : (

@@ -3,7 +3,7 @@ import { MenuItemLink, useQueryWithStore } from 'react-admin'
 import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import SubMenu from './SubMenu'
 
-const PlaylistsSubMenu = ({ open, sidebarIsOpen, dense, handleToggle }) => {
+const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   const { data, loaded } = useQueryWithStore({
     type: 'getList',
     resource: 'playlist',
@@ -15,6 +15,10 @@ const PlaylistsSubMenu = ({ open, sidebarIsOpen, dense, handleToggle }) => {
       sort: { field: 'name' },
     },
   })
+
+  const handleToggle = (menu) => {
+    setState((state) => ({ ...state, [menu]: !state[menu] }))
+  }
 
   const renderPlaylistMenuItemLink = (pls) => {
     return (
@@ -28,18 +32,47 @@ const PlaylistsSubMenu = ({ open, sidebarIsOpen, dense, handleToggle }) => {
     )
   }
 
+  const user = localStorage.getItem('username')
+  const myPlaylists = []
+  const sharedPlaylists = []
+
+  if (loaded) {
+    const allPlaylists = Object.keys(data).map((id) => data[id])
+
+    allPlaylists.forEach((pls) => {
+      if (user === pls.owner) {
+        myPlaylists.push(pls)
+      } else {
+        sharedPlaylists.push(pls)
+      }
+    })
+  }
+
   return (
-    <SubMenu
-      handleToggle={handleToggle}
-      isOpen={open}
-      sidebarIsOpen={sidebarIsOpen}
-      name={'menu.playlist'}
-      icon={<QueueMusicOutlinedIcon />}
-      dense={dense}
-    >
-      {loaded &&
-        Object.keys(data).map((id) => renderPlaylistMenuItemLink(data[id]))}
-    </SubMenu>
+    <>
+      <SubMenu
+        handleToggle={() => handleToggle('menuPlaylists')}
+        isOpen={state.menuPlaylists}
+        sidebarIsOpen={sidebarIsOpen}
+        name={'menu.playlists'}
+        icon={<QueueMusicOutlinedIcon />}
+        dense={dense}
+      >
+        {myPlaylists.map(renderPlaylistMenuItemLink)}
+      </SubMenu>
+      {sharedPlaylists?.length > 0 && (
+        <SubMenu
+          handleToggle={() => handleToggle('menuSharedPlaylists')}
+          isOpen={state.menuSharedPlaylists}
+          sidebarIsOpen={sidebarIsOpen}
+          name={'menu.sharedPlaylists'}
+          icon={<QueueMusicOutlinedIcon />}
+          dense={dense}
+        >
+          {sharedPlaylists.map(renderPlaylistMenuItemLink)}
+        </SubMenu>
+      )}
+    </>
   )
 }
 
