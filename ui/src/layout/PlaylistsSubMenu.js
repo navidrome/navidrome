@@ -1,7 +1,9 @@
 import React from 'react'
 import { MenuItemLink, useQueryWithStore } from 'react-admin'
-import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import SubMenu from './SubMenu'
+import QueueMusicIcon from '@material-ui/icons/QueueMusic'
+import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
+import { Typography } from '@material-ui/core'
 
 const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   const { data, loaded } = useQueryWithStore({
@@ -25,7 +27,11 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
       <MenuItemLink
         key={pls.id}
         to={`/playlist/${pls.id}/show`}
-        primaryText={pls.name}
+        primaryText={
+          <Typography variant="inherit" noWrap>
+            {pls.name}
+          </Typography>
+        }
         sidebarIsOpen={sidebarIsOpen}
         dense={false}
       />
@@ -55,7 +61,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         isOpen={state.menuPlaylists}
         sidebarIsOpen={sidebarIsOpen}
         name={'menu.playlists'}
-        icon={<QueueMusicOutlinedIcon />}
+        icon={<QueueMusicIcon />}
         dense={dense}
       >
         {myPlaylists.map(renderPlaylistMenuItemLink)}
