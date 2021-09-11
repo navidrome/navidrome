@@ -11,6 +11,7 @@ import inflection from 'inflection'
 import albumLists from '../album/albumLists'
 import { HelpDialog } from '../dialogs'
 import PlaylistsSubMenu from './PlaylistsSubMenu'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -123,7 +124,7 @@ const Menu = ({ dense = false }) => {
         )}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
-      {open ? (
+      {config.devSidebarPlaylists && open ? (
         <>
           <Divider />
           <PlaylistsSubMenu
