@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mattn/go-zglob"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -17,14 +19,18 @@ import (
 )
 
 type playlistSync struct {
-	ds model.DataStore
+	ds         model.DataStore
+	rootFolder string
 }
 
-func newPlaylistSync(ds model.DataStore) *playlistSync {
-	return &playlistSync{ds: ds}
+func newPlaylistSync(ds model.DataStore, rootFolder string) *playlistSync {
+	return &playlistSync{ds: ds, rootFolder: rootFolder}
 }
 
 func (s *playlistSync) processPlaylists(ctx context.Context, dir string) int64 {
+	if !s.inPlaylistsPath(dir) {
+		return 0
+	}
 	var count int64
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -125,6 +131,16 @@ func (s *playlistSync) updatePlaylist(ctx context.Context, newPls *model.Playlis
 		newPls.Owner = owner
 	}
 	return s.ds.Playlist(ctx).Put(newPls)
+}
+
+func (s *playlistSync) inPlaylistsPath(dir string) bool {
+	rel, _ := filepath.Rel(s.rootFolder, dir)
+	for _, path := range strings.Split(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
+		if match, _ := zglob.Match(path, rel); match {
+			return true
+		}
+	}
+	return false
 }
 
 // From https://stackoverflow.com/a/41433698
