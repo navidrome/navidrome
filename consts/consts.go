@@ -3,6 +3,7 @@ package consts
 import (
 	"crypto/md5"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -84,6 +85,8 @@ var (
 			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
 	}
+
+	DefaultPlaylistsPath = strings.Join([]string{".", "**/**"}, string(filepath.ListSeparator))
 )
 
 var (

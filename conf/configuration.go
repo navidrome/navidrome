@@ -32,6 +32,7 @@ type configOptions struct {
 	TranscodingCacheSize    string
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
+	PlaylistsPath           string
 
 	SearchFullString       bool
 	RecentlyAddedByModTime bool
@@ -200,6 +201,7 @@ func init() {
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
 	viper.SetDefault("autoimportplaylists", true)
+	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
 
 	// Config options only valid for file/env configuration
