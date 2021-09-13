@@ -21,6 +21,7 @@ const useStyles = makeStyles((theme) => ({
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
     }),
+    paddingBottom: (props) => (props.addPadding ? '80px' : '20px'),
   },
   open: {
     width: 240,
@@ -49,7 +50,8 @@ const translatedResourceName = (resource, translate) =>
 const Menu = ({ dense = false }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
-  const classes = useStyles()
+  const queue = useSelector((state) => state.player?.queue)
+  const classes = useStyles({ addPadding: queue.length > 0 })
   const resources = useSelector(getResources)
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
