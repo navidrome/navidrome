@@ -70,7 +70,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
-          node-version: 16.8 # TODO: Make it 16 after this is fixed: https://github.com/nodejs/node/issues/40030
+          node-version: 16
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
