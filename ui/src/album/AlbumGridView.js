@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  GridList,
   GridListTile,
   Typography,
   GridListTileBar,
@@ -18,13 +19,14 @@ import {
   RangeField,
 } from '../common'
 import AlbumDatagrid from '../infiniteScroll/AlbumDatagrid'
+import config from '../config'
 
 const useStyles = makeStyles(
   (theme) => ({
     root: {
       margin: '20px',
       display: 'grid',
-      height: 'calc(100% - 25px)',
+      height: config.enableInfiniteScroll ? 'calc(100% - 25px)' : 'initial',
     },
     tileBar: {
       transition: 'all 150ms ease-out',
@@ -126,7 +128,11 @@ const AlbumGridTile = ({ showArtist, record, basePath, isLoaded }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'), {
     noSsr: true,
   })
-  if (!record || !isLoaded) {
+
+  if (!config.enableInfiniteScroll && !record)
+    return null
+
+  if (config.enableInfiniteScroll && (!record || !isLoaded) ) {
     return (
       <div className={classes.albumContainer}>
         <Cover album={record} isLoaded={false} />
@@ -221,6 +227,7 @@ const AlbumGridView = withContentRect('bounds')(
       <Loading />
     ) : (
       <div ref={measureRef} className={classes.root}>
+        { config.enableInfiniteScroll ?
         <AlbumDatagrid
           columns={columns}
           itemHeight={tileImageHeight + tileTextHeight || 300}
@@ -238,7 +245,24 @@ const AlbumGridView = withContentRect('bounds')(
               />
             </GridListTile>
           )}
-        </AlbumDatagrid>
+        </AlbumDatagrid> :
+          <GridList
+          component={'div'}
+          cellHeight={'auto'}
+          cols={columns}
+          spacing={20}
+        >
+          {props.ids.map((id) => (
+            <GridListTile className={classes.gridListTile} key={id}>
+              <AlbumGridTile
+                record={props.data[id]}
+                basePath={basePath}
+                showArtist={!isArtistView}
+              />
+            </GridListTile>
+          ))}
+        </GridList>
+  }
       </div>
     )
   }

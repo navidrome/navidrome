@@ -6,6 +6,7 @@ import VirtualTable from './VirtualTable'
 import union from 'lodash.union'
 import difference from 'lodash.difference'
 import useVirtualizedData from './useVirtualizedData'
+
 function Datagrid(props) {
   const {
     resource,
@@ -51,24 +52,6 @@ function Datagrid(props) {
       lastSelected.current = null
     }
   }, [selectedIds])
-
-  // const handleSelectAll = useCallback(
-  //   event => {
-  //       if (event.target.checked) {
-  //         const all = ids.concat(
-  //             selectedIds.filter(id => !ids.includes(id))
-  //         );
-  //         onSelect(
-  //             isRowSelectable
-  //                 ? all.filter(id => isRowSelectable(data[id]))
-  //                 : all
-  //         );
-  //       } else {
-  //         onSelect([]);
-  //       }
-  //   },
-  //   [data, ids, onSelect, isRowSelectable, selectedIds]
-  // );
 
   const handleToggleItem = useCallback(
     (id, event) => {

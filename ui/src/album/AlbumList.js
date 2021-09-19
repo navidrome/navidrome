@@ -6,6 +6,7 @@ import {
   Filter,
   NullableBooleanInput,
   NumberInput,
+  Pagination,
   ReferenceInput,
   SearchInput,
   useTranslate,
@@ -79,7 +80,7 @@ const AlbumListTitle = ({ albumListType }) => {
 const AlbumList = (props) => {
   const { width } = props
   const albumView = useSelector((state) => state.albumView)
-  const [perPage] = useAlbumsPerPage(width)
+  const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
   useResourceRefresh('album')
 
@@ -120,6 +121,7 @@ const AlbumList = (props) => {
         filters={<AlbumFilter />}
         perPage={perPage}
         title={<AlbumListTitle albumListType={albumListType} />}
+        pagination={!config.enableInfiniteScroll ? <Pagination rowsPerPageOptions={perPageOptions} /> : null}
       >
         {albumView.grid ? (
           <AlbumGridView albumListType={albumListType} {...props} />

@@ -19,7 +19,7 @@ function InfiniteList({ pagination, children, ...rest }) {
   const classes = useStyles()
 
   return (
-    <List pagination={null} classes={classes} {...rest}>
+    <List pagination={null} classes={classes} perPage={30} {...rest}>
       {children}
     </List>
   )

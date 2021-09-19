@@ -9,7 +9,6 @@ import {
   ArrayField,
   BooleanField,
   ChipField,
-  // Datagrid,
   DateField,
   NumberField,
   SingleFieldList,
@@ -31,7 +30,7 @@ import {
   useSelectedFields,
 } from '../common'
 import config from '../config'
-import Datagrid from '../infiniteScroll/Datagrid'
+import { Datagrid } from '../infiniteScroll'
 
 const useStyles = makeStyles({
   columnIcon: {

@@ -1,5 +1,20 @@
+import MUIList from '@material-ui/core/List'
+import { useListContext } from 'ra-core'
 import { InfiniteLoader, AutoSizer, List } from 'react-virtualized'
+import config from '../config'
 import useVirtualizedData from './useVirtualizedData'
+
+
+function MaterialList({ renderItem, ...rest }) {
+  const { ids, data } = useListContext()
+  return (
+    <MUIList
+      {...rest}
+    >
+      {ids.map(id => renderItem(data[id]))}
+    </MUIList>
+  )
+}
 
 function VirtualList({ renderItem, itemHeight }) {
   const { data, loadedIds, total, handleLoadMore } = useVirtualizedData()
@@ -40,4 +55,4 @@ VirtualList.defaultProps = {
   renderItem: () => null,
 }
 
-export default VirtualList
+export default (config.enableInfiniteScroll ? VirtualList : MaterialList)
