@@ -129,10 +129,9 @@ const AlbumGridTile = ({ showArtist, record, basePath, isLoaded }) => {
     noSsr: true,
   })
 
-  if (!config.enableInfiniteScroll && !record)
-    return null
+  if (!config.enableInfiniteScroll && !record) return null
 
-  if (config.enableInfiniteScroll && (!record || !isLoaded) ) {
+  if (config.enableInfiniteScroll && (!record || !isLoaded)) {
     return (
       <div className={classes.albumContainer}>
         <Cover album={record} isLoaded={false} />
@@ -227,42 +226,43 @@ const AlbumGridView = withContentRect('bounds')(
       <Loading />
     ) : (
       <div ref={measureRef} className={classes.root}>
-        { config.enableInfiniteScroll ?
-        <AlbumDatagrid
-          columns={columns}
-          itemHeight={tileImageHeight + tileTextHeight || 300}
-        >
-          {({ isLoaded, record, itemIndex }) => (
-            <GridListTile
-              className={classes.gridListTile}
-              key={!!record ? record.id : itemIndex}
-            >
-              <AlbumGridTile
-                record={record}
-                basePath={basePath}
-                showArtist={!isArtistView}
-                isLoaded={isLoaded}
-              />
-            </GridListTile>
-          )}
-        </AlbumDatagrid> :
+        {config.enableInfiniteScroll ? (
+          <AlbumDatagrid
+            columns={columns}
+            itemHeight={tileImageHeight + tileTextHeight || 300}
+          >
+            {({ isLoaded, record, itemIndex }) => (
+              <GridListTile
+                className={classes.gridListTile}
+                key={!!record ? record.id : itemIndex}
+              >
+                <AlbumGridTile
+                  record={record}
+                  basePath={basePath}
+                  showArtist={!isArtistView}
+                  isLoaded={isLoaded}
+                />
+              </GridListTile>
+            )}
+          </AlbumDatagrid>
+        ) : (
           <GridList
-          component={'div'}
-          cellHeight={'auto'}
-          cols={columns}
-          spacing={20}
-        >
-          {props.ids.map((id) => (
-            <GridListTile className={classes.gridListTile} key={id}>
-              <AlbumGridTile
-                record={props.data[id]}
-                basePath={basePath}
-                showArtist={!isArtistView}
-              />
-            </GridListTile>
-          ))}
-        </GridList>
-  }
+            component={'div'}
+            cellHeight={'auto'}
+            cols={columns}
+            spacing={20}
+          >
+            {props.ids.map((id) => (
+              <GridListTile className={classes.gridListTile} key={id}>
+                <AlbumGridTile
+                  record={props.data[id]}
+                  basePath={basePath}
+                  showArtist={!isArtistView}
+                />
+              </GridListTile>
+            ))}
+          </GridList>
+        )}
       </div>
     )
   }

@@ -121,7 +121,11 @@ const AlbumList = (props) => {
         filters={<AlbumFilter />}
         perPage={perPage}
         title={<AlbumListTitle albumListType={albumListType} />}
-        pagination={!config.enableInfiniteScroll ? <Pagination rowsPerPageOptions={perPageOptions} /> : null}
+        pagination={
+          !config.enableInfiniteScroll ? (
+            <Pagination rowsPerPageOptions={perPageOptions} />
+          ) : null
+        }
       >
         {albumView.grid ? (
           <AlbumGridView albumListType={albumListType} {...props} />

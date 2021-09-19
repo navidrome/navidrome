@@ -5,5 +5,7 @@ import InfiniteDatagrid from './Datagrid'
 import InfiniteList from './List'
 import config from '../config'
 
-export const List = config.enableInfiniteScroll ? InfiniteList : RAList;
-export const Datagrid = config.enableInfiniteScroll ? InfiniteDatagrid : RADatagrid;
+export const List = config.enableInfiniteScroll ? InfiniteList : RAList
+export const Datagrid = config.enableInfiniteScroll
+  ? InfiniteDatagrid
+  : RADatagrid
