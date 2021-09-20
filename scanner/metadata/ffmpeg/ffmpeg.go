@@ -73,7 +73,7 @@ var (
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
 
 	//    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
-	audioStreamRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+.*: (Audio): (.*), (.* Hz), (mono|stereo|5.1),*(.*.,)*(.(\d+).kb/s)*`)
+	audioStreamRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+.*: (Audio): (.*), (.* Hz), ([\w\.]+),*(.*.,)*(.(\d+).kb/s)*`)
 
 	//    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 600x600 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc`
 	coverRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: (Video):.*`)
@@ -187,6 +187,8 @@ func (e *Parser) parseChannels(tag string) string {
 		return "2"
 	} else if tag == "5.1" {
 		return "6"
+	} else if tag == "7.1" {
+		return "8"
 	}
 
 	return "0"
