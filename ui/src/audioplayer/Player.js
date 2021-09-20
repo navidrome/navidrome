@@ -23,11 +23,9 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
-import { useWindowSize } from '../common'
 
 const Player = () => {
   const theme = useCurrentTheme()
-  const size = useWindowSize()
   const translate = useTranslate()
   const playerTheme = theme.player?.theme || 'dark'
   const dataProvider = useDataProvider()
@@ -65,17 +63,16 @@ const Player = () => {
       restartCurrentOnPrev: true,
       quietUpdate: true,
       defaultPosition: {
-        top: size.height - 90,
-        left: size.width - 90,
+        top: 300,
+        left: 120,
       },
-      drag: false,
       volumeFade: { fadeIn: 200, fadeOut: 200 },
       renderAudioTitle: (audioInfo, isMobile) => (
         <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
       ),
       locale: locale(translate),
     }),
-    [isDesktop, playerTheme, translate, size]
+    [isDesktop, playerTheme, translate]
   )
 
   const options = useMemo(() => {
