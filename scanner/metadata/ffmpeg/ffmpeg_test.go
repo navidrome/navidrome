@@ -106,6 +106,15 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
 		})
 
+		It("parse 7.1 channels from the stream", func() {
+			const output = `
+Input #0, wav, from '/Users/deluan/Music/Music/Media/_/multichannel/Nums_7dot1_24_48000.wav':
+  Duration: 00:00:09.05, bitrate: 9216 kb/s
+  Stream #0:0: Audio: pcm_s24le ([1][0][0][0] / 0x0001), 48000 Hz, 7.1, s32 (24 bit), 9216 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"8"}))
+		})
+
 		It("parse channels from the stream without bitrate", func() {
 			const output = `
 Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.flac':
