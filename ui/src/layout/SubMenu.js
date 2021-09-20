@@ -1,4 +1,5 @@
 import React, { Fragment } from 'react'
+import { useDispatch } from 'react-redux'
 import ExpandMore from '@material-ui/icons/ExpandMore'
 import ArrowRightOutlined from '@material-ui/icons/ArrowRightOutlined'
 import List from '@material-ui/core/List'
@@ -8,7 +9,7 @@ import Typography from '@material-ui/core/Typography'
 import Collapse from '@material-ui/core/Collapse'
 import Tooltip from '@material-ui/core/Tooltip'
 import { makeStyles } from '@material-ui/core/styles'
-import { useTranslate } from 'react-admin'
+import { setSidebarVisibility, useTranslate } from 'react-admin'
 import { IconButton, useMediaQuery } from '@material-ui/core'
 
 const useStyles = makeStyles(
@@ -58,10 +59,15 @@ const SubMenu = ({
   const translate = useTranslate()
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const isSmall = useMediaQuery((theme) => theme.breakpoints.down('sm'))
+  const dispatch = useDispatch()
 
   const handleOnClick = (e) => {
     e.stopPropagation()
     onAction(e)
+    if (isSmall) {
+      dispatch(setSidebarVisibility(false))
+    }
   }
 
   const header = (
