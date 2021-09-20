@@ -25,14 +25,14 @@ func NewPlayQueueRepository(ctx context.Context, o orm.Ormer) model.PlayQueueRep
 }
 
 type playQueue struct {
-	ID        string `orm:"column(id)"`
-	UserID    string `orm:"column(user_id)"`
-	Current   string
-	Position  int64
-	ChangedBy string
-	Items     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        string    `structs:"id"       orm:"column(id)"`
+	UserID    string    `structs:"user_id"  orm:"column(user_id)"`
+	Current   string    `structs:"current"`
+	Position  int64     `structs:"position"`
+	ChangedBy string    `structs:"changed_by"`
+	Items     string    `structs:"items"`
+	CreatedAt time.Time `structs:"created_at"`
+	UpdatedAt time.Time `structs:"updated_at"`
 }
 
 func (r *playQueueRepository) Store(q *model.PlayQueue) error {

@@ -7,7 +7,7 @@ package taglib
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "taglib_parser.h"
+#include "taglib_wrapper.h"
 */
 import "C"
 import (
@@ -20,8 +20,14 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-func Read(filename string) (map[string][]string, error) {
-	fp := C.CString(filename)
+func Read(filename string) (tags map[string][]string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("TagLib: recovered from panic when reading tags", "file", filename, "error", r)
+			err = fmt.Errorf("TagLib: recovered from panic: %s", r)
+		}
+	}()
+	fp := getFilename(filename)
 	defer C.free(unsafe.Pointer(fp))
 	id, m := newMap()
 	defer deleteMap(id)

@@ -68,6 +68,7 @@ const SongFilter = (props) => {
         label={translate('resources.song.fields.genre')}
         source="genre_id"
         reference="genre"
+        perPage={0}
         sort={{ field: 'name', order: 'ASC' }}
         filterToQuery={(searchText) => ({ name: [searchText] })}
       >
@@ -121,6 +122,9 @@ const SongList = (props) => {
         />
       ),
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      channels: isDesktop && (
+        <NumberField source="channels" sortByOrder={'ASC'} />
+      ),
       duration: <DurationField source="duration" />,
       rating: config.enableStarRating && (
         <RatingField
@@ -139,7 +143,14 @@ const SongList = (props) => {
   const columns = useSelectedFields({
     resource: 'song',
     columns: toggleableFields,
-    defaultOff: ['bpm', 'playDate', 'albumArtist', 'genre', 'comment'],
+    defaultOff: [
+      'channels',
+      'bpm',
+      'playDate',
+      'albumArtist',
+      'genre',
+      'comment',
+    ],
   })
 
   return (

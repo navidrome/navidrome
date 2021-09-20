@@ -76,7 +76,8 @@
                 "albumCount": "Albumanzahl",
                 "songCount": "Songanzahl",
                 "playCount": "Wiedergaben",
-                "rating": "Bewertung"
+                "rating": "Bewertung",
+                "genre": "Genre"
             }
         },
         "user": {
@@ -302,7 +303,11 @@
         "lastfmLinkSuccess": "Last.fm Verbindung hergestellt und scrobbling aktiviert",
         "lastfmLinkFailure": "Last.fm konnte nicht verbunden werden",
         "lastfmUnlinkSuccess": "Last.fm Verbindung entfernt und scrobbling deaktiviert",
-        "lastfmUnlinkFailure": "Last.fm Verbindung konnte nicht entfernt werden"
+        "lastfmUnlinkFailure": "Last.fm Verbindung konnte nicht entfernt werden",
+        "openIn": {
+            "lastfm": "Auf Last.fm anzeigen",
+            "musicbrainz": "Auf MusicBrainz anzeigen"
+        }
     },
     "menu": {
         "library": "Bibliothek",

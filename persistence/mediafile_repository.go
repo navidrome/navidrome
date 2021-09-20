@@ -31,6 +31,7 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 		"random": "RANDOM()",
 	}
 	r.filterMappings = map[string]filterFunc{
+		"id":      idFilter(r.tableName),
 		"title":   fullTextFilter,
 		"starred": booleanFilter,
 	}
@@ -44,20 +45,17 @@ func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, er
 }
 
 func (r *mediaFileRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"id": id}))
+	return r.exists(Select().Where(Eq{"media_file.id": id}))
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	m.FullText = getFullText(m.Title, m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle)
-	genres := m.Genres
-	m.Genres = nil
-	defer func() { m.Genres = genres }()
 	_, err := r.put(m.ID, m)
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(m.ID, r.tableName, genres)
+	return r.updateGenres(m.ID, r.tableName, m.Genres)
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {

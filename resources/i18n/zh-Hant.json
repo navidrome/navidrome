@@ -23,7 +23,8 @@
                 "comment": "註釋",
                 "rating": "評分",
                 "quality": "品質",
-                "bpm": ""
+                "bpm": "",
+                "playDate": ""
             },
             "actions": {
                 "addToQueue": "加入至播放佇列",
@@ -75,7 +76,8 @@
                 "albumCount": "專輯數",
                 "songCount": "歌曲數",
                 "playCount": "播放次數",
-                "rating": "評分"
+                "rating": "評分",
+                "genre": "類型"
             }
         },
         "user": {
@@ -110,7 +112,8 @@
                 "client": "用戶端",
                 "userName": "使用者名稱",
                 "lastSeen": "上次瀏覽",
-                "reportRealPath": "回報實際路徑"
+                "reportRealPath": "回報實際路徑",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -277,7 +280,14 @@
             "data_provider_error": "dataProvider錯誤. 請檢查console的詳細訊息.",
             "i18n_error": "無法載入所選語言",
             "canceled": "操作已取消",
-            "logged_out": "您的Session已結束，請重新登入。"
+            "logged_out": "您的Session已結束，請重新登入。",
+            "new_version": ""
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "",
+            "layout": "",
+            "grid": "",
+            "table": ""
         }
     },
     "message": {
@@ -289,7 +299,15 @@
         "delete_user_title": "刪除使用者 ％{name}",
         "delete_user_content": "您確定要刪除該使用者及其相關數據（包括播放清單和使用者配置）嗎？",
         "notifications_blocked": "您已在瀏覽器的設置中封鎖了此網站的通知",
-        "notifications_not_available": "此瀏覽器不支援桌面通知"
+        "notifications_not_available": "此瀏覽器不支援桌面通知",
+        "lastfmLinkSuccess": "",
+        "lastfmLinkFailure": "",
+        "lastfmUnlinkSuccess": "",
+        "lastfmUnlinkFailure": "",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        }
     },
     "menu": {
         "library": "音樂庫",
@@ -302,7 +320,8 @@
                 "theme": "主題",
                 "language": "語言",
                 "defaultView": "預設畫面",
-                "desktop_notifications": "桌面通知"
+                "desktop_notifications": "桌面通知",
+                "lastfmScrobbling": ""
             }
         },
         "albumList": "專輯",

@@ -1,53 +1,14 @@
-package metadata
+package ffmpeg
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ffmpegExtractor", func() {
-	var e *ffmpegExtractor
+var _ = Describe("Parser", func() {
+	var e *Parser
 	BeforeEach(func() {
-		e = &ffmpegExtractor{}
-	})
-	// TODO Need to mock `ffmpeg`
-	XContext("Extract", func() {
-		It("correctly parses metadata from all files in folder", func() {
-			mds, err := e.Extract("tests/fixtures/test.mp3", "tests/fixtures/test.ogg")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(mds).To(HaveLen(2))
-
-			m := mds["tests/fixtures/test.mp3"]
-			Expect(m.Title()).To(Equal("Song"))
-			Expect(m.Album()).To(Equal("Album"))
-			Expect(m.Artist()).To(Equal("Artist"))
-			Expect(m.AlbumArtist()).To(Equal("Album Artist"))
-			Expect(m.Compilation()).To(BeTrue())
-			Expect(m.Genres()).To(Equal("Rock"))
-			Expect(m.Year()).To(Equal(2014))
-			n, t := m.TrackNumber()
-			Expect(n).To(Equal(2))
-			Expect(t).To(Equal(10))
-			n, t = m.DiscNumber()
-			Expect(n).To(Equal(1))
-			Expect(t).To(Equal(2))
-			Expect(m.HasPicture()).To(BeTrue())
-			Expect(m.Duration()).To(BeNumerically("~", 1.03, 0.001))
-			Expect(m.BitRate()).To(Equal(192))
-			Expect(m.FilePath()).To(Equal("tests/fixtures/test.mp3"))
-			Expect(m.Suffix()).To(Equal("mp3"))
-			Expect(m.Size()).To(Equal(int64(51876)))
-
-			m = mds["tests/fixtures/test.ogg"]
-			Expect(err).To(BeNil())
-			Expect(m.Title()).To(BeEmpty())
-			Expect(m.HasPicture()).To(BeFalse())
-			Expect(m.Duration()).To(BeNumerically("~", 1.04, 0.001))
-			Expect(m.BitRate()).To(Equal(16))
-			Expect(m.Suffix()).To(Equal("ogg"))
-			Expect(m.FilePath()).To(Equal("tests/fixtures/test.ogg"))
-			Expect(m.Size()).To(Equal(int64(5065)))
-		})
+		e = &Parser{}
 	})
 
 	Context("extractMetadata", func() {
@@ -70,13 +31,13 @@ Input #0, ape, from './Capture/02 01 - Symphony No. 5 in C minor, Op. 67 I. Alle
     CatalogNumber   : PLD 1201
 `
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.CatalogNum()).To(Equal("PLD 1201"))
-			Expect(md.MbzTrackID()).To(Equal("ffe06940-727a-415a-b608-b7e45737f9d8"))
-			Expect(md.MbzAlbumID()).To(Equal("71eb5e4a-90e2-4a31-a2d1-a96485fcb667"))
-			Expect(md.MbzArtistID()).To(Equal("1f9df192-a621-4f54-8850-2c5373b7eac9"))
-			Expect(md.MbzAlbumArtistID()).To(Equal("89ad4ac3-39f7-470e-963a-56509c546377"))
-			Expect(md.MbzAlbumType()).To(Equal("album"))
-			Expect(md.MbzAlbumComment()).To(Equal("MP3"))
+			Expect(md).To(HaveKeyWithValue("catalognumber", []string{"PLD 1201"}))
+			Expect(md).To(HaveKeyWithValue("musicbrainz_trackid", []string{"ffe06940-727a-415a-b608-b7e45737f9d8"}))
+			Expect(md).To(HaveKeyWithValue("musicbrainz_albumid", []string{"71eb5e4a-90e2-4a31-a2d1-a96485fcb667"}))
+			Expect(md).To(HaveKeyWithValue("musicbrainz_artistid", []string{"1f9df192-a621-4f54-8850-2c5373b7eac9"}))
+			Expect(md).To(HaveKeyWithValue("musicbrainz_albumartistid", []string{"89ad4ac3-39f7-470e-963a-56509c546377"}))
+			Expect(md).To(HaveKeyWithValue("musicbrainz_albumtype", []string{"album"}))
+			Expect(md).To(HaveKeyWithValue("musicbrainz_albumcomment", []string{"MP3"}))
 		})
 
 		It("detects embedded cover art correctly", func() {
@@ -88,7 +49,7 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
     Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
     Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 600x600 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.HasPicture()).To(BeTrue())
+			Expect(md).To(HaveKeyWithValue("has_picture", []string{"true"}))
 		})
 
 		It("detects embedded cover art in ffmpeg 4.4 output", func() {
@@ -103,7 +64,7 @@ Input #0, flac, from '/run/media/naomi/Archivio/Musica/Katy Perry/Chained to the
     Metadata:
       comment         : Cover (front)`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.HasPicture()).To(BeTrue())
+			Expect(md).To(HaveKeyWithValue("has_picture", []string{"true"}))
 		})
 
 		It("detects embedded cover art in ogg containers", func() {
@@ -116,7 +77,7 @@ Input #0, ogg, from '/Users/deluan/Music/iTunes/iTunes Media/Music/_Testes/Jamai
       metadata_block_picture: AAAAAwAAAAppbWFnZS9qcGVnAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4Id/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQ
       TITLE           : Jamaican In New York (Album Version)`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.HasPicture()).To(BeTrue())
+			Expect(md).To(HaveKey("has_picture"))
 		})
 
 		It("gets bitrate from the stream, if available", func() {
@@ -125,17 +86,7 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
   Duration: 00:00:01.02, start: 0.000000, bitrate: 477 kb/s
     Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.BitRate()).To(Equal(192))
-		})
-
-		It("parses correctly the compilation tag", func() {
-			const output = `
-Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
-  Metadata:
-    compilation     : 1
-  Duration: 00:05:02.63, start: 0.000000, bitrate: 140 kb/s`
-			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.Compilation()).To(BeTrue())
+			Expect(md).To(HaveKeyWithValue("bitrate", []string{"192"}))
 		})
 
 		It("parses duration with milliseconds", func() {
@@ -143,7 +94,52 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
   Duration: 00:05:02.63, start: 0.000000, bitrate: 140 kb/s`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.Duration()).To(BeNumerically("~", 302.63, 0.001))
+			Expect(md).To(HaveKeyWithValue("duration", []string{"302.63"}))
+		})
+
+		It("parse channels from the stream with bitrate", func() {
+			const output = `
+Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 477 kb/s
+    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
+		It("parse 7.1 channels from the stream", func() {
+			const output = `
+Input #0, wav, from '/Users/deluan/Music/Music/Media/_/multichannel/Nums_7dot1_24_48000.wav':
+  Duration: 00:00:09.05, bitrate: 9216 kb/s
+  Stream #0:0: Audio: pcm_s24le ([1][0][0][0] / 0x0001), 48000 Hz, 7.1, s32 (24 bit), 9216 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"8"}))
+		})
+
+		It("parse channels from the stream without bitrate", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.flac':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 1371 kb/s
+    Stream #0:0: Audio: flac, 44100 Hz, stereo, fltp, s32 (24 bit)`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
+		It("parse channels from the stream with lang", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.m4a':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 1371 kb/s
+    Stream #0:0(eng): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 262 kb/s (default)`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
+		It("parse channels from the stream with lang 2", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.m4a':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 1371 kb/s
+    Stream #0:0(eng): Audio: vorbis, 44100 Hz, stereo, fltp, 192 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
 		})
 
 		It("parses stream level tags", func() {
@@ -156,7 +152,7 @@ Input #0, ogg, from './01-02 Drive (Teku).opus':
     Metadata:
       TITLE           : Drive (Teku)`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.Title()).To(Equal("Drive (Teku)"))
+			Expect(md).To(HaveKeyWithValue("title", []string{"Drive (Teku)"}))
 		})
 
 		It("does not overlap top level tags with the stream level tags", func() {
@@ -168,33 +164,7 @@ Input #0, mp3, from 'groovin.mp3':
     Metadata:
       title           : garbage`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.Title()).To(Equal("Groovin' (feat. Daniel Sneijers, Susanne Alt)"))
-		})
-
-		It("ignores case in the tag name", func() {
-			const output = `
-Input #0, flac, from '/Users/deluan/Downloads/06. Back In Black.flac':
-  Metadata:
-    ALBUM           : Back In Black
-    DATE            : 1980.07.25
-    disc            : 1
-    GENRE           : Hard Rock
-    TITLE           : Back In Black
-    DISCTOTAL       : 1
-    TRACKTOTAL      : 10
-    track           : 6
-  Duration: 00:04:16.00, start: 0.000000, bitrate: 995 kb/s`
-			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.Title()).To(Equal("Back In Black"))
-			Expect(md.Album()).To(Equal("Back In Black"))
-			Expect(md.Genres()).To(ConsistOf("Hard Rock"))
-			n, t := md.TrackNumber()
-			Expect(n).To(Equal(6))
-			Expect(t).To(Equal(10))
-			n, t = md.DiscNumber()
-			Expect(n).To(Equal(1))
-			Expect(t).To(Equal(1))
-			Expect(md.Year()).To(Equal(1980))
+			Expect(md).To(HaveKeyWithValue("title", []string{"Groovin' (feat. Daniel Sneijers, Susanne Alt)", "garbage"}))
 		})
 
 		It("parses multiline tags", func() {
@@ -227,7 +197,7 @@ Tracklist:
 07. Wunderbar
 08. Quarta Dimensão`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", outputWithMultilineComment)
-			Expect(md.Comment()).To(Equal(expectedComment))
+			Expect(md).To(HaveKeyWithValue("comment", []string{expectedComment}))
 		})
 
 		It("parses sort tags correctly", func() {
@@ -244,14 +214,14 @@ Input #0, mp3, from '/Users/deluan/Downloads/椎名林檎 - 加爾基 精液 栗
     ALBUMARTISTSORT : Shiina, Ringo
 `
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.Title()).To(Equal("ドツペルゲンガー"))
-			Expect(md.Album()).To(Equal("加爾基 精液 栗ノ花"))
-			Expect(md.Artist()).To(Equal("椎名林檎"))
-			Expect(md.AlbumArtist()).To(Equal("椎名林檎"))
-			Expect(md.SortTitle()).To(Equal("Dopperugengā"))
-			Expect(md.SortAlbum()).To(Equal("Kalk Samen Kuri No Hana"))
-			Expect(md.SortArtist()).To(Equal("Shiina, Ringo"))
-			Expect(md.SortAlbumArtist()).To(Equal("Shiina, Ringo"))
+			Expect(md).To(HaveKeyWithValue("title", []string{"ドツペルゲンガー"}))
+			Expect(md).To(HaveKeyWithValue("album", []string{"加爾基 精液 栗ノ花"}))
+			Expect(md).To(HaveKeyWithValue("artist", []string{"椎名林檎"}))
+			Expect(md).To(HaveKeyWithValue("album_artist", []string{"椎名林檎"}))
+			Expect(md).To(HaveKeyWithValue("title-sort", []string{"Dopperugengā"}))
+			Expect(md).To(HaveKeyWithValue("albumsort", []string{"Kalk Samen Kuri No Hana"}))
+			Expect(md).To(HaveKeyWithValue("artist_sort", []string{"Shiina, Ringo"}))
+			Expect(md).To(HaveKeyWithValue("albumartistsort", []string{"Shiina, Ringo"}))
 		})
 
 		It("ignores cover comment", func() {
@@ -266,7 +236,7 @@ Input #0, mp3, from './Edie Brickell/Picture Perfect Morning/01-01 Tomorrow Come
     Metadata:
       comment         : Cover (front)`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.Comment()).To(Equal(""))
+			Expect(md).ToNot(HaveKey("comment"))
 		})
 
 		It("parses tags with spaces in the name", func() {
@@ -276,7 +246,7 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
     ALBUM ARTIST    : Wyclef Jean
 `
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md.AlbumArtist()).To(Equal("Wyclef Jean"))
+			Expect(md).To(HaveKeyWithValue("album artist", []string{"Wyclef Jean"}))
 		})
 	})
 
@@ -291,7 +261,7 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 		  Metadata:
 		    TBPM            : 123`
 		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-		Expect(md.Bpm()).To(Equal(123))
+		Expect(md).To(HaveKeyWithValue("tbpm", []string{"123"}))
 	})
 
 	It("parses and rounds a floating point fBPM tag", func() {
@@ -300,6 +270,6 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
   		  Metadata:
 	        FBPM            : 141.7`
 		md, _ := e.extractMetadata("tests/fixtures/test.ogg", output)
-		Expect(md.Bpm()).To(Equal(142))
+		Expect(md).To(HaveKeyWithValue("fbpm", []string{"141.7"}))
 	})
 })

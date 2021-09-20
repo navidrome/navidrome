@@ -10,7 +10,7 @@ on:
       - master
 jobs:
   golangci-lint:
-    name: Lint Server
+    name: Lint Go code
     runs-on: ubuntu-latest
     steps:
       - name: Install taglib
@@ -26,11 +26,11 @@ jobs:
           args: --timeout 2m
 
   go:
-    name: Test Server with Go ${{ matrix.go_version }}
+    name: Test with Go ${{ matrix.go_version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: [1.16.x]
+        go_version: [1.16.x, 1.17.x]
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
@@ -68,17 +68,11 @@ jobs:
       NODE_OPTIONS: '--max_old_space_size=4096'
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: 16
-
-      - uses: actions/cache@v2
-        id: cache-npm
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('ui/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: npm install dependencies
         run: |
@@ -107,7 +101,7 @@ jobs:
           retention-days: 7
 
   binaries:
-    name: Binaries
+    name: Build binaries
     needs: [js, go, golangci-lint]
     runs-on: ubuntu-latest
     steps:
@@ -127,12 +121,9 @@ jobs:
       - name: Show Version
         run: git describe --tags
 
-      - name: Generate .gitinfo
-        run: make .gitinfo
-
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
-        uses: docker://deluan/ci-goreleaser:1.16.4-1
+        uses: docker://deluan/ci-goreleaser:1.17.1-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -140,7 +131,7 @@ jobs:
 
       - name: Run GoReleaser - RELEASE
         if: startsWith(github.ref, 'refs/tags/')
-        uses: docker://deluan/ci-goreleaser:1.16.4-1
+        uses: docker://deluan/ci-goreleaser:1.17.1-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -156,7 +147,7 @@ jobs:
           retention-days: 7
 
   docker:
-    name: Docker images
+    name: Build Docker images
     needs: [binaries]
     runs-on: ubuntu-latest
     env:
@@ -185,7 +176,7 @@ jobs:
         if: env.DOCKER_IMAGE != ''
         env:
           DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
-          DOCKER_PLATFORM: linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
+          DOCKER_PLATFORM: linux/amd64,linux/386,linux/arm/v6,linux/arm/v7,linux/arm64
         run: |
           echo ${{secrets.DOCKER_PASSWORD}} | docker login -u ${{secrets.DOCKER_USERNAME}} --password-stdin
           docker buildx build --platform ${DOCKER_PLATFORM} `.github/workflows/docker-tags.sh` -f .github/workflows/pipeline.dockerfile --push .

@@ -22,7 +22,7 @@ const url = (command, id, options) => {
   return `/rest/${command}?${params.toString()}`
 }
 
-const scrobble = (id, submission = false, time) =>
+const scrobble = (id, time, submission = true) =>
   httpClient(
     url('scrobble', id, {
       ...(submission && time && { time }),
@@ -30,7 +30,7 @@ const scrobble = (id, submission = false, time) =>
     })
   )
 
-const nowPlaying = (id) => scrobble(id, false)
+const nowPlaying = (id) => scrobble(id, null, false)
 
 const star = (id) => httpClient(url('star', id))
 
@@ -49,7 +49,11 @@ const getCoverArtUrl = (record, size) => {
     ...(record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
   }
-  return baseUrl(url('getCoverArt', record.coverArtId || 'not_found', options))
+  if (record.coverArtId) {
+    return baseUrl(url('getCoverArt', record.coverArtId, options))
+  } else {
+    return baseUrl(url('getCoverArt', 'not_found', size && { size }))
+  }
 }
 
 const streamUrl = (id) => {

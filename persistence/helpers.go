@@ -2,38 +2,29 @@ package persistence
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/navidrome/navidrome/consts"
+	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/fatih/structs"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
 )
 
 func toSqlArgs(rec interface{}) (map[string]interface{}, error) {
-	// Convert to JSON...
-	b, err := json.Marshal(rec)
-	if err != nil {
-		return nil, err
-	}
-
-	// ... then convert to map
-	var m map[string]interface{}
-	err = json.Unmarshal(b, &m)
-	r := make(map[string]interface{}, len(m))
-	for f, v := range m {
-		isAnnotationField := utils.StringInSlice(f, model.AnnotationFields)
-		isBookmarkField := utils.StringInSlice(f, model.BookmarkFields)
-		if !isAnnotationField && !isBookmarkField && v != nil {
-			r[toSnakeCase(f)] = v
+	m := structs.Map(rec)
+	for k, v := range m {
+		if t, ok := v.(time.Time); ok {
+			m[k] = t.Format(time.RFC3339Nano)
+		}
+		if t, ok := v.(*time.Time); ok && t != nil {
+			m[k] = t.Format(time.RFC3339Nano)
 		}
 	}
-	return r, err
+	return m, nil
 }
 
 var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")

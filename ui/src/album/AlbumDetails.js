@@ -4,10 +4,10 @@ import {
   CardContent,
   CardMedia,
   Collapse,
-  IconButton,
   makeStyles,
   Typography,
   useMediaQuery,
+  withWidth,
 } from '@material-ui/core'
 import {
   useRecordContext,
@@ -15,6 +15,7 @@ import {
   ArrayField,
   SingleFieldList,
   ChipField,
+  Link,
 } from 'react-admin'
 import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
@@ -27,12 +28,11 @@ import {
   SizeField,
   LoveButton,
   RatingField,
+  useAlbumsPerPage,
 } from '../common'
 import config from '../config'
 import { intersperse } from '../utils'
-import Link from '@material-ui/core/Link'
-import MusicBrainz from '../icons/MusicBrainz'
-import { ImLastfm2 } from 'react-icons/im'
+import AlbumExternalLinks from './AlbumExternalLinks'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -99,7 +99,7 @@ const useStyles = makeStyles(
     genreList: {
       marginTop: theme.spacing(0.5),
     },
-    links: {
+    externalLinks: {
       marginTop: theme.spacing(1.5),
     },
   }),
@@ -143,12 +143,35 @@ const AlbumComment = ({ record }) => {
   )
 }
 
+export const useGetHandleGenreClick = (width) => {
+  const [perPage] = useAlbumsPerPage(width)
+
+  return (id) => {
+    return `/album?filter={"genre_id":"${id}"}&order=ASC&sort=name&perPage=${perPage}`
+  }
+}
+
+const GenreChipField = withWidth()(({ width, ...rest }) => {
+  const record = useRecordContext(rest)
+  const genreLink = useGetHandleGenreClick(width)
+
+  return (
+    <Link to={genreLink(record.id)} onClick={(e) => e.stopPropagation()}>
+      <ChipField
+        source="name"
+        // Workaround to force ChipField to be clickable
+        onClick={() => {}}
+      />
+    </Link>
+  )
+})
+
 const GenreList = () => {
   const classes = useStyles()
   return (
     <ArrayField className={classes.genreList} source={'genres'}>
       <SingleFieldList linkType={false}>
-        <ChipField source="name" />
+        <GenreChipField />
       </SingleFieldList>
     </ArrayField>
   )
@@ -179,51 +202,6 @@ const Details = (props) => {
   !isXsmall && addDetail(<SizeField source="size" />)
 
   return <>{intersperse(details, ' · ')}</>
-}
-
-const Links = (props) => {
-  const classes = useStyles()
-  const translate = useTranslate()
-  const record = useRecordContext(props)
-  let links = []
-  const addLink = (obj) => {
-    const id = links.length
-    links.push(<span key={`link-${record.id}-${id}`}>{obj}</span>)
-  }
-
-  addLink(
-    <Link
-      href={`https://last.fm/music/${
-        encodeURIComponent(record.albumArtist) +
-        '/' +
-        encodeURIComponent(record.name)
-      }`}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <IconButton size={'small'} title={translate('message.openIn.lastfm')}>
-        <ImLastfm2 />
-      </IconButton>
-    </Link>
-  )
-
-  record.mbzAlbumId &&
-    addLink(
-      <Link
-        href={`https://musicbrainz.org/release/${record.mbzAlbumId}`}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <IconButton
-          size={'small'}
-          title={translate('message.openIn.musicbrainz')}
-        >
-          <MusicBrainz />
-        </IconButton>
-      </Link>
-    )
-
-  return <div className={classes.links}>{intersperse(links, ' ')}</div>
 }
 
 const AlbumDetails = (props) => {
@@ -275,7 +253,7 @@ const AlbumDetails = (props) => {
             <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />
             </Typography>
-            <Typography component={'p'} className={classes.recordMeta}>
+            <Typography component={'div'} className={classes.recordMeta}>
               <Details />
             </Typography>
             {config.enableStarRating && (
@@ -293,8 +271,8 @@ const AlbumDetails = (props) => {
               <Typography component={'p'}>{record.genre}</Typography>
             )}
             {isDesktop && (
-              <Typography component={'p'} className={classes.recordMeta}>
-                <Links />
+              <Typography component={'div'} className={classes.recordMeta}>
+                <AlbumExternalLinks className={classes.externalLinks} />
               </Typography>
             )}
             {isDesktop && record['comment'] && <AlbumComment record={record} />}
