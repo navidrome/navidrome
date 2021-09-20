@@ -22,7 +22,7 @@ require (
 	github.com/go-chi/httprate v0.5.0
 	github.com/go-chi/httprate v0.5.1
 	github.com/go-chi/jwtauth v4.0.4+incompatible
-	github.com/go-chi/jwtauth/v5 v5.0.1
+	github.com/go-chi/jwtauth/v5 v5.0.2
 	github.com/go-ldap/ldap v3.0.3+incompatible
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
