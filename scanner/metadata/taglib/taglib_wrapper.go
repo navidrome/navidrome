@@ -23,7 +23,7 @@ import (
 func Read(filename string) (tags map[string][]string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error("TagLib: recovered from panic", "error", r)
+			log.Error("TagLib: recovered from panic when reading tags", "file", filename, "error", r)
 			err = fmt.Errorf("TagLib: recovered from panic: %s", r)
 		}
 	}()
