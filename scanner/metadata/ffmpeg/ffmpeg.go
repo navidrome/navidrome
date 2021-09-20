@@ -154,10 +154,6 @@ func (e *Parser) parseInfo(info string) map[string][]string {
 		match = audioStreamRx.FindStringSubmatch(line)
 		if len(match) > 0 {
 			tags["bitrate"] = []string{match[7]}
-		}
-
-		match = audioStreamRx.FindStringSubmatch(line)
-		if len(match) > 0 {
 			tags["channels"] = []string{e.parseChannels(match[4])}
 		}
 	}
