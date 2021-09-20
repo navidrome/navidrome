@@ -20,7 +20,13 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-func Read(filename string) (map[string][]string, error) {
+func Read(filename string) (tags map[string][]string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("TagLib: recovered from panic", "error", r)
+			err = fmt.Errorf("TagLib: recovered from panic: %s", r)
+		}
+	}()
 	fp := getFilename(filename)
 	defer C.free(unsafe.Pointer(fp))
 	id, m := newMap()
