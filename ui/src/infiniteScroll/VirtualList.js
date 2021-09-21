@@ -48,4 +48,4 @@ VirtualList.defaultProps = {
   renderItem: () => null,
 }
 
-export default config.enableInfiniteScroll ? VirtualList : MaterialList
+export default config.devEnableInfiniteScroll ? VirtualList : MaterialList

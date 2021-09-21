@@ -124,7 +124,7 @@ const AlbumList = (props) => {
         perPage={perPage}
         title={<AlbumListTitle albumListType={albumListType} />}
         pagination={
-          !config.enableInfiniteScroll ? (
+          !config.devEnableInfiniteScroll ? (
             <Pagination rowsPerPageOptions={perPageOptions} />
           ) : null
         }

@@ -46,7 +46,6 @@ type configOptions struct {
 	EnableFavourites       bool
 	EnableStarRating       bool
 	EnableUserEditing      bool
-	EnableInfiniteScroll   bool
 	DefaultTheme           string
 	EnableCoverAnimation   bool
 	GATrackingID           string
@@ -74,6 +73,7 @@ type configOptions struct {
 	DevEnableShare             bool
 	DevSidebarPlaylists        bool
 	DevEnableBufferedScrobble  bool
+	DevEnableInfiniteScroll    bool
 }
 
 type scannerOptions struct {

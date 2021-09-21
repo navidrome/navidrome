@@ -26,7 +26,7 @@ const useStyles = makeStyles(
     root: {
       margin: '20px',
       display: 'grid',
-      height: config.enableInfiniteScroll ? 'calc(100% - 25px)' : 'initial',
+      height: config.devEnableInfiniteScroll ? 'calc(100% - 25px)' : 'initial',
     },
     tileBar: {
       transition: 'all 150ms ease-out',
@@ -129,9 +129,9 @@ const AlbumGridTile = ({ showArtist, record, basePath, isLoaded }) => {
     noSsr: true,
   })
 
-  if (!config.enableInfiniteScroll && !record) return null
+  if (!config.devEnableInfiniteScroll && !record) return null
 
-  if (config.enableInfiniteScroll && (!record || !isLoaded)) {
+  if (config.devEnableInfiniteScroll && (!record || !isLoaded)) {
     return (
       <div className={classes.albumContainer}>
         <Cover album={record} isLoaded={false} />
@@ -226,7 +226,7 @@ const AlbumGridView = withContentRect('bounds')(
       <Loading />
     ) : (
       <div ref={measureRef} className={classes.root}>
-        {config.enableInfiniteScroll ? (
+        {config.devEnableInfiniteScroll ? (
           <AlbumDatagrid
             columns={columns}
             itemHeight={tileImageHeight + tileTextHeight || 300}

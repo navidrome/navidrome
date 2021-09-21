@@ -48,7 +48,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"devSidebarPlaylists":     conf.Server.DevSidebarPlaylists,
 			"lastFMEnabled":           conf.Server.LastFM.Enabled,
 			"lastFMApiKey":            conf.Server.LastFM.ApiKey,
-			"enableInfiniteScroll":    conf.Server.EnableInfiniteScroll,
+			"devEnableInfiniteScroll": conf.Server.DevEnableInfiniteScroll,
 		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {
