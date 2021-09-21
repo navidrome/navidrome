@@ -141,12 +141,12 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 	var result model.Genres
 	unique := map[string]struct{}{}
 	var all []string
+	separators := conf.Server.Scanner.GenreSeparators + " "
 	for i := range genres {
 		gs := strings.FieldsFunc(genres[i], func(r rune) bool {
-			return strings.ContainsRune(conf.Server.Scanner.GenreSeparators, r)
+			return strings.ContainsRune(separators, r)
 		})
-		for j := range gs {
-			g := strings.TrimSpace(gs[j])
+		for _, g := range gs {
 			key := strings.ToLower(g)
 			if _, ok := unique[key]; ok {
 				continue
