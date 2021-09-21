@@ -34,7 +34,7 @@
                 "shuffleAll": "Shuffle All",
                 "download": "Download",
                 "playNext": "Play Next",
-              "info": "Info"
+                "info": "Get Info"
             }
         },
         "album": {
@@ -60,7 +60,7 @@
                 "shuffle": "Shuffle",
                 "addToPlaylist": "Add to Playlist",
                 "download": "Download",
-              "info": "Info"
+                "info": "Get Info"
             },
             "lists": {
                 "all": "All",
