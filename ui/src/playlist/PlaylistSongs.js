@@ -19,7 +19,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import ReactDragListView from 'react-drag-listview'
 import {
   DurationField,
-  SongDetails,
+  SongInfo,
   SongContextMenu,
   SongDatagrid,
   SongTitleField,
@@ -31,6 +31,7 @@ import { AddToPlaylistDialog } from '../dialogs'
 import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -85,7 +86,6 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const listContext = useListContext()
   const { data, ids, onUnselectItems } = listContext
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
@@ -186,7 +186,6 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
             nodeSelector={'tr'}
           >
             <SongDatagrid
-              expand={!isXsmall && <SongDetails />}
               rowClick={(id) => dispatch(playTracks(data, ids, id))}
               {...listContext}
               hasBulkActions={true}
@@ -204,6 +203,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
         </Card>
       </div>
       <AddToPlaylistDialog />
+      <ExpandInfoDialog content={<SongInfo />} />
       {React.cloneElement(props.pagination, listContext)}
     </>
   )
