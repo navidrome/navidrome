@@ -26,6 +26,8 @@ import AlbumGridView from './AlbumGridView'
 import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
+import AlbumInfo from './AlbumInfo'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import { List } from '../infiniteScroll'
 
 const AlbumFilter = (props) => {
@@ -134,6 +136,7 @@ const AlbumList = (props) => {
         )}
       </List>
       <AddToPlaylistDialog />
+      <ExpandInfoDialog content={<AlbumInfo />} />
     </>
   )
 }

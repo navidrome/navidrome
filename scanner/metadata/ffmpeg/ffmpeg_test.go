@@ -97,6 +97,51 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 			Expect(md).To(HaveKeyWithValue("duration", []string{"302.63"}))
 		})
 
+		It("parse channels from the stream with bitrate", func() {
+			const output = `
+Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 477 kb/s
+    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
+		It("parse 7.1 channels from the stream", func() {
+			const output = `
+Input #0, wav, from '/Users/deluan/Music/Music/Media/_/multichannel/Nums_7dot1_24_48000.wav':
+  Duration: 00:00:09.05, bitrate: 9216 kb/s
+  Stream #0:0: Audio: pcm_s24le ([1][0][0][0] / 0x0001), 48000 Hz, 7.1, s32 (24 bit), 9216 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"8"}))
+		})
+
+		It("parse channels from the stream without bitrate", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.flac':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 1371 kb/s
+    Stream #0:0: Audio: flac, 44100 Hz, stereo, fltp, s32 (24 bit)`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
+		It("parse channels from the stream with lang", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.m4a':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 1371 kb/s
+    Stream #0:0(eng): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 262 kb/s (default)`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
+		It("parse channels from the stream with lang 2", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.m4a':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 1371 kb/s
+    Stream #0:0(eng): Audio: vorbis, 44100 Hz, stereo, fltp, 192 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
 		It("parses stream level tags", func() {
 			const output = `
 Input #0, ogg, from './01-02 Drive (Teku).opus':

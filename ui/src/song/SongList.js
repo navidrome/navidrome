@@ -14,11 +14,9 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import {
   DateField,
   DurationField,
-  // List,
   SongContextMenu,
-  // SongDatagrid,
-  SongDetails,
   QuickFilter,
+  SongInfo,
   SongTitleField,
   SongSimpleList,
   RatingField,
@@ -33,6 +31,7 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { AddToPlaylistDialog } from '../dialogs'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import { Datagrid, List } from '../infiniteScroll'
 
 const useStyles = makeStyles({
@@ -125,6 +124,9 @@ const SongList = (props) => {
       quality: isDesktop && (
         <QualityInfo source="quality" dataKey="bitRate" sortable={false} />
       ),
+      channels: isDesktop && (
+        <NumberField source="channels" sortByOrder={'ASC'} />
+      ),
       duration: <DurationField source="duration" />,
       rating: config.enableStarRating && (
         <RatingField
@@ -143,7 +145,14 @@ const SongList = (props) => {
   const columns = useSelectedFields({
     resource: 'song',
     columns: toggleableFields,
-    defaultOff: ['bpm', 'playDate', 'albumArtist', 'genre', 'comment'],
+    defaultOff: [
+      'channels',
+      'bpm',
+      'playDate',
+      'albumArtist',
+      'genre',
+      'comment',
+    ],
   })
 
   return (
@@ -161,7 +170,6 @@ const SongList = (props) => {
           <SongSimpleList />
         ) : (
           <Datagrid
-            expand={<SongDetails />}
             rowClick={handleRowClick}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
@@ -192,6 +200,7 @@ const SongList = (props) => {
         )}
       </List>
       <AddToPlaylistDialog />
+      <ExpandInfoDialog content={<SongInfo />} />
     </>
   )
 }

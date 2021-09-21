@@ -15,20 +15,20 @@ func CreateMockUserRepo() *MockedUserRepo {
 
 type MockedUserRepo struct {
 	model.UserRepository
-	Err  error
-	Data map[string]*model.User
+	Error error
+	Data  map[string]*model.User
 }
 
 func (u *MockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
-	if u.Err != nil {
-		return 0, u.Err
+	if u.Error != nil {
+		return 0, u.Error
 	}
 	return int64(len(u.Data)), nil
 }
 
 func (u *MockedUserRepo) Put(usr *model.User) error {
-	if u.Err != nil {
-		return u.Err
+	if u.Error != nil {
+		return u.Error
 	}
 	if usr.ID == "" {
 		usr.ID = base64.StdEncoding.EncodeToString([]byte(usr.UserName))
@@ -39,8 +39,8 @@ func (u *MockedUserRepo) Put(usr *model.User) error {
 }
 
 func (u *MockedUserRepo) FindByUsername(username string) (*model.User, error) {
-	if u.Err != nil {
-		return nil, u.Err
+	if u.Error != nil {
+		return nil, u.Error
 	}
 	usr, ok := u.Data[strings.ToLower(username)]
 	if !ok {
@@ -54,5 +54,5 @@ func (u *MockedUserRepo) FindByUsernameWithPassword(username string) (*model.Use
 }
 
 func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
-	return u.Err
+	return u.Error
 }

@@ -28,11 +28,20 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
         )}
       </span>
       {!isMobile && (
-        <div className={classes.artistAlbum}>
-          <span className={clsx(classes.songInfo, 'songInfo')}>
-            {`${song.artist} - ${song.album}`}
+        <span className={clsx(classes.songInfo)}>
+          {`${song.artist} - ${song.album}` +
+            (song.year ? ` - ${song.year}` : '')}
+        </span>
+      )}
+      {isMobile && (
+        <>
+          <span className={clsx(classes.songInfo, classes.songArtist)}>
+            {`${song.artist}`}
           </span>
-        </div>
+          <span className={clsx(classes.songInfo, classes.songAlbum)}>
+            {song.year ? `${song.album} - ${song.year}` : `${song.album}`}
+          </span>
+        </>
       )}
     </Link>
   )

@@ -18,6 +18,7 @@
                 "size": "File size",
                 "updatedAt": "Updated at",
                 "bitRate": "Bit rate",
+                "channels": "Channels",
                 "discSubtitle": "Disc Subtitle",
                 "starred": "Favourite",
                 "comment": "Comment",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Add to Playlist",
                 "shuffleAll": "Shuffle All",
                 "download": "Download",
-                "playNext": "Play Next"
+                "playNext": "Play Next",
+                "info": "Get Info"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "Play Later",
                 "shuffle": "Shuffle",
                 "addToPlaylist": "Add to Playlist",
-                "download": "Download"
+                "download": "Download",
+                "info": "Get Info"
             },
             "lists": {
                 "all": "All",
@@ -325,6 +328,8 @@
             }
         },
         "albumList": "Albums",
+        "playlists": "Playlists",
+        "sharedPlaylists": "Shared Playlists",
         "about": "About"
     },
     "player": {

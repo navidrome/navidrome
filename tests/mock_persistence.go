@@ -14,6 +14,7 @@ type MockDataStore struct {
 	MockedUser           model.UserRepository
 	MockedProperty       model.PropertyRepository
 	MockedPlayer         model.PlayerRepository
+	MockedPlaylist       model.PlaylistRepository
 	MockedShare          model.ShareRepository
 	MockedTranscoding    model.TranscodingRepository
 	MockedUserProps      model.UserPropsRepository
@@ -46,14 +47,17 @@ func (db *MockDataStore) MediaFolder(context.Context) model.MediaFolderRepositor
 }
 
 func (db *MockDataStore) Genre(context.Context) model.GenreRepository {
-	if db.MockedGenre != nil {
-		return db.MockedGenre
+	if db.MockedGenre == nil {
+		db.MockedGenre = &MockedGenreRepo{}
 	}
-	return struct{ model.GenreRepository }{}
+	return db.MockedGenre
 }
 
 func (db *MockDataStore) Playlist(context.Context) model.PlaylistRepository {
-	return struct{ model.PlaylistRepository }{}
+	if db.MockedPlaylist == nil {
+		db.MockedPlaylist = struct{ model.PlaylistRepository }{}
+	}
+	return db.MockedPlaylist
 }
 
 func (db *MockDataStore) PlayQueue(context.Context) model.PlayQueueRepository {

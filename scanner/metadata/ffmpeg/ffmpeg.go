@@ -73,7 +73,7 @@ var (
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
 
 	//    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
-	bitRateRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: (Audio):.*, (\d+) kb/s`)
+	audioStreamRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+.*: (Audio): (.*), (.* Hz), ([\w\.]+),*(.*.,)*(.(\d+).kb/s)*`)
 
 	//    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 600x600 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc`
 	coverRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: (Video):.*`)
@@ -151,9 +151,10 @@ func (e *Parser) parseInfo(info string) map[string][]string {
 			continue
 		}
 
-		match = bitRateRx.FindStringSubmatch(line)
+		match = audioStreamRx.FindStringSubmatch(line)
 		if len(match) > 0 {
-			tags["bitrate"] = []string{match[2]}
+			tags["bitrate"] = []string{match[7]}
+			tags["channels"] = []string{e.parseChannels(match[4])}
 		}
 	}
 
@@ -173,6 +174,20 @@ func (e *Parser) parseDuration(tag string) string {
 		return "0"
 	}
 	return strconv.FormatFloat(d.Sub(zeroTime).Seconds(), 'f', 2, 32)
+}
+
+func (e *Parser) parseChannels(tag string) string {
+	if tag == "mono" {
+		return "1"
+	} else if tag == "stereo" {
+		return "2"
+	} else if tag == "5.1" {
+		return "6"
+	} else if tag == "7.1" {
+		return "8"
+	}
+
+	return "0"
 }
 
 // Inputs will always be absolute paths
