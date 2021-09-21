@@ -160,16 +160,16 @@ const useStyles = makeStyles(
   { name: 'NDArtistPage' }
 )
 
-function ImgMediaCard({ artId, artist }) {
-  const [artisteInfo, setartisteInfo] = useState()
+function ImgMediaCard({ artistId, artist }) {
+  const [artistInfo, setartistInfo] = useState()
   const [expanded, setExpanded] = useState(false)
 
-  let title = artist?.artist
-  let lastLink = ''
-  const link = artisteInfo?.biography?.match(
+  const title = artist?.artist
+  let completeBioLink = ''
+  const link = artistInfo?.biography?.match(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
   )
-  const biography = artisteInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
+  const biography = artistInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
 
   const handleExpandClick = useCallback(() => {
     setExpanded(!expanded)
@@ -177,29 +177,29 @@ function ImgMediaCard({ artId, artist }) {
 
   useEffect(() => {
     subsonic
-      .getArtistInfo(artId)
+      .getArtistInfo(artistId)
       .then((resp) => resp.json['subsonic-response'])
       .then((data) => {
         if (data.status === 'ok') {
-          setartisteInfo(data.artistInfo)
+          setartistInfo(data.artistInfo)
         }
       })
       .catch((e) => {
         console.error('error on artist page', e)
         return (
           <Redirect
-            to={`/album?filter={"artist_id":"${artId}"}&order=ASC&sort=maxYear&
+            to={`/album?filter={"artist_id":"${artistId}"}&order=ASC&sort=maxYear&
               displayedFilters={"compilation":true}`}
           />
         )
       })
-  }, [artId, artist])
+  }, [artistId, artist])
 
   if (link) {
-    lastLink = link[2]
+    completeBioLink = link[2]
   }
 
-  const img = artisteInfo?.largeImageUrl
+  const img = artistInfo?.largeImageUrl
   const classes = useStyles({ img, link, expanded })
 
   return (
@@ -209,7 +209,7 @@ function ImgMediaCard({ artId, artist }) {
           <Card className={classes.martImage}>
             <CardMedia
               className={classes.cover}
-              image={`${artisteInfo?.mediumImageUrl}`}
+              image={`${artistInfo?.mediumImageUrl}`}
               title={title}
             />
           </Card>
@@ -222,7 +222,7 @@ function ImgMediaCard({ artId, artist }) {
             <Card className={classes.artImage}>
               <CardMedia
                 className={classes.cover}
-                image={`${artisteInfo?.mediumImageUrl}`}
+                image={`${artistInfo?.mediumImageUrl}`}
                 title={title}
               />
             </Card>
@@ -239,7 +239,7 @@ function ImgMediaCard({ artId, artist }) {
                   <Typography variant={'body1'} onClick={handleExpandClick}>
                     {biography}
                     <Link
-                      href={lastLink}
+                      href={completeBioLink}
                       style={{ margin: '1px' }}
                       target="_blank"
                       rel="nofollow"
@@ -257,7 +257,7 @@ function ImgMediaCard({ artId, artist }) {
         <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
           <Typography variant={'body1'} onClick={handleExpandClick}>
             {biography}
-            <Link href={lastLink} target="_blank" rel="nofollow">
+            <Link href={completeBioLink} target="_blank" rel="nofollow">
               Read more...
             </Link>
           </Typography>
@@ -305,7 +305,7 @@ const ArtistAlbum = ({ record, width }) => {
 
   return (
     <>
-      <ImgMediaCard artId={record?.id} artist={artist[0]} />
+      <ImgMediaCard artistId={record?.id} artist={artist[0]} />
       <div className={classes.iroot}>
         <div className={classes.album}>
           {artist.length +
