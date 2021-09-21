@@ -19,7 +19,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import ReactDragListView from 'react-drag-listview'
 import {
   DurationField,
-  SongDetails,
+  SongInfo,
   SongContextMenu,
   SongDatagrid,
   SongTitleField,
@@ -203,7 +203,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
         </Card>
       </div>
       <AddToPlaylistDialog />
-      <ExpandInfoDialog content={<SongDetails />} />
+      <ExpandInfoDialog content={<SongInfo />} />
       {React.cloneElement(props.pagination, listContext)}
     </>
   )

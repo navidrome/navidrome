@@ -3,8 +3,8 @@ import {
   ADD_TO_PLAYLIST_OPEN,
   DUPLICATE_SONG_WARNING_OPEN,
   DUPLICATE_SONG_WARNING_CLOSE,
-  ALBUM_INFO_OPEN,
-  ALBUM_INFO_CLOSE,
+  EXTENDED_INFO_OPEN,
+  EXTENDED_INFO_CLOSE,
 } from '../actions'
 
 export const addToPlaylistDialogReducer = (
@@ -46,13 +46,13 @@ export const expandInfoDialogReducer = (
 ) => {
   const { type } = payload
   switch (type) {
-    case ALBUM_INFO_OPEN:
+    case EXTENDED_INFO_OPEN:
       return {
         ...previousState,
         open: true,
         record: payload.record,
       }
-    case ALBUM_INFO_CLOSE:
+    case EXTENDED_INFO_CLOSE:
       return {
         ...previousState,
         open: false,

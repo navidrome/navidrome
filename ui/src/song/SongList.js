@@ -17,7 +17,7 @@ import {
   List,
   SongContextMenu,
   SongDatagrid,
-  SongDetails,
+  SongInfo,
   QuickFilter,
   SongTitleField,
   SongSimpleList,
@@ -193,7 +193,7 @@ const SongList = (props) => {
         )}
       </List>
       <AddToPlaylistDialog />
-      <ExpandInfoDialog content={<SongDetails />} />
+      <ExpandInfoDialog content={<SongInfo />} />
     </>
   )
 }

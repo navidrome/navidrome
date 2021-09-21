@@ -19,7 +19,7 @@ import {
   SongBulkActions,
   SongContextMenu,
   SongDatagrid,
-  SongDetails,
+  SongInfo,
   SongTitleField,
   RatingField,
   QualityInfo,
@@ -182,7 +182,7 @@ const AlbumSongs = (props) => {
         </Card>
       </div>
       <AddToPlaylistDialog />
-      <ExpandInfoDialog content={<SongDetails />} />
+      <ExpandInfoDialog content={<SongInfo />} />
     </>
   )
 }

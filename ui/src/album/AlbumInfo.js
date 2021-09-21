@@ -28,6 +28,7 @@ const AlbumInfo = (props) => {
   const translate = useTranslate()
   const record = useRecordContext(props)
   const data = {
+    album: <TextField source={'name'} />,
     albumArtist: <TextField source={'albumArtist'} />,
     genre: (
       <ArrayField source={'genres'}>

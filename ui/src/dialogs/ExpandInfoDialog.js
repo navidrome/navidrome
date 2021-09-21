@@ -9,7 +9,7 @@ import {
   DialogContent,
   DialogTitle,
 } from '@material-ui/core'
-import { closeExpandInfoDialog } from '../actions'
+import { closeExtendedInfoDialog } from '../actions'
 
 const ExpandInfoDialog = ({ title, content }) => {
   const { open, record } = useSelector((state) => state.expandInfoDialog)
@@ -17,7 +17,7 @@ const ExpandInfoDialog = ({ title, content }) => {
   const translate = useTranslate()
 
   const handleClose = (e) => {
-    dispatch(closeExpandInfoDialog())
+    dispatch(closeExtendedInfoDialog())
     e.stopPropagation()
   }
 

@@ -11,7 +11,7 @@ import {
   addTracks,
   setTrack,
   openAddToPlaylist,
-  openExpandInfoDialog,
+  openExtendedInfoDialog,
 } from '../actions'
 import subsonic from '../subsonic'
 import { LoveButton } from './LoveButton'
@@ -72,7 +72,7 @@ export const SongContextMenu = ({
     info: {
       enabled: true,
       label: translate('resources.song.actions.info'),
-      action: (record) => dispatch(openExpandInfoDialog(record)),
+      action: (record) => dispatch(openExtendedInfoDialog(record)),
     },
   }
 
