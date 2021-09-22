@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   GridList,
   GridListTile,
@@ -15,7 +15,6 @@ import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
 import PropTypes from 'prop-types'
-import Button from '@material-ui/core/Button'
 
 import { AlbumGridTile } from '../album/AlbumGridView'
 import { getColsForWidth } from '../album/AlbumGridView'
@@ -23,7 +22,8 @@ import {
   useTranslate,
   useShowController,
   ShowContextProvider,
-  DataProviderContext,
+  useQueryWithStore,
+  Loading,
 } from 'react-admin'
 import { Redirect } from 'react-router'
 
@@ -61,6 +61,9 @@ const useStyles = makeStyles(
       flex: '1',
       flexDirection: 'column',
     },
+    link: {
+      margin: '1px',
+    },
     mdetails: {
       display: 'none',
       [theme.breakpoints.down('xs')]: {
@@ -78,6 +81,12 @@ const useStyles = makeStyles(
         marginLeft: '3%',
         marginRight: '3%',
         zIndex: '1',
+        '& p': {
+          whiteSpace: ({ expanded }) => (expanded ? 'unset' : 'nowrap'),
+          overflow: 'hidden',
+          width: '95vw',
+          textOverflow: 'ellipsis',
+        },
       },
     },
     content: {
@@ -131,28 +140,6 @@ const useStyles = makeStyles(
         display: 'none',
       },
     },
-    more: {
-      display: 'none',
-      [theme.breakpoints.down('xs')]: {
-        display: ({ link }) => (link ? 'flex' : 'none'),
-        width: '7rem',
-        flex: '1',
-        alignItems: 'flex-start',
-        padding: '0',
-        marginBottom: 'auto',
-        border: 'none',
-        boxShadow: '-10px 0px 18px 5px black',
-        background: 'inherit',
-        textTransform: 'capitalize',
-        '&:hover': {
-          background: 'black',
-          boxShadow: '-10px 0px 18px 5px black',
-        },
-        '& .MuiButton-label': {
-          color: `${theme.palette.primary.main}`,
-        },
-      },
-    },
     album: {
       marginBottom: '1em',
     },
@@ -160,7 +147,7 @@ const useStyles = makeStyles(
   { name: 'NDArtistPage' }
 )
 
-function ImgMediaCard({ artistId, artist }) {
+const ImgMediaCard = ({ artistId, artist }) => {
   const [artistInfo, setartistInfo] = useState()
   const [expanded, setExpanded] = useState(false)
 
@@ -170,10 +157,15 @@ function ImgMediaCard({ artistId, artist }) {
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
   )
   const biography = artistInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
+  const translate = useTranslate()
 
   const handleExpandClick = useCallback(() => {
     setExpanded(!expanded)
   }, [expanded, setExpanded])
+
+  if (link) {
+    completeBioLink = link[2]
+  }
 
   useEffect(() => {
     subsonic
@@ -194,10 +186,6 @@ function ImgMediaCard({ artistId, artist }) {
         )
       })
   }, [artistId, artist])
-
-  if (link) {
-    completeBioLink = link[2]
-  }
 
   const img = artistInfo?.largeImageUrl
   const classes = useStyles({ img, link, expanded })
@@ -240,11 +228,11 @@ function ImgMediaCard({ artistId, artist }) {
                     {biography}
                     <Link
                       href={completeBioLink}
-                      style={{ margin: '1px' }}
+                      className={classes.link}
                       target="_blank"
                       rel="nofollow"
                     >
-                      Read more...
+                      {translate('message.lastfmLink')}
                     </Link>
                   </Typography>
                 </Collapse>
@@ -258,50 +246,18 @@ function ImgMediaCard({ artistId, artist }) {
           <Typography variant={'body1'} onClick={handleExpandClick}>
             {biography}
             <Link href={completeBioLink} target="_blank" rel="nofollow">
-              Read more...
+              {translate('message.lastfmLink')}
             </Link>
           </Typography>
         </Collapse>
-        {!expanded && (
-          <Button
-            variant="contained"
-            color="inherit"
-            className={classes.more}
-            onClick={handleExpandClick}
-          >
-            More
-          </Button>
-        )}
       </div>
     </>
   )
 }
 
-const ArtistAlbum = ({ record, width }) => {
-  const [artist, setartist] = useState([])
-
+const ArtistAlbum = ({ artist, record, width }) => {
   const classes = useStyles()
   const translate = useTranslate()
-
-  const datas = useContext(DataProviderContext)
-  useEffect(() => {
-    const payload = {
-      pagination: { page: 1, perPage: 12 },
-      sort: { field: 'name', order: 'ASC' },
-      filter: { artist_id: record?.id },
-    }
-
-    datas
-      .getList('album', payload)
-      .then(({ data }) => {
-        if (record) {
-          setartist(data)
-        }
-      })
-      .catch((e) => {
-        console.error('err', e)
-      })
-  }, [record, datas])
 
   return (
     <>
@@ -335,10 +291,32 @@ const ArtistAlbum = ({ record, width }) => {
 
 const ArtistShow = (props) => {
   const { width } = props
+
   const controllerProps = useShowController(props)
+  const { record } = { ...controllerProps }
+
+  const payload = {
+    pagination: { page: 1, perPage: 12 },
+    sort: { field: 'name', order: 'ASC' },
+    filter: { artist_id: record?.id },
+  }
+  const { loaded, data } = useQueryWithStore({
+    type: 'getList',
+    resource: 'album',
+    payload: payload,
+  })
+  if (!loaded) {
+    return <Loading />
+  }
+
   return (
     <ShowContextProvider value={controllerProps}>
-      <ArtistAlbum width={width} {...props} {...controllerProps} />
+      <ArtistAlbum
+        width={width}
+        artist={data}
+        {...props}
+        {...controllerProps}
+      />
     </ShowContextProvider>
   )
 }
