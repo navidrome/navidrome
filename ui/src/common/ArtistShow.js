@@ -151,7 +151,7 @@ const ImgMediaCard = ({ artistId, artist }) => {
   const [artistInfo, setartistInfo] = useState()
   const [expanded, setExpanded] = useState(false)
 
-  const title = artist?.artist
+  const title = artist.artist
   let completeBioLink = ''
   const link = artistInfo?.biography?.match(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
@@ -245,7 +245,12 @@ const ImgMediaCard = ({ artistId, artist }) => {
         <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
           <Typography variant={'body1'} onClick={handleExpandClick}>
             {biography}
-            <Link href={completeBioLink} target="_blank" rel="nofollow">
+            <Link
+              href={completeBioLink}
+              className={classes.link}
+              target="_blank"
+              rel="nofollow"
+            >
               {translate('message.lastfmLink')}
             </Link>
           </Typography>
@@ -261,7 +266,7 @@ const ArtistAlbum = ({ artist, record, width }) => {
 
   return (
     <>
-      <ImgMediaCard artistId={record?.id} artist={artist[0]} />
+      <ImgMediaCard artistId={record.id} artist={artist[0]} />
       <div className={classes.iroot}>
         <div className={classes.album}>
           {artist.length +
