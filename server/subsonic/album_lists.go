@@ -70,22 +70,22 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (model.Albums, int64
 		return nil, 0, errors.New("internal error")
 	}
 
-	pageCount, err := c.ds.Album(r.Context()).CountAll(opts)
+	count, err := c.ds.Album(r.Context()).CountAll(opts)
 	if err != nil {
 		log.Error(r, "Error counting albums", "error", err)
 		return nil, 0, errors.New("internal error")
 	}
 
-	return albums, pageCount, nil
+	return albums, count, nil
 }
 
 func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	albums, pageCount, err := c.getAlbumList(r)
+	albums, count, err := c.getAlbumList(r)
 	if err != nil {
 		return nil, newError(responses.ErrorGeneric, err.Error())
 	}
 
-	w.Header().Set("x-total-count", strconv.Itoa(int(pageCount)))
+	w.Header().Set("x-total-count", strconv.Itoa(int(count)))
 
 	response := newResponse()
 	response.AlbumList = &responses.AlbumList{Album: childrenFromAlbums(r.Context(), albums)}
