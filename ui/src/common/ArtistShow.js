@@ -181,12 +181,6 @@ const ArtistDetails = () => {
       })
       .catch((e) => {
         console.error('error on artist page', e)
-        return (
-          <Redirect
-            to={`/album?filter={"artist_id":"${artistId}"}&order=ASC&sort=maxYear&
-              displayedFilters={"compilation":true}`}
-          />
-        )
       })
   }, [artistId, record])
 
@@ -285,7 +279,7 @@ const ArtistAlbums = ({ albums, width }) => {
             <AlbumGridTile
               record={artist}
               basePath={'/album'}
-              showArtist={true}
+              showArtist={false}
             />
           </GridListTile>
         ))}
@@ -311,7 +305,7 @@ const ArtistShow = (props) => {
 
   const payload = {
     pagination: { page: 1, perPage: 12 },
-    sort: { field: 'name', order: 'ASC' },
+    sort: { field: 'maxYear', order: 'ASC' },
     filter: { artist_id: record?.id },
   }
   const { loaded, data } = useQueryWithStore({
