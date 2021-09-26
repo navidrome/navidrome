@@ -63,7 +63,7 @@ func runNavidrome() {
 	if schedule != "" {
 		go schedulePeriodicScan(schedule)
 	} else {
-		log.Warn("Periodic scan is DISABLED", "schedule", schedule)
+		log.Warn("Periodic scan is DISABLED")
 	}
 
 	if err := g.Run(); err != nil {

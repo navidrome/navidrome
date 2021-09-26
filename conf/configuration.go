@@ -158,6 +158,7 @@ func validateScanSchedule() error {
 		}
 	}
 	if Server.ScanSchedule == "0" || Server.ScanSchedule == "" {
+		Server.ScanSchedule = ""
 		return nil
 	}
 	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
