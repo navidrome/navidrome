@@ -73,6 +73,7 @@ type configOptions struct {
 	DevEnableShare             bool
 	DevSidebarPlaylists        bool
 	DevEnableBufferedScrobble  bool
+	DevShowArtistPage          bool
 }
 
 type scannerOptions struct {
@@ -238,6 +239,7 @@ func init() {
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", false)
+	viper.SetDefault("devshowartistpage", false)
 }
 
 func InitConfig(cfgFile string) {

@@ -113,7 +113,7 @@ const Cover = withContentRect('bounds')(
   }
 )
 
-const AlbumGridTile = ({ showArtist, record, basePath }) => {
+const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'), {
     noSsr: true,
@@ -121,7 +121,6 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
   if (!record) {
     return null
   }
-
   return (
     <div className={classes.albumContainer}>
       <Link
@@ -166,7 +165,6 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
   const { filterValues } = useListContext()
   const isArtistView = !!(filterValues && filterValues.artist_id)
-
   return (
     <div className={classes.root}>
       <GridList
