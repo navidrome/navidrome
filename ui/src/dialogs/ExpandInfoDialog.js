@@ -51,7 +51,7 @@ const ExpandInfoDialog = ({ title, content }) => {
 
 ExpandInfoDialog.propTypes = {
   title: PropTypes.string,
-  content: PropTypes.elementType.isRequired,
+  content: PropTypes.object.isRequired,
 }
 
 export default ExpandInfoDialog
