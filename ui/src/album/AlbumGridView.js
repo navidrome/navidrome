@@ -88,7 +88,7 @@ const useCoverStyles = makeStyles({
   },
 })
 
-export const getColsForWidth = (width) => {
+const getColsForWidth = (width) => {
   if (width === 'xs') return 2
   if (width === 'sm') return 3
   if (width === 'md') return 4
@@ -96,7 +96,7 @@ export const getColsForWidth = (width) => {
   return 9
 }
 
-export const Cover = withContentRect('bounds')(
+const Cover = withContentRect('bounds')(
   ({ album, measureRef, contentRect }) => {
     // Force height to be the same as the width determined by the GridList
     // noinspection JSSuspiciousNameCombination
@@ -113,7 +113,7 @@ export const Cover = withContentRect('bounds')(
   }
 )
 
-export const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
+const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'), {
     noSsr: true,
@@ -161,7 +161,7 @@ export const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
   )
 }
 
-const LoadedAlbumGrid = ({ ids, data, basePath, width, ...props }) => {
+const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
   const { filterValues } = useListContext()
   const isArtistView = !!(filterValues && filterValues.artist_id)

@@ -1,32 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import {
-  GridList,
-  GridListTile,
-  Typography,
-  Collapse,
-  Link,
-} from '@material-ui/core'
+import { Typography, Collapse, Link } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import withWidth from '@material-ui/core/withWidth'
-
-import subsonic from '../subsonic'
-
 import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
-import PropTypes from 'prop-types'
-
-import { AlbumGridTile } from '../album/AlbumGridView'
-import { getColsForWidth } from '../album/AlbumGridView'
 import {
   useTranslate,
   useShowController,
   ShowContextProvider,
-  useQueryWithStore,
-  Loading,
   useRecordContext,
+  useShowContext,
+  ReferenceManyField,
 } from 'react-admin'
-import { Redirect } from 'react-router'
+import subsonic from '../subsonic'
+import AlbumGridView from '../album/AlbumGridView'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -154,7 +141,7 @@ const ArtistDetails = () => {
   const record = useRecordContext()
   const artistId = record?.id
 
-  const title = record.artist
+  const title = record.name
   let completeBioLink = ''
   const link = artistInfo?.biography?.match(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
@@ -257,80 +244,55 @@ const ArtistDetails = () => {
   )
 }
 
-const ArtistAlbums = ({ albums, width }) => {
+const ArtistAlbums = ({ ...props }) => {
+  const { ids } = props
   const classes = useStyles()
   const translate = useTranslate()
 
   return (
     <div className={classes.albumList}>
       <div className={classes.artistSummary}>
-        {albums.length +
+        {ids.length +
           ' ' +
-          translate('resources.album.name', { smart_count: albums.length })}
+          translate('resources.album.name', { smart_count: ids.length })}
       </div>
-      <GridList
-        component={'div'}
-        cellHeight={'auto'}
-        cols={getColsForWidth(width)}
-        spacing={20}
-      >
-        {albums.map((artist) => (
-          <GridListTile className={classes.gridListTile} key={artist.id}>
-            <AlbumGridTile
-              record={artist}
-              basePath={'/album'}
-              showArtist={false}
-            />
-          </GridListTile>
-        ))}
-      </GridList>
+      <AlbumGridView {...props} />
     </div>
   )
 }
 
-const AlbumShowLayout = ({ albums, record, width }) => {
+const AlbumShowLayout = (props) => {
+  const showContext = useShowContext(props)
+  const record = useRecordContext()
+
   return (
     <>
-      {record && <ArtistDetails artistId={record.id} artist={albums[0]} />}
-      {record && <ArtistAlbums width={width} albums={albums} />}
+      {record && <ArtistDetails />}
+      {record && (
+        <ReferenceManyField
+          {...showContext}
+          addLabel={false}
+          reference="album"
+          target="artist_id"
+          sort={{ field: 'maxYear', order: 'ASC' }}
+          filter={{ artist_id: record?.id }}
+          perPage={0}
+          pagination={null}
+        >
+          <ArtistAlbums />
+        </ReferenceManyField>
+      )}
     </>
   )
 }
 
 const ArtistShow = (props) => {
-  const { width } = props
-
   const controllerProps = useShowController(props)
-  const { record } = { ...controllerProps }
-
-  const payload = {
-    pagination: { page: 1, perPage: 12 },
-    sort: { field: 'maxYear', order: 'ASC' },
-    filter: { artist_id: record?.id },
-  }
-  const { loaded, data } = useQueryWithStore({
-    type: 'getList',
-    resource: 'album',
-    payload: payload,
-  })
-  if (!loaded) {
-    return <Loading />
-  }
-
   return (
     <ShowContextProvider value={controllerProps}>
-      <AlbumShowLayout
-        width={width}
-        albums={data}
-        {...props}
-        {...controllerProps}
-      />
+      <AlbumShowLayout {...controllerProps} />
     </ShowContextProvider>
   )
 }
 
-ArtistShow.propTypes = {
-  width: PropTypes.oneOf(['lg', 'md', 'sm', 'xl', 'xs']),
-}
-
-export default withWidth()(ArtistShow)
+export default ArtistShow
