@@ -216,7 +216,7 @@ const ArtistDetails = () => {
                   className={classes.bioBlock}
                 >
                   <Typography variant={'body1'} onClick={handleExpandClick}>
-                    {biography}
+                    <span dangerouslySetInnerHTML={{ __html: biography }} />
                     {completeBioLink !== '' && (
                       <Link
                         href={completeBioLink}
