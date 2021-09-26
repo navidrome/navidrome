@@ -49,6 +49,13 @@ const useStyles = makeStyles(
       flex: '1',
       flexDirection: 'column',
     },
+    bioBlock: {
+      display: 'inline-block',
+      marginTop: '1em',
+      float: 'left',
+      wordBreak: 'break-all',
+      cursor: 'pointer',
+    },
     link: {
       margin: '1px',
     },
@@ -146,16 +153,14 @@ const ArtistDetails = () => {
   const link = artistInfo?.biography?.match(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
   )
-  const biography = artistInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
-  const translate = useTranslate()
-
-  const handleExpandClick = useCallback(() => {
-    setExpanded(!expanded)
-  }, [expanded, setExpanded])
-
   if (link) {
     completeBioLink = link[2]
   }
+  const biography = artistInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
+  const translate = useTranslate()
+
+  const img = artistInfo?.largeImageUrl
+  const classes = useStyles({ img, expanded })
 
   useEffect(() => {
     subsonic
@@ -171,8 +176,9 @@ const ArtistDetails = () => {
       })
   }, [artistId, record])
 
-  const img = artistInfo?.largeImageUrl
-  const classes = useStyles({ img, link, expanded })
+  const handleExpandClick = useCallback(() => {
+    setExpanded(!expanded)
+  }, [expanded, setExpanded])
 
   return (
     <>
@@ -207,17 +213,20 @@ const ArtistDetails = () => {
                   collapsedHeight={'4.5em'}
                   in={expanded}
                   timeout={'auto'}
+                  className={classes.bioBlock}
                 >
                   <Typography variant={'body1'} onClick={handleExpandClick}>
                     {biography}
-                    <Link
-                      href={completeBioLink}
-                      className={classes.link}
-                      target="_blank"
-                      rel="nofollow"
-                    >
-                      {translate('message.lastfmLink')}
-                    </Link>
+                    {completeBioLink !== '' && (
+                      <Link
+                        href={completeBioLink}
+                        className={classes.link}
+                        target="_blank"
+                        rel="nofollow"
+                      >
+                        {translate('message.lastfmLink')}
+                      </Link>
+                    )}
                   </Typography>
                 </Collapse>
               </CardContent>
