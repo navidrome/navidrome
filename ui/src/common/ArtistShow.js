@@ -24,6 +24,7 @@ import {
   ShowContextProvider,
   useQueryWithStore,
   Loading,
+  useRecordContext,
 } from 'react-admin'
 import { Redirect } from 'react-router'
 
@@ -52,7 +53,7 @@ const useStyles = makeStyles(
         background: `linear-gradient(to bottom, rgba(52 52 52 / 72%), rgba(21 21 21))`,
       },
     },
-    iroot: {
+    albumList: {
       margin: '20px',
       display: 'grid',
     },
@@ -140,18 +141,20 @@ const useStyles = makeStyles(
         display: 'none',
       },
     },
-    album: {
+    artistSummary: {
       marginBottom: '1em',
     },
   }),
   { name: 'NDArtistPage' }
 )
 
-const ImgMediaCard = ({ artistId, artist }) => {
-  const [artistInfo, setartistInfo] = useState()
+const ArtistDetails = () => {
+  const [artistInfo, setArtistInfo] = useState()
   const [expanded, setExpanded] = useState(false)
+  const record = useRecordContext()
+  const artistId = record?.id
 
-  const title = artist.artist
+  const title = record.artist
   let completeBioLink = ''
   const link = artistInfo?.biography?.match(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
@@ -173,7 +176,7 @@ const ImgMediaCard = ({ artistId, artist }) => {
       .then((resp) => resp.json['subsonic-response'])
       .then((data) => {
         if (data.status === 'ok') {
-          setartistInfo(data.artistInfo)
+          setArtistInfo(data.artistInfo)
         }
       })
       .catch((e) => {
@@ -185,7 +188,7 @@ const ImgMediaCard = ({ artistId, artist }) => {
           />
         )
       })
-  }, [artistId, artist])
+  }, [artistId, record])
 
   const img = artistInfo?.largeImageUrl
   const classes = useStyles({ img, link, expanded })
@@ -260,36 +263,42 @@ const ImgMediaCard = ({ artistId, artist }) => {
   )
 }
 
-const ArtistAlbum = ({ artist, record, width }) => {
+const ArtistAlbums = ({ albums, width }) => {
   const classes = useStyles()
   const translate = useTranslate()
 
   return (
-    <>
-      <ImgMediaCard artistId={record.id} artist={artist[0]} />
-      <div className={classes.iroot}>
-        <div className={classes.album}>
-          {artist.length +
-            ' ' +
-            translate('resources.album.name', { smart_count: artist.length })}
-        </div>
-        <GridList
-          component={'div'}
-          cellHeight={'auto'}
-          cols={getColsForWidth(width)}
-          spacing={20}
-        >
-          {artist.map((artist) => (
-            <GridListTile className={classes.gridListTile} key={artist.id}>
-              <AlbumGridTile
-                record={artist}
-                basePath={'/album'}
-                showArtist={true}
-              />
-            </GridListTile>
-          ))}
-        </GridList>
+    <div className={classes.albumList}>
+      <div className={classes.artistSummary}>
+        {albums.length +
+          ' ' +
+          translate('resources.album.name', { smart_count: albums.length })}
       </div>
+      <GridList
+        component={'div'}
+        cellHeight={'auto'}
+        cols={getColsForWidth(width)}
+        spacing={20}
+      >
+        {albums.map((artist) => (
+          <GridListTile className={classes.gridListTile} key={artist.id}>
+            <AlbumGridTile
+              record={artist}
+              basePath={'/album'}
+              showArtist={true}
+            />
+          </GridListTile>
+        ))}
+      </GridList>
+    </div>
+  )
+}
+
+const AlbumShowLayout = ({ albums, record, width }) => {
+  return (
+    <>
+      {record && <ArtistDetails artistId={record.id} artist={albums[0]} />}
+      {record && <ArtistAlbums width={width} albums={albums} />}
     </>
   )
 }
@@ -316,9 +325,9 @@ const ArtistShow = (props) => {
 
   return (
     <ShowContextProvider value={controllerProps}>
-      <ArtistAlbum
+      <AlbumShowLayout
         width={width}
-        artist={data}
+        albums={data}
         {...props}
         {...controllerProps}
       />
