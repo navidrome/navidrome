@@ -71,6 +71,7 @@ type configOptions struct {
 	DevActivityPanel           bool
 	DevEnableShare             bool
 	DevEnableBufferedScrobble  bool
+	DevShowArtistPage          bool
 }
 
 type scannerOptions struct {
@@ -234,6 +235,7 @@ func init() {
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
+	viper.SetDefault("devshowartistpage", false)
 }
 
 func InitConfig(cfgFile string) {

@@ -2,10 +2,15 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { Link } from 'react-admin'
 import { withWidth } from '@material-ui/core'
+import { useAlbumsPerPage } from './index'
+import config from '../config'
 
 export const useGetHandleArtistClick = (width) => {
+  const [perPage] = useAlbumsPerPage(width)
   return (id) => {
-    return `/artist/${id}/show`
+    return config.devShowArtistPage
+      ? `/artist/${id}/show`
+      : `/album?filter={"artist_id":"${id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`
   }
 }
 
