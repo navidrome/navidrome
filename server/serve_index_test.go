@@ -243,6 +243,17 @@ var _ = Describe("serveIndex", func() {
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("lastFMApiKey", "APIKEY-123"))
 	})
+	It("sets the devShowArtistPage", func() {
+		conf.Server.DevShowArtistPage = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devShowArtistPage", true))
+	})
+
 })
 
 var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__="([^"]*)`)

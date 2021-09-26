@@ -310,7 +310,8 @@
         "openIn": {
             "lastfm": "Open in Last.fm",
             "musicbrainz": "Open in MusicBrainz"
-        }
+        },
+        "lastfmLink": "Read More..."
     },
     "menu": {
         "library": "Library",

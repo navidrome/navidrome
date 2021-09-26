@@ -49,11 +49,16 @@ const getCoverArtUrl = (record, size) => {
     ...(record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
   }
+
   if (record.coverArtId) {
     return baseUrl(url('getCoverArt', record.coverArtId, options))
   } else {
     return baseUrl(url('getCoverArt', 'not_found', size && { size }))
   }
+}
+
+const getArtistInfo = (id) => {
+  return httpClient(url('getArtistInfo', id))
 }
 
 const streamUrl = (id) => {
@@ -72,4 +77,5 @@ export default {
   getScanStatus,
   getCoverArtUrl,
   streamUrl,
+  getArtistInfo,
 }
