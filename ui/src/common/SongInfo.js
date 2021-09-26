@@ -24,7 +24,7 @@ const useStyles = makeStyles({
   },
 })
 
-export const SongDetails = (props) => {
+export const SongInfo = (props) => {
   const classes = useStyles()
   const translate = useTranslate()
   const record = useRecordContext(props)
@@ -38,6 +38,7 @@ export const SongDetails = (props) => {
     ),
     compilation: <BooleanField source="compilation" />,
     bitRate: <BitrateField source="bitRate" />,
+    channels: <NumberField source="channels" />,
     size: <SizeField source="size" />,
     updatedAt: <DateField source="updatedAt" showTime />,
     playCount: <TextField source="playCount" />,
