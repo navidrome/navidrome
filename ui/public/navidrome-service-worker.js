@@ -1,9 +1,10 @@
 // documentation: https://developers.google.com/web/tools/workbox/modules/workbox-sw
-importScripts("/3rdparty/workbox/workbox-sw.js");
+importScripts('3rdparty/workbox/workbox-sw.js')
 
 workbox.setConfig({
-  modulePathPrefix: '/3rdparty/workbox/'
-});
+  modulePathPrefix: '3rdparty/workbox/',
+  debug: false,
+})
 
 workbox.loadModule('workbox-core');
 workbox.loadModule('workbox-strategies');
