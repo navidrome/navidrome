@@ -53,7 +53,7 @@ const useStyles = makeStyles(
       display: 'inline-block',
       marginTop: '1em',
       float: 'left',
-      wordBreak: 'break-all',
+      wordBreak: 'break-word',
       cursor: 'pointer',
     },
     link: {
@@ -185,11 +185,13 @@ const ArtistDetails = () => {
       <div className={classes.root}>
         <div className={classes.bgContainer}>
           <Card className={classes.martImage}>
-            <CardMedia
-              className={classes.cover}
-              image={`${artistInfo?.mediumImageUrl}`}
-              title={title}
-            />
+            {artistInfo && (
+              <CardMedia
+                className={classes.cover}
+                image={`${artistInfo.mediumImageUrl}`}
+                title={title}
+              />
+            )}
           </Card>
           <div className={classes.mdetails}>
             <Typography component="h5" variant="h5">
@@ -198,11 +200,13 @@ const ArtistDetails = () => {
           </div>
           <Card className={classes.artDetail}>
             <Card className={classes.artImage}>
-              <CardMedia
-                className={classes.cover}
-                image={`${artistInfo?.mediumImageUrl}`}
-                title={title}
-              />
+              {artistInfo && (
+                <CardMedia
+                  className={classes.cover}
+                  image={`${artistInfo.mediumImageUrl}`}
+                  title={title}
+                />
+              )}
             </Card>
             <div className={classes.details}>
               <CardContent className={classes.content}>
