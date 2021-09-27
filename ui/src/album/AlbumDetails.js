@@ -88,7 +88,7 @@ const useStyles = makeStyles(
       display: 'inline-block',
       marginTop: '1em',
       float: 'left',
-      wordBreak: 'break-all',
+      wordBreak: 'break-word',
     },
     pointerCursor: {
       cursor: 'pointer',
