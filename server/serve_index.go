@@ -30,6 +30,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 		appConfig := map[string]interface{}{
 			"version":                 consts.Version(),
 			"firstTime":               firstTime,
+			"variousArtistsId":        consts.VariousArtistsID,
 			"baseURL":                 policy.Sanitize(strings.TrimSuffix(conf.Server.BaseURL, "/")),
 			"loginBackgroundURL":      policy.Sanitize(conf.Server.UILoginBackgroundURL),
 			"welcomeMessage":          policy.Sanitize(conf.Server.UIWelcomeMessage),

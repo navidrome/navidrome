@@ -8,7 +8,7 @@ import config from '../config'
 export const useGetHandleArtistClick = (width) => {
   const [perPage] = useAlbumsPerPage(width)
   return (id) => {
-    return config.devShowArtistPage
+    return config.devShowArtistPage && id !== config.variousArtistsId
       ? `/artist/${id}/show`
       : `/album?filter={"artist_id":"${id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`
   }
