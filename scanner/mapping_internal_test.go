@@ -15,7 +15,7 @@ var _ = Describe("mapping", func() {
 		var mapper *MediaFileMapper
 		Describe("mapTrackTitle", func() {
 			BeforeEach(func() {
-				mapper = NewMediaFileMapper("/music", nil)
+				mapper = NewMediaFileMapper("/music", nil, false)
 			})
 			It("returns the Title when it is available", func() {
 				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{"title": []string{"This is not a love song"}})
@@ -36,7 +36,7 @@ var _ = Describe("mapping", func() {
 				ds := &tests.MockDataStore{}
 				gr = ds.Genre(ctx)
 				gr = newCachedGenreRepository(ctx, gr)
-				mapper = NewMediaFileMapper("/", gr)
+				mapper = NewMediaFileMapper("/", gr, false)
 			})
 
 			It("returns empty if no genres are available", func() {
@@ -78,7 +78,7 @@ var _ = Describe("mapping", func() {
 		Describe("mapDates", func() {
 			var md metadata.Tags
 			BeforeEach(func() {
-				mapper = NewMediaFileMapper("/", nil)
+				mapper = NewMediaFileMapper("/", nil, false)
 			})
 			Context("when all date fields are provided", func() {
 				BeforeEach(func() {
