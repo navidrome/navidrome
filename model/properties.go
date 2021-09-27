@@ -1,5 +1,9 @@
 package model
 
+const (
+	PropUsingMbzIDs = "UsingMbzIDs"
+)
+
 type PropertyRepository interface {
 	Put(id string, value string) error
 	Get(id string) (string, error)
