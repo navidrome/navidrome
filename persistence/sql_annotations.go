@@ -106,3 +106,30 @@ func (r sqlRepository) cleanAnnotations() error {
 	}
 	return nil
 }
+
+func (r sqlRepository) CopyAnnotation(fromID string, toID string) error {
+	if fromID == toID {
+		return nil
+	}
+
+	/* Delete existing ones so we don't get conflicts. */
+	del := Delete(annotationTable).Where(And{
+		Eq{annotationTable + ".item_type": r.tableName},
+		Eq{annotationTable + ".item_id": toID},
+	})
+	_, err := r.executeSQL(del)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	upd := Update(annotationTable).Where(And{
+		Eq{annotationTable + ".item_type": r.tableName},
+		Eq{annotationTable + ".item_id": fromID},
+	}).Set("item_id", toID)
+
+	c, err := r.executeSQL(upd)
+	if c == 0 || errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	return err
+}
