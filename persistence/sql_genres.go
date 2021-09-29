@@ -21,12 +21,12 @@ func (r *sqlRepository) updateGenres(id string, tableName string, genres model.G
 	if len(genres) == 0 {
 		return nil
 	}
-	ins := Insert(tableName+"_genres").Columns("genre_id", tableName+"_id")
 	var genreIds []string
 	for _, g := range genres {
 		genreIds = append(genreIds, g.ID)
 	}
 	err = utils.RangeByChunks(genreIds, 100, func(ids []string) error {
+		ins := Insert(tableName+"_genres").Columns("genre_id", tableName+"_id")
 		for _, gid := range ids {
 			ins = ins.Values(gid, id)
 		}
