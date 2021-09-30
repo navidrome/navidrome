@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
@@ -60,4 +61,8 @@ func (r propertyRepository) DefaultGet(id string, defaultValue string) (string, 
 
 func (r propertyRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
+}
+
+func (r propertyRepository) DeletePrefixed(prefix string) error {
+	return r.delete(Like{"id": strings.Replace(prefix, "%", "%%", -1) + "%"})
 }
