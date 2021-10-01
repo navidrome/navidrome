@@ -24,6 +24,13 @@ jobs:
 
       - uses: actions/checkout@v2
 
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.40
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          args: --timeout 2m
+
       - name: Install goimports
         run: go install golang.org/x/tools/cmd/goimports
 
@@ -35,13 +42,6 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             exit 1
           fi
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: v1.40
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          args: --timeout 2m
 
   go:
     name: Test with Go ${{ matrix.go_version }}
