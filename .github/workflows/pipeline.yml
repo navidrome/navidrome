@@ -9,12 +9,18 @@ on:
     branches:
       - master
 jobs:
-  golangci-lint:
+  go-lint:
     name: Lint Go code
     runs-on: ubuntu-latest
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
+
+      - name: Set up Go 1.17
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+        id: go
 
       - uses: actions/checkout@v2
 
@@ -24,6 +30,18 @@ jobs:
           version: v1.40
           github-token: ${{ secrets.GITHUB_TOKEN }}
           args: --timeout 2m
+
+      - name: Install goimports
+        run: go install golang.org/x/tools/cmd/goimports
+
+      - run: goimports -w `find . -name '*.go' | grep -v '_gen.go$'`
+      - run: go mod tidy
+      - name: Verify no changes from goimports and go mod tidy
+        run: |
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            exit 1
+          fi
 
   go:
     name: Test with Go ${{ matrix.go_version }}
@@ -61,6 +79,7 @@ jobs:
       - name: Test
         continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
         run: go test -cover ./... -v
+
   js:
     name: Build JS bundle
     runs-on: ubuntu-latest
@@ -102,7 +121,7 @@ jobs:
 
   binaries:
     name: Build binaries
-    needs: [js, go, golangci-lint]
+    needs: [js, go, go-lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
