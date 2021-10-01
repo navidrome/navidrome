@@ -16,13 +16,24 @@ jobs:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
 
-      - uses: actions/checkout@v2
-
       - name: Set up Go 1.17
         uses: actions/setup-go@v2
         with:
           go-version: 1.17
         id: go
+
+      - name: Install goimports
+        run: go get golang.org/x/tools/cmd/goimports
+
+      - uses: actions/checkout@v2
+
+      - run: goimports -w .
+      - run: go mod tidy
+      - name: Verify no changes from goimports and go mod tidy
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            exit 1
+          fi
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
@@ -30,14 +41,6 @@ jobs:
           version: v1.40
           github-token: ${{ secrets.GITHUB_TOKEN }}
           args: --timeout 2m
-
-      - run: go run golang.org/x/tools/cmd/goimports -w .
-      - run: go mod tidy
-      - name: Verify no changes from goimports and go mod tidy
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            exit 1
-          fi
 
   go:
     name: Test with Go ${{ matrix.go_version }}
