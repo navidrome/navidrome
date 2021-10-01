@@ -43,7 +43,8 @@
     "@testing-library/user-event": "^13.2.1",
     "css-mediaquery": "^0.1.2",
     "prettier": "2.4.1",
-    "ra-test": "^3.18.2"
+    "ra-test": "^3.18.2",
+    "workbox-cli": "^6.3.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -51,7 +52,8 @@
     "test": "react-scripts test",
     "lint": "eslint --max-warnings 0 src/*.js src/**/*.js",
     "prettier": "prettier --write src/*.js src/**/*.js",
-    "check-formatting": "prettier -c src/*.js src/**/*.js"
+    "check-formatting": "prettier -c src/*.js src/**/*.js",
+    "update-workbox": "bin/update-workbox.sh"
   },
   "homepage": ".",
   "proxy": "http://localhost:4633/",
