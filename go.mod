@@ -51,7 +51,7 @@ require (
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
-	golang.org/x/tools v0.1.6
+	golang.org/x/tools v0.1.7
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
