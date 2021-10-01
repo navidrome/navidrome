@@ -73,6 +73,7 @@ type configOptions struct {
 	DevEnableShare             bool
 	DevSidebarPlaylists        bool
 	DevEnableBufferedScrobble  bool
+	DevShowArtistPage          bool
 }
 
 type scannerOptions struct {
@@ -157,6 +158,7 @@ func validateScanSchedule() error {
 		}
 	}
 	if Server.ScanSchedule == "0" || Server.ScanSchedule == "" {
+		Server.ScanSchedule = ""
 		return nil
 	}
 	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
@@ -238,6 +240,7 @@ func init() {
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", false)
+	viper.SetDefault("devshowartistpage", false)
 }
 
 func InitConfig(cfgFile string) {

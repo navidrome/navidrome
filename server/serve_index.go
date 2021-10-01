@@ -30,6 +30,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 		appConfig := map[string]interface{}{
 			"version":                 consts.Version(),
 			"firstTime":               firstTime,
+			"variousArtistsId":        consts.VariousArtistsID,
 			"baseURL":                 policy.Sanitize(strings.TrimSuffix(conf.Server.BaseURL, "/")),
 			"loginBackgroundURL":      policy.Sanitize(conf.Server.UILoginBackgroundURL),
 			"welcomeMessage":          policy.Sanitize(conf.Server.UIWelcomeMessage),
@@ -48,6 +49,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"devSidebarPlaylists":     conf.Server.DevSidebarPlaylists,
 			"lastFMEnabled":           conf.Server.LastFM.Enabled,
 			"lastFMApiKey":            conf.Server.LastFM.ApiKey,
+			"devShowArtistPage":       conf.Server.DevShowArtistPage,
 		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {

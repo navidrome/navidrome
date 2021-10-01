@@ -11,6 +11,7 @@ import (
 	"github.com/astaxie/beego/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -65,6 +66,9 @@ func (r *artistRepository) Put(a *model.Artist) error {
 	_, err := r.put(dba.ID, dba)
 	if err != nil {
 		return err
+	}
+	if a.ID == consts.VariousArtistsID {
+		return r.updateGenres(a.ID, r.tableName, nil)
 	}
 	return r.updateGenres(a.ID, r.tableName, a.Genres)
 }

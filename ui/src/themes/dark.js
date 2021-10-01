@@ -32,6 +32,15 @@ export default {
         boxShadow: '3px 3px 5px #000000a3',
       },
     },
+    NDArtistPage: {
+      bgContainer: {
+        background:
+          'linear-gradient(to bottom, rgba(52 52 52 / 72%), rgb(48 48 48))!important',
+      },
+      more: {
+        boxShadow: '-10px 0px 18px 5px #303030!important',
+      },
+    },
   },
   player: {
     theme: 'dark',
