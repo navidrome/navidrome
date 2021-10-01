@@ -10,7 +10,7 @@ unformatted=$($gofmtcmd -l $gofiles)
 
 echo >&2 "Go files must be formatted with '$gofmtcmd'. Please run:"
 for fn in $unformatted; do
-	echo >&2 "  $gofmtcmd -w $PWD/$fn"
+	echo >&2 "  $gofmtcmd -w $fn"
 done
 
 exit 1
