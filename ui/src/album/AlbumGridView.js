@@ -11,6 +11,7 @@ import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
 import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
+import { useDrag } from 'react-dnd'
 import subsonic from '../subsonic'
 import {
   AlbumContextMenu,
@@ -97,17 +98,24 @@ const getColsForWidth = (width) => {
 }
 
 const Cover = withContentRect('bounds')(
-  ({ album, measureRef, contentRect }) => {
+  ({ record, measureRef, contentRect }) => {
     // Force height to be the same as the width determined by the GridList
     // noinspection JSSuspiciousNameCombination
     const classes = useCoverStyles({ height: contentRect.bounds.width })
+    const [, dragAlbumRef] = useDrag(() => ({
+      type: 'album',
+      item: { albumIds: [record.id] },
+      options: { dropEffect: 'copy' },
+    }))
     return (
       <div ref={measureRef}>
-        <img
-          src={subsonic.getCoverArtUrl(album, 300)}
-          alt={album.name}
-          className={classes.cover}
-        />
+        <div ref={dragAlbumRef}>
+          <img
+            src={subsonic.getCoverArtUrl(record, 300)}
+            alt={record.name}
+            className={classes.cover}
+          />
+        </div>
       </div>
     )
   }
@@ -127,7 +135,7 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
         className={classes.link}
         to={linkToRecord(basePath, record.id, 'show')}
       >
-        <Cover album={record} />
+        <Cover record={record} />
         <GridListTileBar
           className={isDesktop ? classes.tileBar : classes.tileBarMobile}
           subtitle={

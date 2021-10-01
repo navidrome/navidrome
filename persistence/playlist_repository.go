@@ -214,8 +214,8 @@ func (r *playlistRepository) removeOrphans() error {
 		log.Debug(r.ctx, "Deleted tracks, now reordering", "id", pl.Id, "name", pl.Name, "deleted", n)
 
 		// To reorganize the playlist, just add an empty list of new tracks
-		trks := r.Tracks(pl.Id)
-		if err := trks.Add(nil); err != nil {
+		tracks := r.Tracks(pl.Id)
+		if _, err := tracks.Add(nil); err != nil {
 			return err
 		}
 	}
