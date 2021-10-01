@@ -3,6 +3,8 @@ import { useHistory } from 'react-router-dom'
 import {
   AutocompleteInput,
   Datagrid,
+  DatagridBody,
+  DatagridRow,
   Filter,
   NumberField,
   ReferenceInput,
@@ -14,6 +16,7 @@ import { useMediaQuery, withWidth } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles } from '@material-ui/core/styles'
+import { useDrag } from 'react-dnd'
 import { AddToPlaylistDialog } from '../dialogs'
 import {
   ArtistContextMenu,
@@ -78,6 +81,24 @@ const ArtistFilter = (props) => {
   )
 }
 
+const ArtistDatagridRow = (props) => {
+  const { record } = props
+  const [, dragArtistRef] = useDrag(() => ({
+    type: 'artist',
+    item: { artistIds: [record.id] },
+    options: { dropEffect: 'copy' },
+  }))
+  return <DatagridRow ref={dragArtistRef} {...props} />
+}
+
+const ArtistDatagridBody = (props) => (
+  <DatagridBody {...props} row={<ArtistDatagridRow />} />
+)
+
+const ArtistDatagrid = (props) => (
+  <Datagrid {...props} body={<ArtistDatagridBody />} />
+)
+
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
@@ -112,7 +133,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
       {...rest}
     />
   ) : (
-    <Datagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
+    <ArtistDatagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
       <TextField source="name" />
       {columns}
       <ArtistContextMenu
@@ -130,7 +151,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
           )
         }
       />
-    </Datagrid>
+    </ArtistDatagrid>
   )
 }
 

@@ -57,6 +57,12 @@ const wrapperDataProvider = {
     const [r, p] = mapResource(resource, params)
     return dataProvider.deleteMany(r, p)
   },
+  addToPlaylist: (playlistId, data) => {
+    return httpClient(`${REST_URL}/playlist/${playlistId}/tracks`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }).then(({ json }) => ({ data: json }))
+  },
 }
 
 export default wrapperDataProvider

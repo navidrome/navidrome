@@ -1,8 +1,15 @@
 import React, { useMemo } from 'react'
-import { Datagrid, NumberField, TextField } from 'react-admin'
+import {
+  Datagrid,
+  DatagridBody,
+  DatagridRow,
+  NumberField,
+  TextField,
+} from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles } from '@material-ui/core/styles'
+import { useDrag } from 'react-dnd'
 import {
   ArtistLinkField,
   DurationField,
@@ -40,6 +47,24 @@ const useStyles = makeStyles({
     visibility: 'hidden',
   },
 })
+
+const AlbumDatagridRow = (props) => {
+  const { record } = props
+  const [, dragAlbumRef] = useDrag(() => ({
+    type: 'album',
+    item: { albumIds: [record.id] },
+    options: { dropEffect: 'copy' },
+  }))
+  return <DatagridRow ref={dragAlbumRef} {...props} />
+}
+
+const AlbumDatagridBody = (props) => (
+  <DatagridBody {...props} row={<AlbumDatagridRow />} />
+)
+
+const AlbumDatagrid = (props) => (
+  <Datagrid {...props} body={<AlbumDatagridBody />} />
+)
 
 const AlbumTableView = ({
   hasShow,
@@ -112,7 +137,7 @@ const AlbumTableView = ({
       {...rest}
     />
   ) : (
-    <Datagrid rowClick={'show'} classes={{ row: classes.row }} {...rest}>
+    <AlbumDatagrid rowClick={'show'} classes={{ row: classes.row }} {...rest}>
       <TextField source="name" />
       {columns}
       <AlbumContextMenu
@@ -130,7 +155,7 @@ const AlbumTableView = ({
           )
         }
       />
-    </Datagrid>
+    </AlbumDatagrid>
   )
 }
 

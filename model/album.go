@@ -38,7 +38,13 @@ type Album struct {
 	UpdatedAt            time.Time `structs:"updated_at" json:"updatedAt"`
 }
 
-type Albums []Album
+type (
+	Albums []Album
+	DiscID struct {
+		AlbumID    string `json:"albumId"`
+		DiscNumber int    `json:"discNumber"`
+	}
+)
 
 type AlbumRepository interface {
 	CountAll(...QueryOptions) (int64, error)

@@ -44,7 +44,10 @@ type PlaylistTracks []PlaylistTrack
 
 type PlaylistTrackRepository interface {
 	ResourceRepository
-	Add(mediaFileIds []string) error
+	Add(mediaFileIds []string) (int, error)
+	AddAlbums(albumIds []string) (int, error)
+	AddArtists(artistIds []string) (int, error)
+	AddDiscs(discs []DiscID) (int, error)
 	Update(mediaFileIds []string) error
 	Delete(id string) error
 	Reorder(pos int, newPos int) error
