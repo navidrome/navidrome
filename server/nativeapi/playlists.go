@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html"
 	"net/http"
 	"strconv"
 	"strings"
@@ -107,7 +106,10 @@ func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
 
 func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 	type addTracksPayload struct {
-		Ids []string `json:"ids"`
+		Ids       []string       `json:"ids"`
+		AlbumIds  []string       `json:"albumIds"`
+		ArtistIds []string       `json:"artistIds"`
+		Discs     []model.DiscID `json:"discs"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -119,14 +121,30 @@ func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		err = tracksRepo.Add(payload.Ids)
-		if err != nil {
+		count, c := 0, 0
+		if c, err = tracksRepo.Add(payload.Ids); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		count += c
+		if c, err = tracksRepo.AddAlbums(payload.AlbumIds); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		count += c
+		if c, err = tracksRepo.AddArtists(payload.ArtistIds); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		count += c
+		if c, err = tracksRepo.AddDiscs(payload.Discs); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		count += c
 
 		// Must return an object with an ID, to satisfy ReactAdmin `create` call
-		_, err = fmt.Fprintf(w, `{"id":"%s"}`, html.EscapeString(playlistId))
+		_, err = fmt.Fprintf(w, `{"added":%d}`, count)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
