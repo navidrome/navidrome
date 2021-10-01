@@ -9,7 +9,7 @@ on:
     branches:
       - master
 jobs:
-  golangci-lint:
+  go-lint:
     name: Lint Go code
     runs-on: ubuntu-latest
     steps:
@@ -17,6 +17,9 @@ jobs:
         run: sudo apt-get install libtag1-dev
 
       - uses: actions/checkout@v2
+
+      - name: Check formatting
+        run: .github/workflows/check-gofmt.sh
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
@@ -102,7 +105,7 @@ jobs:
 
   binaries:
     name: Build binaries
-    needs: [js, go, golangci-lint]
+    needs: [js, go, go-lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
