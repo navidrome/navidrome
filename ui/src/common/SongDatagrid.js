@@ -14,6 +14,7 @@ import clsx from 'clsx'
 import { useDrag } from 'react-dnd'
 import { playTracks } from '../actions'
 import { AlbumContextMenu } from '../common'
+import { DraggableTypes } from '../consts'
 
 const useStyles = makeStyles({
   subtitle: {
@@ -106,7 +107,7 @@ export const SongDatagridRow = ({
   )
 
   const [, dragDiscRef] = useDrag(() => ({
-    type: 'disc',
+    type: DraggableTypes.DISC,
     item: {
       discs: [{ albumId: record.albumId, discNumber: record.discNumber }],
     },
@@ -114,7 +115,7 @@ export const SongDatagridRow = ({
   }))
 
   const [, dragSongRef] = useDrag(() => ({
-    type: 'song',
+    type: DraggableTypes.SONG,
     item: { ids: [record.id] },
     options: { dropEffect: 'copy' },
   }))

@@ -20,6 +20,7 @@ import {
   useSelectedFields,
 } from '../common'
 import config from '../config'
+import { DraggableTypes } from '../consts'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -51,7 +52,7 @@ const useStyles = makeStyles({
 const AlbumDatagridRow = (props) => {
   const { record } = props
   const [, dragAlbumRef] = useDrag(() => ({
-    type: 'album',
+    type: DraggableTypes.ALBUM,
     item: { albumIds: [record.id] },
     options: { dropEffect: 'copy' },
   }))
