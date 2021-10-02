@@ -12,34 +12,27 @@ import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import { BiCog } from 'react-icons/all'
 import { useDrop } from 'react-dnd'
 import SubMenu from './SubMenu'
+import { isWritable } from '../common'
+import { DraggableTypes } from '../consts'
 
 const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
   const dataProvider = useDataProvider()
   const notify = useNotify()
 
-  const addToPlaylist = (playlistId, data) => {
-    dataProvider
-      .addToPlaylist(playlistId, data)
-      .then((res) => {
-        notify('message.songsAddedToPlaylist', 'info', {
-          smart_count: res.data?.added,
-        })
-      })
-      .catch(() => {
-        notify('ra.page.error', 'warning')
-      })
-  }
-
   const [, dropRef] = useDrop(() => ({
-    accept: ['song', 'album', 'disc', 'artist'],
-    drop: (item) => {
-      addToPlaylist(pls.id, item)
-    },
+    accept: isWritable(pls.owner) ? DraggableTypes.ALL : [],
+    drop: (item) =>
+      dataProvider
+        .addToPlaylist(pls.id, item)
+        .then((res) => {
+          notify('message.songsAddedToPlaylist', 'info', {
+            smart_count: res.data?.added,
+          })
+        })
+        .catch(() => {
+          notify('ra.page.error', 'warning')
+        }),
   }))
-
-  if (!pls) {
-    return null
-  }
 
   return (
     <MenuItemLink
