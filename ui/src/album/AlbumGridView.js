@@ -19,6 +19,7 @@ import {
   ArtistLinkField,
   RangeField,
 } from '../common'
+import { DraggableTypes } from '../consts'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -103,7 +104,7 @@ const Cover = withContentRect('bounds')(
     // noinspection JSSuspiciousNameCombination
     const classes = useCoverStyles({ height: contentRect.bounds.width })
     const [, dragAlbumRef] = useDrag(() => ({
-      type: 'album',
+      type: DraggableTypes.ALBUM,
       item: { albumIds: [record.id] },
       options: { dropEffect: 'copy' },
     }))

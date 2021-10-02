@@ -30,6 +30,7 @@ import {
 } from '../common'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
+import { DraggableTypes } from '../consts'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -84,7 +85,7 @@ const ArtistFilter = (props) => {
 const ArtistDatagridRow = (props) => {
   const { record } = props
   const [, dragArtistRef] = useDrag(() => ({
-    type: 'artist',
+    type: DraggableTypes.ARTIST,
     item: { artistIds: [record.id] },
     options: { dropEffect: 'copy' },
   }))
