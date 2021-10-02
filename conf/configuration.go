@@ -239,7 +239,7 @@ func init() {
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
-	viper.SetDefault("devsidebarplaylists", false)
+	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", false)
 }
 
