@@ -116,8 +116,10 @@ func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
 
 func (r *playlistTrackRepository) addMediaFileIds(sq SelectBuilder) (int, error) {
 	var res []struct{ Id string }
+	sq = sq.OrderBy("album_artist, album, disc_number, track_number")
 	err := r.queryAll(sq, &res)
 	if err != nil {
+		log.Error(r.ctx, "Error getting tracks to add to playlist", err)
 		return 0, err
 	}
 	if len(res) == 0 {
