@@ -18,3 +18,5 @@ DraggableTypes.ALL.push(
   DraggableTypes.DISC,
   DraggableTypes.ARTIST
 )
+
+export const MAX_SIDEBAR_PLAYLISTS = 100
