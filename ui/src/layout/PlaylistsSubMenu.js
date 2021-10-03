@@ -13,7 +13,7 @@ import { BiCog } from 'react-icons/all'
 import { useDrop } from 'react-dnd'
 import SubMenu from './SubMenu'
 import { isWritable } from '../common'
-import { DraggableTypes } from '../consts'
+import { DraggableTypes, MAX_SIDEBAR_PLAYLISTS } from '../consts'
 
 const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
   const dataProvider = useDataProvider()
@@ -56,7 +56,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
     payload: {
       pagination: {
         page: 0,
-        perPage: 0,
+        perPage: MAX_SIDEBAR_PLAYLISTS,
       },
       sort: { field: 'name' },
     },
