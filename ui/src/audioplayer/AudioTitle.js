@@ -29,8 +29,16 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
       </span>
       {!isMobile && (
         <span className={clsx(classes.songInfo)}>
-          {`${song.artist} - ${song.album}` +
-            (song.year ? ` - ${song.year}` : '')}
+          <span className={clsx(classes.songArtist, 'songArtist')}>
+            {song.artist}
+          </span>
+          &nbsp;-&nbsp;
+          <span className={clsx(classes.songAlbum, 'songAlbum')}>
+            {song.album}
+          </span>
+          <span className={clsx('albumYear')}>
+            {song.year ? ` - ${song.year}` : ``}
+          </span>
         </span>
       )}
       {isMobile && (
@@ -38,8 +46,13 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
           <span className={clsx(classes.songInfo, classes.songArtist)}>
             {`${song.artist}`}
           </span>
-          <span className={clsx(classes.songInfo, classes.songAlbum)}>
-            {song.year ? `${song.album} - ${song.year}` : `${song.album}`}
+          <span className={clsx(classes.songInfo)}>
+            <span className={clsx(classes.songAlbum, 'songAlbum')}>
+              {song.album}
+            </span>
+            <span className={clsx('albumYear')}>
+              {song.year ? ` - ${song.year}` : ``}
+            </span>
           </span>
         </>
       )}
