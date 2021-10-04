@@ -43,7 +43,7 @@
                 "albumArtist": "Avtor albuma",
                 "artist": "Izvajalec",
                 "duration": "Dolžina",
-                "songCount": "# pesmi",
+                "songCount": "Pesmi",
                 "playCount": "Predvajano",
                 "name": "Naslov",
                 "genre": "Žanr",
@@ -330,8 +330,8 @@
         },
         "albumList": "Albumi",
         "about": "O programu",
-        "playlists": "",
-        "sharedPlaylists": ""
+        "playlists": "Seznami predvajanj",
+        "sharedPlaylists": "Deljeni seznami predvajanj"
     },
     "player": {
         "playListsText": "Predvajaj vrsto",
