@@ -86,11 +86,6 @@ const useStyles = makeStyles(
     },
     content: {
       flex: '1 0 auto',
-      '& .MuiTypography-root': {
-        display: ({ expanded }) => (expanded ? 'block' : '-webkit-inline-box'),
-        boxOrient: 'vertical',
-        lineClamp: '3',
-      },
     },
     cover: {
       width: 151,
