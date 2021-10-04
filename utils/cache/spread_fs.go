@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/djherbis/atime"
 	"github.com/djherbis/fscache"
 	"github.com/navidrome/navidrome/log"
-	"gopkg.in/djherbis/atime.v1"
 	"gopkg.in/djherbis/stream.v1"
 )
 
