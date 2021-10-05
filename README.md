@@ -1,3 +1,5 @@
+<img src="resources/logo-192x192.png" alt="Navidrome logo" title="navidrome" align="right" height="60px" />
+
 # Navidrome Music Server
 
 [![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?logo=github&label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
