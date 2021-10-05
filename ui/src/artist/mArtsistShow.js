@@ -71,11 +71,9 @@ const MartistDetails = ({
   biography,
   completeBioLink,
   handleExpandClick,
-  ...props
 }) => {
   const translate = useTranslate()
   const classes = useStyles({ img, expanded })
-  console.log('props are', artistInfo)
 
   return (
     <>

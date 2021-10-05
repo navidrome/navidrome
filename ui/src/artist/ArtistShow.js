@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Typography, Collapse, Link } from '@material-ui/core'
+import { Typography, Collapse } from '@material-ui/core'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
 import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
@@ -15,6 +15,7 @@ import {
 import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
 import MartistDetails from './mArtsistShow'
+import { Button } from '@material-ui/core'
 
 const useStyles = makeStyles(
   () => ({
@@ -73,6 +74,13 @@ const useStyles = makeStyles(
     artistSummary: {
       marginBottom: '1em',
     },
+    button: {
+      background: '#7f7f7fb8',
+      width: '7em',
+      marginLeft: '1em',
+      borderRadius: '5px',
+      textTransform: 'inherit',
+    },
   }),
   { name: 'NDArtistPage' }
 )
@@ -92,7 +100,6 @@ const ArtistDetails = () => {
     completeBioLink = link[2]
   }
   const biography = artistInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
-  const translate = useTranslate()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   const img = artistInfo?.largeImageUrl
@@ -143,19 +150,16 @@ const ArtistDetails = () => {
                 >
                   <Typography variant={'body1'} onClick={handleExpandClick}>
                     <span dangerouslySetInnerHTML={{ __html: biography }} />
-                    {completeBioLink !== '' && (
-                      <Link
-                        href={completeBioLink}
-                        className={classes.link}
-                        target="_blank"
-                        rel="nofollow"
-                      >
-                        {translate('message.lastfmLink')}
-                      </Link>
-                    )}
                   </Typography>
                 </Collapse>
               </CardContent>
+              <Button
+                href={completeBioLink}
+                className={classes.button}
+                variant="contained"
+              >
+                Last.fm
+              </Button>
             </div>
           </Card>
         </div>
