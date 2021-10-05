@@ -1,10 +1,9 @@
 import React from 'react'
-
-import { Typography, Collapse, Link } from '@material-ui/core'
+import { Typography, Collapse } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import Card from '@material-ui/core/Card'
 import CardMedia from '@material-ui/core/CardMedia'
-import { useTranslate } from 'react-admin'
+import ArtistExternalLinks from './ArtistExternalLink'
 
 const useStyles = makeStyles(
   () => ({
@@ -69,10 +68,9 @@ const MartistDetails = ({
   artistInfo,
   title,
   biography,
-  completeBioLink,
+  record,
   handleExpandClick,
 }) => {
-  const translate = useTranslate()
   const classes = useStyles({ img, expanded })
 
   return (
@@ -99,14 +97,11 @@ const MartistDetails = ({
         <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
           <Typography variant={'body1'} onClick={handleExpandClick}>
             {biography}
-            <Link
-              href={completeBioLink}
+            <ArtistExternalLinks
               className={classes.link}
-              target="_blank"
-              rel="nofollow"
-            >
-              {translate('message.lastfmLink')}
-            </Link>
+              record={record}
+              artistInfo={artistInfo}
+            />
           </Typography>
         </Collapse>
       </div>

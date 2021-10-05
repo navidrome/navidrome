@@ -15,10 +15,10 @@ import {
 import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
 import MartistDetails from './mArtsistShow'
-import { Button } from '@material-ui/core'
+import ArtistExternalLinks from './ArtistExternalLink'
 
 const useStyles = makeStyles(
-  () => ({
+  (theme) => ({
     root: {
       display: 'flex',
       padding: '1em',
@@ -26,10 +26,12 @@ const useStyles = makeStyles(
         wordBreak: 'break-word',
       },
     },
-
     albumList: {
       margin: '20px',
       display: 'grid',
+      [theme.breakpoints.down('xs')]: {
+        margin: '0px',
+      },
     },
     details: {
       display: 'flex',
@@ -43,10 +45,6 @@ const useStyles = makeStyles(
       wordBreak: 'break-word',
       cursor: 'pointer',
     },
-    link: {
-      margin: '1px',
-    },
-
     content: {
       flex: '1 0 auto',
     },
@@ -55,7 +53,6 @@ const useStyles = makeStyles(
       boxShadow: '0px 0px 6px 0px #565656',
       borderRadius: '5px',
     },
-
     artImage: {
       maxHeight: '9.5rem',
       backgroundColor: 'inherit',
@@ -68,37 +65,30 @@ const useStyles = makeStyles(
       minHeight: '10rem',
       '& .MuiPaper-elevation1': {
         boxShadow: 'none',
-        padding: '4px',
+        borderRadius: '6em',
       },
     },
     artistSummary: {
       marginBottom: '1em',
+      [theme.breakpoints.down('xs')]: {
+        margin: '2em',
+        marginBottom: 'auto',
+      },
     },
     button: {
-      background: '#7f7f7fb8',
-      width: '7em',
-      marginLeft: '1em',
-      borderRadius: '5px',
-      textTransform: 'inherit',
+      marginLeft: '0.9em',
     },
   }),
   { name: 'NDArtistPage' }
 )
 
-const ArtistDetails = () => {
+const ArtistDetails = ({ record }) => {
   const [artistInfo, setArtistInfo] = useState()
   const [expanded, setExpanded] = useState(false)
-  const record = useRecordContext()
   const artistId = record?.id
 
   const title = record.name
-  let completeBioLink = ''
-  const link = artistInfo?.biography?.match(
-    /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
-  )
-  if (link) {
-    completeBioLink = link[2]
-  }
+
   const biography = artistInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
@@ -153,26 +143,24 @@ const ArtistDetails = () => {
                   </Typography>
                 </Collapse>
               </CardContent>
-              <Button
-                href={completeBioLink}
-                className={classes.button}
-                variant="contained"
-              >
-                Last.fm
-              </Button>
+              <Typography component={'div'} className={classes.button}>
+                <ArtistExternalLinks artistInfo={artistInfo} record={record} />
+              </Typography>
             </div>
           </Card>
         </div>
       ) : (
-        <MartistDetails
-          img={img}
-          artistInfo={artistInfo}
-          title={title}
-          expanded={expanded}
-          biography={biography}
-          completeBioLink={completeBioLink}
-          handleExpandClick={handleExpandClick}
-        />
+        <>
+          <MartistDetails
+            img={img}
+            artistInfo={artistInfo}
+            record={record}
+            title={title}
+            expanded={expanded}
+            biography={biography}
+            handleExpandClick={handleExpandClick}
+          />
+        </>
       )}
     </>
   )
@@ -201,7 +189,7 @@ const AlbumShowLayout = (props) => {
 
   return (
     <>
-      {record && <ArtistDetails />}
+      {record && <ArtistDetails record={record} />}
       {record && (
         <ReferenceManyField
           {...showContext}
