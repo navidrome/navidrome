@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Typography, Collapse, Link } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { useMediaQuery, makeStyles } from '@material-ui/core'
 import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
@@ -14,32 +14,19 @@ import {
 } from 'react-admin'
 import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
+import mArtsistDetails from './mArtsistShow'
+import MartistDetails from './mArtsistShow'
 
 const useStyles = makeStyles(
-  (theme) => ({
+  () => ({
     root: {
       display: 'flex',
       padding: '1em',
       '& .MuiTypography-h5': {
         wordBreak: 'break-word',
       },
-      [theme.breakpoints.down('xs')]: {
-        padding: 'unset',
-        background: ({ img }) => `url(${img})`,
-      },
     },
-    bgContainer: {
-      display: 'flex',
-      width: '100%',
-      [theme.breakpoints.down('xs')]: {
-        height: '15rem',
-        width: '100vw',
-        padding: 'unset',
-        backdropFilter: 'blur(1px)',
-        backgroundPosition: '50% 30%',
-        background: `linear-gradient(to bottom, rgba(52 52 52 / 72%), rgba(21 21 21))`,
-      },
-    },
+
     albumList: {
       margin: '20px',
       display: 'grid',
@@ -59,31 +46,7 @@ const useStyles = makeStyles(
     link: {
       margin: '1px',
     },
-    mdetails: {
-      display: 'none',
-      [theme.breakpoints.down('xs')]: {
-        display: 'flex',
-        alignItems: 'center',
-        width: '7rem',
-        marginLeft: '0.5rem',
-        flex: '1',
-      },
-    },
-    mbio: {
-      display: 'none',
-      [theme.breakpoints.down('xs')]: {
-        display: 'flex',
-        marginLeft: '3%',
-        marginRight: '3%',
-        zIndex: '1',
-        '& p': {
-          whiteSpace: ({ expanded }) => (expanded ? 'unset' : 'nowrap'),
-          overflow: 'hidden',
-          width: '95vw',
-          textOverflow: 'ellipsis',
-        },
-      },
-    },
+
     content: {
       flex: '1 0 auto',
     },
@@ -91,31 +54,12 @@ const useStyles = makeStyles(
       width: 151,
       boxShadow: '0px 0px 6px 0px #565656',
       borderRadius: '5px',
-      [theme.breakpoints.up('sm')]: {
-        borderRadius: '7em',
-      },
     },
-    martImage: {
-      marginLeft: '1em',
-      maxHeight: '10rem',
-      backgroundColor: 'inherit',
-      display: 'none',
-      [theme.breakpoints.down('xs')]: {
-        marginTop: '4rem',
-        maxHeight: '7rem',
-        width: '7rem',
-        display: 'flex',
-      },
-    },
+
     artImage: {
       maxHeight: '9.5rem',
       backgroundColor: 'inherit',
       display: 'flex',
-      [theme.breakpoints.down('xs')]: {
-        marginTop: '4rem',
-        maxHeight: '7rem',
-        width: '7rem',
-      },
     },
     artDetail: {
       flex: '1',
@@ -125,9 +69,6 @@ const useStyles = makeStyles(
       '& .MuiPaper-elevation1': {
         boxShadow: 'none',
         padding: '4px',
-      },
-      [theme.breakpoints.down('xs')]: {
-        display: 'none',
       },
     },
     artistSummary: {
@@ -153,6 +94,7 @@ const ArtistDetails = () => {
   }
   const biography = artistInfo?.biography?.replace(new RegExp('<.*>', 'g'), '')
   const translate = useTranslate()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   const img = artistInfo?.largeImageUrl
   const classes = useStyles({ img, expanded })
@@ -177,22 +119,8 @@ const ArtistDetails = () => {
 
   return (
     <>
-      <div className={classes.root}>
-        <div className={classes.bgContainer}>
-          <Card className={classes.martImage}>
-            {artistInfo && (
-              <CardMedia
-                className={classes.cover}
-                image={`${artistInfo.mediumImageUrl}`}
-                title={title}
-              />
-            )}
-          </Card>
-          <div className={classes.mdetails}>
-            <Typography component="h5" variant="h5">
-              {title}
-            </Typography>
-          </div>
+      {isDesktop ? (
+        <div className={classes.root}>
           <Card className={classes.artDetail}>
             <Card className={classes.artImage}>
               {artistInfo && (
@@ -232,22 +160,17 @@ const ArtistDetails = () => {
             </div>
           </Card>
         </div>
-      </div>
-      <div className={classes.mbio}>
-        <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
-          <Typography variant={'body1'} onClick={handleExpandClick}>
-            {biography}
-            <Link
-              href={completeBioLink}
-              className={classes.link}
-              target="_blank"
-              rel="nofollow"
-            >
-              {translate('message.lastfmLink')}
-            </Link>
-          </Typography>
-        </Collapse>
-      </div>
+      ) : (
+        <MartistDetails
+          img={img}
+          artistInfo={artistInfo}
+          title={title}
+          expanded={expanded}
+          biography={biography}
+          completeBioLink={completeBioLink}
+          handleExpandClick={handleExpandClick}
+        />
+      )}
     </>
   )
 }
