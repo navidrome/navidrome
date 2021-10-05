@@ -10,7 +10,6 @@ const useStyles = makeStyles(
   () => ({
     root: {
       display: 'flex',
-      padding: '1em',
       '& .MuiTypography-h5': {
         wordBreak: 'break-word',
       },
@@ -28,14 +27,14 @@ const useStyles = makeStyles(
     link: {
       margin: '1px',
     },
-    mdetails: {
+    details: {
       display: 'flex',
       alignItems: 'center',
       width: '7rem',
       marginLeft: '0.5rem',
       flex: '1',
     },
-    mbio: {
+    bio: {
       display: 'flex',
       marginLeft: '3%',
       marginRight: '3%',
@@ -47,15 +46,14 @@ const useStyles = makeStyles(
         textOverflow: 'ellipsis',
       },
     },
-
     cover: {
       width: 151,
       boxShadow: '0px 0px 6px 0px #565656',
       borderRadius: '5px',
     },
-    martImage: {
+    artImage: {
       marginLeft: '1em',
-      maxHeight: '10rem',
+      maxHeight: '7rem',
       backgroundColor: 'inherit',
       marginTop: '4rem',
       width: '7rem',
@@ -83,7 +81,7 @@ const MartistDetails = ({
     <>
       <div className={classes.root}>
         <div className={classes.bgContainer}>
-          <Card className={classes.martImage}>
+          <Card className={classes.artImage}>
             {artistInfo && (
               <CardMedia
                 className={classes.cover}
@@ -92,25 +90,14 @@ const MartistDetails = ({
               />
             )}
           </Card>
-          <div className={classes.mdetails}>
+          <div className={classes.details}>
             <Typography component="h5" variant="h5">
               {title}
             </Typography>
           </div>
-          {/* <Card className={classes.artDetail}>
-                <Card className={classes.artImage}>
-                {artistInfo && (
-                    <CardMedia
-                    className={classes.cover}
-                    image={`${artistInfo.mediumImageUrl}`}
-                    title={title}
-                    />
-                )}
-                </Card>
-            </Card> */}
         </div>
       </div>
-      <div className={classes.mbio}>
+      <div className={classes.bio}>
         <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
           <Typography variant={'body1'} onClick={handleExpandClick}>
             {biography}
