@@ -14,7 +14,6 @@ const useStyles = makeStyles(
       '& .MuiTypography-h5': {
         wordBreak: 'break-word',
       },
-      padding: 'unset',
       background: ({ img }) => `url(${img})`,
     },
     bgContainer: {
@@ -59,7 +58,6 @@ const useStyles = makeStyles(
       maxHeight: '10rem',
       backgroundColor: 'inherit',
       marginTop: '4rem',
-      maxHeight: '7rem',
       width: '7rem',
       display: 'flex',
     },

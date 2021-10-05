@@ -14,7 +14,6 @@ import {
 } from 'react-admin'
 import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
-import mArtsistDetails from './mArtsistShow'
 import MartistDetails from './mArtsistShow'
 
 const useStyles = makeStyles(
