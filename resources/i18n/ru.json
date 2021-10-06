@@ -24,7 +24,8 @@
                 "rating": "Рейтинг",
                 "quality": "Качество",
                 "bpm": "BPM",
-                "playDate": "Последнее воспроизведение"
+                "playDate": "Последнее воспроизведение",
+                "channels": ""
             },
             "actions": {
                 "addToQueue": "В очередь",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Добавить в плейлист",
                 "shuffleAll": "Перемешать",
                 "download": "Скачать",
-                "playNext": "Следующий"
+                "playNext": "Следующий",
+                "info": ""
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "В очередь",
                 "shuffle": "Перемешать",
                 "addToPlaylist": "Добавить в плейлист",
-                "download": "Скачать"
+                "download": "Скачать",
+                "info": ""
             },
             "lists": {
                 "all": "Все",
@@ -112,7 +115,6 @@
                 "client": "Клиент",
                 "userName": "Пользователь",
                 "lastSeen": "Был на сайте",
-                "reportRealPath": "",
                 "reportRealPath": "Показать реальный путь",
                 "scrobbleEnabled": "Включить скробблинг Last.fm"
             }
@@ -308,7 +310,8 @@
         "openIn": {
             "lastfm": "Показать на Last.fm",
             "musicbrainz": "Показать на MusicBrainz"
-        }
+        },
+        "lastfmLink": ""
     },
     "menu": {
         "library": "Библиотека",
@@ -326,7 +329,9 @@
             }
         },
         "albumList": "Альбомы",
-        "about": "О нас"
+        "about": "О нас",
+        "playlists": "",
+        "sharedPlaylists": ""
     },
     "player": {
         "playListsText": "Очередь воспроизведения",
