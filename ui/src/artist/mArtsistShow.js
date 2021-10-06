@@ -96,7 +96,7 @@ const MartistDetails = ({
       <div className={classes.bio}>
         <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
           <Typography variant={'body1'} onClick={handleExpandClick}>
-            {biography}
+            <span dangerouslySetInnerHTML={{ __html: biography }} />
             <ArtistExternalLinks
               className={classes.link}
               record={record}
