@@ -16,7 +16,7 @@ const initialState = {
   queue: [],
   current: {},
   clear: false,
-  volume: Math.pow(0.5, 2), // 50%
+  volume: 0.5, // 50%
   savedPlayIndex: 0,
 }
 
