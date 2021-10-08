@@ -12,9 +12,6 @@ const useStyles = makeStyles(
   (theme) => ({
     root: {
       display: 'flex',
-      '& .MuiTypography-h5': {
-        wordBreak: 'break-word',
-      },
       background: ({ img }) => `url(${img})`,
     },
     bgContainer: {
@@ -60,6 +57,7 @@ const useStyles = makeStyles(
       backgroundColor: 'inherit',
       marginTop: '4rem',
       width: '7rem',
+      minWidth: '7rem',
       display: 'flex',
       borderRadius: '5em',
     },
@@ -69,6 +67,9 @@ const useStyles = makeStyles(
     },
     rating: {
       marginTop: '5px',
+    },
+    artName: {
+      wordBreak: 'break-word',
     },
   }),
   { name: 'mNDArtistPage' }
@@ -100,7 +101,7 @@ const MartistDetails = ({
             )}
           </Card>
           <div className={classes.details}>
-            <Typography component="h5" variant="h5">
+            <Typography component="h5" variant="h5" className={classes.artName}>
               {title}
               {config.enableFavourites && (
                 <LoveButton

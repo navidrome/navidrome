@@ -24,9 +24,6 @@ const useStyles = makeStyles(
     root: {
       display: 'flex',
       padding: '1em',
-      '& .MuiTypography-h5': {
-        wordBreak: 'break-word',
-      },
     },
     albumList: {
       margin: '20px',
@@ -84,6 +81,9 @@ const useStyles = makeStyles(
       top: theme.spacing(-0.2),
       left: theme.spacing(0.5),
     },
+    artName: {
+      wordBreak: 'break-word',
+    },
   }),
   { name: 'NDArtistPage' }
 )
@@ -135,7 +135,11 @@ const ArtistDetails = ({ record }) => {
             </Card>
             <div className={classes.details}>
               <CardContent className={classes.content}>
-                <Typography component="h5" variant="h5">
+                <Typography
+                  component="h5"
+                  variant="h5"
+                  className={classes.artName}
+                >
                   {title}
                   {config.enableFavourites && (
                     <LoveButton
