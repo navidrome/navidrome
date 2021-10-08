@@ -3,7 +3,6 @@ import { Typography, Collapse } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import Card from '@material-ui/core/Card'
 import CardMedia from '@material-ui/core/CardMedia'
-import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
 import { LoveButton, RatingField } from '../common'
 import { useTranslate } from 'ra-core'
@@ -134,11 +133,6 @@ const MartistDetails = ({
         <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
           <Typography variant={'body1'} onClick={handleExpandClick}>
             <span dangerouslySetInnerHTML={{ __html: biography }} />
-            <ArtistExternalLinks
-              className={classes.link}
-              record={record}
-              artistInfo={artistInfo}
-            />
           </Typography>
         </Collapse>
       </div>

@@ -44,13 +44,7 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
     artistInfo?.musicBrainzId &&
     addLink(links[1], 'message.openIn.musicbrainz', <MusicBrainz />)
 
-  return isDesktop ? (
-    <div>{intersperse(linkButtons, ' ')}</div>
-  ) : (
-    <Link href={links[0]} target="_blank" rel="nofollow">
-      {translate('message.lastfmLink')}
-    </Link>
-  )
+  return isDesktop && <div>{intersperse(linkButtons, ' ')}</div>
 }
 
 export default ArtistExternalLinks
