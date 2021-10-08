@@ -1,4 +1,4 @@
-<img src="resources/logo-192x192.png" alt="Navidrome logo" title="navidrome" align="right" height="60px" />
+<a href="https://www.navidrome.org"><img src="resources/logo-192x192.png" alt="Navidrome logo" title="navidrome" align="right" height="60px" /></a>
 
 # Navidrome Music Server
 
