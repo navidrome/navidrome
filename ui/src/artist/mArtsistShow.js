@@ -4,9 +4,12 @@ import { makeStyles } from '@material-ui/core/styles'
 import Card from '@material-ui/core/Card'
 import CardMedia from '@material-ui/core/CardMedia'
 import ArtistExternalLinks from './ArtistExternalLink'
+import config from '../config'
+import { LoveButton, RatingField } from '../common'
+import { useTranslate } from 'ra-core'
 
 const useStyles = makeStyles(
-  () => ({
+  (theme) => ({
     root: {
       display: 'flex',
       '& .MuiTypography-h5': {
@@ -28,15 +31,16 @@ const useStyles = makeStyles(
     },
     details: {
       display: 'flex',
-      alignItems: 'center',
-      width: '7rem',
+      alignItems: 'flex-start',
+      flexDirection: 'column',
+      justifyContent: 'center',
       marginLeft: '0.5rem',
-      flex: '1',
     },
     bio: {
       display: 'flex',
       marginLeft: '3%',
       marginRight: '3%',
+      marginTop: '-2em',
       zIndex: '1',
       '& p': {
         whiteSpace: ({ expanded }) => (expanded ? 'unset' : 'nowrap'),
@@ -57,6 +61,14 @@ const useStyles = makeStyles(
       marginTop: '4rem',
       width: '7rem',
       display: 'flex',
+      borderRadius: '5em',
+    },
+    loveButton: {
+      top: theme.spacing(-0.2),
+      left: theme.spacing(0.5),
+    },
+    rating: {
+      marginTop: '5px',
     },
   }),
   { name: 'mNDArtistPage' }
@@ -72,6 +84,7 @@ const MartistDetails = ({
   handleExpandClick,
 }) => {
   const classes = useStyles({ img, expanded })
+  const translate = useTranslate()
 
   return (
     <>
@@ -89,7 +102,30 @@ const MartistDetails = ({
           <div className={classes.details}>
             <Typography component="h5" variant="h5">
               {title}
+              {config.enableFavourites && (
+                <LoveButton
+                  className={classes.loveButton}
+                  record={record}
+                  resource={'artist'}
+                  size={'small'}
+                  aria-label="love"
+                  color="primary"
+                />
+              )}
             </Typography>
+            {record.albumCount +
+              ' ' +
+              translate('resources.album.name', {
+                smart_count: record.albumCount,
+              })}
+            {config.enableStarRating && (
+              <RatingField
+                record={record}
+                resource={'artist'}
+                size={'small'}
+                className={classes.rating}
+              />
+            )}
           </div>
         </div>
       </div>

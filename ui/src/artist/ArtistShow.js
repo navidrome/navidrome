@@ -16,6 +16,8 @@ import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
 import MartistDetails from './mArtsistShow'
 import ArtistExternalLinks from './ArtistExternalLink'
+import config from '../config'
+import { LoveButton } from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -30,7 +32,7 @@ const useStyles = makeStyles(
       margin: '20px',
       display: 'grid',
       [theme.breakpoints.down('xs')]: {
-        margin: '0px',
+        margin: '10px',
       },
     },
     details: {
@@ -77,6 +79,10 @@ const useStyles = makeStyles(
     },
     button: {
       marginLeft: '0.9em',
+    },
+    loveButton: {
+      top: theme.spacing(-0.2),
+      left: theme.spacing(0.5),
     },
   }),
   { name: 'NDArtistPage' }
@@ -131,6 +137,16 @@ const ArtistDetails = ({ record }) => {
               <CardContent className={classes.content}>
                 <Typography component="h5" variant="h5">
                   {title}
+                  {config.enableFavourites && (
+                    <LoveButton
+                      className={classes.loveButton}
+                      record={record}
+                      resource={'artist'}
+                      size={'default'}
+                      aria-label="love"
+                      color="primary"
+                    />
+                  )}
                 </Typography>
                 <Collapse
                   collapsedHeight={'4.5em'}
@@ -170,14 +186,17 @@ const ArtistAlbums = ({ ...props }) => {
   const { ids } = props
   const classes = useStyles()
   const translate = useTranslate()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   return (
     <div className={classes.albumList}>
-      <div className={classes.artistSummary}>
-        {ids.length +
-          ' ' +
-          translate('resources.album.name', { smart_count: ids.length })}
-      </div>
+      {isDesktop && (
+        <div className={classes.artistSummary}>
+          {ids.length +
+            ' ' +
+            translate('resources.album.name', { smart_count: ids.length })}
+        </div>
+      )}
       <AlbumGridView {...props} />
     </div>
   )
