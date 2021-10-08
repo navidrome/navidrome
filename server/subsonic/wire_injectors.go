@@ -1,10 +1,10 @@
-//+build wireinject
+//go:build wireinject
+// +build wireinject
 
 package subsonic
 
 import (
 	"github.com/google/wire"
-	"github.com/navidrome/navidrome/core"
 )
 
 var allProviders = wire.NewSet(
@@ -19,8 +19,17 @@ var allProviders = wire.NewSet(
 	NewStreamController,
 	NewBookmarksController,
 	NewLibraryScanningController,
-	core.NewNowPlayingRepository,
-	wire.FieldsOf(new(*Router), "DataStore", "Artwork", "Streamer", "Archiver", "ExternalMetadata", "Scanner"),
+	wire.FieldsOf(
+		new(*Router),
+		"DataStore",
+		"Artwork",
+		"Streamer",
+		"Archiver",
+		"ExternalMetadata",
+		"Scanner",
+		"Broker",
+		"Scrobbler",
+	),
 )
 
 func initSystemController(router *Router) *SystemController {

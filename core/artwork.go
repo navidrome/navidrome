@@ -8,9 +8,9 @@ import (
 	"image"
 	_ "image/gif"
 	"image/jpeg"
+	"image/png"
 	_ "image/png"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -127,7 +127,13 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
-			reader, err = resources.Assets().Open(consts.PlaceholderAlbumArt)
+			reader, err = resources.FS.Open(consts.PlaceholderAlbumArt)
+
+			if size != 0 && err == nil {
+				var r io.ReadCloser
+				r, err = resources.FS.Open(consts.PlaceholderAlbumArt)
+				reader, err = resizeImage(r, size, true)
+			}
 		}
 	}()
 
@@ -150,13 +156,13 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 			return
 		}
 		defer r.Close()
-		reader, err = resizeImage(r, size)
+		reader, err = resizeImage(r, size, false)
 	}
 
 	return
 }
 
-func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
+func resizeImage(reader io.Reader, size int, usePng bool) (io.ReadCloser, error) {
 	img, _, err := image.Decode(reader)
 	if err != nil {
 		return nil, err
@@ -172,8 +178,12 @@ func resizeImage(reader io.Reader, size int) (io.ReadCloser, error) {
 	}
 
 	buf := new(bytes.Buffer)
-	err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
-	return ioutil.NopCloser(buf), err
+	if usePng {
+		err = png.Encode(buf, m)
+	} else {
+		err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
+	}
+	return io.NopCloser(buf), err
 }
 
 func readFromTag(path string) (io.ReadCloser, error) {
@@ -192,7 +202,7 @@ func readFromTag(path string) (io.ReadCloser, error) {
 	if picture == nil {
 		return nil, errors.New("file does not contain embedded art")
 	}
-	return ioutil.NopCloser(bytes.NewReader(picture.Data)), nil
+	return io.NopCloser(bytes.NewReader(picture.Data)), nil
 }
 
 func readFromFile(path string) (io.ReadCloser, error) {

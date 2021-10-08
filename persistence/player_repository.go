@@ -37,8 +37,12 @@ func (r *playerRepository) Get(id string) (*model.Player, error) {
 	return &res, err
 }
 
-func (r *playerRepository) FindByName(client, userName string) (*model.Player, error) {
-	sel := r.newSelect().Columns("*").Where(And{Eq{"client": client}, Eq{"user_name": userName}})
+func (r *playerRepository) FindMatch(userName, client, userAgent string) (*model.Player, error) {
+	sel := r.newSelect().Columns("*").Where(And{
+		Eq{"client": client},
+		Eq{"user_agent": userAgent},
+		Eq{"user_name": userName},
+	})
 	var res model.Player
 	err := r.queryOne(sel, &res)
 	return &res, err

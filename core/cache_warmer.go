@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -47,13 +46,8 @@ func (w *warmer) AddAlbum(ctx context.Context, albumID string) {
 }
 
 func (w *warmer) waitForCacheReady(ctx context.Context) {
-	tick := time.NewTicker(time.Second)
-	defer tick.Stop()
-	for {
-		<-tick.C
-		if w.artworkCache.Ready(ctx) {
-			return
-		}
+	for !w.artworkCache.Ready(ctx) {
+		time.Sleep(time.Second)
 	}
 }
 
@@ -85,7 +79,7 @@ func (w *warmer) execute(workload interface{}) {
 		return
 	}
 	defer r.Close()
-	_, _ = io.Copy(ioutil.Discard, r)
+	_, _ = io.Copy(io.Discard, r)
 }
 
 type artworkItem struct {

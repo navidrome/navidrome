@@ -15,6 +15,7 @@ import {
 } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import AccountCircle from '@material-ui/icons/AccountCircle'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   user: {},
@@ -99,7 +100,7 @@ const UserMenu = (props) => {
                 })
               : null
           )}
-          {logout}
+          {!config.auth && logout}
         </MenuList>
       </Popover>
     </div>

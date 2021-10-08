@@ -1,8 +1,10 @@
 import React, { useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Layout, toggleSidebar } from 'react-admin'
+import { Layout as RALayout, toggleSidebar } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { HotKeys } from 'react-hotkeys'
+import { HTML5Backend } from 'react-dnd-html5-backend'
+import { DndProvider } from 'react-dnd'
 import Menu from './Menu'
 import AppBar from './AppBar'
 import Notification from './Notification'
@@ -12,10 +14,10 @@ const useStyles = makeStyles({
   root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
 })
 
-export default (props) => {
+const Layout = (props) => {
   const theme = useCurrentTheme()
-  const queue = useSelector((state) => state.queue)
-  const classes = useStyles({ addPadding: queue.queue.length > 0 })
+  const queue = useSelector((state) => state.player?.queue)
+  const classes = useStyles({ addPadding: queue.length > 0 })
   const dispatch = useDispatch()
 
   const keyHandlers = {
@@ -23,15 +25,19 @@ export default (props) => {
   }
 
   return (
-    <HotKeys handlers={keyHandlers}>
-      <Layout
-        {...props}
-        className={classes.root}
-        menu={Menu}
-        appBar={AppBar}
-        theme={theme}
-        notification={Notification}
-      />
-    </HotKeys>
+    <DndProvider backend={HTML5Backend}>
+      <HotKeys handlers={keyHandlers}>
+        <RALayout
+          {...props}
+          className={classes.root}
+          menu={Menu}
+          appBar={AppBar}
+          theme={theme}
+          notification={Notification}
+        />
+      </HotKeys>
+    </DndProvider>
   )
 }
+
+export default Layout

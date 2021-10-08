@@ -20,7 +20,12 @@
                 "bitRate": "Bitrate",
                 "discSubtitle": "Sous-titre du disque",
                 "starred": "Favoris",
-                "comment": "Commentaire"
+                "comment": "Commentaire",
+                "rating": "Classement",
+                "quality": "Qualité",
+                "bpm": "BPM",
+                "playDate": "Derniers joués",
+                "channels": "Canaux"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -28,7 +33,8 @@
                 "addToPlaylist": "Ajouter à la playlist",
                 "shuffleAll": "Tout mélanger",
                 "download": "Télécharger",
-                "playNext": "Lire ensuite"
+                "playNext": "Lire ensuite",
+                "info": "Plus d'informations"
             }
         },
         "album": {
@@ -44,7 +50,8 @@
                 "compilation": "Compilation",
                 "year": "Année",
                 "updatedAt": "Mis à jour le",
-                "comment": "Commentaire"
+                "comment": "Commentaire",
+                "rating": "Classement"
             },
             "actions": {
                 "playAll": "Lire",
@@ -52,7 +59,8 @@
                 "addToQueue": "Ajouter à la file",
                 "shuffle": "Mélanger",
                 "addToPlaylist": "Ajouter à la playlist",
-                "download": "Télécharger"
+                "download": "Télécharger",
+                "info": "Plus d'informations"
             },
             "lists": {
                 "all": "Tous",
@@ -60,7 +68,8 @@
                 "recentlyAdded": "Récemment ajouté",
                 "recentlyPlayed": "Récemment joué",
                 "mostPlayed": "Plus joués",
-                "starred": "Favoris"
+                "starred": "Favoris",
+                "topRated": "Les mieux classés"
             }
         },
         "artist": {
@@ -69,7 +78,9 @@
                 "name": "Nom",
                 "albumCount": "Nombre d'albums",
                 "songCount": "Nombre de pistes",
-                "playCount": "Lectures"
+                "playCount": "Lectures",
+                "rating": "Classement",
+                "genre": "Genre"
             }
         },
         "user": {
@@ -81,7 +92,18 @@
                 "updatedAt": "Dernière mise à jour",
                 "name": "Nom",
                 "password": "Mot de passe",
-                "createdAt": "Créé le"
+                "createdAt": "Créé le",
+                "changePassword": "Changer le mot de passe ?",
+                "currentPassword": "Mot de passe actuel",
+                "newPassword": "Nouveau mot de passe"
+            },
+            "helperTexts": {
+                "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion"
+            },
+            "notifications": {
+                "created": "Utilisateur créé",
+                "updated": "Utilisateur mis à jour",
+                "deleted": "Utilisateur supprimé"
             }
         },
         "player": {
@@ -93,7 +115,8 @@
                 "client": "Client",
                 "userName": "Nom d'utilisateur",
                 "lastSeen": "Vu pour la dernière fois",
-                "reportRealPath": "Rapporter le chemin absolu"
+                "reportRealPath": "Rapporter le chemin absolu",
+                "scrobbleEnabled": "Envoyer les scrobbles à Last.fm"
             }
         },
         "transcoding": {
@@ -125,8 +148,8 @@
                 "export": "Exporter"
             },
             "message": {
-              "duplicate_song": "Pistes déjà présentes dans la playlist",
-              "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
+                "duplicate_song": "Pistes déjà présentes dans la playlist",
+                "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
             }
         }
     },
@@ -155,7 +178,8 @@
             "number": "Doit être un nombre",
             "email": "Doit être un e-mail",
             "oneOf": "Doit être au choix : %{options}",
-            "regex": "Doit respecter un format spécifique (regexp) : %{pattern}"
+            "regex": "Doit respecter un format spécifique (regexp) : %{pattern}",
+            "unique": "Doit être unique"
         },
         "action": {
             "add_filter": "Ajouter un filtre",
@@ -259,7 +283,14 @@
             "data_provider_error": "Erreur dans le dataProvider. Plus de détails dans la console.",
             "i18n_error": "Erreur de chargement des traductions pour la langue sélectionnée",
             "canceled": "Action annulée",
-            "logged_out": "Votre session a pris fin, veuillez vous reconnecter."
+            "logged_out": "Votre session a pris fin, veuillez vous reconnecter.",
+            "new_version": "Nouvelle version disponible ! Veuillez rafraîchir la fenêtre."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Colonnes à afficher",
+            "layout": "Mise en page",
+            "grid": "Grille",
+            "table": "Table"
         }
     },
     "message": {
@@ -271,7 +302,16 @@
         "delete_user_title": "Supprimer l'utilisateur '%{name}'",
         "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
         "notifications_blocked": "Votre navigateur bloque les notifications de ce site",
-        "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via HTTPS"
+        "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via HTTPS",
+        "lastfmLinkSuccess": "Last.fm a été correctement relié et le scrobble a été activé",
+        "lastfmLinkFailure": "Last.fm n'a pas pu être correctement relié",
+        "lastfmUnlinkSuccess": "Last.fm n'est plus relié et le scrobble a été désactivé",
+        "lastfmUnlinkFailure": "Erreur pendant la suppression du lien avec Last.fm",
+        "openIn": {
+            "lastfm": "Ouvrir dans Last.fm",
+            "musicbrainz": "Ouvrir dans MusicBrainz"
+        },
+        "lastfmLink": "Lire plus..."
     },
     "menu": {
         "library": "Bibliothèque",
@@ -284,11 +324,14 @@
                 "theme": "Thème",
                 "language": "Langue",
                 "defaultView": "Vue par défaut",
-                "desktop_notifications": "Notifications de bureau"
+                "desktop_notifications": "Notifications de bureau",
+                "lastfmScrobbling": "Scrobbler vers Last.fm"
             }
         },
         "albumList": "Albums",
-        "about": "À propos"
+        "about": "À propos",
+        "playlists": "Playlists",
+        "sharedPlaylists": "Playlists partagées"
     },
     "player": {
         "playListsText": "File de lecture",
@@ -340,7 +383,7 @@
             "next_song": "Morceau suivant",
             "vol_up": "Augmenter le volume",
             "vol_down": "Baisser le volume",
-            "toggle_star": "Ajouter/Enlever le morceau des favoris"
+            "toggle_love": "Ajouter/Enlever le morceau des favoris"
         }
     }
 }

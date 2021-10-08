@@ -110,7 +110,11 @@ func toArtistID3(ctx context.Context, a model.Artist) responses.ArtistID3 {
 func toGenres(genres model.Genres) *responses.Genres {
 	response := make([]responses.Genre, len(genres))
 	for i, g := range genres {
-		response[i] = responses.Genre(g)
+		response[i] = responses.Genre{
+			Name:       g.Name,
+			SongCount:  g.SongCount,
+			AlbumCount: g.AlbumCount,
+		}
 	}
 	return &responses.Genres{Genre: response}
 }
@@ -152,7 +156,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	if ok && player.ReportRealPath {
 		child.Path = mf.Path
 	} else {
-		child.Path = fmt.Sprintf("%s/%s/%s.%s", mapSlashToDash(realArtistName(mf)), mapSlashToDash(mf.Album), mapSlashToDash(mf.Title), mf.Suffix)
+		child.Path = fmt.Sprintf("%s/%s/%s.%s", mapSlashToDash(mf.AlbumArtist), mapSlashToDash(mf.Album), mapSlashToDash(mf.Title), mf.Suffix)
 	}
 	child.DiscNumber = mf.DiscNumber
 	child.Created = &mf.CreatedAt
@@ -172,17 +176,6 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 	child.BookmarkPosition = mf.BookmarkPosition
 	return child
-}
-
-func realArtistName(mf model.MediaFile) string {
-	switch {
-	case mf.Compilation:
-		return consts.VariousArtists
-	case mf.AlbumArtist != "":
-		return mf.AlbumArtist
-	}
-
-	return mf.Artist
 }
 
 func mapSlashToDash(target string) string {

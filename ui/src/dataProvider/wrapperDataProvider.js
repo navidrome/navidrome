@@ -6,9 +6,6 @@ const dataProvider = jsonServerProvider(REST_URL, httpClient)
 
 const mapResource = (resource, params) => {
   switch (resource) {
-    case 'albumSong':
-      return ['song', params]
-
     case 'playlistTrack':
       // /api/playlistTrack?playlist_id=123  => /api/playlist/123/tracks
       let plsId = '0'
@@ -59,6 +56,12 @@ const wrapperDataProvider = {
   deleteMany: (resource, params) => {
     const [r, p] = mapResource(resource, params)
     return dataProvider.deleteMany(r, p)
+  },
+  addToPlaylist: (playlistId, data) => {
+    return httpClient(`${REST_URL}/playlist/${playlistId}/tracks`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }).then(({ json }) => ({ data: json }))
   },
 }
 

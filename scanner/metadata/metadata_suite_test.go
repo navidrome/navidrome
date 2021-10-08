@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestScanner(t *testing.T) {
+func TestMetadata(t *testing.T) {
 	tests.Init(t, true)
 	log.SetLevel(log.LevelCritical)
 	RegisterFailHandler(Fail)

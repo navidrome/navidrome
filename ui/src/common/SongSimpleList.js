@@ -6,10 +6,11 @@ import ListItemIcon from '@material-ui/core/ListItemIcon'
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
-import { sanitizeListRestProps } from 'ra-core'
-import { DurationField, SongContextMenu } from './index'
+import { sanitizeListRestProps } from 'react-admin'
+import { DurationField, SongContextMenu, RatingField } from './index'
 import { setTrack } from '../actions'
 import { useDispatch } from 'react-redux'
+import config from '../config'
 
 const useStyles = makeStyles(
   {
@@ -77,17 +78,27 @@ export const SongSimpleList = ({
                       <div className={classes.title}>{data[id].title}</div>
                     }
                     secondary={
-                      <span className={classes.secondary}>
-                        <span className={classes.artist}>
-                          {data[id].artist}
+                      <>
+                        <span className={classes.secondary}>
+                          <span className={classes.artist}>
+                            {data[id].artist}
+                          </span>
+                          <span className={classes.timeStamp}>
+                            <DurationField
+                              record={data[id]}
+                              source={'duration'}
+                            />
+                          </span>
                         </span>
-                        <span className={classes.timeStamp}>
-                          <DurationField
+                        {config.enableStarRating && (
+                          <RatingField
                             record={data[id]}
-                            source={'duration'}
+                            source={'rating'}
+                            resource={'song'}
+                            size={'small'}
                           />
-                        </span>
-                      </span>
+                        )}
+                      </>
                     }
                   />
                   <ListItemSecondaryAction className={classes.rightIcon}>

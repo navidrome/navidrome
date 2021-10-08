@@ -70,9 +70,9 @@ func (r *playlistTrackRepository) NewInstance() interface{} {
 	return &model.PlaylistTrack{}
 }
 
-func (r *playlistTrackRepository) Add(mediaFileIds []string) error {
+func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
 	if !r.isWritable() {
-		return rest.ErrPermissionDenied
+		return 0, rest.ErrPermissionDenied
 	}
 
 	if len(mediaFileIds) > 0 {
@@ -81,14 +81,55 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) error {
 
 	ids, err := r.getTracks()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// Append new tracks
 	ids = append(ids, mediaFileIds...)
 
 	// Update tracks and playlist
-	return r.Update(ids)
+	return len(mediaFileIds), r.Update(ids)
+}
+
+func (r *playlistTrackRepository) AddAlbums(albumIds []string) (int, error) {
+	sq := Select("id").From("media_file").Where(Eq{"album_id": albumIds})
+	return r.addMediaFileIds(sq)
+}
+
+func (r *playlistTrackRepository) AddArtists(artistIds []string) (int, error) {
+	sq := Select("id").From("media_file").Where(Eq{"album_artist_id": artistIds})
+	return r.addMediaFileIds(sq)
+}
+
+func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
+	sq := Select("id").From("media_file")
+	if len(discs) == 0 {
+		return 0, nil
+	}
+	var clauses []Sqlizer
+	for _, d := range discs {
+		clauses = append(clauses, And{Eq{"album_id": d.AlbumID}, Eq{"disc_number": d.DiscNumber}})
+	}
+	sq = sq.Where(Or(clauses))
+	return r.addMediaFileIds(sq)
+}
+
+func (r *playlistTrackRepository) addMediaFileIds(sq SelectBuilder) (int, error) {
+	var res []struct{ Id string }
+	sq = sq.OrderBy("album_artist, album, disc_number, track_number")
+	err := r.queryAll(sq, &res)
+	if err != nil {
+		log.Error(r.ctx, "Error getting tracks to add to playlist", err)
+		return 0, err
+	}
+	if len(res) == 0 {
+		return 0, nil
+	}
+	var ids []string
+	for _, r := range res {
+		ids = append(ids, r.Id)
+	}
+	return r.Add(ids)
 }
 
 func (r *playlistTrackRepository) getTracks() ([]string, error) {

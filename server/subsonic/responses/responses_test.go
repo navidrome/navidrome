@@ -1,4 +1,5 @@
-//+build linux darwin
+//go:build linux || darwin
+// +build linux darwin
 
 // TODO Fix snapshot tests in Windows
 // Response Snapshot tests. Only run in Linux and macOS, as they fail in Windows
@@ -516,7 +517,7 @@ var _ = Describe("Responses", func() {
 					Created:  time.Time{},
 					Changed:  time.Time{},
 				}
-				bmk.Entry = []Child{{Id: "1", Title: "title", IsDir: false}}
+				bmk.Entry = Child{Id: "1", Title: "title", IsDir: false}
 				response.Bookmarks.Bookmark = []Bookmark{bmk}
 			})
 			It("should match .XML", func() {

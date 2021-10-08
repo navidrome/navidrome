@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
@@ -15,22 +16,22 @@ import (
 )
 
 type AlbumListController struct {
-	ds         model.DataStore
-	nowPlaying core.NowPlaying
+	ds        model.DataStore
+	scrobbler scrobbler.PlayTracker
 }
 
-func NewAlbumListController(ds model.DataStore, nowPlaying core.NowPlaying) *AlbumListController {
+func NewAlbumListController(ds model.DataStore, scrobbler scrobbler.PlayTracker) *AlbumListController {
 	c := &AlbumListController{
-		ds:         ds,
-		nowPlaying: nowPlaying,
+		ds:        ds,
+		scrobbler: scrobbler,
 	}
 	return c
 }
 
-func (c *AlbumListController) getAlbumList(r *http.Request) (model.Albums, error) {
+func (c *AlbumListController) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 	typ, err := requiredParamString(r, "type")
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var opts filter.Options
@@ -57,26 +58,34 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (model.Albums, error
 		opts = filter.AlbumsByYear(utils.ParamInt(r, "fromYear", 0), utils.ParamInt(r, "toYear", 0))
 	default:
 		log.Error(r, "albumList type not implemented", "type", typ)
-		return nil, errors.New("not implemented")
+		return nil, 0, errors.New("not implemented")
 	}
 
 	opts.Offset = utils.ParamInt(r, "offset", 0)
 	opts.Max = utils.MinInt(utils.ParamInt(r, "size", 10), 500)
-	albums, err := c.ds.Album(r.Context()).GetAll(model.QueryOptions(opts))
+	albums, err := c.ds.Album(r.Context()).GetAll(opts)
 
 	if err != nil {
 		log.Error(r, "Error retrieving albums", "error", err)
-		return nil, errors.New("internal Error")
+		return nil, 0, errors.New("internal error")
 	}
 
-	return albums, nil
+	count, err := c.ds.Album(r.Context()).CountAll(opts)
+	if err != nil {
+		log.Error(r, "Error counting albums", "error", err)
+		return nil, 0, errors.New("internal error")
+	}
+
+	return albums, count, nil
 }
 
 func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	albums, err := c.getAlbumList(r)
+	albums, count, err := c.getAlbumList(r)
 	if err != nil {
 		return nil, newError(responses.ErrorGeneric, err.Error())
 	}
+
+	w.Header().Set("x-total-count", strconv.Itoa(int(count)))
 
 	response := newResponse()
 	response.AlbumList = &responses.AlbumList{Album: childrenFromAlbums(r.Context(), albums)}
@@ -84,10 +93,12 @@ func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Reques
 }
 
 func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	albums, err := c.getAlbumList(r)
+	albums, pageCount, err := c.getAlbumList(r)
 	if err != nil {
 		return nil, newError(responses.ErrorGeneric, err.Error())
 	}
+
+	w.Header().Set("x-total-count", strconv.FormatInt(pageCount, 10))
 
 	response := newResponse()
 	response.AlbumList2 = &responses.AlbumList{Album: childrenFromAlbums(r.Context(), albums)}
@@ -96,18 +107,18 @@ func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Reque
 
 func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	options := model.QueryOptions{Sort: "starred_at", Order: "desc"}
-	artists, err := c.ds.Artist(ctx).GetStarred(options)
+	options := filter.Starred()
+	artists, err := c.ds.Artist(ctx).GetAll(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred artists", "error", err)
 		return nil, err
 	}
-	albums, err := c.ds.Album(ctx).GetStarred(options)
+	albums, err := c.ds.Album(ctx).GetAll(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred albums", "error", err)
 		return nil, err
 	}
-	mediaFiles, err := c.ds.MediaFile(ctx).GetStarred(options)
+	mediaFiles, err := c.ds.MediaFile(ctx).GetAll(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred mediaFiles", "error", err)
 		return nil, err
@@ -134,7 +145,7 @@ func (c *AlbumListController) GetStarred2(w http.ResponseWriter, r *http.Request
 
 func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	npInfo, err := c.nowPlaying.GetAll()
+	npInfo, err := c.scrobbler.GetNowPlaying(ctx)
 	if err != nil {
 		log.Error(r, "Error retrieving now playing list", "error", err)
 		return nil, err
@@ -152,7 +163,7 @@ func (c *AlbumListController) GetNowPlaying(w http.ResponseWriter, r *http.Reque
 		response.NowPlaying.Entry[i].Child = childFromMediaFile(ctx, *mf)
 		response.NowPlaying.Entry[i].UserName = np.Username
 		response.NowPlaying.Entry[i].MinutesAgo = int(time.Since(np.Start).Minutes())
-		response.NowPlaying.Entry[i].PlayerId = np.PlayerId
+		response.NowPlaying.Entry[i].PlayerId = i + 1 // Fake numeric playerId, it does not seem to be used for anything
 		response.NowPlaying.Entry[i].PlayerName = np.PlayerName
 	}
 	return response, nil
@@ -196,5 +207,5 @@ func (c *AlbumListController) GetSongsByGenre(w http.ResponseWriter, r *http.Req
 func (c *AlbumListController) getSongs(ctx context.Context, offset, size int, opts filter.Options) (model.MediaFiles, error) {
 	opts.Offset = offset
 	opts.Max = size
-	return c.ds.MediaFile(ctx).GetAll(model.QueryOptions(opts))
+	return c.ds.MediaFile(ctx).GetAll(opts)
 }

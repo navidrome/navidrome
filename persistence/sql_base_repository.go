@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/utils"
+
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/google/uuid"
@@ -77,9 +79,9 @@ func (r sqlRepository) buildSortOrder(sort, order string) string {
 	}
 
 	var newSort []string
-	parts := strings.FieldsFunc(sort, func(c rune) bool { return c == ',' })
+	parts := strings.FieldsFunc(sort, splitFunc(','))
 	for _, p := range parts {
-		f := strings.Fields(p)
+		f := strings.FieldsFunc(p, splitFunc(' '))
 		newField := []string{f[0]}
 		if len(f) == 1 {
 			newField = append(newField, order)
@@ -93,6 +95,21 @@ func (r sqlRepository) buildSortOrder(sort, order string) string {
 		newSort = append(newSort, strings.Join(newField, " "))
 	}
 	return strings.Join(newSort, ", ")
+}
+
+func splitFunc(delimiter rune) func(c rune) bool {
+	open := false
+	return func(c rune) bool {
+		if open {
+			open = c != ')'
+			return false
+		}
+		if c == '(' {
+			open = true
+			return false
+		}
+		return c == delimiter
+	}
 }
 
 func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOptions) SelectBuilder {
@@ -132,7 +149,7 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	start := time.Now()
 	err = r.ormer.Raw(query, args...).QueryRow(response)
 	if err == orm.ErrNoRows {
-		r.logSQL(query, args, nil, 1, start)
+		r.logSQL(query, args, nil, 0, start)
 		return model.ErrNotFound
 	}
 	r.logSQL(query, args, err, 1, start)
@@ -162,36 +179,37 @@ func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
 }
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
-	countQuery = countQuery.Columns("count(*) as count").From(r.tableName)
+	countQuery = countQuery.Columns("count(distinct " + r.tableName + ".id) as count").From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
 	return res.Count, err
 }
 
-func (r sqlRepository) put(id string, m interface{}) (newId string, err error) {
+func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (newId string, err error) {
 	values, _ := toSqlArgs(m)
-	// Remove created_at from args and save it for later, if needed for insert
-	createdAt := values["created_at"]
-	delete(values, "created_at")
+	// If there's an ID, try to update first
 	if id != "" {
-		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(values)
+		updateValues := map[string]interface{}{}
+		for k, v := range values {
+			if len(colsToUpdate) == 0 || utils.StringInSlice(k, colsToUpdate) {
+				updateValues[k] = v
+			}
+		}
+		delete(updateValues, "created_at")
+		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
 		count, err := r.executeSQL(update)
 		if err != nil {
 			return "", err
 		}
 		if count > 0 {
-			return id, err
+			return id, nil
 		}
 	}
-	// If does not have an id OR could not update (new record with predefined id)
+	// If does not have an ID OR the ID was not found (when it is a new record with predefined id)
 	if id == "" {
 		id = uuid.NewString()
 		values["id"] = id
-	}
-	// It is a insert. if there was a created_at, add it back to args
-	if createdAt != nil {
-		values["created_at"] = createdAt
 	}
 	insert := Insert(r.tableName).SetMap(values)
 	_, err = r.executeSQL(insert)

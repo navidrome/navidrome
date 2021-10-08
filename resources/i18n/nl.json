@@ -19,8 +19,12 @@
                 "updatedAt": "Laatst bijgewerkt op",
                 "bitRate": "Bitrate",
                 "discSubtitle": "Schijfondertitel",
-                "starred": "Met Ster",
-                "comment": "Commentaar"
+                "starred": "Favoriet",
+                "comment": "Commentaar",
+                "rating": "Beoordeling",
+                "quality": "Kwaliteit",
+                "bpm": "BPM",
+                "playDate": "Laatst afgespeeld"
             },
             "actions": {
                 "addToQueue": "Voeg toe aan wachtrij",
@@ -44,7 +48,8 @@
                 "compilation": "Compilatie",
                 "year": "Jaar",
                 "updatedAt": "Bijgewerkt op",
-                "comment": "Commentaar"
+                "comment": "Commentaar",
+                "rating": "Beoordeling"
             },
             "actions": {
                 "playAll": "Afspelen",
@@ -60,7 +65,8 @@
                 "recentlyAdded": "Onlangs toegevoegd",
                 "recentlyPlayed": "Onlangs afgespeeld",
                 "mostPlayed": "Meest afgespeeld",
-                "starred": "Met Ster"
+                "starred": "Favoriet",
+                "topRated": "Best beoordeeld"
             }
         },
         "artist": {
@@ -69,7 +75,9 @@
                 "name": "Naam",
                 "albumCount": "Aantal albums",
                 "songCount": "Aantal nummers",
-                "playCount": "Afgespeeld"
+                "playCount": "Afgespeeld",
+                "rating": "Beoordeling",
+                "genre": "Genre"
             }
         },
         "user": {
@@ -81,7 +89,18 @@
                 "updatedAt": "Laatst gewijzigd op",
                 "name": "Naam",
                 "password": "Wachtwoord",
-                "createdAt": "Aangemaakt op"
+                "createdAt": "Aangemaakt op",
+                "changePassword": "Wijzig wachtwoord?",
+                "currentPassword": "Huidig wachtwoord",
+                "newPassword": "Nieuw wachtwoord"
+            },
+            "helperTexts": {
+                "name": "Naamswijziging wordt pas zichtbaar bij de volgende login"
+            },
+            "notifications": {
+                "created": "Aangemaakt door gebruiker",
+                "updated": "Gewijzigd door gebruiker",
+                "deleted": "Gewist door gebruiker"
             }
         },
         "player": {
@@ -93,7 +112,8 @@
                 "client": "Client",
                 "userName": "Gebruikersnaam",
                 "lastSeen": "Laatst gezien op",
-                "reportRealPath": "Toon het echte bestandspad"
+                "reportRealPath": "Toon het echte bestandspad",
+                "scrobbleEnabled": "Verstuur scrobbles naar Last.fm"
             }
         },
         "transcoding": {
@@ -155,7 +175,8 @@
             "number": "Moet een getal zijn",
             "email": "Moet een geldig e-mailadres zijn",
             "oneOf": "Moet een zijn van: %{options}",
-            "regex": "Moet overeenkomen met een specifiek format (regexp): %{pattern}"
+            "regex": "Moet overeenkomen met een specifiek format (regexp): %{pattern}",
+            "unique": "Moet uniek zijn"
         },
         "action": {
             "add_filter": "Voeg filter toe",
@@ -259,7 +280,14 @@
             "data_provider_error": "dataProvider fout. Open de console voor meer details.",
             "i18n_error": "Kan de vertalingen voor de opgegeven taal niet laden",
             "canceled": "Actie geannuleerd",
-            "logged_out": "Uw sessie is beëindigd, maak opnieuw verbinding."
+            "logged_out": "Uw sessie is beëindigd, maak opnieuw verbinding.",
+            "new_version": "Een nieuwe versie is beschikbaar! Ververs dit venster aub."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Kolommen keuze",
+            "layout": "Layout",
+            "grid": "Raster",
+            "table": "Tabel"
         }
     },
     "message": {
@@ -271,7 +299,15 @@
         "delete_user_title": "Verwijder gebruiker '%{name}'",
         "delete_user_content": "Weet je zeker dat je deze gebruiker en al zijn gegevens wilt verwijderen (inclusief afspeellijsten en voorkeuren)?",
         "notifications_blocked": "Je hebt bureaubladmeldingen geblokkeerd voor deze site in je browserinstellingen",
-        "notifications_not_available": "Deze browser ondersteunt bureaubladmeldingen niet"
+        "notifications_not_available": "Deze browser ondersteunt bureaubladmeldingen niet",
+        "lastfmLinkSuccess": "Last.fm succesvol gekoppeld en scrobbling actief",
+        "lastfmLinkFailure": "Last.fm kon niet worden gekoppeld",
+        "lastfmUnlinkSuccess": "Last.fm ontkoppeld en scrobbling uitgezet",
+        "lastfmUnlinkFailure": "Last.fm kon niet worden ontkoppeld",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        }
     },
     "menu": {
         "library": "Bibliotheek",
@@ -284,7 +320,8 @@
                 "theme": "Thema",
                 "language": "Taal",
                 "defaultView": "Standaard weergave",
-                "desktop_notifications": "Bureaubladmeldingen"
+                "desktop_notifications": "Bureaubladmeldingen",
+                "lastfmScrobbling": "Scrobble naar Last.fm"
             }
         },
         "albumList": "Albums",
@@ -340,7 +377,7 @@
             "next_song": "Volgend nummer",
             "vol_up": "Volume harder",
             "vol_down": "Volume zachter",
-            "toggle_star": "Ster voor dit nummer Ja/Nee"
+            "toggle_love": "Voeg toe aan favorieten"
         }
     }
 }

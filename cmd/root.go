@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/scheduler"
 	"github.com/oklog/run"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -53,8 +54,17 @@ func runNavidrome() {
 	db.EnsureLatestVersion()
 
 	var g run.Group
+
 	g.Add(startServer())
-	g.Add(startScanner())
+	g.Add(startSignaler())
+	g.Add(startScheduler())
+
+	schedule := conf.Server.ScanSchedule
+	if schedule != "" {
+		go schedulePeriodicScan(schedule)
+	} else {
+		log.Warn("Periodic scan is DISABLED")
+	}
 
 	if err := g.Run(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -64,8 +74,11 @@ func runNavidrome() {
 func startServer() (func() error, func(err error)) {
 	return func() error {
 			a := CreateServer(conf.Server.MusicFolder)
-			a.MountRouter(consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
-			a.MountRouter(consts.URLPathUI, CreateAppRouter())
+			a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
+			a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
+			if conf.Server.LastFM.Enabled {
+				a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
+			}
 			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
 		}, func(err error) {
 			if err != nil {
@@ -76,28 +89,72 @@ func startServer() (func() error, func(err error)) {
 		}
 }
 
-func startScanner() (func() error, func(err error)) {
-	interval := conf.Server.ScanInterval
-	log.Info("Starting scanner", "interval", interval.String())
+var sigChan = make(chan os.Signal, 1)
+
+func startSignaler() (func() error, func(err error)) {
 	scanner := GetScanner()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return func() error {
-			if interval != 0 {
-				time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
-				scanner.Run(ctx, interval)
-			} else {
-				log.Warn("Periodic scan is DISABLED", "interval", interval)
-				<-ctx.Done()
+			for {
+				select {
+				case sig := <-sigChan:
+					log.Info(ctx, "Received signal, triggering a new scan", "signal", sig)
+					start := time.Now()
+					err := scanner.RescanAll(ctx, false)
+					if err != nil {
+						log.Error(ctx, "Error scanning", err)
+					}
+					log.Info(ctx, "Triggered scan complete", "elapsed", time.Since(start).Round(100*time.Millisecond))
+				case <-ctx.Done():
+					break
+				}
 			}
+		}, func(err error) {
+			cancel()
+			if err != nil {
+				log.Error("Shutting down Signaler due to error", err)
+			} else {
+				log.Info("Shutting down Signaler")
+			}
+		}
+}
+
+func schedulePeriodicScan(schedule string) {
+	scanner := GetScanner()
+	schedulerInstance := scheduler.GetInstance()
+
+	log.Info("Scheduling periodic scan", "schedule", schedule)
+	err := schedulerInstance.Add(schedule, func() {
+		_ = scanner.RescanAll(context.Background(), false)
+	})
+	if err != nil {
+		log.Error("Error scheduling periodic scan", err)
+	}
+
+	time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
+	log.Debug("Executing initial scan")
+	if err := scanner.RescanAll(context.Background(), false); err != nil {
+		log.Error("Error executing initial scan", err)
+	}
+	log.Debug("Finished initial scan")
+}
+
+func startScheduler() (func() error, func(err error)) {
+	log.Info("Starting scheduler")
+	schedulerInstance := scheduler.GetInstance()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	return func() error {
+			schedulerInstance.Run(ctx)
 
 			return nil
 		}, func(err error) {
 			cancel()
 			if err != nil {
-				log.Error("Shutting down Scanner due to error", err)
+				log.Error("Shutting down Scheduler due to error", err)
 			} else {
-				log.Info("Shutting down Scanner")
+				log.Info("Shutting down Scheduler")
 			}
 		}
 }

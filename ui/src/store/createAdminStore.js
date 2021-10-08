@@ -7,7 +7,7 @@ import throttle from 'lodash.throttle'
 import pick from 'lodash.pick'
 import { loadState, saveState } from './persistState'
 
-export default ({
+const createAdminStore = ({
   authProvider,
   dataProvider,
   history,
@@ -37,6 +37,9 @@ export default ({
     compose
 
   const persistedState = loadState()
+  if (persistedState?.player?.savedPlayIndex) {
+    persistedState.player.playIndex = persistedState.player.savedPlayIndex
+  }
   const store = createStore(
     resettableAppReducer,
     persistedState,
@@ -48,7 +51,7 @@ export default ({
       const state = store.getState()
       saveState({
         theme: state.theme,
-        queue: pick(state.queue, ['queue', 'volume']),
+        player: pick(state.player, ['queue', 'volume', 'savedPlayIndex']),
         albumView: state.albumView,
         settings: state.settings,
       })
@@ -59,3 +62,5 @@ export default ({
   sagaMiddleware.run(saga)
   return store
 }
+
+export default createAdminStore

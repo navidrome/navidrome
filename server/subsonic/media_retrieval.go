@@ -46,7 +46,7 @@ func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Requ
 }
 
 func (c *MediaRetrievalController) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	f, err := resources.Assets().Open(consts.PlaceholderAvatar)
+	f, err := resources.FS.Open(consts.PlaceholderAvatar)
 	if err != nil {
 		log.Error(r, "Image not found", err)
 		return nil, newError(responses.ErrorDataNotFound, "Avatar image not found")
@@ -58,10 +58,7 @@ func (c *MediaRetrievalController) getPlaceHolderAvatar(w http.ResponseWriter, r
 }
 
 func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id, err := requiredParamString(r, "id")
-	if err != nil {
-		return nil, err
-	}
+	id := utils.ParamStringDefault(r, "id", "non-existent")
 	size := utils.ParamInt(r, "size", 0)
 
 	w.Header().Set("cache-control", "public, max-age=315360000")

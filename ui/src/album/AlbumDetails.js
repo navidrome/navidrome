@@ -7,8 +7,16 @@ import {
   makeStyles,
   Typography,
   useMediaQuery,
+  withWidth,
 } from '@material-ui/core'
-import { useTranslate } from 'react-admin'
+import {
+  useRecordContext,
+  useTranslate,
+  ArrayField,
+  SingleFieldList,
+  ChipField,
+  Link,
+} from 'react-admin'
 import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
@@ -19,8 +27,12 @@ import {
   formatRange,
   SizeField,
   LoveButton,
+  RatingField,
+  useAlbumsPerPage,
 } from '../common'
 import config from '../config'
+import { intersperse } from '../utils'
+import AlbumExternalLinks from './AlbumExternalLinks'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -76,7 +88,7 @@ const useStyles = makeStyles(
       display: 'inline-block',
       marginTop: '1em',
       float: 'left',
-      wordBreak: 'break-all',
+      wordBreak: 'break-word',
     },
     pointerCursor: {
       cursor: 'pointer',
@@ -84,6 +96,12 @@ const useStyles = makeStyles(
     recordName: {},
     recordArtist: {},
     recordMeta: {},
+    genreList: {
+      marginTop: theme.spacing(0.5),
+    },
+    externalLinks: {
+      marginTop: theme.spacing(1.5),
+    },
   }),
   {
     name: 'NDAlbumDetails',
@@ -125,23 +143,72 @@ const AlbumComment = ({ record }) => {
   )
 }
 
-const AlbumDetails = ({ record }) => {
+export const useGetHandleGenreClick = (width) => {
+  const [perPage] = useAlbumsPerPage(width)
+
+  return (id) => {
+    return `/album?filter={"genre_id":"${id}"}&order=ASC&sort=name&perPage=${perPage}`
+  }
+}
+
+const GenreChipField = withWidth()(({ width, ...rest }) => {
+  const record = useRecordContext(rest)
+  const genreLink = useGetHandleGenreClick(width)
+
+  return (
+    <Link to={genreLink(record.id)} onClick={(e) => e.stopPropagation()}>
+      <ChipField
+        source="name"
+        // Workaround to force ChipField to be clickable
+        onClick={() => {}}
+      />
+    </Link>
+  )
+})
+
+const GenreList = () => {
+  const classes = useStyles()
+  return (
+    <ArrayField className={classes.genreList} source={'genres'}>
+      <SingleFieldList linkType={false}>
+        <GenreChipField />
+      </SingleFieldList>
+    </ArrayField>
+  )
+}
+
+const Details = (props) => {
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const translate = useTranslate()
+  const record = useRecordContext(props)
+  let details = []
+  const addDetail = (obj) => {
+    const id = details.length
+    details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>)
+  }
+
+  const year = formatRange(record, 'year')
+  year && addDetail(<>{year}</>)
+  addDetail(
+    <>
+      {record.songCount +
+        ' ' +
+        translate('resources.song.name', {
+          smart_count: record.songCount,
+        })}
+    </>
+  )
+  !isXsmall && addDetail(<DurationField source={'duration'} />)
+  !isXsmall && addDetail(<SizeField source="size" />)
+
+  return <>{intersperse(details, ' · ')}</>
+}
+
+const AlbumDetails = (props) => {
+  const record = useRecordContext(props)
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
-  const translate = useTranslate()
-
-  const genreYear = (record) => {
-    let genreDateLine = []
-    if (record.genre) {
-      genreDateLine.push(record.genre)
-    }
-    const year = formatRange(record, 'year')
-    if (year) {
-      genreDateLine.push(year)
-    }
-    return genreDateLine.join(' · ')
-  }
 
   const imageUrl = subsonic.getCoverArtUrl(record, 300)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
@@ -167,7 +234,10 @@ const AlbumDetails = ({ record }) => {
         </div>
         <div className={classes.details}>
           <CardContent className={classes.content}>
-            <Typography variant="h5" className={classes.recordName}>
+            <Typography
+              variant={isDesktop ? 'h5' : 'h6'}
+              className={classes.recordName}
+            >
               {record.name}
               {config.enableFavourites && (
                 <LoveButton
@@ -180,21 +250,31 @@ const AlbumDetails = ({ record }) => {
                 />
               )}
             </Typography>
-            <Typography component="h6" className={classes.recordArtist}>
+            <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />
             </Typography>
-            <Typography component="p" className={classes.recordMeta}>
-              {genreYear(record)}
+            <Typography component={'div'} className={classes.recordMeta}>
+              <Details />
             </Typography>
-            <Typography component="p" className={classes.recordMeta}>
-              {record.songCount}{' '}
-              {translate('resources.song.name', {
-                smart_count: record.songCount,
-              })}
-              {' · '} <DurationField record={record} source={'duration'} />{' '}
-              {' · '}
-              <SizeField record={record} source="size" />
-            </Typography>
+            {config.enableStarRating && (
+              <div>
+                <RatingField
+                  record={record}
+                  resource={'album'}
+                  size={isDesktop ? 'medium' : 'small'}
+                />
+              </div>
+            )}
+            {isDesktop ? (
+              <GenreList />
+            ) : (
+              <Typography component={'p'}>{record.genre}</Typography>
+            )}
+            {isDesktop && (
+              <Typography component={'div'} className={classes.recordMeta}>
+                <AlbumExternalLinks className={classes.externalLinks} />
+              </Typography>
+            )}
             {isDesktop && record['comment'] && <AlbumComment record={record} />}
           </CardContent>
         </div>
