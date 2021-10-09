@@ -18,6 +18,10 @@ type Playlist struct {
 	Sync      bool       `structs:"sync" json:"sync"`
 	CreatedAt time.Time  `structs:"created_at" json:"createdAt"`
 	UpdatedAt time.Time  `structs:"updated_at" json:"updatedAt"`
+
+	// SmartPlaylist attributes
+	//Rules       *SmartPlaylist `structs:"rules" json:"rules"`
+	//EvaluatedAt time.Time      `structs:"evaluated_at" json:"evaluatedAt"`
 }
 
 type Playlists []Playlist
