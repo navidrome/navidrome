@@ -111,3 +111,12 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 func Starred() Options {
 	return Options{Sort: "starred_at", Order: "desc", Filters: squirrel.Eq{"starred": true}}
 }
+
+func MediaFilesByArtistAndTitle(artist, title string) Options {
+	return Options{
+		Filters: squirrel.Eq{
+			"artist": artist,
+			"title":  title,
+		},
+	}
+}

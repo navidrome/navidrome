@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/gravatar"
@@ -77,4 +78,29 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 	_, err = io.Copy(w, imgReader)
 
 	return nil, err
+}
+
+func (c *MediaRetrievalController) GetLyrics(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	artist := utils.ParamString(r, "artist")
+	title := utils.ParamString(r, "title")
+
+	response := newResponse()
+	lyrics := responses.Lyrics{}
+	response.Lyrics = &lyrics
+
+	media_files, err := c.ds.MediaFile(r.Context()).GetAll(filter.MediaFilesByArtistAndTitle(artist, title), model.QueryOptions{Sort: "updated_at", Order: "desc"})
+
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(media_files) {
+	case 0:
+		return response, nil
+	default:
+		lyrics.Artist = artist
+		lyrics.Title = title
+		lyrics.Value = media_files[0].Lyrics
+		return response, nil
+	}
 }
