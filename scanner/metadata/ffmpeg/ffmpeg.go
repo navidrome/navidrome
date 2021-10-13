@@ -73,7 +73,11 @@ var (
 	durationRx = regexp.MustCompile(`^\s\sDuration: ([\d.:]+).*bitrate: (\d+)`)
 
 	//    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
-	audioStreamRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+.*: (Audio): (.*), (.* Hz), ([\w\.]+),*(.*.,)*(.(\d+).kb/s)*`)
+	bitRateRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: Audio:.*, (\d+) kb/s`)
+
+	//    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
+	//    Stream #0:0: Audio: flac, 44100 Hz, stereo, s16
+	audioStreamRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+.*: Audio: (.*), (.* Hz), ([\w\.]+),*(.*.,)*`)
 
 	//    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 600x600 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc`
 	coverRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: (Video):.*`)
@@ -151,10 +155,14 @@ func (e *Parser) parseInfo(info string) map[string][]string {
 			continue
 		}
 
+		match = bitRateRx.FindStringSubmatch(line)
+		if len(match) > 0 {
+			tags["bitrate"] = []string{match[1]}
+		}
+
 		match = audioStreamRx.FindStringSubmatch(line)
 		if len(match) > 0 {
-			tags["bitrate"] = []string{match[7]}
-			tags["channels"] = []string{e.parseChannels(match[4])}
+			tags["channels"] = []string{e.parseChannels(match[3])}
 		}
 	}
 
