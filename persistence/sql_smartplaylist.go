@@ -128,56 +128,43 @@ var dateRuleType = reflect.TypeOf(dateRule{})
 type dateRule model.Rule
 
 func (r dateRule) ToSql() (string, []interface{}, error) {
-	var dates []time.Time
+	var date time.Time
 	var err error
 	var sq Sqlizer
 	switch r.Operator {
 	case "is":
-		if dates, err = r.parseDates(); err != nil {
-			return "", nil, err
-		}
-		sq = Eq{r.Field: dates}
+		date, err = r.parseDate(r.Value)
+		sq = Eq{r.Field: date}
 	case "is not":
-		if dates, err = r.parseDates(); err != nil {
-			return "", nil, err
-		}
-		sq = NotEq{r.Field: dates}
+		date, err = r.parseDate(r.Value)
+		sq = NotEq{r.Field: date}
 	case "is before":
-		if dates, err = r.parseDates(); err != nil {
-			return "", nil, err
-		}
-		sq = Lt{r.Field: dates[0]}
+		date, err = r.parseDate(r.Value)
+		sq = Lt{r.Field: date}
 	case "is after":
-		if dates, err = r.parseDates(); err != nil {
-			return "", nil, err
-		}
-		sq = Gt{r.Field: dates[0]}
+		date, err = r.parseDate(r.Value)
+		sq = Gt{r.Field: date}
 	case "is in the range":
-		if dates, err = r.parseDates(); err != nil {
-			return "", nil, err
+		var dates []time.Time
+		if dates, err = r.parseDates(); err == nil {
+			sq = And{GtOrEq{r.Field: dates[0]}, LtOrEq{r.Field: dates[1]}}
 		}
-		if len(dates) != 2 {
-			return "", nil, fmt.Errorf("not a valid date range: %s", r.Value)
-		}
-		sq = And{Gt{r.Field: dates[0]}, Lt{r.Field: dates[1]}}
 	case "in the last":
 		sq, err = r.inTheLast(false)
-		if err != nil {
-			return "", nil, err
-		}
 	case "not in the last":
 		sq, err = r.inTheLast(true)
-		if err != nil {
-			return "", nil, err
-		}
 	default:
-		return "", nil, errors.New("operator not supported: " + r.Operator)
+		err = errors.New("operator not supported: " + r.Operator)
+	}
+	if err != nil {
+		return "", nil, err
 	}
 	return sq.ToSql()
 }
 
 func (r dateRule) inTheLast(invert bool) (Sqlizer, error) {
-	v, err := strconv.ParseInt(r.Value.(string), 10, 64)
+	str := fmt.Sprintf("%v", r.Value)
+	v, err := strconv.ParseInt(str, 10, 64)
 	if err != nil {
 		return nil, err
 	}
@@ -188,21 +175,33 @@ func (r dateRule) inTheLast(invert bool) (Sqlizer, error) {
 	return Gt{r.Field: period}, nil
 }
 
+func (r dateRule) parseDate(date interface{}) (time.Time, error) {
+	input, ok := date.(string)
+	if !ok {
+		return time.Time{}, fmt.Errorf("invalid date: %v", date)
+	}
+	d, err := time.Parse("2006-01-02", input)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid date: %v", date)
+	}
+	return d, nil
+}
+
 func (r dateRule) parseDates() ([]time.Time, error) {
-	var input []string
-	switch v := r.Value.(type) {
-	case string:
-		input = append(input, v)
-	case []string:
-		input = append(input, v...)
+	input, ok := r.Value.([]string)
+	if !ok {
+		return nil, fmt.Errorf("invalid date range: %s", r.Value)
 	}
 	var dates []time.Time
 	for _, s := range input {
-		d, err := time.Parse("2006-01-02", s)
+		d, err := r.parseDate(s)
 		if err != nil {
-			return nil, errors.New("invalid date: " + s)
+			return nil, fmt.Errorf("invalid date '%v' in range %v", s, input)
 		}
 		dates = append(dates, d)
+	}
+	if len(dates) != 2 {
+		return nil, fmt.Errorf("not a valid date range: %s", r.Value)
 	}
 	return dates, nil
 }
@@ -254,7 +253,7 @@ func (e errorSqlizer) ToSql() (sql string, args []interface{}, err error) {
 func (rg RuleGroup) ruleToSqlizer(r model.Rule) Sqlizer {
 	ruleDef := fieldMap[strings.ToLower(r.Field)]
 	if ruleDef == nil {
-		return errorSqlizer("invalid smart playlist field " + r.Field)
+		return errorSqlizer(fmt.Sprintf("invalid smart playlist field '%s'", r.Field))
 	}
 	r.Field = ruleDef.dbField
 	r.Operator = strings.ToLower(r.Operator)
