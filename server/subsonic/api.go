@@ -156,7 +156,6 @@ func (api *Router) routes() http.Handler {
 	})
 
 	// Not Implemented (yet?)
-	// h501(r, "getLyrics")
 	h501(r, "jukeboxControl")
 	h501(r, "getAlbumInfo", "getAlbumInfo2")
 	h501(r, "getShares", "createShare", "updateShare", "deleteShare")

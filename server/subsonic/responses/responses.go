@@ -103,7 +103,6 @@ type Child struct {
 	Album                 string     `xml:"album,attr,omitempty"                    json:"album,omitempty"`
 	Artist                string     `xml:"artist,attr,omitempty"                   json:"artist,omitempty"`
 	Track                 int        `xml:"track,attr,omitempty"                    json:"track,omitempty"`
-	Lyrics                string     `xml:"lyricText,attr,omitempty"                json:"lyricText,omitempty"`
 	Year                  int        `xml:"year,attr,omitempty"                     json:"year,omitempty"`
 	Genre                 string     `xml:"genre,attr,omitempty"                    json:"genre,omitempty"`
 	CoverArt              string     `xml:"coverArt,attr,omitempty"                 json:"coverArt,omitempty"`

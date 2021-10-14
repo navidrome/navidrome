@@ -77,3 +77,23 @@ func (c *fakeArtwork) Get(ctx context.Context, id string, size int) (io.ReadClos
 	c.recvSize = size
 	return io.NopCloser(bytes.NewReader([]byte(c.data))), nil
 }
+
+var _ = Describe("isSynced", func() {
+	It("returns false if lyrics contain no timestamps", func() {
+		Expect(isSynced("Just in case my car goes off the highway")).To(Equal(false))
+		Expect(isSynced("[02.50] Just in case my car goes off the highway")).To(Equal(false))
+	})
+	It("returns false if lyrics is an empty string", func() {
+		Expect(isSynced("")).To(Equal(false))
+	})
+	It("returns true if lyrics contain timestamps", func() {
+		Expect(isSynced(`NF Real Music
+		[00:00] ksdjjs
+		[00:00.85] JUST LIKE YOU
+		[00:00.85] Just in case my car goes off the highway`)).To(Equal(true))
+		Expect(isSynced("[04:02:50.85] Never gonna give you up")).To(Equal(true))
+		Expect(isSynced("[02:50.85] Never gonna give you up")).To(Equal(true))
+		Expect(isSynced("[02:50] Never gonna give you up")).To(Equal(true))
+	})
+
+})

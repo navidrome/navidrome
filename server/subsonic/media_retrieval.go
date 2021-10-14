@@ -3,6 +3,7 @@ package subsonic
 import (
 	"io"
 	"net/http"
+	"regexp"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -80,27 +81,39 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 	return nil, err
 }
 
+const TIMESTAMP_REGEX string = `(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])`
+
+func isSynced(rawLyrics string) bool {
+	r := regexp.MustCompile(TIMESTAMP_REGEX)
+	// Eg: [04:02:50.85]
+	// [02:50.85]
+	// [02:50]
+	return r.MatchString(rawLyrics)
+}
+
 func (c *MediaRetrievalController) GetLyrics(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	artist := utils.ParamString(r, "artist")
 	title := utils.ParamString(r, "title")
-
 	response := newResponse()
 	lyrics := responses.Lyrics{}
 	response.Lyrics = &lyrics
-
-	media_files, err := c.ds.MediaFile(r.Context()).GetAll(filter.MediaFilesByArtistAndTitle(artist, title), model.QueryOptions{Sort: "updated_at", Order: "desc"})
+	media_files, err := c.ds.MediaFile(r.Context()).GetAll(filter.SongsWithLyrics(artist, title))
 
 	if err != nil {
 		return nil, err
 	}
 
-	switch len(media_files) {
-	case 0:
+	if len(media_files) == 0 {
 		return response, nil
-	default:
+	} else {
 		lyrics.Artist = artist
 		lyrics.Title = title
-		lyrics.Value = media_files[0].Lyrics
+		if isSynced(media_files[0].Lyrics) {
+			r := regexp.MustCompile(TIMESTAMP_REGEX)
+			lyrics.Value = r.ReplaceAllString(media_files[0].Lyrics, "")
+		} else {
+			lyrics.Value = media_files[0].Lyrics
+		}
 		return response, nil
 	}
 }

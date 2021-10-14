@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -165,13 +164,4 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 		return "", nil
 	}
 	return result[0].Name, result
-}
-
-func isSynced(rawLyrics string) bool {
-	// regex for matching timestamp
-	r := regexp.MustCompile(`(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])(.*)$`)
-	// Eg: [04:02:50.85]
-	// [02:50.85]
-	// [02:50]
-	return r.MatchString(rawLyrics)
 }
