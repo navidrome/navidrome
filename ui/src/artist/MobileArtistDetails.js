@@ -32,7 +32,7 @@ const useStyles = makeStyles(
       justifyContent: 'center',
       marginLeft: '0.5rem',
     },
-    bio: {
+    biography: {
       display: 'flex',
       marginLeft: '3%',
       marginRight: '3%',
@@ -50,7 +50,7 @@ const useStyles = makeStyles(
       boxShadow: '0px 0px 6px 0px #565656',
       borderRadius: '5px',
     },
-    artImage: {
+    artistImage: {
       marginLeft: '1em',
       maxHeight: '7rem',
       backgroundColor: 'inherit',
@@ -67,14 +67,14 @@ const useStyles = makeStyles(
     rating: {
       marginTop: '5px',
     },
-    artName: {
+    artistName: {
       wordBreak: 'break-word',
     },
   }),
   { name: 'mNDArtistPage' }
 )
 
-const MartistDetails = ({
+const MobileArtistDetails = ({
   img,
   expanded,
   artistInfo,
@@ -90,7 +90,7 @@ const MartistDetails = ({
     <>
       <div className={classes.root}>
         <div className={classes.bgContainer}>
-          <Card className={classes.artImage}>
+          <Card className={classes.artistImage}>
             {artistInfo && (
               <CardMedia
                 className={classes.cover}
@@ -100,7 +100,11 @@ const MartistDetails = ({
             )}
           </Card>
           <div className={classes.details}>
-            <Typography component="h5" variant="h5" className={classes.artName}>
+            <Typography
+              component="h5"
+              variant="h5"
+              className={classes.artistName}
+            >
               {title}
               {config.enableFavourites && (
                 <LoveButton
@@ -129,7 +133,7 @@ const MartistDetails = ({
           </div>
         </div>
       </div>
-      <div className={classes.bio}>
+      <div className={classes.biography}>
         <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
           <Typography variant={'body1'} onClick={handleExpandClick}>
             <span dangerouslySetInnerHTML={{ __html: biography }} />
@@ -140,4 +144,4 @@ const MartistDetails = ({
   )
 }
 
-export default MartistDetails
+export default MobileArtistDetails

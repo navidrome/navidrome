@@ -14,10 +14,10 @@ import {
 } from 'react-admin'
 import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
-import MartistDetails from './mArtsistShow'
 import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
 import { LoveButton } from '../common'
+import MobileArtistDetails from './MobileArtistDetails'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -37,7 +37,7 @@ const useStyles = makeStyles(
       flex: '1',
       flexDirection: 'column',
     },
-    bioBlock: {
+    biography: {
       display: 'inline-block',
       marginTop: '1em',
       float: 'left',
@@ -49,23 +49,19 @@ const useStyles = makeStyles(
     },
     cover: {
       width: 151,
-      boxShadow: '0px 0px 6px 0px #565656',
-      borderRadius: '5px',
+      borderRadius: '6em',
     },
-    artImage: {
+    artistImage: {
       maxHeight: '9.5rem',
       backgroundColor: 'inherit',
       display: 'flex',
+      boxShadow: 'none',
     },
-    artDetail: {
+    artistDetail: {
       flex: '1',
       padding: '3%',
       display: 'flex',
       minHeight: '10rem',
-      '& .MuiPaper-elevation1': {
-        boxShadow: 'none',
-        borderRadius: '6em',
-      },
     },
     artistSummary: {
       marginBottom: '1em',
@@ -88,7 +84,8 @@ const useStyles = makeStyles(
   { name: 'NDArtistPage' }
 )
 
-const ArtistDetails = ({ record }) => {
+const ArtistDetails = (props) => {
+  const record = useRecordContext(props)
   const [artistInfo, setArtistInfo] = useState()
   const [expanded, setExpanded] = useState(false)
   const artistId = record?.id
@@ -123,8 +120,8 @@ const ArtistDetails = ({ record }) => {
     <>
       {isDesktop ? (
         <div className={classes.root}>
-          <Card className={classes.artDetail}>
-            <Card className={classes.artImage}>
+          <Card className={classes.artistDetail}>
+            <Card className={classes.artistImage}>
               {artistInfo && (
                 <CardMedia
                   className={classes.cover}
@@ -156,7 +153,7 @@ const ArtistDetails = ({ record }) => {
                   collapsedHeight={'4.5em'}
                   in={expanded}
                   timeout={'auto'}
-                  className={classes.bioBlock}
+                  className={classes.biography}
                 >
                   <Typography variant={'body1'} onClick={handleExpandClick}>
                     <span dangerouslySetInnerHTML={{ __html: biography }} />
@@ -171,7 +168,7 @@ const ArtistDetails = ({ record }) => {
         </div>
       ) : (
         <>
-          <MartistDetails
+          <MobileArtistDetails
             img={img}
             artistInfo={artistInfo}
             record={record}
@@ -212,7 +209,7 @@ const AlbumShowLayout = (props) => {
 
   return (
     <>
-      {record && <ArtistDetails record={record} />}
+      {record && <ArtistDetails />}
       {record && (
         <ReferenceManyField
           {...showContext}
