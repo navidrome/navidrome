@@ -20,8 +20,8 @@ type Playlist struct {
 	UpdatedAt time.Time  `structs:"updated_at" json:"updatedAt"`
 
 	// SmartPlaylist attributes
-	//Rules       *SmartPlaylist `structs:"rules" json:"rules"`
-	//EvaluatedAt time.Time      `structs:"evaluated_at" json:"evaluatedAt"`
+	Rules       *SmartPlaylist `structs:"-" json:"rules"`
+	EvaluatedAt time.Time      `structs:"evaluated_at" json:"evaluatedAt"`
 }
 
 type Playlists []Playlist
@@ -33,6 +33,7 @@ type PlaylistRepository interface {
 	Get(id string) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	FindByPath(path string) (*Playlist, error)
+	FindByID(id string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string) PlaylistTrackRepository
 }

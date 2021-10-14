@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -14,6 +16,11 @@ import (
 type playlistRepository struct {
 	sqlRepository
 	sqlRestful
+}
+
+type dbPlaylist struct {
+	model.Playlist `structs:",flatten"`
+	RawRules       string `structs:"rules"`
 }
 
 func NewPlaylistRepository(ctx context.Context, o orm.Ormer) model.PlaylistRepository {
@@ -59,10 +66,18 @@ func (r *playlistRepository) Delete(id string) error {
 }
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
-	if p.ID == "" {
-		p.CreatedAt = time.Now()
+	pls := dbPlaylist{Playlist: *p}
+	if p.Rules != nil {
+		j, err := json.Marshal(p.Rules)
+		if err != nil {
+			return err
+		}
+		pls.RawRules = string(j)
+	}
+	if pls.ID == "" {
+		pls.CreatedAt = time.Now()
 	} else {
-		ok, err := r.Exists(p.ID)
+		ok, err := r.Exists(pls.ID)
 		if err != nil {
 			return err
 		}
@@ -70,54 +85,85 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 			return model.ErrNotAuthorized
 		}
 	}
-	p.UpdatedAt = time.Now()
+	pls.UpdatedAt = time.Now()
 
 	// Save tracks for later and set it to nil, to avoid trying to save it to the DB
-	tracks := p.Tracks
-	p.Tracks = nil
+	tracks := pls.Tracks
+	pls.Tracks = nil
 
-	id, err := r.put(p.ID, p)
+	id, err := r.put(pls.ID, pls)
 	if err != nil {
 		return err
 	}
 	p.ID = id
 
 	// Only update tracks if they are specified
-	if tracks != nil {
-		err = r.updateTracks(id, tracks)
-		if err != nil {
-			return err
-		}
+	if tracks == nil {
+		return nil
 	}
-	return r.loadTracks(p)
+	return r.updateTracks(id, tracks)
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
-	sel := r.newSelect().Columns("*").Where(And{Eq{"id": id}, r.userFilter()})
-	var pls model.Playlist
-	err := r.queryOne(sel, &pls)
-	if err != nil {
-		return nil, err
-	}
-	err = r.loadTracks(&pls)
-	return &pls, err
+	return r.findBy(And{Eq{"id": id}, r.userFilter()}, true)
 }
 
 func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"path": path})
-	var pls model.Playlist
-	err := r.queryOne(sel, &pls)
+	return r.findBy(Eq{"path": path}, false)
+}
+
+func (r *playlistRepository) FindByID(id string) (*model.Playlist, error) {
+	return r.findBy(And{Eq{"id": id}, r.userFilter()}, false)
+}
+
+func (r *playlistRepository) findBy(sql Sqlizer, includeTracks bool) (*model.Playlist, error) {
+	sel := r.newSelect().Columns("*").Where(sql)
+	var pls []dbPlaylist
+	err := r.queryAll(sel, &pls)
 	if err != nil {
 		return nil, err
 	}
-	return &pls, err
+	if len(pls) == 0 {
+		return nil, model.ErrNotFound
+	}
+
+	return r.toModel(pls[0], includeTracks)
+}
+
+func (r *playlistRepository) toModel(pls dbPlaylist, includeTracks bool) (*model.Playlist, error) {
+	var err error
+	if strings.TrimSpace(pls.RawRules) != "" {
+		r := model.SmartPlaylist{}
+		err = json.Unmarshal([]byte(pls.RawRules), &r)
+		if err != nil {
+			return nil, err
+		}
+		pls.Playlist.Rules = &r
+	} else {
+		pls.Playlist.Rules = nil
+	}
+	if includeTracks {
+		err = r.loadTracks(&pls)
+	}
+	return &pls.Playlist, err
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
 	sel := r.newSelect(options...).Columns("*").Where(r.userFilter())
-	res := model.Playlists{}
+	var res []dbPlaylist
 	err := r.queryAll(sel, &res)
-	return res, err
+	if err != nil {
+		return nil, err
+	}
+	playlists := make(model.Playlists, len(res))
+	for i, p := range res {
+		pls, err := r.toModel(p, false)
+		if err != nil {
+			return nil, err
+		}
+		playlists[i] = *pls
+	}
+	return playlists, err
 }
 
 func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {
@@ -128,7 +174,7 @@ func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) er
 	return r.Tracks(id).Update(ids)
 }
 
-func (r *playlistRepository) loadTracks(pls *model.Playlist) error {
+func (r *playlistRepository) loadTracks(pls *dbPlaylist) error {
 	tracksQuery := Select().From("playlist_tracks").
 		LeftJoin("annotation on ("+
 			"annotation.item_id = media_file_id"+
