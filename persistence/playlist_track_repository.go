@@ -231,7 +231,7 @@ func (r *playlistTrackRepository) isWritable() bool {
 	if usr.IsAdmin {
 		return true
 	}
-	pls, err := r.playlistRepo.Get(r.playlistId)
+	pls, err := r.playlistRepo.FindByID(r.playlistId)
 	return err == nil && pls.Owner == usr.UserName
 }
 
