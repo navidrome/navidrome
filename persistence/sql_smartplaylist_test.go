@@ -43,6 +43,14 @@ var _ = Describe("SmartPlaylist", func() {
 			lastMonth := time.Now().Add(-30 * 24 * time.Hour)
 			Expect(args).To(ConsistOf("%love%", 1980, 1989, true, BeTemporally("~", lastMonth, time.Second), "zé", "4"))
 		})
+		It("returns an error if field is invalid", func() {
+			r := pls.Rules[0].(model.Rule)
+			r.Field = "INVALID"
+			pls.Rules[0] = r
+			sel := pls.AddFilters(squirrel.Select("media_file").Columns("*"))
+			_, _, err := sel.ToSql()
+			Expect(err).To(MatchError("invalid smart playlist field 'INVALID'"))
+		})
 	})
 
 	Describe("fieldMap", func() {
@@ -78,12 +86,12 @@ var _ = Describe("SmartPlaylist", func() {
 
 	Describe("numberRule", func() {
 		DescribeTable("operators",
-			func(operator, expectedSql string, expectedValue ...interface{}) {
+			func(operator, expectedSql string, expectedValue int) {
 				r := numberRule{Field: "year", Operator: operator, Value: 1985}
 				sql, args, err := r.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal(expectedSql))
-				Expect(args).To(ConsistOf(expectedValue...))
+				Expect(args).To(ConsistOf(expectedValue))
 			},
 			Entry("is", "is", "year = ?", 1985),
 			Entry("is not", "is not", "year <> ?", 1985),
@@ -98,5 +106,72 @@ var _ = Describe("SmartPlaylist", func() {
 			Expect(sql).To(Equal("(year >= ? AND year <= ?)"))
 			Expect(args).To(ConsistOf(1981, 1990))
 		})
+	})
+
+	Describe("dateRule", func() {
+		dateStr := "2021-10-14"
+		date, _ := time.Parse("2006-01-02", dateStr)
+		DescribeTable("simple operators",
+			func(operator, expectedSql string, expectedValue time.Time) {
+				r := dateRule{Field: "lastPlayed", Operator: operator, Value: dateStr}
+				sql, args, err := r.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(Equal(expectedSql))
+				Expect(args).To(ConsistOf(expectedValue))
+			},
+			Entry("is", "is", "lastPlayed = ?", date),
+			Entry("is not", "is not", "lastPlayed <> ?", date),
+			Entry("is before", "is before", "lastPlayed < ?", date),
+			Entry("is after", "is after", "lastPlayed > ?", date),
+		)
+
+		DescribeTable("period operators",
+			func(operator, expectedSql string, expectedValue time.Time) {
+				r := dateRule{Field: "lastPlayed", Operator: operator, Value: 90}
+				sql, args, err := r.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(Equal(expectedSql))
+				Expect(args).To(ConsistOf(BeTemporally("~", expectedValue, 25*time.Hour)))
+			},
+			Entry("in the last", "in the last", "lastPlayed > ?", date.Add(-90*24*time.Hour)),
+			Entry("not in the last", "not in the last", "lastPlayed < ?", date.Add(-90*24*time.Hour)),
+		)
+
+		It("accepts string as the 'in the last' operator value", func() {
+			r := dateRule{Field: "lastPlayed", Operator: "in the last", Value: "90"}
+			_, args, _ := r.ToSql()
+			Expect(args).To(ConsistOf(BeTemporally("~", date.Add(-90*24*time.Hour), 25*time.Hour)))
+		})
+
+		It("implements the 'is in the range' operator", func() {
+			date2Str := "2021-09-14"
+			date2, _ := time.Parse("2006-01-02", date2Str)
+
+			r := dateRule{Field: "lastPlayed", Operator: "is in the range", Value: []string{date2Str, dateStr}}
+			sql, args, err := r.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(Equal("(lastPlayed >= ? AND lastPlayed <= ?)"))
+			Expect(args).To(ConsistOf(BeTemporally("~", date2, 25*time.Hour), BeTemporally("~", date, 25*time.Hour)))
+		})
+
+		It("returns error if date is invalid", func() {
+			r := dateRule{Field: "lastPlayed", Operator: "is", Value: "INVALID"}
+			_, _, err := r.ToSql()
+			Expect(err).To(MatchError("invalid date: INVALID"))
+		})
+	})
+
+	Describe("boolRule", func() {
+		DescribeTable("operators",
+			func(operator, expectedSql string, expectedValue ...interface{}) {
+				r := boolRule{Field: "loved", Operator: operator}
+				sql, args, err := r.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(Equal(expectedSql))
+				Expect(args).To(ConsistOf(expectedValue...))
+			},
+			Entry("is true", "is true", "loved = ?", true),
+			Entry("is false", "is false", "loved = ?", false),
+		)
 	})
 })
