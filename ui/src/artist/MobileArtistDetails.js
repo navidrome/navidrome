@@ -1,11 +1,10 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Typography, Collapse } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import Card from '@material-ui/core/Card'
 import CardMedia from '@material-ui/core/CardMedia'
 import config from '../config'
 import { LoveButton, RatingField } from '../common'
-import { useTranslate } from 'ra-core'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -71,20 +70,13 @@ const useStyles = makeStyles(
       wordBreak: 'break-word',
     },
   }),
-  { name: 'mNDArtistPage' }
+  { name: 'NDMobileArtistDetails' }
 )
 
-const MobileArtistDetails = ({
-  img,
-  expanded,
-  artistInfo,
-  title,
-  biography,
-  record,
-  handleExpandClick,
-}) => {
+const MobileArtistDetails = ({ img, artistInfo, biography, record }) => {
+  const [expanded, setExpanded] = useState(false)
   const classes = useStyles({ img, expanded })
-  const translate = useTranslate()
+  const title = record.name
 
   return (
     <>
@@ -117,11 +109,6 @@ const MobileArtistDetails = ({
                 />
               )}
             </Typography>
-            {record.albumCount +
-              ' ' +
-              translate('resources.album.name', {
-                smart_count: record.albumCount,
-              })}
             {config.enableStarRating && (
               <RatingField
                 record={record}
@@ -135,7 +122,7 @@ const MobileArtistDetails = ({
       </div>
       <div className={classes.biography}>
         <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
-          <Typography variant={'body1'} onClick={handleExpandClick}>
+          <Typography variant={'body1'} onClick={() => setExpanded(!expanded)}>
             <span dangerouslySetInnerHTML={{ __html: biography }} />
           </Typography>
         </Collapse>
