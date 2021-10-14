@@ -13,13 +13,12 @@ import (
 )
 
 //{
-// "combinator": "and",
-// "rules": [
-//   {"field": "loved", "operator": "is true"},
-//   {"field": "lastPlayed", "operator": "in the last", "value": "90"}
-// ],
-// "order": "artist asc",
-// "limit": 100
+//"combinator": "and",
+//"rules": [
+//  {"field": "lastPlayed", "operator": "in the last", "value": "30"}
+//],
+//"order": "lastPlayed desc",
+//"limit": 10
 //}
 type SmartPlaylist model.SmartPlaylist
 
