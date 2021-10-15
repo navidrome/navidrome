@@ -20,7 +20,7 @@ type playlistRepository struct {
 
 type dbPlaylist struct {
 	model.Playlist `structs:",flatten"`
-	RawRules       string `structs:"rules"`
+	RawRules       string `structs:"rules" orm:"column(rules)"`
 }
 
 func NewPlaylistRepository(ctx context.Context, o orm.Ormer) model.PlaylistRepository {
