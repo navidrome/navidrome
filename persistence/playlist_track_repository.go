@@ -14,12 +14,12 @@ type playlistTrackRepository struct {
 	sqlRepository
 	sqlRestful
 	playlistId   string
-	playlistRepo model.PlaylistRepository
+	playlistRepo *playlistRepository
 }
 
 func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTrackRepository {
 	p := &playlistTrackRepository{}
-	p.playlistRepo = NewPlaylistRepository(r.ctx, r.ormer)
+	p.playlistRepo = r
 	p.playlistId = playlistId
 	p.ctx = r.ctx
 	p.ormer = r.ormer
