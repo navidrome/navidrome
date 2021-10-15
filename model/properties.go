@@ -10,4 +10,5 @@ type PropertyRepository interface {
 	Delete(id string) error
 	DeletePrefixed(prefix string) error
 	DefaultGet(id string, defaultValue string) (string, error)
+	DefaultGetBool(id string, defaultValue bool) (bool, error)
 }
