@@ -46,13 +46,10 @@ export default {
         color: '#0085ff',
       },
     },
-    NDArtistPage: {
+    NDMobileArtistDetails: {
       bgContainer: {
         background:
           'linear-gradient(to bottom, rgb(255 255 255 / 51%), rgb(250 250 250))!important',
-      },
-      more: {
-        boxShadow: '-10px 0px 18px 5px #fafafa!important',
       },
     },
   },
