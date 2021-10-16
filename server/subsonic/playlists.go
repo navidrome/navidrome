@@ -46,7 +46,7 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 }
 
 func (c *PlaylistsController) getPlaylist(ctx context.Context, id string) (*responses.Subsonic, error) {
-	pls, err := c.ds.Playlist(ctx).Get(id)
+	pls, err := c.ds.Playlist(ctx).GetWithTracks(id)
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(ctx, err.Error(), "id", id)
@@ -110,27 +110,12 @@ func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Requ
 	return c.getPlaylist(ctx, id)
 }
 
-func (c *PlaylistsController) delete(ctx context.Context, playlistId string) error {
-	return c.ds.WithTx(func(tx model.DataStore) error {
-		pls, err := tx.Playlist(ctx).Get(playlistId)
-		if err != nil {
-			return err
-		}
-
-		owner := getUser(ctx)
-		if owner != pls.Owner {
-			return model.ErrNotAuthorized
-		}
-		return tx.Playlist(ctx).Delete(playlistId)
-	})
-}
-
 func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
-	err = c.delete(r.Context(), id)
+	err = c.ds.Playlist(r.Context()).Delete(id)
 	if err == model.ErrNotAuthorized {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
@@ -143,14 +128,9 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 
 func (c *PlaylistsController) update(ctx context.Context, playlistId string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error {
 	return c.ds.WithTx(func(tx model.DataStore) error {
-		pls, err := tx.Playlist(ctx).Get(playlistId)
+		pls, err := tx.Playlist(ctx).GetWithTracks(playlistId)
 		if err != nil {
 			return err
-		}
-
-		owner := getUser(ctx)
-		if owner != pls.Owner {
-			return model.ErrNotAuthorized
 		}
 
 		if name != nil {

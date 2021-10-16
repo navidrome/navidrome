@@ -48,8 +48,8 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 	return &trk, err
 }
 
-func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	sel := r.newSelect(r.parseRestOptions(options...)).
+func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
+	sel := r.newSelect(options...).
 		LeftJoin("annotation on ("+
 			"annotation.item_id = media_file_id"+
 			" AND annotation.item_type = 'media_file'"+
@@ -60,6 +60,10 @@ func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (interfa
 	res := model.PlaylistTracks{}
 	err := r.queryAll(sel, &res)
 	return res, err
+}
+
+func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	return r.GetAll(r.parseRestOptions(options...))
 }
 
 func (r *playlistTrackRepository) EntityName() string {
@@ -211,7 +215,10 @@ func (r *playlistTrackRepository) Delete(id string) error {
 	if err != nil {
 		return err
 	}
-	return r.updateStats()
+
+	// To renumber the playlist
+	_, err = r.Add(nil)
+	return err
 }
 
 func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
@@ -231,7 +238,7 @@ func (r *playlistTrackRepository) isWritable() bool {
 	if usr.IsAdmin {
 		return true
 	}
-	pls, err := r.playlistRepo.FindByID(r.playlistId)
+	pls, err := r.playlistRepo.Get(r.playlistId)
 	return err == nil && pls.Owner == usr.UserName
 }
 
