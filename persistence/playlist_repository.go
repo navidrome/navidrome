@@ -105,15 +105,15 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
+	return r.findBy(And{Eq{"id": id}, r.userFilter()}, false)
+}
+
+func (r *playlistRepository) GetWithTracks(id string) (*model.Playlist, error) {
 	return r.findBy(And{Eq{"id": id}, r.userFilter()}, true)
 }
 
 func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
 	return r.findBy(Eq{"path": path}, false)
-}
-
-func (r *playlistRepository) FindByID(id string) (*model.Playlist, error) {
-	return r.findBy(And{Eq{"id": id}, r.userFilter()}, false)
 }
 
 func (r *playlistRepository) findBy(sql Sqlizer, includeTracks bool) (*model.Playlist, error) {

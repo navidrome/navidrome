@@ -55,7 +55,7 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 		It("returns all tracks", func() {
-			pls, err := repo.Get(plsBest.ID)
+			pls, err := repo.GetWithTracks(plsBest.ID)
 			Expect(err).To(BeNil())
 			Expect(pls.Name).To(Equal(plsBest.Name))
 			Expect(pls.Tracks).To(Equal(model.MediaFiles{
@@ -76,7 +76,7 @@ var _ = Describe("PlaylistRepository", func() {
 		By("adds repeated songs to a playlist and keeps the order")
 		newPls.Tracks = append(newPls.Tracks, model.MediaFile{ID: "1004"})
 		Expect(repo.Put(&newPls)).To(BeNil())
-		saved, _ := repo.Get(newPls.ID)
+		saved, _ := repo.GetWithTracks(newPls.ID)
 		Expect(saved.Tracks).To(HaveLen(3))
 		Expect(saved.Tracks[0].ID).To(Equal("1004"))
 		Expect(saved.Tracks[1].ID).To(Equal("1003"))
