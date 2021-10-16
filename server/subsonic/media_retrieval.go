@@ -105,15 +105,17 @@ func (c *MediaRetrievalController) GetLyrics(w http.ResponseWriter, r *http.Requ
 
 	if len(media_files) == 0 {
 		return response, nil
-	} else {
-		lyrics.Artist = artist
-		lyrics.Title = title
-		if isSynced(media_files[0].Lyrics) {
-			r := regexp.MustCompile(TIMESTAMP_REGEX)
-			lyrics.Value = r.ReplaceAllString(media_files[0].Lyrics, "")
-		} else {
-			lyrics.Value = media_files[0].Lyrics
-		}
-		return response, nil
 	}
+
+	lyrics.Artist = artist
+	lyrics.Title = title
+
+	if isSynced(media_files[0].Lyrics) {
+		r := regexp.MustCompile(TIMESTAMP_REGEX)
+		lyrics.Value = r.ReplaceAllString(media_files[0].Lyrics, "")
+	} else {
+		lyrics.Value = media_files[0].Lyrics
+	}
+
+	return response, nil
 }
