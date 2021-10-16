@@ -109,7 +109,8 @@ var _ = Describe("SmartPlaylist", func() {
 	})
 
 	Describe("dateRule", func() {
-		dateStr := "2021-10-14"
+		delta := 30 * time.Hour // Must be large to account for the hours of the day
+		dateStr := time.Now().Format("2006-01-02")
 		date, _ := time.Parse("2006-01-02", dateStr)
 		DescribeTable("simple operators",
 			func(operator, expectedSql string, expectedValue time.Time) {
@@ -127,7 +128,6 @@ var _ = Describe("SmartPlaylist", func() {
 
 		DescribeTable("period operators",
 			func(operator, expectedSql string, expectedValue time.Time) {
-				delta := 30 * time.Hour // Must be large to account for the hours of the day
 				r := dateRule{Field: "lastPlayed", Operator: operator, Value: 90}
 				sql, args, err := r.ToSql()
 				Expect(err).ToNot(HaveOccurred())
@@ -141,18 +141,18 @@ var _ = Describe("SmartPlaylist", func() {
 		It("accepts string as the 'in the last' operator value", func() {
 			r := dateRule{Field: "lastPlayed", Operator: "in the last", Value: "90"}
 			_, args, _ := r.ToSql()
-			Expect(args).To(ConsistOf(BeTemporally("~", date.Add(-90*24*time.Hour), 30*time.Hour)))
+			Expect(args).To(ConsistOf(BeTemporally("~", date.Add(-90*24*time.Hour), delta)))
 		})
 
 		It("implements the 'is in the range' operator", func() {
-			date2Str := "2021-09-14"
+			date2Str := time.Now().Add(48 * time.Hour).Format("2006-01-02")
 			date2, _ := time.Parse("2006-01-02", date2Str)
 
 			r := dateRule{Field: "lastPlayed", Operator: "is in the range", Value: []string{date2Str, dateStr}}
 			sql, args, err := r.ToSql()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sql).To(Equal("(lastPlayed >= ? AND lastPlayed <= ?)"))
-			Expect(args).To(ConsistOf(BeTemporally("~", date2, 30*time.Hour), BeTemporally("~", date, 30*time.Hour)))
+			Expect(args).To(ConsistOf(BeTemporally("~", date2, 24*time.Hour), BeTemporally("~", date, delta)))
 		})
 
 		It("returns error if date is invalid", func() {
