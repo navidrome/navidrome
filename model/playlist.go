@@ -31,9 +31,9 @@ type PlaylistRepository interface {
 	Exists(id string) (bool, error)
 	Put(pls *Playlist) error
 	Get(id string) (*Playlist, error)
+	GetWithTracks(id string) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	FindByPath(path string) (*Playlist, error)
-	FindByID(id string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string) PlaylistTrackRepository
 }
@@ -49,6 +49,7 @@ type PlaylistTracks []PlaylistTrack
 
 type PlaylistTrackRepository interface {
 	ResourceRepository
+	GetAll(options ...QueryOptions) (PlaylistTracks, error)
 	Add(mediaFileIds []string) (int, error)
 	AddAlbums(albumIds []string) (int, error)
 	AddArtists(artistIds []string) (int, error)

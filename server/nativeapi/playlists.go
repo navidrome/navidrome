@@ -46,7 +46,7 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 		ctx := r.Context()
 		plsRepo := ds.Playlist(ctx)
 		plsId := chi.URLParam(r, "playlistId")
-		pls, err := plsRepo.Get(plsId)
+		pls, err := plsRepo.GetWithTracks(plsId)
 		if err == model.ErrNotFound {
 			log.Warn("Playlist not found", "playlistId", plsId)
 			http.Error(w, "not found", http.StatusNotFound)
@@ -114,13 +114,13 @@ func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		playlistId := utils.ParamString(r, ":playlistId")
-		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
 		var payload addTracksPayload
 		err := json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
 		count, c := 0, 0
 		if c, err = tracksRepo.Add(payload.Ids); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -163,7 +163,6 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
-		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
 		var payload reorderPayload
 		err := json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
@@ -175,6 +174,7 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
 		err = tracksRepo.Reorder(id, newPos)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
