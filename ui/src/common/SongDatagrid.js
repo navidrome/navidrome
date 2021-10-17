@@ -109,14 +109,14 @@ export const SongDatagridRow = ({
   const [, dragDiscRef] = useDrag(() => ({
     type: DraggableTypes.DISC,
     item: {
-      discs: [{ albumId: record.albumId, discNumber: record.discNumber }],
+      discs: [{ albumId: record?.albumId, discNumber: record?.discNumber }],
     },
     options: { dropEffect: 'copy' },
   }))
 
   const [, dragSongRef] = useDrag(() => ({
     type: DraggableTypes.SONG,
-    item: { ids: [record.id] },
+    item: { ids: [record?.id] },
     options: { dropEffect: 'copy' },
   }))
 
