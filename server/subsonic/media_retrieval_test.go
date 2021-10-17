@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo"
@@ -15,12 +16,17 @@ import (
 
 var _ = Describe("MediaRetrievalController", func() {
 	var controller *MediaRetrievalController
+	var ds model.DataStore
+	mockRepo := &mockedMediaFile{}
 	var artwork *fakeArtwork
 	var w *httptest.ResponseRecorder
 
 	BeforeEach(func() {
+		ds = &tests.MockDataStore{
+			MockedMediaFile: mockRepo,
+		}
 		artwork = &fakeArtwork{}
-		controller = NewMediaRetrievalController(artwork, &tests.MockDataStore{})
+		controller = NewMediaRetrievalController(artwork, ds)
 		w = httptest.NewRecorder()
 	})
 
@@ -60,6 +66,41 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(err).To(MatchError("weird error"))
 		})
 	})
+
+	Describe("GetLyrics", func() {
+		It("should return data for given artist & title", func() {
+			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: "[00:18.80]We're no strangers to love\n[00:22.80]You know the rules and so do I",
+				},
+			})
+			response, err := controller.GetLyrics(w, r)
+			if err != nil {
+				log.Error("You're missing something.", err)
+			}
+			Expect(err).To(BeNil())
+			Expect(response.Lyrics.Artist).To(Equal("Rick Astley"))
+			Expect(response.Lyrics.Title).To(Equal("Never Gonna Give You Up"))
+			Expect(response.Lyrics.Value).To(Equal("We're no strangers to love\nYou know the rules and so do I"))
+		})
+		It("should return empty subsonic response if the record corresponding to the given artist & title is not found", func() {
+			r := newGetRequest("artist=Dheeraj", "title=Rinkiya+Ke+Papa")
+			mockRepo.SetData(model.MediaFiles{})
+			response, err := controller.GetLyrics(w, r)
+			if err != nil {
+				log.Error("You're missing something.", err)
+			}
+			Expect(err).To(BeNil())
+			Expect(response.Lyrics.Artist).To(Equal(""))
+			Expect(response.Lyrics.Title).To(Equal(""))
+			Expect(response.Lyrics.Value).To(Equal(""))
+
+		})
+	})
 })
 
 type fakeArtwork struct {
@@ -97,3 +138,23 @@ var _ = Describe("isSynced", func() {
 	})
 
 })
+
+type mockedMediaFile struct {
+	model.MediaFileRepository
+	data map[string]*model.MediaFile
+}
+
+func (m *mockedMediaFile) SetData(mfs model.MediaFiles) {
+	m.data = make(map[string]*model.MediaFile)
+	for i, mf := range mfs {
+		m.data[mf.ID] = &mfs[i]
+	}
+}
+
+func (m *mockedMediaFile) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+	v := make([]model.MediaFile, 0, len(m.data))
+	for _, value := range m.data {
+		v = append(v, *value)
+	}
+	return v, nil
+}
