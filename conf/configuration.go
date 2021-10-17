@@ -240,7 +240,7 @@ func init() {
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
-	viper.SetDefault("devshowartistpage", false)
+	viper.SetDefault("devshowartistpage", true)
 }
 
 func InitConfig(cfgFile string) {
