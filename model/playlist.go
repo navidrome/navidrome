@@ -1,32 +1,87 @@
 package model
 
 import (
+	"strconv"
 	"time"
+
+	"github.com/navidrome/navidrome/utils"
 )
 
 type Playlist struct {
-	ID        string     `structs:"id" json:"id"          orm:"column(id)"`
-	Name      string     `structs:"name" json:"name"`
-	Comment   string     `structs:"comment" json:"comment"`
-	Duration  float32    `structs:"duration" json:"duration"`
-	Size      int64      `structs:"size" json:"size"`
-	SongCount int        `structs:"song_count" json:"songCount"`
-	Owner     string     `structs:"owner" json:"owner"`
-	Public    bool       `structs:"public" json:"public"`
-	Tracks    MediaFiles `structs:"-" json:"tracks,omitempty"`
-	Path      string     `structs:"path" json:"path"`
-	Sync      bool       `structs:"sync" json:"sync"`
-	CreatedAt time.Time  `structs:"created_at" json:"createdAt"`
-	UpdatedAt time.Time  `structs:"updated_at" json:"updatedAt"`
+	ID        string         `structs:"id" json:"id"          orm:"column(id)"`
+	Name      string         `structs:"name" json:"name"`
+	Comment   string         `structs:"comment" json:"comment"`
+	Duration  float32        `structs:"duration" json:"duration"`
+	Size      int64          `structs:"size" json:"size"`
+	SongCount int            `structs:"song_count" json:"songCount"`
+	Owner     string         `structs:"owner" json:"owner"`
+	Public    bool           `structs:"public" json:"public"`
+	Tracks    PlaylistTracks `structs:"-" json:"tracks,omitempty"`
+	Path      string         `structs:"path" json:"path"`
+	Sync      bool           `structs:"sync" json:"sync"`
+	CreatedAt time.Time      `structs:"created_at" json:"createdAt"`
+	UpdatedAt time.Time      `structs:"updated_at" json:"updatedAt"`
 
 	// SmartPlaylist attributes
 	Rules       *SmartPlaylist `structs:"-" json:"rules"`
 	EvaluatedAt time.Time      `structs:"evaluated_at" json:"evaluatedAt"`
 }
 
+func (pls Playlist) IsSmartPlaylist() bool {
+	return pls.Rules != nil && pls.Rules.Combinator != ""
+}
+
+func (pls Playlist) MediaFiles() MediaFiles {
+	mfs := make(MediaFiles, len(pls.Tracks))
+	for i, t := range pls.Tracks {
+		mfs[i] = t.MediaFile
+	}
+	return mfs
+}
+
+func (pls *Playlist) RemoveTracks(idxToRemove []int) {
+	var newTracks PlaylistTracks
+	for i, t := range pls.Tracks {
+		if utils.IntInSlice(i, idxToRemove) {
+			continue
+		}
+		newTracks = append(newTracks, t)
+	}
+	pls.Tracks = newTracks
+}
+
+func (pls *Playlist) AddTracks(mediaFileIds []string) {
+	pos := len(pls.Tracks)
+	for _, mfId := range mediaFileIds {
+		pos++
+		t := PlaylistTrack{
+			ID:          strconv.Itoa(pos),
+			MediaFileID: mfId,
+			MediaFile:   MediaFile{ID: mfId},
+			PlaylistID:  pls.ID,
+		}
+		pls.Tracks = append(pls.Tracks, t)
+	}
+}
+
+func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
+	pos := len(pls.Tracks)
+	for _, mf := range mfs {
+		pos++
+		t := PlaylistTrack{
+			ID:          strconv.Itoa(pos),
+			MediaFileID: mf.ID,
+			MediaFile:   mf,
+			PlaylistID:  pls.ID,
+		}
+		pls.Tracks = append(pls.Tracks, t)
+	}
+}
+
 type Playlists []Playlist
 
 type PlaylistRepository interface {
+	ResourceRepository
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(pls *Playlist) error

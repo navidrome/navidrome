@@ -58,23 +58,23 @@ var _ = Describe("PlaylistRepository", func() {
 			pls, err := repo.GetWithTracks(plsBest.ID)
 			Expect(err).To(BeNil())
 			Expect(pls.Name).To(Equal(plsBest.Name))
-			Expect(pls.Tracks).To(Equal(model.MediaFiles{
-				songDayInALife,
-				songRadioactivity,
-			}))
+			mfs := pls.MediaFiles()
+			Expect(mfs).To(HaveLen(2))
+			Expect(mfs[0].ID).To(Equal(songDayInALife.ID))
+			Expect(mfs[1].ID).To(Equal(songRadioactivity.ID))
 		})
 	})
 
 	It("Put/Exists/Delete", func() {
 		By("saves the playlist to the DB")
-		newPls := model.Playlist{Name: "Great!", Owner: "userid",
-			Tracks: model.MediaFiles{{ID: "1004"}, {ID: "1003"}}}
+		newPls := model.Playlist{Name: "Great!", Owner: "userid"}
+		newPls.AddTracks([]string{"1004", "1003"})
 
 		By("saves the playlist to the DB")
 		Expect(repo.Put(&newPls)).To(BeNil())
 
 		By("adds repeated songs to a playlist and keeps the order")
-		newPls.Tracks = append(newPls.Tracks, model.MediaFile{ID: "1004"})
+		newPls.AddTracks([]string{"1004"})
 		Expect(repo.Put(&newPls)).To(BeNil())
 		saved, _ := repo.GetWithTracks(newPls.ID)
 		Expect(saved.Tracks).To(HaveLen(3))
