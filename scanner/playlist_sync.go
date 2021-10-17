@@ -83,6 +83,7 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 	mediaFileRepository := s.ds.MediaFile(ctx)
 	scanner := bufio.NewScanner(file)
 	scanner.Split(scanLines)
+	var mfs model.MediaFiles
 	for scanner.Scan() {
 		path := scanner.Text()
 		// Skip extended info
@@ -101,8 +102,10 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 			log.Warn(ctx, "Path in playlist not found", "playlist", playlistFile, "path", path, err)
 			continue
 		}
-		pls.Tracks = append(pls.Tracks, *mf)
+		mfs = append(mfs, *mf)
 	}
+	pls.Tracks = nil
+	pls.AddMediaFiles(mfs)
 
 	return pls, scanner.Err()
 }

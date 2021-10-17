@@ -101,7 +101,7 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 	if tracks == nil {
 		return nil
 	}
-	return r.updateTracks(id, tracks)
+	return r.updateTracks(id, p.MediaFiles())
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
@@ -185,9 +185,8 @@ func (r *playlistRepository) loadTracks(pls *dbPlaylist) error {
 		Where(Eq{"playlist_id": pls.ID}).OrderBy("playlist_tracks.id")
 	err := r.queryAll(tracksQuery, &pls.Tracks)
 	if err != nil {
-		log.Error("Error loading playlist tracks", "playlist", pls.Name, "id", pls.ID)
+		log.Error(r.ctx, "Error loading playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
 	}
-	err = r.loadMediaFileGenres(&pls.Tracks)
 	return err
 }
 

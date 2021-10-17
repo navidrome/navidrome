@@ -76,16 +76,14 @@ func (c *PlaylistsController) create(ctx context.Context, playlistId, name strin
 			if owner != pls.Owner {
 				return model.ErrNotAuthorized
 			}
-			pls.Tracks = nil
 		} else {
 			pls = &model.Playlist{
 				Name:  name,
 				Owner: owner,
 			}
 		}
-		for _, id := range ids {
-			pls.Tracks = append(pls.Tracks, model.MediaFile{ID: id})
-		}
+		pls.Tracks = nil
+		pls.AddTracks(ids)
 
 		err = tx.Playlist(ctx).Put(pls)
 		playlistId = pls.ID
@@ -143,18 +141,8 @@ func (c *PlaylistsController) update(ctx context.Context, playlistId string, nam
 			pls.Public = *public
 		}
 
-		newTracks := model.MediaFiles{}
-		for i, t := range pls.Tracks {
-			if utils.IntInSlice(i, idxToRemove) {
-				continue
-			}
-			newTracks = append(newTracks, t)
-		}
-
-		for _, id := range idsToAdd {
-			newTracks = append(newTracks, model.MediaFile{ID: id})
-		}
-		pls.Tracks = newTracks
+		pls.RemoveTracks(idxToRemove)
+		pls.AddTracks(idsToAdd)
 
 		return tx.Playlist(ctx).Put(pls)
 	})
@@ -203,7 +191,7 @@ func (c *PlaylistsController) buildPlaylistWithSongs(ctx context.Context, p *mod
 	pls := &responses.PlaylistWithSongs{
 		Playlist: *c.buildPlaylist(*p),
 	}
-	pls.Entry = childrenFromMediaFiles(ctx, p.Tracks)
+	pls.Entry = childrenFromMediaFiles(ctx, p.MediaFiles())
 	return pls
 }
 
