@@ -173,9 +173,11 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 }
 
 func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
-	if !pls.IsSmartPlaylist() { //|| pls.EvaluatedAt.After(time.Now().Add(-5*time.Second)) {
+	// Only refresh if it is a smart playlist and was not refreshed in the last 5 seconds
+	if !pls.IsSmartPlaylist() || time.Since(pls.EvaluatedAt) < 5*time.Second {
 		return false
 	}
+
 	log.Debug(r.ctx, "Refreshing smart playlist", "playlist", pls.Name, "id", pls.ID)
 	start := time.Now()
 
@@ -186,7 +188,8 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
-	sp := SmartPlaylist(*pls.Rules)
+	// Re-populate playlist based on Smart Playlist criteria
+	sp := smartPlaylist(*pls.Rules)
 	sql := Select("row_number() over (order by "+sp.OrderBy()+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
 		From("media_file").LeftJoin("annotation on (" +
 		"annotation.item_id = media_file.id" +
@@ -200,14 +203,23 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
+	// Update playlist stats
 	err = r.updateStats(pls.ID)
 	if err != nil {
 		log.Error(r.ctx, "Error updating smart playlist stats", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
 
+	// Update when the playlist was last refreshed (for cache purposes)
+	updSql := Update(r.tableName).Set("evaluated_at", time.Now()).Where(Eq{"id": pls.ID})
+	_, err = r.executeSQL(updSql)
+	if err != nil {
+		log.Error(r.ctx, "Error updating smart playlist", "playlist", pls.Name, "id", pls.ID, err)
+		return false
+	}
+
 	log.Debug(r.ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", c, "elapsed", time.Since(start))
-	pls.EvaluatedAt = time.Now()
+
 	return true
 }
 
@@ -251,8 +263,8 @@ func (r *playlistRepository) updatePlaylist(playlistId string, mediaFileIds []st
 	return r.updateStats(playlistId)
 }
 
+// updateStats updates total playlist duration, size and count
 func (r *playlistRepository) updateStats(playlistId string) error {
-	// Get total playlist duration, size and count
 	statsSql := Select("sum(duration) as duration", "sum(size) as size", "count(*) as count").
 		From("media_file").
 		Join("playlist_tracks f on f.media_file_id = media_file.id").
