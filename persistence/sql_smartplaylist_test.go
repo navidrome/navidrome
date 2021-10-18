@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("SmartPlaylist", func() {
-	var pls SmartPlaylist
+var _ = Describe("smartPlaylist", func() {
+	var pls smartPlaylist
 	Describe("AddCriteria", func() {
 		BeforeEach(func() {
 			sp := model.SmartPlaylist{
@@ -32,7 +32,7 @@ var _ = Describe("SmartPlaylist", func() {
 				Order: "artist asc",
 				Limit: 100,
 			}
-			pls = SmartPlaylist(sp)
+			pls = smartPlaylist(sp)
 		})
 
 		It("returns a proper SQL query", func() {

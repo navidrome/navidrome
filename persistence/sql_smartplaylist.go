@@ -20,9 +20,9 @@ import (
 //"order": "lastPlayed desc",
 //"limit": 10
 //}
-type SmartPlaylist model.SmartPlaylist
+type smartPlaylist model.SmartPlaylist
 
-func (sp SmartPlaylist) AddCriteria(sql SelectBuilder) SelectBuilder {
+func (sp smartPlaylist) AddCriteria(sql SelectBuilder) SelectBuilder {
 	sql = sql.Where(RuleGroup(sp.RuleGroup)).Limit(uint64(sp.Limit))
 	if order := sp.OrderBy(); order != "" {
 		sql = sql.OrderBy(order)
@@ -30,7 +30,7 @@ func (sp SmartPlaylist) AddCriteria(sql SelectBuilder) SelectBuilder {
 	return sql
 }
 
-func (sp SmartPlaylist) OrderBy() string {
+func (sp smartPlaylist) OrderBy() string {
 	order := strings.ToLower(sp.Order)
 	for f, fieldDef := range fieldMap {
 		if strings.HasPrefix(order, f) {
