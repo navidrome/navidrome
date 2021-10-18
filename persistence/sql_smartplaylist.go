@@ -22,8 +22,22 @@ import (
 //}
 type SmartPlaylist model.SmartPlaylist
 
-func (sp SmartPlaylist) AddFilters(sql SelectBuilder) SelectBuilder {
-	return sql.Where(RuleGroup(sp.RuleGroup)).OrderBy(sp.Order).Limit(uint64(sp.Limit))
+func (sp SmartPlaylist) AddCriteria(sql SelectBuilder) SelectBuilder {
+	sql = sql.Where(RuleGroup(sp.RuleGroup)).Limit(uint64(sp.Limit))
+	if order := sp.OrderBy(); order != "" {
+		sql = sql.OrderBy(order)
+	}
+	return sql
+}
+
+func (sp SmartPlaylist) OrderBy() string {
+	order := strings.ToLower(sp.Order)
+	for f, fieldDef := range fieldMap {
+		if strings.HasPrefix(order, f) {
+			order = strings.Replace(order, f, fieldDef.dbField, 1)
+		}
+	}
+	return order
 }
 
 type fieldDef struct {
