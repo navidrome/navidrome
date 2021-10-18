@@ -20,7 +20,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-chi/chi/v5 v5.0.4
 	github.com/go-chi/cors v1.2.0
-	github.com/go-chi/httprate v0.5.1
+	github.com/go-chi/httprate v0.5.2
 	github.com/go-chi/jwtauth/v5 v5.0.2
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/golangci/golangci-lint v1.42.1
