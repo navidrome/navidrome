@@ -32,7 +32,7 @@ require (
 	github.com/matoous/go-nanoid v1.5.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mattn/go-zglob v0.0.3
-	github.com/microcosm-cc/bluemonday v1.0.15
+	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/mileusna/useragent v1.0.2
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.4
