@@ -561,4 +561,37 @@ var _ = Describe("Responses", func() {
 			})
 		})
 	})
+
+	Describe("Lyrics", func() {
+		BeforeEach(func() {
+			response.Lyrics = &Lyrics{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.Lyrics.Artist = "Rick Astley"
+				response.Lyrics.Title = "Never Gonna Give You Up"
+				response.Lyrics.Value = `Never gonna give you up
+				Never gonna let you down
+				Never gonna run around and desert you
+				Never gonna say goodbye`
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+
+		})
+	})
 })

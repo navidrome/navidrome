@@ -46,6 +46,7 @@ type Subsonic struct {
 	PlayQueue  *PlayQueue  `xml:"playQueue,omitempty"                                     json:"playQueue,omitempty"`
 	Bookmarks  *Bookmarks  `xml:"bookmarks,omitempty"                                     json:"bookmarks,omitempty"`
 	ScanStatus *ScanStatus `xml:"scanStatus,omitempty"                                    json:"scanStatus,omitempty"`
+	Lyrics     *Lyrics     `xml:"lyrics,omitempty"                                        json:"lyrics,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -345,4 +346,10 @@ type ScanStatus struct {
 	Count       int64      `xml:"count,attr"               json:"count"`
 	FolderCount int64      `xml:"folderCount,attr"         json:"folderCount"`
 	LastScan    *time.Time `xml:"lastScan,attr,omitempty"  json:"lastScan,omitempty"`
+}
+
+type Lyrics struct {
+	Artist string `xml:"artist,omitempty,attr"  json:"artist,omitempty"`
+	Title  string `xml:"title,omitempty,attr"   json:"title,omitempty"`
+	Value  string `xml:",chardata"              json:"value"`
 }
