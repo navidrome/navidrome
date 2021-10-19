@@ -9,7 +9,6 @@ import {
   useNotify,
   useVersion,
   useListContext,
-  ListBase,
   FunctionField,
 } from 'react-admin'
 import clsx from 'clsx'
@@ -214,16 +213,12 @@ const SanitizedPlaylistSongs = (props) => {
   return (
     <>
       {loaded && (
-        <>
-          <ListBase {...props}>
-            <PlaylistSongs
-              playlistId={props.id}
-              actions={props.actions}
-              pagination={props.pagination}
-              {...rest}
-            />
-          </ListBase>
-        </>
+        <PlaylistSongs
+          playlistId={props.id}
+          actions={props.actions}
+          pagination={props.pagination}
+          {...rest}
+        />
       )}
     </>
   )
