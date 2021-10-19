@@ -56,6 +56,7 @@ const Player = () => {
       clearPriorAudioLists: false,
       showDestroy: true,
       showDownload: false,
+      showLyric: true,
       showReload: false,
       toggleMode: !isDesktop,
       glassBg: false,
