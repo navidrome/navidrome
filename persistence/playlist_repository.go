@@ -106,23 +106,27 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
-	return r.findBy(And{Eq{"id": id}, r.userFilter()}, false)
+	return r.findBy(And{Eq{"id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) GetWithTracks(id string) (*model.Playlist, error) {
-	pls, err := r.findBy(And{Eq{"id": id}, r.userFilter()}, true)
+	pls, err := r.findBy(And{Eq{"id": id}, r.userFilter()})
 	if err != nil {
 		return nil, err
 	}
 	r.refreshSmartPlaylist(pls)
+	if err := r.loadTracks(pls); err != nil {
+		log.Error(r.ctx, "Error loading playlist tracks ", "playlist", pls.Name, "id", pls.ID, err)
+		return nil, err
+	}
 	return pls, nil
 }
 
 func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
-	return r.findBy(Eq{"path": path}, false)
+	return r.findBy(Eq{"path": path})
 }
 
-func (r *playlistRepository) findBy(sql Sqlizer, includeTracks bool) (*model.Playlist, error) {
+func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 	sel := r.newSelect().Columns("*").Where(sql)
 	var pls []dbPlaylist
 	err := r.queryAll(sel, &pls)
@@ -133,10 +137,10 @@ func (r *playlistRepository) findBy(sql Sqlizer, includeTracks bool) (*model.Pla
 		return nil, model.ErrNotFound
 	}
 
-	return r.toModel(pls[0], includeTracks)
+	return r.toModel(pls[0])
 }
 
-func (r *playlistRepository) toModel(pls dbPlaylist, includeTracks bool) (*model.Playlist, error) {
+func (r *playlistRepository) toModel(pls dbPlaylist) (*model.Playlist, error) {
 	var err error
 	if strings.TrimSpace(pls.RawRules) != "" {
 		r := model.SmartPlaylist{}
@@ -147,9 +151,6 @@ func (r *playlistRepository) toModel(pls dbPlaylist, includeTracks bool) (*model
 		pls.Playlist.Rules = &r
 	} else {
 		pls.Playlist.Rules = nil
-	}
-	if includeTracks {
-		err = r.loadTracks(&pls)
 	}
 	return &pls.Playlist, err
 }
@@ -163,7 +164,7 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	}
 	playlists := make(model.Playlists, len(res))
 	for i, p := range res {
-		pls, err := r.toModel(p, false)
+		pls, err := r.toModel(p)
 		if err != nil {
 			return nil, err
 		}
@@ -286,7 +287,7 @@ func (r *playlistRepository) updateStats(playlistId string) error {
 	return err
 }
 
-func (r *playlistRepository) loadTracks(pls *dbPlaylist) error {
+func (r *playlistRepository) loadTracks(pls *model.Playlist) error {
 	tracksQuery := Select().From("playlist_tracks").
 		LeftJoin("annotation on ("+
 			"annotation.item_id = media_file_id"+
