@@ -1,68 +1,76 @@
-package scanner
+package core
 
 import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/mattn/go-zglob"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/utils"
 )
 
-type playlistSync struct {
-	ds         model.DataStore
-	rootFolder string
+type Playlists interface {
+	ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error)
 }
 
-func newPlaylistSync(ds model.DataStore, rootFolder string) *playlistSync {
-	return &playlistSync{ds: ds, rootFolder: rootFolder}
+type playlists struct {
+	ds model.DataStore
 }
 
-func (s *playlistSync) processPlaylists(ctx context.Context, dir string) int64 {
-	if !s.inPlaylistsPath(dir) {
-		return 0
-	}
-	var count int64
-	files, err := os.ReadDir(dir)
+func NewPlaylists(ds model.DataStore) Playlists {
+	return &playlists{ds: ds}
+}
+
+func IsPlaylist(filePath string) bool {
+	extension := strings.ToLower(filepath.Ext(filePath))
+	return extension == ".m3u" || extension == ".m3u8" || extension == ".nsp"
+}
+
+func (s *playlists) ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error) {
+	pls, err := s.parsePlaylist(ctx, fname, dir)
 	if err != nil {
-		log.Error(ctx, "Error reading files", "dir", dir, err)
-		return count
+		log.Error(ctx, "Error parsing playlist", "playlist", fname, err)
+		return nil, err
 	}
-	for _, f := range files {
-		if !utils.IsPlaylist(f.Name()) {
-			continue
-		}
-		pls, err := s.parsePlaylist(ctx, f.Name(), dir)
-		if err != nil {
-			log.Error(ctx, "Error parsing playlist", "playlist", f.Name(), err)
-			continue
-		}
-		log.Debug("Found playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks))
-		err = s.updatePlaylist(ctx, pls)
-		if err != nil {
-			log.Error(ctx, "Error updating playlist", "playlist", f.Name(), err)
-		}
-		count++
+	log.Debug("Found playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks))
+	err = s.updatePlaylist(ctx, pls)
+	if err != nil {
+		log.Error(ctx, "Error updating playlist", "playlist", fname, err)
 	}
-	return count
+	return pls, err
 }
 
-func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, baseDir string) (*model.Playlist, error) {
-	playlistPath := filepath.Join(baseDir, playlistFile)
-	file, err := os.Open(playlistPath)
+func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, baseDir string) (*model.Playlist, error) {
+	pls, err := s.newSyncedPlaylist(baseDir, playlistFile)
+	if err != nil {
+		return nil, err
+	}
+
+	file, err := os.Open(pls.Path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
+
+	extension := strings.ToLower(filepath.Ext(playlistFile))
+	switch extension {
+	case ".nsp":
+		return s.parseNSP(ctx, pls, file)
+	default:
+		return s.parseM3U(ctx, pls, baseDir, file)
+	}
+}
+
+func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*model.Playlist, error) {
+	playlistPath := filepath.Join(baseDir, playlistFile)
 	info, err := os.Stat(playlistPath)
 	if err != nil {
 		return nil, err
@@ -79,7 +87,24 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 		Sync:      true,
 		UpdatedAt: info.ModTime(),
 	}
+	return pls, nil
+}
 
+func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.Reader) (*model.Playlist, error) {
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	pls.Rules = &model.SmartPlaylist{}
+	err = json.Unmarshal(content, pls.Rules)
+	if err != nil {
+		return nil, err
+	}
+	return pls, nil
+}
+
+func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, file io.Reader) (*model.Playlist, error) {
 	mediaFileRepository := s.ds.MediaFile(ctx)
 	scanner := bufio.NewScanner(file)
 	scanner.Split(scanLines)
@@ -99,7 +124,7 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 		}
 		mf, err := mediaFileRepository.FindByPath(path)
 		if err != nil {
-			log.Warn(ctx, "Path in playlist not found", "playlist", playlistFile, "path", path, err)
+			log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path, err)
 			continue
 		}
 		mfs = append(mfs, *mf)
@@ -110,7 +135,7 @@ func (s *playlistSync) parsePlaylist(ctx context.Context, playlistFile string, b
 	return pls, scanner.Err()
 }
 
-func (s *playlistSync) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
+func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
 	owner, _ := request.UsernameFrom(ctx)
 
 	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
@@ -134,16 +159,6 @@ func (s *playlistSync) updatePlaylist(ctx context.Context, newPls *model.Playlis
 		newPls.Owner = owner
 	}
 	return s.ds.Playlist(ctx).Put(newPls)
-}
-
-func (s *playlistSync) inPlaylistsPath(dir string) bool {
-	rel, _ := filepath.Rel(s.rootFolder, dir)
-	for _, path := range strings.Split(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
-		if match, _ := zglob.Match(path, rel); match {
-			return true
-		}
-	}
-	return false
 }
 
 // From https://stackoverflow.com/a/41433698
