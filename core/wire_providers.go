@@ -20,4 +20,5 @@ var Set = wire.NewSet(
 	transcoder.New,
 	scrobbler.GetPlayTracker,
 	NewShare,
+	NewPlaylists,
 )

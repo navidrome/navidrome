@@ -43,18 +43,4 @@ var _ = Describe("Files", func() {
 			Expect(IsImageFile("test.mp3")).To(BeFalse())
 		})
 	})
-
-	Describe("IsPlaylist", func() {
-		It("returns true for a M3U file", func() {
-			Expect(IsPlaylist(filepath.Join("path", "to", "test.m3u"))).To(BeTrue())
-		})
-
-		It("returns true for a M3U8 file", func() {
-			Expect(IsPlaylist(filepath.Join("path", "to", "test.m3u8"))).To(BeTrue())
-		})
-
-		It("returns false for a non-playlist file", func() {
-			Expect(IsPlaylist("testm3u")).To(BeFalse())
-		})
-	})
 })

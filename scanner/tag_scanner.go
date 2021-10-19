@@ -22,15 +22,15 @@ type TagScanner struct {
 	rootFolder  string
 	ds          model.DataStore
 	cacheWarmer core.CacheWarmer
-	plsSync     *playlistSync
+	plsSync     *playlistImporter
 	cnt         *counters
 	mapper      *mediaFileMapper
 }
 
-func NewTagScanner(rootFolder string, ds model.DataStore, cacheWarmer core.CacheWarmer) *TagScanner {
+func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlists, cacheWarmer core.CacheWarmer) *TagScanner {
 	return &TagScanner{
 		rootFolder:  rootFolder,
-		plsSync:     newPlaylistSync(ds, rootFolder),
+		plsSync:     newPlaylistImporter(ds, playlists, rootFolder),
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
 	}
