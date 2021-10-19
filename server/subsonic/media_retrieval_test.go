@@ -141,20 +141,13 @@ var _ = Describe("isSynced", func() {
 
 type mockedMediaFile struct {
 	model.MediaFileRepository
-	data map[string]*model.MediaFile
+	data model.MediaFiles
 }
 
 func (m *mockedMediaFile) SetData(mfs model.MediaFiles) {
-	m.data = make(map[string]*model.MediaFile)
-	for i, mf := range mfs {
-		m.data[mf.ID] = &mfs[i]
-	}
+	m.data = mfs
 }
 
 func (m *mockedMediaFile) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
-	v := make([]model.MediaFile, 0, len(m.data))
-	for _, value := range m.data {
-		v = append(v, *value)
-	}
-	return v, nil
+	return m.data, nil
 }
