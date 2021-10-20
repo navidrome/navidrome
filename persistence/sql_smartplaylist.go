@@ -183,7 +183,10 @@ func (r dateRule) inTheLast(invert bool) (Sqlizer, error) {
 	}
 	period := time.Now().Add(time.Duration(-24*v) * time.Hour)
 	if invert {
-		return Lt{r.Field: period}, nil
+		return Or{
+			Lt{r.Field: period},
+			Eq{r.Field: nil},
+		}, nil
 	}
 	return Gt{r.Field: period}, nil
 }
