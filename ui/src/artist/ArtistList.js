@@ -86,7 +86,7 @@ const ArtistDatagridRow = (props) => {
   const { record } = props
   const [, dragArtistRef] = useDrag(() => ({
     type: DraggableTypes.ARTIST,
-    item: { artistIds: [record.id] },
+    item: { artistIds: [record?.id] },
     options: { dropEffect: 'copy' },
   }))
   return <DatagridRow ref={dragArtistRef} {...props} />
