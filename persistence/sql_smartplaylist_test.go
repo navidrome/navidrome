@@ -135,7 +135,7 @@ var _ = Describe("smartPlaylist", func() {
 				Expect(args).To(ConsistOf(BeTemporally("~", expectedValue, delta)))
 			},
 			Entry("in the last", "in the last", "lastPlayed > ?", date.Add(-90*24*time.Hour)),
-			Entry("not in the last", "not in the last", "lastPlayed < ?", date.Add(-90*24*time.Hour)),
+			Entry("not in the last", "not in the last", "(lastPlayed < ? OR lastPlayed IS NULL)", date.Add(-90*24*time.Hour)),
 		)
 
 		It("accepts string as the 'in the last' operator value", func() {
