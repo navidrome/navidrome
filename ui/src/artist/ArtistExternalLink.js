@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslate } from 'react-admin'
-import { IconButton, Tooltip, Link, useMediaQuery } from '@material-ui/core'
+import { IconButton, Tooltip, Link } from '@material-ui/core'
 
 import { ImLastfm2 } from 'react-icons/im'
 import MusicBrainz from '../icons/MusicBrainz'
@@ -21,8 +21,6 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
     links.push(`https://musicbrainz.org/artist/${artistInfo.musicBrainzId}`)
   }
 
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'))
-
   const addLink = (url, title, icon) => {
     const translatedTitle = translate(title)
     const link = (
@@ -38,13 +36,11 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
     linkButtons.push(<span key={`link-${record.id}-${id}`}>{link}</span>)
   }
 
-  isDesktop && addLink(links[0], 'message.openIn.lastfm', <ImLastfm2 />)
-
-  isDesktop &&
-    artistInfo?.musicBrainzId &&
+  addLink(links[0], 'message.openIn.lastfm', <ImLastfm2 />)
+  artistInfo?.musicBrainzId &&
     addLink(links[1], 'message.openIn.musicbrainz', <MusicBrainz />)
 
-  return isDesktop && <div>{intersperse(linkButtons, ' ')}</div>
+  return <div>{intersperse(linkButtons, ' ')}</div>
 }
 
 export default ArtistExternalLinks

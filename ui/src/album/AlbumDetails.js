@@ -206,6 +206,7 @@ const Details = (props) => {
 
 const AlbumDetails = (props) => {
   const record = useRecordContext(props)
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
@@ -270,7 +271,7 @@ const AlbumDetails = (props) => {
             ) : (
               <Typography component={'p'}>{record.genre}</Typography>
             )}
-            {isDesktop && (
+            {!isXsmall && (
               <Typography component={'div'} className={classes.recordMeta}>
                 <AlbumExternalLinks className={classes.externalLinks} />
               </Typography>
