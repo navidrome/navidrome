@@ -3,6 +3,7 @@ package criteria
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 )
@@ -13,8 +14,16 @@ type Criteria struct {
 	Expression
 	Sort   string
 	Order  string
-	Max    int
+	Limit  int
 	Offset int
+}
+
+func (c Criteria) OrderBy() string {
+	f := fieldMap[strings.ToLower(c.Sort)]
+	if c.Order != "" {
+		f = f + " " + c.Order
+	}
+	return f
 }
 
 func (c Criteria) ToSql() (sql string, args []interface{}, err error) {
@@ -27,12 +36,12 @@ func (c Criteria) MarshalJSON() ([]byte, error) {
 		Any    []Expression `json:"any,omitempty"`
 		Sort   string       `json:"sort"`
 		Order  string       `json:"order,omitempty"`
-		Max    int          `json:"max,omitempty"`
-		Offset int          `json:"offset"`
+		Limit  int          `json:"limit"`
+		Offset int          `json:"offset,omitempty"`
 	}{
 		Sort:   c.Sort,
 		Order:  c.Order,
-		Max:    c.Max,
+		Limit:  c.Limit,
 		Offset: c.Offset,
 	}
 	switch rules := c.Expression.(type) {
@@ -48,11 +57,11 @@ func (c Criteria) MarshalJSON() ([]byte, error) {
 
 func (c *Criteria) UnmarshalJSON(data []byte) error {
 	var aux struct {
-		All    unmarshalConjunctionType `json:"all,omitempty"`
-		Any    unmarshalConjunctionType `json:"any,omitempty"`
+		All    unmarshalConjunctionType `json:"all"`
+		Any    unmarshalConjunctionType `json:"any"`
 		Sort   string                   `json:"sort"`
-		Order  string                   `json:"order,omitempty"`
-		Max    int                      `json:"max,omitempty"`
+		Order  string                   `json:"order"`
+		Limit  int                      `json:"limit"`
 		Offset int                      `json:"offset"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
@@ -65,7 +74,7 @@ func (c *Criteria) UnmarshalJSON(data []byte) error {
 	}
 	c.Sort = aux.Sort
 	c.Order = aux.Order
-	c.Max = aux.Max
+	c.Limit = aux.Limit
 	c.Offset = aux.Offset
 	return nil
 }

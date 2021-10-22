@@ -27,7 +27,7 @@ var _ = Describe("Criteria", func() {
 			},
 			Sort:   "title",
 			Order:  "asc",
-			Max:    20,
+			Limit:  20,
 			Offset: 10,
 		}
 		var b bytes.Buffer
@@ -49,7 +49,7 @@ var _ = Describe("Criteria", func() {
 	],
 	"sort": "title",
 	"order": "asc",
-	"max": 20,
+	"limit": 20,
 	"offset": 10
 }
 `))
