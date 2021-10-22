@@ -88,7 +88,7 @@ const useStyles = makeStyles(
       display: 'inline-block',
       marginTop: '1em',
       float: 'left',
-      wordBreak: 'break-all',
+      wordBreak: 'break-word',
     },
     pointerCursor: {
       cursor: 'pointer',
@@ -206,6 +206,7 @@ const Details = (props) => {
 
 const AlbumDetails = (props) => {
   const record = useRecordContext(props)
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
@@ -253,7 +254,7 @@ const AlbumDetails = (props) => {
             <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />
             </Typography>
-            <Typography component={'p'} className={classes.recordMeta}>
+            <Typography component={'div'} className={classes.recordMeta}>
               <Details />
             </Typography>
             {config.enableStarRating && (
@@ -270,8 +271,8 @@ const AlbumDetails = (props) => {
             ) : (
               <Typography component={'p'}>{record.genre}</Typography>
             )}
-            {isDesktop && (
-              <Typography component={'p'} className={classes.recordMeta}>
+            {!isXsmall && (
+              <Typography component={'div'} className={classes.recordMeta}>
                 <AlbumExternalLinks className={classes.externalLinks} />
               </Typography>
             )}

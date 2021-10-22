@@ -146,6 +146,7 @@ func (api *Router) routes() http.Handler {
 		withThrottle := r.With(middleware.ThrottleBacklog(maxRequests, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
 		h(withThrottle, "getAvatar", c.GetAvatar)
 		h(withThrottle, "getCoverArt", c.GetCoverArt)
+		h(withThrottle, "getLyrics", c.GetLyrics)
 	})
 	r.Group(func(r chi.Router) {
 		c := initStreamController(api)
@@ -155,7 +156,6 @@ func (api *Router) routes() http.Handler {
 	})
 
 	// Not Implemented (yet?)
-	h501(r, "getLyrics")
 	h501(r, "jukeboxControl")
 	h501(r, "getAlbumInfo", "getAlbumInfo2")
 	h501(r, "getShares", "createShare", "updateShare", "deleteShare")

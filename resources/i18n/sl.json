@@ -24,7 +24,8 @@
                 "rating": "Ocena",
                 "quality": "Kakovost",
                 "bpm": "BPM",
-                "playDate": "Zadnja predvajana"
+                "playDate": "Zadnja predvajana",
+                "channels": "Kanali"
             },
             "actions": {
                 "addToQueue": "Predvajaj kasneje",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Dodaj na seznam predvajanj",
                 "shuffleAll": "Premešaj vse",
                 "download": "Naloži",
-                "playNext": "Naslednji"
+                "playNext": "Naslednji",
+                "info": "Več informacij"
             }
         },
         "album": {
@@ -41,7 +43,7 @@
                 "albumArtist": "Avtor albuma",
                 "artist": "Izvajalec",
                 "duration": "Dolžina",
-                "songCount": "# pesmi",
+                "songCount": "Pesmi",
                 "playCount": "Predvajano",
                 "name": "Naslov",
                 "genre": "Žanr",
@@ -57,7 +59,8 @@
                 "addToQueue": "Predvajaj kasneje",
                 "shuffle": "Premešaj",
                 "addToPlaylist": "Dodaj v seznam predvajanja",
-                "download": "Naloži"
+                "download": "Naloži",
+                "info": "Več informacij"
             },
             "lists": {
                 "all": "Vse",
@@ -307,7 +310,8 @@
         "openIn": {
             "lastfm": "Odpri v Last.fm",
             "musicbrainz": "Odpri v MusicBrainz"
-        }
+        },
+        "lastfmLink": "Preberi več..."
     },
     "menu": {
         "library": "Knjižnica",
@@ -325,7 +329,9 @@
             }
         },
         "albumList": "Albumi",
-        "about": "O programu"
+        "about": "O programu",
+        "playlists": "Seznami predvajanj",
+        "sharedPlaylists": "Deljeni seznami predvajanj"
     },
     "player": {
         "playListsText": "Predvajaj vrsto",

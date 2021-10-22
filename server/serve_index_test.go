@@ -49,6 +49,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("firstTime", true))
 	})
 
+	It("includes the VariousArtistsID", func() {
+		mockUser.empty = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("variousArtistsId", consts.VariousArtistsID))
+	})
+
 	It("sets firstTime = false when User table is not empty", func() {
 		mockUser.empty = false
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -211,6 +222,18 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("devEnableShare", false))
 	})
 
+	It("sets the devSidebarPlaylists", func() {
+		conf.Server.DevSidebarPlaylists = true
+
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devSidebarPlaylists", true))
+	})
+
 	It("sets the lastFMEnabled", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
@@ -231,6 +254,17 @@ var _ = Describe("serveIndex", func() {
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("lastFMApiKey", "APIKEY-123"))
 	})
+	It("sets the devShowArtistPage", func() {
+		conf.Server.DevShowArtistPage = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devShowArtistPage", true))
+	})
+
 })
 
 var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__="([^"]*)`)

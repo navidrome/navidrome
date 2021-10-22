@@ -359,6 +359,12 @@ export default {
         marginTop: '-50px',
       },
     },
+    NDMobileArtistDetails: {
+      bgContainer: {
+        background:
+          'linear-gradient(to bottom, rgb(255 255 255 / 51%), rgb(240 242 245))!important',
+      },
+    },
     RaLayout: {
       content: {
         padding: '0 !important',
@@ -426,6 +432,9 @@ export default {
       },
     },
     RaSidebar: {
+      root: {
+        height: 'initial',
+      },
       drawerPaper: {
         '@media (min-width: 0px) and (max-width: 599.95px)': {
           backgroundColor: `${bLight['500']} !important`,

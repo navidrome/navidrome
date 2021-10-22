@@ -32,6 +32,7 @@ type configOptions struct {
 	TranscodingCacheSize    string
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
+	PlaylistsPath           string
 
 	SearchFullString       bool
 	RecentlyAddedByModTime bool
@@ -70,7 +71,9 @@ type configOptions struct {
 	DevFastAccessCoverArt      bool
 	DevActivityPanel           bool
 	DevEnableShare             bool
+	DevSidebarPlaylists        bool
 	DevEnableBufferedScrobble  bool
+	DevShowArtistPage          bool
 }
 
 type scannerOptions struct {
@@ -155,6 +158,7 @@ func validateScanSchedule() error {
 		}
 	}
 	if Server.ScanSchedule == "0" || Server.ScanSchedule == "" {
+		Server.ScanSchedule = ""
 		return nil
 	}
 	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
@@ -188,6 +192,7 @@ func init() {
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
 	viper.SetDefault("autoimportplaylists", true)
+	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
 
 	// Config options only valid for file/env configuration
@@ -234,6 +239,8 @@ func init() {
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
+	viper.SetDefault("devsidebarplaylists", true)
+	viper.SetDefault("devshowartistpage", true)
 }
 
 func InitConfig(cfgFile string) {

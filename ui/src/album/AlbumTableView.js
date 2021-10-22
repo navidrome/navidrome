@@ -1,36 +1,26 @@
 import React, { useMemo } from 'react'
-import Table from '@material-ui/core/Table'
-import TableBody from '@material-ui/core/TableBody'
-import inflection from 'inflection'
-import TableCell from '@material-ui/core/TableCell'
-import TableContainer from '@material-ui/core/TableContainer'
-import TableRow from '@material-ui/core/TableRow'
 import {
-  ArrayField,
-  BooleanField,
-  ChipField,
   Datagrid,
-  DateField,
+  DatagridBody,
+  DatagridRow,
   NumberField,
-  SingleFieldList,
   TextField,
-  useRecordContext,
-  useTranslate,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles } from '@material-ui/core/styles'
+import { useDrag } from 'react-dnd'
 import {
   ArtistLinkField,
   DurationField,
   RangeField,
   SimpleList,
-  MultiLineTextField,
   AlbumContextMenu,
   RatingField,
   useSelectedFields,
 } from '../common'
 import config from '../config'
+import { DraggableTypes } from '../consts'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -59,55 +49,23 @@ const useStyles = makeStyles({
   },
 })
 
-const AlbumDetails = (props) => {
-  const classes = useStyles()
-  const translate = useTranslate()
-  const record = useRecordContext(props)
-  const data = {
-    albumArtist: <TextField source={'albumArtist'} />,
-    genre: (
-      <ArrayField source={'genres'}>
-        <SingleFieldList linkType={false}>
-          <ChipField source={'name'} />
-        </SingleFieldList>
-      </ArrayField>
-    ),
-    compilation: <BooleanField source={'compilation'} />,
-    updatedAt: <DateField source={'updatedAt'} showTime />,
-    comment: <MultiLineTextField source={'comment'} />,
-  }
-
-  const optionalFields = ['comment', 'genre']
-  optionalFields.forEach((field) => {
-    !record[field] && delete data[field]
-  })
-
-  return (
-    <TableContainer>
-      <Table aria-label="album details" size="small">
-        <TableBody>
-          {Object.keys(data).map((key) => {
-            return (
-              <TableRow key={`${record.id}-${key}`}>
-                <TableCell
-                  component="th"
-                  scope="row"
-                  className={classes.tableCell}
-                >
-                  {translate(`resources.album.fields.${key}`, {
-                    _: inflection.humanize(inflection.underscore(key)),
-                  })}
-                  :
-                </TableCell>
-                <TableCell align="left">{data[key]}</TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  )
+const AlbumDatagridRow = (props) => {
+  const { record } = props
+  const [, dragAlbumRef] = useDrag(() => ({
+    type: DraggableTypes.ALBUM,
+    item: { albumIds: [record.id] },
+    options: { dropEffect: 'copy' },
+  }))
+  return <DatagridRow ref={dragAlbumRef} {...props} />
 }
+
+const AlbumDatagridBody = (props) => (
+  <DatagridBody {...props} row={<AlbumDatagridRow />} />
+)
+
+const AlbumDatagrid = (props) => (
+  <Datagrid {...props} body={<AlbumDatagridBody />} />
+)
 
 const AlbumTableView = ({
   hasShow,
@@ -180,12 +138,7 @@ const AlbumTableView = ({
       {...rest}
     />
   ) : (
-    <Datagrid
-      expand={<AlbumDetails />}
-      rowClick={'show'}
-      classes={{ row: classes.row }}
-      {...rest}
-    >
+    <AlbumDatagrid rowClick={'show'} classes={{ row: classes.row }} {...rest}>
       <TextField source="name" />
       {columns}
       <AlbumContextMenu
@@ -203,7 +156,7 @@ const AlbumTableView = ({
           )
         }
       />
-    </Datagrid>
+    </AlbumDatagrid>
   )
 }
 

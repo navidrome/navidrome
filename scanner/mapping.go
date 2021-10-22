@@ -50,6 +50,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.DiscSubtitle = md.DiscSubtitle()
 	mf.Duration = md.Duration()
 	mf.BitRate = md.BitRate()
+	mf.Channels = md.Channels()
 	mf.Path = md.FilePath()
 	mf.Suffix = md.Suffix()
 	mf.Size = md.Size()

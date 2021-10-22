@@ -13,18 +13,16 @@ type parsedTags = map[string][]string
 func (e *Parser) Parse(paths ...string) (map[string]parsedTags, error) {
 	fileTags := map[string]parsedTags{}
 	for _, path := range paths {
-		tags, err := e.extractMetadata(path)
-		if err == nil {
-			fileTags[path] = tags
-		}
+		fileTags[path] = e.extractMetadata(path)
 	}
 	return fileTags, nil
 }
 
-func (e *Parser) extractMetadata(filePath string) (parsedTags, error) {
+func (e *Parser) extractMetadata(filePath string) parsedTags {
 	tags, err := Read(filePath)
 	if err != nil {
 		log.Warn("Error reading metadata from file. Skipping", "filePath", filePath, err)
+		return nil
 	}
 
 	alternativeTags := map[string][]string{
@@ -48,5 +46,5 @@ func (e *Parser) extractMetadata(filePath string) (parsedTags, error) {
 			}
 		}
 	}
-	return tags, nil
+	return tags
 }
