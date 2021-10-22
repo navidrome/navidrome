@@ -3,6 +3,7 @@ package criteria
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -71,6 +72,8 @@ func (c *Criteria) UnmarshalJSON(data []byte) error {
 		c.Expression = Any(aux.Any)
 	} else if len(aux.All) > 0 {
 		c.Expression = All(aux.All)
+	} else {
+		return errors.New("invalid criteria json. missing rules (key 'all' or 'any')")
 	}
 	c.Sort = aux.Sort
 	c.Order = aux.Order

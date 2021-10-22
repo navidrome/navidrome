@@ -38,13 +38,13 @@ func IsPlaylist(filePath string) bool {
 func (s *playlists) ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error) {
 	pls, err := s.parsePlaylist(ctx, fname, dir)
 	if err != nil {
-		log.Error(ctx, "Error parsing playlist", "playlist", fname, err)
+		log.Error(ctx, "Error parsing playlist", "path", filepath.Join(dir, fname), err)
 		return nil, err
 	}
 	log.Debug("Found playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks))
 	err = s.updatePlaylist(ctx, pls)
 	if err != nil {
-		log.Error(ctx, "Error updating playlist", "playlist", fname, err)
+		log.Error(ctx, "Error updating playlist", "path", filepath.Join(dir, fname), err)
 	}
 	return pls, err
 }

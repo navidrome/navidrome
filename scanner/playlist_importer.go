@@ -39,7 +39,6 @@ func (s *playlistImporter) processPlaylists(ctx context.Context, dir string) int
 		}
 		pls, err := s.pls.ImportFile(ctx, dir, f.Name())
 		if err != nil {
-			log.Error(ctx, "Error parsing playlist", "playlist", f.Name(), err)
 			continue
 		}
 		if pls.IsSmartPlaylist() {
