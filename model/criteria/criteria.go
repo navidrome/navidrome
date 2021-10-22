@@ -35,9 +35,9 @@ func (c Criteria) MarshalJSON() ([]byte, error) {
 	aux := struct {
 		All    []Expression `json:"all,omitempty"`
 		Any    []Expression `json:"any,omitempty"`
-		Sort   string       `json:"sort"`
+		Sort   string       `json:"sort,omitempty"`
 		Order  string       `json:"order,omitempty"`
-		Limit  int          `json:"limit"`
+		Limit  int          `json:"limit,omitempty"`
 		Offset int          `json:"offset,omitempty"`
 	}{
 		Sort:   c.Sort,
