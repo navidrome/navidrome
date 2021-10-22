@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"strings"
 	"time"
 
@@ -99,7 +100,11 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 	}
 	p.ID = id
 
-	// Only update tracks if they are specified
+	if p.IsSmartPlaylist() {
+		r.refreshSmartPlaylist(p)
+		return nil
+	}
+	// Only update tracks if they were specified
 	if tracks == nil {
 		return nil
 	}
@@ -300,17 +305,23 @@ func (r *playlistRepository) updateStats(playlistId string) error {
 }
 
 func (r *playlistRepository) loadTracks(pls *model.Playlist) error {
-	tracksQuery := Select().From("playlist_tracks").
+	tracksQuery := Select().From("media_file f").
 		LeftJoin("annotation on ("+
-			"annotation.item_id = media_file_id"+
+			"annotation.item_id = f.id"+
 			" AND annotation.item_type = 'media_file'"+
 			" AND annotation.user_id = '"+userId(r.ctx)+"')").
 		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*").
-		Join("media_file f on f.id = media_file_id").
-		Where(Eq{"playlist_id": pls.ID}).OrderBy("playlist_tracks.id")
+		Join("playlist_tracks t on t.media_file_id = f.id").
+		Where(Eq{"playlist_id": pls.ID}).OrderBy("t.id")
 	err := r.queryAll(tracksQuery, &pls.Tracks)
 	if err != nil {
 		log.Error(r.ctx, "Error loading playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
+	}
+	// Fix Track attributes
+	for i, t := range pls.Tracks {
+		pls.Tracks[i].ID = strconv.Itoa(i + 1) // (must be the position of the track in the list)
+		pls.Tracks[i].PlaylistID = pls.ID
+		pls.Tracks[i].MediaFileID = t.MediaFile.ID
 	}
 	return err
 }
