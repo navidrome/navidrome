@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -156,6 +157,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 		newPls.Comment = pls.Comment
 		newPls.Owner = pls.Owner
 		newPls.Public = pls.Public
+		newPls.EvaluatedAt = time.Time{}
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner)
 		newPls.Owner = owner

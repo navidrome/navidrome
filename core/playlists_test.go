@@ -81,10 +81,10 @@ type mockedPlaylist struct {
 	model.PlaylistRepository
 }
 
-func (r *mockedPlaylist) FindByPath(path string) (*model.Playlist, error) {
+func (r *mockedPlaylist) FindByPath(string) (*model.Playlist, error) {
 	return nil, model.ErrNotFound
 }
 
-func (r *mockedPlaylist) Put(pls *model.Playlist) error {
+func (r *mockedPlaylist) Put(*model.Playlist) error {
 	return nil
 }

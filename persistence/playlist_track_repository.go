@@ -25,9 +25,12 @@ func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTrackReposi
 	p.sortMappings = map[string]string{
 		"id": "playlist_tracks.id",
 	}
-	_, err := r.GetWithTracks(playlistId)
+	pls, err := r.Get(playlistId)
 	if err != nil {
-		log.Error(r.ctx, "Failed to load tracks of smart playlist", "playlistId", playlistId, err)
+		return nil
+	}
+	if pls.IsSmartPlaylist() {
+		r.refreshSmartPlaylist(pls)
 	}
 	return p
 }
