@@ -14,6 +14,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 )
 
@@ -96,9 +97,10 @@ func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.R
 		return nil, err
 	}
 
-	pls.Rules = &model.SmartPlaylist{}
+	pls.Rules = &criteria.Criteria{}
 	err = json.Unmarshal(content, pls.Rules)
 	if err != nil {
+		log.Error(ctx, "Error parsing SmartPlaylist", "playlist", pls.Name, err)
 		return nil, err
 	}
 	return pls, nil

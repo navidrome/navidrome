@@ -11,6 +11,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -143,12 +144,12 @@ func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 func (r *playlistRepository) toModel(pls dbPlaylist) (*model.Playlist, error) {
 	var err error
 	if strings.TrimSpace(pls.RawRules) != "" {
-		r := model.SmartPlaylist{}
-		err = json.Unmarshal([]byte(pls.RawRules), &r)
+		var c criteria.Criteria
+		err = json.Unmarshal([]byte(pls.RawRules), &c)
 		if err != nil {
 			return nil, err
 		}
-		pls.Playlist.Rules = &r
+		pls.Playlist.Rules = &c
 	} else {
 		pls.Playlist.Rules = nil
 	}
@@ -190,13 +191,13 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	}
 
 	// Re-populate playlist based on Smart Playlist criteria
-	sp := smartPlaylist(*pls.Rules)
-	sql := Select("row_number() over (order by "+sp.OrderBy()+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
+	rules := *pls.Rules
+	sql := Select("row_number() over (order by "+rules.OrderBy()+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
 		From("media_file").LeftJoin("annotation on (" +
 		"annotation.item_id = media_file.id" +
 		" AND annotation.item_type = 'media_file'" +
 		" AND annotation.user_id = '" + userId(r.ctx) + "')")
-	sql = sp.AddCriteria(sql)
+	sql = r.addCriteria(sql, rules)
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sql)
 	c, err := r.executeSQL(insSql)
 	if err != nil {
@@ -222,6 +223,14 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	log.Debug(r.ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", c, "elapsed", time.Since(start))
 
 	return true
+}
+
+func (r *playlistRepository) addCriteria(sql SelectBuilder, c criteria.Criteria) SelectBuilder {
+	sql = sql.Where(c.ToSql()).Limit(uint64(c.Limit)).Offset(uint64(c.Offset))
+	if order := c.OrderBy(); order != "" {
+		sql = sql.OrderBy(order)
+	}
+	return sql
 }
 
 func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {
