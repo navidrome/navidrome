@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -23,12 +24,12 @@ type Playlist struct {
 	UpdatedAt time.Time      `structs:"updated_at" json:"updatedAt"`
 
 	// SmartPlaylist attributes
-	Rules       *SmartPlaylist `structs:"-" json:"rules"`
-	EvaluatedAt time.Time      `structs:"evaluated_at" json:"evaluatedAt"`
+	Rules       *criteria.Criteria `structs:"-" json:"rules"`
+	EvaluatedAt time.Time          `structs:"evaluated_at" json:"evaluatedAt"`
 }
 
 func (pls Playlist) IsSmartPlaylist() bool {
-	return pls.Rules != nil && pls.Rules.Combinator != ""
+	return pls.Rules != nil && pls.Rules.Expression != nil
 }
 
 func (pls Playlist) MediaFiles() MediaFiles {

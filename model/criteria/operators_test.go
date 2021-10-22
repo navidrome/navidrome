@@ -35,7 +35,7 @@ var _ = Describe("Operators", func() {
 		Entry("after", After{"lastPlayed": rangeStart}, "annotation.play_date > ?", rangeStart),
 		// TODO These may be flaky
 		Entry("inTheLast", InTheLast{"lastPlayed": 30}, "annotation.play_date > ?", startOfPeriod(30, time.Now())),
-		Entry("notInPeriod", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", startOfPeriod(30, time.Now())),
+		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", startOfPeriod(30, time.Now())),
 	)
 
 	DescribeTable("JSON Conversion",
