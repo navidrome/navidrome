@@ -226,7 +226,10 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 }
 
 func (r *playlistRepository) addCriteria(sql SelectBuilder, c criteria.Criteria) SelectBuilder {
-	sql = sql.Where(c.ToSql()).Limit(uint64(c.Limit)).Offset(uint64(c.Offset))
+	sql = sql.Where(c.ToSql())
+	if c.Limit > 0 {
+		sql = sql.Limit(uint64(c.Limit)).Offset(uint64(c.Offset))
+	}
 	if order := c.OrderBy(); order != "" {
 		sql = sql.OrderBy(order)
 	}
