@@ -19,7 +19,7 @@ import {
   SongBulkActions,
   SongContextMenu,
   SongDatagrid,
-  SongDetails,
+  SongInfo,
   SongTitleField,
   RatingField,
   QualityInfo,
@@ -28,6 +28,7 @@ import {
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import config from '../config'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -85,7 +86,6 @@ const useStyles = makeStyles(
 
 const AlbumSongs = (props) => {
   const { data, ids } = props
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
@@ -119,6 +119,7 @@ const AlbumSongs = (props) => {
         />
       ),
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      channels: isDesktop && <NumberField source="channels" sortable={true} />,
       bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
       rating: isDesktop && config.enableStarRating && (
         <RatingField
@@ -135,7 +136,7 @@ const AlbumSongs = (props) => {
     resource: 'albumSong',
     columns: toggleableFields,
     omittedColumns: ['title'],
-    defaultOff: ['bpm', 'year'],
+    defaultOff: ['channels', 'bpm', 'year'],
   })
 
   return (
@@ -156,7 +157,6 @@ const AlbumSongs = (props) => {
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
-            expand={isXsmall ? null : <SongDetails />}
             rowClick={(id) => dispatch(playTracks(data, ids, id))}
             {...props}
             hasBulkActions={true}
@@ -182,6 +182,7 @@ const AlbumSongs = (props) => {
         </Card>
       </div>
       <AddToPlaylistDialog />
+      <ExpandInfoDialog content={<SongInfo />} />
     </>
   )
 }

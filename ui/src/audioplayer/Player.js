@@ -33,6 +33,7 @@ const Player = () => {
   const dispatch = useDispatch()
   const [startTime, setStartTime] = useState(null)
   const [scrobbled, setScrobbled] = useState(false)
+  const [preloaded, setPreload] = useState(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
   const { authenticated } = useAuthState()
@@ -55,6 +56,7 @@ const Player = () => {
       clearPriorAudioLists: false,
       showDestroy: true,
       showDownload: false,
+      showLyric: true,
       showReload: false,
       toggleMode: !isDesktop,
       glassBg: false,
@@ -93,6 +95,13 @@ const Player = () => {
     [dispatch]
   )
 
+  const nextSong = useCallback(() => {
+    const idx = playerState.queue.findIndex(
+      (item) => item.uuid === playerState.current.uuid
+    )
+    return idx !== null ? playerState.queue[idx + 1] : null
+  }, [playerState])
+
   const onAudioProgress = useCallback(
     (info) => {
       if (info.ended) {
@@ -104,12 +113,22 @@ const Player = () => {
         return
       }
 
+      if (!preloaded) {
+        const next = nextSong()
+        if (next != null) {
+          const audio = new Audio()
+          audio.src = next.musicSrc
+        }
+        setPreload(true)
+        return
+      }
+
       if (!scrobbled) {
         info.trackId && subsonic.scrobble(info.trackId, startTime)
         setScrobbled(true)
       }
     },
-    [startTime, scrobbled]
+    [startTime, scrobbled, nextSong, preloaded]
   )
 
   const onAudioVolumeChange = useCallback(
@@ -126,6 +145,7 @@ const Player = () => {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
         subsonic.nowPlaying(info.trackId)
+        setPreload(false)
         setScrobbled(false)
         if (config.gaTrackingId) {
           ReactGA.event({

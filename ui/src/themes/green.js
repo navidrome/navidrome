@@ -27,6 +27,12 @@ export default {
         color: '#eee',
       },
     },
+    NDMobileArtistDetails: {
+      bgContainer: {
+        background:
+          'linear-gradient(to bottom, rgba(52 52 52 / 72%), rgb(48 48 48))!important',
+      },
+    },
   },
   player: {
     theme: 'dark',

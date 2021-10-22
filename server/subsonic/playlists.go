@@ -22,7 +22,7 @@ func NewPlaylistsController(ds model.DataStore) *PlaylistsController {
 
 func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	allPls, err := c.ds.Playlist(ctx).GetAll()
+	allPls, err := c.ds.Playlist(ctx).GetAll(model.QueryOptions{Sort: "name"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err

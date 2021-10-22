@@ -9,15 +9,18 @@ on:
     branches:
       - master
 jobs:
-  golangci-lint:
-    name: Lint Server
+  go-lint:
+    name: Lint Go code
     runs-on: ubuntu-latest
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
 
-      - name: Install libjpeg-turbo8
-        run: sudo apt-get install libjpeg-turbo8-dev
+      - name: Set up Go 1.17
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+        id: go
 
       - uses: actions/checkout@v2
 
@@ -28,12 +31,24 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           args: --timeout 2m
 
+      - name: Install goimports
+        run: go install golang.org/x/tools/cmd/goimports
+
+      - run: goimports -w `find . -name '*.go' | grep -v '_gen.go$'`
+      - run: go mod tidy
+      - name: Verify no changes from goimports and go mod tidy
+        run: |
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            exit 1
+          fi
+
   go:
-    name: Test Server with Go ${{ matrix.go_version }}
+    name: Test with Go ${{ matrix.go_version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: [1.16.x]
+        go_version: [1.16.x, 1.17.x]
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
@@ -67,6 +82,7 @@ jobs:
       - name: Test
         continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
         run: go test -cover ./... -v
+
   js:
     name: Build JS bundle
     runs-on: ubuntu-latest
@@ -74,17 +90,11 @@ jobs:
       NODE_OPTIONS: '--max_old_space_size=4096'
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: 16
-
-      - uses: actions/cache@v2
-        id: cache-npm
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('ui/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: npm install dependencies
         run: |
@@ -113,8 +123,8 @@ jobs:
           retention-days: 7
 
   binaries:
-    name: Binaries
-    needs: [js, go, golangci-lint]
+    name: Build binaries
+    needs: [js, go, go-lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -135,7 +145,7 @@ jobs:
 
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
-        uses: docker://deluan/ci-goreleaser:1.16.4-1
+        uses: docker://deluan/ci-goreleaser:1.17.2-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -143,7 +153,7 @@ jobs:
 
       - name: Run GoReleaser - RELEASE
         if: startsWith(github.ref, 'refs/tags/')
-        uses: docker://deluan/ci-goreleaser:1.16.4-1
+        uses: docker://deluan/ci-goreleaser:1.17.2-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -159,7 +169,7 @@ jobs:
           retention-days: 7
 
   docker:
-    name: Docker images
+    name: Build Docker images
     needs: [binaries]
     runs-on: ubuntu-latest
     env:

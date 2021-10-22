@@ -24,7 +24,8 @@
                 "rating": "Classificação",
                 "quality": "Qualidade",
                 "bpm": "BPM",
-                "playDate": "Últ. Execução"
+                "playDate": "Últ. Execução",
+                "channels": "Canais"
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Adicionar à playlist",
                 "shuffleAll": "Aleatório",
                 "download": "Baixar",
-                "playNext": "Toca a seguir"
+                "playNext": "Toca a seguir",
+                "info": "Detalhes"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "Adicionar à fila",
                 "shuffle": "Aleatório",
                 "addToPlaylist": "Adicionar à playlist",
-                "download": "Baixar"
+                "download": "Baixar",
+                "info": "Detalhes"
             },
             "lists": {
                 "all": "Todos",
@@ -307,7 +310,8 @@
         "openIn": {
             "lastfm": "Abrir em Last.fm",
             "musicbrainz": "Abrir em MusicBrainz"
-        }
+        },
+        "lastfmLink": "Leia mais"
     },
     "menu": {
         "library": "Biblioteca",
@@ -325,7 +329,9 @@
             }
         },
         "albumList": "Álbuns",
-        "about": "Info"
+        "about": "Info",
+        "playlists": "Playlists",
+        "sharedPlaylists": "Compartilhadas"
     },
     "player": {
         "playListsText": "Fila de Execução",
