@@ -79,6 +79,9 @@ func startServer() (func() error, func(err error)) {
 			if conf.Server.LastFM.Enabled {
 				a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
 			}
+			if conf.Server.DevListenBrainzEnabled {
+				a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
+			}
 			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
 		}, func(err error) {
 			if err != nil {
