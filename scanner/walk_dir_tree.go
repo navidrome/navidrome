@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"bufio"
 	"context"
 	"io/fs"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattn/go-zglob"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils"
@@ -35,7 +37,9 @@ func walkDirTree(ctx context.Context, rootFolder string, results walkResults) er
 }
 
 func walkFolder(ctx context.Context, rootPath string, currentFolder string, results walkResults) error {
-	children, stats, err := loadDir(ctx, currentFolder)
+	// Look for .ndignore first
+	ignores := getIgnoreGlobs(currentFolder)
+	children, stats, err := loadDir(ctx, currentFolder, ignores)
 	if err != nil {
 		return err
 	}
@@ -48,14 +52,14 @@ func walkFolder(ctx context.Context, rootPath string, currentFolder string, resu
 
 	dir := filepath.Clean(currentFolder)
 	log.Trace(ctx, "Found directory", "dir", dir, "audioCount", stats.AudioFilesCount,
-		"hasImages", stats.HasImages, "hasPlaylist", stats.HasPlaylist)
+		"hasImages", stats.HasImages, "hasPlaylist", stats.HasPlaylist, "ignores", ignores)
 	stats.Path = dir
 	results <- *stats
 
 	return nil
 }
 
-func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
+func loadDir(ctx context.Context, dirPath string, ignores []string) ([]string, *dirStats, error) {
 	var children []string
 	stats := &dirStats{}
 
@@ -75,6 +79,13 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 
 	dirEntries := fullReadDir(ctx, dir)
 	for _, entry := range dirEntries {
+		for _, ignore := range ignores {
+			if match, _ := zglob.Match(ignore, entry.Name()); match {
+				log.Trace(ctx, "ignoring", "entry", entry.Name(), "ignore", ignore)
+				continue
+			}
+			log.Trace(ctx, "NOT ignoring", "entry", entry.Name(), "ignore", ignore)
+		}
 		isDir, err := isDirOrSymlinkToDir(dirPath, entry)
 		// Skip invalid symlinks
 		if err != nil {
@@ -155,8 +166,8 @@ func isDirIgnored(baseDir string, dirEnt fs.DirEntry) bool {
 	if strings.HasPrefix(dirEnt.Name(), ".") && !strings.HasPrefix(dirEnt.Name(), "..") {
 		return true
 	}
-	_, err := os.Stat(filepath.Join(baseDir, dirEnt.Name(), consts.SkipScanFile))
-	return err == nil
+	f, err := os.Stat(filepath.Join(baseDir, dirEnt.Name(), consts.SkipScanFile))
+	return err == nil && f.Size() == 0
 }
 
 // isDirReadable returns true if the directory represented by dirEnt is readable
@@ -167,4 +178,17 @@ func isDirReadable(baseDir string, dirEnt fs.DirEntry) bool {
 		log.Warn("Skipping unreadable directory", "path", path, err)
 	}
 	return res
+}
+
+// getIgnoreGlobs read the ignore file into  each line.
+func getIgnoreGlobs(currentFolder string) (globs []string) {
+	f, err := os.Open(filepath.Join(currentFolder, consts.SkipScanFile))
+	if err != nil {
+		return nil
+	}
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		globs = append(globs, s.Text())
+	}
+	return globs
 }
