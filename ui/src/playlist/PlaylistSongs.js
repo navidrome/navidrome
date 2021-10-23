@@ -182,6 +182,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
             <PlaylistSongBulkActions
               playlistId={playlistId}
               onUnselectItems={onUnselectItems}
+              readOnly={readOnly}
             />
           </BulkActionsToolbar>
           <ReorderableList
@@ -192,7 +193,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
             <SongDatagrid
               rowClick={(id) => dispatch(playTracks(data, ids, id))}
               {...listContext}
-              hasBulkActions={true}
+              hasBulkActions={!readOnly}
               contextAlwaysVisible={!isDesktop}
               classes={{ row: classes.row }}
             >

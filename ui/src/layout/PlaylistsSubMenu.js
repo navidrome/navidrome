@@ -12,7 +12,7 @@ import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import { BiCog } from 'react-icons/all'
 import { useDrop } from 'react-dnd'
 import SubMenu from './SubMenu'
-import { isWritable } from '../common'
+import { canChangeTracks } from '../common'
 import { DraggableTypes, MAX_SIDEBAR_PLAYLISTS } from '../consts'
 
 const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
@@ -20,7 +20,7 @@ const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
   const notify = useNotify()
 
   const [, dropRef] = useDrop(() => ({
-    accept: isWritable(pls.owner) ? DraggableTypes.ALL : [],
+    accept: canChangeTracks(pls) ? DraggableTypes.ALL : [],
     drop: (item) =>
       dataProvider
         .addToPlaylist(pls.id, item)
