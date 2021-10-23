@@ -84,11 +84,14 @@ const ArtistFilter = (props) => {
 
 const ArtistDatagridRow = (props) => {
   const { record } = props
-  const [, dragArtistRef] = useDrag(() => ({
-    type: DraggableTypes.ARTIST,
-    item: { artistIds: [record?.id] },
-    options: { dropEffect: 'copy' },
-  }))
+  const [, dragArtistRef] = useDrag(
+    () => ({
+      type: DraggableTypes.ARTIST,
+      item: { artistIds: [record?.id] },
+      options: { dropEffect: 'copy' },
+    }),
+    [record]
+  )
   return <DatagridRow ref={dragArtistRef} {...props} />
 }
 
