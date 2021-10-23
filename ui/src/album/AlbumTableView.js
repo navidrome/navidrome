@@ -51,11 +51,14 @@ const useStyles = makeStyles({
 
 const AlbumDatagridRow = (props) => {
   const { record } = props
-  const [, dragAlbumRef] = useDrag(() => ({
-    type: DraggableTypes.ALBUM,
-    item: { albumIds: [record.id] },
-    options: { dropEffect: 'copy' },
-  }))
+  const [, dragAlbumRef] = useDrag(
+    () => ({
+      type: DraggableTypes.ALBUM,
+      item: { albumIds: [record.id] },
+      options: { dropEffect: 'copy' },
+    }),
+    [record]
+  )
   return <DatagridRow ref={dragAlbumRef} {...props} />
 }
 
