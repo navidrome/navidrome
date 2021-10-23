@@ -11,7 +11,7 @@ var fieldMap = map[string]string{
 	"album":           "media_file.album",
 	"artist":          "media_file.artist",
 	"albumartist":     "media_file.album_artist",
-	"albumartwork":    "media_file.has_cover_art",
+	"hascoverart":     "media_file.has_cover_art",
 	"tracknumber":     "media_file.track_number",
 	"discnumber":      "media_file.disc_number",
 	"year":            "media_file.year",
