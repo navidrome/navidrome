@@ -20,3 +20,8 @@ export const Writable = (props) => {
   }
   return null
 }
+
+export const isSmartPlaylist = (pls) => !!pls.rules
+
+export const canChangeTracks = (pls) =>
+  isWritable(pls.owner) && !isSmartPlaylist(pls)

@@ -12,6 +12,7 @@ type playlistTrackRepository struct {
 	sqlRepository
 	sqlRestful
 	playlistId   string
+	playlist     *model.Playlist
 	playlistRepo *playlistRepository
 }
 
@@ -32,6 +33,7 @@ func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTrackReposi
 	if pls.IsSmartPlaylist() {
 		r.refreshSmartPlaylist(pls)
 	}
+	p.playlist = pls
 	return p
 }
 
@@ -79,8 +81,12 @@ func (r *playlistTrackRepository) NewInstance() interface{} {
 	return &model.PlaylistTrack{}
 }
 
+func (r *playlistTrackRepository) isTracksEditable() bool {
+	return r.playlistRepo.isWritable(r.playlistId) && !r.playlist.IsSmartPlaylist()
+}
+
 func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
-	if !r.playlistRepo.isWritable(r.playlistId) {
+	if !r.isTracksEditable() {
 		return 0, rest.ErrPermissionDenied
 	}
 
@@ -158,7 +164,7 @@ func (r *playlistTrackRepository) getTracks() ([]string, error) {
 }
 
 func (r *playlistTrackRepository) Delete(id string) error {
-	if !r.playlistRepo.isWritable(r.playlistId) {
+	if !r.isTracksEditable() {
 		return rest.ErrPermissionDenied
 	}
 	err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": id}})
@@ -172,7 +178,7 @@ func (r *playlistTrackRepository) Delete(id string) error {
 }
 
 func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
-	if !r.playlistRepo.isWritable(r.playlistId) {
+	if !r.isTracksEditable() {
 		return rest.ErrPermissionDenied
 	}
 	ids, err := r.getTracks()
