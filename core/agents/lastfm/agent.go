@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/agents/sessionkeys"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -14,12 +15,13 @@ import (
 )
 
 const (
-	lastFMAgentName = "lastfm"
+	lastFMAgentName    = "lastfm"
+	sessionKeyProperty = "LastFMSessionKey"
 )
 
 type lastfmAgent struct {
 	ds          model.DataStore
-	sessionKeys *sessionKeys
+	sessionKeys *sessionkeys.SessionKeys
 	apiKey      string
 	secret      string
 	lang        string
@@ -32,7 +34,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 		lang:        conf.Server.LastFM.Language,
 		apiKey:      conf.Server.LastFM.ApiKey,
 		secret:      conf.Server.LastFM.Secret,
-		sessionKeys: &sessionKeys{ds: ds},
+		sessionKeys: &sessionkeys.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
@@ -159,7 +161,7 @@ func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName, mb
 }
 
 func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
-	sk, err := l.sessionKeys.get(ctx, userId)
+	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
 		return scrobbler.ErrNotAuthorized
 	}
@@ -181,7 +183,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 }
 
 func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.Scrobble) error {
-	sk, err := l.sessionKeys.get(ctx, userId)
+	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
 		return scrobbler.ErrNotAuthorized
 	}
@@ -215,7 +217,7 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 }
 
 func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
-	sk, err := l.sessionKeys.get(ctx, userId)
+	sk, err := l.sessionKeys.Get(ctx, userId)
 	return err == nil && sk != ""
 }
 

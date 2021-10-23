@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/agents/sessionkeys"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -25,7 +26,7 @@ var tokenReceivedPage []byte
 type Router struct {
 	http.Handler
 	ds          model.DataStore
-	sessionKeys *sessionKeys
+	sessionKeys *sessionkeys.SessionKeys
 	client      *Client
 	apiKey      string
 	secret      string
@@ -36,7 +37,7 @@ func NewRouter(ds model.DataStore) *Router {
 		ds:          ds,
 		apiKey:      conf.Server.LastFM.ApiKey,
 		secret:      conf.Server.LastFM.Secret,
-		sessionKeys: &sessionKeys{ds: ds},
+		sessionKeys: &sessionkeys.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	r.Handler = r.routes()
 	hc := &http.Client{
@@ -65,7 +66,7 @@ func (s *Router) routes() http.Handler {
 func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]interface{}{"status": true}
 	u, _ := request.UserFrom(r.Context())
-	key, err := s.sessionKeys.get(r.Context(), u.ID)
+	key, err := s.sessionKeys.Get(r.Context(), u.ID)
 	if err != nil && err != model.ErrNotFound {
 		resp["error"] = err
 		resp["status"] = false
@@ -78,7 +79,7 @@ func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 
 func (s *Router) unlink(w http.ResponseWriter, r *http.Request) {
 	u, _ := request.UserFrom(r.Context())
-	err := s.sessionKeys.delete(r.Context(), u.ID)
+	err := s.sessionKeys.Delete(r.Context(), u.ID)
 	if err != nil {
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 	} else {
@@ -119,7 +120,7 @@ func (s *Router) fetchSessionKey(ctx context.Context, uid, token string) error {
 			"requestId", middleware.GetReqID(ctx), err)
 		return err
 	}
-	err = s.sessionKeys.put(ctx, uid, sessionKey)
+	err = s.sessionKeys.Put(ctx, uid, sessionKey)
 	if err != nil {
 		log.Error("Could not save LastFM session key", "userId", uid, "requestId", middleware.GetReqID(ctx), err)
 	}
