@@ -103,11 +103,14 @@ const Cover = withContentRect('bounds')(
     // Force height to be the same as the width determined by the GridList
     // noinspection JSSuspiciousNameCombination
     const classes = useCoverStyles({ height: contentRect.bounds.width })
-    const [, dragAlbumRef] = useDrag(() => ({
-      type: DraggableTypes.ALBUM,
-      item: { albumIds: [record.id] },
-      options: { dropEffect: 'copy' },
-    }))
+    const [, dragAlbumRef] = useDrag(
+      () => ({
+        type: DraggableTypes.ALBUM,
+        item: { albumIds: [record.id] },
+        options: { dropEffect: 'copy' },
+      }),
+      [record]
+    )
     return (
       <div ref={measureRef}>
         <div ref={dragAlbumRef}>
