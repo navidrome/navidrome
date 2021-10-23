@@ -10,7 +10,7 @@ import {
   required,
   useTranslate,
 } from 'react-admin'
-import { Title } from '../common'
+import { isSmartPlaylist, isWritable, Title } from '../common'
 
 const SyncFragment = ({ formData, variant, ...rest }) => {
   return (
@@ -27,16 +27,26 @@ const PlaylistTitle = ({ record }) => {
   return <Title subTitle={`${resourceName} "${record ? record.name : ''}"`} />
 }
 
-const PlaylistEdit = (props) => (
-  <Edit title={<PlaylistTitle />} {...props}>
-    <SimpleForm redirect="list" variant={'outlined'}>
+const PlaylistEditForm = (props) => {
+  const { record } = props
+  return (
+    <SimpleForm redirect="list" variant={'outlined'} {...props}>
       <TextInput source="name" validate={required()} />
       <TextInput multiline source="comment" />
-      <BooleanInput source="public" />
+      <BooleanInput
+        source="public"
+        disabled={!isWritable(record.owner) || isSmartPlaylist(record)}
+      />
       <FormDataConsumer>
         {(formDataProps) => <SyncFragment {...formDataProps} />}
       </FormDataConsumer>
     </SimpleForm>
+  )
+}
+
+const PlaylistEdit = (props) => (
+  <Edit title={<PlaylistTitle />} {...props}>
+    <PlaylistEditForm {...props} />
   </Edit>
 )
 

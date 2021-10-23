@@ -185,6 +185,12 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
+	// Never refresh other users' playlists
+	usr := loggedUser(r.ctx)
+	if pls.Owner != usr.UserName {
+		return false
+	}
+
 	log.Debug(r.ctx, "Refreshing smart playlist", "playlist", pls.Name, "id", pls.ID)
 	start := time.Now()
 

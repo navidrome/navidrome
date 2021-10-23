@@ -9,6 +9,7 @@ import {
   TextField,
   useUpdate,
   useNotify,
+  useRecordContext,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { useMediaQuery } from '@material-ui/core'
@@ -19,6 +20,7 @@ import {
   isWritable,
   useSelectedFields,
   useResourceRefresh,
+  isSmartPlaylist,
 } from '../common'
 import PlaylistListActions from './PlaylistListActions'
 
@@ -28,7 +30,8 @@ const PlaylistFilter = (props) => (
   </Filter>
 )
 
-const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
+const TogglePublicInput = ({ resource, source }) => {
+  const record = useRecordContext()
   const notify = useNotify()
   const [togglePublic] = useUpdate(
     resource,
@@ -51,20 +54,16 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
     e.stopPropagation()
   }
 
-  const canChange =
-    permissions === 'admin' ||
-    localStorage.getItem('username') === record['owner']
-
   return (
     <Switch
       checked={record[source]}
       onClick={handleClick}
-      disabled={!canChange}
+      disabled={!isWritable(record.owner) || isSmartPlaylist(record)}
     />
   )
 }
 
-const PlaylistList = ({ permissions, ...props }) => {
+const PlaylistList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   useResourceRefresh('playlist')
@@ -78,14 +77,10 @@ const PlaylistList = ({ permissions, ...props }) => {
         <DateField source="updatedAt" sortByOrder={'DESC'} />
       ),
       public: !isXsmall && (
-        <TogglePublicInput
-          source="public"
-          permissions={permissions}
-          sortByOrder={'DESC'}
-        />
+        <TogglePublicInput source="public" sortByOrder={'DESC'} />
       ),
     }
-  }, [isDesktop, isXsmall, permissions])
+  }, [isDesktop, isXsmall])
 
   const columns = useSelectedFields({
     resource: 'playlist',

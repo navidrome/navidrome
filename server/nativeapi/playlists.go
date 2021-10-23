@@ -176,6 +176,10 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 		}
 		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
 		err = tracksRepo.Reorder(id, newPos)
+		if err == rest.ErrPermissionDenied {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
