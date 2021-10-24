@@ -93,13 +93,9 @@ func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*mod
 }
 
 func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.Reader) (*model.Playlist, error) {
-	content, err := io.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
-
 	pls.Rules = &criteria.Criteria{}
-	err = json.Unmarshal(content, pls.Rules)
+	dec := json.NewDecoder(file)
+	err := dec.Decode(pls.Rules)
 	if err != nil {
 		log.Error(ctx, "Error parsing SmartPlaylist", "playlist", pls.Name, err)
 		return nil, err
