@@ -6,7 +6,7 @@ import (
 )
 
 var _ = Describe("WeightedRandomChooser", func() {
-	var w *weightedChooser
+	var w *WeightedChooser
 	BeforeEach(func() {
 		w = NewWeightedRandomChooser()
 		for i := 0; i < 10; i++ {

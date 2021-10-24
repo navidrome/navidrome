@@ -163,27 +163,36 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 		return nil, ctx.Err()
 	}
 
-	artists := model.Artists{artist.Artist}
-	artists = append(artists, artist.SimilarArtists...)
-
 	weightedSongs := utils.NewWeightedRandomChooser()
-	for _, a := range artists {
+	addArtist := func(a model.Artist, weightedSongs *utils.WeightedChooser, count, artistWeight int) error {
 		if utils.IsCtxDone(ctx) {
 			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
-			return nil, ctx.Err()
+			return ctx.Err()
 		}
 
 		topCount := utils.MaxInt(count, 20)
 		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Name: a.Name, Artist: a}, topCount)
 		if err != nil {
 			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)
-			continue
+			return nil
 		}
 
-		weight := topCount * 4
+		weight := topCount * (4 + artistWeight)
 		for _, mf := range topSongs {
 			weightedSongs.Put(mf, weight)
 			weight -= 4
+		}
+		return nil
+	}
+
+	err = addArtist(artist.Artist, weightedSongs, count, 10)
+	if err != nil {
+		return nil, err
+	}
+	for _, a := range artist.SimilarArtists {
+		err := addArtist(a, weightedSongs, count, 0)
+		if err != nil {
+			return nil, err
 		}
 	}
 
