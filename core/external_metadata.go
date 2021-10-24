@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/kennygrant/sanitize"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
@@ -242,6 +243,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 		if err == nil && len(mfs) > 0 {
 			return &mfs[0], nil
 		}
+		return e.findMatchingTrack(ctx, "", artistID, title)
 	}
 	mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
@@ -249,9 +251,10 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 				squirrel.Eq{"artist_id": artistID},
 				squirrel.Eq{"album_artist_id": artistID},
 			},
-			squirrel.Like{"title": title},
+			squirrel.Like{"order_title": strings.TrimSpace(sanitize.Accents(title))},
 		},
 		Sort: "starred desc, rating desc, year asc",
+		Max:  1,
 	})
 	if err != nil || len(mfs) == 0 {
 		return nil, model.ErrNotFound

@@ -35,6 +35,7 @@ type MediaFile struct {
 	SortAlbumName        string    `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
 	SortArtistName       string    `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
 	SortAlbumArtistName  string    `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
+	OrderTitle           string    `structs:"order_title" json:"orderTitle,omitempty"`
 	OrderAlbumName       string    `structs:"order_album_name" json:"orderAlbumName"`
 	OrderArtistName      string    `structs:"order_artist_name" json:"orderArtistName"`
 	OrderAlbumArtistName string    `structs:"order_album_artist_name" json:"orderAlbumArtistName"`

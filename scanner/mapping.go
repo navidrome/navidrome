@@ -31,6 +31,7 @@ func newMediaFileMapper(rootFolder string, genres model.GenreRepository) *mediaF
 	}
 }
 
+// TODO Move most of these mapping functions to setters in the model.MediaFile
 func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf := &model.MediaFile{}
 	mf.ID = s.trackID(md)
@@ -59,6 +60,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.SortAlbumName = md.SortAlbum()
 	mf.SortArtistName = md.SortArtist()
 	mf.SortAlbumArtistName = md.SortAlbumArtist()
+	mf.OrderTitle = strings.TrimSpace(sanitize.Accents(mf.Title))
 	mf.OrderAlbumName = sanitizeFieldForSorting(mf.Album)
 	mf.OrderArtistName = sanitizeFieldForSorting(mf.Artist)
 	mf.OrderAlbumArtistName = sanitizeFieldForSorting(mf.AlbumArtist)
