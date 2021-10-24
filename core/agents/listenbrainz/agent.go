@@ -85,11 +85,18 @@ func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrob
 	li.Timestamp = int(s.TimeStamp.Unix())
 	err = l.client.Scrobble(ctx, sk, li)
 
-	if err != nil {
-		log.Warn(ctx, "ListenBrainz Scrobble returned error", "track", s.Title, err)
-		return scrobbler.ErrUnrecoverable
+	if err == nil {
+		return nil
 	}
-	return nil
+	lbErr, isListenBrainzError := err.(*listenBrainzError)
+	if !isListenBrainzError {
+		log.Warn(ctx, "ListenBrainz Scrobble returned HTTP error", "track", s.Title, err)
+		return scrobbler.ErrRetryLater
+	}
+	if lbErr.Code == 500 || lbErr.Code == 503 {
+		return scrobbler.ErrRetryLater
+	}
+	return scrobbler.ErrUnrecoverable
 }
 
 func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) bool {
