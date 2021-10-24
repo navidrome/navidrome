@@ -28,7 +28,7 @@ type (
 )
 
 func walkDirTree(ctx context.Context, rootFolder string, results walkResults) error {
-	err := walkFolder(ctx, rootFolder, rootFolder, results)
+	err := walkFolder(ctx, rootFolder, rootFolder, results, nil)
 	if err != nil {
 		log.Error(ctx, "Error loading directory tree", err)
 	}
@@ -36,15 +36,16 @@ func walkDirTree(ctx context.Context, rootFolder string, results walkResults) er
 	return err
 }
 
-func walkFolder(ctx context.Context, rootPath string, currentFolder string, results walkResults) error {
+func walkFolder(ctx context.Context, rootPath string, currentFolder string, results walkResults, ignores []string) error {
 	// Look for .ndignore first
-	ignores := getIgnoreGlobs(currentFolder)
-	children, stats, err := loadDir(ctx, currentFolder, ignores)
+	newignores := getIgnoreGlobs(currentFolder)
+	newignores = append(newignores, ignores...)
+	children, stats, err := loadDir(ctx, currentFolder, newignores)
 	if err != nil {
 		return err
 	}
 	for _, c := range children {
-		err := walkFolder(ctx, rootPath, c, results)
+		err := walkFolder(ctx, rootPath, c, results, newignores)
 		if err != nil {
 			return err
 		}
@@ -81,10 +82,8 @@ func loadDir(ctx context.Context, dirPath string, ignores []string) ([]string, *
 	for _, entry := range dirEntries {
 		for _, ignore := range ignores {
 			if match, _ := zglob.Match(ignore, entry.Name()); match {
-				log.Trace(ctx, "ignoring", "entry", entry.Name(), "ignore", ignore)
 				continue
 			}
-			log.Trace(ctx, "NOT ignoring", "entry", entry.Name(), "ignore", ignore)
 		}
 		isDir, err := isDirOrSymlinkToDir(dirPath, entry)
 		// Skip invalid symlinks
