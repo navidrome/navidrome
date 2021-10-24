@@ -148,7 +148,7 @@ func (c *Client) makeRequest(method string, endpoint string, r *listenBrainzRequ
 	var response listenBrainzResponse
 	jsonErr := decoder.Decode(&response)
 	if resp.StatusCode != 200 && jsonErr != nil {
-		return nil, fmt.Errorf("ListenBrainz http status: (%d)", resp.StatusCode)
+		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
 	}
 	if jsonErr != nil {
 		return nil, jsonErr
