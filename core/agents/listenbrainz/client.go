@@ -68,7 +68,7 @@ type listenInfo struct {
 
 type trackMetadata struct {
 	Artist         string             `json:"artist_name,omitempty"`
-	Track          string             `json:"track_name,omitempty"`
+	Title          string             `json:"track_name,omitempty"`
 	Album          string             `json:"release_name,omitempty"`
 	AdditionalInfo additionalMetadata `json:"additional_info,omitempty"`
 }
@@ -78,7 +78,7 @@ type additionalMetadata struct {
 	MbzTrackID   string   `json:"track_mbid,omitempty"`
 	MbzArtistIDs []string `json:"artist_mbids,omitempty"`
 	MbzAlbumID   string   `json:"release_mbid,omitempty"`
-	Player       string   `json:"listening_from,omitempty"`
+	Player       string   `json:"-"`
 }
 
 func (c *Client) ValidateToken(ctx context.Context, apiKey string) (*listenBrainzResponse, error) {

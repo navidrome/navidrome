@@ -10,7 +10,6 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -43,17 +42,15 @@ func (l *listenBrainzAgent) AgentName() string {
 }
 
 func (l *listenBrainzAgent) formatListen(ctx context.Context, track *model.MediaFile) listenInfo {
-	player, _ := request.PlayerFrom(ctx)
 	li := listenInfo{
 		Track: trackMetadata{
 			Artist: track.Artist,
-			Track:  track.Title,
+			Title:  track.Title,
 			Album:  track.Album,
 			AdditionalInfo: additionalMetadata{
 				TrackNumber: track.TrackNumber,
 				MbzTrackID:  track.MbzTrackID,
 				MbzAlbumID:  track.MbzAlbumID,
-				Player:      player.Name,
 			},
 		},
 	}
