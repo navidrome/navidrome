@@ -206,7 +206,9 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		From("media_file").LeftJoin("annotation on (" +
 		"annotation.item_id = media_file.id" +
 		" AND annotation.item_type = 'media_file'" +
-		" AND annotation.user_id = '" + userId(r.ctx) + "')")
+		" AND annotation.user_id = '" + userId(r.ctx) + "')").
+		LeftJoin("media_file_genres ag on media_file.id = ag.media_file_id").
+		LeftJoin("genre on ag.genre_id = genre.id").GroupBy("media_file.id")
 	sql = r.addCriteria(sql, rules)
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sql)
 	c, err := r.executeSQL(insSql)

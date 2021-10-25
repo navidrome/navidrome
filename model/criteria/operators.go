@@ -99,7 +99,7 @@ func (af After) MarshalJSON() ([]byte, error) {
 type Contains map[string]interface{}
 
 func (ct Contains) ToSql() (sql string, args []interface{}, err error) {
-	lk := squirrel.ILike{}
+	lk := squirrel.Like{}
 	for f, v := range mapFields(ct) {
 		lk[f] = fmt.Sprintf("%%%s%%", v)
 	}
@@ -113,7 +113,7 @@ func (ct Contains) MarshalJSON() ([]byte, error) {
 type NotContains map[string]interface{}
 
 func (nct NotContains) ToSql() (sql string, args []interface{}, err error) {
-	lk := squirrel.NotILike{}
+	lk := squirrel.NotLike{}
 	for f, v := range mapFields(nct) {
 		lk[f] = fmt.Sprintf("%%%s%%", v)
 	}
@@ -127,7 +127,7 @@ func (nct NotContains) MarshalJSON() ([]byte, error) {
 type StartsWith map[string]interface{}
 
 func (sw StartsWith) ToSql() (sql string, args []interface{}, err error) {
-	lk := squirrel.ILike{}
+	lk := squirrel.Like{}
 	for f, v := range mapFields(sw) {
 		lk[f] = fmt.Sprintf("%s%%", v)
 	}
@@ -141,7 +141,7 @@ func (sw StartsWith) MarshalJSON() ([]byte, error) {
 type EndsWith map[string]interface{}
 
 func (sw EndsWith) ToSql() (sql string, args []interface{}, err error) {
-	lk := squirrel.ILike{}
+	lk := squirrel.Like{}
 	for f, v := range mapFields(sw) {
 		lk[f] = fmt.Sprintf("%%%s", v)
 	}
