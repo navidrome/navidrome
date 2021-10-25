@@ -267,7 +267,7 @@ func (r *playlistRepository) updatePlaylist(playlistId string, mediaFileIds []st
 	}
 
 	// Break the track list in chunks to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
-	chunks := utils.BreakUpStringSlice(mediaFileIds, 50)
+	chunks := utils.BreakUpStringSlice(mediaFileIds, 100)
 
 	// Add new tracks, chunk by chunk
 	pos := 1
