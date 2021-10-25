@@ -48,11 +48,11 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
         notify('message.listenBrainzLinkSuccess', 'success', {
           user: response.json.user,
         })
-        setLinked(response.json.status === true)
+        setLinked(true)
       })
       .catch((error) => {
         notify('message.listenBrainzLinkFailure', 'warning', {
-          error: error.body.error,
+          error: error.body?.error || error.message,
         })
         setLinked(false)
       })
