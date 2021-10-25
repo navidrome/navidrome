@@ -62,7 +62,7 @@ var _ = Describe("Criteria", func() {
 	It("generates valid SQL", func() {
 		sql, args, err := goObj.ToSql()
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
-		gomega.Expect(sql).To(gomega.Equal("(media_file.title ILIKE ? AND media_file.title NOT ILIKE ? AND (media_file.artist <> ? OR media_file.album = ?) AND (media_file.comment ILIKE ? AND (media_file.year >= ? AND media_file.year <= ?)))"))
+		gomega.Expect(sql).To(gomega.Equal("(media_file.title LIKE ? AND media_file.title NOT LIKE ? AND (media_file.artist <> ? OR media_file.album = ?) AND (media_file.comment LIKE ? AND (media_file.year >= ? AND media_file.year <= ?)))"))
 		gomega.Expect(args).To(gomega.ConsistOf("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990))
 	})
 
