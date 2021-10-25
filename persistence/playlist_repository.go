@@ -3,7 +3,6 @@ package persistence
 import (
 	"context"
 	"encoding/json"
-	"strconv"
 	"strings"
 	"time"
 
@@ -311,23 +310,23 @@ func (r *playlistRepository) updateStats(playlistId string) error {
 }
 
 func (r *playlistRepository) loadTracks(pls *model.Playlist) error {
-	tracksQuery := Select().From("media_file f").
+	tracksQuery := Select().From("playlist_tracks").
 		LeftJoin("annotation on ("+
-			"annotation.item_id = f.id"+
+			"annotation.item_id = media_file_id"+
 			" AND annotation.item_type = 'media_file'"+
 			" AND annotation.user_id = '"+userId(r.ctx)+"')").
-		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*").
-		Join("playlist_tracks t on t.media_file_id = f.id").
-		Where(Eq{"playlist_id": pls.ID}).OrderBy("t.id")
+		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*",
+			"f.id as media_file_id", "playlist_tracks.id as id").
+		Join("media_file f on f.id = media_file_id").
+		Where(Eq{"playlist_id": pls.ID}).OrderBy("playlist_tracks.id")
 	err := r.queryAll(tracksQuery, &pls.Tracks)
 	if err != nil {
 		log.Error(r.ctx, "Error loading playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
 	}
 	// Fix Track attributes
 	for i, t := range pls.Tracks {
-		pls.Tracks[i].ID = strconv.Itoa(i + 1) // (must be the position of the track in the list)
+		pls.Tracks[i].MediaFile.ID = t.MediaFileID
 		pls.Tracks[i].PlaylistID = pls.ID
-		pls.Tracks[i].MediaFileID = t.MediaFile.ID
 	}
 	return err
 }
