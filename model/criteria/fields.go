@@ -37,6 +37,7 @@ var fieldMap = map[string]string{
 	"channels":        "media_file.channels",
 	"genre":           "genre.name",
 	"loved":           "annotation.starred",
+	"dateLoved":       "annotation.starred_at",
 	"lastplayed":      "annotation.play_date",
 	"playcount":       "annotation.play_count",
 	"rating":          "annotation.rating",
