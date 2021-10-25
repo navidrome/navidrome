@@ -48,30 +48,23 @@ var _ = Describe("listenBrainzAgent", func() {
 				return element.(string)
 			}
 
-			lr := agent.formatListen(ctx, track)
+			lr := agent.formatListen(track)
 			Expect(lr).To(MatchAllFields(Fields{
-				"Timestamp": Equal(0),
-				"Track": MatchAllFields(Fields{
-					"Artist": Equal(track.Artist),
-					"Title":  Equal(track.Title),
-					"Album":  Equal(track.Album),
+				"ListenedAt": Equal(0),
+				"TrackMetadata": MatchAllFields(Fields{
+					"ArtistName":  Equal(track.Artist),
+					"TrackName":   Equal(track.Title),
+					"ReleaseName": Equal(track.Album),
 					"AdditionalInfo": MatchAllFields(Fields{
 						"TrackNumber": Equal(track.TrackNumber),
-						"MbzTrackID":  Equal(track.MbzTrackID),
-						"MbzAlbumID":  Equal(track.MbzAlbumID),
-						"MbzArtistIDs": MatchAllElements(idArtistId, Elements{
+						"TrackMbzID":  Equal(track.MbzTrackID),
+						"ReleaseMbID": Equal(track.MbzAlbumID),
+						"ArtistMbzIDs": MatchAllElements(idArtistId, Elements{
 							"mbz-789": Equal(track.MbzArtistID),
 						}),
-						"Player": BeEmpty(),
 					}),
 				}),
 			}))
-		})
-
-		It("doesn't fill MbzArtistIDs if the Track doesn't have one", func() {
-			track.MbzArtistID = ""
-			lr := agent.formatListen(ctx, track)
-			Expect(lr.Track.AdditionalInfo.MbzArtistIDs).To(BeEmpty())
 		})
 	})
 
@@ -114,7 +107,7 @@ var _ = Describe("listenBrainzAgent", func() {
 			err = decoder.Decode(&lr)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(lr.ListenInfo[0].Timestamp).To(Equal(int(sc.TimeStamp.Unix())))
+			Expect(lr.Payload[0].ListenedAt).To(Equal(int(sc.TimeStamp.Unix())))
 		})
 
 		It("returns ErrNotAuthorized if user is not linked", func() {

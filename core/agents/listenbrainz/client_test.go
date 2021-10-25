@@ -40,7 +40,7 @@ var _ = Describe("Client", func() {
 			res, err := client.ValidateToken(context.Background(), "LB-TOKEN")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Valid).To(Equal(true))
-			Expect(res.User).To(Equal("ListenBrainzUser"))
+			Expect(res.UserName).To(Equal("ListenBrainzUser"))
 		})
 	})
 
@@ -52,15 +52,15 @@ var _ = Describe("Client", func() {
 				StatusCode: 200,
 			}
 			li = listenInfo{
-				Track: trackMetadata{
-					Artist: "Track Artist",
-					Title:  "Track Title",
-					Album:  "Track Album",
-					AdditionalInfo: additionalMetadata{
+				TrackMetadata: trackMetadata{
+					ArtistName:  "Track Artist",
+					TrackName:   "Track Title",
+					ReleaseName: "Track Album",
+					AdditionalInfo: additionalInfo{
 						TrackNumber:  1,
-						MbzTrackID:   "mbz-123",
-						MbzArtistIDs: []string{"mbz-789"},
-						MbzAlbumID:   "mbz-456",
+						TrackMbzID:   "mbz-123",
+						ArtistMbzIDs: []string{"mbz-789"},
+						ReleaseMbID:  "mbz-456",
 					},
 				},
 			}
@@ -81,7 +81,7 @@ var _ = Describe("Client", func() {
 
 		Describe("Scrobble", func() {
 			BeforeEach(func() {
-				li.Timestamp = 1635000000
+				li.ListenedAt = 1635000000
 			})
 
 			It("formats the request properly", func() {

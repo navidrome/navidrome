@@ -41,21 +41,19 @@ func (l *listenBrainzAgent) AgentName() string {
 	return listenBrainzAgentName
 }
 
-func (l *listenBrainzAgent) formatListen(ctx context.Context, track *model.MediaFile) listenInfo {
+func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 	li := listenInfo{
-		Track: trackMetadata{
-			Artist: track.Artist,
-			Title:  track.Title,
-			Album:  track.Album,
-			AdditionalInfo: additionalMetadata{
-				TrackNumber: track.TrackNumber,
-				MbzTrackID:  track.MbzTrackID,
-				MbzAlbumID:  track.MbzAlbumID,
+		TrackMetadata: trackMetadata{
+			ArtistName:  track.Artist,
+			TrackName:   track.Title,
+			ReleaseName: track.Album,
+			AdditionalInfo: additionalInfo{
+				TrackNumber:  track.TrackNumber,
+				ArtistMbzIDs: []string{track.MbzArtistID},
+				TrackMbzID:   track.MbzTrackID,
+				ReleaseMbID:  track.MbzAlbumID,
 			},
 		},
-	}
-	if track.MbzArtistID != "" {
-		li.Track.AdditionalInfo.MbzArtistIDs = []string{track.MbzArtistID}
 	}
 	return li
 }
@@ -66,7 +64,7 @@ func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track
 		return scrobbler.ErrNotAuthorized
 	}
 
-	li := l.formatListen(ctx, track)
+	li := l.formatListen(track)
 	err = l.client.UpdateNowPlaying(ctx, sk, li)
 	if err != nil {
 		log.Warn(ctx, "ListenBrainz UpdateNowPlaying returned error", "track", track.Title, err)
@@ -81,8 +79,8 @@ func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrob
 		return scrobbler.ErrNotAuthorized
 	}
 
-	li := l.formatListen(ctx, &s.MediaFile)
-	li.Timestamp = int(s.TimeStamp.Unix())
+	li := l.formatListen(&s.MediaFile)
+	li.ListenedAt = int(s.TimeStamp.Unix())
 	err = l.client.Scrobble(ctx, sk, li)
 
 	if err == nil {

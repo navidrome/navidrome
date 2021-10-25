@@ -94,7 +94,7 @@ func (s *Router) link(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = rest.RespondWithJSON(w, http.StatusOK, map[string]interface{}{"status": resp.Valid, "user": resp.User})
+	_ = rest.RespondWithJSON(w, http.StatusOK, map[string]interface{}{"status": resp.Valid, "user": resp.UserName})
 }
 
 func (s *Router) unlink(w http.ResponseWriter, r *http.Request) {

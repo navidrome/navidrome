@@ -36,12 +36,12 @@ type Client struct {
 }
 
 type listenBrainzResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Error   string `json:"error"`
-	Status  string `json:"status"`
-	Valid   bool   `json:"valid"`
-	User    string `json:"user_name"`
+	Code     int    `json:"code"`
+	Message  string `json:"message"`
+	Error    string `json:"error"`
+	Status   string `json:"status"`
+	Valid    bool   `json:"valid"`
+	UserName string `json:"user_name"`
 }
 
 type listenBrainzRequest struct {
@@ -51,34 +51,33 @@ type listenBrainzRequest struct {
 
 type listenBrainzRequestBody struct {
 	ListenType listenType   `json:"listen_type,omitempty"`
-	ListenInfo []listenInfo `json:"payload,omitempty"`
+	Payload    []listenInfo `json:"payload,omitempty"`
 }
 
 type listenType string
 
 const (
-	Scrobble   listenType = "single"
-	NowPlaying listenType = "playing_now"
+	Single     listenType = "single"
+	PlayingNow listenType = "playing_now"
 )
 
 type listenInfo struct {
-	Timestamp int           `json:"listened_at,omitempty"`
-	Track     trackMetadata `json:"track_metadata,omitempty"`
+	ListenedAt    int           `json:"listened_at,omitempty"`
+	TrackMetadata trackMetadata `json:"track_metadata,omitempty"`
 }
 
 type trackMetadata struct {
-	Artist         string             `json:"artist_name,omitempty"`
-	Title          string             `json:"track_name,omitempty"`
-	Album          string             `json:"release_name,omitempty"`
-	AdditionalInfo additionalMetadata `json:"additional_info,omitempty"`
+	ArtistName     string         `json:"artist_name,omitempty"`
+	TrackName      string         `json:"track_name,omitempty"`
+	ReleaseName    string         `json:"release_name,omitempty"`
+	AdditionalInfo additionalInfo `json:"additional_info,omitempty"`
 }
 
-type additionalMetadata struct {
+type additionalInfo struct {
 	TrackNumber  int      `json:"tracknumber,omitempty"`
-	MbzTrackID   string   `json:"track_mbid,omitempty"`
-	MbzArtistIDs []string `json:"artist_mbids,omitempty"`
-	MbzAlbumID   string   `json:"release_mbid,omitempty"`
-	Player       string   `json:"-"`
+	TrackMbzID   string   `json:"track_mbid,omitempty"`
+	ArtistMbzIDs []string `json:"artist_mbids,omitempty"`
+	ReleaseMbID  string   `json:"release_mbid,omitempty"`
 }
 
 func (c *Client) ValidateToken(ctx context.Context, apiKey string) (*listenBrainzResponse, error) {
@@ -96,8 +95,8 @@ func (c *Client) UpdateNowPlaying(ctx context.Context, apiKey string, li listenI
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
 		Body: listenBrainzRequestBody{
-			ListenType: NowPlaying,
-			ListenInfo: []listenInfo{li},
+			ListenType: PlayingNow,
+			Payload:    []listenInfo{li},
 		},
 	}
 
@@ -115,8 +114,8 @@ func (c *Client) Scrobble(ctx context.Context, apiKey string, li listenInfo) err
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
 		Body: listenBrainzRequestBody{
-			ListenType: Scrobble,
-			ListenInfo: []listenInfo{li},
+			ListenType: Single,
+			Payload:    []listenInfo{li},
 		},
 	}
 	resp, err := c.makeRequest(http.MethodPost, "submit-listens", r)
