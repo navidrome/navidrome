@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/agents/sessionkeys"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -18,14 +18,14 @@ import (
 type Router struct {
 	http.Handler
 	ds          model.DataStore
-	sessionKeys *sessionkeys.SessionKeys
+	sessionKeys *agents.SessionKeys
 	client      *Client
 }
 
 func NewRouter(ds model.DataStore) *Router {
 	r := &Router{
 		ds:          ds,
-		sessionKeys: &sessionkeys.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
+		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	r.Handler = r.routes()
 	hc := &http.Client{

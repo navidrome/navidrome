@@ -6,7 +6,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/agents/sessionkeys"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -20,14 +20,14 @@ const (
 
 type listenBrainzAgent struct {
 	ds          model.DataStore
-	sessionKeys *sessionkeys.SessionKeys
+	sessionKeys *agents.SessionKeys
 	client      *Client
 }
 
 func listenBrainzConstructor(ds model.DataStore) *listenBrainzAgent {
 	l := &listenBrainzAgent{
 		ds:          ds,
-		sessionKeys: &sessionkeys.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
+		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,

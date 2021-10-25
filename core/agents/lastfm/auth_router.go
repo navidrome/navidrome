@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/agents/sessionkeys"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -26,7 +26,7 @@ var tokenReceivedPage []byte
 type Router struct {
 	http.Handler
 	ds          model.DataStore
-	sessionKeys *sessionkeys.SessionKeys
+	sessionKeys *agents.SessionKeys
 	client      *Client
 	apiKey      string
 	secret      string
@@ -37,7 +37,7 @@ func NewRouter(ds model.DataStore) *Router {
 		ds:          ds,
 		apiKey:      conf.Server.LastFM.ApiKey,
 		secret:      conf.Server.LastFM.Secret,
-		sessionKeys: &sessionkeys.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
+		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	r.Handler = r.routes()
 	hc := &http.Client{
