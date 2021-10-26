@@ -80,10 +80,15 @@ func loadDir(ctx context.Context, dirPath string, ignores []string) ([]string, *
 
 	dirEntries := fullReadDir(ctx, dir)
 	for _, entry := range dirEntries {
-		for _, ignore := range ignores {
-			if match, _ := zglob.Match(ignore, entry.Name()); match {
-				continue
+		ignore := false
+		for _, ign := range ignores {
+			if match, _ := zglob.Match(ign, entry.Name()); match {
+				ignore = true
+				break
 			}
+		}
+		if ignore {
+			continue
 		}
 		isDir, err := isDirOrSymlinkToDir(dirPath, entry)
 		// Skip invalid symlinks
