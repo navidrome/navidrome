@@ -82,7 +82,7 @@ func (s *Router) link(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if payload.Token == "" {
-		http.Error(w, "Token is required", http.StatusBadRequest)
+		_ = rest.RespondWithError(w, http.StatusBadRequest, "Token is required")
 		return
 	}
 

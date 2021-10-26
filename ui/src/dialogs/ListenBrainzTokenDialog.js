@@ -1,4 +1,4 @@
-import React, { createRef, useState } from 'react'
+import React, { createRef, useCallback, useState } from 'react'
 import {
   Button,
   Dialog,
@@ -32,36 +32,34 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
     inputRef.current.focus()
   }
 
-  const handleKeyPress = (event) => {
-    if (event.key === 'Enter') {
-      handleSave(event)
-    }
-  }
-
-  const handleSave = (event) => {
-    setChecking(true)
-    httpClient('/api/listenbrainz/link', {
-      method: 'PUT',
-      body: JSON.stringify({ token: token }),
-    })
-      .then((response) => {
-        notify('message.listenBrainzLinkSuccess', 'success', {
-          user: response.json.user,
+  const handleSave = useCallback(
+    (event) => {
+      setChecking(true)
+      httpClient('/api/listenbrainz/link', {
+        method: 'PUT',
+        body: JSON.stringify({ token: token }),
+      })
+        .then((response) => {
+          notify('message.listenBrainzLinkSuccess', 'success', {
+            user: response.json.user,
+          })
+          setLinked(true)
+          setToken('')
         })
-        setLinked(true)
-      })
-      .catch((error) => {
-        notify('message.listenBrainzLinkFailure', 'warning', {
-          error: error.body?.error || error.message,
+        .catch((error) => {
+          notify('message.listenBrainzLinkFailure', 'warning', {
+            error: error.body?.error || error.message,
+          })
+          setLinked(false)
         })
-        setLinked(false)
-      })
-      .finally(() => {
-        setChecking(false)
-        dispatch(closeListenBrainzTokenDialog())
-        event.stopPropagation()
-      })
-  }
+        .finally(() => {
+          setChecking(false)
+          dispatch(closeListenBrainzTokenDialog())
+          event.stopPropagation()
+        })
+    },
+    [dispatch, notify, setLinked, token]
+  )
 
   const handleClickClose = (event) => {
     if (!checking) {
@@ -69,6 +67,15 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
       event.stopPropagation()
     }
   }
+
+  const handleKeyPress = useCallback(
+    (event) => {
+      if (event.key === 'Enter' && token !== '') {
+        handleSave(event)
+      }
+    },
+    [token, handleSave]
+  )
 
   return (
     <>
@@ -95,6 +102,7 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
             </Link>
           </DialogContentText>
           <TextField
+            value={token}
             onKeyPress={handleKeyPress}
             onChange={handleChange}
             disabled={checking}
@@ -117,7 +125,7 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
           </Button>
           <Button
             onClick={handleSave}
-            disabled={checking}
+            disabled={checking || token === ''}
             color="primary"
             data-testid="listenbrainz-token-save"
           >
