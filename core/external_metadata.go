@@ -9,7 +9,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/kennygrant/sanitize"
-	"github.com/microcosm-cc/bluemonday"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
@@ -284,8 +283,7 @@ func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.Ar
 	if bio == "" || err != nil {
 		return
 	}
-	policy := bluemonday.UGCPolicy()
-	bio = policy.Sanitize(bio)
+	bio = utils.SanitizeText(bio)
 	bio = strings.ReplaceAll(bio, "\n", " ")
 	artist.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
 }
