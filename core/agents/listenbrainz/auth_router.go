@@ -1,6 +1,7 @@
 package listenbrainz
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -15,10 +16,16 @@ import (
 	"github.com/navidrome/navidrome/server"
 )
 
+type sessionKeysRepo interface {
+	Put(ctx context.Context, userId, sessionKey string) error
+	Get(ctx context.Context, userId string) (string, error)
+	Delete(ctx context.Context, userId string) error
+}
+
 type Router struct {
 	http.Handler
 	ds          model.DataStore
-	sessionKeys *agents.SessionKeys
+	sessionKeys sessionKeysRepo
 	client      *Client
 }
 
@@ -72,6 +79,10 @@ func (s *Router) link(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if payload.Token == "" {
+		http.Error(w, "Token is required", http.StatusBadRequest)
 		return
 	}
 
