@@ -116,10 +116,12 @@ func (r *playlistRepository) GetWithTracks(id string) (*model.Playlist, error) {
 		return nil, err
 	}
 	r.refreshSmartPlaylist(pls)
-	if err := r.loadTracks(pls); err != nil {
+	tracks, err := r.loadTracks(Select().From("playlist_tracks"), id)
+	if err != nil {
 		log.Error(r.ctx, "Error loading playlist tracks ", "playlist", pls.Name, "id", pls.ID, err)
 		return nil, err
 	}
+	pls.Tracks = tracks
 	return pls, nil
 }
 
@@ -311,26 +313,21 @@ func (r *playlistRepository) RefreshStatus(playlistId string) error {
 	return err
 }
 
-func (r *playlistRepository) loadTracks(pls *model.Playlist) error {
-	tracksQuery := Select().From("playlist_tracks").
-		LeftJoin("annotation on ("+
-			"annotation.item_id = media_file_id"+
-			" AND annotation.item_type = 'media_file'"+
-			" AND annotation.user_id = '"+userId(r.ctx)+"')").
-		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*",
-			"f.id as media_file_id", "playlist_tracks.id as id").
+func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.PlaylistTracks, error) {
+	tracksQuery := sel.
+		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*", "playlist_tracks.*").
+		LeftJoin("annotation on (" +
+			"annotation.item_id = media_file_id" +
+			" AND annotation.item_type = 'media_file'" +
+			" AND annotation.user_id = '" + userId(r.ctx) + "')").
 		Join("media_file f on f.id = media_file_id").
-		Where(Eq{"playlist_id": pls.ID}).OrderBy("playlist_tracks.id")
-	err := r.queryAll(tracksQuery, &pls.Tracks)
-	if err != nil {
-		log.Error(r.ctx, "Error loading playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
+		Where(Eq{"playlist_id": id}).OrderBy("playlist_tracks.id")
+	var tracks model.PlaylistTracks
+	err := r.queryAll(tracksQuery, &tracks)
+	for i, t := range tracks {
+		tracks[i].MediaFile.ID = t.MediaFileID
 	}
-	// Fix Track attributes
-	for i, t := range pls.Tracks {
-		pls.Tracks[i].MediaFile.ID = t.MediaFileID
-		pls.Tracks[i].PlaylistID = pls.ID
-	}
-	return err
+	return tracks, err
 }
 
 func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {
