@@ -33,11 +33,10 @@ func (pls Playlist) IsSmartPlaylist() bool {
 }
 
 func (pls Playlist) MediaFiles() MediaFiles {
-	mfs := make(MediaFiles, len(pls.Tracks))
-	for i, t := range pls.Tracks {
-		mfs[i] = t.MediaFile
+	if len(pls.Tracks) == 0 {
+		return nil
 	}
-	return mfs
+	return pls.Tracks.MediaFiles()
 }
 
 func (pls *Playlist) RemoveTracks(idxToRemove []int) {
@@ -103,6 +102,14 @@ type PlaylistTrack struct {
 }
 
 type PlaylistTracks []PlaylistTrack
+
+func (plt PlaylistTracks) MediaFiles() MediaFiles {
+	mfs := make(MediaFiles, len(plt))
+	for i, t := range plt {
+		mfs[i] = t.MediaFile
+	}
+	return mfs
+}
 
 type PlaylistTrackRepository interface {
 	ResourceRepository
