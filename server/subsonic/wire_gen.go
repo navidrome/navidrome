@@ -41,7 +41,8 @@ func initMediaAnnotationController(router *Router) *MediaAnnotationController {
 
 func initPlaylistsController(router *Router) *PlaylistsController {
 	dataStore := router.DataStore
-	playlistsController := NewPlaylistsController(dataStore)
+	playlists := router.Playlists
+	playlistsController := NewPlaylistsController(dataStore, playlists)
 	return playlistsController
 }
 
@@ -106,5 +107,6 @@ var allProviders = wire.NewSet(
 		"Scanner",
 		"Broker",
 		"Scrobbler",
+		"Playlists",
 	),
 )

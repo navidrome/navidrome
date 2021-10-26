@@ -21,6 +21,7 @@ import (
 
 type Playlists interface {
 	ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error)
+	Update(ctx context.Context, playlistId string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error
 }
 
 type playlists struct {
@@ -183,4 +184,50 @@ func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	}
 	// Request more data.
 	return 0, nil, nil
+}
+
+func (s *playlists) Update(ctx context.Context, playlistId string,
+	name *string, comment *string, public *bool,
+	idsToAdd []string, idxToRemove []int) error {
+
+	needsInfoUpdate := name != nil || comment != nil || public != nil
+	needsTrackRefresh := len(idxToRemove) > 0
+
+	return s.ds.WithTx(func(tx model.DataStore) error {
+		var pls *model.Playlist
+		var err error
+		repo := tx.Playlist(ctx)
+		if needsTrackRefresh {
+			pls, err = repo.GetWithTracks(playlistId)
+			pls.RemoveTracks(idxToRemove)
+			pls.AddTracks(idsToAdd)
+		} else {
+			if len(idsToAdd) > 0 {
+				_, err = repo.Tracks(playlistId).Add(idsToAdd)
+				if err != nil {
+					return err
+				}
+			}
+			if needsInfoUpdate {
+				pls, err = repo.Get(playlistId)
+			}
+		}
+		if err != nil {
+			return err
+		}
+		if !needsTrackRefresh && !needsInfoUpdate {
+			return nil
+		}
+
+		if name != nil {
+			pls.Name = *name
+		}
+		if comment != nil {
+			pls.Comment = *comment
+		}
+		if public != nil {
+			pls.Public = *public
+		}
+		return repo.Put(pls)
+	})
 }

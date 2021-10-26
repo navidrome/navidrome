@@ -32,13 +32,15 @@ type Router struct {
 	Archiver         core.Archiver
 	Players          core.Players
 	ExternalMetadata core.ExternalMetadata
+	Playlists        core.Playlists
 	Scanner          scanner.Scanner
 	Broker           events.Broker
 	Scrobbler        scrobbler.PlayTracker
 }
 
-func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver, players core.Players,
-	externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker, scrobbler scrobbler.PlayTracker) *Router {
+func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
+	players core.Players, externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker,
+	playlists core.Playlists, scrobbler scrobbler.PlayTracker) *Router {
 	r := &Router{
 		DataStore:        ds,
 		Artwork:          artwork,
@@ -46,6 +48,7 @@ func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, 
 		Archiver:         archiver,
 		Players:          players,
 		ExternalMetadata: externalMetadata,
+		Playlists:        playlists,
 		Scanner:          scanner,
 		Broker:           broker,
 		Scrobbler:        scrobbler,

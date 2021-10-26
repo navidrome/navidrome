@@ -90,6 +90,7 @@ type PlaylistRepository interface {
 	GetWithTracks(id string) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	FindByPath(path string) (*Playlist, error)
+	RefreshStatus(playlistId string) error
 	Delete(id string) error
 	Tracks(playlistId string) PlaylistTrackRepository
 }
