@@ -189,7 +189,6 @@ func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 func (s *playlists) Update(ctx context.Context, playlistId string,
 	name *string, comment *string, public *bool,
 	idsToAdd []string, idxToRemove []int) error {
-
 	needsInfoUpdate := name != nil || comment != nil || public != nil
 	needsTrackRefresh := len(idxToRemove) > 0
 
