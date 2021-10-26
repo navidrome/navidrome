@@ -89,10 +89,6 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 	}
 	pls.UpdatedAt = time.Now()
 
-	// Save tracks for later and set it to nil, to avoid trying to save it to the DB
-	tracks := pls.Tracks
-	pls.Tracks = nil
-
 	id, err := r.put(pls.ID, pls)
 	if err != nil {
 		return err
@@ -104,7 +100,7 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 		return nil
 	}
 	// Only update tracks if they were specified
-	if tracks == nil {
+	if len(pls.Tracks) == 0 {
 		return nil
 	}
 	return r.updateTracks(id, p.MediaFiles())
@@ -405,13 +401,22 @@ func (r *playlistRepository) removeOrphans() error {
 		}
 		log.Debug(r.ctx, "Deleted tracks, now reordering", "id", pl.Id, "name", pl.Name, "deleted", n)
 
-		// To reorganize the playlist, just add an empty list of new tracks
-		tracks := r.Tracks(pl.Id)
-		if _, err := tracks.Add(nil); err != nil {
+		// Renumber the playlist if any track was removed
+		if err := r.renumber(pl.Id); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (r *playlistRepository) renumber(id string) error {
+	var ids []string
+	sql := Select("media_file_id").From("playlist_tracks").Where(Eq{"playlist_id": id}).OrderBy("id")
+	err := r.queryAll(sql, &ids)
+	if err != nil {
+		return err
+	}
+	return r.updatePlaylist(id, ids)
 }
 
 func (r *playlistRepository) isWritable(playlistId string) bool {

@@ -69,7 +69,6 @@ func (c *PlaylistsController) create(ctx context.Context, playlistId, name strin
 		var pls *model.Playlist
 		var err error
 
-		// If playlistID is present, override tracks
 		if playlistId != "" {
 			pls, err = tx.Playlist(ctx).Get(playlistId)
 			if err != nil {
