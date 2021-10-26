@@ -56,17 +56,7 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
-	sel := r.newSelect(options...).
-		LeftJoin("annotation on ("+
-			"annotation.item_id = media_file_id"+
-			" AND annotation.item_type = 'media_file'"+
-			" AND annotation.user_id = '"+userId(r.ctx)+"')").
-		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*", "playlist_tracks.*").
-		Join("media_file f on f.id = media_file_id").
-		Where(Eq{"playlist_id": r.playlistId})
-	res := model.PlaylistTracks{}
-	err := r.queryAll(sel, &res)
-	return res, err
+	return r.playlistRepo.loadTracks(r.newSelect(options...), r.playlistId)
 }
 
 func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
