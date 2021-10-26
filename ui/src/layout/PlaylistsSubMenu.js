@@ -78,7 +78,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   const myPlaylists = []
   const sharedPlaylists = []
 
-  if (loaded) {
+  if (loaded && data) {
     const allPlaylists = Object.keys(data).map((id) => data[id])
 
     allPlaylists.forEach((pls) => {
