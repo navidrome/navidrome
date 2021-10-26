@@ -56,7 +56,20 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
-	return r.playlistRepo.loadTracks(r.newSelect(options...), r.playlistId)
+	tracks, err := r.playlistRepo.loadTracks(r.newSelect(options...), r.playlistId)
+	if err != nil {
+		return nil, err
+	}
+	mfs := tracks.MediaFiles()
+	err = r.loadMediaFileGenres(&mfs)
+	if err != nil {
+		log.Error(r.ctx, "Error loading genres for playlist", "playlist", r.playlist.Name, "id", r.playlist.ID, err)
+		return nil, err
+	}
+	for i, mf := range mfs {
+		tracks[i].MediaFile.Genres = mf.Genres
+	}
+	return tracks, err
 }
 
 func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
