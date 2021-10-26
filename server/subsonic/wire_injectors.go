@@ -29,6 +29,7 @@ var allProviders = wire.NewSet(
 		"Scanner",
 		"Broker",
 		"Scrobbler",
+		"Playlists",
 	),
 )
 

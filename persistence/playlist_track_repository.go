@@ -92,18 +92,19 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
 
 	if len(mediaFileIds) > 0 {
 		log.Debug(r.ctx, "Adding songs to playlist", "playlistId", r.playlistId, "mediaFileIds", mediaFileIds)
+	} else {
+		return 0, nil
 	}
 
-	ids, err := r.getTracks()
+	// Get next pos (ID) in playlist
+	sql := r.newSelect().Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId})
+	var res struct{ Max int }
+	err := r.queryOne(sql, &res)
 	if err != nil {
 		return 0, err
 	}
 
-	// Append new tracks
-	ids = append(ids, mediaFileIds...)
-
-	// Update tracks and playlist
-	return len(mediaFileIds), r.playlistRepo.updatePlaylist(r.playlistId, ids)
+	return len(mediaFileIds), r.playlistRepo.addTracks(r.playlistId, res.Max+1, mediaFileIds)
 }
 
 func (r *playlistTrackRepository) AddAlbums(albumIds []string) (int, error) {

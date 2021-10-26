@@ -218,7 +218,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	}
 
 	// Update playlist stats
-	err = r.updateStats(pls.ID)
+	err = r.RefreshStatus(pls.ID)
 	if err != nil {
 		log.Error(r.ctx, "Error updating smart playlist stats", "playlist", pls.Name, "id", pls.ID, err)
 		return false
@@ -268,28 +268,32 @@ func (r *playlistRepository) updatePlaylist(playlistId string, mediaFileIds []st
 		return err
 	}
 
+	return r.addTracks(playlistId, 1, mediaFileIds)
+}
+
+func (r *playlistRepository) addTracks(playlistId string, startingPos int, mediaFileIds []string) error {
 	// Break the track list in chunks to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
-	chunks := utils.BreakUpStringSlice(mediaFileIds, 100)
+	chunks := utils.BreakUpStringSlice(mediaFileIds, 200)
 
 	// Add new tracks, chunk by chunk
-	pos := 1
+	pos := startingPos
 	for i := range chunks {
 		ins := Insert("playlist_tracks").Columns("playlist_id", "media_file_id", "id")
 		for _, t := range chunks[i] {
 			ins = ins.Values(playlistId, t, pos)
 			pos++
 		}
-		_, err = r.executeSQL(ins)
+		_, err := r.executeSQL(ins)
 		if err != nil {
 			return err
 		}
 	}
 
-	return r.updateStats(playlistId)
+	return r.RefreshStatus(playlistId)
 }
 
-// updateStats updates total playlist duration, size and count
-func (r *playlistRepository) updateStats(playlistId string) error {
+// RefreshStatus updates total playlist duration, size and count
+func (r *playlistRepository) RefreshStatus(playlistId string) error {
 	statsSql := Select("sum(duration) as duration", "sum(size) as size", "count(*) as count").
 		From("media_file").
 		Join("playlist_tracks f on f.media_file_id = media_file.id").

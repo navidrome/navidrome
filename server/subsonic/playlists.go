@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -13,11 +14,12 @@ import (
 )
 
 type PlaylistsController struct {
-	ds model.DataStore
+	ds  model.DataStore
+	pls core.Playlists
 }
 
-func NewPlaylistsController(ds model.DataStore) *PlaylistsController {
-	return &PlaylistsController{ds: ds}
+func NewPlaylistsController(ds model.DataStore, pls core.Playlists) *PlaylistsController {
+	return &PlaylistsController{ds: ds, pls: pls}
 }
 
 func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -124,30 +126,6 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 	return newResponse(), nil
 }
 
-func (c *PlaylistsController) update(ctx context.Context, playlistId string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error {
-	return c.ds.WithTx(func(tx model.DataStore) error {
-		pls, err := tx.Playlist(ctx).GetWithTracks(playlistId)
-		if err != nil {
-			return err
-		}
-
-		if name != nil {
-			pls.Name = *name
-		}
-		if comment != nil {
-			pls.Comment = *comment
-		}
-		if public != nil {
-			pls.Public = *public
-		}
-
-		pls.RemoveTracks(idxToRemove)
-		pls.AddTracks(idsToAdd)
-
-		return tx.Playlist(ctx).Put(pls)
-	})
-}
-
 func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	playlistId, err := requiredParamString(r, "playlistId")
 	if err != nil {
@@ -176,7 +154,7 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	log.Trace(r, fmt.Sprintf("-- Adding: '%v'", songsToAdd))
 	log.Trace(r, fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
-	err = c.update(r.Context(), playlistId, plsName, comment, public, songsToAdd, songIndexesToRemove)
+	err = c.pls.Update(r.Context(), playlistId, plsName, comment, public, songsToAdd, songIndexesToRemove)
 	if err == model.ErrNotAuthorized {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
