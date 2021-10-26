@@ -39,9 +39,10 @@ const HelpTable = (props) => {
                     <TableCell align="left">
                       {sequences.map(({ sequence }) => (
                         <Chip
-                          label={<kbd key={sequence}>{sequence}</kbd>}
+                          label={<kbd>{sequence}</kbd>}
                           size="small"
                           variant={'outlined'}
+                          key={sequence}
                         />
                       ))}
                     </TableCell>
