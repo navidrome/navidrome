@@ -84,20 +84,34 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		playlistId := utils.ParamString(r, ":playlistId")
-		id := r.URL.Query().Get(":id")
-		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
-		err := tracksRepo.Delete(id)
-		if err == model.ErrNotFound {
-			log.Warn("Track not found in playlist", "playlistId", playlistId, "id", id)
+		ids := r.URL.Query()["id"]
+		err := ds.WithTx(func(tx model.DataStore) error {
+			tracksRepo := tx.Playlist(r.Context()).Tracks(playlistId)
+			return tracksRepo.Delete(ids...)
+		})
+		if len(ids) == 1 && err == model.ErrNotFound {
+			log.Warn(r.Context(), "Track not found in playlist", "playlistId", playlistId, "id", ids[0])
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Error("Error deleting track from playlist", "playlistId", playlistId, "id", id, err)
+			log.Error(r.Context(), "Error deleting tracks from playlist", "playlistId", playlistId, "ids", ids, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		_, err = w.Write([]byte("{}"))
+		var resp []byte
+		if len(ids) == 1 {
+			resp = []byte(`{"id":"` + ids[0] + `"}`)
+		} else {
+			resp, err = json.Marshal(&struct {
+				Ids []string `json:"ids"`
+			}{Ids: ids})
+			if err != nil {
+				log.Error(r.Context(), "Error marshaling delete response", "playlistId", playlistId, "ids", ids, err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+		_, err = w.Write(resp)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

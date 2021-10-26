@@ -164,18 +164,16 @@ func (r *playlistTrackRepository) getTracks() ([]string, error) {
 	return ids, nil
 }
 
-func (r *playlistTrackRepository) Delete(id string) error {
+func (r *playlistTrackRepository) Delete(ids ...string) error {
 	if !r.isTracksEditable() {
 		return rest.ErrPermissionDenied
 	}
-	err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": id}})
+	err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": ids}})
 	if err != nil {
 		return err
 	}
 
-	// To renumber the playlist
-	_, err = r.Add(nil)
-	return err
+	return r.playlistRepo.renumber(r.playlistId)
 }
 
 func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
