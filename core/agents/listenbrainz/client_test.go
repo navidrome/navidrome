@@ -3,6 +3,7 @@ package listenbrainz
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -18,6 +19,21 @@ var _ = Describe("Client", func() {
 	BeforeEach(func() {
 		httpClient = &tests.FakeHttpClient{}
 		client = NewClient(httpClient)
+	})
+
+	Describe("listenBrainzResponse", func() {
+		It("parses a response properly", func() {
+			var response listenBrainzResponse
+			err := json.Unmarshal([]byte(`{"code": 200, "message": "Message", "user_name": "UserName", "valid": true, "status": "ok", "error": "Error"}`), &response)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.Code).To(Equal(200))
+			Expect(response.Message).To(Equal("Message"))
+			Expect(response.UserName).To(Equal("UserName"))
+			Expect(response.Valid).To(BeTrue())
+			Expect(response.Status).To(Equal("ok"))
+			Expect(response.Error).To(Equal("Error"))
+		})
 	})
 
 	Describe("ValidateToken", func() {
