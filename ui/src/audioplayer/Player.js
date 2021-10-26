@@ -146,7 +146,6 @@ const Player = () => {
         document.title = `${song.title} - ${song.artist} - Navidrome`
         subsonic.nowPlaying(info.trackId)
         setPreload(false)
-        setScrobbled(false)
         if (config.gaTrackingId) {
           ReactGA.event({
             category: 'Player',
@@ -166,6 +165,12 @@ const Player = () => {
     [dispatch, showNotifications]
   )
 
+  const onAudioPlayTrackChange = useCallback(() => {
+    if (scrobbled) {
+      setScrobbled(false)
+    }
+  }, [scrobbled])
+
   const onAudioPause = useCallback(
     (info) => dispatch(currentPlaying(info)),
     [dispatch]
@@ -173,6 +178,7 @@ const Player = () => {
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
+      setScrobbled(false)
       dispatch(currentPlaying(info))
       dataProvider
         .getOne('keepalive', { id: info.trackId })
@@ -212,6 +218,7 @@ const Player = () => {
         onAudioVolumeChange={onAudioVolumeChange}
         onAudioProgress={onAudioProgress}
         onAudioPlay={onAudioPlay}
+        onAudioPlayTrackChange={onAudioPlayTrackChange}
         onAudioPause={onAudioPause}
         onAudioEnded={onAudioEnded}
         onCoverClick={onCoverClick}
