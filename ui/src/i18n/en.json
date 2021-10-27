@@ -121,7 +121,7 @@
                 "userName": "Username",
                 "lastSeen": "Last Seen At",
                 "reportRealPath": "Report Real Path",
-                "scrobbleEnabled": "Send Scrobbles to Last.fm"
+                "scrobbleEnabled": "Send Scrobbles to external services"
             }
         },
         "transcoding": {
