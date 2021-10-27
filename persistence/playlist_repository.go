@@ -322,7 +322,7 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 			" AND annotation.user_id = '" + userId(r.ctx) + "')").
 		Join("media_file f on f.id = media_file_id").
 		Where(Eq{"playlist_id": id}).OrderBy("playlist_tracks.id")
-	var tracks model.PlaylistTracks
+	tracks := model.PlaylistTracks{}
 	err := r.queryAll(tracksQuery, &tracks)
 	for i, t := range tracks {
 		tracks[i].MediaFile.ID = t.MediaFileID
