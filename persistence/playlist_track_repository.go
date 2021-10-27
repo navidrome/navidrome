@@ -101,68 +101,53 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
 
 	// Get next pos (ID) in playlist
 	sql := r.newSelect().Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId})
-	var res struct{ Max int }
-	err := r.queryOne(sql, &res)
+	var max int
+	err := r.queryOne(sql, &max)
 	if err != nil {
 		return 0, err
 	}
 
-	return len(mediaFileIds), r.playlistRepo.addTracks(r.playlistId, res.Max+1, mediaFileIds)
+	return len(mediaFileIds), r.playlistRepo.addTracks(r.playlistId, max+1, mediaFileIds)
 }
 
-func (r *playlistTrackRepository) AddAlbums(albumIds []string) (int, error) {
-	sq := Select("id").From("media_file").Where(Eq{"album_id": albumIds})
-	return r.addMediaFileIds(sq)
-}
-
-func (r *playlistTrackRepository) AddArtists(artistIds []string) (int, error) {
-	sq := Select("id").From("media_file").Where(Eq{"album_artist_id": artistIds})
-	return r.addMediaFileIds(sq)
-}
-
-func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
-	sq := Select("id").From("media_file")
-	if len(discs) == 0 {
-		return 0, nil
-	}
-	var clauses []Sqlizer
-	for _, d := range discs {
-		clauses = append(clauses, And{Eq{"album_id": d.AlbumID}, Eq{"disc_number": d.DiscNumber}})
-	}
-	sq = sq.Where(Or(clauses))
-	return r.addMediaFileIds(sq)
-}
-
-func (r *playlistTrackRepository) addMediaFileIds(sq SelectBuilder) (int, error) {
-	var res []struct{ Id string }
-	sq = sq.OrderBy("album_artist, album, disc_number, track_number")
-	err := r.queryAll(sq, &res)
+func (r *playlistTrackRepository) addMediaFileIds(cond Sqlizer) (int, error) {
+	sq := Select("id").From("media_file").Where(cond).OrderBy("album_artist, album, disc_number, track_number")
+	var ids []string
+	err := r.queryAll(sq, &ids)
 	if err != nil {
 		log.Error(r.ctx, "Error getting tracks to add to playlist", err)
 		return 0, err
 	}
-	if len(res) == 0 {
-		return 0, nil
-	}
-	var ids []string
-	for _, r := range res {
-		ids = append(ids, r.Id)
-	}
 	return r.Add(ids)
 }
 
+func (r *playlistTrackRepository) AddAlbums(albumIds []string) (int, error) {
+	return r.addMediaFileIds(Eq{"album_id": albumIds})
+}
+
+func (r *playlistTrackRepository) AddArtists(artistIds []string) (int, error) {
+	return r.addMediaFileIds(Eq{"album_artist_id": artistIds})
+}
+
+func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
+	if len(discs) == 0 {
+		return 0, nil
+	}
+	var clauses Or
+	for _, d := range discs {
+		clauses = append(clauses, And{Eq{"album_id": d.AlbumID}, Eq{"disc_number": d.DiscNumber}})
+	}
+	return r.addMediaFileIds(clauses)
+}
+
+// Get ids from all current tracks
 func (r *playlistTrackRepository) getTracks() ([]string, error) {
-	// Get all current tracks
 	all := r.newSelect().Columns("media_file_id").Where(Eq{"playlist_id": r.playlistId}).OrderBy("id")
-	var tracks model.PlaylistTracks
-	err := r.queryAll(all, &tracks)
+	var ids []string
+	err := r.queryAll(all, &ids)
 	if err != nil {
 		log.Error("Error querying current tracks from playlist", "playlistId", r.playlistId, err)
 		return nil, err
-	}
-	ids := make([]string, len(tracks))
-	for i := range tracks {
-		ids[i] = tracks[i].MediaFileID
 	}
 	return ids, nil
 }
