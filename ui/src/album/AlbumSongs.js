@@ -120,11 +120,11 @@ const AlbumSongs = (props) => {
         />
       ),
       playCount: isDesktop && (
-        <NumberField source="playCount" sortByOrder={'DESC'} />
+        <NumberField source="playCount" sortable={false} />
       ),
-      playDate: <DateField source="playDate" sortByOrder={'DESC'} showTime />,
+      playDate: <DateField source="playDate" sortable={false} showTime />,
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
-      channels: isDesktop && <NumberField source="channels" sortable={true} />,
+      channels: isDesktop && <NumberField source="channels" sortable={false} />,
       bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
       rating: isDesktop && config.enableStarRating && (
         <RatingField
