@@ -7,7 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 	"sync"
 
@@ -33,7 +33,7 @@ var (
 func newTranslationRepository(context.Context) rest.Repository {
 	dir := utils.MergeFS{
 		Base:    resources.FS,
-		Overlay: os.DirFS(filepath.Join(conf.Server.DataFolder, "resources")),
+		Overlay: os.DirFS(path.Join(conf.Server.DataFolder, "resources")),
 	}
 	if err := loadTranslations(dir); err != nil {
 		log.Error("Error loading translation files", err)
@@ -103,9 +103,9 @@ func loadTranslations(fsys fs.FS) (loadError error) {
 
 func loadTranslation(fsys fs.FS, fileName string) (translation translation, err error) {
 	// Get id and full path
-	name := filepath.Base(fileName)
-	id := strings.TrimSuffix(name, filepath.Ext(name))
-	filePath := filepath.Join(consts.I18nFolder, name)
+	name := path.Base(fileName)
+	id := strings.TrimSuffix(name, path.Ext(name))
+	filePath := path.Join(consts.I18nFolder, name)
 
 	// Load translation from json file
 	file, err := fsys.Open(filePath)
