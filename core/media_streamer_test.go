@@ -32,6 +32,9 @@ var _ = Describe("MediaStreamer", func() {
 		Eventually(func() bool { return testCache.Ready(context.TODO()) }).Should(BeTrue())
 		streamer = NewMediaStreamer(ds, ffmpeg, testCache)
 	})
+	AfterEach(func() {
+		_ = os.RemoveAll(conf.Server.DataFolder)
+	})
 
 	Context("NewStream", func() {
 		It("returns a seekable stream if format is 'raw'", func() {

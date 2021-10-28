@@ -22,6 +22,10 @@ var _ = Describe("MergeFS", func() {
 		overlayDir = os.DirFS(overlayName)
 		mergedDir = utils.MergeFS{Base: baseDir, Overlay: overlayDir}
 	})
+	AfterEach(func() {
+		_ = os.RemoveAll(baseName)
+		_ = os.RemoveAll(overlayName)
+	})
 
 	It("reads from Base dir if not found in Overlay", func() {
 		_f(baseName, "a.json")
