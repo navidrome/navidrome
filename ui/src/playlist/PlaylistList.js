@@ -26,7 +26,7 @@ import PlaylistListActions from './PlaylistListActions'
 
 const PlaylistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
-    <SearchInput source="name" alwaysOn />
+    <SearchInput source="q" alwaysOn />
   </Filter>
 )
 

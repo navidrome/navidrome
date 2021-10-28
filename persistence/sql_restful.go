@@ -68,6 +68,15 @@ func fullTextFilter(field string, value interface{}) Sqlizer {
 	return fullTextExpr(value.(string))
 }
 
+func substringFilter(field string, value interface{}) Sqlizer {
+	parts := strings.Split(value.(string), " ")
+	filters := And{}
+	for _, part := range parts {
+		filters = append(filters, Like{field: "%" + part + "%"})
+	}
+	return filters
+}
+
 func idFilter(tableName string) func(string, interface{}) Sqlizer {
 	return func(field string, value interface{}) Sqlizer {
 		return Eq{tableName + ".id": value}
