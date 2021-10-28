@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/oklog/run"
 	"github.com/spf13/cobra"
@@ -45,7 +46,7 @@ func Execute() {
 
 func preRun() {
 	if !noBanner {
-		println(consts.Banner())
+		println(resources.Banner())
 	}
 	conf.Load()
 }
