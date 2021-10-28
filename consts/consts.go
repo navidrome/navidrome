@@ -44,7 +44,7 @@ const (
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
 
-	PlaceholderAlbumArt = "navidrome-600x600.png"
+	PlaceholderAlbumArt = "placeholder.png"
 	PlaceholderAvatar   = "logo-192x192.png"
 
 	DefaultHttpClientTimeOut = 10 * time.Second
