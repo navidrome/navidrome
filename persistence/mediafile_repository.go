@@ -100,7 +100,7 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 }
 
 func (r *mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
-	sel := r.selectMediaFile().Where(Eq{"path": path})
+	sel := r.newSelect().Columns("*").Where(Eq{"path": path})
 	var res model.MediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (r *mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, erro
 	// Query by path based on https://stackoverflow.com/a/13911906/653632
 	path = cleanPath(path)
 	pathLen := utf8.RuneCountInString(path)
-	sel0 := r.selectMediaFile().Columns(fmt.Sprintf("substr(path, %d) AS item", pathLen+2)).
+	sel0 := r.newSelect().Columns("media_file.*", fmt.Sprintf("substr(path, %d) AS item", pathLen+2)).
 		Where(pathStartsWith(path))
 	sel := r.newSelect().Columns("*", "item NOT GLOB '*"+string(os.PathSeparator)+"*' AS isLast").
 		Where(Eq{"isLast": 1}).FromSelect(sel0, "sel0")
