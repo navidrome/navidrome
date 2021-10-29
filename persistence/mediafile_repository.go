@@ -61,7 +61,18 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
 	sql = r.withBookmark(sql, "media_file.id")
-	return r.withGenres(sql).GroupBy("media_file.id")
+	if len(options) > 0 && options[0].Filters != nil {
+		s, _, _ := options[0].Filters.ToSql()
+		// If there's any reference of genre in the filter, joins with genre
+		if strings.Contains(s, "genre") {
+			sql = r.withGenres(sql)
+			// If there's no filter on genre_id, group the results by media_file.id
+			if !strings.Contains(s, "genre_id") {
+				sql = sql.GroupBy("media_file.id")
+			}
+		}
+	}
+	return sql
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
