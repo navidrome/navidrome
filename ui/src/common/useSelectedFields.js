@@ -22,7 +22,8 @@ export const useSelectedFields = ({
   useEffect(() => {
     if (
       !resourceFields ||
-      Object.keys(resourceFields).length !== Object.keys(columns).length
+      Object.keys(resourceFields).length !== Object.keys(columns).length ||
+      !Object.keys(columns).every((c) => c in resourceFields)
     ) {
       const obj = {}
       for (const key of Object.keys(columns)) {

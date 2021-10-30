@@ -5,24 +5,25 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { SelectPlaylistInput } from './SelectPlaylistInput'
 
 describe('SelectPlaylistInput', () => {
+  beforeAll(() => localStorage.setItem('userId', 'admin'))
   afterEach(cleanup)
   const onChangeHandler = jest.fn()
 
   it('should call the handler with the selections', async () => {
     const mockData = [
-      { id: 'sample-id1', name: 'sample playlist 1', owner: 'admin' },
-      { id: 'sample-id2', name: 'sample playlist 2', owner: 'admin' },
+      { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },
+      { id: 'sample-id2', name: 'sample playlist 2', ownerId: 'admin' },
     ]
     const mockIndexedData = {
       'sample-id1': {
         id: 'sample-id1',
         name: 'sample playlist 1',
-        owner: 'admin',
+        ownerId: 'admin',
       },
       'sample-id2': {
         id: 'sample-id2',
         name: 'sample playlist 2',
-        owner: 'admin',
+        ownerId: 'admin',
       },
     }
 
@@ -74,7 +75,7 @@ describe('SelectPlaylistInput', () => {
     fireEvent.keyDown(document.activeElement, { key: 'Enter' })
     await waitFor(() => {
       expect(onChangeHandler).toHaveBeenCalledWith([
-        { id: 'sample-id1', name: 'sample playlist 1', owner: 'admin' },
+        { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },
       ])
     })
 
@@ -82,8 +83,8 @@ describe('SelectPlaylistInput', () => {
     fireEvent.keyDown(document.activeElement, { key: 'Enter' })
     await waitFor(() => {
       expect(onChangeHandler).toHaveBeenCalledWith([
-        { id: 'sample-id1', name: 'sample playlist 1', owner: 'admin' },
-        { id: 'sample-id2', name: 'sample playlist 2', owner: 'admin' },
+        { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },
+        { id: 'sample-id2', name: 'sample playlist 2', ownerId: 'admin' },
       ])
     })
 
@@ -94,8 +95,8 @@ describe('SelectPlaylistInput', () => {
     fireEvent.keyDown(document.activeElement, { key: 'Enter' })
     await waitFor(() => {
       expect(onChangeHandler).toHaveBeenCalledWith([
-        { id: 'sample-id1', name: 'sample playlist 1', owner: 'admin' },
-        { id: 'sample-id2', name: 'sample playlist 2', owner: 'admin' },
+        { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },
+        { id: 'sample-id2', name: 'sample playlist 2', ownerId: 'admin' },
         { name: 'new playlist' },
       ])
     })
@@ -106,8 +107,8 @@ describe('SelectPlaylistInput', () => {
     fireEvent.keyDown(document.activeElement, { key: 'Enter' })
     await waitFor(() => {
       expect(onChangeHandler).toHaveBeenCalledWith([
-        { id: 'sample-id1', name: 'sample playlist 1', owner: 'admin' },
-        { id: 'sample-id2', name: 'sample playlist 2', owner: 'admin' },
+        { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },
+        { id: 'sample-id2', name: 'sample playlist 2', ownerId: 'admin' },
         { name: 'new playlist' },
         { name: 'another new playlist' },
       ])

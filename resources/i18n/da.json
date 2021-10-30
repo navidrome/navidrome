@@ -110,7 +110,7 @@
             "fields": {
                 "name": "Navn",
                 "duration": "Varighed",
-                "owner": "Ejer",
+                "ownerName": "Ejer",
                 "public": "Offentlig",
                 "updatedAt": "Opdateret den",
                 "createdAt": "Oprettet den",
