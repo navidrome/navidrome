@@ -29,6 +29,7 @@ type configOptions struct {
 	UILoginBackgroundURL    string
 	EnableTranscodingConfig bool
 	EnableDownloads         bool
+	EnableExternalServices  bool
 	TranscodingCacheSize    string
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
@@ -149,10 +150,22 @@ func Load() {
 		fmt.Println(prettyConf)
 	}
 
+	if !Server.EnableExternalServices {
+		disableExternalServices()
+	}
+
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
 	}
+}
+
+func disableExternalServices() {
+	log.Info("All external integrations are DISABLED!")
+	Server.LastFM.Enabled = false
+	Server.Spotify.ID = ""
+	Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
+	Server.DevListenBrainzEnabled = false
 }
 
 func validateScanSchedule() error {
@@ -206,6 +219,7 @@ func init() {
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
+	viper.SetDefault("enableexternalservices", true)
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)
