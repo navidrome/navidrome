@@ -136,7 +136,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 }
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
-	owner, _ := request.UsernameFrom(ctx)
+	owner, _ := request.UserFrom(ctx)
 
 	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
 	if err != nil && err != model.ErrNotFound {
@@ -152,12 +152,12 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 		newPls.ID = pls.ID
 		newPls.Name = pls.Name
 		newPls.Comment = pls.Comment
-		newPls.Owner = pls.Owner
+		newPls.OwnerID = pls.OwnerID
 		newPls.Public = pls.Public
 		newPls.EvaluatedAt = time.Time{}
 	} else {
-		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner)
-		newPls.Owner = owner
+		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
+		newPls.OwnerID = owner.ID
 	}
 	return s.ds.Playlist(ctx).Put(newPls)
 }

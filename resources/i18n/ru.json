@@ -133,7 +133,7 @@
             "fields": {
                 "name": "Название",
                 "duration": "Длительность",
-                "owner": "Владелец",
+                "ownerName": "Владелец",
                 "public": "Публичный",
                 "updatedAt": "Обновлен",
                 "createdAt": "Создан",

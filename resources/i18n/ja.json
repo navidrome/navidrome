@@ -133,7 +133,7 @@
             "fields": {
                 "name": "名前",
                 "duration": "時間",
-                "owner": "所有者",
+                "ownerName": "所有者",
                 "public": "公開",
                 "updatedAt": "更新日",
                 "createdAt": "作成日",

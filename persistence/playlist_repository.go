@@ -50,7 +50,7 @@ func (r *playlistRepository) userFilter() Sqlizer {
 	}
 	return Or{
 		Eq{"public": true},
-		Eq{"owner": user.UserName},
+		Eq{"owner_id": user.ID},
 	}
 }
 
@@ -70,7 +70,7 @@ func (r *playlistRepository) Delete(id string) error {
 		if err != nil {
 			return err
 		}
-		if pls.Owner != usr.UserName {
+		if pls.OwnerID != usr.ID {
 			return rest.ErrPermissionDenied
 		}
 	}
@@ -117,11 +117,11 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
-	return r.findBy(And{Eq{"id": id}, r.userFilter()})
+	return r.findBy(And{Eq{"playlist.id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) GetWithTracks(id string) (*model.Playlist, error) {
-	pls, err := r.findBy(And{Eq{"id": id}, r.userFilter()})
+	pls, err := r.Get(id)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
 }
 
 func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
-	sel := r.newSelect().Columns("*").Where(sql)
+	sel := r.selectPlaylist().Where(sql)
 	var pls []dbPlaylist
 	err := r.queryAll(sel, &pls)
 	if err != nil {
@@ -169,7 +169,7 @@ func (r *playlistRepository) toModel(pls dbPlaylist) (*model.Playlist, error) {
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
-	sel := r.newSelect(options...).Columns("*").Where(r.userFilter())
+	sel := r.selectPlaylist(options...).Where(r.userFilter())
 	var res []dbPlaylist
 	err := r.queryAll(sel, &res)
 	if err != nil {
@@ -186,6 +186,11 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	return playlists, err
 }
 
+func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
+	return r.newSelect(options...).Join("user on user.id = owner_id").
+		Columns(r.tableName+".*", "user.user_name as owner_name")
+}
+
 func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	// Only refresh if it is a smart playlist and was not refreshed in the last 5 seconds
 	if !pls.IsSmartPlaylist() || time.Since(pls.EvaluatedAt) < 5*time.Second {
@@ -194,7 +199,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 
 	// Never refresh other users' playlists
 	usr := loggedUser(r.ctx)
-	if pls.Owner != usr.UserName {
+	if pls.OwnerID != usr.ID {
 		return false
 	}
 
@@ -362,7 +367,8 @@ func (r *playlistRepository) NewInstance() interface{} {
 
 func (r *playlistRepository) Save(entity interface{}) (string, error) {
 	pls := entity.(*model.Playlist)
-	pls.Owner = loggedUser(r.ctx).UserName
+	pls.OwnerID = loggedUser(r.ctx).ID
+	pls.ID = "" // Make sure we don't override an existing playlist
 	err := r.Put(pls)
 	if err != nil {
 		return "", err
@@ -373,7 +379,7 @@ func (r *playlistRepository) Save(entity interface{}) (string, error) {
 func (r *playlistRepository) Update(entity interface{}, cols ...string) error {
 	pls := entity.(*model.Playlist)
 	usr := loggedUser(r.ctx)
-	if !usr.IsAdmin && pls.Owner != usr.UserName {
+	if !usr.IsAdmin && pls.OwnerID != usr.ID {
 		return rest.ErrPermissionDenied
 	}
 	err := r.Put(pls)
@@ -432,7 +438,7 @@ func (r *playlistRepository) isWritable(playlistId string) bool {
 		return true
 	}
 	pls, err := r.Get(playlistId)
-	return err == nil && pls.Owner == usr.UserName
+	return err == nil && pls.OwnerID == usr.ID
 }
 
 var _ model.PlaylistRepository = (*playlistRepository)(nil)

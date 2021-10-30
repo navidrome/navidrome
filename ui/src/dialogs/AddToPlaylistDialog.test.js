@@ -5,22 +5,23 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { AddToPlaylistDialog } from './AddToPlaylistDialog'
 
 describe('AddToPlaylistDialog', () => {
+  beforeAll(() => localStorage.setItem('userId', 'admin'))
   afterEach(cleanup)
 
   const mockData = [
-    { id: 'sample-id1', name: 'sample playlist 1', owner: 'admin' },
-    { id: 'sample-id2', name: 'sample playlist 2', owner: 'admin' },
+    { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },
+    { id: 'sample-id2', name: 'sample playlist 2', ownerId: 'admin' },
   ]
   const mockIndexedData = {
     'sample-id1': {
       id: 'sample-id1',
       name: 'sample playlist 1',
-      owner: 'admin',
+      ownerId: 'admin',
     },
     'sample-id2': {
       id: 'sample-id2',
       name: 'sample playlist 2',
-      owner: 'admin',
+      ownerId: 'admin',
     },
   }
   const selectedIds = ['song-1', 'song-2']

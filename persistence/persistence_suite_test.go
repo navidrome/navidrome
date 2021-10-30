@@ -85,7 +85,14 @@ var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
 		o := orm.NewOrm()
 		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid"})
+		user := model.User{ID: "userid", UserName: "userid"}
+		ctx = request.WithUser(ctx, user)
+
+		ur := NewUserRepository(ctx, o)
+		err := ur.Put(&user)
+		if err != nil {
+			panic(err)
+		}
 
 		gr := NewGenreRepository(ctx, o)
 		for i := range testGenres {
@@ -126,12 +133,13 @@ var _ = Describe("Initialize test DB", func() {
 		plsBest = model.Playlist{
 			Name:      "Best",
 			Comment:   "No Comments",
-			Owner:     "userid",
+			OwnerID:   "userid",
+			OwnerName: "userid",
 			Public:    true,
 			SongCount: 2,
 		}
 		plsBest.AddTracks([]string{"1001", "1003"})
-		plsCool = model.Playlist{Name: "Cool", Owner: "userid"}
+		plsCool = model.Playlist{Name: "Cool", OwnerID: "userid", OwnerName: "userid"}
 		plsCool.AddTracks([]string{"1004"})
 		testPlaylists = []*model.Playlist{&plsBest, &plsCool}
 

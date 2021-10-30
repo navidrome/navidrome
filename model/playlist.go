@@ -15,7 +15,8 @@ type Playlist struct {
 	Duration  float32        `structs:"duration" json:"duration"`
 	Size      int64          `structs:"size" json:"size"`
 	SongCount int            `structs:"song_count" json:"songCount"`
-	Owner     string         `structs:"owner" json:"owner"`
+	OwnerName string         `structs:"-" json:"ownerName"`
+	OwnerID   string         `structs:"owner_id" json:"ownerId"  orm:"column(owner_id)"`
 	Public    bool           `structs:"public" json:"public"`
 	Tracks    PlaylistTracks `structs:"-" json:"tracks,omitempty"`
 	Path      string         `structs:"path" json:"path"`

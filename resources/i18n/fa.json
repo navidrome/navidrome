@@ -133,7 +133,7 @@
       "fields": {
         "name": "نام",
         "duration": "مدّت زمان",
-        "owner": "مالک",
+        "ownerName": "مالک",
         "public": "عمومی",
         "updatedAt": "بروزشده در",
         "createdAt": "ایجادشده در",

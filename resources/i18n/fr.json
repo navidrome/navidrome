@@ -133,7 +133,7 @@
             "fields": {
                 "name": "Nom",
                 "duration": "Durée",
-                "owner": "Propriétaire",
+                "ownerName": "Propriétaire",
                 "public": "Public",
                 "updatedAt": "Mise à jour le",
                 "createdAt": "Créé le",

@@ -76,7 +76,7 @@ var _ = Describe("PlaylistRepository", func() {
 
 	It("Put/Exists/Delete", func() {
 		By("saves the playlist to the DB")
-		newPls := model.Playlist{Name: "Great!", Owner: "userid"}
+		newPls := model.Playlist{Name: "Great!", OwnerID: "userid"}
 		newPls.AddTracks([]string{"1004", "1003"})
 
 		By("saves the playlist to the DB")
