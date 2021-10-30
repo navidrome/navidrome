@@ -48,7 +48,7 @@ const PlayerEdit = (props) => (
         ]}
       />
       <BooleanInput source="reportRealPath" fullWidth />
-      {config.lastFMEnabled && (
+      {(config.lastFMEnabled || config.devListenBrainzEnabled) && (
         <BooleanInput source="scrobbleEnabled" fullWidth />
       )}
       <TextField source="client" />

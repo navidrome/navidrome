@@ -254,6 +254,7 @@ var _ = Describe("serveIndex", func() {
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("lastFMApiKey", "APIKEY-123"))
 	})
+
 	It("sets the devShowArtistPage", func() {
 		conf.Server.DevShowArtistPage = true
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -265,6 +266,16 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("devShowArtistPage", true))
 	})
 
+	It("sets the devListenBrainzEnabled", func() {
+		conf.Server.DevListenBrainzEnabled = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devListenBrainzEnabled", true))
+	})
 })
 
 var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__="([^"]*)`)

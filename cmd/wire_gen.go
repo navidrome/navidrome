@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
+	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/transcoder"
 	"github.com/navidrome/navidrome/db"
@@ -68,6 +69,13 @@ func CreateLastFMRouter() *lastfm.Router {
 	return router
 }
 
+func CreateListenBrainzRouter() *listenbrainz.Router {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	router := listenbrainz.NewRouter(dataStore)
+	return router
+}
+
 func createScanner() scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
@@ -82,7 +90,7 @@ func createScanner() scanner.Scanner {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, subsonic.New, nativeapi.New, persistence.New, lastfm.NewRouter, events.GetBroker, db.Db)
+var allProviders = wire.NewSet(core.Set, subsonic.New, nativeapi.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, db.Db)
 
 // Scanner must be a Singleton
 var (

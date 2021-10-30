@@ -49,6 +49,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"lastFMEnabled":           conf.Server.LastFM.Enabled,
 			"lastFMApiKey":            conf.Server.LastFM.ApiKey,
 			"devShowArtistPage":       conf.Server.DevShowArtistPage,
+			"devListenBrainzEnabled":  conf.Server.DevListenBrainzEnabled,
 		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {
