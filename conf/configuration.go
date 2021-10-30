@@ -74,6 +74,7 @@ type configOptions struct {
 	DevSidebarPlaylists        bool
 	DevEnableBufferedScrobble  bool
 	DevShowArtistPage          bool
+	DevListenBrainzEnabled     bool
 }
 
 type scannerOptions struct {
@@ -241,6 +242,7 @@ func init() {
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
+	viper.SetDefault("devlistenbrainzenabled", false)
 }
 
 func InitConfig(cfgFile string) {

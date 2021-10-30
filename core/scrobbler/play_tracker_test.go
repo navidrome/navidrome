@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -81,6 +82,14 @@ var _ = Describe("PlayTracker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.NowPlayingCalled).To(BeFalse())
 		})
+		It("does not send track to agent if artist is unknown", func() {
+			track.Artist = consts.UnknownArtist
+
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.NowPlayingCalled).To(BeFalse())
+		})
 	})
 
 	Describe("GetNowPlaying", func() {
@@ -146,8 +155,17 @@ var _ = Describe("PlayTracker", func() {
 			Expect(fake.ScrobbleCalled).To(BeFalse())
 		})
 
-		It("does not send track to agent player is not enabled to send scrobbles", func() {
+		It("does not send track to agent if player is not enabled to send scrobbles", func() {
 			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: false})
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled).To(BeFalse())
+		})
+
+		It("does not send track to agent if artist is unknown", func() {
+			track.Artist = consts.UnknownArtist
 
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
