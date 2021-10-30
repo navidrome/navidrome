@@ -133,7 +133,7 @@
             "fields": {
                 "name": "Ime",
                 "duration": "Dolžina",
-                "owner": "Lastnik",
+                "ownerName": "Lastnik",
                 "public": "Javno",
                 "updatedAt": "Posodobljen",
                 "createdAt": "Ustvarjen",

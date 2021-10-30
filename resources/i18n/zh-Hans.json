@@ -130,7 +130,7 @@
             "fields": {
                 "name": "名称",
                 "duration": "时长",
-                "owner": "所有者",
+                "ownerName": "所有者",
                 "public": "公开",
                 "updatedAt": "更新于",
                 "createdAt": "创建于",

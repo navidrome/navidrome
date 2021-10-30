@@ -35,7 +35,7 @@ const PlaylistEditForm = (props) => {
       <TextInput multiline source="comment" />
       <BooleanInput
         source="public"
-        disabled={!isWritable(record.owner) || isSmartPlaylist(record)}
+        disabled={!isWritable(record.ownerId) || isSmartPlaylist(record)}
       />
       <FormDataConsumer>
         {(formDataProps) => <SyncFragment {...formDataProps} />}

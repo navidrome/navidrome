@@ -58,7 +58,7 @@ const TogglePublicInput = ({ resource, source }) => {
     <Switch
       checked={record[source]}
       onClick={handleClick}
-      disabled={!isWritable(record.owner) || isSmartPlaylist(record)}
+      disabled={!isWritable(record.ownerId) || isSmartPlaylist(record)}
     />
   )
 }
@@ -70,7 +70,7 @@ const PlaylistList = (props) => {
 
   const toggleableFields = useMemo(() => {
     return {
-      owner: <TextField source="owner" />,
+      ownerName: <TextField source="ownerName" />,
       songCount: isDesktop && <NumberField source="songCount" />,
       duration: isDesktop && <DurationField source="duration" />,
       updatedAt: isDesktop && (
@@ -94,10 +94,7 @@ const PlaylistList = (props) => {
       filters={<PlaylistFilter />}
       actions={<PlaylistListActions />}
     >
-      <Datagrid
-        rowClick="show"
-        isRowSelectable={(r) => isWritable(r && r.owner)}
-      >
+      <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
         <TextField source="name" />
         {columns}
         <Writable>

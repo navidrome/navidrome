@@ -133,7 +133,7 @@
             "fields": {
                 "name": "Název",
                 "duration": "Délka",
-                "owner": "Vlastník",
+                "ownerName": "Vlastník",
                 "public": "Veřejný",
                 "updatedAt": "Nahrán",
                 "createdAt": "Vytvořen",

@@ -115,7 +115,7 @@
             "fields": {
                 "name": "Nomo",
                 "duration": "Daŭro",
-                "owner": "Posedanto",
+                "ownerName": "Posedanto",
                 "public": "Publika",
                 "updatedAt": "Ĝisdatigita je",
                 "createdAt": "Kreita je",

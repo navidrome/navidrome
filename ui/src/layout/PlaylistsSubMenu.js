@@ -74,7 +74,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
     />
   )
 
-  const user = localStorage.getItem('username')
+  const userId = localStorage.getItem('userId')
   const myPlaylists = []
   const sharedPlaylists = []
 
@@ -82,7 +82,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
     const allPlaylists = Object.keys(data).map((id) => data[id])
 
     allPlaylists.forEach((pls) => {
-      if (user === pls.owner) {
+      if (userId === pls.ownerId) {
         myPlaylists.push(pls)
       } else {
         sharedPlaylists.push(pls)

@@ -133,7 +133,7 @@
             "fields": {
                 "name": "ชื่อ",
                 "duration": "เวลา",
-                "owner": "เจ้าของ",
+                "ownerName": "เจ้าของ",
                 "public": "สาธารณะ",
                 "updatedAt": "อัปเดตเมื่อ",
                 "createdAt": "สร้างขึ้นเมื่อ",

@@ -133,7 +133,7 @@
             "fields": {
                 "name": "Nimi",
                 "duration": "Kesto",
-                "owner": "Omistaja",
+                "ownerName": "Omistaja",
                 "public": "Julkinen",
                 "updatedAt": "Päivitetty",
                 "createdAt": "Luotu",

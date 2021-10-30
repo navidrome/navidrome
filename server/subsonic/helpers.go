@@ -64,12 +64,12 @@ func (e subError) Error() string {
 	return msg
 }
 
-func getUser(ctx context.Context) string {
+func getUser(ctx context.Context) model.User {
 	user, ok := request.UserFrom(ctx)
 	if ok {
-		return user.UserName
+		return user
 	}
-	return ""
+	return model.User{}
 }
 
 func toArtists(ctx context.Context, artists model.Artists) []responses.Artist {

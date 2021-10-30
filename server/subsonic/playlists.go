@@ -74,14 +74,12 @@ func (c *PlaylistsController) create(ctx context.Context, playlistId, name strin
 			if err != nil {
 				return err
 			}
-			if owner != pls.Owner {
+			if owner.ID != pls.OwnerID {
 				return model.ErrNotAuthorized
 			}
 		} else {
-			pls = &model.Playlist{
-				Name:  name,
-				Owner: owner,
-			}
+			pls = &model.Playlist{Name: name}
+			pls.OwnerID = owner.ID
 		}
 		pls.Tracks = nil
 		pls.AddTracks(ids)
@@ -178,7 +176,7 @@ func (c *PlaylistsController) buildPlaylist(p model.Playlist) *responses.Playlis
 	pls.Name = p.Name
 	pls.Comment = p.Comment
 	pls.SongCount = p.SongCount
-	pls.Owner = p.Owner
+	pls.Owner = p.OwnerName
 	pls.Duration = int(p.Duration)
 	pls.Public = p.Public
 	pls.Created = p.CreatedAt
