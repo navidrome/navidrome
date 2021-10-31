@@ -41,11 +41,10 @@ var _ = Describe("walk_dir_tree", func() {
 			Expect(collected[filepath.Join(baseDir, "playlists")].HasPlaylist).To(BeTrue())
 			Expect(collected).To(HaveKey(filepath.Join(baseDir, "symlink2dir")))
 			Expect(collected).To(HaveKey(filepath.Join(baseDir, "empty_folder")))
-			Expect(collected).NotTo(HaveKey(filepath.Join(baseDir, "folder_with_ignored_things")))
+			Expect(collected).To(HaveKey(filepath.Join(baseDir, "folder_with_ignored_things")))
 			Expect(collected).NotTo(HaveKey(filepath.Join(baseDir, ".hidden_folder")))
 			Expect(collected).To(HaveKey(filepath.Join(baseDir, "...unhidden_folder")))
 			Expect(collected).NotTo(HaveKey(filepath.Join(baseDir, "playlists", "junk")))
-			Expect(collected).NotTo(HaveKey(filepath.Join(baseDir, "playlists", "ignored_folder")))
 		})
 	})
 

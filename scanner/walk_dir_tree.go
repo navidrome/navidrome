@@ -38,14 +38,14 @@ func walkDirTree(ctx context.Context, rootFolder string, results walkResults) er
 
 func walkFolder(ctx context.Context, rootPath string, currentFolder string, results walkResults, ignores []string) error {
 	// Look for .ndignore first
-	newignores := getIgnoreGlobs(currentFolder)
-	newignores = append(newignores, ignores...)
-	children, stats, err := loadDir(ctx, currentFolder, newignores)
+	newIgnores := getIgnoreGlobs(currentFolder)
+	newIgnores = append(newIgnores, ignores...)
+	children, stats, err := loadDir(ctx, currentFolder, newIgnores)
 	if err != nil {
 		return err
 	}
 	for _, c := range children {
-		err := walkFolder(ctx, rootPath, c, results, newignores)
+		err := walkFolder(ctx, rootPath, c, results, newIgnores)
 		if err != nil {
 			return err
 		}
@@ -82,7 +82,11 @@ func loadDir(ctx context.Context, dirPath string, ignores []string) ([]string, *
 	for _, entry := range dirEntries {
 		ignore := false
 		for _, ign := range ignores {
-			if match, _ := zglob.Match(ign, entry.Name()); match {
+			matchName := entry.Name()
+			if strings.ContainsRune(ign, filepath.Separator) {
+				matchName = filepath.Join(dirPath, entry.Name())
+			}
+			if match, _ := zglob.Match(ign, matchName); match {
 				ignore = true
 				break
 			}
@@ -193,6 +197,13 @@ func getIgnoreGlobs(currentFolder string) (globs []string) {
 	s := bufio.NewScanner(f)
 	for s.Scan() {
 		globs = append(globs, s.Text())
+	}
+	return globs
+}
+
+func getAllIgnoreGlobs(dirPath, root string) (globs []string) {
+	for nextDir := dirPath; dirPath != root && nextDir != "."; nextDir = filepath.Dir(nextDir) {
+		globs = append(globs, getIgnoreGlobs(nextDir)...)
 	}
 	return globs
 }

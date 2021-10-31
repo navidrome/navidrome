@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattn/go-zglob"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
@@ -251,7 +252,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, fullScan
 	}
 
 	// Load track list from the folder
-	files, err := loadAllAudioFiles(dir)
+	files, err := loadAllAudioFiles(dir, s.rootFolder)
 	if err != nil {
 		return err
 	}
@@ -400,7 +401,8 @@ func (s *TagScanner) withAdminUser(ctx context.Context) context.Context {
 	return request.WithUser(ctx, *u)
 }
 
-func loadAllAudioFiles(dirPath string) (map[string]fs.DirEntry, error) {
+func loadAllAudioFiles(dirPath, root string) (map[string]fs.DirEntry, error) {
+	ignores := getAllIgnoreGlobs(dirPath, root)
 	files, err := fs.ReadDir(os.DirFS(dirPath), ".")
 	if err != nil {
 		return nil, err
@@ -411,6 +413,15 @@ func loadAllAudioFiles(dirPath string) (map[string]fs.DirEntry, error) {
 			continue
 		}
 		if strings.HasPrefix(f.Name(), ".") {
+			continue
+		}
+		ignore := false
+		for _, ign := range ignores {
+			if match, _ := zglob.Match(ign, f.Name()); match {
+				ignore = true
+			}
+		}
+		if ignore {
 			continue
 		}
 		filePath := filepath.Join(dirPath, f.Name())

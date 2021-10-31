@@ -1,2 +1,3 @@
 # this folder is not ignored but anything matching this glob is
-*ignored*
+ignored_file
+*.aac
