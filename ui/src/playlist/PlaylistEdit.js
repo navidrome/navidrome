@@ -64,7 +64,7 @@ const PlaylistEditForm = (props) => {
 }
 
 const PlaylistEdit = (props) => (
-  <Edit title={<PlaylistTitle />} {...props}>
+  <Edit title={<PlaylistTitle />} actions={false} {...props}>
     <PlaylistEditForm {...props} />
   </Edit>
 )
