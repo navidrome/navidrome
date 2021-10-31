@@ -5,6 +5,7 @@ import Card from '@material-ui/core/Card'
 import CardMedia from '@material-ui/core/CardMedia'
 import config from '../config'
 import { LoveButton, RatingField } from '../common'
+import Lightbox from 'react-image-lightbox'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -77,6 +78,13 @@ const MobileArtistDetails = ({ img, artistInfo, biography, record }) => {
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles({ img, expanded })
   const title = record.name
+  const [isLightboxOpen, setLightboxOpen] = React.useState(false)
+
+  const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
+  const handleCloseLightbox = React.useCallback(
+    () => setLightboxOpen(false),
+    []
+  )
 
   return (
     <>
@@ -86,7 +94,8 @@ const MobileArtistDetails = ({ img, artistInfo, biography, record }) => {
             {artistInfo && (
               <CardMedia
                 className={classes.cover}
-                image={`${artistInfo.mediumImageUrl}`}
+                image={artistInfo.mediumImageUrl}
+                onClick={handleOpenLightbox}
                 title={title}
               />
             )}
@@ -127,6 +136,15 @@ const MobileArtistDetails = ({ img, artistInfo, biography, record }) => {
           </Typography>
         </Collapse>
       </div>
+      {isLightboxOpen && (
+        <Lightbox
+          imagePadding={50}
+          animationDuration={200}
+          imageTitle={record.name}
+          mainSrc={artistInfo.largeImageUrl}
+          onCloseRequest={handleCloseLightbox}
+        />
+      )}
     </>
   )
 }
