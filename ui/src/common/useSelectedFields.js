@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import { useDispatch, useSelector } from 'react-redux'
 import { setOmittedFields, setToggleableFields } from '../actions'
 
+// TODO Refactor
 export const useSelectedFields = ({
   resource,
   columns,

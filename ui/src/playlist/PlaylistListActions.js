@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { cloneElement } from 'react'
 import {
   sanitizeListRestProps,
   TopToolbar,
@@ -14,6 +14,7 @@ const PlaylistListActions = ({ className, ...rest }) => {
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
+      {cloneElement(rest.filters, { context: 'button' })}
       <CreateButton basePath="/playlist">
         {translate('ra.action.create')}
       </CreateButton>

@@ -5,7 +5,9 @@ import {
   EditButton,
   Filter,
   NumberField,
+  ReferenceInput,
   SearchInput,
+  SelectInput,
   TextField,
   useUpdate,
   useNotify,
@@ -27,6 +29,15 @@ import PlaylistListActions from './PlaylistListActions'
 const PlaylistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
     <SearchInput source="q" alwaysOn />
+    <ReferenceInput
+      source="owner_id"
+      reference="user"
+      perPage={0}
+      sort={{ field: 'name', order: 'ASC' }}
+      alwaysOn
+    >
+      <SelectInput optionText="name" />
+    </ReferenceInput>
   </Filter>
 )
 
@@ -68,8 +79,8 @@ const PlaylistList = (props) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   useResourceRefresh('playlist')
 
-  const toggleableFields = useMemo(() => {
-    return {
+  const toggleableFields = useMemo(
+    () => ({
       ownerName: <TextField source="ownerName" />,
       songCount: isDesktop && <NumberField source="songCount" />,
       duration: isDesktop && <DurationField source="duration" />,
@@ -79,8 +90,9 @@ const PlaylistList = (props) => {
       public: !isXsmall && (
         <TogglePublicInput source="public" sortByOrder={'DESC'} />
       ),
-    }
-  }, [isDesktop, isXsmall])
+    }),
+    [isDesktop, isXsmall]
+  )
 
   const columns = useSelectedFields({
     resource: 'playlist',
