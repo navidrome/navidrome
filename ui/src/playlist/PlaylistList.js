@@ -12,6 +12,8 @@ import {
   useUpdate,
   useNotify,
   useRecordContext,
+  BulkDeleteButton,
+  usePermissions,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { useMediaQuery } from '@material-ui/core'
@@ -22,24 +24,29 @@ import {
   isWritable,
   useSelectedFields,
   useResourceRefresh,
-  isSmartPlaylist,
 } from '../common'
 import PlaylistListActions from './PlaylistListActions'
+import ChangePublicStatusButton from './ChangePublicStatusButton'
 
-const PlaylistFilter = (props) => (
-  <Filter {...props} variant={'outlined'}>
-    <SearchInput source="q" alwaysOn />
-    <ReferenceInput
-      source="owner_id"
-      reference="user"
-      perPage={0}
-      sort={{ field: 'name', order: 'ASC' }}
-      alwaysOn
-    >
-      <SelectInput optionText="name" />
-    </ReferenceInput>
-  </Filter>
-)
+const PlaylistFilter = (props) => {
+  const { permissions } = usePermissions()
+  return (
+    <Filter {...props} variant={'outlined'}>
+      <SearchInput source="q" alwaysOn />
+      {permissions === 'admin' && (
+        <ReferenceInput
+          source="owner_id"
+          reference="user"
+          perPage={0}
+          sort={{ field: 'name', order: 'ASC' }}
+          alwaysOn
+        >
+          <SelectInput optionText="name" />
+        </ReferenceInput>
+      )}
+    </Filter>
+  )
+}
 
 const TogglePublicInput = ({ resource, source }) => {
   const record = useRecordContext()
@@ -69,10 +76,18 @@ const TogglePublicInput = ({ resource, source }) => {
     <Switch
       checked={record[source]}
       onClick={handleClick}
-      disabled={!isWritable(record.ownerId) || isSmartPlaylist(record)}
+      disabled={!isWritable(record.ownerId)}
     />
   )
 }
+
+const PlaylistListBulkActions = (props) => (
+  <>
+    <ChangePublicStatusButton public={true} {...props} />
+    <ChangePublicStatusButton public={false} {...props} />
+    <BulkDeleteButton {...props} />
+  </>
+)
 
 const PlaylistList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -81,9 +96,9 @@ const PlaylistList = (props) => {
 
   const toggleableFields = useMemo(
     () => ({
-      ownerName: <TextField source="ownerName" />,
-      songCount: isDesktop && <NumberField source="songCount" />,
-      duration: isDesktop && <DurationField source="duration" />,
+      ownerName: isDesktop && <TextField source="ownerName" />,
+      songCount: !isXsmall && <NumberField source="songCount" />,
+      duration: <DurationField source="duration" />,
       updatedAt: isDesktop && (
         <DateField source="updatedAt" sortByOrder={'DESC'} />
       ),
@@ -105,6 +120,7 @@ const PlaylistList = (props) => {
       exporter={false}
       filters={<PlaylistFilter />}
       actions={<PlaylistListActions />}
+      bulkActionButtons={!isXsmall && <PlaylistListBulkActions />}
     >
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
         <TextField source="name" />
