@@ -164,7 +164,9 @@ func disableExternalServices() {
 	log.Info("All external integrations are DISABLED!")
 	Server.LastFM.Enabled = false
 	Server.Spotify.ID = ""
-	Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
+	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
+		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
+	}
 	Server.DevListenBrainzEnabled = false
 }
 
