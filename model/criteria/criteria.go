@@ -6,6 +6,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/navidrome/navidrome/log"
+
 	"github.com/Masterminds/squirrel"
 )
 
@@ -21,6 +23,10 @@ type Criteria struct {
 
 func (c Criteria) OrderBy() string {
 	f := fieldMap[strings.ToLower(c.Sort)]
+	if f == "" {
+		log.Error("Invalid field in 'sort' field", "field", c.Sort)
+		f = c.Sort
+	}
 	if c.Order != "" {
 		f = f + " " + c.Order
 	}
