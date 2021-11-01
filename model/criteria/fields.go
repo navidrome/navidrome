@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/log"
 )
 
 var fieldMap = map[string]string{
@@ -37,7 +39,7 @@ var fieldMap = map[string]string{
 	"channels":        "media_file.channels",
 	"genre":           "genre.name",
 	"loved":           "annotation.starred",
-	"dateLoved":       "annotation.starred_at",
+	"dateloved":       "annotation.starred_at",
 	"lastplayed":      "annotation.play_date",
 	"playcount":       "annotation.play_count",
 	"rating":          "annotation.rating",
@@ -48,6 +50,8 @@ func mapFields(expr map[string]interface{}) map[string]interface{} {
 	for f, v := range expr {
 		if dbf, found := fieldMap[strings.ToLower(f)]; found {
 			m[dbf] = v
+		} else {
+			log.Error("Invalid field in criteria", "field", f)
 		}
 	}
 	return m
