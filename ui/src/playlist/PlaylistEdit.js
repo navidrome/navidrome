@@ -13,7 +13,7 @@ import {
   ReferenceInput,
   SelectInput,
 } from 'react-admin'
-import { isSmartPlaylist, isWritable, Title } from '../common'
+import { isWritable, Title } from '../common'
 
 const SyncFragment = ({ formData, variant, ...rest }) => {
   return (
@@ -52,10 +52,7 @@ const PlaylistEditForm = (props) => {
       ) : (
         <TextField source="ownerName" />
       )}
-      <BooleanInput
-        source="public"
-        disabled={!isWritable(record.ownerId) || isSmartPlaylist(record)}
-      />
+      <BooleanInput source="public" disabled={!isWritable(record.ownerId)} />
       <FormDataConsumer>
         {(formDataProps) => <SyncFragment {...formDataProps} />}
       </FormDataConsumer>

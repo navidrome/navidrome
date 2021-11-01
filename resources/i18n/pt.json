@@ -150,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Selecione a playlist:",
                 "addNewPlaylist": "Criar \"%{name}\"",
-                "export": "Exportar"
+                "export": "Exportar",
+                "makePublic": "Pública",
+                "makePrivate": "Pessoal"
             },
             "message": {
                 "duplicate_song": "Adicionar músicas duplicadas",
