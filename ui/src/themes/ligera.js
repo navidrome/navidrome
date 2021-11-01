@@ -359,6 +359,12 @@ export default {
         marginTop: '-50px',
       },
     },
+    NDMobileArtistDetails: {
+      bgContainer: {
+        background:
+          'linear-gradient(to bottom, rgb(255 255 255 / 51%), rgb(240 242 245))!important',
+      },
+    },
     RaLayout: {
       content: {
         padding: '0 !important',

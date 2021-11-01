@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import ReactDOM from 'react-dom'
-import { Dialog } from '@material-ui/core'
+import { Chip, Dialog } from '@material-ui/core'
 import { getApplicationKeyMap, GlobalHotKeys } from 'react-hotkeys'
 import TableContainer from '@material-ui/core/TableContainer'
 import Paper from '@material-ui/core/Paper'
@@ -38,7 +38,12 @@ const HelpTable = (props) => {
                     </TableCell>
                     <TableCell align="left">
                       {sequences.map(({ sequence }) => (
-                        <span key={sequence}>{sequence}</span>
+                        <Chip
+                          label={<kbd>{sequence}</kbd>}
+                          size="small"
+                          variant={'outlined'}
+                          key={sequence}
+                        />
                       ))}
                     </TableCell>
                   </TableRow>

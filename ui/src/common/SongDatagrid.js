@@ -1,4 +1,4 @@
-import React, { isValidElement, useMemo, useCallback } from 'react'
+import React, { isValidElement, useMemo, useCallback, forwardRef } from 'react'
 import { useDispatch } from 'react-redux'
 import { Datagrid, PureDatagridBody, PureDatagridRow } from 'react-admin'
 import {
@@ -11,8 +11,10 @@ import PropTypes from 'prop-types'
 import { makeStyles } from '@material-ui/core/styles'
 import AlbumIcon from '@material-ui/icons/Album'
 import clsx from 'clsx'
+import { useDrag } from 'react-dnd'
 import { playTracks } from '../actions'
 import { AlbumContextMenu } from '../common'
+import { DraggableTypes } from '../consts'
 
 const useStyles = makeStyles({
   subtitle: {
@@ -47,50 +49,48 @@ const useStyles = makeStyles({
   },
 })
 
-const DiscSubtitleRow = ({
-  record,
-  onClick,
-  colSpan,
-  contextAlwaysVisible,
-}) => {
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-  const classes = useStyles({ isDesktop })
-  const handlePlayDisc = (discNumber) => () => {
-    onClick(discNumber)
-  }
+const DiscSubtitleRow = forwardRef(
+  ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
+    const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+    const classes = useStyles({ isDesktop })
+    const handlePlayDisc = (discNumber) => () => {
+      onClick(discNumber)
+    }
 
-  let subtitle = []
-  if (record.discNumber > 0) {
-    subtitle.push(record.discNumber)
-  }
-  if (record.discSubtitle) {
-    subtitle.push(record.discSubtitle)
-  }
+    let subtitle = []
+    if (record.discNumber > 0) {
+      subtitle.push(record.discNumber)
+    }
+    if (record.discSubtitle) {
+      subtitle.push(record.discSubtitle)
+    }
 
-  return (
-    <TableRow
-      hover
-      onClick={handlePlayDisc(record.discNumber)}
-      className={classes.row}
-    >
-      <TableCell colSpan={colSpan}>
-        <Typography variant="h6" className={classes.subtitle}>
-          <AlbumIcon className={classes.discIcon} fontSize={'small'} />
-          {subtitle.join(': ')}
-        </Typography>
-      </TableCell>
-      <TableCell>
-        <AlbumContextMenu
-          record={{ id: record.albumId }}
-          discNumber={record.discNumber}
-          showLove={false}
-          className={classes.contextMenu}
-          visible={contextAlwaysVisible}
-        />
-      </TableCell>
-    </TableRow>
-  )
-}
+    return (
+      <TableRow
+        hover
+        ref={ref}
+        onClick={handlePlayDisc(record.discNumber)}
+        className={classes.row}
+      >
+        <TableCell colSpan={colSpan}>
+          <Typography variant="h6" className={classes.subtitle}>
+            <AlbumIcon className={classes.discIcon} fontSize={'small'} />
+            {subtitle.join(': ')}
+          </Typography>
+        </TableCell>
+        <TableCell>
+          <AlbumContextMenu
+            record={{ id: record.albumId }}
+            discNumber={record.discNumber}
+            showLove={false}
+            className={classes.contextMenu}
+            visible={contextAlwaysVisible}
+          />
+        </TableCell>
+      </TableRow>
+    )
+  }
+)
 
 export const SongDatagridRow = ({
   record,
@@ -105,14 +105,37 @@ export const SongDatagridRow = ({
   const fields = React.Children.toArray(children).filter((c) =>
     isValidElement(c)
   )
+
+  const [, dragDiscRef] = useDrag(
+    () => ({
+      type: DraggableTypes.DISC,
+      item: {
+        discs: [{ albumId: record?.albumId, discNumber: record?.discNumber }],
+      },
+      options: { dropEffect: 'copy' },
+    }),
+    [record]
+  )
+
+  const [, dragSongRef] = useDrag(
+    () => ({
+      type: DraggableTypes.SONG,
+      item: { ids: [record?.mediaFileId || record?.id] },
+      options: { dropEffect: 'copy' },
+    }),
+    [record]
+  )
+
   if (!record || !record.title) {
     return null
   }
+
   const childCount = fields.length
   return (
     <>
       {firstTracks.has(record.id) && (
         <DiscSubtitleRow
+          ref={dragDiscRef}
           record={record}
           onClick={onClickDiscSubtitle}
           contextAlwaysVisible={contextAlwaysVisible}
@@ -120,6 +143,7 @@ export const SongDatagridRow = ({
         />
       )}
       <PureDatagridRow
+        ref={dragSongRef}
         record={record}
         {...rest}
         className={clsx(className, classes.row)}

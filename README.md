@@ -1,7 +1,9 @@
+<a href="https://www.navidrome.org"><img src="resources/logo-192x192.png" alt="Navidrome logo" title="navidrome" align="right" height="60px" /></a>
+
 # Navidrome Music Server
 
 [![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?logo=github&label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
-[![Build](https://img.shields.io/github/workflow/status/navidrome/navidrome/Build?logo=github&style=flat-square)](https://github.com/navidrome/navidrome/actions)
+[![Build](https://img.shields.io/github/workflow/status/navidrome/navidrome/Build?logo=github&style=flat-square)](https://nightly.link/navidrome/navidrome/workflows/pipeline/master)
 [![Downloads](https://img.shields.io/github/downloads/navidrome/navidrome/total?logo=github&style=flat-square)](https://github.com/navidrome/navidrome/releases/latest)
 [![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?logo=docker&label=pulls&style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
 [![Dev Chat](https://img.shields.io/discord/671335427726114836?logo=discord&label=discord&style=flat-square)](https://discord.gg/xh7j7yF)

@@ -29,6 +29,7 @@ type configOptions struct {
 	UILoginBackgroundURL    string
 	EnableTranscodingConfig bool
 	EnableDownloads         bool
+	EnableExternalServices  bool
 	TranscodingCacheSize    string
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
@@ -74,6 +75,8 @@ type configOptions struct {
 	DevSidebarPlaylists        bool
 	DevEnableBufferedScrobble  bool
 	DevEnableInfiniteScroll    bool
+	DevShowArtistPage          bool
+	DevListenBrainzEnabled     bool
 }
 
 type scannerOptions struct {
@@ -137,10 +140,24 @@ func Load() {
 		fmt.Println(prettyConf)
 	}
 
+	if !Server.EnableExternalServices {
+		disableExternalServices()
+	}
+
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
 	}
+}
+
+func disableExternalServices() {
+	log.Info("All external integrations are DISABLED!")
+	Server.LastFM.Enabled = false
+	Server.Spotify.ID = ""
+	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
+		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
+	}
+	Server.DevListenBrainzEnabled = false
 }
 
 func validateScanSchedule() error {
@@ -158,6 +175,7 @@ func validateScanSchedule() error {
 		}
 	}
 	if Server.ScanSchedule == "0" || Server.ScanSchedule == "" {
+		Server.ScanSchedule = ""
 		return nil
 	}
 	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
@@ -193,6 +211,7 @@ func init() {
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
+	viper.SetDefault("enableexternalservices", true)
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)
@@ -238,7 +257,9 @@ func init() {
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
-	viper.SetDefault("devsidebarplaylists", false)
+	viper.SetDefault("devsidebarplaylists", true)
+	viper.SetDefault("devshowartistpage", true)
+	viper.SetDefault("devlistenbrainzenabled", false)
 }
 
 func InitConfig(cfgFile string) {

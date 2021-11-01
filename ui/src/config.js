@@ -5,6 +5,7 @@ const defaultConfig = {
   version: 'dev',
   firstTime: false,
   baseURL: '',
+  variousArtistsId: '03b645ef2100dfc42fa9785ea3102295', // See consts.VariousArtistsID in consts.go
   // Login backgrounds from https://unsplash.com/collections/1065384/music-wallpapers
   loginBackgroundURL: 'https://source.unsplash.com/collection/1065384/1600x900',
   enableTranscodingConfig: true,
@@ -24,6 +25,8 @@ const defaultConfig = {
   lastFMApiKey: '9b94a5515ea66b2da3ec03c12300327e',
   enableCoverAnimation: true,
   devEnableInfiniteScroll: true,
+  devShowArtistPage: true,
+  devListenBrainzEnabled: true,
 }
 
 let config

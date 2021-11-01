@@ -1,4 +1,5 @@
-//+build wireinject
+//go:build wireinject
+// +build wireinject
 
 package subsonic
 
@@ -28,6 +29,7 @@ var allProviders = wire.NewSet(
 		"Scanner",
 		"Broker",
 		"Scrobbler",
+		"Playlists",
 	),
 )
 

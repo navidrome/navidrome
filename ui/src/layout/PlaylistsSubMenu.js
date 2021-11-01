@@ -1,11 +1,52 @@
 import React, { useCallback } from 'react'
-import { MenuItemLink, useQueryWithStore } from 'react-admin'
+import {
+  MenuItemLink,
+  useDataProvider,
+  useNotify,
+  useQueryWithStore,
+} from 'react-admin'
 import { useHistory } from 'react-router-dom'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
 import { Typography } from '@material-ui/core'
 import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import { BiCog } from 'react-icons/all'
+import { useDrop } from 'react-dnd'
 import SubMenu from './SubMenu'
+import { canChangeTracks } from '../common'
+import { DraggableTypes, MAX_SIDEBAR_PLAYLISTS } from '../consts'
+
+const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
+  const dataProvider = useDataProvider()
+  const notify = useNotify()
+
+  const [, dropRef] = useDrop(() => ({
+    accept: canChangeTracks(pls) ? DraggableTypes.ALL : [],
+    drop: (item) =>
+      dataProvider
+        .addToPlaylist(pls.id, item)
+        .then((res) => {
+          notify('message.songsAddedToPlaylist', 'info', {
+            smart_count: res.data?.added,
+          })
+        })
+        .catch(() => {
+          notify('ra.page.error', 'warning')
+        }),
+  }))
+
+  return (
+    <MenuItemLink
+      to={`/playlist/${pls.id}/show`}
+      primaryText={
+        <Typography variant="inherit" noWrap ref={dropRef}>
+          {pls.name}
+        </Typography>
+      }
+      sidebarIsOpen={sidebarIsOpen}
+      dense={false}
+    />
+  )
+}
 
 const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   const history = useHistory()
@@ -15,7 +56,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
     payload: {
       pagination: {
         page: 0,
-        perPage: 0,
+        perPage: MAX_SIDEBAR_PLAYLISTS,
       },
       sort: { field: 'name' },
     },
@@ -25,31 +66,23 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
     setState((state) => ({ ...state, [menu]: !state[menu] }))
   }
 
-  const renderPlaylistMenuItemLink = (pls) => {
-    return (
-      <MenuItemLink
-        key={pls.id}
-        to={`/playlist/${pls.id}/show`}
-        primaryText={
-          <Typography variant="inherit" noWrap>
-            {pls.name}
-          </Typography>
-        }
-        sidebarIsOpen={sidebarIsOpen}
-        dense={false}
-      />
-    )
-  }
+  const renderPlaylistMenuItemLink = (pls) => (
+    <PlaylistMenuItemLink
+      pls={pls}
+      sidebarIsOpen={sidebarIsOpen}
+      key={pls.id}
+    />
+  )
 
-  const user = localStorage.getItem('username')
+  const userId = localStorage.getItem('userId')
   const myPlaylists = []
   const sharedPlaylists = []
 
-  if (loaded) {
+  if (loaded && data) {
     const allPlaylists = Object.keys(data).map((id) => data[id])
 
     allPlaylists.forEach((pls) => {
-      if (user === pls.owner) {
+      if (userId === pls.ownerId) {
         myPlaylists.push(pls)
       } else {
         sharedPlaylists.push(pls)

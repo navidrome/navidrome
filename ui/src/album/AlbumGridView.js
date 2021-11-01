@@ -11,6 +11,7 @@ import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
 import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
+import { useDrag } from 'react-dnd'
 import subsonic from '../subsonic'
 import {
   AlbumContextMenu,
@@ -20,6 +21,7 @@ import {
 } from '../common'
 import AlbumDatagrid from '../infiniteScroll/AlbumDatagrid'
 import config from '../config'
+import { DraggableTypes } from '../consts'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -100,30 +102,54 @@ const getColsForWidth = (width) => {
 }
 
 const Cover = withContentRect('bounds')(
-  ({ album, isLoaded, measureRef, contentRect }) => {
+  ({ record, isLoaded, measureRef, contentRect }) => {
     // Force height to be the same as the width determined by the GridList
     // noinspection JSSuspiciousNameCombination
     const classes = useCoverStyles({ height: contentRect.bounds.width })
+    const [, dragAlbumRef] = useDrag(
+      () => ({
+        type: DraggableTypes.ALBUM,
+        item: { albumIds: [record.id] },
+        options: { dropEffect: 'copy' },
+      }),
+      [record]
+    )
     return (
       <div ref={measureRef}>
-        {isLoaded ? (
-          <img
-            src={subsonic.getCoverArtUrl(album, 300)}
-            alt={album.name}
-            className={classes.cover}
-          />
+        {config.devEnableInfiniteScroll ? (
+          isLoaded ? (
+            <img
+              src={subsonic.getCoverArtUrl(record, 300)}
+              alt={record.name}
+              className={classes.cover}
+            />
+          ) : (
+            <div
+              className={classes.cover}
+              style={{ backgroundColor: '#222', borderRadius: 4 }}
+            ></div>
+          )
         ) : (
-          <div
-            className={classes.cover}
-            style={{ backgroundColor: '#222', borderRadius: 4 }}
-          ></div>
+          <div ref={dragAlbumRef}>
+            <img
+              src={subsonic.getCoverArtUrl(record, 300)}
+              alt={record.name}
+              className={classes.cover}
+            />
+          </div>
         )}
       </div>
     )
   }
 )
 
-const AlbumGridTile = ({ showArtist, record, basePath, isLoaded }) => {
+const AlbumGridTile = ({
+  showArtist,
+  record,
+  basePath,
+  isLoaded,
+  ...props
+}) => {
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'), {
     noSsr: true,
@@ -159,14 +185,13 @@ const AlbumGridTile = ({ showArtist, record, basePath, isLoaded }) => {
       </div>
     )
   }
-
   return (
     <div className={classes.albumContainer}>
       <Link
         className={classes.link}
         to={linkToRecord(basePath, record.id, 'show')}
       >
-        <Cover album={record} isLoaded={true} />
+        <Cover record={record} isLoaded={true} />
         <GridListTileBar
           className={isDesktop ? classes.tileBar : classes.tileBarMobile}
           subtitle={

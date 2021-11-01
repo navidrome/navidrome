@@ -87,6 +87,14 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			getPlaylist(n.ds)(w, r)
 		})
+		r.With(urlParams).Route("/", func(r chi.Router) {
+			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+				deleteFromPlaylist(n.ds)(w, r)
+			})
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				addToPlaylist(n.ds)(w, r)
+			})
+		})
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(urlParams)
 			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
@@ -95,9 +103,6 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				deleteFromPlaylist(n.ds)(w, r)
 			})
-		})
-		r.With(urlParams).Post("/", func(w http.ResponseWriter, r *http.Request) {
-			addToPlaylist(n.ds)(w, r)
 		})
 	})
 }

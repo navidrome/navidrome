@@ -24,7 +24,8 @@
                 "rating": "Valutazione",
                 "quality": "Qualità",
                 "bpm": "BPM",
-                "playDate": "Ultima riproduzione"
+                "playDate": "Ultima riproduzione",
+                "channels": "Canali"
             },
             "actions": {
                 "addToQueue": "Aggiungi alla coda",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Aggiungi alla playlist",
                 "shuffleAll": "Riproduci casualmente",
                 "download": "Scarica",
-                "playNext": "Riproduci come successivo"
+                "playNext": "Riproduci come successivo",
+                "info": "Informazioni"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "Aggiungi alla coda",
                 "shuffle": "Riproduci casualmente",
                 "addToPlaylist": "Aggiungi alla Playlist",
-                "download": "Scarica"
+                "download": "Scarica",
+                "info": "Informazioni"
             },
             "lists": {
                 "all": "Tutti",
@@ -130,7 +133,7 @@
             "fields": {
                 "name": "Nome",
                 "duration": "Durata",
-                "owner": "Creatore",
+                "ownerName": "Creatore",
                 "public": "Pubblica",
                 "updatedAt": "Ultimo aggiornamento",
                 "createdAt": "Data creazione",
@@ -307,7 +310,8 @@
         "openIn": {
             "lastfm": "Apri in Last.fm",
             "musicbrainz": "Apri in MusicBrainz"
-        }
+        },
+        "lastfmLink": "Per saperne di più..."
     },
     "menu": {
         "library": "Libreria",
@@ -325,7 +329,9 @@
             }
         },
         "albumList": "Album",
-        "about": "Info"
+        "about": "Info",
+        "playlists": "Scalette",
+        "sharedPlaylists": "Scalette Condivise"
     },
     "player": {
         "playListsText": "Coda",

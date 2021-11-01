@@ -49,6 +49,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("firstTime", true))
 	})
 
+	It("includes the VariousArtistsID", func() {
+		mockUser.empty = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("variousArtistsId", consts.VariousArtistsID))
+	})
+
 	It("sets firstTime = false when User table is not empty", func() {
 		mockUser.empty = false
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -255,6 +266,27 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("devEnableInfiniteScroll", true))
 	})
 
+	It("sets the devShowArtistPage", func() {
+		conf.Server.DevShowArtistPage = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devShowArtistPage", true))
+	})
+
+	It("sets the devListenBrainzEnabled", func() {
+		conf.Server.DevListenBrainzEnabled = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devListenBrainzEnabled", true))
+	})
 })
 
 var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__="([^"]*)`)

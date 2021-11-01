@@ -24,7 +24,8 @@
                 "rating": "Classement",
                 "quality": "Qualité",
                 "bpm": "BPM",
-                "playDate": "Derniers joués"
+                "playDate": "Derniers joués",
+                "channels": "Canaux"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Ajouter à la playlist",
                 "shuffleAll": "Tout mélanger",
                 "download": "Télécharger",
-                "playNext": "Lire ensuite"
+                "playNext": "Lire ensuite",
+                "info": "Plus d'informations"
             }
         },
         "album": {
@@ -57,13 +59,14 @@
                 "addToQueue": "Ajouter à la file",
                 "shuffle": "Mélanger",
                 "addToPlaylist": "Ajouter à la playlist",
-                "download": "Télécharger"
+                "download": "Télécharger",
+                "info": "Plus d'informations"
             },
             "lists": {
                 "all": "Tous",
                 "random": "Aléatoire",
-                "recentlyAdded": "Récemment ajoutés",
-                "recentlyPlayed": "Récemment joués",
+                "recentlyAdded": "Récemment ajouté",
+                "recentlyPlayed": "Récemment joué",
                 "mostPlayed": "Plus joués",
                 "starred": "Favoris",
                 "topRated": "Les mieux classés"
@@ -130,10 +133,10 @@
             "fields": {
                 "name": "Nom",
                 "duration": "Durée",
-                "owner": "Propriétaire",
+                "ownerName": "Propriétaire",
                 "public": "Public",
                 "updatedAt": "Mise à jour le",
-                "createdAt": "Créée le",
+                "createdAt": "Créé le",
                 "songCount": "Titres",
                 "comment": "Commentaire",
                 "sync": "Import automatique",
@@ -154,7 +157,7 @@
         "auth": {
             "welcome1": "Merci d'avoir installé Navidrome !",
             "welcome2": "Pour commencer, créez un compte administrateur",
-            "confirmPassword": "Confirmez votre mot de passe",
+            "confirmPassword": "Confirmer votre mot de passe",
             "buttonCreateAdmin": "Créer un compte administrateur",
             "auth_check_error": "Merci de vous connecter pour continuer",
             "user_menu": "Profil",
@@ -191,7 +194,7 @@
             "delete": "Supprimer",
             "edit": "Éditer",
             "export": "Exporter",
-            "list": "Lister",
+            "list": "Liste",
             "refresh": "Actualiser",
             "remove_filter": "Supprimer ce filtre",
             "remove": "Supprimer",
@@ -307,7 +310,8 @@
         "openIn": {
             "lastfm": "Ouvrir dans Last.fm",
             "musicbrainz": "Ouvrir dans MusicBrainz"
-        }
+        },
+        "lastfmLink": "Lire plus..."
     },
     "menu": {
         "library": "Bibliothèque",
@@ -325,7 +329,9 @@
             }
         },
         "albumList": "Albums",
-        "about": "À propos"
+        "about": "À propos",
+        "playlists": "Playlists",
+        "sharedPlaylists": "Playlists partagées"
     },
     "player": {
         "playListsText": "File de lecture",

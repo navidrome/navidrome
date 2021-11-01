@@ -24,7 +24,8 @@
                 "rating": "レート",
                 "quality": "品質",
                 "bpm": "BPM",
-                "playDate": "最後の再生"
+                "playDate": "最後の再生",
+                "channels": "チャンネル"
             },
             "actions": {
                 "addToQueue": "最後に再生",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "プレイリストに追加",
                 "shuffleAll": "全曲シャッフル",
                 "download": "ダウンロード",
-                "playNext": "次に再生"
+                "playNext": "次に再生",
+                "info": "詳細"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "最後に再生",
                 "shuffle": "シャッフル",
                 "addToPlaylist": "プレイリストへ追加",
-                "download": "ダウンロード"
+                "download": "ダウンロード",
+                "info": "詳細"
             },
             "lists": {
                 "all": "全て",
@@ -130,7 +133,7 @@
             "fields": {
                 "name": "名前",
                 "duration": "時間",
-                "owner": "所有者",
+                "ownerName": "所有者",
                 "public": "公開",
                 "updatedAt": "更新日",
                 "createdAt": "作成日",
@@ -307,7 +310,8 @@
         "openIn": {
             "lastfm": "Last.fmで開く",
             "musicbrainz": "MusicBrainzで開く"
-        }
+        },
+        "lastfmLink": "続きを読む"
     },
     "menu": {
         "library": "ライブラリ",
@@ -325,7 +329,9 @@
             }
         },
         "albumList": "アルバム",
-        "about": "詳細"
+        "about": "詳細",
+        "playlists": "プレイリスト",
+        "sharedPlaylists": "共有プレイリスト"
     },
     "player": {
         "playListsText": "再生リスト",

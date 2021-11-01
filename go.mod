@@ -14,6 +14,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.10.0 // indirect
 	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27
 	github.com/disintegration/imaging v1.6.2
+	github.com/djherbis/atime v1.1.0
 	github.com/djherbis/fscache v0.10.2-0.20201024185917-a0daa9e52747
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/structs v1.1.0
@@ -27,7 +28,7 @@ require (
 	github.com/google/wire v0.5.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.3.0
-	github.com/lestrrat-go/jwx v1.2.6
+	github.com/lestrrat-go/jwx v1.2.7
 	github.com/matoous/go-nanoid v1.5.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mattn/go-zglob v0.0.3
@@ -47,8 +48,8 @@ require (
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
-	golang.org/x/tools v0.1.6
-	gopkg.in/djherbis/atime.v1 v1.0.0
+	golang.org/x/tools v0.1.7
+	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
 	gopkg.in/djherbis/stream.v1 v1.3.1
 )
 

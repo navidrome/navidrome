@@ -130,7 +130,7 @@
             "fields": {
                 "name": "Назва",
                 "duration": "Тривалість",
-                "owner": "Власник",
+                "ownerName": "Власник",
                 "public": "Публічний",
                 "updatedAt": "Оновлено",
                 "createdAt": "Створено",

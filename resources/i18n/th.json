@@ -24,7 +24,8 @@
                 "rating": "Rating",
                 "quality": "คุณภาพ",
                 "bpm": "BPM",
-                "playDate": ""
+                "playDate": "เล่นล่าสุด",
+                "channels": "ช่อง"
             },
             "actions": {
                 "addToQueue": "เล่นหลังสุด",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "เพิ่มในเพลย์ลิสต์",
                 "shuffleAll": "สุ่มทั้งหมด",
                 "download": "ดาวน์โหลด",
-                "playNext": "เล่นเพลงถัดไป"
+                "playNext": "เล่นเพลงถัดไป",
+                "info": "ดูรายละเอียด"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "เล่นหลังสุด",
                 "shuffle": "เล่นแบบสุ่ม",
                 "addToPlaylist": "เพิ่งลงในเพลย์ลิสต์",
-                "download": "ดาวน์โหลด"
+                "download": "ดาวน์โหลด",
+                "info": "ดูรายละเอียด"
             },
             "lists": {
                 "all": "ทั้งหมด",
@@ -113,7 +116,7 @@
                 "userName": "ชื่อผู้ใช้งาน",
                 "lastSeen": "ใช้งานล่าสุดเมื่อ",
                 "reportRealPath": "รายงาน Real Path",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "ส่ง Scrobble ไป Last.fm"
             }
         },
         "transcoding": {
@@ -130,7 +133,7 @@
             "fields": {
                 "name": "ชื่อ",
                 "duration": "เวลา",
-                "owner": "เจ้าของ",
+                "ownerName": "เจ้าของ",
                 "public": "สาธารณะ",
                 "updatedAt": "อัปเดตเมื่อ",
                 "createdAt": "สร้างขึ้นเมื่อ",
@@ -281,13 +284,13 @@
             "i18n_error": "ไม่สามารถเรียกคำแปลของภาษาที่เลือกได้",
             "canceled": "ยกเลิกการกระทำแล้ว",
             "logged_out": "เซสชั่นของท่านสิ้นสุดแล้ว โปรดเชื่อมต่ออีกครั้ง",
-            "new_version": ""
+            "new_version": "มีเวอร์ชั่นใหม่! กรุณารีเฟรชหน้าจอนี้"
         },
         "toggleFieldsMenu": {
-            "columnsToDisplay": "",
-            "layout": "",
-            "grid": "",
-            "table": ""
+            "columnsToDisplay": "แสดงคอลัมน์",
+            "layout": "เลย์เอ้าท์",
+            "grid": "Grid",
+            "table": "Table"
         }
     },
     "message": {
@@ -300,14 +303,15 @@
         "delete_user_content": "คุณแน่ใจที่จะลบผู้ใช้นี้และข้อมูลทั้งหมด(รวมถึงเพลย์ลิสท์และตั้งค่าต่างๆ)?",
         "notifications_blocked": "คุณบล็อกการแจ้งเตือนสำหรับเว็บไซต์นี้",
         "notifications_not_available": "เบราเซอร์นี้ไม่รองรับการแจ้งเตือน Desktop หรือคุณไม่ได้เข้าถึง Navidrome ผ่าน https",
-        "lastfmLinkSuccess": "",
-        "lastfmLinkFailure": "",
-        "lastfmUnlinkSuccess": "",
-        "lastfmUnlinkFailure": "",
+        "lastfmLinkSuccess": "เชื่อมต่อ Last.fm สำเร็จและเปิดการ Scrobble",
+        "lastfmLinkFailure": "ไม่สามารถเชื่อมต่อ Last.fm ได้",
+        "lastfmUnlinkSuccess": "ยกเลิกการเชิ่มต่อ Last.fm สำเร็จและปิดการ Scrobble แล้ว",
+        "lastfmUnlinkFailure": "ไม่สามารถยกเลิกการเชิ่อมต่อกับ Last.fm ได้",
         "openIn": {
-            "lastfm": "",
-            "musicbrainz": ""
-        }
+            "lastfm": "เปิดใน Last.fm",
+            "musicbrainz": "เปิดใน MusicBrainz"
+        },
+        "lastfmLink": "อ่านต่อ..."
     },
     "menu": {
         "library": "ไลบรารี่",
@@ -321,11 +325,13 @@
                 "language": "ภาษา",
                 "defaultView": "หน้าเริ่มต้น",
                 "desktop_notifications": "การแจ่งเตือน Desktop",
-                "lastfmScrobbling": ""
+                "lastfmScrobbling": "Scrobble ไป Last.fm"
             }
         },
         "albumList": "อัลบั้ม",
-        "about": "เกี่ยวกับ"
+        "about": "เกี่ยวกับ",
+        "playlists": "เพลย์ลิสต์",
+        "sharedPlaylists": "เพลย์ลิสต์ที่แบ่งปัน"
     },
     "player": {
         "playListsText": "เพลย์ลิสต์",

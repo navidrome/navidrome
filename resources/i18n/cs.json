@@ -24,7 +24,8 @@
                 "rating": "Hodnocení",
                 "quality": "Kvalita",
                 "bpm": "BPM",
-                "playDate": "Poslední přehravaná skladba"
+                "playDate": "Poslední přehravaná skladba",
+                "channels": "Kanály"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Přidat do seznamu skladeb",
                 "shuffleAll": "Zamíchat vše",
                 "download": "Stáhnout",
-                "playNext": "Přehrát další"
+                "playNext": "Přehrát další",
+                "info": "Získat informace"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "Přehrát později",
                 "shuffle": "Zamíchat",
                 "addToPlaylist": "Přidat do seznamu skladeb",
-                "download": "Stáhnout"
+                "download": "Stáhnout",
+                "info": "Získat informace"
             },
             "lists": {
                 "all": "Všechno",
@@ -130,7 +133,7 @@
             "fields": {
                 "name": "Název",
                 "duration": "Délka",
-                "owner": "Vlastník",
+                "ownerName": "Vlastník",
                 "public": "Veřejný",
                 "updatedAt": "Nahrán",
                 "createdAt": "Vytvořen",
@@ -305,9 +308,10 @@
         "lastfmUnlinkSuccess": "Last.fm odpojeno a ukládání vypnuto",
         "lastfmUnlinkFailure": "Last.fm nemohlo být odpojeno",
         "openIn": {
-            "lastfm": "",
-            "musicbrainz": ""
-        }
+            "lastfm": "Otevřít na Last.fm",
+            "musicbrainz": "Otevřít na MusicBrainz"
+        },
+        "lastfmLink": "Číst dále..."
     },
     "menu": {
         "library": "Knihovna",
@@ -325,7 +329,9 @@
             }
         },
         "albumList": "Alba",
-        "about": "O Navidrome"
+        "about": "O Navidrome",
+        "playlists": "Seznamy skladeb",
+        "sharedPlaylists": "Sdílené seznamy skladeb"
     },
     "player": {
         "playListsText": "Fronta",

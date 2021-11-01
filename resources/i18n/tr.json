@@ -110,7 +110,7 @@
             "fields": {
                 "name": "Isim",
                 "duration": "Süre",
-                "owner": "Sahibi",
+                "ownerName": "Sahibi",
                 "public": "Görülebilir",
                 "updatedAt": "Güncelleme tarihi:",
                 "createdAt": "Oluşturma tarihi:",

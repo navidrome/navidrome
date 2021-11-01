@@ -70,16 +70,9 @@ var (
 )
 
 var (
-	plsBest = model.Playlist{
-		Name:      "Best",
-		Comment:   "No Comments",
-		Owner:     "userid",
-		Public:    true,
-		SongCount: 2,
-		Tracks:    model.MediaFiles{{ID: "1001"}, {ID: "1003"}},
-	}
-	plsCool       = model.Playlist{Name: "Cool", Owner: "userid", Tracks: model.MediaFiles{{ID: "1004"}}}
-	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
+	plsBest       model.Playlist
+	plsCool       model.Playlist
+	testPlaylists []*model.Playlist
 )
 
 func P(path string) string {
@@ -92,7 +85,14 @@ var _ = Describe("Initialize test DB", func() {
 	BeforeSuite(func() {
 		o := orm.NewOrm()
 		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid"})
+		user := model.User{ID: "userid", UserName: "userid"}
+		ctx = request.WithUser(ctx, user)
+
+		ur := NewUserRepository(ctx, o)
+		err := ur.Put(&user)
+		if err != nil {
+			panic(err)
+		}
 
 		gr := NewGenreRepository(ctx, o)
 		for i := range testGenres {
@@ -130,6 +130,19 @@ var _ = Describe("Initialize test DB", func() {
 			}
 		}
 
+		plsBest = model.Playlist{
+			Name:      "Best",
+			Comment:   "No Comments",
+			OwnerID:   "userid",
+			OwnerName: "userid",
+			Public:    true,
+			SongCount: 2,
+		}
+		plsBest.AddTracks([]string{"1001", "1003"})
+		plsCool = model.Playlist{Name: "Cool", OwnerID: "userid", OwnerName: "userid"}
+		plsCool.AddTracks([]string{"1004"})
+		testPlaylists = []*model.Playlist{&plsBest, &plsCool}
+
 		pr := NewPlaylistRepository(ctx, o)
 		for i := range testPlaylists {
 			err := pr.Put(testPlaylists[i])
@@ -162,6 +175,5 @@ var _ = Describe("Initialize test DB", func() {
 		songComeTogether.Starred = true
 		songComeTogether.StarredAt = mf.StarredAt
 		testSongs[1] = songComeTogether
-
 	})
 })

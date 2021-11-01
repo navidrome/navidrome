@@ -4,10 +4,13 @@ import {
   EditButton,
   Filter,
   NumberField,
+  ReferenceInput,
   SearchInput,
+  SelectInput,
   TextField,
   useUpdate,
   useNotify,
+  useRecordContext,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { useMediaQuery } from '@material-ui/core'
@@ -17,17 +20,28 @@ import {
   isWritable,
   useSelectedFields,
   useResourceRefresh,
+  isSmartPlaylist,
 } from '../common'
 import PlaylistListActions from './PlaylistListActions'
 import { List, Datagrid } from '../infiniteScroll'
 
 const PlaylistFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
-    <SearchInput source="name" alwaysOn />
+    <SearchInput source="q" alwaysOn />
+    <ReferenceInput
+      source="owner_id"
+      reference="user"
+      perPage={0}
+      sort={{ field: 'name', order: 'ASC' }}
+      alwaysOn
+    >
+      <SelectInput optionText="name" />
+    </ReferenceInput>
   </Filter>
 )
 
-const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
+const TogglePublicInput = ({ resource, source }) => {
+  const record = useRecordContext()
   const notify = useNotify()
   const [togglePublic] = useUpdate(
     resource,
@@ -50,41 +64,34 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
     e.stopPropagation()
   }
 
-  const canChange =
-    permissions === 'admin' ||
-    localStorage.getItem('username') === record['owner']
-
   return (
     <Switch
       checked={record[source]}
       onClick={handleClick}
-      disabled={!canChange}
+      disabled={!isWritable(record.ownerId) || isSmartPlaylist(record)}
     />
   )
 }
 
-const PlaylistList = ({ permissions, ...props }) => {
+const PlaylistList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   useResourceRefresh('playlist')
 
-  const toggleableFields = useMemo(() => {
-    return {
-      owner: <TextField source="owner" />,
+  const toggleableFields = useMemo(
+    () => ({
+      ownerName: <TextField source="ownerName" />,
       songCount: isDesktop && <NumberField source="songCount" />,
       duration: isDesktop && <DurationField source="duration" />,
       updatedAt: isDesktop && (
         <DateField source="updatedAt" sortByOrder={'DESC'} />
       ),
       public: !isXsmall && (
-        <TogglePublicInput
-          source="public"
-          permissions={permissions}
-          sortByOrder={'DESC'}
-        />
+        <TogglePublicInput source="public" sortByOrder={'DESC'} />
       ),
-    }
-  }, [isDesktop, isXsmall, permissions])
+    }),
+    [isDesktop, isXsmall]
+  )
 
   const columns = useSelectedFields({
     resource: 'playlist',
@@ -98,10 +105,7 @@ const PlaylistList = ({ permissions, ...props }) => {
       filters={<PlaylistFilter />}
       actions={<PlaylistListActions />}
     >
-      <Datagrid
-        rowClick="show"
-        isRowSelectable={(r) => isWritable(r && r.owner)}
-      >
+      <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
         <TextField source="name" />
         {columns}
         <Writable>

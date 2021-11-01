@@ -130,7 +130,7 @@
             "fields": {
                 "name": "Titel",
                 "duration": "Lengte",
-                "owner": "Eigenaar",
+                "ownerName": "Eigenaar",
                 "public": "Publiek",
                 "updatedAt": "Laatst gewijzigd op",
                 "createdAt": "Aangemaakt op",
