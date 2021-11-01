@@ -43,15 +43,6 @@ const renderVirtualizedHook = (dataProvider = {}) => {
   })
 }
 describe('useVirtualizedData', () => {
-  it('loads initial data from store', () => {
-    const { result } = renderVirtualizedHook()
-    expect(result.current.loadedIds).toEqual({
-      0: 1,
-      1: 2,
-      2: 3,
-    })
-  })
-
   it('does not request first page', () => {
     const dataProvider = {
       getList: jest.fn().mockResolvedValue({
