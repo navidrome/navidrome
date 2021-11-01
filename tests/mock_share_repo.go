@@ -11,6 +11,7 @@ type MockShareRepo struct {
 	rest.Persistable
 
 	Entity interface{}
+	ID     string
 	Cols   []string
 	Error  error
 }
@@ -23,10 +24,11 @@ func (m *MockShareRepo) Save(entity interface{}) (string, error) {
 	return "id", nil
 }
 
-func (m *MockShareRepo) Update(entity interface{}, cols ...string) error {
+func (m *MockShareRepo) Update(id string, entity interface{}, cols ...string) error {
 	if m.Error != nil {
 		return m.Error
 	}
+	m.ID = id
 	m.Entity = entity
 	m.Cols = cols
 	return nil

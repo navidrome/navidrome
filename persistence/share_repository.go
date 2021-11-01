@@ -46,9 +46,10 @@ func (r *shareRepository) Put(s *model.Share) error {
 	return err
 }
 
-func (r *shareRepository) Update(entity interface{}, cols ...string) error {
+func (r *shareRepository) Update(id string, entity interface{}, cols ...string) error {
 	s := entity.(*model.Share)
-	_, err := r.put(s.ID, s, cols...)
+	s.ID = id
+	_, err := r.put(id, s, cols...)
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
 	}

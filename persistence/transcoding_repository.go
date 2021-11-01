@@ -77,9 +77,10 @@ func (r *transcodingRepository) Save(entity interface{}) (string, error) {
 	return id, err
 }
 
-func (r *transcodingRepository) Update(entity interface{}, cols ...string) error {
+func (r *transcodingRepository) Update(id string, entity interface{}, cols ...string) error {
 	t := entity.(*model.Transcoding)
-	_, err := r.put(t.ID, t)
+	t.ID = id
+	_, err := r.put(id, t)
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
 	}

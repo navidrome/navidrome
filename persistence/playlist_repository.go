@@ -376,13 +376,19 @@ func (r *playlistRepository) Save(entity interface{}) (string, error) {
 	return pls.ID, err
 }
 
-func (r *playlistRepository) Update(entity interface{}, cols ...string) error {
-	pls := entity.(*model.Playlist)
+func (r *playlistRepository) Update(id string, entity interface{}, cols ...string) error {
+	current, err := r.Get(id)
+	if err != nil {
+		return err
+	}
 	usr := loggedUser(r.ctx)
-	if !usr.IsAdmin && pls.OwnerID != usr.ID {
+	if !usr.IsAdmin && current.OwnerID != usr.ID {
 		return rest.ErrPermissionDenied
 	}
-	err := r.Put(pls)
+	pls := entity.(*model.Playlist)
+	pls.ID = id
+	pls.UpdatedAt = time.Now()
+	_, err = r.put(id, pls, append(cols, "updatedAt")...)
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
 	}
