@@ -110,9 +110,9 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 	scanner.Split(scanLines)
 	var mfs model.MediaFiles
 	for scanner.Scan() {
-		path := scanner.Text()
-		// Skip extended info
-		if strings.HasPrefix(path, "#") {
+		path := strings.TrimSpace(scanner.Text())
+		// Skip empty lines and extended info
+		if path == "" || strings.HasPrefix(path, "#") {
 			continue
 		}
 		if strings.HasPrefix(path, "file://") {
