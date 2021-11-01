@@ -106,6 +106,23 @@ const Cover = withContentRect('bounds')(
     // Force height to be the same as the width determined by the GridList
     // noinspection JSSuspiciousNameCombination
     const classes = useCoverStyles({ height: contentRect.bounds.width })
+    if (config.devEnableInfiniteScroll) {
+      if (isLoaded)
+        return (
+          <img
+            src={subsonic.getCoverArtUrl(record, 300)}
+            alt={record.name}
+            className={classes.cover}
+          />
+        )
+      return (
+        <div
+          className={classes.cover}
+          style={{ backgroundColor: '#222', borderRadius: 4 }}
+        ></div>
+      )
+    }
+
     const [, dragAlbumRef] = useDrag(
       () => ({
         type: DraggableTypes.ALBUM,
@@ -115,29 +132,12 @@ const Cover = withContentRect('bounds')(
       [record]
     )
     return (
-      <div ref={measureRef}>
-        {config.devEnableInfiniteScroll ? (
-          isLoaded ? (
-            <img
-              src={subsonic.getCoverArtUrl(record, 300)}
-              alt={record.name}
-              className={classes.cover}
-            />
-          ) : (
-            <div
-              className={classes.cover}
-              style={{ backgroundColor: '#222', borderRadius: 4 }}
-            ></div>
-          )
-        ) : (
-          <div ref={dragAlbumRef}>
-            <img
-              src={subsonic.getCoverArtUrl(record, 300)}
-              alt={record.name}
-              className={classes.cover}
-            />
-          </div>
-        )}
+      <div ref={dragAlbumRef}>
+        <img
+          src={subsonic.getCoverArtUrl(record, 300)}
+          alt={record.name}
+          className={classes.cover}
+        />
       </div>
     )
   }
