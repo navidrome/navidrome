@@ -108,12 +108,13 @@ func (r *playerRepository) Save(entity interface{}) (string, error) {
 	return id, err
 }
 
-func (r *playerRepository) Update(entity interface{}, cols ...string) error {
+func (r *playerRepository) Update(id string, entity interface{}, cols ...string) error {
 	t := entity.(*model.Player)
+	t.ID = id
 	if !r.isPermitted(t) {
 		return rest.ErrPermissionDenied
 	}
-	_, err := r.put(t.ID, t)
+	_, err := r.put(id, t, cols...)
 	if err == model.ErrNotFound {
 		return rest.ErrNotFound
 	}

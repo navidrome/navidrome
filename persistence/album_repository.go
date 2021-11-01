@@ -376,9 +376,10 @@ func (r albumRepository) Save(entity interface{}) (string, error) {
 	return id, err
 }
 
-func (r albumRepository) Update(entity interface{}, cols ...string) error {
+func (r albumRepository) Update(id string, entity interface{}, cols ...string) error {
 	album := entity.(*model.Album)
-	_, err := r.put(album.ID, album)
+	album.ID = id
+	_, err := r.put(id, album, cols...)
 	return err
 }
 

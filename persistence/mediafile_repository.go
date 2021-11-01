@@ -209,8 +209,9 @@ func (r *mediaFileRepository) Save(entity interface{}) (string, error) {
 	return mf.ID, err
 }
 
-func (r *mediaFileRepository) Update(entity interface{}, cols ...string) error {
+func (r *mediaFileRepository) Update(id string, entity interface{}, cols ...string) error {
 	mf := entity.(*model.MediaFile)
+	mf.ID = id
 	return r.Put(mf)
 }
 

@@ -285,8 +285,9 @@ func (r artistRepository) Save(entity interface{}) (string, error) {
 	return artist.ID, err
 }
 
-func (r artistRepository) Update(entity interface{}, cols ...string) error {
+func (r artistRepository) Update(id string, entity interface{}, cols ...string) error {
 	artist := entity.(*model.Artist)
+	artist.ID = id
 	return r.Put(artist)
 }
 

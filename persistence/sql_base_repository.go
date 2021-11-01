@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/utils"
-
 	. "github.com/Masterminds/squirrel"
 	"github.com/astaxie/beego/orm"
 	"github.com/google/uuid"
@@ -191,11 +189,18 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 	// If there's an ID, try to update first
 	if id != "" {
 		updateValues := map[string]interface{}{}
+
+		// This is a map of the columns that need to be updated, if specified
+		c2upd := map[string]struct{}{}
+		for _, c := range colsToUpdate {
+			c2upd[toSnakeCase(c)] = struct{}{}
+		}
 		for k, v := range values {
-			if len(colsToUpdate) == 0 || utils.StringInSlice(k, colsToUpdate) {
+			if _, found := c2upd[k]; len(c2upd) == 0 || found {
 				updateValues[k] = v
 			}
 		}
+
 		delete(updateValues, "created_at")
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
 		count, err := r.executeSQL(update)
@@ -206,7 +211,7 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 			return id, nil
 		}
 	}
-	// If does not have an ID OR the ID was not found (when it is a new record with predefined id)
+	// If it does not have an ID OR the ID was not found (when it is a new record with predefined id)
 	if id == "" {
 		id = uuid.NewString()
 		values["id"] = id
