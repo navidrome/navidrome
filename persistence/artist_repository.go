@@ -275,22 +275,5 @@ func (r *artistRepository) NewInstance() interface{} {
 	return &model.Artist{}
 }
 
-func (r artistRepository) Delete(id string) error {
-	return r.delete(Eq{"artist.id": id})
-}
-
-func (r artistRepository) Save(entity interface{}) (string, error) {
-	artist := entity.(*model.Artist)
-	err := r.Put(artist)
-	return artist.ID, err
-}
-
-func (r artistRepository) Update(id string, entity interface{}, cols ...string) error {
-	artist := entity.(*model.Artist)
-	artist.ID = id
-	return r.Put(artist)
-}
-
 var _ model.ArtistRepository = (*artistRepository)(nil)
 var _ model.ResourceRepository = (*artistRepository)(nil)
-var _ rest.Persistable = (*artistRepository)(nil)
