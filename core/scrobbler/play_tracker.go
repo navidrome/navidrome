@@ -141,7 +141,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 		} else {
 			success++
 			event.With("song", mf.ID).With("album", mf.AlbumID).With("artist", mf.AlbumArtistID)
-			log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
+			log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username, "timestamp", s.Timestamp)
 			if player.ScrobbleEnabled {
 				p.dispatchScrobble(ctx, mf, s.Timestamp)
 			}
