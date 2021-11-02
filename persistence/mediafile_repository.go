@@ -203,18 +203,5 @@ func (r *mediaFileRepository) NewInstance() interface{} {
 	return &model.MediaFile{}
 }
 
-func (r *mediaFileRepository) Save(entity interface{}) (string, error) {
-	mf := entity.(*model.MediaFile)
-	err := r.Put(mf)
-	return mf.ID, err
-}
-
-func (r *mediaFileRepository) Update(id string, entity interface{}, cols ...string) error {
-	mf := entity.(*model.MediaFile)
-	mf.ID = id
-	return r.Put(mf)
-}
-
 var _ model.MediaFileRepository = (*mediaFileRepository)(nil)
 var _ model.ResourceRepository = (*mediaFileRepository)(nil)
-var _ rest.Persistable = (*mediaFileRepository)(nil)
