@@ -38,8 +38,8 @@ func NewPlaylistRepository(ctx context.Context, o orm.Ormer) model.PlaylistRepos
 
 func playlistFilter(field string, value interface{}) Sqlizer {
 	return Or{
-		substringFilter("name", value),
-		substringFilter("comment", value),
+		substringFilter("playlist.name", value),
+		substringFilter("playlist.comment", value),
 	}
 }
 
