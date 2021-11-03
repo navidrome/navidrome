@@ -63,7 +63,7 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (model.Albums, int64
 
 	opts.Offset = utils.ParamInt(r, "offset", 0)
 	opts.Max = utils.MinInt(utils.ParamInt(r, "size", 10), 500)
-	albums, err := c.ds.Album(r.Context()).GetAll(opts)
+	albums, err := c.ds.Album(r.Context()).GetAllWithoutGenres(opts)
 
 	if err != nil {
 		log.Error(r, "Error retrieving albums", "error", err)
@@ -113,7 +113,7 @@ func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request)
 		log.Error(r, "Error retrieving starred artists", "error", err)
 		return nil, err
 	}
-	albums, err := c.ds.Album(ctx).GetAll(options)
+	albums, err := c.ds.Album(ctx).GetAllWithoutGenres(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred albums", "error", err)
 		return nil, err
