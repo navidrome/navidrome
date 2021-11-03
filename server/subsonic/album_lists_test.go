@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/server/subsonic/responses"
+
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -46,6 +48,7 @@ var _ = Describe("AlbumListController", func() {
 			_, err := controller.GetAlbumList(w, r)
 
 			Expect(err).To(MatchError("required 'type' parameter is missing"))
+			Expect(err.(subError).code).To(Equal(responses.ErrorMissingParameter))
 		})
 
 		It("should return error if call fails", func() {
@@ -55,6 +58,7 @@ var _ = Describe("AlbumListController", func() {
 			_, err := controller.GetAlbumList(w, r)
 
 			Expect(err).ToNot(BeNil())
+			Expect(err.(subError).code).To(Equal(responses.ErrorGeneric))
 		})
 	})
 
@@ -79,6 +83,7 @@ var _ = Describe("AlbumListController", func() {
 			_, err := controller.GetAlbumList2(w, r)
 
 			Expect(err).To(MatchError("required 'type' parameter is missing"))
+			Expect(err.(subError).code).To(Equal(responses.ErrorMissingParameter))
 		})
 
 		It("should return error if call fails", func() {
@@ -88,6 +93,7 @@ var _ = Describe("AlbumListController", func() {
 			_, err := controller.GetAlbumList2(w, r)
 
 			Expect(err).ToNot(BeNil())
+			Expect(err.(subError).code).To(Equal(responses.ErrorGeneric))
 		})
 	})
 })
