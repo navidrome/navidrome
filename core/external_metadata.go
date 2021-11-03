@@ -83,8 +83,18 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 		return nil, err
 	}
 
-	// If we have fresh info, just return it and trigger a refresh in the background
-	if time.Since(artist.ExternalInfoUpdatedAt) < consts.ArtistInfoTimeToLive {
+	// If we don't have any info, retrieves it now
+	if artist.ExternalInfoUpdatedAt.IsZero() {
+		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
+		err = e.refreshArtistInfo(ctx, artist)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// If info is expired, trigger a refresh in the background
+	if time.Since(artist.ExternalInfoUpdatedAt) > consts.ArtistInfoTimeToLive {
+		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
@@ -93,16 +103,8 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 				log.Error("Error refreshing ArtistInfo", "id", id, "name", artist.Name, err)
 			}
 		}()
-		log.Debug("Found cached ArtistInfo, refreshing in the background", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
-		err := e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
-		return &artist.Artist, err
 	}
 
-	log.Debug(ctx, "ArtistInfo not cached or expired", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
-	err = e.refreshArtistInfo(ctx, artist)
-	if err != nil {
-		return nil, err
-	}
 	err = e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
 	return &artist.Artist, err
 }

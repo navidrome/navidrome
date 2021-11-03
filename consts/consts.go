@@ -41,7 +41,7 @@ const (
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
 
-	ArtistInfoTimeToLive = 3 * 24 * time.Hour
+	ArtistInfoTimeToLive = 24 * time.Hour
 
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
