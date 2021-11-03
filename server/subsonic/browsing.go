@@ -149,7 +149,7 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 		return nil, err
 	}
 
-	albums, err := c.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(id))
+	albums, err := c.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(id))
 	if err != nil {
 		log.Error(ctx, "Error retrieving albums by artist", "id", id, "name", artist.Name, err)
 		return nil, err
@@ -337,7 +337,7 @@ func (c *BrowsingController) buildArtistDirectory(ctx context.Context, artist *m
 		dir.Starred = &artist.StarredAt
 	}
 
-	albums, err := c.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(artist.ID))
+	albums, err := c.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}
