@@ -24,16 +24,17 @@ func upUnescapeLyricsAndComments(tx *sql.Tx) error {
 		return err
 	}
 
-	var id, comment, lyrics, title string
+	var id, title string
+	var comment, lyrics sql.NullString
 	for rows.Next() {
 		err = rows.Scan(&id, &comment, &lyrics, &title)
 		if err != nil {
 			return err
 		}
 
-		comment = utils.SanitizeText(comment)
-		lyrics = utils.SanitizeText(lyrics)
-		_, err = stmt.Exec(comment, lyrics, id)
+		newComment := utils.SanitizeText(comment.String)
+		newLyrics := utils.SanitizeText(lyrics.String)
+		_, err = stmt.Exec(newComment, newLyrics, id)
 		if err != nil {
 			log.Error("Error unescaping media_file's lyrics and comments", "title", title, "id", id, err)
 		}
