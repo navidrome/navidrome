@@ -120,5 +120,6 @@ type PlaylistTrackRepository interface {
 	AddArtists(artistIds []string) (int, error)
 	AddDiscs(discs []DiscID) (int, error)
 	Delete(id ...string) error
+	DeleteAll() error
 	Reorder(pos int, newPos int) error
 }

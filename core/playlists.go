@@ -227,6 +227,12 @@ func (s *playlists) Update(ctx context.Context, playlistId string,
 		if public != nil {
 			pls.Public = *public
 		}
+		// Special case: The playlist is now empty
+		if len(idxToRemove) > 0 && len(pls.Tracks) == 0 {
+			if err = repo.Tracks(playlistId).DeleteAll(); err != nil {
+				return err
+			}
+		}
 		return repo.Put(pls)
 	})
 }
