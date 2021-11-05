@@ -164,6 +164,18 @@ func (r *playlistTrackRepository) Delete(ids ...string) error {
 	return r.playlistRepo.renumber(r.playlistId)
 }
 
+func (r *playlistTrackRepository) DeleteAll() error {
+	if !r.isTracksEditable() {
+		return rest.ErrPermissionDenied
+	}
+	err := r.delete(Eq{"playlist_id": r.playlistId})
+	if err != nil {
+		return err
+	}
+
+	return r.playlistRepo.renumber(r.playlistId)
+}
+
 func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
 	if !r.isTracksEditable() {
 		return rest.ErrPermissionDenied

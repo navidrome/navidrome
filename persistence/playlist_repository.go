@@ -110,10 +110,10 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 		return nil
 	}
 	// Only update tracks if they were specified
-	if len(pls.Tracks) == 0 {
-		return nil
+	if len(pls.Tracks) > 0 {
+		return r.updateTracks(id, p.MediaFiles())
 	}
-	return r.updateTracks(id, p.MediaFiles())
+	return r.RefreshStatus(id)
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
