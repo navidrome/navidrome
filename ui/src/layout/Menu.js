@@ -68,7 +68,7 @@ const Menu = ({ dense = false }) => {
   const renderResourceMenuItemLink = (resource) => (
     <MenuItemLink
       key={resource.name}
-      to={`/${resource.name}`}
+      to={`/${resource.name}?page=1`}
       activeClassName={classes.active}
       primaryText={translatedResourceName(resource, translate)}
       leftIcon={resource.icon || <ViewListIcon />}
