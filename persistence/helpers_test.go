@@ -59,6 +59,16 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 
+	Describe("notExists", func() {
+		It("constructs the correct NOT EXISTS query", func() {
+			e := notExists("artist", squirrel.ConcatExpr("id = artist_id"))
+			sql, args, err := e.ToSql()
+			Expect(sql).To(Equal("not exists (select 1 from artist where id = artist_id)"))
+			Expect(args).To(BeEmpty())
+			Expect(err).To(BeNil())
+		})
+	})
+
 	Describe("getMostFrequentMbzID", func() {
 		It(`returns "" when no ids are passed`, func() {
 			Expect(getMostFrequentMbzID(context.TODO(), " ", "", "")).To(Equal(""))
