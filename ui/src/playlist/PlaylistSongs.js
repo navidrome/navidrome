@@ -25,6 +25,7 @@ import {
   useSelectedFields,
   useResourceRefresh,
   DateField,
+  ArtistLinkField,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import { AlbumLinkField } from '../song/AlbumLinkField'
@@ -134,7 +135,8 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       trackNumber: isDesktop && <TextField source="id" label={'#'} />,
       title: <SongTitleField source="title" showTrackNumbers={false} />,
       album: isDesktop && <AlbumLinkField source="album" />,
-      artist: isDesktop && <TextField source="artist" />,
+      artist: isDesktop && <ArtistLinkField source="artist" />,
+      albumArtist: isDesktop && <ArtistLinkField source="albumArtist" />,
       duration: (
         <DurationField source="duration" className={classes.draggable} />
       ),
@@ -158,7 +160,14 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const columns = useSelectedFields({
     resource: 'playlistTrack',
     columns: toggleableFields,
-    defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate'],
+    defaultOff: [
+      'channels',
+      'bpm',
+      'year',
+      'playCount',
+      'playDate',
+      'albumArtist',
+    ],
   })
 
   return (

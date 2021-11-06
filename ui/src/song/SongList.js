@@ -23,6 +23,7 @@ import {
   SongSimpleList,
   RatingField,
   useResourceRefresh,
+  ArtistLinkField,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { makeStyles } from '@material-ui/core/styles'
@@ -107,8 +108,8 @@ const SongList = (props) => {
           sortByOrder={'ASC'}
         />
       ),
-      artist: <TextField source="artist" />,
-      albumArtist: <TextField source="albumArtist" />,
+      artist: <ArtistLinkField source="artist" />,
+      albumArtist: <ArtistLinkField source="albumArtist" />,
       trackNumber: isDesktop && <NumberField source="trackNumber" />,
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />

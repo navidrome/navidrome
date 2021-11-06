@@ -14,25 +14,35 @@ export const useGetHandleArtistClick = (width) => {
   }
 }
 
-export const ArtistLinkField = withWidth()(({ record, className, width }) => {
-  const artistLink = useGetHandleArtistClick(width)
+const songsFilteredByArtist = (artist) => {
+  return `/song?filter={"artist":"${artist}"}`
+}
 
-  return (
-    <Link
-      to={artistLink(record.albumArtistId)}
-      onClick={(e) => e.stopPropagation()}
-      className={className}
-    >
-      {record.albumArtist}
-    </Link>
-  )
-})
+export const ArtistLinkField = withWidth()(
+  ({ record, className, width, source }) => {
+    const artistLink = useGetHandleArtistClick(width)
+
+    const id = record[source + 'Id']
+    const link = id ? artistLink(id) : songsFilteredByArtist(record[source])
+    return (
+      <Link
+        to={link}
+        onClick={(e) => e.stopPropagation()}
+        className={className}
+      >
+        {record[source]}
+      </Link>
+    )
+  }
+)
 
 ArtistLinkField.propTypes = {
   record: PropTypes.object,
   className: PropTypes.string,
+  source: PropTypes.string,
 }
 
 ArtistLinkField.defaultProps = {
   addLabel: true,
+  source: 'albumArtist',
 }
