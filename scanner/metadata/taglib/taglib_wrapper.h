@@ -5,14 +5,15 @@
 extern "C" {
 #endif
 
+#ifdef WIN32
+#define FILENAME_CHAR_T wchar_t
+#else
+#define FILENAME_CHAR_T char
+#endif
+
 extern void go_map_put_str(unsigned long id, char *key, char *val);
 extern void go_map_put_int(unsigned long id, char *key, int val);
-
-#ifdef WIN32
-int taglib_read(const wchar_t *filename, unsigned long id);
-#else
-int taglib_read(const char *filename, unsigned long id);
-#endif
+int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id);
 
 #ifdef __cplusplus
 }
