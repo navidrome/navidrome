@@ -161,8 +161,7 @@ func (itr InTheRange) ToSql() (sql string, args []interface{}, err error) {
 		if s.Kind() != reflect.Slice || s.Len() != 2 {
 			return "", nil, fmt.Errorf("invalid range for 'in' operator: %s", v)
 		}
-		and = append(and, squirrel.GtOrEq{f: s.Index(0).Interface()})
-		and = append(and, squirrel.LtOrEq{f: s.Index(1).Interface()})
+		and = append(and, squirrel.GtOrEq{f: s.Index(0).Interface()}, squirrel.LtOrEq{f: s.Index(1).Interface()})
 	}
 	return and.ToSql()
 }
