@@ -14,24 +14,25 @@ export const useGetHandleArtistClick = (width) => {
   }
 }
 
-const songsFilteredByArtist = (artist) => {
-  return `/song?filter={"artist":"${artist}"}`
-}
-
 export const ArtistLinkField = withWidth()(
   ({ record, className, width, source }) => {
     const artistLink = useGetHandleArtistClick(width)
 
     const id = record[source + 'Id']
-    const link = id ? artistLink(id) : songsFilteredByArtist(record[source])
     return (
-      <Link
-        to={link}
-        onClick={(e) => e.stopPropagation()}
-        className={className}
-      >
-        {record[source]}
-      </Link>
+      <>
+        {id ? (
+          <Link
+            to={artistLink(id)}
+            onClick={(e) => e.stopPropagation()}
+            className={className}
+          >
+            {record[source]}
+          </Link>
+        ) : (
+          record[source]
+        )}
+      </>
     )
   }
 )
