@@ -10,7 +10,7 @@ export const useGetHandleArtistClick = (width) => {
   return (id) => {
     return config.devShowArtistPage && id !== config.variousArtistsId
       ? `/artist/${id}/show`
-      : `/album?filter={"artist_id":"${id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`
+      : `/album?filter={"artist_id":"${id}"}&order=ASC&sort=max_year&displayedFilters={"compilation":true}&perPage=${perPage}`
   }
 }
 
