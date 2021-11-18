@@ -59,9 +59,10 @@ type configOptions struct {
 
 	Scanner scannerOptions
 
-	Agents  string
-	LastFM  lastfmOptions
-	Spotify spotifyOptions
+	Agents       string
+	LastFM       lastfmOptions
+	Spotify      spotifyOptions
+	ListenBrainz listenBrainzOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
@@ -75,7 +76,6 @@ type configOptions struct {
 	DevSidebarPlaylists        bool
 	DevEnableBufferedScrobble  bool
 	DevShowArtistPage          bool
-	DevListenBrainzEnabled     bool
 }
 
 type scannerOptions struct {
@@ -93,6 +93,10 @@ type lastfmOptions struct {
 type spotifyOptions struct {
 	ID     string
 	Secret string
+}
+
+type listenBrainzOptions struct {
+	Enabled bool
 }
 
 var (
@@ -153,10 +157,10 @@ func disableExternalServices() {
 	log.Info("All external integrations are DISABLED!")
 	Server.LastFM.Enabled = false
 	Server.Spotify.ID = ""
+	Server.ListenBrainz.Enabled = false
 	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
 		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
 	}
-	Server.DevListenBrainzEnabled = false
 }
 
 func validateScanSchedule() error {
@@ -246,6 +250,7 @@ func init() {
 	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
+	viper.SetDefault("listenbrainz.enabled", true)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
@@ -258,7 +263,6 @@ func init() {
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
-	viper.SetDefault("devlistenbrainzenabled", false)
 }
 
 func InitConfig(cfgFile string) {
