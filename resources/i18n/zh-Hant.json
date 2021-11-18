@@ -95,7 +95,8 @@
                 "createdAt": "創建於",
                 "changePassword": "變更密碼?",
                 "currentPassword": "現在的密碼",
-                "newPassword": "新密碼"
+                "newPassword": "新密碼",
+                "token": ""
             },
             "helperTexts": {
                 "name": "你的名稱會在下次登入時生效"
@@ -104,6 +105,10 @@
                 "created": "使用者已創建",
                 "updated": "使用者已更新",
                 "deleted": "使用者已刪除"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "使用者名稱",
                 "lastSeen": "上次瀏覽",
                 "reportRealPath": "回報實際路徑",
-                "scrobbleEnabled": "發送音樂記錄到Last.fm"
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "選擇播放清單",
                 "addNewPlaylist": "創建 %{name}",
-                "export": "導出"
+                "export": "導出",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "加入重複的歌曲",
@@ -311,7 +318,11 @@
             "lastfm": "在Last.fm打開",
             "musicbrainz": "在MusicBrainz打開"
         },
-        "lastfmLink": "繼續閱讀..."
+        "lastfmLink": "繼續閱讀...",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "音樂庫",
@@ -325,7 +336,8 @@
                 "language": "語言",
                 "defaultView": "預設畫面",
                 "desktop_notifications": "桌面通知",
-                "lastfmScrobbling": "啟用Last.fm音樂記錄"
+                "lastfmScrobbling": "啟用Last.fm音樂記錄",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "專輯",
