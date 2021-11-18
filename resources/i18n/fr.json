@@ -95,7 +95,8 @@
                 "createdAt": "Créé le",
                 "changePassword": "Changer le mot de passe ?",
                 "currentPassword": "Mot de passe actuel",
-                "newPassword": "Nouveau mot de passe"
+                "newPassword": "Nouveau mot de passe",
+                "token": ""
             },
             "helperTexts": {
                 "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion"
@@ -104,6 +105,10 @@
                 "created": "Utilisateur créé",
                 "updated": "Utilisateur mis à jour",
                 "deleted": "Utilisateur supprimé"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "Nom d'utilisateur",
                 "lastSeen": "Vu pour la dernière fois",
                 "reportRealPath": "Rapporter le chemin absolu",
-                "scrobbleEnabled": "Envoyer les scrobbles à Last.fm"
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Ajouter les pistes à la playlist",
                 "addNewPlaylist": "Créer \"%{name}\"",
-                "export": "Exporter"
+                "export": "Exporter",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "Pistes déjà présentes dans la playlist",
@@ -311,7 +318,11 @@
             "lastfm": "Ouvrir dans Last.fm",
             "musicbrainz": "Ouvrir dans MusicBrainz"
         },
-        "lastfmLink": "Lire plus..."
+        "lastfmLink": "Lire plus...",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "Bibliothèque",
@@ -325,7 +336,8 @@
                 "language": "Langue",
                 "defaultView": "Vue par défaut",
                 "desktop_notifications": "Notifications de bureau",
-                "lastfmScrobbling": "Scrobbler vers Last.fm"
+                "lastfmScrobbling": "Scrobbler vers Last.fm",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "Albums",
