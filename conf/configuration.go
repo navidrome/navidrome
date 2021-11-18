@@ -59,10 +59,11 @@ type configOptions struct {
 
 	Scanner scannerOptions
 
-	Agents  string
-	LastFM  lastfmOptions
-	Spotify spotifyOptions
-	LDAP    ldapOptions
+	Agents       string
+	LastFM       lastfmOptions
+	Spotify      spotifyOptions
+	LDAP         ldapOptions
+	ListenBrainz listenBrainzOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
@@ -76,7 +77,6 @@ type configOptions struct {
 	DevSidebarPlaylists        bool
 	DevEnableBufferedScrobble  bool
 	DevShowArtistPage          bool
-	DevListenBrainzEnabled     bool
 }
 
 type scannerOptions struct {
@@ -104,6 +104,10 @@ type ldapOptions struct {
 	SearchFilter string
 	Mail         string
 	Name         string
+}
+
+type listenBrainzOptions struct {
+	Enabled bool
 }
 
 var (
@@ -164,10 +168,10 @@ func disableExternalServices() {
 	log.Info("All external integrations are DISABLED!")
 	Server.LastFM.Enabled = false
 	Server.Spotify.ID = ""
+	Server.ListenBrainz.Enabled = false
 	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
 		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
 	}
-	Server.DevListenBrainzEnabled = false
 }
 
 func validateScanSchedule() error {
@@ -257,6 +261,7 @@ func init() {
 	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
+	viper.SetDefault("listenbrainz.enabled", true)
 
 	viper.SetDefault("ldap.host", "ldap://localhost:389")
 	viper.SetDefault("ldap.binddn", "")
@@ -277,7 +282,6 @@ func init() {
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
-	viper.SetDefault("devlistenbrainzenabled", false)
 }
 
 func InitConfig(cfgFile string) {

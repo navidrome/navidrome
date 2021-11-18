@@ -26,7 +26,7 @@ const Personal = () => {
         <SelectDefaultView />
         <NotificationsToggle />
         {config.lastFMEnabled && <LastfmScrobbleToggle />}
-        {config.devListenBrainzEnabled && <ListenBrainzScrobbleToggle />}
+        {config.listenBrainzEnabled && <ListenBrainzScrobbleToggle />}
       </SimpleForm>
     </Card>
   )

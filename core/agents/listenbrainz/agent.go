@@ -104,7 +104,7 @@ func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) boo
 
 func init() {
 	conf.AddHook(func() {
-		if conf.Server.DevListenBrainzEnabled {
+		if conf.Server.ListenBrainz.Enabled {
 			scrobbler.Register(listenBrainzAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
 				return listenBrainzConstructor(ds)
 			})
