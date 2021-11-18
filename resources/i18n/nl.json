@@ -24,7 +24,8 @@
                 "rating": "Beoordeling",
                 "quality": "Kwaliteit",
                 "bpm": "BPM",
-                "playDate": "Laatst afgespeeld"
+                "playDate": "Laatst afgespeeld",
+                "channels": "Kanalen"
             },
             "actions": {
                 "addToQueue": "Voeg toe aan wachtrij",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Voeg toe aan afspeellijst",
                 "shuffleAll": "Shuffle alles",
                 "download": "Downloaden",
-                "playNext": "Volgende"
+                "playNext": "Volgende",
+                "info": "Meer info"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "Voeg toe aan wachtrij",
                 "shuffle": "Shuffle",
                 "addToPlaylist": "Toevoegen aan afspeellijst",
-                "download": "Downloaden"
+                "download": "Downloaden",
+                "info": "Meer info"
             },
             "lists": {
                 "all": "Alle",
@@ -92,7 +95,8 @@
                 "createdAt": "Aangemaakt op",
                 "changePassword": "Wijzig wachtwoord?",
                 "currentPassword": "Huidig wachtwoord",
-                "newPassword": "Nieuw wachtwoord"
+                "newPassword": "Nieuw wachtwoord",
+                "token": ""
             },
             "helperTexts": {
                 "name": "Naamswijziging wordt pas zichtbaar bij de volgende login"
@@ -101,6 +105,10 @@
                 "created": "Aangemaakt door gebruiker",
                 "updated": "Gewijzigd door gebruiker",
                 "deleted": "Gewist door gebruiker"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -113,7 +121,7 @@
                 "userName": "Gebruikersnaam",
                 "lastSeen": "Laatst gezien op",
                 "reportRealPath": "Toon het echte bestandspad",
-                "scrobbleEnabled": "Verstuur scrobbles naar Last.fm"
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -142,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Selecteer een afspeellijst:",
                 "addNewPlaylist": "Creëer \"%{name}\"",
-                "export": "Exporteer"
+                "export": "Exporteer",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "Dubbele nummers toevoegen",
@@ -305,9 +315,14 @@
         "lastfmUnlinkSuccess": "Last.fm ontkoppeld en scrobbling uitgezet",
         "lastfmUnlinkFailure": "Last.fm kon niet worden ontkoppeld",
         "openIn": {
-            "lastfm": "",
-            "musicbrainz": ""
-        }
+            "lastfm": "Open in Last.fm",
+            "musicbrainz": "Open in MusicBrainz"
+        },
+        "lastfmLink": "Lees meer...",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "Bibliotheek",
@@ -321,11 +336,14 @@
                 "language": "Taal",
                 "defaultView": "Standaard weergave",
                 "desktop_notifications": "Bureaubladmeldingen",
-                "lastfmScrobbling": "Scrobble naar Last.fm"
+                "lastfmScrobbling": "Scrobble naar Last.fm",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "Albums",
-        "about": "Over"
+        "about": "Over",
+        "playlists": "Playlists",
+        "sharedPlaylists": "Gedeelde playlists"
     },
     "player": {
         "playListsText": "Afspeellijst afspelen",

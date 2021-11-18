@@ -95,7 +95,8 @@
                 "createdAt": "Erstellt um",
                 "changePassword": "Passwort ändern?",
                 "currentPassword": "Aktuelles Passwort",
-                "newPassword": "Neues Passwort"
+                "newPassword": "Neues Passwort",
+                "token": ""
             },
             "helperTexts": {
                 "name": "Die Änderung wird erst nach dem nächsten Login gültig"
@@ -104,6 +105,10 @@
                 "created": "Benutzer erstellt",
                 "updated": "Benutzer aktualisiert",
                 "deleted": "Benutzer gelöscht"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "Nutzername",
                 "lastSeen": "Zuletzt gesehen um",
                 "reportRealPath": "Echten Pfad anzeigen",
-                "scrobbleEnabled": "Scrobbles an Last.fm senden"
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Songs zur Playlist hinzufügen",
                 "addNewPlaylist": "\"%{name}\" erstellen",
-                "export": "Exportieren"
+                "export": "Exportieren",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "Duplikate hinzufügen",
@@ -311,7 +318,11 @@
             "lastfm": "Auf Last.fm anzeigen",
             "musicbrainz": "Auf MusicBrainz anzeigen"
         },
-        "lastfmLink": "Mehr lesen"
+        "lastfmLink": "Mehr lesen",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "Bibliothek",
@@ -325,7 +336,8 @@
                 "language": "Sprache",
                 "defaultView": "Standard-Ansicht",
                 "desktop_notifications": "Desktop-Benachrichtigungen",
-                "lastfmScrobbling": "Last.fm Scrobbling"
+                "lastfmScrobbling": "Last.fm Scrobbling",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "Alben",
