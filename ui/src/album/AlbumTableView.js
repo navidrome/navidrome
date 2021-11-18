@@ -91,7 +91,7 @@ const AlbumTableView = ({
         <NumberField source="playCount" sortByOrder={'DESC'} />
       ),
       year: (
-        <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
+        <RangeField source={'year'} sortBy={'max_year'} sortByOrder={'DESC'} />
       ),
       duration: isDesktop && <DurationField source="duration" />,
       rating: config.enableStarRating && (
@@ -132,7 +132,7 @@ const AlbumTableView = ({
       )}
       tertiaryText={(r) => (
         <>
-          <RangeField record={r} source={'year'} sortBy={'maxYear'} />
+          <RangeField record={r} source={'year'} sortBy={'max_year'} />
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         </>
       )}
