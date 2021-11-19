@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -57,7 +56,7 @@ func (s *Server) initRoutes() {
 	r := chi.NewRouter()
 
 	r.Use(secureMiddleware())
-	r.Use(cors.AllowAll().Handler)
+	r.Use(corsHandler())
 	r.Use(middleware.RequestID)
 	if conf.Server.ReverseProxyWhitelist == "" {
 		r.Use(middleware.RealIP)
