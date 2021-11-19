@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/cors"
+
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -69,6 +71,23 @@ func robotsTXT(fs fs.FS) func(next http.Handler) http.Handler {
 			}
 		})
 	}
+}
+
+func corsMiddleware() func(h http.Handler) http.Handler {
+	return cors.Handler(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{
+			http.MethodHead,
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+		},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: false,
+		ExposedHeaders:   []string{"x-content-duration", "x-total-count"},
+	})
 }
 
 func secureMiddleware() func(h http.Handler) http.Handler {
