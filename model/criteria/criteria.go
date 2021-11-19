@@ -22,15 +22,25 @@ type Criteria struct {
 }
 
 func (c Criteria) OrderBy() string {
+	if c.Sort == "" {
+		c.Sort = "title"
+	}
 	f := fieldMap[strings.ToLower(c.Sort)]
-	if f == "" {
+	var mapped string
+	if f == nil {
 		log.Error("Invalid field in 'sort' field", "field", c.Sort)
-		f = c.Sort
+		mapped = c.Sort
+	} else {
+		if f.order == "" {
+			mapped = f.field
+		} else {
+			mapped = f.order
+		}
 	}
 	if c.Order != "" {
-		f = f + " " + c.Order
+		mapped = mapped + " " + c.Order
 	}
-	return f
+	return mapped
 }
 
 func (c Criteria) ToSql() (sql string, args []interface{}, err error) {
