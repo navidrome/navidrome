@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -13,11 +14,12 @@ import (
 )
 
 type PlaylistsController struct {
-	ds model.DataStore
+	ds  model.DataStore
+	pls core.Playlists
 }
 
-func NewPlaylistsController(ds model.DataStore) *PlaylistsController {
-	return &PlaylistsController{ds: ds}
+func NewPlaylistsController(ds model.DataStore, pls core.Playlists) *PlaylistsController {
+	return &PlaylistsController{ds: ds, pls: pls}
 }
 
 func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -46,7 +48,7 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 }
 
 func (c *PlaylistsController) getPlaylist(ctx context.Context, id string) (*responses.Subsonic, error) {
-	pls, err := c.ds.Playlist(ctx).Get(id)
+	pls, err := c.ds.Playlist(ctx).GetWithTracks(id)
 	switch {
 	case err == model.ErrNotFound:
 		log.Error(ctx, err.Error(), "id", id)
@@ -67,25 +69,20 @@ func (c *PlaylistsController) create(ctx context.Context, playlistId, name strin
 		var pls *model.Playlist
 		var err error
 
-		// If playlistID is present, override tracks
 		if playlistId != "" {
 			pls, err = tx.Playlist(ctx).Get(playlistId)
 			if err != nil {
 				return err
 			}
-			if owner != pls.Owner {
+			if owner.ID != pls.OwnerID {
 				return model.ErrNotAuthorized
 			}
-			pls.Tracks = nil
 		} else {
-			pls = &model.Playlist{
-				Name:  name,
-				Owner: owner,
-			}
+			pls = &model.Playlist{Name: name}
+			pls.OwnerID = owner.ID
 		}
-		for _, id := range ids {
-			pls.Tracks = append(pls.Tracks, model.MediaFile{ID: id})
-		}
+		pls.Tracks = nil
+		pls.AddTracks(ids)
 
 		err = tx.Playlist(ctx).Put(pls)
 		playlistId = pls.ID
@@ -110,27 +107,12 @@ func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Requ
 	return c.getPlaylist(ctx, id)
 }
 
-func (c *PlaylistsController) delete(ctx context.Context, playlistId string) error {
-	return c.ds.WithTx(func(tx model.DataStore) error {
-		pls, err := tx.Playlist(ctx).Get(playlistId)
-		if err != nil {
-			return err
-		}
-
-		owner := getUser(ctx)
-		if owner != pls.Owner {
-			return model.ErrNotAuthorized
-		}
-		return tx.Playlist(ctx).Delete(playlistId)
-	})
-}
-
 func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
-	err = c.delete(r.Context(), id)
+	err = c.ds.Playlist(r.Context()).Delete(id)
 	if err == model.ErrNotAuthorized {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
@@ -139,45 +121,6 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 		return nil, err
 	}
 	return newResponse(), nil
-}
-
-func (c *PlaylistsController) update(ctx context.Context, playlistId string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error {
-	return c.ds.WithTx(func(tx model.DataStore) error {
-		pls, err := tx.Playlist(ctx).Get(playlistId)
-		if err != nil {
-			return err
-		}
-
-		owner := getUser(ctx)
-		if owner != pls.Owner {
-			return model.ErrNotAuthorized
-		}
-
-		if name != nil {
-			pls.Name = *name
-		}
-		if comment != nil {
-			pls.Comment = *comment
-		}
-		if public != nil {
-			pls.Public = *public
-		}
-
-		newTracks := model.MediaFiles{}
-		for i, t := range pls.Tracks {
-			if utils.IntInSlice(i, idxToRemove) {
-				continue
-			}
-			newTracks = append(newTracks, t)
-		}
-
-		for _, id := range idsToAdd {
-			newTracks = append(newTracks, model.MediaFile{ID: id})
-		}
-		pls.Tracks = newTracks
-
-		return tx.Playlist(ctx).Put(pls)
-	})
 }
 
 func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -208,7 +151,7 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	log.Trace(r, fmt.Sprintf("-- Adding: '%v'", songsToAdd))
 	log.Trace(r, fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
-	err = c.update(r.Context(), playlistId, plsName, comment, public, songsToAdd, songIndexesToRemove)
+	err = c.pls.Update(r.Context(), playlistId, plsName, comment, public, songsToAdd, songIndexesToRemove)
 	if err == model.ErrNotAuthorized {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
@@ -223,7 +166,7 @@ func (c *PlaylistsController) buildPlaylistWithSongs(ctx context.Context, p *mod
 	pls := &responses.PlaylistWithSongs{
 		Playlist: *c.buildPlaylist(*p),
 	}
-	pls.Entry = childrenFromMediaFiles(ctx, p.Tracks)
+	pls.Entry = childrenFromMediaFiles(ctx, p.MediaFiles())
 	return pls
 }
 
@@ -233,7 +176,7 @@ func (c *PlaylistsController) buildPlaylist(p model.Playlist) *responses.Playlis
 	pls.Name = p.Name
 	pls.Comment = p.Comment
 	pls.SongCount = p.SongCount
-	pls.Owner = p.Owner
+	pls.Owner = p.OwnerName
 	pls.Duration = int(p.Duration)
 	pls.Public = p.Public
 	pls.Created = p.CreatedAt

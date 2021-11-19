@@ -35,16 +35,18 @@ const (
 
 	// Login backgrounds from https://unsplash.com/collections/20072696/navidrome
 	DefaultUILoginBackgroundURL = "https://source.unsplash.com/collection/20072696/1600x900"
+	// In case external integrations are disabled
+	DefaultUILoginBackgroundURLOffline = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIAAAAiOjnJAAAABGdBTUEAALGPC/xhBQAAAiJJREFUeF7t0IEAAAAAw6D5Ux/khVBhwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDDwMDDVlwABBWcSrQAAAABJRU5ErkJggg=="
 
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
 
-	ArtistInfoTimeToLive = 3 * 24 * time.Hour
+	ArtistInfoTimeToLive = 24 * time.Hour
 
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
 
-	PlaceholderAlbumArt = "navidrome-600x600.png"
+	PlaceholderAlbumArt = "placeholder.png"
 	PlaceholderAvatar   = "logo-192x192.png"
 
 	DefaultHttpClientTimeOut = 10 * time.Second

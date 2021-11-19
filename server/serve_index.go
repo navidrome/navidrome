@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/microcosm-cc/bluemonday"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 )
 
 // Injects the config in the `index.html` template
@@ -26,14 +26,13 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-		policy := bluemonday.UGCPolicy()
 		appConfig := map[string]interface{}{
 			"version":                 consts.Version(),
 			"firstTime":               firstTime,
 			"variousArtistsId":        consts.VariousArtistsID,
-			"baseURL":                 policy.Sanitize(strings.TrimSuffix(conf.Server.BaseURL, "/")),
-			"loginBackgroundURL":      policy.Sanitize(conf.Server.UILoginBackgroundURL),
-			"welcomeMessage":          policy.Sanitize(conf.Server.UIWelcomeMessage),
+			"baseURL":                 utils.SanitizeText(strings.TrimSuffix(conf.Server.BaseURL, "/")),
+			"loginBackgroundURL":      utils.SanitizeText(conf.Server.UILoginBackgroundURL),
+			"welcomeMessage":          utils.SanitizeText(conf.Server.UIWelcomeMessage),
 			"enableTranscodingConfig": conf.Server.EnableTranscodingConfig,
 			"enableDownloads":         conf.Server.EnableDownloads,
 			"enableFavourites":        conf.Server.EnableFavourites,
@@ -50,6 +49,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"lastFMEnabled":           conf.Server.LastFM.Enabled,
 			"lastFMApiKey":            conf.Server.LastFM.ApiKey,
 			"devShowArtistPage":       conf.Server.DevShowArtistPage,
+			"listenBrainzEnabled":     conf.Server.ListenBrainz.Enabled,
 		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {

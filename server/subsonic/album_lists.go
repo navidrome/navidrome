@@ -2,7 +2,6 @@ package subsonic
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -53,27 +52,39 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (model.Albums, int64
 	case "highest":
 		opts = filter.AlbumsByRating()
 	case "byGenre":
-		opts = filter.AlbumsByGenre(utils.ParamString(r, "genre"))
+		genre, err := requiredParamString(r, "genre")
+		if err != nil {
+			return nil, 0, err
+		}
+		opts = filter.AlbumsByGenre(genre)
 	case "byYear":
-		opts = filter.AlbumsByYear(utils.ParamInt(r, "fromYear", 0), utils.ParamInt(r, "toYear", 0))
+		fromYear, err := requiredParamInt(r, "fromYear")
+		if err != nil {
+			return nil, 0, err
+		}
+		toYear, err := requiredParamInt(r, "toYear")
+		if err != nil {
+			return nil, 0, err
+		}
+		opts = filter.AlbumsByYear(fromYear, toYear)
 	default:
 		log.Error(r, "albumList type not implemented", "type", typ)
-		return nil, 0, errors.New("not implemented")
+		return nil, 0, newError(responses.ErrorGeneric, "type '%s' not implemented", typ)
 	}
 
 	opts.Offset = utils.ParamInt(r, "offset", 0)
 	opts.Max = utils.MinInt(utils.ParamInt(r, "size", 10), 500)
-	albums, err := c.ds.Album(r.Context()).GetAll(opts)
+	albums, err := c.ds.Album(r.Context()).GetAllWithoutGenres(opts)
 
 	if err != nil {
 		log.Error(r, "Error retrieving albums", "error", err)
-		return nil, 0, errors.New("internal error")
+		return nil, 0, newError(responses.ErrorGeneric, "internal error")
 	}
 
 	count, err := c.ds.Album(r.Context()).CountAll(opts)
 	if err != nil {
 		log.Error(r, "Error counting albums", "error", err)
-		return nil, 0, errors.New("internal error")
+		return nil, 0, newError(responses.ErrorGeneric, "internal error")
 	}
 
 	return albums, count, nil
@@ -82,7 +93,7 @@ func (c *AlbumListController) getAlbumList(r *http.Request) (model.Albums, int64
 func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	albums, count, err := c.getAlbumList(r)
 	if err != nil {
-		return nil, newError(responses.ErrorGeneric, err.Error())
+		return nil, err
 	}
 
 	w.Header().Set("x-total-count", strconv.Itoa(int(count)))
@@ -95,7 +106,7 @@ func (c *AlbumListController) GetAlbumList(w http.ResponseWriter, r *http.Reques
 func (c *AlbumListController) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	albums, pageCount, err := c.getAlbumList(r)
 	if err != nil {
-		return nil, newError(responses.ErrorGeneric, err.Error())
+		return nil, err
 	}
 
 	w.Header().Set("x-total-count", strconv.FormatInt(pageCount, 10))
@@ -113,7 +124,7 @@ func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request)
 		log.Error(r, "Error retrieving starred artists", "error", err)
 		return nil, err
 	}
-	albums, err := c.ds.Album(ctx).GetAll(options)
+	albums, err := c.ds.Album(ctx).GetAllWithoutGenres(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred albums", "error", err)
 		return nil, err

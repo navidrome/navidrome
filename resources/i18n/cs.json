@@ -95,7 +95,8 @@
                 "createdAt": "Vytvořen",
                 "changePassword": "Změnit heslo?",
                 "currentPassword": "Současné heslo",
-                "newPassword": "Nové heslo"
+                "newPassword": "Nové heslo",
+                "token": ""
             },
             "helperTexts": {
                 "name": "Změna jména se zobrazí až při dalším přihlášení"
@@ -104,6 +105,10 @@
                 "created": "Uživatel vytvořen",
                 "updated": "Uživatel upraven",
                 "deleted": "Uživatel odstraněn"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "Uživatelské jméno",
                 "lastSeen": "Naposledy viděn",
                 "reportRealPath": "Zkutečná cesta hlášení",
-                "scrobbleEnabled": "Zaslat historii na Last.fm"
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -133,7 +138,7 @@
             "fields": {
                 "name": "Název",
                 "duration": "Délka",
-                "owner": "Vlastník",
+                "ownerName": "Vlastník",
                 "public": "Veřejný",
                 "updatedAt": "Nahrán",
                 "createdAt": "Vytvořen",
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Přidat skladby do seznamu:",
                 "addNewPlaylist": "Vytvořit \"%{name}\"",
-                "export": "Export"
+                "export": "Export",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "Přidat duplicitní skladby",
@@ -311,7 +318,11 @@
             "lastfm": "Otevřít na Last.fm",
             "musicbrainz": "Otevřít na MusicBrainz"
         },
-        "lastfmLink": "Číst dále..."
+        "lastfmLink": "Číst dále...",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "Knihovna",
@@ -325,7 +336,8 @@
                 "language": "Jazyk",
                 "defaultView": "Výchozí stránka",
                 "desktop_notifications": "Oznámení na ploše",
-                "lastfmScrobbling": "Uložit na Last.fm"
+                "lastfmScrobbling": "Uložit na Last.fm",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "Alba",

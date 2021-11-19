@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -39,9 +40,11 @@ func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler
 	})
 }
 
+var startTime = time.Now()
+
 func (s *Server) Run(addr string) error {
 	s.MountRouter("WebUI", consts.URLPathUI, s.frontendAssetsHandler())
-	log.Info("Navidrome server is accepting requests", "address", addr)
+	log.Info("Navidrome server is ready!", "address", addr, "startupTime", time.Since(startTime))
 	return http.ListenAndServe(addr, s.router)
 }
 

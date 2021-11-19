@@ -34,10 +34,10 @@ func (n *Router) routes() http.Handler {
 	r.Use(server.Authenticator(n.ds))
 	r.Use(server.JWTRefresher)
 	n.R(r, "/user", model.User{}, true)
-	n.R(r, "/song", model.MediaFile{}, true)
-	n.R(r, "/album", model.Album{}, true)
-	n.R(r, "/artist", model.Artist{}, true)
-	n.R(r, "/genre", model.Genre{}, true)
+	n.R(r, "/song", model.MediaFile{}, false)
+	n.R(r, "/album", model.Album{}, false)
+	n.R(r, "/artist", model.Artist{}, false)
+	n.R(r, "/genre", model.Genre{}, false)
 	n.R(r, "/player", model.Player{}, true)
 	n.R(r, "/playlist", model.Playlist{}, true)
 	n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
@@ -87,6 +87,14 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			getPlaylist(n.ds)(w, r)
 		})
+		r.With(urlParams).Route("/", func(r chi.Router) {
+			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+				deleteFromPlaylist(n.ds)(w, r)
+			})
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				addToPlaylist(n.ds)(w, r)
+			})
+		})
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(urlParams)
 			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
@@ -95,9 +103,6 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				deleteFromPlaylist(n.ds)(w, r)
 			})
-		})
-		r.With(urlParams).Post("/", func(w http.ResponseWriter, r *http.Request) {
-			addToPlaylist(n.ds)(w, r)
 		})
 	})
 }

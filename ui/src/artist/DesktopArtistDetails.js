@@ -7,6 +7,7 @@ import CardMedia from '@material-ui/core/CardMedia'
 import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
 import { LoveButton, RatingField } from '../common'
+import Lightbox from 'react-image-lightbox'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -32,6 +33,7 @@ const useStyles = makeStyles(
     cover: {
       width: 151,
       borderRadius: '6em',
+      cursor: 'pointer',
     },
     artistImage: {
       maxHeight: '9.5rem',
@@ -66,6 +68,13 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles({ img, expanded })
   const title = record.name
+  const [isLightboxOpen, setLightboxOpen] = React.useState(false)
+
+  const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
+  const handleCloseLightbox = React.useCallback(
+    () => setLightboxOpen(false),
+    []
+  )
 
   return (
     <div className={classes.root}>
@@ -74,7 +83,8 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
           {artistInfo && (
             <CardMedia
               className={classes.cover}
-              image={`${artistInfo.mediumImageUrl}`}
+              image={artistInfo.mediumImageUrl}
+              onClick={handleOpenLightbox}
               title={title}
             />
           )}
@@ -126,6 +136,15 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
             <ArtistExternalLinks artistInfo={artistInfo} record={record} />
           </Typography>
         </div>
+        {isLightboxOpen && (
+          <Lightbox
+            imagePadding={50}
+            animationDuration={200}
+            imageTitle={record.name}
+            mainSrc={artistInfo.largeImageUrl}
+            onCloseRequest={handleCloseLightbox}
+          />
+        )}
       </Card>
     </div>
   )

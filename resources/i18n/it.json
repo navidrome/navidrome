@@ -95,7 +95,8 @@
                 "createdAt": "Creato a",
                 "changePassword": "Cambiare la password?",
                 "currentPassword": "Password Attuale",
-                "newPassword": "Nuova Password"
+                "newPassword": "Nuova Password",
+                "token": ""
             },
             "helperTexts": {
                 "name": "Le modifiche effettuate al tuo nome verrano mostrate al prossimo accesso"
@@ -104,6 +105,10 @@
                 "created": "Utente creato",
                 "updated": "Utente aggiornato",
                 "deleted": "Utente eliminato"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "Nome utente",
                 "lastSeen": "Ultimo accesso",
                 "reportRealPath": "Mostra percorso reale",
-                "scrobbleEnabled": "Manda gli scrobble a Last.fm"
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -133,7 +138,7 @@
             "fields": {
                 "name": "Nome",
                 "duration": "Durata",
-                "owner": "Creatore",
+                "ownerName": "Creatore",
                 "public": "Pubblica",
                 "updatedAt": "Ultimo aggiornamento",
                 "createdAt": "Data creazione",
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Aggiungi tracce alla playlist:",
                 "addNewPlaylist": "Aggiungi \"%{name}\"",
-                "export": "Esporta"
+                "export": "Esporta",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "Aggiungere i duplicati",
@@ -311,7 +318,11 @@
             "lastfm": "Apri in Last.fm",
             "musicbrainz": "Apri in MusicBrainz"
         },
-        "lastfmLink": "Per saperne di più..."
+        "lastfmLink": "Per saperne di più...",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "Libreria",
@@ -325,7 +336,8 @@
                 "language": "Lingua",
                 "defaultView": "Vista Predefinita",
                 "desktop_notifications": "Notifiche desktop",
-                "lastfmScrobbling": "Esegui lo scrobbling tramite Last.fm"
+                "lastfmScrobbling": "Esegui lo scrobbling tramite Last.fm",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "Album",

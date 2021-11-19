@@ -29,6 +29,7 @@ type configOptions struct {
 	UILoginBackgroundURL    string
 	EnableTranscodingConfig bool
 	EnableDownloads         bool
+	EnableExternalServices  bool
 	TranscodingCacheSize    string
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
@@ -58,9 +59,10 @@ type configOptions struct {
 
 	Scanner scannerOptions
 
-	Agents  string
-	LastFM  lastfmOptions
-	Spotify spotifyOptions
+	Agents       string
+	LastFM       lastfmOptions
+	Spotify      spotifyOptions
+	ListenBrainz listenBrainzOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
@@ -91,6 +93,10 @@ type lastfmOptions struct {
 type spotifyOptions struct {
 	ID     string
 	Secret string
+}
+
+type listenBrainzOptions struct {
+	Enabled bool
 }
 
 var (
@@ -137,9 +143,23 @@ func Load() {
 		fmt.Println(prettyConf)
 	}
 
+	if !Server.EnableExternalServices {
+		disableExternalServices()
+	}
+
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
+	}
+}
+
+func disableExternalServices() {
+	log.Info("All external integrations are DISABLED!")
+	Server.LastFM.Enabled = false
+	Server.Spotify.ID = ""
+	Server.ListenBrainz.Enabled = false
+	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
+		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
 	}
 }
 
@@ -194,6 +214,7 @@ func init() {
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
+	viper.SetDefault("enableexternalservices", true)
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)
@@ -229,6 +250,7 @@ func init() {
 	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
+	viper.SetDefault("listenbrainz.enabled", true)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

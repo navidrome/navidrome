@@ -6,17 +6,14 @@ import (
 	"encoding/json"
 	"io"
 	"io/fs"
-	"os"
-	"path/filepath"
+	"path"
 	"strings"
 	"sync"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type translation struct {
@@ -31,11 +28,7 @@ var (
 )
 
 func newTranslationRepository(context.Context) rest.Repository {
-	dir := utils.MergeFS{
-		Base:    resources.FS,
-		Overlay: os.DirFS(filepath.Join(conf.Server.DataFolder, "resources")),
-	}
-	if err := loadTranslations(dir); err != nil {
+	if err := loadTranslations(resources.FS); err != nil {
 		log.Error("Error loading translation files", err)
 	}
 	return &translationRepository{}
@@ -50,13 +43,13 @@ func (r *translationRepository) Read(id string) (interface{}, error) {
 	return nil, rest.ErrNotFound
 }
 
-// Simple Count implementation. Does not support any `options`
-func (r *translationRepository) Count(options ...rest.QueryOptions) (int64, error) {
+// Count simple implementation, does not support any `options`
+func (r *translationRepository) Count(...rest.QueryOptions) (int64, error) {
 	return int64(len(translations)), nil
 }
 
-// Simple ReadAll implementation, only returns IDs. Does not support any `options`
-func (r *translationRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+// ReadAll simple implementation, only returns IDs. Does not support any `options`
+func (r *translationRepository) ReadAll(...rest.QueryOptions) (interface{}, error) {
 	var result []translation
 	for _, t := range translations {
 		t.Data = ""
@@ -103,9 +96,9 @@ func loadTranslations(fsys fs.FS) (loadError error) {
 
 func loadTranslation(fsys fs.FS, fileName string) (translation translation, err error) {
 	// Get id and full path
-	name := filepath.Base(fileName)
-	id := strings.TrimSuffix(name, filepath.Ext(name))
-	filePath := filepath.Join(consts.I18nFolder, name)
+	name := path.Base(fileName)
+	id := strings.TrimSuffix(name, path.Ext(name))
+	filePath := path.Join(consts.I18nFolder, name)
 
 	// Load translation from json file
 	file, err := fsys.Open(filePath)

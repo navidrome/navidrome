@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import { useDispatch, useSelector } from 'react-redux'
 import { setOmittedFields, setToggleableFields } from '../actions'
 
+// TODO Refactor
 export const useSelectedFields = ({
   resource,
   columns,
@@ -22,7 +23,8 @@ export const useSelectedFields = ({
   useEffect(() => {
     if (
       !resourceFields ||
-      Object.keys(resourceFields).length !== Object.keys(columns).length
+      Object.keys(resourceFields).length !== Object.keys(columns).length ||
+      !Object.keys(columns).every((c) => c in resourceFields)
     ) {
       const obj = {}
       for (const key of Object.keys(columns)) {

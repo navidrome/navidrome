@@ -38,7 +38,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
 
   const getAllSongsAndDispatch = React.useCallback(
     (action) => {
-      if (ids.length === record.songCount) {
+      if (ids?.length === record.songCount) {
         return dispatch(action(data, ids))
       }
 

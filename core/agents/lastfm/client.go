@@ -157,11 +157,11 @@ func (c *Client) Scrobble(ctx context.Context, sessionKey string, info ScrobbleI
 	}
 	if resp.Scrobbles.Scrobble.IgnoredMessage.Code != "0" {
 		log.Warn(ctx, "LastFM: Scrobble was ignored", "code", resp.Scrobbles.Scrobble.IgnoredMessage.Code,
-			"text", resp.Scrobbles.Scrobble.IgnoredMessage.Text)
+			"text", resp.Scrobbles.Scrobble.IgnoredMessage.Text, "info", info)
 	}
 	if resp.Scrobbles.Attr.Accepted != 1 {
 		log.Warn(ctx, "LastFM: Scrobble was not accepted", "code", resp.Scrobbles.Scrobble.IgnoredMessage.Code,
-			"text", resp.Scrobbles.Scrobble.IgnoredMessage.Text)
+			"text", resp.Scrobbles.Scrobble.IgnoredMessage.Text, "info", info)
 	}
 	return nil
 }

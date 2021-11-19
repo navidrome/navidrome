@@ -19,9 +19,8 @@ var _ = Describe("Spread FS", func() {
 		fs, err = NewSpreadFS(rootDir, 0755)
 		Expect(err).To(BeNil())
 	})
-
 	AfterEach(func() {
-		Expect(os.RemoveAll(rootDir)).To(BeNil())
+		_ = os.RemoveAll(rootDir)
 	})
 
 	Describe("KeyMapper", func() {

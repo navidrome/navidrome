@@ -39,6 +39,9 @@ var _ = Describe("Artwork", func() {
 			Eventually(func() bool { return cache.Ready(context.TODO()) }).Should(BeTrue())
 			artwork = NewArtwork(ds, cache)
 		})
+		AfterEach(func() {
+			_ = os.RemoveAll(conf.Server.DataFolder)
+		})
 
 		It("retrieves the external artwork art for an album", func() {
 			r, err := artwork.Get(ctx, "al-444", 0)

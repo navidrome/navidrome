@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/oklog/run"
 	"github.com/spf13/cobra"
@@ -45,7 +46,7 @@ func Execute() {
 
 func preRun() {
 	if !noBanner {
-		println(consts.Banner())
+		println(resources.Banner())
 	}
 	conf.Load()
 }
@@ -78,6 +79,9 @@ func startServer() (func() error, func(err error)) {
 			a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
 			if conf.Server.LastFM.Enabled {
 				a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
+			}
+			if conf.Server.ListenBrainz.Enabled {
+				a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 			}
 			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
 		}, func(err error) {

@@ -24,7 +24,8 @@
                 "rating": "评分",
                 "quality": "品质",
                 "bpm": "BPM",
-                "playDate": "最后一次播放"
+                "playDate": "最后一次播放",
+                "channels": ""
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "加入歌单",
                 "shuffleAll": "全部随机播放",
                 "download": "下载",
-                "playNext": "下一首播放"
+                "playNext": "下一首播放",
+                "info": ""
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "加入播放列表",
                 "shuffle": "随机播放",
                 "addToPlaylist": "加入歌单",
-                "download": "下载"
+                "download": "下载",
+                "info": ""
             },
             "lists": {
                 "all": "所有",
@@ -92,7 +95,8 @@
                 "createdAt": "创建于",
                 "changePassword": "修改密码?",
                 "currentPassword": "当前密码",
-                "newPassword": "新密码"
+                "newPassword": "新密码",
+                "token": ""
             },
             "helperTexts": {
                 "name": "你名字的更改将在下次登录生效"
@@ -101,6 +105,10 @@
                 "created": "用户已创建",
                 "updated": "用户已更新",
                 "deleted": "用户已删除"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -113,7 +121,7 @@
                 "userName": "用户名",
                 "lastSeen": "上次浏览",
                 "reportRealPath": "回报实际路径",
-                "scrobbleEnabled": "发送喜好记录给Last.fm"
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -130,7 +138,7 @@
             "fields": {
                 "name": "名称",
                 "duration": "时长",
-                "owner": "所有者",
+                "ownerName": "所有者",
                 "public": "公开",
                 "updatedAt": "更新于",
                 "createdAt": "创建于",
@@ -142,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "选择歌单",
                 "addNewPlaylist": "新建 %{name}",
-                "export": "导出"
+                "export": "导出",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "添加重复的歌曲",
@@ -307,7 +317,12 @@
         "openIn": {
             "lastfm": "",
             "musicbrainz": ""
-        }
+        },
+        "lastfmLink": "",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "曲库",
@@ -321,11 +336,14 @@
                 "language": "语言",
                 "defaultView": "默认界面",
                 "desktop_notifications": "桌面通知",
-                "lastfmScrobbling": "启用Last.fm的喜好记录"
+                "lastfmScrobbling": "启用Last.fm的喜好记录",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "专辑",
-        "about": "关于"
+        "about": "关于",
+        "playlists": "",
+        "sharedPlaylists": ""
     },
     "player": {
         "playListsText": "播放列表",

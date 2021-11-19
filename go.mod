@@ -5,12 +5,12 @@ go 1.16
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
 	github.com/ClickHouse/clickhouse-go v1.4.5 // indirect
-	github.com/Masterminds/squirrel v1.5.0
+	github.com/Masterminds/squirrel v1.5.1
 	github.com/ReneKroon/ttlcache/v2 v2.8.1
 	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.1
-	github.com/deluan/rest v0.0.0-20210503015435-e7091d44f0ba
+	github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47
 	github.com/denisenkom/go-mssqldb v0.10.0 // indirect
 	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27
 	github.com/disintegration/imaging v1.6.2
@@ -20,7 +20,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-chi/chi/v5 v5.0.4
 	github.com/go-chi/cors v1.2.0
-	github.com/go-chi/httprate v0.5.1
+	github.com/go-chi/httprate v0.5.2
 	github.com/go-chi/jwtauth/v5 v5.0.2
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/golangci/golangci-lint v1.42.1
@@ -32,10 +32,10 @@ require (
 	github.com/matoous/go-nanoid v1.5.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mattn/go-zglob v0.0.3
-	github.com/microcosm-cc/bluemonday v1.0.15
+	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/mileusna/useragent v1.0.2
 	github.com/oklog/run v1.1.0
-	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.16.0
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/robfig/cron/v3 v3.0.1

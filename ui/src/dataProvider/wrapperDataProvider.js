@@ -19,6 +19,14 @@ const mapResource = (resource, params) => {
   }
 }
 
+const callDeleteMany = (resource, params) => {
+  const ids = params.ids.map((id) => `id=${id}`)
+  const idsParam = ids.join('&')
+  return httpClient(`${REST_URL}/${resource}?${idsParam}`, {
+    method: 'DELETE',
+  }).then((response) => ({ data: response.json.ids || [] }))
+}
+
 const wrapperDataProvider = {
   ...dataProvider,
   getList: (resource, params) => {
@@ -55,6 +63,9 @@ const wrapperDataProvider = {
   },
   deleteMany: (resource, params) => {
     const [r, p] = mapResource(resource, params)
+    if (r.endsWith('/tracks')) {
+      return callDeleteMany(r, p)
+    }
     return dataProvider.deleteMany(r, p)
   },
   addToPlaylist: (playlistId, data) => {

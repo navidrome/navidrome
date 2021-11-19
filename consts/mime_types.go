@@ -33,6 +33,7 @@ var audioFormats = map[string]format{
 	".dsf":  {typ: "audio/dsd", lossless: true},
 	".wv":   {typ: "audio/x-wavpack", lossless: true},
 	".wvp":  {typ: "audio/x-wavpack", lossless: true},
+	".mka":  {typ: "audio/x-matroska"},
 }
 var imageFormats = map[string]string{
 	".gif":  "image/gif",
