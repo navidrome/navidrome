@@ -53,7 +53,7 @@ func (s *Server) initRoutes() {
 	r := chi.NewRouter()
 
 	r.Use(secureMiddleware())
-	r.Use(corsMiddleware())
+	r.Use(corsHandler())
 	r.Use(middleware.RequestID)
 	if conf.Server.ReverseProxyWhitelist == "" {
 		r.Use(middleware.RealIP)

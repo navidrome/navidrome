@@ -73,7 +73,7 @@ func robotsTXT(fs fs.FS) func(next http.Handler) http.Handler {
 	}
 }
 
-func corsMiddleware() func(h http.Handler) http.Handler {
+func corsHandler() func(h http.Handler) http.Handler {
 	return cors.Handler(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{
@@ -86,7 +86,7 @@ func corsMiddleware() func(h http.Handler) http.Handler {
 		},
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: false,
-		ExposedHeaders:   []string{"x-content-duration", "x-total-count"},
+		ExposedHeaders:   []string{"x-content-duration", "x-total-count", "x-nd-authorization"},
 	})
 }
 
