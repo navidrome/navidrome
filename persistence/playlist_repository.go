@@ -113,7 +113,7 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 	if len(pls.Tracks) > 0 {
 		return r.updateTracks(id, p.MediaFiles())
 	}
-	return r.RefreshStatus(id)
+	return r.refreshCounters(&pls.Playlist)
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
@@ -224,14 +224,14 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		LeftJoin("genre on ag.genre_id = genre.id").GroupBy("media_file.id")
 	sql = r.addCriteria(sql, rules)
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sql)
-	c, err := r.executeSQL(insSql)
+	_, err = r.executeSQL(insSql)
 	if err != nil {
 		log.Error(r.ctx, "Error refreshing smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
 
 	// Update playlist stats
-	err = r.RefreshStatus(pls.ID)
+	err = r.refreshCounters(pls)
 	if err != nil {
 		log.Error(r.ctx, "Error updating smart playlist stats", "playlist", pls.Name, "id", pls.ID, err)
 		return false
@@ -245,7 +245,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
-	log.Debug(r.ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", c, "elapsed", time.Since(start))
+	log.Debug(r.ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", pls.SongCount, "elapsed", time.Since(start))
 
 	return true
 }
@@ -302,15 +302,15 @@ func (r *playlistRepository) addTracks(playlistId string, startingPos int, media
 		}
 	}
 
-	return r.RefreshStatus(playlistId)
+	return r.refreshCounters(&model.Playlist{ID: playlistId})
 }
 
 // RefreshStatus updates total playlist duration, size and count
-func (r *playlistRepository) RefreshStatus(playlistId string) error {
+func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	statsSql := Select("sum(duration) as duration", "sum(size) as size", "count(*) as count").
 		From("media_file").
 		Join("playlist_tracks f on f.media_file_id = media_file.id").
-		Where(Eq{"playlist_id": playlistId})
+		Where(Eq{"playlist_id": pls.ID})
 	var res struct{ Duration, Size, Count float32 }
 	err := r.queryOne(statsSql, &res)
 	if err != nil {
@@ -323,9 +323,15 @@ func (r *playlistRepository) RefreshStatus(playlistId string) error {
 		Set("size", res.Size).
 		Set("song_count", res.Count).
 		Set("updated_at", time.Now()).
-		Where(Eq{"id": playlistId})
+		Where(Eq{"id": pls.ID})
 	_, err = r.executeSQL(upd)
-	return err
+	if err != nil {
+		return err
+	}
+	pls.SongCount = int(res.Count)
+	pls.Duration = res.Duration
+	pls.Size = int64(res.Size)
+	return nil
 }
 
 func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.PlaylistTracks, error) {
