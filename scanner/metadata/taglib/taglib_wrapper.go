@@ -12,6 +12,7 @@ package taglib
 import "C"
 import (
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,12 +22,15 @@ import (
 )
 
 func Read(filename string) (tags map[string][]string, err error) {
+	// Do not crash on failures in the C code/library
+	debug.SetPanicOnFault(true)
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error("TagLib: recovered from panic when reading tags", "file", filename, "error", r)
 			err = fmt.Errorf("TagLib: recovered from panic: %s", r)
 		}
 	}()
+
 	fp := getFilename(filename)
 	defer C.free(unsafe.Pointer(fp))
 	id, m := newMap()
