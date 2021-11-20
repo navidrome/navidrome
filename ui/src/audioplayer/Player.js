@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
@@ -36,6 +36,9 @@ const Player = () => {
   const [preloaded, setPreload] = useState(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
+  const isMobilePlayer = useMediaQuery(
+    '(max-width: 768px) and (orientation : portrait)'
+  )
   const { authenticated } = useAuthState()
   const visible = authenticated && playerState.queue.length > 0
   const classes = useStyle({
@@ -86,9 +89,9 @@ const Player = () => {
       autoPlay: playerState.clear || playerState.playIndex === 0,
       clearPriorAudioLists: playerState.clear,
       extendsContent: <PlayerToolbar id={current.trackId} />,
-      defaultVolume: playerState.volume,
+      defaultVolume: isMobilePlayer ? 1 : playerState.volume,
     }
-  }, [playerState, defaultOptions])
+  }, [playerState, defaultOptions, isMobilePlayer])
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
@@ -214,6 +217,12 @@ const Player = () => {
     () => keyHandlers(audioInstance, playerState),
     [audioInstance, playerState]
   )
+
+  useEffect(() => {
+    if (isMobilePlayer && audioInstance) {
+      audioInstance.volume = 1
+    }
+  }, [isMobilePlayer, audioInstance])
 
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
