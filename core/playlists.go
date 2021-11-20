@@ -94,12 +94,19 @@ func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*mod
 }
 
 func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.Reader) (*model.Playlist, error) {
-	pls.Rules = &criteria.Criteria{}
+	nsp := &nspFile{}
 	dec := json.NewDecoder(file)
-	err := dec.Decode(pls.Rules)
+	err := dec.Decode(nsp)
 	if err != nil {
 		log.Error(ctx, "Error parsing SmartPlaylist", "playlist", pls.Name, err)
 		return nil, err
+	}
+	pls.Rules = &nsp.Criteria
+	if nsp.Name != "" {
+		pls.Name = nsp.Name
+	}
+	if nsp.Comment != "" {
+		pls.Comment = nsp.Comment
 	}
 	return pls, nil
 }
@@ -235,4 +242,21 @@ func (s *playlists) Update(ctx context.Context, playlistId string,
 		}
 		return repo.Put(pls)
 	})
+}
+
+type nspFile struct {
+	criteria.Criteria
+	Name    string `json:"name"`
+	Comment string `json:"comment"`
+}
+
+func (i *nspFile) UnmarshalJSON(data []byte) error {
+	m := map[string]interface{}{}
+	err := json.Unmarshal(data, &m)
+	if err != nil {
+		return err
+	}
+	i.Name, _ = m["name"].(string)
+	i.Comment, _ = m["comment"].(string)
+	return json.Unmarshal(data, &i.Criteria)
 }
