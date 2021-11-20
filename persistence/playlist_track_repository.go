@@ -30,9 +30,7 @@ func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTrackReposi
 	if err != nil {
 		return nil
 	}
-	if pls.IsSmartPlaylist() {
-		r.refreshSmartPlaylist(pls)
-	}
+	r.refreshSmartPlaylist(pls)
 	p.playlist = pls
 	return p
 }
