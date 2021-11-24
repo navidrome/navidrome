@@ -100,6 +100,7 @@ func toArtistID3(ctx context.Context, a model.Artist) responses.ArtistID3 {
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
 		ArtistImageUrl: a.ArtistImageUrl(),
+		UserRating:     a.Rating,
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt

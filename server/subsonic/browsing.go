@@ -267,6 +267,7 @@ func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Reque
 		similar.Name = s.Name
 		similar.AlbumCount = s.AlbumCount
 		similar.Starred = s.Starred
+		similar.UserRating = s.UserRating
 		similar.ArtistImageUrl = s.ArtistImageUrl
 		response.ArtistInfo2.SimilarArtist = append(response.ArtistInfo2.SimilarArtist, similar)
 	}
@@ -387,6 +388,7 @@ func (c *BrowsingController) buildAlbum(ctx context.Context, album *model.Album,
 	dir.PlayCount = album.PlayCount
 	dir.Year = album.MaxYear
 	dir.Genre = album.Genre
+	dir.UserRating = album.Rating
 	if !album.CreatedAt.IsZero() {
 		dir.Created = &album.CreatedAt
 	}
