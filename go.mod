@@ -36,7 +36,7 @@ require (
 	github.com/mileusna/useragent v1.0.2
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.16.0
+	github.com/onsi/gomega v1.17.0
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.8.1
