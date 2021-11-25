@@ -158,6 +158,7 @@ func disableExternalServices() {
 	Server.LastFM.Enabled = false
 	Server.Spotify.ID = ""
 	Server.ListenBrainz.Enabled = false
+	Server.Agents = ""
 	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
 		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
 	}
