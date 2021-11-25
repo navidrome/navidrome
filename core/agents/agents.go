@@ -18,7 +18,10 @@ type Agents struct {
 }
 
 func New(ds model.DataStore) *Agents {
-	order := strings.Split(conf.Server.Agents, ",")
+	var order []string
+	if conf.Server.Agents != "" {
+		order = strings.Split(conf.Server.Agents, ",")
+	}
 	order = append(order, PlaceholderAgentName)
 	var res []Interface
 	for _, name := range order {
