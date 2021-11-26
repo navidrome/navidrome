@@ -96,7 +96,7 @@
                 "changePassword": "¿Cambiar contraseña?",
                 "currentPassword": "Contraseña actual",
                 "newPassword": "Nueva contraseña",
-                "token": ""
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión"
@@ -107,8 +107,8 @@
                 "deleted": "Usuario eliminado"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "Escribe tu token de usuario de ListenBrainz",
+                "clickHereForToken": "Click aquí para obtener tu token"
             }
         },
         "player": {
@@ -121,7 +121,7 @@
                 "userName": "Usuario",
                 "lastSeen": "Última conexión",
                 "reportRealPath": "Reporta la ruta absoluta",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "Envía los scrobbles a servicios externos"
             }
         },
         "transcoding": {
@@ -151,8 +151,8 @@
                 "selectPlaylist": "Seleccione una lista:",
                 "addNewPlaylist": "Creada \"%{name}\"",
                 "export": "Exportar",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "Hazla pública",
+                "makePrivate": "Hazla privada"
             },
             "message": {
                 "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la lista de reproducción",
@@ -319,10 +319,10 @@
             "musicbrainz": "Ver en MusicBrainz"
         },
         "lastfmLink": "Leer más...",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzLinkSuccess": "Se ha conectado correctamente a ListenBrainz y se activo el scrobbling como el usuario: %{user}",
+        "listenBrainzLinkFailure": "No se pudo conectar con ListenBrainz: %{error}",
+        "listenBrainzUnlinkSuccess": "Se desconecto ListenBrainz y se desactivo el scrobbling",
+        "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz"
     },
     "menu": {
         "library": "Biblioteca",
@@ -337,7 +337,7 @@
                 "defaultView": "Vista por defecto",
                 "desktop_notifications": "Notificaciones de escritorio",
                 "lastfmScrobbling": "Scrobble a Last.fm",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "Scrobble a ListenBrainz"
             }
         },
         "albumList": "Álbumes",

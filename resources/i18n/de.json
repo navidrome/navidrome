@@ -96,7 +96,7 @@
                 "changePassword": "Passwort ändern?",
                 "currentPassword": "Aktuelles Passwort",
                 "newPassword": "Neues Passwort",
-                "token": ""
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Die Änderung wird erst nach dem nächsten Login gültig"
@@ -107,8 +107,8 @@
                 "deleted": "Benutzer gelöscht"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "Gib deinen ListenBrainz Benutzer Token ein",
+                "clickHereForToken": "Hier klicken um deinen Token abzurufen"
             }
         },
         "player": {
@@ -121,7 +121,7 @@
                 "userName": "Nutzername",
                 "lastSeen": "Zuletzt gesehen um",
                 "reportRealPath": "Echten Pfad anzeigen",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "An externe Dienstleister scrobblen"
             }
         },
         "transcoding": {
@@ -151,8 +151,8 @@
                 "selectPlaylist": "Songs zur Playlist hinzufügen",
                 "addNewPlaylist": "\"%{name}\" erstellen",
                 "export": "Exportieren",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "Öffentlich machen",
+                "makePrivate": "Privat stellen"
             },
             "message": {
                 "duplicate_song": "Duplikate hinzufügen",
@@ -319,10 +319,10 @@
             "musicbrainz": "Auf MusicBrainz anzeigen"
         },
         "lastfmLink": "Mehr lesen",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzLinkSuccess": "Last.fm Verbindung hergestellt und und scrobbling aktiviert als user: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz konnte nicht verbunden werden: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz Verbindung entfernt und scrobbling deaktiviert",
+        "listenBrainzUnlinkFailure": "ListenBrainz Verbindung konnte nicht entfernt werden"
     },
     "menu": {
         "library": "Bibliothek",
@@ -337,7 +337,7 @@
                 "defaultView": "Standard-Ansicht",
                 "desktop_notifications": "Desktop-Benachrichtigungen",
                 "lastfmScrobbling": "Last.fm Scrobbling",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "ListenBrainz Scrobbling"
             }
         },
         "albumList": "Alben",
