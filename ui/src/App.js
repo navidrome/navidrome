@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import ReactGA from 'react-ga'
-import { Provider, useDispatch } from 'react-redux'
+import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
 import { Admin as RAAdmin, Resource } from 'react-admin'
 import { HotKeys } from 'react-hotkeys'
@@ -29,7 +29,7 @@ import {
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
-import { setDispatch, startEventStream } from './eventStream'
+import { startEventStream } from './eventStream'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
 
@@ -43,40 +43,38 @@ if (config.gaTrackingId) {
   ReactGA.pageview(window.location.pathname)
 }
 
+const adminStore = createAdminStore({
+  authProvider,
+  dataProvider,
+  history,
+  customReducers: {
+    player: playerReducer,
+    albumView: albumViewReducer,
+    theme: themeReducer,
+    addToPlaylistDialog: addToPlaylistDialogReducer,
+    expandInfoDialog: expandInfoDialogReducer,
+    listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
+    activity: activityReducer,
+    settings: settingsReducer,
+  },
+})
+
 const App = () => (
-  <Provider
-    store={createAdminStore({
-      authProvider,
-      dataProvider,
-      history,
-      customReducers: {
-        player: playerReducer,
-        albumView: albumViewReducer,
-        theme: themeReducer,
-        addToPlaylistDialog: addToPlaylistDialogReducer,
-        expandInfoDialog: expandInfoDialogReducer,
-        listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
-        activity: activityReducer,
-        settings: settingsReducer,
-      },
-    })}
-  >
+  <Provider store={adminStore}>
     <Admin />
   </Provider>
 )
 
 const Admin = (props) => {
   useChangeThemeColor()
-  const dispatch = useDispatch()
   useEffect(() => {
     if (config.devActivityPanel) {
-      setDispatch(dispatch)
       authProvider
         .checkAuth()
-        .then(() => startEventStream())
+        .then(() => startEventStream(adminStore.dispatch))
         .catch(() => {}) // ignore if not logged in
     }
-  }, [dispatch])
+  }, [])
 
   return (
     <RAAdmin

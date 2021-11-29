@@ -35,7 +35,7 @@ const setTimeout = (value) => {
       es.close()
     }
     es = null
-    await startEventStream()
+    await startEventStream(dispatch)
   }, currentIntervalCheck)
 }
 
@@ -50,10 +50,6 @@ const stopEventStream = () => {
   timeout = null
 }
 
-const setDispatch = (dispatchFunc) => {
-  dispatch = dispatchFunc
-}
-
 const eventHandler = (event) => {
   const data = JSON.parse(event.data)
   if (event.type !== 'keepAlive') {
@@ -64,7 +60,8 @@ const eventHandler = (event) => {
 
 const throttledEventHandler = throttle(eventHandler, 100, { trailing: true })
 
-const startEventStream = async () => {
+const startEventStream = async (dispatchFunc) => {
+  dispatch = dispatchFunc
   setTimeout(currentIntervalCheck)
   if (!localStorage.getItem('is-authenticated')) {
     console.log('Cannot create a unauthenticated EventSource connection')
@@ -88,4 +85,4 @@ const startEventStream = async () => {
     })
 }
 
-export { setDispatch, startEventStream, stopEventStream }
+export { startEventStream, stopEventStream }
