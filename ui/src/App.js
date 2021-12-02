@@ -29,7 +29,7 @@ import {
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
-import { setDispatch, startEventStream } from './eventStream'
+import { setDispatch, startEventStream, stopEventStream } from './eventStream'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
 
@@ -70,7 +70,13 @@ const Admin = (props) => {
   useEffect(() => {
     if (config.devActivityPanel) {
       setDispatch(adminStore.dispatch)
-      authProvider.checkAuth().then(() => startEventStream(adminStore.dispatch))
+      authProvider
+        .checkAuth()
+        .then(() => startEventStream(adminStore.dispatch))
+        .catch(() => {})
+    }
+    return () => {
+      stopEventStream()
     }
   }, [])
 
