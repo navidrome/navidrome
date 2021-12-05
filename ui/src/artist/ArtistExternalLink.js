@@ -36,9 +36,17 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
     linkButtons.push(<span key={`link-${record.id}-${id}`}>{link}</span>)
   }
 
-  addLink(links[0], 'message.openIn.lastfm', <ImLastfm2 />)
+  addLink(
+    links[0],
+    'message.openIn.lastfm',
+    <ImLastfm2 className="LastfmIcon" />
+  )
   artistInfo?.musicBrainzId &&
-    addLink(links[1], 'message.openIn.musicbrainz', <MusicBrainz />)
+    addLink(
+      links[1],
+      'message.openIn.musicbrainz',
+      <MusicBrainz className="MusicBrainzIcon" />
+    )
 
   return <div>{intersperse(linkButtons, ' ')}</div>
 }
