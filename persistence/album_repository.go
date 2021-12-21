@@ -43,6 +43,8 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 		"compilation":     booleanFilter,
 		"artist_id":       artistFilter,
 		"year":            yearFilter,
+		"min_year":        minMinYearFilter,
+		"max_year":        maxMaxYearFilter,
 		"recently_played": recentlyPlayedFilter,
 		"starred":         booleanFilter,
 		"has_rating":      hasRatingFilter,
@@ -74,6 +76,17 @@ func yearFilter(field string, value interface{}) Sqlizer {
 			GtOrEq{"max_year": value},
 		},
 		Eq{"max_year": value},
+	}
+}
+
+func minMinYearFilter(field string, value interface{}) Sqlizer {
+	return GtOrEq{"min_year": value}
+}
+
+func maxMaxYearFilter(field string, value interface{}) Sqlizer {
+	return And{
+		Gt{"max_year": 0},
+		LtOrEq{"max_year": value},
 	}
 }
 

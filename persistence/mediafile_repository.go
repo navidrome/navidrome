@@ -31,11 +31,24 @@ func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileReposito
 		"random": "RANDOM()",
 	}
 	r.filterMappings = map[string]filterFunc{
-		"id":      idFilter(r.tableName),
-		"title":   fullTextFilter,
-		"starred": booleanFilter,
+		"id":       idFilter(r.tableName),
+		"title":    fullTextFilter,
+		"starred":  booleanFilter,
+		"min_year": minYearFilter,
+		"max_year": maxYearFilter,
 	}
 	return r
+}
+
+func minYearFilter(field string, value interface{}) Sqlizer {
+	return GtOrEq{"year": value}
+}
+
+func maxYearFilter(field string, value interface{}) Sqlizer {
+	return And{
+		Gt{"year": 0},
+		LtOrEq{"year": value},
+	}
 }
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
