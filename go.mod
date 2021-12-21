@@ -6,7 +6,7 @@ require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
 	github.com/ClickHouse/clickhouse-go v1.4.5 // indirect
 	github.com/Masterminds/squirrel v1.5.1
-	github.com/ReneKroon/ttlcache/v2 v2.8.1
+	github.com/ReneKroon/ttlcache/v2 v2.9.0
 	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.1
@@ -18,17 +18,17 @@ require (
 	github.com/djherbis/fscache v0.10.2-0.20201024185917-a0daa9e52747
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/structs v1.1.0
-	github.com/go-chi/chi/v5 v5.0.4
+	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/httprate v0.5.2
 	github.com/go-chi/jwtauth/v5 v5.0.2
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
-	github.com/golangci/golangci-lint v1.42.1
+	github.com/golangci/golangci-lint v1.43.0
 	github.com/google/uuid v1.3.0
 	github.com/google/wire v0.5.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.3.0
-	github.com/lestrrat-go/jwx v1.2.7
+	github.com/lestrrat-go/jwx v1.2.11
 	github.com/matoous/go-nanoid v1.5.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mattn/go-zglob v0.0.3
@@ -36,7 +36,7 @@ require (
 	github.com/mileusna/useragent v1.0.2
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.16.0
+	github.com/onsi/gomega v1.17.0
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.8.1

@@ -8,48 +8,53 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-var fieldMap = map[string]string{
-	"title":           "media_file.title",
-	"album":           "media_file.album",
-	"artist":          "media_file.artist",
-	"albumartist":     "media_file.album_artist",
-	"hascoverart":     "media_file.has_cover_art",
-	"tracknumber":     "media_file.track_number",
-	"discnumber":      "media_file.disc_number",
-	"year":            "media_file.year",
-	"size":            "media_file.size",
-	"compilation":     "media_file.compilation",
-	"dateadded":       "media_file.created_at",
-	"datemodified":    "media_file.updated_at",
-	"discsubtitle":    "media_file.disc_subtitle",
-	"comment":         "media_file.comment",
-	"lyrics":          "media_file.lyrics",
-	"sorttitle":       "media_file.sort_title",
-	"sortalbum":       "media_file.sort_album_name",
-	"sortartist":      "media_file.sort_artist_name",
-	"sortalbumartist": "media_file.sort_album_artist_name",
-	"albumtype":       "media_file.mbz_album_type",
-	"albumcomment":    "media_file.mbz_album_comment",
-	"catalognumber":   "media_file.catalog_num",
-	"filepath":        "media_file.path",
-	"filetype":        "media_file.suffix",
-	"duration":        "media_file.duration",
-	"bitrate":         "media_file.bit_rate",
-	"bpm":             "media_file.bpm",
-	"channels":        "media_file.channels",
-	"genre":           "genre.name",
-	"loved":           "annotation.starred",
-	"dateloved":       "annotation.starred_at",
-	"lastplayed":      "annotation.play_date",
-	"playcount":       "annotation.play_count",
-	"rating":          "annotation.rating",
+var fieldMap = map[string]*mappedField{
+	"title":           {field: "media_file.title"},
+	"album":           {field: "media_file.album"},
+	"artist":          {field: "media_file.artist"},
+	"albumartist":     {field: "media_file.album_artist"},
+	"hascoverart":     {field: "media_file.has_cover_art"},
+	"tracknumber":     {field: "media_file.track_number"},
+	"discnumber":      {field: "media_file.disc_number"},
+	"year":            {field: "media_file.year"},
+	"size":            {field: "media_file.size"},
+	"compilation":     {field: "media_file.compilation"},
+	"dateadded":       {field: "media_file.created_at"},
+	"datemodified":    {field: "media_file.updated_at"},
+	"discsubtitle":    {field: "media_file.disc_subtitle"},
+	"comment":         {field: "media_file.comment"},
+	"lyrics":          {field: "media_file.lyrics"},
+	"sorttitle":       {field: "media_file.sort_title"},
+	"sortalbum":       {field: "media_file.sort_album_name"},
+	"sortartist":      {field: "media_file.sort_artist_name"},
+	"sortalbumartist": {field: "media_file.sort_album_artist_name"},
+	"albumtype":       {field: "media_file.mbz_album_type"},
+	"albumcomment":    {field: "media_file.mbz_album_comment"},
+	"catalognumber":   {field: "media_file.catalog_num"},
+	"filepath":        {field: "media_file.path"},
+	"filetype":        {field: "media_file.suffix"},
+	"duration":        {field: "media_file.duration"},
+	"bitrate":         {field: "media_file.bit_rate"},
+	"bpm":             {field: "media_file.bpm"},
+	"channels":        {field: "media_file.channels"},
+	"genre":           {field: "genre.name"},
+	"loved":           {field: "annotation.starred"},
+	"dateloved":       {field: "annotation.starred_at"},
+	"lastplayed":      {field: "annotation.play_date"},
+	"playcount":       {field: "COALESCE(annotation.play_count, 0)", order: "annotation.play_count"},
+	"rating":          {field: "COALESCE(annotation.rating, 0)", order: "annotation.rating"},
+}
+
+type mappedField struct {
+	field string
+	order string
 }
 
 func mapFields(expr map[string]interface{}) map[string]interface{} {
 	m := make(map[string]interface{})
 	for f, v := range expr {
-		if dbf, found := fieldMap[strings.ToLower(f)]; found {
-			m[dbf] = v
+		if dbf := fieldMap[strings.ToLower(f)]; dbf != nil {
+			m[dbf.field] = v
 		} else {
 			log.Error("Invalid field in criteria", "field", f)
 		}

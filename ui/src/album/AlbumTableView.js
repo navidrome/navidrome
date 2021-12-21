@@ -54,7 +54,7 @@ const AlbumDatagridRow = (props) => {
   const [, dragAlbumRef] = useDrag(
     () => ({
       type: DraggableTypes.ALBUM,
-      item: { albumIds: [record.id] },
+      item: { albumIds: [record?.id] },
       options: { dropEffect: 'copy' },
     }),
     [record]
