@@ -342,8 +342,8 @@
         },
         "albumList": "专辑",
         "about": "关于",
-        "playlists": "",
-        "sharedPlaylists": ""
+        "playlists": "歌单",
+        "sharedPlaylists": "共享歌单"
     },
     "player": {
         "playListsText": "播放列表",
