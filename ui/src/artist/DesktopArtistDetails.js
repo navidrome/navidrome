@@ -12,10 +12,19 @@ import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
 import subsonic from '../subsonic'
 
+import Accordion from '@material-ui/core/Accordion'
+import AccordionSummary from '@material-ui/core/AccordionSummary'
+import AccordionDetails from '@material-ui/core/AccordionDetails'
+import { ExpandMore } from '@material-ui/icons'
+import { ReferenceManyField } from 'react-admin'
+import AlbumSongs from '../album/AlbumSongs'
+import AlbumActions from '../album/AlbumActions'
+
 const useStyles = makeStyles(
   (theme) => ({
     root: {
       display: 'flex',
+      flexDirection: 'column',
       padding: '1em',
     },
     details: {
@@ -64,13 +73,34 @@ const useStyles = makeStyles(
     artistName: {
       wordBreak: 'break-word',
     },
+    albumActions: {
+      display: 'none',
+    },
+    accordion: {
+      flexDirection: 'column',
+      '& > :first-child': {
+        display: 'none!important',
+      },
+    },
+    toolbar: {
+      display: 'none',
+    },
+    expanded: {
+      background: 'inherit',
+    },
   }),
   { name: 'NDDesktopArtistDetails' }
 )
 
-const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
+const DesktopArtistDetails = ({
+  artistInfo,
+  record,
+  biography,
+  topSong,
+  showContext,
+}) => {
   const [expanded, setExpanded] = useState(false)
-  const classes = useStyles()
+  const classes = useStyles({ expanded })
   const title = record.name
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
 
@@ -79,6 +109,13 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
     () => setLightboxOpen(false),
     []
   )
+
+  let ids = []
+
+  topSong &&
+    topSong.map((sng) => {
+      ids.push(sng.id)
+    })
 
   return (
     <div className={classes.root}>
@@ -151,6 +188,46 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
         )}
       </Card>
       <ExpandInfoDialog content={<AlbumInfo />} />
+
+      {topSong && (
+        <Accordion classes={{ expanded: classes.expanded }}>
+          <AccordionSummary
+            expandIcon={<ExpandMore />}
+            aria-controls="panel1a-content"
+            id="panel1a-header"
+          >
+            <Typography>Top Songs</Typography>
+          </AccordionSummary>
+          <AccordionDetails className={classes.accordion}>
+            {record && (
+              <ReferenceManyField
+                {...showContext}
+                addLabel={false}
+                reference="song"
+                target="artist_id"
+                sort={{ field: 'title', order: 'ASC' }}
+                perPage={0}
+                filter={{ id: ids }}
+                pagination={null}
+              >
+                <AlbumSongs
+                  resource={'album'}
+                  exporter={false}
+                  album={record}
+                  show={false}
+                  classes={{ toolbar: classes.toolbar }}
+                  actions={
+                    <AlbumActions
+                      className={classes.albumActions}
+                      record={record}
+                    />
+                  }
+                />
+              </ReferenceManyField>
+            )}
+          </AccordionDetails>
+        </Accordion>
+      )}
     </div>
   )
 }
