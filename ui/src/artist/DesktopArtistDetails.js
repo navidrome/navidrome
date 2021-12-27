@@ -82,9 +82,6 @@ const useStyles = makeStyles(
         display: 'none!important',
       },
     },
-    toolbar: {
-      display: 'none',
-    },
     expanded: {
       background: 'inherit',
     },
@@ -196,36 +193,48 @@ const DesktopArtistDetails = ({
             <Typography>Top Songs</Typography>
           </AccordionSummary>
           <AccordionDetails className={classes.accordion}>
-            {record && (
-              <ReferenceManyField
-                {...showContext}
-                addLabel={false}
-                reference="song"
-                target="artist_id"
-                sort={{ field: 'title', order: 'ASC' }}
-                perPage={0}
-                filter={{ id: ids }}
-                pagination={null}
-              >
-                <AlbumSongs
-                  resource={'album'}
-                  exporter={false}
-                  album={record}
-                  show={false}
-                  classes={{ toolbar: classes.toolbar }}
-                  actions={
-                    <AlbumActions
-                      className={classes.albumActions}
-                      record={record}
-                    />
-                  }
-                />
-              </ReferenceManyField>
-            )}
+            <TopSongs
+              showContext={showContext}
+              topSong={topSong}
+              record={record}
+            />
           </AccordionDetails>
         </Accordion>
       )}
     </div>
+  )
+}
+
+export const TopSongs = ({ showContext, topSong, record }) => {
+  const classes = useStyles()
+  let ids = []
+
+  topSong && topSong.map((sng) => ids.push(sng.id))
+  return (
+    <>
+      {record && (
+        <ReferenceManyField
+          {...showContext}
+          addLabel={false}
+          reference="song"
+          target="artist_id"
+          sort={{ field: 'title', order: 'ASC' }}
+          perPage={0}
+          filter={{ id: ids }}
+          pagination={null}
+        >
+          <AlbumSongs
+            resource={'album'}
+            exporter={false}
+            album={record}
+            show={false}
+            actions={
+              <AlbumActions className={classes.albumActions} record={record} />
+            }
+          />
+        </ReferenceManyField>
+      )}
+    </>
   )
 }
 
