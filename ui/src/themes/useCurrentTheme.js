@@ -12,7 +12,7 @@ const useCurrentTheme = () => {
       return prefersLightMode ? themes.LightTheme : themes.DarkTheme
     }
     const themeName =
-      state.theme ||
+      Object.keys(themes).find((t) => t === state.theme) ||
       Object.keys(themes).find(
         (t) => themes[t].themeName === config.defaultTheme
       ) ||
