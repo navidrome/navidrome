@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback } from 'react'
+
 import {
   Card,
   CardContent,
@@ -101,6 +102,10 @@ const useStyles = makeStyles(
     },
     externalLinks: {
       marginTop: theme.spacing(1.5),
+      color: theme.palette.text.primary,
+      '&:hover': {
+        color: theme.palette.primary.dark,
+      },
     },
   }),
   {
@@ -112,11 +117,21 @@ const AlbumComment = ({ record }) => {
   const classes = useStyles()
   const [expanded, setExpanded] = React.useState(false)
 
+  var urlRegex =
+    /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gi
+  const reqClassName = classes.externalLinks
+  console.log(reqClassName)
+  function linkify(text) {
+    return text.replace(urlRegex, function (url) {
+      return '<a class=' + reqClassName + ' href="' + url + '">' + url + '</a>'
+    })
+  }
+
   const lines = record.comment.split('\n')
   const formatted = useMemo(() => {
     return lines.map((line, idx) => (
       <span key={record.id + '-comment-' + idx}>
-        <span dangerouslySetInnerHTML={{ __html: line }} />
+        <span dangerouslySetInnerHTML={{ __html: linkify(line) }} />
         <br />
       </span>
     ))
