@@ -117,15 +117,22 @@ const AlbumComment = ({ record }) => {
   const classes = useStyles()
   const [expanded, setExpanded] = React.useState(false)
 
-  var urlRegex =
-    /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gi
   const reqClassName = classes.externalLinks
   console.log(reqClassName)
-  function linkify(text) {
-    return text.replace(urlRegex, function (url) {
-      return '<a class=' + reqClassName + ' href="' + url + '">' + url + '</a>'
-    })
-  }
+  const linkify = useCallback(
+    (text) => {
+      // eslint-disable-next-line
+      const urlRegex =
+        // eslint-disable-next-line
+        /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gi
+      return text.replace(urlRegex, function (url) {
+        return (
+          '<a class=' + reqClassName + ' href="' + url + '">' + url + '</a>'
+        )
+      })
+    },
+    [reqClassName]
+  )
 
   const lines = record.comment.split('\n')
   const formatted = useMemo(() => {
@@ -135,7 +142,7 @@ const AlbumComment = ({ record }) => {
         <br />
       </span>
     ))
-  }, [lines, record.id])
+  }, [lines, record.id, linkify])
 
   const handleExpandClick = useCallback(() => {
     setExpanded(!expanded)
