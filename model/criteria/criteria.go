@@ -28,8 +28,8 @@ func (c Criteria) OrderBy() string {
 	f := fieldMap[strings.ToLower(c.Sort)]
 	var mapped string
 	if f == nil {
-		log.Error("Invalid field in 'sort' field", "field", c.Sort)
-		mapped = c.Sort
+		log.Error("Invalid field in 'sort' field. Using 'title'", "sort", c.Sort)
+		mapped = fieldMap["title"].field
 	} else {
 		if f.order == "" {
 			mapped = f.field
@@ -38,7 +38,11 @@ func (c Criteria) OrderBy() string {
 		}
 	}
 	if c.Order != "" {
-		mapped = mapped + " " + c.Order
+		if strings.EqualFold(c.Order, "asc") || strings.EqualFold(c.Order, "desc") {
+			mapped = mapped + " " + c.Order
+		} else {
+			log.Error("Invalid value in 'order' field. Valid values: 'asc', 'desc'", "order", c.Order)
+		}
 	}
 	return mapped
 }
