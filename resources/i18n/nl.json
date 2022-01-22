@@ -96,7 +96,7 @@
                 "changePassword": "Wijzig wachtwoord?",
                 "currentPassword": "Huidig wachtwoord",
                 "newPassword": "Nieuw wachtwoord",
-                "token": ""
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Naamswijziging wordt pas zichtbaar bij de volgende login"
@@ -107,8 +107,8 @@
                 "deleted": "Gewist door gebruiker"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "Vul je ListenBrainz gebruikerstoken in.",
+                "clickHereForToken": "Klik hier voor je token"
             }
         },
         "player": {
@@ -121,7 +121,7 @@
                 "userName": "Gebruikersnaam",
                 "lastSeen": "Laatst gezien op",
                 "reportRealPath": "Toon het echte bestandspad",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "Scrobbles naar externe dienst sturen"
             }
         },
         "transcoding": {
@@ -151,8 +151,8 @@
                 "selectPlaylist": "Selecteer een afspeellijst:",
                 "addNewPlaylist": "Creëer \"%{name}\"",
                 "export": "Exporteer",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "Openbaar maken",
+                "makePrivate": "Privé maken"
             },
             "message": {
                 "duplicate_song": "Dubbele nummers toevoegen",
@@ -319,10 +319,10 @@
             "musicbrainz": "Open in MusicBrainz"
         },
         "lastfmLink": "Lees meer...",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzLinkSuccess": "ListenBrainz is succesvol gelinkt en scrobbling staat aan, als gebruiker: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz kon niet worden gelinkt: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz ontkoppeld",
+        "listenBrainzUnlinkFailure": "ListenBrainz kon niet ontkoppeld worden"
     },
     "menu": {
         "library": "Bibliotheek",
@@ -337,7 +337,7 @@
                 "defaultView": "Standaard weergave",
                 "desktop_notifications": "Bureaubladmeldingen",
                 "lastfmScrobbling": "Scrobble naar Last.fm",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "Scrobble naar ListenBrainz"
             }
         },
         "albumList": "Albums",
