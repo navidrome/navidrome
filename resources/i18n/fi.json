@@ -337,7 +337,7 @@
                 "defaultView": "Oletusnäkymä",
                 "desktop_notifications": "Työpöytäilmoitukset",
                 "lastfmScrobbling": "Kuuntelutottumuksen lähetys Last.fm-palveluun",
-                "listenBrainzScrobbling": "Kuuntelutottumukset ListenBrainz-palveluun"
+                "listenBrainzScrobbling": "Kuuntelutottumuksen lähetys ListenBrainz-palveluun"
             }
         },
         "albumList": "Albumit",

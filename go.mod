@@ -5,8 +5,8 @@ go 1.16
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
 	github.com/ClickHouse/clickhouse-go v1.4.5 // indirect
-	github.com/Masterminds/squirrel v1.5.1
-	github.com/ReneKroon/ttlcache/v2 v2.9.0
+	github.com/Masterminds/squirrel v1.5.2
+	github.com/ReneKroon/ttlcache/v2 v2.11.0
 	github.com/astaxie/beego v1.12.3
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.1
@@ -28,11 +28,11 @@ require (
 	github.com/google/wire v0.5.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.3.0
-	github.com/lestrrat-go/jwx v1.2.11
+	github.com/lestrrat-go/jwx v1.2.17
 	github.com/matoous/go-nanoid v1.5.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mattn/go-zglob v0.0.3
-	github.com/microcosm-cc/bluemonday v1.0.16
+	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/mileusna/useragent v1.0.2
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.5

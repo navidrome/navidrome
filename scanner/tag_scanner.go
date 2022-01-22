@@ -72,7 +72,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	ctx = s.withAdminUser(ctx)
 	start := time.Now()
 
-	// Special case: if lastModifiedSInce is zero, re-import all files
+	// Special case: if lastModifiedSince is zero, re-import all files
 	fullScan := lastModifiedSince.IsZero()
 
 	allDBDirs, err := s.getDBDirTree(ctx)

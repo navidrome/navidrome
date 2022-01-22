@@ -1,0 +1,401 @@
+{
+    "languageName": "Català",
+    "resources": {
+        "song": {
+            "name": "Cançó |||| Cançons",
+            "fields": {
+                "albumArtist": "Artista de l'àlbum",
+                "duration": "Durada",
+                "trackNumber": "#",
+                "playCount": "Reproduccions",
+                "title": "Títol",
+                "artist": "Artista",
+                "album": "Àlbum",
+                "path": "Ruta del fitxer",
+                "genre": "Gènere",
+                "compilation": "Compilació",
+                "year": "Any",
+                "size": "Mida del fitxer",
+                "updatedAt": "Actualitzat",
+                "bitRate": "Taxa de bits",
+                "discSubtitle": "Subtítol del disc",
+                "starred": "Preferit",
+                "comment": "Comentari",
+                "rating": "Valoració",
+                "quality": "Qualitat",
+                "bpm": "tempo",
+                "playDate": "Darrer resproduït",
+                "channels": "Canals"
+            },
+            "actions": {
+                "addToQueue": "Reprodueix després",
+                "playNow": "Reprodueix ara",
+                "addToPlaylist": "Afegeix a la llista",
+                "shuffleAll": "Aleatori",
+                "download": "Descarrega",
+                "playNext": "Reprodueix següent",
+                "info": "Obtén informació"
+            }
+        },
+        "album": {
+            "name": "Àlbum |||| Àlbums",
+            "fields": {
+                "albumArtist": "Artista de l'àlbum",
+                "artist": "Artista",
+                "duration": "Durada",
+                "songCount": "Cançons",
+                "playCount": "Reproduccions",
+                "name": "Nom",
+                "genre": "Gènere",
+                "compilation": "Compilació",
+                "year": "Any",
+                "updatedAt": "Actualitzat ",
+                "comment": "Comentari",
+                "rating": "Valoració"
+            },
+            "actions": {
+                "playAll": "Reprodueix",
+                "playNext": "Reprodueix la següent",
+                "addToQueue": "Reprodueix després",
+                "shuffle": "Aleatori",
+                "addToPlaylist": "Afegeix a la llista",
+                "download": "Descarrega",
+                "info": "Obtén informació"
+            },
+            "lists": {
+                "all": "Tot",
+                "random": "Aleatori",
+                "recentlyAdded": "Afegit fa poc",
+                "recentlyPlayed": "Reproduït fa poc",
+                "mostPlayed": "Més reproduït",
+                "starred": "Preferits",
+                "topRated": "Més ben valorades"
+            }
+        },
+        "artist": {
+            "name": "Artista |||| Artistes",
+            "fields": {
+                "name": "Nom",
+                "albumCount": "Nombre d'àlbums",
+                "songCount": "Compte de cançons",
+                "playCount": "Reproduccions",
+                "rating": "Valoració",
+                "genre": "Gènere"
+            }
+        },
+        "user": {
+            "name": "Usuari |||| Usuaris",
+            "fields": {
+                "userName": "Nom d'usuari",
+                "isAdmin": "És admin",
+                "lastLoginAt": "Última connexió",
+                "updatedAt": "Actualitzat",
+                "name": "Nom",
+                "password": "Contrasenya",
+                "createdAt": "Creat",
+                "changePassword": "Canviar la contrasenya?",
+                "currentPassword": "Contrasenya actual",
+                "newPassword": "Contrasenya nova",
+                "token": "Token"
+            },
+            "helperTexts": {
+                "name": "Els canvis en el nom s'hi aplicaran en la següent connexió"
+            },
+            "notifications": {
+                "created": "Usuari creat",
+                "updated": "Usuari actualitzat",
+                "deleted": "Usuari eliminat"
+            },
+            "message": {
+                "listenBrainzToken": "Introduïu el vostre token d'usuari de ListenBrainz",
+                "clickHereForToken": "Feu clic ací per a obtenir el vostre token"
+            }
+        },
+        "player": {
+            "name": "Reproductor |||| Reproductors",
+            "fields": {
+                "name": "Nom",
+                "transcodingId": "Transcodificador",
+                "maxBitRate": "Taxa de bits màx.",
+                "client": "Client",
+                "userName": "Nom d'usuari",
+                "lastSeen": "Vist",
+                "reportRealPath": "Informa de la ruta real",
+                "scrobbleEnabled": "Activa el seguiment des de serveis externs"
+            }
+        },
+        "transcoding": {
+            "name": "Transcodificador |||| Transcodificadors",
+            "fields": {
+                "name": "Nom",
+                "targetFormat": "Format desitjat",
+                "defaultBitRate": "Taxa de bits per defecte",
+                "command": "Ordre"
+            }
+        },
+        "playlist": {
+            "name": "Llista |||| Llistes",
+            "fields": {
+                "name": "Nom",
+                "duration": "Durada",
+                "ownerName": "Propietari",
+                "public": "Públic",
+                "updatedAt": "Actualitzat ",
+                "createdAt": "Creat",
+                "songCount": "Cançons",
+                "comment": "Comentari",
+                "sync": "Auto-importació",
+                "path": "Importa de"
+            },
+            "actions": {
+                "selectPlaylist": "Selecciona una llista:",
+                "addNewPlaylist": "Crea \"%{nom}",
+                "export": "Exporta",
+                "makePublic": "Fes públic",
+                "makePrivate": "Fes privat"
+            },
+            "message": {
+                "duplicate_song": "Afegeix cançons duplicades",
+                "song_exist": "Heu afegit duplicats a la llista. Voleu afegir-los o ignorar-los?"
+            }
+        }
+    },
+    "ra": {
+        "auth": {
+            "welcome1": "Gràcies d'haver instal·lat Navidrome!",
+            "welcome2": "Per a començar, creeu un usuari administrador",
+            "confirmPassword": "Confirmeu la contrasenya",
+            "buttonCreateAdmin": "Crea un administrador",
+            "auth_check_error": "Si us plau, inicieu sessió per a continuar",
+            "user_menu": "Perfil",
+            "username": "Nom d'usuari",
+            "password": "Contrasenya",
+            "sign_in": "Inicia sessió",
+            "sign_in_error": "L'autenticació ha fallat, torneu-ho a intentar",
+            "logout": "Sortida"
+        },
+        "validation": {
+            "invalidChars": "Si us plau, useu solament lletres i nombres",
+            "passwordDoesNotMatch": "Les contrasenyes no coincideixen",
+            "required": "Obligatori",
+            "minLength": "Ha de tenir, si més no, %{min} caràcters",
+            "maxLength": "Ha de tenir %{max} caràcter o menys",
+            "minValue": "Ha de ser si més no %{min}",
+            "maxValue": "Ha de ser %{max} o menys",
+            "number": "Ha de ser un nombre",
+            "email": "Ha de ser un correu vàlid",
+            "oneOf": "Ha de ser un de: %{options}",
+            "regex": "Ha de tenir el format (regexp): %{pattern}",
+            "unique": "Ha de ser únic"
+        },
+        "action": {
+            "add_filter": "Afegeix un filtre",
+            "add": "Afegeix",
+            "back": "Enrere",
+            "bulk_actions": "1 element seleccionat |||| %{smart_count} elements seleccionats",
+            "cancel": "Cancel·la",
+            "clear_input_value": "Neteja el valor",
+            "clone": "Clona",
+            "confirm": "Confirma",
+            "create": "Crea",
+            "delete": "Suprimeix",
+            "edit": "Edita",
+            "export": "Exporta",
+            "list": "Llista",
+            "refresh": "Refresca",
+            "remove_filter": "Suprimeix aquest filtre",
+            "remove": "Elimina",
+            "save": "Desa",
+            "search": "Cerca",
+            "show": "Mostra",
+            "sort": "Ordena",
+            "undo": "Desfés",
+            "expand": "Expandeix",
+            "close": "Tanca",
+            "open_menu": "Obre el menú",
+            "close_menu": "Tanca el menú",
+            "unselect": "Anul·la la selecció",
+            "skip": "Omet"
+        },
+        "boolean": {
+            "true": "Sí",
+            "false": "No"
+        },
+        "page": {
+            "create": "Crea %{nom}",
+            "dashboard": "Tauler",
+            "edit": "%{name} #%{id}",
+            "error": "Alguna cosa ha fallat",
+            "list": "%{name}",
+            "loading": "Ara es carrega",
+            "not_found": "No s'ha trobat",
+            "show": "%{name} #%{id}",
+            "empty": "No hi ha %{name} encara.",
+            "invite": "Voleu afegir-ne una?"
+        },
+        "input": {
+            "file": {
+                "upload_several": "Deixeu caure-hi fitxers per a carregar-los o feu clic per a seleccionar-ne un.",
+                "upload_single": "Deixeu caure-hi un fitxer per a carregar o feu clic per a seleccionar-lo."
+            },
+            "image": {
+                "upload_several": "Deixeu caure-hi imatges per a carregar-les o feu clic per a seleccionar-ne una.",
+                "upload_single": "Deixeu caure-hi una imatge per a carregar-la o feu clic per a seleccionar-la."
+            },
+            "references": {
+                "all_missing": "No ha estat possible trobar les dades de referència.",
+                "many_missing": "Sembla que almenys una de les referències associades ja no està disponible.",
+                "single_missing": "Sembla que la referència associada ja no està disponible."
+            },
+            "password": {
+                "toggle_visible": "Amaga la contrasenya",
+                "toggle_hidden": "Mostra la contrasenya"
+            }
+        },
+        "message": {
+            "about": "Quant a...",
+            "are_you_sure": "N'esteu segur?",
+            "bulk_delete_content": "Voleu eliminar aquest %{name}? |||| Voleu eliminar aquests %{smart_count} element?\n",
+            "bulk_delete_title": "Esborra %{name} |||| Esborra %{smart_count} %{name}",
+            "delete_content": "Segur que voleu eliminar aquest element?",
+            "delete_title": "Elimina %{name} #%{id}",
+            "details": "Detalls",
+            "error": "S'ha produït un error en un client i la vostra sol·licitud no ha pogut ser completada.",
+            "invalid_form": "El formulari no és vàlid.",
+            "loading": "La pàgina es carrega, un moment si us plau.",
+            "no": "No",
+            "not_found": "La URL és incorrecta o heu seguit un enllaç erroni.",
+            "yes": "Sí",
+            "unsaved_changes": "Alguns canvis no s'hi han desat. Segur que voleu ignorar-los?"
+        },
+        "navigation": {
+            "no_results": "No s'ha trobat",
+            "no_more_results": "La pàgina número %{page} no existeix. Proveu l'anterior.",
+            "page_out_of_boundaries": "La pàgina número %{page} no existeix",
+            "page_out_from_end": "No podeu anar més enllà de la darrera pàgina",
+            "page_out_from_begin": "No podeu anar més enllà de la primera pàgina",
+            "page_range_info": "%{offsetBegin}-%{offsetEnd} de %{total}",
+            "page_rows_per_page": "Elements per pàgina:",
+            "next": "Següent",
+            "prev": "Anterior",
+            "skip_nav": "Salta al contingut"
+        },
+        "notification": {
+            "updated": "Element actualitzat |||| %{smart_count} elements actualitzats",
+            "created": "Element creat",
+            "deleted": "Element actualitzat |||| %{smart_count} elements actualitzats",
+            "bad_item": "Element incorrecte",
+            "item_doesnt_exist": "L'element no existeix",
+            "http_error": "Error de comunicació del servidor",
+            "data_provider_error": "dataProvider error. Vegeu la consola si en voleu més detalls.",
+            "i18n_error": "No ha estat possible carregar les traduccions per a l'idioma indicat",
+            "canceled": "Acció cancel·lada",
+            "logged_out": "La sessió ha acabat, si us plau reconnecteu",
+            "new_version": "Hi ha una versió nova disponible! Si us plau refresqueu aquesta finestra."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Columnes a mostrar",
+            "layout": "Disposició",
+            "grid": "Quadrícula",
+            "table": "Taula"
+        }
+    },
+    "message": {
+        "note": "NOTA",
+        "transcodingDisabled": "Per motius de seguretat, el canvi de configuració del trasnscodificador amb la interfície web no està habilitat. Si voleu canviar les opcions de transcodificació (sia editar-les sia afegir-ne), reinicieu el servidor amb l'opció %{config}.",
+        "transcodingEnabled": "Ara Navidrome s'executa amb %{config}, cosa que fa possible executar ordres del sistema des de les opcions de transcodificació usant la interfície web. Per motius de seguretat us recomanem que només l'activeu quan necessiteu configurar les opcions de transcodificació.",
+        "songsAddedToPlaylist": "S'ha afegit 1 cançó a la llista |||| S'han afegit %{smart_count} a la llista",
+        "noPlaylistsAvailable": "No n'hi ha cap disponible",
+        "delete_user_title": "Esborra usuari '%{nom}'",
+        "delete_user_content": "Segur que voleu eliminar aquest usuari i les seues dades\n(incloent-hi llistes i preferències)",
+        "notifications_blocked": "Heu blocat les notificacions d'escriptori en les preferències del navegador",
+        "notifications_not_available": "El navegador no suporta les notificacions o no heu connectat a Navidrome per https",
+        "lastfmLinkSuccess": "Ha reexit la vinculació amb Last.fm i se n'ha activat el seguiment",
+        "lastfmLinkFailure": "No ha estat possible la vinculació amb Last.fm",
+        "lastfmUnlinkSuccess": "Desvinculat de Last.fm i desactivat el seguiment",
+        "lastfmUnlinkFailure": "No s'ha pogut desvincular de Last.fm",
+        "openIn": {
+            "lastfm": "Obri en Last.fm",
+            "musicbrainz": "Obri en MusicBrainz"
+        },
+        "lastfmLink": "Llegeix més...",
+        "listenBrainzLinkSuccess": "Ha reexit la vinculació amb ListenBrainz i se n'ha activat el seguiment com a usuari: %{user}",
+        "listenBrainzLinkFailure": "No ha estat possible vincular-se a ListenBrainz: %{error}",
+        "listenBrainzUnlinkSuccess": "Desvinculat de ListenBrainz i desactivat el seguiment",
+        "listenBrainzUnlinkFailure": "No s'ha pogut desvincular de ListenBrainz"
+    },
+    "menu": {
+        "library": "Discoteca",
+        "settings": "Configuració",
+        "version": "Versió",
+        "theme": "Tema",
+        "personal": {
+            "name": "Personal",
+            "options": {
+                "theme": "Tema",
+                "language": "Llengua",
+                "defaultView": "Vista per defecte",
+                "desktop_notifications": "Notificacions d'escriptori",
+                "lastfmScrobbling": "Activa el seguiment de Last.fm",
+                "listenBrainzScrobbling": "Activa el seguiment de ListenBrainz"
+            }
+        },
+        "albumList": "Àlbums",
+        "about": "Quant a...",
+        "playlists": "Llistes",
+        "sharedPlaylists": "Llistes compartides"
+    },
+    "player": {
+        "playListsText": "Reprodueix la cua",
+        "openText": "Obre",
+        "closeText": "Tanca",
+        "notContentText": "No hi ha música",
+        "clickToPlayText": "Feu clic per a reproduir",
+        "clickToPauseText": "Feu clic per a posar en pausa",
+        "nextTrackText": "Pista següent",
+        "previousTrackText": "Pista anterior",
+        "reloadText": "Recarrega",
+        "volumeText": "Volum",
+        "toggleLyricText": "Activa / desactiva lletra",
+        "toggleMiniModeText": "Minimitza",
+        "destroyText": "Destrueix",
+        "downloadText": "Descarrega",
+        "removeAudioListsText": "Elimina llistes d'àudio",
+        "clickToDeleteText": "Feu clic per a eliminar %{name}",
+        "emptyLyricText": "Sense lletra",
+        "playModeText": {
+            "order": "En ordre",
+            "orderLoop": "Repeteix",
+            "singleLoop": "Repeteix una vegada",
+            "shufflePlay": "Aleatori"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "Inici",
+            "source": "Codi font",
+            "featureRequests": "Sol·licitud de funcionalitats"
+        }
+    },
+    "activity": {
+        "title": "Activitat",
+        "totalScanned": "Carpetes escanejades en total",
+        "quickScan": "Escaneig ràpid",
+        "fullScan": "Escaneig complet",
+        "serverUptime": "Temps de funcionament del servidor",
+        "serverDown": "Sense connexió"
+    },
+    "help": {
+        "title": "Dreceres de teclat de Navidrome",
+        "hotkeys": {
+            "show_help": "Mostra aquesta ajuda",
+            "toggle_menu": "Commuta la barra lateral",
+            "toggle_play": "Reprodueix / Pausa",
+            "prev_song": "Cançó anterior",
+            "next_song": "Cançó següent",
+            "vol_up": "Apuja el volum",
+            "vol_down": "Abaixa el volum",
+            "toggle_love": "Afegeix la pista a favorits"
+        }
+    }
+}
