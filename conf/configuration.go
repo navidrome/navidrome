@@ -257,7 +257,7 @@ func init() {
 	viper.SetDefault("listenbrainz.enabled", true)
 
 	//Downsampling
-	viper.SetDefault("defaultdownsamplingformat", "mp3")
+	viper.SetDefault("defaultdownsamplingformat", "opus")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

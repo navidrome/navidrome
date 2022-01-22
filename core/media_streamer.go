@@ -141,10 +141,11 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 			cBitRate = trc.DefaultBitRate
 			if p, ok := request.PlayerFrom(ctx); ok {
 				cBitRate = p.MaxBitRate
-			} else if reqBitRate > 0 && conf.Server.DefaultDownsamplingFormat != "" {
-				// If no format is specified but a bitrate is specfied, and there is no transcoding set for the player, we use the default downsampling format
-				cFormat = conf.Server.DefaultDownsamplingFormat
 			}
+		} else if reqBitRate > 0 && conf.Server.DefaultDownsamplingFormat != "" {
+			// If no format is specified and no transcoding associated to the player, but a bitrate is specfied, and there is no transcoding set for the player, we use the default downsampling format
+			log.Debug("Default Downsampling", "Using default downsampling format", conf.Server.DefaultDownsamplingFormat)
+			cFormat = conf.Server.DefaultDownsamplingFormat
 		}
 	}
 	if reqBitRate > 0 {
