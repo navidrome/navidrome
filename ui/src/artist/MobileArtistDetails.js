@@ -74,9 +74,9 @@ const useStyles = makeStyles(
   { name: 'NDMobileArtistDetails' }
 )
 
-const MobileArtistDetails = ({ img, artistInfo, biography, record }) => {
+const MobileArtistDetails = ({ artistInfo, biography, record }) => {
   const [expanded, setExpanded] = useState(false)
-  const classes = useStyles({ img, expanded })
+  const classes = useStyles({ img: artistInfo?.largeImageUrl, expanded })
   const title = record.name
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
 

@@ -64,9 +64,9 @@ const useStyles = makeStyles(
   { name: 'NDDesktopArtistDetails' }
 )
 
-const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
+const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
   const [expanded, setExpanded] = useState(false)
-  const classes = useStyles({ img, expanded })
+  const classes = useStyles({})
   const title = record.name
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
 
