@@ -9,9 +9,9 @@ import (
 const PlaceholderAgentName = "placeholder"
 
 const (
-	placeholderArtistImageSmallUrl  = "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png"
-	placeholderArtistImageMediumUrl = "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png"
-	placeholderArtistImageLargeUrl  = "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png"
+	placeholderArtistImageSmallUrl  = ""
+	placeholderArtistImageMediumUrl = ""
+	placeholderArtistImageLargeUrl  = ""
 	placeholderBiography            = "Biography not available"
 )
 
