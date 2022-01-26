@@ -35,6 +35,19 @@ const ArtistDetails = (props) => {
       })
   }, [record])
 
+  if (artistInfo) {
+    // Assign placeholders if image is missing
+    artistInfo.largeImageUrl =
+      artistInfo.largeImageUrl ||
+      'https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png'
+    artistInfo.mediumImageUrl =
+      artistInfo.mediumImageUrl ||
+      'https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png'
+    artistInfo.smallImageUrl =
+      artistInfo.smallImageUrl ||
+      'https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png'
+  }
+
   const component = isDesktop ? DesktopArtistDetails : MobileArtistDetails
   return (
     <>
