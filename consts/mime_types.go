@@ -57,4 +57,8 @@ func init() {
 	for ext, typ := range imageFormats {
 		_ = mime.AddExtensionType(ext, typ)
 	}
+
+	// In some circumstances, Windows sets JS mime-type to `text/plain`!
+	_ = mime.AddExtensionType(".js", "text/javascript")
+	_ = mime.AddExtensionType(".css", "text/css")
 }
