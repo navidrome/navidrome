@@ -81,4 +81,10 @@ var _ = Describe("Criteria", func() {
 		gomega.Expect(string(j)).To(gomega.Equal(jsonObj))
 	})
 
+	It("allows sort by random", func() {
+		newObj := goObj
+		newObj.Sort = "random"
+		gomega.Expect(newObj.OrderBy()).To(gomega.Equal("random() asc"))
+	})
+
 })

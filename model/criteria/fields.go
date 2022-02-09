@@ -43,6 +43,7 @@ var fieldMap = map[string]*mappedField{
 	"lastplayed":      {field: "annotation.play_date"},
 	"playcount":       {field: "COALESCE(annotation.play_count, 0)", order: "annotation.play_count"},
 	"rating":          {field: "COALESCE(annotation.rating, 0)", order: "annotation.rating"},
+	"random":          {field: "-", order: "random()"},
 }
 
 type mappedField struct {
