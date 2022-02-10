@@ -127,11 +127,11 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
-			reader, err = resources.FS.Open(consts.PlaceholderAlbumArt)
+			reader, err = resources.FS().Open(consts.PlaceholderAlbumArt)
 
 			if size != 0 && err == nil {
 				var r io.ReadCloser
-				r, err = resources.FS.Open(consts.PlaceholderAlbumArt)
+				r, err = resources.FS().Open(consts.PlaceholderAlbumArt)
 				reader, err = resizeImage(r, size, true)
 			}
 		}
