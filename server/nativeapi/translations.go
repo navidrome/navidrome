@@ -28,7 +28,7 @@ var (
 )
 
 func newTranslationRepository(context.Context) rest.Repository {
-	if err := loadTranslations(resources.FS); err != nil {
+	if err := loadTranslations(resources.FS()); err != nil {
 		log.Error("Error loading translation files", err)
 	}
 	return &translationRepository{}
