@@ -36,6 +36,7 @@ const PlaylistFilter = (props) => {
       {permissions === 'admin' && (
         <ReferenceInput
           source="owner_id"
+          label={'resources.playlist.fields.ownerName'}
           reference="user"
           perPage={0}
           sort={{ field: 'name', order: 'ASC' }}
