@@ -312,7 +312,7 @@
         "notifications_not_available": "此浏览器不支持桌面通知",
         "lastfmLinkSuccess": "Last.fm已关联并启用喜好记录",
         "lastfmLinkFailure": "Last.fm无法关联",
-        "lastfmUnlinkSuccess": "Last.fm未关联并禁止喜好记录",
+        "lastfmUnlinkSuccess": "已成功解除与 Last.fm 的链接，且喜好记录已禁用",
         "lastfmUnlinkFailure": "Last.fm无法取消关联",
         "openIn": {
             "lastfm": "在 Last.fm 中打开",
@@ -337,7 +337,7 @@
                 "defaultView": "默认界面",
                 "desktop_notifications": "桌面通知",
                 "lastfmScrobbling": "启用Last.fm的喜好记录",
-                "listenBrainzScrobbling": "启用"
+                "listenBrainzScrobbling": "启用 ListenBrainz 的喜好记录"
             }
         },
         "albumList": "专辑",
