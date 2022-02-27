@@ -93,7 +93,7 @@
                 "name": "名称",
                 "password": "密码",
                 "createdAt": "创建于",
-                "changePassword": "修改密码?",
+                "changePassword": "修改密码？",
                 "currentPassword": "当前密码",
                 "newPassword": "新密码",
                 "token": "令牌 "
@@ -254,10 +254,10 @@
         },
         "message": {
             "about": "关于",
-            "are_you_sure": "您确定要进行此操作?",
-            "bulk_delete_content": "您确定要删除 %{name}? |||| 您确定要删除 %{smart_count} 项?",
+            "are_you_sure": "您确定要进行此操作？",
+            "bulk_delete_content": "您确定要删除 %{name}？ |||| 您确定要删除 %{smart_count} 项？",
             "bulk_delete_title": "删除 %{name} |||| 删除 %{smart_count} 项 %{name}",
-            "delete_content": "您确定要删除该条目?",
+            "delete_content": "您确定要删除该条目？",
             "delete_title": "删除 %{name} #%{id}",
             "details": "详情",
             "error": "发生一个客户端错误，您的请求无法完成。",
@@ -275,7 +275,7 @@
             "page_out_from_end": "已经最后一页",
             "page_out_from_begin": "已经是第一页",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
-            "page_rows_per_page": "每页行数:",
+            "page_rows_per_page": "每页行数：",
             "next": "下一页",
             "prev": "上一页",
             "skip_nav": "跳过"
@@ -302,8 +302,8 @@
     },
     "message": {
         "note": "说明",
-        "transcodingDisabled": "出于安全原因，禁用了从 Web 界面更改参数。要更改（编辑或删除）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
-        "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以从 Web 界面执行任意命令。建议仅在配置Transcoding时启用此功能。",
+        "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或增加）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
+        "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过配置转码选项来执行任意命令。建议仅在配置转码时启用此功能。",
         "songsAddedToPlaylist": "已添加一首歌到歌单||||已添加 %{smart_count} 首歌到歌单",
         "noPlaylistsAvailable": "没有有效的歌单",
         "delete_user_title": "删除用户 %{name}",
