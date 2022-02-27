@@ -121,7 +121,7 @@
                 "userName": "用户名",
                 "lastSeen": "上次浏览",
                 "reportRealPath": "回报实际路径",
-                "scrobbleEnabled": "发送 Scrobbles 到外部服务"
+                "scrobbleEnabled": "发送喜好记录到外部服务"
             }
         },
         "transcoding": {
