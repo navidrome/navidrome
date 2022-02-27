@@ -230,7 +230,7 @@
             "loading": "加载中",
             "not_found": "未找到",
             "show": "%{name} #%{id}",
-            "empty": "还没有 %{name}.",
+            "empty": "还没有 %{name}。",
             "invite": "您要创建一个吗？"
         },
         "input": {
@@ -243,9 +243,9 @@
                 "upload_single": "拖拽单个图片上传或点击选择一个"
             },
             "references": {
-                "all_missing": "未找到参考数据.",
-                "many_missing": "至少有一条参考数据不再可用.",
-                "single_missing": "关联的参考数据不再可用."
+                "all_missing": "未找到参考数据。",
+                "many_missing": "至少有一条参考数据不再可用。",
+                "single_missing": "关联的参考数据不再可用。"
             },
             "password": {
                 "toggle_visible": "隐藏密码",
@@ -261,7 +261,7 @@
             "delete_title": "删除 %{name} #%{id}",
             "details": "详情",
             "error": "发生一个客户端错误，您的请求无法完成。",
-            "invalid_form": "提交内容无效. 请检查错误",
+            "invalid_form": "提交内容无效。请检查错误",
             "loading": "正在加载页面, 请稍候",
             "no": "否",
             "not_found": "您输入的链接格式不对或链接丢失",
@@ -270,7 +270,7 @@
         },
         "navigation": {
             "no_results": "无内容",
-            "no_more_results": "页码 %{page} 超出边界. 试试上一页.",
+            "no_more_results": "页码 %{page} 超出边界。试试上一页。",
             "page_out_of_boundaries": "页码 %{page} 超出边界",
             "page_out_from_end": "已经最后一页",
             "page_out_from_begin": "已经是第一页",
@@ -287,7 +287,7 @@
             "bad_item": "不正确的项",
             "item_doesnt_exist": "项不存在",
             "http_error": "与服务通信出错",
-            "data_provider_error": "数据来源错误. 请检查控制台的详细信息",
+            "data_provider_error": "数据来源错误。请检查控制台的详细信息",
             "i18n_error": "加载所选语言时出错",
             "canceled": "操作已取消",
             "logged_out": "您的会话已结束，请重新登录",
