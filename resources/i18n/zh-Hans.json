@@ -25,7 +25,7 @@
                 "quality": "品质",
                 "bpm": "BPM",
                 "playDate": "最后一次播放",
-                "channels": ""
+                "channels": "声道"
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -34,7 +34,7 @@
                 "shuffleAll": "全部随机播放",
                 "download": "下载",
                 "playNext": "下一首播放",
-                "info": ""
+                "info": "查看信息"
             }
         },
         "album": {
@@ -60,7 +60,7 @@
                 "shuffle": "随机播放",
                 "addToPlaylist": "加入歌单",
                 "download": "下载",
-                "info": ""
+                "info": "查看信息"
             },
             "lists": {
                 "all": "所有",
@@ -96,7 +96,7 @@
                 "changePassword": "修改密码?",
                 "currentPassword": "当前密码",
                 "newPassword": "新密码",
-                "token": ""
+                "token": "令牌 "
             },
             "helperTexts": {
                 "name": "你名字的更改将在下次登录生效"
@@ -107,8 +107,8 @@
                 "deleted": "用户已删除"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "输入您的 ListenBrainz 用户令牌",
+                "clickHereForToken": "点击这里来获得你的 ListenBrainz 令牌 "
             }
         },
         "player": {
@@ -121,7 +121,7 @@
                 "userName": "用户名",
                 "lastSeen": "上次浏览",
                 "reportRealPath": "回报实际路径",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "发送 Scrobbles 到外部服务"
             }
         },
         "transcoding": {
@@ -151,8 +151,8 @@
                 "selectPlaylist": "选择歌单",
                 "addNewPlaylist": "新建 %{name}",
                 "export": "导出",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "使其公开",
+                "makePrivate": "使其私密"
             },
             "message": {
                 "duplicate_song": "添加重复的歌曲",
@@ -315,14 +315,14 @@
         "lastfmUnlinkSuccess": "Last.fm未关联并禁止喜好记录",
         "lastfmUnlinkFailure": "Last.fm无法取消关联",
         "openIn": {
-            "lastfm": "",
-            "musicbrainz": ""
+            "lastfm": "在 Last.fm 中打开",
+            "musicbrainz": "在 MusicBrainz 中打开"
         },
-        "lastfmLink": "",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "lastfmLink": "更多…",
+        "listenBrainzLinkSuccess": "ListenBrainz 已关联并启用喜好记录",
+        "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
+        "listenBrainzUnlinkSuccess": "已成功解除与 ListenBrainz 的链接，且喜好记录已禁用",
+        "listenBrainzUnlinkFailure": "ListenBrainz 无法取消关联"
     },
     "menu": {
         "library": "曲库",
@@ -337,13 +337,13 @@
                 "defaultView": "默认界面",
                 "desktop_notifications": "桌面通知",
                 "lastfmScrobbling": "启用Last.fm的喜好记录",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "启用"
             }
         },
         "albumList": "专辑",
         "about": "关于",
-        "playlists": "",
-        "sharedPlaylists": ""
+        "playlists": "歌单",
+        "sharedPlaylists": "共享的歌单"
     },
     "player": {
         "playListsText": "播放列表",
