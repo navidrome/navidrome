@@ -69,6 +69,7 @@ func runNavidrome() {
 
 	if err := g.Run(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
+		os.Exit(1)
 	}
 }
 
