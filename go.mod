@@ -28,7 +28,7 @@ require (
 	github.com/google/wire v0.5.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.3.0
-	github.com/lestrrat-go/jwx v1.2.17
+	github.com/lestrrat-go/jwx v1.2.20
 	github.com/matoous/go-nanoid v1.5.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mattn/go-zglob v0.0.3
@@ -47,7 +47,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
-	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
 	golang.org/x/tools v0.1.7
 	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
 	gopkg.in/djherbis/stream.v1 v1.3.1
