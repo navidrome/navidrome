@@ -35,6 +35,7 @@ type configOptions struct {
 	AutoImportPlaylists     bool
 	PlaylistsPath           string
 
+	EnableDuplicateSearch  bool
 	SearchFullString       bool
 	RecentlyAddedByModTime bool
 	IgnoredArticles        string
@@ -230,6 +231,7 @@ func init() {
 	viper.SetDefault("enableexternalservices", true)
 
 	// Config options only valid for file/env configuration
+	viper.SetDefault("enableduplicatesearch", false)
 	viper.SetDefault("searchfullstring", false)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")

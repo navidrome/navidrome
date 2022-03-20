@@ -6,6 +6,7 @@
             "fields": {
                 "albumArtist": "Album Artist",
                 "duration": "Time",
+                "duplicate": "Duplicate",
                 "trackNumber": "#",
                 "playCount": "Plays",
                 "title": "Title",
@@ -152,7 +153,8 @@
                 "addNewPlaylist": "Create \"%{name}\"",
                 "export": "Export",
                 "makePublic": "Make Public",
-                "makePrivate": "Make Private"
+                "makePrivate": "Make Private",
+                "showDuplicates": "Only show duplicates"
             },
             "message": {
                 "duplicate_song": "Add duplicated songs",

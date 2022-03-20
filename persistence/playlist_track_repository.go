@@ -3,6 +3,7 @@ package persistence
 import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -36,6 +37,22 @@ func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTrackReposi
 }
 
 func (r *playlistTrackRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	if conf.Server.EnableDuplicateSearch {
+		if duplicate, ok := options[0].Filters["duplicate"]; ok {
+			delete(options[0].Filters, "duplicate")
+
+			var builder = Select().
+				Where(Eq{"playlist_id": r.playlistId})
+
+			if duplicate == "true" {
+				builder = builder.PrefixExpr(r.duplicate_cte()).
+					Where("playlist_tracks.id NOT IN non_duplicate AND playlist_tracks.media_file_id in duplicate")
+			}
+
+			return r.count(builder, r.parseRestOptions(options...))
+		}
+	}
+
 	return r.count(Select().Where(Eq{"playlist_id": r.playlistId}), r.parseRestOptions(options...))
 }
 
@@ -70,8 +87,74 @@ func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.P
 	return tracks, err
 }
 
+func (r *playlistTrackRepository) duplicate_cte() SelectBuilder {
+	return Select().
+		Prefix("WITH RECURSIVE cte_duplicate(media, original_id) AS (").
+		From(r.tableName).
+		Columns("playlist_tracks.media_file_id", "playlist_tracks.id").
+		Where(Eq{"playlist_id": r.playlistId}).
+		OrderBy("playlist_tracks.id").
+		GroupBy("playlist_tracks.media_file_id").
+		Having("COUNT(*) > 1").
+		Suffix("),").
+		SuffixExpr(
+			Select().
+				Prefix("non_duplicate(id) AS (").
+				From("cte_duplicate").
+				Column("original_id").
+				Suffix("),")).
+		SuffixExpr(
+			Select().
+				Prefix("duplicate(file) AS (").
+				From("cte_duplicate").
+				Column("media").
+				Suffix(")"))
+}
+
+func (r *playlistTrackRepository) GetAllShowingDuplicates(duplicate bool, options ...model.QueryOptions) (model.PlaylistTracks, error) {
+	var builder = r.newSelect(options...).
+		PrefixExpr(r.duplicate_cte()).
+		Column("playlist_tracks.id NOT IN non_duplicate AND playlist_tracks.media_file_id in duplicate duplicate", r.playlistId)
+
+	if duplicate {
+		builder = builder.Where("duplicate")
+	}
+
+	tracks, err := r.playlistRepo.loadTracks(builder, r.playlistId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	mfs := tracks.MediaFiles()
+	err = r.loadMediaFileGenres(&mfs)
+	if err != nil {
+		log.Error(r.ctx, "Error loading genres for playlist", "playlist", r.playlist.Name, "id", r.playlist.ID, err)
+		return nil, err
+	}
+	for i, mf := range mfs {
+		tracks[i].MediaFile.Genres = mf.Genres
+	}
+
+	return tracks, err
+}
+
 func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	return r.GetAll(r.parseRestOptions(options...))
+	if conf.Server.EnableDuplicateSearch {
+		if duplicate, ok := options[0].Filters["duplicate"]; ok {
+			delete(options[0].Filters, "duplicate")
+
+			result, err := r.GetAllShowingDuplicates(duplicate == "true", r.parseRestOptions(options...))
+
+			options[0].Filters["duplicate"] = duplicate
+
+			return result, err
+		} else {
+			return r.GetAllShowingDuplicates(false, r.parseRestOptions(options...))
+		}
+	} else {
+		return r.GetAll(r.parseRestOptions(options...))
+	}
 }
 
 func (r *playlistTrackRepository) EntityName() string {

@@ -1,9 +1,16 @@
 import React from 'react'
-import { Card, CardContent, Typography } from '@material-ui/core'
+import {
+  Card,
+  CardContent,
+  Checkbox,
+  FormControlLabel,
+  Typography,
+} from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
 import { DurationField, SizeField } from '../common'
 import Linkify from '../common/Linkify'
+import config from '../config'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -46,6 +53,8 @@ const PlaylistDetails = (props) => {
   const translate = useTranslate()
   const classes = useStyles()
 
+  console.log(config.enableDuplicateSearch)
+
   return (
     <Card className={classes.container}>
       <CardContent className={classes.details}>
@@ -71,6 +80,15 @@ const PlaylistDetails = (props) => {
             <span>&nbsp;</span>
           )}
         </Typography>
+        {config.enableDuplicateSearch && (
+          <Typography component="p">
+            <FormControlLabel
+              onChange={(_event, checked) => props.setShowDuplicates(checked)}
+              control={<Checkbox />}
+              label={translate('resources.playlist.actions.showDuplicates')}
+            />
+          </Typography>
+        )}
       </CardContent>
     </Card>
   )
