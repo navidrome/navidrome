@@ -1,5 +1,3 @@
-// import blue from '@material-ui/core/colors/blue'
-
 export default {
   themeName: 'Monokai',
   palette: {
