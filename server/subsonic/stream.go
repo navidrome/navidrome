@@ -94,14 +94,20 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	format := utils.ParamString(r, "format")
 
 	if format == "" {
-		// if we are not provided a format, see if we have requested transcoding for this client
-		transcoding, ok := request.TranscodingFrom(ctx)
+		if conf.Server.AutoTranscodeDownlaod {
+			// if we are not provided a format, see if we have requested transcoding for this client
+			// This must be enabled via a config option. For the UI, we are always given an option.
+			// This will implact other clients which do not use the UI
+			transcoding, ok := request.TranscodingFrom(ctx)
 
-		if !ok {
-			format = "raw"
+			if !ok {
+				format = "raw"
+			} else {
+				format = transcoding.TargetFormat
+				maxBitRate = transcoding.DefaultBitRate
+			}
 		} else {
-			format = transcoding.TargetFormat
-			maxBitRate = transcoding.DefaultBitRate
+			format = "raw"
 		}
 	}
 
