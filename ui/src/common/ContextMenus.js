@@ -14,12 +14,13 @@ import {
   playTracks,
   shuffleTracks,
   openAddToPlaylist,
+  openDownloadMenu,
   openExtendedInfoDialog,
 } from '../actions'
-import subsonic from '../subsonic'
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
+import { DOWNLOAD_MENU_ALBUM, DOWNLOAD_MENU_ARTIST } from '../reducers'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -83,7 +84,16 @@ const ContextMenu = ({
       label: `${translate('resources.album.actions.download')} (${formatBytes(
         record.size
       )})`,
-      action: () => subsonic.download(record.id),
+      action: () => {
+        dispatch(
+          openDownloadMenu(
+            record,
+            record.duration !== undefined
+              ? DOWNLOAD_MENU_ALBUM
+              : DOWNLOAD_MENU_ARTIST
+          )
+        )
+      },
     },
     ...(!hideInfo && {
       info: {

@@ -90,6 +90,21 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		return nil, err
 	}
 
+	maxBitRate := utils.ParamInt(r, "bitrate", 0)
+	format := utils.ParamString(r, "format")
+
+	if format == "" {
+		// if we are not provided a format, see if we have requested transcoding for this client
+		transcoding, ok := request.TranscodingFrom(ctx)
+
+		if !ok {
+			format = "raw"
+		} else {
+			format = transcoding.TargetFormat
+			maxBitRate = transcoding.DefaultBitRate
+		}
+	}
+
 	setHeaders := func(name string) {
 		name = strings.ReplaceAll(name, ",", "_")
 		disposition := fmt.Sprintf("attachment; filename=\"%s.zip\"", name)
@@ -99,24 +114,49 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		stream, err := api.streamer.NewStream(ctx, id, "raw", 0)
+		stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate)
+
 		if err != nil {
 			return nil, err
 		}
 
 		disposition := fmt.Sprintf("attachment; filename=\"%s\"", stream.Name())
 		w.Header().Set("Content-Disposition", disposition)
-		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
+
+		if stream.Seekable() {
+			http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
+		} else {
+			w.Header().Set("Accept-Ranges", "none")
+			w.Header().Set("Content-Type", stream.ContentType())
+
+			estimateContentLength := utils.ParamBool(r, "estimateContentLength", false)
+
+			if estimateContentLength {
+				length := strconv.Itoa(stream.EstimatedContentLength())
+				log.Trace(ctx, "Estimated content-length", "contentLength", length)
+				w.Header().Set("Content-Length", length)
+			}
+
+			if r.Method == "HEAD" {
+				go func() { _, _ = io.Copy(io.Discard, stream) }()
+			} else {
+				if c, err := io.Copy(w, stream); err != nil {
+					log.Error(ctx, "Error sending transcoded file", "id", id, err)
+				} else {
+					log.Trace(ctx, "Success sending transcode file", "id", id, "size", c)
+				}
+			}
+		}
 		return nil, nil
 	case *model.Album:
 		setHeaders(v.Name)
-		err = api.archiver.ZipAlbum(ctx, id, w)
+		err = api.archiver.ZipAlbum(ctx, id, format, maxBitRate, w)
 	case *model.Artist:
 		setHeaders(v.Name)
-		err = api.archiver.ZipArtist(ctx, id, w)
+		err = api.archiver.ZipArtist(ctx, id, format, maxBitRate, w)
 	case *model.Playlist:
 		setHeaders(v.Name)
-		err = api.archiver.ZipPlaylist(ctx, id, w)
+		err = api.archiver.ZipPlaylist(ctx, id, format, maxBitRate, w)
 	default:
 		err = model.ErrNotFound
 	}

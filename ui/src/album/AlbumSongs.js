@@ -29,6 +29,7 @@ import {
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import config from '../config'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles(
@@ -187,6 +188,7 @@ const AlbumSongs = (props) => {
         </Card>
       </div>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
       <ExpandInfoDialog content={<SongInfo />} />
     </>
   )

@@ -18,12 +18,13 @@ import {
   playTracks,
   shuffleTracks,
   openAddToPlaylist,
+  openDownloadMenu,
 } from '../actions'
-import subsonic from '../subsonic'
 import { formatBytes } from '../utils'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
+import { DOWNLOAD_MENU_ALBUM } from '../reducers'
 
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
@@ -64,8 +65,8 @@ const AlbumActions = ({
   }, [dispatch, ids])
 
   const handleDownload = React.useCallback(() => {
-    subsonic.download(record.id)
-  }, [record])
+    dispatch(openDownloadMenu(record, DOWNLOAD_MENU_ALBUM))
+  }, [dispatch, record])
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>

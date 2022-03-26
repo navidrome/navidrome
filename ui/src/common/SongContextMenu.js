@@ -12,11 +12,12 @@ import {
   setTrack,
   openAddToPlaylist,
   openExtendedInfoDialog,
+  openDownloadMenu,
 } from '../actions'
-import subsonic from '../subsonic'
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
+import { DOWNLOAD_MENU_SONG } from '../reducers'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -67,7 +68,9 @@ export const SongContextMenu = ({
       label: `${translate('resources.song.actions.download')} (${formatBytes(
         record.size
       )})`,
-      action: (record) => subsonic.download(record.mediaFileId || record.id),
+      action: (record) => {
+        dispatch(openDownloadMenu(record, DOWNLOAD_MENU_SONG))
+      },
     },
     info: {
       enabled: true,
