@@ -16,10 +16,10 @@ jobs:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
 
-      - name: Set up Go 1.17
+      - name: Set up Go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
         id: go
 
       - uses: actions/checkout@v2
@@ -27,7 +27,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.40
+          version: v1.45
           github-token: ${{ secrets.GITHUB_TOKEN }}
           args: --timeout 2m
 
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: [1.16.x, 1.17.x]
+        go_version: [1.18.x]
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
@@ -142,7 +142,7 @@ jobs:
 
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
-        uses: docker://deluan/ci-goreleaser:1.17.2-1
+        uses: docker://deluan/ci-goreleaser:1.18.0-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -150,7 +150,7 @@ jobs:
 
       - name: Run GoReleaser - RELEASE
         if: startsWith(github.ref, 'refs/tags/')
-        uses: docker://deluan/ci-goreleaser:1.17.2-1
+        uses: docker://deluan/ci-goreleaser:1.18.0-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
