@@ -19,14 +19,13 @@ export default {
         color: '#f8f8f2',
         backgroundColor: '#3b3a32',
         MuiSnackbarContent: {
-            root: {
-                color: '#f8f8f2',
-                backgroundColor: '#f92672',
-            },
-            message: {
-              color: '#f8f8f2',
-              backgroundColor: '#f92672',
-            },
+          root: {
+            color: '#f8f8f2',
+            backgroundColor: '#f92672',
+          },
+          message: {
+            color: '#f8f8f2',
+            backgroundColor: '#f92672',
           },
         },
       },
