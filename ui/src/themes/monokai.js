@@ -18,6 +18,16 @@ export default {
       root: {
         color: '#f8f8f2',
         backgroundColor: '#3b3a32',
+        MuiSnackbarContent: {
+          root: {
+            color: '#f8f8f2',
+            backgroundColor: '#f92672',
+          },
+          message: {
+            color: '#f8f8f2',
+            backgroundColor: '#f92672',
+          },
+        },
       },
     },
     MuiButton: {
@@ -61,12 +71,6 @@ export default {
       head: {
         color: '#f8f8f2',
         background: '#3b3a32 !important',
-      },
-    },
-    MuiSnackbarContent: {
-      message: {
-        color: '#f8f8f2',
-        backgroundColor: '#f92672',
       },
     },
     NDLogin: {
