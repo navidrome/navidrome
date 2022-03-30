@@ -69,6 +69,7 @@ func runNavidrome() {
 
 	if err := g.Run(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
+		os.Exit(1)
 	}
 }
 
@@ -111,7 +112,7 @@ func startSignaler() (func() error, func(err error)) {
 					}
 					log.Info(ctx, "Triggered scan complete", "elapsed", time.Since(start).Round(100*time.Millisecond))
 				case <-ctx.Done():
-					break
+					return nil
 				}
 			}
 		}, func(err error) {
