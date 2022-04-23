@@ -1,0 +1,30 @@
+image:
+  file: .devcontainer/Dockerfile
+
+tasks:
+  - name: Dependencies
+    init: >
+      make setup &&
+      gp sync-done setup
+
+  - name: Start development server
+    init: gp sync-await setup
+    command: make dev
+    env:
+      # Allow UI access in the random Gitpod sub domain
+      DANGEROUSLY_DISABLE_HOST_CHECK: "true"
+      # Setup a default admin password
+      ND_DEVAUTOCREATEADMINPASSWORD: "password"
+
+
+vscode:
+  extensions:
+    - golang.Go
+    - esbenp.prettier-vscode
+    - tamasfe.even-better-toml
+
+ports:
+  - port: 4533
+    onOpen: notify
+  - port: 4633
+    onOpen: ignore
