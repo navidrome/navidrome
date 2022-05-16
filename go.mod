@@ -23,7 +23,7 @@ require (
 	github.com/go-chi/httprate v0.5.2
 	github.com/go-chi/jwtauth/v5 v5.0.2
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
-	github.com/golangci/golangci-lint v1.43.0
+	github.com/golangci/golangci-lint v1.46.1
 	github.com/google/uuid v1.3.0
 	github.com/google/wire v0.5.0
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
@@ -36,19 +36,19 @@ require (
 	github.com/mileusna/useragent v1.0.2
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.17.0
+	github.com/onsi/gomega v1.18.1
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/cobra v1.2.1
-	github.com/spf13/viper v1.9.0
-	github.com/stretchr/testify v1.7.0
+	github.com/spf13/cobra v1.4.0
+	github.com/spf13/viper v1.11.0
+	github.com/stretchr/testify v1.7.1
 	github.com/unrolled/secure v1.0.9
 	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
-	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
-	golang.org/x/tools v0.1.7
+	golang.org/x/net v0.0.0-20220412020605-290c469a71a5
+	golang.org/x/tools v0.1.11-0.20220316014157-77aa08bb151a
 	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
 	gopkg.in/djherbis/stream.v1 v1.3.1
 )
