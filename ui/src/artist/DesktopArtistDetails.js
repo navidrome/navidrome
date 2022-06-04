@@ -208,6 +208,7 @@ const DesktopArtistDetails = ({
 export const TopSongs = ({ showContext, topSong, record }) => {
   const classes = useStyles()
   let ids = []
+  record.isTopSongs = true
 
   topSong && topSong.map((sng) => ids.push(sng.id))
   return (
