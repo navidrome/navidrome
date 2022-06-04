@@ -107,7 +107,7 @@ const AlbumSongs = (props) => {
         <SongTitleField
           source="title"
           sortable={false}
-          showTrackNumbers={!isDesktop}
+          showTrackNumbers={props?.istop ? false : !isDesktop}
         />
       ),
       artist: isDesktop && <TextField source="artist" sortable={false} />,
@@ -135,7 +135,7 @@ const AlbumSongs = (props) => {
         />
       ),
     }
-  }, [isDesktop, classes.ratingField])
+  }, [isDesktop, classes.ratingField, props.istop])
 
   const columns = useSelectedFields({
     resource: 'albumSong',
@@ -204,7 +204,18 @@ const SanitizedAlbumSongs = (props) => {
   removeAlbumCommentsFromSongs(props)
 
   const { loaded, loading, total, ...rest } = useListContext(props)
-  return <>{loaded && <AlbumSongs {...rest} actions={props.actions} />}</>
+  const isTopSongs = props?.album?.isTopSongs
+  return (
+    <>
+      {loaded && (
+        <AlbumSongs
+          {...rest}
+          actions={props.actions}
+          istop={isTopSongs ? 1 : 0}
+        />
+      )}
+    </>
+  )
 }
 
 export default SanitizedAlbumSongs
