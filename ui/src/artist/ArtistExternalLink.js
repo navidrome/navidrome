@@ -8,20 +8,27 @@ import { intersperse } from '../utils'
 
 const ArtistExternalLinks = ({ artistInfo, record }) => {
   const translate = useTranslate()
-  let links = []
+  let links = {
+    lastFM: undefined,
+    musicBrainz: undefined,
+  }
   let linkButtons = []
   const lastFMlink = artistInfo?.biography?.match(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
   )
 
   if (lastFMlink) {
-    links.push(lastFMlink[2])
+    links.lastFM = lastFMlink[2]
   }
+
   if (artistInfo && artistInfo.musicBrainzId) {
-    links.push(`https://musicbrainz.org/artist/${artistInfo.musicBrainzId}`)
+    links.musicBrainz = `https://musicbrainz.org/artist/${artistInfo.musicBrainzId}`
   }
 
   const addLink = (url, title, icon) => {
+    if (!url) {
+      return
+    }
     const translatedTitle = translate(title)
     const link = (
       <Link href={url} target="_blank" rel="noopener noreferrer">
@@ -36,9 +43,8 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
     linkButtons.push(<span key={`link-${record.id}-${id}`}>{link}</span>)
   }
 
-  addLink(links[0], 'message.openIn.lastfm', <ImLastfm2 />)
-  artistInfo?.musicBrainzId &&
-    addLink(links[1], 'message.openIn.musicbrainz', <MusicBrainz />)
+  addLink(links.lastFM, 'message.openIn.lastfm', <ImLastfm2 />)
+  addLink(links.musicBrainz, 'message.openIn.musicbrainz', <MusicBrainz />)
 
   return <div>{intersperse(linkButtons, ' ')}</div>
 }
