@@ -10,6 +10,7 @@ GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
 CI_RELEASER_VERSION=1.17.2-1 ## https://github.com/navidrome/ci-goreleaser
+GOPROXY=https://proxy.golang.org/
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
@@ -111,7 +112,7 @@ release:
 
 download-deps:
 	@echo Downloading Go dependencies...
-	@go mod download -x
+	@GOPROXY=$(GOPROXY) go mod download -x
 	@go mod tidy # To revert any changes made by the `go mod download` command
 .PHONY: download-deps
 
