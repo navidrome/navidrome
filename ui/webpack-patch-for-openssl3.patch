@@ -1,0 +1,11 @@
+--- node_modules/react-scripts/config/webpack.config.js.orig	2022-06-12 21:14:45.411754951 +0200
++++ node_modules/react-scripts/config/webpack.config.js	2022-06-12 21:14:19.397151014 +0200
+@@ -796,3 +796,8 @@
+     performance: false,
+   };
+ };
++
++// fix for OpenSSL 3.0, that no longer supports MD4
++const crypto = require("crypto");
++const crypto_orig_createHash = crypto.createHash;
++crypto.createHash = algorithm => crypto_orig_createHash(algorithm == "md4" ? "sha256" : algorithm);

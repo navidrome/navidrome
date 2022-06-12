@@ -15,6 +15,7 @@ GOPROXY=https://proxy.golang.org/
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
 	@(cd ./ui && npm ci)
+	@(cd ./ui && grep -q crypto node_modules/react-scripts/config/webpack.config.js || patch -p0 < webpack-patch-for-openssl3.patch)
 .PHONY: setup
 
 dev: check_env   ##@Development Start Navidrome in development mode, with hot-reload for both frontend and backend
