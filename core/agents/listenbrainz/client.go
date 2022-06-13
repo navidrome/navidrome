@@ -10,10 +10,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-const (
-	apiBaseUrl = "https://api.listenbrainz.org/1/"
-)
-
 type listenBrainzError struct {
 	Code    int
 	Message string
@@ -27,12 +23,13 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func NewClient(hc httpDoer) *Client {
-	return &Client{hc}
+func NewClient(baseURL string, hc httpDoer) *Client {
+	return &Client{baseURL, hc}
 }
 
 type Client struct {
-	hc httpDoer
+	baseURL string
+	hc      httpDoer
 }
 
 type listenBrainzResponse struct {
@@ -130,7 +127,7 @@ func (c *Client) Scrobble(ctx context.Context, apiKey string, li listenInfo) err
 
 func (c *Client) makeRequest(method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
 	b, _ := json.Marshal(r.Body)
-	req, _ := http.NewRequest(method, apiBaseUrl+endpoint, bytes.NewBuffer(b))
+	req, _ := http.NewRequest(method, c.baseURL+endpoint, bytes.NewBuffer(b))
 
 	if r.ApiKey != "" {
 		req.Header.Add("Authorization", fmt.Sprintf("Token %s", r.ApiKey))

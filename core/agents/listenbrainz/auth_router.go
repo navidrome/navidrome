@@ -8,6 +8,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
@@ -26,19 +27,21 @@ type Router struct {
 	http.Handler
 	ds          model.DataStore
 	sessionKeys sessionKeysRepo
+	baseURL     string
 	client      *Client
 }
 
 func NewRouter(ds model.DataStore) *Router {
 	r := &Router{
 		ds:          ds,
+		baseURL:     conf.Server.ListenBrainz.BaseURL,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	r.Handler = r.routes()
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	r.client = NewClient(hc)
+	r.client = NewClient(r.baseURL, hc)
 	return r
 }
 
