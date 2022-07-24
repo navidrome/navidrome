@@ -91,6 +91,9 @@ func (t Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "
 func (t Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
 
 // MusicBrainz Identifiers
+func (t Tags) MbzReleaseTrackID() string {
+	return t.getMbzID("musicbrainz_releasetrackid", "musicbrainz release track id")
+}
 
 func (t Tags) MbzTrackID() string { return t.getMbzID("musicbrainz_trackid", "musicbrainz track id") }
 func (t Tags) MbzAlbumID() string { return t.getMbzID("musicbrainz_albumid", "musicbrainz album id") }
