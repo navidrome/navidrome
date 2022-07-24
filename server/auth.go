@@ -23,6 +23,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/gravatar"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -135,10 +137,11 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 func createAdminUser(ctx context.Context, ds model.DataStore, username, password string) error {
 	log.Warn("Creating initial user", "user", username)
 	now := time.Now()
+	caser := cases.Title(language.Und)
 	initialUser := model.User{
 		ID:          uuid.NewString(),
 		UserName:    username,
-		Name:        strings.Title(username),
+		Name:        caser.String(username),
 		Email:       "",
 		NewPassword: password,
 		IsAdmin:     true,
