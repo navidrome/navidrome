@@ -30,7 +30,7 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mattn/go-zglob v0.0.3
 	github.com/microcosm-cc/bluemonday v1.0.17
-	github.com/mileusna/useragent v1.0.2
+	github.com/mileusna/useragent v1.1.0
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.0
