@@ -10,7 +10,7 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -25,10 +25,11 @@ const (
 	oneDay        = 24 * time.Hour
 )
 
+var _ = BeforeSuite(func() {
+	conf.Server.SessionTimeout = 2 * oneDay
+})
+
 var _ = Describe("Auth", func() {
-	BeforeSuite(func() {
-		conf.Server.SessionTimeout = 2 * oneDay
-	})
 
 	BeforeEach(func() {
 		auth.Secret = []byte(testJWTSecret)
