@@ -10,7 +10,7 @@ require (
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.1
 	github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47
-	github.com/dhowden/tag v0.0.0-20200412032933-5d76b8eaae27
+	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/atime v1.1.0
 	github.com/djherbis/fscache v0.10.2-0.20201024185917-a0daa9e52747
@@ -236,5 +236,3 @@ require (
 	mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b // indirect
 	mvdan.cc/unparam v0.0.0-20220706161116-678bad134442 // indirect
 )
-
-replace github.com/dhowden/tag => github.com/wader/tag v0.0.0-20200426234345-d072771f6a51
