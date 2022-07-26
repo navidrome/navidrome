@@ -31,10 +31,10 @@ type spreadFS struct {
 //
 // dir is created with specified mode if it doesn't exist.
 func NewSpreadFS(dir string, mode os.FileMode) (*spreadFS, error) {
-	fs := &spreadFS{root: dir, mode: mode, init: func() error {
+	f := &spreadFS{root: dir, mode: mode, init: func() error {
 		return os.MkdirAll(dir, mode)
 	}}
-	return fs, fs.init()
+	return f, f.init()
 }
 
 func (sfs *spreadFS) Reload(f func(key string, name string)) error {
@@ -50,7 +50,7 @@ func (sfs *spreadFS) Reload(f func(key string, name string)) error {
 
 		// Skip if name is not in the format XX/XX/XXXXXXXXXXXX
 		parts := strings.Split(path, string(os.PathSeparator))
-		if len(parts) != 3 || len(parts[0]) != 2 || len(parts[1]) != 2 {
+		if len(parts) != 3 || len(parts[0]) != 2 || len(parts[1]) != 2 || len(parts[2]) != 40 {
 			return nil
 		}
 
@@ -97,6 +97,12 @@ func (sfs *spreadFS) RemoveAll() error {
 }
 
 func (sfs *spreadFS) KeyMapper(key string) string {
+	// When running the Haunter, fscache can call this KeyMapper with the cached filepath instead of the key.
+	// That's because we don't inform the original cache keys when reloading in the Reload function above.
+	// If that's the case, just return the file path, as it is the actual mapped key.
+	if strings.HasPrefix(key, sfs.root) {
+		return key
+	}
 	hash := fmt.Sprintf("%x", sha1.Sum([]byte(key)))
 	return filepath.Join(sfs.root, hash[0:2], hash[2:4], hash)
 }
