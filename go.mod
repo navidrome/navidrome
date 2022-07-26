@@ -13,7 +13,8 @@ require (
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/atime v1.1.0
-	github.com/djherbis/fscache v0.10.2-0.20201024185917-a0daa9e52747
+	github.com/djherbis/fscache v0.10.2-0.20220222230828-2909c950912d
+	github.com/djherbis/stream v1.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/structs v1.1.0
 	github.com/go-chi/chi/v5 v5.0.7
@@ -233,7 +234,6 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
-	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

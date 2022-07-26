@@ -10,8 +10,8 @@ import (
 
 	"github.com/djherbis/atime"
 	"github.com/djherbis/fscache"
+	"github.com/djherbis/stream"
 	"github.com/navidrome/navidrome/log"
-	"gopkg.in/djherbis/stream.v1"
 )
 
 type spreadFS struct {
