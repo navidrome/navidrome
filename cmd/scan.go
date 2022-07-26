@@ -1,10 +1,11 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var fullRescan bool
