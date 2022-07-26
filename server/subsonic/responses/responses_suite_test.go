@@ -5,7 +5,7 @@ import (
 
 	"github.com/bradleyjkemp/cupaloy"
 	"github.com/navidrome/navidrome/log"
-	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 )
@@ -26,7 +26,7 @@ type snapshotMatcher struct {
 }
 
 func (matcher snapshotMatcher) Match(actual interface{}) (success bool, err error) {
-	err = matcher.c.SnapshotMulti(ginkgo.CurrentGinkgoTestDescription().FullTestText, actual)
+	err = matcher.c.SnapshotMulti(ginkgo.CurrentSpecReport().FullText(), actual)
 	success = err == nil
 	return
 }
