@@ -79,9 +79,9 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 
 			usr, err := validateUser(ctx, ds, username, pass, token, salt, jwt)
 			if err == model.ErrInvalidAuth {
-				log.Warn(ctx, "Invalid login", "username", username, err)
+				log.Warn(ctx, "API: Invalid login", "username", username, "remoteAddr", r.RemoteAddr, err)
 			} else if err != nil {
-				log.Error(ctx, "Error authenticating username", "username", username, err)
+				log.Error(ctx, "API: Error authenticating username", "username", username, "remoteAddr", r.RemoteAddr, err)
 			}
 
 			if err != nil {
