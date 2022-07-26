@@ -32,6 +32,11 @@ var _ = Describe("Spread FS", func() {
 			Expect(parts).To(HaveLen(4))
 			Expect(parts[3]).To(HaveLen(40))
 		})
+		It("returns the unmodified key if it is a cache file path", func() {
+			mapped := fs.KeyMapper("abc")
+			Expect(mapped).To(HavePrefix(fs.root))
+			Expect(fs.KeyMapper(mapped)).To(Equal(mapped))
+		})
 	})
 
 	Describe("Reload", func() {
