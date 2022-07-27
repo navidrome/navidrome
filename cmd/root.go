@@ -13,6 +13,8 @@ import (
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -83,6 +85,9 @@ func startServer() (func() error, func(err error)) {
 			}
 			if conf.Server.ListenBrainz.Enabled {
 				a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
+			}
+			if conf.Server.Prometheus.Enabled {
+				a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
 			}
 			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
 		}, func(err error) {
