@@ -19,7 +19,7 @@ var (
 )
 
 func Db() *sql.DB {
-	instance := singleton.Get(&sql.DB{}, func() interface{} {
+	return singleton.GetInstance(func() *sql.DB {
 		Path = conf.Server.DbPath
 		if Path == ":memory:" {
 			Path = "file::memory:?cache=shared&_foreign_keys=on"
@@ -32,7 +32,6 @@ func Db() *sql.DB {
 		}
 		return instance
 	})
-	return instance.(*sql.DB)
 }
 
 func EnsureLatestVersion() {
