@@ -192,6 +192,10 @@ func h(r chi.Router, path string, f handler) {
 			sendError(w, r, err)
 			return
 		}
+		if r.Context().Err() != nil {
+			log.Warn("Request was interrupted", "path", path, r.Context().Err())
+			return
+		}
 		if res != nil {
 			sendResponse(w, r, res)
 		}
