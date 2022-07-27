@@ -1,9 +1,13 @@
 package subsonic
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/kennygrant/sanitize"
 	"github.com/navidrome/navidrome/log"
@@ -46,25 +50,43 @@ func (c *SearchingController) getParams(r *http.Request) (*searchParams, error) 
 	return sp, nil
 }
 
-func (c *SearchingController) searchAll(r *http.Request, sp *searchParams) (model.MediaFiles, model.Albums, model.Artists) {
+type searchFunc[T any] func(q string, offset int, size int) (T, error)
+
+func doSearch[T any](ctx context.Context, wg *sync.WaitGroup, s searchFunc[T], q string, offset, size int) T {
+	defer wg.Done()
+	var res T
+	if size == 0 {
+		return res
+	}
+	done := make(chan struct{})
+	go func() {
+		var err error
+		res, err = s(q, offset, size)
+		if err != nil {
+			log.Error(ctx, "Error searching "+reflect.TypeOf(res).String(), err)
+		}
+		done <- struct{}{}
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+	}
+	return res
+}
+
+func (c *SearchingController) searchAll(r *http.Request, sp *searchParams) (mediaFiles model.MediaFiles, albums model.Albums, artists model.Artists) {
+	start := time.Now()
 	q := sanitize.Accents(strings.ToLower(strings.TrimSuffix(sp.query, "*")))
 	ctx := r.Context()
-
-	artists, err := c.ds.Artist(ctx).Search(q, sp.artistOffset, sp.artistCount)
-	if err != nil {
-		log.Error(ctx, "Error searching for Artists", err)
-	}
-	albums, err := c.ds.Album(ctx).Search(q, sp.albumOffset, sp.albumCount)
-	if err != nil {
-		log.Error(ctx, "Error searching for Albums", err)
-	}
-	mediaFiles, err := c.ds.MediaFile(ctx).Search(q, sp.songOffset, sp.songCount)
-	if err != nil {
-		log.Error(ctx, "Error searching for MediaFiles", err)
-	}
+	wg := &sync.WaitGroup{}
+	wg.Add(3)
+	go func() { mediaFiles = doSearch(ctx, wg, c.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount) }()
+	go func() { albums = doSearch(ctx, wg, c.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount) }()
+	go func() { artists = doSearch(ctx, wg, c.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount) }()
+	wg.Wait()
 
 	log.Debug(ctx, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists",
-		len(mediaFiles), len(albums), len(artists)), "query", sp.query)
+		len(mediaFiles), len(albums), len(artists)), "query", sp.query, "elapsedTime", time.Since(start))
 	return mediaFiles, albums, artists
 }
 
