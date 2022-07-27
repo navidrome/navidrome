@@ -60,10 +60,14 @@ func doSearch[T any](ctx context.Context, wg *sync.WaitGroup, s searchFunc[T], q
 	}
 	done := make(chan struct{})
 	go func() {
+		typ := reflect.TypeOf(res).String()
 		var err error
+		start := time.Now()
 		res, err = s(q, offset, size)
 		if err != nil {
-			log.Error(ctx, "Error searching "+reflect.TypeOf(res).String(), err)
+			log.Error(ctx, "Error searching "+typ, err)
+		} else {
+			log.Trace(ctx, "Search for "+typ+" completed", "elapsedTime", time.Since(start))
 		}
 		done <- struct{}{}
 	}()
@@ -85,8 +89,12 @@ func (c *SearchingController) searchAll(r *http.Request, sp *searchParams) (medi
 	go func() { artists = doSearch(ctx, wg, c.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount) }()
 	wg.Wait()
 
-	log.Debug(ctx, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists",
-		len(mediaFiles), len(albums), len(artists)), "query", sp.query, "elapsedTime", time.Since(start))
+	if ctx.Err() == nil {
+		log.Debug(ctx, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists",
+			len(mediaFiles), len(albums), len(artists)), "query", sp.query, "elapsedTime", time.Since(start))
+	} else {
+		log.Warn(ctx, "Search was interrupted", ctx.Err(), "query", sp.query, "elapsedTime", time.Since(start))
+	}
 	return mediaFiles, albums, artists
 }
 
