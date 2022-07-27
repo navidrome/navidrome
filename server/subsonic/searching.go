@@ -60,14 +60,14 @@ func doSearch[T any](ctx context.Context, wg *sync.WaitGroup, s searchFunc[T], q
 	}
 	done := make(chan struct{})
 	go func() {
-		typ := reflect.TypeOf(res).String()
+		typ := strings.TrimPrefix(reflect.TypeOf(res).String(), "model.")
 		var err error
 		start := time.Now()
 		res, err = s(q, offset, size)
 		if err != nil {
-			log.Error(ctx, "Error searching "+typ, err)
+			log.Error(ctx, "Error searching "+typ, "query", q, err)
 		} else {
-			log.Trace(ctx, "Search for "+typ+" completed", "elapsedTime", time.Since(start))
+			log.Trace(ctx, "Search for "+typ+" completed", "query", q, "elapsedTime", time.Since(start))
 		}
 		done <- struct{}{}
 	}()
