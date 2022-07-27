@@ -1,33 +1,37 @@
 package singleton
 
 import (
+	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/navidrome/navidrome/log"
 )
 
 var (
-	instances    = make(map[string]interface{})
-	getOrCreateC = make(chan *entry, 1)
+	instances    = make(map[string]any)
+	getOrCreateC = make(chan entry)
 )
 
 type entry struct {
-	constructor func() interface{}
-	object      interface{}
-	resultC     chan interface{}
+	f       func() any
+	object  any
+	resultC chan any
 }
 
-// Get returns an existing instance of object. If it is not yet created, calls `constructor`, stores the
+// GetInstance returns an existing instance of object. If it is not yet created, calls `constructor`, stores the
 // result for future calls and return it
-func Get(object interface{}, constructor func() interface{}) interface{} {
-	e := &entry{
-		constructor: constructor,
-		object:      object,
-		resultC:     make(chan interface{}),
+func GetInstance[T any](constructor func() T) T {
+	var t T
+	e := entry{
+		object: t,
+		f: func() any {
+			return constructor()
+		},
+		resultC: make(chan any),
 	}
 	getOrCreateC <- e
-	return <-e.resultC
+	v := <-e.resultC
+	return v.(T)
 }
 
 func init() {
@@ -35,11 +39,10 @@ func init() {
 		for {
 			e := <-getOrCreateC
 			name := reflect.TypeOf(e.object).String()
-			name = strings.TrimPrefix(name, "*")
 			v, created := instances[name]
 			if !created {
-				v = e.constructor()
-				log.Trace("Created new singleton", "object", name, "instance", v)
+				v = e.f()
+				log.Trace("Created new singleton", "type", name, "instance", fmt.Sprintf("%+v", v))
 				instances[name] = v
 			}
 			e.resultC <- v

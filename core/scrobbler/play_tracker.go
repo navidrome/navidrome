@@ -45,7 +45,7 @@ type playTracker struct {
 }
 
 func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
-	instance := singleton.Get(playTracker{}, func() interface{} {
+	return singleton.GetInstance(func() *playTracker {
 		m := ttlcache.NewCache()
 		m.SkipTTLExtensionOnHit(true)
 		_ = m.SetTTL(nowPlayingExpire)
@@ -60,7 +60,6 @@ func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
 		}
 		return p
 	})
-	return instance.(*playTracker)
 }
 
 func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error {
