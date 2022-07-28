@@ -20,7 +20,7 @@ var _ = Describe("Operators", func() {
 			gomega.Expect(args).To(gomega.ConsistOf(expectedArgs))
 		},
 		Entry("is [string]", Is{"title": "Low Rider"}, "media_file.title = ?", "Low Rider"),
-		Entry("is [bool]", Is{"loved": true}, "annotation.starred = ?", true),
+		Entry("is [bool]", Is{"loved": true}, "COALESCE(annotation.starred, false) = ?", true),
 		Entry("isNot", IsNot{"title": "Low Rider"}, "media_file.title <> ?", "Low Rider"),
 		Entry("gt", Gt{"playCount": 10}, "COALESCE(annotation.play_count, 0) > ?", 10),
 		Entry("lt", Lt{"playCount": 10}, "COALESCE(annotation.play_count, 0) < ?", 10),
