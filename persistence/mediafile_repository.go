@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -20,7 +20,7 @@ type mediaFileRepository struct {
 	sqlRestful
 }
 
-func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileRepository {
+func NewMediaFileRepository(ctx context.Context, o orm.QueryExecutor) *mediaFileRepository {
 	r := &mediaFileRepository{}
 	r.ctx = ctx
 	r.ormer = o

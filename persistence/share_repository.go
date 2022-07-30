@@ -4,7 +4,7 @@ import (
 	"context"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 )
@@ -14,7 +14,7 @@ type shareRepository struct {
 	sqlRestful
 }
 
-func NewShareRepository(ctx context.Context, o orm.Ormer) model.ShareRepository {
+func NewShareRepository(ctx context.Context, o orm.QueryExecutor) model.ShareRepository {
 	r := &shareRepository{}
 	r.ctx = ctx
 	r.ormer = o

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -12,7 +12,7 @@ type userPropsRepository struct {
 	sqlRepository
 }
 
-func NewUserPropsRepository(ctx context.Context, o orm.Ormer) model.UserPropsRepository {
+func NewUserPropsRepository(ctx context.Context, o orm.QueryExecutor) model.UserPropsRepository {
 	r := &userPropsRepository{}
 	r.ctx = ctx
 	r.ormer = o

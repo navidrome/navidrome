@@ -5,7 +5,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -13,7 +13,7 @@ type scrobbleBufferRepository struct {
 	sqlRepository
 }
 
-func NewScrobbleBufferRepository(ctx context.Context, o orm.Ormer) model.ScrobbleBufferRepository {
+func NewScrobbleBufferRepository(ctx context.Context, o orm.QueryExecutor) model.ScrobbleBufferRepository {
 	r := &scrobbleBufferRepository{}
 	r.ctx = ctx
 	r.ormer = o

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -25,7 +25,7 @@ type dbPlaylist struct {
 	RawRules       string `structs:"rules" orm:"column(rules)"`
 }
 
-func NewPlaylistRepository(ctx context.Context, o orm.Ormer) model.PlaylistRepository {
+func NewPlaylistRepository(ctx context.Context, o orm.QueryExecutor) model.PlaylistRepository {
 	r := &playlistRepository{}
 	r.ctx = ctx
 	r.ormer = o

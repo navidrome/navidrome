@@ -4,7 +4,7 @@ import (
 	"context"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -12,7 +12,7 @@ type propertyRepository struct {
 	sqlRepository
 }
 
-func NewPropertyRepository(ctx context.Context, o orm.Ormer) model.PropertyRepository {
+func NewPropertyRepository(ctx context.Context, o orm.QueryExecutor) model.PropertyRepository {
 	r := &propertyRepository{}
 	r.ctx = ctx
 	r.ormer = o

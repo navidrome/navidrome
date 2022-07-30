@@ -4,7 +4,7 @@ import (
 	"context"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 )
@@ -14,7 +14,7 @@ type playerRepository struct {
 	sqlRestful
 }
 
-func NewPlayerRepository(ctx context.Context, o orm.Ormer) model.PlayerRepository {
+func NewPlayerRepository(ctx context.Context, o orm.QueryExecutor) model.PlayerRepository {
 	r := &playerRepository{}
 	r.ctx = ctx
 	r.ormer = o

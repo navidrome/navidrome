@@ -7,7 +7,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -17,7 +17,7 @@ import (
 type sqlRepository struct {
 	ctx          context.Context
 	tableName    string
-	ormer        orm.Ormer
+	ormer        orm.QueryExecutor
 	sortMappings map[string]string
 }
 

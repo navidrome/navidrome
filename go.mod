@@ -6,7 +6,7 @@ require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
 	github.com/Masterminds/squirrel v1.5.2
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
-	github.com/astaxie/beego v1.12.3
+	github.com/beego/beego/v2 v2.0.4
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cespare/reflex v0.3.1
 	github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47
@@ -190,6 +190,7 @@ require (
 	github.com/sanposhiho/wastedassign/v2 v2.0.6 // indirect
 	github.com/securego/gosec/v2 v2.12.0 // indirect
 	github.com/shazow/go-diff v0.0.0-20160112020656-b6b7b6733b8c // indirect
+	github.com/shiena/ansicolor v0.0.0-20200904210342-c7312218db18 // indirect
 	github.com/sivchari/containedctx v1.0.2 // indirect
 	github.com/sivchari/nosnakecase v1.5.0 // indirect
 	github.com/sivchari/tenv v1.7.0 // indirect

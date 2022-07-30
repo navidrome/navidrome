@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -28,7 +28,7 @@ type dbArtist struct {
 	SimilarArtists string `structs:"similar_artists" json:"similarArtists"`
 }
 
-func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepository {
+func NewArtistRepository(ctx context.Context, o orm.QueryExecutor) model.ArtistRepository {
 	r := &artistRepository{}
 	r.ctx = ctx
 	r.ormer = o
