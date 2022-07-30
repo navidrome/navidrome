@@ -11,7 +11,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -25,7 +25,7 @@ type albumRepository struct {
 	sqlRestful
 }
 
-func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository {
+func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRepository {
 	r := &albumRepository{}
 	r.ctx = ctx
 	r.ormer = o

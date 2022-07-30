@@ -4,7 +4,7 @@ import (
 	"context"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 )
@@ -14,7 +14,7 @@ type transcodingRepository struct {
 	sqlRestful
 }
 
-func NewTranscodingRepository(ctx context.Context, o orm.Ormer) model.TranscodingRepository {
+func NewTranscodingRepository(ctx context.Context, o orm.QueryExecutor) model.TranscodingRepository {
 	r := &transcodingRepository{}
 	r.ctx = ctx
 	r.ormer = o

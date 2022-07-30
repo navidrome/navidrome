@@ -4,7 +4,7 @@ import (
 	"context"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -15,7 +15,7 @@ type genreRepository struct {
 	sqlRestful
 }
 
-func NewGenreRepository(ctx context.Context, o orm.Ormer) model.GenreRepository {
+func NewGenreRepository(ctx context.Context, o orm.QueryExecutor) model.GenreRepository {
 	r := &genreRepository{}
 	r.ctx = ctx
 	r.ormer = o

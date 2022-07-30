@@ -6,7 +6,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -16,7 +16,7 @@ type playQueueRepository struct {
 	sqlRepository
 }
 
-func NewPlayQueueRepository(ctx context.Context, o orm.Ormer) model.PlayQueueRepository {
+func NewPlayQueueRepository(ctx context.Context, o orm.QueryExecutor) model.PlayQueueRepository {
 	r := &playQueueRepository{}
 	r.ctx = ctx
 	r.ormer = o

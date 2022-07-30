@@ -3,7 +3,7 @@ package scanner
 import (
 	"testing"
 
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"

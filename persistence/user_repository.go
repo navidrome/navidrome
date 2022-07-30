@@ -9,7 +9,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
@@ -29,7 +29,7 @@ var (
 	encKey []byte
 )
 
-func NewUserRepository(ctx context.Context, o orm.Ormer) model.UserRepository {
+func NewUserRepository(ctx context.Context, o orm.QueryExecutor) model.UserRepository {
 	r := &userRepository{}
 	r.ctx = ctx
 	r.ormer = o
