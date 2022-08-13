@@ -33,7 +33,7 @@ func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRep
 	r.sortMappings = map[string]string{
 		"name":           "order_album_name asc, order_album_artist_name asc",
 		"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
-		"random":         "RANDOM()",
+		"random":         "RAND(id)",
 		"max_year":       "max_year asc, name, order_album_name asc",
 		"recently_added": recentlyAddedSort(),
 	}

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"hash/maphash"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -78,4 +79,15 @@ func LongestCommonPrefix(list []string) string {
 		}
 	}
 	return list[0]
+}
+
+func StringHasher() func(str string) uint64 {
+	seed := maphash.MakeSeed()
+	var hash maphash.Hash
+	hash.SetSeed(seed)
+	return func(str string) uint64 {
+		hash.Reset()
+		_, _ = hash.WriteString(str)
+		return hash.Sum64()
+	}
 }
