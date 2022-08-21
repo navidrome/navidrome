@@ -109,13 +109,13 @@ func (t Tags) MbzAlbumComment() string {
 
 // File properties
 
-func (t *Tags) Duration() float32           { return float32(t.getFloat("duration")) }
-func (t *Tags) BitRate() int                { return t.getInt("bitrate") }
-func (t *Tags) Channels() int               { return t.getInt("channels") }
-func (t *Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
-func (t *Tags) Size() int64                 { return t.fileInfo.Size() }
-func (t *Tags) FilePath() string            { return t.filePath }
-func (t *Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
+func (t Tags) Duration() float32           { return float32(t.getFloat("duration")) }
+func (t Tags) BitRate() int                { return t.getInt("bitrate") }
+func (t Tags) Channels() int               { return t.getInt("channels") }
+func (t Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
+func (t Tags) Size() int64                 { return t.fileInfo.Size() }
+func (t Tags) FilePath() string            { return t.filePath }
+func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
 
 func (t Tags) getTags(tagNames ...string) []string {
 	for _, tag := range tagNames {
