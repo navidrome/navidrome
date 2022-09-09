@@ -25,7 +25,7 @@
                 "quality": "品质",
                 "bpm": "BPM",
                 "playDate": "最后一次播放",
-                "channels": ""
+                "channels": "频道"
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -34,7 +34,7 @@
                 "shuffleAll": "全部随机播放",
                 "download": "下载",
                 "playNext": "下一首播放",
-                "info": ""
+                "info": "信息"
             }
         },
         "album": {
@@ -60,7 +60,7 @@
                 "shuffle": "随机播放",
                 "addToPlaylist": "加入歌单",
                 "download": "下载",
-                "info": ""
+                "info": "信息"
             },
             "lists": {
                 "all": "所有",
@@ -96,7 +96,7 @@
                 "changePassword": "修改密码?",
                 "currentPassword": "当前密码",
                 "newPassword": "新密码",
-                "token": ""
+                "token": "TOKEN"
             },
             "helperTexts": {
                 "name": "你名字的更改将在下次登录生效"
@@ -342,8 +342,8 @@
         },
         "albumList": "专辑",
         "about": "关于",
-        "playlists": "",
-        "sharedPlaylists": ""
+        "playlists": "歌单",
+        "sharedPlaylists": "共享歌单"
     },
     "player": {
         "playListsText": "播放列表",
