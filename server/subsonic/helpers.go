@@ -15,7 +15,7 @@ import (
 )
 
 func newResponse() *responses.Subsonic {
-	return &responses.Subsonic{Status: "ok", Version: Version, Type: consts.AppName, ServerVersion: consts.Version()}
+	return &responses.Subsonic{Status: "ok", Version: Version, Type: consts.AppName, ServerVersion: consts.Version}
 }
 
 func requiredParamString(r *http.Request, param string) (string, error) {

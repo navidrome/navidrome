@@ -212,7 +212,7 @@ func (b *broker) listen() {
 
 			// Send a serverStart event to new client
 			msg := b.prepareMessage(context.Background(),
-				&ServerStart{StartTime: consts.ServerStart, Version: consts.Version()})
+				&ServerStart{StartTime: consts.ServerStart, Version: consts.Version})
 			c.diode.put(msg)
 
 		case c := <-b.unsubscribing:
