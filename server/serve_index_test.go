@@ -188,7 +188,7 @@ var _ = Describe("serveIndex", func() {
 		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("version", consts.Version()))
+		Expect(config).To(HaveKeyWithValue("version", consts.Version))
 	})
 
 	It("sets the losslessFormats", func() {

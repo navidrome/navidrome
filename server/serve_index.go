@@ -27,7 +27,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			return
 		}
 		appConfig := map[string]interface{}{
-			"version":                 consts.Version(),
+			"version":                 consts.Version,
 			"firstTime":               firstTime,
 			"variousArtistsId":        consts.VariousArtistsID,
 			"baseURL":                 utils.SanitizeText(strings.TrimSuffix(conf.Server.BaseURL, "/")),
@@ -63,7 +63,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 		}
 
 		log.Debug("UI configuration", "appConfig", appConfig)
-		version := consts.Version()
+		version := consts.Version
 		if version != "dev" {
 			version = "v" + version
 		}
