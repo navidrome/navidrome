@@ -13,7 +13,10 @@ type parsedTags = map[string][]string
 func (e *Parser) Parse(paths ...string) (map[string]parsedTags, error) {
 	fileTags := map[string]parsedTags{}
 	for _, path := range paths {
-		fileTags[path] = e.extractMetadata(path)
+		tags := e.extractMetadata(path)
+		if tags != nil {
+			fileTags[path] = tags
+		}
 	}
 	return fileTags, nil
 }

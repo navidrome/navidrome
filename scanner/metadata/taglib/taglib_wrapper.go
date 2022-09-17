@@ -12,6 +12,7 @@ package taglib
 import "C"
 import (
 	"fmt"
+	"os"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -40,7 +41,14 @@ func Read(filename string) (tags map[string][]string, err error) {
 	if log.CurrentLevel() >= log.LevelDebug {
 		switch res {
 		case C.TAGLIB_ERR_PARSE:
-			log.Warn("TagLib: cannot parse file", "filename", filename)
+			// Check additional case whether the file is unreadable due to permission
+			file, fileErr := os.OpenFile(filename, os.O_RDONLY, 0600)
+			if fileErr != nil && os.IsPermission(fileErr) {
+				log.Warn("Navidrome does not have permission to read media file", "filename", filename)
+			} else {
+				log.Warn("TagLib: cannot parse file", "filename", filename)
+			}
+			file.Close()
 		case C.TAGLIB_ERR_AUDIO_PROPS:
 			log.Warn("TagLib: can't get audio properties", "filename", filename)
 		}
