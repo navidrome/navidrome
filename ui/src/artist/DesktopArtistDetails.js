@@ -9,10 +9,19 @@ import config from '../config'
 import { LoveButton, RatingField } from '../common'
 import Lightbox from 'react-image-lightbox'
 
+import Accordion from '@material-ui/core/Accordion'
+import AccordionSummary from '@material-ui/core/AccordionSummary'
+import AccordionDetails from '@material-ui/core/AccordionDetails'
+import { ExpandMore } from '@material-ui/icons'
+import { ReferenceManyField } from 'react-admin'
+import AlbumSongs from '../album/AlbumSongs'
+import AlbumActions from '../album/AlbumActions'
+
 const useStyles = makeStyles(
   (theme) => ({
     root: {
       display: 'flex',
+      flexDirection: 'column',
       padding: '1em',
     },
     details: {
@@ -60,11 +69,30 @@ const useStyles = makeStyles(
     artistName: {
       wordBreak: 'break-word',
     },
+    albumActions: {
+      display: 'none',
+    },
+    accordion: {
+      flexDirection: 'column',
+      '& > :first-child': {
+        display: 'none!important',
+      },
+    },
+    expanded: {
+      background: 'inherit',
+    },
   }),
   { name: 'NDDesktopArtistDetails' }
 )
 
-const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
+const DesktopArtistDetails = ({
+  img,
+  artistInfo,
+  record,
+  biography,
+  topSong,
+  showContext,
+}) => {
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles({ img, expanded })
   const title = record.name
@@ -75,6 +103,10 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
     () => setLightboxOpen(false),
     []
   )
+
+  let ids = []
+
+  topSong && topSong.map((sng) => ids.push(sng.id))
 
   return (
     <div className={classes.root}>
@@ -146,7 +178,60 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
           />
         )}
       </Card>
+
+      {topSong && (
+        <Accordion classes={{ expanded: classes.expanded }}>
+          <AccordionSummary
+            expandIcon={<ExpandMore />}
+            aria-controls="panel1a-content"
+            id="panel1a-header"
+          >
+            <Typography>Top Songs</Typography>
+          </AccordionSummary>
+          <AccordionDetails className={classes.accordion}>
+            <TopSongs
+              showContext={showContext}
+              topSong={topSong}
+              record={record}
+            />
+          </AccordionDetails>
+        </Accordion>
+      )}
     </div>
+  )
+}
+
+export const TopSongs = ({ showContext, topSong, record }) => {
+  const classes = useStyles()
+  let ids = []
+  record.isTopSongs = true
+
+  topSong && topSong.map((sng) => ids.push(sng.id))
+  return (
+    <>
+      {record && (
+        <ReferenceManyField
+          {...showContext}
+          addLabel={false}
+          reference="song"
+          target="artist_id"
+          sort={{ field: 'title', order: 'ASC' }}
+          perPage={0}
+          filter={{ id: ids }}
+          pagination={null}
+        >
+          <AlbumSongs
+            resource={'album'}
+            exporter={false}
+            album={record}
+            show={false}
+            actions={
+              <AlbumActions className={classes.albumActions} record={record} />
+            }
+          />
+        </ReferenceManyField>
+      )}
+    </>
   )
 }
 
