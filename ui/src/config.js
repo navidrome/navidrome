@@ -18,6 +18,7 @@ const defaultConfig = {
   devFastAccessCoverArt: false,
   enableStarRating: true,
   defaultTheme: 'Dark',
+  defaultLanguage: '',
   enableUserEditing: true,
   devEnableShare: true,
   devSidebarPlaylists: true,

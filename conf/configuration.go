@@ -48,6 +48,7 @@ type configOptions struct {
 	EnableStarRating       bool
 	EnableUserEditing      bool
 	DefaultTheme           string
+	DefaultLanguage        string
 	EnableCoverAnimation   bool
 	GATrackingID           string
 	EnableLogRedacting     bool
@@ -231,6 +232,7 @@ func init() {
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
+	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
