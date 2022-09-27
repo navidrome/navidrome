@@ -48,6 +48,7 @@ func (s *Server) Run(addr string) error {
 	server := &http.Server{
 		Addr:              addr,
 		ReadHeaderTimeout: consts.ServerReadHeaderTimeout,
+		Handler:           s.router,
 	}
 
 	return server.ListenAndServe()
