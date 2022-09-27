@@ -161,6 +161,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 					Value:    player.ID,
 					MaxAge:   consts.CookieExpiry,
 					HttpOnly: true,
+					SameSite: http.SameSiteStrictMode,
 					Path:     "/",
 				}
 				http.SetCookie(w, cookie)
