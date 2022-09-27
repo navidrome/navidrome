@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { Field, Form } from 'react-final-form'
 import { useDispatch } from 'react-redux'
@@ -8,13 +8,22 @@ import CardActions from '@material-ui/core/CardActions'
 import CircularProgress from '@material-ui/core/CircularProgress'
 import TextField from '@material-ui/core/TextField'
 import { ThemeProvider, makeStyles } from '@material-ui/core/styles'
-import { createMuiTheme, useLogin, useNotify, useTranslate } from 'react-admin'
+import {
+  createMuiTheme,
+  useLogin,
+  useNotify,
+  useRefresh,
+  useSetLocale,
+  useTranslate,
+  useVersion,
+} from 'react-admin'
 import Logo from '../icons/android-icon-192x192.png'
 
 import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import { clearQueue } from '../actions'
+import { retrieveTranslation } from '../i18n'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -322,9 +331,30 @@ Login.propTypes = {
 // the right theme
 const LoginWithTheme = (props) => {
   const theme = useCurrentTheme()
+  const setLocale = useSetLocale()
+  const refresh = useRefresh()
+  const version = useVersion()
+
+  useEffect(() => {
+    if (config.defaultLanguage !== '') {
+      retrieveTranslation(config.defaultLanguage)
+        .then(() => {
+          setLocale(config.defaultLanguage).then(() => {
+            localStorage.setItem('locale', config.defaultLanguage)
+          })
+          refresh(true)
+        })
+        .catch((e) => {
+          throw new Error(
+            'Cannot load language "' + config.defaultLanguage + '": ' + e
+          )
+        })
+    }
+  }, [refresh, setLocale])
+
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
-      <Login {...props} />
+      <Login key={version} {...props} />
     </ThemeProvider>
   )
 }

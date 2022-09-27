@@ -18,7 +18,7 @@ const defaultLocale = function () {
   return 'en'
 }
 
-function retrieveTranslation(locale) {
+export function retrieveTranslation(locale) {
   return dataProvider.getOne('translation', { id: locale }).then((res) => {
     localStorage.setItem('translation', JSON.stringify(res.data))
     return prepareLanguage(JSON.parse(res.data.data))
