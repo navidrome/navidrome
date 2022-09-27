@@ -56,8 +56,8 @@ github.com/GaijinEntertainment/go-exhaustruct/v2 v2.3.0 h1:+r1rSv4gvYn0wmRjC8X7I
 github.com/GaijinEntertainment/go-exhaustruct/v2 v2.3.0/go.mod h1:b3g59n2Y+T5xmcxJL+UEG2f8cQploZm1mR/v6BW0mU0=
 github.com/Masterminds/semver v1.5.0 h1:H65muMkzWKEuNDnfl9d70GUjFniHKHRbFPGBuZ3QEww=
 github.com/Masterminds/semver v1.5.0/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
-github.com/Masterminds/squirrel v1.5.2 h1:UiOEi2ZX4RCSkpiNDQN5kro/XIBpSRk9iTqdIRPzUXE=
-github.com/Masterminds/squirrel v1.5.2/go.mod h1:NNaOrjSoIDfDA40n7sr2tPNZRfjzjA400rg+riTZj10=
+github.com/Masterminds/squirrel v1.5.3 h1:YPpoceAcxuzIljlr5iWpNKaql7hLeG1KLSrhvdHpkZc=
+github.com/Masterminds/squirrel v1.5.3/go.mod h1:NNaOrjSoIDfDA40n7sr2tPNZRfjzjA400rg+riTZj10=
 github.com/OpenPeeDeeP/depguard v1.1.0 h1:pjK9nLPS1FwQYGGpPxoMYpe7qACHOhAWQMQzV71i49o=
 github.com/OpenPeeDeeP/depguard v1.1.0/go.mod h1:JtAMzWkmFEzDPyAd+W0NHl1lvpQKTvT9jnRVsohBKpc=
 github.com/ReneKroon/ttlcache/v2 v2.11.0 h1:OvlcYFYi941SBN3v9dsDcC2N8vRxyHcCmJb3Vl4QMoM=
