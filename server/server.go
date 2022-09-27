@@ -45,7 +45,12 @@ var startTime = time.Now()
 func (s *Server) Run(addr string) error {
 	s.MountRouter("WebUI", consts.URLPathUI, s.frontendAssetsHandler())
 	log.Info("Navidrome server is ready!", "address", addr, "startupTime", time.Since(startTime))
-	return http.ListenAndServe(addr, s.router)
+	server := &http.Server{
+		Addr:              addr,
+		ReadHeaderTimeout: consts.ServerReadHeaderTimeout,
+	}
+
+	return server.ListenAndServe()
 }
 
 func (s *Server) initRoutes() {
