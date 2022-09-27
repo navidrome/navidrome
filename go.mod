@@ -28,7 +28,7 @@ require (
 	github.com/kr/pretty v0.3.0
 	github.com/lestrrat-go/jwx v1.2.25
 	github.com/matoous/go-nanoid v1.5.0
-	github.com/mattn/go-sqlite3 v1.14.14
+	github.com/mattn/go-sqlite3 v1.14.15
 	github.com/mattn/go-zglob v0.0.3
 	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/mileusna/useragent v1.1.0
