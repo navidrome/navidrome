@@ -18,6 +18,7 @@ builds:
   - id: navidrome_linux_386
     env:
       - CGO_ENABLED=1
+      - PKG_CONFIG_PATH=/i386/lib/pkgconfig
     goos:
       - linux
     goarch:
@@ -31,8 +32,9 @@ builds:
   - id: navidrome_linux_arm
     env:
       - CGO_ENABLED=1
-      - CC=arm-linux-gnueabi-gcc
-      - CXX=arm-linux-gnueabi-g++
+      - CC=arm-linux-gnueabihf-gcc
+      - CXX=arm-linux-gnueabihf-g++
+      - PKG_CONFIG_PATH=/arm/lib/pkgconfig
     goos:
       - linux
     goarch:
@@ -52,6 +54,7 @@ builds:
       - CGO_ENABLED=1
       - CC=aarch64-linux-gnu-gcc
       - CXX=aarch64-linux-gnu-g++
+      - PKG_CONFIG_PATH=/arm64/lib/pkgconfig
     goos:
       - linux
     goarch:
