@@ -56,7 +56,6 @@ jobs:
       - name: Set up Go ${{ matrix.go_version }}
         uses: actions/setup-go@v3
         with:
-          stable: '!contains(${{ matrix.go_version }}, "beta") && !contains(${{ matrix.go_version }}, "rc")'
           go-version: ${{ matrix.go_version }}
         id: go
 
