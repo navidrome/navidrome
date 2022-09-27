@@ -41,6 +41,8 @@ const (
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
 
+	ServerReadHeaderTimeout = 3 * time.Second
+
 	ArtistInfoTimeToLive = 24 * time.Hour
 
 	I18nFolder   = "i18n"
