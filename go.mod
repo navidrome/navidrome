@@ -33,8 +33,8 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.17
 	github.com/mileusna/useragent v1.1.0
 	github.com/oklog/run v1.1.0
-	github.com/onsi/ginkgo/v2 v2.1.4
-	github.com/onsi/gomega v1.20.0
+	github.com/onsi/ginkgo/v2 v2.2.0
+	github.com/onsi/gomega v1.20.1
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.0
