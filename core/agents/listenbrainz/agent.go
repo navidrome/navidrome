@@ -21,6 +21,7 @@ const (
 type listenBrainzAgent struct {
 	ds          model.DataStore
 	sessionKeys *agents.SessionKeys
+	baseURL     string
 	client      *Client
 }
 
@@ -28,12 +29,13 @@ func listenBrainzConstructor(ds model.DataStore) *listenBrainzAgent {
 	l := &listenBrainzAgent{
 		ds:          ds,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
+		baseURL:     conf.Server.ListenBrainz.BaseURL,
 	}
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
-	l.client = NewClient(chc)
+	l.client = NewClient(l.baseURL, chc)
 	return l
 }
 

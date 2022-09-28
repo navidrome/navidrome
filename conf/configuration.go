@@ -109,6 +109,7 @@ type ldapOptions struct {
 
 type listenBrainzOptions struct {
 	Enabled bool
+	BaseURL string
 }
 
 var (
@@ -265,6 +266,7 @@ func init() {
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
+	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 
 	viper.SetDefault("ldap.host", "ldap://localhost:389")
 	viper.SetDefault("ldap.binddn", "")

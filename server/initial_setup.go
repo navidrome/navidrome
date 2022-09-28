@@ -100,7 +100,7 @@ func checkExternalCredentials() {
 		if !conf.Server.ListenBrainz.Enabled {
 			log.Info("ListenBrainz integration is DISABLED")
 		} else {
-			log.Debug("ListenBrainz integration is ENABLED")
+			log.Debug("ListenBrainz integration is ENABLED", "ListenBrainz.BaseURL", conf.Server.ListenBrainz.BaseURL)
 		}
 
 		if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
