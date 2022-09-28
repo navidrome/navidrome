@@ -138,6 +138,9 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 }
 
 func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (model.Albums, error) {
+	if len(options) > 0 && options[0].Offset == 0 && options[0].Sort == "random" {
+		utils.Hasher.Reseed()
+	}
 	sq := r.selectAlbum(options...)
 	res := model.Albums{}
 	err := r.queryAll(sq, &res)
