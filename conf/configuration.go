@@ -98,6 +98,7 @@ type spotifyOptions struct {
 
 type listenBrainzOptions struct {
 	Enabled bool
+	BaseURL string
 }
 
 var (
@@ -254,6 +255,7 @@ func init() {
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
+	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
