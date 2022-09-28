@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/navidrome/navidrome/log"
 )
@@ -126,13 +127,22 @@ func (c *Client) Scrobble(ctx context.Context, apiKey string, li listenInfo) err
 	return nil
 }
 
+func (c *Client) path(endpoint string) (string, error) {
+	u, err := url.Parse(c.baseURL)
+	if err != nil {
+		return "", err
+	}
+	u.Path = path.Join(u.Path, endpoint)
+	return u.String(), nil
+}
+
 func (c *Client) makeRequest(method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
 	b, _ := json.Marshal(r.Body)
-	path, err := url.JoinPath(c.baseURL, endpoint)
+	uri, err := c.path(endpoint)
 	if err != nil {
 		return nil, err
 	}
-	req, _ := http.NewRequest(method, path, bytes.NewBuffer(b))
+	req, _ := http.NewRequest(method, uri, bytes.NewBuffer(b))
 
 	if r.ApiKey != "" {
 		req.Header.Add("Authorization", fmt.Sprintf("Token %s", r.ApiKey))
