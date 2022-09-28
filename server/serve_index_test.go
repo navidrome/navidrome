@@ -160,7 +160,7 @@ var _ = Describe("serveIndex", func() {
 	})
 
 	It("sets the defaultLanguage", func() {
-		conf.Server.DefaultLanguage = "pt"
+		conf.Server.DefaultLanguage = "PT"
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
