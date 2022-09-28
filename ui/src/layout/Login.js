@@ -336,7 +336,7 @@ const LoginWithTheme = (props) => {
   const version = useVersion()
 
   useEffect(() => {
-    if (config.defaultLanguage !== '') {
+    if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
       retrieveTranslation(config.defaultLanguage)
         .then(() => {
           setLocale(config.defaultLanguage).then(() => {
