@@ -22,7 +22,7 @@ func AlbumsByFrequent() Options {
 }
 
 func AlbumsByRandom() Options {
-	return Options{Sort: "random()"}
+	return Options{Sort: "random"}
 }
 
 func AlbumsByName() Options {
