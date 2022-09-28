@@ -27,21 +27,19 @@ type Router struct {
 	http.Handler
 	ds          model.DataStore
 	sessionKeys sessionKeysRepo
-	baseURL     string
 	client      *Client
 }
 
 func NewRouter(ds model.DataStore) *Router {
 	r := &Router{
 		ds:          ds,
-		baseURL:     conf.Server.ListenBrainz.BaseURL,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	r.Handler = r.routes()
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	r.client = NewClient(r.baseURL, hc)
+	r.client = NewClient(conf.Server.ListenBrainz.BaseURL, hc)
 	return r
 }
 
