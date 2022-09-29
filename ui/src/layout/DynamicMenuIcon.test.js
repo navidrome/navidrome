@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { createMemoryHistory } from 'history'
 import { Router } from 'react-router-dom'
 import StarIcon from '@material-ui/icons/Star'
@@ -14,12 +14,12 @@ describe('<DynamicMenuIcon />', () => {
     const route = '/test'
     history.push(route)
 
-    const { getByTestId } = render(
+    render(
       <Router history={history}>
         <DynamicMenuIcon icon={StarIcon} path={'test'} />
       </Router>
     )
-    expect(getByTestId('icon')).not.toBeNull()
+    expect(screen.getByTestId('icon')).not.toBeNull()
   })
 
   it('renders icon if path does not match the URL', () => {
@@ -27,7 +27,7 @@ describe('<DynamicMenuIcon />', () => {
     const route = '/path'
     history.push(route)
 
-    const { getByTestId } = render(
+    render(
       <Router history={history}>
         <DynamicMenuIcon
           icon={StarIcon}
@@ -36,7 +36,7 @@ describe('<DynamicMenuIcon />', () => {
         />
       </Router>
     )
-    expect(getByTestId('icon')).not.toBeNull()
+    expect(screen.getByTestId('icon')).not.toBeNull()
   })
 
   it('renders activeIcon if path matches the URL', () => {
@@ -44,7 +44,7 @@ describe('<DynamicMenuIcon />', () => {
     const route = '/path'
     history.push(route)
 
-    const { getByTestId } = render(
+    render(
       <Router history={history}>
         <DynamicMenuIcon
           icon={StarIcon}
@@ -53,6 +53,6 @@ describe('<DynamicMenuIcon />', () => {
         />
       </Router>
     )
-    expect(getByTestId('activeIcon')).not.toBeNull()
+    expect(screen.getByTestId('activeIcon')).not.toBeNull()
   })
 })
