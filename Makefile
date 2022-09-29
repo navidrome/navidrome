@@ -111,7 +111,7 @@ release:
 
 download-deps:
 	@echo Downloading Go dependencies...
-	@go mod download -x
+	@go mod download
 	@go mod tidy # To revert any changes made by the `go mod download` command
 .PHONY: download-deps
 
