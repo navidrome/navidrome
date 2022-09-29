@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { QualityInfo } from './QualityInfo'
 
 describe('<QualityInfo />', () => {
@@ -7,21 +7,21 @@ describe('<QualityInfo />', () => {
 
   it('only render suffix for lossless formats', () => {
     const info = { suffix: 'FLAC', bitRate: 1008 }
-    const { queryByText } = render(<QualityInfo record={info} />)
-    expect(queryByText('FLAC')).not.toBeNull()
+    render(<QualityInfo record={info} />)
+    expect(screen.getByText('FLAC')).toBeInTheDocument()
   })
   it('only render suffix and bitrate for lossy formats', () => {
     const info = { suffix: 'MP3', bitRate: 320 }
-    const { queryByText } = render(<QualityInfo record={info} />)
-    expect(queryByText('MP3 320')).not.toBeNull()
+    render(<QualityInfo record={info} />)
+    expect(screen.getByText('MP3 320')).toBeInTheDocument()
   })
   it('renders placeholder if suffix is missing', () => {
     const info = {}
-    const { queryByText } = render(<QualityInfo record={info} />)
-    expect(queryByText('N/A')).not.toBeNull()
+    render(<QualityInfo record={info} />)
+    expect(screen.getByText('N/A')).toBeInTheDocument()
   })
   it('does not break if record is null', () => {
-    const { queryByText } = render(<QualityInfo />)
-    expect(queryByText('N/A')).not.toBeNull()
+    render(<QualityInfo />)
+    expect(screen.getByText('N/A')).toBeInTheDocument()
   })
 })
