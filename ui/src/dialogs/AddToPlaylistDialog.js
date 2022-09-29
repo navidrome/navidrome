@@ -20,6 +20,8 @@ import {
 } from '../actions'
 import { SelectPlaylistInput } from './SelectPlaylistInput'
 import DuplicateSongDialog from './DuplicateSongDialog'
+import { httpClient } from '../dataProvider'
+import { REST_URL } from '../consts'
 
 export const AddToPlaylistDialog = () => {
   const { open, selectedIds, onSuccess, duplicateSong, duplicateIds } =
@@ -44,34 +46,37 @@ export const AddToPlaylistDialog = () => {
 
   const addToPlaylist = (playlistId, distinctIds) => {
     const trackIds = Array.isArray(distinctIds) ? distinctIds : selectedIds
-    dataProvider
-      .create('playlistTrack', {
-        data: { ids: trackIds },
-        filter: { playlist_id: playlistId },
-      })
-      .then(() => {
-        const len = trackIds.length
-        notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
-        onSuccess && onSuccess(value, len)
-        refresh()
-      })
-      .catch(() => {
-        notify('ra.page.error', 'warning')
-      })
+    if (trackIds.length) {
+      dataProvider
+        .create('playlistTrack', {
+          data: { ids: trackIds },
+          filter: { playlist_id: playlistId },
+        })
+        .then(() => {
+          const len = trackIds.length
+          notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
+          onSuccess && onSuccess(value, len)
+          refresh()
+        })
+        .catch(() => {
+          notify('ra.page.error', 'warning')
+        })
+    } else {
+      notify('message.songsAddedToPlaylist', 'info', { smart_count: 0 })
+    }
   }
 
   const checkDuplicateSong = (playlistObject) => {
-    dataProvider
-      .getOne('playlist', { id: playlistObject.id })
+    httpClient(`${REST_URL}/playlist/${playlistObject.id}/tracks`)
       .then((res) => {
-        const tracks = res.data.tracks
+        const tracks = res.json
         if (tracks) {
           const dupSng = tracks.filter((song) =>
-            selectedIds.some((id) => id === song.id)
+            selectedIds.some((id) => id === song.mediaFileId)
           )
 
           if (dupSng.length) {
-            const dupIds = dupSng.map((song) => song.id)
+            const dupIds = dupSng.map((song) => song.mediaFileId)
             dispatch(openDuplicateSongWarning(dupIds))
           }
         }

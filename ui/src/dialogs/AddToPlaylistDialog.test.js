@@ -62,11 +62,19 @@ const createTestUtils = (mockDataProvider) =>
     </DataProviderContext.Provider>
   )
 
+jest.mock('../dataProvider', () => ({
+  ...jest.requireActual('../dataProvider'),
+  httpClient: jest.fn(),
+}))
+
 describe('AddToPlaylistDialog', () => {
   beforeAll(() => localStorage.setItem('userId', 'admin'))
   afterEach(cleanup)
 
   it('adds distinct songs to already existing playlists', async () => {
+    const dataProvider = require('../dataProvider')
+    jest.spyOn(dataProvider, 'httpClient').mockResolvedValue({ data: mockData })
+
     const mockDataProvider = {
       getList: jest
         .fn()
