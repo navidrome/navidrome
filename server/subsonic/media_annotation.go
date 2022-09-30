@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -39,11 +40,11 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 	log.Debug(r, "Setting rating", "rating", rating, "id", id)
 	err = c.setRating(r.Context(), id, rating)
 
-	switch {
-	case err == model.ErrNotFound:
+	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, err)
 		return nil, newError(responses.ErrorDataNotFound, "ID not found")
-	case err != nil:
+	}
+	if err != nil {
 		log.Error(r, err)
 		return nil, err
 	}
@@ -161,11 +162,11 @@ func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids 
 		return nil
 	})
 
-	switch {
-	case err == model.ErrNotFound:
+	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, err)
 		return newError(responses.ErrorDataNotFound, "ID not found")
-	case err != nil:
+	}
+	if err != nil {
 		log.Error(ctx, err)
 		return err
 	}

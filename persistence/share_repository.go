@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
@@ -24,7 +25,7 @@ func NewShareRepository(ctx context.Context, o orm.QueryExecutor) model.ShareRep
 
 func (r *shareRepository) Delete(id string) error {
 	err := r.delete(Eq{"id": id})
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err
@@ -50,7 +51,7 @@ func (r *shareRepository) Update(id string, entity interface{}, cols ...string) 
 	s := entity.(*model.Share)
 	s.ID = id
 	_, err := r.put(id, s, cols...)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err
@@ -59,7 +60,7 @@ func (r *shareRepository) Update(id string, entity interface{}, cols ...string) 
 func (r *shareRepository) Save(entity interface{}) (string, error) {
 	s := entity.(*model.Share)
 	id, err := r.put(s.ID, s)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return "", rest.ErrNotFound
 	}
 	return id, err

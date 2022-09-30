@@ -2,6 +2,7 @@ package spotify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -46,7 +47,7 @@ func (s *spotifyAgent) AgentName() string {
 func (s *spotifyAgent) GetImages(ctx context.Context, id, name, mbid string) ([]agents.ArtistImage, error) {
 	a, err := s.searchArtist(ctx, name)
 	if err != nil {
-		if err == model.ErrNotFound {
+		if errors.Is(err, model.ErrNotFound) {
 			log.Warn(ctx, "Artist not found in Spotify", "artist", name)
 		} else {
 			log.Error(ctx, "Error calling Spotify", "artist", name, err)
