@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
@@ -48,7 +49,7 @@ func (r propertyRepository) Get(id string) (string, error) {
 
 func (r propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
 	value, err := r.Get(id)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return defaultValue, nil
 	}
 	if err != nil {

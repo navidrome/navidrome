@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -59,7 +60,7 @@ func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.S
 	res := model.ScrobbleEntries{}
 	// TODO Rewrite queryOne to use QueryRows, to workaround the recursive embedded structs issue
 	err := r.queryAll(sql, &res)
-	if err == model.ErrNotFound || len(res) == 0 {
+	if errors.Is(err, model.ErrNotFound) || len(res) == 0 {
 		return nil, nil
 	}
 	if err != nil {

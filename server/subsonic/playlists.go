@@ -49,11 +49,11 @@ func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request
 
 func (c *PlaylistsController) getPlaylist(ctx context.Context, id string) (*responses.Subsonic, error) {
 	pls, err := c.ds.Playlist(ctx).GetWithTracks(id)
-	switch {
-	case err == model.ErrNotFound:
+	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, err.Error(), "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
-	case err != nil:
+	}
+	if err != nil {
 		log.Error(ctx, err)
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 		return nil, err
 	}
 	err = c.ds.Playlist(r.Context()).Delete(id)
-	if err == model.ErrNotAuthorized {
+	if errors.Is(err, model.ErrNotAuthorized) {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 	if err != nil {
@@ -152,7 +152,7 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	log.Trace(r, fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
 	err = c.pls.Update(r.Context(), playlistId, plsName, comment, public, songsToAdd, songIndexesToRemove)
-	if err == model.ErrNotAuthorized {
+	if errors.Is(err, model.ErrNotAuthorized) {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 	if err != nil {

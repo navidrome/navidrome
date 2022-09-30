@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -118,7 +119,7 @@ func clientUniqueIdAdder(next http.Handler) http.Handler {
 			http.SetCookie(w, c)
 		} else {
 			c, err := r.Cookie(consts.UIClientUniqueIDHeader)
-			if err != http.ErrNoCookie {
+			if !errors.Is(err, http.ErrNoCookie) {
 				clientUniqueId = c.Value
 			}
 		}

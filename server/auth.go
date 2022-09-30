@@ -161,7 +161,7 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 		return u, nil
 	}
 	u, err := userRepo.FindByUsernameWithPassword(userName)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {

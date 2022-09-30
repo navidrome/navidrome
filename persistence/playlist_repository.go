@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
@@ -395,7 +396,7 @@ func (r *playlistRepository) Update(id string, entity interface{}, cols ...strin
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
 	_, err = r.put(id, pls, append(cols, "updatedAt")...)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err

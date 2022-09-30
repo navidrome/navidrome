@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"errors"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -44,7 +45,7 @@ func (r sqlRepository) bmkUpsert(itemID, comment string, position int64) error {
 	if err == nil {
 		log.Debug(r.ctx, "Updated bookmark", "id", itemID, "user", user.UserName, "position", position, "comment", comment)
 	}
-	if c == 0 || err == orm.ErrNoRows {
+	if c == 0 || errors.Is(err, orm.ErrNoRows) {
 		values["user_id"] = user.ID
 		values["item_type"] = r.tableName
 		values["item_id"] = itemID

@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
@@ -102,7 +103,7 @@ func (r *playerRepository) Save(entity interface{}) (string, error) {
 		return "", rest.ErrPermissionDenied
 	}
 	id, err := r.put(t.ID, t)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return "", rest.ErrNotFound
 	}
 	return id, err
@@ -115,7 +116,7 @@ func (r *playerRepository) Update(id string, entity interface{}, cols ...string)
 		return rest.ErrPermissionDenied
 	}
 	_, err := r.put(id, t, cols...)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err
@@ -124,7 +125,7 @@ func (r *playerRepository) Update(id string, entity interface{}, cols ...string)
 func (r *playerRepository) Delete(id string) error {
 	filter := r.addRestriction(And{Eq{"id": id}})
 	err := r.delete(filter)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err

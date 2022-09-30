@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"errors"
 	"net/http"
 	"time"
 
@@ -67,7 +68,7 @@ func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]interface{}{}
 	u, _ := request.UserFrom(r.Context())
 	key, err := s.sessionKeys.Get(r.Context(), u.ID)
-	if err != nil && err != model.ErrNotFound {
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		resp["error"] = err
 		resp["status"] = false
 		_ = rest.RespondWithJSON(w, http.StatusInternalServerError, resp)

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -146,7 +147,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 	owner, _ := request.UserFrom(ctx)
 
 	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
-	if err != nil && err != model.ErrNotFound {
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return err
 	}
 	if err == nil && !pls.Sync {

@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -104,11 +105,11 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 
 	entity, err := core.GetEntityByID(ctx, c.ds, id)
-	switch {
-	case err == model.ErrNotFound:
+	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, "Requested ID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
-	case err != nil:
+	}
+	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
@@ -140,11 +141,11 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 	ctx := r.Context()
 
 	artist, err := c.ds.Artist(ctx).Get(id)
-	switch {
-	case err == model.ErrNotFound:
+	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, "Requested ArtistID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Artist not found")
-	case err != nil:
+	}
+	if err != nil {
 		log.Error(ctx, "Error retrieving artist", "id", id, err)
 		return nil, err
 	}
@@ -165,11 +166,11 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 	ctx := r.Context()
 
 	album, err := c.ds.Album(ctx).Get(id)
-	switch {
-	case err == model.ErrNotFound:
+	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, "Requested AlbumID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Album not found")
-	case err != nil:
+	}
+	if err != nil {
 		log.Error(ctx, "Error retrieving album", "id", id, err)
 		return nil, err
 	}
@@ -190,11 +191,11 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 	ctx := r.Context()
 
 	mf, err := c.ds.MediaFile(ctx).Get(id)
-	switch {
-	case err == model.ErrNotFound:
+	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, "Requested MediaFileID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Song not found")
-	case err != nil:
+	}
+	if err != nil {
 		log.Error(r, "Error retrieving MediaFile", "id", id, err)
 		return nil, err
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -78,7 +79,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			jwt := utils.ParamString(r, "jwt")
 
 			usr, err := validateUser(ctx, ds, username, pass, token, salt, jwt)
-			if err == model.ErrInvalidAuth {
+			if errors.Is(err, model.ErrInvalidAuth) {
 				log.Warn(ctx, "API: Invalid login", "username", username, "remoteAddr", r.RemoteAddr, err)
 			} else if err != nil {
 				log.Error(ctx, "API: Error authenticating username", "username", username, "remoteAddr", r.RemoteAddr, err)
@@ -107,7 +108,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 
 func validateUser(ctx context.Context, ds model.DataStore, username, pass, token, salt, jwt string) (*model.User, error) {
 	user, err := ds.User(ctx).FindByUsernameWithPassword(username)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return nil, model.ErrInvalidAuth
 	}
 	if err != nil {

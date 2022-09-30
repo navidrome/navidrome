@@ -57,7 +57,7 @@ func (ci *imageInfo) Key() string {
 
 func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
 	path, lastUpdate, err := a.getImagePath(ctx, id)
-	if err != nil && err != model.ErrNotFound {
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, err
 	}
 
@@ -106,7 +106,7 @@ func (a *artwork) getImagePath(ctx context.Context, id string) (path string, las
 	mf, err = a.ds.MediaFile(ctx).Get(id)
 
 	// If it is not, may be an albumId
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return a.getImagePath(ctx, "al-"+id)
 	}
 	if err != nil {

@@ -145,7 +145,7 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Trace(ctx, "Sending event to client", "event", *event, "client", c.String())
-		if err := writeEvent(w, *event, writeTimeOut); err == errWriteTimeOut {
+		if err := writeEvent(w, *event, writeTimeOut); errors.Is(err, errWriteTimeOut) {
 			log.Debug(ctx, "Timeout sending event to client", "event", *event, "client", c.String())
 			return
 		}
