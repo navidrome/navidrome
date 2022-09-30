@@ -183,7 +183,8 @@ func h(r chi.Router, path string, f handler) {
 		res, err := f(w, r)
 		if err != nil {
 			// If it is not a Subsonic error, convert it to an ErrorGeneric
-			if _, ok := err.(subError); !ok {
+			var subErr subError
+			if !errors.As(err, &subErr) {
 				if errors.Is(err, model.ErrNotFound) {
 					err = newError(responses.ErrorDataNotFound, "data not found")
 				} else {
@@ -233,8 +234,9 @@ func h410(r chi.Router, paths ...string) {
 func sendError(w http.ResponseWriter, r *http.Request, err error) {
 	response := newResponse()
 	code := responses.ErrorGeneric
-	if e, ok := err.(subError); ok {
-		code = e.code
+	var subErr subError
+	if errors.As(err, &subErr) {
+		code = subErr.code
 	}
 	response.Status = "failed"
 	response.Error = &responses.Error{Code: code, Message: err.Error()}

@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -46,9 +47,12 @@ var _ = Describe("AlbumListController", func() {
 		It("should fail if missing type parameter", func() {
 			r := newGetRequest()
 			_, err := controller.GetAlbumList(w, r)
+			var subErr subError
+			isSubError := errors.As(err, &subErr)
 
-			Expect(err).To(MatchError("required 'type' parameter is missing"))
-			Expect(err.(subError).code).To(Equal(responses.ErrorMissingParameter))
+			Expect(isSubError).To(BeTrue())
+			Expect(subErr).To(MatchError("required 'type' parameter is missing"))
+			Expect(subErr.code).To(Equal(responses.ErrorMissingParameter))
 		})
 
 		It("should return error if call fails", func() {
@@ -58,7 +62,9 @@ var _ = Describe("AlbumListController", func() {
 			_, err := controller.GetAlbumList(w, r)
 
 			Expect(err).ToNot(BeNil())
-			Expect(err.(subError).code).To(Equal(responses.ErrorGeneric))
+			var subErr subError
+			errors.As(err, &subErr)
+			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
 	})
 
@@ -82,8 +88,11 @@ var _ = Describe("AlbumListController", func() {
 			r := newGetRequest()
 			_, err := controller.GetAlbumList2(w, r)
 
-			Expect(err).To(MatchError("required 'type' parameter is missing"))
-			Expect(err.(subError).code).To(Equal(responses.ErrorMissingParameter))
+			var subErr subError
+			errors.As(err, &subErr)
+
+			Expect(subErr).To(MatchError("required 'type' parameter is missing"))
+			Expect(subErr.code).To(Equal(responses.ErrorMissingParameter))
 		})
 
 		It("should return error if call fails", func() {
@@ -92,8 +101,10 @@ var _ = Describe("AlbumListController", func() {
 
 			_, err := controller.GetAlbumList2(w, r)
 
-			Expect(err).ToNot(BeNil())
-			Expect(err.(subError).code).To(Equal(responses.ErrorGeneric))
+			var subErr subError
+			errors.As(err, &subErr)
+			Expect(subErr).ToNot(BeNil())
+			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
 	})
 })

@@ -2,6 +2,7 @@ package listenbrainz
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
@@ -88,7 +89,8 @@ func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrob
 	if err == nil {
 		return nil
 	}
-	lbErr, isListenBrainzError := err.(*listenBrainzError)
+	var lbErr *listenBrainzError
+	isListenBrainzError := errors.As(err, &lbErr)
 	if !isListenBrainzError {
 		log.Warn(ctx, "ListenBrainz Scrobble returned HTTP error", "track", s.Title, err)
 		return scrobbler.ErrRetryLater
