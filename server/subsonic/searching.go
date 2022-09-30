@@ -109,6 +109,7 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 	searchResult2 := &responses.SearchResult2{}
 	searchResult2.Artist = make([]responses.Artist, len(as))
 	for i, artist := range as {
+		artist := artist
 		searchResult2.Artist[i] = responses.Artist{
 			Id:         artist.ID,
 			Name:       artist.Name,
@@ -116,7 +117,7 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 			UserRating: artist.Rating,
 		}
 		if artist.Starred {
-			searchResult2.Artist[i].Starred = &artist.StarredAt
+			searchResult2.Artist[i].Starred = &as[i].StarredAt
 		}
 	}
 	searchResult2.Album = childrenFromAlbums(r.Context(), als)
