@@ -7,6 +7,7 @@ linters:
     - depguard
     - dogsled
     - errcheck
+    - errorlint
     - exportloopref
     - gocyclo
     - goprintffuncname

@@ -2,6 +2,7 @@ package lastfm
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
@@ -118,7 +119,9 @@ func (l *lastfmAgent) GetTopSongs(ctx context.Context, id, artistName, mbid stri
 
 func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, mbid string) (*Artist, error) {
 	a, err := l.client.ArtistGetInfo(ctx, name, mbid)
-	lfErr, isLastFMError := err.(*lastFMError)
+	var lfErr *lastFMError
+	isLastFMError := errors.As(err, &lfErr)
+
 	if mbid != "" && ((err == nil && a.Name == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
 		log.Warn(ctx, "LastFM/artist.getInfo could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
 		return l.callArtistGetInfo(ctx, name, "")
@@ -133,7 +136,8 @@ func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, mbid s
 
 func (l *lastfmAgent) callArtistGetSimilar(ctx context.Context, name string, mbid string, limit int) ([]Artist, error) {
 	s, err := l.client.ArtistGetSimilar(ctx, name, mbid, limit)
-	lfErr, isLastFMError := err.(*lastFMError)
+	var lfErr *lastFMError
+	isLastFMError := errors.As(err, &lfErr)
 	if mbid != "" && ((err == nil && s.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
 		log.Warn(ctx, "LastFM/artist.getSimilar could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
 		return l.callArtistGetSimilar(ctx, name, "", limit)
@@ -147,7 +151,8 @@ func (l *lastfmAgent) callArtistGetSimilar(ctx context.Context, name string, mbi
 
 func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName, mbid string, count int) ([]Track, error) {
 	t, err := l.client.ArtistGetTopTracks(ctx, artistName, mbid, count)
-	lfErr, isLastFMError := err.(*lastFMError)
+	var lfErr *lastFMError
+	isLastFMError := errors.As(err, &lfErr)
 	if mbid != "" && ((err == nil && t.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
 		log.Warn(ctx, "LastFM/artist.getTopTracks could not find artist by mbid, trying again", "artist", artistName, "mbid", mbid)
 		return l.callArtistGetTopTracks(ctx, artistName, "", count)
@@ -204,7 +209,8 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 	if err == nil {
 		return nil
 	}
-	lfErr, isLastFMError := err.(*lastFMError)
+	var lfErr *lastFMError
+	isLastFMError := errors.As(err, &lfErr)
 	if !isLastFMError {
 		log.Warn(ctx, "Last.fm client.scrobble returned error", "track", s.Title, err)
 		return scrobbler.ErrRetryLater
