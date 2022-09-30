@@ -13,6 +13,18 @@ export default {
       main: '#8800cb',
       contrastText: '#fff',
     },
+    warn: {
+      light: '#ffff82',
+      dark: '#c9bf07',
+      main: '#fff14e',
+      contrastText: '#000',
+    },
+    error: {
+      light: '#ff763a',
+      dark: '#c30000',
+      main: '#ff3f00',
+      contrastText: '#000',
+    },
     type: 'dark',
   },
   overrides: {
@@ -38,5 +50,6 @@ export default {
   },
   player: {
     theme: 'dark',
+    stylesheet: require('./electricPurple.css.js'),
   },
 }
