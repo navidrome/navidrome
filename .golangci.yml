@@ -3,6 +3,7 @@ run:
 
 linters:
   enable:
+    - asasalint
     - bodyclose
     - depguard
     - dogsled
