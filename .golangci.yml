@@ -1,10 +1,9 @@
 run:
-  go: '1.19'
+  go: "1.19"
 
 linters:
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - errcheck
@@ -17,11 +16,9 @@ linters:
     - misspell
     - rowserrcheck
     - staticcheck
-    - structcheck
     - typecheck
     - unconvert
     - unused
-    - varcheck
     - whitespace
 
 issues:
