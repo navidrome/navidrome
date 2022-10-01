@@ -1,3 +1,49 @@
+// For Album, Playlist
+const musicListActions = {
+  alignItems: 'center',
+  '@global': {
+    button: {
+      margin: 5,
+    },
+    'button:first-child:not(:only-child)': {
+      '@media screen and (max-width: 720px)': {
+        transform: 'scale(1.5)',
+        margin: '1rem',
+        '&:hover': {
+          transform: 'scale(1.6) !important',
+        },
+      },
+      transform: 'scale(2)',
+      margin: '1.5rem',
+      minWidth: 0,
+      padding: 5,
+      transition: 'transform .3s ease',
+      backgroundColor: '#5E81AC !important',
+      color: '#fff',
+      borderRadius: 500,
+      border: 0,
+      '&:hover': {
+        transform: 'scale(2.1)',
+        backgroundColor: '#5E81AC !important',
+        border: 0,
+      },
+    },
+    'button:only-child': {
+      margin: '1.5rem',
+    },
+    'button:first-child>span:first-child': {
+      padding: 0,
+    },
+    'button:first-child>span:first-child>span': {
+      display: 'none',
+    },
+    'button>span:first-child>span, button:not(:first-child)>span:first-child>svg':
+      {
+        color: 'rgba(255, 255, 255, 0.8)',
+      },
+  },
+}
+
 export default {
   themeName: 'Nord',
   palette: {
@@ -208,6 +254,12 @@ export default {
         minWidth: '75vw',
         color: 'rgba(255,255,255, 0.8)',
       },
+    },
+    NDAlbumShow: {
+      albumActions: musicListActions,
+    },
+    NDPlaylistShow: {
+      playlistActions: musicListActions,
     },
     NDAlbumDetails: {
       root: {
