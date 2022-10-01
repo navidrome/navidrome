@@ -4,9 +4,12 @@ run:
 linters:
   enable:
     - asasalint
+    - asciicheck
+    - bidichk
     - bodyclose
     - depguard
     - dogsled
+    - durationcheck
     - errcheck
     - errorlint
     - exportloopref
