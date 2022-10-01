@@ -116,7 +116,8 @@ export default {
     MuiAppBar: {
       positionFixed: {
         backgroundColor: '#4C566A !important',
-        boxShadow: '0 8px 8px rgb(0 0 0 / 30%)',
+        boxShadow:
+          'rgba(15, 17, 21, 0.25) 0px 4px 6px, rgba(15, 17, 21, 0.1) 0px 5px 7px',
       },
     },
     NDAlbumGridView: {
