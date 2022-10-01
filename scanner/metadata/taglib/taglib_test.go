@@ -64,8 +64,8 @@ var _ = Describe("Parser", func() {
 				}
 			}
 
-			sourceFilename = "tests/fixtures/test.mp3"
-			destFilename = "tmp/test.mp3"
+			sourceFilename := "tests/fixtures/test.mp3"
+			destFilename := "tmp/test.mp3"
 			input, errorReadFile := ioutil.ReadFile(sourceFilename)
 			if errorReadFile != nil {
 				return
