@@ -243,6 +243,11 @@ export default {
         padding: '0 .55rem !important',
       },
     },
+    RaSidebar: {
+      fixed: {
+        backgroundColor: '#2E3440',
+      },
+    },
     RaSearchInput: {
       input: {
         paddingLeft: '.9rem',
