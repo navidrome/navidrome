@@ -206,6 +206,11 @@ export default {
         },
       },
     },
+    MuiChip: {
+      root: {
+        backgroundColor: '#4C566A',
+      },
+    },
     NDAlbumGridView: {
       albumName: {
         marginTop: '0.5rem',
