@@ -8,7 +8,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 )
 
-// Use this in migrations that need to communicate something important (braking changes, forced reindexes, etc...)
+// Use this in migrations that need to communicate something important (breaking changes, forced reindexes, etc...)
 func notice(tx *sql.Tx, msg string) {
 	if isDBInitialized(tx) {
 		fmt.Printf(`
