@@ -44,6 +44,12 @@ export default {
         paddingRight: '1rem',
         paddingLeft: '0.7rem',
       },
+      contained: {
+        boxShadow: 'none',
+        '&:hover': {
+          boxShadow: 'none',
+        },
+      },
     },
     MuiIconButton: {
       label: {
@@ -69,6 +75,9 @@ export default {
       },
       rounded: {
         borderRadius: '8px',
+      },
+      elevation1: {
+        boxShadow: 'rgba(0, 0, 0, 0.3) 0px 3px 4px -2px',
       },
     },
     MuiTableRow: {
