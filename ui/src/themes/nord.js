@@ -69,6 +69,11 @@ export default {
         background: 'none',
       },
     },
+    MuiListItem: {
+      button: {
+        transition: 'background-color .1s ease !important',
+      },
+    },
     MuiPaper: {
       root: {
         backgroundColor: '#3B4252',
