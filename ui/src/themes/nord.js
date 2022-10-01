@@ -138,6 +138,9 @@ export default {
         '&:hover': {
           backgroundColor: '#434C5E !important',
         },
+        '&:last-child': {
+          borderBottom: '1px solid #4C566A !important',
+        },
       },
       head: {
         color: '#4C566A',
@@ -146,13 +149,6 @@ export default {
     MuiToolbar: {
       root: {
         backgroundColor: '#3B4252 !important',
-      },
-    },
-    MuiTableRow: {
-      root: {
-        '&:last-child': {
-          borderBottom: '1px solid #4C566A !important',
-        },
       },
     },
     MuiTableCell: {
