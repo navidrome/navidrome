@@ -321,13 +321,12 @@ export default {
     },
     RaPaginationActions: {
       currentPageButton: {
-        border: '1px solid #b3b3b3',
+        border: '2px solid rgba(255,255,255,0.25)',
       },
       button: {
         backgroundColor: '#4C566A',
         minWidth: 48,
         margin: '0 4px',
-        border: '1px solid #282828',
         '@global': {
           '> .MuiButton-label': {
             padding: 0,
