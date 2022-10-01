@@ -239,7 +239,6 @@ export default {
     },
     NDPlaylistDetails: {
       container: {
-        background: 'linear-gradient(#1d1d1d, transparent)',
         borderRadius: 0,
         paddingTop: '2.5rem !important',
         boxShadow: 'none',
