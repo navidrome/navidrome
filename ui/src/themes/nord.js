@@ -84,7 +84,7 @@ export default {
       root: {
         borderBottom: '1px solid #4C566A !important',
         color: '#b3b3b3 !important',
-        padding: '5px !important',
+        padding: '10px !important',
       },
       head: {
         borderBottom: '1px solid #2E3440',
@@ -246,12 +246,13 @@ export default {
     RaSearchInput: {
       input: {
         paddingLeft: '.9rem',
+        marginTop: '36px',
         border: 0,
       },
     },
     RaButton: {
       button: {
-        margin: '5px',
+        margin: '0 5px 10px 5px',
       },
     },
     RaPaginationActions: {
