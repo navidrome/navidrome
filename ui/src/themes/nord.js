@@ -1,4 +1,3 @@
- 
 export default {
   themeName: 'Nord',
   palette: {
@@ -6,7 +5,7 @@ export default {
       main: '#D8DEE9',
     },
     secondary: {
-      main: '#4C566A'
+      main: '#4C566A',
     },
     type: 'dark',
   },
@@ -42,7 +41,7 @@ export default {
       },
     },
     MuiIconButton: {
-      label:{
+      label: {
         color: '#D8DEE9',
       },
     },
@@ -53,14 +52,14 @@ export default {
       },
     },
 
-    MuiList:{
+    MuiList: {
       root: {
         color: '#D8DEE9',
         background: 'none',
       },
     },
-    MuiPaper:{
-      root:{
+    MuiPaper: {
+      root: {
         backgroundColor: '#3B4252',
       },
     },
@@ -74,10 +73,10 @@ export default {
       },
       head: {
         color: '#4C566A',
-      }
+      },
     },
-    MuiToolbar:{
-      root:{
+    MuiToolbar: {
+      root: {
         backgroundColor: '#3B4252 !important',
       },
     },
@@ -97,10 +96,10 @@ export default {
       },
       body: {
         color: '#D8DEE9 !important',
-      }
+      },
     },
-    RaToolBar:{
-      regular:{
+    RaToolBar: {
+      regular: {
         backgroundColor: 'none !important',
       },
     },
