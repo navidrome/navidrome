@@ -148,9 +148,16 @@ export default {
         backgroundColor: '#3B4252 !important',
       },
     },
+    MuiTableRow: {
+      root: {
+        '&:last-child': {
+          borderBottom: '1px solid #4C566A !important',
+        },
+      },
+    },
     MuiTableCell: {
       root: {
-        borderBottom: '1px solid #4C566A !important',
+        borderBottom: 'none',
         color: '#b3b3b3 !important',
         padding: '10px !important',
       },
