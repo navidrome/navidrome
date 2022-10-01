@@ -53,7 +53,7 @@ func (p *MockedUserPropsRepo) DefaultGet(userId, key string, defaultValue string
 	p.init()
 	v, err := p.Get(userId, key)
 	if err != nil {
-		return defaultValue, nil
+		return defaultValue, nil //nolint:nilerr
 	}
 	return v, nil
 }
