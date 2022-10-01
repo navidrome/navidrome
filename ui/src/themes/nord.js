@@ -409,5 +409,6 @@ export default {
   },
   player: {
     theme: 'dark',
+    stylesheet: require('./nord.css.js'),
   },
 }
