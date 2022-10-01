@@ -340,6 +340,9 @@ export default {
         padding: '0 !important',
         background: '#2E3440',
       },
+      root: {
+        backgroundColor: '#2E3440',
+      },
     },
     RaList: {
       content: {
@@ -356,6 +359,9 @@ export default {
     RaSidebar: {
       fixed: {
         backgroundColor: '#2E3440',
+      },
+      drawerPaper: {
+        backgroundColor: '#2E3440 !important',
       },
     },
     RaSearchInput: {

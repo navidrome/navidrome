@@ -143,7 +143,6 @@ module.exports = `
 
 .react-jinke-music-player-mobile-cover {
     border: none;
-    border-radius: 2.5rem;
     box-shadow:rgba(15, 17, 21, 0.25) 0px 4px 6px, rgba(15, 17, 21, 0.1) 0px 5px 7px;
 }
 
@@ -159,6 +158,10 @@ module.exports = `
 
 .react-jinke-music-player-mobile-progress .rc-slider-handle, .react-jinke-music-player-mobile-progress .rc-slider-track {
     background-color: #5E81AC;
+}
+
+.react-jinke-music-player-mobile-progress .rc-slider-handle {
+    border: none;
 }
 
 `
