@@ -236,13 +236,13 @@ export default {
         },
       },
       albumPlayButton: {
-        backgroundColor: '#3B4252',
+        backgroundColor: '#5E81AC',
         borderRadius: '50%',
         boxShadow: '0 8px 8px rgb(0 0 0 / 30%)',
         padding: '0.35rem',
         transition: 'padding .3s ease',
         '&:hover': {
-          background: `${'#4C566A'} !important`,
+          background: `${'#5E81AC'} !important`,
           padding: '0.45rem',
         },
       },
