@@ -18,6 +18,11 @@ export default {
     MuiMenuItem: {
       root: {
         fontSize: '0.875rem',
+        paddingTop: '4px',
+        paddingBottom: '4px',
+        paddingLeft: '10px',
+        margin: '5px',
+        borderRadius: '8px',
       },
     },
     MuiDivider: {
@@ -61,6 +66,9 @@ export default {
     MuiPaper: {
       root: {
         backgroundColor: '#3B4252',
+      },
+      rounded: {
+        borderRadius: '8px',
       },
     },
     MuiTableRow: {
@@ -120,6 +128,11 @@ export default {
           'rgba(15, 17, 21, 0.25) 0px 4px 6px, rgba(15, 17, 21, 0.1) 0px 5px 7px',
       },
     },
+    MuiOutlinedInput: {
+      root: {
+        borderRadius: '8px',
+      },
+    },
     NDAlbumGridView: {
       albumName: {
         marginTop: '0.5rem',
@@ -132,7 +145,7 @@ export default {
       },
       albumContainer: {
         backgroundColor: '#434C5E',
-        borderRadius: '.5rem',
+        borderRadius: '8px',
         padding: '.75rem',
         transition: 'background-color .3s ease',
         '&:hover': {
@@ -227,6 +240,13 @@ export default {
         marginBottom: 0,
       },
     },
+    NDSubMenu: {
+      sidebarIsClosed: {
+        '& a': {
+          paddingLeft: '10px',
+        },
+      },
+    },
     RaLayout: {
       content: {
         padding: '0 !important',
@@ -236,6 +256,7 @@ export default {
     RaList: {
       content: {
         backgroundColor: '#3B4252',
+        borderRadius: '0px',
       },
     },
     RaListToolbar: {
