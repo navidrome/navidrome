@@ -140,6 +140,12 @@ export default {
     MuiOutlinedInput: {
       root: {
         borderRadius: '8px',
+        '&:hover': {
+          borderColor: '#D8DEE9',
+        },
+      },
+      notchedOutline: {
+        transition: 'border-color .1s',
       },
     },
     NDAlbumGridView: {
