@@ -98,6 +98,16 @@ export default {
         color: '#D8DEE9 !important',
       },
     },
+    MuiSwitch: {
+      track: {
+        width: '89%',
+        transform: 'translateX(.1rem) scale(140%)',
+      },
+      thumb: {
+        transform: 'scale(60%)',
+        boxShadow: 'none',
+      },
+    },
     RaToolBar: {
       regular: {
         backgroundColor: 'none !important',
