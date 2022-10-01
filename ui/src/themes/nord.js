@@ -153,6 +153,13 @@ export default {
         transition: 'border-color .1s',
       },
     },
+    MuiSelect: {
+      select: {
+        '&:focus': {
+          borderRadius: '8px',
+        },
+      },
+    },
     NDAlbumGridView: {
       albumName: {
         marginTop: '0.5rem',
@@ -295,6 +302,16 @@ export default {
         paddingLeft: '.9rem',
         marginTop: '36px',
         border: 0,
+      },
+    },
+    RaDatagrid: {
+      headerCell: {
+        '&:first-child': {
+          borderTopLeftRadius: '0px !important',
+        },
+        '&:last-child': {
+          borderTopRightRadius: '0px !important',
+        },
       },
     },
     RaButton: {
