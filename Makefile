@@ -9,7 +9,7 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION=1.18.4-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.19.1-3 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
@@ -97,6 +97,19 @@ single: warning-noui-build ##@Cross_Compilation Build binaries for a single supp
 warning-noui-build:
 	@echo "WARNING: This command does not build the frontend, it uses the latest built with 'make buildjs'"
 .PHONY: warning-noui-build
+
+get-music: ##@Development Download some free music from Navidrome's demo instance
+	mkdir -p music
+	( cd music; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=ec2093ec4801402f1e17cc462195cdbb" > brock.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=NavidromeUI&id=b376eeb4652d2498aa2b25ba0696725e" > back_on_earth.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=NavidromeUI&id=e49c609b542fc51899ee8b53aa858cb4" > ugress.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=NavidromeUI&id=350bcab3a4c1d93869e39ce496464f03" > voodoocuts.zip; \
+	for file in *.zip; do unzip -n $${file}; done )
+	@echo "Done. Remember to set your MusicFolder to ./music"
+.PHONY: get-music
+
+
 ##########################################
 #### Miscellaneous
 
@@ -111,7 +124,7 @@ release:
 
 download-deps:
 	@echo Downloading Go dependencies...
-	@go mod download -x
+	@go mod download
 	@go mod tidy # To revert any changes made by the `go mod download` command
 .PHONY: download-deps
 

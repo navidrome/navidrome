@@ -2,6 +2,7 @@ package listenbrainz
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
@@ -21,6 +22,7 @@ const (
 type listenBrainzAgent struct {
 	ds          model.DataStore
 	sessionKeys *agents.SessionKeys
+	baseURL     string
 	client      *Client
 }
 
@@ -28,12 +30,13 @@ func listenBrainzConstructor(ds model.DataStore) *listenBrainzAgent {
 	l := &listenBrainzAgent{
 		ds:          ds,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
+		baseURL:     conf.Server.ListenBrainz.BaseURL,
 	}
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
-	l.client = NewClient(chc)
+	l.client = NewClient(l.baseURL, chc)
 	return l
 }
 
@@ -86,7 +89,8 @@ func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrob
 	if err == nil {
 		return nil
 	}
-	lbErr, isListenBrainzError := err.(*listenBrainzError)
+	var lbErr *listenBrainzError
+	isListenBrainzError := errors.As(err, &lbErr)
 	if !isListenBrainzError {
 		log.Warn(ctx, "ListenBrainz Scrobble returned HTTP error", "track", s.Title, err)
 		return scrobbler.ErrRetryLater

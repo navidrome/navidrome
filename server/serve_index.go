@@ -38,6 +38,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"enableFavourites":        conf.Server.EnableFavourites,
 			"enableStarRating":        conf.Server.EnableStarRating,
 			"defaultTheme":            conf.Server.DefaultTheme,
+			"defaultLanguage":         strings.ToLower(conf.Server.DefaultLanguage),
 			"enableCoverAnimation":    conf.Server.EnableCoverAnimation,
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),

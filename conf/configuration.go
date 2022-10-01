@@ -48,6 +48,7 @@ type configOptions struct {
 	EnableStarRating       bool
 	EnableUserEditing      bool
 	DefaultTheme           string
+	DefaultLanguage        string
 	EnableCoverAnimation   bool
 	GATrackingID           string
 	EnableLogRedacting     bool
@@ -97,6 +98,7 @@ type spotifyOptions struct {
 
 type listenBrainzOptions struct {
 	Enabled bool
+	BaseURL string
 }
 
 var (
@@ -231,6 +233,7 @@ func init() {
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
+	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
@@ -252,6 +255,7 @@ func init() {
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
+	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
