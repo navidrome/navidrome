@@ -47,7 +47,7 @@ func (sfs *spreadFS) Reload(f func(key string, name string)) error {
 		}
 		path, err := filepath.Rel(sfs.root, absoluteFilePath)
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr
 		}
 
 		// Skip if name is not in the format XX/XX/XXXXXXXXXXXX

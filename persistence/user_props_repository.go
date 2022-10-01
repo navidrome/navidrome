@@ -25,7 +25,7 @@ func (r userPropsRepository) Put(userId, key string, value string) error {
 	update := Update(r.tableName).Set("value", value).Where(And{Eq{"user_id": userId}, Eq{"key": key}})
 	count, err := r.executeSQL(update)
 	if err != nil {
-		return nil
+		return err
 	}
 	if count > 0 {
 		return nil

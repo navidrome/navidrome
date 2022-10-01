@@ -25,7 +25,7 @@ func (r propertyRepository) Put(id string, value string) error {
 	update := Update(r.tableName).Set("value", value).Where(Eq{"id": id})
 	count, err := r.executeSQL(update)
 	if err != nil {
-		return nil
+		return err
 	}
 	if count > 0 {
 		return nil
