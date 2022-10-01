@@ -37,6 +37,7 @@ func Read(filename string) (tags map[string][]string, err error) {
 	id, m := newMap()
 	defer deleteMap(id)
 
+	var taglibError error
 	res := C.taglib_read(fp, C.ulong(id))
 	if log.CurrentLevel() >= log.LevelDebug {
 		switch res {
@@ -45,17 +46,20 @@ func Read(filename string) (tags map[string][]string, err error) {
 			file, fileErr := os.OpenFile(filename, os.O_RDONLY, 0600)
 			if fileErr != nil && os.IsPermission(fileErr) {
 				log.Warn("Navidrome does not have permission to read media file", "filename", filename)
+				taglibError = ErrorNoPermission
 			} else {
 				log.Warn("TagLib: cannot parse file", "filename", filename)
+				taglibError = ErrorCannotParseFile
 			}
 			file.Close()
 		case C.TAGLIB_ERR_AUDIO_PROPS:
 			log.Warn("TagLib: can't get audio properties", "filename", filename)
+			taglibError = ErrorCannotGetAudioProperties
 		}
 	}
 
 	if res != 0 {
-		return nil, fmt.Errorf("cannot process %s", filename)
+		return nil, taglibError
 	}
 	log.Trace("TagLib: read tags", "tags", m, "filename", filename, "id", id)
 	return m, nil

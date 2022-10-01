@@ -1,6 +1,10 @@
 package taglib
 
 import (
+	"errors"
+	"ioutil"
+	"os"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -47,4 +51,35 @@ var _ = Describe("Parser", func() {
 			Expect(m["bitrate"][0]).To(BeElementOf("18", "39"))
 		})
 	})
+
+	Context("Error Checking", func() {
+		It("Correctly handle unreadable file due to insufficient read permission", func() {
+			_, errorStatTempFolder := os.Stat("tmp/")
+			if os.IsNotExists(errorStatTempFolder) {
+				errCreateFolder := os.Mkdir("tmp", 0755)
+				if errCreateFolder != nil {
+					defer os.RemoveAll("tmp")
+				} else {
+					return
+				}
+			}
+
+			sourceFilename = "tests/fixtures/test.mp3"
+			destFilename = "tmp/test.mp3"
+			input, errorReadFile := ioutil.ReadFile(sourceFilename)
+			if errorReadFile != nil {
+				return
+			}
+			errorWriteFile := ioutil.WriteFile(destFilename, input, 0222)
+			if errorWriteFile != nil {
+				return
+			} else {
+				defer os.Remove(destFilename)
+			}
+
+			tags, err := e.extractMetadata(destFilename)
+			Expect(errors.Is(err, ErrorNoPermission))
+		})
+	})
+
 })
