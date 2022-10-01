@@ -55,7 +55,7 @@ var _ = Describe("Parser", func() {
 	Context("Error Checking", func() {
 		It("Correctly handle unreadable file due to insufficient read permission", func() {
 			_, errorStatTempFolder := os.Stat("tmp/")
-			if os.IsNotExists(errorStatTempFolder) {
+			if os.IsNotExist(errorStatTempFolder) {
 				errCreateFolder := os.Mkdir("tmp", 0755)
 				if errCreateFolder != nil {
 					defer os.RemoveAll("tmp")
@@ -79,6 +79,7 @@ var _ = Describe("Parser", func() {
 
 			tags, err := e.extractMetadata(destFilename)
 			Expect(errors.Is(err, ErrorNoPermission))
+			Expect(tags == nil)
 		})
 	})
 
