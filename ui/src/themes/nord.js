@@ -128,7 +128,7 @@ export default {
         borderRadius: '8px',
       },
       elevation1: {
-        boxShadow: 'rgba(0, 0, 0, 0.3) 0px 3px 4px -2px',
+        boxShadow: 'none',
       },
     },
     MuiTableRow: {
@@ -338,7 +338,7 @@ export default {
     RaLayout: {
       content: {
         padding: '0 !important',
-        background: '#2E3440',
+        background: '#3B4252',
       },
       root: {
         backgroundColor: '#2E3440',
