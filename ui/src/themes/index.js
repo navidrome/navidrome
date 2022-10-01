@@ -6,6 +6,7 @@ import SpotifyTheme from './spotify'
 import LigeraTheme from './ligera'
 import MonokaiTheme from './monokai'
 import ElectricPurpleTheme from './electricPurple'
+import NordTheme from './nord'
 
 export default {
   // Classic default themes
@@ -18,5 +19,6 @@ export default {
   GreenTheme,
   LigeraTheme,
   MonokaiTheme,
+  NordTheme,
   SpotifyTheme,
 }
