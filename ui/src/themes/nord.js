@@ -239,9 +239,9 @@ export default {
         border: 0,
       },
     },
-    RaFilterButton: {
-      root: {
-        marginRight: '1rem',
+    RaButton: {
+      button: {
+        margin: '5px',
       },
     },
     RaPaginationActions: {
