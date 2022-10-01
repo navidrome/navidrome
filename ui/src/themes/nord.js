@@ -173,6 +173,8 @@ export default {
       track: {
         width: '89%',
         transform: 'translateX(.1rem) scale(140%)',
+        opacity: '0.7 !important',
+        backgroundColor: 'rgba(255,255,255,0.25)',
       },
       thumb: {
         transform: 'scale(60%)',
@@ -375,7 +377,7 @@ export default {
     },
     RaButton: {
       button: {
-        margin: '0 5px 10px 5px',
+        margin: '0 5px 0 5px',
       },
     },
     RaPaginationActions: {
