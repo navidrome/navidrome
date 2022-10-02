@@ -386,6 +386,11 @@ export default {
         margin: '0 5px 0 5px',
       },
     },
+    RaLink: {
+      link: {
+        color: '#81A1C1',
+      },
+    },
     RaPaginationActions: {
       currentPageButton: {
         border: '2px solid rgba(255,255,255,0.25)',
