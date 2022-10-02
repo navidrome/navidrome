@@ -57,6 +57,7 @@ type configOptions struct {
 	PasswordEncryptionKey  string
 	ReverseProxyUserHeader string
 	ReverseProxyWhitelist  string
+	Prometheus             prometheusOptions
 
 	Scanner scannerOptions
 
@@ -110,6 +111,11 @@ type ldapOptions struct {
 type listenBrainzOptions struct {
 	Enabled bool
 	BaseURL string
+}
+
+type prometheusOptions struct {
+	Enabled     bool
+	MetricsPath string
 }
 
 var (
@@ -254,6 +260,9 @@ func init() {
 
 	viper.SetDefault("reverseproxyuserheader", "Remote-User")
 	viper.SetDefault("reverseproxywhitelist", "")
+
+	viper.SetDefault("prometheus.enabled", false)
+	viper.SetDefault("prometheus.metricspath", "/metrics")
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
