@@ -2,7 +2,6 @@ package taglib
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -66,11 +65,11 @@ var _ = Describe("Parser", func() {
 
 			sourceFilename := "tests/fixtures/test.mp3"
 			destFilename := "tmp/test.mp3"
-			input, errorReadFile := ioutil.ReadFile(sourceFilename)
+			input, errorReadFile := os.ReadFile(sourceFilename)
 			if errorReadFile != nil {
 				return
 			}
-			errorWriteFile := ioutil.WriteFile(destFilename, input, 0222)
+			errorWriteFile := os.WriteFile(destFilename, input, 0222)
 			if errorWriteFile != nil {
 				return
 			} else {
