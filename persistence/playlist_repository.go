@@ -32,7 +32,8 @@ func NewPlaylistRepository(ctx context.Context, o orm.QueryExecutor) model.Playl
 	r.ormer = o
 	r.tableName = "playlist"
 	r.filterMappings = map[string]filterFunc{
-		"q": playlistFilter,
+		"q":     playlistFilter,
+		"smart": smartPlaylistFilter,
 	}
 	return r
 }
@@ -42,6 +43,10 @@ func playlistFilter(field string, value interface{}) Sqlizer {
 		substringFilter("playlist.name", value),
 		substringFilter("playlist.comment", value),
 	}
+}
+
+func smartPlaylistFilter(field string, value interface{}) Sqlizer {
+	return Eq{"rules": ""}
 }
 
 func (r *playlistRepository) userFilter() Sqlizer {
