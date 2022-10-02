@@ -13,14 +13,14 @@ var _ = Describe("Operators", func() {
 	rangeStart := Time(time.Date(2021, 10, 01, 0, 0, 0, 0, time.Local))
 	rangeEnd := Time(time.Date(2021, 11, 01, 0, 0, 0, 0, time.Local))
 	DescribeTable("ToSQL",
-		func(op Expression, expectedSql string, expectedArgs ...interface{}) {
+		func(op Expression, expectedSql string, expectedArgs ...any) {
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(sql).To(gomega.Equal(expectedSql))
-			gomega.Expect(args).To(gomega.ConsistOf(expectedArgs))
+			gomega.Expect(args).To(gomega.ConsistOf(expectedArgs...))
 		},
 		Entry("is [string]", Is{"title": "Low Rider"}, "media_file.title = ?", "Low Rider"),
-		Entry("is [bool]", Is{"loved": true}, "annotation.starred = ?", true),
+		Entry("is [bool]", Is{"loved": true}, "COALESCE(annotation.starred, false) = ?", true),
 		Entry("isNot", IsNot{"title": "Low Rider"}, "media_file.title <> ?", "Low Rider"),
 		Entry("gt", Gt{"playCount": 10}, "COALESCE(annotation.play_count, 0) > ?", 10),
 		Entry("lt", Lt{"playCount": 10}, "COALESCE(annotation.play_count, 0) < ?", 10),

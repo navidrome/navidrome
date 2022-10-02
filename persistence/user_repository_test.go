@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -95,7 +95,8 @@ var _ = Describe("UserRepository", func() {
 				user := *loggedUser
 				user.NewPassword = "new"
 				err := validatePasswordChange(&user, loggedUser)
-				verr := err.(*rest.ValidationError)
+				var verr *rest.ValidationError
+				errors.As(err, &verr)
 				Expect(verr.Errors).To(HaveLen(1))
 				Expect(verr.Errors).To(HaveKeyWithValue("currentPassword", "ra.validation.required"))
 			})
@@ -104,7 +105,8 @@ var _ = Describe("UserRepository", func() {
 				user := *loggedUser
 				user.CurrentPassword = "abc123"
 				err := validatePasswordChange(&user, loggedUser)
-				verr := err.(*rest.ValidationError)
+				var verr *rest.ValidationError
+				errors.As(err, &verr)
 				Expect(verr.Errors).To(HaveLen(1))
 				Expect(verr.Errors).To(HaveKeyWithValue("password", "ra.validation.required"))
 			})
@@ -114,7 +116,8 @@ var _ = Describe("UserRepository", func() {
 				user.CurrentPassword = "current"
 				user.NewPassword = "new"
 				err := validatePasswordChange(&user, loggedUser)
-				verr := err.(*rest.ValidationError)
+				var verr *rest.ValidationError
+				errors.As(err, &verr)
 				Expect(verr.Errors).To(HaveLen(1))
 				Expect(verr.Errors).To(HaveKeyWithValue("currentPassword", "ra.validation.passwordDoesNotMatch"))
 			})
@@ -136,7 +139,8 @@ var _ = Describe("UserRepository", func() {
 				user := *loggedUser
 				user.NewPassword = "new"
 				err := validatePasswordChange(&user, loggedUser)
-				verr := err.(*rest.ValidationError)
+				var verr *rest.ValidationError
+				errors.As(err, &verr)
 				Expect(verr.Errors).To(HaveLen(1))
 				Expect(verr.Errors).To(HaveKeyWithValue("currentPassword", "ra.validation.required"))
 			})
@@ -145,7 +149,8 @@ var _ = Describe("UserRepository", func() {
 				user := *loggedUser
 				user.CurrentPassword = "abc123"
 				err := validatePasswordChange(&user, loggedUser)
-				verr := err.(*rest.ValidationError)
+				var verr *rest.ValidationError
+				errors.As(err, &verr)
 				Expect(verr.Errors).To(HaveLen(1))
 				Expect(verr.Errors).To(HaveKeyWithValue("password", "ra.validation.required"))
 			})
@@ -155,7 +160,8 @@ var _ = Describe("UserRepository", func() {
 				user.CurrentPassword = "current"
 				user.NewPassword = "new"
 				err := validatePasswordChange(&user, loggedUser)
-				verr := err.(*rest.ValidationError)
+				var verr *rest.ValidationError
+				errors.As(err, &verr)
 				Expect(verr.Errors).To(HaveLen(1))
 				Expect(verr.Errors).To(HaveKeyWithValue("currentPassword", "ra.validation.passwordDoesNotMatch"))
 			})
@@ -186,8 +192,11 @@ var _ = Describe("UserRepository", func() {
 		It("returns ValidationError if username already exists", func() {
 			var newUser = &model.User{ID: "2", UserName: "johndoe"}
 			err := validateUsernameUnique(repo, newUser)
-			Expect(err).To(BeAssignableToTypeOf(&rest.ValidationError{}))
-			Expect(err.(*rest.ValidationError).Errors).To(HaveKeyWithValue("userName", "ra.validation.unique"))
+			var verr *rest.ValidationError
+			isValidationError := errors.As(err, &verr)
+
+			Expect(isValidationError).To(BeTrue())
+			Expect(verr.Errors).To(HaveKeyWithValue("userName", "ra.validation.unique"))
 		})
 		It("returns generic error if repository call fails", func() {
 			repo.Error = errors.New("fake error")

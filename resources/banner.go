@@ -14,6 +14,6 @@ func loadBanner() string {
 }
 
 func Banner() string {
-	version := "Version: " + consts.Version()
+	version := "Version: " + consts.Version
 	return fmt.Sprintf("%s\n%52s\n", loadBanner(), version)
 }

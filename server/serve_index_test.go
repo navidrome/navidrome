@@ -159,6 +159,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("defaultTheme", "Light"))
 	})
 
+	It("sets the defaultLanguage", func() {
+		conf.Server.DefaultLanguage = "PT"
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("defaultLanguage", "pt"))
+	})
+
 	It("sets the enableCoverAnimation", func() {
 		conf.Server.EnableCoverAnimation = true
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -188,7 +199,7 @@ var _ = Describe("serveIndex", func() {
 		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("version", consts.Version()))
+		Expect(config).To(HaveKeyWithValue("version", consts.Version))
 	})
 
 	It("sets the losslessFormats", func() {

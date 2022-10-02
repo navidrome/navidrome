@@ -45,6 +45,7 @@ type MediaFile struct {
 	Bpm                  int       `structs:"bpm" json:"bpm,omitempty"`
 	CatalogNum           string    `structs:"catalog_num" json:"catalogNum,omitempty"`
 	MbzTrackID           string    `structs:"mbz_track_id" json:"mbzTrackId,omitempty"         orm:"column(mbz_track_id)"`
+	MbzReleaseTrackID    string    `structs:"mbz_release_track_id" json:"mbzReleaseTrackId,omitempty" orm:"column(mbz_release_track_id)"`
 	MbzAlbumID           string    `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"         orm:"column(mbz_album_id)"`
 	MbzArtistID          string    `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"        orm:"column(mbz_artist_id)"`
 	MbzAlbumArtistID     string    `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`

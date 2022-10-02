@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -112,13 +113,13 @@ func clientUniqueIdAdder(next http.Handler) http.Handler {
 				MaxAge:   consts.CookieExpiry,
 				HttpOnly: true,
 				Secure:   true,
-				SameSite: http.SameSiteNoneMode,
+				SameSite: http.SameSiteStrictMode,
 				Path:     "/",
 			}
 			http.SetCookie(w, c)
 		} else {
 			c, err := r.Cookie(consts.UIClientUniqueIDHeader)
-			if err != http.ErrNoCookie {
+			if !errors.Is(err, http.ErrNoCookie) {
 				clientUniqueId = c.Value
 			}
 		}

@@ -27,7 +27,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			return
 		}
 		appConfig := map[string]interface{}{
-			"version":                 consts.Version(),
+			"version":                 consts.Version,
 			"firstTime":               firstTime,
 			"variousArtistsId":        consts.VariousArtistsID,
 			"baseURL":                 utils.SanitizeText(strings.TrimSuffix(conf.Server.BaseURL, "/")),
@@ -38,6 +38,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"enableFavourites":        conf.Server.EnableFavourites,
 			"enableStarRating":        conf.Server.EnableStarRating,
 			"defaultTheme":            conf.Server.DefaultTheme,
+			"defaultLanguage":         strings.ToLower(conf.Server.DefaultLanguage),
 			"enableCoverAnimation":    conf.Server.EnableCoverAnimation,
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
@@ -63,7 +64,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 		}
 
 		log.Debug("UI configuration", "appConfig", appConfig)
-		version := consts.Version()
+		version := consts.Version
 		if version != "dev" {
 			version = "v" + version
 		}

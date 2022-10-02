@@ -1,13 +1,18 @@
 run:
-  go: '1.18'
+  go: "1.19"
 
 linters:
   enable:
+    - asasalint
+    - asciicheck
+    - bidichk
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
+    - durationcheck
     - errcheck
+    - errorlint
+    - exportloopref
     - gocyclo
     - goprintffuncname
     - gosec
@@ -15,13 +20,12 @@ linters:
     - govet
     - ineffassign
     - misspell
+    - nilerr
     - rowserrcheck
     - staticcheck
-    - structcheck
     - typecheck
     - unconvert
     - unused
-    - varcheck
     - whitespace
 
 issues:

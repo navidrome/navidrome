@@ -56,17 +56,17 @@ const (
 // Load all directories from the DB
 // Traverse the music folder, collecting each subfolder's ModTime (self or any non-dir children, whichever is newer)
 // For each changed folder: get all files from DB whose path starts with the changed folder (non-recursively), check each file:
-//	    if file in folder is newer, update the one in DB
-//      if file in folder does not exists in DB, add it
-// 	    for each file in the DB that is not found in the folder, delete it from DB
+// - if file in folder is newer, update the one in DB
+// - if file in folder does not exists in DB, add it
+// - for each file in the DB that is not found in the folder, delete it from DB
 // Compare directories in the fs with the ones in the DB to find deleted folders
 // For each deleted folder: delete all files from DB whose path starts with the delete folder path (non-recursively)
 // Create new albums/artists, update counters:
-//      collect all albumIDs and artistIDs from previous steps
-//	    refresh the collected albums and artists with the metadata from the mediafiles
+// - collect all albumIDs and artistIDs from previous steps
+// - refresh the collected albums and artists with the metadata from the mediafiles
 // For each changed folder, process playlists:
-//      If the playlist is not in the DB, import it, setting sync = true
-//      If the playlist is in the DB and sync == true, import it, or else skip it
+// - If the playlist is not in the DB, import it, setting sync = true
+// - If the playlist is in the DB and sync == true, import it, or else skip it
 // Delete all empty albums, delete all empty artists, clean-up playlists
 func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) (int64, error) {
 	ctx = s.withAdminUser(ctx)

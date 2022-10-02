@@ -2,9 +2,10 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 )
@@ -14,7 +15,7 @@ type playerRepository struct {
 	sqlRestful
 }
 
-func NewPlayerRepository(ctx context.Context, o orm.Ormer) model.PlayerRepository {
+func NewPlayerRepository(ctx context.Context, o orm.QueryExecutor) model.PlayerRepository {
 	r := &playerRepository{}
 	r.ctx = ctx
 	r.ormer = o
@@ -102,7 +103,7 @@ func (r *playerRepository) Save(entity interface{}) (string, error) {
 		return "", rest.ErrPermissionDenied
 	}
 	id, err := r.put(t.ID, t)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return "", rest.ErrNotFound
 	}
 	return id, err
@@ -115,7 +116,7 @@ func (r *playerRepository) Update(id string, entity interface{}, cols ...string)
 		return rest.ErrPermissionDenied
 	}
 	_, err := r.put(id, t, cols...)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err
@@ -124,7 +125,7 @@ func (r *playerRepository) Update(id string, entity interface{}, cols ...string)
 func (r *playerRepository) Delete(id string) error {
 	filter := r.addRestriction(And{Eq{"id": id}})
 	err := r.delete(filter)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err

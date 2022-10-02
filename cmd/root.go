@@ -34,7 +34,7 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 		Run: func(cmd *cobra.Command, args []string) {
 			runNavidrome()
 		},
-		Version: consts.Version(),
+		Version: consts.Version,
 	}
 )
 

@@ -65,7 +65,7 @@ type broker struct {
 }
 
 func GetBroker() Broker {
-	instance := singleton.Get(&broker{}, func() interface{} {
+	return singleton.GetInstance(func() *broker {
 		// Instantiate a broker
 		broker := &broker{
 			publish:       make(messageChan, 2),
@@ -77,8 +77,6 @@ func GetBroker() Broker {
 		go broker.listen()
 		return broker
 	})
-
-	return instance.(*broker)
 }
 
 func (b *broker) SendMessage(ctx context.Context, evt Event) {
@@ -147,7 +145,7 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Trace(ctx, "Sending event to client", "event", *event, "client", c.String())
-		if err := writeEvent(w, *event, writeTimeOut); err == errWriteTimeOut {
+		if err := writeEvent(w, *event, writeTimeOut); errors.Is(err, errWriteTimeOut) {
 			log.Debug(ctx, "Timeout sending event to client", "event", *event, "client", c.String())
 			return
 		}
@@ -214,7 +212,7 @@ func (b *broker) listen() {
 
 			// Send a serverStart event to new client
 			msg := b.prepareMessage(context.Background(),
-				&ServerStart{StartTime: consts.ServerStart, Version: consts.Version()})
+				&ServerStart{StartTime: consts.ServerStart, Version: consts.Version})
 			c.diode.put(msg)
 
 		case c := <-b.unsubscribing:
