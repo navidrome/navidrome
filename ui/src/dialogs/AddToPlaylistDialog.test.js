@@ -45,7 +45,7 @@ const createTestUtils = (mockDataProvider) =>
                 data: mockIndexedData,
                 list: {
                   cachedRequests: {
-                    '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{}}':
+                    '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{"smart":false}}':
                       {
                         ids: ['sample-id1', 'sample-id2'],
                         total: 2,
