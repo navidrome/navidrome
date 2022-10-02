@@ -13,6 +13,8 @@ import (
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -83,6 +85,9 @@ func startServer() (func() error, func(err error)) {
 			}
 			if conf.Server.ListenBrainz.Enabled {
 				a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
+			}
+			if conf.Server.Prometheus.Enabled {
+				a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
 			}
 			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
 		}, func(err error) {
@@ -191,12 +196,19 @@ func init() {
 	rootCmd.Flags().String("imagecachesize", viper.GetString("imagecachesize"), "size of image (art work) cache. set to 0 to disable cache")
 	rootCmd.Flags().Bool("autoimportplaylists", viper.GetBool("autoimportplaylists"), "enable/disable .m3u playlist auto-import`")
 
+	rootCmd.Flags().Bool("prometheus.enabled", viper.GetBool("prometheus.enabled"), "enable/disable prometheus metrics endpoint`")
+	rootCmd.Flags().String("prometheus.metricspath", viper.GetString("prometheus.metricspath"), "http endpoint for prometheus metrics")
+
 	_ = viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))
 	_ = viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
 	_ = viper.BindPFlag("sessiontimeout", rootCmd.Flags().Lookup("sessiontimeout"))
 	_ = viper.BindPFlag("scaninterval", rootCmd.Flags().Lookup("scaninterval"))
 	_ = viper.BindPFlag("baseurl", rootCmd.Flags().Lookup("baseurl"))
 	_ = viper.BindPFlag("uiloginbackgroundurl", rootCmd.Flags().Lookup("uiloginbackgroundurl"))
+
+	_ = viper.BindPFlag("prometheus.enabled", rootCmd.Flags().Lookup("prometheus.enabled"))
+	_ = viper.BindPFlag("prometheus.metricspath", rootCmd.Flags().Lookup("prometheus.metricspath"))
+
 	_ = viper.BindPFlag("enabletranscodingconfig", rootCmd.Flags().Lookup("enabletranscodingconfig"))
 	_ = viper.BindPFlag("transcodingcachesize", rootCmd.Flags().Lookup("transcodingcachesize"))
 	_ = viper.BindPFlag("imagecachesize", rootCmd.Flags().Lookup("imagecachesize"))
