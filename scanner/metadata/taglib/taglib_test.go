@@ -2,7 +2,7 @@ package taglib
 
 import (
 	"errors"
-	"ioutil"
+	"io/ioutil"
 	"os"
 
 	. "github.com/onsi/ginkgo/v2"
