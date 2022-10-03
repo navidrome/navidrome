@@ -22,7 +22,7 @@
     "react": "^17.0.2",
     "react-admin": "^3.18.3",
     "react-dnd": "^14.0.4",
-    "react-dnd-html5-backend": "^14.0.2",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^17.0.2",
     "react-drag-listview": "^0.1.8",
     "react-ga": "^3.3.0",
