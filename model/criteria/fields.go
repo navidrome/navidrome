@@ -1,9 +1,7 @@
 package criteria
 
 import (
-	"fmt"
 	"strings"
-	"time"
 
 	"github.com/navidrome/navidrome/log"
 )
@@ -61,12 +59,4 @@ func mapFields(expr map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return m
-}
-
-type Time time.Time
-
-func (t Time) MarshalJSON() ([]byte, error) {
-	//do your serializing here
-	stamp := fmt.Sprintf("\"%s\"", time.Time(t).Format("2006-01-02"))
-	return []byte(stamp), nil
 }

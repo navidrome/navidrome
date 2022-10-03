@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type unmarshalConjunctionType []Expression
@@ -114,4 +115,11 @@ func marshalConjunction(name string, conj []Expression) ([]byte, error) {
 		aux.All = conj
 	}
 	return json.Marshal(aux)
+}
+
+type date time.Time
+
+func (t date) MarshalJSON() ([]byte, error) {
+	stamp := fmt.Sprintf(`"%s"`, time.Time(t).Format("2006-01-02"))
+	return []byte(stamp), nil
 }
