@@ -12,7 +12,7 @@
     "connected-react-router": "^6.9.1",
     "deepmerge": "^4.2.2",
     "history": "^4.10.1",
-    "inflection": "^1.13.1",
+    "inflection": "^1.13.4",
     "jwt-decode": "^3.1.2",
     "lodash.pick": "^4.4.0",
     "lodash.throttle": "^4.1.1",
