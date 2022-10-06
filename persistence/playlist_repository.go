@@ -38,15 +38,18 @@ func NewPlaylistRepository(ctx context.Context, o orm.QueryExecutor) model.Playl
 	return r
 }
 
-func playlistFilter(field string, value interface{}) Sqlizer {
+func playlistFilter(_ string, value interface{}) Sqlizer {
 	return Or{
 		substringFilter("playlist.name", value),
 		substringFilter("playlist.comment", value),
 	}
 }
 
-func smartPlaylistFilter(field string, value interface{}) Sqlizer {
-	return Eq{"rules": ""}
+func smartPlaylistFilter(string, interface{}) Sqlizer {
+	return Or{
+		Eq{"rules": ""},
+		Eq{"rules": nil},
+	}
 }
 
 func (r *playlistRepository) userFilter() Sqlizer {
