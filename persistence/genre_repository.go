@@ -3,6 +3,8 @@ package persistence
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
@@ -36,9 +38,17 @@ func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error
 }
 
 func (r *genreRepository) Put(m *model.Genre) error {
-	id, err := r.put(m.ID, m)
-	m.ID = id
-	return err
+	if m.ID == "" {
+		m.ID = uuid.NewString()
+	}
+
+	return r.ormer.Raw(`
+INSERT INTO genre(id, name)
+VALUES(?, ?)
+ON CONFLICT (name) DO UPDATE
+	SET name=excluded.name
+RETURNING id
+`, m.ID, m.Name).QueryRow(&m.ID)
 }
 
 func (r *genreRepository) Count(options ...rest.QueryOptions) (int64, error) {
