@@ -54,7 +54,10 @@ const Linkify = ({ text, ...rest }) => {
     // Push remaining text
     if (text.length > lastIndex) {
       elements.push(
-        <span dangerouslySetInnerHTML={{ __html: text.substring(lastIndex) }} />
+        <span
+          key={'last-span-key'}
+          dangerouslySetInnerHTML={{ __html: text.substring(lastIndex) }}
+        />
       )
     }
 
