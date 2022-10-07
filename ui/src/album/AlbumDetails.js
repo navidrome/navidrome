@@ -33,6 +33,7 @@ import {
 import config from '../config'
 import { intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
+import AnchorMe from '../common/AnchorMe'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -116,7 +117,7 @@ const AlbumComment = ({ record }) => {
   const formatted = useMemo(() => {
     return lines.map((line, idx) => (
       <span key={record.id + '-comment-' + idx}>
-        <span dangerouslySetInnerHTML={{ __html: line }} />
+        <AnchorMe text={line} />
         <br />
       </span>
     ))
