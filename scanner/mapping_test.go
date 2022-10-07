@@ -34,7 +34,6 @@ var _ = Describe("mapping", func() {
 			ctx = context.Background()
 			ds := &tests.MockDataStore{}
 			gr = ds.Genre(ctx)
-			gr = newCachedGenreRepository(ctx, gr)
 			mapper = newMediaFileMapper("/", gr)
 		})
 
