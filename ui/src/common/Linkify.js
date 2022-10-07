@@ -13,7 +13,7 @@ const useStyles = makeStyles(
   { name: 'RaLink' }
 )
 
-const AnchorMe = ({ text, ...rest }) => {
+const Linkify = ({ text, ...rest }) => {
   const classes = useStyles()
   const linkify = useCallback((text) => {
     const urlRegex =
@@ -66,8 +66,8 @@ const AnchorMe = ({ text, ...rest }) => {
   return <>{parsedText}</>
 }
 
-AnchorMe.propTypes = {
+Linkify.propTypes = {
   text: PropTypes.string,
 }
 
-export default React.memo(AnchorMe)
+export default React.memo(Linkify)
