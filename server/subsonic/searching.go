@@ -137,8 +137,9 @@ func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*
 	response := newResponse()
 	searchResult3 := &responses.SearchResult3{}
 	searchResult3.Artist = make([]responses.ArtistID3, len(as))
+	baseUrl := getBaseArtistImageUrl(r)
 	for i, artist := range as {
-		searchResult3.Artist[i] = toArtistID3(ctx, artist)
+		searchResult3.Artist[i] = toArtistID3(ctx, artist, baseUrl)
 	}
 	searchResult3.Album = childrenFromAlbums(ctx, als)
 	searchResult3.Song = childrenFromMediaFiles(ctx, mfs)

@@ -235,6 +235,13 @@ func (r *albumRepository) refresh(ids ...string) error {
 		}
 
 		al.AlbumArtistID, al.AlbumArtist = getAlbumArtist(al)
+
+		if al.AlbumArtistID != consts.VariousArtistsID && conf.Server.ArtistArtPriority != "" {
+			if path := getAlbumArtistImageFromPath(al.Path); path != "" {
+				al.ArtistImagePath = path
+			}
+		}
+
 		al.MinYear = getMinYear(al.Years)
 		al.MbzAlbumID = getMostFrequentMbzID(r.ctx, al.MbzAlbumID, r.tableName, al.Name)
 		al.Comment = getComment(al.Comments, zwsp)
@@ -337,6 +344,34 @@ func getCoverFromPath(mediaPath string, embeddedPath string) string {
 			continue
 		}
 
+		for _, name := range names {
+			match, _ := filepath.Match(pat, strings.ToLower(name))
+			if match && utils.IsImageFile(name) {
+				return filepath.Join(filepath.Dir(mediaPath), name)
+			}
+		}
+	}
+
+	return ""
+}
+
+// getAlbumArtistImageFromPath accepts a path to a file, and returns a path to an artist image from the
+// file's directory (as configured with CoverArtPriority). If no artist image file is found, among
+// available choices, or an error occurs, an empty string is returned.
+func getAlbumArtistImageFromPath(mediaPath string) string {
+	n, err := os.Open(filepath.Dir(mediaPath))
+	if err != nil {
+		return ""
+	}
+
+	defer n.Close()
+	names, err := n.Readdirnames(-1)
+	if err != nil {
+		return ""
+	}
+
+	for _, p := range strings.Split(conf.Server.ArtistArtPriority, ",") {
+		pat := strings.ToLower(strings.TrimSpace(p))
 		for _, name := range names {
 			match, _ := filepath.Match(pat, strings.ToLower(name))
 			if match && utils.IsImageFile(name) {

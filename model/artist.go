@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type Artist struct {
 	Annotations `structs:"-"`
@@ -19,12 +22,18 @@ type Artist struct {
 	SmallImageUrl         string    `structs:"small_image_url" json:"smallImageUrl,omitempty"`
 	MediumImageUrl        string    `structs:"medium_image_url" json:"mediumImageUrl,omitempty"`
 	LargeImageUrl         string    `structs:"large_image_url" json:"largeImageUrl,omitempty"`
+	ImagePath             string    `structs:"image_path" json:"imagePath"`
+	ImageId               string    `structs:"image_id" json:"imageId"`
 	ExternalUrl           string    `structs:"external_url" json:"externalUrl,omitempty"      orm:"column(external_url)"`
 	SimilarArtists        Artists   `structs:"-"  json:"-"   orm:"-"`
 	ExternalInfoUpdatedAt time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt"`
+	UpdatedAt             time.Time `structs:"updated_at" json:"updatedAt"`
 }
 
-func (a Artist) ArtistImageUrl() string {
+func (a Artist) ArtistImageUrl(baseUrl string) string {
+	if a.ImagePath != "" && baseUrl != "" {
+		return fmt.Sprintf("%s&id=%s&size=300", baseUrl, a.ImageId)
+	}
 	if a.MediumImageUrl != "" {
 		return a.MediumImageUrl
 	}

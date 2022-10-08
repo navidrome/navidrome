@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -72,21 +75,21 @@ func getUser(ctx context.Context) model.User {
 	return model.User{}
 }
 
-func toArtists(ctx context.Context, artists model.Artists) []responses.Artist {
+func toArtists(ctx context.Context, artists model.Artists, baseUrl string) []responses.Artist {
 	as := make([]responses.Artist, len(artists))
 	for i, artist := range artists {
-		as[i] = toArtist(ctx, artist)
+		as[i] = toArtist(ctx, artist, baseUrl)
 	}
 	return as
 }
 
-func toArtist(ctx context.Context, a model.Artist) responses.Artist {
+func toArtist(ctx context.Context, a model.Artist, baseUrl string) responses.Artist {
 	artist := responses.Artist{
 		Id:             a.ID,
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
 		UserRating:     a.Rating,
-		ArtistImageUrl: a.ArtistImageUrl(),
+		ArtistImageUrl: a.ArtistImageUrl(baseUrl),
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
@@ -94,18 +97,38 @@ func toArtist(ctx context.Context, a model.Artist) responses.Artist {
 	return artist
 }
 
-func toArtistID3(ctx context.Context, a model.Artist) responses.ArtistID3 {
+func toArtistID3(ctx context.Context, a model.Artist, baseUrl string) responses.ArtistID3 {
 	artist := responses.ArtistID3{
 		Id:             a.ID,
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
-		ArtistImageUrl: a.ArtistImageUrl(),
+		ArtistImageUrl: a.ArtistImageUrl(baseUrl),
 		UserRating:     a.Rating,
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
 	}
 	return artist
+}
+
+func getBaseArtistImageUrl(r *http.Request) string {
+	if conf.Server.BaseDomain == "" {
+		return ""
+	}
+
+	params := url.Values{}
+	params.Add("_", time.Now().UTC().Format(time.RFC3339Nano))
+	params.Add("c", utils.ParamString(r, "c"))
+	params.Add("f", "json")
+	params.Add("s", utils.ParamString(r, "s"))
+	params.Add("t", utils.ParamString(r, "t"))
+	params.Add("u", utils.ParamString(r, "u"))
+	params.Add("v", utils.ParamString(r, "v"))
+	return fmt.Sprintf("%s%s/rest/getCoverArt?%s",
+		conf.Server.BaseDomain,
+		conf.Server.BaseURL,
+		params.Encode(),
+	)
 }
 
 func toGenres(genres model.Genres) *responses.Genres {

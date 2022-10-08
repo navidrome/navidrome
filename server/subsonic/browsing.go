@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -37,7 +38,7 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 	return response, nil
 }
 
-func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId int, ifModifiedSince time.Time, baseUrl string) (*responses.Indexes, error) {
 	folder, err := c.ds.MediaFolder(ctx).Get(int32(mediaFolderId))
 	if err != nil {
 		log.Error(ctx, "Error retrieving MediaFolder", "id", mediaFolderId, err)
@@ -69,7 +70,7 @@ func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId i
 	res.Index = make([]responses.Index, len(indexes))
 	for i, idx := range indexes {
 		res.Index[i].Name = idx.ID
-		res.Index[i].Artists = toArtists(ctx, idx.Artists)
+		res.Index[i].Artists = toArtists(ctx, idx.Artists, baseUrl)
 	}
 	return res, nil
 }
@@ -78,7 +79,7 @@ func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) 
 	musicFolderId := utils.ParamInt(r, "musicFolderId", 0)
 	ifModifiedSince := utils.ParamTime(r, "ifModifiedSince", time.Time{})
 
-	res, err := c.getArtistIndex(r.Context(), musicFolderId, ifModifiedSince)
+	res, err := c.getArtistIndex(r.Context(), musicFolderId, ifModifiedSince, getBaseArtistImageUrl(r))
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +91,7 @@ func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) 
 
 func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	musicFolderId := utils.ParamInt(r, "musicFolderId", 0)
-	res, err := c.getArtistIndex(r.Context(), musicFolderId, time.Time{})
+	res, err := c.getArtistIndex(r.Context(), musicFolderId, time.Time{}, getBaseArtistImageUrl(r))
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +158,7 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 	}
 
 	response := newResponse()
-	response.ArtistWithAlbumsID3 = c.buildArtist(ctx, artist, albums)
+	response.ArtistWithAlbumsID3 = c.buildArtist(ctx, artist, albums, getBaseArtistImageUrl(r))
 	return response, nil
 }
 
@@ -241,13 +242,25 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
 	response.ArtistInfo.Biography = artist.Biography
-	response.ArtistInfo.SmallImageUrl = artist.SmallImageUrl
-	response.ArtistInfo.MediumImageUrl = artist.MediumImageUrl
-	response.ArtistInfo.LargeImageUrl = artist.LargeImageUrl
+
+	baseUrl := getBaseArtistImageUrl(r)
+
+	if artist.ImageId == "" || conf.Server.BaseDomain == "" {
+		response.ArtistInfo.SmallImageUrl = artist.SmallImageUrl
+		response.ArtistInfo.MediumImageUrl = artist.MediumImageUrl
+		response.ArtistInfo.LargeImageUrl = artist.LargeImageUrl
+	} else {
+		artistUrl := fmt.Sprintf("%s&id=%s", baseUrl, artist.ImageId)
+
+		response.ArtistInfo.SmallImageUrl = artistUrl + "&size=156"
+		response.ArtistInfo.MediumImageUrl = artistUrl + "&size=300"
+		response.ArtistInfo.LargeImageUrl = artistUrl
+	}
+
 	response.ArtistInfo.LastFmUrl = artist.ExternalUrl
 	response.ArtistInfo.MusicBrainzID = artist.MbzArtistID
 	for _, s := range artist.SimilarArtists {
-		similar := toArtist(ctx, s)
+		similar := toArtist(ctx, s, baseUrl)
 		response.ArtistInfo.SimilarArtist = append(response.ArtistInfo.SimilarArtist, similar)
 	}
 	return response, nil
@@ -348,9 +361,9 @@ func (c *BrowsingController) buildArtistDirectory(ctx context.Context, artist *m
 	return dir, nil
 }
 
-func (c *BrowsingController) buildArtist(ctx context.Context, artist *model.Artist, albums model.Albums) *responses.ArtistWithAlbumsID3 {
+func (c *BrowsingController) buildArtist(ctx context.Context, artist *model.Artist, albums model.Albums, baseUrl string) *responses.ArtistWithAlbumsID3 {
 	a := &responses.ArtistWithAlbumsID3{}
-	a.ArtistID3 = toArtistID3(ctx, *artist)
+	a.ArtistID3 = toArtistID3(ctx, *artist, baseUrl)
 	a.Album = childrenFromAlbums(ctx, albums)
 	return a
 }

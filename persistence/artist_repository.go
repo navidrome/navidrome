@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
@@ -190,12 +191,15 @@ func (r *artistRepository) Refresh(ids ...string) error {
 func (r *artistRepository) refresh(ids ...string) error {
 	type refreshArtist struct {
 		model.Artist
-		CurrentId string
-		GenreIds  string
+		CurrentId    string
+		GenreIds     string
+		MaxUpdatedAt string
 	}
 	var artists []refreshArtist
 	sel := Select("f.album_artist_id as id", "f.album_artist as name", "count(*) as album_count", "a.id as current_id",
 		"group_concat(f.mbz_album_artist_id , ' ') as mbz_artist_id",
+		"MAX(f.artist_image_path) as image_path",
+		"max(f.updated_at) as max_updated_at",
 		"f.sort_album_artist_name as sort_artist_name", "f.order_album_artist_name as order_artist_name",
 		"sum(f.song_count) as song_count", "sum(f.size) as size",
 		"alg.genre_ids").
@@ -221,6 +225,14 @@ func (r *artistRepository) refresh(ids ...string) error {
 		}
 		ar.MbzArtistID = getMostFrequentMbzID(r.ctx, ar.MbzArtistID, r.tableName, ar.Name)
 		ar.Genres = getGenres(ar.GenreIds)
+
+		if ar.ImagePath != "" {
+			ar.ImageId = "ar-" + ar.ID
+		}
+		if ar.UpdatedAt, err = time.Parse(time.RFC3339Nano, ar.MaxUpdatedAt); err != nil {
+			ar.UpdatedAt = time.Now()
+		}
+
 		err := r.Put(&ar.Artist)
 		if err != nil {
 			return err

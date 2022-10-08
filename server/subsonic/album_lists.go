@@ -137,7 +137,7 @@ func (c *AlbumListController) GetStarred(w http.ResponseWriter, r *http.Request)
 
 	response := newResponse()
 	response.Starred = &responses.Starred{}
-	response.Starred.Artist = toArtists(ctx, artists)
+	response.Starred.Artist = toArtists(ctx, artists, getBaseArtistImageUrl(r))
 	response.Starred.Album = childrenFromAlbums(r.Context(), albums)
 	response.Starred.Song = childrenFromMediaFiles(r.Context(), mediaFiles)
 	return response, nil

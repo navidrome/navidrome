@@ -99,6 +99,20 @@ func (a *artwork) getImagePath(ctx context.Context, id string) (path string, las
 		return al.CoverArtPath, al.UpdatedAt, err
 	}
 
+	if strings.HasPrefix(id, "ar-") {
+		log.Trace(ctx, "Looking for artist image", "id", id)
+		id = strings.TrimPrefix(id, "ar-")
+		var ar *model.Artist
+		ar, err = a.ds.Artist(ctx).Get(id)
+		if err != nil {
+			return
+		}
+		if ar.ImagePath == "" {
+			err = model.ErrNotFound
+		}
+		return ar.ImagePath, ar.UpdatedAt, err
+	}
+
 	log.Trace(ctx, "Looking for media file art", "id", id)
 
 	// Check if id is a mediaFile id

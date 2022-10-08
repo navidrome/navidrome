@@ -9,6 +9,7 @@ type Album struct {
 	Name                 string    `structs:"name" json:"name"`
 	CoverArtPath         string    `structs:"cover_art_path" json:"coverArtPath"`
 	CoverArtId           string    `structs:"cover_art_id" json:"coverArtId"`
+	ArtistImagePath      string    `structs:"artist_image_path" json:"artistImagePath"`
 	ArtistID             string    `structs:"artist_id" json:"artistId"      orm:"column(artist_id)"`
 	Artist               string    `structs:"artist" json:"artist"`
 	AlbumArtistID        string    `structs:"album_artist_id" json:"albumArtistId" orm:"column(album_artist_id)"`

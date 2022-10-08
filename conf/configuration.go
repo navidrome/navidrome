@@ -26,6 +26,7 @@ type configOptions struct {
 	ScanSchedule            string
 	SessionTimeout          time.Duration
 	BaseURL                 string
+	BaseDomain              string
 	UILoginBackgroundURL    string
 	EnableTranscodingConfig bool
 	EnableDownloads         bool
@@ -42,6 +43,7 @@ type configOptions struct {
 	ProbeCommand           string
 	CoverArtPriority       string
 	CoverJpegQuality       int
+	ArtistArtPriority      string
 	UIWelcomeMessage       string
 	EnableGravatar         bool
 	EnableFavourites       bool
@@ -216,6 +218,7 @@ func init() {
 	viper.SetDefault("scaninterval", -1)
 	viper.SetDefault("scanschedule", "@every 1m")
 	viper.SetDefault("baseurl", "")
+	viper.SetDefault("basedomain", "")
 	viper.SetDefault("uiloginbackgroundurl", consts.DefaultUILoginBackgroundURL)
 	viper.SetDefault("enabletranscodingconfig", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
@@ -233,6 +236,8 @@ func init() {
 	viper.SetDefault("probecommand", "ffmpeg %s -f ffmetadata")
 	viper.SetDefault("coverartpriority", "embedded, cover.*, folder.*, front.*")
 	viper.SetDefault("coverjpegquality", 75)
+	viper.SetDefault("artistartpriority", "artist.*")
+	viper.SetDefault("artistjpegquality", 75)
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)

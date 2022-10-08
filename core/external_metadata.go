@@ -122,7 +122,11 @@ func (e *externalMetadata) refreshArtistInfo(ctx context.Context, artist *auxArt
 	callParallel([]func(){
 		func() { e.callGetBiography(ctx, e.ag, artist) },
 		func() { e.callGetURL(ctx, e.ag, artist) },
-		func() { e.callGetImage(ctx, e.ag, artist) },
+		func() {
+			if artist.ImageId == "" {
+				e.callGetImage(ctx, e.ag, artist)
+			}
+		},
 		func() { e.callGetSimilar(ctx, e.ag, artist, maxSimilarArtists, true) },
 	})
 
