@@ -25,6 +25,9 @@ var _ = Describe("Artwork", func() {
 			{ID: "333", CoverArtId: ""},
 			{ID: "444", CoverArtId: "444", CoverArtPath: "tests/fixtures/cover.jpg"},
 		})
+		ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{
+			{ID: "412", ImageId: "ar-412", ImagePath: "tests/fixtures/cover-copy.jpg"},
+		})
 		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 			{ID: "123", AlbumID: "222", Path: "tests/fixtures/test.mp3", HasCoverArt: true},
 			{ID: "456", AlbumID: "222", Path: "tests/fixtures/test.ogg", HasCoverArt: false},
@@ -124,6 +127,16 @@ var _ = Describe("Artwork", func() {
 			Expect(format).To(Equal("jpeg"))
 			Expect(img.Bounds().Size().X).To(Equal(200))
 			Expect(img.Bounds().Size().Y).To(Equal(200))
+			Expect(r.Close()).To(BeNil())
+		})
+
+		It("retrieves the external artwork art for an album", func() {
+			r, err := artwork.Get(ctx, "ar-412", 0)
+			Expect(err).To(BeNil())
+
+			_, format, err := image.Decode(r)
+			Expect(err).To(BeNil())
+			Expect(format).To(Equal("jpeg"))
 			Expect(r.Close()).To(BeNil())
 		})
 

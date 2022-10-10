@@ -141,6 +141,43 @@ var _ = Describe("AlbumRepository", func() {
 		conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
 	})
 
+	Describe("getAlbumArtistImageFromPath", func() {
+		var testFolder, testPath string
+		BeforeEach(func() {
+			testFolder, _ = os.MkdirTemp("", "album_persistence_tests")
+			if err := os.MkdirAll(testFolder, 0777); err != nil {
+				panic(err)
+			}
+			if _, err := os.Create(filepath.Join(testFolder, "Artist.jpeg")); err != nil {
+				panic(err)
+			}
+			if _, err := os.Create(filepath.Join(testFolder, "ARTIMAGE.PNG")); err != nil {
+				panic(err)
+			}
+			testPath = filepath.Join(testFolder, "somefile.test")
+		})
+		AfterEach(func() {
+			_ = os.RemoveAll(testFolder)
+		})
+
+		It("returns first correct match case-insensitively", func() {
+			conf.Server.ArtistArtPriority = "something.*, artist.*"
+			Expect(getAlbumArtistImageFromPath(testPath)).To(Equal(filepath.Join(testFolder, "Artist.jpeg")))
+		})
+
+		It("returns first match even if multiple exist", func() {
+			conf.Server.ArtistArtPriority = "artimage.*, artist.*"
+			Expect(getAlbumArtistImageFromPath(testPath)).To(Equal(filepath.Join(testFolder, "ARTIMAGE.PNG")))
+		})
+
+		It("returns empty string if no matches", func() {
+			conf.Server.ArtistArtPriority = "garbage.*"
+			Expect(getAlbumArtistImageFromPath(testPath)).To(Equal(""))
+		})
+
+		conf.Server.ArtistArtPriority = "artist.*"
+	})
+
 	Describe("getAlbumArtist", func() {
 		var al refreshAlbum
 		BeforeEach(func() {

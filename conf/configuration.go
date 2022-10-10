@@ -237,7 +237,6 @@ func init() {
 	viper.SetDefault("coverartpriority", "embedded, cover.*, folder.*, front.*")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*")
-	viper.SetDefault("artistjpegquality", 75)
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)

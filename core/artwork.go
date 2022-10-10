@@ -104,6 +104,7 @@ func (a *artwork) getImagePath(ctx context.Context, id string) (path string, las
 		id = strings.TrimPrefix(id, "ar-")
 		var ar *model.Artist
 		ar, err = a.ds.Artist(ctx).Get(id)
+		// return "", time.Now(), errors.New(ar.ImagePath)
 		if err != nil {
 			return
 		}
