@@ -14,7 +14,7 @@ export const formatDuration = (d) => {
   const days = Math.floor(d / 86400)
   const hours = Math.floor(d / 3600) % 24
   const minutes = Math.floor(d / 60) % 60
-  const seconds = Math.floor(d % 60)
+  const seconds = Math.round(d % 60)
   const f = [hours, minutes, seconds]
     .map((v) => v.toString())
     .map((v) => (v.length !== 2 ? '0' + v : v))
