@@ -69,11 +69,11 @@
                 "recentlyPlayed": "最近播放",
                 "mostPlayed": "最多播放",
                 "starred": "收藏",
-                "topRated": "排行榜"
+                "topRated": "评分最高"
             }
         },
         "artist": {
-            "name": "歌手 |||| 歌手",
+            "name": "艺术家 |||| 艺术家",
             "fields": {
                 "name": "名称",
                 "albumCount": "专辑数",
