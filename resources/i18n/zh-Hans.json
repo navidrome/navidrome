@@ -151,8 +151,8 @@
                 "selectPlaylist": "选择歌单",
                 "addNewPlaylist": "新建 %{name}",
                 "export": "导出",
-                "makePublic": "使其公开",
-                "makePrivate": "使其私密"
+                "makePublic": "设为公开",
+                "makePrivate": "设为私有"
             },
             "message": {
                 "duplicate_song": "添加重复的歌曲",
@@ -270,7 +270,7 @@
         },
         "navigation": {
             "no_results": "无内容",
-            "no_more_results": "页码 %{page} 超出边界，试试上一页",
+            "no_more_results": "页码 %{page} 超出边界，尝试返回上一页",
             "page_out_of_boundaries": "页码 %{page} 超出边界",
             "page_out_from_end": "已经最后一页",
             "page_out_from_begin": "已经是第一页",
@@ -302,8 +302,8 @@
     },
     "message": {
         "note": "说明",
-        "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或增加）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
-        "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过配置转码选项来执行任意命令，建议仅在配置转码时启用此功能。",
+        "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或新增）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
+        "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过配置转码选项来执行任意命令，建议仅在配置转码选项时启用此功能。",
         "songsAddedToPlaylist": "已添加一首歌到歌单 |||| 已添加 %{smart_count} 首歌到歌单",
         "noPlaylistsAvailable": "没有有效的歌单",
         "delete_user_title": "删除用户 %{name}",
@@ -358,7 +358,7 @@
         "volumeText": "音量",
         "toggleLyricText": "切换歌词",
         "toggleMiniModeText": "最小化",
-        "destroyText": "损坏",
+        "destroyText": "关闭",
         "downloadText": "下载",
         "removeAudioListsText": "清空播放列表",
         "clickToDeleteText": "点击删除 %{name}",

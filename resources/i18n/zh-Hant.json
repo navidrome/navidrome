@@ -270,7 +270,7 @@
         },
         "navigation": {
             "no_results": "無內容",
-            "no_more_results": "頁碼 %{page} 超出邊界，試試上一頁",
+            "no_more_results": "頁碼 %{page} 超出邊界，嘗試返回上一頁",
             "page_out_of_boundaries": "頁碼 %{page} 超出邊界",
             "page_out_from_end": "已經最後一頁",
             "page_out_from_begin": "已經是第一頁",
@@ -287,10 +287,10 @@
             "bad_item": "不確定的項",
             "item_doesnt_exist": "項不存在",
             "http_error": "伺服器通訊錯誤",
-            "data_provider_error": "dataProvider 錯誤，請檢查 console 的詳細訊息",
+            "data_provider_error": "數據來源錯誤，請檢查主控台的詳細訊息",
             "i18n_error": "無法載入所選語言",
             "canceled": "操作已取消",
-            "logged_out": "您的 Session 已結束，請重新登入",
+            "logged_out": "您的會話已結束，請重新登入",
             "new_version": "發現新版本！請重新整理視窗"
         },
         "toggleFieldsMenu": {
@@ -302,8 +302,8 @@
     },
     "message": {
         "note": "註解",
-        "transcodingDisabled": "出於安全原因，禁用了從 Web 界面更改參數。要更改（編輯或刪除）轉檔選項，請在啟用 %{config} 選項的情況下重新啟動伺服器。",
-        "transcodingEnabled": "Navidrome 當前與 %{config} 一起使用，可以從 Web 介面執行任意命令，建議僅在配置 Transcoding 時啟用此功能。",
+        "transcodingDisabled": "出於安全原因，禁用了從 Web 介面更改參數。要更改（編輯或新增）轉檔選項，請在啟用 %{config} 選項的情況下重新啟動伺服器。",
+        "transcodingEnabled": "Navidrome 當前與 %{config} 一起使用，可以通過配置轉檔參數執行任意命令，建議僅在配置轉檔選項時啟用此功能。",
         "songsAddedToPlaylist": "已加入一首歌到播放清單 |||| 已添加 %{smart_count} 首歌到播放清單",
         "noPlaylistsAvailable": "沒有可用的播放清單",
         "delete_user_title": "刪除使用者 %{name}",
@@ -358,7 +358,7 @@
         "volumeText": "音量",
         "toggleLyricText": "切換歌詞",
         "toggleMiniModeText": "最小化",
-        "destroyText": "銷毀",
+        "destroyText": "關閉",
         "downloadText": "下載",
         "removeAudioListsText": "清空播放佇列",
         "clickToDeleteText": "點擊删除 %{name}",
