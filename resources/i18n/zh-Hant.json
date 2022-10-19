@@ -19,13 +19,13 @@
                 "updatedAt": "更新於",
                 "bitRate": "位元率",
                 "discSubtitle": "光盤字幕",
+                "channels": "聲道",
                 "starred": "收藏",
                 "comment": "註釋",
                 "rating": "評分",
                 "quality": "品質",
                 "bpm": "BPM",
-                "playDate": "上次播放",
-                "channels": "聲道"
+                "playDate": "上次播放"
             },
             "actions": {
                 "addToQueue": "加入至播放佇列",
@@ -314,15 +314,15 @@
         "lastfmLinkFailure": "Last.fm 無法連接",
         "lastfmUnlinkSuccess": "Last.fm 已無連接並停用音樂記錄",
         "lastfmUnlinkFailure": "Last.fm 無法取消連接",
+        "listenBrainzLinkSuccess": "ListenBrainz 成功連接並開啟音樂記錄",
+        "listenBrainzLinkFailure": "ListenBrainz 無法連接：%{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz 已無連接並停用音樂記錄",
+        "listenBrainzUnlinkFailure": "ListenBrainz 無法取消連接",
         "openIn": {
             "lastfm": "在 Last.fm 打開",
             "musicbrainz": "在 MusicBrainz 打開"
         },
-        "lastfmLink": "繼續閱讀…",
-        "listenBrainzLinkSuccess": "ListenBrainz 成功連接並開啟音樂記錄",
-        "listenBrainzLinkFailure": "ListenBrainz 無法連接：%{error}",
-        "listenBrainzUnlinkSuccess": "ListenBrainz 已無連接並停用音樂記錄",
-        "listenBrainzUnlinkFailure": "ListenBrainz 無法取消連接"
+        "lastfmLink": "繼續閱讀…"
     },
     "menu": {
         "library": "音樂庫",

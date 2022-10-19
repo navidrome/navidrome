@@ -18,14 +18,14 @@
                 "size": "文件大小",
                 "updatedAt": "更新于",
                 "bitRate": "比特率",
+                "channels": "声道",
                 "discSubtitle": "字幕",
                 "starred": "收藏",
                 "comment": "注释",
                 "rating": "评分",
                 "quality": "品质",
                 "bpm": "BPM",
-                "playDate": "最后一次播放",
-                "channels": "声道"
+                "playDate": "最后一次播放"
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -314,15 +314,15 @@
         "lastfmLinkFailure": "Last.fm 无法关联",
         "lastfmUnlinkSuccess": "已成功解除与 Last.fm 的链接，且喜好记录已禁用",
         "lastfmUnlinkFailure": "Last.fm 无法取消关联",
+        "listenBrainzLinkSuccess": "ListenBrainz 已关联并启用喜好记录",
+        "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
+        "listenBrainzUnlinkSuccess": "已成功解除与 ListenBrainz 的链接，且喜好记录已禁用",
+        "listenBrainzUnlinkFailure": "ListenBrainz 无法取消关联",
         "openIn": {
             "lastfm": "在 Last.fm 中打开",
             "musicbrainz": "在 MusicBrainz 中打开"
         },
-        "lastfmLink": "更多…",
-        "listenBrainzLinkSuccess": "ListenBrainz 已关联并启用喜好记录",
-        "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
-        "listenBrainzUnlinkSuccess": "已成功解除与 ListenBrainz 的链接，且喜好记录已禁用",
-        "listenBrainzUnlinkFailure": "ListenBrainz 无法取消关联"
+        "lastfmLink": "更多…"
     },
     "menu": {
         "library": "曲库",
