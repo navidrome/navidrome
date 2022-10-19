@@ -96,7 +96,7 @@
                 "changePassword": "變更密碼？",
                 "currentPassword": "現在的密碼",
                 "newPassword": "新密碼",
-                "token": ""
+                "token": "權杖"
             },
             "helperTexts": {
                 "name": "你的名稱會在下次登入時生效"
@@ -107,8 +107,8 @@
                 "deleted": "使用者已刪除"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "輸入您的 ListenBrainz 使用者權杖",
+                "clickHereForToken": "點擊此處來獲得你的 ListenBrainz 權杖"
             }
         },
         "player": {
@@ -121,7 +121,7 @@
                 "userName": "使用者名稱",
                 "lastSeen": "上次瀏覽",
                 "reportRealPath": "回報實際路徑",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "傳送音樂記錄至外部服務"
             }
         },
         "transcoding": {
@@ -151,8 +151,8 @@
                 "selectPlaylist": "選擇播放清單",
                 "addNewPlaylist": "創建 %{name}",
                 "export": "導出",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "設爲公開",
+                "makePrivate": "設爲私有"
             },
             "message": {
                 "duplicate_song": "加入重複的歌曲",
@@ -318,11 +318,11 @@
             "lastfm": "在 Last.fm 打開",
             "musicbrainz": "在 MusicBrainz 打開"
         },
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
         "lastfmLink": "繼續閱讀…",
+        "listenBrainzLinkSuccess": "ListenBrainz 成功連接並開啟音樂記錄",
+        "listenBrainzLinkFailure": "ListenBrainz 無法連接：%{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz 已無連接並停用音樂記錄",
+        "listenBrainzUnlinkFailure": "ListenBrainz 無法取消連接"
     },
     "menu": {
         "library": "音樂庫",
@@ -336,8 +336,8 @@
                 "language": "語言",
                 "defaultView": "預設畫面",
                 "desktop_notifications": "桌面通知",
-                "listenBrainzScrobbling": ""
                 "lastfmScrobbling": "啟用 Last.fm 音樂記錄",
+                "listenBrainzScrobbling": "啟用 ListenBrainz 音樂記錄"
             }
         },
         "albumList": "專輯",
