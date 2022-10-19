@@ -38,7 +38,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"enableFavourites":        conf.Server.EnableFavourites,
 			"enableStarRating":        conf.Server.EnableStarRating,
 			"defaultTheme":            conf.Server.DefaultTheme,
-			"defaultLanguage":         strings.ToLower(conf.Server.DefaultLanguage),
+			"defaultLanguage":         handleLanguageConfig(conf.Server.DefaultLanguage),
 			"enableCoverAnimation":    conf.Server.EnableCoverAnimation,
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
@@ -97,4 +97,18 @@ func getIndexTemplate(r *http.Request, fs fs.FS) (*template.Template, error) {
 		return nil, err
 	}
 	return t, nil
+}
+
+func handleLanguageConfig(v string) string {
+	lang := strings.ToLower(v)
+	replaceMap := map[string]string{
+		"zh":      "zh-Hans",
+		"zh-hans": "zh-Hans",
+		"zh-hant": "zh-Hant",
+	}
+	replace, ok := replaceMap[lang]
+	if ok {
+		lang = replace
+	}
+	return lang
 }
