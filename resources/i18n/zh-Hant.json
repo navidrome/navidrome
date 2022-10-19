@@ -244,8 +244,8 @@
             },
             "references": {
                 "all_missing": "未找到參考數據",
-                "many_missing": "至少有一條參考數據不再可用.",
-                "single_missing": "關聯的參考數據不再可用."
+                "many_missing": "至少有一條參考數據不再可用",
+                "single_missing": "關聯的參考數據不再可用"
             },
             "password": {
                 "toggle_visible": "隱藏密碼",
