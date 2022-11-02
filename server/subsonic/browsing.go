@@ -333,6 +333,9 @@ func (c *BrowsingController) buildArtistDirectory(ctx context.Context, artist *m
 	dir.Id = artist.ID
 	dir.Name = artist.Name
 	dir.PlayCount = artist.PlayCount
+	if artist.PlayCount > 0 {
+		dir.Played = &artist.PlayDate
+	}
 	dir.AlbumCount = artist.AlbumCount
 	dir.UserRating = artist.Rating
 	if artist.Starred {
@@ -361,6 +364,9 @@ func (c *BrowsingController) buildAlbumDirectory(ctx context.Context, album *mod
 	dir.Name = album.Name
 	dir.Parent = album.AlbumArtistID
 	dir.PlayCount = album.PlayCount
+	if album.PlayCount > 0 {
+		dir.Played = &album.PlayDate
+	}
 	dir.UserRating = album.Rating
 	dir.SongCount = album.SongCount
 	dir.CoverArt = album.CoverArtId
@@ -387,6 +393,9 @@ func (c *BrowsingController) buildAlbum(ctx context.Context, album *model.Album,
 	dir.SongCount = album.SongCount
 	dir.Duration = int(album.Duration)
 	dir.PlayCount = album.PlayCount
+	if album.PlayCount > 0 {
+		dir.Played = &album.PlayDate
+	}
 	dir.Year = album.MaxYear
 	dir.Genre = album.Genre
 	dir.UserRating = album.Rating
