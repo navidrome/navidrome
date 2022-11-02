@@ -157,7 +157,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	if ok && player.ReportRealPath {
 		child.Path = mf.Path
 	} else {
-		child.Path = fmt.Sprintf("%s/%s/%s.%s", mapSlashToDash(mf.AlbumArtist), mapSlashToDash(mf.Album), mapSlashToDash(mf.Title), mf.Suffix)
+		child.Path = fakePath(mf)
 	}
 	child.DiscNumber = mf.DiscNumber
 	child.Created = &mf.CreatedAt
@@ -180,6 +180,14 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 	child.BookmarkPosition = mf.BookmarkPosition
 	return child
+}
+
+func fakePath(mf model.MediaFile) string {
+	filename := mapSlashToDash(mf.Title)
+	if mf.TrackNumber != 0 {
+		filename = fmt.Sprintf("%02d - %s", mf.TrackNumber, filename)
+	}
+	return fmt.Sprintf("%s/%s/%s.%s", mapSlashToDash(mf.AlbumArtist), mapSlashToDash(mf.Album), filename, mf.Suffix)
 }
 
 func mapSlashToDash(target string) string {
