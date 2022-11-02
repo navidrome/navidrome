@@ -165,6 +165,9 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
 	child.PlayCount = mf.PlayCount
+	if mf.PlayCount > 0 {
+		child.Played = &mf.PlayDate
+	}
 	if mf.Starred {
 		child.Starred = &mf.StarredAt
 	}
@@ -211,6 +214,9 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 		child.Starred = &al.StarredAt
 	}
 	child.PlayCount = al.PlayCount
+	if al.PlayCount > 0 {
+		child.Played = &al.PlayDate
+	}
 	child.UserRating = al.Rating
 	return child
 }
