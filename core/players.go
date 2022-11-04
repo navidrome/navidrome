@@ -46,7 +46,7 @@ func (p *players) Register(ctx context.Context, id, client, userAgent, ip string
 				Client:          client,
 				ScrobbleEnabled: true,
 			}
-			log.Info("Registering new player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
+			log.Info(ctx, "Registering new player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
 		}
 	}
 	plr.Name = fmt.Sprintf("%s [%s]", client, userAgent)

@@ -27,9 +27,9 @@ var (
 	translations map[string]translation
 )
 
-func newTranslationRepository(context.Context) rest.Repository {
-	if err := loadTranslations(resources.FS()); err != nil {
-		log.Error("Error loading translation files", err)
+func newTranslationRepository(ctx context.Context) rest.Repository {
+	if err := loadTranslations(ctx, resources.FS()); err != nil {
+		log.Error(ctx, "Error loading translation files", err)
 	}
 	return &translationRepository{}
 }
@@ -66,7 +66,7 @@ func (r *translationRepository) NewInstance() interface{} {
 	return &translation{}
 }
 
-func loadTranslations(fsys fs.FS) (loadError error) {
+func loadTranslations(ctx context.Context, fsys fs.FS) (loadError error) {
 	once.Do(func() {
 		translations = make(map[string]translation)
 		dir, err := fsys.Open(consts.I18nFolder)
@@ -83,13 +83,13 @@ func loadTranslations(fsys fs.FS) (loadError error) {
 		for _, f := range files {
 			t, err := loadTranslation(fsys, f.Name())
 			if err != nil {
-				log.Error("Error loading translation file", "file", f.Name(), err)
+				log.Error(ctx, "Error loading translation file", "file", f.Name(), err)
 				continue
 			}
 			translations[t.ID] = t
 			languages = append(languages, t.ID)
 		}
-		log.Info("Loading translations", "languages", languages)
+		log.Info(ctx, "Loading translations", "languages", languages)
 	})
 	return
 }

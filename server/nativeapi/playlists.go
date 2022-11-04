@@ -49,12 +49,12 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 		plsId := chi.URLParam(r, "playlistId")
 		pls, err := plsRepo.GetWithTracks(plsId)
 		if errors.Is(err, model.ErrNotFound) {
-			log.Warn("Playlist not found", "playlistId", plsId)
+			log.Warn(r.Context(), "Playlist not found", "playlistId", plsId)
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Error("Error retrieving the playlist", "playlistId", plsId, err)
+			log.Error(r.Context(), "Error retrieving the playlist", "playlistId", plsId, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

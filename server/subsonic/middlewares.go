@@ -149,7 +149,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 			userAgent := canonicalUserAgent(r)
 			player, trc, err := players.Register(ctx, playerId, client, userAgent, ip)
 			if err != nil {
-				log.Error("Could not register player", "username", userName, "client", client, err)
+				log.Error(r.Context(), "Could not register player", "username", userName, "client", client, err)
 			} else {
 				ctx = request.WithPlayer(ctx, *player)
 				if trc != nil {

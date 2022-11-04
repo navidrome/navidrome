@@ -131,16 +131,16 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	for _, s := range submissions {
 		mf, err := p.ds.MediaFile(ctx).Get(s.TrackID)
 		if err != nil {
-			log.Error("Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
+			log.Error(ctx, "Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
 			continue
 		}
 		err = p.incPlay(ctx, mf, s.Timestamp)
 		if err != nil {
-			log.Error("Error updating play counts", "id", mf.ID, "track", mf.Title, "user", username, err)
+			log.Error(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", username, err)
 		} else {
 			success++
 			event.With("song", mf.ID).With("album", mf.AlbumID).With("artist", mf.AlbumArtistID)
-			log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username, "timestamp", s.Timestamp)
+			log.Info(ctx, "Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username, "timestamp", s.Timestamp)
 			if player.ScrobbleEnabled {
 				p.dispatchScrobble(ctx, mf, s.Timestamp)
 			}

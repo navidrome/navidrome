@@ -196,7 +196,7 @@ func h(r chi.Router, path string, f handler) {
 		}
 		if r.Context().Err() != nil {
 			if log.CurrentLevel() >= log.LevelDebug {
-				log.Warn("Request was interrupted", "path", path, r.Context().Err())
+				log.Warn(r.Context(), "Request was interrupted", "path", path, r.Context().Err())
 			}
 			return
 		}
