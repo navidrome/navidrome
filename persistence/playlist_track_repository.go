@@ -144,7 +144,7 @@ func (r *playlistTrackRepository) getTracks() ([]string, error) {
 	var ids []string
 	err := r.queryAll(all, &ids)
 	if err != nil {
-		log.Error("Error querying current tracks from playlist", "playlistId", r.playlistId, err)
+		log.Error(r.ctx, "Error querying current tracks from playlist", "playlistId", r.playlistId, err)
 		return nil, err
 	}
 	return ids, nil

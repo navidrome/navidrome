@@ -44,7 +44,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	// Make sure the stream will be closed at the end, to avoid leakage
 	defer func() {
 		if err := stream.Close(); err != nil && log.CurrentLevel() >= log.LevelDebug {
-			log.Error("Error closing stream", "id", id, "file", stream.Name(), err)
+			log.Error(r.Context(), "Error closing stream", "id", id, "file", stream.Name(), err)
 		}
 	}()
 

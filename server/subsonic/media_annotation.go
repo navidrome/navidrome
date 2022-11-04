@@ -233,7 +233,7 @@ func (c *MediaAnnotationController) scrobblerNowPlaying(ctx context.Context, tra
 		clientId = player.ID
 	}
 
-	log.Info("Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name)
+	log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name)
 	err = c.playTracker.NowPlaying(ctx, clientId, client, trackId)
 	return err
 }
