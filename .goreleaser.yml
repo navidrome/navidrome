@@ -22,7 +22,7 @@ builds:
     goos:
       - linux
     goarch:
-      - 386
+      - "386"
     flags:
       - -tags=embed,netgo
     ldflags:
@@ -32,17 +32,17 @@ builds:
   - id: navidrome_linux_arm
     env:
       - CGO_ENABLED=1
-      - CC=arm-linux-gnueabihf-gcc
-      - CXX=arm-linux-gnueabihf-g++
+      - CC=arm-linux-gnueabi-gcc
+      - CXX=arm-linux-gnueabi-g++
       - PKG_CONFIG_PATH=/arm/lib/pkgconfig
     goos:
       - linux
     goarch:
       - arm
     goarm:
-      - 5
-      - 6
-      - 7
+      - "5"
+      - "6"
+      - "7"
     flags:
       - -tags=embed,netgo
     ldflags:
@@ -74,7 +74,7 @@ builds:
     goos:
       - windows
     goarch:
-      - 386
+      - "386"
     flags:
       - -tags=embed,netgo
     ldflags:
