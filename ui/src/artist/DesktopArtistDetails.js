@@ -6,7 +6,7 @@ import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
 import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
-import { LoveButton, RatingField } from '../common'
+import { ArtistContextMenu, RatingField } from '../common'
 import Lightbox from 'react-image-lightbox'
 import { AddToPlaylistDialog } from '../dialogs'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
@@ -102,7 +102,7 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
             >
               {title}
               {config.enableFavourites && (
-                <LoveButton
+                <ArtistContextMenu
                   className={classes.loveButton}
                   record={record}
                   resource={'artist'}
