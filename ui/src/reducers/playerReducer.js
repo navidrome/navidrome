@@ -16,7 +16,7 @@ const initialState = {
   queue: [],
   current: {},
   clear: false,
-  volume: 0.5, // 50%
+  volume: config.defaultUIVolume / 100,
   savedPlayIndex: 0,
 }
 
