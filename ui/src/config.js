@@ -19,6 +19,7 @@ const defaultConfig = {
   enableStarRating: true,
   defaultTheme: 'Dark',
   defaultLanguage: '',
+  defaultUIVolume: 100,
   enableUserEditing: true,
   devEnableShare: true,
   devSidebarPlaylists: true,
