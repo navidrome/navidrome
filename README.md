@@ -10,10 +10,15 @@
 [![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?logo=reddit&label=/r/navidrome&style=flat-square)](https://www.reddit.com/r/navidrome/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md)
 
-## [Check out our Live Demo!](https://www.navidrome.org/demo/)
-
-Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your 
+Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your
 music collection from any browser or mobile device. It's like your personal Spotify!
+
+
+**Note**: The `master` branch may be in an unstable or even broken state during development. 
+Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
+the `master` branch in order to get a stable set of binaries.
+
+## [Check out our Live Demo!](https://www.navidrome.org/demo/)
 
 __Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
 please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or join the discussion in our 
