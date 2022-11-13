@@ -473,6 +473,6 @@ export default {
   },
   player: {
     theme: 'light',
-    stylesheet: require("./ligera.css.js"),
+    stylesheet: require('./ligera.css.js'),
   },
 }

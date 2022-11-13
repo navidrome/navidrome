@@ -334,6 +334,6 @@ export default {
   },
   player: {
     theme: 'dark',
-    stylesheet: require("./spotify.css.js"),
+    stylesheet: require('./spotify.css.js'),
   },
 }
