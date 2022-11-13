@@ -35,5 +35,8 @@ module.exports = `
     background-color: #8800cb;
 }
 
+.rc-slider {
+    z-index:78
+}
 
 `

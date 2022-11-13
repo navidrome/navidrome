@@ -117,4 +117,8 @@ module.exports = `
 .react-jinke-music-player-main.light-theme .audio-lists-panel .audio-item.playing, .react-jinke-music-player-main.light-theme .audio-lists-panel .audio-item.playing svg {
     color: #5f5fc4 !important
 }
+
+.rc-slider {
+    z-index:78
+}
 `

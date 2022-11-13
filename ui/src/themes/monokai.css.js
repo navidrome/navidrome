@@ -47,4 +47,8 @@ module.exports = `
     color: #f8f8f2
 }
 
+.rc-slider {
+    z-index:78
+}
+
 `

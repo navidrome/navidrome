@@ -164,4 +164,8 @@ module.exports = `
     border: none;
 }
 
+.rc-slider {
+    z-index:78
+}
+
 `

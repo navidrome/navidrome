@@ -36,5 +36,6 @@ export default {
   },
   player: {
     theme: 'dark',
+    stylesheet: require("./green.css.js"),
   },
 }
