@@ -141,7 +141,7 @@ const reduceCurrent = (state, { data }) => {
 const reduceToggleGain = (state) => {
   return {
     ...state,
-    isAlbumGain: !state.isAlbumGain
+    isAlbumGain: !state.isAlbumGain,
   }
 }
 

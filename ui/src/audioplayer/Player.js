@@ -26,12 +26,12 @@ import keyHandlers from './keyHandlers'
 
 function calculateReplayGain(gain, peak) {
   if (gain === undefined || peak === undefined) {
-    return 1;
+    return 1
   }
 
   // https://wiki.hydrogenaud.io/index.php?title=ReplayGain_1.0_specification&section=19
   // Normalized to max gain
-  return Math.min(10 ** (gain / 20), 1 / peak);
+  return Math.min(10 ** (gain / 20), 1 / peak)
 }
 
 const Player = () => {
@@ -59,44 +59,43 @@ const Player = () => {
     (state) => state.settings.notifications || false
   )
 
-  const isAlbumGain = playerState.isAlbumGain;
+  const isAlbumGain = playerState.isAlbumGain
 
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
 
   useEffect(() => {
-    if (context === null && audioInstance && config.enableReplayGain && "AudioContext" in window) {
-      const ctx = new AudioContext();
-      const source = ctx.createMediaElementSource(audioInstance);
-      const gain = ctx.createGain();
+    if (
+      context === null &&
+      audioInstance &&
+      config.enableReplayGain &&
+      'AudioContext' in window
+    ) {
+      const ctx = new AudioContext()
+      const source = ctx.createMediaElementSource(audioInstance)
+      const gain = ctx.createGain()
 
-      source.connect(gain);
-      gain.connect(ctx.destination);
+      source.connect(gain)
+      gain.connect(ctx.destination)
 
-      setContext(ctx);
-      setGainNode(gain);
+      setContext(ctx)
+      setGainNode(gain)
     }
   }, [audioInstance, context])
 
   useEffect(() => {
     if (gainNode) {
-      const current = playerState.current || {};
-      const song = current.song || {};
+      const current = playerState.current || {}
+      const song = current.song || {}
 
-      const numericGain = isAlbumGain ? 
-        calculateReplayGain(song.albumGain, song.albumPeak) :
-        calculateReplayGain(song.trackGain, song.trackPeak);
-  
+      const numericGain = isAlbumGain
+        ? calculateReplayGain(song.albumGain, song.albumPeak)
+        : calculateReplayGain(song.trackGain, song.trackPeak)
+
       gainNode.gain.setValueAtTime(numericGain, context.currentTime)
     }
-  }, [
-    audioInstance,
-    context,
-    gainNode,
-    isAlbumGain,
-    playerState,
-  ]);
-  
+  }, [audioInstance, context, gainNode, isAlbumGain, playerState])
+
   const defaultOptions = useMemo(
     () => ({
       theme: playerTheme,
@@ -192,8 +191,8 @@ const Player = () => {
     (info) => {
       // Do this to start the context; on chrome-based browsers, the context
       // will start paused since it is created prior to user interaction
-      if (context && context.state !== "running") {
-        context.resume();
+      if (context && context.state !== 'running') {
+        context.resume()
       }
 
       dispatch(currentPlaying(info))

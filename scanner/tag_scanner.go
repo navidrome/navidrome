@@ -45,11 +45,6 @@ type counters struct {
 	playlists int64
 }
 
-type gain struct {
-	album float64
-	track float64
-}
-
 func (cnt *counters) total() int64 { return cnt.added + cnt.updated + cnt.deleted }
 
 const (

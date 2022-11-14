@@ -8,11 +8,12 @@ import { ReplayGainButton } from '../common/ReplayGainButton'
 
 const Placeholder = () => (
   <>
-    { config.enableReplayGain && <ReplayGainButton /> }
-    { config.enableFavourites && <LoveButton disabled={true} resource={'song'} /> }
+    {config.enableReplayGain && <ReplayGainButton />}
+    {config.enableFavourites && (
+      <LoveButton disabled={true} resource={'song'} />
+    )}
   </>
 )
-  
 
 const Toolbar = ({ id }) => {
   const { data, loading } = useGetOne('song', id)
@@ -25,9 +26,7 @@ const Toolbar = ({ id }) => {
   return (
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
-      {config.enableReplayGain && (
-        <ReplayGainButton />
-      )}
+      {config.enableReplayGain && <ReplayGainButton />}
       {config.enableFavourites && (
         <LoveButton
           record={data}
