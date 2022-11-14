@@ -129,10 +129,8 @@ func (t Tags) TrackPeak() float64 { return t.getPeakValue("replaygain_track_peak
 func (t Tags) getGainValue(tagName string) float64 {
 	// Gain is in the form [-]a.bb dB
 	var tag = t.getFirstTagValue(tagName)
-	println("tag", tagName, tag)
 
 	if tag == "" {
-		println("nope")
 		return 0
 	}
 
@@ -140,7 +138,6 @@ func (t Tags) getGainValue(tagName string) float64 {
 
 	var value, err = strconv.ParseFloat(tag, 64)
 	if err != nil {
-		println(err)
 		return 0
 	}
 	return value
