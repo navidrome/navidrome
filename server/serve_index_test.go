@@ -289,6 +289,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("listenBrainzEnabled", true))
 	})
 
+	It("sets the enableReplayGain", func() {
+		conf.Server.EnableReplayGain = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableReplayGain", true))
+	})
+
 	Describe("loginBackgroundURL", func() {
 		Context("empty BaseURL", func() {
 			BeforeEach(func() {

@@ -75,6 +75,13 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.CreatedAt = time.Now()
 	mf.UpdatedAt = md.ModificationTime()
 
+	if conf.Server.EnableReplayGain {
+		mf.AlbumGain = md.AlbumGain()
+		mf.AlbumPeak = md.AlbumPeak()
+		mf.TrackGain = md.TrackGain()
+		mf.TrackPeak = md.TrackPeak()
+	}
+
 	return *mf
 }
 

@@ -113,6 +113,7 @@ func (e *Parser) parseInfo(info string) map[string][]string {
 	lastTag := ""
 	for scanner.Scan() {
 		line := scanner.Text()
+		println(line)
 		if len(line) == 0 {
 			continue
 		}

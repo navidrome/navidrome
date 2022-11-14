@@ -6,6 +6,7 @@ export const PLAYER_CLEAR_QUEUE = 'PLAYER_CLEAR_QUEUE'
 export const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
 export const PLAYER_CURRENT = 'PLAYER_CURRENT'
 export const PLAYER_SET_VOLUME = 'PLAYER_SET_VOLUME'
+export const PLAYER_CHANGE_GAIN_MODE = 'PLAYER_CHANGE_GAIN_MODE';
 
 export const setTrack = (data) => ({
   type: PLAYER_SET_TRACK,
@@ -88,4 +89,8 @@ export const currentPlaying = (audioInfo) => ({
 export const setVolume = (volume) => ({
   type: PLAYER_SET_VOLUME,
   data: { volume },
+})
+
+export const toggleGain = () => ({
+  type: PLAYER_CHANGE_GAIN_MODE
 })

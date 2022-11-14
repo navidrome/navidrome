@@ -37,7 +37,12 @@ var _ = Describe("Tags", func() {
 			Expect(m.Channels()).To(Equal(2))
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.mp3"))
 			Expect(m.Suffix()).To(Equal("mp3"))
+			println(m.tags)
 			Expect(m.Size()).To(Equal(int64(51876)))
+			Expect(m.AlbumGain()).To(Equal(3.21518))
+			Expect(m.AlbumPeak()).To(Equal(0.9125))
+			Expect(m.TrackGain()).To(Equal(-1.48))
+			Expect(m.TrackPeak()).To(Equal(0.4512))
 
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())
@@ -131,6 +136,26 @@ var _ = Describe("Tags", func() {
 
 		It("rounds a floating point fBPM tag", func() {
 			Expect(t.Bpm()).To(Equal(142))
+		})
+	})
+
+	Describe("ReplayGain", func() {
+		AfterEach(func() {
+			conf.Server.EnableReplayGain = true
+		})
+
+		It("handles tags properly despite weird spacing", func() {
+			md := &Tags{}
+			md.tags = map[string][]string{
+				"replaygain_album_gain": {"-2.581    dB"},
+				"replaygain_album_peak": {"0.35126"},
+				"replaygain_track_gain": {"+0.912dB"},
+				"replaygain_track_peak": {"0.9465"},
+			}
+			Expect(md.AlbumGain()).To(Equal(-2.581))
+			Expect(md.AlbumPeak()).To(Equal(0.35126))
+			Expect(md.TrackGain()).To(Equal(0.912))
+			Expect(md.TrackPeak()).To(Equal(0.9465))
 		})
 	})
 })

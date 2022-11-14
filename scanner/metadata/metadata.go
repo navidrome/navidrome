@@ -120,6 +120,42 @@ func (t Tags) Size() int64                 { return t.fileInfo.Size() }
 func (t Tags) FilePath() string            { return t.filePath }
 func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
 
+// Replaygain Properties
+func (t Tags) AlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
+func (t Tags) AlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
+func (t Tags) TrackGain() float64 { return t.getGainValue("replaygain_track_gain") }
+func (t Tags) TrackPeak() float64 { return t.getPeakValue("replaygain_track_peak") }
+
+func (t Tags) getGainValue(tagName string) float64 {
+	// Gain is in the form [-]a.bb dB
+	var tag = t.getFirstTagValue(tagName)
+	println("tag", tagName, tag)
+
+	if tag == "" {
+		println("nope")
+		return 0
+	}
+
+	tag = strings.TrimSpace(strings.Replace(tag, "dB", "", 1))
+
+	var value, err = strconv.ParseFloat(tag, 64)
+	if err != nil {
+		println(err)
+		return 0
+	}
+	return value
+}
+
+func (t Tags) getPeakValue(tagName string) float64 {
+	var tag = t.getFirstTagValue(tagName)
+	var value, err = strconv.ParseFloat(tag, 64)
+	if err != nil {
+		// A default of 1 for peak value resulds in no changes
+		return 1
+	}
+	return value
+}
+
 func (t Tags) getTags(tagNames ...string) []string {
 	for _, tag := range tagNames {
 		if v, ok := t.tags[tag]; ok {
