@@ -19,7 +19,7 @@ const initialState = {
   clear: false,
   volume: config.defaultUIVolume / 100,
   savedPlayIndex: 0,
-  isAlbumGain: false,
+  gainMode: 'album',
 }
 
 const mapToAudioLists = (item) => {
@@ -141,7 +141,12 @@ const reduceCurrent = (state, { data }) => {
 const reduceToggleGain = (state) => {
   return {
     ...state,
-    isAlbumGain: !state.isAlbumGain,
+    gainMode:
+      state.gainMode === 'track'
+        ? 'album'
+        : state.gainMode === 'album'
+        ? 'none'
+        : 'track',
   }
 }
 

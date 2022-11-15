@@ -59,7 +59,7 @@ const Player = () => {
     (state) => state.settings.notifications || false
   )
 
-  const isAlbumGain = playerState.isAlbumGain
+  const gainMode = playerState.gainMode ?? 'none'
 
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
@@ -88,13 +88,25 @@ const Player = () => {
       const current = playerState.current || {}
       const song = current.song || {}
 
-      const numericGain = isAlbumGain
-        ? calculateReplayGain(song.albumGain, song.albumPeak)
-        : calculateReplayGain(song.trackGain, song.trackPeak)
+      let numericGain
+
+      switch (gainMode) {
+        case 'album': {
+          numericGain = calculateReplayGain(song.albumGain, song.albumPeak)
+          break
+        }
+        case 'track': {
+          numericGain = calculateReplayGain(song.trackGain, song.trackPeak)
+          break
+        }
+        default: {
+          numericGain = 1
+        }
+      }
 
       gainNode.gain.setValueAtTime(numericGain, context.currentTime)
     }
-  }, [audioInstance, context, gainNode, isAlbumGain, playerState])
+  }, [audioInstance, context, gainNode, gainMode, playerState])
 
   const defaultOptions = useMemo(
     () => ({
@@ -120,11 +132,15 @@ const Player = () => {
       },
       volumeFade: { fadeIn: 200, fadeOut: 200 },
       renderAudioTitle: (audioInfo, isMobile) => (
-        <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
+        <AudioTitle
+          audioInfo={audioInfo}
+          gainMode={gainMode}
+          isMobile={isMobile}
+        />
       ),
       locale: locale(translate),
     }),
-    [isDesktop, playerTheme, translate]
+    [gainMode, isDesktop, playerTheme, translate]
   )
 
   const options = useMemo(() => {

@@ -17,12 +17,24 @@ import inflection from 'inflection'
 import { BitrateField, SizeField } from './index'
 import { MultiLineTextField } from './MultiLineTextField'
 import { makeStyles } from '@material-ui/core/styles'
+import config from '../config'
 
-const useStyles = makeStyles({
-  tableCell: {
-    width: '17.5%',
-  },
-})
+const useStyles = config.enableReplayGain
+  ? makeStyles({
+      gain: {
+        '&:after': {
+          content: "' dB'",
+        },
+      },
+      tableCell: {
+        width: '17.5%',
+      },
+    })
+  : makeStyles({
+      tableCell: {
+        width: '17.5%',
+      },
+    })
 
 export const SongInfo = (props) => {
   const classes = useStyles()
@@ -52,6 +64,11 @@ export const SongInfo = (props) => {
   })
   if (record.playCount > 0) {
     data.playDate = <DateField record={record} source="playDate" showTime />
+  }
+
+  if (config.enableReplayGain) {
+    data.albumGain = <NumberField source="albumGain" className={classes.gain} />
+    data.trackGain = <NumberField source="trackGain" className={classes.gain} />
   }
 
   return (
