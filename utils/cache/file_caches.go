@@ -10,21 +10,21 @@ import (
 
 	"github.com/djherbis/fscache"
 	"github.com/dustin/go-humanize"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/transcoder"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/cache/item"
 )
 
-type Item interface {
-	Key() string
-}
-
-type ReadFunc func(ctx context.Context, item Item) (io.Reader, error)
+type ReadFunc func(ctx context.Context, item item.Item) (io.Reader, error)
 
 type FileCache interface {
-	Get(ctx context.Context, item Item) (*CachedStream, error)
+	Get(ctx context.Context, item item.Item) (*CachedStream, error)
 	Ready(ctx context.Context) bool
 	Available(ctx context.Context) bool
+	Invalidate(ctx context.Context, arg item.Item) error
 }
 
 func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) *fileCache {
@@ -86,7 +86,21 @@ func (fc *fileCache) Available(ctx context.Context) bool {
 	return fc.ready && !fc.disabled
 }
 
-func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
+func (fc *fileCache) Invalidate(ctx context.Context, arg item.Item) error {
+	if !fc.Available(ctx) {
+		return nil
+	}
+
+	key := arg.Key()
+	cachedElement := fc.cache.Exists(key)
+	if !cachedElement {
+		return nil
+	}
+
+	return fc.cache.Remove(key)
+}
+
+func (fc *fileCache) Get(ctx context.Context, arg item.Item) (*CachedStream, error) {
 	if !fc.Available(ctx) {
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
@@ -142,13 +156,25 @@ type CachedStream struct {
 
 func (s *CachedStream) Seekable() bool { return s.Seeker != nil }
 func (s *CachedStream) Close() error {
+	var err error
 	if s.Closer != nil {
-		return s.Closer.Close()
+		if cErr := s.Closer.Close(); cErr != nil {
+			err = multierror.Append(err, cErr)
+		}
 	}
+
+	// Notify back to TranscoderWaiter
+	if tw, twok := s.Reader.(transcoder.TranscoderWaiter); twok {
+		tw.ReachedEOF <- struct{}{}
+	}
+
 	if c, ok := s.Reader.(io.Closer); ok {
-		return c.Close()
+		if cErr := c.Close(); cErr != nil {
+			err = multierror.Append(err, cErr)
+		}
 	}
-	return nil
+
+	return err
 }
 
 func getFinalCachedSize(r fscache.ReadAtCloser) int64 {

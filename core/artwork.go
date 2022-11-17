@@ -25,6 +25,7 @@ import (
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/cache/item"
 	_ "golang.org/x/image/webp"
 )
 
@@ -217,7 +218,7 @@ var (
 func GetImageCache() ArtworkCache {
 	onceImageCache.Do(func() {
 		instanceImageCache = cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
-			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
+			func(ctx context.Context, arg item.Item) (io.Reader, error) {
 				info := arg.(*imageInfo)
 				reader, err := info.a.getArtwork(ctx, info.id, info.path, info.size)
 				if err != nil {

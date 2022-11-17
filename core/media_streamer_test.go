@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/transcoder"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -199,9 +200,11 @@ type fakeFFmpeg struct {
 	closed bool
 }
 
-func (ff *fakeFFmpeg) Start(ctx context.Context, cmd, path string, maxBitRate int) (f io.ReadCloser, err error) {
+func (ff *fakeFFmpeg) Start(ctx context.Context, cmd, path string, maxBitRate int, invalidator transcoder.Invalidator) (f transcoder.TranscoderWaiter, err error) {
+	var tw transcoder.TranscoderWaiter
 	ff.r = strings.NewReader(ff.Data)
-	return ff, nil
+	tw.ReadCloser = ff
+	return tw, nil
 }
 
 func (ff *fakeFFmpeg) Read(p []byte) (n int, err error) {

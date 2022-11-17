@@ -56,7 +56,13 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	} else {
 		// If the stream doesn't provide a size (i.e. is not seekable), we can't support ranges/content-length
 		w.Header().Set("Accept-Ranges", "none")
-		w.Header().Set("Content-Type", stream.ContentType())
+		contentType := stream.ContentType()
+		switch contentType {
+		case "audio/mp4":
+			// If we send audio/mp4 directly to Safari, it will blatantly ignores the stream
+			contentType = "audio/aac"
+		}
+		w.Header().Set("Content-Type", contentType)
 
 		// if Client requests the estimated content-length, send it
 		if estimateContentLength {

@@ -9,10 +9,25 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/cache/item"
 )
 
+type CacheInvalidator interface {
+	Invalidate(ctx context.Context, arg item.Item) error
+}
+
+type Invalidator struct {
+	CacheInvalidator
+	item.Item
+}
+
+type TranscoderWaiter struct {
+	ReachedEOF chan struct{}
+	io.ReadCloser
+}
+
 type Transcoder interface {
-	Start(ctx context.Context, command, path string, maxBitRate int) (f io.ReadCloser, err error)
+	Start(ctx context.Context, command, path string, maxBitRate int, invalidator Invalidator) (resp TranscoderWaiter, err error)
 }
 
 func New() Transcoder {
@@ -21,20 +36,37 @@ func New() Transcoder {
 
 type externalTranscoder struct{}
 
-func (e *externalTranscoder) Start(ctx context.Context, command, path string, maxBitRate int) (f io.ReadCloser, err error) {
+func (e *externalTranscoder) Start(ctx context.Context, command, path string, maxBitRate int, invalidator Invalidator) (resp TranscoderWaiter, err error) {
 	args := createTranscodeCommand(command, path, maxBitRate)
 
 	log.Trace(ctx, "Executing transcoding command", "cmd", args)
-	cmd := exec.Command(args[0], args[1:]...) // #nosec
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
 	cmd.Stderr = os.Stderr
-	if f, err = cmd.StdoutPipe(); err != nil {
+	f, err := cmd.StdoutPipe()
+	if err != nil {
 		return
 	}
 	if err = cmd.Start(); err != nil {
 		return
 	}
 
-	go func() { _ = cmd.Wait() }() // prevent zombies
+	resp.ReachedEOF = make(chan struct{})
+	resp.ReadCloser = f
+
+	go func() {
+		<-resp.ReachedEOF
+		err := cmd.Wait()
+		if err != nil {
+			// Avoid cache poisoning. Assume all errs are invalid files
+			if invalidator.CacheInvalidator != nil && invalidator.Item != nil {
+				_ = invalidator.Invalidate(ctx, invalidator.Item)
+			}
+
+			log.Trace(ctx, "Error while waiting for transcode finish", err)
+		}
+
+		_ = resp.Close()
+	}()
 
 	return
 }

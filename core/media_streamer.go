@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/cache/item"
 )
 
 type MediaStreamer interface {
@@ -175,14 +176,23 @@ func GetTranscodingCache() TranscodingCache {
 	onceTranscodingCache.Do(func() {
 		instanceTranscodingCache = cache.NewFileCache("Transcoding", conf.Server.TranscodingCacheSize,
 			consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
-			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
+			func(ctx context.Context, arg item.Item) (io.Reader, error) {
 				job := arg.(*streamJob)
+
+				invalidator := struct {
+					transcoder.CacheInvalidator
+					item.Item
+				}{
+					Item:             job,
+					CacheInvalidator: job.ms.cache,
+				}
+
 				t, err := job.ms.ds.Transcoding(ctx).FindByFormat(job.format)
 				if err != nil {
 					log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
 					return nil, os.ErrInvalid
 				}
-				out, err := job.ms.transcoder.Start(ctx, t.Command, job.mf.Path, job.bitRate)
+				out, err := job.ms.transcoder.Start(ctx, t.Command, job.mf.Path, job.bitRate, invalidator)
 				if err != nil {
 					log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 					return nil, os.ErrInvalid
