@@ -170,6 +170,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("defaultLanguage", "pt"))
 	})
 
+	It("sets the defaultUIVolume", func() {
+		conf.Server.DefaultUIVolume = 45
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("defaultUIVolume", float64(45)))
+	})
+
 	It("sets the enableCoverAnimation", func() {
 		conf.Server.EnableCoverAnimation = true
 		r := httptest.NewRequest("GET", "/index.html", nil)

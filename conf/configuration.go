@@ -49,6 +49,7 @@ type configOptions struct {
 	EnableUserEditing      bool
 	DefaultTheme           string
 	DefaultLanguage        string
+	DefaultUIVolume        int
 	EnableCoverAnimation   bool
 	GATrackingID           string
 	EnableLogRedacting     bool
@@ -240,6 +241,7 @@ func init() {
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("defaultlanguage", "")
+	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
