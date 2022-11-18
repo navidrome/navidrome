@@ -10,4 +10,5 @@ type PropertyRepository interface {
 	Get(id string) (string, error)
 	Delete(id string) error
 	DefaultGet(id string, defaultValue string) (string, error)
+	// TODO: GetAll() (map[string]string, error) may be useful
 }
