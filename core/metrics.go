@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -38,7 +37,7 @@ func NewPrometheusMetrics() *PrometheusMetrics {
 	return res
 }
 
-func processSqlAggregateMetrics(ctx context.Context, sqlDB *sql.DB, dataStore model.DataStore, targetGauge *prometheus.GaugeVec) {
+func processSqlAggregateMetrics(ctx context.Context, dataStore model.DataStore, targetGauge *prometheus.GaugeVec) {
 	albums_count, err := dataStore.Album(ctx).CountAll()
 	if err != nil {
 		log.Error("album CountAll error: %v\n", err)
@@ -61,8 +60,8 @@ func processSqlAggregateMetrics(ctx context.Context, sqlDB *sql.DB, dataStore mo
 	targetGauge.With(prometheus.Labels{"model": "user"}).Set(float64(users_count))
 }
 
-func processMetrics(ctx context.Context, sqlDB *sql.DB, dataStore model.DataStore, metrics *PrometheusMetrics) {
-	processSqlAggregateMetrics(ctx, sqlDB, dataStore, metrics.DbTotal)
+func processMetrics(ctx context.Context, dataStore model.DataStore, metrics *PrometheusMetrics) {
+	processSqlAggregateMetrics(ctx, dataStore, metrics.DbTotal)
 }
 
 func MetricsWorker() {
@@ -77,7 +76,7 @@ func MetricsWorker() {
 
 	for {
 		begin_at := float64(time.Now().UnixNano()) / 1000_000_000
-		processMetrics(ctx, sqlDB, dataStore, metrics)
+		processMetrics(ctx, dataStore, metrics)
 		elapsed := float64(time.Now().UnixNano())/1000_000_000 - begin_at
 		log.Debug(fmt.Sprintf("Metrics collecting takes %.5f s\n", elapsed))
 
