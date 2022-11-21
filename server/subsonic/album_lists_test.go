@@ -14,8 +14,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("AlbumListController", func() {
-	var controller *AlbumListController
+var _ = Describe("Album Lists", func() {
+	var router *Router
 	var ds model.DataStore
 	var mockRepo *tests.MockAlbumRepo
 	var w *httptest.ResponseRecorder
@@ -24,7 +24,7 @@ var _ = Describe("AlbumListController", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		mockRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
-		controller = NewAlbumListController(ds, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
 	})
 
@@ -34,7 +34,7 @@ var _ = Describe("AlbumListController", func() {
 			mockRepo.SetData(model.Albums{
 				{ID: "1"}, {ID: "2"},
 			})
-			resp, err := controller.GetAlbumList(w, r)
+			resp, err := router.GetAlbumList(w, r)
 
 			Expect(err).To(BeNil())
 			Expect(resp.AlbumList.Album[0].Id).To(Equal("1"))
@@ -46,7 +46,7 @@ var _ = Describe("AlbumListController", func() {
 
 		It("should fail if missing type parameter", func() {
 			r := newGetRequest()
-			_, err := controller.GetAlbumList(w, r)
+			_, err := router.GetAlbumList(w, r)
 			var subErr subError
 			isSubError := errors.As(err, &subErr)
 
@@ -59,7 +59,7 @@ var _ = Describe("AlbumListController", func() {
 			mockRepo.SetError(true)
 			r := newGetRequest("type=newest")
 
-			_, err := controller.GetAlbumList(w, r)
+			_, err := router.GetAlbumList(w, r)
 
 			Expect(err).ToNot(BeNil())
 			var subErr subError
@@ -74,7 +74,7 @@ var _ = Describe("AlbumListController", func() {
 			mockRepo.SetData(model.Albums{
 				{ID: "1"}, {ID: "2"},
 			})
-			resp, err := controller.GetAlbumList2(w, r)
+			resp, err := router.GetAlbumList2(w, r)
 
 			Expect(err).To(BeNil())
 			Expect(resp.AlbumList2.Album[0].Id).To(Equal("1"))
@@ -86,7 +86,7 @@ var _ = Describe("AlbumListController", func() {
 
 		It("should fail if missing type parameter", func() {
 			r := newGetRequest()
-			_, err := controller.GetAlbumList2(w, r)
+			_, err := router.GetAlbumList2(w, r)
 
 			var subErr subError
 			errors.As(err, &subErr)
@@ -99,7 +99,7 @@ var _ = Describe("AlbumListController", func() {
 			mockRepo.SetError(true)
 			r := newGetRequest("type=newest")
 
-			_, err := controller.GetAlbumList2(w, r)
+			_, err := router.GetAlbumList2(w, r)
 
 			var subErr subError
 			errors.As(err, &subErr)

@@ -16,17 +16,8 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
-type BrowsingController struct {
-	ds model.DataStore
-	em core.ExternalMetadata
-}
-
-func NewBrowsingController(ds model.DataStore, em core.ExternalMetadata) *BrowsingController {
-	return &BrowsingController{ds: ds, em: em}
-}
-
-func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	mediaFolderList, _ := c.ds.MediaFolder(r.Context()).GetAll()
+func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error) {
+	mediaFolderList, _ := api.ds.MediaFolder(r.Context()).GetAll()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {
 		folders[i].Id = f.ID
@@ -37,14 +28,14 @@ func (c *BrowsingController) GetMusicFolders(w http.ResponseWriter, r *http.Requ
 	return response, nil
 }
 
-func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
-	folder, err := c.ds.MediaFolder(ctx).Get(int32(mediaFolderId))
+func (api *Router) getArtistIndex(ctx context.Context, mediaFolderId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+	folder, err := api.ds.MediaFolder(ctx).Get(int32(mediaFolderId))
 	if err != nil {
 		log.Error(ctx, "Error retrieving MediaFolder", "id", mediaFolderId, err)
 		return nil, err
 	}
 
-	l, err := c.ds.Property(ctx).DefaultGet(model.PropLastScan+"-"+folder.Path, "-1")
+	l, err := api.ds.Property(ctx).DefaultGet(model.PropLastScan+"-"+folder.Path, "-1")
 	if err != nil {
 		log.Error(ctx, "Error retrieving LastScan property", err)
 		return nil, err
@@ -54,7 +45,7 @@ func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId i
 	ms, _ := strconv.ParseInt(l, 10, 64)
 	lastModified := utils.ToTime(ms)
 	if lastModified.After(ifModifiedSince) {
-		indexes, err = c.ds.Artist(ctx).GetIndex()
+		indexes, err = api.ds.Artist(ctx).GetIndex()
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
 			return nil, err
@@ -74,11 +65,11 @@ func (c *BrowsingController) getArtistIndex(ctx context.Context, mediaFolderId i
 	return res, nil
 }
 
-func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 	musicFolderId := utils.ParamInt(r, "musicFolderId", 0)
 	ifModifiedSince := utils.ParamTime(r, "ifModifiedSince", time.Time{})
 
-	res, err := c.getArtistIndex(r.Context(), musicFolderId, ifModifiedSince)
+	res, err := api.getArtistIndex(r.Context(), musicFolderId, ifModifiedSince)
 	if err != nil {
 		return nil, err
 	}
@@ -88,9 +79,9 @@ func (c *BrowsingController) GetIndexes(w http.ResponseWriter, r *http.Request) 
 	return response, nil
 }
 
-func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetArtists(r *http.Request) (*responses.Subsonic, error) {
 	musicFolderId := utils.ParamInt(r, "musicFolderId", 0)
-	res, err := c.getArtistIndex(r.Context(), musicFolderId, time.Time{})
+	res, err := api.getArtistIndex(r.Context(), musicFolderId, time.Time{})
 	if err != nil {
 		return nil, err
 	}
@@ -100,11 +91,11 @@ func (c *BrowsingController) GetArtists(w http.ResponseWriter, r *http.Request) 
 	return response, nil
 }
 
-func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, error) {
 	id := utils.ParamString(r, "id")
 	ctx := r.Context()
 
-	entity, err := core.GetEntityByID(ctx, c.ds, id)
+	entity, err := core.GetEntityByID(ctx, api.ds, id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, "Requested ID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
@@ -118,9 +109,9 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 
 	switch v := entity.(type) {
 	case *model.Artist:
-		dir, err = c.buildArtistDirectory(ctx, v)
+		dir, err = api.buildArtistDirectory(ctx, v)
 	case *model.Album:
-		dir, err = c.buildAlbumDirectory(ctx, v)
+		dir, err = api.buildAlbumDirectory(ctx, v)
 	default:
 		log.Error(r, "Requested ID of invalid type", "id", id, "entity", v)
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
@@ -136,11 +127,11 @@ func (c *BrowsingController) GetMusicDirectory(w http.ResponseWriter, r *http.Re
 	return response, nil
 }
 
-func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetArtist(r *http.Request) (*responses.Subsonic, error) {
 	id := utils.ParamString(r, "id")
 	ctx := r.Context()
 
-	artist, err := c.ds.Artist(ctx).Get(id)
+	artist, err := api.ds.Artist(ctx).Get(id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, "Requested ArtistID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Artist not found")
@@ -150,22 +141,22 @@ func (c *BrowsingController) GetArtist(w http.ResponseWriter, r *http.Request) (
 		return nil, err
 	}
 
-	albums, err := c.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(id))
+	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(id))
 	if err != nil {
 		log.Error(ctx, "Error retrieving albums by artist", "id", id, "name", artist.Name, err)
 		return nil, err
 	}
 
 	response := newResponse()
-	response.ArtistWithAlbumsID3 = c.buildArtist(ctx, artist, albums)
+	response.ArtistWithAlbumsID3 = api.buildArtist(ctx, artist, albums)
 	return response, nil
 }
 
-func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetAlbum(r *http.Request) (*responses.Subsonic, error) {
 	id := utils.ParamString(r, "id")
 	ctx := r.Context()
 
-	album, err := c.ds.Album(ctx).Get(id)
+	album, err := api.ds.Album(ctx).Get(id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, "Requested AlbumID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Album not found")
@@ -175,22 +166,22 @@ func (c *BrowsingController) GetAlbum(w http.ResponseWriter, r *http.Request) (*
 		return nil, err
 	}
 
-	mfs, err := c.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(id))
+	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(id))
 	if err != nil {
 		log.Error(ctx, "Error retrieving tracks from album", "id", id, "name", album.Name, err)
 		return nil, err
 	}
 
 	response := newResponse()
-	response.AlbumWithSongsID3 = c.buildAlbum(ctx, album, mfs)
+	response.AlbumWithSongsID3 = api.buildAlbum(ctx, album, mfs)
 	return response, nil
 }
 
-func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetSong(r *http.Request) (*responses.Subsonic, error) {
 	id := utils.ParamString(r, "id")
 	ctx := r.Context()
 
-	mf, err := c.ds.MediaFile(ctx).Get(id)
+	mf, err := api.ds.MediaFile(ctx).Get(id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, "Requested MediaFileID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Song not found")
@@ -206,9 +197,9 @@ func (c *BrowsingController) GetSong(w http.ResponseWriter, r *http.Request) (*r
 	return response, nil
 }
 
-func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetGenres(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	genres, err := c.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
+	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
@@ -224,7 +215,7 @@ func (c *BrowsingController) GetGenres(w http.ResponseWriter, r *http.Request) (
 	return response, nil
 }
 
-func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	id, err := requiredParamString(r, "id")
 	if err != nil {
@@ -233,7 +224,7 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 	count := utils.ParamInt(r, "count", 20)
 	includeNotPresent := utils.ParamBool(r, "includeNotPresent", false)
 
-	artist, err := c.em.UpdateArtistInfo(ctx, id, count, includeNotPresent)
+	artist, err := api.externalMetadata.UpdateArtistInfo(ctx, id, count, includeNotPresent)
 	if err != nil {
 		return nil, err
 	}
@@ -253,8 +244,8 @@ func (c *BrowsingController) GetArtistInfo(w http.ResponseWriter, r *http.Reques
 	return response, nil
 }
 
-func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	info, err := c.GetArtistInfo(w, r)
+func (api *Router) GetArtistInfo2(r *http.Request) (*responses.Subsonic, error) {
+	info, err := api.GetArtistInfo(r)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +266,7 @@ func (c *BrowsingController) GetArtistInfo2(w http.ResponseWriter, r *http.Reque
 	return response, nil
 }
 
-func (c *BrowsingController) GetSimilarSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetSimilarSongs(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	id, err := requiredParamString(r, "id")
 	if err != nil {
@@ -283,7 +274,7 @@ func (c *BrowsingController) GetSimilarSongs(w http.ResponseWriter, r *http.Requ
 	}
 	count := utils.ParamInt(r, "count", 50)
 
-	songs, err := c.em.SimilarSongs(ctx, id, count)
+	songs, err := api.externalMetadata.SimilarSongs(ctx, id, count)
 	if err != nil {
 		return nil, err
 	}
@@ -295,8 +286,8 @@ func (c *BrowsingController) GetSimilarSongs(w http.ResponseWriter, r *http.Requ
 	return response, nil
 }
 
-func (c *BrowsingController) GetSimilarSongs2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	res, err := c.GetSimilarSongs(w, r)
+func (api *Router) GetSimilarSongs2(r *http.Request) (*responses.Subsonic, error) {
+	res, err := api.GetSimilarSongs(r)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +299,7 @@ func (c *BrowsingController) GetSimilarSongs2(w http.ResponseWriter, r *http.Req
 	return response, nil
 }
 
-func (c *BrowsingController) GetTopSongs(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetTopSongs(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	artist, err := requiredParamString(r, "artist")
 	if err != nil {
@@ -316,7 +307,7 @@ func (c *BrowsingController) GetTopSongs(w http.ResponseWriter, r *http.Request)
 	}
 	count := utils.ParamInt(r, "count", 50)
 
-	songs, err := c.em.TopSongs(ctx, artist, count)
+	songs, err := api.externalMetadata.TopSongs(ctx, artist, count)
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +319,7 @@ func (c *BrowsingController) GetTopSongs(w http.ResponseWriter, r *http.Request)
 	return response, nil
 }
 
-func (c *BrowsingController) buildArtistDirectory(ctx context.Context, artist *model.Artist) (*responses.Directory, error) {
+func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artist) (*responses.Directory, error) {
 	dir := &responses.Directory{}
 	dir.Id = artist.ID
 	dir.Name = artist.Name
@@ -342,7 +333,7 @@ func (c *BrowsingController) buildArtistDirectory(ctx context.Context, artist *m
 		dir.Starred = &artist.StarredAt
 	}
 
-	albums, err := c.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
+	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}
@@ -351,14 +342,14 @@ func (c *BrowsingController) buildArtistDirectory(ctx context.Context, artist *m
 	return dir, nil
 }
 
-func (c *BrowsingController) buildArtist(ctx context.Context, artist *model.Artist, albums model.Albums) *responses.ArtistWithAlbumsID3 {
+func (api *Router) buildArtist(ctx context.Context, artist *model.Artist, albums model.Albums) *responses.ArtistWithAlbumsID3 {
 	a := &responses.ArtistWithAlbumsID3{}
 	a.ArtistID3 = toArtistID3(ctx, *artist)
 	a.Album = childrenFromAlbums(ctx, albums)
 	return a
 }
 
-func (c *BrowsingController) buildAlbumDirectory(ctx context.Context, album *model.Album) (*responses.Directory, error) {
+func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) (*responses.Directory, error) {
 	dir := &responses.Directory{}
 	dir.Id = album.ID
 	dir.Name = album.Name
@@ -374,7 +365,7 @@ func (c *BrowsingController) buildAlbumDirectory(ctx context.Context, album *mod
 		dir.Starred = &album.StarredAt
 	}
 
-	mfs, err := c.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(album.ID))
+	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(album.ID))
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +374,7 @@ func (c *BrowsingController) buildAlbumDirectory(ctx context.Context, album *mod
 	return dir, nil
 }
 
-func (c *BrowsingController) buildAlbum(ctx context.Context, album *model.Album, mfs model.MediaFiles) *responses.AlbumWithSongsID3 {
+func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model.MediaFiles) *responses.AlbumWithSongsID3 {
 	dir := &responses.AlbumWithSongsID3{}
 	dir.Id = album.ID
 	dir.Name = album.Name

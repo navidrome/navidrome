@@ -7,14 +7,8 @@ import (
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
-type UsersController struct{}
-
-func NewUsersController() *UsersController {
-	return &UsersController{}
-}
-
 // TODO This is a placeholder. The real one has to read this info from a config file or the database
-func (c *UsersController) GetUser(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetUser(r *http.Request) (*responses.Subsonic, error) {
 	loggedUser, ok := request.UserFrom(r.Context())
 	if !ok {
 		return nil, newError(responses.ErrorGeneric, "Internal error")
@@ -30,7 +24,7 @@ func (c *UsersController) GetUser(w http.ResponseWriter, r *http.Request) (*resp
 	return response, nil
 }
 
-func (c *UsersController) GetUsers(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetUsers(r *http.Request) (*responses.Subsonic, error) {
 	loggedUser, ok := request.UserFrom(r.Context())
 	if !ok {
 		return nil, newError(responses.ErrorGeneric, "Internal error")

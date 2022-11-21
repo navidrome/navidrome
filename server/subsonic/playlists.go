@@ -6,49 +6,39 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
 
-type PlaylistsController struct {
-	ds  model.DataStore
-	pls core.Playlists
-}
-
-func NewPlaylistsController(ds model.DataStore, pls core.Playlists) *PlaylistsController {
-	return &PlaylistsController{ds: ds, pls: pls}
-}
-
-func (c *PlaylistsController) GetPlaylists(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetPlaylists(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	allPls, err := c.ds.Playlist(ctx).GetAll(model.QueryOptions{Sort: "name"})
+	allPls, err := api.ds.Playlist(ctx).GetAll(model.QueryOptions{Sort: "name"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
 	}
 	playlists := make([]responses.Playlist, len(allPls))
 	for i, p := range allPls {
-		playlists[i] = *c.buildPlaylist(p)
+		playlists[i] = *api.buildPlaylist(p)
 	}
 	response := newResponse()
 	response.Playlists = &responses.Playlists{Playlist: playlists}
 	return response, nil
 }
 
-func (c *PlaylistsController) GetPlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetPlaylist(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
-	return c.getPlaylist(ctx, id)
+	return api.getPlaylist(ctx, id)
 }
 
-func (c *PlaylistsController) getPlaylist(ctx context.Context, id string) (*responses.Subsonic, error) {
-	pls, err := c.ds.Playlist(ctx).GetWithTracks(id)
+func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subsonic, error) {
+	pls, err := api.ds.Playlist(ctx).GetWithTracks(id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, err.Error(), "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
@@ -59,12 +49,12 @@ func (c *PlaylistsController) getPlaylist(ctx context.Context, id string) (*resp
 	}
 
 	response := newResponse()
-	response.Playlist = c.buildPlaylistWithSongs(ctx, pls)
+	response.Playlist = api.buildPlaylistWithSongs(ctx, pls)
 	return response, nil
 }
 
-func (c *PlaylistsController) create(ctx context.Context, playlistId, name string, ids []string) (string, error) {
-	err := c.ds.WithTx(func(tx model.DataStore) error {
+func (api *Router) create(ctx context.Context, playlistId, name string, ids []string) (string, error) {
+	err := api.ds.WithTx(func(tx model.DataStore) error {
 		owner := getUser(ctx)
 		var pls *model.Playlist
 		var err error
@@ -91,7 +81,7 @@ func (c *PlaylistsController) create(ctx context.Context, playlistId, name strin
 	return playlistId, err
 }
 
-func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) CreatePlaylist(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	songIds := utils.ParamStrings(r, "songId")
 	playlistId := utils.ParamString(r, "playlistId")
@@ -99,20 +89,20 @@ func (c *PlaylistsController) CreatePlaylist(w http.ResponseWriter, r *http.Requ
 	if playlistId == "" && name == "" {
 		return nil, errors.New("required parameter name is missing")
 	}
-	id, err := c.create(ctx, playlistId, name, songIds)
+	id, err := api.create(ctx, playlistId, name, songIds)
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
 	}
-	return c.getPlaylist(ctx, id)
+	return api.getPlaylist(ctx, id)
 }
 
-func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) DeletePlaylist(r *http.Request) (*responses.Subsonic, error) {
 	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
-	err = c.ds.Playlist(r.Context()).Delete(id)
+	err = api.ds.Playlist(r.Context()).Delete(id)
 	if errors.Is(err, model.ErrNotAuthorized) {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
@@ -123,7 +113,7 @@ func (c *PlaylistsController) DeletePlaylist(w http.ResponseWriter, r *http.Requ
 	return newResponse(), nil
 }
 
-func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) {
 	playlistId, err := requiredParamString(r, "playlistId")
 	if err != nil {
 		return nil, err
@@ -151,7 +141,7 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	log.Trace(r, fmt.Sprintf("-- Adding: '%v'", songsToAdd))
 	log.Trace(r, fmt.Sprintf("-- Removing: '%v'", songIndexesToRemove))
 
-	err = c.pls.Update(r.Context(), playlistId, plsName, comment, public, songsToAdd, songIndexesToRemove)
+	err = api.playlists.Update(r.Context(), playlistId, plsName, comment, public, songsToAdd, songIndexesToRemove)
 	if errors.Is(err, model.ErrNotAuthorized) {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
@@ -162,15 +152,15 @@ func (c *PlaylistsController) UpdatePlaylist(w http.ResponseWriter, r *http.Requ
 	return newResponse(), nil
 }
 
-func (c *PlaylistsController) buildPlaylistWithSongs(ctx context.Context, p *model.Playlist) *responses.PlaylistWithSongs {
+func (api *Router) buildPlaylistWithSongs(ctx context.Context, p *model.Playlist) *responses.PlaylistWithSongs {
 	pls := &responses.PlaylistWithSongs{
-		Playlist: *c.buildPlaylist(*p),
+		Playlist: *api.buildPlaylist(*p),
 	}
 	pls.Entry = childrenFromMediaFiles(ctx, p.MediaFiles())
 	return pls
 }
 
-func (c *PlaylistsController) buildPlaylist(p model.Playlist) *responses.Playlist {
+func (api *Router) buildPlaylist(p model.Playlist) *responses.Playlist {
 	pls := &responses.Playlist{}
 	pls.Id = p.ID
 	pls.Name = p.Name

@@ -16,17 +16,7 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
-type StreamController struct {
-	streamer core.MediaStreamer
-	archiver core.Archiver
-	ds       model.DataStore
-}
-
-func NewStreamController(streamer core.MediaStreamer, archiver core.Archiver, ds model.DataStore) *StreamController {
-	return &StreamController{streamer: streamer, archiver: archiver, ds: ds}
-}
-
-func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	id, err := requiredParamString(r, "id")
 	if err != nil {
@@ -36,7 +26,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	format := utils.ParamString(r, "format")
 	estimateContentLength := utils.ParamBool(r, "estimateContentLength", false)
 
-	stream, err := c.streamer.NewStream(ctx, id, format, maxBitRate)
+	stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +72,7 @@ func (c *StreamController) Stream(w http.ResponseWriter, r *http.Request) (*resp
 	return nil, nil
 }
 
-func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	username, _ := request.UsernameFrom(ctx)
 	id, err := requiredParamString(r, "id")
@@ -95,7 +85,7 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 		return nil, newError(responses.ErrorAuthorizationFail, "downloads are disabled")
 	}
 
-	entity, err := core.GetEntityByID(ctx, c.ds, id)
+	entity, err := core.GetEntityByID(ctx, api.ds, id)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +99,7 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		stream, err := c.streamer.NewStream(ctx, id, "raw", 0)
+		stream, err := api.streamer.NewStream(ctx, id, "raw", 0)
 		if err != nil {
 			return nil, err
 		}
@@ -120,13 +110,13 @@ func (c *StreamController) Download(w http.ResponseWriter, r *http.Request) (*re
 		return nil, nil
 	case *model.Album:
 		setHeaders(v.Name)
-		err = c.archiver.ZipAlbum(ctx, id, w)
+		err = api.archiver.ZipAlbum(ctx, id, w)
 	case *model.Artist:
 		setHeaders(v.Name)
-		err = c.archiver.ZipArtist(ctx, id, w)
+		err = api.archiver.ZipArtist(ctx, id, w)
 	case *model.Playlist:
 		setHeaders(v.Name)
-		err = c.archiver.ZipPlaylist(ctx, id, w)
+		err = api.archiver.ZipPlaylist(ctx, id, w)
 	default:
 		err = model.ErrNotFound
 	}

@@ -15,7 +15,7 @@ import (
 )
 
 var _ = Describe("MediaRetrievalController", func() {
-	var controller *MediaRetrievalController
+	var router *Router
 	var ds model.DataStore
 	mockRepo := &mockedMediaFile{}
 	var artwork *fakeArtwork
@@ -26,7 +26,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			MockedMediaFile: mockRepo,
 		}
 		artwork = &fakeArtwork{}
-		controller = NewMediaRetrievalController(artwork, ds)
+		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
 	})
 
@@ -34,7 +34,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		It("should return data for that id", func() {
 			artwork.data = "image data"
 			r := newGetRequest("id=34", "size=128")
-			_, err := controller.GetCoverArt(w, r)
+			_, err := router.GetCoverArt(w, r)
 
 			Expect(err).To(BeNil())
 			Expect(artwork.recvId).To(Equal("34"))
@@ -44,7 +44,7 @@ var _ = Describe("MediaRetrievalController", func() {
 
 		It("should return placeholder if id parameter is missing (mimicking Subsonic)", func() {
 			r := newGetRequest()
-			_, err := controller.GetCoverArt(w, r)
+			_, err := router.GetCoverArt(w, r)
 
 			Expect(err).To(BeNil())
 			Expect(w.Body.String()).To(Equal(artwork.data))
@@ -53,7 +53,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		It("should fail when the file is not found", func() {
 			artwork.err = model.ErrNotFound
 			r := newGetRequest("id=34", "size=128")
-			_, err := controller.GetCoverArt(w, r)
+			_, err := router.GetCoverArt(w, r)
 
 			Expect(err).To(MatchError("Artwork not found"))
 		})
@@ -61,7 +61,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		It("should fail when there is an unknown error", func() {
 			artwork.err = errors.New("weird error")
 			r := newGetRequest("id=34", "size=128")
-			_, err := controller.GetCoverArt(w, r)
+			_, err := router.GetCoverArt(w, r)
 
 			Expect(err).To(MatchError("weird error"))
 		})
@@ -78,7 +78,7 @@ var _ = Describe("MediaRetrievalController", func() {
 					Lyrics: "[00:18.80]We're no strangers to love\n[00:22.80]You know the rules and so do I",
 				},
 			})
-			response, err := controller.GetLyrics(w, r)
+			response, err := router.GetLyrics(r)
 			if err != nil {
 				log.Error("You're missing something.", err)
 			}
@@ -90,7 +90,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		It("should return empty subsonic response if the record corresponding to the given artist & title is not found", func() {
 			r := newGetRequest("artist=Dheeraj", "title=Rinkiya+Ke+Papa")
 			mockRepo.SetData(model.MediaFiles{})
-			response, err := controller.GetLyrics(w, r)
+			response, err := router.GetLyrics(r)
 			if err != nil {
 				log.Error("You're missing something.", err)
 			}
@@ -110,7 +110,7 @@ type fakeArtwork struct {
 	recvSize int
 }
 
-func (c *fakeArtwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
+func (c *fakeArtwork) Get(_ context.Context, id string, size int) (io.ReadCloser, error) {
 	if c.err != nil {
 		return nil, c.err
 	}
@@ -129,7 +129,7 @@ var _ = Describe("isSynced", func() {
 	})
 	It("returns true if lyrics contain timestamps", func() {
 		Expect(isSynced(`NF Real Music
-		[00:00] ksdjjs
+		[00:00] First line
 		[00:00.85] JUST LIKE YOU
 		[00:00.85] Just in case my car goes off the highway`)).To(Equal(true))
 		Expect(isSynced("[04:02:50.85] Never gonna give you up")).To(Equal(true))
@@ -148,6 +148,6 @@ func (m *mockedMediaFile) SetData(mfs model.MediaFiles) {
 	m.data = mfs
 }
 
-func (m *mockedMediaFile) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+func (m *mockedMediaFile) GetAll(...model.QueryOptions) (model.MediaFiles, error) {
 	return m.data, nil
 }

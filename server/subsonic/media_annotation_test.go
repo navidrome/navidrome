@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"time"
 
 	"github.com/navidrome/navidrome/model/request"
@@ -19,8 +18,7 @@ import (
 )
 
 var _ = Describe("MediaAnnotationController", func() {
-	var controller *MediaAnnotationController
-	var w *httptest.ResponseRecorder
+	var router *Router
 	var ds model.DataStore
 	var playTracker *fakePlayTracker
 	var eventBroker *fakeEventBroker
@@ -31,8 +29,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		ds = &tests.MockDataStore{}
 		playTracker = &fakePlayTracker{}
 		eventBroker = &fakeEventBroker{}
-		controller = NewMediaAnnotationController(ds, playTracker, eventBroker)
-		w = httptest.NewRecorder()
+		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker)
 	})
 
 	Describe("Scrobble", func() {
@@ -40,7 +37,7 @@ var _ = Describe("MediaAnnotationController", func() {
 			submissionTime := time.Now()
 			r := newGetRequest("id=12", "id=34")
 
-			_, err := controller.Scrobble(w, r)
+			_, err := router.Scrobble(r)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(playTracker.Submissions).To(HaveLen(2))
@@ -57,7 +54,7 @@ var _ = Describe("MediaAnnotationController", func() {
 			t2 := utils.ToMillis(time2)
 			r := newGetRequest("id=12", "id=34", fmt.Sprintf("time=%d", t1), fmt.Sprintf("time=%d", t2))
 
-			_, err := controller.Scrobble(w, r)
+			_, err := router.Scrobble(r)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(playTracker.Submissions).To(HaveLen(2))
@@ -70,7 +67,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		It("checks if number of ids match number of times", func() {
 			r := newGetRequest("id=12", "id=34", "time=1111")
 
-			_, err := controller.Scrobble(w, r)
+			_, err := router.Scrobble(r)
 
 			Expect(err).To(HaveOccurred())
 			Expect(playTracker.Submissions).To(BeEmpty())
@@ -86,14 +83,14 @@ var _ = Describe("MediaAnnotationController", func() {
 			})
 
 			It("does not scrobble", func() {
-				_, err := controller.Scrobble(w, req)
+				_, err := router.Scrobble(req)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(playTracker.Submissions).To(BeEmpty())
 			})
 
 			It("registers a NowPlaying", func() {
-				_, err := controller.Scrobble(w, req)
+				_, err := router.Scrobble(req)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(playTracker.Playing).To(HaveLen(1))
@@ -109,7 +106,7 @@ type fakePlayTracker struct {
 	Error       error
 }
 
-func (f *fakePlayTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error {
+func (f *fakePlayTracker) NowPlaying(_ context.Context, playerId string, _ string, trackId string) error {
 	if f.Error != nil {
 		return f.Error
 	}
@@ -120,11 +117,11 @@ func (f *fakePlayTracker) NowPlaying(ctx context.Context, playerId string, playe
 	return nil
 }
 
-func (f *fakePlayTracker) GetNowPlaying(ctx context.Context) ([]scrobbler.NowPlayingInfo, error) {
+func (f *fakePlayTracker) GetNowPlaying(_ context.Context) ([]scrobbler.NowPlayingInfo, error) {
 	return nil, f.Error
 }
 
-func (f *fakePlayTracker) Submit(ctx context.Context, submissions []scrobbler.Submission) error {
+func (f *fakePlayTracker) Submit(_ context.Context, submissions []scrobbler.Submission) error {
 	if f.Error != nil {
 		return f.Error
 	}
@@ -139,7 +136,7 @@ type fakeEventBroker struct {
 	Events []events.Event
 }
 
-func (f *fakeEventBroker) SendMessage(ctx context.Context, event events.Event) {
+func (f *fakeEventBroker) SendMessage(_ context.Context, event events.Event) {
 	f.Events = append(f.Events, event)
 }
 
