@@ -34,7 +34,7 @@ const AlbumFilter = (props) => {
   const translate = useTranslate()
   return (
     <Filter {...props} variant={'outlined'}>
-      <SearchInput source="name" alwaysOn />
+      <SearchInput id="search" source="name" alwaysOn />
       <ReferenceInput
         label={translate('resources.album.fields.artist')}
         source="artist_id"

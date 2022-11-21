@@ -12,7 +12,7 @@ import { List, DateField } from '../common'
 
 const UserFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
-    <SearchInput source="name" alwaysOn />
+    <SearchInput id="search" source="name" alwaysOn />
   </Filter>
 )
 

@@ -13,7 +13,7 @@ import { SimpleList, List } from '../common'
 
 const PlayerFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
-    <SearchInput source="name" alwaysOn />
+    <SearchInput id="search" source="name" alwaysOn />
   </Filter>
 )
 
