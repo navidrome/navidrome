@@ -73,10 +73,12 @@ type trackMetadata struct {
 }
 
 type additionalInfo struct {
-	TrackNumber  int      `json:"tracknumber,omitempty"`
-	TrackMbzID   string   `json:"track_mbid,omitempty"`
-	ArtistMbzIDs []string `json:"artist_mbids,omitempty"`
-	ReleaseMbID  string   `json:"release_mbid,omitempty"`
+	SubmissionClient        string   `json:"submission_client,omitempty"`
+	SubmissionClientVersion string   `json:"submission_client_version,omitempty"`
+	TrackNumber             int      `json:"tracknumber,omitempty"`
+	TrackMbzID              string   `json:"track_mbid,omitempty"`
+	ArtistMbzIDs            []string `json:"artist_mbids,omitempty"`
+	ReleaseMbID             string   `json:"release_mbid,omitempty"`
 }
 
 func (c *Client) ValidateToken(ctx context.Context, apiKey string) (*listenBrainzResponse, error) {
