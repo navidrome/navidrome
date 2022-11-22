@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -56,9 +57,11 @@ var _ = Describe("listenBrainzAgent", func() {
 					"TrackName":   Equal(track.Title),
 					"ReleaseName": Equal(track.Album),
 					"AdditionalInfo": MatchAllFields(Fields{
-						"TrackNumber": Equal(track.TrackNumber),
-						"TrackMbzID":  Equal(track.MbzTrackID),
-						"ReleaseMbID": Equal(track.MbzAlbumID),
+						"SubmissionClient":        Equal(consts.AppName),
+						"SubmissionClientVersion": Equal(consts.Version),
+						"TrackNumber":             Equal(track.TrackNumber),
+						"TrackMbzID":              Equal(track.MbzTrackID),
+						"ReleaseMbID":             Equal(track.MbzAlbumID),
 						"ArtistMbzIDs": MatchAllElements(idArtistId, Elements{
 							"mbz-789": Equal(track.MbzArtistID),
 						}),
