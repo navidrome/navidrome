@@ -90,6 +90,12 @@ var (
 			"defaultBitRate": 128,
 			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
+		{
+			"name":           "aac audio",
+			"targetFormat":   "aac",
+			"defaultBitRate": 256,
+			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a aac -f adts -",
+		},
 	}
 
 	DefaultPlaylistsPath = strings.Join([]string{".", "**/**"}, string(filepath.ListSeparator))
