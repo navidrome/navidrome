@@ -24,6 +24,7 @@ require (
 	github.com/golangci/golangci-lint v1.49.0
 	github.com/google/uuid v1.3.0
 	github.com/google/wire v0.5.0
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.3.0
 	github.com/lestrrat-go/jwx v1.2.25
@@ -124,7 +125,6 @@ require (
 	github.com/gostaticanalysis/forcetypeassert v0.1.0 // indirect
 	github.com/gostaticanalysis/nilerr v0.1.1 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
