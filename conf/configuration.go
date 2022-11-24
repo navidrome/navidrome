@@ -34,7 +34,7 @@ type configOptions struct {
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
 	PlaylistsPath           string
-	AutoTranscodeDownlaod   bool
+	AutoTranscodeDownload   bool
 
 	SearchFullString       bool
 	RecentlyAddedByModTime bool
