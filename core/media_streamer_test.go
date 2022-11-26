@@ -6,13 +6,13 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -202,7 +202,7 @@ func newFakeFFmpeg(data string) *fakeFFmpeg {
 type fakeFFmpeg struct {
 	io.Reader
 	lock   sync.Mutex
-	closed atomic.Bool
+	closed utils.AtomicBool
 }
 
 func (ff *fakeFFmpeg) Start(ctx context.Context, cmd, path string, maxBitRate int) (f io.ReadCloser, err error) {
@@ -216,10 +216,10 @@ func (ff *fakeFFmpeg) Read(p []byte) (n int, err error) {
 }
 
 func (ff *fakeFFmpeg) Close() error {
-	ff.closed.Store(true)
+	ff.closed.Set(true)
 	return nil
 }
 
 func (ff *fakeFFmpeg) IsClosed() bool {
-	return ff.closed.Load()
+	return ff.closed.Get()
 }
