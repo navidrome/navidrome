@@ -25,7 +25,7 @@ func (e *externalTranscoder) Start(ctx context.Context, command, path string, ma
 	args := createTranscodeCommand(command, path, maxBitRate)
 
 	log.Trace(ctx, "Executing transcoding command", "cmd", args)
-	cmd := exec.Command(args[0], args[1:]...) // #nosec
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
 	cmd.Stderr = os.Stderr
 	if f, err = cmd.StdoutPipe(); err != nil {
 		return
