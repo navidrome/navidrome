@@ -62,7 +62,7 @@ func runNavidrome() {
 		if err := db.Close(); err != nil {
 			log.Error("Error closing DB", err)
 		}
-		log.Info("Navidrome stopped gracefully. Bye.")
+		log.Info("Navidrome stopped, bye.")
 	}()
 
 	g, ctx := errgroup.WithContext(context.Background())

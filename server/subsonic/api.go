@@ -166,8 +166,14 @@ func (api *Router) routes() http.Handler {
 	return r
 }
 
-// Add the Subsonic handler that requires a http.ResponseWriter, with and without `.view` extension.
-// Ex: if path = `stream` it will create the routes `/stream` and `/stream.view`
+// Add a Subsonic handler
+func h(r chi.Router, path string, f handler) {
+	hr(r, path, func(_ http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+		return f(r)
+	})
+}
+
+// Add a Subsonic handler that requires a http.ResponseWriter (ex: stream, getCoverArt...)
 func hr(r chi.Router, path string, f handlerRaw) {
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)
@@ -194,28 +200,18 @@ func hr(r chi.Router, path string, f handlerRaw) {
 			sendResponse(w, r, res)
 		}
 	}
-	r.HandleFunc("/"+path, handle)
-	r.HandleFunc("/"+path+".view", handle)
-}
-
-// Add the Subsonic handler, with and without `.view` extension
-// Ex: if path = `ping` it will create the routes `/ping` and `/ping.view`
-func h(r chi.Router, path string, f handler) {
-	hr(r, path, func(_ http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-		return f(r)
-	})
+	addHandler(r, path, handle)
 }
 
 // Add a handler that returns 501 - Not implemented. Used to signal that an endpoint is not implemented yet
-func h501(r *chi.Mux, paths ...string) {
+func h501(r chi.Router, paths ...string) {
 	for _, path := range paths {
 		handle := func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("Cache-Control", "no-cache")
 			w.WriteHeader(501)
 			_, _ = w.Write([]byte("This endpoint is not implemented, but may be in future releases"))
 		}
-		r.HandleFunc("/"+path, handle)
-		r.HandleFunc("/"+path+".view", handle)
+		addHandler(r, path, handle)
 	}
 }
 
@@ -226,9 +222,13 @@ func h410(r chi.Router, paths ...string) {
 			w.WriteHeader(410)
 			_, _ = w.Write([]byte("This endpoint will not be implemented"))
 		}
-		r.HandleFunc("/"+path, handle)
-		r.HandleFunc("/"+path+".view", handle)
+		addHandler(r, path, handle)
 	}
+}
+
+func addHandler(r chi.Router, path string, handle func(w http.ResponseWriter, r *http.Request)) {
+	r.HandleFunc("/"+path, handle)
+	r.HandleFunc("/"+path+".view", handle)
 }
 
 func sendError(w http.ResponseWriter, r *http.Request, err error) {
