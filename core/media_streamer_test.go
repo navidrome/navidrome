@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -18,7 +20,7 @@ import (
 var _ = Describe("MediaStreamer", func() {
 	var streamer MediaStreamer
 	var ds model.DataStore
-	ffmpeg := &fakeFFmpeg{Data: "fake data"}
+	ffmpeg := newFakeFFmpeg("fake data")
 	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
@@ -63,7 +65,7 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(err).To(BeNil())
 			_, _ = io.ReadAll(s)
 			_ = s.Close()
-			Eventually(func() bool { return ffmpeg.closed }, "3s").Should(BeTrue())
+			Eventually(func() bool { return ffmpeg.IsClosed() }, "3s").Should(BeTrue())
 
 			s, err = streamer.NewStream(ctx, "123", "mp3", 32)
 			Expect(err).To(BeNil())
@@ -193,22 +195,31 @@ var _ = Describe("MediaStreamer", func() {
 	})
 })
 
+func newFakeFFmpeg(data string) *fakeFFmpeg {
+	return &fakeFFmpeg{Reader: strings.NewReader(data)}
+}
+
 type fakeFFmpeg struct {
-	Data   string
-	r      io.Reader
-	closed bool
+	io.Reader
+	lock   sync.Mutex
+	closed atomic.Bool
 }
 
 func (ff *fakeFFmpeg) Start(ctx context.Context, cmd, path string, maxBitRate int) (f io.ReadCloser, err error) {
-	ff.r = strings.NewReader(ff.Data)
 	return ff, nil
 }
 
 func (ff *fakeFFmpeg) Read(p []byte) (n int, err error) {
-	return ff.r.Read(p)
+	ff.lock.Lock()
+	defer ff.lock.Unlock()
+	return ff.Reader.Read(p)
 }
 
 func (ff *fakeFFmpeg) Close() error {
-	ff.closed = true
+	ff.closed.Store(true)
 	return nil
+}
+
+func (ff *fakeFFmpeg) IsClosed() bool {
+	return ff.closed.Load()
 }
