@@ -53,7 +53,7 @@ var _ = Describe("GetInstance", func() {
 	})
 
 	It("only calls the constructor once when called concurrently", func() {
-		const maxCalls = 20000
+		const maxCalls = 8000
 		var numCalls int32
 		start := sync.WaitGroup{}
 		start.Add(1)
