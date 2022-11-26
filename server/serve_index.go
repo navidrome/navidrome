@@ -73,6 +73,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"AppConfig": string(j),
 			"Version":   version,
 		}
+		w.Header().Set("Content-Type", "text/html")
 		err = t.Execute(w, data)
 		if err != nil {
 			log.Error(r, "Could not execute `index.html` template", err)

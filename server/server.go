@@ -42,8 +42,6 @@ func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler
 	})
 }
 
-var startTime = time.Now()
-
 func (s *Server) Run(ctx context.Context, addr string) error {
 	s.MountRouter("WebUI", consts.URLPathUI, s.frontendAssetsHandler())
 	server := &http.Server{
@@ -55,13 +53,13 @@ func (s *Server) Run(ctx context.Context, addr string) error {
 	// Start HTTP server in its own goroutine, send a signal (errC) if failed to start
 	errC := make(chan error)
 	go func() {
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			log.Error(ctx, "Could not start server. Aborting", err)
 			errC <- err
 		}
 	}()
 
-	log.Info(ctx, "Navidrome server is ready!", "address", addr, "startupTime", time.Since(startTime))
+	log.Info(ctx, "Navidrome server is ready!", "address", addr, "startupTime", time.Since(consts.ServerStart))
 
 	// Wait for a signal to terminate (or an error during startup)
 	select {
@@ -94,7 +92,7 @@ func (s *Server) initRoutes() {
 		r.Use(middleware.RealIP)
 	}
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Compress(5, "application/xml", "application/json", "application/javascript"))
+	r.Use(compressMiddleware())
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(clientUniqueIdAdder)
 	r.Use(loggerInjector)
