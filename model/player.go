@@ -5,22 +5,23 @@ import (
 )
 
 type Player struct {
-	ID             string    `json:"id"            orm:"column(id)"`
-	Name           string    `json:"name"`
-	Type           string    `json:"type"`
-	UserName       string    `json:"userName"`
-	Client         string    `json:"client"`
-	IPAddress      string    `json:"ipAddress"`
-	LastSeen       time.Time `json:"lastSeen"`
-	TranscodingId  string    `json:"transcodingId"`
-	MaxBitRate     int       `json:"maxBitRate"`
-	ReportRealPath bool      `json:"reportRealPath"`
+	ID              string    `structs:"id" json:"id"            orm:"column(id)"`
+	Name            string    `structs:"name" json:"name"`
+	UserAgent       string    `structs:"user_agent" json:"userAgent"`
+	UserName        string    `structs:"user_name" json:"userName"`
+	Client          string    `structs:"client" json:"client"`
+	IPAddress       string    `structs:"ip_address" json:"ipAddress"`
+	LastSeen        time.Time `structs:"last_seen" json:"lastSeen"`
+	TranscodingId   string    `structs:"transcoding_id" json:"transcodingId"`
+	MaxBitRate      int       `structs:"max_bit_rate" json:"maxBitRate"`
+	ReportRealPath  bool      `structs:"report_real_path" json:"reportRealPath"`
+	ScrobbleEnabled bool      `structs:"scrobble_enabled" json:"scrobbleEnabled"`
 }
 
 type Players []Player
 
 type PlayerRepository interface {
 	Get(id string) (*Player, error)
-	FindByName(client, userName string) (*Player, error)
+	FindMatch(userName, client, typ string) (*Player, error)
 	Put(p *Player) error
 }

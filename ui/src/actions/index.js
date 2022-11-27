@@ -1,4 +1,4 @@
-export * from './audioplayer'
+export * from './player'
 export * from './themes'
 export * from './albumView'
 export * from './dialogs'

@@ -2,28 +2,22 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
 
-type MediaAnnotationController struct {
-	ds     model.DataStore
-	npRepo core.NowPlaying
-}
-
-func NewMediaAnnotationController(ds model.DataStore, npr core.NowPlaying) *MediaAnnotationController {
-	return &MediaAnnotationController{ds: ds, npRepo: npr}
-}
-
-func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) SetRating(r *http.Request) (*responses.Subsonic, error) {
 	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
@@ -34,13 +28,13 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 	}
 
 	log.Debug(r, "Setting rating", "rating", rating, "id", id)
-	err = c.setRating(r.Context(), id, rating)
+	err = api.setRating(r.Context(), id, rating)
 
-	switch {
-	case err == model.ErrNotFound:
+	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, err)
 		return nil, newError(responses.ErrorDataNotFound, "ID not found")
-	case err != nil:
+	}
+	if err != nil {
 		log.Error(r, err)
 		return nil, err
 	}
@@ -48,18 +42,35 @@ func (c *MediaAnnotationController) SetRating(w http.ResponseWriter, r *http.Req
 	return newResponse(), nil
 }
 
-func (c *MediaAnnotationController) setRating(ctx context.Context, id string, rating int) error {
-	exist, err := c.ds.Album(ctx).Exists(id)
+func (api *Router) setRating(ctx context.Context, id string, rating int) error {
+	var repo model.AnnotatedRepository
+	var resource string
+
+	entity, err := core.GetEntityByID(ctx, api.ds, id)
 	if err != nil {
 		return err
 	}
-	if exist {
-		return c.ds.Album(ctx).SetRating(rating, id)
+	switch entity.(type) {
+	case *model.Artist:
+		repo = api.ds.Artist(ctx)
+		resource = "artist"
+	case *model.Album:
+		repo = api.ds.Album(ctx)
+		resource = "album"
+	default:
+		repo = api.ds.MediaFile(ctx)
+		resource = "song"
 	}
-	return c.ds.MediaFile(ctx).SetRating(rating, id)
+	err = repo.SetRating(rating, id)
+	if err != nil {
+		return err
+	}
+	event := &events.RefreshResource{}
+	api.broker.SendMessage(ctx, event.With(resource, id))
+	return nil
 }
 
-func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) Star(r *http.Request) (*responses.Subsonic, error) {
 	ids := utils.ParamStrings(r, "id")
 	albumIds := utils.ParamStrings(r, "albumId")
 	artistIds := utils.ParamStrings(r, "artistId")
@@ -69,7 +80,7 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 	ids = append(ids, albumIds...)
 	ids = append(ids, artistIds...)
 
-	err := c.setStar(r.Context(), true, ids...)
+	err := api.setStar(r.Context(), true, ids...)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +88,7 @@ func (c *MediaAnnotationController) Star(w http.ResponseWriter, r *http.Request)
 	return newResponse(), nil
 }
 
-func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) Unstar(r *http.Request) (*responses.Subsonic, error) {
 	ids := utils.ParamStrings(r, "id")
 	albumIds := utils.ParamStrings(r, "albumId")
 	artistIds := utils.ParamStrings(r, "artistId")
@@ -87,7 +98,7 @@ func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Reques
 	ids = append(ids, albumIds...)
 	ids = append(ids, artistIds...)
 
-	err := c.setStar(r.Context(), false, ids...)
+	err := api.setStar(r.Context(), false, ids...)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +106,64 @@ func (c *MediaAnnotationController) Unstar(w http.ResponseWriter, r *http.Reques
 	return newResponse(), nil
 }
 
-func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	log.Debug(ctx, "Changing starred", "ids", ids, "starred", star)
+	if len(ids) == 0 {
+		log.Warn(ctx, "Cannot star/unstar an empty list of ids")
+		return nil
+	}
+	event := &events.RefreshResource{}
+	err := api.ds.WithTx(func(tx model.DataStore) error {
+		for _, id := range ids {
+			exist, err := tx.Album(ctx).Exists(id)
+			if err != nil {
+				return err
+			}
+			if exist {
+				err = tx.Album(ctx).SetStar(star, id)
+				if err != nil {
+					return err
+				}
+				event = event.With("album", id)
+				continue
+			}
+			exist, err = tx.Artist(ctx).Exists(id)
+			if err != nil {
+				return err
+			}
+			if exist {
+				err = tx.Artist(ctx).SetStar(star, id)
+				if err != nil {
+					return err
+				}
+				event = event.With("artist", id)
+				continue
+			}
+			err = tx.MediaFile(ctx).SetStar(star, id)
+			if err != nil {
+				return err
+			}
+			event = event.With("song", id)
+		}
+		api.broker.SendMessage(ctx, event)
+		return nil
+	})
+
+	if errors.Is(err, model.ErrNotFound) {
+		log.Error(ctx, err)
+		return newError(responses.ErrorDataNotFound, "ID not found")
+	}
+	if err != nil {
+		log.Error(ctx, err)
+		return err
+	}
+	return nil
+}
+
+func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	ids, err := requiredParamStrings(r, "id")
 	if err != nil {
 		return nil, err
@@ -105,11 +173,26 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 		return nil, newError(responses.ErrorGeneric, "Wrong number of timestamps: %d, should be %d", len(times), len(ids))
 	}
 	submission := utils.ParamBool(r, "submission", true)
-	playerId := 1 // TODO Multiple players, based on playerName/username/clientIP(?)
-	playerName := utils.ParamString(r, "c")
-	username := utils.ParamString(r, "u")
+	ctx := r.Context()
 
-	log.Debug(r, "Scrobbling tracks", "ids", ids, "times", times, "submission", submission)
+	if submission {
+		err := api.scrobblerSubmit(ctx, ids, times)
+		if err != nil {
+			log.Error(ctx, "Error registering scrobbles", "ids", ids, "times", times, err)
+		}
+	} else {
+		err := api.scrobblerNowPlaying(ctx, ids[0])
+		if err != nil {
+			log.Error(ctx, "Error setting NowPlaying", "id", ids[0], err)
+		}
+	}
+
+	return newResponse(), nil
+}
+
+func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []time.Time) error {
+	var submissions []scrobbler.Submission
+	log.Debug(ctx, "Scrobbling tracks", "ids", ids, "times", times)
 	for i, id := range ids {
 		var t time.Time
 		if len(times) > 0 {
@@ -117,118 +200,30 @@ func (c *MediaAnnotationController) Scrobble(w http.ResponseWriter, r *http.Requ
 		} else {
 			t = time.Now()
 		}
-		if submission {
-			_, err := c.scrobblerRegister(r.Context(), playerId, id, t)
-			if err != nil {
-				log.Error(r, "Error scrobbling track", "id", id, err)
-				continue
-			}
-		} else {
-			_, err := c.scrobblerNowPlaying(r.Context(), playerId, playerName, id, username)
-			if err != nil {
-				log.Error(r, "Error setting current song", "id", id, err)
-				continue
-			}
-		}
+		submissions = append(submissions, scrobbler.Submission{TrackID: id, Timestamp: t})
 	}
-	return newResponse(), nil
+
+	return api.scrobbler.Submit(ctx, submissions)
 }
 
-func (c *MediaAnnotationController) scrobblerRegister(ctx context.Context, playerId int, trackId string, playTime time.Time) (*model.MediaFile, error) {
-	var mf *model.MediaFile
-	var err error
-	err = c.ds.WithTx(func(tx model.DataStore) error {
-		mf, err = c.ds.MediaFile(ctx).Get(trackId)
-		if err != nil {
-			return err
-		}
-		err = c.ds.MediaFile(ctx).IncPlayCount(trackId, playTime)
-		if err != nil {
-			return err
-		}
-		err = c.ds.Album(ctx).IncPlayCount(mf.AlbumID, playTime)
-		if err != nil {
-			return err
-		}
-		err = c.ds.Artist(ctx).IncPlayCount(mf.ArtistID, playTime)
+func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string) error {
+	mf, err := api.ds.MediaFile(ctx).Get(trackId)
+	if err != nil {
 		return err
-	})
-
-	username, _ := request.UsernameFrom(ctx)
-	if err != nil {
-		log.Error("Error while scrobbling", "trackId", trackId, "user", username, err)
-	} else {
-		log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
 	}
-
-	return mf, err
-}
-
-func (c *MediaAnnotationController) scrobblerNowPlaying(ctx context.Context, playerId int, playerName, trackId, username string) (*model.MediaFile, error) {
-	mf, err := c.ds.MediaFile(ctx).Get(trackId)
-	if err != nil {
-		return nil, err
-	}
-
 	if mf == nil {
-		return nil, fmt.Errorf(`ID "%s" not found`, trackId)
+		return fmt.Errorf(`ID "%s" not found`, trackId)
 	}
 
-	log.Info("Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username)
-
-	info := &core.NowPlayingInfo{TrackID: trackId, Username: username, Start: time.Now(), PlayerId: playerId, PlayerName: playerName}
-	return mf, c.npRepo.Enqueue(info)
-}
-
-func (c *MediaAnnotationController) setStar(ctx context.Context, star bool, ids ...string) error {
-	if len(ids) == 0 {
-		return nil
-	}
-	log.Debug(ctx, "Changing starred", "ids", ids, "starred", star)
-	if len(ids) == 0 {
-		log.Warn(ctx, "Cannot star/unstar an empty list of ids")
-		return nil
+	player, _ := request.PlayerFrom(ctx)
+	username, _ := request.UsernameFrom(ctx)
+	client, _ := request.ClientFrom(ctx)
+	clientId, ok := request.ClientUniqueIdFrom(ctx)
+	if !ok {
+		clientId = player.ID
 	}
 
-	err := c.ds.WithTx(func(tx model.DataStore) error {
-		for _, id := range ids {
-			exist, err := tx.Album(ctx).Exists(id)
-			if err != nil {
-				return err
-			}
-			if exist {
-				err = tx.Album(ctx).SetStar(star, ids...)
-				if err != nil {
-					return err
-				}
-				continue
-			}
-			exist, err = tx.Artist(ctx).Exists(id)
-			if err != nil {
-				return err
-			}
-			if exist {
-				err = tx.Artist(ctx).SetStar(star, ids...)
-				if err != nil {
-					return err
-				}
-				continue
-			}
-			err = tx.MediaFile(ctx).SetStar(star, ids...)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-
-	switch {
-	case err == model.ErrNotFound:
-		log.Error(ctx, err)
-		return newError(responses.ErrorDataNotFound, "ID not found")
-	case err != nil:
-		log.Error(ctx, err)
-		return err
-	}
-	return nil
+	log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name)
+	err = api.scrobbler.NowPlaying(ctx, clientId, client, trackId)
+	return err
 }

@@ -17,8 +17,8 @@ func NoArticle(name string) string {
 	return name
 }
 
-func StringInSlice(a string, list []string) bool {
-	for _, b := range list {
+func StringInSlice(a string, slice []string) bool {
+	for _, b := range slice {
 		if b == a {
 			return true
 		}
@@ -26,17 +26,17 @@ func StringInSlice(a string, list []string) bool {
 	return false
 }
 
-func InsertString(array []string, value string, index int) []string {
-	return append(array[:index], append([]string{value}, array[index:]...)...)
+func InsertString(slice []string, value string, index int) []string {
+	return append(slice[:index], append([]string{value}, slice[index:]...)...)
 }
 
-func RemoveString(array []string, index int) []string {
-	return append(array[:index], array[index+1:]...)
+func RemoveString(slice []string, index int) []string {
+	return append(slice[:index], slice[index+1:]...)
 }
 
-func MoveString(array []string, srcIndex int, dstIndex int) []string {
-	value := array[srcIndex]
-	return InsertString(RemoveString(array, srcIndex), value, dstIndex)
+func MoveString(slice []string, srcIndex int, dstIndex int) []string {
+	value := slice[srcIndex]
+	return InsertString(RemoveString(slice, srcIndex), value, dstIndex)
 }
 
 func BreakUpStringSlice(items []string, chunkSize int) [][]string {
@@ -51,6 +51,17 @@ func BreakUpStringSlice(items []string, chunkSize int) [][]string {
 		chunks = append(chunks, items[i:end])
 	}
 	return chunks
+}
+
+func RangeByChunks(items []string, chunkSize int, cb func([]string) error) error {
+	chunks := BreakUpStringSlice(items, chunkSize)
+	for _, chunk := range chunks {
+		err := cb(chunk)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func LongestCommonPrefix(list []string) string {

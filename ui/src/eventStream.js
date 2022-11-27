@@ -14,10 +14,12 @@ let timeout = null
 const getEventStream = async () => {
   if (!es) {
     // Call `keepalive` to refresh the jwt token
-    await httpClient(`${REST_URL}/keepalive/eventSource`)
-    es = new EventSource(
-      baseUrl(`${REST_URL}/events?jwt=${localStorage.getItem('token')}`)
-    )
+    await httpClient(`${REST_URL}/keepalive/keepalive`)
+    let url = baseUrl(`${REST_URL}/events`)
+    if (localStorage.getItem('token')) {
+      url = url + `?jwt=${localStorage.getItem('token')}`
+    }
+    es = new EventSource(url)
   }
   return es
 }
@@ -29,52 +31,51 @@ const setTimeout = (value) => {
     window.clearTimeout(timeout)
   }
   timeout = window.setTimeout(async () => {
-    if (es) {
-      es.close()
-    }
+    es?.close()
     es = null
     await startEventStream()
   }, currentIntervalCheck)
 }
 
 const stopEventStream = () => {
-  if (es) {
-    es.close()
-  }
+  es?.close()
   es = null
   if (timeout) {
     window.clearTimeout(timeout)
   }
   timeout = null
+  console.log('eventSource closed') // TODO For debug purposes. Remove later
 }
 
 const setDispatch = (dispatchFunc) => {
   dispatch = dispatchFunc
 }
 
-const eventHandler = throttle(
-  (event) => {
-    const data = JSON.parse(event.data)
-    if (data.name !== 'keepAlive') {
-      dispatch(processEvent(data.name, data))
-    }
-    setTimeout(defaultIntervalCheck) // Reset timeout on every received message
-  },
-  100,
-  { trailing: true }
-)
+const eventHandler = (event) => {
+  const data = JSON.parse(event.data)
+  if (event.type !== 'keepAlive') {
+    dispatch(processEvent(event.type, data))
+  }
+  setTimeout(defaultIntervalCheck) // Reset timeout on every received message
+}
+
+const throttledEventHandler = throttle(eventHandler, 100, { trailing: true })
 
 const startEventStream = async () => {
   setTimeout(currentIntervalCheck)
-  if (!localStorage.getItem('token')) {
-    console.log('Cannot create a unauthenticated EventSource connection')
-    return Promise.reject()
+  if (!localStorage.getItem('is-authenticated')) {
+    return Promise.resolve()
   }
   return getEventStream()
     .then((newStream) => {
-      newStream.onmessage = eventHandler
+      newStream.addEventListener('serverStart', eventHandler)
+      newStream.addEventListener('scanStatus', throttledEventHandler)
+      newStream.addEventListener('refreshResource', eventHandler)
+      newStream.addEventListener('keepAlive', eventHandler)
       newStream.onerror = (e) => {
         console.log('EventStream error', e)
+        es?.close()
+        es = null
         setTimeout(reconnectIntervalCheck)
         dispatch(serverDown())
       }

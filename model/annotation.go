@@ -3,15 +3,11 @@ package model
 import "time"
 
 type Annotations struct {
-	PlayCount int64     `json:"playCount"`
-	PlayDate  time.Time `json:"playDate"`
-	Rating    int       `json:"rating"`
-	Starred   bool      `json:"starred"`
-	StarredAt time.Time `json:"starredAt"`
-}
-
-type AnnotatedModel interface {
-	GetAnnotations() Annotations
+	PlayCount int64     `structs:"-" json:"playCount"`
+	PlayDate  time.Time `structs:"-" json:"playDate" `
+	Rating    int       `structs:"-" json:"rating"   `
+	Starred   bool      `structs:"-" json:"starred"  `
+	StarredAt time.Time `structs:"-" json:"starredAt"`
 }
 
 type AnnotatedRepository interface {
@@ -19,7 +15,3 @@ type AnnotatedRepository interface {
 	SetStar(starred bool, itemIDs ...string) error
 	SetRating(rating int, itemID string) error
 }
-
-// While I can't find a better way to make these fields optional in the models, I keep this list here
-// to be used in other packages
-var AnnotationFields = []string{"playCount", "playDate", "rating", "starred", "starredAt"}

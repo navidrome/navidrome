@@ -2,29 +2,32 @@ package utils_test
 
 import (
 	"io"
-	"io/ioutil"
-	"net/http"
+	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/utils"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("mergeFS", func() {
+var _ = Describe("MergeFS", func() {
 	var baseName, overlayName string
-	var baseDir, overlayDir, mergedDir http.FileSystem
+	var baseDir, overlayDir, mergedDir fs.FS
 
 	BeforeEach(func() {
-		baseName, _ = ioutil.TempDir("", "merge_fs_base_test")
-		overlayName, _ = ioutil.TempDir("", "merge_fs_overlay_test")
-		baseDir = http.Dir(baseName)
-		overlayDir = http.Dir(overlayName)
-		mergedDir = utils.NewMergeFS(baseDir, overlayDir)
+		baseName, _ = os.MkdirTemp("", "merge_fs_base_test")
+		overlayName, _ = os.MkdirTemp("", "merge_fs_overlay_test")
+		baseDir = os.DirFS(baseName)
+		overlayDir = os.DirFS(overlayName)
+		mergedDir = utils.MergeFS{Base: baseDir, Overlay: overlayDir}
+	})
+	AfterEach(func() {
+		_ = os.RemoveAll(baseName)
+		_ = os.RemoveAll(overlayName)
 	})
 
-	It("reads from base dir if not found in overlay", func() {
+	It("reads from Base dir if not found in Overlay", func() {
 		_f(baseName, "a.json")
 		file, err := mergedDir.Open("a.json")
 		Expect(err).To(BeNil())
@@ -42,18 +45,18 @@ var _ = Describe("mergeFS", func() {
 		file, err := mergedDir.Open("b.json")
 		Expect(err).To(BeNil())
 
-		content, err := ioutil.ReadAll(file)
+		content, err := io.ReadAll(file)
 		Expect(err).To(BeNil())
 		Expect(string(content)).To(Equal("overridden"))
 	})
 
-	It("reads only files from base if overlay is empty", func() {
+	It("reads only files from Base if Overlay is empty", func() {
 		_f(baseName, "test.txt")
 
 		dir, err := mergedDir.Open(".")
 		Expect(err).To(BeNil())
 
-		list, err := dir.Readdir(-1)
+		list, err := dir.(fs.ReadDirFile).ReadDir(-1)
 		Expect(err).To(BeNil())
 
 		Expect(list).To(HaveLen(1))
@@ -67,7 +70,7 @@ var _ = Describe("mergeFS", func() {
 		dir, err := mergedDir.Open(".")
 		Expect(err).To(BeNil())
 
-		list, err := dir.Readdir(-1)
+		list, err := dir.(fs.ReadDirFile).ReadDir(-1)
 		Expect(err).To(BeNil())
 
 		Expect(list).To(HaveLen(2))
@@ -83,17 +86,14 @@ var _ = Describe("mergeFS", func() {
 		dir, err := mergedDir.Open(".")
 		Expect(err).To(BeNil())
 
-		list, _ := dir.Readdir(2)
+		list, _ := dir.(fs.ReadDirFile).ReadDir(2)
 		Expect(list).To(HaveLen(2))
 		Expect(list[0].Name()).To(Equal("1111"))
 		Expect(list[1].Name()).To(Equal("2222"))
 
-		Expect(dir.Seek(0, io.SeekStart)).To(Equal(int64(0)))
-
-		list, _ = dir.Readdir(2)
-		Expect(list).To(HaveLen(2))
-		Expect(list[0].Name()).To(Equal("1111"))
-		Expect(list[1].Name()).To(Equal("2222"))
+		list, _ = dir.(fs.ReadDirFile).ReadDir(2)
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Name()).To(Equal("3333"))
 	})
 })
 

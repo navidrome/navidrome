@@ -3,55 +3,57 @@ package model
 import "time"
 
 type Album struct {
-	Annotations
+	Annotations `structs:"-"`
 
-	ID                   string    `json:"id"            orm:"column(id)"`
-	Name                 string    `json:"name"`
-	CoverArtPath         string    `json:"coverArtPath"`
-	CoverArtId           string    `json:"coverArtId"`
-	ArtistID             string    `json:"artistId"      orm:"column(artist_id)"`
-	Artist               string    `json:"artist"`
-	AlbumArtistID        string    `json:"albumArtistId" orm:"column(album_artist_id)"`
-	AlbumArtist          string    `json:"albumArtist"`
-	AllArtistIDs         string    `json:"allArtistIds"  orm:"column(all_artist_ids)"`
-	MaxYear              int       `json:"maxYear"`
-	MinYear              int       `json:"minYear"`
-	Compilation          bool      `json:"compilation"`
-	Comment              string    `json:"comment"`
-	SongCount            int       `json:"songCount"`
-	Duration             float32   `json:"duration"`
-	Size                 int64     `json:"size"`
-	Genre                string    `json:"genre"`
-	FullText             string    `json:"fullText"`
-	SortAlbumName        string    `json:"sortAlbumName"`
-	SortArtistName       string    `json:"sortArtistName"`
-	SortAlbumArtistName  string    `json:"sortAlbumArtistName"`
-	OrderAlbumName       string    `json:"orderAlbumName"`
-	OrderAlbumArtistName string    `json:"orderAlbumArtistName"`
-	CatalogNum           string    `json:"catalogNum"`
-	MbzAlbumID           string    `json:"mbzAlbumId"         orm:"column(mbz_album_id)"`
-	MbzAlbumArtistID     string    `json:"mbzAlbumArtistId"   orm:"column(mbz_album_artist_id)"`
-	MbzAlbumType         string    `json:"mbzAlbumType"`
-	MbzAlbumComment      string    `json:"mbzAlbumComment"`
-	CreatedAt            time.Time `json:"createdAt"`
-	UpdatedAt            time.Time `json:"updatedAt"`
+	ID                   string    `structs:"id" json:"id"            orm:"column(id)"`
+	Name                 string    `structs:"name" json:"name"`
+	CoverArtPath         string    `structs:"cover_art_path" json:"coverArtPath"`
+	CoverArtId           string    `structs:"cover_art_id" json:"coverArtId"`
+	ArtistID             string    `structs:"artist_id" json:"artistId"      orm:"column(artist_id)"`
+	Artist               string    `structs:"artist" json:"artist"`
+	AlbumArtistID        string    `structs:"album_artist_id" json:"albumArtistId" orm:"column(album_artist_id)"`
+	AlbumArtist          string    `structs:"album_artist" json:"albumArtist"`
+	AllArtistIDs         string    `structs:"all_artist_ids" json:"allArtistIds"  orm:"column(all_artist_ids)"`
+	MaxYear              int       `structs:"max_year" json:"maxYear"`
+	MinYear              int       `structs:"min_year" json:"minYear"`
+	Compilation          bool      `structs:"compilation" json:"compilation"`
+	Comment              string    `structs:"comment" json:"comment,omitempty"`
+	SongCount            int       `structs:"song_count" json:"songCount"`
+	Duration             float32   `structs:"duration" json:"duration"`
+	Size                 int64     `structs:"size" json:"size"`
+	Genre                string    `structs:"genre" json:"genre"`
+	Genres               Genres    `structs:"-" json:"genres"`
+	FullText             string    `structs:"full_text" json:"fullText"`
+	SortAlbumName        string    `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
+	SortArtistName       string    `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
+	SortAlbumArtistName  string    `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
+	OrderAlbumName       string    `structs:"order_album_name" json:"orderAlbumName"`
+	OrderAlbumArtistName string    `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
+	CatalogNum           string    `structs:"catalog_num" json:"catalogNum,omitempty"`
+	MbzAlbumID           string    `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"         orm:"column(mbz_album_id)"`
+	MbzAlbumArtistID     string    `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
+	MbzAlbumType         string    `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
+	MbzAlbumComment      string    `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
+	CreatedAt            time.Time `structs:"created_at" json:"createdAt"`
+	UpdatedAt            time.Time `structs:"updated_at" json:"updatedAt"`
 }
 
-type Albums []Album
+type (
+	Albums []Album
+	DiscID struct {
+		AlbumID    string `json:"albumId"`
+		DiscNumber int    `json:"discNumber"`
+	}
+)
 
 type AlbumRepository interface {
 	CountAll(...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
+	Put(*Album) error
 	Get(id string) (*Album, error)
-	FindByArtist(albumArtistId string) (Albums, error)
 	GetAll(...QueryOptions) (Albums, error)
-	GetRandom(...QueryOptions) (Albums, error)
-	GetStarred(options ...QueryOptions) (Albums, error)
+	GetAllWithoutGenres(...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
 	Refresh(ids ...string) error
 	AnnotatedRepository
-}
-
-func (a Album) GetAnnotations() Annotations {
-	return a.Annotations
 }

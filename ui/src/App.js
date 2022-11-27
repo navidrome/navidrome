@@ -1,9 +1,9 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import ReactGA from 'react-ga'
-import 'react-jinke-music-player/assets/index.css'
-import { Provider, useDispatch } from 'react-redux'
+import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
 import { Admin as RAAdmin, Resource } from 'react-admin'
+import { HotKeys } from 'react-hotkeys'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
 import { Layout, Login, Logout } from './layout'
@@ -19,7 +19,9 @@ import customRoutes from './routes'
 import {
   themeReducer,
   addToPlaylistDialogReducer,
-  playQueueReducer,
+  expandInfoDialogReducer,
+  listenBrainzTokenDialogReducer,
+  playerReducer,
   albumViewReducer,
   activityReducer,
   settingsReducer,
@@ -27,9 +29,9 @@ import {
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
-import { setDispatch, startEventStream } from './eventStream'
-import { HotKeys } from 'react-hotkeys'
+import { setDispatch, startEventStream, stopEventStream } from './eventStream'
 import { keyMap } from './hotkeys'
+import useChangeThemeColor from './useChangeThemeColor'
 
 const history = createHashHistory()
 
@@ -41,35 +43,42 @@ if (config.gaTrackingId) {
   ReactGA.pageview(window.location.pathname)
 }
 
+const adminStore = createAdminStore({
+  authProvider,
+  dataProvider,
+  history,
+  customReducers: {
+    player: playerReducer,
+    albumView: albumViewReducer,
+    theme: themeReducer,
+    addToPlaylistDialog: addToPlaylistDialogReducer,
+    expandInfoDialog: expandInfoDialogReducer,
+    listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
+    activity: activityReducer,
+    settings: settingsReducer,
+  },
+})
+
 const App = () => (
-  <Provider
-    store={createAdminStore({
-      authProvider,
-      dataProvider,
-      history,
-      customReducers: {
-        queue: playQueueReducer,
-        albumView: albumViewReducer,
-        theme: themeReducer,
-        addToPlaylistDialog: addToPlaylistDialogReducer,
-        activity: activityReducer,
-        settings: settingsReducer,
-      },
-    })}
-  >
+  <Provider store={adminStore}>
     <Admin />
   </Provider>
 )
 
 const Admin = (props) => {
-  const dispatch = useDispatch()
-  if (config.devActivityPanel) {
-    setDispatch(dispatch)
-    authProvider
-      .checkAuth()
-      .then(() => startEventStream())
-      .catch(() => {}) // ignore if not logged in
-  }
+  useChangeThemeColor()
+  useEffect(() => {
+    if (config.devActivityPanel) {
+      setDispatch(adminStore.dispatch)
+      authProvider
+        .checkAuth()
+        .then(() => startEventStream(adminStore.dispatch))
+        .catch(() => {})
+    }
+    return () => {
+      stopEventStream()
+    }
+  }, [])
 
   return (
     <RAAdmin
@@ -86,16 +95,14 @@ const Admin = (props) => {
     >
       {(permissions) => [
         <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
-        <Resource name="artist" {...artist} options={{ subMenu: 'library' }} />,
-        <Resource name="song" {...song} options={{ subMenu: 'library' }} />,
+        <Resource name="artist" {...artist} />,
+        <Resource name="song" {...song} />,
         <Resource
           name="playlist"
           {...playlist}
-          options={{ subMenu: 'library' }}
+          options={{ subMenu: 'playlist' }}
         />,
-        permissions === 'admin' ? (
-          <Resource name="user" {...user} options={{ subMenu: 'settings' }} />
-        ) : null,
+        <Resource name="user" {...user} options={{ subMenu: 'settings' }} />,
         <Resource
           name="player"
           {...player}
@@ -110,11 +117,10 @@ const Admin = (props) => {
         ) : (
           <Resource name="transcoding" />
         ),
-        <Resource name="albumSong" />,
         <Resource name="translation" />,
+        <Resource name="genre" />,
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
-
         <Player />,
       ]}
     </RAAdmin>

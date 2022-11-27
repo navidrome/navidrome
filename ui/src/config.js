@@ -5,13 +5,29 @@ const defaultConfig = {
   version: 'dev',
   firstTime: false,
   baseURL: '',
-  loginBackgroundURL: 'https://source.unsplash.com/random/1600x900?music',
+  variousArtistsId: '03b645ef2100dfc42fa9785ea3102295', // See consts.VariousArtistsID in consts.go
+  // Login backgrounds from https://unsplash.com/collections/1065384/music-wallpapers
+  loginBackgroundURL: 'https://source.unsplash.com/collection/1065384/1600x900',
   enableTranscodingConfig: true,
   enableDownloads: true,
+  enableFavourites: true,
+  losslessFormats: 'FLAC,WAV,ALAC,DSF',
   welcomeMessage: '',
   gaTrackingId: '',
   devActivityPanel: true,
   devFastAccessCoverArt: false,
+  enableStarRating: true,
+  defaultTheme: 'Dark',
+  defaultLanguage: '',
+  defaultUIVolume: 100,
+  enableUserEditing: true,
+  devEnableShare: true,
+  devSidebarPlaylists: true,
+  lastFMEnabled: true,
+  lastFMApiKey: '9b94a5515ea66b2da3ec03c12300327e',
+  listenBrainzEnabled: true,
+  enableCoverAnimation: true,
+  devShowArtistPage: true,
 }
 
 let config

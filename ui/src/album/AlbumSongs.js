@@ -1,26 +1,35 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
   TextField,
+  NumberField,
   useVersion,
   useListContext,
+  FunctionField,
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
 import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { playTracks } from '../actions'
 import {
   DurationField,
   SongBulkActions,
   SongContextMenu,
   SongDatagrid,
-  SongDetails,
+  SongInfo,
   SongTitleField,
+  RatingField,
+  QualityInfo,
+  useSelectedFields,
+  useResourceRefresh,
+  DateField,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
+import config from '../config'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -61,10 +70,16 @@ const useStyles = makeStyles(
         '& $contextMenu': {
           visibility: 'visible',
         },
+        '& $ratingField': {
+          visibility: 'visible',
+        },
       },
     },
     contextMenu: {
       visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
+    },
+    ratingField: {
+      visibility: 'hidden',
     },
   }),
   { name: 'RaList' }
@@ -72,11 +87,63 @@ const useStyles = makeStyles(
 
 const AlbumSongs = (props) => {
   const { data, ids } = props
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
   const version = useVersion()
+  useResourceRefresh('song', 'album')
+
+  const toggleableFields = useMemo(() => {
+    return {
+      trackNumber: isDesktop && (
+        <TextField
+          source="trackNumber"
+          sortBy="discNumber asc, trackNumber asc"
+          label="#"
+          sortable={false}
+        />
+      ),
+      title: (
+        <SongTitleField
+          source="title"
+          sortable={false}
+          showTrackNumbers={!isDesktop}
+        />
+      ),
+      artist: isDesktop && <TextField source="artist" sortable={false} />,
+      duration: <DurationField source="duration" sortable={false} />,
+      year: isDesktop && (
+        <FunctionField
+          source="year"
+          render={(r) => r.year || ''}
+          sortByOrder={'DESC'}
+        />
+      ),
+      playCount: isDesktop && (
+        <NumberField source="playCount" sortable={false} />
+      ),
+      playDate: <DateField source="playDate" sortable={false} showTime />,
+      quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      channels: isDesktop && <NumberField source="channels" sortable={false} />,
+      bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
+      rating: isDesktop && config.enableStarRating && (
+        <RatingField
+          resource={'song'}
+          source="rating"
+          sortable={false}
+          className={classes.ratingField}
+        />
+      ),
+    }
+  }, [isDesktop, classes.ratingField])
+
+  const columns = useSelectedFields({
+    resource: 'albumSong',
+    columns: toggleableFields,
+    omittedColumns: ['title'],
+    defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate'],
+  })
+
   return (
     <>
       <ListToolbar
@@ -95,7 +162,6 @@ const AlbumSongs = (props) => {
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
-            expand={isXsmall ? null : <SongDetails />}
             rowClick={(id) => dispatch(playTracks(data, ids, id))}
             {...props}
             hasBulkActions={true}
@@ -103,41 +169,40 @@ const AlbumSongs = (props) => {
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
           >
-            {isDesktop && (
-              <TextField
-                source="trackNumber"
-                sortBy="discNumber asc, trackNumber asc"
-                label="#"
-                sortable={false}
-              />
-            )}
-            <SongTitleField
-              source="title"
-              sortable={false}
-              showTrackNumbers={!isDesktop}
-            />
-            {isDesktop && <TextField source="artist" sortable={false} />}
-            <DurationField source="duration" sortable={false} />
+            {columns}
             <SongContextMenu
               source={'starred'}
               sortable={false}
               className={classes.contextMenu}
               label={
-                <StarBorderIcon
-                  fontSize={'small'}
-                  className={classes.columnIcon}
-                />
+                config.enableFavourites && (
+                  <FavoriteBorderIcon
+                    fontSize={'small'}
+                    className={classes.columnIcon}
+                  />
+                )
               }
             />
           </SongDatagrid>
         </Card>
       </div>
       <AddToPlaylistDialog />
+      <ExpandInfoDialog content={<SongInfo />} />
     </>
   )
 }
 
+export const removeAlbumCommentsFromSongs = ({ album, data }) => {
+  if (album?.comment && data) {
+    Object.values(data).forEach((song) => {
+      song.comment = ''
+    })
+  }
+}
+
 const SanitizedAlbumSongs = (props) => {
+  removeAlbumCommentsFromSongs(props)
+
   const { loaded, loading, total, ...rest } = useListContext(props)
   return <>{loaded && <AlbumSongs {...rest} actions={props.actions} />}</>
 }

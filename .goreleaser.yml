@@ -18,10 +18,11 @@ builds:
   - id: navidrome_linux_386
     env:
       - CGO_ENABLED=1
+      - PKG_CONFIG_PATH=/i386/lib/pkgconfig
     goos:
       - linux
     goarch:
-      - 386
+      - "386"
     flags:
       - -tags=embed,netgo
     ldflags:
@@ -33,14 +34,15 @@ builds:
       - CGO_ENABLED=1
       - CC=arm-linux-gnueabi-gcc
       - CXX=arm-linux-gnueabi-g++
+      - PKG_CONFIG_PATH=/arm/lib/pkgconfig
     goos:
       - linux
     goarch:
       - arm
     goarm:
-      - 5
-      - 6
-      - 7
+      - "5"
+      - "6"
+      - "7"
     flags:
       - -tags=embed,netgo
     ldflags:
@@ -52,6 +54,7 @@ builds:
       - CGO_ENABLED=1
       - CC=aarch64-linux-gnu-gcc
       - CXX=aarch64-linux-gnu-g++
+      - PKG_CONFIG_PATH=/arm64/lib/pkgconfig
     goos:
       - linux
     goarch:
@@ -62,7 +65,7 @@ builds:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
-  - id: navidrome_windows_i686
+  - id: navidrome_windows_386
     env:
       - CGO_ENABLED=1
       - CC=i686-w64-mingw32-gcc
@@ -71,14 +74,14 @@ builds:
     goos:
       - windows
     goarch:
-      - 386
+      - "386"
     flags:
       - -tags=embed,netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
-  - id: navidrome_windows_x64
+  - id: navidrome_windows_amd64
     env:
       - CGO_ENABLED=1
       - CC=x86_64-w64-mingw32-gcc
@@ -94,7 +97,7 @@ builds:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
-  - id: navidrome_darwin
+  - id: navidrome_darwin_amd64
     env:
       - CGO_ENABLED=1
       - CC=o64-clang

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -10,10 +11,16 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
-	"github.com/oklog/run"
+	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/scheduler"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+var interrupted = errors.New("service was interrupted")
 
 var (
 	cfgFile  string
@@ -30,7 +37,7 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 		Run: func(cmd *cobra.Command, args []string) {
 			runNavidrome()
 		},
-		Version: consts.Version(),
+		Version: consts.Version,
 	}
 )
 
@@ -44,62 +51,86 @@ func Execute() {
 
 func preRun() {
 	if !noBanner {
-		println(consts.Banner())
+		println(resources.Banner())
 	}
 	conf.Load()
 }
 
 func runNavidrome() {
 	db.EnsureLatestVersion()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Error("Error closing DB", err)
+		}
+		log.Info("Navidrome stopped, bye.")
+	}()
 
-	var g run.Group
-	g.Add(startServer())
-	g.Add(startScanner())
+	g, ctx := errgroup.WithContext(context.Background())
+	g.Go(startServer(ctx))
+	g.Go(startSignaler(ctx))
+	g.Go(startScheduler(ctx))
+	g.Go(schedulePeriodicScan(ctx))
 
-	if err := g.Run(); err != nil {
+	if err := g.Wait(); err != nil && !errors.Is(err, interrupted) {
 		log.Error("Fatal error in Navidrome. Aborting", err)
 	}
 }
 
-func startServer() (func() error, func(err error)) {
+func startServer(ctx context.Context) func() error {
 	return func() error {
-			a := CreateServer(conf.Server.MusicFolder)
-			a.MountRouter(consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
-			a.MountRouter(consts.URLPathUI, CreateAppRouter())
-			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
-		}, func(err error) {
-			if err != nil {
-				log.Error("Shutting down Server due to error", err)
-			} else {
-				log.Info("Shutting down Server")
-			}
+		a := CreateServer(conf.Server.MusicFolder)
+		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
+		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
+		if conf.Server.LastFM.Enabled {
+			a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
 		}
+		if conf.Server.ListenBrainz.Enabled {
+			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
+		}
+		if conf.Server.Prometheus.Enabled {
+			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
+		}
+		return a.Run(ctx, fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
+	}
 }
 
-func startScanner() (func() error, func(err error)) {
-	interval := conf.Server.ScanInterval
-	log.Info("Starting scanner", "interval", interval.String())
-	scanner := GetScanner()
-	ctx, cancel := context.WithCancel(context.Background())
+func schedulePeriodicScan(ctx context.Context) func() error {
+	return func() error {
+		schedule := conf.Server.ScanSchedule
+		if schedule == "" {
+			log.Warn("Periodic scan is DISABLED")
+			return nil
+		}
+
+		scanner := GetScanner()
+		schedulerInstance := scheduler.GetInstance()
+
+		log.Info("Scheduling periodic scan", "schedule", schedule)
+		err := schedulerInstance.Add(schedule, func() {
+			_ = scanner.RescanAll(ctx, false)
+		})
+		if err != nil {
+			log.Error("Error scheduling periodic scan", err)
+		}
+
+		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
+		log.Debug("Executing initial scan")
+		if err := scanner.RescanAll(ctx, false); err != nil {
+			log.Error("Error executing initial scan", err)
+		}
+		log.Debug("Finished initial scan")
+		return nil
+	}
+}
+
+func startScheduler(ctx context.Context) func() error {
+	log.Info(ctx, "Starting scheduler")
+	schedulerInstance := scheduler.GetInstance()
 
 	return func() error {
-			if interval != 0 {
-				time.Sleep(2 * time.Second) // Wait 2 seconds before the first scan
-				scanner.Run(ctx, interval)
-			} else {
-				log.Warn("Periodic scan is DISABLED", "interval", interval)
-				<-ctx.Done()
-			}
-
-			return nil
-		}, func(err error) {
-			cancel()
-			if err != nil {
-				log.Error("Shutting down Scanner due to error", err)
-			} else {
-				log.Info("Shutting down Scanner")
-			}
-		}
+		schedulerInstance.Run(ctx)
+		return nil
+	}
 }
 
 // TODO: Implement some struct tags to map flags to viper
@@ -129,12 +160,19 @@ func init() {
 	rootCmd.Flags().String("imagecachesize", viper.GetString("imagecachesize"), "size of image (art work) cache. set to 0 to disable cache")
 	rootCmd.Flags().Bool("autoimportplaylists", viper.GetBool("autoimportplaylists"), "enable/disable .m3u playlist auto-import`")
 
+	rootCmd.Flags().Bool("prometheus.enabled", viper.GetBool("prometheus.enabled"), "enable/disable prometheus metrics endpoint`")
+	rootCmd.Flags().String("prometheus.metricspath", viper.GetString("prometheus.metricspath"), "http endpoint for prometheus metrics")
+
 	_ = viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))
 	_ = viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
 	_ = viper.BindPFlag("sessiontimeout", rootCmd.Flags().Lookup("sessiontimeout"))
 	_ = viper.BindPFlag("scaninterval", rootCmd.Flags().Lookup("scaninterval"))
 	_ = viper.BindPFlag("baseurl", rootCmd.Flags().Lookup("baseurl"))
 	_ = viper.BindPFlag("uiloginbackgroundurl", rootCmd.Flags().Lookup("uiloginbackgroundurl"))
+
+	_ = viper.BindPFlag("prometheus.enabled", rootCmd.Flags().Lookup("prometheus.enabled"))
+	_ = viper.BindPFlag("prometheus.metricspath", rootCmd.Flags().Lookup("prometheus.metricspath"))
+
 	_ = viper.BindPFlag("enabletranscodingconfig", rootCmd.Flags().Lookup("enabletranscodingconfig"))
 	_ = viper.BindPFlag("transcodingcachesize", rootCmd.Flags().Lookup("transcodingcachesize"))
 	_ = viper.BindPFlag("imagecachesize", rootCmd.Flags().Lookup("imagecachesize"))

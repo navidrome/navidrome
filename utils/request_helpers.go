@@ -5,10 +5,20 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/log"
 )
 
 func ParamString(r *http.Request, param string) string {
 	return r.URL.Query().Get(param)
+}
+
+func ParamStringDefault(r *http.Request, param, def string) string {
+	v := ParamString(r, param)
+	if v == "" {
+		return def
+	}
+	return v
 }
 
 func ParamStrings(r *http.Request, param string) []string {
@@ -20,9 +30,12 @@ func ParamTimes(r *http.Request, param string) []time.Time {
 	times := make([]time.Time, len(pStr))
 	for i, t := range pStr {
 		ti, err := strconv.ParseInt(t, 10, 64)
-		if err == nil {
-			times[i] = ToTime(ti)
+		if err != nil {
+			log.Warn(r.Context(), "Ignoring invalid time param", "time", t, err)
+			times[i] = time.Now()
+			continue
 		}
+		times[i] = ToTime(ti)
 	}
 	return times
 }
@@ -76,7 +89,7 @@ func ParamInts(r *http.Request, param string) []int {
 }
 
 func ParamBool(r *http.Request, param string, def bool) bool {
-	p := ParamString(r, param)
+	p := strings.ToLower(ParamString(r, param))
 	if p == "" {
 		return def
 	}

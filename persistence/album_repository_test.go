@@ -2,16 +2,16 @@ package persistence
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -61,23 +61,6 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
-	Describe("GetStarred", func() {
-		It("returns all starred records", func() {
-			Expect(repo.GetStarred(model.QueryOptions{})).To(Equal(model.Albums{
-				albumRadioactivity,
-			}))
-		})
-	})
-
-	Describe("FindByArtist", func() {
-		It("returns all records from a given ArtistID", func() {
-			Expect(repo.FindByArtist("3")).To(Equal(model.Albums{
-				albumSgtPeppers,
-				albumAbbeyRoad,
-			}))
-		})
-	})
-
 	Describe("getMinYear", func() {
 		It("returns 0 when there's no valid year", func() {
 			Expect(getMinYear("a b c")).To(Equal(0))
@@ -96,25 +79,34 @@ var _ = Describe("AlbumRepository", func() {
 		It("returns empty string if there are no comments", func() {
 			Expect(getComment("", "")).To(Equal(""))
 		})
-		It("returns first occurrence of non-empty comment", func() {
-			Expect(getComment(zwsp+zwsp+"first"+zwsp+"second", zwsp)).To(Equal("first"))
+		It("returns empty string if comments are different", func() {
+			Expect(getComment("first"+zwsp+"second", zwsp)).To(Equal(""))
+		})
+		It("returns comment if all comments are the same", func() {
+			Expect(getComment("first"+zwsp+"first", zwsp)).To(Equal("first"))
 		})
 	})
 
 	Describe("getCoverFromPath", func() {
-		testFolder, _ := ioutil.TempDir("", "album_persistence_tests")
-		if err := os.MkdirAll(testFolder, 0777); err != nil {
-			panic(err)
-		}
-		if _, err := os.Create(filepath.Join(testFolder, "Cover.jpeg")); err != nil {
-			panic(err)
-		}
-		if _, err := os.Create(filepath.Join(testFolder, "FRONT.PNG")); err != nil {
-			panic(err)
-		}
+		var testFolder, testPath, embeddedPath string
+		BeforeEach(func() {
+			testFolder, _ = os.MkdirTemp("", "album_persistence_tests")
+			if err := os.MkdirAll(testFolder, 0777); err != nil {
+				panic(err)
+			}
+			if _, err := os.Create(filepath.Join(testFolder, "Cover.jpeg")); err != nil {
+				panic(err)
+			}
+			if _, err := os.Create(filepath.Join(testFolder, "FRONT.PNG")); err != nil {
+				panic(err)
+			}
+			testPath = filepath.Join(testFolder, "somefile.test")
+			embeddedPath = filepath.Join(testFolder, "somefile.mp3")
+		})
+		AfterEach(func() {
+			_ = os.RemoveAll(testFolder)
+		})
 
-		testPath := filepath.Join(testFolder, "somefile.test")
-		embeddedPath := filepath.Join(testFolder, "somefile.mp3")
 		It("returns audio file for embedded cover", func() {
 			conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
 			Expect(getCoverFromPath(testPath, embeddedPath)).To(Equal(""))
@@ -147,5 +139,53 @@ var _ = Describe("AlbumRepository", func() {
 
 		// Reset configuration to default.
 		conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
+	})
+
+	Describe("getAlbumArtist", func() {
+		var al refreshAlbum
+		BeforeEach(func() {
+			al = refreshAlbum{}
+		})
+		Context("Non-Compilations", func() {
+			BeforeEach(func() {
+				al.Compilation = false
+				al.Artist = "Sparks"
+				al.ArtistID = "ar-123"
+			})
+			It("returns the track artist if no album artist is specified", func() {
+				id, name := getAlbumArtist(al)
+				Expect(id).To(Equal("ar-123"))
+				Expect(name).To(Equal("Sparks"))
+			})
+			It("returns the album artist if it is specified", func() {
+				al.AlbumArtist = "Sparks Brothers"
+				al.AlbumArtistID = "ar-345"
+				id, name := getAlbumArtist(al)
+				Expect(id).To(Equal("ar-345"))
+				Expect(name).To(Equal("Sparks Brothers"))
+			})
+		})
+		Context("Compilations", func() {
+			BeforeEach(func() {
+				al.Compilation = true
+				al.Name = "Sgt. Pepper Knew My Father"
+				al.AlbumArtistID = "ar-000"
+				al.AlbumArtist = "The Beatles"
+			})
+
+			It("returns VariousArtists if there's more than one album artist", func() {
+				al.AlbumArtistIds = `ar-123 ar-345`
+				id, name := getAlbumArtist(al)
+				Expect(id).To(Equal(consts.VariousArtistsID))
+				Expect(name).To(Equal(consts.VariousArtists))
+			})
+
+			It("returns the sole album artist if they are the same", func() {
+				al.AlbumArtistIds = `ar-000 ar-000`
+				id, name := getAlbumArtist(al)
+				Expect(id).To(Equal("ar-000"))
+				Expect(name).To(Equal("The Beatles"))
+			})
+		})
 	})
 })

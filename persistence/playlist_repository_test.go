@@ -3,11 +3,11 @@ package persistence
 import (
 	"context"
 
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -55,32 +55,41 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 		It("returns all tracks", func() {
-			pls, err := repo.Get(plsBest.ID)
+			pls, err := repo.GetWithTracks(plsBest.ID)
 			Expect(err).To(BeNil())
 			Expect(pls.Name).To(Equal(plsBest.Name))
-			Expect(pls.Tracks).To(Equal(model.MediaFiles{
-				songDayInALife,
-				songRadioactivity,
-			}))
+			Expect(pls.Tracks).To(HaveLen(2))
+			Expect(pls.Tracks[0].ID).To(Equal("1"))
+			Expect(pls.Tracks[0].PlaylistID).To(Equal(plsBest.ID))
+			Expect(pls.Tracks[0].MediaFileID).To(Equal(songDayInALife.ID))
+			Expect(pls.Tracks[0].MediaFile.ID).To(Equal(songDayInALife.ID))
+			Expect(pls.Tracks[1].ID).To(Equal("2"))
+			Expect(pls.Tracks[1].PlaylistID).To(Equal(plsBest.ID))
+			Expect(pls.Tracks[1].MediaFileID).To(Equal(songRadioactivity.ID))
+			Expect(pls.Tracks[1].MediaFile.ID).To(Equal(songRadioactivity.ID))
+			mfs := pls.MediaFiles()
+			Expect(mfs).To(HaveLen(2))
+			Expect(mfs[0].ID).To(Equal(songDayInALife.ID))
+			Expect(mfs[1].ID).To(Equal(songRadioactivity.ID))
 		})
 	})
 
 	It("Put/Exists/Delete", func() {
 		By("saves the playlist to the DB")
-		newPls := model.Playlist{Name: "Great!", Owner: "userid",
-			Tracks: model.MediaFiles{{ID: "1004"}, {ID: "1003"}}}
+		newPls := model.Playlist{Name: "Great!", OwnerID: "userid"}
+		newPls.AddTracks([]string{"1004", "1003"})
 
 		By("saves the playlist to the DB")
 		Expect(repo.Put(&newPls)).To(BeNil())
 
 		By("adds repeated songs to a playlist and keeps the order")
-		newPls.Tracks = append(newPls.Tracks, model.MediaFile{ID: "1004"})
+		newPls.AddTracks([]string{"1004"})
 		Expect(repo.Put(&newPls)).To(BeNil())
-		saved, _ := repo.Get(newPls.ID)
+		saved, _ := repo.GetWithTracks(newPls.ID)
 		Expect(saved.Tracks).To(HaveLen(3))
-		Expect(saved.Tracks[0].ID).To(Equal("1004"))
-		Expect(saved.Tracks[1].ID).To(Equal("1003"))
-		Expect(saved.Tracks[2].ID).To(Equal("1004"))
+		Expect(saved.Tracks[0].MediaFileID).To(Equal("1004"))
+		Expect(saved.Tracks[1].MediaFileID).To(Equal("1003"))
+		Expect(saved.Tracks[2].MediaFileID).To(Equal("1004"))
 
 		By("returns the newly created playlist")
 		Expect(repo.Exists(newPls.ID)).To(BeTrue())

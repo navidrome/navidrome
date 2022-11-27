@@ -3,9 +3,11 @@ package agents
 import (
 	"context"
 	"errors"
+
+	"github.com/navidrome/navidrome/model"
 )
 
-type Constructor func(ctx context.Context) Interface
+type Constructor func(ds model.DataStore) Interface
 
 type Interface interface {
 	AgentName() string
@@ -31,27 +33,27 @@ var (
 )
 
 type ArtistMBIDRetriever interface {
-	GetMBID(id string, name string) (string, error)
+	GetMBID(ctx context.Context, id string, name string) (string, error)
 }
 
 type ArtistURLRetriever interface {
-	GetURL(id, name, mbid string) (string, error)
+	GetURL(ctx context.Context, id, name, mbid string) (string, error)
 }
 
 type ArtistBiographyRetriever interface {
-	GetBiography(id, name, mbid string) (string, error)
+	GetBiography(ctx context.Context, id, name, mbid string) (string, error)
 }
 
 type ArtistSimilarRetriever interface {
-	GetSimilar(id, name, mbid string, limit int) ([]Artist, error)
+	GetSimilar(ctx context.Context, id, name, mbid string, limit int) ([]Artist, error)
 }
 
 type ArtistImageRetriever interface {
-	GetImages(id, name, mbid string) ([]ArtistImage, error)
+	GetImages(ctx context.Context, id, name, mbid string) ([]ArtistImage, error)
 }
 
 type ArtistTopSongsRetriever interface {
-	GetTopSongs(id, artistName, mbid string, count int) ([]Song, error)
+	GetTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error)
 }
 
 var Map map[string]Constructor

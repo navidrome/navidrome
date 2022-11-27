@@ -11,6 +11,7 @@ export const formatBytes = (bytes, decimals = 2) => {
 }
 
 export const formatDuration = (d) => {
+  d = Math.round(d)
   const days = Math.floor(d / 86400)
   const hours = Math.floor(d / 3600) % 24
   const minutes = Math.floor(d / 60) % 60

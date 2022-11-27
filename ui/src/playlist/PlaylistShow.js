@@ -4,15 +4,30 @@ import {
   ShowContextProvider,
   useShowContext,
   useShowController,
+  Pagination,
 } from 'react-admin'
+import { makeStyles } from '@material-ui/core/styles'
 import PlaylistDetails from './PlaylistDetails'
 import PlaylistSongs from './PlaylistSongs'
 import PlaylistActions from './PlaylistActions'
-import { Title, isReadOnly } from '../common'
+import { Title, canChangeTracks } from '../common'
+
+const useStyles = makeStyles(
+  (theme) => ({
+    playlistActions: {
+      width: '100%',
+    },
+  }),
+  {
+    name: 'NDPlaylistShow',
+  }
+)
 
 const PlaylistShowLayout = (props) => {
   const { loading, ...context } = useShowContext(props)
   const { record } = context
+  const classes = useStyles()
+
   return (
     <>
       {record && <PlaylistDetails {...context} />}
@@ -23,18 +38,22 @@ const PlaylistShowLayout = (props) => {
           reference="playlistTrack"
           target="playlist_id"
           sort={{ field: 'id', order: 'ASC' }}
-          perPage={0}
+          perPage={100}
           filter={{ playlist_id: props.id }}
         >
           <PlaylistSongs
             {...props}
-            readOnly={isReadOnly(record.owner)}
+            readOnly={!canChangeTracks(record)}
             title={<Title subTitle={record.name} />}
-            actions={<PlaylistActions record={record} />}
+            actions={
+              <PlaylistActions
+                className={classes.playlistActions}
+                record={record}
+              />
+            }
             resource={'playlistTrack'}
             exporter={false}
-            perPage={0}
-            pagination={null}
+            pagination={<Pagination rowsPerPageOptions={[100, 250, 500]} />}
           />
         </ReferenceManyField>
       )}

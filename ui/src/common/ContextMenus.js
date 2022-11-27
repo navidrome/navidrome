@@ -14,9 +14,10 @@ import {
   playTracks,
   shuffleTracks,
   openAddToPlaylist,
+  openExtendedInfoDialog,
 } from '../actions'
 import subsonic from '../subsonic'
-import { StarButton } from './StarButton'
+import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
 
@@ -31,11 +32,12 @@ const useStyles = makeStyles({
 
 const ContextMenu = ({
   resource,
-  showStar,
+  showLove,
   record,
   color,
   className,
   songQueryParams,
+  hideInfo,
 }) => {
   const classes = useStyles({ color })
   const dataProvider = useDataProvider()
@@ -83,6 +85,14 @@ const ContextMenu = ({
       )})`,
       action: () => subsonic.download(record.id),
     },
+    ...(!hideInfo && {
+      info: {
+        enabled: true,
+        needData: true,
+        label: translate('resources.album.actions.info'),
+        action: () => dispatch(openExtendedInfoDialog(record)),
+      },
+    }),
   }
 
   const handleClick = (e) => {
@@ -111,7 +121,7 @@ const ContextMenu = ({
     const key = e.target.getAttribute('value')
     if (options[key].needData) {
       dataProvider
-        .getList('albumSong', songQueryParams)
+        .getList('song', songQueryParams)
         .then((response) => {
           let { data, ids } = extractSongsData(response)
           options[key].action(data, ids)
@@ -130,10 +140,10 @@ const ContextMenu = ({
 
   return (
     <span className={clsx(classes.noWrap, className)}>
-      <StarButton
+      <LoveButton
         record={record}
         resource={resource}
-        visible={showStar}
+        visible={config.enableFavourites && showLove}
         color={color}
       />
       <IconButton
@@ -183,11 +193,11 @@ AlbumContextMenu.propTypes = {
   record: PropTypes.object,
   discNumber: PropTypes.number,
   color: PropTypes.string,
-  showStar: PropTypes.bool,
+  showLove: PropTypes.bool,
 }
 
 AlbumContextMenu.defaultProps = {
-  showStar: true,
+  showLove: true,
   addLabel: true,
 }
 
@@ -195,6 +205,7 @@ export const ArtistContextMenu = (props) =>
   props.record ? (
     <ContextMenu
       {...props}
+      hideInfo={true}
       resource={'artist'}
       songQueryParams={{
         pagination: { page: 1, perPage: 200 },
@@ -207,10 +218,10 @@ export const ArtistContextMenu = (props) =>
 ArtistContextMenu.propTypes = {
   record: PropTypes.object,
   color: PropTypes.string,
-  showStar: PropTypes.bool,
+  showLove: PropTypes.bool,
 }
 
 ArtistContextMenu.defaultProps = {
-  showStar: true,
+  showLove: true,
   addLabel: true,
 }

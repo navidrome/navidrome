@@ -30,7 +30,10 @@ type archiver struct {
 type createHeader func(idx int, mf model.MediaFile) *zip.FileHeader
 
 func (a *archiver) ZipAlbum(ctx context.Context, id string, out io.Writer) error {
-	mfs, err := a.ds.MediaFile(ctx).FindByAlbum(id)
+	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Eq{"album_id": id},
+		Sort:    "album",
+	})
 	if err != nil {
 		log.Error(ctx, "Error loading mediafiles from album", "id", id, err)
 		return err
@@ -51,12 +54,12 @@ func (a *archiver) ZipArtist(ctx context.Context, id string, out io.Writer) erro
 }
 
 func (a *archiver) ZipPlaylist(ctx context.Context, id string, out io.Writer) error {
-	pls, err := a.ds.Playlist(ctx).Get(id)
+	pls, err := a.ds.Playlist(ctx).GetWithTracks(id)
 	if err != nil {
 		log.Error(ctx, "Error loading mediafiles from playlist", "id", id, err)
 		return err
 	}
-	return a.zipTracks(ctx, id, out, pls.Tracks, a.createPlaylistHeader)
+	return a.zipTracks(ctx, id, out, pls.MediaFiles(), a.createPlaylistHeader)
 }
 
 func (a *archiver) zipTracks(ctx context.Context, id string, out io.Writer, mfs model.MediaFiles, ch createHeader) error {
@@ -83,7 +86,7 @@ func (a *archiver) createHeader(idx int, mf model.MediaFile) *zip.FileHeader {
 func (a *archiver) createPlaylistHeader(idx int, mf model.MediaFile) *zip.FileHeader {
 	_, file := filepath.Split(mf.Path)
 	return &zip.FileHeader{
-		Name:     fmt.Sprintf("%d - %s-%s", idx, mf.AlbumArtist, file),
+		Name:     fmt.Sprintf("%d - %s - %s", idx+1, mf.AlbumArtist, file),
 		Modified: mf.UpdatedAt,
 		Method:   zip.Store,
 	}

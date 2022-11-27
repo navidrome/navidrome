@@ -1,5 +1,3 @@
-import React from 'react'
-import ReactDOM from 'react-dom'
 import { formatBytes, formatDuration } from './formatters'
 
 describe('formatBytes', () => {
@@ -21,7 +19,7 @@ describe('formatDuration', () => {
   it('formats seconds', () => {
     expect(formatDuration(0)).toEqual('00:00')
     expect(formatDuration(59)).toEqual('00:59')
-    expect(formatDuration(59.99)).toEqual('00:59')
+    expect(formatDuration(59.99)).toEqual('01:00')
   })
 
   it('formats days, hours and minutes', () => {

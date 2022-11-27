@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -24,6 +24,20 @@ var _ = Describe("Request Helpers", func() {
 
 		It("returns param as string", func() {
 			Expect(ParamString(r, "a")).To(Equal("123"))
+		})
+	})
+
+	Describe("ParamStringDefault", func() {
+		BeforeEach(func() {
+			r = httptest.NewRequest("GET", "/ping?a=123", nil)
+		})
+
+		It("returns default string if param does not exist", func() {
+			Expect(ParamStringDefault(r, "xx", "default_value")).To(Equal("default_value"))
+		})
+
+		It("returns param as string", func() {
+			Expect(ParamStringDefault(r, "a", "default_value")).To(Equal("123"))
 		})
 	})
 
@@ -77,6 +91,13 @@ var _ = Describe("Request Helpers", func() {
 
 		It("returns all param occurrences as []time.Time", func() {
 			Expect(ParamTimes(r, "t")).To(Equal([]time.Time{d1, d2}))
+		})
+		It("returns current time as default if param is invalid", func() {
+			now := time.Now()
+			r = httptest.NewRequest("GET", "/ping?t=null", nil)
+			times := ParamTimes(r, "t")
+			Expect(times).To(HaveLen(1))
+			Expect(times[0]).To(BeTemporally(">=", now))
 		})
 	})
 
@@ -133,7 +154,7 @@ var _ = Describe("Request Helpers", func() {
 	Describe("ParamBool", func() {
 		Context("value is true", func() {
 			BeforeEach(func() {
-				r = httptest.NewRequest("GET", "/ping?b=true&c=on&d=1", nil)
+				r = httptest.NewRequest("GET", "/ping?b=true&c=on&d=1&e=True", nil)
 			})
 
 			It("parses 'true'", func() {
@@ -146,6 +167,10 @@ var _ = Describe("Request Helpers", func() {
 
 			It("parses '1'", func() {
 				Expect(ParamBool(r, "d", false)).To(BeTrue())
+			})
+
+			It("parses 'True'", func() {
+				Expect(ParamBool(r, "e", false)).To(BeTrue())
 			})
 		})
 

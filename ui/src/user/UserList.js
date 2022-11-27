@@ -3,17 +3,16 @@ import {
   BooleanField,
   Datagrid,
   Filter,
-  DateField,
   SearchInput,
   SimpleList,
   TextField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { List } from '../common'
+import { List, DateField } from '../common'
 
 const UserFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
-    <SearchInput source="name" alwaysOn />
+    <SearchInput id="search" source="name" alwaysOn />
   </Filter>
 )
 

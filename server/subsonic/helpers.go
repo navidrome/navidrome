@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"strings"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
@@ -14,7 +15,7 @@ import (
 )
 
 func newResponse() *responses.Subsonic {
-	return &responses.Subsonic{Status: "ok", Version: Version, Type: consts.AppName, ServerVersion: consts.Version()}
+	return &responses.Subsonic{Status: "ok", Version: Version, Type: consts.AppName, ServerVersion: consts.Version}
 }
 
 func requiredParamString(r *http.Request, param string) (string, error) {
@@ -63,12 +64,12 @@ func (e subError) Error() string {
 	return msg
 }
 
-func getUser(ctx context.Context) string {
+func getUser(ctx context.Context) model.User {
 	user, ok := request.UserFrom(ctx)
 	if ok {
-		return user.UserName
+		return user
 	}
-	return ""
+	return model.User{}
 }
 
 func toArtists(ctx context.Context, artists model.Artists) []responses.Artist {
@@ -99,6 +100,7 @@ func toArtistID3(ctx context.Context, a model.Artist) responses.ArtistID3 {
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
 		ArtistImageUrl: a.ArtistImageUrl(),
+		UserRating:     a.Rating,
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
@@ -109,7 +111,11 @@ func toArtistID3(ctx context.Context, a model.Artist) responses.ArtistID3 {
 func toGenres(genres model.Genres) *responses.Genres {
 	response := make([]responses.Genre, len(genres))
 	for i, g := range genres {
-		response[i] = responses.Genre(g)
+		response[i] = responses.Genre{
+			Name:       g.Name,
+			SongCount:  g.SongCount,
+			AlbumCount: g.AlbumCount,
+		}
 	}
 	return &responses.Genres{Genre: response}
 }
@@ -151,7 +157,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	if ok && player.ReportRealPath {
 		child.Path = mf.Path
 	} else {
-		child.Path = fmt.Sprintf("%s/%s/%s.%s", realArtistName(mf), mf.Album, mf.Title, mf.Suffix)
+		child.Path = fakePath(mf)
 	}
 	child.DiscNumber = mf.DiscNumber
 	child.Created = &mf.CreatedAt
@@ -159,6 +165,9 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
 	child.PlayCount = mf.PlayCount
+	if mf.PlayCount > 0 {
+		child.Played = &mf.PlayDate
+	}
 	if mf.Starred {
 		child.Starred = &mf.StarredAt
 	}
@@ -173,15 +182,16 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	return child
 }
 
-func realArtistName(mf model.MediaFile) string {
-	switch {
-	case mf.Compilation:
-		return consts.VariousArtists
-	case mf.AlbumArtist != "":
-		return mf.AlbumArtist
+func fakePath(mf model.MediaFile) string {
+	filename := mapSlashToDash(mf.Title)
+	if mf.TrackNumber != 0 {
+		filename = fmt.Sprintf("%02d - %s", mf.TrackNumber, filename)
 	}
+	return fmt.Sprintf("%s/%s/%s.%s", mapSlashToDash(mf.AlbumArtist), mapSlashToDash(mf.Album), filename, mf.Suffix)
+}
 
-	return mf.Artist
+func mapSlashToDash(target string) string {
+	return strings.ReplaceAll(target, "/", "_")
 }
 
 func childrenFromMediaFiles(ctx context.Context, mfs model.MediaFiles) []responses.Child {
@@ -212,6 +222,9 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 		child.Starred = &al.StarredAt
 	}
 	child.PlayCount = al.PlayCount
+	if al.PlayCount > 0 {
+		child.Played = &al.PlayDate
+	}
 	child.UserRating = al.Rating
 	return child
 }

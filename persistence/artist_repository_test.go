@@ -3,11 +3,11 @@ package persistence
 import (
 	"context"
 
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 )
@@ -39,14 +39,6 @@ var _ = Describe("ArtistRepository", func() {
 	Describe("Get", func() {
 		It("saves and retrieves data", func() {
 			Expect(repo.Get("2")).To(Equal(&artistKraftwerk))
-		})
-	})
-
-	Describe("GetStarred", func() {
-		It("returns all starred records", func() {
-			Expect(repo.GetStarred(model.QueryOptions{})).To(Equal(model.Artists{
-				artistBeatles,
-			}))
 		})
 	})
 

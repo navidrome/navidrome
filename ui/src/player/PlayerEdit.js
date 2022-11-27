@@ -11,6 +11,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import { Title } from '../common'
+import config from '../config'
 
 const PlayerTitle = ({ record }) => {
   const translate = useTranslate()
@@ -47,6 +48,9 @@ const PlayerEdit = (props) => (
         ]}
       />
       <BooleanInput source="reportRealPath" fullWidth />
+      {(config.lastFMEnabled || config.listenBrainzEnabled) && (
+        <BooleanInput source="scrobbleEnabled" fullWidth />
+      )}
       <TextField source="client" />
       <TextField source="userName" />
     </SimpleForm>

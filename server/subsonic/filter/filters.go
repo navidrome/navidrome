@@ -7,7 +7,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-type Options model.QueryOptions
+type Options = model.QueryOptions
 
 func AlbumsByNewest() Options {
 	return Options{Sort: "recently_added", Order: "desc"}
@@ -43,8 +43,15 @@ func AlbumsByRating() Options {
 
 func AlbumsByGenre(genre string) Options {
 	return Options{
-		Sort:    "genre asc, name asc",
-		Filters: squirrel.Eq{"genre": genre},
+		Sort:    "genre.name asc, name asc",
+		Filters: squirrel.Eq{"genre.name": genre},
+	}
+}
+
+func AlbumsByArtistID(artistId string) Options {
+	return Options{
+		Sort:    "max_year",
+		Filters: squirrel.Eq{"album_artist_id": artistId},
 	}
 }
 
@@ -71,8 +78,15 @@ func AlbumsByYear(fromYear, toYear int) Options {
 
 func SongsByGenre(genre string) Options {
 	return Options{
-		Sort:    "genre asc, title asc",
-		Filters: squirrel.Eq{"genre": genre},
+		Sort:    "genre.name asc, title asc",
+		Filters: squirrel.Eq{"genre.name": genre},
+	}
+}
+
+func SongsByAlbum(albumId string) Options {
+	return Options{
+		Filters: squirrel.Eq{"album_id": albumId},
+		Sort:    "album",
 	}
 }
 
@@ -82,7 +96,7 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	}
 	ff := squirrel.And{}
 	if genre != "" {
-		ff = append(ff, squirrel.Eq{"genre": genre})
+		ff = append(ff, squirrel.Eq{"genre.name": genre})
 	}
 	if fromYear != 0 {
 		ff = append(ff, squirrel.GtOrEq{"year": fromYear})
@@ -92,4 +106,16 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	}
 	options.Filters = ff
 	return options
+}
+
+func Starred() Options {
+	return Options{Sort: "starred_at", Order: "desc", Filters: squirrel.Eq{"starred": true}}
+}
+
+func SongsWithLyrics(artist, title string) Options {
+	return Options{
+		Sort:    "updated_at",
+		Order:   "desc",
+		Filters: squirrel.And{squirrel.Eq{"artist": artist, "title": title}, squirrel.NotEq{"lyrics": ""}},
+	}
 }

@@ -17,8 +17,44 @@ export default {
         },
       },
     },
+    NDLogin: {
+      main: {
+        '& .MuiFormLabel-root': {
+          color: '#000000',
+        },
+        '& .MuiFormLabel-root.Mui-focused': {
+          color: '#0085ff',
+        },
+        '& .MuiFormLabel-root.Mui-error': {
+          color: '#f44336',
+        },
+        '& .MuiInput-underline:after': {
+          borderBottom: '2px solid #0085ff',
+        },
+      },
+      card: {
+        minWidth: 300,
+        marginTop: '6em',
+        backgroundColor: '#ffffffe6',
+      },
+      avatar: {},
+      icon: {},
+      button: {
+        boxShadow: '3px 3px 5px #000000a3',
+      },
+      systemNameLink: {
+        color: '#0085ff',
+      },
+    },
+    NDMobileArtistDetails: {
+      bgContainer: {
+        background:
+          'linear-gradient(to bottom, rgb(255 255 255 / 51%), rgb(250 250 250))!important',
+      },
+    },
   },
   player: {
     theme: 'light',
+    stylesheet: require('./light.css.js'),
   },
 }

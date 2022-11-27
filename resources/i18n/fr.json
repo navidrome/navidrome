@@ -20,7 +20,12 @@
                 "bitRate": "Bitrate",
                 "discSubtitle": "Sous-titre du disque",
                 "starred": "Favoris",
-                "comment": "Commentaire"
+                "comment": "Commentaire",
+                "rating": "Classement",
+                "quality": "Qualité",
+                "bpm": "BPM",
+                "playDate": "Derniers joués",
+                "channels": "Canaux"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -28,7 +33,8 @@
                 "addToPlaylist": "Ajouter à la playlist",
                 "shuffleAll": "Tout mélanger",
                 "download": "Télécharger",
-                "playNext": "Lire ensuite"
+                "playNext": "Jouer ensuite",
+                "info": "Plus d'informations"
             }
         },
         "album": {
@@ -44,7 +50,8 @@
                 "compilation": "Compilation",
                 "year": "Année",
                 "updatedAt": "Mis à jour le",
-                "comment": "Commentaire"
+                "comment": "Commentaire",
+                "rating": "Classement"
             },
             "actions": {
                 "playAll": "Lire",
@@ -52,15 +59,17 @@
                 "addToQueue": "Ajouter à la file",
                 "shuffle": "Mélanger",
                 "addToPlaylist": "Ajouter à la playlist",
-                "download": "Télécharger"
+                "download": "Télécharger",
+                "info": "Plus d'informations"
             },
             "lists": {
                 "all": "Tous",
                 "random": "Aléatoire",
-                "recentlyAdded": "Récemment ajouté",
-                "recentlyPlayed": "Récemment joué",
+                "recentlyAdded": "Récemment ajoutés",
+                "recentlyPlayed": "Récemment joués",
                 "mostPlayed": "Plus joués",
-                "starred": "Favoris"
+                "starred": "Favoris",
+                "topRated": "Les mieux classés"
             }
         },
         "artist": {
@@ -69,7 +78,9 @@
                 "name": "Nom",
                 "albumCount": "Nombre d'albums",
                 "songCount": "Nombre de pistes",
-                "playCount": "Lectures"
+                "playCount": "Lectures",
+                "rating": "Classement",
+                "genre": "Genre"
             }
         },
         "user": {
@@ -81,7 +92,23 @@
                 "updatedAt": "Dernière mise à jour",
                 "name": "Nom",
                 "password": "Mot de passe",
-                "createdAt": "Créé le"
+                "createdAt": "Créé le",
+                "changePassword": "Changer le mot de passe ?",
+                "currentPassword": "Mot de passe actuel",
+                "newPassword": "Nouveau mot de passe",
+                "token": "Token"
+            },
+            "helperTexts": {
+                "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion"
+            },
+            "notifications": {
+                "created": "Utilisateur créé",
+                "updated": "Utilisateur mis à jour",
+                "deleted": "Utilisateur supprimé"
+            },
+            "message": {
+                "listenBrainzToken": "Entrez votre token ListenBrainz.",
+                "clickHereForToken": "Cliquez ici pour recevoir votre token"
             }
         },
         "player": {
@@ -93,7 +120,8 @@
                 "client": "Client",
                 "userName": "Nom d'utilisateur",
                 "lastSeen": "Vu pour la dernière fois",
-                "reportRealPath": "Rapporter le chemin absolu"
+                "reportRealPath": "Rapporter le chemin absolu",
+                "scrobbleEnabled": "Scrobbler vers des services externes"
             }
         },
         "transcoding": {
@@ -110,7 +138,7 @@
             "fields": {
                 "name": "Nom",
                 "duration": "Durée",
-                "owner": "Propriétaire",
+                "ownerName": "Propriétaire",
                 "public": "Public",
                 "updatedAt": "Mise à jour le",
                 "createdAt": "Créé le",
@@ -122,7 +150,13 @@
             "actions": {
                 "selectPlaylist": "Ajouter les pistes à la playlist",
                 "addNewPlaylist": "Créer \"%{name}\"",
-                "export": "Exporter"
+                "export": "Exporter",
+                "makePublic": "Rendre publique",
+                "makePrivate": "Rendre privée"
+            },
+            "message": {
+                "duplicate_song": "Pistes déjà présentes dans la playlist",
+                "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
             }
         }
     },
@@ -141,8 +175,8 @@
             "logout": "Déconnexion"
         },
         "validation": {
-            "invalidChars": "Merci d'utiliser uniquement des chiffres et des lettres",
-            "passwordDoesNotMatch": "Les mots de passes ne correspondent pas",
+            "invalidChars": "Merci de n'utiliser que des chiffres et des lettres",
+            "passwordDoesNotMatch": "Les mots de passe ne correspondent pas",
             "required": "Ce champ est requis",
             "minLength": "Minimum %{min} caractères",
             "maxLength": "Maximum %{max} caractères",
@@ -150,14 +184,15 @@
             "maxValue": "Maximum %{max}",
             "number": "Doit être un nombre",
             "email": "Doit être un e-mail",
-            "oneOf": "Doit être au choix: %{options}",
-            "regex": "Doit respecter un format spécifique (regexp): %{pattern}"
+            "oneOf": "Doit être au choix : %{options}",
+            "regex": "Doit respecter un format spécifique (regexp) : %{pattern}",
+            "unique": "Doit être unique"
         },
         "action": {
             "add_filter": "Ajouter un filtre",
             "add": "Ajouter",
             "back": "Retour",
-            "bulk_actions": "%{smart_count} selectionné |||| %{smart_count} selectionnés",
+            "bulk_actions": "%{smart_count} sélectionné |||| %{smart_count} sélectionnés",
             "cancel": "Annuler",
             "clear_input_value": "Vider le champ",
             "clone": "Dupliquer",
@@ -179,7 +214,8 @@
             "close": "Fermer",
             "open_menu": "Ouvrir le menu",
             "close_menu": "Fermer le menu",
-            "unselect": "Désélectionner"
+            "unselect": "Désélectionner",
+            "skip": "Ignorer"
         },
         "boolean": {
             "true": "Oui",
@@ -199,12 +235,12 @@
         },
         "input": {
             "file": {
-                "upload_several": "Déposez les fichiers à uploader, ou cliquez pour en sélectionner.",
-                "upload_single": "Déposez le fichier à uploader, ou cliquez pour le sélectionner."
+                "upload_several": "Déposez les fichiers à téléverser, ou cliquez pour en sélectionner.",
+                "upload_single": "Déposez le fichier à téléverser, ou cliquez pour le sélectionner."
             },
             "image": {
-                "upload_several": "Déposez les images à uploader, ou cliquez pour en sélectionner.",
-                "upload_single": "Déposez l'image à uploader, ou cliquez pour la sélectionner."
+                "upload_several": "Déposez les images à téléverser, ou cliquez pour en sélectionner.",
+                "upload_single": "Déposez l'image à téléverser, ou cliquez pour la sélectionner."
             },
             "references": {
                 "all_missing": "Impossible de trouver des données de références.",
@@ -217,8 +253,8 @@
             }
         },
         "message": {
-            "about": "A propos de",
-            "are_you_sure": "Êtes-vous sûr ?",
+            "about": "À propos de",
+            "are_you_sure": "Êtes-vous sûr(e) ?",
             "bulk_delete_content": "Êtes-vous sûr(e) de vouloir supprimer cet élément ? |||| Êtes-vous sûr(e) de vouloir supprimer ces %{smart_count} éléments ?",
             "bulk_delete_title": "Supprimer %{name} |||| Supprimer %{smart_count} %{name}",
             "delete_content": "Êtes-vous sûr(e) de vouloir supprimer cet élément ?",
@@ -251,22 +287,42 @@
             "bad_item": "Élément inconnu",
             "item_doesnt_exist": "L'élément n'existe pas",
             "http_error": "Erreur de communication avec le serveur",
-            "data_provider_error": "Erreur dans le dataProvider. Plus de détails dans la console.",
+            "data_provider_error": "Erreur dans le fournisseur de données. Plus de détails dans la console.",
             "i18n_error": "Erreur de chargement des traductions pour la langue sélectionnée",
             "canceled": "Action annulée",
-            "logged_out": "Votre session a pris fin, veuillez vous reconnecter."
+            "logged_out": "Votre session a pris fin, veuillez vous reconnecter.",
+            "new_version": "Nouvelle version disponible ! Veuillez rafraîchir la page."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Colonnes à afficher",
+            "layout": "Mise en page",
+            "grid": "Grille",
+            "table": "Table"
         }
     },
     "message": {
         "note": "NOTE",
         "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancer le serveur avec l'option %{config} activée.",
-        "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé d'activer cette fonctionnalité uniquement lors de la configuration du Transcodage.",
-        "songsAddedToPlaylist": "Une piste ajoutée à la playlist |||| %{smart_count} pistes ajoutées à la playlist",
+        "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé d'activer cette fonctionnalité uniquement lors de la configuration du transcodage.",
+        "songsAddedToPlaylist": "Une piste a été ajoutée à la playlist |||| %{smart_count} pistes ont été ajoutées à la playlist",
         "noPlaylistsAvailable": "Aucune playlist",
         "delete_user_title": "Supprimer l'utilisateur '%{name}'",
         "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
         "notifications_blocked": "Votre navigateur bloque les notifications de ce site",
-        "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via https"
+        "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via HTTPS",
+        "lastfmLinkSuccess": "Last.fm a été correctement relié et le scrobble a été activé",
+        "lastfmLinkFailure": "Last.fm n'a pas pu être correctement relié",
+        "lastfmUnlinkSuccess": "Last.fm n'est plus relié et le scrobble a été désactivé",
+        "lastfmUnlinkFailure": "Erreur pendant la suppression du lien avec Last.fm",
+        "openIn": {
+            "lastfm": "Ouvrir dans Last.fm",
+            "musicbrainz": "Ouvrir dans MusicBrainz"
+        },
+        "lastfmLink": "Lire plus...",
+        "listenBrainzLinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant activés pour l'utilisateur: %{user}",
+        "listenBrainzLinkFailure": "Échec lors de la liaison avec ListenBrainz: %{error}",
+        "listenBrainzUnlinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant désactivés",
+        "listenBrainzUnlinkFailure": "Échec lors de la désactivation de la liaison avec ListenBrainz"
     },
     "menu": {
         "library": "Bibliothèque",
@@ -279,11 +335,15 @@
                 "theme": "Thème",
                 "language": "Langue",
                 "defaultView": "Vue par défaut",
-                "desktop_notifications": "Notifications de bureau"
+                "desktop_notifications": "Notifications de bureau",
+                "lastfmScrobbling": "Scrobbler vers Last.fm",
+                "listenBrainzScrobbling": "Scrobbler vers ListenBrainz"
             }
         },
         "albumList": "Albums",
-        "about": "À propos"
+        "about": "À propos",
+        "playlists": "Playlists",
+        "sharedPlaylists": "Playlists partagées"
     },
     "player": {
         "playListsText": "File de lecture",
@@ -330,12 +390,12 @@
         "hotkeys": {
             "show_help": "Montrer cette fenêtre d'aide",
             "toggle_menu": "Afficher/Cacher le menu latéral",
-            "toggle_play": "Lecture / Pause",
+            "toggle_play": "Lecture/Pause",
             "prev_song": "Morceau précédent",
             "next_song": "Morceau suivant",
             "vol_up": "Augmenter le volume",
             "vol_down": "Baisser le volume",
-            "toggle_star": "Ajouter/Enlever le morceau des favoris"
+            "toggle_love": "Ajouter/Enlever le morceau des favoris"
         }
     }
 }

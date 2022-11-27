@@ -11,7 +11,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -25,7 +25,7 @@ type albumRepository struct {
 	sqlRestful
 }
 
-func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository {
+func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRepository {
 	r := &albumRepository{}
 	r.ctx = ctx
 	r.ormer = o
@@ -38,12 +38,14 @@ func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository 
 		"recently_added": recentlyAddedSort(),
 	}
 	r.filterMappings = map[string]filterFunc{
+		"id":              idFilter(r.tableName),
 		"name":            fullTextFilter,
 		"compilation":     booleanFilter,
 		"artist_id":       artistFilter,
 		"year":            yearFilter,
 		"recently_played": recentlyPlayedFilter,
 		"starred":         booleanFilter,
+		"has_rating":      hasRatingFilter,
 	}
 
 	return r
@@ -58,6 +60,10 @@ func recentlyAddedSort() string {
 
 func recentlyPlayedFilter(field string, value interface{}) Sqlizer {
 	return Gt{"play_count": 0}
+}
+
+func hasRatingFilter(field string, value interface{}) Sqlizer {
+	return Gt{"rating": 0}
 }
 
 func yearFilter(field string, value interface{}) Sqlizer {
@@ -76,19 +82,33 @@ func artistFilter(field string, value interface{}) Sqlizer {
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.selectAlbum(), options...)
+	sql := r.newSelectWithAnnotation("album.id")
+	sql = r.withGenres(sql)
+	return r.count(sql, options...)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"id": id}))
+	return r.exists(Select().Where(Eq{"album.id": id}))
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelectWithAnnotation("album.id", options...).Columns("*")
+	sql := r.newSelectWithAnnotation("album.id", options...).Columns("album.*")
+	if len(options) > 0 && options[0].Filters != nil {
+		s, _, _ := options[0].Filters.ToSql()
+		// If there's any reference of genre in the filter, joins with genre
+		if strings.Contains(s, "genre") {
+			sql = r.withGenres(sql)
+			// If there's no filter on genre_id, group the results by media_file.id
+			if !strings.Contains(s, "genre_id") {
+				sql = sql.GroupBy("album.id")
+			}
+		}
+	}
+	return sql
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
-	sq := r.selectAlbum().Where(Eq{"id": id})
+	sq := r.selectAlbum().Where(Eq{"album.id": id})
 	var res model.Albums
 	if err := r.queryAll(sq, &res); err != nil {
 		return nil, err
@@ -96,48 +116,35 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 	if len(res) == 0 {
 		return nil, model.ErrNotFound
 	}
-	return &res[0], nil
+	err := r.loadAlbumGenres(&res)
+	return &res[0], err
 }
 
-func (r *albumRepository) FindByArtist(artistId string) (model.Albums, error) {
-	sq := r.selectAlbum().Where(Eq{"album_artist_id": artistId}).OrderBy("max_year")
-	res := model.Albums{}
-	err := r.queryAll(sq, &res)
-	return res, err
+func (r *albumRepository) Put(m *model.Album) error {
+	_, err := r.put(m.ID, m)
+	if err != nil {
+		return err
+	}
+	return r.updateGenres(m.ID, r.tableName, m.Genres)
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
-	sq := r.selectAlbum(options...)
-	res := model.Albums{}
-	err := r.queryAll(sq, &res)
-	return res, err
-}
-
-// TODO Keep order when paginating
-func (r *albumRepository) GetRandom(options ...model.QueryOptions) (model.Albums, error) {
-	sq := r.selectAlbum(options...)
-	sq = sq.OrderBy("RANDOM()")
-	results := model.Albums{}
-	err := r.queryAll(sq, &results)
-	return results, err
-}
-
-// Return a map of mediafiles that have embedded covers for the given album ids
-func (r *albumRepository) getEmbeddedCovers(ids []string) (map[string]model.MediaFile, error) {
-	var mfs model.MediaFiles
-	coverSql := Select("album_id", "id", "path").Distinct().From("media_file").
-		Where(And{Eq{"has_cover_art": true}, Eq{"album_id": ids}}).
-		GroupBy("album_id")
-	err := r.queryAll(coverSql, &mfs)
+	res, err := r.GetAllWithoutGenres(options...)
 	if err != nil {
 		return nil, err
 	}
+	err = r.loadAlbumGenres(&res)
+	return res, err
+}
 
-	result := map[string]model.MediaFile{}
-	for _, mf := range mfs {
-		result[mf.AlbumID] = mf
+func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (model.Albums, error) {
+	sq := r.selectAlbum(options...)
+	res := model.Albums{}
+	err := r.queryAll(sq, &res)
+	if err != nil {
+		return nil, err
 	}
-	return result, nil
+	return res, err
 }
 
 func (r *albumRepository) Refresh(ids ...string) error {
@@ -151,21 +158,26 @@ func (r *albumRepository) Refresh(ids ...string) error {
 	return nil
 }
 
+const zwsp = string('\u200b')
+
+type refreshAlbum struct {
+	model.Album
+	CurrentId      string
+	SongArtists    string
+	SongArtistIds  string
+	AlbumArtistIds string
+	GenreIds       string
+	Years          string
+	DiscSubtitles  string
+	Comments       string
+	Path           string
+	MaxUpdatedAt   string
+	MaxCreatedAt   string
+}
+
 func (r *albumRepository) refresh(ids ...string) error {
-	type refreshAlbum struct {
-		model.Album
-		CurrentId     string
-		SongArtists   string
-		SongArtistIds string
-		Years         string
-		DiscSubtitles string
-		Comments      string
-		Path          string
-		MaxUpdatedAt  string
-		MaxCreatedAt  string
-	}
+	stringListIds := "('" + strings.Join(ids, "','") + "')"
 	var albums []refreshAlbum
-	const zwsp = string('\u200b')
 	sel := Select(`f.album_id as id, f.album as name, f.artist, f.album_artist, f.artist_id, f.album_artist_id, 
 		f.sort_album_name, f.sort_artist_name, f.sort_album_artist_name, f.order_album_name, f.order_album_artist_name, 
 		f.path, f.mbz_album_artist_id, f.mbz_album_type, f.mbz_album_comment, f.catalog_num, f.compilation, f.genre, 
@@ -176,35 +188,32 @@ func (r *albumRepository) refresh(ids ...string) error {
 		max(f.updated_at) as max_updated_at,
 		max(f.created_at) as max_created_at,
 		a.id as current_id,  
-		group_concat(f.comment, "` + zwsp + `") as comments,
+		group_concat(f.comment, "`+zwsp+`") as comments,
 		group_concat(f.mbz_album_id, ' ') as mbz_album_id, 
 		group_concat(f.disc_subtitle, ' ') as disc_subtitles,
 		group_concat(f.artist, ' ') as song_artists, 
 		group_concat(f.artist_id, ' ') as song_artist_ids, 
-		group_concat(f.year, ' ') as years`).
+		group_concat(f.album_artist_id, ' ') as album_artist_ids, 
+		group_concat(f.year, ' ') as years`,
+		"cf.cover_art_id", "cf.cover_art_path",
+		"mfg.genre_ids").
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
+		LeftJoin(`(select album_id, id as cover_art_id, path as cover_art_path from media_file 
+			where has_cover_art = true and album_id in ` + stringListIds + ` group by album_id) cf 
+			on cf.album_id = f.album_id`).
+		LeftJoin(`(select mf.album_id, group_concat(genre_id, ' ') as genre_ids from media_file_genres
+			left join media_file mf on mf.id = media_file_id where mf.album_id in ` +
+			stringListIds + ` group by mf.album_id) mfg on mfg.album_id = f.album_id`).
 		Where(Eq{"f.album_id": ids}).GroupBy("f.album_id")
 	err := r.queryAll(sel, &albums)
 	if err != nil {
 		return err
 	}
-
-	covers, err := r.getEmbeddedCovers(ids)
-	if err != nil {
-		return nil
-	}
-
 	toInsert := 0
 	toUpdate := 0
 	for _, al := range albums {
-		embedded, hasCoverArt := covers[al.ID]
-		if hasCoverArt {
-			al.CoverArtId = embedded.ID
-			al.CoverArtPath = embedded.Path
-		}
-
-		if !hasCoverArt || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
+		if al.CoverArtPath == "" || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
 			if path := getCoverFromPath(al.Path, al.CoverArtPath); path != "" {
 				al.CoverArtId = "al-" + al.ID
 				al.CoverArtPath = path
@@ -212,7 +221,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 		}
 
 		if al.CoverArtId != "" {
-			log.Trace(r.ctx, "Found album art", "id", al.ID, "name", al.Name, "coverArtPath", al.CoverArtPath, "coverArtId", al.CoverArtId, "hasCoverArt", hasCoverArt)
+			log.Trace(r.ctx, "Found album art", "id", al.ID, "name", al.Name, "coverArtPath", al.CoverArtPath, "coverArtId", al.CoverArtId)
 		} else {
 			log.Trace(r.ctx, "Could not find album art", "id", al.ID, "name", al.Name)
 		}
@@ -225,16 +234,9 @@ func (r *albumRepository) refresh(ids ...string) error {
 			al.CreatedAt = al.UpdatedAt
 		}
 
-		if al.Compilation {
-			al.AlbumArtist = consts.VariousArtists
-			al.AlbumArtistID = consts.VariousArtistsID
-		}
-		if al.AlbumArtist == "" {
-			al.AlbumArtist = al.Artist
-			al.AlbumArtistID = al.ArtistID
-		}
+		al.AlbumArtistID, al.AlbumArtist = getAlbumArtist(al)
 		al.MinYear = getMinYear(al.Years)
-		al.MbzAlbumID = getMbzId(r.ctx, al.MbzAlbumID, r.tableName, al.Name)
+		al.MbzAlbumID = getMostFrequentMbzID(r.ctx, al.MbzAlbumID, r.tableName, al.Name)
 		al.Comment = getComment(al.Comments, zwsp)
 		if al.CurrentId != "" {
 			toUpdate++
@@ -244,7 +246,8 @@ func (r *albumRepository) refresh(ids ...string) error {
 		al.AllArtistIDs = utils.SanitizeStrings(al.SongArtistIds, al.AlbumArtistID, al.ArtistID)
 		al.FullText = getFullText(al.Name, al.Artist, al.AlbumArtist, al.SongArtists,
 			al.SortAlbumName, al.SortArtistName, al.SortAlbumArtistName, al.DiscSubtitles)
-		_, err := r.put(al.ID, al.Album)
+		al.Genres = getGenres(al.GenreIds)
+		err := r.Put(&al.Album)
 		if err != nil {
 			return err
 		}
@@ -258,15 +261,42 @@ func (r *albumRepository) refresh(ids ...string) error {
 	return err
 }
 
-// Return the first non empty comment, if any
+func getAlbumArtist(al refreshAlbum) (id, name string) {
+	if !al.Compilation {
+		if al.AlbumArtist != "" {
+			return al.AlbumArtistID, al.AlbumArtist
+		}
+		return al.ArtistID, al.Artist
+	}
+
+	ids := strings.Split(al.AlbumArtistIds, " ")
+	allSame := true
+	previous := al.AlbumArtistID
+	for _, id := range ids {
+		if id == previous {
+			continue
+		}
+		allSame = false
+		break
+	}
+	if allSame {
+		return al.AlbumArtistID, al.AlbumArtist
+	}
+	return consts.VariousArtistsID, consts.VariousArtists
+}
+
 func getComment(comments string, separator string) string {
 	cs := strings.Split(comments, separator)
-	for _, c := range cs {
-		if c != "" {
-			return c
+	if len(cs) == 0 {
+		return ""
+	}
+	first := cs[0]
+	for _, c := range cs[1:] {
+		if first != c {
+			return ""
 		}
 	}
-	return ""
+	return first
 }
 
 func getMinYear(years string) int {
@@ -329,13 +359,6 @@ func (r *albumRepository) purgeEmpty() error {
 	return err
 }
 
-func (r *albumRepository) GetStarred(options ...model.QueryOptions) (model.Albums, error) {
-	sq := r.selectAlbum(options...).Where("starred = true")
-	starred := model.Albums{}
-	err := r.queryAll(sq, &starred)
-	return starred, err
-}
-
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
 	results := model.Albums{}
 	err := r.doSearch(q, offset, size, &results, "name")
@@ -362,22 +385,5 @@ func (r *albumRepository) NewInstance() interface{} {
 	return &model.Album{}
 }
 
-func (r albumRepository) Delete(id string) error {
-	return r.delete(Eq{"id": id})
-}
-
-func (r albumRepository) Save(entity interface{}) (string, error) {
-	album := entity.(*model.Album)
-	id, err := r.put(album.ID, album)
-	return id, err
-}
-
-func (r albumRepository) Update(entity interface{}, cols ...string) error {
-	album := entity.(*model.Album)
-	_, err := r.put(album.ID, album)
-	return err
-}
-
 var _ model.AlbumRepository = (*albumRepository)(nil)
 var _ model.ResourceRepository = (*albumRepository)(nil)
-var _ rest.Persistable = (*albumRepository)(nil)

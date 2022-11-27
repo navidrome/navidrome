@@ -7,18 +7,26 @@ import {
 import PropTypes from 'prop-types'
 
 // Replace original resource with "fake" one for removing tracks from playlist
-const PlaylistSongBulkActions = ({ playlistId, resource, ...rest }) => {
+const PlaylistSongBulkActions = ({
+  playlistId,
+  resource,
+  onUnselectItems,
+  ...rest
+}) => {
   const unselectAll = useUnselectAll()
   useEffect(() => {
     unselectAll('playlistTrack')
-    // eslint-disable-next-line
-  }, [])
+  }, [unselectAll])
 
   const mappedResource = `playlist/${playlistId}/tracks`
   return (
     <ResourceContextProvider value={mappedResource}>
       <Fragment>
-        <BulkDeleteButton {...rest} resource={mappedResource} />
+        <BulkDeleteButton
+          {...rest}
+          resource={mappedResource}
+          onClick={onUnselectItems}
+        />
       </Fragment>
     </ResourceContextProvider>
   )

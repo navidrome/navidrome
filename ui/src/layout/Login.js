@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { Field, Form } from 'react-final-form'
 import { useDispatch } from 'react-redux'
@@ -7,64 +7,83 @@ import Card from '@material-ui/core/Card'
 import CardActions from '@material-ui/core/CardActions'
 import CircularProgress from '@material-ui/core/CircularProgress'
 import TextField from '@material-ui/core/TextField'
-import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
-import { ThemeProvider } from '@material-ui/styles'
-import Logo from '../icons/android-icon-72x72.png'
-import { useLogin, useNotify, useTranslate } from 'react-admin'
+import { ThemeProvider, makeStyles } from '@material-ui/core/styles'
+import {
+  createMuiTheme,
+  useLogin,
+  useNotify,
+  useRefresh,
+  useSetLocale,
+  useTranslate,
+  useVersion,
+} from 'react-admin'
+import Logo from '../icons/android-icon-192x192.png'
 
 import Notification from './Notification'
-import LightTheme from '../themes/light'
+import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import { clearQueue } from '../actions'
+import { retrieveTranslation } from '../i18n'
 
-const useStyles = makeStyles((theme) => ({
-  main: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100vh',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    background: `url(${config.loginBackgroundURL})`,
-    backgroundRepeat: 'no-repeat',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-  },
-  card: {
-    minWidth: 300,
-    marginTop: '6em',
-  },
-  avatar: {
-    margin: '1em',
-    display: 'flex',
-    justifyContent: 'center',
-  },
-  icon: {
-    backgroundColor: 'white',
-    width: '40px',
-  },
-  systemName: {
-    marginTop: '1em',
-    display: 'flex',
-    justifyContent: 'center',
-    color: '#3f51b5', //theme.palette.grey[500]
-  },
-  welcome: {
-    marginTop: '1em',
-    padding: '0 1em 1em 1em',
-    display: 'flex',
-    justifyContent: 'center',
-    color: '#3f51b5', //theme.palette.grey[500]
-  },
-  form: {
-    padding: '0 1em 1em 1em',
-  },
-  input: {
-    marginTop: '1em',
-  },
-  actions: {
-    padding: '0 1em 1em 1em',
-  },
-}))
+const useStyles = makeStyles(
+  (theme) => ({
+    main: {
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      background: `url(${config.loginBackgroundURL})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    },
+    card: {
+      minWidth: 300,
+      marginTop: '6em',
+      overflow: 'visible',
+    },
+    avatar: {
+      margin: '1em',
+      display: 'flex',
+      justifyContent: 'center',
+      marginTop: '-3em',
+    },
+    icon: {
+      backgroundColor: 'transparent',
+      width: '6.3em',
+      height: '6.3em',
+    },
+    systemName: {
+      marginTop: '1em',
+      display: 'flex',
+      justifyContent: 'center',
+      color: '#3f51b5', //theme.palette.grey[500]
+    },
+    welcome: {
+      marginTop: '1em',
+      padding: '0 1em 1em 1em',
+      display: 'flex',
+      justifyContent: 'center',
+      flexWrap: 'wrap',
+      color: '#3f51b5', //theme.palette.grey[500]
+    },
+    form: {
+      padding: '0 1em 1em 1em',
+    },
+    input: {
+      marginTop: '1em',
+    },
+    actions: {
+      padding: '0 1em 1em 1em',
+    },
+    button: {},
+    systemNameLink: {
+      textDecoration: 'none',
+    },
+  }),
+  { name: 'NDLogin' }
+)
 
 const renderInput = ({
   meta: { touched, error } = {},
@@ -100,6 +119,7 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
                   href="https://www.navidrome.org"
                   target="_blank"
                   rel="noopener noreferrer"
+                  className={classes.systemNameLink}
                 >
                   Navidrome
                 </a>
@@ -309,10 +329,34 @@ Login.propTypes = {
 // We need to put the ThemeProvider decoration in another component
 // Because otherwise the useStyles() hook used in Login won't get
 // the right theme
-const LoginWithTheme = (props) => (
-  <ThemeProvider theme={createMuiTheme(LightTheme)}>
-    <Login {...props} />
-  </ThemeProvider>
-)
+const LoginWithTheme = (props) => {
+  const theme = useCurrentTheme()
+  const setLocale = useSetLocale()
+  const refresh = useRefresh()
+  const version = useVersion()
+
+  useEffect(() => {
+    if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
+      retrieveTranslation(config.defaultLanguage)
+        .then(() => {
+          setLocale(config.defaultLanguage).then(() => {
+            localStorage.setItem('locale', config.defaultLanguage)
+          })
+          refresh(true)
+        })
+        .catch((e) => {
+          throw new Error(
+            'Cannot load language "' + config.defaultLanguage + '": ' + e
+          )
+        })
+    }
+  }, [refresh, setLocale])
+
+  return (
+    <ThemeProvider theme={createMuiTheme(theme)}>
+      <Login key={version} {...props} />
+    </ThemeProvider>
+  )
+}
 
 export default LoginWithTheme

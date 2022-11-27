@@ -4,12 +4,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/astaxie/beego/orm"
+	"github.com/Masterminds/squirrel"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -38,17 +39,6 @@ var _ = Describe("MediaRepository", func() {
 	It("checks existence of mediafiles in the DB", func() {
 		Expect(mr.Exists(songAntenna.ID)).To(BeTrue())
 		Expect(mr.Exists("666")).To(BeFalse())
-	})
-
-	It("find mediafiles by album", func() {
-		Expect(mr.FindByAlbum("103")).To(Equal(model.MediaFiles{
-			songAntenna,
-			songRadioactivity,
-		}))
-	})
-
-	It("returns empty array when no tracks are found", func() {
-		Expect(mr.FindByAlbum("67")).To(Equal(model.MediaFiles{}))
 	})
 
 	It("finds tracks by path when using wildcards chars", func() {
@@ -83,12 +73,6 @@ var _ = Describe("MediaRepository", func() {
 		Expect(err).To(BeNil())
 		Expect(found).To(HaveLen(1))
 		Expect(found[0].ID).To(Equal("7004"))
-	})
-
-	It("returns starred tracks", func() {
-		Expect(mr.GetStarred()).To(Equal(model.MediaFiles{
-			songComeTogether,
-		}))
 	})
 
 	It("delete tracks by id", func() {
@@ -147,6 +131,17 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.FindAllByPath(P("/music/overlap/Ella Fitzgerald"))).To(HaveLen(2))
 		Expect(mr.DeleteByPath(P("/music/overlap/Ella Fitzgerald"))).To(Equal(int64(2)))
 		Expect(mr.FindAllByPath(P("/music/overlap"))).To(HaveLen(1))
+	})
+
+	It("filters by genre", func() {
+		Expect(mr.GetAll(model.QueryOptions{
+			Sort:    "genre.name asc, title asc",
+			Filters: squirrel.Eq{"genre.name": "Rock"},
+		})).To(Equal(model.MediaFiles{
+			songDayInALife,
+			songAntenna,
+			songComeTogether,
+		}))
 	})
 
 	Context("Annotations", func() {

@@ -1,0 +1,81 @@
+package tests
+
+import (
+	"time"
+
+	"github.com/navidrome/navidrome/model"
+)
+
+type MockedScrobbleBufferRepo struct {
+	Error error
+	data  model.ScrobbleEntries
+}
+
+func CreateMockedScrobbleBufferRepo() *MockedScrobbleBufferRepo {
+	return &MockedScrobbleBufferRepo{}
+}
+
+func (m *MockedScrobbleBufferRepo) UserIDs(service string) ([]string, error) {
+	if m.Error != nil {
+		return nil, m.Error
+	}
+	userIds := make(map[string]struct{})
+	for _, e := range m.data {
+		if e.Service == service {
+			userIds[e.UserID] = struct{}{}
+		}
+	}
+	var result []string
+	for uid := range userIds {
+		result = append(result, uid)
+	}
+	return result, nil
+}
+
+func (m *MockedScrobbleBufferRepo) Enqueue(service, userId, mediaFileId string, playTime time.Time) error {
+	if m.Error != nil {
+		return m.Error
+	}
+	m.data = append(m.data, model.ScrobbleEntry{
+		MediaFile:   model.MediaFile{ID: mediaFileId},
+		Service:     service,
+		UserID:      userId,
+		PlayTime:    playTime,
+		EnqueueTime: time.Now(),
+	})
+	return nil
+}
+
+func (m *MockedScrobbleBufferRepo) Next(service, userId string) (*model.ScrobbleEntry, error) {
+	if m.Error != nil {
+		return nil, m.Error
+	}
+	for _, e := range m.data {
+		if e.Service == service && e.UserID == userId {
+			return &e, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *MockedScrobbleBufferRepo) Dequeue(entry *model.ScrobbleEntry) error {
+	if m.Error != nil {
+		return m.Error
+	}
+	newData := model.ScrobbleEntries{}
+	for _, e := range m.data {
+		if e.Service == entry.Service && e.UserID == entry.UserID && e.PlayTime == entry.PlayTime && e.MediaFile.ID == entry.MediaFile.ID {
+			continue
+		}
+		newData = append(newData, e)
+	}
+	m.data = newData
+	return nil
+}
+
+func (m *MockedScrobbleBufferRepo) Length() (int64, error) {
+	if m.Error != nil {
+		return 0, m.Error
+	}
+	return int64(len(m.data)), nil
+}

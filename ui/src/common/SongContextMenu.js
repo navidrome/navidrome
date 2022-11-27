@@ -6,9 +6,15 @@ import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import clsx from 'clsx'
-import { playNext, addTracks, setTrack, openAddToPlaylist } from '../actions'
+import {
+  playNext,
+  addTracks,
+  setTrack,
+  openAddToPlaylist,
+  openExtendedInfoDialog,
+} from '../actions'
 import subsonic from '../subsonic'
-import { StarButton } from './StarButton'
+import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
 
@@ -21,7 +27,7 @@ const useStyles = makeStyles({
 export const SongContextMenu = ({
   resource,
   record,
-  showStar,
+  showLove,
   onAddToPlaylist,
   className,
 }) => {
@@ -63,6 +69,11 @@ export const SongContextMenu = ({
       )})`,
       action: (record) => subsonic.download(record.mediaFileId || record.id),
     },
+    info: {
+      enabled: true,
+      label: translate('resources.song.actions.info'),
+      action: (record) => dispatch(openExtendedInfoDialog(record)),
+    },
   }
 
   const handleClick = (e) => {
@@ -87,7 +98,11 @@ export const SongContextMenu = ({
 
   return (
     <span className={clsx(classes.noWrap, className)}>
-      <StarButton record={record} resource={resource} visible={showStar} />
+      <LoveButton
+        record={record}
+        resource={resource}
+        visible={config.enableFavourites && showLove}
+      />
       <IconButton onClick={handleClick} size={'small'}>
         <MoreVertIcon fontSize={'small'} />
       </IconButton>
@@ -114,13 +129,13 @@ SongContextMenu.propTypes = {
   resource: PropTypes.string.isRequired,
   record: PropTypes.object.isRequired,
   onAddToPlaylist: PropTypes.func,
-  showStar: PropTypes.bool,
+  showLove: PropTypes.bool,
 }
 
 SongContextMenu.defaultProps = {
   onAddToPlaylist: () => {},
   record: {},
   resource: 'song',
-  showStar: true,
+  showLove: true,
   addLabel: true,
 }

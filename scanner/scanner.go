@@ -16,7 +16,6 @@ import (
 )
 
 type Scanner interface {
-	Run(ctx context.Context, interval time.Duration)
 	RescanAll(ctx context.Context, fullRescan bool) error
 	Status(mediaFolder string) (*StatusInfo, error)
 	Scanning() bool
@@ -36,7 +35,8 @@ var (
 )
 
 type FolderScanner interface {
-	Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) error
+	// Scan process finds any changes after `lastModifiedSince` and returns the number of changes found
+	Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) (int64, error)
 }
 
 var isScanning utils.AtomicBool
@@ -46,9 +46,9 @@ type scanner struct {
 	status      map[string]*scanStatus
 	lock        *sync.RWMutex
 	ds          model.DataStore
+	pls         core.Playlists
 	cacheWarmer core.CacheWarmer
 	broker      events.Broker
-	scan        chan bool
 }
 
 type scanStatus struct {
@@ -58,35 +58,18 @@ type scanStatus struct {
 	lastUpdate  time.Time
 }
 
-func New(ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker) Scanner {
+func New(ds model.DataStore, playlists core.Playlists, cacheWarmer core.CacheWarmer, broker events.Broker) Scanner {
 	s := &scanner{
 		ds:          ds,
+		pls:         playlists,
 		cacheWarmer: cacheWarmer,
 		broker:      broker,
 		folders:     map[string]FolderScanner{},
 		status:      map[string]*scanStatus{},
 		lock:        &sync.RWMutex{},
-		scan:        make(chan bool),
 	}
 	s.loadFolders()
 	return s
-}
-
-func (s *scanner) Run(ctx context.Context, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		err := s.RescanAll(ctx, false)
-		if err != nil {
-			log.Error(err)
-		}
-		select {
-		case <-ticker.C:
-			continue
-		case <-ctx.Done():
-			return
-		}
-	}
 }
 
 func (s *scanner) rescan(ctx context.Context, mediaFolder string, fullRescan bool) error {
@@ -107,9 +90,16 @@ func (s *scanner) rescan(ctx context.Context, mediaFolder string, fullRescan boo
 	progress, cancel := s.startProgressTracker(mediaFolder)
 	defer cancel()
 
-	err := folderScanner.Scan(ctx, lastModifiedSince, progress)
+	changeCount, err := folderScanner.Scan(ctx, lastModifiedSince, progress)
 	if err != nil {
 		log.Error("Error importing MediaFolder", "folder", mediaFolder, err)
+	}
+
+	if changeCount > 0 {
+		log.Debug(ctx, "Detected changes in the music folder. Sending refresh event",
+			"folder", mediaFolder, "changeCount", changeCount)
+		// Don't use real context, forcing a refresh in all open windows, including the one that triggered the scan
+		s.broker.SendMessage(context.Background(), &events.RefreshResource{})
 	}
 
 	s.updateLastModifiedSince(mediaFolder, start)
@@ -120,9 +110,9 @@ func (s *scanner) startProgressTracker(mediaFolder string) (chan uint32, context
 	ctx, cancel := context.WithCancel(context.Background())
 	progress := make(chan uint32, 100)
 	go func() {
-		s.broker.SendMessage(&events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
+		s.broker.SendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 		defer func() {
-			s.broker.SendMessage(&events.ScanStatus{
+			s.broker.SendMessage(ctx, &events.ScanStatus{
 				Scanning:    false,
 				Count:       int64(s.status[mediaFolder].fileCount),
 				FolderCount: int64(s.status[mediaFolder].folderCount),
@@ -137,7 +127,7 @@ func (s *scanner) startProgressTracker(mediaFolder string) (chan uint32, context
 					continue
 				}
 				totalFolders, totalFiles := s.incStatusCounter(mediaFolder, count)
-				s.broker.SendMessage(&events.ScanStatus{
+				s.broker.SendMessage(ctx, &events.ScanStatus{
 					Scanning:    true,
 					Count:       int64(totalFiles),
 					FolderCount: int64(totalFolders),
@@ -262,5 +252,5 @@ func (s *scanner) loadFolders() {
 }
 
 func (s *scanner) newScanner(f model.MediaFolder) FolderScanner {
-	return NewTagScanner(f.Path, s.ds, s.cacheWarmer)
+	return NewTagScanner(f.Path, s.ds, s.pls, s.cacheWarmer)
 }

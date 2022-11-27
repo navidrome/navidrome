@@ -3,13 +3,12 @@ package cache
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -22,10 +21,10 @@ func callNewFileCache(name, cacheSize, cacheFolder string, maxItems int, getRead
 
 var _ = Describe("File Caches", func() {
 	BeforeEach(func() {
-		conf.Server.DataFolder, _ = ioutil.TempDir("", "file_caches")
+		conf.Server.DataFolder, _ = os.MkdirTemp("", "file_caches")
 	})
 	AfterEach(func() {
-		os.RemoveAll(conf.Server.DataFolder)
+		_ = os.RemoveAll(conf.Server.DataFolder)
 	})
 
 	Describe("NewFileCache", func() {
@@ -60,14 +59,16 @@ var _ = Describe("File Caches", func() {
 			s, err := fc.Get(context.TODO(), &testArg{"test"})
 			Expect(err).To(BeNil())
 			Expect(s.Cached).To(BeFalse())
-			Expect(ioutil.ReadAll(s)).To(Equal([]byte("test")))
+			Expect(s.Closer).To(BeNil())
+			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 
 			// Second call is a HIT
 			called = false
 			s, err = fc.Get(context.TODO(), &testArg{"test"})
 			Expect(err).To(BeNil())
-			Expect(ioutil.ReadAll(s)).To(Equal([]byte("test")))
+			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 			Expect(s.Cached).To(BeTrue())
+			Expect(s.Closer).ToNot(BeNil())
 			Expect(called).To(BeFalse())
 		})
 
@@ -81,13 +82,13 @@ var _ = Describe("File Caches", func() {
 			s, err := fc.Get(context.TODO(), &testArg{"test"})
 			Expect(err).To(BeNil())
 			Expect(s.Cached).To(BeFalse())
-			Expect(ioutil.ReadAll(s)).To(Equal([]byte("test")))
+			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 
 			// Second call is also a MISS
 			called = false
 			s, err = fc.Get(context.TODO(), &testArg{"test"})
 			Expect(err).To(BeNil())
-			Expect(ioutil.ReadAll(s)).To(Equal([]byte("test")))
+			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 			Expect(s.Cached).To(BeFalse())
 			Expect(called).To(BeTrue())
 		})
