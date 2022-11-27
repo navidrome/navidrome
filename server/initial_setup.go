@@ -90,15 +90,23 @@ func checkFfmpegInstallation() {
 }
 
 func checkExternalCredentials() {
-	if !conf.Server.LastFM.Enabled {
-		log.Info("Last.FM integration is DISABLED")
-	} else {
-		log.Debug("Last.FM integration is ENABLED")
-	}
+	if conf.Server.EnableExternalServices {
+		if !conf.Server.LastFM.Enabled {
+			log.Info("Last.FM integration is DISABLED")
+		} else {
+			log.Debug("Last.FM integration is ENABLED")
+		}
 
-	if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
-		log.Info("Spotify integration is not enabled: missing ID/Secret")
-	} else {
-		log.Debug("Spotify integration is ENABLED")
+		if !conf.Server.ListenBrainz.Enabled {
+			log.Info("ListenBrainz integration is DISABLED")
+		} else {
+			log.Debug("ListenBrainz integration is ENABLED", "ListenBrainz.BaseURL", conf.Server.ListenBrainz.BaseURL)
+		}
+
+		if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
+			log.Info("Spotify integration is not enabled: missing ID/Secret")
+		} else {
+			log.Debug("Spotify integration is ENABLED")
+		}
 	}
 }

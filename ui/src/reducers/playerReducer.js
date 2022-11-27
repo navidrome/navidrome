@@ -16,18 +16,22 @@ const initialState = {
   queue: [],
   current: {},
   clear: false,
-  volume: 0.5, // 50%
+  volume: config.defaultUIVolume / 100,
   savedPlayIndex: 0,
 }
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, trackId is mediaFileId
   const trackId = item.mediaFileId || item.id
+  const { lyrics } = item
+  const timestampRegex =
+    /(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])/g
   return {
     trackId,
     uuid: uuidv4(),
     song: item,
     name: item.title,
+    lyric: timestampRegex.test(lyrics) ? lyrics : '',
     singer: item.artist,
     duration: item.duration,
     musicSrc: subsonic.streamUrl(trackId),

@@ -95,7 +95,8 @@
                 "createdAt": "Ustvarjeno",
                 "changePassword": "Spremeni geslo?",
                 "currentPassword": "Trenutno geslo",
-                "newPassword": "Novo geslo"
+                "newPassword": "Novo geslo",
+                "token": "Žeton"
             },
             "helperTexts": {
                 "name": "Sprememba imena bo vidna pri naslednjem vpisu"
@@ -104,6 +105,10 @@
                 "created": "Uporabnik ustvarjen",
                 "updated": "Uporabnik posodobljen",
                 "deleted": "Uporabnik izbrisan"
+            },
+            "message": {
+                "listenBrainzToken": "Vnesi žeton uporabnika ListenBrainz.",
+                "clickHereForToken": "Klikni za žeton"
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "Uporabnik",
                 "lastSeen": "Zadnjič viden",
                 "reportRealPath": "Zabeleži pravo pot",
-                "scrobbleEnabled": "Pošlji 'Scrobbles' do Last.fm"
+                "scrobbleEnabled": "Pošlji Scrobbles zunanjim storitvam"
             }
         },
         "transcoding": {
@@ -133,7 +138,7 @@
             "fields": {
                 "name": "Ime",
                 "duration": "Dolžina",
-                "owner": "Lastnik",
+                "ownerName": "Lastnik",
                 "public": "Javno",
                 "updatedAt": "Posodobljen",
                 "createdAt": "Ustvarjen",
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Izberi seznam",
                 "addNewPlaylist": "Ustvari \"%{name}\"",
-                "export": "Izvozi"
+                "export": "Izvozi",
+                "makePublic": "Naredi javno",
+                "makePrivate": "Naredi zasebno"
             },
             "message": {
                 "duplicate_song": "Dodaj podvojene pesmi",
@@ -311,7 +318,11 @@
             "lastfm": "Odpri v Last.fm",
             "musicbrainz": "Odpri v MusicBrainz"
         },
-        "lastfmLink": "Preberi več..."
+        "lastfmLink": "Preberi več...",
+        "listenBrainzLinkSuccess": "ListenBrainz uspešno povezan in scrobbling vključen za uporabnika: %{user}",
+        "listenBrainzLinkFailure": "ListBrainz neuspešno povezan: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz povezava prekinjena in scrobbling izključen",
+        "listenBrainzUnlinkFailure": "ListenBrainz prekinitev povezave neuspešna"
     },
     "menu": {
         "library": "Knjižnica",
@@ -325,7 +336,8 @@
                 "language": "Jezik",
                 "defaultView": "Privzet pogled",
                 "desktop_notifications": "Namizna obvestila",
-                "lastfmScrobbling": "'Scrobble' do Last.fm"
+                "lastfmScrobbling": "'Scrobble' do Last.fm",
+                "listenBrainzScrobbling": "Scrobble k ListenBrainz"
             }
         },
         "albumList": "Albumi",

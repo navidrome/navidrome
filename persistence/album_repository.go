@@ -11,7 +11,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -25,7 +25,7 @@ type albumRepository struct {
 	sqlRestful
 }
 
-func NewAlbumRepository(ctx context.Context, o orm.Ormer) model.AlbumRepository {
+func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRepository {
 	r := &albumRepository{}
 	r.ctx = ctx
 	r.ormer = o
@@ -93,7 +93,18 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("album.id", options...).Columns("album.*")
-	return r.withGenres(sql).GroupBy("album.id")
+	if len(options) > 0 && options[0].Filters != nil {
+		s, _, _ := options[0].Filters.ToSql()
+		// If there's any reference of genre in the filter, joins with genre
+		if strings.Contains(s, "genre") {
+			sql = r.withGenres(sql)
+			// If there's no filter on genre_id, group the results by media_file.id
+			if !strings.Contains(s, "genre_id") {
+				sql = sql.GroupBy("album.id")
+			}
+		}
+	}
+	return sql
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
@@ -118,13 +129,21 @@ func (r *albumRepository) Put(m *model.Album) error {
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
+	res, err := r.GetAllWithoutGenres(options...)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadAlbumGenres(&res)
+	return res, err
+}
+
+func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (model.Albums, error) {
 	sq := r.selectAlbum(options...)
 	res := model.Albums{}
 	err := r.queryAll(sq, &res)
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadAlbumGenres(&res)
 	return res, err
 }
 
@@ -366,22 +385,5 @@ func (r *albumRepository) NewInstance() interface{} {
 	return &model.Album{}
 }
 
-func (r albumRepository) Delete(id string) error {
-	return r.delete(Eq{"album.id": id})
-}
-
-func (r albumRepository) Save(entity interface{}) (string, error) {
-	album := entity.(*model.Album)
-	id, err := r.put(album.ID, album)
-	return id, err
-}
-
-func (r albumRepository) Update(entity interface{}, cols ...string) error {
-	album := entity.(*model.Album)
-	_, err := r.put(album.ID, album)
-	return err
-}
-
 var _ model.AlbumRepository = (*albumRepository)(nil)
 var _ model.ResourceRepository = (*albumRepository)(nil)
-var _ rest.Persistable = (*albumRepository)(nil)

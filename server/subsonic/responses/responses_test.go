@@ -1,5 +1,4 @@
-//go:build linux || darwin
-// +build linux darwin
+//go:build unix
 
 // TODO Fix snapshot tests in Windows
 // Response Snapshot tests. Only run in Linux and macOS, as they fail in Windows
@@ -13,7 +12,7 @@ import (
 
 	"github.com/navidrome/navidrome/consts"
 	. "github.com/navidrome/navidrome/server/subsonic/responses"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -559,6 +558,39 @@ var _ = Describe("Responses", func() {
 			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
+		})
+	})
+
+	Describe("Lyrics", func() {
+		BeforeEach(func() {
+			response.Lyrics = &Lyrics{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.Lyrics.Artist = "Rick Astley"
+				response.Lyrics.Title = "Never Gonna Give You Up"
+				response.Lyrics.Value = `Never gonna give you up
+				Never gonna let you down
+				Never gonna run around and desert you
+				Never gonna say goodbye`
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+
 		})
 	})
 })

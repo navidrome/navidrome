@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils"
 )
@@ -95,7 +96,7 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 			if utils.IsAudioFile(entry.Name()) {
 				stats.AudioFilesCount++
 			} else {
-				stats.HasPlaylist = stats.HasPlaylist || utils.IsPlaylist(entry.Name())
+				stats.HasPlaylist = stats.HasPlaylist || core.IsPlaylist(entry.Name())
 				stats.HasImages = stats.HasImages || utils.IsImageFile(entry.Name())
 			}
 		}

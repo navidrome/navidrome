@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -20,7 +20,7 @@ type mediaFileRepository struct {
 	sqlRestful
 }
 
-func NewMediaFileRepository(ctx context.Context, o orm.Ormer) *mediaFileRepository {
+func NewMediaFileRepository(ctx context.Context, o orm.QueryExecutor) *mediaFileRepository {
 	r := &mediaFileRepository{}
 	r.ctx = ctx
 	r.ormer = o
@@ -61,7 +61,18 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
 	sql = r.withBookmark(sql, "media_file.id")
-	return r.withGenres(sql).GroupBy("media_file.id")
+	if len(options) > 0 && options[0].Filters != nil {
+		s, _, _ := options[0].Filters.ToSql()
+		// If there's any reference of genre in the filter, joins with genre
+		if strings.Contains(s, "genre") {
+			sql = r.withGenres(sql)
+			// If there's no filter on genre_id, group the results by media_file.id
+			if !strings.Contains(s, "genre_id") {
+				sql = sql.GroupBy("media_file.id")
+			}
+		}
+	}
+	return sql
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
@@ -89,7 +100,7 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 }
 
 func (r *mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
-	sel := r.selectMediaFile().Where(Eq{"path": path})
+	sel := r.newSelect().Columns("*").Where(Eq{"path": path})
 	var res model.MediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err
@@ -118,7 +129,7 @@ func (r *mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, erro
 	// Query by path based on https://stackoverflow.com/a/13911906/653632
 	path = cleanPath(path)
 	pathLen := utf8.RuneCountInString(path)
-	sel0 := r.selectMediaFile().Columns(fmt.Sprintf("substr(path, %d) AS item", pathLen+2)).
+	sel0 := r.newSelect().Columns("media_file.*", fmt.Sprintf("substr(path, %d) AS item", pathLen+2)).
 		Where(pathStartsWith(path))
 	sel := r.newSelect().Columns("*", "item NOT GLOB '*"+string(os.PathSeparator)+"*' AS isLast").
 		Where(Eq{"isLast": 1}).FromSelect(sel0, "sel0")
@@ -166,6 +177,13 @@ func (r *mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
 	return r.executeSQL(del)
 }
 
+func (r *mediaFileRepository) removeNonAlbumArtistIds() error {
+	upd := Update(r.tableName).Set("artist_id", "").Where(notExists("artist", ConcatExpr("id = artist_id")))
+	log.Debug(r.ctx, "Removing non-album artist_id")
+	_, err := r.executeSQL(upd)
+	return err
+}
+
 func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
 	results := model.MediaFiles{}
 	err := r.doSearch(q, offset, size, &results, "title")
@@ -192,17 +210,5 @@ func (r *mediaFileRepository) NewInstance() interface{} {
 	return &model.MediaFile{}
 }
 
-func (r *mediaFileRepository) Save(entity interface{}) (string, error) {
-	mf := entity.(*model.MediaFile)
-	err := r.Put(mf)
-	return mf.ID, err
-}
-
-func (r *mediaFileRepository) Update(entity interface{}, cols ...string) error {
-	mf := entity.(*model.MediaFile)
-	return r.Put(mf)
-}
-
 var _ model.MediaFileRepository = (*mediaFileRepository)(nil)
 var _ model.ResourceRepository = (*mediaFileRepository)(nil)
-var _ rest.Persistable = (*mediaFileRepository)(nil)

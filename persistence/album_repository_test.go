@@ -5,13 +5,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -88,19 +88,25 @@ var _ = Describe("AlbumRepository", func() {
 	})
 
 	Describe("getCoverFromPath", func() {
-		testFolder, _ := os.MkdirTemp("", "album_persistence_tests")
-		if err := os.MkdirAll(testFolder, 0777); err != nil {
-			panic(err)
-		}
-		if _, err := os.Create(filepath.Join(testFolder, "Cover.jpeg")); err != nil {
-			panic(err)
-		}
-		if _, err := os.Create(filepath.Join(testFolder, "FRONT.PNG")); err != nil {
-			panic(err)
-		}
+		var testFolder, testPath, embeddedPath string
+		BeforeEach(func() {
+			testFolder, _ = os.MkdirTemp("", "album_persistence_tests")
+			if err := os.MkdirAll(testFolder, 0777); err != nil {
+				panic(err)
+			}
+			if _, err := os.Create(filepath.Join(testFolder, "Cover.jpeg")); err != nil {
+				panic(err)
+			}
+			if _, err := os.Create(filepath.Join(testFolder, "FRONT.PNG")); err != nil {
+				panic(err)
+			}
+			testPath = filepath.Join(testFolder, "somefile.test")
+			embeddedPath = filepath.Join(testFolder, "somefile.mp3")
+		})
+		AfterEach(func() {
+			_ = os.RemoveAll(testFolder)
+		})
 
-		testPath := filepath.Join(testFolder, "somefile.test")
-		embeddedPath := filepath.Join(testFolder, "somefile.mp3")
 		It("returns audio file for embedded cover", func() {
 			conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
 			Expect(getCoverFromPath(testPath, embeddedPath)).To(Equal(""))

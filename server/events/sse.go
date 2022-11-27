@@ -65,7 +65,7 @@ type broker struct {
 }
 
 func GetBroker() Broker {
-	instance := singleton.Get(&broker{}, func() interface{} {
+	return singleton.GetInstance(func() *broker {
 		// Instantiate a broker
 		broker := &broker{
 			publish:       make(messageChan, 2),
@@ -77,8 +77,6 @@ func GetBroker() Broker {
 		go broker.listen()
 		return broker
 	})
-
-	return instance.(*broker)
 }
 
 func (b *broker) SendMessage(ctx context.Context, evt Event) {
@@ -97,16 +95,22 @@ func (b *broker) prepareMessage(ctx context.Context, event Event) message {
 
 var errWriteTimeOut = errors.New("write timeout")
 
-// writeEvent Write to the ResponseWriter, Server Sent Events compatible
+// writeEvent Write to the ResponseWriter, Server Sent Events compatible, and sends it
+// right away, by flushing the writer (if it is a Flusher). It waits for the message to be flushed
+// or times out after the specified timeout
 func writeEvent(w io.Writer, event message, timeout time.Duration) (err error) {
-	flusher, _ := w.(http.Flusher)
 	complete := make(chan struct{}, 1)
-	go func() {
-		_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data)
-		// Flush the data immediately instead of buffering it for later.
-		flusher.Flush()
+	flusher, ok := w.(http.Flusher)
+	if ok {
+		go func() {
+			_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data)
+			// Flush the data immediately instead of buffering it for later.
+			flusher.Flush()
+			complete <- struct{}{}
+		}()
+	} else {
 		complete <- struct{}{}
-	}()
+	}
 	select {
 	case <-complete:
 		return
@@ -147,7 +151,7 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Trace(ctx, "Sending event to client", "event", *event, "client", c.String())
-		if err := writeEvent(w, *event, writeTimeOut); err == errWriteTimeOut {
+		if err := writeEvent(w, *event, writeTimeOut); errors.Is(err, errWriteTimeOut) {
 			log.Debug(ctx, "Timeout sending event to client", "event", *event, "client", c.String())
 			return
 		}
@@ -214,7 +218,7 @@ func (b *broker) listen() {
 
 			// Send a serverStart event to new client
 			msg := b.prepareMessage(context.Background(),
-				&ServerStart{StartTime: consts.ServerStart, Version: consts.Version()})
+				&ServerStart{StartTime: consts.ServerStart, Version: consts.Version})
 			c.diode.put(msg)
 
 		case c := <-b.unsubscribing:

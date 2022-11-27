@@ -24,7 +24,8 @@
                 "rating": "Рейтинг",
                 "quality": "Якість",
                 "bpm": "Темп",
-                "playDate": "Востаннє відтворено"
+                "playDate": "Востаннє відтворено",
+                "channels": "Канали"
             },
             "actions": {
                 "addToQueue": "Прослухати пізніше",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Додати у список відтворення",
                 "shuffleAll": "Перемішати",
                 "download": "Завантажити",
-                "playNext": "Наступна"
+                "playNext": "Наступна",
+                "info": "Отримати інформацію"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "Прослухати пізніше",
                 "shuffle": "Перемішати",
                 "addToPlaylist": "Додати у список відтворення",
-                "download": "Завантажити"
+                "download": "Завантажити",
+                "info": "Отримати інформацію"
             },
             "lists": {
                 "all": "Усі",
@@ -92,7 +95,8 @@
                 "createdAt": "Створено",
                 "changePassword": "Змінити пароль?",
                 "currentPassword": "Поточний пароль",
-                "newPassword": "Новий пароль"
+                "newPassword": "Новий пароль",
+                "token": ""
             },
             "helperTexts": {
                 "name": "Змінене ім'я буде відображатися при наступній авторизації"
@@ -101,6 +105,10 @@
                 "created": "Користувача створено",
                 "updated": "Користувач оновлений",
                 "deleted": "Користувач видалений"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -130,7 +138,7 @@
             "fields": {
                 "name": "Назва",
                 "duration": "Тривалість",
-                "owner": "Власник",
+                "ownerName": "Власник",
                 "public": "Публічний",
                 "updatedAt": "Оновлено",
                 "createdAt": "Створено",
@@ -142,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Вибрати список відтворення:",
                 "addNewPlaylist": "Створити \"%{name}\"",
-                "export": "Експортувати"
+                "export": "Експортувати",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "Додати повторювані пісні",
@@ -305,9 +315,14 @@
         "lastfmUnlinkSuccess": "",
         "lastfmUnlinkFailure": "",
         "openIn": {
-            "lastfm": "",
-            "musicbrainz": ""
-        }
+            "lastfm": "Відкрити у Last.fm",
+            "musicbrainz": "Відкрити у MusicBrainz"
+        },
+        "lastfmLink": "Читати більше...",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "Бібліотека",
@@ -321,11 +336,14 @@
                 "language": "Мова",
                 "defaultView": "Вигляд по замовчуванню",
                 "desktop_notifications": "Сповіщення",
-                "lastfmScrobbling": ""
+                "lastfmScrobbling": "",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "Альбом",
-        "about": "Довідка"
+        "about": "Довідка",
+        "playlists": "Списки відтворення",
+        "sharedPlaylists": "Загальнодоступний список відтворення"
     },
     "player": {
         "playListsText": "Грати по черзі",

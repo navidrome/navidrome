@@ -53,7 +53,7 @@ func (p *MockedPropertyRepo) DefaultGet(id string, defaultValue string) (string,
 	p.init()
 	v, err := p.Get(id)
 	if err != nil {
-		return defaultValue, nil
+		return defaultValue, nil //nolint:nilerr
 	}
 	return v, nil
 }

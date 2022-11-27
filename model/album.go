@@ -52,6 +52,7 @@ type AlbumRepository interface {
 	Put(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
+	GetAllWithoutGenres(...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
 	Refresh(ids ...string) error
 	AnnotatedRepository

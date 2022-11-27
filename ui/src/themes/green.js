@@ -27,13 +27,10 @@ export default {
         color: '#eee',
       },
     },
-    NDArtistPage: {
+    NDMobileArtistDetails: {
       bgContainer: {
         background:
           'linear-gradient(to bottom, rgba(52 52 52 / 72%), rgb(48 48 48))!important',
-      },
-      more: {
-        boxShadow: '-10px 0px 18px 5px #303030!important',
       },
     },
   },

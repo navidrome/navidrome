@@ -25,12 +25,12 @@ export const SelectPlaylistInput = ({ onChange }) => {
     'playlist',
     { page: 1, perPage: -1 },
     { field: 'name', order: 'ASC' },
-    {}
+    { smart: false }
   )
 
   const options =
     ids &&
-    ids.map((id) => data[id]).filter((option) => isWritable(option.owner))
+    ids.map((id) => data[id]).filter((option) => isWritable(option.ownerId))
 
   const handleOnChange = (event, newValue) => {
     let newState = []

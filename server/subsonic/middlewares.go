@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -78,10 +79,10 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			jwt := utils.ParamString(r, "jwt")
 
 			usr, err := validateUser(ctx, ds, username, pass, token, salt, jwt)
-			if err == model.ErrInvalidAuth {
-				log.Warn(ctx, "Invalid login", "username", username, err)
+			if errors.Is(err, model.ErrInvalidAuth) {
+				log.Warn(ctx, "API: Invalid login", "username", username, "remoteAddr", r.RemoteAddr, err)
 			} else if err != nil {
-				log.Error(ctx, "Error authenticating username", "username", username, err)
+				log.Error(ctx, "API: Error authenticating username", "username", username, "remoteAddr", r.RemoteAddr, err)
 			}
 
 			if err != nil {
@@ -107,7 +108,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 
 func validateUser(ctx context.Context, ds model.DataStore, username, pass, token, salt, jwt string) (*model.User, error) {
 	user, err := ds.User(ctx).FindByUsernameWithPassword(username)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return nil, model.ErrInvalidAuth
 	}
 	if err != nil {
@@ -148,7 +149,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 			userAgent := canonicalUserAgent(r)
 			player, trc, err := players.Register(ctx, playerId, client, userAgent, ip)
 			if err != nil {
-				log.Error("Could not register player", "username", userName, "client", client, err)
+				log.Error(r.Context(), "Could not register player", "username", userName, "client", client, err)
 			} else {
 				ctx = request.WithPlayer(ctx, *player)
 				if trc != nil {
@@ -161,6 +162,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 					Value:    player.ID,
 					MaxAge:   consts.CookieExpiry,
 					HttpOnly: true,
+					SameSite: http.SameSiteStrictMode,
 					Path:     "/",
 				}
 				http.SetCookie(w, cookie)

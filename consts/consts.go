@@ -35,17 +35,23 @@ const (
 
 	// Login backgrounds from https://unsplash.com/collections/20072696/navidrome
 	DefaultUILoginBackgroundURL = "https://source.unsplash.com/collection/20072696/1600x900"
+	// In case external integrations are disabled
+	DefaultUILoginBackgroundURLOffline = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIAAAAiOjnJAAAABGdBTUEAALGPC/xhBQAAAiJJREFUeF7t0IEAAAAAw6D5Ux/khVBhwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDDwMDDVlwABBWcSrQAAAABJRU5ErkJggg=="
 
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
 
-	ArtistInfoTimeToLive = 3 * 24 * time.Hour
+	ServerReadHeaderTimeout = 3 * time.Second
+
+	ArtistInfoTimeToLive = 24 * time.Hour
 
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
 
-	PlaceholderAlbumArt = "navidrome-600x600.png"
+	PlaceholderAlbumArt = "placeholder.png"
 	PlaceholderAvatar   = "logo-192x192.png"
+
+	DefaultUIVolume = 100
 
 	DefaultHttpClientTimeOut = 10 * time.Second
 
@@ -66,7 +72,7 @@ const (
 
 // Shared secrets (only add here "secrets" that can be public)
 const (
-	LastFMAPIKey    = "9b94a5515ea66b2da3ec03c12300327e"
+	LastFMAPIKey    = "9b94a5515ea66b2da3ec03c12300327e" // nolint:gosec
 	LastFMAPISecret = "74cb6557cec7171d921af5d7d887c587" // nolint:gosec
 )
 
@@ -83,6 +89,12 @@ var (
 			"targetFormat":   "opus",
 			"defaultBitRate": 128,
 			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+		},
+		{
+			"name":           "aac audio",
+			"targetFormat":   "aac",
+			"defaultBitRate": 256,
+			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 	}
 

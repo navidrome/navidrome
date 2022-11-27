@@ -127,7 +127,7 @@
             "fields": {
                 "name": "Namn",
                 "duration": "Längd",
-                "owner": "Ägare",
+                "ownerName": "Ägare",
                 "public": "Offentlig",
                 "updatedAt": "Uppdaterad",
                 "createdAt": "Skapad",

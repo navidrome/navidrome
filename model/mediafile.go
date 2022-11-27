@@ -35,6 +35,7 @@ type MediaFile struct {
 	SortAlbumName        string    `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
 	SortArtistName       string    `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
 	SortAlbumArtistName  string    `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
+	OrderTitle           string    `structs:"order_title" json:"orderTitle,omitempty"`
 	OrderAlbumName       string    `structs:"order_album_name" json:"orderAlbumName"`
 	OrderArtistName      string    `structs:"order_artist_name" json:"orderArtistName"`
 	OrderAlbumArtistName string    `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
@@ -44,6 +45,7 @@ type MediaFile struct {
 	Bpm                  int       `structs:"bpm" json:"bpm,omitempty"`
 	CatalogNum           string    `structs:"catalog_num" json:"catalogNum,omitempty"`
 	MbzTrackID           string    `structs:"mbz_track_id" json:"mbzTrackId,omitempty"         orm:"column(mbz_track_id)"`
+	MbzReleaseTrackID    string    `structs:"mbz_release_track_id" json:"mbzReleaseTrackId,omitempty" orm:"column(mbz_release_track_id)"`
 	MbzAlbumID           string    `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"         orm:"column(mbz_album_id)"`
 	MbzArtistID          string    `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"        orm:"column(mbz_artist_id)"`
 	MbzAlbumArtistID     string    `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
@@ -65,11 +67,13 @@ type MediaFileRepository interface {
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
+	Search(q string, offset int, size int) (MediaFiles, error)
+	Delete(id string) error
+
+	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
 	FindAllByPath(path string) (MediaFiles, error)
 	FindByPath(path string) (*MediaFile, error)
 	FindPathsRecursively(basePath string) ([]string, error)
-	Search(q string, offset int, size int) (MediaFiles, error)
-	Delete(id string) error
 	DeleteByPath(path string) (int64, error)
 
 	AnnotatedRepository

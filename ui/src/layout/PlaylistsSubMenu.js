@@ -9,10 +9,10 @@ import { useHistory } from 'react-router-dom'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
 import { Typography } from '@material-ui/core'
 import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
-import { BiCog } from 'react-icons/all'
+import { BiCog } from 'react-icons/bi'
 import { useDrop } from 'react-dnd'
 import SubMenu from './SubMenu'
-import { isWritable } from '../common'
+import { canChangeTracks } from '../common'
 import { DraggableTypes, MAX_SIDEBAR_PLAYLISTS } from '../consts'
 
 const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
@@ -20,7 +20,7 @@ const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
   const notify = useNotify()
 
   const [, dropRef] = useDrop(() => ({
-    accept: isWritable(pls.owner) ? DraggableTypes.ALL : [],
+    accept: canChangeTracks(pls) ? DraggableTypes.ALL : [],
     drop: (item) =>
       dataProvider
         .addToPlaylist(pls.id, item)
@@ -74,15 +74,15 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
     />
   )
 
-  const user = localStorage.getItem('username')
+  const userId = localStorage.getItem('userId')
   const myPlaylists = []
   const sharedPlaylists = []
 
-  if (loaded) {
+  if (loaded && data) {
     const allPlaylists = Object.keys(data).map((id) => data[id])
 
     allPlaylists.forEach((pls) => {
-      if (user === pls.owner) {
+      if (userId === pls.ownerId) {
         myPlaylists.push(pls)
       } else {
         sharedPlaylists.push(pls)

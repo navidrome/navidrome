@@ -49,6 +49,6 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	return id, err
 }
 
-func (r *shareRepositoryWrapper) Update(entity interface{}, _ ...string) error {
-	return r.Persistable.Update(entity, "description")
+func (r *shareRepositoryWrapper) Update(id string, entity interface{}, _ ...string) error {
+	return r.Persistable.Update(id, entity, "description")
 }

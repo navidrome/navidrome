@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -24,7 +24,7 @@ var _ = Describe("File Caches", func() {
 		conf.Server.DataFolder, _ = os.MkdirTemp("", "file_caches")
 	})
 	AfterEach(func() {
-		os.RemoveAll(conf.Server.DataFolder)
+		_ = os.RemoveAll(conf.Server.DataFolder)
 	})
 
 	Describe("NewFileCache", func() {

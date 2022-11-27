@@ -1,7 +1,7 @@
 package ffmpeg
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -97,13 +97,26 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 			Expect(md).To(HaveKeyWithValue("duration", []string{"302.63"}))
 		})
 
-		It("parse channels from the stream with bitrate", func() {
+		It("parse flac bitrates", func() {
 			const output = `
 Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
   Duration: 00:00:01.02, start: 0.000000, bitrate: 477 kb/s
     Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
 			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
+		It("parse channels from the stream with bitrate", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/Music/Media/__/Crazy For You/01-01 Crazy For You.flac':
+  Metadata:
+    TITLE           : Crazy For You
+  Duration: 00:04:13.00, start: 0.000000, bitrate: 852 kb/s
+  Stream #0:0: Audio: flac, 44100 Hz, stereo, s16
+  Stream #0:1: Video: mjpeg (Progressive), yuvj444p(pc, bt470bg/unknown/unknown), 600x600, 90k tbr, 90k tbn, 90k tbc (attached pic)
+`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("bitrate", []string{"852"}))
 		})
 
 		It("parse 7.1 channels from the stream", func() {

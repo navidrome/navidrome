@@ -6,7 +6,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -55,6 +55,16 @@ var _ = Describe("Helpers", func() {
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("exists (select 1 from album where id = ?)"))
 			Expect(args).To(ConsistOf(1))
+			Expect(err).To(BeNil())
+		})
+	})
+
+	Describe("notExists", func() {
+		It("constructs the correct NOT EXISTS query", func() {
+			e := notExists("artist", squirrel.ConcatExpr("id = artist_id"))
+			sql, args, err := e.ToSql()
+			Expect(sql).To(Equal("not exists (select 1 from artist where id = artist_id)"))
+			Expect(args).To(BeEmpty())
 			Expect(err).To(BeNil())
 		})
 	})

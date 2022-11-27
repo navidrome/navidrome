@@ -95,7 +95,8 @@
                 "createdAt": "สร้างเมื่อ",
                 "changePassword": "เปลี่ยนรหัสผ่าน",
                 "currentPassword": "รหัสผ่านปัจจุบัน",
-                "newPassword": "รหัสผ่านใหม่"
+                "newPassword": "รหัสผ่านใหม่",
+                "token": ""
             },
             "helperTexts": {
                 "name": "การเปลี่ยนชื่อจะมีผลในการล็อกอินครั้งถัดไป"
@@ -104,6 +105,10 @@
                 "created": "สร้างผู้ใช้งาน",
                 "updated": "อัพเดตผู้ใช้งาน",
                 "deleted": "ลบผู้ใช้งาน"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "ชื่อผู้ใช้งาน",
                 "lastSeen": "ใช้งานล่าสุดเมื่อ",
                 "reportRealPath": "รายงาน Real Path",
-                "scrobbleEnabled": "ส่ง Scrobble ไป Last.fm"
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -133,7 +138,7 @@
             "fields": {
                 "name": "ชื่อ",
                 "duration": "เวลา",
-                "owner": "เจ้าของ",
+                "ownerName": "เจ้าของ",
                 "public": "สาธารณะ",
                 "updatedAt": "อัปเดตเมื่อ",
                 "createdAt": "สร้างขึ้นเมื่อ",
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "เลือกเพลย์ลิสต์",
                 "addNewPlaylist": "สร้าง \"%{name}\"",
-                "export": "ส่งออก"
+                "export": "ส่งออก",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "เพิ่มเพลงที่ซ้ำ",
@@ -311,7 +318,11 @@
             "lastfm": "เปิดใน Last.fm",
             "musicbrainz": "เปิดใน MusicBrainz"
         },
-        "lastfmLink": "อ่านต่อ..."
+        "lastfmLink": "อ่านต่อ...",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "ไลบรารี่",
@@ -325,7 +336,8 @@
                 "language": "ภาษา",
                 "defaultView": "หน้าเริ่มต้น",
                 "desktop_notifications": "การแจ่งเตือน Desktop",
-                "lastfmScrobbling": "Scrobble ไป Last.fm"
+                "lastfmScrobbling": "Scrobble ไป Last.fm",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "อัลบั้ม",

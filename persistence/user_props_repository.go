@@ -2,9 +2,10 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -12,7 +13,7 @@ type userPropsRepository struct {
 	sqlRepository
 }
 
-func NewUserPropsRepository(ctx context.Context, o orm.Ormer) model.UserPropsRepository {
+func NewUserPropsRepository(ctx context.Context, o orm.QueryExecutor) model.UserPropsRepository {
 	r := &userPropsRepository{}
 	r.ctx = ctx
 	r.ormer = o
@@ -24,7 +25,7 @@ func (r userPropsRepository) Put(userId, key string, value string) error {
 	update := Update(r.tableName).Set("value", value).Where(And{Eq{"user_id": userId}, Eq{"key": key}})
 	count, err := r.executeSQL(update)
 	if err != nil {
-		return nil
+		return err
 	}
 	if count > 0 {
 		return nil
@@ -48,7 +49,7 @@ func (r userPropsRepository) Get(userId, key string) (string, error) {
 
 func (r userPropsRepository) DefaultGet(userId, key string, defaultValue string) (string, error) {
 	value, err := r.Get(userId, key)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return defaultValue, nil
 	}
 	if err != nil {

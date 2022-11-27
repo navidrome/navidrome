@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"html"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/kennygrant/sanitize"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 var quotesRegex = regexp.MustCompile("[“”‘’'\"\\[\\(\\{\\]\\)\\}]")
@@ -28,4 +30,11 @@ func SanitizeStrings(text ...string) string {
 	}
 	sort.Strings(fullText)
 	return strings.Join(fullText, " ")
+}
+
+var policy = bluemonday.UGCPolicy()
+
+func SanitizeText(text string) string {
+	s := policy.Sanitize(text)
+	return html.UnescapeString(s)
 }

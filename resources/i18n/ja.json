@@ -95,7 +95,8 @@
                 "createdAt": "作成日",
                 "changePassword": "パスワードを変更しますか？",
                 "currentPassword": "現在のパスワード",
-                "newPassword": "新しいパスワード"
+                "newPassword": "新しいパスワード",
+                "token": "トークン"
             },
             "helperTexts": {
                 "name": "名前の変更は次回ログイン以降反映されます"
@@ -104,6 +105,10 @@
                 "created": "ユーザーが作成されました",
                 "updated": "ユーザーが更新されました",
                 "deleted": "ユーザーが削除されました"
+            },
+            "message": {
+                "listenBrainzToken": "ListenBrainzユーザートークンを入力",
+                "clickHereForToken": "ここをクリックしトークンを入手"
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "ユーザ名",
                 "lastSeen": "最後の利用",
                 "reportRealPath": "実際のファイルパスを返す",
-                "scrobbleEnabled": "Last.fmへscrobbleする"
+                "scrobbleEnabled": "他のサービスへscrobbleする"
             }
         },
         "transcoding": {
@@ -133,7 +138,7 @@
             "fields": {
                 "name": "名前",
                 "duration": "時間",
-                "owner": "所有者",
+                "ownerName": "所有者",
                 "public": "公開",
                 "updatedAt": "更新日",
                 "createdAt": "作成日",
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "プレイリストを選択",
                 "addNewPlaylist": "'%{name}' を作成",
-                "export": "エクスポート"
+                "export": "エクスポート",
+                "makePublic": "公開する",
+                "makePrivate": "非公開にする"
             },
             "message": {
                 "duplicate_song": "重複する曲を追加",
@@ -311,7 +318,11 @@
             "lastfm": "Last.fmで開く",
             "musicbrainz": "MusicBrainzで開く"
         },
-        "lastfmLink": "続きを読む"
+        "lastfmLink": "続きを読む",
+        "listenBrainzLinkSuccess": "%{user} へのscrobbling設定に成功しました",
+        "listenBrainzLinkFailure": "ListenBrainzとのリンクに失敗しました: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainzとのリンクとscrobblingを無効化しました。",
+        "listenBrainzUnlinkFailure": "ListenBrainzとのリンクを解除できませんでした"
     },
     "menu": {
         "library": "ライブラリ",
@@ -325,7 +336,8 @@
                 "language": "言語",
                 "defaultView": "デフォルト画面",
                 "desktop_notifications": "デスクトップ通知",
-                "lastfmScrobbling": "Last.fmへscrobbleする"
+                "lastfmScrobbling": "Last.fmへscrobbleする",
+                "listenBrainzScrobbling": "ListenBrainzへscrobble"
             }
         },
         "albumList": "アルバム",

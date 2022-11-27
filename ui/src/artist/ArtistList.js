@@ -60,7 +60,7 @@ const ArtistFilter = (props) => {
   const translate = useTranslate()
   return (
     <Filter {...props} variant={'outlined'}>
-      <SearchInput source="name" alwaysOn />
+      <SearchInput id="search" source="name" alwaysOn />
       <ReferenceInput
         label={translate('resources.artist.fields.genre')}
         source="genre_id"
@@ -84,11 +84,14 @@ const ArtistFilter = (props) => {
 
 const ArtistDatagridRow = (props) => {
   const { record } = props
-  const [, dragArtistRef] = useDrag(() => ({
-    type: DraggableTypes.ARTIST,
-    item: { artistIds: [record.id] },
-    options: { dropEffect: 'copy' },
-  }))
+  const [, dragArtistRef] = useDrag(
+    () => ({
+      type: DraggableTypes.ARTIST,
+      item: { artistIds: [record?.id] },
+      options: { dropEffect: 'copy' },
+    }),
+    [record]
+  )
   return <DatagridRow ref={dragArtistRef} {...props} />
 }
 

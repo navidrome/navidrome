@@ -37,17 +37,25 @@ func toSnakeCase(str string) string {
 }
 
 func exists(subTable string, cond squirrel.Sqlizer) existsCond {
-	return existsCond{subTable: subTable, cond: cond}
+	return existsCond{subTable: subTable, cond: cond, not: false}
+}
+
+func notExists(subTable string, cond squirrel.Sqlizer) existsCond {
+	return existsCond{subTable: subTable, cond: cond, not: true}
 }
 
 type existsCond struct {
 	subTable string
 	cond     squirrel.Sqlizer
+	not      bool
 }
 
 func (e existsCond) ToSql() (string, []interface{}, error) {
 	sql, args, err := e.cond.ToSql()
 	sql = fmt.Sprintf("exists (select 1 from %s where %s)", e.subTable, sql)
+	if e.not {
+		sql = "not " + sql
+	}
 	return sql, args, err
 }
 

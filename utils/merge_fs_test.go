@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/utils"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -21,6 +21,10 @@ var _ = Describe("MergeFS", func() {
 		baseDir = os.DirFS(baseName)
 		overlayDir = os.DirFS(overlayName)
 		mergedDir = utils.MergeFS{Base: baseDir, Overlay: overlayDir}
+	})
+	AfterEach(func() {
+		_ = os.RemoveAll(baseName)
+		_ = os.RemoveAll(overlayName)
 	})
 
 	It("reads from Base dir if not found in Overlay", func() {

@@ -1,13 +1,15 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -40,10 +42,40 @@ func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler
 	})
 }
 
-func (s *Server) Run(addr string) error {
+func (s *Server) Run(ctx context.Context, addr string) error {
 	s.MountRouter("WebUI", consts.URLPathUI, s.frontendAssetsHandler())
-	log.Info("Navidrome server is accepting requests", "address", addr)
-	return http.ListenAndServe(addr, s.router)
+	server := &http.Server{
+		Addr:              addr,
+		ReadHeaderTimeout: consts.ServerReadHeaderTimeout,
+		Handler:           s.router,
+	}
+
+	// Start HTTP server in its own goroutine, send a signal (errC) if failed to start
+	errC := make(chan error)
+	go func() {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			log.Error(ctx, "Could not start server. Aborting", err)
+			errC <- err
+		}
+	}()
+
+	log.Info(ctx, "Navidrome server is ready!", "address", addr, "startupTime", time.Since(consts.ServerStart))
+
+	// Wait for a signal to terminate (or an error during startup)
+	select {
+	case err := <-errC:
+		return err
+	case <-ctx.Done():
+	}
+
+	// Try to stop the HTTP server gracefully
+	log.Info(ctx, "Stopping HTTP server")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
+		log.Error(ctx, "Unexpected error in http.Shutdown()", err)
+	}
+	return nil
 }
 
 func (s *Server) initRoutes() {
@@ -54,13 +86,13 @@ func (s *Server) initRoutes() {
 	r := chi.NewRouter()
 
 	r.Use(secureMiddleware())
-	r.Use(cors.AllowAll().Handler)
+	r.Use(corsHandler())
 	r.Use(middleware.RequestID)
 	if conf.Server.ReverseProxyWhitelist == "" {
 		r.Use(middleware.RealIP)
 	}
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Compress(5, "application/xml", "application/json", "application/javascript"))
+	r.Use(compressMiddleware())
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(clientUniqueIdAdder)
 	r.Use(loggerInjector)

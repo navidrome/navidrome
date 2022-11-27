@@ -51,11 +51,14 @@ const useStyles = makeStyles({
 
 const AlbumDatagridRow = (props) => {
   const { record } = props
-  const [, dragAlbumRef] = useDrag(() => ({
-    type: DraggableTypes.ALBUM,
-    item: { albumIds: [record.id] },
-    options: { dropEffect: 'copy' },
-  }))
+  const [, dragAlbumRef] = useDrag(
+    () => ({
+      type: DraggableTypes.ALBUM,
+      item: { albumIds: [record?.id] },
+      options: { dropEffect: 'copy' },
+    }),
+    [record]
+  )
   return <DatagridRow ref={dragAlbumRef} {...props} />
 }
 
@@ -80,7 +83,7 @@ const AlbumTableView = ({
 
   const toggleableFields = useMemo(() => {
     return {
-      artist: <ArtistLinkField source="artist" />,
+      artist: <ArtistLinkField source="albumArtist" />,
       songCount: isDesktop && (
         <NumberField source="songCount" sortByOrder={'DESC'} />
       ),
@@ -88,7 +91,7 @@ const AlbumTableView = ({
         <NumberField source="playCount" sortByOrder={'DESC'} />
       ),
       year: (
-        <RangeField source={'year'} sortBy={'maxYear'} sortByOrder={'DESC'} />
+        <RangeField source={'year'} sortBy={'max_year'} sortByOrder={'DESC'} />
       ),
       duration: isDesktop && <DurationField source="duration" />,
       rating: config.enableStarRating && (
@@ -129,7 +132,7 @@ const AlbumTableView = ({
       )}
       tertiaryText={(r) => (
         <>
-          <RangeField record={r} source={'year'} sortBy={'maxYear'} />
+          <RangeField record={r} source={'year'} sortBy={'max_year'} />
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         </>
       )}

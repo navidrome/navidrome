@@ -4,16 +4,18 @@
 		"dockerfile": "Dockerfile",
 		"args": {
 			// Update the VARIANT arg to pick a version of Go: 1, 1.15, 1.14
-			"VARIANT": "1.17",
+			"VARIANT": "1.19",
 			// Options
 			"INSTALL_NODE": "true",
 			"NODE_VERSION": "v16"
 		}
 	},
+	"workspaceMount": "",
 	"runArgs": [
 		"--cap-add=SYS_PTRACE",
 		"--security-opt",
-		"seccomp=unconfined"
+		"seccomp=unconfined",
+		"--volume=${localWorkspaceFolder}:/workspaces/${localWorkspaceFolderBasename}:Z"
 	],
 	// Set *default* container specific settings.json values on container create.
 	"settings": {

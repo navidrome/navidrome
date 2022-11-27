@@ -95,7 +95,8 @@
                 "createdAt": "Создан",
                 "changePassword": "Сменить пароль?",
                 "currentPassword": "Текущий пароль",
-                "newPassword": "Новый пароль"
+                "newPassword": "Новый пароль",
+                "token": ""
             },
             "helperTexts": {
                 "name": "Изменение вступит в силу после следующего входа в систему"
@@ -104,6 +105,10 @@
                 "created": "Пользователь создан",
                 "updated": "Пользователь обновлен",
                 "deleted": "Пользователь удален"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "Пользователь",
                 "lastSeen": "Был на сайте",
                 "reportRealPath": "Показать реальный путь",
-                "scrobbleEnabled": "Включить скробблинг Last.fm"
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -133,7 +138,7 @@
             "fields": {
                 "name": "Название",
                 "duration": "Длительность",
-                "owner": "Владелец",
+                "ownerName": "Владелец",
                 "public": "Публичный",
                 "updatedAt": "Обновлен",
                 "createdAt": "Создан",
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Выберите плейлист",
                 "addNewPlaylist": "Создать \"%{name}\"",
-                "export": "Экспорт"
+                "export": "Экспорт",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "Повторяющиеся треки",
@@ -311,7 +318,11 @@
             "lastfm": "Показать на Last.fm",
             "musicbrainz": "Показать на MusicBrainz"
         },
-        "lastfmLink": ""
+        "lastfmLink": "",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "Библиотека",
@@ -325,7 +336,8 @@
                 "language": "Язык",
                 "defaultView": "Вид по умолчанию",
                 "desktop_notifications": "Уведомления на рабочем столе",
-                "lastfmScrobbling": "Скробблинг Last.fm"
+                "lastfmScrobbling": "Скробблинг Last.fm",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "Альбомы",

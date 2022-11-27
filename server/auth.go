@@ -23,6 +23,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/gravatar"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -133,12 +135,13 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 }
 
 func createAdminUser(ctx context.Context, ds model.DataStore, username, password string) error {
-	log.Warn("Creating initial user", "user", username)
+	log.Warn(ctx, "Creating initial user", "user", username)
 	now := time.Now()
+	caser := cases.Title(language.Und)
 	initialUser := model.User{
 		ID:          uuid.NewString(),
 		UserName:    username,
-		Name:        strings.Title(username),
+		Name:        caser.String(username),
 		Email:       "",
 		NewPassword: password,
 		IsAdmin:     true,
@@ -146,14 +149,14 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 	}
 	err := ds.User(ctx).Put(&initialUser)
 	if err != nil {
-		log.Error("Could not create initial user", "user", initialUser, err)
+		log.Error(ctx, "Could not create initial user", "user", initialUser, err)
 	}
 	return nil
 }
 
 func validateLogin(userRepo model.UserRepository, userName, password string) (*model.User, error) {
 	u, err := userRepo.FindByUsernameWithPassword(userName)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {
@@ -196,7 +199,7 @@ func UsernameFromReverseProxyHeader(r *http.Request) string {
 		return ""
 	}
 	if !validateIPAgainstList(r.RemoteAddr, conf.Server.ReverseProxyWhitelist) {
-		log.Warn("IP is not whitelisted for reverse proxy login", "ip", r.RemoteAddr)
+		log.Warn(r.Context(), "IP is not whitelisted for reverse proxy login", "ip", r.RemoteAddr)
 		return ""
 	}
 	username := r.Header.Get(conf.Server.ReverseProxyUserHeader)

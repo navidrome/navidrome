@@ -29,6 +29,7 @@ type configOptions struct {
 	UILoginBackgroundURL    string
 	EnableTranscodingConfig bool
 	EnableDownloads         bool
+	EnableExternalServices  bool
 	TranscodingCacheSize    string
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
@@ -47,6 +48,8 @@ type configOptions struct {
 	EnableStarRating       bool
 	EnableUserEditing      bool
 	DefaultTheme           string
+	DefaultLanguage        string
+	DefaultUIVolume        int
 	EnableCoverAnimation   bool
 	GATrackingID           string
 	EnableLogRedacting     bool
@@ -55,12 +58,14 @@ type configOptions struct {
 	PasswordEncryptionKey  string
 	ReverseProxyUserHeader string
 	ReverseProxyWhitelist  string
+	Prometheus             prometheusOptions
 
 	Scanner scannerOptions
 
-	Agents  string
-	LastFM  lastfmOptions
-	Spotify spotifyOptions
+	Agents       string
+	LastFM       lastfmOptions
+	Spotify      spotifyOptions
+	ListenBrainz listenBrainzOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
@@ -91,6 +96,16 @@ type lastfmOptions struct {
 type spotifyOptions struct {
 	ID     string
 	Secret string
+}
+
+type listenBrainzOptions struct {
+	Enabled bool
+	BaseURL string
+}
+
+type prometheusOptions struct {
+	Enabled     bool
+	MetricsPath string
 }
 
 var (
@@ -137,9 +152,24 @@ func Load() {
 		fmt.Println(prettyConf)
 	}
 
+	if !Server.EnableExternalServices {
+		disableExternalServices()
+	}
+
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
+	}
+}
+
+func disableExternalServices() {
+	log.Info("All external integrations are DISABLED!")
+	Server.LastFM.Enabled = false
+	Server.Spotify.ID = ""
+	Server.ListenBrainz.Enabled = false
+	Server.Agents = ""
+	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
+		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
 	}
 }
 
@@ -194,6 +224,7 @@ func init() {
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
+	viper.SetDefault("enableexternalservices", true)
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)
@@ -209,6 +240,8 @@ func init() {
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
+	viper.SetDefault("defaultlanguage", "")
+	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
@@ -218,6 +251,9 @@ func init() {
 
 	viper.SetDefault("reverseproxyuserheader", "Remote-User")
 	viper.SetDefault("reverseproxywhitelist", "")
+
+	viper.SetDefault("prometheus.enabled", false)
+	viper.SetDefault("prometheus.metricspath", "/metrics")
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
@@ -229,6 +265,8 @@ func init() {
 	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
+	viper.SetDefault("listenbrainz.enabled", true)
+	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
@@ -240,7 +278,7 @@ func init() {
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
-	viper.SetDefault("devshowartistpage", false)
+	viper.SetDefault("devshowartistpage", true)
 }
 
 func InitConfig(cfgFile string) {

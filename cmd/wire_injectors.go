@@ -1,5 +1,4 @@
 //go:build wireinject
-// +build wireinject
 
 package cmd
 
@@ -9,6 +8,7 @@ import (
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
+	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
@@ -24,6 +24,7 @@ var allProviders = wire.NewSet(
 	nativeapi.New,
 	persistence.New,
 	lastfm.NewRouter,
+	listenbrainz.NewRouter,
 	events.GetBroker,
 	db.Db,
 )
@@ -49,6 +50,12 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 }
 
 func CreateLastFMRouter() *lastfm.Router {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateListenBrainzRouter() *listenbrainz.Router {
 	panic(wire.Build(
 		allProviders,
 	))

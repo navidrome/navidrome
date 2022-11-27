@@ -46,6 +46,7 @@ type scanner struct {
 	status      map[string]*scanStatus
 	lock        *sync.RWMutex
 	ds          model.DataStore
+	pls         core.Playlists
 	cacheWarmer core.CacheWarmer
 	broker      events.Broker
 }
@@ -57,9 +58,10 @@ type scanStatus struct {
 	lastUpdate  time.Time
 }
 
-func New(ds model.DataStore, cacheWarmer core.CacheWarmer, broker events.Broker) Scanner {
+func New(ds model.DataStore, playlists core.Playlists, cacheWarmer core.CacheWarmer, broker events.Broker) Scanner {
 	s := &scanner{
 		ds:          ds,
+		pls:         playlists,
 		cacheWarmer: cacheWarmer,
 		broker:      broker,
 		folders:     map[string]FolderScanner{},
@@ -250,5 +252,5 @@ func (s *scanner) loadFolders() {
 }
 
 func (s *scanner) newScanner(f model.MediaFolder) FolderScanner {
-	return NewTagScanner(f.Path, s.ds, s.cacheWarmer)
+	return NewTagScanner(f.Path, s.ds, s.pls, s.cacheWarmer)
 }

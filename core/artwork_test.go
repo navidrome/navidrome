@@ -9,7 +9,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -38,6 +38,9 @@ var _ = Describe("Artwork", func() {
 			cache := GetImageCache()
 			Eventually(func() bool { return cache.Ready(context.TODO()) }).Should(BeTrue())
 			artwork = NewArtwork(ds, cache)
+		})
+		AfterEach(func() {
+			_ = os.RemoveAll(conf.Server.DataFolder)
 		})
 
 		It("retrieves the external artwork art for an album", func() {

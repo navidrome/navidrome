@@ -1,11 +1,14 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/go-chi/cors"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
@@ -58,7 +61,7 @@ func loggerInjector(next http.Handler) http.Handler {
 	})
 }
 
-func robotsTXT(fs fs.FS) func(next http.Handler) http.Handler {
+func robotsTXT(fs fs.FS) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasSuffix(r.URL.Path, "/robots.txt") {
@@ -71,7 +74,24 @@ func robotsTXT(fs fs.FS) func(next http.Handler) http.Handler {
 	}
 }
 
-func secureMiddleware() func(h http.Handler) http.Handler {
+func corsHandler() func(http.Handler) http.Handler {
+	return cors.Handler(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{
+			http.MethodHead,
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+		},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: false,
+		ExposedHeaders:   []string{"x-content-duration", "x-total-count", "x-nd-authorization"},
+	})
+}
+
+func secureMiddleware() func(http.Handler) http.Handler {
 	sec := secure.New(secure.Options{
 		ContentTypeNosniff: true,
 		FrameDeny:          true,
@@ -80,6 +100,19 @@ func secureMiddleware() func(h http.Handler) http.Handler {
 		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
+}
+
+func compressMiddleware() func(http.Handler) http.Handler {
+	return middleware.Compress(
+		5,
+		"application/xml",
+		"application/json",
+		"application/javascript",
+		"text/html",
+		"text/plain",
+		"text/css",
+		"text/javascript",
+	)
 }
 
 func clientUniqueIdAdder(next http.Handler) http.Handler {
@@ -93,13 +126,13 @@ func clientUniqueIdAdder(next http.Handler) http.Handler {
 				MaxAge:   consts.CookieExpiry,
 				HttpOnly: true,
 				Secure:   true,
-				SameSite: http.SameSiteNoneMode,
+				SameSite: http.SameSiteStrictMode,
 				Path:     "/",
 			}
 			http.SetCookie(w, c)
 		} else {
 			c, err := r.Cookie(consts.UIClientUniqueIDHeader)
-			if err != http.ErrNoCookie {
+			if !errors.Is(err, http.ErrNoCookie) {
 				clientUniqueId = c.Value
 			}
 		}

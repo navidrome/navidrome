@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/kennygrant/sanitize"
-	"github.com/microcosm-cc/bluemonday"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
@@ -19,18 +18,17 @@ import (
 
 type mediaFileMapper struct {
 	rootFolder string
-	policy     *bluemonday.Policy
 	genres     model.GenreRepository
 }
 
 func newMediaFileMapper(rootFolder string, genres model.GenreRepository) *mediaFileMapper {
 	return &mediaFileMapper{
 		rootFolder: rootFolder,
-		policy:     bluemonday.UGCPolicy(),
 		genres:     genres,
 	}
 }
 
+// TODO Move most of these mapping functions to setters in the model.MediaFile
 func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf := &model.MediaFile{}
 	mf.ID = s.trackID(md)
@@ -59,18 +57,20 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.SortAlbumName = md.SortAlbum()
 	mf.SortArtistName = md.SortArtist()
 	mf.SortAlbumArtistName = md.SortAlbumArtist()
+	mf.OrderTitle = strings.TrimSpace(sanitize.Accents(mf.Title))
 	mf.OrderAlbumName = sanitizeFieldForSorting(mf.Album)
 	mf.OrderArtistName = sanitizeFieldForSorting(mf.Artist)
 	mf.OrderAlbumArtistName = sanitizeFieldForSorting(mf.AlbumArtist)
 	mf.CatalogNum = md.CatalogNum()
 	mf.MbzTrackID = md.MbzTrackID()
+	mf.MbzReleaseTrackID = md.MbzReleaseTrackID()
 	mf.MbzAlbumID = md.MbzAlbumID()
 	mf.MbzArtistID = md.MbzArtistID()
 	mf.MbzAlbumArtistID = md.MbzAlbumArtistID()
 	mf.MbzAlbumType = md.MbzAlbumType()
 	mf.MbzAlbumComment = md.MbzAlbumComment()
-	mf.Comment = s.policy.Sanitize(md.Comment())
-	mf.Lyrics = s.policy.Sanitize(md.Lyrics())
+	mf.Comment = utils.SanitizeText(md.Comment())
+	mf.Lyrics = utils.SanitizeText(md.Lyrics())
 	mf.Bpm = md.Bpm()
 	mf.CreatedAt = time.Now()
 	mf.UpdatedAt = md.ModificationTime()

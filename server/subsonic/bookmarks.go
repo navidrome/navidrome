@@ -10,18 +10,10 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
-type BookmarksController struct {
-	ds model.DataStore
-}
-
-func NewBookmarksController(ds model.DataStore) *BookmarksController {
-	return &BookmarksController{ds: ds}
-}
-
-func (c *BookmarksController) GetBookmarks(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetBookmarks(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
-	repo := c.ds.MediaFile(r.Context())
+	repo := api.ds.MediaFile(r.Context())
 	bmks, err := repo.GetBookmarks()
 	if err != nil {
 		return nil, err
@@ -43,7 +35,7 @@ func (c *BookmarksController) GetBookmarks(w http.ResponseWriter, r *http.Reques
 	return response, nil
 }
 
-func (c *BookmarksController) CreateBookmark(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) CreateBookmark(r *http.Request) (*responses.Subsonic, error) {
 	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
@@ -52,7 +44,7 @@ func (c *BookmarksController) CreateBookmark(w http.ResponseWriter, r *http.Requ
 	comment := utils.ParamString(r, "comment")
 	position := utils.ParamInt64(r, "position", 0)
 
-	repo := c.ds.MediaFile(r.Context())
+	repo := api.ds.MediaFile(r.Context())
 	err = repo.AddBookmark(id, comment, position)
 	if err != nil {
 		return nil, err
@@ -60,13 +52,13 @@ func (c *BookmarksController) CreateBookmark(w http.ResponseWriter, r *http.Requ
 	return newResponse(), nil
 }
 
-func (c *BookmarksController) DeleteBookmark(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) DeleteBookmark(r *http.Request) (*responses.Subsonic, error) {
 	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err
 	}
 
-	repo := c.ds.MediaFile(r.Context())
+	repo := api.ds.MediaFile(r.Context())
 	err = repo.DeleteBookmark(id)
 	if err != nil {
 		return nil, err
@@ -74,10 +66,10 @@ func (c *BookmarksController) DeleteBookmark(w http.ResponseWriter, r *http.Requ
 	return newResponse(), nil
 }
 
-func (c *BookmarksController) GetPlayQueue(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
-	repo := c.ds.PlayQueue(r.Context())
+	repo := api.ds.PlayQueue(r.Context())
 	pq, err := repo.Retrieve(user.ID)
 	if err != nil {
 		return nil, err
@@ -95,7 +87,7 @@ func (c *BookmarksController) GetPlayQueue(w http.ResponseWriter, r *http.Reques
 	return response, nil
 }
 
-func (c *BookmarksController) SavePlayQueue(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	ids, err := requiredParamStrings(r, "id")
 	if err != nil {
 		return nil, err
@@ -122,7 +114,7 @@ func (c *BookmarksController) SavePlayQueue(w http.ResponseWriter, r *http.Reque
 		UpdatedAt: time.Time{},
 	}
 
-	repo := c.ds.PlayQueue(r.Context())
+	repo := api.ds.PlayQueue(r.Context())
 	err = repo.Store(pq)
 	if err != nil {
 		return nil, err

@@ -1,7 +1,7 @@
 GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
 
-ifneq ("$(wildcard .git)","")
+ifneq ("$(wildcard .git/HEAD)","")
 GIT_SHA=$(shell git rev-parse --short HEAD)
 GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
 else
@@ -9,7 +9,7 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION=1.17.1-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.19.3-1 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
@@ -25,11 +25,11 @@ server: check_go_env  ##@Development Start the backend in development mode
 .PHONY: server
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
-	go run github.com/onsi/ginkgo/ginkgo watch -notify ./...
+	go run github.com/onsi/ginkgo/v2/ginkgo watch -notify ./...
 .PHONY: watch
 
 test: ##@Development Run Go tests
-	go test ./...
+	go test -race ./...
 .PHONY: test
 
 testall: test ##@Development Run Go and JS tests
@@ -49,7 +49,7 @@ wire: check_go_env ##@Development Update Dependency Injection
 .PHONY: wire
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
-	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/ginkgo ./server/subsonic/...
+	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/v2/ginkgo ./server/subsonic/...
 .PHONY: snapshots
 
 migration: ##@Development Create an empty migration file
@@ -69,8 +69,7 @@ setup-git: ##@Development Setup Git hooks (pre-commit and pre-push)
 buildall: buildjs build ##@Build Build the project, both frontend and backend
 .PHONY: buildall
 
-build: check_go_env  ##@Build Build only backend
-	@echo "WARNING: This command does not build the frontend, it uses the latest one built by 'make buildjs'"
+build: warning-noui-build check_go_env  ##@Build Build only backend
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: build
 
@@ -78,14 +77,12 @@ buildjs: check_node_env ##@Build Build only frontend
 	@(cd ./ui && npm run build)
 .PHONY: buildjs
 
-all: ##@Cross_Compilation Build binaries for all supported platforms. It does not build the frontend
-	@echo "WARNING: This command does not builds the frontend, it uses the latest one built by 'make buildjs'"
+all: warning-noui-build ##@Cross_Compilation Build binaries for all supported platforms. It does not build the frontend
 	docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
  		goreleaser release --rm-dist --skip-publish --snapshot
 .PHONY: all
 
-single: ##@Cross_Compilation Build binaries for a single supported platforms. It does not build the frontend
-	@echo "WARNING: This command does not build the frontend, it uses the latest one built by 'make buildjs'"
+single: warning-noui-build ##@Cross_Compilation Build binaries for a single supported platforms. It does not build the frontend
 	@if [ -z "${GOOS}" -o -z "${GOARCH}" ]; then \
 		echo "Usage: GOOS=<os> GOARCH=<arch> make single"; \
 		echo "Options:"; \
@@ -96,6 +93,22 @@ single: ##@Cross_Compilation Build binaries for a single supported platforms. It
 	docker run -t -v $(PWD):/workspace -e GOOS -e GOARCH -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
  		goreleaser build --rm-dist --snapshot --single-target --id navidrome_${GOOS}_${GOARCH}
 .PHONY: single
+
+warning-noui-build:
+	@echo "WARNING: This command does not build the frontend, it uses the latest built with 'make buildjs'"
+.PHONY: warning-noui-build
+
+get-music: ##@Development Download some free music from Navidrome's demo instance
+	mkdir -p music
+	( cd music; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=ec2093ec4801402f1e17cc462195cdbb" > brock.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=NavidromeUI&id=b376eeb4652d2498aa2b25ba0696725e" > back_on_earth.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=NavidromeUI&id=e49c609b542fc51899ee8b53aa858cb4" > ugress.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=NavidromeUI&id=350bcab3a4c1d93869e39ce496464f03" > voodoocuts.zip; \
+	for file in *.zip; do unzip -n $${file}; done )
+	@echo "Done. Remember to set your MusicFolder to ./music"
+.PHONY: get-music
+
 
 ##########################################
 #### Miscellaneous
@@ -111,7 +124,7 @@ release:
 
 download-deps:
 	@echo Downloading Go dependencies...
-	@go mod download -x
+	@go mod download
 	@go mod tidy # To revert any changes made by the `go mod download` command
 .PHONY: download-deps
 

@@ -5,14 +5,14 @@ import (
 	"database/sql"
 	"reflect"
 
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
 type SQLStore struct {
-	orm orm.Ormer
+	orm orm.QueryExecutor
 	db  *sql.DB
 }
 
@@ -106,33 +106,21 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 	if err != nil {
 		return err
 	}
-	err = o.Begin()
-	if err != nil {
-		return err
-	}
-
-	newDb := &SQLStore{orm: o}
-	err = block(newDb)
-
-	if err != nil {
-		err2 := o.Rollback()
-		if err2 != nil {
-			return err2
-		}
-		return err
-	}
-
-	err2 := o.Commit()
-	if err2 != nil {
-		return err2
-	}
-	return nil
+	return o.DoTx(func(ctx context.Context, txOrm orm.TxOrmer) error {
+		newDb := &SQLStore{orm: txOrm}
+		return block(newDb)
+	})
 }
 
 func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	err := s.MediaFile(ctx).(*mediaFileRepository).deleteNotInPath(rootFolder)
 	if err != nil {
 		log.Error(ctx, "Error removing dangling tracks", err)
+		return err
+	}
+	err = s.MediaFile(ctx).(*mediaFileRepository).removeNonAlbumArtistIds()
+	if err != nil {
+		log.Error(ctx, "Error removing non-album artist_ids", err)
 		return err
 	}
 	err = s.Album(ctx).(*albumRepository).purgeEmpty()
@@ -177,7 +165,7 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	return err
 }
 
-func (s *SQLStore) getOrmer() orm.Ormer {
+func (s *SQLStore) getOrmer() orm.QueryExecutor {
 	if s.orm == nil {
 		o, err := orm.NewOrmWithDB(db.Driver, "default", s.db)
 		if err != nil {

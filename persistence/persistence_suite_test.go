@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
@@ -13,7 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -70,98 +70,108 @@ var (
 )
 
 var (
-	plsBest = model.Playlist{
-		Name:      "Best",
-		Comment:   "No Comments",
-		Owner:     "userid",
-		Public:    true,
-		SongCount: 2,
-		Tracks:    model.MediaFiles{{ID: "1001"}, {ID: "1003"}},
-	}
-	plsCool       = model.Playlist{Name: "Cool", Owner: "userid", Tracks: model.MediaFiles{{ID: "1004"}}}
-	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
+	plsBest       model.Playlist
+	plsCool       model.Playlist
+	testPlaylists []*model.Playlist
 )
 
 func P(path string) string {
 	return filepath.FromSlash(path)
 }
 
-var _ = Describe("Initialize test DB", func() {
+// Initialize test DB
+// TODO Load this data setup from file(s)
+var _ = BeforeSuite(func() {
+	o := orm.NewOrm()
+	ctx := log.NewContext(context.TODO())
+	user := model.User{ID: "userid", UserName: "userid"}
+	ctx = request.WithUser(ctx, user)
 
-	// TODO Load this data setup from file(s)
-	BeforeSuite(func() {
-		o := orm.NewOrm()
-		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid"})
+	ur := NewUserRepository(ctx, o)
+	err := ur.Put(&user)
+	if err != nil {
+		panic(err)
+	}
 
-		gr := NewGenreRepository(ctx, o)
-		for i := range testGenres {
-			g := testGenres[i]
-			err := gr.Put(&g)
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		mr := NewMediaFileRepository(ctx, o)
-		for i := range testSongs {
-			s := testSongs[i]
-			err := mr.Put(&s)
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		alr := NewAlbumRepository(ctx, o).(*albumRepository)
-		for i := range testAlbums {
-			a := testAlbums[i]
-			err := alr.Put(&a)
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		arr := NewArtistRepository(ctx, o)
-		for i := range testArtists {
-			a := testArtists[i]
-			err := arr.Put(&a)
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		pr := NewPlaylistRepository(ctx, o)
-		for i := range testPlaylists {
-			err := pr.Put(testPlaylists[i])
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		// Prepare annotations
-		if err := arr.SetStar(true, artistBeatles.ID); err != nil {
+	gr := NewGenreRepository(ctx, o)
+	for i := range testGenres {
+		g := testGenres[i]
+		err := gr.Put(&g)
+		if err != nil {
 			panic(err)
 		}
-		ar, _ := arr.Get(artistBeatles.ID)
-		artistBeatles.Starred = true
-		artistBeatles.StarredAt = ar.StarredAt
-		testArtists[1] = artistBeatles
+	}
 
-		if err := alr.SetStar(true, albumRadioactivity.ID); err != nil {
+	mr := NewMediaFileRepository(ctx, o)
+	for i := range testSongs {
+		s := testSongs[i]
+		err := mr.Put(&s)
+		if err != nil {
 			panic(err)
 		}
-		al, _ := alr.Get(albumRadioactivity.ID)
-		albumRadioactivity.Starred = true
-		albumRadioactivity.StarredAt = al.StarredAt
-		testAlbums[2] = albumRadioactivity
+	}
 
-		if err := mr.SetStar(true, songComeTogether.ID); err != nil {
+	alr := NewAlbumRepository(ctx, o).(*albumRepository)
+	for i := range testAlbums {
+		a := testAlbums[i]
+		err := alr.Put(&a)
+		if err != nil {
 			panic(err)
 		}
-		mf, _ := mr.Get(songComeTogether.ID)
-		songComeTogether.Starred = true
-		songComeTogether.StarredAt = mf.StarredAt
-		testSongs[1] = songComeTogether
+	}
 
-	})
+	arr := NewArtistRepository(ctx, o)
+	for i := range testArtists {
+		a := testArtists[i]
+		err := arr.Put(&a)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	plsBest = model.Playlist{
+		Name:      "Best",
+		Comment:   "No Comments",
+		OwnerID:   "userid",
+		OwnerName: "userid",
+		Public:    true,
+		SongCount: 2,
+	}
+	plsBest.AddTracks([]string{"1001", "1003"})
+	plsCool = model.Playlist{Name: "Cool", OwnerID: "userid", OwnerName: "userid"}
+	plsCool.AddTracks([]string{"1004"})
+	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
+
+	pr := NewPlaylistRepository(ctx, o)
+	for i := range testPlaylists {
+		err := pr.Put(testPlaylists[i])
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Prepare annotations
+	if err := arr.SetStar(true, artistBeatles.ID); err != nil {
+		panic(err)
+	}
+	ar, _ := arr.Get(artistBeatles.ID)
+	artistBeatles.Starred = true
+	artistBeatles.StarredAt = ar.StarredAt
+	testArtists[1] = artistBeatles
+
+	if err := alr.SetStar(true, albumRadioactivity.ID); err != nil {
+		panic(err)
+	}
+	al, _ := alr.Get(albumRadioactivity.ID)
+	albumRadioactivity.Starred = true
+	albumRadioactivity.StarredAt = al.StarredAt
+	testAlbums[2] = albumRadioactivity
+
+	if err := mr.SetStar(true, songComeTogether.ID); err != nil {
+		panic(err)
+	}
+	mf, _ := mr.Get(songComeTogether.ID)
+	songComeTogether.Starred = true
+	songComeTogether.StarredAt = mf.StarredAt
+	testSongs[1] = songComeTogether
 })

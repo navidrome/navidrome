@@ -1,19 +1,19 @@
-package consts
+package resources
 
 import (
 	"fmt"
 	"strings"
 	"unicode"
 
-	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/consts"
 )
 
 func loadBanner() string {
-	data, _ := resources.Asset("banner.txt")
+	data, _ := Asset("banner.txt")
 	return strings.TrimRightFunc(string(data), unicode.IsSpace)
 }
 
 func Banner() string {
-	version := "Version: " + Version()
+	version := "Version: " + consts.Version
 	return fmt.Sprintf("%s\n%52s\n", loadBanner(), version)
 }

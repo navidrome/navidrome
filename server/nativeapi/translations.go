@@ -6,17 +6,14 @@ import (
 	"encoding/json"
 	"io"
 	"io/fs"
-	"os"
-	"path/filepath"
+	"path"
 	"strings"
 	"sync"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type translation struct {
@@ -30,13 +27,9 @@ var (
 	translations map[string]translation
 )
 
-func newTranslationRepository(context.Context) rest.Repository {
-	dir := utils.MergeFS{
-		Base:    resources.FS,
-		Overlay: os.DirFS(filepath.Join(conf.Server.DataFolder, "resources")),
-	}
-	if err := loadTranslations(dir); err != nil {
-		log.Error("Error loading translation files", err)
+func newTranslationRepository(ctx context.Context) rest.Repository {
+	if err := loadTranslations(ctx, resources.FS()); err != nil {
+		log.Error(ctx, "Error loading translation files", err)
 	}
 	return &translationRepository{}
 }
@@ -50,13 +43,13 @@ func (r *translationRepository) Read(id string) (interface{}, error) {
 	return nil, rest.ErrNotFound
 }
 
-// Simple Count implementation. Does not support any `options`
-func (r *translationRepository) Count(options ...rest.QueryOptions) (int64, error) {
+// Count simple implementation, does not support any `options`
+func (r *translationRepository) Count(...rest.QueryOptions) (int64, error) {
 	return int64(len(translations)), nil
 }
 
-// Simple ReadAll implementation, only returns IDs. Does not support any `options`
-func (r *translationRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+// ReadAll simple implementation, only returns IDs. Does not support any `options`
+func (r *translationRepository) ReadAll(...rest.QueryOptions) (interface{}, error) {
 	var result []translation
 	for _, t := range translations {
 		t.Data = ""
@@ -73,7 +66,7 @@ func (r *translationRepository) NewInstance() interface{} {
 	return &translation{}
 }
 
-func loadTranslations(fsys fs.FS) (loadError error) {
+func loadTranslations(ctx context.Context, fsys fs.FS) (loadError error) {
 	once.Do(func() {
 		translations = make(map[string]translation)
 		dir, err := fsys.Open(consts.I18nFolder)
@@ -90,22 +83,22 @@ func loadTranslations(fsys fs.FS) (loadError error) {
 		for _, f := range files {
 			t, err := loadTranslation(fsys, f.Name())
 			if err != nil {
-				log.Error("Error loading translation file", "file", f.Name(), err)
+				log.Error(ctx, "Error loading translation file", "file", f.Name(), err)
 				continue
 			}
 			translations[t.ID] = t
 			languages = append(languages, t.ID)
 		}
-		log.Info("Loading translations", "languages", languages)
+		log.Info(ctx, "Loading translations", "languages", languages)
 	})
 	return
 }
 
 func loadTranslation(fsys fs.FS, fileName string) (translation translation, err error) {
 	// Get id and full path
-	name := filepath.Base(fileName)
-	id := strings.TrimSuffix(name, filepath.Ext(name))
-	filePath := filepath.Join(consts.I18nFolder, name)
+	name := path.Base(fileName)
+	id := strings.TrimSuffix(name, path.Ext(name))
+	filePath := path.Join(consts.I18nFolder, name)
 
 	// Load translation from json file
 	file, err := fsys.Open(filePath)

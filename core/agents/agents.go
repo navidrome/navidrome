@@ -18,7 +18,10 @@ type Agents struct {
 }
 
 func New(ds model.DataStore) *Agents {
-	order := strings.Split(conf.Server.Agents, ",")
+	var order []string
+	if conf.Server.Agents != "" {
+		order = strings.Split(conf.Server.Agents, ",")
+	}
 	order = append(order, PlaceholderAgentName)
 	var res []Interface
 	for _, name := range order {
@@ -51,7 +54,7 @@ func (a *Agents) GetMBID(ctx context.Context, id string, name string) (string, e
 		mbid, err := agent.GetMBID(ctx, id, name)
 		if mbid != "" && err == nil {
 			log.Debug(ctx, "Got MBID", "agent", ag.AgentName(), "artist", name, "mbid", mbid, "elapsed", time.Since(start))
-			return mbid, err
+			return mbid, nil
 		}
 	}
 	return "", ErrNotFound
@@ -70,7 +73,7 @@ func (a *Agents) GetURL(ctx context.Context, id, name, mbid string) (string, err
 		url, err := agent.GetURL(ctx, id, name, mbid)
 		if url != "" && err == nil {
 			log.Debug(ctx, "Got External Url", "agent", ag.AgentName(), "artist", name, "url", url, "elapsed", time.Since(start))
-			return url, err
+			return url, nil
 		}
 	}
 	return "", ErrNotFound
@@ -89,7 +92,7 @@ func (a *Agents) GetBiography(ctx context.Context, id, name, mbid string) (strin
 		bio, err := agent.GetBiography(ctx, id, name, mbid)
 		if bio != "" && err == nil {
 			log.Debug(ctx, "Got Biography", "agent", ag.AgentName(), "artist", name, "len", len(bio), "elapsed", time.Since(start))
-			return bio, err
+			return bio, nil
 		}
 	}
 	return "", ErrNotFound
@@ -107,7 +110,11 @@ func (a *Agents) GetSimilar(ctx context.Context, id, name, mbid string, limit in
 		}
 		similar, err := agent.GetSimilar(ctx, id, name, mbid, limit)
 		if len(similar) > 0 && err == nil {
-			log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similar", similar, "elapsed", time.Since(start))
+			if log.CurrentLevel() >= log.LevelTrace {
+				log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similar", similar, "elapsed", time.Since(start))
+			} else {
+				log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similarReceived", len(similar), "elapsed", time.Since(start))
+			}
 			return similar, err
 		}
 	}
@@ -127,7 +134,7 @@ func (a *Agents) GetImages(ctx context.Context, id, name, mbid string) ([]Artist
 		images, err := agent.GetImages(ctx, id, name, mbid)
 		if len(images) > 0 && err == nil {
 			log.Debug(ctx, "Got Images", "agent", ag.AgentName(), "artist", name, "images", images, "elapsed", time.Since(start))
-			return images, err
+			return images, nil
 		}
 	}
 	return nil, ErrNotFound
@@ -146,7 +153,7 @@ func (a *Agents) GetTopSongs(ctx context.Context, id, artistName, mbid string, c
 		songs, err := agent.GetTopSongs(ctx, id, artistName, mbid, count)
 		if len(songs) > 0 && err == nil {
 			log.Debug(ctx, "Got Top Songs", "agent", ag.AgentName(), "artist", artistName, "songs", songs, "elapsed", time.Since(start))
-			return songs, err
+			return songs, nil
 		}
 	}
 	return nil, ErrNotFound

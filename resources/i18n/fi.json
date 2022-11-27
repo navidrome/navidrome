@@ -95,7 +95,8 @@
                 "createdAt": "Luotu",
                 "changePassword": "Vaihda salasana?",
                 "currentPassword": "Nykyinen salasana",
-                "newPassword": "Uusi salasana"
+                "newPassword": "Uusi salasana",
+                "token": "Avain"
             },
             "helperTexts": {
                 "name": "Nimen muutos tulee voimaan kun seuraavan kerran kirjaudut sisään"
@@ -104,6 +105,10 @@
                 "created": "Käyttäjä luotu",
                 "updated": "Käyttäjä päivitetty",
                 "deleted": "Käyttäjä poistettu"
+            },
+            "message": {
+                "listenBrainzToken": "Syötä ListenBrainz avain.",
+                "clickHereForToken": "Paina tästä saadaksesi avaimen"
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "Käyttäjänimi",
                 "lastSeen": "Viimeksi käytetty",
                 "reportRealPath": "Ilmoita todellinen polku",
-                "scrobbleEnabled": "Lähetä kuuntelutottumus Last.fm palveluun"
+                "scrobbleEnabled": "Lähetä kuuntelutottumukset ulkoiseen palveluun"
             }
         },
         "transcoding": {
@@ -133,7 +138,7 @@
             "fields": {
                 "name": "Nimi",
                 "duration": "Kesto",
-                "owner": "Omistaja",
+                "ownerName": "Omistaja",
                 "public": "Julkinen",
                 "updatedAt": "Päivitetty",
                 "createdAt": "Luotu",
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Valitse soittolista:",
                 "addNewPlaylist": "Luo \"%{name}\"",
-                "export": "Vie"
+                "export": "Vie",
+                "makePublic": "Tee julkinen",
+                "makePrivate": "Tee yksityinen"
             },
             "message": {
                 "duplicate_song": "Lisää olemassa oleva kappale",
@@ -311,7 +318,11 @@
             "lastfm": "Avaa Last.fm:ssä",
             "musicbrainz": "Avaa MusicBrainz:ssä"
         },
-        "lastfmLink": "Lue lisää..."
+        "lastfmLink": "Lue lisää...",
+        "listenBrainzLinkSuccess": "ListenBrainz linkitetty onnistuneesti ja käyttäjän %{user} kuuntelutottumus otettu käyttöön",
+        "listenBrainzLinkFailure": "Ei voitu linkittää ListenBrainz palveluun: %{error}",
+        "listenBrainzUnlinkSuccess": "Linkitys ListenBrainz poistettu ja kuuntelutottumus poistettu käytöstä",
+        "listenBrainzUnlinkFailure": "ListenBrainz linkitystä ei voitu poistaa"
     },
     "menu": {
         "library": "Kirjasto",
@@ -325,7 +336,8 @@
                 "language": "Kieli",
                 "defaultView": "Oletusnäkymä",
                 "desktop_notifications": "Työpöytäilmoitukset",
-                "lastfmScrobbling": "Kuuntelutottumuksen lähetys Last.fm-palveluun"
+                "lastfmScrobbling": "Kuuntelutottumuksen lähetys Last.fm-palveluun",
+                "listenBrainzScrobbling": "Kuuntelutottumuksen lähetys ListenBrainz-palveluun"
             }
         },
         "albumList": "Albumit",

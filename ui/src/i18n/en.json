@@ -95,7 +95,8 @@
                 "createdAt": "Created at",
                 "changePassword": "Change Password?",
                 "currentPassword": "Current Password",
-                "newPassword": "New Password"
+                "newPassword": "New Password",
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Changes to your name will only be reflected on next login"
@@ -104,6 +105,10 @@
                 "created": "User created",
                 "updated": "User updated",
                 "deleted": "User deleted"
+            },
+            "message": {
+                "listenBrainzToken": "Enter your ListenBrainz user token.",
+                "clickHereForToken": "Click here to get your token"
             }
         },
         "player": {
@@ -116,7 +121,7 @@
                 "userName": "Username",
                 "lastSeen": "Last Seen At",
                 "reportRealPath": "Report Real Path",
-                "scrobbleEnabled": "Send Scrobbles to Last.fm"
+                "scrobbleEnabled": "Send Scrobbles to external services"
             }
         },
         "transcoding": {
@@ -133,7 +138,7 @@
             "fields": {
                 "name": "Name",
                 "duration": "Duration",
-                "owner": "Owner",
+                "ownerName": "Owner",
                 "public": "Public",
                 "updatedAt": "Updated at",
                 "createdAt": "Created at",
@@ -145,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Select a playlist:",
                 "addNewPlaylist": "Create \"%{name}\"",
-                "export": "Export"
+                "export": "Export",
+                "makePublic": "Make Public",
+                "makePrivate": "Make Private"
             },
             "message": {
                 "duplicate_song": "Add duplicated songs",
@@ -306,7 +313,11 @@
         "lastfmLinkSuccess": "Last.fm successfully linked and scrobbling enabled",
         "lastfmLinkFailure": "Last.fm could not be linked",
         "lastfmUnlinkSuccess": "Last.fm unlinked and scrobbling disabled",
-        "lastfmUnlinkFailure": "Last.fm could not unlinked",
+        "lastfmUnlinkFailure": "Last.fm could not be unlinked",
+        "listenBrainzLinkSuccess": "ListenBrainz successfully linked and scrobbling enabled as user: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz could not be linked: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz unlinked and scrobbling disabled",
+        "listenBrainzUnlinkFailure": "ListenBrainz could not be unlinked",
         "openIn": {
             "lastfm": "Open in Last.fm",
             "musicbrainz": "Open in MusicBrainz"
@@ -325,7 +336,8 @@
                 "language": "Language",
                 "defaultView": "Default View",
                 "desktop_notifications": "Desktop Notifications",
-                "lastfmScrobbling": "Scrobble to Last.fm"
+                "lastfmScrobbling": "Scrobble to Last.fm",
+                "listenBrainzScrobbling": "Scrobble to ListenBrainz"
             }
         },
         "albumList": "Albums",
@@ -344,13 +356,13 @@
         "previousTrackText": "Previous track",
         "reloadText": "Reload",
         "volumeText": "Volume",
-        "toggleLyricText": "Toggle lyric",
+        "toggleLyricText": "Toggle lyrics",
         "toggleMiniModeText": "Minimize",
         "destroyText": "Destroy",
         "downloadText": "Download",
         "removeAudioListsText": "Delete audio lists",
         "clickToDeleteText": "Click to delete %{name}",
-        "emptyLyricText": "No lyric",
+        "emptyLyricText": "No lyrics",
         "playModeText": {
             "order": "In order",
             "orderLoop": "Repeat",

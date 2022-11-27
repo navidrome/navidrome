@@ -33,6 +33,7 @@ import {
 import config from '../config'
 import { intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
+import AnchorMe from '../common/Linkify'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -116,7 +117,7 @@ const AlbumComment = ({ record }) => {
   const formatted = useMemo(() => {
     return lines.map((line, idx) => (
       <span key={record.id + '-comment-' + idx}>
-        <span dangerouslySetInnerHTML={{ __html: line }} />
+        <AnchorMe text={line} />
         <br />
       </span>
     ))
@@ -206,6 +207,7 @@ const Details = (props) => {
 
 const AlbumDetails = (props) => {
   const record = useRecordContext(props)
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
@@ -270,7 +272,7 @@ const AlbumDetails = (props) => {
             ) : (
               <Typography component={'p'}>{record.genre}</Typography>
             )}
-            {isDesktop && (
+            {!isXsmall && (
               <Typography component={'div'} className={classes.recordMeta}>
                 <AlbumExternalLinks className={classes.externalLinks} />
               </Typography>

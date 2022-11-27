@@ -2,14 +2,13 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/utils"
-
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -19,7 +18,7 @@ import (
 type sqlRepository struct {
 	ctx          context.Context
 	tableName    string
-	ormer        orm.Ormer
+	ormer        orm.QueryExecutor
 	sortMappings map[string]string
 }
 
@@ -148,7 +147,7 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	}
 	start := time.Now()
 	err = r.ormer.Raw(query, args...).QueryRow(response)
-	if err == orm.ErrNoRows {
+	if errors.Is(err, orm.ErrNoRows) {
 		r.logSQL(query, args, nil, 0, start)
 		return model.ErrNotFound
 	}
@@ -163,7 +162,7 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 	}
 	start := time.Now()
 	c, err := r.ormer.Raw(query, args...).QueryRows(response)
-	if err == orm.ErrNoRows {
+	if errors.Is(err, orm.ErrNoRows) {
 		r.logSQL(query, args, nil, c, start)
 		return model.ErrNotFound
 	}
@@ -191,11 +190,18 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 	// If there's an ID, try to update first
 	if id != "" {
 		updateValues := map[string]interface{}{}
+
+		// This is a map of the columns that need to be updated, if specified
+		c2upd := map[string]struct{}{}
+		for _, c := range colsToUpdate {
+			c2upd[toSnakeCase(c)] = struct{}{}
+		}
 		for k, v := range values {
-			if len(colsToUpdate) == 0 || utils.StringInSlice(k, colsToUpdate) {
+			if _, found := c2upd[k]; len(c2upd) == 0 || found {
 				updateValues[k] = v
 			}
 		}
+
 		delete(updateValues, "created_at")
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
 		count, err := r.executeSQL(update)
@@ -206,7 +212,7 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 			return id, nil
 		}
 	}
-	// If does not have an ID OR the ID was not found (when it is a new record with predefined id)
+	// If it does not have an ID OR the ID was not found (when it is a new record with predefined id)
 	if id == "" {
 		id = uuid.NewString()
 		values["id"] = id
@@ -219,7 +225,7 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 func (r sqlRepository) delete(cond Sqlizer) error {
 	del := Delete(r.tableName).Where(cond)
 	_, err := r.executeSQL(del)
-	if err == orm.ErrNoRows {
+	if errors.Is(err, orm.ErrNoRows) {
 		return model.ErrNotFound
 	}
 	return err

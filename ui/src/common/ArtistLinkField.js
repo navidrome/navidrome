@@ -10,29 +10,40 @@ export const useGetHandleArtistClick = (width) => {
   return (id) => {
     return config.devShowArtistPage && id !== config.variousArtistsId
       ? `/artist/${id}/show`
-      : `/album?filter={"artist_id":"${id}"}&order=ASC&sort=maxYear&displayedFilters={"compilation":true}&perPage=${perPage}`
+      : `/album?filter={"artist_id":"${id}"}&order=ASC&sort=max_year&displayedFilters={"compilation":true}&perPage=${perPage}`
   }
 }
 
-export const ArtistLinkField = withWidth()(({ record, className, width }) => {
-  const artistLink = useGetHandleArtistClick(width)
+export const ArtistLinkField = withWidth()(
+  ({ record, className, width, source }) => {
+    const artistLink = useGetHandleArtistClick(width)
 
-  return (
-    <Link
-      to={artistLink(record.albumArtistId)}
-      onClick={(e) => e.stopPropagation()}
-      className={className}
-    >
-      {record.albumArtist}
-    </Link>
-  )
-})
+    const id = record[source + 'Id']
+    return (
+      <>
+        {id ? (
+          <Link
+            to={artistLink(id)}
+            onClick={(e) => e.stopPropagation()}
+            className={className}
+          >
+            {record[source]}
+          </Link>
+        ) : (
+          record[source]
+        )}
+      </>
+    )
+  }
+)
 
 ArtistLinkField.propTypes = {
   record: PropTypes.object,
   className: PropTypes.string,
+  source: PropTypes.string,
 }
 
 ArtistLinkField.defaultProps = {
   addLabel: true,
+  source: 'albumArtist',
 }

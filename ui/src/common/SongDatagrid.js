@@ -106,19 +106,25 @@ export const SongDatagridRow = ({
     isValidElement(c)
   )
 
-  const [, dragDiscRef] = useDrag(() => ({
-    type: DraggableTypes.DISC,
-    item: {
-      discs: [{ albumId: record.albumId, discNumber: record.discNumber }],
-    },
-    options: { dropEffect: 'copy' },
-  }))
+  const [, dragDiscRef] = useDrag(
+    () => ({
+      type: DraggableTypes.DISC,
+      item: {
+        discs: [{ albumId: record?.albumId, discNumber: record?.discNumber }],
+      },
+      options: { dropEffect: 'copy' },
+    }),
+    [record]
+  )
 
-  const [, dragSongRef] = useDrag(() => ({
-    type: DraggableTypes.SONG,
-    item: { ids: [record.id] },
-    options: { dropEffect: 'copy' },
-  }))
+  const [, dragSongRef] = useDrag(
+    () => ({
+      type: DraggableTypes.SONG,
+      item: { ids: [record?.mediaFileId || record?.id] },
+      options: { dropEffect: 'copy' },
+    }),
+    [record]
+  )
 
   if (!record || !record.title) {
     return null

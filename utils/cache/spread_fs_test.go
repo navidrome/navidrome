@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -19,9 +19,8 @@ var _ = Describe("Spread FS", func() {
 		fs, err = NewSpreadFS(rootDir, 0755)
 		Expect(err).To(BeNil())
 	})
-
 	AfterEach(func() {
-		Expect(os.RemoveAll(rootDir)).To(BeNil())
+		_ = os.RemoveAll(rootDir)
 	})
 
 	Describe("KeyMapper", func() {
@@ -32,6 +31,11 @@ var _ = Describe("Spread FS", func() {
 			parts := strings.Split(mapped, string(filepath.Separator))
 			Expect(parts).To(HaveLen(4))
 			Expect(parts[3]).To(HaveLen(40))
+		})
+		It("returns the unmodified key if it is a cache file path", func() {
+			mapped := fs.KeyMapper("abc")
+			Expect(mapped).To(HavePrefix(fs.root))
+			Expect(fs.KeyMapper(mapped)).To(Equal(mapped))
 		})
 	})
 

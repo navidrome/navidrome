@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
@@ -36,6 +36,9 @@ const Player = () => {
   const [preloaded, setPreload] = useState(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
+  const isMobilePlayer = useMediaQuery(
+    '(max-width: 768px) and (orientation : portrait)'
+  )
   const { authenticated } = useAuthState()
   const visible = authenticated && playerState.queue.length > 0
   const classes = useStyle({
@@ -56,6 +59,7 @@ const Player = () => {
       clearPriorAudioLists: false,
       showDestroy: true,
       showDownload: false,
+      showLyric: true,
       showReload: false,
       toggleMode: !isDesktop,
       glassBg: false,
@@ -85,9 +89,9 @@ const Player = () => {
       autoPlay: playerState.clear || playerState.playIndex === 0,
       clearPriorAudioLists: playerState.clear,
       extendsContent: <PlayerToolbar id={current.trackId} />,
-      defaultVolume: playerState.volume,
+      defaultVolume: isMobilePlayer ? 1 : playerState.volume,
     }
-  }, [playerState, defaultOptions])
+  }, [playerState, defaultOptions, isMobilePlayer])
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
@@ -139,13 +143,14 @@ const Player = () => {
   const onAudioPlay = useCallback(
     (info) => {
       dispatch(currentPlaying(info))
-      setStartTime(Date.now())
+      if (startTime === null) {
+        setStartTime(Date.now())
+      }
       if (info.duration) {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
         subsonic.nowPlaying(info.trackId)
         setPreload(false)
-        setScrobbled(false)
         if (config.gaTrackingId) {
           ReactGA.event({
             category: 'Player',
@@ -162,8 +167,17 @@ const Player = () => {
         }
       }
     },
-    [dispatch, showNotifications]
+    [dispatch, showNotifications, startTime]
   )
+
+  const onAudioPlayTrackChange = useCallback(() => {
+    if (scrobbled) {
+      setScrobbled(false)
+    }
+    if (startTime !== null) {
+      setStartTime(null)
+    }
+  }, [scrobbled, startTime])
 
   const onAudioPause = useCallback(
     (info) => dispatch(currentPlaying(info)),
@@ -172,6 +186,8 @@ const Player = () => {
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
+      setScrobbled(false)
+      setStartTime(null)
       dispatch(currentPlaying(info))
       dataProvider
         .getOne('keepalive', { id: info.trackId })
@@ -202,6 +218,12 @@ const Player = () => {
     [audioInstance, playerState]
   )
 
+  useEffect(() => {
+    if (isMobilePlayer && audioInstance) {
+      audioInstance.volume = 1
+    }
+  }, [isMobilePlayer, audioInstance])
+
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
@@ -211,6 +233,7 @@ const Player = () => {
         onAudioVolumeChange={onAudioVolumeChange}
         onAudioProgress={onAudioProgress}
         onAudioPlay={onAudioPlay}
+        onAudioPlayTrackChange={onAudioPlayTrackChange}
         onAudioPause={onAudioPause}
         onAudioEnded={onAudioEnded}
         onCoverClick={onCoverClick}

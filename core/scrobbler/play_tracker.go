@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 
 	"github.com/ReneKroon/ttlcache/v2"
 	"github.com/navidrome/navidrome/log"
@@ -44,7 +45,7 @@ type playTracker struct {
 }
 
 func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
-	instance := singleton.Get(playTracker{}, func() interface{} {
+	return singleton.GetInstance(func() *playTracker {
 		m := ttlcache.NewCache()
 		m.SkipTTLExtensionOnHit(true)
 		_ = m.SetTTL(nowPlayingExpire)
@@ -59,7 +60,6 @@ func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
 		}
 		return p
 	})
-	return instance.(*playTracker)
 }
 
 func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error {
@@ -85,6 +85,10 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, tra
 		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
 		return
 	}
+	if t.Artist == consts.UnknownArtist {
+		log.Debug(ctx, "Ignoring external NowPlaying update for track with unknown artist", "track", t.Title, "artist", t.Artist)
+		return
+	}
 	// TODO Parallelize
 	for name, s := range p.scrobblers {
 		if !s.IsAuthorized(ctx, userId) {
@@ -94,7 +98,7 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, tra
 		err := s.NowPlaying(ctx, userId, t)
 		if err != nil {
 			log.Error(ctx, "Error sending NowPlayingInfo", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
-			return
+			continue
 		}
 	}
 }
@@ -127,18 +131,18 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	for _, s := range submissions {
 		mf, err := p.ds.MediaFile(ctx).Get(s.TrackID)
 		if err != nil {
-			log.Error("Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
+			log.Error(ctx, "Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
 			continue
 		}
 		err = p.incPlay(ctx, mf, s.Timestamp)
 		if err != nil {
-			log.Error("Error updating play counts", "id", mf.ID, "track", mf.Title, "user", username, err)
+			log.Error(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", username, err)
 		} else {
 			success++
 			event.With("song", mf.ID).With("album", mf.AlbumID).With("artist", mf.AlbumArtistID)
-			log.Info("Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username)
+			log.Info(ctx, "Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username, "timestamp", s.Timestamp)
 			if player.ScrobbleEnabled {
-				_ = p.dispatchScrobble(ctx, mf, s.Timestamp)
+				p.dispatchScrobble(ctx, mf, s.Timestamp)
 			}
 		}
 	}
@@ -164,7 +168,11 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 	})
 }
 
-func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, playTime time.Time) error {
+func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, playTime time.Time) {
+	if t.Artist == consts.UnknownArtist {
+		log.Debug(ctx, "Ignoring external Scrobble for track with unknown artist", "track", t.Title, "artist", t.Artist)
+		return
+	}
 	u, _ := request.UserFrom(ctx)
 	scrobble := Scrobble{MediaFile: *t, TimeStamp: playTime}
 	for name, s := range p.scrobblers {
@@ -172,17 +180,16 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 			continue
 		}
 		if conf.Server.DevEnableBufferedScrobble {
-			log.Debug(ctx, "Buffering scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
+			log.Debug(ctx, "Buffering Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
 		} else {
-			log.Debug(ctx, "Sending scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
+			log.Debug(ctx, "Sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
 		}
 		err := s.Scrobble(ctx, u.ID, scrobble)
 		if err != nil {
 			log.Error(ctx, "Error sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
-			return err
+			continue
 		}
 	}
-	return nil
 }
 
 var constructors map[string]Constructor
