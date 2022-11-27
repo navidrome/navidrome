@@ -2,7 +2,6 @@ package scanner
 
 import (
 	"context"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -35,18 +34,6 @@ func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlis
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
 	}
-}
-
-// Function to check if a directory is empty
-func IsDirectoryEmpty(name string) bool {
-	f, err := os.Open(name)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-
-	_, err = f.Readdirnames(1) // Or f.Readdir(1)
-	return err == io.EOF
 }
 
 type dirMap map[string]dirStats
@@ -88,6 +75,16 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	// Special case: if lastModifiedSince is zero, re-import all files
 	fullScan := lastModifiedSince.IsZero()
 
+	// If the media folder is empty (no music and no subfolders), abort to avoid deleting all data from DB
+	empty, err := isDirEmpty(ctx, s.rootFolder)
+	if err != nil {
+		return 0, err
+	}
+	if empty && !fullScan {
+		log.Error(ctx, "Media Folder is empty. Aborting scan.", "folder", s.rootFolder)
+		return 0, nil
+	}
+
 	allDBDirs, err := s.getDBDirTree(ctx)
 	if err != nil {
 		return 0, err
@@ -121,12 +118,6 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	if err := <-walkerError; err != nil {
 		log.Error("Scan was interrupted by error. See errors above", err)
 		return 0, err
-	}
-
-	// If the media folder is empty, abort to avoid deleting all data
-	if IsDirectoryEmpty(s.rootFolder) {
-		log.Error(ctx, "Media Folder is empty. Aborting scan.", "folder", s.rootFolder)
-		return 0, nil
 	}
 
 	deletedDirs := s.getDeletedDirs(ctx, allFSDirs, allDBDirs)
@@ -166,6 +157,11 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted, "playlistsImported", s.cnt.playlists)
 
 	return s.cnt.total(), err
+}
+
+func isDirEmpty(ctx context.Context, dir string) (bool, error) {
+	children, stats, err := loadDir(ctx, dir)
+	return len(children) == 0 && stats.AudioFilesCount == 0, err
 }
 
 func (s *TagScanner) getRootFolderWalker(ctx context.Context) (walkResults, chan error) {
