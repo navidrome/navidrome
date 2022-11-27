@@ -50,6 +50,7 @@ var _ = Describe("Client", func() {
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/validate-token"))
 			Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 		})
 
 		It("parses and returns the response", func() {
@@ -88,6 +89,7 @@ var _ = Describe("Client", func() {
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
 				Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/submit-listens"))
 				Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+				Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 
 				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
 				f, _ := os.ReadFile("tests/fixtures/listenbrainz.nowplaying.request.json")
@@ -105,6 +107,7 @@ var _ = Describe("Client", func() {
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
 				Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/submit-listens"))
 				Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+				Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 
 				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
 				f, _ := os.ReadFile("tests/fixtures/listenbrainz.scrobble.request.json")

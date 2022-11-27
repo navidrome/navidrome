@@ -145,6 +145,7 @@ func (c *Client) makeRequest(method string, endpoint string, r *listenBrainzRequ
 		return nil, err
 	}
 	req, _ := http.NewRequest(method, uri, bytes.NewBuffer(b))
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 
 	if r.ApiKey != "" {
 		req.Header.Add("Authorization", fmt.Sprintf("Token %s", r.ApiKey))
