@@ -348,20 +348,6 @@ export default {
       },
       actions: {
         '@global': {
-          '@global': {
-            '*::-webkit-scrollbar': {
-              width: '12px',
-            },
-            '*::-webkit-scrollbar-track': {
-              background: 'rgb(15, 15, 15)',
-            },
-            '*::-webkit-scrollbar-thumb': {
-              backgroundColor: '#555',
-              '&:hover': {
-                background: '#898989',
-              },
-            },
-          },
           '.next-page': {
             marginLeft: 8,
             marginRight: 8,
