@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scheduler"
+	"github.com/navidrome/navidrome/server/backgrounds"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sync/errgroup"
 
@@ -89,6 +90,9 @@ func startServer(ctx context.Context) func() error {
 		}
 		if conf.Server.Prometheus.Enabled {
 			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
+		}
+		if conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
+			a.MountRouter("Background images", consts.DefaultUILoginBackgroundURL, backgrounds.NewHandler())
 		}
 		return a.Run(ctx, fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
 	}
