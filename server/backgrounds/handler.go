@@ -2,9 +2,11 @@ package backgrounds
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"io"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"net/url"
 	"path"
@@ -48,7 +50,11 @@ func (h *Handler) getRandomImage(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return list[rand.Intn(len(list))], nil
+	if len(list) == 0 {
+		return "", errors.New("no images available")
+	}
+	rnd, _ := rand.Int(rand.Reader, big.NewInt(int64(len(list))))
+	return list[rnd.Int64()], nil
 }
 
 func (h *Handler) getImageList(ctx context.Context) ([]string, error) {
