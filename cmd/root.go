@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -91,7 +92,7 @@ func startServer(ctx context.Context) func() error {
 		if conf.Server.Prometheus.Enabled {
 			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
 		}
-		if conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
+		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			a.MountRouter("Background images", consts.DefaultUILoginBackgroundURL, backgrounds.NewHandler())
 		}
 		return a.Run(ctx, fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))

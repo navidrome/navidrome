@@ -34,7 +34,6 @@ let config
 
 try {
   const appConfig = JSON.parse(window.__APP_CONFIG__)
-
   config = {
     ...defaultConfig,
     ...appConfig,
