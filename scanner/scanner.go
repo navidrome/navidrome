@@ -12,13 +12,11 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type Scanner interface {
 	RescanAll(ctx context.Context, fullRescan bool) error
 	Status(mediaFolder string) (*StatusInfo, error)
-	Scanning() bool
 }
 
 type StatusInfo struct {
@@ -39,7 +37,7 @@ type FolderScanner interface {
 	Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) (int64, error)
 }
 
-var isScanning utils.AtomicBool
+var isScanning sync.Mutex
 
 type scanner struct {
 	folders     map[string]FolderScanner
@@ -139,12 +137,11 @@ func (s *scanner) startProgressTracker(mediaFolder string) (chan uint32, context
 }
 
 func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
-	if s.Scanning() {
+	if !isScanning.TryLock() {
 		log.Debug("Scanner already running, ignoring request for rescan.")
 		return ErrAlreadyScanning
 	}
-	isScanning.Set(true)
-	defer isScanning.Set(false)
+	defer isScanning.Unlock()
 
 	defer s.cacheWarmer.Flush(ctx)
 	var hasError bool
@@ -197,10 +194,6 @@ func (s *scanner) setStatusEnd(folder string, lastUpdate time.Time) {
 		status.active = false
 		status.lastUpdate = lastUpdate
 	}
-}
-
-func (s *scanner) Scanning() bool {
-	return isScanning.Get()
 }
 
 func (s *scanner) Status(mediaFolder string) (*StatusInfo, error) {
