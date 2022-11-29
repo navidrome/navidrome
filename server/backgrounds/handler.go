@@ -5,17 +5,16 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"io"
 	"math/big"
 	"net/http"
 	"net/url"
 	"path"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"gopkg.in/yaml.v3"
 )
 
 type Handler struct {
@@ -31,7 +30,7 @@ func NewHandler() *Handler {
 	return h
 }
 
-const ndImageServiceURL = "https://www.navidrome.org"
+const ndImageServiceURL = "https://www.navidrome.org/images"
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	image, err := h.getRandomImage(r.Context())
@@ -42,7 +41,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, buildPath(ndImageServiceURL, "backgrounds", image+".jpg"), http.StatusFound)
+	http.Redirect(w, r, buildPath(ndImageServiceURL, image), http.StatusFound)
 }
 
 func (h *Handler) getRandomImage(ctx context.Context) (string, error) {
@@ -73,15 +72,15 @@ func (h *Handler) getImageList(ctx context.Context) ([]string, error) {
 		Timeout: 5 * time.Second,
 	}
 
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, buildPath(ndImageServiceURL, "images"), nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, buildPath(ndImageServiceURL, "index.yml"), nil)
 	resp, err := c.Do(req)
 	if err != nil {
 		log.Warn(ctx, "Could not get list from image service", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	h.list = strings.Split(string(body), "\n")
+	dec := yaml.NewDecoder(resp.Body)
+	err = dec.Decode(&h.list)
 	log.Debug(ctx, "Loaded images from image service", "total", len(h.list), "elapsed", time.Since(start))
 	return h.list, err
 }

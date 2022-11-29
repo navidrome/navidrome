@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -52,6 +53,9 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"lastFMApiKey":            conf.Server.LastFM.ApiKey,
 			"devShowArtistPage":       conf.Server.DevShowArtistPage,
 			"listenBrainzEnabled":     conf.Server.ListenBrainz.Enabled,
+		}
+		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
+			appConfig["loginBackgroundURL"] = path.Join(conf.Server.BaseURL, conf.Server.UILoginBackgroundURL)
 		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {
