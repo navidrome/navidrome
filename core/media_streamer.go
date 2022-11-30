@@ -163,7 +163,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 		format = "raw"
 		bitRate = 0
 	}
-	return
+	return format, bitRate
 }
 
 var (
