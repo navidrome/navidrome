@@ -3,14 +3,49 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+
+	"github.com/navidrome/navidrome/log"
 )
 
-func init() {
-	signals := []os.Signal{
-		syscall.SIGUSR1,
+const triggerScanSignal = syscall.SIGUSR1
+
+func startSignaler(ctx context.Context) func() error {
+	log.Info(ctx, "Starting signaler")
+	scanner := GetScanner()
+
+	return func() error {
+		var sigChan = make(chan os.Signal, 1)
+		signal.Notify(
+			sigChan,
+			os.Interrupt,
+			triggerScanSignal,
+			syscall.SIGHUP,
+			syscall.SIGTERM,
+			syscall.SIGABRT,
+		)
+
+		for {
+			select {
+			case sig := <-sigChan:
+				if sig != triggerScanSignal {
+					log.Info(ctx, "Received termination signal", "signal", sig)
+					return interrupted
+				}
+				log.Info(ctx, "Received signal, triggering a new scan", "signal", sig)
+				start := time.Now()
+				err := scanner.RescanAll(ctx, false)
+				if err != nil {
+					log.Error(ctx, "Error scanning", err)
+				}
+				log.Info(ctx, "Triggered scan complete", "elapsed", time.Since(start).Round(100*time.Millisecond))
+			case <-ctx.Done():
+				return nil
+			}
+		}
 	}
-	signal.Notify(sigChan, signals...)
 }

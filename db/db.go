@@ -34,6 +34,11 @@ func Db() *sql.DB {
 	})
 }
 
+func Close() error {
+	log.Info("Closing Database")
+	return Db().Close()
+}
+
 func EnsureLatestVersion() {
 	db := Db()
 

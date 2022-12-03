@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -53,6 +54,9 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"devShowArtistPage":       conf.Server.DevShowArtistPage,
 			"listenBrainzEnabled":     conf.Server.ListenBrainz.Enabled,
 		}
+		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
+			appConfig["loginBackgroundURL"] = path.Join(conf.Server.BaseURL, conf.Server.UILoginBackgroundURL)
+		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {
 			appConfig["auth"] = auth
@@ -73,6 +77,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"AppConfig": string(j),
 			"Version":   version,
 		}
+		w.Header().Set("Content-Type", "text/html")
 		err = t.Execute(w, data)
 		if err != nil {
 			log.Error(r, "Could not execute `index.html` template", err)
