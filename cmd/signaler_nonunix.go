@@ -18,6 +18,7 @@ func startSignaler(ctx context.Context) func() error {
 		signal.Notify(sigChan, os.Interrupt)
 		select {
 		case <-sigChan:
+			log.Info(ctx, "Received termination signal", "signal", sig)
 			return interrupted
 		case <-ctx.Done():
 			return nil

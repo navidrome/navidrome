@@ -33,6 +33,7 @@ func startSignaler(ctx context.Context) func() error {
 			select {
 			case sig := <-sigChan:
 				if sig != triggerScanSignal {
+					log.Info(ctx, "Received termination signal", "signal", sig)
 					return interrupted
 				}
 				log.Info(ctx, "Received signal, triggering a new scan", "signal", sig)
