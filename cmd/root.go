@@ -88,7 +88,8 @@ func startServer() (func() error, func(err error)) {
 				a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 			}
 			if conf.Server.Prometheus.Enabled {
-				go core.MetricsWorker()
+				// blocking call because takes <1ms but useful if fails
+				core.WriteInitialMetrics(core.GetPrometheusMetrics())
 				a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
 			}
 			return a.Run(fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))

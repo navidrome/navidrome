@@ -3,8 +3,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -15,11 +17,29 @@ import (
 // typical Prometheus scrape interval is in 10..30 seconds range
 const METRICS_INTERVAL = 15 * time.Second
 
+// Prometheus metrics requieres initialization. But not more than once
+var prometheusMetricsInstance *PrometheusMetrics
+
 type PrometheusMetrics struct {
-	DbTotal *prometheus.GaugeVec
+	DbTotal           *prometheus.GaugeVec
+	VersionInfo       *prometheus.GaugeVec
+	LastMediaScan     *prometheus.GaugeVec
+	MediaScansCounter *prometheus.CounterVec
 }
 
-func NewPrometheusMetrics() *PrometheusMetrics {
+func GetPrometheusMetrics() *PrometheusMetrics {
+	if prometheusMetricsInstance == nil {
+		var err error
+		err, prometheusMetricsInstance = NewPrometheusMetrics()
+		if prometheusMetricsInstance == nil {
+			panic(fmt.Sprintf("Unable to create Prometheus metrics instance. Error: %v", err))
+		}
+		fmt.Printf("GetPrometheusMetrics: %v\n", prometheusMetricsInstance)
+	}
+	return prometheusMetricsInstance
+}
+
+func NewPrometheusMetrics() (error, *PrometheusMetrics) {
 	res := &PrometheusMetrics{
 		DbTotal: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -28,13 +48,50 @@ func NewPrometheusMetrics() *PrometheusMetrics {
 			},
 			[]string{"model"},
 		),
+		VersionInfo: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "navidrome_info",
+				Help: "Information about Navidrome version",
+			},
+			[]string{"version"},
+		),
+		LastMediaScan: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "media_scan_last",
+				Help: "Last media scan timestamp by success",
+			},
+			[]string{"success"},
+		),
+		MediaScansCounter: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "media_scans",
+				Help: "Total success media scans by success",
+			},
+			[]string{"success"},
+		),
 	}
+
 	err := prometheus.DefaultRegisterer.Register(res.DbTotal)
 	if err != nil {
 		log.Error("Unable to register db_model_totals metrics")
-		return nil
+		return err, nil
 	}
-	return res
+	err = prometheus.DefaultRegisterer.Register(res.VersionInfo)
+	if err != nil {
+		log.Error("Unable to register navidrome_info metrics")
+		return err, nil
+	}
+	err = prometheus.DefaultRegisterer.Register(res.LastMediaScan)
+	if err != nil {
+		log.Error("Unable to register media_scan_last metrics")
+		return err, nil
+	}
+	err = prometheus.DefaultRegisterer.Register(res.MediaScansCounter)
+	if err != nil {
+		log.Error("Unable to register media_scans metrics")
+		return err, nil
+	}
+	return nil, res
 }
 
 func processSqlAggregateMetrics(ctx context.Context, dataStore model.DataStore, targetGauge *prometheus.GaugeVec) {
@@ -60,26 +117,16 @@ func processSqlAggregateMetrics(ctx context.Context, dataStore model.DataStore, 
 	targetGauge.With(prometheus.Labels{"model": "user"}).Set(float64(users_count))
 }
 
-func processMetrics(ctx context.Context, dataStore model.DataStore, metrics *PrometheusMetrics) {
-	processSqlAggregateMetrics(ctx, dataStore, metrics.DbTotal)
+func WriteInitialMetrics(metrics *PrometheusMetrics) {
+	metrics.VersionInfo.With(prometheus.Labels{"version": consts.Version}).Set(1)
 }
 
-func MetricsWorker() {
+func WriteAfterScanMetrics(ctx context.Context, metrics *PrometheusMetrics, success bool) {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	ctx := context.Background()
-	metrics := NewPrometheusMetrics()
-	if metrics == nil {
-		log.Error("Unable to create Prometheus metrics")
-		return
-	}
+	processSqlAggregateMetrics(ctx, dataStore, metrics.DbTotal)
 
-	for {
-		begin_at := float64(time.Now().UnixNano()) / 1000_000_000
-		processMetrics(ctx, dataStore, metrics)
-		elapsed := float64(time.Now().UnixNano())/1000_000_000 - begin_at
-		log.Debug(fmt.Sprintf("Metrics collecting takes %.5f s\n", elapsed))
-
-		time.Sleep(METRICS_INTERVAL)
-	}
+	scanLabels := prometheus.Labels{"success": strconv.FormatBool(success)}
+	metrics.LastMediaScan.With(scanLabels).SetToCurrentTime()
+	metrics.MediaScansCounter.With(scanLabels).Inc()
 }
