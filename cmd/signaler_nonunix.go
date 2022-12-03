@@ -1,4 +1,4 @@
-//go:build !unix
+//go:build windows || plan9
 
 package cmd
 
@@ -17,7 +17,7 @@ func startSignaler(ctx context.Context) func() error {
 		var sigChan = make(chan os.Signal, 1)
 		signal.Notify(sigChan, os.Interrupt)
 		select {
-		case <-sigChan:
+		case sig := <-sigChan:
 			log.Info(ctx, "Received termination signal", "signal", sig)
 			return interrupted
 		case <-ctx.Done():
