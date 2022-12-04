@@ -10,7 +10,7 @@ import (
 
 var _ = Describe("Parser", func() {
 	var e *Parser
-	// This file should have 0222 (no read) permissions
+	// This file will have 0222 (no read) permission during these tests
 	var accessForbiddenFile = "tests/fixtures/test_no_read_permission.ogg"
 
 	BeforeEach(func() {
