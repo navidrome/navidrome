@@ -36,7 +36,7 @@ var _ = Describe("walk_dir_tree", func() {
 			Expect(collected[baseDir]).To(MatchFields(IgnoreExtras, Fields{
 				"HasImages":       BeTrue(),
 				"HasPlaylist":     BeFalse(),
-				"AudioFilesCount": BeNumerically("==", 4),
+				"AudioFilesCount": BeNumerically("==", 5),
 			}))
 			Expect(collected[filepath.Join(baseDir, "playlists")].HasPlaylist).To(BeTrue())
 			Expect(collected).To(HaveKey(filepath.Join(baseDir, "symlink2dir")))
