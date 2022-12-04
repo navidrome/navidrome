@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
@@ -13,9 +12,6 @@ import (
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/prometheus/client_golang/prometheus"
 )
-
-// typical Prometheus scrape interval is in 10..30 seconds range
-const METRICS_INTERVAL = 15 * time.Second
 
 // Prometheus metrics requieres initialization. But not more than once
 var prometheusMetricsInstance *PrometheusMetrics
