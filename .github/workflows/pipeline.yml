@@ -44,10 +44,11 @@ jobs:
 
   go:
     name: Test with Go ${{ matrix.go_version }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         go_version: [1.18.x,1.19.x]
+        os: [ubuntu-latest, windows-latest]
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
