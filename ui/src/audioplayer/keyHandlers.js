@@ -25,7 +25,9 @@ const keyHandlers = (audioInstance, playerState) => {
     PREV_SONG: (e) => {
       if (!e.metaKey && prevSong()) audioInstance && audioInstance.playPrev()
     },
-
+    CURRENT_SONG: () => {
+      window.location.href = `#/album/${playerState.current?.song.albumId}/show`
+    },
     NEXT_SONG: (e) => {
       if (!e.metaKey && nextSong()) audioInstance && audioInstance.playNext()
     },
