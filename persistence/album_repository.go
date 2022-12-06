@@ -3,8 +3,6 @@ package persistence
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -158,8 +156,6 @@ func (r *albumRepository) Refresh(ids ...string) error {
 	return nil
 }
 
-const zwsp = string('\u200b')
-
 type refreshAlbum struct {
 	model.Album
 	CurrentId      string
@@ -188,20 +184,16 @@ func (r *albumRepository) refresh(ids ...string) error {
 		max(f.updated_at) as max_updated_at,
 		max(f.created_at) as max_created_at,
 		a.id as current_id,  
-		group_concat(f.comment, "`+zwsp+`") as comments,
+		group_concat(f.comment, "`+consts.Zwsp+`") as comments,
 		group_concat(f.mbz_album_id, ' ') as mbz_album_id, 
 		group_concat(f.disc_subtitle, ' ') as disc_subtitles,
 		group_concat(f.artist, ' ') as song_artists, 
 		group_concat(f.artist_id, ' ') as song_artist_ids, 
 		group_concat(f.album_artist_id, ' ') as album_artist_ids, 
 		group_concat(f.year, ' ') as years`,
-		"cf.cover_art_id", "cf.cover_art_path",
 		"mfg.genre_ids").
 		From("media_file f").
 		LeftJoin("album a on f.album_id = a.id").
-		LeftJoin(`(select album_id, id as cover_art_id, path as cover_art_path from media_file 
-			where has_cover_art = true and album_id in ` + stringListIds + ` group by album_id) cf 
-			on cf.album_id = f.album_id`).
 		LeftJoin(`(select mf.album_id, group_concat(genre_id, ' ') as genre_ids from media_file_genres
 			left join media_file mf on mf.id = media_file_id where mf.album_id in ` +
 			stringListIds + ` group by mf.album_id) mfg on mfg.album_id = f.album_id`).
@@ -213,19 +205,6 @@ func (r *albumRepository) refresh(ids ...string) error {
 	toInsert := 0
 	toUpdate := 0
 	for _, al := range albums {
-		if al.CoverArtPath == "" || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
-			if path := getCoverFromPath(al.Path, al.CoverArtPath); path != "" {
-				al.CoverArtId = "al-" + al.ID
-				al.CoverArtPath = path
-			}
-		}
-
-		if al.CoverArtId != "" {
-			log.Trace(r.ctx, "Found album art", "id", al.ID, "name", al.Name, "coverArtPath", al.CoverArtPath, "coverArtId", al.CoverArtId)
-		} else {
-			log.Trace(r.ctx, "Could not find album art", "id", al.ID, "name", al.Name)
-		}
-
 		// Somehow, beego cannot parse the datetimes for the query above
 		if al.UpdatedAt, err = time.Parse(time.RFC3339Nano, al.MaxUpdatedAt); err != nil {
 			al.UpdatedAt = time.Now()
@@ -237,7 +216,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 		al.AlbumArtistID, al.AlbumArtist = getAlbumArtist(al)
 		al.MinYear = getMinYear(al.Years)
 		al.MbzAlbumID = getMostFrequentMbzID(r.ctx, al.MbzAlbumID, r.tableName, al.Name)
-		al.Comment = getComment(al.Comments, zwsp)
+		al.Comment = getComment(al.Comments, consts.Zwsp)
 		if al.CurrentId != "" {
 			toUpdate++
 		} else {
@@ -309,43 +288,6 @@ func getMinYear(years string) int {
 		}
 	}
 	return 0
-}
-
-// GetCoverFromPath accepts a path to a file, and returns a path to an eligible cover image from the
-// file's directory (as configured with CoverArtPriority). If no cover file is found, among
-// available choices, or an error occurs, an empty string is returned. If HasEmbeddedCover is true,
-// and 'embedded' is matched among eligible choices, GetCoverFromPath will return early with an
-// empty path.
-func getCoverFromPath(mediaPath string, embeddedPath string) string {
-	n, err := os.Open(filepath.Dir(mediaPath))
-	if err != nil {
-		return ""
-	}
-
-	defer n.Close()
-	names, err := n.Readdirnames(-1)
-	if err != nil {
-		return ""
-	}
-
-	for _, p := range strings.Split(conf.Server.CoverArtPriority, ",") {
-		pat := strings.ToLower(strings.TrimSpace(p))
-		if pat == "embedded" {
-			if embeddedPath != "" {
-				return ""
-			}
-			continue
-		}
-
-		for _, name := range names {
-			match, _ := filepath.Match(pat, strings.ToLower(name))
-			if match && utils.IsImageFile(name) {
-				return filepath.Join(filepath.Dir(mediaPath), name)
-			}
-		}
-	}
-
-	return ""
 }
 
 func (r *albumRepository) purgeEmpty() error {

@@ -4,8 +4,10 @@ import (
 	"context"
 	"image"
 	"os"
+	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -141,4 +143,60 @@ var _ = Describe("Artwork", func() {
 			})
 		})
 	})
+
+	Describe("getAlbumCoverFromPath", func() {
+		var testFolder, embeddedPath string
+		var testPath []string
+		BeforeEach(func() {
+			testFolder, _ = os.MkdirTemp("", "album_persistence_tests")
+			if err := os.MkdirAll(testFolder, 0777); err != nil {
+				panic(err)
+			}
+			if _, err := os.Create(filepath.Join(testFolder, "Cover.jpeg")); err != nil {
+				panic(err)
+			}
+			if _, err := os.Create(filepath.Join(testFolder, "FRONT.PNG")); err != nil {
+				panic(err)
+			}
+			testPath = []string{filepath.Join(testFolder, "somefile.test")}
+			embeddedPath = filepath.Join(testFolder, "somefile.mp3")
+
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
+		})
+		AfterEach(func() {
+			_ = os.RemoveAll(testFolder)
+		})
+
+		It("returns audio file for embedded cover", func() {
+			conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
+			Expect(getAlbumCoverFromPath(testPath, embeddedPath)).To(Equal(""))
+		})
+
+		It("returns external file when no embedded cover exists", func() {
+			conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
+			Expect(getAlbumCoverFromPath(testPath, "")).To(Equal(filepath.Join(testFolder, "Cover.jpeg")))
+		})
+
+		It("returns embedded cover even if not first choice", func() {
+			conf.Server.CoverArtPriority = "something.png, embedded, cover.*, front.*"
+			Expect(getAlbumCoverFromPath(testPath, embeddedPath)).To(Equal(""))
+		})
+
+		It("returns first correct match case-insensitively", func() {
+			conf.Server.CoverArtPriority = "embedded, cover.jpg, front.svg, front.png"
+			Expect(getAlbumCoverFromPath(testPath, "")).To(Equal(filepath.Join(testFolder, "FRONT.PNG")))
+		})
+
+		It("returns match for embedded pattern", func() {
+			conf.Server.CoverArtPriority = "embedded, cover.jp?g, front.png"
+			Expect(getAlbumCoverFromPath(testPath, "")).To(Equal(filepath.Join(testFolder, "Cover.jpeg")))
+		})
+
+		It("returns empty string if no match was found", func() {
+			conf.Server.CoverArtPriority = "embedded, cover.jpg, front.apng"
+			Expect(getAlbumCoverFromPath(testPath, "")).To(Equal(""))
+		})
+	})
+
 })

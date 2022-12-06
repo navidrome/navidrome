@@ -12,10 +12,13 @@ import (
 	_ "image/png"
 	"io"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
 	"github.com/navidrome/navidrome/conf"
@@ -25,6 +28,7 @@ import (
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/cache"
+	"golang.org/x/exp/slices"
 	_ "golang.org/x/image/webp"
 )
 
@@ -43,71 +47,49 @@ type artwork struct {
 	cache cache.FileCache
 }
 
-type imageInfo struct {
+const albumArtworkIdPrefix = "al-"
+
+type artworkKey struct {
 	a          *artwork
-	id         string
-	path       string
+	artworkId  model.ArtworkID
 	size       int
 	lastUpdate time.Time
 }
 
-func (ci *imageInfo) Key() string {
-	return fmt.Sprintf("%s.%d.%s.%d", ci.path, ci.size, ci.lastUpdate.Format(time.RFC3339Nano), conf.Server.CoverJpegQuality)
+func (k *artworkKey) Key() string {
+	return fmt.Sprintf("%s.%d.%d.%d", k.artworkId.ID, k.size, k.artworkId.LastAccess.UnixNano(), conf.Server.CoverJpegQuality)
 }
 
 func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
-	path, lastUpdate, err := a.getImagePath(ctx, id)
-	if err != nil && !errors.Is(err, model.ErrNotFound) {
+	artworkId, err := model.ParseArtworkID(id)
+	if err != nil {
 		return nil, err
 	}
+	key := &artworkKey{a: a, artworkId: artworkId, size: size}
 
-	if !conf.Server.DevFastAccessCoverArt {
-		if stat, err := os.Stat(path); err == nil {
-			lastUpdate = stat.ModTime()
-		}
-	}
-
-	info := &imageInfo{
-		a:          a,
-		id:         id,
-		path:       path,
-		size:       size,
-		lastUpdate: lastUpdate,
-	}
-
-	r, err := a.cache.Get(ctx, info)
+	r, err := a.cache.Get(ctx, key)
 	if err != nil {
-		log.Error(ctx, "Error accessing image cache", "path", path, "size", size, err)
+		log.Error(ctx, "Error accessing image cache", "id", id, "size", size, err)
 		return nil, err
 	}
 	return r, err
 }
 
-func (a *artwork) getImagePath(ctx context.Context, id string) (path string, lastUpdated time.Time, err error) {
+func (a *artwork) getImagePath(ctx context.Context, id model.ArtworkID) (path string, err error) {
 	// If id is an album cover ID
-	if strings.HasPrefix(id, "al-") {
-		log.Trace(ctx, "Looking for album art", "id", id)
-		id = strings.TrimPrefix(id, "al-")
-		var al *model.Album
-		al, err = a.ds.Album(ctx).Get(id)
-		if err != nil {
-			return
-		}
-		if al.CoverArtId == "" {
-			err = model.ErrNotFound
-		}
-		return al.CoverArtPath, al.UpdatedAt, err
+	if id.Kind == model.AlbumArtwork {
+		return a.getAlbumArtPath(ctx, id.ID)
 	}
 
 	log.Trace(ctx, "Looking for media file art", "id", id)
 
 	// Check if id is a mediaFile id
 	var mf *model.MediaFile
-	mf, err = a.ds.MediaFile(ctx).Get(id)
+	mf, err = a.ds.MediaFile(ctx).Get(id.ID)
 
 	// If it is not, may be an albumId
 	if errors.Is(err, model.ErrNotFound) {
-		return a.getImagePath(ctx, "al-"+id)
+		return a.getImagePath(ctx, mf.AlbumCoverArtID())
 	}
 	if err != nil {
 		return
@@ -115,15 +97,70 @@ func (a *artwork) getImagePath(ctx context.Context, id string) (path string, las
 
 	// If it is a mediaFile, and it has cover art, return it (if feature is disabled, skip)
 	if !conf.Server.DevFastAccessCoverArt && mf.HasCoverArt {
-		return mf.Path, mf.UpdatedAt, nil
+		return mf.Path, nil
 	}
 
 	// if the mediaFile does not have a coverArt, fallback to the album cover
-	log.Trace(ctx, "Media file does not contain art. Falling back to album art", "id", id, "albumId", "al-"+mf.AlbumID)
-	return a.getImagePath(ctx, "al-"+mf.AlbumID)
+	log.Trace(ctx, "Media file does not contain art. Falling back to album art", "id", id, "albumId", albumArtworkIdPrefix+mf.AlbumID)
+	return a.getImagePath(ctx, mf.AlbumCoverArtID())
 }
 
-func (a *artwork) getArtwork(ctx context.Context, id string, path string, size int) (reader io.ReadCloser, err error) {
+func (a *artwork) getAlbumArtPath(ctx context.Context, id string) (string, error) {
+	log.Trace(ctx, "Looking for album art", "id", id)
+	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": id}})
+	if err != nil {
+		return "", nil
+	}
+	var paths []string
+	var embeddedPath string
+	for _, mf := range mfs {
+		dir, _ := filepath.Split(mf.Path)
+		paths = append(paths, dir)
+		if embeddedPath == "" && mf.HasCoverArt {
+			embeddedPath = mf.Path
+		}
+	}
+	if len(paths) == 0 && embeddedPath == "" {
+		return "", model.ErrNotFound
+	}
+
+	sort.Strings(paths)
+	paths = slices.Compact(paths)
+	return getAlbumCoverFromPath(paths, embeddedPath), nil
+}
+
+// getAlbumCoverFromPath accepts a path to a file, and returns a path to an eligible cover image from the
+// file's directory (as configured with CoverArtPriority). If no cover file is found, among
+// available choices, or an error occurs, an empty string is returned. If HasEmbeddedCover is true,
+// and 'embedded' is matched among eligible choices, GetCoverFromPath will return early with an
+// empty path.
+func getAlbumCoverFromPath(albumPaths []string, embeddedPath string) string {
+	for _, p := range strings.Split(conf.Server.CoverArtPriority, ",") {
+		pat := strings.ToLower(strings.TrimSpace(p))
+		if pat == "embedded" {
+			if embeddedPath != "" {
+				return embeddedPath
+			}
+			continue
+		}
+
+		for _, path := range albumPaths {
+			glob := filepath.Join(path, p)
+			matches, err := filepath.Glob(glob)
+			if err != nil {
+				log.Warn("Error searching for cover art", "path", glob)
+				continue
+			}
+			if len(matches) > 0 {
+				return matches[0]
+			}
+		}
+	}
+
+	return ""
+}
+
+func (a *artwork) getArtwork(ctx context.Context, id model.ArtworkID, path string, size int) (reader io.ReadCloser, err error) {
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
@@ -151,7 +188,7 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 	} else {
 		// If requested a resized image, get the original (possibly from cache) and resize it
 		var r io.ReadCloser
-		r, err = a.Get(ctx, id, 0)
+		r, err = a.Get(ctx, id.String(), 0)
 		if err != nil {
 			return
 		}
@@ -218,10 +255,15 @@ func GetImageCache() ArtworkCache {
 	onceImageCache.Do(func() {
 		instanceImageCache = cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
 			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
-				info := arg.(*imageInfo)
-				reader, err := info.a.getArtwork(ctx, info.id, info.path, info.size)
+				info := arg.(*artworkKey)
+				path, err := info.a.getImagePath(ctx, info.artworkId)
+				if err != nil && !errors.Is(err, model.ErrNotFound) {
+					return nil, err
+				}
+
+				reader, err := info.a.getArtwork(ctx, info.artworkId, path, info.size)
 				if err != nil {
-					log.Error(ctx, "Error loading artwork art", "path", info.path, "size", info.size, err)
+					log.Error(ctx, "Error loading artwork art", "path", path, "size", info.size, err)
 					return nil, err
 				}
 				return reader, nil

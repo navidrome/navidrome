@@ -55,8 +55,16 @@ type MediaFile struct {
 	UpdatedAt            time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
 }
 
-func (mf *MediaFile) ContentType() string {
+func (mf MediaFile) ContentType() string {
 	return mime.TypeByExtension("." + mf.Suffix)
+}
+
+func (mf MediaFile) CoverArtID() ArtworkID {
+	return artworkIDFromMediaFile(mf)
+}
+
+func (mf MediaFile) AlbumCoverArtID() ArtworkID {
+	return artworkIDFromAlbum(Album{ID: mf.AlbumID, UpdatedAt: mf.UpdatedAt})
 }
 
 type MediaFiles []MediaFile

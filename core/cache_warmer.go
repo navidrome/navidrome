@@ -73,7 +73,7 @@ func (w *warmer) execute(workload interface{}) {
 	ctx := context.Background()
 	item := workload.(artworkItem)
 	log.Trace(ctx, "Pre-caching album artwork", "albumID", item.albumID)
-	r, err := w.artwork.Get(ctx, item.albumID, 0)
+	r, err := w.artwork.Get(ctx, "al-"+item.albumID+"-0", 0)
 	if err != nil {
 		log.Warn("Error pre-caching artwork from album", "id", item.albumID, err)
 		return
