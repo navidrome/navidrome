@@ -3,6 +3,8 @@ package model
 import (
 	"mime"
 	"time"
+
+	"github.com/navidrome/navidrome/conf"
 )
 
 type MediaFile struct {
@@ -60,10 +62,11 @@ func (mf MediaFile) ContentType() string {
 }
 
 func (mf MediaFile) CoverArtID() ArtworkID {
-	return artworkIDFromMediaFile(mf)
-}
-
-func (mf MediaFile) AlbumCoverArtID() ArtworkID {
+	// If it is a mediaFile, and it has cover art, return it (if feature is disabled, skip)
+	if mf.HasCoverArt && !conf.Server.DevFastAccessCoverArt {
+		return artworkIDFromMediaFile(mf)
+	}
+	// if the mediaFile does not have a coverArt, fallback to the album cover
 	return artworkIDFromAlbum(Album{ID: mf.AlbumID, UpdatedAt: mf.UpdatedAt})
 }
 

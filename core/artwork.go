@@ -61,9 +61,13 @@ func (k *artworkKey) Key() string {
 }
 
 func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
-	artworkId, err := model.ParseArtworkID(id)
-	if err != nil {
-		return nil, err
+	var artworkId model.ArtworkID
+	var err error
+	if id != "" {
+		artworkId, err = model.ParseArtworkID(id)
+		if err != nil {
+			return nil, err
+		}
 	}
 	key := &artworkKey{a: a, artworkId: artworkId, size: size}
 
@@ -76,37 +80,24 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, 
 }
 
 func (a *artwork) getImagePath(ctx context.Context, id model.ArtworkID) (path string, err error) {
-	// If id is an album cover ID
-	if id.Kind == model.AlbumArtwork {
+	if id.Kind == model.KindMediaFileArtwork {
+		log.Trace(ctx, "Looking for media file art", "id", id)
+		// Check if id is a mediaFile id
+		var mf *model.MediaFile
+		mf, err = a.ds.MediaFile(ctx).Get(id.ID)
+		if err != nil {
+			return "", err
+		}
+		id = mf.CoverArtID()
+		path = mf.Path
+	}
+	if id.Kind == model.KindAlbumArtwork {
 		return a.getAlbumArtPath(ctx, id.ID)
 	}
-
-	log.Trace(ctx, "Looking for media file art", "id", id)
-
-	// Check if id is a mediaFile id
-	var mf *model.MediaFile
-	mf, err = a.ds.MediaFile(ctx).Get(id.ID)
-
-	// If it is not, may be an albumId
-	if errors.Is(err, model.ErrNotFound) {
-		return a.getImagePath(ctx, mf.AlbumCoverArtID())
-	}
-	if err != nil {
-		return
-	}
-
-	// If it is a mediaFile, and it has cover art, return it (if feature is disabled, skip)
-	if !conf.Server.DevFastAccessCoverArt && mf.HasCoverArt {
-		return mf.Path, nil
-	}
-
-	// if the mediaFile does not have a coverArt, fallback to the album cover
-	log.Trace(ctx, "Media file does not contain art. Falling back to album art", "id", id, "albumId", albumArtworkIdPrefix+mf.AlbumID)
-	return a.getImagePath(ctx, mf.AlbumCoverArtID())
+	return path, nil
 }
 
 func (a *artwork) getAlbumArtPath(ctx context.Context, id string) (string, error) {
-	log.Trace(ctx, "Looking for album art", "id", id)
 	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": id}})
 	if err != nil {
 		return "", nil

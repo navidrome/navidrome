@@ -11,8 +11,8 @@ import (
 type Kind struct{ prefix string }
 
 var (
-	MediaFileArtwork = Kind{"mf"}
-	AlbumArtwork     = Kind{"al"}
+	KindMediaFileArtwork = Kind{"mf"}
+	KindAlbumArtwork     = Kind{"al"}
 )
 
 type ArtworkID struct {
@@ -34,7 +34,7 @@ func ParseArtworkID(id string) (ArtworkID, error) {
 	if err != nil {
 		return ArtworkID{}, err
 	}
-	if parts[0] != AlbumArtwork.prefix && parts[0] != MediaFileArtwork.prefix {
+	if parts[0] != KindAlbumArtwork.prefix && parts[0] != KindMediaFileArtwork.prefix {
 		return ArtworkID{}, errors.New("invalid artwork kind")
 	}
 	return ArtworkID{
@@ -46,7 +46,7 @@ func ParseArtworkID(id string) (ArtworkID, error) {
 
 func artworkIDFromAlbum(al Album) ArtworkID {
 	return ArtworkID{
-		Kind:       AlbumArtwork,
+		Kind:       KindAlbumArtwork,
 		ID:         al.ID,
 		LastAccess: al.UpdatedAt,
 	}
@@ -54,7 +54,7 @@ func artworkIDFromAlbum(al Album) ArtworkID {
 
 func artworkIDFromMediaFile(mf MediaFile) ArtworkID {
 	return ArtworkID{
-		Kind:       MediaFileArtwork,
+		Kind:       KindMediaFileArtwork,
 		ID:         mf.ID,
 		LastAccess: mf.UpdatedAt,
 	}
