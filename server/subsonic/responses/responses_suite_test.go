@@ -1,9 +1,10 @@
 package responses
 
 import (
+	"strings"
 	"testing"
 
-	"github.com/bradleyjkemp/cupaloy"
+	"github.com/bradleyjkemp/cupaloy/v2"
 	"github.com/navidrome/navidrome/log"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -26,15 +27,16 @@ type snapshotMatcher struct {
 }
 
 func (matcher snapshotMatcher) Match(actual interface{}) (success bool, err error) {
-	err = matcher.c.SnapshotMulti(ginkgo.CurrentSpecReport().FullText(), actual)
+	actualJson := strings.TrimSpace(string(actual.([]byte)))
+	err = matcher.c.SnapshotWithName(ginkgo.CurrentSpecReport().FullText(), actualJson)
 	success = err == nil
 	return
 }
 
-func (matcher snapshotMatcher) FailureMessage(actual interface{}) (message string) {
+func (matcher snapshotMatcher) FailureMessage(_ interface{}) (message string) {
 	return "Expected to match saved snapshot\n"
 }
 
-func (matcher snapshotMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+func (matcher snapshotMatcher) NegatedFailureMessage(_ interface{}) (message string) {
 	return "Expected to not match saved snapshot\n"
 }
