@@ -23,36 +23,37 @@ import (
 
 const Version = "1.16.1"
 
-type handler = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
+type handler = func(*http.Request) (*responses.Subsonic, error)
+type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
 type Router struct {
 	http.Handler
-	DataStore        model.DataStore
-	Artwork          core.Artwork
-	Streamer         core.MediaStreamer
-	Archiver         core.Archiver
-	Players          core.Players
-	ExternalMetadata core.ExternalMetadata
-	Playlists        core.Playlists
-	Scanner          scanner.Scanner
-	Broker           events.Broker
-	Scrobbler        scrobbler.PlayTracker
+	ds               model.DataStore
+	artwork          core.Artwork
+	streamer         core.MediaStreamer
+	archiver         core.Archiver
+	players          core.Players
+	externalMetadata core.ExternalMetadata
+	playlists        core.Playlists
+	scanner          scanner.Scanner
+	broker           events.Broker
+	scrobbler        scrobbler.PlayTracker
 }
 
 func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker) *Router {
 	r := &Router{
-		DataStore:        ds,
-		Artwork:          artwork,
-		Streamer:         streamer,
-		Archiver:         archiver,
-		Players:          players,
-		ExternalMetadata: externalMetadata,
-		Playlists:        playlists,
-		Scanner:          scanner,
-		Broker:           broker,
-		Scrobbler:        scrobbler,
+		ds:               ds,
+		artwork:          artwork,
+		streamer:         streamer,
+		archiver:         archiver,
+		players:          players,
+		externalMetadata: externalMetadata,
+		playlists:        playlists,
+		scanner:          scanner,
+		broker:           broker,
+		scrobbler:        scrobbler,
 	}
 	r.Handler = r.routes()
 	return r
@@ -63,100 +64,89 @@ func (api *Router) routes() http.Handler {
 
 	r.Use(postFormToQueryParams)
 	r.Use(checkRequiredParameters)
-	r.Use(authenticate(api.DataStore))
+	r.Use(authenticate(api.ds))
 	// TODO Validate version
 
 	// Subsonic endpoints, grouped by controller
 	r.Group(func(r chi.Router) {
-		c := initSystemController(api)
-		withPlayer := r.With(getPlayer(api.Players))
-		h(withPlayer, "ping", c.Ping)
-		h(withPlayer, "getLicense", c.GetLicense)
+		r.Use(getPlayer(api.players))
+		h(r, "ping", api.Ping)
+		h(r, "getLicense", api.GetLicense)
 	})
 	r.Group(func(r chi.Router) {
-		c := initBrowsingController(api)
-		withPlayer := r.With(getPlayer(api.Players))
-		h(withPlayer, "getMusicFolders", c.GetMusicFolders)
-		h(withPlayer, "getIndexes", c.GetIndexes)
-		h(withPlayer, "getArtists", c.GetArtists)
-		h(withPlayer, "getGenres", c.GetGenres)
-		h(withPlayer, "getMusicDirectory", c.GetMusicDirectory)
-		h(withPlayer, "getArtist", c.GetArtist)
-		h(withPlayer, "getAlbum", c.GetAlbum)
-		h(withPlayer, "getSong", c.GetSong)
-		h(withPlayer, "getArtistInfo", c.GetArtistInfo)
-		h(withPlayer, "getArtistInfo2", c.GetArtistInfo2)
-		h(withPlayer, "getTopSongs", c.GetTopSongs)
-		h(withPlayer, "getSimilarSongs", c.GetSimilarSongs)
-		h(withPlayer, "getSimilarSongs2", c.GetSimilarSongs2)
+		r.Use(getPlayer(api.players))
+		h(r, "getMusicFolders", api.GetMusicFolders)
+		h(r, "getIndexes", api.GetIndexes)
+		h(r, "getArtists", api.GetArtists)
+		h(r, "getGenres", api.GetGenres)
+		h(r, "getMusicDirectory", api.GetMusicDirectory)
+		h(r, "getArtist", api.GetArtist)
+		h(r, "getAlbum", api.GetAlbum)
+		h(r, "getSong", api.GetSong)
+		h(r, "getArtistInfo", api.GetArtistInfo)
+		h(r, "getArtistInfo2", api.GetArtistInfo2)
+		h(r, "getTopSongs", api.GetTopSongs)
+		h(r, "getSimilarSongs", api.GetSimilarSongs)
+		h(r, "getSimilarSongs2", api.GetSimilarSongs2)
 	})
 	r.Group(func(r chi.Router) {
-		c := initAlbumListController(api)
-		withPlayer := r.With(getPlayer(api.Players))
-		h(withPlayer, "getAlbumList", c.GetAlbumList)
-		h(withPlayer, "getAlbumList2", c.GetAlbumList2)
-		h(withPlayer, "getStarred", c.GetStarred)
-		h(withPlayer, "getStarred2", c.GetStarred2)
-		h(withPlayer, "getNowPlaying", c.GetNowPlaying)
-		h(withPlayer, "getRandomSongs", c.GetRandomSongs)
-		h(withPlayer, "getSongsByGenre", c.GetSongsByGenre)
+		r.Use(getPlayer(api.players))
+		hr(r, "getAlbumList", api.GetAlbumList)
+		hr(r, "getAlbumList2", api.GetAlbumList2)
+		h(r, "getStarred", api.GetStarred)
+		h(r, "getStarred2", api.GetStarred2)
+		h(r, "getNowPlaying", api.GetNowPlaying)
+		h(r, "getRandomSongs", api.GetRandomSongs)
+		h(r, "getSongsByGenre", api.GetSongsByGenre)
 	})
 	r.Group(func(r chi.Router) {
-		c := initMediaAnnotationController(api)
-		withPlayer := r.With(getPlayer(api.Players))
-		h(withPlayer, "setRating", c.SetRating)
-		h(withPlayer, "star", c.Star)
-		h(withPlayer, "unstar", c.Unstar)
-		h(withPlayer, "scrobble", c.Scrobble)
+		r.Use(getPlayer(api.players))
+		h(r, "setRating", api.SetRating)
+		h(r, "star", api.Star)
+		h(r, "unstar", api.Unstar)
+		h(r, "scrobble", api.Scrobble)
 	})
 	r.Group(func(r chi.Router) {
-		c := initPlaylistsController(api)
-		withPlayer := r.With(getPlayer(api.Players))
-		h(withPlayer, "getPlaylists", c.GetPlaylists)
-		h(withPlayer, "getPlaylist", c.GetPlaylist)
-		h(withPlayer, "createPlaylist", c.CreatePlaylist)
-		h(withPlayer, "deletePlaylist", c.DeletePlaylist)
-		h(withPlayer, "updatePlaylist", c.UpdatePlaylist)
+		r.Use(getPlayer(api.players))
+		h(r, "getPlaylists", api.GetPlaylists)
+		h(r, "getPlaylist", api.GetPlaylist)
+		h(r, "createPlaylist", api.CreatePlaylist)
+		h(r, "deletePlaylist", api.DeletePlaylist)
+		h(r, "updatePlaylist", api.UpdatePlaylist)
 	})
 	r.Group(func(r chi.Router) {
-		c := initBookmarksController(api)
-		withPlayer := r.With(getPlayer(api.Players))
-		h(withPlayer, "getBookmarks", c.GetBookmarks)
-		h(withPlayer, "createBookmark", c.CreateBookmark)
-		h(withPlayer, "deleteBookmark", c.DeleteBookmark)
-		h(withPlayer, "getPlayQueue", c.GetPlayQueue)
-		h(withPlayer, "savePlayQueue", c.SavePlayQueue)
+		r.Use(getPlayer(api.players))
+		h(r, "getBookmarks", api.GetBookmarks)
+		h(r, "createBookmark", api.CreateBookmark)
+		h(r, "deleteBookmark", api.DeleteBookmark)
+		h(r, "getPlayQueue", api.GetPlayQueue)
+		h(r, "savePlayQueue", api.SavePlayQueue)
 	})
 	r.Group(func(r chi.Router) {
-		c := initSearchingController(api)
-		withPlayer := r.With(getPlayer(api.Players))
-		h(withPlayer, "search2", c.Search2)
-		h(withPlayer, "search3", c.Search3)
+		r.Use(getPlayer(api.players))
+		h(r, "search2", api.Search2)
+		h(r, "search3", api.Search3)
 	})
 	r.Group(func(r chi.Router) {
-		c := initUsersController(api)
-		h(r, "getUser", c.GetUser)
-		h(r, "getUsers", c.GetUsers)
+		h(r, "getUser", api.GetUser)
+		h(r, "getUsers", api.GetUsers)
 	})
 	r.Group(func(r chi.Router) {
-		c := initLibraryScanningController(api)
-		h(r, "getScanStatus", c.GetScanStatus)
-		h(r, "startScan", c.StartScan)
+		h(r, "getScanStatus", api.GetScanStatus)
+		h(r, "startScan", api.StartScan)
 	})
 	r.Group(func(r chi.Router) {
-		c := initMediaRetrievalController(api)
 		// configure request throttling
 		maxRequests := utils.MaxInt(2, runtime.NumCPU())
-		withThrottle := r.With(middleware.ThrottleBacklog(maxRequests, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
-		h(withThrottle, "getAvatar", c.GetAvatar)
-		h(withThrottle, "getCoverArt", c.GetCoverArt)
-		h(withThrottle, "getLyrics", c.GetLyrics)
+		r.Use(middleware.ThrottleBacklog(maxRequests, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
+		hr(r, "getAvatar", api.GetAvatar)
+		hr(r, "getCoverArt", api.GetCoverArt)
+		h(r, "getLyrics", api.GetLyrics)
 	})
 	r.Group(func(r chi.Router) {
-		c := initStreamController(api)
-		withPlayer := r.With(getPlayer(api.Players))
-		h(withPlayer, "stream", c.Stream)
-		h(withPlayer, "download", c.Download)
+		r.Use(getPlayer(api.players))
+		hr(r, "stream", api.Stream)
+		hr(r, "download", api.Download)
 	})
 
 	// Not Implemented (yet?)
@@ -176,9 +166,15 @@ func (api *Router) routes() http.Handler {
 	return r
 }
 
-// Add the Subsonic handler, with and without `.view` extension
-// Ex: if path = `ping` it will create the routes `/ping` and `/ping.view`
+// Add a Subsonic handler
 func h(r chi.Router, path string, f handler) {
+	hr(r, path, func(_ http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+		return f(r)
+	})
+}
+
+// Add a Subsonic handler that requires a http.ResponseWriter (ex: stream, getCoverArt...)
+func hr(r chi.Router, path string, f handlerRaw) {
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)
 		if err != nil {
@@ -204,20 +200,18 @@ func h(r chi.Router, path string, f handler) {
 			sendResponse(w, r, res)
 		}
 	}
-	r.HandleFunc("/"+path, handle)
-	r.HandleFunc("/"+path+".view", handle)
+	addHandler(r, path, handle)
 }
 
 // Add a handler that returns 501 - Not implemented. Used to signal that an endpoint is not implemented yet
-func h501(r *chi.Mux, paths ...string) {
+func h501(r chi.Router, paths ...string) {
 	for _, path := range paths {
 		handle := func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("Cache-Control", "no-cache")
 			w.WriteHeader(501)
 			_, _ = w.Write([]byte("This endpoint is not implemented, but may be in future releases"))
 		}
-		r.HandleFunc("/"+path, handle)
-		r.HandleFunc("/"+path+".view", handle)
+		addHandler(r, path, handle)
 	}
 }
 
@@ -228,9 +222,13 @@ func h410(r chi.Router, paths ...string) {
 			w.WriteHeader(410)
 			_, _ = w.Write([]byte("This endpoint will not be implemented"))
 		}
-		r.HandleFunc("/"+path, handle)
-		r.HandleFunc("/"+path+".view", handle)
+		addHandler(r, path, handle)
 	}
+}
+
+func addHandler(r chi.Router, path string, handle func(w http.ResponseWriter, r *http.Request)) {
+	r.HandleFunc("/"+path, handle)
+	r.HandleFunc("/"+path+".view", handle)
 }
 
 func sendError(w http.ResponseWriter, r *http.Request, err error) {

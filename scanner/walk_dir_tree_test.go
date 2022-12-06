@@ -19,9 +19,9 @@ var _ = Describe("walk_dir_tree", func() {
 		It("reads all info correctly", func() {
 			var collected = dirMap{}
 			results := make(walkResults, 5000)
-			var err error
+			var errC = make(chan error)
 			go func() {
-				err = walkDirTree(context.TODO(), baseDir, results)
+				errC <- walkDirTree(context.Background(), baseDir, results)
 			}()
 
 			for {
@@ -32,11 +32,11 @@ var _ = Describe("walk_dir_tree", func() {
 				collected[stats.Path] = stats
 			}
 
-			Expect(err).To(BeNil())
+			Eventually(errC).Should(Receive(nil))
 			Expect(collected[baseDir]).To(MatchFields(IgnoreExtras, Fields{
 				"HasImages":       BeTrue(),
 				"HasPlaylist":     BeFalse(),
-				"AudioFilesCount": BeNumerically("==", 4),
+				"AudioFilesCount": BeNumerically("==", 5),
 			}))
 			Expect(collected[filepath.Join(baseDir, "playlists")].HasPlaylist).To(BeTrue())
 			Expect(collected).To(HaveKey(filepath.Join(baseDir, "symlink2dir")))

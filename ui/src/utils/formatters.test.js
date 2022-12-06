@@ -27,5 +27,7 @@ describe('formatDuration', () => {
     expect(formatDuration(3 * day + 3 * hour + 7 * minute)).toEqual(
       '3:03:07:00'
     )
+    expect(formatDuration(day)).toEqual('1:00:00:00')
+    expect(formatDuration(day + minute + 0.6)).toEqual('1:00:01:01')
   })
 })

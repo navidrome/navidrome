@@ -20,7 +20,6 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: 1.19
-        id: go
 
       - uses: actions/checkout@v3
 
@@ -53,22 +52,14 @@ jobs:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
 
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
       - name: Set up Go ${{ matrix.go_version }}
         uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go_version }}
-        id: go
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
-
-      - uses: actions/cache@v2
-        id: cache-go
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go_version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go_version }}-
+          cache: true
 
       - name: Download dependencies
         if: steps.cache-go.outputs.cache-hit != 'true'
@@ -77,7 +68,7 @@ jobs:
 
       - name: Test
         continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
-        run: go test -cover ./... -v
+        run: go test -race -cover ./... -v
 
   js:
     name: Build JS bundle
@@ -86,7 +77,7 @@ jobs:
       NODE_OPTIONS: '--max_old_space_size=4096'
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: 16
           cache: 'npm'
@@ -112,7 +103,7 @@ jobs:
           cd ui
           npm run build
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: js-bundle
           path: ui/build
@@ -128,7 +119,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: js-bundle
           path: ui/build
@@ -155,7 +146,7 @@ jobs:
         with:
           args: goreleaser release --rm-dist
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: binaries
           path: |
@@ -173,18 +164,18 @@ jobs:
     steps:
       - name: Set up QEMU
         id: qemu
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
         if: env.DOCKER_IMAGE != ''
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
         if: env.DOCKER_IMAGE != ''
 
       - uses: actions/checkout@v3
         if: env.DOCKER_IMAGE != ''
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         if: env.DOCKER_IMAGE != ''
         with:
           name: binaries

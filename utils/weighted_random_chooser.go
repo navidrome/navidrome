@@ -1,24 +1,19 @@
 package utils
 
 import (
+	"crypto/rand"
 	"errors"
-	"math/rand"
-	"time"
+	"math/big"
 )
 
 type WeightedChooser struct {
 	entries     []interface{}
 	weights     []int
 	totalWeight int
-	rng         *rand.Rand
 }
 
 func NewWeightedRandomChooser() *WeightedChooser {
-	src := rand.NewSource(time.Now().UTC().UnixNano())
-
-	return &WeightedChooser{
-		rng: rand.New(src), // nolint:gosec
-	}
+	return &WeightedChooser{}
 }
 
 func (w *WeightedChooser) Put(value interface{}, weight int) {
@@ -43,9 +38,14 @@ func (w *WeightedChooser) GetAndRemove() (interface{}, error) {
 
 // Based on https://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python/
 func (w *WeightedChooser) weightedChoice() (int, error) {
-	rnd := w.rng.Intn(w.totalWeight)
+	if w.totalWeight == 0 {
+		return 0, errors.New("no choices available")
+	}
+	rndBig, _ := rand.Int(rand.Reader, big.NewInt(int64(w.totalWeight)))
+
+	rnd := rndBig.Int64()
 	for i, weight := range w.weights {
-		rnd -= weight
+		rnd -= int64(weight)
 		if rnd < 0 {
 			return i, nil
 		}

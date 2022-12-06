@@ -12,6 +12,7 @@ package taglib
 import "C"
 import (
 	"fmt"
+	"os"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -37,17 +38,19 @@ func Read(filename string) (tags map[string][]string, err error) {
 	defer deleteMap(id)
 
 	res := C.taglib_read(fp, C.ulong(id))
-	if log.CurrentLevel() >= log.LevelDebug {
-		switch res {
-		case C.TAGLIB_ERR_PARSE:
-			log.Warn("TagLib: cannot parse file", "filename", filename)
-		case C.TAGLIB_ERR_AUDIO_PROPS:
-			log.Warn("TagLib: can't get audio properties", "filename", filename)
-		}
-	}
+	switch res {
+	case C.TAGLIB_ERR_PARSE:
+		// Check additional case whether the file is unreadable due to permission
+		file, fileErr := os.OpenFile(filename, os.O_RDONLY, 0600)
+		defer file.Close()
 
-	if res != 0 {
-		return nil, fmt.Errorf("cannot process %s", filename)
+		if os.IsPermission(fileErr) {
+			return nil, fmt.Errorf("navidrome does not have permission: %w", fileErr)
+		} else {
+			return nil, fmt.Errorf("cannot parse file media file: %w", fileErr)
+		}
+	case C.TAGLIB_ERR_AUDIO_PROPS:
+		return nil, fmt.Errorf("can't get audio properties from file")
 	}
 	log.Trace("TagLib: read tags", "tags", m, "filename", filename, "id", id)
 	return m, nil

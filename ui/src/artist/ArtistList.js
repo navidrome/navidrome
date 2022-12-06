@@ -60,7 +60,7 @@ const ArtistFilter = (props) => {
   const translate = useTranslate()
   return (
     <Filter {...props} variant={'outlined'}>
-      <SearchInput source="name" alwaysOn />
+      <SearchInput id="search" source="name" alwaysOn />
       <ReferenceInput
         label={translate('resources.artist.fields.genre')}
         source="genre_id"

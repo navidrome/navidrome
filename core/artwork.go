@@ -159,7 +159,7 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 		reader, err = resizeImage(r, size, false)
 	}
 
-	return
+	return reader, err
 }
 
 func resizeImage(reader io.Reader, size int, usePng bool) (io.ReadCloser, error) {
