@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ParseArtworkID", func() {
+var _ = Describe("ParseArtworkID()", func() {
 	It("parses album artwork ids", func() {
 		id, err := model.ParseArtworkID("al-1234-ff")
 		Expect(err).ToNot(HaveOccurred())

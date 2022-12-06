@@ -1,11 +1,9 @@
 package tests
 
 import (
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -18,10 +16,10 @@ func CreateMockMediaFileRepo() *MockMediaFileRepo {
 type MockMediaFileRepo struct {
 	model.MediaFileRepository
 	data map[string]*model.MediaFile
-	err  bool
+	err  error
 }
 
-func (m *MockMediaFileRepo) SetError(err bool) {
+func (m *MockMediaFileRepo) SetError(err error) {
 	m.err = err
 }
 
@@ -33,16 +31,16 @@ func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
 }
 
 func (m *MockMediaFileRepo) Exists(id string) (bool, error) {
-	if m.err {
-		return false, errors.New("Error!")
+	if m.err != nil {
+		return false, m.err
 	}
 	_, found := m.data[id]
 	return found, nil
 }
 
 func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
-	if m.err {
-		return nil, errors.New("Error!")
+	if m.err != nil {
+		return nil, m.err
 	}
 	if d, ok := m.data[id]; ok {
 		return d, nil
@@ -50,9 +48,20 @@ func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 	return nil, model.ErrNotFound
 }
 
+func (m *MockMediaFileRepo) GetAll(...model.QueryOptions) (model.MediaFiles, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var res model.MediaFiles
+	for _, a := range m.data {
+		res = append(res, *a)
+	}
+	return res, nil
+}
+
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
-	if m.err {
-		return errors.New("error")
+	if m.err != nil {
+		return m.err
 	}
 	if mf.ID == "" {
 		mf.ID = uuid.NewString()
@@ -62,8 +71,8 @@ func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 }
 
 func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
-	if m.err {
-		return errors.New("error")
+	if m.err != nil {
+		return m.err
 	}
 	if d, ok := m.data[id]; ok {
 		d.PlayCount++
@@ -71,22 +80,6 @@ func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
 		return nil
 	}
 	return model.ErrNotFound
-}
-
-func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, error) {
-	if m.err {
-		return nil, errors.New("Error!")
-	}
-	var res = make(model.MediaFiles, len(m.data))
-	i := 0
-	for _, a := range m.data {
-		if a.AlbumID == artistId {
-			res[i] = *a
-			i++
-		}
-	}
-
-	return res, nil
 }
 
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)

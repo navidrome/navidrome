@@ -2,9 +2,13 @@ package core
 
 import (
 	"context"
+	"errors"
 	"image"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
+	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -18,185 +22,196 @@ import (
 var _ = Describe("Artwork", func() {
 	var artwork Artwork
 	var ds model.DataStore
-	ctx := log.NewContext(context.TODO())
+	var fsys fs.FS
+	ctx := log.NewContext(context.Background())
 
 	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.CoverArtPriority = "embedded, cover.*"
+		fsys = fstest.MapFS{
+			"tests/fixtures":           &fstest.MapFile{Mode: fs.ModeDir},
+			"tests/fixtures/cover.jpg": &fstest.MapFile{},
+		}
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
-		ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
-			{ID: "222", CoverArtId: "123", CoverArtPath: "tests/fixtures/test.mp3"},
-			{ID: "333", CoverArtId: ""},
-			{ID: "444", CoverArtId: "444", CoverArtPath: "tests/fixtures/cover.jpg"},
-		})
-		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-			{ID: "123", AlbumID: "222", Path: "tests/fixtures/test.mp3", HasCoverArt: true},
-			{ID: "456", AlbumID: "222", Path: "tests/fixtures/test.ogg", HasCoverArt: false},
-		})
 	})
 
-	Context("Cache is configured", func() {
+	When("cache is configured", func() {
+		var cache ArtworkCache
 		BeforeEach(func() {
 			conf.Server.DataFolder, _ = os.MkdirTemp("", "file_caches")
 			conf.Server.ImageCacheSize = "100MB"
-			cache := GetImageCache()
+			onceImageCache = sync.Once{} // Reinitialize cache!
+			cache = GetImageCache()
 			Eventually(func() bool { return cache.Ready(context.TODO()) }).Should(BeTrue())
-			artwork = NewArtwork(ds, cache)
 		})
 		AfterEach(func() {
 			_ = os.RemoveAll(conf.Server.DataFolder)
 		})
 
-		It("retrieves the external artwork art for an album", func() {
-			r, err := artwork.Get(ctx, "al-444", 0)
-			Expect(err).To(BeNil())
+		Context("id does not exist in DB", func() {
+			BeforeEach(func() {
+				artwork = NewArtworkWithFS(ds, cache, fsys)
+			})
+			It("returns the default artwork if id is empty", func() {
+				r, err := artwork.Get(ctx, "", 0)
+				Expect(err).To(BeNil())
 
-			_, format, err := image.Decode(r)
-			Expect(err).To(BeNil())
-			Expect(format).To(Equal("jpeg"))
-			Expect(r.Close()).To(BeNil())
+				_, format, err := image.Decode(r)
+				Expect(err).To(BeNil())
+				Expect(format).To(Equal("png"))
+				Expect(r.Close()).To(BeNil())
+			})
+			It("returns the default artwork if id is empty", func() {
+				r, err := artwork.Get(ctx, "al-999-ff", 0)
+				Expect(err).To(BeNil())
+
+				_, format, err := image.Decode(r)
+				Expect(err).To(BeNil())
+				Expect(format).To(Equal("png"))
+				Expect(r.Close()).To(BeNil())
+			})
+			It("returns error if id is invalid", func() {
+				_, err := artwork.Get(ctx, "11-xxx", 0)
+				Expect(err).To(MatchError("invalid artwork id"))
+			})
 		})
 
-		It("retrieves the embedded artwork art for an album", func() {
-			r, err := artwork.Get(ctx, "al-222", 0)
-			Expect(err).To(BeNil())
+		Context("album has embedded cover art", func() {
+			BeforeEach(func() {
+				ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+					{ID: "123", AlbumID: "222", Path: "tests/fixtures/test.mp3", HasCoverArt: true},
+					{ID: "456", AlbumID: "222", Path: "tests/fixtures/test.ogg", HasCoverArt: false},
+				})
+				artwork = NewArtworkWithFS(ds, cache, fsys)
+			})
+			It("retrieves the embedded artwork art for an album", func() {
+				r, err := artwork.Get(ctx, "al-222-ff", 0)
+				Expect(err).To(BeNil())
 
-			_, format, err := image.Decode(r)
-			Expect(err).To(BeNil())
-			Expect(format).To(Equal("jpeg"))
-			Expect(r.Close()).To(BeNil())
+				img, format, err := image.Decode(r)
+				Expect(err).To(BeNil())
+				Expect(format).To(Equal("jpeg"))
+				Expect(img.Bounds().Size().X).To(Equal(600))
+				Expect(img.Bounds().Size().Y).To(Equal(600))
+				Expect(r.Close()).To(BeNil())
+			})
+			It("resizes artwork art as requested", func() {
+				r, err := artwork.Get(ctx, "al-222-ff", 200)
+				Expect(err).To(BeNil())
+
+				img, _, err := image.Decode(r)
+				Expect(err).To(BeNil())
+				Expect(img.Bounds().Size().X).To(Equal(200))
+				Expect(img.Bounds().Size().Y).To(Equal(200))
+				Expect(r.Close()).To(BeNil())
+			})
+			It("retrieves the album artwork art if media_file does not have one", func() {
+				r, err := artwork.Get(ctx, "mf-123-0", 0)
+				Expect(err).To(BeNil())
+
+				_, format, err := image.Decode(r)
+				Expect(err).To(BeNil())
+				Expect(format).To(Equal("jpeg"))
+				Expect(r.Close()).To(BeNil())
+			})
 		})
 
-		It("returns the default artwork if album does not have artwork", func() {
-			r, err := artwork.Get(ctx, "al-333", 0)
-			Expect(err).To(BeNil())
+		Context("album has cover.jpg file", func() {
+			BeforeEach(func() {
+				ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+					{ID: "123", AlbumID: "222", Path: "tests/fixtures/test.mp3", HasCoverArt: false},
+					{ID: "456", AlbumID: "222", Path: "tests/fixtures/test.ogg", HasCoverArt: false},
+				})
+				artwork = NewArtworkWithFS(ds, cache, fsys)
+			})
 
-			_, format, err := image.Decode(r)
-			Expect(err).To(BeNil())
-			Expect(format).To(Equal("png"))
-			Expect(r.Close()).To(BeNil())
-		})
+			It("retrieves the external artwork art for an album", func() {
+				r, err := artwork.Get(ctx, "al-222-ff", 0)
+				Expect(err).To(BeNil())
 
-		It("returns the default artwork if album is not found", func() {
-			r, err := artwork.Get(ctx, "al-0101", 0)
-			Expect(err).To(BeNil())
+				_, format, err := image.Decode(r)
+				Expect(err).To(BeNil())
+				Expect(format).To(Equal("jpeg"))
+				Expect(r.Close()).To(BeNil())
+			})
+			It("returns the default artwork if album does not have artwork", func() {
+				conf.Server.CoverArtPriority = "embedded, front.jpg"
+				r, err := artwork.Get(ctx, "al-222-ff", 0)
+				Expect(err).To(BeNil())
 
-			_, format, err := image.Decode(r)
-			Expect(err).To(BeNil())
-			Expect(format).To(Equal("png"))
-			Expect(r.Close()).To(BeNil())
-		})
+				_, format, err := image.Decode(r)
+				Expect(err).To(BeNil())
+				Expect(format).To(Equal("png"))
+				Expect(r.Close()).To(BeNil())
+			})
+			It("retrieves the album artwork art if media_file does not have one", func() {
+				r, err := artwork.Get(ctx, "mf-456-0", 0)
+				Expect(err).To(BeNil())
 
-		It("retrieves the original artwork art from a media_file", func() {
-			r, err := artwork.Get(ctx, "123", 0)
-			Expect(err).To(BeNil())
-
-			img, format, err := image.Decode(r)
-			Expect(err).To(BeNil())
-			Expect(format).To(Equal("jpeg"))
-			Expect(img.Bounds().Size().X).To(Equal(600))
-			Expect(img.Bounds().Size().Y).To(Equal(600))
-			Expect(r.Close()).To(BeNil())
-		})
-
-		It("retrieves the album artwork art if media_file does not have one", func() {
-			r, err := artwork.Get(ctx, "456", 0)
-			Expect(err).To(BeNil())
-
-			_, format, err := image.Decode(r)
-			Expect(err).To(BeNil())
-			Expect(format).To(Equal("jpeg"))
-			Expect(r.Close()).To(BeNil())
-		})
-
-		It("retrieves the album artwork by album id", func() {
-			r, err := artwork.Get(ctx, "222", 0)
-			Expect(err).To(BeNil())
-
-			_, format, err := image.Decode(r)
-			Expect(err).To(BeNil())
-			Expect(format).To(Equal("jpeg"))
-			Expect(r.Close()).To(BeNil())
-		})
-
-		It("resized artwork art as requested", func() {
-			r, err := artwork.Get(ctx, "123", 200)
-			Expect(err).To(BeNil())
-
-			img, format, err := image.Decode(r)
-			Expect(err).To(BeNil())
-			Expect(format).To(Equal("jpeg"))
-			Expect(img.Bounds().Size().X).To(Equal(200))
-			Expect(img.Bounds().Size().Y).To(Equal(200))
-			Expect(r.Close()).To(BeNil())
+				_, format, err := image.Decode(r)
+				Expect(err).To(BeNil())
+				Expect(format).To(Equal("jpeg"))
+				Expect(r.Close()).To(BeNil())
+			})
 		})
 
 		Context("Errors", func() {
-			It("returns err if gets error from album table", func() {
-				ds.Album(ctx).(*tests.MockAlbumRepo).SetError(true)
-				_, err := artwork.Get(ctx, "al-222", 0)
-				Expect(err).To(MatchError("Error!"))
+			BeforeEach(func() {
+				var err = errors.New("db error")
+				ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetError(err)
+				artwork = NewArtworkWithFS(ds, cache, fsys)
+			})
+			It("returns err if gets error from db with album artwork id", func() {
+				_, err := artwork.Get(ctx, "al-222-00", 0)
+				Expect(err).To(MatchError("db error"))
 			})
 
-			It("returns err if gets error from media_file table", func() {
-				ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetError(true)
-				_, err := artwork.Get(ctx, "123", 0)
-				Expect(err).To(MatchError("Error!"))
+			It("returns err if gets error from db with mediafile artwork id", func() {
+				_, err := artwork.Get(ctx, "mf-123-00", 0)
+				Expect(err).To(MatchError("db error"))
 			})
 		})
 	})
 
 	Describe("getAlbumCoverFromPath", func() {
-		var testFolder, embeddedPath string
+		var embeddedPath string
 		var testPath []string
+		var fsys fs.FS
 		BeforeEach(func() {
-			testFolder, _ = os.MkdirTemp("", "album_persistence_tests")
-			if err := os.MkdirAll(testFolder, 0777); err != nil {
-				panic(err)
-			}
-			if _, err := os.Create(filepath.Join(testFolder, "Cover.jpeg")); err != nil {
-				panic(err)
-			}
-			if _, err := os.Create(filepath.Join(testFolder, "FRONT.PNG")); err != nil {
-				panic(err)
-			}
-			testPath = []string{filepath.Join(testFolder, "somefile.test")}
-			embeddedPath = filepath.Join(testFolder, "somefile.mp3")
-
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
-		})
-		AfterEach(func() {
-			_ = os.RemoveAll(testFolder)
+			testPath = []string{"testDir", "testDir2"}
+			embeddedPath = filepath.Join("testDir", "somefile.mp3")
+			fsys = fstest.MapFS{
+				"testDir":            &fstest.MapFile{Mode: fs.ModeDir},
+				"testDir/cover.jpeg": &fstest.MapFile{},
+				"testDir2":           &fstest.MapFile{Mode: fs.ModeDir},
+				"testDir2/front.png": &fstest.MapFile{},
+			}
 		})
 
 		It("returns audio file for embedded cover", func() {
 			conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
-			Expect(getAlbumCoverFromPath(testPath, embeddedPath)).To(Equal(""))
+			Expect(getAlbumCoverFromPath(fsys, testPath, embeddedPath)).To(Equal(embeddedPath))
 		})
 
 		It("returns external file when no embedded cover exists", func() {
 			conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
-			Expect(getAlbumCoverFromPath(testPath, "")).To(Equal(filepath.Join(testFolder, "Cover.jpeg")))
+			Expect(getAlbumCoverFromPath(fsys, testPath, "")).To(Equal(filepath.Join("testDir", "cover.jpeg")))
 		})
 
 		It("returns embedded cover even if not first choice", func() {
 			conf.Server.CoverArtPriority = "something.png, embedded, cover.*, front.*"
-			Expect(getAlbumCoverFromPath(testPath, embeddedPath)).To(Equal(""))
+			Expect(getAlbumCoverFromPath(fsys, testPath, embeddedPath)).To(Equal(embeddedPath))
 		})
 
-		It("returns first correct match case-insensitively", func() {
-			conf.Server.CoverArtPriority = "embedded, cover.jpg, front.svg, front.png"
-			Expect(getAlbumCoverFromPath(testPath, "")).To(Equal(filepath.Join(testFolder, "FRONT.PNG")))
-		})
-
-		It("returns match for embedded pattern", func() {
-			conf.Server.CoverArtPriority = "embedded, cover.jp?g, front.png"
-			Expect(getAlbumCoverFromPath(testPath, "")).To(Equal(filepath.Join(testFolder, "Cover.jpeg")))
+		It("returns match in any album folders", func() {
+			conf.Server.CoverArtPriority = "embedded, front.p?g, cover.jp?g"
+			Expect(getAlbumCoverFromPath(fsys, testPath, "")).To(Equal(filepath.Join("testDir2", "front.png")))
 		})
 
 		It("returns empty string if no match was found", func() {
-			conf.Server.CoverArtPriority = "embedded, cover.jpg, front.apng"
-			Expect(getAlbumCoverFromPath(testPath, "")).To(Equal(""))
+			conf.Server.CoverArtPriority = "embedded, cover.jpg, front.gif"
+			Expect(getAlbumCoverFromPath(fsys, testPath, "")).To(Equal(""))
 		})
 	})
-
 })

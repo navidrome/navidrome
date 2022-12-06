@@ -19,11 +19,11 @@ type MockAlbumRepo struct {
 	model.AlbumRepository
 	data    map[string]*model.Album
 	all     model.Albums
-	err     bool
+	err     error
 	Options model.QueryOptions
 }
 
-func (m *MockAlbumRepo) SetError(err bool) {
+func (m *MockAlbumRepo) SetError(err error) {
 	m.err = err
 }
 
@@ -36,16 +36,16 @@ func (m *MockAlbumRepo) SetData(albums model.Albums) {
 }
 
 func (m *MockAlbumRepo) Exists(id string) (bool, error) {
-	if m.err {
-		return false, errors.New("Error!")
+	if m.err != nil {
+		return false, m.err
 	}
 	_, found := m.data[id]
 	return found, nil
 }
 
 func (m *MockAlbumRepo) Get(id string) (*model.Album, error) {
-	if m.err {
-		return nil, errors.New("Error!")
+	if m.err != nil {
+		return nil, m.err
 	}
 	if d, ok := m.data[id]; ok {
 		return d, nil
@@ -54,7 +54,7 @@ func (m *MockAlbumRepo) Get(id string) (*model.Album, error) {
 }
 
 func (m *MockAlbumRepo) Put(al *model.Album) error {
-	if m.err {
+	if m.err != nil {
 		return errors.New("error")
 	}
 	if al.ID == "" {
@@ -68,8 +68,8 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	if len(qo) > 0 {
 		m.Options = qo[0]
 	}
-	if m.err {
-		return nil, errors.New("Error!")
+	if m.err != nil {
+		return nil, m.err
 	}
 	return m.all, nil
 }
@@ -79,7 +79,7 @@ func (m *MockAlbumRepo) GetAllWithoutGenres(qo ...model.QueryOptions) (model.Alb
 }
 
 func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
-	if m.err {
+	if m.err != nil {
 		return errors.New("error")
 	}
 	if d, ok := m.data[id]; ok {

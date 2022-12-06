@@ -11,12 +11,12 @@ import (
 	"image/png"
 	_ "image/png"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/dhowden/tag"
@@ -39,21 +39,23 @@ type Artwork interface {
 type ArtworkCache cache.FileCache
 
 func NewArtwork(ds model.DataStore, cache ArtworkCache) Artwork {
-	return &artwork{ds: ds, cache: cache}
+	return NewArtworkWithFS(ds, cache, os.DirFS(conf.Server.MusicFolder))
+}
+
+func NewArtworkWithFS(ds model.DataStore, cache ArtworkCache, fsys fs.FS) Artwork {
+	return &artwork{ds: ds, cache: cache, fs: fsys}
 }
 
 type artwork struct {
 	ds    model.DataStore
 	cache cache.FileCache
+	fs    fs.FS
 }
 
-const albumArtworkIdPrefix = "al-"
-
 type artworkKey struct {
-	a          *artwork
-	artworkId  model.ArtworkID
-	size       int
-	lastUpdate time.Time
+	a         *artwork
+	artworkId model.ArtworkID
+	size      int
 }
 
 func (k *artworkKey) Key() string {
@@ -100,7 +102,7 @@ func (a *artwork) getImagePath(ctx context.Context, id model.ArtworkID) (path st
 func (a *artwork) getAlbumArtPath(ctx context.Context, id string) (string, error) {
 	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": id}})
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	var paths []string
 	var embeddedPath string
@@ -117,15 +119,14 @@ func (a *artwork) getAlbumArtPath(ctx context.Context, id string) (string, error
 
 	sort.Strings(paths)
 	paths = slices.Compact(paths)
-	return getAlbumCoverFromPath(paths, embeddedPath), nil
+	return getAlbumCoverFromPath(a.fs, paths, embeddedPath), nil
 }
 
 // getAlbumCoverFromPath accepts a path to a file, and returns a path to an eligible cover image from the
 // file's directory (as configured with CoverArtPriority). If no cover file is found, among
-// available choices, or an error occurs, an empty string is returned. If HasEmbeddedCover is true,
-// and 'embedded' is matched among eligible choices, GetCoverFromPath will return early with an
-// empty path.
-func getAlbumCoverFromPath(albumPaths []string, embeddedPath string) string {
+// available choices, or an error occurs, an empty string is returned. If `embedded` is matched among eligible
+// choices,  getAlbumCoverFromPath will return early with the informed embedded path.
+func getAlbumCoverFromPath(fsys fs.FS, albumPaths []string, embeddedPath string) string {
 	for _, p := range strings.Split(conf.Server.CoverArtPriority, ",") {
 		pat := strings.ToLower(strings.TrimSpace(p))
 		if pat == "embedded" {
@@ -136,8 +137,8 @@ func getAlbumCoverFromPath(albumPaths []string, embeddedPath string) string {
 		}
 
 		for _, path := range albumPaths {
-			glob := filepath.Join(path, p)
-			matches, err := filepath.Glob(glob)
+			glob := filepath.Join(path, pat)
+			matches, err := fs.Glob(fsys, glob)
 			if err != nil {
 				log.Warn("Error searching for cover art", "path", glob)
 				continue

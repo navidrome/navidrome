@@ -14,9 +14,11 @@ func init() {
 }
 
 func upFixAlbumComments(tx *sql.Tx) error {
+	//nolint:gosec
 	rows, err := tx.Query(`
 	SELECT album.id, group_concat(media_file.comment, '` + consts.Zwsp + `') FROM album, media_file WHERE media_file.album_id = album.id GROUP BY album.id;
 	   `)
+
 	if err != nil {
 		return err
 	}

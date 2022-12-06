@@ -51,15 +51,15 @@ const getCoverArtUrl = (record, size) => {
     ...(size && { size }),
   }
 
-  const lastUpdate = Math.floor(Date.parse(record.updatedAt) / 1000).toString(16);
+  const lastUpdate = Math.floor(Date.parse(record.updatedAt) / 1000).toString(
+    16
+  )
+  const id = record.id + '-' + lastUpdate
   if (record.album) {
-    return baseUrl(url('getCoverArt', "mf-"+record.id+"-"+lastUpdate, options))
+    return baseUrl(url('getCoverArt', 'mf-' + id, options))
   } else {
-    return baseUrl(url('getCoverArt', "al-"+record.id+"-"+lastUpdate, options))
+    return baseUrl(url('getCoverArt', 'al-' + id, options))
   }
-
-
-  // return baseUrl(url('getCoverArt', record.id, options))
 }
 
 const getArtistInfo = (id) => {

@@ -56,7 +56,7 @@ var _ = Describe("Album Lists", func() {
 		})
 
 		It("should return error if call fails", func() {
-			mockRepo.SetError(true)
+			mockRepo.SetError(errors.New("error"))
 			r := newGetRequest("type=newest")
 
 			_, err := router.GetAlbumList(w, r)
@@ -96,7 +96,7 @@ var _ = Describe("Album Lists", func() {
 		})
 
 		It("should return error if call fails", func() {
-			mockRepo.SetError(true)
+			mockRepo.SetError(errors.New("error"))
 			r := newGetRequest("type=newest")
 
 			_, err := router.GetAlbumList2(w, r)
