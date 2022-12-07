@@ -15,26 +15,26 @@ import (
 )
 
 type configOptions struct {
-	ConfigFile              string
-	Address                 string
-	Port                    int
-	MusicFolder             string
-	DataFolder              string
-	DbPath                  string
-	LogLevel                string
-	ScanInterval            time.Duration
-	ScanSchedule            string
-	SessionTimeout          time.Duration
-	BaseURL                 string
-	UILoginBackgroundURL    string
-	EnableTranscodingConfig bool
-	EnableDownloads         bool
-	EnableExternalServices  bool
-	TranscodingCacheSize    string
-	ImageCacheSize          string
-	AutoImportPlaylists     bool
-	PlaylistsPath           string
-	AutoTranscodeDownload   bool
+	ConfigFile                 string
+	Address                    string
+	Port                       int
+	MusicFolder                string
+	DataFolder                 string
+	DbPath                     string
+	LogLevel                   string
+	ScanInterval               time.Duration
+	ScanSchedule               string
+	SessionTimeout             time.Duration
+	BaseURL                    string
+	UILoginBackgroundURL       string
+	EnableTranscodingConfig    bool
+	EnableDownloads            bool
+	EnableExternalServices     bool
+	TranscodingCacheSize       string
+	ImageCacheSize             string
+	AutoImportPlaylists        bool
+	PlaylistsPath              string
+	DefaultDownloadTranscoding bool
 
 	SearchFullString       bool
 	RecentlyAddedByModTime bool
@@ -229,7 +229,7 @@ func init() {
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
-	viper.SetDefault("autotranscodedownload", false)
+	viper.SetDefault("defaulttranscodedownload", false)
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)

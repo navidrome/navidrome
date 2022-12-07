@@ -16,11 +16,12 @@ import {
   openAddToPlaylist,
   openDownloadMenu,
   openExtendedInfoDialog,
+  DOWNLOAD_MENU_ALBUM,
+  DOWNLOAD_MENU_ARTIST
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
-import { DOWNLOAD_MENU_ALBUM, DOWNLOAD_MENU_ARTIST } from '../reducers'
 
 const useStyles = makeStyles({
   noWrap: {

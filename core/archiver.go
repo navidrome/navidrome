@@ -114,7 +114,26 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 	}
 
 	if format != "raw" {
-		return a.ms.TranscodeDownload(ctx, &mf, format, bitrate, w)
+		stream, err := a.ms.DoStream(ctx, &mf, format, bitrate)
+
+		if err != nil {
+			return err
+		}
+
+		defer func() {
+			if err := stream.Close(); err != nil && log.CurrentLevel() >= log.LevelDebug {
+				log.Error("Error closing stream", "id", mf.ID, "file", stream.Name(), err)
+			}
+		}()
+
+		_, err = io.Copy(w, stream)
+
+		if err != nil {
+			log.Error(ctx, "Error zipping file", "file", mf.Path, err)
+			return err
+		}
+
+		return nil
 	} else {
 		f, err := os.Open(mf.Path)
 		defer func() { _ = f.Close() }()

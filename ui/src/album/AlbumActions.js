@@ -19,12 +19,13 @@ import {
   shuffleTracks,
   openAddToPlaylist,
   openDownloadMenu,
+  DOWNLOAD_MENU_ALBUM
 } from '../actions'
 import { formatBytes } from '../utils'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
-import { DOWNLOAD_MENU_ALBUM } from '../reducers'
+
 
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },

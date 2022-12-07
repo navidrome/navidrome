@@ -25,7 +25,7 @@ import {
   albumViewReducer,
   activityReducer,
   settingsReducer,
-  downloadMeuDialogReducer,
+  downloadMenuDialogReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
@@ -53,7 +53,7 @@ const adminStore = createAdminStore({
     albumView: albumViewReducer,
     theme: themeReducer,
     addToPlaylistDialog: addToPlaylistDialogReducer,
-    downloadMenuDialog: downloadMeuDialogReducer,
+    downloadMenuDialog: downloadMenuDialogReducer,
     expandInfoDialog: expandInfoDialogReducer,
     listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
     activity: activityReducer,

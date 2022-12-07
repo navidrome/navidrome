@@ -20,7 +20,7 @@ import (
 
 type MediaStreamer interface {
 	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int) (*Stream, error)
-	TranscodeDownload(ctx context.Context, mf *model.MediaFile, format string, bitrate int, w io.Writer) error
+	DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) (*Stream, error)
 }
 
 type TranscodingCache cache.FileCache
@@ -52,6 +52,10 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 		return nil, err
 	}
 
+	return ms.DoStream(ctx, mf, reqFormat, reqBitRate)
+}
+
+func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) (*Stream, error) {
 	var format string
 	var bitRate int
 	var cached bool
@@ -101,34 +105,6 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 		"selectedBitrate", bitRate, "selectedFormat", format, "cached", cached, "seekable", s.Seekable())
 
 	return s, nil
-}
-
-func (ms *mediaStreamer) TranscodeDownload(ctx context.Context, mf *model.MediaFile, format string, bitrate int, w io.Writer) error {
-	if bitrate == 0 {
-		bitrate = mf.BitRate
-	}
-
-	job := &streamJob{
-		ms:      ms,
-		mf:      mf,
-		format:  format,
-		bitRate: bitrate,
-	}
-
-	r, error := ms.cache.Get(ctx, job)
-
-	if error != nil {
-		return error
-	}
-
-	_, err := io.Copy(w, r)
-
-	if err != nil {
-		log.Error(ctx, "Error zipping file", "file", mf.Path, err)
-		return err
-	}
-
-	return nil
 }
 
 type Stream struct {

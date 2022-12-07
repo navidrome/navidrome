@@ -20,6 +20,7 @@ import {
   playTracks,
   shuffleTracks,
   openDownloadMenu,
+  DOWNLOAD_MENU_PLAY
 } from '../actions'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
 import PropTypes from 'prop-types'
@@ -27,7 +28,6 @@ import { formatBytes } from '../utils'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
-import { DOWNLOAD_MENU_PLAY } from '../reducers'
 
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },

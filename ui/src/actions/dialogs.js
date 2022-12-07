@@ -8,6 +8,10 @@ export const EXTENDED_INFO_OPEN = 'EXTENDED_INFO_OPEN'
 export const EXTENDED_INFO_CLOSE = 'EXTENDED_INFO_CLOSE'
 export const LISTENBRAINZ_TOKEN_OPEN = 'LISTENBRAINZ_TOKEN_OPEN'
 export const LISTENBRAINZ_TOKEN_CLOSE = 'LISTENBRAINZ_TOKEN_CLOSE'
+export const DOWNLOAD_MENU_ALBUM = 'album'
+export const DOWNLOAD_MENU_ARTIST = 'artist'
+export const DOWNLOAD_MENU_PLAY = 'playlist'
+export const DOWNLOAD_MENU_SONG = 'song'
 
 export const openAddToPlaylist = ({ selectedIds, onSuccess }) => ({
   type: ADD_TO_PLAYLIST_OPEN,

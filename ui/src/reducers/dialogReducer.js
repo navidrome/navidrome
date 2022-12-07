@@ -1,8 +1,12 @@
 import {
   ADD_TO_PLAYLIST_CLOSE,
   ADD_TO_PLAYLIST_OPEN,
+  DOWNLOAD_MENU_ALBUM,
+  DOWNLOAD_MENU_ARTIST,
   DOWNLOAD_MENU_CLOSE,
   DOWNLOAD_MENU_OPEN,
+  DOWNLOAD_MENU_PLAY,
+  DOWNLOAD_MENU_SONG,
   DUPLICATE_SONG_WARNING_OPEN,
   DUPLICATE_SONG_WARNING_CLOSE,
   EXTENDED_INFO_OPEN,
@@ -42,12 +46,7 @@ export const addToPlaylistDialogReducer = (
   }
 }
 
-export const DOWNLOAD_MENU_ALBUM = 'album'
-export const DOWNLOAD_MENU_ARTIST = 'artist'
-export const DOWNLOAD_MENU_PLAY = 'playlist'
-export const DOWNLOAD_MENU_SONG = 'song'
-
-export const downloadMeuDialogReducer = (
+export const downloadMenuDialogReducer = (
   previousState = {
     open: false,
   },
