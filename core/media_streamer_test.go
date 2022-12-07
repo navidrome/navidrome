@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -24,6 +25,7 @@ var _ = Describe("MediaStreamer", func() {
 	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
 		conf.Server.DataFolder, _ = os.MkdirTemp("", "file_caches")
 		conf.Server.TranscodingCacheSize = "100MB"
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
@@ -114,6 +116,15 @@ var _ = Describe("MediaStreamer", func() {
 				format, bitRate := selectTranscodingOptions(ctx, ds, mf, "mp3", 0)
 				Expect(format).To(Equal("raw"))
 				Expect(bitRate).To(Equal(320))
+			})
+			It("returns the DefaultDownsamplingFormat if a maxBitrate but not the format", func() {
+				conf.Server.DefaultDownsamplingFormat = "opus"
+				mf.Suffix = "FLAC"
+				mf.BitRate = 960
+				format, bitRate := selectTranscodingOptions(ctx, ds, mf, "", 128)
+				Expect(format).To(Equal("opus"))
+				Expect(bitRate).To(Equal(128))
+
 			})
 		})
 

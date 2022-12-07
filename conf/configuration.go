@@ -68,6 +68,9 @@ type configOptions struct {
 	LDAP         ldapOptions
 	ListenBrainz listenBrainzOptions
 
+	//test downsampling
+	DefaultDownsamplingFormat string
+
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
 	DevLogLevels               map[string]string
@@ -253,6 +256,7 @@ func init() {
 	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
+	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
