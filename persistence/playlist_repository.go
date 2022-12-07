@@ -3,11 +3,12 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -25,21 +26,29 @@ type dbPlaylist struct {
 	RawRules       string `structs:"rules" orm:"column(rules)"`
 }
 
-func NewPlaylistRepository(ctx context.Context, o orm.Ormer) model.PlaylistRepository {
+func NewPlaylistRepository(ctx context.Context, o orm.QueryExecutor) model.PlaylistRepository {
 	r := &playlistRepository{}
 	r.ctx = ctx
 	r.ormer = o
 	r.tableName = "playlist"
 	r.filterMappings = map[string]filterFunc{
-		"q": playlistFilter,
+		"q":     playlistFilter,
+		"smart": smartPlaylistFilter,
 	}
 	return r
 }
 
-func playlistFilter(field string, value interface{}) Sqlizer {
+func playlistFilter(_ string, value interface{}) Sqlizer {
 	return Or{
 		substringFilter("playlist.name", value),
 		substringFilter("playlist.comment", value),
+	}
+}
+
+func smartPlaylistFilter(string, interface{}) Sqlizer {
+	return Or{
+		Eq{"rules": ""},
+		Eq{"rules": nil},
 	}
 }
 
@@ -395,7 +404,7 @@ func (r *playlistRepository) Update(id string, entity interface{}, cols ...strin
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
 	_, err = r.put(id, pls, append(cols, "updatedAt")...)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err

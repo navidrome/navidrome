@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -27,7 +28,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			return
 		}
 		appConfig := map[string]interface{}{
-			"version":                 consts.Version(),
+			"version":                 consts.Version,
 			"firstTime":               firstTime,
 			"variousArtistsId":        consts.VariousArtistsID,
 			"baseURL":                 utils.SanitizeText(strings.TrimSuffix(conf.Server.BaseURL, "/")),
@@ -38,6 +39,8 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"enableFavourites":        conf.Server.EnableFavourites,
 			"enableStarRating":        conf.Server.EnableStarRating,
 			"defaultTheme":            conf.Server.DefaultTheme,
+			"defaultLanguage":         conf.Server.DefaultLanguage,
+			"defaultUIVolume":         conf.Server.DefaultUIVolume,
 			"enableCoverAnimation":    conf.Server.EnableCoverAnimation,
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
@@ -51,6 +54,9 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"devShowArtistPage":       conf.Server.DevShowArtistPage,
 			"listenBrainzEnabled":     conf.Server.ListenBrainz.Enabled,
 		}
+		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
+			appConfig["loginBackgroundURL"] = path.Join(conf.Server.BaseURL, conf.Server.UILoginBackgroundURL)
+		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {
 			appConfig["auth"] = auth
@@ -63,7 +69,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 		}
 
 		log.Debug("UI configuration", "appConfig", appConfig)
-		version := consts.Version()
+		version := consts.Version
 		if version != "dev" {
 			version = "v" + version
 		}
@@ -71,6 +77,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"AppConfig": string(j),
 			"Version":   version,
 		}
+		w.Header().Set("Content-Type", "text/html")
 		err = t.Execute(w, data)
 		if err != nil {
 			log.Error(r, "Could not execute `index.html` template", err)

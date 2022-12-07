@@ -8,6 +8,9 @@ import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
 import { LoveButton, RatingField } from '../common'
 import Lightbox from 'react-image-lightbox'
+import { AddToPlaylistDialog } from '../dialogs'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import AlbumInfo from '../album/AlbumInfo'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -146,6 +149,8 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
           />
         )}
       </Card>
+      <AddToPlaylistDialog />
+      <ExpandInfoDialog content={<AlbumInfo />} />
     </div>
   )
 }

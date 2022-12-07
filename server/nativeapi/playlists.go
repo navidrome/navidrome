@@ -3,6 +3,7 @@ package nativeapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -47,13 +48,13 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 		plsRepo := ds.Playlist(ctx)
 		plsId := chi.URLParam(r, "playlistId")
 		pls, err := plsRepo.GetWithTracks(plsId)
-		if err == model.ErrNotFound {
-			log.Warn("Playlist not found", "playlistId", plsId)
+		if errors.Is(err, model.ErrNotFound) {
+			log.Warn(r.Context(), "Playlist not found", "playlistId", plsId)
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Error("Error retrieving the playlist", "playlistId", plsId, err)
+			log.Error(r.Context(), "Error retrieving the playlist", "playlistId", plsId, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -89,7 +90,7 @@ func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
 			tracksRepo := tx.Playlist(r.Context()).Tracks(playlistId)
 			return tracksRepo.Delete(ids...)
 		})
-		if len(ids) == 1 && err == model.ErrNotFound {
+		if len(ids) == 1 && errors.Is(err, model.ErrNotFound) {
 			log.Warn(r.Context(), "Track not found in playlist", "playlistId", playlistId, "id", ids[0])
 			http.Error(w, "not found", http.StatusNotFound)
 			return
@@ -190,7 +191,7 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 		}
 		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
 		err = tracksRepo.Reorder(id, newPos)
-		if err == rest.ErrPermissionDenied {
+		if errors.Is(err, rest.ErrPermissionDenied) {
 			http.Error(w, err.Error(), http.StatusForbidden)
 			return
 		}

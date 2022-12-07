@@ -1,10 +1,11 @@
 package persistence
 
 import (
+	"errors"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -35,7 +36,7 @@ func (r sqlRepository) annUpsert(values map[string]interface{}, itemIDs ...strin
 		upd = upd.Set(f, v)
 	}
 	c, err := r.executeSQL(upd)
-	if c == 0 || err == orm.ErrNoRows {
+	if c == 0 || errors.Is(err, orm.ErrNoRows) {
 		for _, itemID := range itemIDs {
 			values["ann_id"] = uuid.NewString()
 			values["user_id"] = userId(r.ctx)
@@ -66,7 +67,7 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 		Set("play_date", ts)
 	c, err := r.executeSQL(upd)
 
-	if c == 0 || err == orm.ErrNoRows {
+	if c == 0 || errors.Is(err, orm.ErrNoRows) {
 		values := map[string]interface{}{}
 		values["ann_id"] = uuid.NewString()
 		values["user_id"] = userId(r.ctx)

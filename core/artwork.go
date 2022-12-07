@@ -57,7 +57,7 @@ func (ci *imageInfo) Key() string {
 
 func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
 	path, lastUpdate, err := a.getImagePath(ctx, id)
-	if err != nil && err != model.ErrNotFound {
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, err
 	}
 
@@ -106,7 +106,7 @@ func (a *artwork) getImagePath(ctx context.Context, id string) (path string, las
 	mf, err = a.ds.MediaFile(ctx).Get(id)
 
 	// If it is not, may be an albumId
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return a.getImagePath(ctx, "al-"+id)
 	}
 	if err != nil {
@@ -127,11 +127,11 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 	defer func() {
 		if err != nil {
 			log.Warn(ctx, "Error extracting image", "path", path, "size", size, err)
-			reader, err = resources.FS.Open(consts.PlaceholderAlbumArt)
+			reader, err = resources.FS().Open(consts.PlaceholderAlbumArt)
 
 			if size != 0 && err == nil {
 				var r io.ReadCloser
-				r, err = resources.FS.Open(consts.PlaceholderAlbumArt)
+				r, err = resources.FS().Open(consts.PlaceholderAlbumArt)
 				reader, err = resizeImage(r, size, true)
 			}
 		}
@@ -159,7 +159,7 @@ func (a *artwork) getArtwork(ctx context.Context, id string, path string, size i
 		reader, err = resizeImage(r, size, false)
 	}
 
-	return
+	return reader, err
 }
 
 func resizeImage(reader io.Reader, size int, usePng bool) (io.ReadCloser, error) {

@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/navidrome/navidrome/tests"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -18,7 +18,7 @@ var _ = Describe("Client", func() {
 	var client *Client
 	BeforeEach(func() {
 		httpClient = &tests.FakeHttpClient{}
-		client = NewClient(httpClient)
+		client = NewClient("BASE_URL/", httpClient)
 	})
 
 	Describe("listenBrainzResponse", func() {
@@ -48,8 +48,9 @@ var _ = Describe("Client", func() {
 			_, err := client.ValidateToken(context.Background(), "LB-TOKEN")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "validate-token"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/validate-token"))
 			Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 		})
 
 		It("parses and returns the response", func() {
@@ -86,8 +87,9 @@ var _ = Describe("Client", func() {
 			It("formats the request properly", func() {
 				Expect(client.UpdateNowPlaying(context.Background(), "LB-TOKEN", li)).To(Succeed())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
-				Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "submit-listens"))
+				Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/submit-listens"))
 				Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+				Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 
 				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
 				f, _ := os.ReadFile("tests/fixtures/listenbrainz.nowplaying.request.json")
@@ -103,8 +105,9 @@ var _ = Describe("Client", func() {
 			It("formats the request properly", func() {
 				Expect(client.Scrobble(context.Background(), "LB-TOKEN", li)).To(Succeed())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
-				Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "submit-listens"))
+				Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/submit-listens"))
 				Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+				Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 
 				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
 				f, _ := os.ReadFile("tests/fixtures/listenbrainz.scrobble.request.json")

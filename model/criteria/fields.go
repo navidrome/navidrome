@@ -1,9 +1,7 @@
 package criteria
 
 import (
-	"fmt"
 	"strings"
-	"time"
 
 	"github.com/navidrome/navidrome/log"
 )
@@ -38,11 +36,12 @@ var fieldMap = map[string]*mappedField{
 	"bpm":             {field: "media_file.bpm"},
 	"channels":        {field: "media_file.channels"},
 	"genre":           {field: "genre.name"},
-	"loved":           {field: "annotation.starred"},
+	"loved":           {field: "COALESCE(annotation.starred, false)"},
 	"dateloved":       {field: "annotation.starred_at"},
 	"lastplayed":      {field: "annotation.play_date"},
-	"playcount":       {field: "COALESCE(annotation.play_count, 0)", order: "annotation.play_count"},
-	"rating":          {field: "COALESCE(annotation.rating, 0)", order: "annotation.rating"},
+	"playcount":       {field: "COALESCE(annotation.play_count, 0)"},
+	"rating":          {field: "COALESCE(annotation.rating, 0)"},
+	"random":          {field: "", order: "random()"},
 }
 
 type mappedField struct {
@@ -53,19 +52,11 @@ type mappedField struct {
 func mapFields(expr map[string]interface{}) map[string]interface{} {
 	m := make(map[string]interface{})
 	for f, v := range expr {
-		if dbf := fieldMap[strings.ToLower(f)]; dbf != nil {
+		if dbf := fieldMap[strings.ToLower(f)]; dbf != nil && dbf.field != "" {
 			m[dbf.field] = v
 		} else {
 			log.Error("Invalid field in criteria", "field", f)
 		}
 	}
 	return m
-}
-
-type Time time.Time
-
-func (t Time) MarshalJSON() ([]byte, error) {
-	//do your serializing here
-	stamp := fmt.Sprintf("\"%s\"", time.Time(t).Format("2006-01-02"))
-	return []byte(stamp), nil
 }

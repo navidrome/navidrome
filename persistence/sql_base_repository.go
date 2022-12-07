@@ -2,12 +2,13 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -17,7 +18,7 @@ import (
 type sqlRepository struct {
 	ctx          context.Context
 	tableName    string
-	ormer        orm.Ormer
+	ormer        orm.QueryExecutor
 	sortMappings map[string]string
 }
 
@@ -146,7 +147,7 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	}
 	start := time.Now()
 	err = r.ormer.Raw(query, args...).QueryRow(response)
-	if err == orm.ErrNoRows {
+	if errors.Is(err, orm.ErrNoRows) {
 		r.logSQL(query, args, nil, 0, start)
 		return model.ErrNotFound
 	}
@@ -161,7 +162,7 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 	}
 	start := time.Now()
 	c, err := r.ormer.Raw(query, args...).QueryRows(response)
-	if err == orm.ErrNoRows {
+	if errors.Is(err, orm.ErrNoRows) {
 		r.logSQL(query, args, nil, c, start)
 		return model.ErrNotFound
 	}
@@ -224,7 +225,7 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 func (r sqlRepository) delete(cond Sqlizer) error {
 	del := Delete(r.tableName).Where(cond)
 	_, err := r.executeSQL(del)
-	if err == orm.ErrNoRows {
+	if errors.Is(err, orm.ErrNoRows) {
 		return model.ErrNotFound
 	}
 	return err

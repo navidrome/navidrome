@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
@@ -79,6 +79,12 @@ var _ = Describe("Criteria", func() {
 		j, err := json.Marshal(newObj)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		gomega.Expect(string(j)).To(gomega.Equal(jsonObj))
+	})
+
+	It("allows sort by random", func() {
+		newObj := goObj
+		newObj.Sort = "random"
+		gomega.Expect(newObj.OrderBy()).To(gomega.Equal("random() asc"))
 	})
 
 })

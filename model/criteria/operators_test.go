@@ -5,23 +5,23 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
 var _ = Describe("Operators", func() {
-	rangeStart := Time(time.Date(2021, 10, 01, 0, 0, 0, 0, time.Local))
-	rangeEnd := Time(time.Date(2021, 11, 01, 0, 0, 0, 0, time.Local))
+	rangeStart := date(time.Date(2021, 10, 01, 0, 0, 0, 0, time.Local))
+	rangeEnd := date(time.Date(2021, 11, 01, 0, 0, 0, 0, time.Local))
+
 	DescribeTable("ToSQL",
-		func(op Expression, expectedSql string, expectedArgs ...interface{}) {
+		func(op Expression, expectedSql string, expectedArgs ...any) {
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(sql).To(gomega.Equal(expectedSql))
-			gomega.Expect(args).To(gomega.ConsistOf(expectedArgs))
+			gomega.Expect(args).To(gomega.ConsistOf(expectedArgs...))
 		},
 		Entry("is [string]", Is{"title": "Low Rider"}, "media_file.title = ?", "Low Rider"),
-		Entry("is [bool]", Is{"loved": true}, "annotation.starred = ?", true),
+		Entry("is [bool]", Is{"loved": true}, "COALESCE(annotation.starred, false) = ?", true),
 		Entry("isNot", IsNot{"title": "Low Rider"}, "media_file.title <> ?", "Low Rider"),
 		Entry("gt", Gt{"playCount": 10}, "COALESCE(annotation.play_count, 0) > ?", 10),
 		Entry("lt", Lt{"playCount": 10}, "COALESCE(annotation.play_count, 0) < ?", 10),
@@ -30,7 +30,7 @@ var _ = Describe("Operators", func() {
 		Entry("startsWith", StartsWith{"title": "Low Rider"}, "media_file.title LIKE ?", "Low Rider%"),
 		Entry("endsWith", EndsWith{"title": "Low Rider"}, "media_file.title LIKE ?", "%Low Rider"),
 		Entry("inTheRange [number]", InTheRange{"year": []int{1980, 1990}}, "(media_file.year >= ? AND media_file.year <= ?)", 1980, 1990),
-		Entry("inTheRange [date]", InTheRange{"lastPlayed": []Time{rangeStart, rangeEnd}}, "(annotation.play_date >= ? AND annotation.play_date <= ?)", rangeStart, rangeEnd),
+		Entry("inTheRange [date]", InTheRange{"lastPlayed": []date{rangeStart, rangeEnd}}, "(annotation.play_date >= ? AND annotation.play_date <= ?)", rangeStart, rangeEnd),
 		Entry("before", Before{"lastPlayed": rangeStart}, "annotation.play_date < ?", rangeStart),
 		Entry("after", After{"lastPlayed": rangeStart}, "annotation.play_date > ?", rangeStart),
 		// TODO These may be flaky
@@ -38,7 +38,7 @@ var _ = Describe("Operators", func() {
 		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", startOfPeriod(30, time.Now())),
 	)
 
-	DescribeTable("JSON Conversion",
+	DescribeTable("JSON Marshaling",
 		func(op Expression, jsonString string) {
 			obj := And{op}
 			newJs, err := json.Marshal(obj)

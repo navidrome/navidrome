@@ -1,9 +1,13 @@
 package subsonic
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/kennygrant/sanitize"
 	"github.com/navidrome/navidrome/log"
@@ -11,10 +15,6 @@ import (
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
-
-type SearchingController struct {
-	ds model.DataStore
-}
 
 type searchParams struct {
 	query        string
@@ -26,11 +26,7 @@ type searchParams struct {
 	songOffset   int
 }
 
-func NewSearchingController(ds model.DataStore) *SearchingController {
-	return &SearchingController{ds: ds}
-}
-
-func (c *SearchingController) getParams(r *http.Request) (*searchParams, error) {
+func (api *Router) getParams(r *http.Request) (*searchParams, error) {
 	var err error
 	sp := &searchParams{}
 	sp.query, err = requiredParamString(r, "query")
@@ -46,39 +42,70 @@ func (c *SearchingController) getParams(r *http.Request) (*searchParams, error) 
 	return sp, nil
 }
 
-func (c *SearchingController) searchAll(r *http.Request, sp *searchParams) (model.MediaFiles, model.Albums, model.Artists) {
+type searchFunc[T any] func(q string, offset int, size int) (T, error)
+
+func doSearch[T any](ctx context.Context, wg *sync.WaitGroup, s searchFunc[T], q string, offset, size int) T {
+	defer wg.Done()
+	var res T
+	if size == 0 {
+		return res
+	}
+	done := make(chan struct{})
+	go func() {
+		typ := strings.TrimPrefix(reflect.TypeOf(res).String(), "model.")
+		var err error
+		start := time.Now()
+		res, err = s(q, offset, size)
+		if err != nil {
+			log.Error(ctx, "Error searching "+typ, "query", q, err)
+		} else {
+			log.Trace(ctx, "Search for "+typ+" completed", "query", q, "elapsedTime", time.Since(start))
+		}
+		done <- struct{}{}
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+	}
+	return res
+}
+
+func (api *Router) searchAll(r *http.Request, sp *searchParams) (mediaFiles model.MediaFiles, albums model.Albums, artists model.Artists) {
+	start := time.Now()
 	q := sanitize.Accents(strings.ToLower(strings.TrimSuffix(sp.query, "*")))
 	ctx := r.Context()
+	wg := &sync.WaitGroup{}
+	wg.Add(3)
+	go func() {
+		mediaFiles = doSearch(ctx, wg, api.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount)
+	}()
+	go func() { albums = doSearch(ctx, wg, api.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount) }()
+	go func() {
+		artists = doSearch(ctx, wg, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount)
+	}()
+	wg.Wait()
 
-	artists, err := c.ds.Artist(ctx).Search(q, sp.artistOffset, sp.artistCount)
-	if err != nil {
-		log.Error(ctx, "Error searching for Artists", err)
+	if ctx.Err() == nil {
+		log.Debug(ctx, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists",
+			len(mediaFiles), len(albums), len(artists)), "query", sp.query, "elapsedTime", time.Since(start))
+	} else {
+		log.Warn(ctx, "Search was interrupted", ctx.Err(), "query", sp.query, "elapsedTime", time.Since(start))
 	}
-	albums, err := c.ds.Album(ctx).Search(q, sp.albumOffset, sp.albumCount)
-	if err != nil {
-		log.Error(ctx, "Error searching for Albums", err)
-	}
-	mediaFiles, err := c.ds.MediaFile(ctx).Search(q, sp.songOffset, sp.songCount)
-	if err != nil {
-		log.Error(ctx, "Error searching for MediaFiles", err)
-	}
-
-	log.Debug(ctx, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists",
-		len(mediaFiles), len(albums), len(artists)), "query", sp.query)
 	return mediaFiles, albums, artists
 }
 
-func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	sp, err := c.getParams(r)
+func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
+	sp, err := api.getParams(r)
 	if err != nil {
 		return nil, err
 	}
-	mfs, als, as := c.searchAll(r, sp)
+	mfs, als, as := api.searchAll(r, sp)
 
 	response := newResponse()
 	searchResult2 := &responses.SearchResult2{}
 	searchResult2.Artist = make([]responses.Artist, len(as))
 	for i, artist := range as {
+		artist := artist
 		searchResult2.Artist[i] = responses.Artist{
 			Id:         artist.ID,
 			Name:       artist.Name,
@@ -86,7 +113,7 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 			UserRating: artist.Rating,
 		}
 		if artist.Starred {
-			searchResult2.Artist[i].Starred = &artist.StarredAt
+			searchResult2.Artist[i].Starred = &as[i].StarredAt
 		}
 	}
 	searchResult2.Album = childrenFromAlbums(r.Context(), als)
@@ -95,13 +122,13 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 	return response, nil
 }
 
-func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) Search3(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	sp, err := c.getParams(r)
+	sp, err := api.getParams(r)
 	if err != nil {
 		return nil, err
 	}
-	mfs, als, as := c.searchAll(r, sp)
+	mfs, als, as := api.searchAll(r, sp)
 
 	response := newResponse()
 	searchResult3 := &responses.SearchResult3{}

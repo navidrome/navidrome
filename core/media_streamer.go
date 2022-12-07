@@ -55,7 +55,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 	var bitRate int
 	var cached bool
 	defer func() {
-		log.Info("Streaming file", "title", mf.Title, "artist", mf.Artist, "format", format, "cached", cached,
+		log.Info(ctx, "Streaming file", "title", mf.Title, "artist", mf.Artist, "format", format, "cached", cached,
 			"bitRate", bitRate, "user", userName(ctx), "transcoding", format != "raw",
 			"originalFormat", mf.Suffix, "originalBitRate", mf.BitRate)
 	}()
@@ -167,7 +167,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 		format = "raw"
 		bitRate = 0
 	}
-	return
+	return format, bitRate
 }
 
 var (

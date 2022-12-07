@@ -48,6 +48,8 @@ type configOptions struct {
 	EnableStarRating       bool
 	EnableUserEditing      bool
 	DefaultTheme           string
+	DefaultLanguage        string
+	DefaultUIVolume        int
 	EnableCoverAnimation   bool
 	GATrackingID           string
 	EnableLogRedacting     bool
@@ -56,6 +58,7 @@ type configOptions struct {
 	PasswordEncryptionKey  string
 	ReverseProxyUserHeader string
 	ReverseProxyWhitelist  string
+	Prometheus             prometheusOptions
 
 	Scanner scannerOptions
 
@@ -100,6 +103,12 @@ type spotifyOptions struct {
 
 type listenBrainzOptions struct {
 	Enabled bool
+	BaseURL string
+}
+
+type prometheusOptions struct {
+	Enabled     bool
+	MetricsPath string
 }
 
 var (
@@ -234,6 +243,8 @@ func init() {
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
+	viper.SetDefault("defaultlanguage", "")
+	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
@@ -243,6 +254,9 @@ func init() {
 
 	viper.SetDefault("reverseproxyuserheader", "Remote-User")
 	viper.SetDefault("reverseproxywhitelist", "")
+
+	viper.SetDefault("prometheus.enabled", false)
+	viper.SetDefault("prometheus.metricspath", "/metrics")
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
@@ -255,6 +269,7 @@ func init() {
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
+	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 
 	//Downsampling
 	viper.SetDefault("defaultdownsamplingformat", "opus")

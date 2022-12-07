@@ -31,29 +31,34 @@ func New(ds model.DataStore, broker events.Broker, share core.Share) *Router {
 func (n *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
-	r.Use(server.Authenticator(n.ds))
-	r.Use(server.JWTRefresher)
-	n.R(r, "/user", model.User{}, true)
-	n.R(r, "/song", model.MediaFile{}, false)
-	n.R(r, "/album", model.Album{}, false)
-	n.R(r, "/artist", model.Artist{}, false)
-	n.R(r, "/genre", model.Genre{}, false)
-	n.R(r, "/player", model.Player{}, true)
-	n.R(r, "/playlist", model.Playlist{}, true)
-	n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
-	n.RX(r, "/share", n.share.NewRepository, true)
+	// Public
 	n.RX(r, "/translation", newTranslationRepository, false)
 
-	n.addPlaylistTrackRoute(r)
+	// Protected
+	r.Group(func(r chi.Router) {
+		r.Use(server.Authenticator(n.ds))
+		r.Use(server.JWTRefresher)
+		n.R(r, "/user", model.User{}, true)
+		n.R(r, "/song", model.MediaFile{}, false)
+		n.R(r, "/album", model.Album{}, false)
+		n.R(r, "/artist", model.Artist{}, false)
+		n.R(r, "/genre", model.Genre{}, false)
+		n.R(r, "/player", model.Player{}, true)
+		n.R(r, "/playlist", model.Playlist{}, true)
+		n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
+		n.RX(r, "/share", n.share.NewRepository, true)
 
-	// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
-	r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
+		n.addPlaylistTrackRoute(r)
+
+		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
+		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
+		})
+
+		if conf.Server.DevActivityPanel {
+			r.Handle("/events", n.broker)
+		}
 	})
-
-	if conf.Server.DevActivityPanel {
-		r.Handle("/events", n.broker)
-	}
 
 	return r
 }

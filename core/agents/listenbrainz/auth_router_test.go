@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/tests"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -24,7 +24,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 	BeforeEach(func() {
 		sk = &fakeSessionKeys{KeyName: sessionKeyProperty}
 		httpClient = &tests.FakeHttpClient{}
-		cl := NewClient(httpClient)
+		cl := NewClient("http://localhost/", httpClient)
 		r = Router{
 			sessionKeys: sk,
 			client:      cl,

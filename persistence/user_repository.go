@@ -9,7 +9,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
@@ -29,7 +29,7 @@ var (
 	encKey []byte
 )
 
-func NewUserRepository(ctx context.Context, o orm.Ormer) model.UserRepository {
+func NewUserRepository(ctx context.Context, o orm.QueryExecutor) model.UserRepository {
 	r := &userRepository{}
 	r.ctx = ctx
 	r.ormer = o
@@ -131,7 +131,7 @@ func (r *userRepository) Read(id string) (interface{}, error) {
 		return nil, rest.ErrPermissionDenied
 	}
 	usr, err := r.Get(id)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return nil, rest.ErrNotFound
 	}
 	return usr, err
@@ -195,7 +195,7 @@ func (r *userRepository) Update(id string, entity interface{}, cols ...string) e
 		return err
 	}
 	err := r.Put(u)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err
@@ -225,7 +225,7 @@ func validatePasswordChange(newUser *model.User, logged *model.User) error {
 
 func validateUsernameUnique(r model.UserRepository, u *model.User) error {
 	usr, err := r.FindByUsername(u.UserName)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return nil
 	}
 	if err != nil {
@@ -243,7 +243,7 @@ func (r *userRepository) Delete(id string) error {
 		return rest.ErrPermissionDenied
 	}
 	err := r.delete(Eq{"id": id})
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err

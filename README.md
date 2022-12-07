@@ -3,17 +3,22 @@
 # Navidrome Music Server
 
 [![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?logo=github&label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
-[![Build](https://img.shields.io/github/workflow/status/navidrome/navidrome/Build?logo=github&style=flat-square)](https://nightly.link/navidrome/navidrome/workflows/pipeline/master)
+[![Build](https://img.shields.io/github/workflow/status/navidrome/navidrome/Pipeline?logo=github&style=flat-square)](https://nightly.link/navidrome/navidrome/workflows/pipeline/master)
 [![Downloads](https://img.shields.io/github/downloads/navidrome/navidrome/total?logo=github&style=flat-square)](https://github.com/navidrome/navidrome/releases/latest)
 [![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?logo=docker&label=pulls&style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
 [![Dev Chat](https://img.shields.io/discord/671335427726114836?logo=discord&label=discord&style=flat-square)](https://discord.gg/xh7j7yF)
 [![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?logo=reddit&label=/r/navidrome&style=flat-square)](https://www.reddit.com/r/navidrome/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md)
 
-## [Check out our Live Demo!](https://www.navidrome.org/demo/)
-
-Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your 
+Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your
 music collection from any browser or mobile device. It's like your personal Spotify!
+
+
+**Note**: The `master` branch may be in an unstable or even broken state during development. 
+Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
+the `master` branch in order to get a stable set of binaries.
+
+## [Check out our Live Demo!](https://www.navidrome.org/demo/)
 
 __Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
 please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or join the discussion in our 
@@ -28,7 +33,7 @@ please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or j
 See instructions in the [project's website](https://www.navidrome.org/docs/installation/)
 
 If you plan to host Navidrome in the cloud, a great option is to get a virtual server at [BuyVM](https://my.frantech.ca/aff.php?aff=4605). 
-They have plans that start at $2/month! If you decide to sign up, please consider using our [affliliate link](https://my.frantech.ca/aff.php?aff=4605),
+They have plans that start at $3.50/month! If you decide to sign up, please consider using our [affliliate link](https://my.frantech.ca/aff.php?aff=4605),
 to help support the project <3
 
 ## Features
