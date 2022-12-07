@@ -29,7 +29,7 @@ func (h *Hook) Levels() []logrus.Level {
 	return h.AcceptedLevels
 }
 
-// Fire redacts values in an log Entry that match
+// Fire redacts values in a log Entry that match
 // with keys defined in the RedactionList
 func (h *Hook) Fire(e *logrus.Entry) error {
 	if err := h.initRedaction(); err != nil {

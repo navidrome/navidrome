@@ -152,7 +152,7 @@ func isDirOrSymlinkToDir(baseDir string, dirEnt fs.DirEntry) (bool, error) {
 // isDirIgnored returns true if the directory represented by dirEnt contains an
 // `ignore` file (named after consts.SkipScanFile)
 func isDirIgnored(baseDir string, dirEnt fs.DirEntry) bool {
-	// allows Album folders for albums which eg start with ellipses
+	// allows Album folders for albums which e.g. start with ellipses
 	if strings.HasPrefix(dirEnt.Name(), ".") && !strings.HasPrefix(dirEnt.Name(), "..") {
 		return true
 	}

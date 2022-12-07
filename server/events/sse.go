@@ -222,7 +222,7 @@ func (b *broker) listen() {
 			c.diode.put(msg)
 
 		case c := <-b.unsubscribing:
-			// A client has detached and we want to
+			// A client has detached, and we want to
 			// stop sending them messages.
 			delete(clients, c)
 			log.Debug("Removed client from event broker", "numClients", len(clients), "client", c.String())
