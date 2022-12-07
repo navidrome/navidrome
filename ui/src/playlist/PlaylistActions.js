@@ -20,7 +20,7 @@ import {
   playTracks,
   shuffleTracks,
   openDownloadMenu,
-  DOWNLOAD_MENU_PLAY
+  DOWNLOAD_MENU_PLAY,
 } from '../actions'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
 import PropTypes from 'prop-types'

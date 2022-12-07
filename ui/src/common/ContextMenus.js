@@ -17,7 +17,7 @@ import {
   openDownloadMenu,
   openExtendedInfoDialog,
   DOWNLOAD_MENU_ALBUM,
-  DOWNLOAD_MENU_ARTIST
+  DOWNLOAD_MENU_ARTIST,
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'

@@ -13,7 +13,7 @@ import {
   openAddToPlaylist,
   openExtendedInfoDialog,
   openDownloadMenu,
-  DOWNLOAD_MENU_SONG
+  DOWNLOAD_MENU_SONG,
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
