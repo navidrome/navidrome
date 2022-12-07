@@ -72,10 +72,10 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	return nil, err
 }
 
-const TIMESTAMP_REGEX string = `(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])`
+const timeStampRegex string = `(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])`
 
 func isSynced(rawLyrics string) bool {
-	r := regexp.MustCompile(TIMESTAMP_REGEX)
+	r := regexp.MustCompile(timeStampRegex)
 	// Eg: [04:02:50.85]
 	// [02:50.85]
 	// [02:50]
@@ -88,24 +88,24 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	lyrics := responses.Lyrics{}
 	response.Lyrics = &lyrics
-	media_files, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongsWithLyrics(artist, title))
+	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongsWithLyrics(artist, title))
 
 	if err != nil {
 		return nil, err
 	}
 
-	if len(media_files) == 0 {
+	if len(mediaFiles) == 0 {
 		return response, nil
 	}
 
 	lyrics.Artist = artist
 	lyrics.Title = title
 
-	if isSynced(media_files[0].Lyrics) {
-		r := regexp.MustCompile(TIMESTAMP_REGEX)
-		lyrics.Value = r.ReplaceAllString(media_files[0].Lyrics, "")
+	if isSynced(mediaFiles[0].Lyrics) {
+		r := regexp.MustCompile(timeStampRegex)
+		lyrics.Value = r.ReplaceAllString(mediaFiles[0].Lyrics, "")
 	} else {
-		lyrics.Value = media_files[0].Lyrics
+		lyrics.Value = mediaFiles[0].Lyrics
 	}
 
 	return response, nil

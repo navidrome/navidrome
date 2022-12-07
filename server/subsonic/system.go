@@ -6,12 +6,6 @@ import (
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
-type SystemController struct{}
-
-func NewSystemController() *SystemController {
-	return &SystemController{}
-}
-
 func (api *Router) Ping(_ *http.Request) (*responses.Subsonic, error) {
 	return newResponse(), nil
 }
