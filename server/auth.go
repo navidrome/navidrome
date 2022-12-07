@@ -253,7 +253,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	}
 }
 
-// JWTRefresher updates the expire date of the received JWT token, and add the new one to the Authorization Header
+// JWTRefresher updates the expiry date of the received JWT token, and add the new one to the Authorization Header
 func JWTRefresher(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
