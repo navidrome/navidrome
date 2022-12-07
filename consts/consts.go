@@ -80,7 +80,8 @@ const (
 )
 
 var (
-	DefaultTranscodings = []map[string]interface{}{
+	DefaultDownsamplingFormat = "opus"
+	DefaultTranscodings       = []map[string]interface{}{
 		{
 			"name":           "mp3 audio",
 			"targetFormat":   "mp3",
