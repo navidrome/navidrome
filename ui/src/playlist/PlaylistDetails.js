@@ -53,7 +53,6 @@ const PlaylistDetails = (props) => {
   const translate = useTranslate()
   const classes = useStyles()
 
-  console.log(config.enableDuplicateSearch)
 
   return (
     <Card className={classes.container}>
