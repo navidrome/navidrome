@@ -229,7 +229,7 @@ func init() {
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
-	viper.SetDefault("defaulttranscodedownload", false)
+	viper.SetDefault("defaultdownloadtranscoding", false)
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)
