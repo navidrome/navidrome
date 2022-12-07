@@ -53,7 +53,6 @@ const PlaylistDetails = (props) => {
   const translate = useTranslate()
   const classes = useStyles()
 
-
   return (
     <Card className={classes.container}>
       <CardContent className={classes.details}>
