@@ -85,7 +85,7 @@ func (c *Client) ValidateToken(ctx context.Context, apiKey string) (*listenBrain
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
 	}
-	response, err := c.makeRequest(http.MethodGet, "validate-token", r)
+	response, err := c.makeRequest(ctx, http.MethodGet, "validate-token", r)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (c *Client) UpdateNowPlaying(ctx context.Context, apiKey string, li listenI
 		},
 	}
 
-	resp, err := c.makeRequest(http.MethodPost, "submit-listens", r)
+	resp, err := c.makeRequest(ctx, http.MethodPost, "submit-listens", r)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (c *Client) Scrobble(ctx context.Context, apiKey string, li listenInfo) err
 			Payload:    []listenInfo{li},
 		},
 	}
-	resp, err := c.makeRequest(http.MethodPost, "submit-listens", r)
+	resp, err := c.makeRequest(ctx, http.MethodPost, "submit-listens", r)
 	if err != nil {
 		return err
 	}
@@ -138,13 +138,13 @@ func (c *Client) path(endpoint string) (string, error) {
 	return u.String(), nil
 }
 
-func (c *Client) makeRequest(method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
+func (c *Client) makeRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
 	b, _ := json.Marshal(r.Body)
 	uri, err := c.path(endpoint)
 	if err != nil {
 		return nil, err
 	}
-	req, _ := http.NewRequest(method, uri, bytes.NewBuffer(b))
+	req, _ := http.NewRequestWithContext(ctx, method, uri, bytes.NewBuffer(b))
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 
 	if r.ApiKey != "" {
