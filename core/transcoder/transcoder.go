@@ -2,6 +2,8 @@ package transcoder
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -12,7 +14,7 @@ import (
 )
 
 type Transcoder interface {
-	Start(ctx context.Context, command, path string, maxBitRate int) (f io.ReadCloser, err error)
+	Start(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error)
 }
 
 func New() Transcoder {
@@ -21,22 +23,54 @@ func New() Transcoder {
 
 type externalTranscoder struct{}
 
-func (e *externalTranscoder) Start(ctx context.Context, command, path string, maxBitRate int) (f io.ReadCloser, err error) {
+func (e *externalTranscoder) Start(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error) {
 	args := createTranscodeCommand(command, path, maxBitRate)
-
 	log.Trace(ctx, "Executing transcoding command", "cmd", args)
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
+	j := &Cmd{ctx: ctx, args: args}
+	j.PipeReader, j.out = io.Pipe()
+	err := j.start()
+	if err != nil {
+		return nil, err
+	}
+	go j.wait()
+	return j, nil
+}
+
+type Cmd struct {
+	*io.PipeReader
+	out  *io.PipeWriter
+	ctx  context.Context
+	args []string
+	cmd  *exec.Cmd
+}
+
+func (j *Cmd) start() error {
+	cmd := exec.CommandContext(j.ctx, j.args[0], j.args[1:]...) // #nosec
+	cmd.Stdout = j.out
 	cmd.Stderr = os.Stderr
-	if f, err = cmd.StdoutPipe(); err != nil {
+	j.cmd = cmd
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("starting cmd: %w", err)
+	}
+	return nil
+}
+
+func (j *Cmd) wait() {
+	var exitErr *exec.ExitError
+	if err := j.cmd.Wait(); err != nil && !errors.As(err, &exitErr) {
+		_ = j.out.CloseWithError(fmt.Errorf("waiting cmd: %w", err))
 		return
 	}
-	if err = cmd.Start(); err != nil {
+	if code := j.cmd.ProcessState.ExitCode(); code > 1 {
+		_ = j.out.CloseWithError(fmt.Errorf("%s exited with non-zero status code: %d", j.args[0], code))
 		return
 	}
-
-	go func() { _ = cmd.Wait() }() // prevent zombies
-
-	return
+	if j.ctx.Err() != nil {
+		_ = j.out.CloseWithError(j.ctx.Err())
+		return
+	}
+	_ = j.out.Close()
 }
 
 // Path will always be an absolute path

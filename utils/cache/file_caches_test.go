@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,7 +16,7 @@ import (
 // Call NewFileCache and wait for it to be ready
 func callNewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) *fileCache {
 	fc := NewFileCache(name, cacheSize, cacheFolder, maxItems, getReader)
-	Eventually(func() bool { return fc.Ready(context.TODO()) }).Should(BeTrue())
+	Eventually(func() bool { return fc.Ready(context.Background()) }).Should(BeTrue())
 	return fc
 }
 
@@ -56,7 +57,7 @@ var _ = Describe("File Caches", func() {
 				return strings.NewReader(arg.Key()), nil
 			})
 			// First call is a MISS
-			s, err := fc.Get(context.TODO(), &testArg{"test"})
+			s, err := fc.Get(context.Background(), &testArg{"test"})
 			Expect(err).To(BeNil())
 			Expect(s.Cached).To(BeFalse())
 			Expect(s.Closer).To(BeNil())
@@ -64,7 +65,7 @@ var _ = Describe("File Caches", func() {
 
 			// Second call is a HIT
 			called = false
-			s, err = fc.Get(context.TODO(), &testArg{"test"})
+			s, err = fc.Get(context.Background(), &testArg{"test"})
 			Expect(err).To(BeNil())
 			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 			Expect(s.Cached).To(BeTrue())
@@ -79,18 +80,70 @@ var _ = Describe("File Caches", func() {
 				return strings.NewReader(arg.Key()), nil
 			})
 			// First call is a MISS
-			s, err := fc.Get(context.TODO(), &testArg{"test"})
+			s, err := fc.Get(context.Background(), &testArg{"test"})
 			Expect(err).To(BeNil())
 			Expect(s.Cached).To(BeFalse())
 			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 
 			// Second call is also a MISS
 			called = false
-			s, err = fc.Get(context.TODO(), &testArg{"test"})
+			s, err = fc.Get(context.Background(), &testArg{"test"})
 			Expect(err).To(BeNil())
 			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 			Expect(s.Cached).To(BeFalse())
 			Expect(called).To(BeTrue())
+		})
+
+		Context("reader errors", func() {
+			When("creating a reader fails", func() {
+				It("does not cache", func() {
+					fc := callNewFileCache("test", "1KB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+						return nil, errors.New("failed")
+					})
+
+					_, err := fc.Get(context.Background(), &testArg{"test"})
+					Expect(err).To(MatchError("failed"))
+				})
+			})
+			When("reader returns error", func() {
+				It("does not cache", func() {
+					fc := callNewFileCache("test", "1KB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+						return errFakeReader{errors.New("read failure")}, nil
+					})
+
+					s, err := fc.Get(context.Background(), &testArg{"test"})
+					Expect(err).ToNot(HaveOccurred())
+					_, _ = io.Copy(io.Discard, s)
+					// TODO How to make the fscache reader return the error?
+					//Expect(err).To(MatchError("read failure"))
+
+					// Data should not be cached
+					s, err = fc.Get(context.Background(), &testArg{"test"})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(s.Cached).To(BeFalse())
+				})
+			})
+			When("context is canceled", func() {
+				It("does not cache", func() {
+					ctx, cancel := context.WithCancel(context.Background())
+					fc := callNewFileCache("test", "1KB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+						return &ctxFakeReader{ctx}, nil
+					})
+
+					s, err := fc.Get(ctx, &testArg{"test"})
+					Expect(err).ToNot(HaveOccurred())
+					cancel()
+					b := make([]byte, 10)
+					_, err = s.Read(b)
+					// TODO Should be context.Canceled error
+					Expect(err).To(MatchError(io.EOF))
+
+					// Data should not be cached
+					s, err = fc.Get(context.Background(), &testArg{"test"})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(s.Cached).To(BeFalse())
+				})
+			})
 		})
 	})
 })
@@ -98,3 +151,11 @@ var _ = Describe("File Caches", func() {
 type testArg struct{ s string }
 
 func (t *testArg) Key() string { return t.s }
+
+type errFakeReader struct{ err error }
+
+func (e errFakeReader) Read([]byte) (int, error) { return 0, e.err }
+
+type ctxFakeReader struct{ ctx context.Context }
+
+func (e *ctxFakeReader) Read([]byte) (int, error) { return 0, e.ctx.Err() }
