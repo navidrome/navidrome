@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -22,10 +23,12 @@ func callNewFileCache(name, cacheSize, cacheFolder string, maxItems int, getRead
 
 var _ = Describe("File Caches", func() {
 	BeforeEach(func() {
-		conf.Server.DataFolder, _ = os.MkdirTemp("", "file_caches")
-	})
-	AfterEach(func() {
-		_ = os.RemoveAll(conf.Server.DataFolder)
+		tmpDir, _ := os.MkdirTemp("", "file_caches")
+		DeferCleanup(func() {
+			configtest.SetupConfig()
+			_ = os.RemoveAll(tmpDir)
+		})
+		conf.Server.DataFolder = tmpDir
 	})
 
 	Describe("NewFileCache", func() {
@@ -114,7 +117,7 @@ var _ = Describe("File Caches", func() {
 					s, err := fc.Get(context.Background(), &testArg{"test"})
 					Expect(err).ToNot(HaveOccurred())
 					_, _ = io.Copy(io.Discard, s)
-					// TODO How to make the fscache reader return the error?
+					// TODO How to make the fscache reader return the underlying reader error?
 					//Expect(err).To(MatchError("read failure"))
 
 					// Data should not be cached
