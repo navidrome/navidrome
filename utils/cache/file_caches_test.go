@@ -120,10 +120,14 @@ var _ = Describe("File Caches", func() {
 					// TODO How to make the fscache reader return the underlying reader error?
 					//Expect(err).To(MatchError("read failure"))
 
-					// Data should not be cached
-					s, err = fc.Get(context.Background(), &testArg{"test"})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(s.Cached).To(BeFalse())
+					// Data should not be cached (or eventually be removed from cache)
+					Eventually(func() bool {
+						s, _ = fc.Get(context.Background(), &testArg{"test"})
+						if s != nil {
+							return s.Cached
+						}
+						return false
+					}).Should(BeFalse())
 				})
 			})
 			When("context is canceled", func() {
@@ -141,10 +145,14 @@ var _ = Describe("File Caches", func() {
 					// TODO Should be context.Canceled error
 					Expect(err).To(MatchError(io.EOF))
 
-					// Data should not be cached
-					s, err = fc.Get(context.Background(), &testArg{"test"})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(s.Cached).To(BeFalse())
+					// Data should not be cached (or eventually be removed from cache)
+					Eventually(func() bool {
+						s, _ = fc.Get(context.Background(), &testArg{"test"})
+						if s != nil {
+							return s.Cached
+						}
+						return false
+					}).Should(BeFalse())
 				})
 			})
 		})
