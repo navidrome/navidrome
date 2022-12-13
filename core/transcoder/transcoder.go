@@ -57,13 +57,13 @@ func (j *Cmd) start() error {
 }
 
 func (j *Cmd) wait() {
-	var exitErr *exec.ExitError
-	if err := j.cmd.Wait(); err != nil && !errors.As(err, &exitErr) {
-		_ = j.out.CloseWithError(fmt.Errorf("waiting cmd: %w", err))
-		return
-	}
-	if code := j.cmd.ProcessState.ExitCode(); code > 1 {
-		_ = j.out.CloseWithError(fmt.Errorf("%s exited with non-zero status code: %d", j.args[0], code))
+	if err := j.cmd.Wait(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			_ = j.out.CloseWithError(fmt.Errorf("%s exited with non-zero status code: %d", j.args[0], exitErr.ExitCode()))
+		} else {
+			_ = j.out.CloseWithError(fmt.Errorf("waiting %s cmd: %w", j.args[0], err))
+		}
 		return
 	}
 	if j.ctx.Err() != nil {
