@@ -192,7 +192,7 @@ func hr(r chi.Router, path string, f handlerRaw) {
 		}
 		if r.Context().Err() != nil {
 			if log.CurrentLevel() >= log.LevelDebug {
-				log.Warn(r.Context(), "Request was interrupted", "path", path, r.Context().Err())
+				log.Warn(r.Context(), "Request was interrupted", "endpoint", r.URL.Path, r.Context().Err())
 			}
 			return
 		}
@@ -264,14 +264,14 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	}
 	if payload.Status == "ok" {
 		if log.CurrentLevel() >= log.LevelTrace {
-			log.Debug(r.Context(), "API: Successful response", "status", "OK", "body", string(response))
+			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK", "body", string(response))
 		} else {
-			log.Debug(r.Context(), "API: Successful response", "status", "OK")
+			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK")
 		}
 	} else {
-		log.Warn(r.Context(), "API: Failed response", "error", payload.Error.Code, "message", payload.Error.Message)
+		log.Warn(r.Context(), "API: Failed response", "endpoint", r.URL.Path, "error", payload.Error.Code, "message", payload.Error.Message)
 	}
 	if _, err := w.Write(response); err != nil {
-		log.Error(r, "Error sending response to client", "payload", string(response), err)
+		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
 	}
 }
