@@ -127,7 +127,11 @@ func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Conte
 		ctx = context.Background()
 	}
 
-	logger := addFields(createNewLogger(), keyValuePairs)
+	logger, ok := ctx.Value(loggerCtxKey).(*logrus.Entry)
+	if !ok {
+		logger = createNewLogger()
+	}
+	logger = addFields(logger, keyValuePairs)
 	ctx = context.WithValue(ctx, loggerCtxKey, logger)
 
 	return ctx
