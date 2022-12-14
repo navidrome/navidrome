@@ -38,7 +38,7 @@ func (p *players) Register(ctx context.Context, id, client, userAgent, ip string
 	if err != nil || id == "" {
 		plr, err = p.ds.Player(ctx).FindMatch(userName, client, userAgent)
 		if err == nil {
-			log.Debug("Found matching player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
+			log.Debug(ctx, "Found matching player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
 		} else {
 			plr = &model.Player{
 				ID:              uuid.NewString(),
