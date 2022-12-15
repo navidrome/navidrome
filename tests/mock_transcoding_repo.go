@@ -16,6 +16,8 @@ func (m *MockTranscodingRepo) FindByFormat(format string) (*model.Transcoding, e
 		return &model.Transcoding{ID: "mp31", TargetFormat: "mp3", DefaultBitRate: 160}, nil
 	case "oga":
 		return &model.Transcoding{ID: "oga1", TargetFormat: "oga", DefaultBitRate: 128}, nil
+	case "opus":
+		return &model.Transcoding{ID: "opus1", TargetFormat: "opus", DefaultBitRate: 96}, nil
 	default:
 		return nil, model.ErrNotFound
 	}

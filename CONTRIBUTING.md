@@ -14,7 +14,7 @@ Please read the following [Code of Conduct](https://github.com/navidrome/navidro
 ## Issues
 Found any issue or bug in our codebase? Have a great idea you want to propose or discuss with 
 the developers? You can help by submitting an [issue](https://github.com/navidrome/navidrome/issues/new/choose)
-to the Github repository. 
+to the GitHub repository. 
 
 **Before opening a new issue, please check if the issue has not been already made by searching 
 the [issues](https://github.com/navidrome/navidrome/issues)**

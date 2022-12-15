@@ -51,7 +51,7 @@ func (c *Client) ArtistGetInfo(ctx context.Context, name string, mbid string) (*
 	params.Add("artist", name)
 	params.Add("mbid", mbid)
 	params.Add("lang", c.lang)
-	response, err := c.makeRequest(http.MethodGet, params, false)
+	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (c *Client) ArtistGetSimilar(ctx context.Context, name string, mbid string,
 	params.Add("artist", name)
 	params.Add("mbid", mbid)
 	params.Add("limit", strconv.Itoa(limit))
-	response, err := c.makeRequest(http.MethodGet, params, false)
+	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (c *Client) ArtistGetTopTracks(ctx context.Context, name string, mbid strin
 	params.Add("artist", name)
 	params.Add("mbid", mbid)
 	params.Add("limit", strconv.Itoa(limit))
-	response, err := c.makeRequest(http.MethodGet, params, false)
+	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 	params := url.Values{}
 	params.Add("method", "auth.getToken")
 	c.sign(params)
-	response, err := c.makeRequest(http.MethodGet, params, true)
+	response, err := c.makeRequest(ctx, http.MethodGet, params, true)
 	if err != nil {
 		return "", err
 	}
@@ -99,7 +99,7 @@ func (c *Client) GetSession(ctx context.Context, token string) (string, error) {
 	params := url.Values{}
 	params.Add("method", "auth.getSession")
 	params.Add("token", token)
-	response, err := c.makeRequest(http.MethodGet, params, true)
+	response, err := c.makeRequest(ctx, http.MethodGet, params, true)
 	if err != nil {
 		return "", err
 	}
@@ -128,7 +128,7 @@ func (c *Client) UpdateNowPlaying(ctx context.Context, sessionKey string, info S
 	params.Add("duration", strconv.Itoa(info.duration))
 	params.Add("albumArtist", info.albumArtist)
 	params.Add("sk", sessionKey)
-	resp, err := c.makeRequest(http.MethodPost, params, true)
+	resp, err := c.makeRequest(ctx, http.MethodPost, params, true)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (c *Client) Scrobble(ctx context.Context, sessionKey string, info ScrobbleI
 	params.Add("duration", strconv.Itoa(info.duration))
 	params.Add("albumArtist", info.albumArtist)
 	params.Add("sk", sessionKey)
-	resp, err := c.makeRequest(http.MethodPost, params, true)
+	resp, err := c.makeRequest(ctx, http.MethodPost, params, true)
 	if err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (c *Client) Scrobble(ctx context.Context, sessionKey string, info ScrobbleI
 	return nil
 }
 
-func (c *Client) makeRequest(method string, params url.Values, signed bool) (*Response, error) {
+func (c *Client) makeRequest(ctx context.Context, method string, params url.Values, signed bool) (*Response, error) {
 	params.Add("format", "json")
 	params.Add("api_key", c.apiKey)
 
@@ -174,7 +174,7 @@ func (c *Client) makeRequest(method string, params url.Values, signed bool) (*Re
 		c.sign(params)
 	}
 
-	req, _ := http.NewRequest(method, apiBaseUrl, nil)
+	req, _ := http.NewRequestWithContext(ctx, method, apiBaseUrl, nil)
 	req.URL.RawQuery = params.Encode()
 
 	resp, err := c.hc.Do(req)
