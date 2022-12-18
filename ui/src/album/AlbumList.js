@@ -28,6 +28,7 @@ import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const AlbumFilter = (props) => {
@@ -132,6 +133,7 @@ const AlbumList = (props) => {
         )}
       </List>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
       <ExpandInfoDialog content={<AlbumInfo />} />
     </>
   )

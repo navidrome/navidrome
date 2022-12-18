@@ -34,6 +34,7 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { AddToPlaylistDialog } from '../dialogs'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles({
@@ -194,6 +195,7 @@ const SongList = (props) => {
         )}
       </List>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
       <ExpandInfoDialog content={<SongInfo />} />
     </>
   )

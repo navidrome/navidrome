@@ -50,7 +50,7 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	transcoderTranscoder := transcoder.New()
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
-	archiver := core.NewArchiver(dataStore)
+	archiver := core.NewArchiver(mediaStreamer, dataStore)
 	players := core.NewPlayers(dataStore)
 	agentsAgents := agents.New(dataStore)
 	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
