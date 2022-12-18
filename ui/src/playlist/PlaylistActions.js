@@ -14,9 +14,15 @@ import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
 import { httpClient } from '../dataProvider'
-import { playNext, addTracks, playTracks, shuffleTracks } from '../actions'
+import {
+  playNext,
+  addTracks,
+  playTracks,
+  shuffleTracks,
+  openDownloadMenu,
+  DOWNLOAD_MENU_PLAY,
+} from '../actions'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
-import subsonic from '../subsonic'
 import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
@@ -79,8 +85,8 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   }, [getAllSongsAndDispatch])
 
   const handleDownload = React.useCallback(() => {
-    subsonic.download(record.id)
-  }, [record])
+    dispatch(openDownloadMenu(record, DOWNLOAD_MENU_PLAY))
+  }, [dispatch, record])
 
   const handleExport = React.useCallback(
     () =>

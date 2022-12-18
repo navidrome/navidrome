@@ -38,7 +38,8 @@ const unstar = (id) => httpClient(url('unstar', id))
 
 const setRating = (id, rating) => httpClient(url('setRating', id, { rating }))
 
-const download = (id) => (window.location.href = baseUrl(url('download', id)))
+const download = (id, format = 'raw', bitrate = '0') =>
+  (window.location.href = baseUrl(url('download', id, { format, bitrate })))
 
 const startScan = (options) => httpClient(url('startScan', null, options))
 

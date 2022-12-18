@@ -1,6 +1,12 @@
 import {
   ADD_TO_PLAYLIST_CLOSE,
   ADD_TO_PLAYLIST_OPEN,
+  DOWNLOAD_MENU_ALBUM,
+  DOWNLOAD_MENU_ARTIST,
+  DOWNLOAD_MENU_CLOSE,
+  DOWNLOAD_MENU_OPEN,
+  DOWNLOAD_MENU_PLAY,
+  DOWNLOAD_MENU_SONG,
   DUPLICATE_SONG_WARNING_OPEN,
   DUPLICATE_SONG_WARNING_CLOSE,
   EXTENDED_INFO_OPEN,
@@ -35,6 +41,49 @@ export const addToPlaylistDialogReducer = (
       }
     case DUPLICATE_SONG_WARNING_CLOSE:
       return { ...previousState, duplicateSong: false }
+    default:
+      return previousState
+  }
+}
+
+export const downloadMenuDialogReducer = (
+  previousState = {
+    open: false,
+  },
+  payload
+) => {
+  const { type } = payload
+  switch (type) {
+    case DOWNLOAD_MENU_OPEN: {
+      switch (payload.recordType) {
+        case DOWNLOAD_MENU_ALBUM:
+        case DOWNLOAD_MENU_ARTIST:
+        case DOWNLOAD_MENU_PLAY:
+        case DOWNLOAD_MENU_SONG: {
+          return {
+            ...previousState,
+            open: true,
+            record: payload.record,
+            recordType: payload.recordType,
+          }
+        }
+        default: {
+          return {
+            ...previousState,
+            open: true,
+            record: payload.record,
+            recordType: undefined,
+          }
+        }
+      }
+    }
+    case DOWNLOAD_MENU_CLOSE: {
+      return {
+        ...previousState,
+        open: false,
+        recordType: undefined,
+      }
+    }
     default:
       return previousState
   }

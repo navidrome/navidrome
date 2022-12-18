@@ -34,6 +34,7 @@ type configOptions struct {
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
 	PlaylistsPath           string
+	AutoTranscodeDownload   bool
 
 	SearchFullString       bool
 	RecentlyAddedByModTime bool
@@ -239,6 +240,7 @@ func init() {
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
+	viper.SetDefault("autotranscodedownload", false)
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)

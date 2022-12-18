@@ -20,6 +20,7 @@ import (
 
 type MediaStreamer interface {
 	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int) (*Stream, error)
+	DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) (*Stream, error)
 }
 
 type TranscodingCache cache.FileCache
@@ -51,6 +52,10 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 		return nil, err
 	}
 
+	return ms.DoStream(ctx, mf, reqFormat, reqBitRate)
+}
+
+func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) (*Stream, error) {
 	var format string
 	var bitRate int
 	var cached bool

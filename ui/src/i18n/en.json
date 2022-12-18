@@ -322,7 +322,8 @@
             "lastfm": "Open in Last.fm",
             "musicbrainz": "Open in MusicBrainz"
         },
-        "lastfmLink": "Read More..."
+        "lastfmLink": "Read More...",
+        "originalFormat": "Download in original format"
     },
     "menu": {
         "library": "Library",
