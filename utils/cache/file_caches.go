@@ -10,6 +10,7 @@ import (
 
 	"github.com/djherbis/fscache"
 	"github.com/dustin/go-humanize"
+	"github.com/hashicorp/go-multierror"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -27,7 +28,7 @@ type FileCache interface {
 	Available(ctx context.Context) bool
 }
 
-func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) *fileCache {
+func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) FileCache {
 	fc := &fileCache{
 		name:        name,
 		cacheSize:   cacheSize,
@@ -86,6 +87,16 @@ func (fc *fileCache) Available(ctx context.Context) bool {
 	return fc.ready && !fc.disabled
 }
 
+func (fc *fileCache) invalidate(ctx context.Context, key string) error {
+	if !fc.Available(ctx) {
+		return nil
+	}
+	if !fc.cache.Exists(key) {
+		return nil
+	}
+	return fc.cache.Remove(key)
+}
+
 func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 	if !fc.Available(ctx) {
 		reader, err := fc.getReader(ctx, arg)
@@ -109,10 +120,17 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		if err != nil {
 			return nil, err
 		}
-		go copyAndClose(ctx, w, reader)
+		go func() {
+			if err := copyAndClose(w, reader); err != nil {
+				log.Debug(ctx, "Error populating cache", "key", key, err)
+				if err = fc.invalidate(ctx, key); err != nil {
+					log.Warn(ctx, "Error removing key from cache", "key", key, err)
+				}
+			}
+		}()
 	}
 
-	// If it is in the cache, check if the stream is done being written. If so, return a ReaderSeeker
+	// If it is in the cache, check if the stream is done being written. If so, return a ReadSeeker
 	if cached {
 		size := getFinalCachedSize(r)
 		if size >= 0 {
@@ -129,7 +147,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		}
 	}
 
-	// All other cases, just return a Reader, without Seek capabilities
+	// All other cases, just return the cache reader, without Seek capabilities
 	return &CachedStream{Reader: r, Cached: cached}, nil
 }
 
@@ -140,7 +158,6 @@ type CachedStream struct {
 	Cached bool
 }
 
-func (s *CachedStream) Seekable() bool { return s.Seeker != nil }
 func (s *CachedStream) Close() error {
 	if s.Closer != nil {
 		return s.Closer.Close()
@@ -162,21 +179,21 @@ func getFinalCachedSize(r fscache.ReadAtCloser) int64 {
 	return -1
 }
 
-func copyAndClose(ctx context.Context, w io.WriteCloser, r io.Reader) {
+func copyAndClose(w io.WriteCloser, r io.Reader) error {
 	_, err := io.Copy(w, r)
 	if err != nil {
-		log.Error(ctx, "Error copying data to cache", err)
+		err = fmt.Errorf("copying data to cache: %w", err)
 	}
 	if c, ok := r.(io.Closer); ok {
-		err = c.Close()
-		if err != nil {
-			log.Error(ctx, "Error closing source stream", err)
+		if cErr := c.Close(); cErr != nil {
+			err = multierror.Append(err, fmt.Errorf("closing source stream: %w", cErr))
 		}
 	}
-	err = w.Close()
-	if err != nil {
-		log.Error(ctx, "Error closing cache writer", err)
+
+	if cErr := w.Close(); cErr != nil {
+		err = multierror.Append(err, fmt.Errorf("closing cache writer: %w", cErr))
 	}
+	return err
 }
 
 func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cache, error) {
