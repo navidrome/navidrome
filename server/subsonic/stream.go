@@ -100,7 +100,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	format := utils.ParamString(r, "format")
 
 	if format == "" {
-		if conf.Server.DefaultDownloadTranscoding {
+		if conf.Server.AutoTranscodeDownload {
 			// if we are not provided a format, see if we have requested transcoding for this client
 			// This must be enabled via a config option. For the UI, we are always given an option.
 			// This will impact other clients which do not use the UI
