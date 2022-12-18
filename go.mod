@@ -37,7 +37,7 @@ require (
 	github.com/mattn/go-zglob v0.0.3
 	github.com/microcosm-cc/bluemonday v1.0.21
 	github.com/mileusna/useragent v1.2.1
-	github.com/onsi/ginkgo/v2 v2.5.1
+	github.com/onsi/ginkgo/v2 v2.6.1
 	github.com/onsi/gomega v1.24.1
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/prometheus/client_golang v1.14.0
@@ -51,7 +51,7 @@ require (
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 	golang.org/x/sync v0.1.0
 	golang.org/x/text v0.5.0
-	golang.org/x/tools v0.3.0
+	golang.org/x/tools v0.4.0
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
@@ -241,8 +241,8 @@ require (
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/exp/typeparams v0.0.0-20220827204233-334a2380cb91 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.2.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/net v0.3.0 // indirect
+	golang.org/x/sys v0.3.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
