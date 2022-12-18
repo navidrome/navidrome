@@ -28,7 +28,7 @@ type FileCache interface {
 	Available(ctx context.Context) bool
 }
 
-func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) *fileCache {
+func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) FileCache {
 	fc := &fileCache{
 		name:        name,
 		cacheSize:   cacheSize,
@@ -130,7 +130,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		}()
 	}
 
-	// If it is in the cache, check if the stream is done being written. If so, return a ReaderSeeker
+	// If it is in the cache, check if the stream is done being written. If so, return a ReadSeeker
 	if cached {
 		size := getFinalCachedSize(r)
 		if size >= 0 {
@@ -158,7 +158,6 @@ type CachedStream struct {
 	Cached bool
 }
 
-func (s *CachedStream) Seekable() bool { return s.Seeker != nil }
 func (s *CachedStream) Close() error {
 	if s.Closer != nil {
 		return s.Closer.Close()
