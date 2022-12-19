@@ -8,13 +8,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Parser", func() {
-	var e *Parser
+var _ = Describe("Extractor", func() {
+	var e *Extractor
 	// This file will have 0222 (no read) permission during these tests
 	var accessForbiddenFile = "tests/fixtures/test_no_read_permission.ogg"
 
 	BeforeEach(func() {
-		e = &Parser{}
+		e = &Extractor{}
 
 		err := os.Chmod(accessForbiddenFile, 0222)
 		Expect(err).ToNot(HaveOccurred())

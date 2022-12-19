@@ -11,19 +11,20 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/scanner/metadata"
 )
 
-type Parser struct{}
+const ExtractorID = "ffmpeg"
 
-type parsedTags = map[string][]string
+type Extractor struct{}
 
-func (e *Parser) Parse(files ...string) (map[string]parsedTags, error) {
+func (e *Extractor) Parse(files ...string) (map[string]metadata.ParsedTags, error) {
 	args := e.createProbeCommand(files)
 
 	log.Trace("Executing command", "args", args)
 	cmd := exec.Command(args[0], args[1:]...) // #nosec
 	output, _ := cmd.CombinedOutput()
-	fileTags := map[string]parsedTags{}
+	fileTags := map[string]metadata.ParsedTags{}
 	if len(output) == 0 {
 		return fileTags, errors.New("error extracting metadata files")
 	}
@@ -38,7 +39,7 @@ func (e *Parser) Parse(files ...string) (map[string]parsedTags, error) {
 	return fileTags, nil
 }
 
-func (e *Parser) extractMetadata(filePath, info string) (parsedTags, error) {
+func (e *Extractor) extractMetadata(filePath, info string) (metadata.ParsedTags, error) {
 	tags := e.parseInfo(info)
 	if len(tags) == 0 {
 		log.Trace("Not a media file. Skipping", "filePath", filePath)
@@ -83,7 +84,7 @@ var (
 	coverRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: (Video):.*`)
 )
 
-func (e *Parser) parseOutput(output string) map[string]string {
+func (e *Extractor) parseOutput(output string) map[string]string {
 	outputs := map[string]string{}
 	all := inputRegex.FindAllStringSubmatchIndex(output, -1)
 	for i, loc := range all {
@@ -105,7 +106,7 @@ func (e *Parser) parseOutput(output string) map[string]string {
 	return outputs
 }
 
-func (e *Parser) parseInfo(info string) map[string][]string {
+func (e *Extractor) parseInfo(info string) map[string][]string {
 	tags := map[string][]string{}
 
 	reader := strings.NewReader(info)
@@ -176,7 +177,7 @@ func (e *Parser) parseInfo(info string) map[string][]string {
 
 var zeroTime = time.Date(0000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-func (e *Parser) parseDuration(tag string) string {
+func (e *Extractor) parseDuration(tag string) string {
 	d, err := time.Parse("15:04:05", tag)
 	if err != nil {
 		return "0"
@@ -184,7 +185,7 @@ func (e *Parser) parseDuration(tag string) string {
 	return strconv.FormatFloat(d.Sub(zeroTime).Seconds(), 'f', 2, 32)
 }
 
-func (e *Parser) parseChannels(tag string) string {
+func (e *Extractor) parseChannels(tag string) string {
 	if tag == "mono" {
 		return "1"
 	} else if tag == "stereo" {
@@ -199,7 +200,7 @@ func (e *Parser) parseChannels(tag string) string {
 }
 
 // Inputs will always be absolute paths
-func (e *Parser) createProbeCommand(inputs []string) []string {
+func (e *Extractor) createProbeCommand(inputs []string) []string {
 	split := strings.Split(conf.Server.ProbeCommand, " ")
 	args := make([]string, 0)
 
@@ -213,4 +214,8 @@ func (e *Parser) createProbeCommand(inputs []string) []string {
 		}
 	}
 	return args
+}
+
+func init() {
+	metadata.RegisterExtractor(ExtractorID, &Extractor{})
 }
