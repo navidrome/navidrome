@@ -69,6 +69,7 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.CreatedAt).To(Equal(t("2022-12-19 08:30")))
 			})
 		})
+
 		When("we have multiple songs", func() {
 			BeforeEach(func() {
 				mfs = MediaFiles{
@@ -85,6 +86,18 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.MaxYear).To(Equal(1986))
 				Expect(album.UpdatedAt).To(Equal(t("2022-12-19 09:45")))
 				Expect(album.CreatedAt).To(Equal(t("2022-12-19 07:30")))
+			})
+			Context("MinYear", func() {
+				It("returns 0 when all values are 0", func() {
+					mfs = MediaFiles{{Year: 0}, {Year: 0}, {Year: 0}}
+					a := mfs.ToAlbum()
+					Expect(a.MinYear).To(Equal(0))
+				})
+				It("returns the smallest value from the list, not counting 0", func() {
+					mfs = MediaFiles{{Year: 2000}, {Year: 0}, {Year: 1999}}
+					a := mfs.ToAlbum()
+					Expect(a.MinYear).To(Equal(1999))
+				})
 			})
 		})
 	})
