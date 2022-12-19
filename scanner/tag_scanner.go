@@ -22,20 +22,18 @@ import (
 )
 
 type TagScanner struct {
-	rootFolder  string
-	ds          model.DataStore
-	cacheWarmer core.CacheWarmer
-	plsSync     *playlistImporter
-	cnt         *counters
-	mapper      *mediaFileMapper
+	rootFolder string
+	ds         model.DataStore
+	plsSync    *playlistImporter
+	cnt        *counters
+	mapper     *mediaFileMapper
 }
 
-func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlists, cacheWarmer core.CacheWarmer) *TagScanner {
+func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlists) *TagScanner {
 	return &TagScanner{
-		rootFolder:  rootFolder,
-		plsSync:     newPlaylistImporter(ds, playlists, rootFolder),
-		ds:          ds,
-		cacheWarmer: cacheWarmer,
+		rootFolder: rootFolder,
+		plsSync:    newPlaylistImporter(ds, playlists, rootFolder),
+		ds:         ds,
 	}
 }
 
@@ -240,7 +238,6 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, allFSDirs dirMap, di
 
 	for _, t := range mfs {
 		buffer.accumulate(t)
-		s.cacheWarmer.AddAlbum(ctx, t.AlbumID)
 	}
 
 	err = buffer.flush()
@@ -321,11 +318,6 @@ func (s *TagScanner) processChangedDir(ctx context.Context, allFSDirs dirMap, di
 		if err != nil {
 			return err
 		}
-	}
-
-	// Pre cache all changed album artwork
-	for albumID := range buffer.album {
-		s.cacheWarmer.AddAlbum(ctx, albumID)
 	}
 
 	err = buffer.flush()
