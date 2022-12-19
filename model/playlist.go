@@ -46,7 +46,7 @@ func (pls Playlist) MediaFiles() MediaFiles {
 func (pls *Playlist) RemoveTracks(idxToRemove []int) {
 	var newTracks PlaylistTracks
 	for i, t := range pls.Tracks {
-		if slices.Index(idxToRemove, i) >= 0 {
+		if slices.Contains(idxToRemove, i) {
 			continue
 		}
 		newTracks = append(newTracks, t)
