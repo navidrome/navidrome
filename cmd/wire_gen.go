@@ -45,8 +45,7 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 func CreateSubsonicAPIRouter() *subsonic.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	artworkCache := core.GetImageCache()
-	artwork := core.NewArtwork(dataStore, artworkCache)
+	artwork := core.NewArtwork(dataStore)
 	transcoderTranscoder := transcoder.New()
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
@@ -80,11 +79,8 @@ func createScanner() scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	playlists := core.NewPlaylists(dataStore)
-	artworkCache := core.GetImageCache()
-	artwork := core.NewArtwork(dataStore, artworkCache)
-	cacheWarmer := core.NewCacheWarmer(artwork, artworkCache)
 	broker := events.GetBroker()
-	scannerScanner := scanner.New(dataStore, playlists, cacheWarmer, broker)
+	scannerScanner := scanner.New(dataStore, playlists, broker)
 	return scannerScanner
 }
 
