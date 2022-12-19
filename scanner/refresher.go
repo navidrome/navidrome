@@ -3,6 +3,8 @@ package scanner
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
@@ -16,14 +18,16 @@ type refresher struct {
 	ds     model.DataStore
 	album  map[string]struct{}
 	artist map[string]struct{}
+	dirMap dirMap
 }
 
-func newRefresher(ctx context.Context, ds model.DataStore) *refresher {
+func newRefresher(ctx context.Context, ds model.DataStore, dirMap dirMap) *refresher {
 	return &refresher{
 		ctx:    ctx,
 		ds:     ds,
 		album:  map[string]struct{}{},
 		artist: map[string]struct{}{},
+		dirMap: dirMap,
 	}
 }
 
@@ -54,7 +58,7 @@ func (f *refresher) flushMap(m map[string]struct{}, entity string, refresh refre
 	return nil
 }
 
-func (f *refresher) chunkRefreshAlbums(ids ...string) error {
+func (f *refresher) refreshAlbumsChunked(ids ...string) error {
 	chunks := utils.BreakUpStringSlice(ids, 100)
 	for _, chunk := range chunks {
 		err := f.refreshAlbums(chunk...)
@@ -76,8 +80,10 @@ func (f *refresher) refreshAlbums(ids ...string) error {
 
 	repo := f.ds.Album(f.ctx)
 	grouped := slice.Group(mfs, func(m model.MediaFile) string { return m.AlbumID })
-	for _, songs := range grouped {
-		a := model.MediaFiles(songs).ToAlbum()
+	for _, group := range grouped {
+		songs := model.MediaFiles(group)
+		a := songs.ToAlbum()
+		a.ImageFiles = f.getImageFiles(songs.Dirs())
 		err := repo.Put(&a)
 		if err != nil {
 			return err
@@ -86,8 +92,18 @@ func (f *refresher) refreshAlbums(ids ...string) error {
 	return nil
 }
 
+func (f *refresher) getImageFiles(dirs []string) string {
+	var imageFiles []string
+	for _, dir := range dirs {
+		for _, img := range f.dirMap[dir].Images {
+			imageFiles = append(imageFiles, filepath.Join(dir, img))
+		}
+	}
+	return strings.Join(imageFiles, string(filepath.ListSeparator))
+}
+
 func (f *refresher) flush() error {
-	err := f.flushMap(f.album, "album", f.chunkRefreshAlbums)
+	err := f.flushMap(f.album, "album", f.refreshAlbumsChunked)
 	if err != nil {
 		return err
 	}

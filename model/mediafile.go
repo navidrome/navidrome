@@ -71,6 +71,16 @@ func (mf *MediaFile) ContentType() string {
 
 type MediaFiles []MediaFile
 
+func (mfs MediaFiles) Dirs() []string {
+	var dirs []string
+	for _, mf := range mfs {
+		dir, _ := filepath.Split(mf.Path)
+		dirs = append(dirs, filepath.Clean(dir))
+	}
+	slices.Sort(dirs)
+	return slices.Compact(dirs)
+}
+
 func (mfs MediaFiles) ToAlbum() Album {
 	a := Album{SongCount: len(mfs)}
 	var fullText []string

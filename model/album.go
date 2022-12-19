@@ -34,6 +34,7 @@ type Album struct {
 	MbzAlbumArtistID     string    `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
 	MbzAlbumType         string    `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment      string    `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
+	ImageFiles           string    `structs:"image_files" json:"imageFiles,omitempty"`
 	CreatedAt            time.Time `structs:"created_at" json:"createdAt"`
 	UpdatedAt            time.Time `structs:"updated_at" json:"updatedAt"`
 }
