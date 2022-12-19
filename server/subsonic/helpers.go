@@ -80,7 +80,7 @@ func toArtists(ctx context.Context, artists model.Artists) []responses.Artist {
 	return as
 }
 
-func toArtist(ctx context.Context, a model.Artist) responses.Artist {
+func toArtist(_ context.Context, a model.Artist) responses.Artist {
 	artist := responses.Artist{
 		Id:             a.ID,
 		Name:           a.Name,
@@ -147,11 +147,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Size = mf.Size
 	child.Suffix = mf.Suffix
 	child.BitRate = mf.BitRate
-	if mf.HasCoverArt {
-		child.CoverArt = mf.ID
-	} else {
-		child.CoverArt = "al-" + mf.AlbumID
-	}
+	child.CoverArt = mf.CoverArtID().String()
 	child.ContentType = mf.ContentType()
 	player, ok := request.PlayerFrom(ctx)
 	if ok && player.ReportRealPath {
@@ -202,7 +198,7 @@ func childrenFromMediaFiles(ctx context.Context, mfs model.MediaFiles) []respons
 	return children
 }
 
-func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
+func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child := responses.Child{}
 	child.Id = al.ID
 	child.IsDir = true
@@ -212,7 +208,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child.Artist = al.AlbumArtist
 	child.Year = al.MaxYear
 	child.Genre = al.Genre
-	child.CoverArt = al.CoverArtId
+	child.CoverArt = al.CoverArtID().String()
 	child.Created = &al.CreatedAt
 	child.Parent = al.AlbumArtistID
 	child.ArtistId = al.AlbumArtistID

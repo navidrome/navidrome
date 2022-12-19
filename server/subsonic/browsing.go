@@ -360,7 +360,7 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 	}
 	dir.UserRating = album.Rating
 	dir.SongCount = album.SongCount
-	dir.CoverArt = album.CoverArtId
+	dir.CoverArt = album.CoverArtID().String()
 	if album.Starred {
 		dir.Starred = &album.StarredAt
 	}
@@ -380,7 +380,7 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 	dir.Name = album.Name
 	dir.Artist = album.AlbumArtist
 	dir.ArtistId = album.AlbumArtistID
-	dir.CoverArt = album.CoverArtId
+	dir.CoverArt = album.CoverArtID().String()
 	dir.SongCount = album.SongCount
 	dir.Duration = int(album.Duration)
 	dir.PlayCount = album.PlayCount

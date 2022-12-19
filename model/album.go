@@ -7,8 +7,8 @@ type Album struct {
 
 	ID                   string    `structs:"id" json:"id"            orm:"column(id)"`
 	Name                 string    `structs:"name" json:"name"`
-	CoverArtPath         string    `structs:"cover_art_path" json:"coverArtPath"`
-	CoverArtId           string    `structs:"cover_art_id" json:"coverArtId"`
+	EmbedArtPath         string    `structs:"cover_art_path" json:"coverArtPath"`
+	EmbedArtId           string    `structs:"cover_art_id" json:"coverArtId"`
 	ArtistID             string    `structs:"artist_id" json:"artistId"      orm:"column(artist_id)"`
 	Artist               string    `structs:"artist" json:"artist"`
 	AlbumArtistID        string    `structs:"album_artist_id" json:"albumArtistId" orm:"column(album_artist_id)"`
@@ -37,6 +37,10 @@ type Album struct {
 	ImageFiles           string    `structs:"image_files" json:"imageFiles,omitempty"`
 	CreatedAt            time.Time `structs:"created_at" json:"createdAt"`
 	UpdatedAt            time.Time `structs:"updated_at" json:"updatedAt"`
+}
+
+func (a Album) CoverArtID() ArtworkID {
+	return artworkIDFromAlbum(a)
 }
 
 type (

@@ -21,9 +21,9 @@ var _ = Describe("Artwork", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
 		ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
-			{ID: "222", CoverArtId: "123", CoverArtPath: "tests/fixtures/test.mp3"},
-			{ID: "333", CoverArtId: ""},
-			{ID: "444", CoverArtId: "444", CoverArtPath: "tests/fixtures/cover.jpg"},
+			{ID: "222", EmbedArtId: "123", EmbedArtPath: "tests/fixtures/test.mp3"},
+			{ID: "333", EmbedArtId: ""},
+			{ID: "444", EmbedArtId: "444", EmbedArtPath: "tests/fixtures/cover.jpg"},
 		})
 		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 			{ID: "123", AlbumID: "222", Path: "tests/fixtures/test.mp3", HasCoverArt: true},
