@@ -19,7 +19,7 @@ type (
 	dirStats struct {
 		Path            string
 		ModTime         time.Time
-		HasImages       bool
+		Images          []string
 		HasPlaylist     bool
 		AudioFilesCount uint32
 	}
@@ -49,7 +49,7 @@ func walkFolder(ctx context.Context, rootPath string, currentFolder string, resu
 
 	dir := filepath.Clean(currentFolder)
 	log.Trace(ctx, "Found directory", "dir", dir, "audioCount", stats.AudioFilesCount,
-		"hasImages", stats.HasImages, "hasPlaylist", stats.HasPlaylist)
+		"images", stats.Images, "hasPlaylist", stats.HasPlaylist)
 	stats.Path = dir
 	results <- *stats
 
@@ -97,7 +97,9 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 				stats.AudioFilesCount++
 			} else {
 				stats.HasPlaylist = stats.HasPlaylist || model.IsValidPlaylist(entry.Name())
-				stats.HasImages = stats.HasImages || utils.IsImageFile(entry.Name())
+				if utils.IsImageFile(entry.Name()) {
+					stats.Images = append(stats.Images, entry.Name())
+				}
 			}
 		}
 	}
