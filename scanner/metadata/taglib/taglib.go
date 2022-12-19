@@ -6,14 +6,15 @@ import (
 	"strconv"
 
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/scanner/metadata"
 )
 
-type Parser struct{}
+const ExtractorID = "taglib"
 
-type parsedTags = map[string][]string
+type Extractor struct{}
 
-func (e *Parser) Parse(paths ...string) (map[string]parsedTags, error) {
-	fileTags := map[string]parsedTags{}
+func (e *Extractor) Parse(paths ...string) (map[string]metadata.ParsedTags, error) {
+	fileTags := map[string]metadata.ParsedTags{}
 	for _, path := range paths {
 		tags, err := e.extractMetadata(path)
 		if !errors.Is(err, os.ErrPermission) {
@@ -23,7 +24,7 @@ func (e *Parser) Parse(paths ...string) (map[string]parsedTags, error) {
 	return fileTags, nil
 }
 
-func (e *Parser) extractMetadata(filePath string) (parsedTags, error) {
+func (e *Extractor) extractMetadata(filePath string) (metadata.ParsedTags, error) {
 	tags, err := Read(filePath)
 	if err != nil {
 		log.Warn("TagLib: Error reading metadata from file. Skipping", "filePath", filePath, err)
@@ -52,4 +53,8 @@ func (e *Parser) extractMetadata(filePath string) (parsedTags, error) {
 		}
 	}
 	return tags, nil
+}
+
+func init() {
+	metadata.RegisterExtractor(ExtractorID, &Extractor{})
 }
