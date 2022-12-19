@@ -18,15 +18,15 @@ var (
 type ArtworkID struct {
 	Kind       Kind
 	ID         string
-	LastAccess time.Time
+	LastUpdate time.Time
 }
 
 func (id ArtworkID) String() string {
 	s := fmt.Sprintf("%s-%s", id.Kind.prefix, id.ID)
-	if id.LastAccess.Unix() < 0 {
+	if id.LastUpdate.Unix() < 0 {
 		return s + "-0"
 	}
-	return fmt.Sprintf("%s-%x", s, id.LastAccess.Unix())
+	return fmt.Sprintf("%s-%x", s, id.LastUpdate.Unix())
 }
 
 func ParseArtworkID(id string) (ArtworkID, error) {
@@ -44,7 +44,7 @@ func ParseArtworkID(id string) (ArtworkID, error) {
 	return ArtworkID{
 		Kind:       Kind{parts[0]},
 		ID:         parts[1],
-		LastAccess: time.Unix(lastUpdate, 0),
+		LastUpdate: time.Unix(lastUpdate, 0),
 	}, nil
 }
 
@@ -52,7 +52,7 @@ func artworkIDFromAlbum(al Album) ArtworkID {
 	return ArtworkID{
 		Kind:       KindAlbumArtwork,
 		ID:         al.ID,
-		LastAccess: al.UpdatedAt,
+		LastUpdate: al.UpdatedAt,
 	}
 }
 
@@ -60,6 +60,6 @@ func artworkIDFromMediaFile(mf MediaFile) ArtworkID {
 	return ArtworkID{
 		Kind:       KindMediaFileArtwork,
 		ID:         mf.ID,
-		LastAccess: mf.UpdatedAt,
+		LastUpdate: mf.UpdatedAt,
 	}
 }

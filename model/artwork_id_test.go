@@ -14,14 +14,14 @@ var _ = Describe("ParseArtworkID()", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(id.Kind).To(Equal(model.KindAlbumArtwork))
 		Expect(id.ID).To(Equal("1234"))
-		Expect(id.LastAccess).To(Equal(time.Unix(255, 0)))
+		Expect(id.LastUpdate).To(Equal(time.Unix(255, 0)))
 	})
 	It("parses media file artwork ids", func() {
 		id, err := model.ParseArtworkID("mf-a6f8d2b1-ffff")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(id.Kind).To(Equal(model.KindMediaFileArtwork))
 		Expect(id.ID).To(Equal("a6f8d2b1"))
-		Expect(id.LastAccess).To(Equal(time.Unix(65535, 0)))
+		Expect(id.LastUpdate).To(Equal(time.Unix(65535, 0)))
 	})
 	It("fails to parse malformed ids", func() {
 		_, err := model.ParseArtworkID("a6f8d2b1")
