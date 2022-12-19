@@ -3,6 +3,8 @@ package model_test
 import (
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -26,7 +28,7 @@ var _ = Describe("MediaFiles", func() {
 					SortAlbumName: "SortAlbumName", SortArtistName: "SortArtistName", SortAlbumArtistName: "SortAlbumArtistName",
 					OrderAlbumName: "OrderAlbumName", OrderArtistName: "OrderArtistName", OrderAlbumArtistName: "OrderAlbumArtistName",
 					MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
-					Compilation: true, CatalogNum: "CatalogNum", HasCoverArt: true,
+					Compilation: true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "/music/file.mp3",
 				},
 			}
 		})
@@ -49,7 +51,8 @@ var _ = Describe("MediaFiles", func() {
 			Expect(album.MbzAlbumComment).To(Equal("MbzAlbumComment"))
 			Expect(album.CatalogNum).To(Equal("CatalogNum"))
 			Expect(album.Compilation).To(BeTrue())
-			Expect(album.CoverArtId).To(Equal("2"))
+			Expect(album.EmbedArtId).To(Equal("2"))
+			Expect(album.EmbedArtPath).To(Equal("/music/file.mp3"))
 		})
 	})
 	Context("Aggregated attributes", func() {
@@ -216,6 +219,34 @@ var _ = Describe("MediaFiles", func() {
 					Expect(album.MbzAlbumID).To(Equal("id1"))
 				})
 			})
+		})
+	})
+})
+
+var _ = Describe("MediaFile", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.DevFastAccessCoverArt = false
+	})
+	Describe(".CoverArtId()", func() {
+		It("returns its own id if it HasCoverArt", func() {
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true}
+			id := mf.CoverArtID()
+			Expect(id.Kind).To(Equal(KindMediaFileArtwork))
+			Expect(id.ID).To(Equal(mf.ID))
+		})
+		It("returns its album id if HasCoverArt is false", func() {
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: false}
+			id := mf.CoverArtID()
+			Expect(id.Kind).To(Equal(KindAlbumArtwork))
+			Expect(id.ID).To(Equal(mf.AlbumID))
+		})
+		It("returns its album id if DevFastAccessCoverArt is enabled", func() {
+			conf.Server.DevFastAccessCoverArt = true
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true}
+			id := mf.CoverArtID()
+			Expect(id.Kind).To(Equal(KindAlbumArtwork))
+			Expect(id.ID).To(Equal(mf.AlbumID))
 		})
 	})
 })

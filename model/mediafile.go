@@ -2,7 +2,6 @@ package model
 
 import (
 	"mime"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -65,8 +64,17 @@ type MediaFile struct {
 	UpdatedAt            time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
 }
 
-func (mf *MediaFile) ContentType() string {
+func (mf MediaFile) ContentType() string {
 	return mime.TypeByExtension("." + mf.Suffix)
+}
+
+func (mf MediaFile) CoverArtID() ArtworkID {
+	// If it is a mediaFile, and it has cover art, return it (if feature is disabled, skip)
+	if mf.HasCoverArt && !conf.Server.DevFastAccessCoverArt {
+		return artworkIDFromMediaFile(mf)
+	}
+	// if the mediaFile does not have a coverArt, fallback to the album cover
+	return artworkIDFromAlbum(Album{ID: mf.AlbumID, UpdatedAt: mf.UpdatedAt})
 }
 
 type MediaFiles []MediaFile
@@ -88,7 +96,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 	var songArtistIds []string
 	var mbzAlbumIds []string
 	var comments []string
-	var firstPath string
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs on an album
 		a.ID = m.AlbumID
@@ -128,12 +135,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 			m.Album, m.AlbumArtist, m.Artist,
 			m.SortAlbumName, m.SortAlbumArtistName, m.SortArtistName,
 			m.DiscSubtitle)
-		if m.HasCoverArt {
-			a.CoverArtId = m.ID
-			a.CoverArtPath = m.Path
-		}
-		if firstPath == "" {
-			firstPath = m.Path
+		if m.HasCoverArt && a.EmbedArtId == "" {
+			a.EmbedArtId = m.ID
+			a.EmbedArtPath = m.Path
 		}
 	}
 	comments = slices.Compact(comments)
@@ -149,13 +153,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 	slices.Sort(songArtistIds)
 	a.AllArtistIDs = strings.Join(slices.Compact(songArtistIds), " ")
 	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
-
-	if a.CoverArtPath == "" || !strings.HasPrefix(conf.Server.CoverArtPriority, "embedded") {
-		if path := getCoverFromPath(firstPath, a.CoverArtPath); path != "" {
-			a.CoverArtId = "al-" + a.ID
-			a.CoverArtPath = path
-		}
-	}
 
 	return a
 }
@@ -192,44 +189,6 @@ func fixAlbumArtist(a Album, albumArtistIds []string) Album {
 		a.AlbumArtistID = consts.VariousArtistsID
 	}
 	return a
-}
-
-// GetCoverFromPath accepts a path to a file, and returns a path to an eligible cover image from the
-// file's directory (as configured with CoverArtPriority). If no cover file is found, among
-// available choices, or an error occurs, an empty string is returned. If HasEmbeddedCover is true,
-// and 'embedded' is matched among eligible choices, GetCoverFromPath will return early with an
-// empty path.
-// TODO: Move to scanner (or at least out of here)
-func getCoverFromPath(mediaPath string, embeddedPath string) string {
-	n, err := os.Open(filepath.Dir(mediaPath))
-	if err != nil {
-		return ""
-	}
-
-	defer n.Close()
-	names, err := n.Readdirnames(-1)
-	if err != nil {
-		return ""
-	}
-
-	for _, p := range strings.Split(conf.Server.CoverArtPriority, ",") {
-		pat := strings.ToLower(strings.TrimSpace(p))
-		if pat == "embedded" {
-			if embeddedPath != "" {
-				return ""
-			}
-			continue
-		}
-
-		for _, name := range names {
-			match, _ := filepath.Match(pat, strings.ToLower(name))
-			if match && utils.IsImageFile(name) {
-				return filepath.Join(filepath.Dir(mediaPath), name)
-			}
-		}
-	}
-
-	return ""
 }
 
 type MediaFileRepository interface {
