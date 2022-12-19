@@ -24,18 +24,20 @@ func (e *Extractor) Parse(paths ...string) (map[string]metadata.ParsedTags, erro
 	return fileTags, nil
 }
 
+func (e *Extractor) CustomMappings() metadata.ParsedTags {
+	return metadata.ParsedTags{
+		"title":       {"titlesort"},
+		"album":       {"albumsort"},
+		"artist":      {"artistsort"},
+		"tracknumber": {"trck", "_track"},
+	}
+}
+
 func (e *Extractor) extractMetadata(filePath string) (metadata.ParsedTags, error) {
 	tags, err := Read(filePath)
 	if err != nil {
 		log.Warn("TagLib: Error reading metadata from file. Skipping", "filePath", filePath, err)
 		return nil, err
-	}
-
-	alternativeTags := map[string][]string{
-		"title":       {"titlesort"},
-		"album":       {"albumsort"},
-		"artist":      {"artistsort"},
-		"tracknumber": {"trck", "_track"},
 	}
 
 	if length, ok := tags["lengthinmilliseconds"]; ok && len(length) > 0 {
@@ -45,13 +47,6 @@ func (e *Extractor) extractMetadata(filePath string) (metadata.ParsedTags, error
 		}
 	}
 
-	for tagName, alternatives := range alternativeTags {
-		for _, altName := range alternatives {
-			if altValue, ok := tags[altName]; ok {
-				tags[tagName] = append(tags[tagName], altValue...)
-			}
-		}
-	}
 	return tags, nil
 }
 
