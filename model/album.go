@@ -54,6 +54,5 @@ type AlbumRepository interface {
 	GetAll(...QueryOptions) (Albums, error)
 	GetAllWithoutGenres(...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
-	Refresh(ids ...string) error
 	AnnotatedRepository
 }
