@@ -22,7 +22,11 @@ type ArtworkID struct {
 }
 
 func (id ArtworkID) String() string {
-	return fmt.Sprintf("%s-%s-%x", id.Kind.prefix, id.ID, id.LastAccess.Unix())
+	s := fmt.Sprintf("%s-%s", id.Kind.prefix, id.ID)
+	if id.LastAccess.Unix() < 0 {
+		return s + "-0"
+	}
+	return fmt.Sprintf("%s-%x", s, id.LastAccess.Unix())
 }
 
 func ParseArtworkID(id string) (ArtworkID, error) {
