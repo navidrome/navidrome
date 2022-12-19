@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type albumRepository struct {
@@ -150,7 +151,7 @@ func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (mo
 func (r *albumRepository) Refresh(ids ...string) error {
 	chunks := utils.BreakUpStringSlice(ids, 100)
 	for _, chunk := range chunks {
-		err := r.refresh(chunk...)
+		err := r.refresh2(chunk...)
 		if err != nil {
 			return err
 		}
@@ -158,7 +159,27 @@ func (r *albumRepository) Refresh(ids ...string) error {
 	return nil
 }
 
-const zwsp = string('\u200b')
+func (r *albumRepository) refresh2(ids ...string) error {
+	mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
+	mfs, err := mfRepo.GetAll(model.QueryOptions{Filters: Eq{"album_id": ids}})
+	if err != nil {
+		return err
+	}
+	if len(mfs) == 0 {
+		return nil
+	}
+
+	grouped := slice.Group(mfs, func(m model.MediaFile) string { return m.AlbumID })
+	for _, songs := range grouped {
+		a := model.MediaFiles(songs).ToAlbum()
+		err := r.Put(&a)
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
 
 type refreshAlbum struct {
 	model.Album
@@ -188,7 +209,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 		max(f.updated_at) as max_updated_at,
 		max(f.created_at) as max_created_at,
 		a.id as current_id,  
-		group_concat(f.comment, "`+zwsp+`") as comments,
+		group_concat(f.comment, "`+consts.Zwsp+`") as comments,
 		group_concat(f.mbz_album_id, ' ') as mbz_album_id, 
 		group_concat(f.disc_subtitle, ' ') as disc_subtitles,
 		group_concat(f.artist, ' ') as song_artists, 
@@ -237,7 +258,7 @@ func (r *albumRepository) refresh(ids ...string) error {
 		al.AlbumArtistID, al.AlbumArtist = getAlbumArtist(al)
 		al.MinYear = getMinYear(al.Years)
 		al.MbzAlbumID = getMostFrequentMbzID(r.ctx, al.MbzAlbumID, r.tableName, al.Name)
-		al.Comment = getComment(al.Comments, zwsp)
+		al.Comment = getComment(al.Comments, consts.Zwsp)
 		if al.CurrentId != "" {
 			toUpdate++
 		} else {
