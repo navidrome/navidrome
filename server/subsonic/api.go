@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/math2"
 )
 
 const Version = "1.16.1"
@@ -137,7 +138,7 @@ func (api *Router) routes() http.Handler {
 	})
 	r.Group(func(r chi.Router) {
 		// configure request throttling
-		maxRequests := utils.MaxInt(2, runtime.NumCPU())
+		maxRequests := math2.Max(2, runtime.NumCPU())
 		r.Use(middleware.ThrottleBacklog(maxRequests, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
 		hr(r, "getAvatar", api.GetAvatar)
 		hr(r, "getCoverArt", api.GetCoverArt)
