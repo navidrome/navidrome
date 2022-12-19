@@ -39,6 +39,13 @@ func (e *Extractor) Parse(files ...string) (map[string]metadata.ParsedTags, erro
 	return fileTags, nil
 }
 
+func (e *Extractor) CustomMappings() metadata.ParsedTags {
+	return metadata.ParsedTags{
+		"disc":        {"tpa"},
+		"has_picture": {"metadata_block_picture"},
+	}
+}
+
 func (e *Extractor) extractMetadata(filePath, info string) (metadata.ParsedTags, error) {
 	tags := e.parseInfo(info)
 	if len(tags) == 0 {
@@ -46,17 +53,6 @@ func (e *Extractor) extractMetadata(filePath, info string) (metadata.ParsedTags,
 		return nil, errors.New("not a media file")
 	}
 
-	alternativeTags := map[string][]string{
-		"disc":        {"tpa"},
-		"has_picture": {"metadata_block_picture"},
-	}
-	for tagName, alternatives := range alternativeTags {
-		for _, altName := range alternatives {
-			if altValue, ok := tags[altName]; ok {
-				tags[tagName] = append(tags[tagName], altValue...)
-			}
-		}
-	}
 	return tags, nil
 }
 
@@ -186,17 +182,18 @@ func (e *Extractor) parseDuration(tag string) string {
 }
 
 func (e *Extractor) parseChannels(tag string) string {
-	if tag == "mono" {
+	switch tag {
+	case "mono":
 		return "1"
-	} else if tag == "stereo" {
+	case "stereo":
 		return "2"
-	} else if tag == "5.1" {
+	case "5.1":
 		return "6"
-	} else if tag == "7.1" {
+	case "7.1":
 		return "8"
+	default:
+		return "0"
 	}
-
-	return "0"
 }
 
 // Inputs will always be absolute paths
