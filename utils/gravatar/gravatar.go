@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/navidrome/navidrome/utils/math2"
+	"github.com/navidrome/navidrome/utils/number"
 )
 
 const baseUrl = "https://www.gravatar.com/avatar"
@@ -19,7 +19,7 @@ func Url(email string, size int) string {
 	if size < 1 {
 		size = defaultSize
 	}
-	size = math2.Min(maxSize, size)
+	size = number.Min(maxSize, size)
 
 	return fmt.Sprintf("%s/%x?s=%d", baseUrl, hash, size)
 }

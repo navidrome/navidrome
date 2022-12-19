@@ -2,7 +2,14 @@ package model
 
 import (
 	"mime"
+	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/number"
+	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/exp/slices"
 )
 
 type MediaFile struct {
@@ -60,6 +67,107 @@ func (mf *MediaFile) ContentType() string {
 }
 
 type MediaFiles []MediaFile
+
+func (mfs MediaFiles) ToAlbum() Album {
+	a := Album{SongCount: len(mfs)}
+	var fullText []string
+	var albumArtistIds []string
+	var songArtistIds []string
+	var mbzAlbumIds []string
+	var comments []string
+	for _, m := range mfs {
+		// We assume these attributes are all the same for all songs on an album
+		a.ID = m.AlbumID
+		a.Name = m.Album
+		a.Artist = m.Artist
+		a.ArtistID = m.ArtistID
+		a.AlbumArtist = m.AlbumArtist
+		a.AlbumArtistID = m.AlbumArtistID
+		a.SortAlbumName = m.SortAlbumName
+		a.SortArtistName = m.SortArtistName
+		a.SortAlbumArtistName = m.SortAlbumArtistName
+		a.OrderAlbumName = m.OrderAlbumName
+		a.OrderAlbumArtistName = m.OrderAlbumArtistName
+		a.MbzAlbumArtistID = m.MbzAlbumArtistID
+		a.MbzAlbumType = m.MbzAlbumType
+		a.MbzAlbumComment = m.MbzAlbumComment
+		a.CatalogNum = m.CatalogNum
+		a.Compilation = m.Compilation
+
+		// Calculated attributes based on aggregations
+		a.Duration += m.Duration
+		a.Size += m.Size
+		if a.MinYear == 0 {
+			a.MinYear = m.Year
+		} else if m.Year > 0 {
+			a.MinYear = number.Min(a.MinYear, m.Year)
+		}
+		a.MaxYear = number.Max(m.Year)
+		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
+		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
+		a.Genres = append(a.Genres, m.Genres...)
+		comments = append(comments, m.Comment)
+		albumArtistIds = append(albumArtistIds, m.AlbumArtistID)
+		songArtistIds = append(songArtistIds, m.ArtistID)
+		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
+		fullText = append(fullText,
+			m.Album, m.AlbumArtist, m.Artist,
+			m.SortAlbumName, m.SortAlbumArtistName, m.SortArtistName,
+			m.DiscSubtitle)
+		if m.HasCoverArt {
+			// TODO CoverArtPriority
+			a.CoverArtId = m.ID
+		}
+	}
+	comments = slices.Compact(comments)
+	if len(comments) == 1 {
+		a.Comment = comments[0]
+	}
+	a.Genre = slice.MostFrequent(a.Genres).Name
+	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
+	a.Genres = slices.Compact(a.Genres)
+	a.FullText = " " + utils.SanitizeStrings(fullText...)
+	a = fixAlbumArtist(a, albumArtistIds)
+	songArtistIds = append(songArtistIds, a.AlbumArtistID, a.ArtistID)
+	slices.Sort(songArtistIds)
+	a.AllArtistIDs = strings.Join(slices.Compact(songArtistIds), " ")
+	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
+	return a
+}
+
+func newer(t1, t2 time.Time) time.Time {
+	if t1.After(t2) {
+		return t1
+	}
+	return t2
+}
+
+func older(t1, t2 time.Time) time.Time {
+	if t1.IsZero() {
+		return t2
+	}
+	if t1.After(t2) {
+		return t2
+	}
+	return t1
+}
+
+func fixAlbumArtist(a Album, albumArtistIds []string) Album {
+	if !a.Compilation {
+		if a.AlbumArtistID == "" {
+			a.AlbumArtistID = a.ArtistID
+			a.AlbumArtist = a.Artist
+		}
+		return a
+	}
+
+	albumArtistIds = slices.Compact(albumArtistIds)
+	if len(albumArtistIds) > 1 {
+		a.AlbumArtist = consts.VariousArtists
+		a.AlbumArtistID = consts.VariousArtistsID
+	}
+	return a
+}
 
 type MediaFileRepository interface {
 	CountAll(options ...QueryOptions) (int64, error)
