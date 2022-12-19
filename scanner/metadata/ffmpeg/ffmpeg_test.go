@@ -5,10 +5,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Parser", func() {
-	var e *Parser
+var _ = Describe("Extractor", func() {
+	var e *Extractor
 	BeforeEach(func() {
-		e = &Parser{}
+		e = &Extractor{}
 	})
 
 	Context("extractMetadata", func() {

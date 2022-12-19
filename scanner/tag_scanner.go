@@ -16,6 +16,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/scanner/metadata"
+	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
+	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
 	"github.com/navidrome/navidrome/utils"
 )
 
