@@ -51,7 +51,6 @@ var _ = Describe("MediaFiles", func() {
 			Expect(album.MbzAlbumComment).To(Equal("MbzAlbumComment"))
 			Expect(album.CatalogNum).To(Equal("CatalogNum"))
 			Expect(album.Compilation).To(BeTrue())
-			Expect(album.EmbedArtId).To(Equal("2"))
 			Expect(album.EmbedArtPath).To(Equal("/music/file.mp3"))
 		})
 	})

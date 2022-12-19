@@ -135,8 +135,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 			m.Album, m.AlbumArtist, m.Artist,
 			m.SortAlbumName, m.SortAlbumArtistName, m.SortArtistName,
 			m.DiscSubtitle)
-		if m.HasCoverArt && a.EmbedArtId == "" {
-			a.EmbedArtId = m.ID
+		if m.HasCoverArt && a.EmbedArtPath == "" {
 			a.EmbedArtPath = m.Path
 		}
 	}
