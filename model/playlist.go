@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/model/criteria"
-	"github.com/navidrome/navidrome/utils"
+	"golang.org/x/exp/slices"
 )
 
 type Playlist struct {
@@ -46,7 +46,7 @@ func (pls Playlist) MediaFiles() MediaFiles {
 func (pls *Playlist) RemoveTracks(idxToRemove []int) {
 	var newTracks PlaylistTracks
 	for i, t := range pls.Tracks {
-		if utils.IntInSlice(i, idxToRemove) {
+		if slices.Index(idxToRemove, i) >= 0 {
 			continue
 		}
 		newTracks = append(newTracks, t)
