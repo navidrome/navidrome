@@ -11,8 +11,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type albumRepository struct {
@@ -140,38 +138,6 @@ func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (mo
 		return nil, err
 	}
 	return res, err
-}
-
-func (r *albumRepository) Refresh(ids ...string) error {
-	chunks := utils.BreakUpStringSlice(ids, 100)
-	for _, chunk := range chunks {
-		err := r.refresh(chunk...)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *albumRepository) refresh(ids ...string) error {
-	mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
-	mfs, err := mfRepo.GetAll(model.QueryOptions{Filters: Eq{"album_id": ids}})
-	if err != nil {
-		return err
-	}
-	if len(mfs) == 0 {
-		return nil
-	}
-
-	grouped := slice.Group(mfs, func(m model.MediaFile) string { return m.AlbumID })
-	for _, songs := range grouped {
-		a := model.MediaFiles(songs).ToAlbum()
-		err := r.Put(&a)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (r *albumRepository) purgeEmpty() error {

@@ -225,7 +225,7 @@ func (s *TagScanner) getDeletedDirs(ctx context.Context, fsDirs dirMap, dbDirs m
 
 func (s *TagScanner) processDeletedDir(ctx context.Context, dir string) error {
 	start := time.Now()
-	buffer := newRefreshBuffer(ctx, s.ds)
+	buffer := newRefresher(ctx, s.ds)
 
 	mfs, err := s.ds.MediaFile(ctx).FindAllByPath(dir)
 	if err != nil {
@@ -250,7 +250,7 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string) error {
 
 func (s *TagScanner) processChangedDir(ctx context.Context, dir string, fullScan bool) error {
 	start := time.Now()
-	buffer := newRefreshBuffer(ctx, s.ds)
+	buffer := newRefresher(ctx, s.ds)
 
 	// Load folder's current tracks from DB into a map
 	currentTracks := map[string]model.MediaFile{}
@@ -334,7 +334,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, fullScan
 	return err
 }
 
-func (s *TagScanner) deleteOrphanSongs(ctx context.Context, dir string, tracksToDelete map[string]model.MediaFile, buffer *refreshBuffer) (int, error) {
+func (s *TagScanner) deleteOrphanSongs(ctx context.Context, dir string, tracksToDelete map[string]model.MediaFile, buffer *refresher) (int, error) {
 	numPurgedTracks := 0
 
 	log.Debug(ctx, "Deleting orphan tracks from DB", "dir", dir, "numTracks", len(tracksToDelete))
@@ -350,7 +350,7 @@ func (s *TagScanner) deleteOrphanSongs(ctx context.Context, dir string, tracksTo
 	return numPurgedTracks, nil
 }
 
-func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, currentTracks map[string]model.MediaFile, filesToUpdate []string, buffer *refreshBuffer) (int, error) {
+func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, currentTracks map[string]model.MediaFile, filesToUpdate []string, buffer *refresher) (int, error) {
 	numUpdatedTracks := 0
 
 	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
