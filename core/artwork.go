@@ -41,9 +41,13 @@ type artwork struct {
 }
 
 func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
-	artID, err := model.ParseArtworkID(id)
-	if err != nil {
-		return nil, errors.New("invalid ID")
+	var artID model.ArtworkID
+	var err error
+	if id != "" {
+		artID, err = model.ParseArtworkID(id)
+		if err != nil {
+			return nil, errors.New("invalid ID")
+		}
 	}
 
 	key := &artworkKey{a: a, artID: artID, size: size}

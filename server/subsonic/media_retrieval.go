@@ -51,7 +51,7 @@ func (api *Router) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) 
 }
 
 func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id := utils.ParamStringDefault(r, "id", "non-existent")
+	id := utils.ParamString(r, "id")
 	size := utils.ParamInt(r, "size", 0)
 
 	w.Header().Set("cache-control", "public, max-age=315360000")
