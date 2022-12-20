@@ -45,7 +45,8 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 func CreateSubsonicAPIRouter() *subsonic.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	artwork := core.NewArtwork(dataStore)
+	fileCache := core.GetImageCache()
+	artwork := core.NewArtwork(dataStore, fileCache)
 	transcoderTranscoder := transcoder.New()
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)

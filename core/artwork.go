@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
@@ -21,6 +22,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/singleton"
 	_ "golang.org/x/image/webp"
 )
 
@@ -28,53 +31,60 @@ type Artwork interface {
 	Get(ctx context.Context, id string, size int) (io.ReadCloser, error)
 }
 
-func NewArtwork(ds model.DataStore) Artwork {
-	return &artwork{ds: ds}
+func NewArtwork(ds model.DataStore, cache cache.FileCache) Artwork {
+	return &artwork{ds: ds, cache: cache}
 }
 
 type artwork struct {
-	ds model.DataStore
+	ds    model.DataStore
+	cache cache.FileCache
 }
 
 func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
-	r, _, err := a.get(ctx, id, size)
+	artID, err := model.ParseArtworkID(id)
+	if err != nil {
+		return nil, errors.New("invalid ID")
+	}
+
+	key := &artworkKey{a: a, artID: artID, size: size}
+
+	r, err := a.cache.Get(ctx, key)
+	if err != nil {
+		log.Error(ctx, "Error accessing image cache", "id", id, "size", size, err)
+		return nil, err
+	}
 	return r, err
 }
 
-func (a *artwork) get(ctx context.Context, id string, size int) (reader io.ReadCloser, path string, err error) {
-	artId, err := model.ParseArtworkID(id)
-	if err != nil {
-		return nil, "", errors.New("invalid ID")
-	}
-
+func (a *artwork) get(ctx context.Context, artID model.ArtworkID, size int) (reader io.ReadCloser, path string, err error) {
 	// If requested a resized image
 	if size > 0 {
-		return a.resizedFromOriginal(ctx, id, size)
+		return a.resizedFromOriginal(ctx, artID, size)
 	}
 
-	switch artId.Kind {
+	switch artID.Kind {
 	case model.KindAlbumArtwork:
-		reader, path = a.extractAlbumImage(ctx, artId)
+		reader, path = a.extractAlbumImage(ctx, artID)
 	case model.KindMediaFileArtwork:
-		reader, path = a.extractMediaFileImage(ctx, artId)
+		reader, path = a.extractMediaFileImage(ctx, artID)
 	default:
 		reader, path = fromPlaceholder()()
 	}
 	return reader, path, nil
 }
 
-func (a *artwork) extractAlbumImage(ctx context.Context, artId model.ArtworkID) (io.ReadCloser, string) {
-	al, err := a.ds.Album(ctx).Get(artId.ID)
+func (a *artwork) extractAlbumImage(ctx context.Context, artID model.ArtworkID) (io.ReadCloser, string) {
+	al, err := a.ds.Album(ctx).Get(artID.ID)
 	if errors.Is(err, model.ErrNotFound) {
 		r, path := fromPlaceholder()()
 		return r, path
 	}
 	if err != nil {
-		log.Error(ctx, "Could not retrieve album", "id", artId.ID, err)
+		log.Error(ctx, "Could not retrieve album", "id", artID.ID, err)
 		return nil, ""
 	}
 
-	return extractImage(ctx, artId,
+	return extractImage(ctx, artID,
 		fromExternalFile(al.ImageFiles, "cover.png", "cover.jpg", "cover.jpeg", "cover.webp"),
 		fromExternalFile(al.ImageFiles, "folder.png", "folder.jpg", "folder.jpeg", "folder.webp"),
 		fromExternalFile(al.ImageFiles, "album.png", "album.jpg", "album.jpeg", "album.webp"),
@@ -85,18 +95,18 @@ func (a *artwork) extractAlbumImage(ctx context.Context, artId model.ArtworkID) 
 	)
 }
 
-func (a *artwork) extractMediaFileImage(ctx context.Context, artId model.ArtworkID) (reader io.ReadCloser, path string) {
-	mf, err := a.ds.MediaFile(ctx).Get(artId.ID)
+func (a *artwork) extractMediaFileImage(ctx context.Context, artID model.ArtworkID) (reader io.ReadCloser, path string) {
+	mf, err := a.ds.MediaFile(ctx).Get(artID.ID)
 	if errors.Is(err, model.ErrNotFound) {
 		r, path := fromPlaceholder()()
 		return r, path
 	}
 	if err != nil {
-		log.Error(ctx, "Could not retrieve mediafile", "id", artId.ID, err)
+		log.Error(ctx, "Could not retrieve mediafile", "id", artID.ID, err)
 		return nil, ""
 	}
 
-	return extractImage(ctx, artId,
+	return extractImage(ctx, artID,
 		fromTag(mf.Path),
 		a.fromAlbum(ctx, mf.AlbumCoverArtID()),
 	)
@@ -104,7 +114,7 @@ func (a *artwork) extractMediaFileImage(ctx context.Context, artId model.Artwork
 
 func (a *artwork) fromAlbum(ctx context.Context, id model.ArtworkID) func() (io.ReadCloser, string) {
 	return func() (io.ReadCloser, string) {
-		r, path, err := a.get(ctx, id.String(), 0)
+		r, path, err := a.get(ctx, id, 0)
 		if err != nil {
 			return nil, ""
 		}
@@ -112,8 +122,8 @@ func (a *artwork) fromAlbum(ctx context.Context, id model.ArtworkID) func() (io.
 	}
 }
 
-func (a *artwork) resizedFromOriginal(ctx context.Context, id string, size int) (io.ReadCloser, string, error) {
-	r, path, err := a.get(ctx, id, 0)
+func (a *artwork) resizedFromOriginal(ctx context.Context, artID model.ArtworkID, size int) (io.ReadCloser, string, error) {
+	r, path, err := a.get(ctx, artID, 0)
 	if err != nil || r == nil {
 		return nil, "", err
 	}
@@ -127,15 +137,15 @@ func (a *artwork) resizedFromOriginal(ctx context.Context, id string, size int) 
 	return r, fmt.Sprintf("%s@%d", path, size), nil
 }
 
-func extractImage(ctx context.Context, artId model.ArtworkID, extractFuncs ...func() (io.ReadCloser, string)) (io.ReadCloser, string) {
+func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...func() (io.ReadCloser, string)) (io.ReadCloser, string) {
 	for _, f := range extractFuncs {
 		r, path := f()
 		if r != nil {
-			log.Trace(ctx, "Found artwork", "artId", artId, "path", path)
+			log.Trace(ctx, "Found artwork", "artID", artID, "path", path)
 			return r, path
 		}
 	}
-	log.Error(ctx, "extractImage should never reach this point!", "artId", artId, "path")
+	log.Error(ctx, "extractImage should never reach this point!", "artID", artID, "path")
 	return nil, ""
 }
 
@@ -214,4 +224,32 @@ func resizeImage(reader io.Reader, size int, usePng bool) (io.ReadCloser, error)
 		err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
 	}
 	return io.NopCloser(buf), err
+}
+
+type ArtworkCache struct {
+	cache.FileCache
+}
+
+type artworkKey struct {
+	a          *artwork
+	artID      model.ArtworkID
+	size       int
+	lastUpdate time.Time
+}
+
+func (k *artworkKey) Key() string {
+	return fmt.Sprintf("%s.%d.%d.%d", k.artID.ID, k.size, k.artID.LastUpdate.UnixNano(), conf.Server.CoverJpegQuality)
+}
+
+func GetImageCache() cache.FileCache {
+	return singleton.GetInstance(func() *ArtworkCache {
+		return &ArtworkCache{
+			FileCache: cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
+				func(ctx context.Context, arg cache.Item) (io.Reader, error) {
+					info := arg.(*artworkKey)
+					r, _, err := info.a.get(ctx, info.artID, info.size)
+					return r, err
+				}),
+		}
+	})
 }
