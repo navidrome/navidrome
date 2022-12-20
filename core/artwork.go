@@ -15,7 +15,6 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
@@ -122,16 +121,6 @@ func (a *artwork) extractMediaFileImage(ctx context.Context, artID model.Artwork
 	)
 }
 
-func (a *artwork) fromAlbum(ctx context.Context, id model.ArtworkID) func() (io.ReadCloser, string) {
-	return func() (io.ReadCloser, string) {
-		r, path, err := a.get(ctx, id, 0)
-		if err != nil {
-			return nil, ""
-		}
-		return r, path
-	}
-}
-
 func (a *artwork) resizedFromOriginal(ctx context.Context, artID model.ArtworkID, size int) (io.ReadCloser, string, error) {
 	r, path, err := a.get(ctx, artID, 0)
 	if err != nil || r == nil {
@@ -141,18 +130,27 @@ func (a *artwork) resizedFromOriginal(ctx context.Context, artID model.ArtworkID
 	usePng := strings.ToLower(filepath.Ext(path)) == ".png"
 	r, err = resizeImage(r, size, usePng)
 	if err != nil {
-		log.Warn("Could not resize image", "artID", artID, "size", size, err)
+		log.Warn(ctx, "Could not resize image. Using placeholder", "artID", artID, "size", size, err)
 		r, path := fromPlaceholder()()
 		return r, path, nil
 	}
 	return r, fmt.Sprintf("%s@%d", path, size), nil
 }
 
-func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...func() (io.ReadCloser, string)) (io.ReadCloser, string) {
+type fromFunc func() (io.ReadCloser, string)
+
+func (f fromFunc) String() string {
+	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core.")
+	name = strings.TrimSuffix(name, ".func1")
+	return name
+}
+
+func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...fromFunc) (io.ReadCloser, string) {
 	for _, f := range extractFuncs {
 		r, path := f()
 		if r != nil {
-			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "from", getFunctionName(f))
+			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "origin", f)
 			return r, path
 		}
 	}
@@ -160,16 +158,19 @@ func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...fu
 	return nil, ""
 }
 
-func getFunctionName(i interface{}) string {
-	name := runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
-	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core.")
-	name = strings.TrimSuffix(name, ".func1")
-	return name
+func (a *artwork) fromAlbum(ctx context.Context, id model.ArtworkID) fromFunc {
+	return func() (io.ReadCloser, string) {
+		r, path, err := a.get(ctx, id, 0)
+		if err != nil {
+			return nil, ""
+		}
+		return r, path
+	}
 }
 
 // This is a bit unoptimized, but we need to make sure the priority order of validNames
 // is preserved (i.e. png is better than jpg)
-func fromExternalFile(files string, validNames ...string) func() (io.ReadCloser, string) {
+func fromExternalFile(files string, validNames ...string) fromFunc {
 	return func() (io.ReadCloser, string) {
 		fileList := filepath.SplitList(files)
 		for _, validName := range validNames {
@@ -189,7 +190,7 @@ func fromExternalFile(files string, validNames ...string) func() (io.ReadCloser,
 	}
 }
 
-func fromTag(path string) func() (io.ReadCloser, string) {
+func fromTag(path string) fromFunc {
 	return func() (io.ReadCloser, string) {
 		if path == "" {
 			return nil, ""
@@ -213,7 +214,7 @@ func fromTag(path string) func() (io.ReadCloser, string) {
 	}
 }
 
-func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) func() (io.ReadCloser, string) {
+func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) fromFunc {
 	return func() (io.ReadCloser, string) {
 		if path == "" {
 			return nil, ""
@@ -226,7 +227,7 @@ func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) func(
 	}
 }
 
-func fromPlaceholder() func() (io.ReadCloser, string) {
+func fromPlaceholder() fromFunc {
 	return func() (io.ReadCloser, string) {
 		r, _ := resources.FS().Open(consts.PlaceholderAlbumArt)
 		return r, consts.PlaceholderAlbumArt
@@ -262,10 +263,9 @@ type ArtworkCache struct {
 }
 
 type artworkKey struct {
-	a          *artwork
-	artID      model.ArtworkID
-	size       int
-	lastUpdate time.Time
+	a     *artwork
+	artID model.ArtworkID
+	size  int
 }
 
 func (k *artworkKey) Key() string {
