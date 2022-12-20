@@ -17,7 +17,7 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
-func (api *Router) ServeStream(ctx context.Context, w http.ResponseWriter, r *http.Request, stream *core.Stream, id string) {
+func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *http.Request, stream *core.Stream, id string) {
 	if stream.Seekable() {
 		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
 	} else {
@@ -73,7 +73,7 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
 
-	api.ServeStream(ctx, w, r, stream, id)
+	api.serveStream(ctx, w, r, stream, id)
 
 	return nil, nil
 }
@@ -135,7 +135,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		disposition := fmt.Sprintf("attachment; filename=\"%s\"", stream.Name())
 		w.Header().Set("Content-Disposition", disposition)
 
-		api.ServeStream(ctx, w, r, stream, id)
+		api.serveStream(ctx, w, r, stream, id)
 		return nil, nil
 	case *model.Album:
 		setHeaders(v.Name)
@@ -150,8 +150,5 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		err = model.ErrNotFound
 	}
 
-	if err != nil {
-		return nil, err
-	}
-	return nil, nil
+	return nil, err
 }
