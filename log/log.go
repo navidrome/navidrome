@@ -252,6 +252,8 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 				switch v := keyValuePairs[i+1].(type) {
 				case time.Duration:
 					logger = logger.WithField(name, ShortDur(v))
+				case fmt.Stringer:
+					logger = logger.WithField(name, v.String())
 				default:
 					logger = logger.WithField(name, v)
 				}
