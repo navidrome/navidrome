@@ -48,6 +48,14 @@ func ParseArtworkID(id string) (ArtworkID, error) {
 	}, nil
 }
 
+func MustParseArtworkID(id string) ArtworkID {
+	artID, err := ParseArtworkID(id)
+	if err != nil {
+		panic(artID)
+	}
+	return artID
+}
+
 func artworkIDFromAlbum(al Album) ArtworkID {
 	return ArtworkID{
 		Kind:       KindAlbumArtwork,

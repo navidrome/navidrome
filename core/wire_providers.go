@@ -11,6 +11,7 @@ var Set = wire.NewSet(
 	NewArtwork,
 	NewMediaStreamer,
 	GetTranscodingCache,
+	GetImageCache,
 	NewArchiver,
 	NewExternalMetadata,
 	NewPlayers,
