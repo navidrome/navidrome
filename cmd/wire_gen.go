@@ -12,8 +12,8 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/scrobbler"
-	"github.com/navidrome/navidrome/core/transcoder"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
@@ -46,8 +46,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	fileCache := core.GetImageCache()
-	artwork := core.NewArtwork(dataStore, fileCache)
-	transcoderTranscoder := transcoder.New()
+	transcoderTranscoder := ffmpeg.New()
+	artwork := core.NewArtwork(dataStore, fileCache, transcoderTranscoder)
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
 	archiver := core.NewArchiver(mediaStreamer, dataStore)

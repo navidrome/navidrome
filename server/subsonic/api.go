@@ -185,7 +185,7 @@ func hr(r chi.Router, path string, f handlerRaw) {
 				if errors.Is(err, model.ErrNotFound) {
 					err = newError(responses.ErrorDataNotFound, "data not found")
 				} else {
-					err = newError(responses.ErrorGeneric, "Internal Error")
+					err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 				}
 			}
 			sendError(w, r, err)

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"image"
 
 	"github.com/navidrome/navidrome/conf"
@@ -17,6 +18,7 @@ import (
 var _ = Describe("Artwork", func() {
 	var aw *artwork
 	var ds model.DataStore
+	var ffmpeg *tests.MockFFmpeg
 	ctx := log.NewContext(context.TODO())
 	var alOnlyEmbed, alEmbedNotFound, alOnlyExternal, alExternalNotFound, alAllOptions model.Album
 	var mfWithEmbed, mfWithoutEmbed, mfCorruptedCover model.MediaFile
@@ -38,7 +40,8 @@ var _ = Describe("Artwork", func() {
 		conf.Server.ImageCacheSize = "0" // Disable cache
 
 		cache := GetImageCache()
-		aw = NewArtwork(ds, cache).(*artwork)
+		ffmpeg = tests.NewMockFFmpeg("")
+		aw = NewArtwork(ds, cache, ffmpeg).(*artwork)
 	})
 
 	Context("Empty ID", func() {
@@ -70,6 +73,7 @@ var _ = Describe("Artwork", func() {
 				Expect(path).To(Equal("tests/fixtures/test.mp3"))
 			})
 			It("returns placeholder if embed path is not available", func() {
+				ffmpeg.Error = errors.New("not available")
 				_, path, err := aw.get(context.Background(), alEmbedNotFound.CoverArtID(), 0)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(path).To(Equal(consts.PlaceholderAlbumArt))
@@ -124,13 +128,19 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(path).To(Equal("tests/fixtures/test.mp3"))
 			})
-			It("returns album cover if media file has no cover art", func() {
-				_, path, err := aw.get(context.Background(), mfWithoutEmbed.CoverArtID(), 0)
+			It("returns embed cover if successfully extracted by ffmpeg", func() {
+				_, path, err := aw.get(context.Background(), mfCorruptedCover.CoverArtID(), 0)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(path).To(Equal("tests/fixtures/test.ogg"))
+			})
+			It("returns album cover if cannot read embed artwork", func() {
+				ffmpeg.Error = errors.New("not available")
+				_, path, err := aw.get(context.Background(), mfCorruptedCover.CoverArtID(), 0)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(path).To(Equal("tests/fixtures/front.png"))
 			})
-			It("returns album cover if cannot read embed artwork", func() {
-				_, path, err := aw.get(context.Background(), mfCorruptedCover.CoverArtID(), 0)
+			It("returns album cover if media file has no cover art", func() {
+				_, path, err := aw.get(context.Background(), mfWithoutEmbed.CoverArtID(), 0)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(path).To(Equal("tests/fixtures/front.png"))
 			})

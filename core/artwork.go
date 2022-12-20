@@ -12,6 +12,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
+	"runtime"
 	"strings"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
@@ -31,13 +34,14 @@ type Artwork interface {
 	Get(ctx context.Context, id string, size int) (io.ReadCloser, error)
 }
 
-func NewArtwork(ds model.DataStore, cache cache.FileCache) Artwork {
-	return &artwork{ds: ds, cache: cache}
+func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg) Artwork {
+	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg}
 }
 
 type artwork struct {
-	ds    model.DataStore
-	cache cache.FileCache
+	ds     model.DataStore
+	cache  cache.FileCache
+	ffmpeg ffmpeg.FFmpeg
 }
 
 func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
@@ -95,6 +99,7 @@ func (a *artwork) extractAlbumImage(ctx context.Context, artID model.ArtworkID) 
 		fromExternalFile(al.ImageFiles, "albumart.png", "albumart.jpg", "albumart.jpeg", "albumart.webp"),
 		fromExternalFile(al.ImageFiles, "front.png", "front.jpg", "front.jpeg", "front.webp"),
 		fromTag(al.EmbedArtPath),
+		fromFFmpegTag(ctx, a.ffmpeg, al.EmbedArtPath),
 		fromPlaceholder(),
 	)
 }
@@ -112,6 +117,7 @@ func (a *artwork) extractMediaFileImage(ctx context.Context, artID model.Artwork
 
 	return extractImage(ctx, artID,
 		fromTag(mf.Path),
+		fromFFmpegTag(ctx, a.ffmpeg, mf.Path),
 		a.fromAlbum(ctx, mf.AlbumCoverArtID()),
 	)
 }
@@ -135,8 +141,9 @@ func (a *artwork) resizedFromOriginal(ctx context.Context, artID model.ArtworkID
 	usePng := strings.ToLower(filepath.Ext(path)) == ".png"
 	r, err = resizeImage(r, size, usePng)
 	if err != nil {
+		log.Warn("Could not resize image", "artID", artID, "size", size, err)
 		r, path := fromPlaceholder()()
-		return r, path, err
+		return r, path, nil
 	}
 	return r, fmt.Sprintf("%s@%d", path, size), nil
 }
@@ -145,12 +152,19 @@ func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...fu
 	for _, f := range extractFuncs {
 		r, path := f()
 		if r != nil {
-			log.Trace(ctx, "Found artwork", "artID", artID, "path", path)
+			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "from", getFunctionName(f))
 			return r, path
 		}
 	}
 	log.Error(ctx, "extractImage should never reach this point!", "artID", artID, "path")
 	return nil, ""
+}
+
+func getFunctionName(i interface{}) string {
+	name := runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core.")
+	name = strings.TrimSuffix(name, ".func1")
+	return name
 }
 
 // This is a bit unoptimized, but we need to make sure the priority order of validNames
@@ -196,6 +210,19 @@ func fromTag(path string) func() (io.ReadCloser, string) {
 			return nil, ""
 		}
 		return io.NopCloser(bytes.NewReader(picture.Data)), path
+	}
+}
+
+func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) func() (io.ReadCloser, string) {
+	return func() (io.ReadCloser, string) {
+		if path == "" {
+			return nil, ""
+		}
+		r, err := ffmpeg.ExtractImage(ctx, path)
+		if err != nil {
+			return nil, ""
+		}
+		return r, path
 	}
 }
 

@@ -1,4 +1,4 @@
-package transcoder
+package ffmpeg
 
 import (
 	"testing"
@@ -9,16 +9,16 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestTranscoder(t *testing.T) {
+func TestFFmpeg(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Transcoder Suite")
+	RunSpecs(t, "FFmpeg Suite")
 }
 
-var _ = Describe("createTranscodeCommand", func() {
+var _ = Describe("createFFmpegCommand", func() {
 	It("creates a valid command line", func() {
-		args := createTranscodeCommand("ffmpeg -i %s -b:a %bk mp3 -", "/music library/file.mp3", 123)
+		args := createFFmpegCommand("ffmpeg -i %s -b:a %bk mp3 -", "/music library/file.mp3", 123)
 		Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/file.mp3", "-b:a", "123k", "mp3", "-"}))
 	})
 })
