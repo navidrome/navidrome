@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -57,11 +58,13 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	w.Header().Set("cache-control", "public, max-age=315360000")
 
 	imgReader, err := api.artwork.Get(r.Context(), id, size)
-	if errors.Is(err, model.ErrNotFound) {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return nil, nil
+	case errors.Is(err, model.ErrNotFound):
 		log.Error(r, "Couldn't find coverArt", "id", id, err)
 		return nil, newError(responses.ErrorDataNotFound, "Artwork not found")
-	}
-	if err != nil {
+	case err != nil:
 		log.Error(r, "Error retrieving coverArt", "id", id, err)
 		return nil, err
 	}

@@ -56,9 +56,8 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, 
 	key := &artworkKey{a: a, artID: artID, size: size}
 
 	r, err := a.cache.Get(ctx, key)
-	if err != nil {
+	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Error(ctx, "Error accessing image cache", "id", id, "size", size, err)
-		return nil, err
 	}
 	return r, err
 }
@@ -77,7 +76,7 @@ func (a *artwork) get(ctx context.Context, artID model.ArtworkID, size int) (rea
 	default:
 		reader, path = fromPlaceholder()()
 	}
-	return reader, path, nil
+	return reader, path, ctx.Err()
 }
 
 func (a *artwork) extractAlbumImage(ctx context.Context, artID model.ArtworkID) (io.ReadCloser, string) {
@@ -148,6 +147,9 @@ func (f fromFunc) String() string {
 
 func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...fromFunc) (io.ReadCloser, string) {
 	for _, f := range extractFuncs {
+		if ctx.Err() != nil {
+			return nil, ""
+		}
 		r, path := f()
 		if r != nil {
 			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "origin", f)
