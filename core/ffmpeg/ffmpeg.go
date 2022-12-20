@@ -1,4 +1,4 @@
-package transcoder
+package ffmpeg
 
 import (
 	"context"
@@ -13,19 +13,32 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-type Transcoder interface {
-	Start(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error)
+type FFmpeg interface {
+	Transcode(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error)
+	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
+	// TODO Move scanner ffmpeg probe to here
 }
 
-func New() Transcoder {
-	return &externalTranscoder{}
+func New() FFmpeg {
+	return &ffmpeg{}
 }
 
-type externalTranscoder struct{}
+const extractImageCmd = "ffmpeg -i %s -an -vcodec copy -f image2pipe -"
 
-func (e *externalTranscoder) Start(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error) {
-	args := createTranscodeCommand(command, path, maxBitRate)
-	log.Trace(ctx, "Executing transcoding command", "cmd", args)
+type ffmpeg struct{}
+
+func (e *ffmpeg) Transcode(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error) {
+	args := createFFmpegCommand(command, path, maxBitRate)
+	return e.start(ctx, args)
+}
+
+func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, error) {
+	args := createFFmpegCommand(extractImageCmd, path, 0)
+	return e.start(ctx, args)
+}
+
+func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error) {
+	log.Trace(ctx, "Executing ffmpeg command", "cmd", args)
 	j := &Cmd{ctx: ctx, args: args}
 	j.PipeReader, j.out = io.Pipe()
 	err := j.start()
@@ -47,7 +60,11 @@ type Cmd struct {
 func (j *Cmd) start() error {
 	cmd := exec.CommandContext(j.ctx, j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
-	cmd.Stderr = os.Stderr
+	if log.CurrentLevel() >= log.LevelTrace {
+		cmd.Stderr = os.Stderr
+	} else {
+		cmd.Stderr = io.Discard
+	}
 	j.cmd = cmd
 
 	if err := cmd.Start(); err != nil {
@@ -74,7 +91,7 @@ func (j *Cmd) wait() {
 }
 
 // Path will always be an absolute path
-func createTranscodeCommand(cmd, path string, maxBitRate int) []string {
+func createFFmpegCommand(cmd, path string, maxBitRate int) []string {
 	split := strings.Split(cmd, " ")
 	for i, s := range split {
 		s = strings.ReplaceAll(s, "%s", path)
