@@ -77,7 +77,7 @@ var (
 	audioStreamRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+.*: Audio: (.*), (.* Hz), ([\w\.]+),*(.*.,)*`)
 
 	//    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 600x600 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc`
-	coverRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: (Video):.*`)
+	coverRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:.+: (Video):.*`)
 )
 
 func (e *Extractor) parseOutput(output string) map[string]string {
