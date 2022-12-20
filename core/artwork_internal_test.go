@@ -41,6 +41,14 @@ var _ = Describe("Artwork", func() {
 		aw = NewArtwork(ds, cache).(*artwork)
 	})
 
+	Context("Empty ID", func() {
+		It("returns placeholder if album is not in the DB", func() {
+			_, path, err := aw.get(context.Background(), model.ArtworkID{}, 0)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(path).To(Equal(consts.PlaceholderAlbumArt))
+		})
+	})
+
 	Context("Albums", func() {
 		Context("ID not found", func() {
 			It("returns placeholder if album is not in the DB", func() {
