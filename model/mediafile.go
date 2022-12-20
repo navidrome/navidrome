@@ -74,6 +74,10 @@ func (mf MediaFile) CoverArtID() ArtworkID {
 		return artworkIDFromMediaFile(mf)
 	}
 	// if it does not have a coverArt, fallback to the album cover
+	return mf.AlbumCoverArtID()
+}
+
+func (mf MediaFile) AlbumCoverArtID() ArtworkID {
 	return artworkIDFromAlbum(Album{ID: mf.AlbumID, UpdatedAt: mf.UpdatedAt})
 }
 

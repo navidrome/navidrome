@@ -39,6 +39,7 @@ const mapToAudioLists = (item) => {
       {
         id: config.devFastAccessCoverArt ? item.albumId : trackId,
         updatedAt: item.updatedAt,
+        album: item.album,
       },
       300
     ),
