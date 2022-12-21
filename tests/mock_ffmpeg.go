@@ -6,8 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -33,7 +31,7 @@ func (ff *MockFFmpeg) ExtractImage(ctx context.Context, path string) (io.ReadClo
 	if ff.Error != nil {
 		return nil, ff.Error
 	}
-	return resources.FS().Open(consts.PlaceholderAlbumArt)
+	return ff, nil
 }
 
 func (ff *MockFFmpeg) Read(p []byte) (n int, err error) {

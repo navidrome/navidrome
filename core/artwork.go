@@ -113,11 +113,15 @@ func (a *artwork) extractMediaFileImage(ctx context.Context, artID model.Artwork
 		return nil, ""
 	}
 
-	return extractImage(ctx, artID,
-		fromTag(mf.Path),
-		fromFFmpegTag(ctx, a.ffmpeg, mf.Path),
-		a.fromAlbum(ctx, mf.AlbumCoverArtID()),
-	)
+	var ff []fromFunc
+	if mf.HasCoverArt {
+		ff = []fromFunc{
+			fromTag(mf.Path),
+			fromFFmpegTag(ctx, a.ffmpeg, mf.Path),
+		}
+	}
+	ff = append(ff, a.fromAlbum(ctx, mf.AlbumCoverArtID()))
+	return extractImage(ctx, artID, ff...)
 }
 
 func (a *artwork) resizedFromOriginal(ctx context.Context, artID model.ArtworkID, size int) (io.ReadCloser, string, error) {
@@ -225,7 +229,13 @@ func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) fromF
 		if err != nil {
 			return nil, ""
 		}
-		return r, path
+		defer r.Close()
+		buf := new(bytes.Buffer)
+		_, err = io.Copy(buf, r)
+		if err != nil {
+			return nil, ""
+		}
+		return io.NopCloser(buf), path
 	}
 }
 
