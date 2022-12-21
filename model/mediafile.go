@@ -83,6 +83,7 @@ func (mf MediaFile) AlbumCoverArtID() ArtworkID {
 
 type MediaFiles []MediaFile
 
+// Dirs returns a deduped list of all directories from the MediaFiles' paths
 func (mfs MediaFiles) Dirs() []string {
 	var dirs []string
 	for _, mf := range mfs {
@@ -93,6 +94,8 @@ func (mfs MediaFiles) Dirs() []string {
 	return slices.Compact(dirs)
 }
 
+// ToAlbum creates an Album object based on the attributes of this MediaFiles collection.
+// It assumes all mediafiles have the same Album, or else results are unpredictable.
 func (mfs MediaFiles) ToAlbum() Album {
 	a := Album{SongCount: len(mfs)}
 	var fullText []string
