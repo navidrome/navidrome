@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"image"
+	"io"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -40,7 +41,7 @@ var _ = Describe("Artwork", func() {
 		conf.Server.ImageCacheSize = "0" // Disable cache
 
 		cache := GetImageCache()
-		ffmpeg = tests.NewMockFFmpeg("")
+		ffmpeg = tests.NewMockFFmpeg("content from ffmpeg")
 		aw = NewArtwork(ds, cache, ffmpeg).(*artwork)
 	})
 
@@ -129,8 +130,9 @@ var _ = Describe("Artwork", func() {
 				Expect(path).To(Equal("tests/fixtures/test.mp3"))
 			})
 			It("returns embed cover if successfully extracted by ffmpeg", func() {
-				_, path, err := aw.get(context.Background(), mfCorruptedCover.CoverArtID(), 0)
+				r, path, err := aw.get(context.Background(), mfCorruptedCover.CoverArtID(), 0)
 				Expect(err).ToNot(HaveOccurred())
+				Expect(io.ReadAll(r)).To(Equal([]byte("content from ffmpeg")))
 				Expect(path).To(Equal("tests/fixtures/test.ogg"))
 			})
 			It("returns album cover if cannot read embed artwork", func() {
