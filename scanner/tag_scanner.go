@@ -11,6 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -69,7 +70,7 @@ const (
 // - If the playlist is in the DB and sync == true, import it, or else skip it
 // Delete all empty albums, delete all empty artists, clean-up playlists
 func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) (int64, error) {
-	ctx = s.withAdminUser(ctx)
+	ctx = auth.WithAdminUser(ctx, s.ds)
 	start := time.Now()
 
 	// Special case: if lastModifiedSince is zero, re-import all files
@@ -391,22 +392,6 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 		mfs = append(mfs, mf)
 	}
 	return mfs, nil
-}
-
-func (s *TagScanner) withAdminUser(ctx context.Context) context.Context {
-	u, err := s.ds.User(ctx).FindFirstAdmin()
-	if err != nil {
-		c, err := s.ds.User(ctx).CountAll()
-		if c == 0 && err == nil {
-			log.Debug(ctx, "Scanner: No admin user yet!", err)
-		} else {
-			log.Error(ctx, "Scanner: No admin user found!", err)
-		}
-		u = &model.User{}
-	}
-
-	ctx = request.WithUsername(ctx, u.UserName)
-	return request.WithUser(ctx, *u)
 }
 
 func loadAllAudioFiles(dirPath string) (map[string]fs.DirEntry, error) {

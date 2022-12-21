@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime"
 	"sort"
 	"strings"
@@ -40,7 +41,7 @@ var redacted = &Hook{
 }
 
 const (
-	LevelCritical = Level(logrus.FatalLevel)
+	LevelCritical = Level(logrus.FatalLevel) // TODO Rename to LevelFatal
 	LevelError    = Level(logrus.ErrorLevel)
 	LevelWarn     = Level(logrus.WarnLevel)
 	LevelInfo     = Level(logrus.InfoLevel)
@@ -143,6 +144,11 @@ func SetDefaultLogger(l *logrus.Logger) {
 
 func CurrentLevel() Level {
 	return currentLevel
+}
+
+func Fatal(args ...interface{}) {
+	log(LevelCritical, args...)
+	os.Exit(1)
 }
 
 func Error(args ...interface{}) {

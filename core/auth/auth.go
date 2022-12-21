@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 var (
@@ -64,4 +65,20 @@ func Validate(tokenStr string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return token.AsMap(context.Background())
+}
+
+func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
+	u, err := ds.User(ctx).FindFirstAdmin()
+	if err != nil {
+		c, err := ds.User(ctx).CountAll()
+		if c == 0 && err == nil {
+			log.Debug(ctx, "Scanner: No admin user yet!", err)
+		} else {
+			log.Error(ctx, "Scanner: No admin user found!", err)
+		}
+		u = &model.User{}
+	}
+
+	ctx = request.WithUsername(ctx, u.UserName)
+	return request.WithUser(ctx, *u)
 }
