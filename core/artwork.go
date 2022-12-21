@@ -125,19 +125,24 @@ func (a *artwork) extractMediaFileImage(ctx context.Context, artID model.Artwork
 }
 
 func (a *artwork) resizedFromOriginal(ctx context.Context, artID model.ArtworkID, size int) (io.ReadCloser, string, error) {
-	r, path, err := a.get(ctx, artID, 0)
-	if err != nil || r == nil {
+	// first get original image
+	original, path, err := a.get(ctx, artID, 0)
+	if err != nil || original == nil {
 		return nil, "", err
 	}
-	defer r.Close()
+	defer original.Close()
+
+	// Keep a copy of the original data. In case we can't resize it, send it as is
+	buf := new(bytes.Buffer)
+	r := io.TeeReader(original, buf)
+
 	usePng := strings.ToLower(filepath.Ext(path)) == ".png"
-	r, err = resizeImage(r, size, usePng)
+	resized, err := resizeImage(r, size, usePng)
 	if err != nil {
-		log.Warn(ctx, "Could not resize image. Using placeholder", "artID", artID, "size", size, err)
-		r, path := fromPlaceholder()()
-		return r, path, nil
+		log.Warn(ctx, "Could not resize image. Sending it as-is", "artID", artID, "size", size, err)
+		return io.NopCloser(buf), path, nil
 	}
-	return r, fmt.Sprintf("%s@%d", path, size), nil
+	return resized, fmt.Sprintf("%s@%d", path, size), nil
 }
 
 type fromFunc func() (io.ReadCloser, string)
