@@ -11,7 +11,7 @@ import (
 
 func TestMetadata(t *testing.T) {
 	tests.Init(t, true)
-	log.SetLevel(log.LevelCritical)
+	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Metadata Suite")
 }

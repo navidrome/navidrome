@@ -9,7 +9,7 @@ import (
 )
 
 func TestSubsonicApi(t *testing.T) {
-	log.SetLevel(log.LevelCritical)
+	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Subsonic API Suite")
 }

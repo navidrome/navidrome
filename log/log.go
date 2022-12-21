@@ -41,12 +41,12 @@ var redacted = &Hook{
 }
 
 const (
-	LevelCritical = Level(logrus.FatalLevel) // TODO Rename to LevelFatal
-	LevelError    = Level(logrus.ErrorLevel)
-	LevelWarn     = Level(logrus.WarnLevel)
-	LevelInfo     = Level(logrus.InfoLevel)
-	LevelDebug    = Level(logrus.DebugLevel)
-	LevelTrace    = Level(logrus.TraceLevel)
+	LevelFatal = Level(logrus.FatalLevel)
+	LevelError = Level(logrus.ErrorLevel)
+	LevelWarn  = Level(logrus.WarnLevel)
+	LevelInfo  = Level(logrus.InfoLevel)
+	LevelDebug = Level(logrus.DebugLevel)
+	LevelTrace = Level(logrus.TraceLevel)
 )
 
 type contextKey string
@@ -82,8 +82,8 @@ func levelFromString(l string) Level {
 	envLevel := strings.ToLower(l)
 	var level Level
 	switch envLevel {
-	case "critical":
-		level = LevelCritical
+	case "fatal":
+		level = LevelFatal
 	case "error":
 		level = LevelError
 	case "warn":
@@ -147,7 +147,7 @@ func CurrentLevel() Level {
 }
 
 func Fatal(args ...interface{}) {
-	log(LevelCritical, args...)
+	log(LevelFatal, args...)
 	os.Exit(1)
 }
 

@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
@@ -59,21 +58,18 @@ func EnsureLatestVersion() {
 
 	err = goose.SetDialect(Driver)
 	if err != nil {
-		log.Error("Invalid DB driver", "driver", Driver, err)
-		os.Exit(1)
+		log.Fatal("Invalid DB driver", "driver", Driver, err)
 	}
 	err = goose.Run("up", db, "./")
 	if err != nil {
-		log.Error("Failed to apply new migrations", err)
-		os.Exit(1)
+		log.Fatal("Failed to apply new migrations", err)
 	}
 }
 
 func isSchemaEmpty(db *sql.DB) bool { // nolint:interfacer
 	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
 	if err != nil {
-		log.Error("Database could not be opened!", err)
-		os.Exit(1)
+		log.Fatal("Database could not be opened!", err)
 	}
 	defer rows.Close()
 	return !rows.Next()
@@ -84,13 +80,11 @@ type logAdapter struct {
 }
 
 func (l *logAdapter) Fatal(v ...interface{}) {
-	log.Error(fmt.Sprint(v...))
-	os.Exit(-1)
+	log.Fatal(fmt.Sprint(v...))
 }
 
 func (l *logAdapter) Fatalf(format string, v ...interface{}) {
-	log.Error(fmt.Sprintf(format, v...))
-	os.Exit(-1)
+	log.Fatal(fmt.Sprintf(format, v...))
 }
 
 func (l *logAdapter) Print(v ...interface{}) {

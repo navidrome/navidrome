@@ -16,7 +16,7 @@ var _ = Describe("SQLStore", func() {
 	BeforeEach(func() {
 		ds = New(db.Db())
 		ctx = context.Background()
-		log.SetLevel(log.LevelCritical)
+		log.SetLevel(log.LevelFatal)
 	})
 	AfterEach(func() {
 		log.SetLevel(log.LevelError)
