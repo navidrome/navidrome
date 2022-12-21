@@ -125,12 +125,12 @@ func LoadFromFile(confFile string) {
 func Load() {
 	err := viper.Unmarshal(&Server)
 	if err != nil {
-		fmt.Println("FATAL: Error parsing config:", err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
 		os.Exit(1)
 	}
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
 	if err != nil {
-		fmt.Println("FATAL: Error creating data path:", "path", Server.DataFolder, err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", "path", Server.DataFolder, err)
 		os.Exit(1)
 	}
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
@@ -153,7 +153,7 @@ func Load() {
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
 		}
-		fmt.Println(prettyConf)
+		_, _ = fmt.Fprintln(os.Stderr, prettyConf)
 	}
 
 	if !Server.EnableExternalServices {
@@ -307,8 +307,7 @@ func InitConfig(cfgFile string) {
 
 	err := viper.ReadInConfig()
 	if viper.ConfigFileUsed() != "" && err != nil {
-		fmt.Println("FATAL: Navidrome could not open config file: ", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Navidrome could not open config file: ", err)
 	}
 }
 
