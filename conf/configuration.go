@@ -77,7 +77,6 @@ type configOptions struct {
 	DevLogLevels               map[string]string
 	DevAutoCreateAdminPassword string
 	DevAutoLoginUsername       string
-	DevPreCacheAlbumArtwork    bool
 	DevFastAccessCoverArt      bool
 	DevActivityPanel           bool
 	DevEnableShare             bool
@@ -297,7 +296,6 @@ func init() {
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
-	viper.SetDefault("devprecachealbumartwork", false)
 	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
