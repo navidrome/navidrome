@@ -45,7 +45,6 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"gaTrackingId":            conf.Server.GATrackingID,
 			"losslessFormats":         strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
 			"devActivityPanel":        conf.Server.DevActivityPanel,
-			"devFastAccessCoverArt":   conf.Server.DevFastAccessCoverArt,
 			"enableUserEditing":       conf.Server.EnableUserEditing,
 			"devEnableShare":          conf.Server.DevEnableShare,
 			"devSidebarPlaylists":     conf.Server.DevSidebarPlaylists,
