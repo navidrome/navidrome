@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -53,6 +55,17 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, 
 		}
 	}
 
+	// If requested a resized image, get the original (possibly from cache)
+	if size > 0 && id != "" {
+		r, err := a.Get(ctx, id, 0)
+		if err != nil {
+			return nil, err
+		}
+		defer r.Close()
+		resized, err := a.resizedFromOriginal(ctx, artID, r, size)
+		return io.NopCloser(resized), err
+	}
+
 	key := &artworkKey{a: a, artID: artID, size: size}
 
 	r, err := a.cache.Get(ctx, key)
@@ -62,12 +75,16 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, 
 	return r, err
 }
 
-func (a *artwork) get(ctx context.Context, artID model.ArtworkID, size int) (reader io.ReadCloser, path string, err error) {
-	// If requested a resized image
-	if size > 0 {
-		return a.resizedFromOriginal(ctx, artID, size)
-	}
+type fromFunc func() (io.ReadCloser, string)
 
+func (f fromFunc) String() string {
+	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core.")
+	name = strings.TrimSuffix(name, ".func1")
+	return name
+}
+
+func (a *artwork) get(ctx context.Context, artID model.ArtworkID, size int) (reader io.ReadCloser, path string, err error) {
 	switch artID.Kind {
 	case model.KindAlbumArtwork:
 		reader, path = a.extractAlbumImage(ctx, artID)
@@ -116,34 +133,19 @@ func (a *artwork) extractMediaFileImage(ctx context.Context, artID model.Artwork
 	return extractImage(ctx, artID, ff...)
 }
 
-func (a *artwork) resizedFromOriginal(ctx context.Context, artID model.ArtworkID, size int) (io.ReadCloser, string, error) {
-	// first get original image
-	original, path, err := a.get(ctx, artID, 0)
-	if err != nil || original == nil {
-		return nil, "", err
-	}
-	defer original.Close()
-
+func (a *artwork) resizedFromOriginal(ctx context.Context, artID model.ArtworkID, original io.Reader, size int) (io.Reader, error) {
 	// Keep a copy of the original data. In case we can't resize it, send it as is
 	buf := new(bytes.Buffer)
 	r := io.TeeReader(original, buf)
 
-	usePng := strings.ToLower(filepath.Ext(path)) == ".png"
-	resized, err := resizeImage(r, size, usePng)
+	resized, err := resizeImage(r, size)
 	if err != nil {
-		log.Warn(ctx, "Could not resize image. Sending it as-is", "artID", artID, "size", size, err)
-		return io.NopCloser(buf), path, nil
+		log.Warn(ctx, "Could not resize image. Will return image as is", "artID", artID, "size", size, err)
+		// Force finish reading any remaining data
+		_, _ = io.Copy(io.Discard, r)
+		return buf, nil
 	}
-	return resized, fmt.Sprintf("%s@%d", path, size), nil
-}
-
-type fromFunc func() (io.ReadCloser, string)
-
-func (f fromFunc) String() string {
-	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
-	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core.")
-	name = strings.TrimSuffix(name, ".func1")
-	return name
+	return resized, nil
 }
 
 func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...fromFunc) (io.ReadCloser, string) {
@@ -256,8 +258,22 @@ func fromPlaceholder() fromFunc {
 	}
 }
 
-func resizeImage(reader io.Reader, size int, usePng bool) (io.ReadCloser, error) {
-	img, _, err := image.Decode(reader)
+func asImageReader(r io.Reader) (io.Reader, string, error) {
+	br := bufio.NewReader(r)
+	buf, err := br.Peek(512)
+	if err != nil {
+		return nil, "", err
+	}
+	return br, http.DetectContentType(buf), nil
+}
+
+func resizeImage(reader io.Reader, size int) (io.Reader, error) {
+	r, format, err := asImageReader(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	img, _, err := image.Decode(r)
 	if err != nil {
 		return nil, err
 	}
@@ -272,12 +288,13 @@ func resizeImage(reader io.Reader, size int, usePng bool) (io.ReadCloser, error)
 	}
 
 	buf := new(bytes.Buffer)
-	if usePng {
+	buf.Reset()
+	if format == "image/png" {
 		err = png.Encode(buf, m)
 	} else {
 		err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
 	}
-	return io.NopCloser(buf), err
+	return buf, err
 }
 
 type ArtworkCache struct {

@@ -164,17 +164,36 @@ var _ = Describe("Artwork", func() {
 	Context("Resize", func() {
 		BeforeEach(func() {
 			ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
-				alOnlyExternal,
+				alMultipleCovers,
 			})
 		})
-		It("returns external cover resized", func() {
-			r, path, err := aw.get(context.Background(), alOnlyExternal.CoverArtID(), 300)
+		It("returns a PNG if original image is a PNG", func() {
+			conf.Server.CoverArtPriority = "front.png"
+			r, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID().String(), 300)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(path).To(Equal("tests/fixtures/front.png@300"))
-			img, _, err := image.Decode(r)
-			Expect(err).To(BeNil())
+
+			br, format, err := asImageReader(r)
+			Expect(format).To(Equal("image/png"))
+			Expect(err).ToNot(HaveOccurred())
+
+			img, _, err := image.Decode(br)
+			Expect(err).ToNot(HaveOccurred())
 			Expect(img.Bounds().Size().X).To(Equal(300))
 			Expect(img.Bounds().Size().Y).To(Equal(300))
+		})
+		It("returns a JPEG if original image is not a PNG", func() {
+			conf.Server.CoverArtPriority = "cover.jpg"
+			r, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID().String(), 200)
+			Expect(err).ToNot(HaveOccurred())
+
+			br, format, err := asImageReader(r)
+			Expect(format).To(Equal("image/jpeg"))
+			Expect(err).ToNot(HaveOccurred())
+
+			img, _, err := image.Decode(br)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(img.Bounds().Size().X).To(Equal(200))
+			Expect(img.Bounds().Size().Y).To(Equal(200))
 		})
 	})
 })
