@@ -89,17 +89,9 @@ func (a *artwork) extractAlbumImage(ctx context.Context, artID model.ArtworkID) 
 		log.Error(ctx, "Could not retrieve album", "id", artID.ID, err)
 		return nil, ""
 	}
-
-	return extractImage(ctx, artID,
-		fromExternalFile(al.ImageFiles, "cover.png", "cover.jpg", "cover.jpeg", "cover.webp"),
-		fromExternalFile(al.ImageFiles, "folder.png", "folder.jpg", "folder.jpeg", "folder.webp"),
-		fromExternalFile(al.ImageFiles, "album.png", "album.jpg", "album.jpeg", "album.webp"),
-		fromExternalFile(al.ImageFiles, "albumart.png", "albumart.jpg", "albumart.jpeg", "albumart.webp"),
-		fromExternalFile(al.ImageFiles, "front.png", "front.jpg", "front.jpeg", "front.webp"),
-		fromTag(al.EmbedArtPath),
-		fromFFmpegTag(ctx, a.ffmpeg, al.EmbedArtPath),
-		fromPlaceholder(),
-	)
+	var ff = a.fromCoverArtPriority(ctx, conf.Server.CoverArtPriority, *al)
+	ff = append(ff, fromPlaceholder())
+	return extractImage(ctx, artID, ff...)
 }
 
 func (a *artwork) extractMediaFileImage(ctx context.Context, artID model.ArtworkID) (reader io.ReadCloser, path string) {
@@ -179,23 +171,36 @@ func (a *artwork) fromAlbum(ctx context.Context, id model.ArtworkID) fromFunc {
 	}
 }
 
-// This is a bit unoptimized, but we need to make sure the priority order of validNames
-// is preserved (i.e. png is better than jpg)
-func fromExternalFile(files string, validNames ...string) fromFunc {
+func (a *artwork) fromCoverArtPriority(ctx context.Context, priority string, al model.Album) []fromFunc {
+	var ff []fromFunc
+	for _, p := range strings.Split(strings.ToLower(priority), ",") {
+		pat := strings.TrimSpace(p)
+		if pat == "embedded" {
+			ff = append(ff, fromTag(al.EmbedArtPath), fromFFmpegTag(ctx, a.ffmpeg, al.EmbedArtPath))
+			continue
+		}
+		ff = append(ff, fromExternalFile(ctx, al.ImageFiles, p))
+	}
+	return ff
+}
+
+func fromExternalFile(ctx context.Context, files string, pattern string) fromFunc {
 	return func() (io.ReadCloser, string) {
-		fileList := filepath.SplitList(files)
-		for _, validName := range validNames {
-			for _, file := range fileList {
-				_, name := filepath.Split(file)
-				if !strings.EqualFold(validName, name) {
-					continue
-				}
-				f, err := os.Open(file)
-				if err != nil {
-					continue
-				}
-				return f, file
+		for _, file := range filepath.SplitList(files) {
+			_, name := filepath.Split(file)
+			match, err := filepath.Match(pattern, strings.ToLower(name))
+			if err != nil {
+				log.Warn(ctx, "Error matching cover art file to pattern", "pattern", pattern, "file", file)
+				continue
 			}
+			if !match {
+				continue
+			}
+			f, err := os.Open(file)
+			if err != nil {
+				continue
+			}
+			return f, file
 		}
 		return nil, ""
 	}
