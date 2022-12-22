@@ -291,7 +291,7 @@ type artworkKey struct {
 }
 
 func (k *artworkKey) Key() string {
-	return fmt.Sprintf("%s.%d.%d.%d", k.artID.ID, k.size, k.artID.LastUpdate.UnixNano(), conf.Server.CoverJpegQuality)
+	return fmt.Sprintf("%s.%d.%d", k.artID, k.size, conf.Server.CoverJpegQuality)
 }
 
 func GetImageCache() cache.FileCache {
