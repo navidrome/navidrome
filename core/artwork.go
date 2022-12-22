@@ -114,7 +114,7 @@ func (a *artwork) extractMediaFileImage(ctx context.Context, artID model.Artwork
 	}
 
 	var ff []fromFunc
-	if mf.HasCoverArt {
+	if mf.CoverArtID().Kind == model.KindMediaFileArtwork {
 		ff = []fromFunc{
 			fromTag(mf.Path),
 			fromFFmpegTag(ctx, a.ffmpeg, mf.Path),
