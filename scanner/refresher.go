@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -20,20 +21,20 @@ import (
 //
 // The actual mappings happen in MediaFiles.ToAlbum() and Albums.ToAlbumArtist()
 type refresher struct {
-	ctx    context.Context
-	ds     model.DataStore
-	album  map[string]struct{}
-	artist map[string]struct{}
-	dirMap dirMap
+	ds          model.DataStore
+	album       map[string]struct{}
+	artist      map[string]struct{}
+	dirMap      dirMap
+	cacheWarmer core.ArtworkCacheWarmer
 }
 
-func newRefresher(ctx context.Context, ds model.DataStore, dirMap dirMap) *refresher {
+func newRefresher(ds model.DataStore, cw core.ArtworkCacheWarmer, dirMap dirMap) *refresher {
 	return &refresher{
-		ctx:    ctx,
-		ds:     ds,
-		album:  map[string]struct{}{},
-		artist: map[string]struct{}{},
-		dirMap: dirMap,
+		ds:          ds,
+		album:       map[string]struct{}{},
+		artist:      map[string]struct{}{},
+		dirMap:      dirMap,
+		cacheWarmer: cw,
 	}
 }
 
@@ -46,21 +47,23 @@ func (r *refresher) accumulate(mf model.MediaFile) {
 	}
 }
 
-func (r *refresher) flush() error {
-	err := r.flushMap(r.album, "album", r.refreshAlbums)
+func (r *refresher) flush(ctx context.Context) error {
+	err := r.flushMap(ctx, r.album, "album", r.refreshAlbums)
 	if err != nil {
 		return err
 	}
-	err = r.flushMap(r.artist, "artist", r.refreshArtists)
+	err = r.flushMap(ctx, r.artist, "artist", r.refreshArtists)
 	if err != nil {
 		return err
 	}
+	r.album = map[string]struct{}{}
+	r.artist = map[string]struct{}{}
 	return nil
 }
 
-type refreshCallbackFunc = func(ids ...string) error
+type refreshCallbackFunc = func(ctx context.Context, ids ...string) error
 
-func (r *refresher) flushMap(m map[string]struct{}, entity string, refresh refreshCallbackFunc) error {
+func (r *refresher) flushMap(ctx context.Context, m map[string]struct{}, entity string, refresh refreshCallbackFunc) error {
 	if len(m) == 0 {
 		return nil
 	}
@@ -71,17 +74,17 @@ func (r *refresher) flushMap(m map[string]struct{}, entity string, refresh refre
 	}
 	chunks := utils.BreakUpStringSlice(ids, 100)
 	for _, chunk := range chunks {
-		err := refresh(chunk...)
+		err := refresh(ctx, chunk...)
 		if err != nil {
-			log.Error(r.ctx, fmt.Sprintf("Error writing %ss to the DB", entity), err)
+			log.Error(ctx, fmt.Sprintf("Error writing %ss to the DB", entity), err)
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *refresher) refreshAlbums(ids ...string) error {
-	mfs, err := r.ds.MediaFile(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": ids}})
+func (r *refresher) refreshAlbums(ctx context.Context, ids ...string) error {
+	mfs, err := r.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": ids}})
 	if err != nil {
 		return err
 	}
@@ -89,7 +92,7 @@ func (r *refresher) refreshAlbums(ids ...string) error {
 		return nil
 	}
 
-	repo := r.ds.Album(r.ctx)
+	repo := r.ds.Album(ctx)
 	grouped := slice.Group(mfs, func(m model.MediaFile) string { return m.AlbumID })
 	for _, group := range grouped {
 		songs := model.MediaFiles(group)
@@ -103,6 +106,7 @@ func (r *refresher) refreshAlbums(ids ...string) error {
 		if err != nil {
 			return err
 		}
+		r.cacheWarmer.PreCache(a.CoverArtID())
 	}
 	return nil
 }
@@ -122,8 +126,8 @@ func (r *refresher) getImageFiles(dirs []string) (string, time.Time) {
 	return strings.Join(imageFiles, string(filepath.ListSeparator)), updatedAt
 }
 
-func (r *refresher) refreshArtists(ids ...string) error {
-	albums, err := r.ds.Album(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": ids}})
+func (r *refresher) refreshArtists(ctx context.Context, ids ...string) error {
+	albums, err := r.ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": ids}})
 	if err != nil {
 		return err
 	}
@@ -131,7 +135,7 @@ func (r *refresher) refreshArtists(ids ...string) error {
 		return nil
 	}
 
-	repo := r.ds.Artist(r.ctx)
+	repo := r.ds.Artist(ctx)
 	grouped := slice.Group(albums, func(al model.Album) string { return al.AlbumArtistID })
 	for _, group := range grouped {
 		a := model.Albums(group).ToAlbumArtist()
