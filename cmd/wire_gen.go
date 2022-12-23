@@ -46,10 +46,10 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	fileCache := core.GetImageCache()
-	transcoderTranscoder := ffmpeg.New()
-	artwork := core.NewArtwork(dataStore, fileCache, transcoderTranscoder)
+	fFmpeg := ffmpeg.New()
+	artwork := core.NewArtwork(dataStore, fileCache, fFmpeg)
 	transcodingCache := core.GetTranscodingCache()
-	mediaStreamer := core.NewMediaStreamer(dataStore, transcoderTranscoder, transcodingCache)
+	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	archiver := core.NewArchiver(mediaStreamer, dataStore)
 	players := core.NewPlayers(dataStore)
 	agentsAgents := agents.New(dataStore)
@@ -80,8 +80,12 @@ func createScanner() scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	playlists := core.NewPlaylists(dataStore)
+	fileCache := core.GetImageCache()
+	fFmpeg := ffmpeg.New()
+	artwork := core.NewArtwork(dataStore, fileCache, fFmpeg)
+	cacheWarmer := core.NewArtworkCacheWarmer(artwork)
 	broker := events.GetBroker()
-	scannerScanner := scanner.New(dataStore, playlists, broker)
+	scannerScanner := scanner.New(dataStore, playlists, cacheWarmer, broker)
 	return scannerScanner
 }
 
