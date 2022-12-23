@@ -75,7 +75,7 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, 
 	return r, err
 }
 
-type fromFunc func() (io.ReadCloser, string)
+type fromFunc func() (io.ReadCloser, string, error)
 
 func (f fromFunc) String() string {
 	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
@@ -91,7 +91,7 @@ func (a *artwork) get(ctx context.Context, artID model.ArtworkID, size int) (rea
 	case model.KindMediaFileArtwork:
 		reader, path = a.extractMediaFileImage(ctx, artID)
 	default:
-		reader, path = fromPlaceholder()()
+		reader, path, _ = fromPlaceholder()()
 	}
 	return reader, path, ctx.Err()
 }
@@ -99,7 +99,7 @@ func (a *artwork) get(ctx context.Context, artID model.ArtworkID, size int) (rea
 func (a *artwork) extractAlbumImage(ctx context.Context, artID model.ArtworkID) (io.ReadCloser, string) {
 	al, err := a.ds.Album(ctx).Get(artID.ID)
 	if errors.Is(err, model.ErrNotFound) {
-		r, path := fromPlaceholder()()
+		r, path, _ := fromPlaceholder()()
 		return r, path
 	}
 	if err != nil {
@@ -114,7 +114,7 @@ func (a *artwork) extractAlbumImage(ctx context.Context, artID model.ArtworkID) 
 func (a *artwork) extractMediaFileImage(ctx context.Context, artID model.ArtworkID) (reader io.ReadCloser, path string) {
 	mf, err := a.ds.MediaFile(ctx).Get(artID.ID)
 	if errors.Is(err, model.ErrNotFound) {
-		r, path := fromPlaceholder()()
+		r, path, _ := fromPlaceholder()()
 		return r, path
 	}
 	if err != nil {
@@ -153,41 +153,42 @@ func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...fr
 		if ctx.Err() != nil {
 			return nil, ""
 		}
-		r, path := f()
+		r, path, err := f()
 		if r != nil {
 			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "origin", f)
 			return r, path
 		}
+		log.Trace(ctx, "Tried to extract artwork", "artID", artID, "origin", f, err)
 	}
 	log.Error(ctx, "extractImage should never reach this point!", "artID", artID, "path")
 	return nil, ""
 }
 
 func (a *artwork) fromAlbum(ctx context.Context, id model.ArtworkID) fromFunc {
-	return func() (io.ReadCloser, string) {
+	return func() (io.ReadCloser, string, error) {
 		r, path, err := a.get(ctx, id, 0)
 		if err != nil {
-			return nil, ""
+			return nil, "", err
 		}
-		return r, path
+		return r, path, nil
 	}
 }
 
 func (a *artwork) fromCoverArtPriority(ctx context.Context, priority string, al model.Album) []fromFunc {
 	var ff []fromFunc
-	for _, p := range strings.Split(strings.ToLower(priority), ",") {
-		pat := strings.TrimSpace(p)
-		if pat == "embedded" {
+	for _, pattern := range strings.Split(strings.ToLower(priority), ",") {
+		pattern = strings.TrimSpace(pattern)
+		if pattern == "embedded" {
 			ff = append(ff, fromTag(al.EmbedArtPath), fromFFmpegTag(ctx, a.ffmpeg, al.EmbedArtPath))
 			continue
 		}
-		ff = append(ff, fromExternalFile(ctx, al.ImageFiles, p))
+		ff = append(ff, fromExternalFile(ctx, al.ImageFiles, pattern))
 	}
 	return ff
 }
 
 func fromExternalFile(ctx context.Context, files string, pattern string) fromFunc {
-	return func() (io.ReadCloser, string) {
+	return func() (io.ReadCloser, string, error) {
 		for _, file := range filepath.SplitList(files) {
 			_, name := filepath.Split(file)
 			match, err := filepath.Match(pattern, strings.ToLower(name))
@@ -202,59 +203,59 @@ func fromExternalFile(ctx context.Context, files string, pattern string) fromFun
 			if err != nil {
 				continue
 			}
-			return f, file
+			return f, file, err
 		}
-		return nil, ""
+		return nil, "", fmt.Errorf("pattern '%s' not matched by files %v", pattern, files)
 	}
 }
 
 func fromTag(path string) fromFunc {
-	return func() (io.ReadCloser, string) {
+	return func() (io.ReadCloser, string, error) {
 		if path == "" {
-			return nil, ""
+			return nil, "", nil
 		}
 		f, err := os.Open(path)
 		if err != nil {
-			return nil, ""
+			return nil, "", err
 		}
 		defer f.Close()
 
 		m, err := tag.ReadFrom(f)
 		if err != nil {
-			return nil, ""
+			return nil, "", err
 		}
 
 		picture := m.Picture()
 		if picture == nil {
-			return nil, ""
+			return nil, "", fmt.Errorf("no embedded image found in %s", path)
 		}
-		return io.NopCloser(bytes.NewReader(picture.Data)), path
+		return io.NopCloser(bytes.NewReader(picture.Data)), path, nil
 	}
 }
 
 func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) fromFunc {
-	return func() (io.ReadCloser, string) {
+	return func() (io.ReadCloser, string, error) {
 		if path == "" {
-			return nil, ""
+			return nil, "", nil
 		}
 		r, err := ffmpeg.ExtractImage(ctx, path)
 		if err != nil {
-			return nil, ""
+			return nil, "", err
 		}
 		defer r.Close()
 		buf := new(bytes.Buffer)
 		_, err = io.Copy(buf, r)
 		if err != nil {
-			return nil, ""
+			return nil, "", err
 		}
-		return io.NopCloser(buf), path
+		return io.NopCloser(buf), path, nil
 	}
 }
 
 func fromPlaceholder() fromFunc {
-	return func() (io.ReadCloser, string) {
+	return func() (io.ReadCloser, string, error) {
 		r, _ := resources.FS().Open(consts.PlaceholderAlbumArt)
-		return r, consts.PlaceholderAlbumArt
+		return r, consts.PlaceholderAlbumArt, nil
 	}
 }
 
