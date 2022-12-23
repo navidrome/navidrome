@@ -182,7 +182,9 @@ func (a *artwork) fromCoverArtPriority(ctx context.Context, priority string, al 
 			ff = append(ff, fromTag(al.EmbedArtPath), fromFFmpegTag(ctx, a.ffmpeg, al.EmbedArtPath))
 			continue
 		}
-		ff = append(ff, fromExternalFile(ctx, al.ImageFiles, pattern))
+		if al.ImageFiles != "" {
+			ff = append(ff, fromExternalFile(ctx, al.ImageFiles, pattern))
+		}
 	}
 	return ff
 }
@@ -201,6 +203,7 @@ func fromExternalFile(ctx context.Context, files string, pattern string) fromFun
 			}
 			f, err := os.Open(file)
 			if err != nil {
+				log.Warn(ctx, "Could not open cover art file", "file", file, err)
 				continue
 			}
 			return f, file, err

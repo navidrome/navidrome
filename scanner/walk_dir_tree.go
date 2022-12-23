@@ -20,6 +20,7 @@ type (
 		Path            string
 		ModTime         time.Time
 		Images          []string
+		ImagesUpdatedAt time.Time
 		HasPlaylist     bool
 		AudioFilesCount uint32
 	}
@@ -93,12 +94,15 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 			if fileInfo.ModTime().After(stats.ModTime) {
 				stats.ModTime = fileInfo.ModTime()
 			}
-			if utils.IsAudioFile(entry.Name()) {
+			switch {
+			case utils.IsAudioFile(entry.Name()):
 				stats.AudioFilesCount++
-			} else {
-				stats.HasPlaylist = stats.HasPlaylist || model.IsValidPlaylist(entry.Name())
-				if utils.IsImageFile(entry.Name()) {
-					stats.Images = append(stats.Images, entry.Name())
+			case model.IsValidPlaylist(entry.Name()):
+				stats.HasPlaylist = true
+			case utils.IsImageFile(entry.Name()):
+				stats.Images = append(stats.Images, entry.Name())
+				if fileInfo.ModTime().After(stats.ImagesUpdatedAt) {
+					stats.ImagesUpdatedAt = fileInfo.ModTime()
 				}
 			}
 		}
