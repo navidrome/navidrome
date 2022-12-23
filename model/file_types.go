@@ -1,9 +1,11 @@
-package utils
+package model
 
 import (
 	"mime"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 var excludeAudioType = []string{
@@ -14,10 +16,15 @@ var excludeAudioType = []string{
 func IsAudioFile(filePath string) bool {
 	extension := filepath.Ext(filePath)
 	mimeType := mime.TypeByExtension(extension)
-	return !StringInSlice(mimeType, excludeAudioType) && strings.HasPrefix(mimeType, "audio/")
+	return !slices.Contains(excludeAudioType, mimeType) && strings.HasPrefix(mimeType, "audio/")
 }
 
 func IsImageFile(filePath string) bool {
 	extension := filepath.Ext(filePath)
 	return strings.HasPrefix(mime.TypeByExtension(extension), "image/")
+}
+
+func IsValidPlaylist(filePath string) bool {
+	extension := strings.ToLower(filepath.Ext(filePath))
+	return extension == ".m3u" || extension == ".m3u8" || extension == ".nsp"
 }
