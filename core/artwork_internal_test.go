@@ -27,7 +27,7 @@ var _ = Describe("Artwork", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.ImageCacheSize = "0" // Disable cache
-		conf.Server.CoverArtPriority = "folder.*,cover.*,embedded,front.*"
+		conf.Server.CoverArtPriority = "folder.*, cover.*, embedded , front.*"
 
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
 		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/test.mp3"}
@@ -111,9 +111,9 @@ var _ = Describe("Artwork", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(path).To(Equal(expected))
 				},
-				Entry(nil, "folder.*,cover.*,embedded,front.*", "tests/fixtures/cover.jpg"),
-				Entry(nil, "front.*,cover.*,embedded,folder.*", "tests/fixtures/front.png"),
-				Entry(nil, "embedded,front.*,cover.*,folder.*", "tests/fixtures/test.mp3"),
+				Entry(nil, " folder.* , cover.*,embedded,front.*", "tests/fixtures/cover.jpg"),
+				Entry(nil, "front.* , cover.*, embedded ,folder.*", "tests/fixtures/front.png"),
+				Entry(nil, " embedded , front.* , cover.*,folder.*", "tests/fixtures/test.mp3"),
 			)
 		})
 	})
