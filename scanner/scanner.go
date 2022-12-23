@@ -40,12 +40,13 @@ type FolderScanner interface {
 var isScanning sync.Mutex
 
 type scanner struct {
-	folders map[string]FolderScanner
-	status  map[string]*scanStatus
-	lock    *sync.RWMutex
-	ds      model.DataStore
-	pls     core.Playlists
-	broker  events.Broker
+	folders     map[string]FolderScanner
+	status      map[string]*scanStatus
+	lock        *sync.RWMutex
+	ds          model.DataStore
+	pls         core.Playlists
+	broker      events.Broker
+	cacheWarmer core.ArtworkCacheWarmer
 }
 
 type scanStatus struct {
@@ -55,14 +56,15 @@ type scanStatus struct {
 	lastUpdate  time.Time
 }
 
-func New(ds model.DataStore, playlists core.Playlists, broker events.Broker) Scanner {
+func New(ds model.DataStore, playlists core.Playlists, cacheWarmer core.ArtworkCacheWarmer, broker events.Broker) Scanner {
 	s := &scanner{
-		ds:      ds,
-		pls:     playlists,
-		broker:  broker,
-		folders: map[string]FolderScanner{},
-		status:  map[string]*scanStatus{},
-		lock:    &sync.RWMutex{},
+		ds:          ds,
+		pls:         playlists,
+		broker:      broker,
+		folders:     map[string]FolderScanner{},
+		status:      map[string]*scanStatus{},
+		lock:        &sync.RWMutex{},
+		cacheWarmer: cacheWarmer,
 	}
 	s.loadFolders()
 	return s
@@ -242,5 +244,5 @@ func (s *scanner) loadFolders() {
 }
 
 func (s *scanner) newScanner(f model.MediaFolder) FolderScanner {
-	return NewTagScanner(f.Path, s.ds, s.pls)
+	return NewTagScanner(f.Path, s.ds, s.pls, s.cacheWarmer)
 }

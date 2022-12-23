@@ -20,4 +20,5 @@ var Set = wire.NewSet(
 	scrobbler.GetPlayTracker,
 	NewShare,
 	NewPlaylists,
+	NewArtworkCacheWarmer,
 )
