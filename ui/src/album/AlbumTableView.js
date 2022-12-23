@@ -3,6 +3,7 @@ import {
   Datagrid,
   DatagridBody,
   DatagridRow,
+  DateField,
   NumberField,
   TextField,
 } from 'react-admin'
@@ -102,12 +103,14 @@ const AlbumTableView = ({
           className={classes.ratingField}
         />
       ),
+      createdAt: isDesktop && <DateField source="createdAt" showTime />,
     }
   }, [classes.ratingField, isDesktop])
 
   const columns = useSelectedFields({
     resource: 'album',
     columns: toggleableFields,
+    defaultOff: ['createdAt'],
   })
 
   return isXsmall ? (

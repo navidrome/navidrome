@@ -25,7 +25,8 @@
                 "rating": "Rating",
                 "quality": "Quality",
                 "bpm": "BPM",
-                "playDate": "Last Played"
+                "playDate": "Last Played",
+                "createdAt": "Date added"
             },
             "actions": {
                 "addToQueue": "Play Later",
@@ -51,7 +52,8 @@
                 "year": "Year",
                 "updatedAt": "Updated at",
                 "comment": "Comment",
-                "rating": "Rating"
+                "rating": "Rating",
+                "createdAt": "Date added"
             },
             "actions": {
                 "playAll": "Play",

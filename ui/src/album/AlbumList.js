@@ -94,14 +94,19 @@ const AlbumList = (props) => {
   // Workaround to force album columns to appear the first time.
   // See https://github.com/navidrome/navidrome/pull/923#issuecomment-833004842
   // TODO: Find a better solution
-  useSetToggleableFields('album', [
-    'artist',
-    'songCount',
-    'playCount',
-    'year',
-    'duration',
-    'rating',
-  ])
+  useSetToggleableFields(
+    'album',
+    [
+      'artist',
+      'songCount',
+      'playCount',
+      'year',
+      'duration',
+      'rating',
+      'createdAt',
+    ],
+    ['createdAt']
+  )
 
   // If it does not have filter/sort params (usually coming from Menu),
   // reload with correct filter/sort params
