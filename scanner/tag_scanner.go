@@ -402,7 +402,7 @@ func loadAllAudioFiles(dirPath string) (map[string]fs.DirEntry, error) {
 			continue
 		}
 		filePath := filepath.Join(dirPath, f.Name())
-		if !utils.IsAudioFile(filePath) {
+		if !model.IsAudioFile(filePath) {
 			continue
 		}
 		fileInfos[filePath] = f
