@@ -127,7 +127,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 					log.Warn(ctx, "Error removing key from cache", "cache", fc.name, "key", key, err)
 				}
 			} else {
-				log.Trace(ctx, "File stored in cache", "cache", fc.name, "key", key)
+				log.Trace(ctx, "File successfully stored in cache", "cache", fc.name, "key", key)
 			}
 		}()
 	}

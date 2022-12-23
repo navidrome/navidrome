@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
@@ -93,7 +94,11 @@ func (r *refresher) refreshAlbums(ids ...string) error {
 	for _, group := range grouped {
 		songs := model.MediaFiles(group)
 		a := songs.ToAlbum()
-		a.ImageFiles = r.getImageFiles(songs.Dirs())
+		var updatedAt time.Time
+		a.ImageFiles, updatedAt = r.getImageFiles(songs.Dirs())
+		if updatedAt.After(a.UpdatedAt) {
+			a.UpdatedAt = updatedAt
+		}
 		err := repo.Put(&a)
 		if err != nil {
 			return err
@@ -102,14 +107,19 @@ func (r *refresher) refreshAlbums(ids ...string) error {
 	return nil
 }
 
-func (r *refresher) getImageFiles(dirs []string) string {
+func (r *refresher) getImageFiles(dirs []string) (string, time.Time) {
 	var imageFiles []string
+	var updatedAt time.Time
 	for _, dir := range dirs {
-		for _, img := range r.dirMap[dir].Images {
+		stats := r.dirMap[dir]
+		for _, img := range stats.Images {
 			imageFiles = append(imageFiles, filepath.Join(dir, img))
 		}
+		if stats.ImagesUpdatedAt.After(updatedAt) {
+			updatedAt = stats.ImagesUpdatedAt
+		}
 	}
-	return strings.Join(imageFiles, string(filepath.ListSeparator))
+	return strings.Join(imageFiles, string(filepath.ListSeparator)), updatedAt
 }
 
 func (r *refresher) refreshArtists(ids ...string) error {
