@@ -47,7 +47,6 @@ const getScanStatus = () => httpClient(url('getScanStatus'))
 
 const getCoverArtUrl = (record, size) => {
   const options = {
-    ...(record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
   }
 
