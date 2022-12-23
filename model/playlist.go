@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -137,9 +136,4 @@ type PlaylistTrackRepository interface {
 	Delete(id ...string) error
 	DeleteAll() error
 	Reorder(pos int, newPos int) error
-}
-
-func IsValidPlaylist(filePath string) bool {
-	extension := strings.ToLower(filepath.Ext(filePath))
-	return extension == ".m3u" || extension == ".m3u8" || extension == ".nsp"
 }

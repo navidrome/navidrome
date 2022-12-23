@@ -95,11 +95,11 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 				stats.ModTime = fileInfo.ModTime()
 			}
 			switch {
-			case utils.IsAudioFile(entry.Name()):
+			case model.IsAudioFile(entry.Name()):
 				stats.AudioFilesCount++
 			case model.IsValidPlaylist(entry.Name()):
 				stats.HasPlaylist = true
-			case utils.IsImageFile(entry.Name()):
+			case model.IsImageFile(entry.Name()):
 				stats.Images = append(stats.Images, entry.Name())
 				if fileInfo.ModTime().After(stats.ImagesUpdatedAt) {
 					stats.ImagesUpdatedAt = fileInfo.ModTime()
