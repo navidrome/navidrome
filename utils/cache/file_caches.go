@@ -210,7 +210,7 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		return nil, nil
 	}
 
-	lru := fscache.NewLRUHaunter(maxItems, int64(size), consts.DefaultCacheCleanUpInterval)
+	lru := NewFileHaunter(maxItems, int64(size), consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
 	cacheFolder = filepath.Join(conf.Server.DataFolder, cacheFolder)
 
