@@ -183,7 +183,7 @@ var _ = Describe("Artwork", func() {
 		})
 		It("returns a JPEG if original image is not a PNG", func() {
 			conf.Server.CoverArtPriority = "cover.jpg"
-			r, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID().String(), 200)
+			r, _, err := aw.get(context.Background(), alMultipleCovers.CoverArtID(), 200)
 			Expect(err).ToNot(HaveOccurred())
 
 			br, format, err := asImageReader(r)

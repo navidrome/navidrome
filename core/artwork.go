@@ -55,17 +55,6 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, 
 		}
 	}
 
-	// If requested a resized image, get the original (possibly from cache)
-	if size > 0 && id != "" {
-		r, err := a.Get(ctx, id, 0)
-		if err != nil {
-			return nil, err
-		}
-		defer r.Close()
-		resized, err := a.resizedFromOriginal(ctx, artID, r, size)
-		return io.NopCloser(resized), err
-	}
-
 	key := &artworkKey{a: a, artID: artID, size: size}
 
 	r, err := a.cache.Get(ctx, key)
@@ -85,6 +74,17 @@ func (f fromFunc) String() string {
 }
 
 func (a *artwork) get(ctx context.Context, artID model.ArtworkID, size int) (reader io.ReadCloser, path string, err error) {
+	// If requested a resized image, get the original (possibly from cache)
+	if size > 0 {
+		r, err := a.Get(ctx, artID.String(), 0)
+		if err != nil {
+			return nil, "", err
+		}
+		defer r.Close()
+		resized, err := a.resizedFromOriginal(ctx, artID, r, size)
+		return io.NopCloser(resized), fmt.Sprintf("%s@%d", artID, size), err
+	}
+
 	switch artID.Kind {
 	case model.KindAlbumArtwork:
 		reader, path = a.extractAlbumImage(ctx, artID)
