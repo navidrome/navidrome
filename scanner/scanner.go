@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
@@ -46,7 +47,7 @@ type scanner struct {
 	ds          model.DataStore
 	pls         core.Playlists
 	broker      events.Broker
-	cacheWarmer core.ArtworkCacheWarmer
+	cacheWarmer artwork.CacheWarmer
 }
 
 type scanStatus struct {
@@ -56,7 +57,7 @@ type scanStatus struct {
 	lastUpdate  time.Time
 }
 
-func New(ds model.DataStore, playlists core.Playlists, cacheWarmer core.ArtworkCacheWarmer, broker events.Broker) Scanner {
+func New(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer, broker events.Broker) Scanner {
 	s := &scanner{
 		ds:          ds,
 		pls:         playlists,

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -25,10 +25,10 @@ type refresher struct {
 	album       map[string]struct{}
 	artist      map[string]struct{}
 	dirMap      dirMap
-	cacheWarmer core.ArtworkCacheWarmer
+	cacheWarmer artwork.CacheWarmer
 }
 
-func newRefresher(ds model.DataStore, cw core.ArtworkCacheWarmer, dirMap dirMap) *refresher {
+func newRefresher(ds model.DataStore, cw artwork.CacheWarmer, dirMap dirMap) *refresher {
 	return &refresher{
 		ds:          ds,
 		album:       map[string]struct{}{},

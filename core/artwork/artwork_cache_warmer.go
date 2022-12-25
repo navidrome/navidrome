@@ -1,4 +1,4 @@
-package core
+package artwork
 
 import (
 	"context"
@@ -11,17 +11,17 @@ import (
 	"github.com/navidrome/navidrome/utils/pl"
 )
 
-type ArtworkCacheWarmer interface {
+type CacheWarmer interface {
 	PreCache(artID model.ArtworkID)
 }
 
-func NewArtworkCacheWarmer(artwork Artwork) ArtworkCacheWarmer {
+func NewCacheWarmer(artwork Artwork) CacheWarmer {
 	// If image cache is disabled, return a NOOP implementation
 	if conf.Server.ImageCacheSize == "0" {
 		return &noopCacheWarmer{}
 	}
 
-	a := &artworkCacheWarmer{
+	a := &cacheWarmer{
 		artwork: artwork,
 		input:   make(chan string),
 	}
@@ -29,23 +29,23 @@ func NewArtworkCacheWarmer(artwork Artwork) ArtworkCacheWarmer {
 	return a
 }
 
-type artworkCacheWarmer struct {
+type cacheWarmer struct {
 	artwork Artwork
 	input   chan string
 }
 
-func (a *artworkCacheWarmer) PreCache(artID model.ArtworkID) {
+func (a *cacheWarmer) PreCache(artID model.ArtworkID) {
 	a.input <- artID.String()
 }
 
-func (a *artworkCacheWarmer) run(ctx context.Context) {
+func (a *cacheWarmer) run(ctx context.Context) {
 	errs := pl.Sink(ctx, 2, a.input, a.doCacheImage)
 	for err := range errs {
 		log.Warn(ctx, "Error warming cache", err)
 	}
 }
 
-func (a *artworkCacheWarmer) doCacheImage(ctx context.Context, id string) error {
+func (a *cacheWarmer) doCacheImage(ctx context.Context, id string) error {
 	r, err := a.artwork.Get(ctx, id, 0)
 	if err != nil {
 		return fmt.Errorf("error cacheing id='%s': %w", id, err)

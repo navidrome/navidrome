@@ -11,6 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -27,10 +28,10 @@ type TagScanner struct {
 	plsSync     *playlistImporter
 	cnt         *counters
 	mapper      *mediaFileMapper
-	cacheWarmer core.ArtworkCacheWarmer
+	cacheWarmer artwork.CacheWarmer
 }
 
-func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlists, cacheWarmer core.ArtworkCacheWarmer) FolderScanner {
+func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer) FolderScanner {
 	s := &TagScanner{
 		rootFolder:  rootFolder,
 		plsSync:     newPlaylistImporter(ds, playlists, rootFolder),
