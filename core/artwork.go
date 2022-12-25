@@ -17,6 +17,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
@@ -46,6 +47,9 @@ type artwork struct {
 }
 
 func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	var artID model.ArtworkID
 	var err error
 	if id != "" {
