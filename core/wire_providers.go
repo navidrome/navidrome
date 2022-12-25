@@ -3,15 +3,16 @@ package core
 import (
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/scrobbler"
 )
 
 var Set = wire.NewSet(
-	NewArtwork,
+	artwork.NewArtwork,
 	NewMediaStreamer,
 	GetTranscodingCache,
-	GetImageCache,
+	artwork.GetImageCache,
 	NewArchiver,
 	NewExternalMetadata,
 	NewPlayers,
@@ -20,5 +21,5 @@ var Set = wire.NewSet(
 	scrobbler.GetPlayTracker,
 	NewShare,
 	NewPlaylists,
-	NewArtworkCacheWarmer,
+	artwork.NewCacheWarmer,
 )

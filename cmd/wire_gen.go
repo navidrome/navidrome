@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
@@ -45,9 +46,9 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 func CreateSubsonicAPIRouter() *subsonic.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	fileCache := core.GetImageCache()
+	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	artwork := core.NewArtwork(dataStore, fileCache, fFmpeg)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg)
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	archiver := core.NewArchiver(mediaStreamer, dataStore)
@@ -58,7 +59,7 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
-	router := subsonic.New(dataStore, artwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, playlists, playTracker)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, playlists, playTracker)
 	return router
 }
 
@@ -80,10 +81,10 @@ func createScanner() scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	playlists := core.NewPlaylists(dataStore)
-	fileCache := core.GetImageCache()
+	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	artwork := core.NewArtwork(dataStore, fileCache, fFmpeg)
-	cacheWarmer := core.NewArtworkCacheWarmer(artwork)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg)
+	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork)
 	broker := events.GetBroker()
 	scannerScanner := scanner.New(dataStore, playlists, cacheWarmer, broker)
 	return scannerScanner

@@ -1,4 +1,4 @@
-package core
+package artwork
 
 import (
 	"bufio"
@@ -12,21 +12,15 @@ import (
 	"image/png"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
-	"reflect"
-	"runtime"
 	"strings"
 	"time"
 
-	"github.com/dhowden/tag"
 	"github.com/disintegration/imaging"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/navidrome/navidrome/utils/singleton"
 	_ "golang.org/x/image/webp"
@@ -59,22 +53,13 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (io.ReadCloser, 
 		}
 	}
 
-	key := &artworkKey{a: a, artID: artID, size: size}
+	item := &artItem{a: a, artID: artID, size: size}
 
-	r, err := a.cache.Get(ctx, key)
+	r, err := a.cache.Get(ctx, item)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Error(ctx, "Error accessing image cache", "id", id, "size", size, err)
 	}
 	return r, err
-}
-
-type fromFunc func() (io.ReadCloser, string, error)
-
-func (f fromFunc) String() string {
-	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
-	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core.")
-	name = strings.TrimSuffix(name, ".func1")
-	return name
 }
 
 func (a *artwork) get(ctx context.Context, artID model.ArtworkID, size int) (reader io.ReadCloser, path string, err error) {
@@ -110,7 +95,7 @@ func (a *artwork) extractAlbumImage(ctx context.Context, artID model.ArtworkID) 
 		log.Error(ctx, "Could not retrieve album", "id", artID.ID, err)
 		return nil, ""
 	}
-	var ff = a.fromCoverArtPriority(ctx, conf.Server.CoverArtPriority, *al)
+	var ff = fromCoverArtPriority(ctx, a.ffmpeg, conf.Server.CoverArtPriority, *al)
 	ff = append(ff, fromPlaceholder())
 	return extractImage(ctx, artID, ff...)
 }
@@ -126,9 +111,9 @@ func (a *artwork) extractMediaFileImage(ctx context.Context, artID model.Artwork
 		return nil, ""
 	}
 
-	var ff []fromFunc
+	var ff []sourceFunc
 	if mf.CoverArtID().Kind == model.KindMediaFileArtwork {
-		ff = []fromFunc{
+		ff = []sourceFunc{
 			fromTag(mf.Path),
 			fromFFmpegTag(ctx, a.ffmpeg, mf.Path),
 		}
@@ -152,38 +137,28 @@ func (a *artwork) resizedFromOriginal(ctx context.Context, artID model.ArtworkID
 	return resized, nil
 }
 
-func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...fromFunc) (io.ReadCloser, string) {
+func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string) {
 	for _, f := range extractFuncs {
 		if ctx.Err() != nil {
 			return nil, ""
 		}
 		r, path, err := f()
 		if r != nil {
-			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "origin", f)
+			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "source", f)
 			return r, path
 		}
-		log.Trace(ctx, "Tried to extract artwork", "artID", artID, "origin", f, err)
+		log.Trace(ctx, "Tried to extract artwork", "artID", artID, "source", f, err)
 	}
 	log.Error(ctx, "extractImage should never reach this point!", "artID", artID, "path")
 	return nil, ""
 }
 
-func (a *artwork) fromAlbum(ctx context.Context, id model.ArtworkID) fromFunc {
-	return func() (io.ReadCloser, string, error) {
-		r, path, err := a.get(ctx, id, 0)
-		if err != nil {
-			return nil, "", err
-		}
-		return r, path, nil
-	}
-}
-
-func (a *artwork) fromCoverArtPriority(ctx context.Context, priority string, al model.Album) []fromFunc {
-	var ff []fromFunc
+func fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string, al model.Album) []sourceFunc {
+	var ff []sourceFunc
 	for _, pattern := range strings.Split(strings.ToLower(priority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "embedded" {
-			ff = append(ff, fromTag(al.EmbedArtPath), fromFFmpegTag(ctx, a.ffmpeg, al.EmbedArtPath))
+			ff = append(ff, fromTag(al.EmbedArtPath), fromFFmpegTag(ctx, ffmpeg, al.EmbedArtPath))
 			continue
 		}
 		if al.ImageFiles != "" {
@@ -191,79 +166,6 @@ func (a *artwork) fromCoverArtPriority(ctx context.Context, priority string, al 
 		}
 	}
 	return ff
-}
-
-func fromExternalFile(ctx context.Context, files string, pattern string) fromFunc {
-	return func() (io.ReadCloser, string, error) {
-		for _, file := range filepath.SplitList(files) {
-			_, name := filepath.Split(file)
-			match, err := filepath.Match(pattern, strings.ToLower(name))
-			if err != nil {
-				log.Warn(ctx, "Error matching cover art file to pattern", "pattern", pattern, "file", file)
-				continue
-			}
-			if !match {
-				continue
-			}
-			f, err := os.Open(file)
-			if err != nil {
-				log.Warn(ctx, "Could not open cover art file", "file", file, err)
-				continue
-			}
-			return f, file, err
-		}
-		return nil, "", fmt.Errorf("pattern '%s' not matched by files %v", pattern, files)
-	}
-}
-
-func fromTag(path string) fromFunc {
-	return func() (io.ReadCloser, string, error) {
-		if path == "" {
-			return nil, "", nil
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			return nil, "", err
-		}
-		defer f.Close()
-
-		m, err := tag.ReadFrom(f)
-		if err != nil {
-			return nil, "", err
-		}
-
-		picture := m.Picture()
-		if picture == nil {
-			return nil, "", fmt.Errorf("no embedded image found in %s", path)
-		}
-		return io.NopCloser(bytes.NewReader(picture.Data)), path, nil
-	}
-}
-
-func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) fromFunc {
-	return func() (io.ReadCloser, string, error) {
-		if path == "" {
-			return nil, "", nil
-		}
-		r, err := ffmpeg.ExtractImage(ctx, path)
-		if err != nil {
-			return nil, "", err
-		}
-		defer r.Close()
-		buf := new(bytes.Buffer)
-		_, err = io.Copy(buf, r)
-		if err != nil {
-			return nil, "", err
-		}
-		return io.NopCloser(buf), path, nil
-	}
-}
-
-func fromPlaceholder() fromFunc {
-	return func() (io.ReadCloser, string, error) {
-		r, _ := resources.FS().Open(consts.PlaceholderAlbumArt)
-		return r, consts.PlaceholderAlbumArt, nil
-	}
 }
 
 func asImageReader(r io.Reader) (io.Reader, string, error) {
@@ -305,26 +207,26 @@ func resizeImage(reader io.Reader, size int) (io.Reader, error) {
 	return buf, err
 }
 
-type ArtworkCache struct {
+type imageCache struct {
 	cache.FileCache
 }
 
-type artworkKey struct {
+type artItem struct {
 	a     *artwork
 	artID model.ArtworkID
 	size  int
 }
 
-func (k *artworkKey) Key() string {
+func (k *artItem) Key() string {
 	return fmt.Sprintf("%s.%d.%d", k.artID, k.size, conf.Server.CoverJpegQuality)
 }
 
 func GetImageCache() cache.FileCache {
-	return singleton.GetInstance(func() *ArtworkCache {
-		return &ArtworkCache{
+	return singleton.GetInstance(func() *imageCache {
+		return &imageCache{
 			FileCache: cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
 				func(ctx context.Context, arg cache.Item) (io.Reader, error) {
-					info := arg.(*artworkKey)
+					info := arg.(*artItem)
 					r, _, err := info.a.get(ctx, info.artID, info.size)
 					return r, err
 				}),

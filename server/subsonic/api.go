@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -30,7 +31,7 @@ type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic,
 type Router struct {
 	http.Handler
 	ds               model.DataStore
-	artwork          core.Artwork
+	artwork          artwork.Artwork
 	streamer         core.MediaStreamer
 	archiver         core.Archiver
 	players          core.Players
@@ -41,7 +42,7 @@ type Router struct {
 	scrobbler        scrobbler.PlayTracker
 }
 
-func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
+func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker) *Router {
 	r := &Router{
