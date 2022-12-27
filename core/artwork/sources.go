@@ -19,24 +19,30 @@ import (
 	"github.com/navidrome/navidrome/resources"
 )
 
-type sourceFunc func() (io.ReadCloser, string, error)
+func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string) {
+	for _, f := range extractFuncs {
+		if ctx.Err() != nil {
+			return nil, ""
+		}
+		r, path, err := f()
+		if r != nil {
+			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "source", f)
+			return r, path
+		}
+		log.Trace(ctx, "Tried to extract artwork", "artID", artID, "source", f, err)
+	}
+	log.Error(ctx, "extractImage should never reach this point!", "artID", artID, "path")
+	return nil, ""
+}
+
+type sourceFunc func() (r io.ReadCloser, path string, err error)
 
 func (f sourceFunc) String() string {
 	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
-	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core.")
+	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core/artwork.")
 	name = strings.TrimPrefix(name, "(*artwork).")
 	name = strings.TrimSuffix(name, ".func1")
 	return name
-}
-
-func (a *artwork) fromAlbum(ctx context.Context, id model.ArtworkID) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		r, path, err := a.get(ctx, id, 0)
-		if err != nil {
-			return nil, "", err
-		}
-		return r, path, nil
-	}
 }
 
 func fromExternalFile(ctx context.Context, files string, pattern string) sourceFunc {

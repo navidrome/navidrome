@@ -3,9 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 )
 
 type Kind struct{ prefix string }
@@ -16,35 +14,25 @@ var (
 )
 
 type ArtworkID struct {
-	Kind       Kind
-	ID         string
-	LastUpdate time.Time
+	Kind Kind
+	ID   string
 }
 
 func (id ArtworkID) String() string {
-	s := fmt.Sprintf("%s-%s", id.Kind.prefix, id.ID)
-	if id.LastUpdate.Unix() < 0 {
-		return s + "-0"
-	}
-	return fmt.Sprintf("%s-%x", s, id.LastUpdate.Unix())
+	return fmt.Sprintf("%s-%s", id.Kind.prefix, id.ID)
 }
 
 func ParseArtworkID(id string) (ArtworkID, error) {
 	parts := strings.Split(id, "-")
-	if len(parts) != 3 {
+	if len(parts) != 2 {
 		return ArtworkID{}, errors.New("invalid artwork id")
-	}
-	lastUpdate, err := strconv.ParseInt(parts[2], 16, 64)
-	if err != nil {
-		return ArtworkID{}, err
 	}
 	if parts[0] != KindAlbumArtwork.prefix && parts[0] != KindMediaFileArtwork.prefix {
 		return ArtworkID{}, errors.New("invalid artwork kind")
 	}
 	return ArtworkID{
-		Kind:       Kind{parts[0]},
-		ID:         parts[1],
-		LastUpdate: time.Unix(lastUpdate, 0),
+		Kind: Kind{parts[0]},
+		ID:   parts[1],
 	}, nil
 }
 
@@ -58,16 +46,14 @@ func MustParseArtworkID(id string) ArtworkID {
 
 func artworkIDFromAlbum(al Album) ArtworkID {
 	return ArtworkID{
-		Kind:       KindAlbumArtwork,
-		ID:         al.ID,
-		LastUpdate: al.UpdatedAt,
+		Kind: KindAlbumArtwork,
+		ID:   al.ID,
 	}
 }
 
 func artworkIDFromMediaFile(mf MediaFile) ArtworkID {
 	return ArtworkID{
-		Kind:       KindMediaFileArtwork,
-		ID:         mf.ID,
-		LastUpdate: mf.UpdatedAt,
+		Kind: KindMediaFileArtwork,
+		ID:   mf.ID,
 	}
 }
