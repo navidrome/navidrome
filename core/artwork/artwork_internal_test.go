@@ -5,6 +5,7 @@ import (
 	"errors"
 	"image"
 	"io"
+	"testing"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -15,6 +16,13 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+func TestArtwork(t *testing.T) {
+	tests.Init(t, false)
+	log.SetLevel(log.LevelFatal)
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Artwork Suite")
+}
 
 var _ = Describe("Artwork", func() {
 	var aw *artwork

@@ -78,7 +78,7 @@ func (mf MediaFile) CoverArtID() ArtworkID {
 }
 
 func (mf MediaFile) AlbumCoverArtID() ArtworkID {
-	return artworkIDFromAlbum(Album{ID: mf.AlbumID, UpdatedAt: mf.UpdatedAt})
+	return artworkIDFromAlbum(Album{ID: mf.AlbumID})
 }
 
 type MediaFiles []MediaFile
