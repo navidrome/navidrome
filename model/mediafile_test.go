@@ -225,7 +225,7 @@ var _ = Describe("MediaFiles", func() {
 var _ = Describe("MediaFile", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DevFastAccessCoverArt = false
+		conf.Server.EnableMediaFileCoverArt = true
 	})
 	Describe(".CoverArtId()", func() {
 		It("returns its own id if it HasCoverArt", func() {
@@ -240,8 +240,8 @@ var _ = Describe("MediaFile", func() {
 			Expect(id.Kind).To(Equal(KindAlbumArtwork))
 			Expect(id.ID).To(Equal(mf.AlbumID))
 		})
-		It("returns its album id if DevFastAccessCoverArt is enabled", func() {
-			conf.Server.DevFastAccessCoverArt = true
+		It("returns its album id if EnableMediaFileCoverArt is disabled", func() {
+			conf.Server.EnableMediaFileCoverArt = false
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true}
 			id := mf.CoverArtID()
 			Expect(id.Kind).To(Equal(KindAlbumArtwork))
