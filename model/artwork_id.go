@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 type Kind struct{ prefix string }
@@ -11,7 +13,14 @@ type Kind struct{ prefix string }
 var (
 	KindMediaFileArtwork = Kind{"mf"}
 	KindAlbumArtwork     = Kind{"al"}
+	KindPlaylistArtwork  = Kind{"pl"}
 )
+
+var artworkKindList = []string{
+	KindAlbumArtwork.prefix,
+	KindMediaFileArtwork.prefix,
+	KindPlaylistArtwork.prefix,
+}
 
 type ArtworkID struct {
 	Kind Kind
@@ -26,11 +35,11 @@ func (id ArtworkID) String() string {
 }
 
 func ParseArtworkID(id string) (ArtworkID, error) {
-	parts := strings.Split(id, "-")
+	parts := strings.SplitN(id, "-", 2)
 	if len(parts) != 2 {
 		return ArtworkID{}, errors.New("invalid artwork id")
 	}
-	if parts[0] != KindAlbumArtwork.prefix && parts[0] != KindMediaFileArtwork.prefix {
+	if !slices.Contains(artworkKindList, parts[0]) {
 		return ArtworkID{}, errors.New("invalid artwork kind")
 	}
 	return ArtworkID{
