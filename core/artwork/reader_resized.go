@@ -54,7 +54,7 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 	r := io.TeeReader(orig, buf)
 	defer orig.Close()
 
-	resized, origSize, err := resizeImage(r, a.size)
+	resized, origSize, err := resizeImageIntoReader(r, a.size)
 	log.Trace(ctx, "Resizing artwork", "artID", a.artID, "original", origSize, "resized", a.size)
 	if err != nil {
 		log.Warn(ctx, "Could not resize image. Will return image as is", "artID", a.artID, "size", a.size, err)
@@ -74,12 +74,7 @@ func asImageReader(r io.Reader) (io.Reader, string, error) {
 	return br, http.DetectContentType(buf), nil
 }
 
-func resizeImage(reader io.Reader, size int) (io.Reader, int, error) {
-	r, format, err := asImageReader(reader)
-	if err != nil {
-		return nil, 0, err
-	}
-
+func resizeImage(r io.Reader, size int) (image.Image, int, error) {
 	img, _, err := image.Decode(r)
 	if err != nil {
 		return nil, 0, err
@@ -94,6 +89,20 @@ func resizeImage(reader io.Reader, size int) (io.Reader, int, error) {
 		m = imaging.Resize(img, 0, size, imaging.Lanczos)
 	}
 
+	return m, number.Max(bounds.Max.X, bounds.Max.Y), err
+}
+
+func resizeImageIntoReader(reader io.Reader, size int) (io.Reader, int, error) {
+	r, format, err := asImageReader(reader)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	m, origSize, err := resizeImage(r, size)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	buf := new(bytes.Buffer)
 	buf.Reset()
 	if format == "image/png" {
@@ -101,5 +110,5 @@ func resizeImage(reader io.Reader, size int) (io.Reader, int, error) {
 	} else {
 		err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
 	}
-	return buf, number.Max(bounds.Max.X, bounds.Max.Y), err
+	return buf, origSize, err
 }
