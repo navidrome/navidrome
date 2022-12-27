@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -55,9 +56,10 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	id := utils.ParamString(r, "id")
 	size := utils.ParamInt(r, "size", 0)
 
+	imgReader, lastUpdate, err := api.artwork.Get(r.Context(), id, size)
 	w.Header().Set("cache-control", "public, max-age=315360000")
+	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
 
-	imgReader, err := api.artwork.Get(r.Context(), id, size)
 	switch {
 	case errors.Is(err, context.Canceled):
 		return nil, nil

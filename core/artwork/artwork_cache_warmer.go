@@ -46,7 +46,7 @@ func (a *cacheWarmer) run(ctx context.Context) {
 }
 
 func (a *cacheWarmer) doCacheImage(ctx context.Context, id string) error {
-	r, err := a.artwork.Get(ctx, id, 0)
+	r, _, err := a.artwork.Get(ctx, id, 0)
 	if err != nil {
 		return fmt.Errorf("error cacheing id='%s': %w", id, err)
 	}
