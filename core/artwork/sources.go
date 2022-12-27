@@ -40,7 +40,9 @@ type sourceFunc func() (r io.ReadCloser, path string, err error)
 func (f sourceFunc) String() string {
 	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core/artwork.")
-	name = strings.TrimPrefix(name, "(*artwork).")
+	if _, after, found := strings.Cut(name, ")."); found {
+		name = after
+	}
 	name = strings.TrimSuffix(name, ".func1")
 	return name
 }

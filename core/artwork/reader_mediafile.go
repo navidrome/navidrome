@@ -30,15 +30,16 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 		album:     *al,
 	}
 	a.cacheKey.artID = artID
-	a.cacheKey.lastUpdate = a.LastUpdated()
+	if al.UpdatedAt.After(mf.UpdatedAt) {
+		a.cacheKey.lastUpdate = al.UpdatedAt
+	} else {
+		a.cacheKey.lastUpdate = mf.UpdatedAt
+	}
 	return a, nil
 }
 
 func (a *mediafileArtworkReader) LastUpdated() time.Time {
-	if a.album.UpdatedAt.After(a.mediafile.UpdatedAt) {
-		return a.album.UpdatedAt
-	}
-	return a.mediafile.UpdatedAt
+	return a.lastUpdate
 }
 
 func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
