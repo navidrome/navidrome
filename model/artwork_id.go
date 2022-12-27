@@ -19,6 +19,9 @@ type ArtworkID struct {
 }
 
 func (id ArtworkID) String() string {
+	if id.ID == "" {
+		return ""
+	}
 	return fmt.Sprintf("%s-%s", id.Kind.prefix, id.ID)
 }
 

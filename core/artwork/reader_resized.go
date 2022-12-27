@@ -20,21 +20,21 @@ import (
 )
 
 type resizedArtworkReader struct {
-	cacheItem
+	cacheKey
 	a *artwork
 }
 
 func resizedFromOriginal(ctx context.Context, a *artwork, artID model.ArtworkID, size int) (*resizedArtworkReader, error) {
 	r := &resizedArtworkReader{a: a}
-	r.cacheItem.artID = artID
-	r.cacheItem.size = size
+	r.cacheKey.artID = artID
+	r.cacheKey.size = size
 
 	// Get lastUpdated from original artwork
 	original, err := a.getArtworkReader(ctx, artID, 0)
 	if err != nil {
 		return nil, err
 	}
-	r.cacheItem.lastUpdate = original.LastUpdated()
+	r.cacheKey.lastUpdate = original.LastUpdated()
 	return r, nil
 }
 

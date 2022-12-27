@@ -9,7 +9,7 @@ import (
 )
 
 type mediafileArtworkReader struct {
-	cacheItem
+	cacheKey
 	a         *artwork
 	mediafile model.MediaFile
 	album     model.Album
@@ -29,8 +29,8 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 		mediafile: *mf,
 		album:     *al,
 	}
-	a.cacheItem.artID = artID
-	a.cacheItem.lastUpdate = a.LastUpdated()
+	a.cacheKey.artID = artID
+	a.cacheKey.lastUpdate = a.LastUpdated()
 	return a, nil
 }
 
