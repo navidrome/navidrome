@@ -12,7 +12,7 @@ import (
 )
 
 type albumArtworkReader struct {
-	cacheItem
+	cacheKey
 	a     *artwork
 	album model.Album
 }
@@ -26,8 +26,8 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 		a:     artwork,
 		album: *al,
 	}
-	a.cacheItem.artID = artID
-	a.cacheItem.lastUpdate = al.UpdatedAt
+	a.cacheKey.artID = artID
+	a.cacheKey.lastUpdate = al.UpdatedAt
 	return a, nil
 }
 

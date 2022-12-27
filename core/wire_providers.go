@@ -9,17 +9,17 @@ import (
 )
 
 var Set = wire.NewSet(
-	artwork.NewArtwork,
 	NewMediaStreamer,
 	GetTranscodingCache,
-	artwork.GetImageCache,
 	NewArchiver,
 	NewExternalMetadata,
 	NewPlayers,
+	NewShare,
+	NewPlaylists,
 	agents.New,
 	ffmpeg.New,
 	scrobbler.GetPlayTracker,
-	NewShare,
-	NewPlaylists,
+	artwork.NewArtwork,
+	artwork.GetImageCache,
 	artwork.NewCacheWarmer,
 )
