@@ -70,7 +70,7 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 		case model.KindMediaFileArtwork:
 			artReader, err = newMediafileArtworkReader(ctx, a, artID)
 		default:
-			artReader, err = newEmptyIDReader(ctx, artID)
+			artReader, err = newPlaceholderReader(ctx, artID)
 		}
 	}
 	return artReader, err
