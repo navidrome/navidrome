@@ -51,12 +51,10 @@ const getCoverArtUrl = (record, size) => {
   }
 
   // TODO Move this logic to server. `song` and `album` should have a CoverArtID
-  const lastUpdate = Math.floor(Date.parse(record.updatedAt) / 1000)
-  const id = record.id + '-' + Math.max(lastUpdate, 0).toString(16)
   if (record.album) {
-    return baseUrl(url('getCoverArt', 'mf-' + id, options))
+    return baseUrl(url('getCoverArt', 'mf-' + record.id, options))
   } else {
-    return baseUrl(url('getCoverArt', 'al-' + id, options))
+    return baseUrl(url('getCoverArt', 'al-' + record.id, options))
   }
 }
 
