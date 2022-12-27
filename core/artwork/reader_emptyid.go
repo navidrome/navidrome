@@ -10,26 +10,26 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-type emptyIDReader struct {
+type placeholderReader struct {
 	artID model.ArtworkID
 }
 
-func newEmptyIDReader(_ context.Context, artID model.ArtworkID) (*emptyIDReader, error) {
-	a := &emptyIDReader{
+func newPlaceholderReader(_ context.Context, artID model.ArtworkID) (*placeholderReader, error) {
+	a := &placeholderReader{
 		artID: artID,
 	}
 	return a, nil
 }
 
-func (a *emptyIDReader) LastUpdated() time.Time {
+func (a *placeholderReader) LastUpdated() time.Time {
 	return time.Now() // Basically make it non-cacheable
 }
 
-func (a *emptyIDReader) Key() string {
+func (a *placeholderReader) Key() string {
 	return fmt.Sprintf("0.%d.0.%d", a.LastUpdated().UnixMilli(), conf.Server.CoverJpegQuality)
 }
 
-func (a *emptyIDReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
+func (a *placeholderReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	r, source := extractImage(ctx, a.artID, fromPlaceholder())
 	return r, source, nil
 }
