@@ -19,7 +19,7 @@ import (
 )
 
 type Artwork interface {
-	Get(ctx context.Context, id string, size int) (io.ReadCloser, error)
+	Get(ctx context.Context, id string, size int) (io.ReadCloser, time.Time, error)
 }
 
 func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg) Artwork {
@@ -38,7 +38,7 @@ type artworkReader interface {
 	Reader(ctx context.Context) (io.ReadCloser, string, error)
 }
 
-func (a *artwork) Get(ctx context.Context, id string, size int) (reader io.ReadCloser, err error) {
+func (a *artwork) Get(ctx context.Context, id string, size int) (reader io.ReadCloser, lastUpdate time.Time, err error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -46,31 +46,38 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (reader io.ReadC
 	if id != "" {
 		artID, err = model.ParseArtworkID(id)
 		if err != nil {
-			return nil, errors.New("invalid ID")
+			return nil, time.Time{}, errors.New("invalid ID")
 		}
 	}
 
-	var artReader artworkReader
-	switch artID.Kind {
-	case model.KindAlbumArtwork:
-		artReader, err = newAlbumArtworkReader(ctx, a, artID)
-	case model.KindMediaFileArtwork:
-		artReader, err = newMediafileArtworkReader(ctx, a, artID)
-	default:
-		artReader, err = newEmptyIDReader(ctx, artID)
-	}
+	artReader, err := a.getArtworkReader(ctx, artID, size)
 	if err != nil {
-		return nil, err
-	}
-	if size > 0 {
-		artReader = resizedFromOriginal(artReader, artID, size)
+		return nil, time.Time{}, err
 	}
 
 	r, err := a.cache.Get(ctx, artReader)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Error(ctx, "Error accessing image cache", "id", id, "size", size, err)
 	}
-	return r, err
+	return r, artReader.LastUpdated(), err
+}
+
+func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, size int) (artworkReader, error) {
+	var artReader artworkReader
+	var err error
+	if size > 0 {
+		artReader, err = resizedFromOriginal(ctx, a, artID, size)
+	} else {
+		switch artID.Kind {
+		case model.KindAlbumArtwork:
+			artReader, err = newAlbumArtworkReader(ctx, a, artID)
+		case model.KindMediaFileArtwork:
+			artReader, err = newMediafileArtworkReader(ctx, a, artID)
+		default:
+			artReader, err = newEmptyIDReader(ctx, artID)
+		}
+	}
+	return artReader, err
 }
 
 type cacheItem struct {
@@ -80,7 +87,14 @@ type cacheItem struct {
 }
 
 func (i *cacheItem) Key() string {
-	return fmt.Sprintf("%s.%d.%d.%d", i.artID.ID, i.lastUpdate.UnixMilli(), i.size, conf.Server.CoverJpegQuality)
+	return fmt.Sprintf(
+		"%s.%d.%d.%d.%t",
+		i.artID.ID,
+		i.lastUpdate.UnixMilli(),
+		i.size,
+		conf.Server.CoverJpegQuality,
+		conf.Server.DevFastAccessCoverArt,
+	)
 }
 
 type imageCache struct {

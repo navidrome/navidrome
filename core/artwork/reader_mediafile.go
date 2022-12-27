@@ -56,7 +56,7 @@ func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, str
 
 func fromAlbum(ctx context.Context, a *artwork, id model.ArtworkID) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		r, err := a.Get(ctx, id.String(), 0)
+		r, _, err := a.Get(ctx, id.String(), 0)
 		if err != nil {
 			return nil, "", err
 		}

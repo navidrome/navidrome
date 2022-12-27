@@ -21,15 +21,21 @@ import (
 
 type resizedArtworkReader struct {
 	cacheItem
-	original artworkReader
+	a *artwork
 }
 
-func resizedFromOriginal(original artworkReader, artID model.ArtworkID, size int) *resizedArtworkReader {
-	r := &resizedArtworkReader{original: original}
+func resizedFromOriginal(ctx context.Context, a *artwork, artID model.ArtworkID, size int) (*resizedArtworkReader, error) {
+	r := &resizedArtworkReader{a: a}
 	r.cacheItem.artID = artID
 	r.cacheItem.size = size
+
+	// Get lastUpdated from original artwork
+	original, err := a.getArtworkReader(ctx, artID, 0)
+	if err != nil {
+		return nil, err
+	}
 	r.cacheItem.lastUpdate = original.LastUpdated()
-	return r
+	return r, nil
 }
 
 func (a *resizedArtworkReader) LastUpdated() time.Time {
@@ -37,13 +43,16 @@ func (a *resizedArtworkReader) LastUpdated() time.Time {
 }
 
 func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	orig, path, err := a.original.Reader(ctx)
+	// Get artwork in original size, possibly from cache
+	orig, _, err := a.a.Get(ctx, a.artID.String(), 0)
 	if err != nil {
 		return nil, "", err
 	}
+
 	// Keep a copy of the original data. In case we can't resize it, send it as is
 	buf := new(bytes.Buffer)
 	r := io.TeeReader(orig, buf)
+	defer orig.Close()
 
 	resized, origSize, err := resizeImage(r, a.size)
 	log.Trace(ctx, "Resizing artwork", "artID", a.artID, "original", origSize, "resized", a.size)
@@ -53,7 +62,7 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 		_, _ = io.Copy(io.Discard, r)
 		return io.NopCloser(buf), "", nil
 	}
-	return io.NopCloser(resized), fmt.Sprintf("%s@%d", path, a.size), nil
+	return io.NopCloser(resized), fmt.Sprintf("%s@%d", a.artID, a.size), nil
 }
 
 func asImageReader(r io.Reader) (io.Reader, string, error) {
