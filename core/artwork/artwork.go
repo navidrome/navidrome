@@ -3,18 +3,14 @@ package artwork
 import (
 	"context"
 	"errors"
-	"fmt"
 	_ "image/gif"
 	"io"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/cache"
-	"github.com/navidrome/navidrome/utils/singleton"
 	_ "golang.org/x/image/webp"
 )
 
@@ -78,37 +74,4 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 		}
 	}
 	return artReader, err
-}
-
-type cacheItem struct {
-	artID      model.ArtworkID
-	size       int
-	lastUpdate time.Time
-}
-
-func (i *cacheItem) Key() string {
-	return fmt.Sprintf(
-		"%s.%d.%d.%d.%t",
-		i.artID.ID,
-		i.lastUpdate.UnixMilli(),
-		i.size,
-		conf.Server.CoverJpegQuality,
-		conf.Server.EnableMediaFileCoverArt,
-	)
-}
-
-type imageCache struct {
-	cache.FileCache
-}
-
-func GetImageCache() cache.FileCache {
-	return singleton.GetInstance(func() *imageCache {
-		return &imageCache{
-			FileCache: cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
-				func(ctx context.Context, arg cache.Item) (io.Reader, error) {
-					r, _, err := arg.(artworkReader).Reader(ctx)
-					return r, err
-				}),
-		}
-	})
 }
