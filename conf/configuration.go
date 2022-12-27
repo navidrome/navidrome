@@ -30,6 +30,7 @@ type configOptions struct {
 	EnableTranscodingConfig bool
 	EnableDownloads         bool
 	EnableExternalServices  bool
+	EnableMediaFileCoverArt bool
 	TranscodingCacheSize    string
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
@@ -77,7 +78,6 @@ type configOptions struct {
 	DevLogLevels               map[string]string
 	DevAutoCreateAdminPassword string
 	DevAutoLoginUsername       string
-	DevFastAccessCoverArt      bool
 	DevActivityPanel           bool
 	DevEnableShare             bool
 	DevSidebarPlaylists        bool
@@ -239,6 +239,7 @@ func init() {
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
+	viper.SetDefault("enableMediaFileCoverArt", true)
 	viper.SetDefault("autotranscodedownload", false)
 
 	// Config options only valid for file/env configuration
@@ -296,7 +297,6 @@ func init() {
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
-	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)

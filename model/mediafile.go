@@ -70,7 +70,7 @@ func (mf MediaFile) ContentType() string {
 
 func (mf MediaFile) CoverArtID() ArtworkID {
 	// If it has a cover art, return it (if feature is disabled, skip)
-	if mf.HasCoverArt && !conf.Server.DevFastAccessCoverArt {
+	if mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt {
 		return artworkIDFromMediaFile(mf)
 	}
 	// if it does not have a coverArt, fallback to the album cover

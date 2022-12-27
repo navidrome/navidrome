@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http/httptest"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -110,13 +111,13 @@ type fakeArtwork struct {
 	recvSize int
 }
 
-func (c *fakeArtwork) Get(_ context.Context, id string, size int) (io.ReadCloser, error) {
+func (c *fakeArtwork) Get(_ context.Context, id string, size int) (io.ReadCloser, time.Time, error) {
 	if c.err != nil {
-		return nil, c.err
+		return nil, time.Time{}, c.err
 	}
 	c.recvId = id
 	c.recvSize = size
-	return io.NopCloser(bytes.NewReader([]byte(c.data))), nil
+	return io.NopCloser(bytes.NewReader([]byte(c.data))), time.Time{}, nil
 }
 
 var _ = Describe("isSynced", func() {

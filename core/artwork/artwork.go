@@ -93,7 +93,7 @@ func (i *cacheItem) Key() string {
 		i.lastUpdate.UnixMilli(),
 		i.size,
 		conf.Server.CoverJpegQuality,
-		conf.Server.DevFastAccessCoverArt,
+		conf.Server.EnableMediaFileCoverArt,
 	)
 }
 
