@@ -13,6 +13,7 @@ import (
 
 	"github.com/disintegration/imaging"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/exp/slices"
 )
 
@@ -66,10 +67,9 @@ func (a *playlistArtworkReader) fromGeneratedTile(ctx context.Context, tracks mo
 func compactIDs(tracks model.PlaylistTracks) []model.ArtworkID {
 	slices.SortFunc(tracks, func(a, b model.PlaylistTrack) bool { return a.AlbumID < b.AlbumID })
 	tracks = slices.CompactFunc(tracks, func(a, b model.PlaylistTrack) bool { return a.AlbumID == b.AlbumID })
-	ids := make([]model.ArtworkID, len(tracks))
-	for i, t := range tracks {
-		ids[i] = t.AlbumCoverArtID()
-	}
+	ids := slice.Map(tracks, func(e model.PlaylistTrack) model.ArtworkID {
+		return e.AlbumCoverArtID()
+	})
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(ids), func(i, j int) { ids[i], ids[j] = ids[j], ids[i] })
 	return ids
