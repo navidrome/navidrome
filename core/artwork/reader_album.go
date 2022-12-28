@@ -38,8 +38,7 @@ func (a *albumArtworkReader) LastUpdated() time.Time {
 func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	var ff = fromCoverArtPriority(ctx, a.a.ffmpeg, conf.Server.CoverArtPriority, a.album)
 	ff = append(ff, fromPlaceholder())
-	r, source := extractImage(ctx, a.artID, ff...)
-	return r, source, nil
+	return selectImageReader(ctx, a.artID, ff...)
 }
 
 func fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string, al model.Album) []sourceFunc {
