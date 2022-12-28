@@ -91,7 +91,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		return nil, newError(responses.ErrorAuthorizationFail, "downloads are disabled")
 	}
 
-	entity, err := core.GetEntityByID(ctx, api.ds, id)
+	entity, err := model.GetEntityByID(ctx, api.ds, id)
 	if err != nil {
 		return nil, err
 	}

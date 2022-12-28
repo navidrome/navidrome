@@ -34,6 +34,10 @@ func (id ArtworkID) String() string {
 	return fmt.Sprintf("%s-%s", id.Kind.prefix, id.ID)
 }
 
+func NewArtworkID(kind Kind, id string) ArtworkID {
+	return ArtworkID{kind, id}
+}
+
 func ParseArtworkID(id string) (ArtworkID, error) {
 	parts := strings.SplitN(id, "-", 2)
 	if len(parts) != 2 {

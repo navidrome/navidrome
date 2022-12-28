@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
@@ -20,6 +21,7 @@ import (
 
 var allProviders = wire.NewSet(
 	core.Set,
+	artwork.Set,
 	subsonic.New,
 	nativeapi.New,
 	persistence.New,

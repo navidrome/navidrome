@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
@@ -95,7 +94,7 @@ func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, erro
 	id := utils.ParamString(r, "id")
 	ctx := r.Context()
 
-	entity, err := core.GetEntityByID(ctx, api.ds, id)
+	entity, err := model.GetEntityByID(ctx, api.ds, id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, "Requested ID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")

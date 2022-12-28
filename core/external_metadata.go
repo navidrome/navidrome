@@ -47,7 +47,7 @@ func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) ExternalMeta
 
 func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist, error) {
 	var entity interface{}
-	entity, err := GetEntityByID(ctx, e.ds, id)
+	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
 		return nil, err
 	}

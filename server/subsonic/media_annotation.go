@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -46,7 +45,7 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 	var repo model.AnnotatedRepository
 	var resource string
 
-	entity, err := core.GetEntityByID(ctx, api.ds, id)
+	entity, err := model.GetEntityByID(ctx, api.ds, id)
 	if err != nil {
 		return err
 	}
