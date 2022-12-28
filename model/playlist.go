@@ -94,6 +94,10 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 	}
 }
 
+func (pls Playlist) CoverArtID() ArtworkID {
+	return artworkIDFromPlaylist(pls)
+}
+
 type Playlists []Playlist
 
 type PlaylistRepository interface {
