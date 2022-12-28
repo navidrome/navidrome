@@ -34,7 +34,7 @@ type TagScanner struct {
 func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer) FolderScanner {
 	s := &TagScanner{
 		rootFolder:  rootFolder,
-		plsSync:     newPlaylistImporter(ds, playlists, rootFolder),
+		plsSync:     newPlaylistImporter(ds, playlists, cacheWarmer, rootFolder),
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
 	}

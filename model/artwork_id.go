@@ -73,3 +73,10 @@ func artworkIDFromMediaFile(mf MediaFile) ArtworkID {
 		ID:   mf.ID,
 	}
 }
+
+func artworkIDFromPlaylist(pls Playlist) ArtworkID {
+	return ArtworkID{
+		Kind: KindPlaylistArtwork,
+		ID:   pls.ID,
+	}
+}
