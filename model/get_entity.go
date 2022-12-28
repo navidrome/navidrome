@@ -1,13 +1,11 @@
-package core
+package model
 
 import (
 	"context"
-
-	"github.com/navidrome/navidrome/model"
 )
 
 // TODO: Should the type be encoded in the ID?
-func GetEntityByID(ctx context.Context, ds model.DataStore, id string) (interface{}, error) {
+func GetEntityByID(ctx context.Context, ds DataStore, id string) (interface{}, error) {
 	ar, err := ds.Artist(ctx).Get(id)
 	if err == nil {
 		return ar, nil

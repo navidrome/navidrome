@@ -38,12 +38,9 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (reader io.ReadC
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	var artID model.ArtworkID
-	if id != "" {
-		artID, err = model.ParseArtworkID(id)
-		if err != nil {
-			return nil, time.Time{}, errors.New("invalid ID")
-		}
+	artID, err := a.getArtworkId(ctx, id)
+	if err != nil {
+		return nil, time.Time{}, err
 	}
 
 	artReader, err := a.getArtworkReader(ctx, artID, size)
@@ -59,6 +56,34 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (reader io.ReadC
 		return nil, time.Time{}, err
 	}
 	return r, artReader.LastUpdated(), nil
+}
+
+func (a *artwork) getArtworkId(ctx context.Context, id string) (model.ArtworkID, error) {
+	if id == "" {
+		return model.ArtworkID{}, nil
+	}
+	artID, err := model.ParseArtworkID(id)
+	if err == nil {
+		return artID, nil
+	}
+
+	log.Trace(ctx, "ArtworkID invalid. Trying to figure out kind based on the ID", "id", id)
+	entity, err := model.GetEntityByID(ctx, a.ds, id)
+	if err != nil {
+		return model.ArtworkID{}, err
+	}
+	switch e := entity.(type) {
+	case *model.Album:
+		artID = model.NewArtworkID(model.KindAlbumArtwork, e.ID)
+		log.Trace(ctx, "ID is for an Album", "id", id, "name", e.Name, "artist", e.AlbumArtist)
+	case *model.MediaFile:
+		artID = model.NewArtworkID(model.KindMediaFileArtwork, e.ID)
+		log.Trace(ctx, "ID is for a MediaFile", "id", id, "title", e.Title, "album", e.Album)
+	case *model.Playlist:
+		artID = model.NewArtworkID(model.KindPlaylistArtwork, e.ID)
+		log.Trace(ctx, "ID is for a Playlist", "id", id, "name", e.Name)
+	}
+	return artID, nil
 }
 
 func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, size int) (artworkReader, error) {
