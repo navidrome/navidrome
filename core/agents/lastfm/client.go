@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -163,6 +164,47 @@ func (c *Client) Scrobble(ctx context.Context, sessionKey string, info ScrobbleI
 		log.Warn(ctx, "LastFM: Scrobble was not accepted", "code", resp.Scrobbles.Scrobble.IgnoredMessage.Code,
 			"text", resp.Scrobbles.Scrobble.IgnoredMessage.Text, "info", info)
 	}
+	return nil
+}
+
+func (c *Client) Star(ctx context.Context, sessionKey string, star bool, track *model.MediaFile) error {
+	params := url.Values{}
+	params.Add("format", "json")
+	params.Add("api_key", c.apiKey)
+	params.Add("artist", track.Artist)
+	params.Add("track", track.Title)
+	params.Add("sk", sessionKey)
+	if star {
+		params.Add("method", "track.love")
+	} else {
+		params.Add("method", "track.unlove")
+	}
+
+	c.sign(params)
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, apiBaseUrl, nil)
+	req.URL.RawQuery = params.Encode()
+
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var response StarResponse
+	jsonErr := decoder.Decode(&response)
+	if resp.StatusCode != 200 && jsonErr != nil {
+		return fmt.Errorf("last.fm http status: (%d)", resp.StatusCode)
+	}
+	if jsonErr != nil {
+		return jsonErr
+	}
+	if response.Error != 0 {
+		return &lastFMError{Code: response.Error, Message: response.Message}
+	}
+
 	return nil
 }
 

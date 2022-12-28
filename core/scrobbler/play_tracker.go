@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 
@@ -35,6 +36,7 @@ type PlayTracker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, submissions []Submission) error
+	ProxyStar(ctx context.Context, isStar bool, id ...string) error
 }
 
 type playTracker struct {
@@ -190,6 +192,47 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 			continue
 		}
 	}
+}
+
+func (p *playTracker) ProxyStar(ctx context.Context, star bool, id ...string) error {
+	u, _ := request.UserFrom(ctx)
+
+	var err error
+
+	tracks := model.MediaFiles{}
+	sawTracks := false
+
+	for name, s := range p.scrobblers {
+		if !s.CanProxyStars(ctx, u.ID) {
+			continue
+		}
+
+		if star {
+			log.Debug(ctx, "Sending star", "service", name, "ids", id)
+		} else {
+			log.Debug(ctx, "Removing star", "service", name, "ids", id)
+		}
+
+		if !sawTracks {
+			tracks, err = p.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"id": id},
+			})
+
+			if err != nil {
+				return err
+			}
+
+			sawTracks = true
+		}
+
+		err = s.Star(ctx, u.ID, star, &tracks)
+
+		if err != nil {
+			log.Error(ctx, "Error toggling star", "service", name, err)
+		}
+	}
+
+	return err
 }
 
 var constructors map[string]Constructor

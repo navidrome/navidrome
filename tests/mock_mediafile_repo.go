@@ -17,8 +17,9 @@ func CreateMockMediaFileRepo() *MockMediaFileRepo {
 
 type MockMediaFileRepo struct {
 	model.MediaFileRepository
-	data map[string]*model.MediaFile
-	err  bool
+	data        map[string]*model.MediaFile
+	err         bool
+	lastOptions []model.QueryOptions
 }
 
 func (m *MockMediaFileRepo) SetError(err bool) {
@@ -30,6 +31,24 @@ func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
 	for i, mf := range mfs {
 		m.data[mf.ID] = &mfs[i]
 	}
+}
+
+// WARNING: This does not actually use any of the filters
+// Use it in mocks with caution
+func (m *MockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+	m.lastOptions = options
+
+	if m.err {
+		return nil, errors.New("Error!")
+	}
+
+	files := model.MediaFiles{}
+
+	for _, mf := range m.data {
+		files = append(files, *mf)
+	}
+
+	return files, nil
 }
 
 func (m *MockMediaFileRepo) Exists(id string) (bool, error) {

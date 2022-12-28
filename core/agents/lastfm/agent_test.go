@@ -36,10 +36,12 @@ var _ = Describe("lastfmAgent", func() {
 			conf.Server.LastFM.ApiKey = "123"
 			conf.Server.LastFM.Secret = "secret"
 			conf.Server.LastFM.Language = "pt"
+			conf.Server.LastFM.ProxyStars = true
 			agent := lastFMConstructor(ds)
 			Expect(agent.apiKey).To(Equal("123"))
 			Expect(agent.secret).To(Equal("secret"))
 			Expect(agent.lang).To(Equal("pt"))
+			Expect(agent.proxyStars).To(BeTrue())
 		})
 	})
 
@@ -346,6 +348,69 @@ var _ = Describe("lastfmAgent", func() {
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 				Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+			})
+		})
+
+		Describe("CanProxyStars", func() {
+			var httpClient *tests.FakeHttpClient
+			var client *Client
+			BeforeEach(func() {
+				httpClient = &tests.FakeHttpClient{}
+				client = NewClient("API_KEY", "SECRET", "pt", httpClient)
+			})
+
+			It("should not proxy if disabled", func() {
+				conf.Server.LastFM.ProxyStars = false
+
+				agent = lastFMConstructor(ds)
+				agent.client = client
+
+				Expect(agent.CanProxyStars(ctx, "user-1")).To(BeFalse())
+			})
+
+			It("should not proxy if disabled", func() {
+				conf.Server.LastFM.ProxyStars = true
+
+				agent = lastFMConstructor(ds)
+				agent.client = client
+
+				Expect(agent.CanProxyStars(ctx, "user-1")).To(BeTrue())
+			})
+		})
+
+		Describe("Star", func() {
+			var tracks *model.MediaFiles
+
+			BeforeEach(func() {
+				tracks = &model.MediaFiles{*track}
+			})
+
+			It("calls Last.fm with correct params (star)", func() {
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Star(ctx, "user-1", true, tracks)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
+				sentParams := httpClient.SavedRequest.URL.Query()
+				Expect(sentParams.Get("method")).To(Equal("track.love"))
+				Expect(sentParams.Get("sk")).To(Equal("SK-1"))
+				Expect(sentParams.Get("track")).To(Equal(track.Title))
+				Expect(sentParams.Get("artist")).To(Equal(track.Artist))
+			})
+
+			It("calls Last.fm with correct params (unstar)", func() {
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Star(ctx, "user-1", false, tracks)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
+				sentParams := httpClient.SavedRequest.URL.Query()
+				Expect(sentParams.Get("method")).To(Equal("track.unlove"))
+				Expect(sentParams.Get("sk")).To(Equal("SK-1"))
+				Expect(sentParams.Get("track")).To(Equal(track.Title))
+				Expect(sentParams.Get("artist")).To(Equal(track.Artist))
 			})
 		})
 	})

@@ -116,6 +116,7 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 		return nil
 	}
 	event := &events.RefreshResource{}
+	trackids := []string{}
 	err := api.ds.WithTx(func(tx model.DataStore) error {
 		for _, id := range ids {
 			exist, err := tx.Album(ctx).Exists(id)
@@ -146,6 +147,7 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 			if err != nil {
 				return err
 			}
+			trackids = append(trackids, id)
 			event = event.With("song", id)
 		}
 		api.broker.SendMessage(ctx, event)
@@ -160,6 +162,13 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 		log.Error(ctx, err)
 		return err
 	}
+
+	err = api.scrobbler.ProxyStar(ctx, star, trackids...)
+	if err != nil {
+		log.Error(ctx, err)
+		return err
+	}
+
 	return nil
 }
 

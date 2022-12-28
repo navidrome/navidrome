@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
@@ -156,6 +157,71 @@ var _ = Describe("listenBrainzAgent", func() {
 
 			err := agent.Scrobble(ctx, "user-1", sc)
 			Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+		})
+	})
+
+	Describe("CanProxyStars", func() {
+		var httpClient *tests.FakeHttpClient
+		var client *Client
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client = NewClient("http://localhost:8080", httpClient)
+		})
+
+		It("should not proxy if disabled", func() {
+			conf.Server.ListenBrainz.ProxyStars = false
+
+			agent = listenBrainzConstructor(ds)
+			agent.client = client
+
+			Expect(agent.CanProxyStars(ctx, "user-1")).To(BeFalse())
+		})
+
+		It("should not proxy if disabled", func() {
+			conf.Server.ListenBrainz.ProxyStars = true
+
+			agent = listenBrainzConstructor(ds)
+			agent.client = client
+
+			Expect(agent.CanProxyStars(ctx, "user-1")).To(BeTrue())
+		})
+	})
+
+	Describe("Star", func() {
+		var tracks *model.MediaFiles
+
+		BeforeEach(func() {
+			tracks = &model.MediaFiles{*track}
+		})
+
+		It("handles starring successfully", func() {
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+			err := agent.Star(ctx, "user-1", true, tracks)
+			Expect(err).ToNot(HaveOccurred())
+
+			decoder := json.NewDecoder(httpClient.SavedRequest.Body)
+			var lr listenBrainzFeedbackBody
+			err = decoder.Decode(&lr)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lr.RecordingMBID).To(Equal("mbz-123"))
+			Expect(lr.Score).To(Equal(1))
+		})
+
+		It("handles unstarring successfully", func() {
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+			err := agent.Star(ctx, "user-1", false, tracks)
+			Expect(err).ToNot(HaveOccurred())
+
+			decoder := json.NewDecoder(httpClient.SavedRequest.Body)
+			var lr listenBrainzFeedbackBody
+			err = decoder.Decode(&lr)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lr.RecordingMBID).To(Equal("mbz-123"))
+			Expect(lr.Score).To(Equal(0))
 		})
 	})
 })

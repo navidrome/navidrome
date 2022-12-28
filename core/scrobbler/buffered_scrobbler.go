@@ -12,8 +12,16 @@ import (
 func newBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *bufferedScrobbler {
 	b := &bufferedScrobbler{ds: ds, wrapped: s, service: service}
 	b.wakeSignal = make(chan struct{}, 1)
-	go b.run()
+	b.starChan = make(chan bufferedStar, 10)
+	go b.runQueue()
+	go b.runStar()
 	return b
+}
+
+type bufferedStar struct {
+	userId string
+	star   bool
+	tracks *model.MediaFiles
 }
 
 type bufferedScrobbler struct {
@@ -21,6 +29,7 @@ type bufferedScrobbler struct {
 	wrapped    Scrobbler
 	service    string
 	wakeSignal chan struct{}
+	starChan   chan bufferedStar
 }
 
 func (b *bufferedScrobbler) IsAuthorized(ctx context.Context, userId string) bool {
@@ -41,6 +50,20 @@ func (b *bufferedScrobbler) Scrobble(ctx context.Context, userId string, s Scrob
 	return nil
 }
 
+func (b *bufferedScrobbler) CanProxyStars(ctx context.Context, userId string) bool {
+	return b.wrapped.CanProxyStars(ctx, userId)
+}
+
+func (b *bufferedScrobbler) Star(ctx context.Context, userId string, star bool, tracks *model.MediaFiles) error {
+	b.starChan <- bufferedStar{
+		userId: userId,
+		star:   star,
+		tracks: tracks,
+	}
+
+	return nil
+}
+
 func (b *bufferedScrobbler) sendWakeSignal() {
 	// Don't block if the previous signal was not read yet
 	select {
@@ -49,7 +72,7 @@ func (b *bufferedScrobbler) sendWakeSignal() {
 	}
 }
 
-func (b *bufferedScrobbler) run() {
+func (b *bufferedScrobbler) runQueue() {
 	ctx := context.Background()
 	for {
 		if !b.processQueue(ctx) {
@@ -58,6 +81,17 @@ func (b *bufferedScrobbler) run() {
 			})
 		}
 		<-b.wakeSignal
+	}
+}
+
+func (b *bufferedScrobbler) runStar() {
+	ctx := context.Background()
+
+	for star := range b.starChan {
+		err := b.wrapped.Star(ctx, star.userId, star.star, star.tracks)
+		if err != nil {
+			log.Error(ctx, "Error starring", "error", err)
+		}
 	}
 }
 

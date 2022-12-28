@@ -23,6 +23,8 @@ type Scrobbler interface {
 	IsAuthorized(ctx context.Context, userId string) bool
 	NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error
 	Scrobble(ctx context.Context, userId string, s Scrobble) error
+	CanProxyStars(ctx context.Context, userId string) bool
+	Star(ctx context.Context, userId string, star bool, tracks *model.MediaFiles) error
 }
 
 type Constructor func(ds model.DataStore) Scrobbler

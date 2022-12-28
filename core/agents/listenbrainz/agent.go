@@ -23,6 +23,7 @@ type listenBrainzAgent struct {
 	ds          model.DataStore
 	sessionKeys *agents.SessionKeys
 	baseURL     string
+	proxyStars  bool
 	client      *Client
 }
 
@@ -31,6 +32,7 @@ func listenBrainzConstructor(ds model.DataStore) *listenBrainzAgent {
 		ds:          ds,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 		baseURL:     conf.Server.ListenBrainz.BaseURL,
+		proxyStars:  conf.Server.ListenBrainz.ProxyStars,
 	}
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
@@ -106,6 +108,28 @@ func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrob
 func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) bool {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	return err == nil && sk != ""
+}
+
+func (l *listenBrainzAgent) CanProxyStars(ctx context.Context, userId string) bool {
+	if !l.proxyStars {
+		return false
+	}
+	return l.IsAuthorized(ctx, userId)
+}
+
+func (l *listenBrainzAgent) Star(ctx context.Context, userId string, star bool, tracks *model.MediaFiles) error {
+	sk, err := l.sessionKeys.Get(ctx, userId)
+	if err != nil || sk == "" {
+		return scrobbler.ErrNotAuthorized
+	}
+
+	for _, track := range *tracks {
+		if track.MbzTrackID != "" {
+			err = l.client.Star(ctx, sk, star, track.MbzTrackID)
+		}
+	}
+
+	return err
 }
 
 func init() {
