@@ -224,7 +224,7 @@ type fakeScrobbler struct {
 	LastScrobble     Scrobble
 	Error            error
 	StarCalled       bool
-	StarredTracks    *model.MediaFiles
+	StarredTracks    *Stars
 	IsStarred        bool
 }
 
@@ -252,7 +252,7 @@ func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble)
 	return nil
 }
 
-func (f *fakeScrobbler) Star(ctx context.Context, userId string, star bool, tracks *model.MediaFiles) error {
+func (f *fakeScrobbler) Star(ctx context.Context, userId string, star bool, tracks *Stars) error {
 	f.StarCalled = true
 	if f.Error != nil {
 		return f.Error

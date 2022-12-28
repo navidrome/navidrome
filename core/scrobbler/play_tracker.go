@@ -199,7 +199,7 @@ func (p *playTracker) ProxyStar(ctx context.Context, star bool, id ...string) er
 
 	var err error
 
-	tracks := model.MediaFiles{}
+	stars := Stars{}
 	sawTracks := false
 
 	for name, s := range p.scrobblers {
@@ -214,9 +214,17 @@ func (p *playTracker) ProxyStar(ctx context.Context, star bool, id ...string) er
 		}
 
 		if !sawTracks {
-			tracks, err = p.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			tracks, err := p.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 				Filters: squirrel.Eq{"id": id},
 			})
+
+			for _, track := range tracks {
+				stars = append(stars, Star{
+					Title:      track.Title,
+					Artist:     track.Artist,
+					MbzTrackID: track.MbzTrackID,
+				})
+			}
 
 			if err != nil {
 				return err
@@ -225,7 +233,7 @@ func (p *playTracker) ProxyStar(ctx context.Context, star bool, id ...string) er
 			sawTracks = true
 		}
 
-		err = s.Star(ctx, u.ID, star, &tracks)
+		err = s.Star(ctx, u.ID, star, &stars)
 
 		if err != nil {
 			log.Error(ctx, "Error toggling star", "service", name, err)

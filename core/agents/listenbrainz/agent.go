@@ -117,7 +117,7 @@ func (l *listenBrainzAgent) CanProxyStars(ctx context.Context, userId string) bo
 	return l.IsAuthorized(ctx, userId)
 }
 
-func (l *listenBrainzAgent) Star(ctx context.Context, userId string, star bool, tracks *model.MediaFiles) error {
+func (l *listenBrainzAgent) Star(ctx context.Context, userId string, star bool, tracks *scrobbler.Stars) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
 		return scrobbler.ErrNotAuthorized

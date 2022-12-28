@@ -12,7 +12,7 @@ import (
 func newBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *bufferedScrobbler {
 	b := &bufferedScrobbler{ds: ds, wrapped: s, service: service}
 	b.wakeSignal = make(chan struct{}, 1)
-	b.starChan = make(chan bufferedStar, 10)
+	b.starChan = make(chan bufferedStar, 1)
 	go b.runQueue()
 	go b.runStar()
 	return b
@@ -21,7 +21,7 @@ func newBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *buff
 type bufferedStar struct {
 	userId string
 	star   bool
-	tracks *model.MediaFiles
+	tracks *Stars
 }
 
 type bufferedScrobbler struct {
@@ -54,12 +54,15 @@ func (b *bufferedScrobbler) CanProxyStars(ctx context.Context, userId string) bo
 	return b.wrapped.CanProxyStars(ctx, userId)
 }
 
-func (b *bufferedScrobbler) Star(ctx context.Context, userId string, star bool, tracks *model.MediaFiles) error {
-	b.starChan <- bufferedStar{
-		userId: userId,
-		star:   star,
-		tracks: tracks,
-	}
+func (b *bufferedScrobbler) Star(ctx context.Context, userId string, star bool, tracks *Stars) error {
+	// We don't want this to block other operations
+	go func() {
+		b.starChan <- bufferedStar{
+			userId: userId,
+			star:   star,
+			tracks: tracks,
+		}
+	}()
 
 	return nil
 }

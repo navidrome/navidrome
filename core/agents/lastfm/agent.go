@@ -235,14 +235,14 @@ func (l *lastfmAgent) CanProxyStars(ctx context.Context, userId string) bool {
 	return l.IsAuthorized(ctx, userId)
 }
 
-func (l *lastfmAgent) Star(ctx context.Context, userId string, star bool, tracks *model.MediaFiles) error {
+func (l *lastfmAgent) Star(ctx context.Context, userId string, star bool, tracks *scrobbler.Stars) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
 		return scrobbler.ErrNotAuthorized
 	}
 
-	for i := range *tracks {
-		err = l.client.Star(ctx, sk, star, &(*tracks)[i])
+	for _, track := range *tracks {
+		err = l.client.Star(ctx, sk, star, track.Artist, track.Title)
 	}
 
 	return err

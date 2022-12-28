@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -167,12 +166,12 @@ func (c *Client) Scrobble(ctx context.Context, sessionKey string, info ScrobbleI
 	return nil
 }
 
-func (c *Client) Star(ctx context.Context, sessionKey string, star bool, track *model.MediaFile) error {
+func (c *Client) Star(ctx context.Context, sessionKey string, star bool, artist string, title string) error {
 	params := url.Values{}
 	params.Add("format", "json")
 	params.Add("api_key", c.apiKey)
-	params.Add("artist", track.Artist)
-	params.Add("track", track.Title)
+	params.Add("artist", artist)
+	params.Add("track", title)
 	params.Add("sk", sessionKey)
 	if star {
 		params.Add("method", "track.love")

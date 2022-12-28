@@ -368,7 +368,7 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(agent.CanProxyStars(ctx, "user-1")).To(BeFalse())
 			})
 
-			It("should not proxy if disabled", func() {
+			It("should proxy if enabled", func() {
 				conf.Server.LastFM.ProxyStars = true
 
 				agent = lastFMConstructor(ds)
@@ -379,10 +379,14 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		Describe("Star", func() {
-			var tracks *model.MediaFiles
+			var tracks *scrobbler.Stars
 
 			BeforeEach(func() {
-				tracks = &model.MediaFiles{*track}
+				tracks = &scrobbler.Stars{scrobbler.Star{
+					Title:      track.Title,
+					Artist:     track.Artist,
+					MbzTrackID: track.MbzTrackID,
+				}}
 			})
 
 			It("calls Last.fm with correct params (star)", func() {
