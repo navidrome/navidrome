@@ -19,20 +19,19 @@ import (
 	"github.com/navidrome/navidrome/resources"
 )
 
-func extractImage(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string) {
+func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string, error) {
 	for _, f := range extractFuncs {
 		if ctx.Err() != nil {
-			return nil, ""
+			return nil, "", ctx.Err()
 		}
 		r, path, err := f()
 		if r != nil {
 			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "source", f)
-			return r, path
+			return r, path, nil
 		}
 		log.Trace(ctx, "Tried to extract artwork", "artID", artID, "source", f, err)
 	}
-	log.Error(ctx, "extractImage should never reach this point!", "artID", artID, "path")
-	return nil, ""
+	return nil, "", fmt.Errorf("could not get a cover art for %s", artID)
 }
 
 type sourceFunc func() (r io.ReadCloser, path string, err error)

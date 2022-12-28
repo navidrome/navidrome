@@ -52,10 +52,13 @@ func (a *artwork) Get(ctx context.Context, id string, size int) (reader io.ReadC
 	}
 
 	r, err := a.cache.Get(ctx, artReader)
-	if err != nil && !errors.Is(err, context.Canceled) {
-		log.Error(ctx, "Error accessing image cache", "id", id, "size", size, err)
+	if err != nil {
+		if !errors.Is(err, context.Canceled) {
+			log.Error(ctx, "Error accessing image cache", "id", id, "size", size, err)
+		}
+		return nil, time.Time{}, err
 	}
-	return r, artReader.LastUpdated(), err
+	return r, artReader.LastUpdated(), nil
 }
 
 func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, size int) (artworkReader, error) {
@@ -72,7 +75,7 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 		case model.KindPlaylistArtwork:
 			artReader, err = newPlaylistArtworkReader(ctx, a, artID)
 		default:
-			artReader, err = newPlaceholderReader(ctx, artID)
+			artReader, err = newEmptyIDReader(ctx, artID)
 		}
 	}
 	return artReader, err

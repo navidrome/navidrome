@@ -51,8 +51,7 @@ func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, str
 		}
 	}
 	ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.AlbumCoverArtID()))
-	r, source := extractImage(ctx, a.artID, ff...)
-	return r, source, nil
+	return selectImageReader(ctx, a.artID, ff...)
 }
 
 func fromAlbum(ctx context.Context, a *artwork, id model.ArtworkID) sourceFunc {
