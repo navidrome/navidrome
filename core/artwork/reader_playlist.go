@@ -49,8 +49,7 @@ func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, stri
 		ff = append(ff, a.fromGeneratedTile(ctx, pl.Tracks))
 	}
 	ff = append(ff, fromPlaceholder())
-	r, source := extractImage(ctx, a.artID, ff...)
-	return r, source, nil
+	return selectImageReader(ctx, a.artID, ff...)
 }
 
 func (a *playlistArtworkReader) fromGeneratedTile(ctx context.Context, tracks model.PlaylistTracks) sourceFunc {
@@ -129,7 +128,10 @@ func (a *playlistArtworkReader) createTiledImage(_ context.Context, tiles []imag
 	} else {
 		err = png.Encode(buf, tiles[0])
 	}
-	return io.NopCloser(buf), err
+	if err != nil {
+		return nil, err
+	}
+	return io.NopCloser(buf), nil
 }
 
 func rect(pos int) image.Rectangle {
