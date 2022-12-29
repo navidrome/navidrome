@@ -221,8 +221,12 @@ const AlbumDetails = (props) => {
   const [expanded, setExpanded] = useState(false)
   const [albumInfo, setAlbumInfo] = useState()
 
-  const notes =
+  let notes =
     albumInfo?.notes?.replace(new RegExp('<.*>', 'g'), '') || record.notes
+
+  if (notes !== undefined) {
+    notes += '..'
+  }
 
   useEffect(() => {
     subsonic

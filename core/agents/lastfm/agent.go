@@ -157,7 +157,11 @@ func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid s
 	}
 
 	if err != nil {
-		log.Error(ctx, "Error calling LastFM/album.getInfo", "album", name, "mbid", mbid, err)
+		if isLastFMError && lfErr.Code == 6 {
+			log.Debug(ctx, "Album not found", "album", name, "mbid", mbid, err)
+		} else {
+			log.Error(ctx, "Error calling LastFM/album.getInfo", "album", name, "mbid", mbid, err)
+		}
 		return nil, err
 	}
 	return a, nil
