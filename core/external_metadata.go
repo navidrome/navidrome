@@ -28,6 +28,7 @@ const (
 )
 
 type ExternalMetadata interface {
+	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
@@ -39,6 +40,11 @@ type externalMetadata struct {
 	ag *agents.Agents
 }
 
+type auxAlbum struct {
+	model.Album
+	Name string
+}
+
 type auxArtist struct {
 	model.Artist
 	Name string
@@ -46,6 +52,90 @@ type auxArtist struct {
 
 func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) ExternalMetadata {
 	return &externalMetadata{ds: ds, ag: agents}
+}
+
+func (e *externalMetadata) getAlbum(ctx context.Context, id string) (*auxAlbum, error) {
+	var entity interface{}
+	entity, err := model.GetEntityByID(ctx, e.ds, id)
+	if err != nil {
+		return nil, err
+	}
+
+	var artist auxAlbum
+	switch v := entity.(type) {
+	case *model.Album:
+		artist.Album = *v
+		artist.Name = clearName(v.Name)
+	case *model.MediaFile:
+		return e.getAlbum(ctx, v.AlbumArtistID)
+	default:
+		return nil, model.ErrNotFound
+	}
+	return &artist, nil
+}
+
+func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error) {
+	album, err := e.getAlbum(ctx, id)
+	if err != nil {
+		log.Info(ctx, "Not found", "id", id)
+		return nil, err
+	}
+
+	if album.ExternalInfoUpdatedAt.IsZero() {
+		log.Debug(ctx, "AlbumInfo not cached. Retrieving it now", "updatedAt", album.ExternalInfoUpdatedAt, "id", id, "name", album.Name)
+		err = e.refreshAlbumInfo(ctx, album)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if time.Since(album.ExternalInfoUpdatedAt) > consts.AlbumInfoTimeToLive {
+		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", album.Name)
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			err := e.refreshAlbumInfo(ctx, album)
+			if err != nil {
+				log.Error("Error refreshing ArtistInfo", "id", id, "name", album.Name, err)
+			}
+		}()
+	}
+
+	return &album.Album, nil
+}
+
+func (e *externalMetadata) refreshAlbumInfo(ctx context.Context, album *auxAlbum) error {
+	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	if err != nil {
+		return err
+	}
+
+	album.ExternalInfoUpdatedAt = time.Now()
+	album.ExternalUrl = info.URL
+
+	if info.Description != "" {
+		album.Description = info.Description
+	}
+
+	if info.SmallImgUrl != "" {
+		album.SmallImageUrl = info.SmallImgUrl
+	}
+
+	if info.MediumImgUrl != "" {
+		album.MediumImageUrl = info.MediumImgUrl
+	}
+
+	if info.LargeImgUrl != "" {
+		album.LargeImageUrl = info.LargeImgUrl
+	}
+
+	err = e.ds.Album(ctx).Put(&album.Album)
+	if err != nil {
+		log.Error(ctx, "Error trying to update album external information", "id", album.ID, "name", album.Name, err)
+	}
+
+	log.Trace(ctx, "ArtistInfo collected", "album", album)
+	return nil
 }
 
 func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist, error) {

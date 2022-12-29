@@ -48,6 +48,35 @@ func (l *lastfmAgent) AgentName() string {
 	return lastFMAgentName
 }
 
+func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
+	a, err := l.callAlbumGetInfo(ctx, name, artist, mbid)
+	if err != nil {
+		return nil, err
+	}
+
+	response := agents.AlbumInfo{
+		Name:        a.Name,
+		MBID:        a.MBID,
+		Description: a.Description.Summary,
+		URL:         a.URL,
+	}
+
+	// This assumes that Last.FM returns images with size small, medium, and large.
+	// This is true as of December 29, 2022
+	for _, img := range a.Image {
+		switch img.Size {
+		case "small":
+			response.SmallImgUrl = img.URL
+		case "medium":
+			response.MediumImgUrl = img.URL
+		case "large":
+			response.LargeImgUrl = img.URL
+		}
+	}
+
+	return &response, nil
+}
+
 func (l *lastfmAgent) GetMBID(ctx context.Context, id string, name string) (string, error) {
 	a, err := l.callArtistGetInfo(ctx, name, "")
 	if err != nil {
@@ -115,6 +144,23 @@ func (l *lastfmAgent) GetTopSongs(ctx context.Context, id, artistName, mbid stri
 		})
 	}
 	return res, nil
+}
+
+func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid string) (*Album, error) {
+	a, err := l.client.AlbumGetInfo(ctx, name, artist, mbid)
+	var lfErr *lastFMError
+	isLastFMError := errors.As(err, &lfErr)
+
+	if mbid != "" && (isLastFMError && lfErr.Code == 6) {
+		log.Warn(ctx, "LastFM/album.getInfo could not find artist by mbid, trying again", "album", name, "mbid", mbid)
+		return l.callAlbumGetInfo(ctx, name, artist, "")
+	}
+
+	if err != nil {
+		log.Error(ctx, "Error calling LastFM/album.getInfo", "album", name, "mbid", mbid, err)
+		return nil, err
+	}
+	return a, nil
 }
 
 func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, mbid string) (*Artist, error) {

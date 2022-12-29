@@ -159,6 +159,25 @@ func (a *Agents) GetTopSongs(ctx context.Context, id, artistName, mbid string, c
 	return nil, ErrNotFound
 }
 
+func (a *Agents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*AlbumInfo, error) {
+	start := time.Now()
+	for _, ag := range a.agents {
+		if utils.IsCtxDone(ctx) {
+			break
+		}
+		agent, ok := ag.(AlbumInfoRetriever)
+		if !ok {
+			continue
+		}
+		album, err := agent.GetAlbumInfo(ctx, name, artist, mbid)
+		if err == nil {
+			log.Debug(ctx, "Got Album Info", "agent", ag.AgentName(), "album", name, "elapsed", time.Since(start))
+			return album, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
 var _ Interface = (*Agents)(nil)
 var _ ArtistMBIDRetriever = (*Agents)(nil)
 var _ ArtistURLRetriever = (*Agents)(nil)
@@ -166,3 +185,4 @@ var _ ArtistBiographyRetriever = (*Agents)(nil)
 var _ ArtistSimilarRetriever = (*Agents)(nil)
 var _ ArtistImageRetriever = (*Agents)(nil)
 var _ ArtistTopSongsRetriever = (*Agents)(nil)
+var _ AlbumInfoRetriever = (*Agents)(nil)

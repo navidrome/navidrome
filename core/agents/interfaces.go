@@ -13,6 +13,21 @@ type Interface interface {
 	AgentName() string
 }
 
+type AlbumInfo struct {
+	Name         string
+	MBID         string
+	Description  string
+	URL          string
+	SmallImgUrl  string
+	MediumImgUrl string
+	LargeImgUrl  string
+}
+
+type AlbumImage struct {
+	URL  string
+	Size string
+}
+
 type Artist struct {
 	Name string
 	MBID string
@@ -31,6 +46,10 @@ type Song struct {
 var (
 	ErrNotFound = errors.New("not found")
 )
+
+type AlbumInfoRetriever interface {
+	GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*AlbumInfo, error)
+}
 
 type ArtistMBIDRetriever interface {
 	GetMBID(ctx context.Context, id string, name string) (string, error)
