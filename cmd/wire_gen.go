@@ -84,7 +84,7 @@ func createScanner() scanner.Scanner {
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg)
-	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork)
+	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	scannerScanner := scanner.New(dataStore, playlists, cacheWarmer, broker)
 	return scannerScanner

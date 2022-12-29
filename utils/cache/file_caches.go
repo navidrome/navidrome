@@ -70,7 +70,7 @@ type fileCache struct {
 	mutex       *sync.RWMutex
 }
 
-func (fc *fileCache) Ready(ctx context.Context) bool {
+func (fc *fileCache) Ready(_ context.Context) bool {
 	fc.mutex.RLock()
 	defer fc.mutex.RUnlock()
 	return fc.ready

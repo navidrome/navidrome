@@ -11,14 +11,16 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/navidrome/navidrome/utils/pl"
+	"golang.org/x/exp/maps"
 )
 
 type CacheWarmer interface {
 	PreCache(artID model.ArtworkID)
 }
 
-func NewCacheWarmer(artwork Artwork) CacheWarmer {
+func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 	// If image cache is disabled, return a NOOP implementation
 	if conf.Server.ImageCacheSize == "0" {
 		return &noopCacheWarmer{}
@@ -26,6 +28,8 @@ func NewCacheWarmer(artwork Artwork) CacheWarmer {
 
 	a := &cacheWarmer{
 		artwork:    artwork,
+		cache:      cache,
+		buffer:     make(map[string]struct{}),
 		wakeSignal: make(chan struct{}, 1),
 	}
 
@@ -37,15 +41,16 @@ func NewCacheWarmer(artwork Artwork) CacheWarmer {
 
 type cacheWarmer struct {
 	artwork    Artwork
-	buffer     []string
+	buffer     map[string]struct{}
 	mutex      sync.Mutex
+	cache      cache.FileCache
 	wakeSignal chan struct{}
 }
 
 func (a *cacheWarmer) PreCache(artID model.ArtworkID) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	a.buffer = append(a.buffer, artID.String())
+	a.buffer[artID.String()] = struct{}{}
 	a.sendWakeSignal()
 }
 
@@ -59,22 +64,32 @@ func (a *cacheWarmer) sendWakeSignal() {
 
 func (a *cacheWarmer) run(ctx context.Context) {
 	for {
-		time.AfterFunc(5*time.Second, func() {
+		time.AfterFunc(10*time.Second, func() {
 			a.sendWakeSignal()
 		})
 		<-a.wakeSignal
 
-		a.mutex.Lock()
-		var batch []string
-		if len(a.buffer) > 0 {
-			batch = a.buffer
-			a.buffer = nil
+		// If cache not available, keep waiting
+		if !a.cache.Available(ctx) {
+			if len(a.buffer) > 0 {
+				log.Trace(ctx, "Cache not available, buffering precache request", "bufferLen", len(a.buffer))
+			}
+			continue
 		}
+
+		a.mutex.Lock()
+
+		// If there's nothing to send, keep waiting
+		if len(a.buffer) == 0 {
+			a.mutex.Unlock()
+			continue
+		}
+
+		batch := maps.Keys(a.buffer)
+		a.buffer = make(map[string]struct{})
 		a.mutex.Unlock()
 
-		if len(batch) > 0 {
-			a.processBatch(ctx, batch)
-		}
+		a.processBatch(ctx, batch)
 	}
 }
 
@@ -102,4 +117,4 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id string) error {
 
 type noopCacheWarmer struct{}
 
-func (a *noopCacheWarmer) PreCache(id model.ArtworkID) {}
+func (a *noopCacheWarmer) PreCache(model.ArtworkID) {}
