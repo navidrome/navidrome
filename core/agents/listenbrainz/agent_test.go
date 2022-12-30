@@ -187,21 +187,22 @@ var _ = Describe("listenBrainzAgent", func() {
 		})
 	})
 
-	Describe("Star", func() {
-		var tracks *scrobbler.Stars
-
-		BeforeEach(func() {
-			tracks = &scrobbler.Stars{scrobbler.Star{
-				Title:      track.Title,
-				Artist:     track.Artist,
-				MbzTrackID: track.MbzTrackID,
-			}}
+	Describe("CanStar", func() {
+		It("Should be able to star if MBID provided", func() {
+			Expect(agent.CanStar(track)).To(BeTrue())
 		})
 
+		It("Should not be able to star if MBID missing", func() {
+			track.MbzTrackID = ""
+			Expect(agent.CanStar(track)).To(BeFalse())
+		})
+	})
+
+	Describe("Star", func() {
 		It("handles starring successfully", func() {
 			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
-			err := agent.Star(ctx, "user-1", true, tracks)
+			err := agent.Star(ctx, "user-1", true, track)
 			Expect(err).ToNot(HaveOccurred())
 
 			decoder := json.NewDecoder(httpClient.SavedRequest.Body)
@@ -216,7 +217,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("handles unstarring successfully", func() {
 			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
-			err := agent.Star(ctx, "user-1", false, tracks)
+			err := agent.Star(ctx, "user-1", false, track)
 			Expect(err).ToNot(HaveOccurred())
 
 			decoder := json.NewDecoder(httpClient.SavedRequest.Body)
@@ -226,6 +227,46 @@ var _ = Describe("listenBrainzAgent", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(lr.RecordingMBID).To(Equal("mbz-123"))
 			Expect(lr.Score).To(Equal(0))
+		})
+
+		It("returns ErrRetryLater on error 503", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 503, "error": "Cannot submit listens to queue, please try again later."}`)),
+				StatusCode: 503,
+			}
+
+			err := agent.Star(ctx, "user-1", true, track)
+			Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+		})
+
+		It("returns ErrRetryLater on error 500", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 500, "error": "Something went wrong. Please try again."}`)),
+				StatusCode: 500,
+			}
+
+			err := agent.Star(ctx, "user-1", true, track)
+			Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+		})
+
+		It("returns ErrRetryLater on http errors", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`Bad Gateway`)),
+				StatusCode: 500,
+			}
+
+			err := agent.Star(ctx, "user-1", true, track)
+			Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+		})
+
+		It("returns ErrUnrecoverable on other errors", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 400, "error": "BadRequest: Invalid JSON document submitted."}`)),
+				StatusCode: 400,
+			}
+
+			err := agent.Star(ctx, "user-1", true, track)
+			Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
 		})
 	})
 })

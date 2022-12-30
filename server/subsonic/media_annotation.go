@@ -163,7 +163,9 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 		return err
 	}
 
-	err = api.scrobbler.ProxyStar(ctx, star, trackids...)
+	if len(trackids) > 0 {
+		err = api.scrobbler.ProxyStar(ctx, star, trackids...)
+	}
 	if err != nil {
 		log.Error(ctx, err)
 		return err

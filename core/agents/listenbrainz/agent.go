@@ -117,19 +117,34 @@ func (l *listenBrainzAgent) CanProxyStars(ctx context.Context, userId string) bo
 	return l.IsAuthorized(ctx, userId)
 }
 
-func (l *listenBrainzAgent) Star(ctx context.Context, userId string, star bool, tracks *scrobbler.Stars) error {
+func (l *listenBrainzAgent) CanStar(track *model.MediaFile) bool {
+	return track.MbzTrackID != ""
+}
+
+func (l *listenBrainzAgent) Star(ctx context.Context, userId string, star bool, track *model.MediaFile) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
 		return scrobbler.ErrNotAuthorized
 	}
 
-	for _, track := range *tracks {
-		if track.MbzTrackID != "" {
-			err = l.client.Star(ctx, sk, star, track.MbzTrackID)
-		}
+	if track.MbzTrackID != "" {
+		err = l.client.Star(ctx, sk, star, track.MbzTrackID)
 	}
 
-	return err
+	if err == nil {
+		return nil
+	}
+
+	var lbErr *listenBrainzError
+	isListenBrainzError := errors.As(err, &lbErr)
+	if !isListenBrainzError {
+		log.Warn(ctx, "ListenBrainz Scrobble returned HTTP error", "track", track.Title, err)
+		return scrobbler.ErrRetryLater
+	}
+	if lbErr.Code == 500 || lbErr.Code == 503 {
+		return scrobbler.ErrRetryLater
+	}
+	return scrobbler.ErrUnrecoverable
 }
 
 func init() {

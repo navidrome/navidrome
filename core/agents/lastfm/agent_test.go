@@ -378,21 +378,17 @@ var _ = Describe("lastfmAgent", func() {
 			})
 		})
 
-		Describe("Star", func() {
-			var tracks *scrobbler.Stars
-
-			BeforeEach(func() {
-				tracks = &scrobbler.Stars{scrobbler.Star{
-					Title:      track.Title,
-					Artist:     track.Artist,
-					MbzTrackID: track.MbzTrackID,
-				}}
+		Describe("CanStar", func() {
+			It("Should be able to star", func() {
+				Expect(agent.CanStar(track)).To(BeTrue())
 			})
+		})
 
+		Describe("Star", func() {
 			It("calls Last.fm with correct params (star)", func() {
 				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
-				err := agent.Star(ctx, "user-1", true, tracks)
+				err := agent.Star(ctx, "user-1", true, track)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
@@ -406,7 +402,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("calls Last.fm with correct params (unstar)", func() {
 				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
-				err := agent.Star(ctx, "user-1", false, tracks)
+				err := agent.Star(ctx, "user-1", false, track)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
@@ -416,7 +412,46 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(sentParams.Get("track")).To(Equal(track.Title))
 				Expect(sentParams.Get("artist")).To(Equal(track.Artist))
 			})
+
+			It("returns ErrRetryLater on error 11", func() {
+				httpClient.Res = http.Response{
+					Body:       io.NopCloser(bytes.NewBufferString(`{"error":11,"message":"Service Offline - This service is temporarily offline. Try again later."}`)),
+					StatusCode: 400,
+				}
+
+				err := agent.Star(ctx, "user-1", true, track)
+				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+			})
+
+			It("returns ErrRetryLater on error 16", func() {
+				httpClient.Res = http.Response{
+					Body:       io.NopCloser(bytes.NewBufferString(`{"error":16,"message":"There was a temporary error processing your request. Please try again"}`)),
+					StatusCode: 400,
+				}
+
+				err := agent.Star(ctx, "user-1", true, track)
+				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+			})
+
+			It("returns ErrRetryLater on http errors", func() {
+				httpClient.Res = http.Response{
+					Body:       io.NopCloser(bytes.NewBufferString(`internal server error`)),
+					StatusCode: 500,
+				}
+
+				err := agent.Star(ctx, "user-1", true, track)
+				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+			})
+
+			It("returns ErrUnrecoverable on other errors", func() {
+				httpClient.Res = http.Response{
+					Body:       io.NopCloser(bytes.NewBufferString(`{"error":8,"message":"Operation failed - Something else went wrong"}`)),
+					StatusCode: 400,
+				}
+
+				err := agent.Star(ctx, "user-1", true, track)
+				Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+			})
 		})
 	})
-
 })

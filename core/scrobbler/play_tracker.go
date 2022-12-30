@@ -5,7 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 
@@ -194,46 +193,48 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 	}
 }
 
-func (p *playTracker) ProxyStar(ctx context.Context, star bool, id ...string) error {
+func (p *playTracker) ProxyStar(ctx context.Context, isStar bool, id ...string) error {
 	u, _ := request.UserFrom(ctx)
 
 	var err error
-
-	stars := Stars{}
-	sawTracks := false
+	var t *model.MediaFile
 
 	for name, s := range p.scrobblers {
 		if !s.CanProxyStars(ctx, u.ID) {
 			continue
 		}
 
-		if star {
+		if isStar {
 			log.Debug(ctx, "Sending star", "service", name, "ids", id)
 		} else {
 			log.Debug(ctx, "Removing star", "service", name, "ids", id)
 		}
 
-		if !sawTracks {
-			tracks, err := p.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-				Filters: squirrel.Eq{"id": id},
-			})
+		for _, trackId := range id {
+			t, err = p.ds.MediaFile(ctx).Get(trackId)
 
-			for _, track := range tracks {
-				stars = append(stars, Star{
-					Title:      track.Title,
-					Artist:     track.Artist,
-					MbzTrackID: track.MbzTrackID,
-				})
+			if !s.CanStar(t) {
+				continue
 			}
 
 			if err != nil {
-				return err
+				log.Error(ctx, "Track not found", "service", name, "track id", trackId)
+				continue
 			}
 
-			sawTracks = true
-		}
+			if conf.Server.DevEnableBufferedScrobble {
+				log.Debug(ctx, "Buffering Star", "service", name, "track", t.Title, "artist", t.Artist)
+			} else {
+				log.Debug(ctx, "Sending Star", "service", name, "track", t.Title, "artist", t.Artist)
+			}
 
-		err = s.Star(ctx, u.ID, star, &stars)
+			err = s.Star(ctx, u.ID, isStar, t)
+
+			if err != nil {
+				log.Error(ctx, "Error sending star", "service", name, "track", t.Title, "artist", t.Artist, err)
+				continue
+			}
+		}
 
 		if err != nil {
 			log.Error(ctx, "Error toggling star", "service", name, err)
