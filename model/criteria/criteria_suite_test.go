@@ -10,7 +10,7 @@ import (
 )
 
 func TestCriteria(t *testing.T) {
-	log.SetLevel(log.LevelCritical)
+	log.SetLevel(log.LevelFatal)
 	gomega.RegisterFailHandler(Fail)
 	RunSpecs(t, "Criteria Suite")
 }

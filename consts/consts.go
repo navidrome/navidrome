@@ -59,6 +59,8 @@ const (
 	DefaultHttpClientTimeOut = 10 * time.Second
 
 	DefaultScannerExtractor = "taglib"
+
+	Zwsp = string('\u200b')
 )
 
 // Cache options
@@ -80,7 +82,8 @@ const (
 )
 
 var (
-	DefaultTranscodings = []map[string]interface{}{
+	DefaultDownsamplingFormat = "opus"
+	DefaultTranscodings       = []map[string]interface{}{
 		{
 			"name":           "mp3 audio",
 			"targetFormat":   "mp3",

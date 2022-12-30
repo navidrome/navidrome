@@ -28,6 +28,7 @@ import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const AlbumFilter = (props) => {
@@ -93,14 +94,19 @@ const AlbumList = (props) => {
   // Workaround to force album columns to appear the first time.
   // See https://github.com/navidrome/navidrome/pull/923#issuecomment-833004842
   // TODO: Find a better solution
-  useSetToggleableFields('album', [
-    'artist',
-    'songCount',
-    'playCount',
-    'year',
-    'duration',
-    'rating',
-  ])
+  useSetToggleableFields(
+    'album',
+    [
+      'artist',
+      'songCount',
+      'playCount',
+      'year',
+      'duration',
+      'rating',
+      'createdAt',
+    ],
+    ['createdAt']
+  )
 
   // If it does not have filter/sort params (usually coming from Menu),
   // reload with correct filter/sort params
@@ -132,6 +138,7 @@ const AlbumList = (props) => {
         )}
       </List>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
       <ExpandInfoDialog content={<AlbumInfo />} />
     </>
   )

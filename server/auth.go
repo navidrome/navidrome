@@ -217,6 +217,7 @@ func UsernameFromConfig(r *http.Request) string {
 func contextWithUser(ctx context.Context, ds model.DataStore, username string) (context.Context, error) {
 	user, err := ds.User(ctx).FindByUsername(username)
 	if err == nil {
+		ctx = log.NewContext(ctx, "username", username)
 		ctx = request.WithUsername(ctx, user.UserName)
 		return request.WithUser(ctx, *user), nil
 	}
@@ -253,7 +254,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	}
 }
 
-// JWTRefresher updates the expire date of the received JWT token, and add the new one to the Authorization Header
+// JWTRefresher updates the expiry date of the received JWT token, and add the new one to the Authorization Header
 func JWTRefresher(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

@@ -31,6 +31,7 @@ import {
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
 import { DraggableTypes } from '../consts'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -173,6 +174,7 @@ const ArtistList = (props) => {
         <ArtistListView {...props} />
       </List>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
     </>
   )
 }

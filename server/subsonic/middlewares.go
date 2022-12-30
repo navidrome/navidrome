@@ -98,6 +98,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			//	}
 			//}()
 
+			ctx = log.NewContext(r.Context(), "username", username)
 			ctx = request.WithUser(ctx, *usr)
 			r = r.WithContext(ctx)
 

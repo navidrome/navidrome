@@ -1,11 +1,13 @@
 package model
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/model/criteria"
-	"github.com/navidrome/navidrome/utils"
+	"golang.org/x/exp/slices"
 )
 
 type Playlist struct {
@@ -43,12 +45,25 @@ func (pls Playlist) MediaFiles() MediaFiles {
 func (pls *Playlist) RemoveTracks(idxToRemove []int) {
 	var newTracks PlaylistTracks
 	for i, t := range pls.Tracks {
-		if utils.IntInSlice(i, idxToRemove) {
+		if slices.Contains(idxToRemove, i) {
 			continue
 		}
 		newTracks = append(newTracks, t)
 	}
 	pls.Tracks = newTracks
+}
+
+// ToM3U8 exports the playlist to the Extended M3U8 format, as specified in
+// https://docs.fileformat.com/audio/m3u/#extended-m3u
+func (pls *Playlist) ToM3U8() string {
+	buf := strings.Builder{}
+	buf.WriteString("#EXTM3U\n")
+	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", pls.Name))
+	for _, t := range pls.Tracks {
+		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
+		buf.WriteString(t.Path + "\n")
+	}
+	return buf.String()
 }
 
 func (pls *Playlist) AddTracks(mediaFileIds []string) {
@@ -77,6 +92,10 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 		}
 		pls.Tracks = append(pls.Tracks, t)
 	}
+}
+
+func (pls Playlist) CoverArtID() ArtworkID {
+	return artworkIDFromPlaylist(pls)
 }
 
 type Playlists []Playlist

@@ -30,10 +30,12 @@ type configOptions struct {
 	EnableTranscodingConfig bool
 	EnableDownloads         bool
 	EnableExternalServices  bool
+	EnableMediaFileCoverArt bool
 	TranscodingCacheSize    string
 	ImageCacheSize          string
 	AutoImportPlaylists     bool
 	PlaylistsPath           string
+	AutoTranscodeDownload   bool
 
 	SearchFullString       bool
 	RecentlyAddedByModTime bool
@@ -67,13 +69,14 @@ type configOptions struct {
 	Spotify      spotifyOptions
 	ListenBrainz listenBrainzOptions
 
+	//test downsampling
+	DefaultDownsamplingFormat string
+
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine           bool
 	DevLogLevels               map[string]string
 	DevAutoCreateAdminPassword string
 	DevAutoLoginUsername       string
-	DevPreCacheAlbumArtwork    bool
-	DevFastAccessCoverArt      bool
 	DevActivityPanel           bool
 	DevEnableShare             bool
 	DevSidebarPlaylists        bool
@@ -121,12 +124,12 @@ func LoadFromFile(confFile string) {
 func Load() {
 	err := viper.Unmarshal(&Server)
 	if err != nil {
-		fmt.Println("FATAL: Error parsing config:", err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
 		os.Exit(1)
 	}
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
 	if err != nil {
-		fmt.Println("FATAL: Error creating data path:", "path", Server.DataFolder, err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", "path", Server.DataFolder, err)
 		os.Exit(1)
 	}
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
@@ -149,7 +152,7 @@ func Load() {
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
 		}
-		fmt.Println(prettyConf)
+		_, _ = fmt.Fprintln(os.Stderr, prettyConf)
 	}
 
 	if !Server.EnableExternalServices {
@@ -225,6 +228,8 @@ func init() {
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
+	viper.SetDefault("enableMediaFileCoverArt", true)
+	viper.SetDefault("autotranscodedownload", false)
 
 	// Config options only valid for file/env configuration
 	viper.SetDefault("searchfullstring", false)
@@ -268,12 +273,12 @@ func init() {
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 
+	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
+
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
-	viper.SetDefault("devprecachealbumartwork", false)
-	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devenableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
@@ -300,8 +305,7 @@ func InitConfig(cfgFile string) {
 
 	err := viper.ReadInConfig()
 	if viper.ConfigFileUsed() != "" && err != nil {
-		fmt.Println("FATAL: Navidrome could not open config file: ", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Navidrome could not open config file: ", err)
 	}
 }
 

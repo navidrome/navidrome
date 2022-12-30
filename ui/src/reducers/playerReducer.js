@@ -37,8 +37,9 @@ const mapToAudioLists = (item) => {
     musicSrc: subsonic.streamUrl(trackId),
     cover: subsonic.getCoverArtUrl(
       {
-        coverArtId: config.devFastAccessCoverArt ? item.albumId : trackId,
+        id: trackId,
         updatedAt: item.updatedAt,
+        album: item.album,
       },
       300
     ),
