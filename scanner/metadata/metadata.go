@@ -49,14 +49,18 @@ func Extract(files ...string) (map[string]Tags, error) {
 		}
 
 		tags = tags.Map(p.CustomMappings())
-		result[filePath] = Tags{
-			filePath: filePath,
-			fileInfo: fileInfo,
-			tags:     tags,
-		}
+		result[filePath] = NewTag(filePath, fileInfo, tags)
 	}
 
 	return result, nil
+}
+
+func NewTag(filePath string, fileInfo os.FileInfo, tags ParsedTags) Tags {
+	return Tags{
+		filePath: filePath,
+		fileInfo: fileInfo,
+		tags:     tags,
+	}
 }
 
 type ParsedTags map[string][]string
