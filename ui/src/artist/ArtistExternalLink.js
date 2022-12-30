@@ -5,6 +5,7 @@ import { IconButton, Tooltip, Link } from '@material-ui/core'
 import { ImLastfm2 } from 'react-icons/im'
 import MusicBrainz from '../icons/MusicBrainz'
 import { intersperse } from '../utils'
+import config from '../config'
 
 const ArtistExternalLinks = ({ artistInfo, record }) => {
   const translate = useTranslate()
@@ -36,11 +37,14 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
     linkButtons.push(<span key={`link-${record.id}-${id}`}>{link}</span>)
   }
 
-  addLink(
-    links[0],
-    'message.openIn.lastfm',
-    <ImLastfm2 className="lastfm-icon" />
-  )
+  if (config.lastFMEnabled) {
+    addLink(
+      links[0],
+      'message.openIn.lastfm',
+      <ImLastfm2 className="lastfm-icon" />
+    )
+  }
+
   artistInfo?.musicBrainzId &&
     addLink(
       links[1],

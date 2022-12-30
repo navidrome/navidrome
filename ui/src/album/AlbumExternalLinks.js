@@ -4,6 +4,7 @@ import { IconButton, Tooltip, Link } from '@material-ui/core'
 import { ImLastfm2 } from 'react-icons/im'
 import MusicBrainz from '../icons/MusicBrainz'
 import { intersperse } from '../utils'
+import config from '../config'
 
 const AlbumExternalLinks = (props) => {
   const { className } = props
@@ -26,15 +27,17 @@ const AlbumExternalLinks = (props) => {
     links.push(<span key={`link-${record.id}-${id}`}>{link}</span>)
   }
 
-  addLink(
-    `https://last.fm/music/${
-      encodeURIComponent(record.albumArtist) +
-      '/' +
-      encodeURIComponent(record.name)
-    }`,
-    'message.openIn.lastfm',
-    <ImLastfm2 className="lastfm-icon" />
-  )
+  if (config.lastFMEnabled) {
+    addLink(
+      `https://last.fm/music/${
+        encodeURIComponent(record.albumArtist) +
+        '/' +
+        encodeURIComponent(record.name)
+      }`,
+      'message.openIn.lastfm',
+      <ImLastfm2 className="lastfm-icon" />
+    )
+  }
 
   record.mbzAlbumId &&
     addLink(
