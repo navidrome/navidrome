@@ -92,7 +92,7 @@ func startServer(ctx context.Context) func() error {
 		}
 		if conf.Server.Prometheus.Enabled {
 			// blocking call because takes <1ms but useful if fails
-			core.WriteInitialMetrics(core.GetPrometheusMetrics())
+			core.WriteInitialMetrics()
 			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
 		}
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
