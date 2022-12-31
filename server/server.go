@@ -28,6 +28,7 @@ type Server struct {
 
 func New(ds model.DataStore) *Server {
 	s := &Server{ds: ds}
+	auth.Init(s.ds)
 	initialSetup(ds)
 	s.initRoutes()
 	checkFfmpegInstallation()
@@ -80,8 +81,6 @@ func (s *Server) Run(ctx context.Context, addr string) error {
 }
 
 func (s *Server) initRoutes() {
-	auth.Init(s.ds)
-
 	s.appRoot = path.Join(conf.Server.BaseURL, consts.URLPathUI)
 
 	r := chi.NewRouter()
