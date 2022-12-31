@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -94,7 +95,8 @@ func (s *Server) initRoutes() {
 	r.Use(middleware.Recoverer)
 	r.Use(compressMiddleware())
 	r.Use(middleware.Heartbeat("/ping"))
-	r.Use(clientUniqueIdAdder)
+	r.Use(serverAddressMiddleware)
+	r.Use(clientUniqueIDMiddleware)
 	r.Use(loggerInjector)
 	r.Use(requestLogger)
 	r.Use(robotsTXT(ui.BuildAssets()))
@@ -134,4 +136,12 @@ func (s *Server) frontendAssetsHandler() http.Handler {
 	r.Handle("/", serveIndex(s.ds, ui.BuildAssets()))
 	r.Handle("/*", http.StripPrefix(s.appRoot, http.FileServer(http.FS(ui.BuildAssets()))))
 	return r
+}
+
+func AbsoluteURL(r *http.Request, url string) string {
+	if strings.HasPrefix(url, "/") {
+		appRoot := path.Join(r.Host, conf.Server.BaseURL, url)
+		url = r.URL.Scheme + "://" + appRoot
+	}
+	return url
 }
