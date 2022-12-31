@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
@@ -231,9 +232,9 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
 	response.ArtistInfo.Biography = artist.Biography
-	response.ArtistInfo.SmallImageUrl = artist.SmallImageUrl
-	response.ArtistInfo.MediumImageUrl = artist.MediumImageUrl
-	response.ArtistInfo.LargeImageUrl = artist.LargeImageUrl
+	response.ArtistInfo.SmallImageUrl = server.AbsoluteURL(r, artist.SmallImageUrl)
+	response.ArtistInfo.MediumImageUrl = server.AbsoluteURL(r, artist.MediumImageUrl)
+	response.ArtistInfo.LargeImageUrl = server.AbsoluteURL(r, artist.LargeImageUrl)
 	response.ArtistInfo.LastFmUrl = artist.ExternalUrl
 	response.ArtistInfo.MusicBrainzID = artist.MbzArtistID
 	for _, s := range artist.SimilarArtists {
@@ -259,7 +260,7 @@ func (api *Router) GetArtistInfo2(r *http.Request) (*responses.Subsonic, error) 
 		similar.AlbumCount = s.AlbumCount
 		similar.Starred = s.Starred
 		similar.UserRating = s.UserRating
-		similar.ArtistImageUrl = s.ArtistImageUrl
+		similar.ArtistImageUrl = server.AbsoluteURL(r, s.ArtistImageUrl)
 		response.ArtistInfo2.SimilarArtist = append(response.ArtistInfo2.SimilarArtist, similar)
 	}
 	return response, nil

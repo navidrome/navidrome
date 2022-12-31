@@ -3,21 +3,22 @@ package agents
 import (
 	"context"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 )
 
 const PlaceholderAgentName = "placeholder"
 
 const (
-	placeholderArtistImageSmallUrl  = "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png"
-	placeholderArtistImageMediumUrl = "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png"
-	placeholderArtistImageLargeUrl  = "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png"
+	placeholderArtistImageSmallUrl  = consts.URLPathUI + "/artist-placeholder.webp"
+	placeholderArtistImageMediumUrl = consts.URLPathUI + "/artist-placeholder.webp"
+	placeholderArtistImageLargeUrl  = consts.URLPathUI + "/artist-placeholder.webp"
 	placeholderBiography            = "Biography not available"
 )
 
 type placeholderAgent struct{}
 
-func placeholdersConstructor(ds model.DataStore) Interface {
+func placeholdersConstructor(_ model.DataStore) Interface {
 	return &placeholderAgent{}
 }
 

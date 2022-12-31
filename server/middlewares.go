@@ -115,7 +115,7 @@ func compressMiddleware() func(http.Handler) http.Handler {
 	)
 }
 
-func clientUniqueIdAdder(next http.Handler) http.Handler {
+func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		clientUniqueId := r.Header.Get(consts.UIClientUniqueIDHeader)
@@ -144,4 +144,58 @@ func clientUniqueIdAdder(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func serverAddressMiddleware(h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		if rScheme, rHost := serverAddress(r); rHost != "" {
+			r.Host = rHost
+			r.URL.Scheme = rScheme
+		}
+		h.ServeHTTP(w, r)
+	}
+
+	return http.HandlerFunc(fn)
+}
+
+var (
+	xForwardedHost   = http.CanonicalHeaderKey("X-Forwarded-Host")
+	xForwardedProto  = http.CanonicalHeaderKey("X-Forwarded-Scheme")
+	xForwardedScheme = http.CanonicalHeaderKey("X-Forwarded-Proto")
+)
+
+func serverAddress(r *http.Request) (scheme, host string) {
+	origHost := r.Host
+	protocol := "http"
+	if r.TLS != nil {
+		protocol = "https"
+	}
+	xfh := r.Header.Get(xForwardedHost)
+	if xfh != "" {
+		i := strings.Index(xfh, ",")
+		if i == -1 {
+			i = len(xfh)
+		}
+		xfh = xfh[:i]
+	}
+	scheme = firstOr(
+		protocol,
+		r.Header.Get(xForwardedProto),
+		r.Header.Get(xForwardedScheme),
+		r.URL.Scheme,
+	)
+	host = firstOr(r.Host, xfh)
+	if host != origHost {
+		log.Trace(r.Context(), "Request host has changed", "origHost", origHost, "host", host, "scheme", scheme, "url", r.URL)
+	}
+	return scheme, host
+}
+
+func firstOr(or string, strings ...string) string {
+	for _, s := range strings {
+		if s != "" {
+			return s
+		}
+	}
+	return or
 }
