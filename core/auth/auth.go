@@ -32,10 +32,25 @@ func Init(ds model.DataStore) {
 	})
 }
 
+func createBaseClaims() map[string]any {
+	tokenClaims := map[string]any{}
+	tokenClaims[jwt.IssuerKey] = consts.JWTIssuer
+	tokenClaims[jwt.IssuedAtKey] = time.Now().UTC().Unix()
+	return tokenClaims
+}
+
+func CreatePublicToken(claims map[string]any) (string, error) {
+	tokenClaims := createBaseClaims()
+	for k, v := range claims {
+		tokenClaims[k] = v
+	}
+	_, token, err := TokenAuth.Encode(tokenClaims)
+
+	return token, err
+}
+
 func CreateToken(u *model.User) (string, error) {
-	claims := map[string]interface{}{}
-	claims[jwt.IssuerKey] = consts.JWTIssuer
-	claims[jwt.IssuedAtKey] = time.Now().UTC().Unix()
+	claims := createBaseClaims()
 	claims[jwt.SubjectKey] = u.UserName
 	claims["uid"] = u.ID
 	claims["adm"] = u.IsAdmin

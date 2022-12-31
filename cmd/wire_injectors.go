@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
+	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic"
 )
 
@@ -24,6 +25,7 @@ var allProviders = wire.NewSet(
 	artwork.Set,
 	subsonic.New,
 	nativeapi.New,
+	public.New,
 	persistence.New,
 	lastfm.NewRouter,
 	listenbrainz.NewRouter,
@@ -48,6 +50,12 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	panic(wire.Build(
 		allProviders,
 		GetScanner,
+	))
+}
+
+func CreatePublicRouter() *public.Router {
+	panic(wire.Build(
+		allProviders,
 	))
 }
 
