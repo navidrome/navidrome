@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 	"sync"
@@ -224,6 +225,9 @@ func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, coun
 
 func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
 	songs, err := agent.GetTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
+	if errors.Is(err, agents.ErrNotFound) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

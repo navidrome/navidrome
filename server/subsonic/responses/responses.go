@@ -77,9 +77,9 @@ type Artist struct {
 	AlbumCount     int        `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
 	Starred        *time.Time `xml:"starred,attr,omitempty"            json:"starred,omitempty"`
 	UserRating     int        `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
+	CoverArt       string     `xml:"coverArt,attr,omitempty"           json:"coverArt,omitempty"`
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"     json:"artistImageUrl,omitempty"`
 	/* TODO:
-	<xs:attribute name="coverArt" type="xs:string" use="optional"/>
 	<xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
 }

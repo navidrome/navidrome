@@ -36,9 +36,6 @@ type artworkReader interface {
 }
 
 func (a *artwork) Get(ctx context.Context, id string, size int) (reader io.ReadCloser, lastUpdate time.Time, err error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
 	artID, err := a.getArtworkId(ctx, id)
 	if err != nil {
 		return nil, time.Time{}, err
@@ -112,7 +109,7 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 	return artReader, err
 }
 
-func Public(artID model.ArtworkID, size int) string {
+func PublicLink(artID model.ArtworkID, size int) string {
 	token, _ := auth.CreatePublicToken(map[string]any{
 		"id":   artID.String(),
 		"size": size,

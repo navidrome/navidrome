@@ -86,6 +86,7 @@ func toArtist(_ context.Context, a model.Artist) responses.Artist {
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
 		UserRating:     a.Rating,
+		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: a.ArtistImageUrl(),
 	}
 	if a.Starred {
@@ -94,11 +95,12 @@ func toArtist(_ context.Context, a model.Artist) responses.Artist {
 	return artist
 }
 
-func toArtistID3(ctx context.Context, a model.Artist) responses.ArtistID3 {
+func toArtistID3(_ context.Context, a model.Artist) responses.ArtistID3 {
 	artist := responses.ArtistID3{
 		Id:             a.ID,
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
+		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: a.ArtistImageUrl(),
 		UserRating:     a.Rating,
 	}
