@@ -124,7 +124,7 @@ func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
 
 	response := newResponse()
 	response.Starred = &responses.Starred{}
-	response.Starred.Artist = toArtists(ctx, artists)
+	response.Starred.Artist = toArtists(r, artists)
 	response.Starred.Album = childrenFromAlbums(r.Context(), albums)
 	response.Starred.Song = childrenFromMediaFiles(r.Context(), mediaFiles)
 	return response, nil
