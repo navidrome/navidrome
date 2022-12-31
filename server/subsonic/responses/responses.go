@@ -47,6 +47,8 @@ type Subsonic struct {
 	Bookmarks  *Bookmarks  `xml:"bookmarks,omitempty"                                     json:"bookmarks,omitempty"`
 	ScanStatus *ScanStatus `xml:"scanStatus,omitempty"                                    json:"scanStatus,omitempty"`
 	Lyrics     *Lyrics     `xml:"lyrics,omitempty"                                        json:"lyrics,omitempty"`
+
+	InternetRadioStations *InternetRadioStations `xml:"internetRadioStations,omitempty"  json:"internetRadioStations,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -357,4 +359,15 @@ type Lyrics struct {
 	Artist string `xml:"artist,omitempty,attr"  json:"artist,omitempty"`
 	Title  string `xml:"title,omitempty,attr"   json:"title,omitempty"`
 	Value  string `xml:",chardata"              json:"value"`
+}
+
+type InternetRadioStations struct {
+	Radios []Radio `xml:"internetRadioStation"               json:"internetRadioStation,omitempty"`
+}
+
+type Radio struct {
+	ID          string `xml:"id"          json:"id"`
+	StreamUrl   string `xml:"streamUrl"   json:"streamUrl"`
+	Name        string `xml:"name"        json:"name"`
+	HomepageUrl string `xml:"homePageUrl" json:"homePageUrl"`
 }
