@@ -82,3 +82,10 @@ func artworkIDFromPlaylist(pls Playlist) ArtworkID {
 		ID:   pls.ID,
 	}
 }
+
+func artworkIDFromArtist(ar Artist) ArtworkID {
+	return ArtworkID{
+		Kind: KindArtistArtwork,
+		ID:   ar.ID,
+	}
+}

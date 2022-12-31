@@ -103,6 +103,9 @@ func (a *cacheWarmer) processBatch(ctx context.Context, batch []string) {
 }
 
 func (a *cacheWarmer) doCacheImage(ctx context.Context, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	r, _, err := a.artwork.Get(ctx, id, 0)
 	if err != nil {
 		return fmt.Errorf("error cacheing id='%s': %w", id, err)

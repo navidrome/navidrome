@@ -37,9 +37,13 @@ func (p *localAgent) GetImages(_ context.Context, id, name, mbid string) ([]Arti
 	}, nil
 }
 
+func (p *localAgent) GetTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {
+	return nil, nil // TODO return 5-stars and liked songs sorted by playCount
+}
+
 func (p *localAgent) artistImage(id string, size int) ArtistImage {
 	return ArtistImage{
-		filepath.Join(consts.URLPathPublicImages, artwork.Public(model.NewArtworkID(model.KindArtistArtwork, id), size)),
+		filepath.Join(consts.URLPathPublicImages, artwork.PublicLink(model.NewArtworkID(model.KindArtistArtwork, id), size)),
 		size,
 	}
 }
