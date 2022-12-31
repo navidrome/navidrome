@@ -34,6 +34,10 @@ func (a Artist) ArtistImageUrl() string {
 	return a.SmallImageUrl
 }
 
+func (a Artist) CoverArtID() ArtworkID {
+	return artworkIDFromArtist(a)
+}
+
 type Artists []Artist
 
 type ArtistIndex struct {

@@ -4,32 +4,73 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
+	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 )
 
 type artistReader struct {
-	artID model.ArtworkID
+	cacheKey
+	a      *artwork
+	artist model.Artist
+	files  []string
 }
 
-func newArtistReader(_ context.Context, _ *artwork, artID model.ArtworkID) (*artistReader, error) {
-	a := &artistReader{
-		artID: artID,
+func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkID) (*artistReader, error) {
+	ar, err := artwork.ds.Artist(ctx).Get(artID.ID)
+	if err != nil {
+		return nil, err
 	}
+	als, err := artwork.ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": artID.ID}})
+	if err != nil {
+		return nil, err
+	}
+	a := &artistReader{
+		a:      artwork,
+		artist: *ar,
+	}
+	a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
+	for _, al := range als {
+		a.files = append(a.files, al.ImageFiles)
+		if a.cacheKey.lastUpdate.Before(al.UpdatedAt) {
+			a.cacheKey.lastUpdate = al.UpdatedAt
+		}
+	}
+	a.cacheKey.artID = artID
 	return a, nil
 }
 
 func (a *artistReader) LastUpdated() time.Time {
-	return consts.ServerStart // Invalidate cached placeholder every server start
-}
-
-func (a *artistReader) Key() string {
-	return fmt.Sprintf("placeholder.%d.0.%d", a.LastUpdated().UnixMilli(), conf.Server.CoverJpegQuality)
+	return a.lastUpdate
 }
 
 func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	return selectImageReader(ctx, a.artID, fromArtistPlaceholder())
+	return selectImageReader(ctx, a.artID,
+		//fromExternalFile()
+		fromExternalSource(ctx, a.artist),
+		fromArtistPlaceholder(),
+	)
+}
+
+func fromExternalSource(ctx context.Context, ar model.Artist) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		imageUrl := ar.ArtistImageUrl()
+		if !strings.HasPrefix(imageUrl, "http") {
+			return nil, "", nil
+		}
+		hc := http.Client{Timeout: 5 * time.Second}
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl, nil)
+		resp, err := hc.Do(req)
+		if err != nil {
+			return nil, "", err
+		}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, "", fmt.Errorf("error retrieveing cover from %s: %s", imageUrl, resp.Status)
+		}
+		return resp.Body, imageUrl, nil
+	}
 }

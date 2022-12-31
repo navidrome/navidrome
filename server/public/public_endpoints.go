@@ -42,7 +42,10 @@ func (p *Router) routes() http.Handler {
 }
 
 func (p *Router) handleImages(w http.ResponseWriter, r *http.Request) {
-	_, claims, _ := jwtauth.FromContext(r.Context())
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	_, claims, _ := jwtauth.FromContext(ctx)
 	id, ok := claims["id"].(string)
 	if !ok {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -53,7 +56,8 @@ func (p *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-	imgReader, lastUpdate, err := p.artwork.Get(r.Context(), id, int(size))
+
+	imgReader, lastUpdate, err := p.artwork.Get(ctx, id, int(size))
 	w.Header().Set("cache-control", "public, max-age=315360000")
 	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
 
@@ -71,7 +75,10 @@ func (p *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer imgReader.Close()
-	_, err = io.Copy(w, imgReader)
+	cnt, err := io.Copy(w, imgReader)
+	if err != nil {
+		log.Warn(ctx, "Error sending image", "count", cnt, err)
+	}
 }
 
 func jwtVerifier(next http.Handler) http.Handler {
