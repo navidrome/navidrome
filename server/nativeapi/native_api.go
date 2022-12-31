@@ -3,8 +3,6 @@ package nativeapi
 import (
 	"context"
 	"net/http"
-	"net/url"
-	"strings"
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
@@ -77,7 +75,7 @@ func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.Repository
 			r.Post("/", rest.Post(constructor))
 		}
 		r.Route("/{id}", func(r chi.Router) {
-			r.Use(urlParams)
+			r.Use(server.URLParamsMiddleware)
 			r.Get("/", rest.Get(constructor))
 			if persistable {
 				r.Put("/", rest.Put(constructor))
@@ -92,7 +90,7 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			getPlaylist(n.ds)(w, r)
 		})
-		r.With(urlParams).Route("/", func(r chi.Router) {
+		r.With(server.URLParamsMiddleware).Route("/", func(r chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				deleteFromPlaylist(n.ds)(w, r)
 			})
@@ -101,7 +99,7 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 			})
 		})
 		r.Route("/{id}", func(r chi.Router) {
-			r.Use(urlParams)
+			r.Use(server.URLParamsMiddleware)
 			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
 				reorderItem(n.ds)(w, r)
 			})
@@ -109,28 +107,5 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 				deleteFromPlaylist(n.ds)(w, r)
 			})
 		})
-	})
-}
-
-// Middleware to convert Chi URL params (from Context) to query params, as expected by our REST package
-func urlParams(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := chi.RouteContext(r.Context())
-		parts := make([]string, 0)
-		for i, key := range ctx.URLParams.Keys {
-			value := ctx.URLParams.Values[i]
-			if key == "*" {
-				continue
-			}
-			parts = append(parts, url.QueryEscape(":"+key)+"="+url.QueryEscape(value))
-		}
-		q := strings.Join(parts, "&")
-		if r.URL.RawQuery == "" {
-			r.URL.RawQuery = q
-		} else {
-			r.URL.RawQuery += "&" + q
-		}
-
-		next.ServeHTTP(w, r)
 	})
 }

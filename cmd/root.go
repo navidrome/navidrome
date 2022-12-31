@@ -83,6 +83,7 @@ func startServer(ctx context.Context) func() error {
 		a := CreateServer(conf.Server.MusicFolder)
 		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
 		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
+		a.MountRouter("Public Endpoints", "/p", CreatePublicRouter())
 		if conf.Server.LastFM.Enabled {
 			a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
 		}
