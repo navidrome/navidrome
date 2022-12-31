@@ -9,4 +9,4 @@ A new agent must comply with these simple implementation rules:
 
 For an agent to be used it needs to be listed in the `Agents` config option (default is `"lastfm,spotify"`). The order dictates the priority of the agents
 
-For a simple Agent example, look at the [placeholders](placeholders.go) agent source code.
+For a simple Agent example, look at the [local_agent](local_agent.go) agent source code.

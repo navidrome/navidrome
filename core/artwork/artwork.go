@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -73,6 +74,9 @@ func (a *artwork) getArtworkId(ctx context.Context, id string) (model.ArtworkID,
 		return model.ArtworkID{}, err
 	}
 	switch e := entity.(type) {
+	case *model.Artist:
+		artID = model.NewArtworkID(model.KindArtistArtwork, e.ID)
+		log.Trace(ctx, "ID is for an Artist", "id", id, "name", e.Name, "artist", e.Name)
 	case *model.Album:
 		artID = model.NewArtworkID(model.KindAlbumArtwork, e.ID)
 		log.Trace(ctx, "ID is for an Album", "id", id, "name", e.Name, "artist", e.AlbumArtist)
@@ -93,6 +97,8 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 		artReader, err = resizedFromOriginal(ctx, a, artID, size)
 	} else {
 		switch artID.Kind {
+		case model.KindArtistArtwork:
+			artReader, err = newArtistReader(ctx, a, artID)
 		case model.KindAlbumArtwork:
 			artReader, err = newAlbumArtworkReader(ctx, a, artID)
 		case model.KindMediaFileArtwork:
@@ -104,4 +110,12 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 		}
 	}
 	return artReader, err
+}
+
+func Public(artID model.ArtworkID, size int) string {
+	token, _ := auth.CreatePublicToken(map[string]any{
+		"id":   artID.String(),
+		"size": size,
+	})
+	return token
 }

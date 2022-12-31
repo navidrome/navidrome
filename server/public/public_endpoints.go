@@ -3,7 +3,6 @@ package public
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -26,15 +25,6 @@ type Router struct {
 func New(artwork artwork.Artwork) *Router {
 	p := &Router{artwork: artwork}
 	p.Handler = p.routes()
-
-	t, err := auth.CreatePublicToken(map[string]any{
-		"id":   "al-ee07551e7371500da55e23ae8520f1d8",
-		"size": 300,
-	})
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("!!!!!!!!!!!!!!!!!", t, "!!!!!!!!!!!!!!!!")
 
 	return p
 }

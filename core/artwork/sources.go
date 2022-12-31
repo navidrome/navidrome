@@ -112,9 +112,26 @@ func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourc
 	}
 }
 
-func fromPlaceholder() sourceFunc {
+func fromAlbum(ctx context.Context, a *artwork, id model.ArtworkID) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		r, _, err := a.Get(ctx, id.String(), 0)
+		if err != nil {
+			return nil, "", err
+		}
+		return r, id.String(), nil
+	}
+}
+
+func fromAlbumPlaceholder() sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		r, _ := resources.FS().Open(consts.PlaceholderAlbumArt)
 		return r, consts.PlaceholderAlbumArt, nil
+	}
+}
+
+func fromArtistPlaceholder() sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		r, _ := resources.FS().Open(consts.PlaceholderArtistArt)
+		return r, consts.PlaceholderArtistArt, nil
 	}
 }
