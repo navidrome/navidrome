@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
@@ -72,22 +75,22 @@ func getUser(ctx context.Context) model.User {
 	return model.User{}
 }
 
-func toArtists(ctx context.Context, artists model.Artists) []responses.Artist {
+func toArtists(r *http.Request, artists model.Artists) []responses.Artist {
 	as := make([]responses.Artist, len(artists))
 	for i, artist := range artists {
-		as[i] = toArtist(ctx, artist)
+		as[i] = toArtist(r, artist)
 	}
 	return as
 }
 
-func toArtist(_ context.Context, a model.Artist) responses.Artist {
+func toArtist(r *http.Request, a model.Artist) responses.Artist {
 	artist := responses.Artist{
 		Id:             a.ID,
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
 		UserRating:     a.Rating,
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: a.ArtistImageUrl(),
+		ArtistImageUrl: artistCoverArtURL(r, a.CoverArtID(), 0),
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
@@ -95,19 +98,25 @@ func toArtist(_ context.Context, a model.Artist) responses.Artist {
 	return artist
 }
 
-func toArtistID3(_ context.Context, a model.Artist) responses.ArtistID3 {
+func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 	artist := responses.ArtistID3{
 		Id:             a.ID,
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: a.ArtistImageUrl(),
+		ArtistImageUrl: artistCoverArtURL(r, a.CoverArtID(), 0),
 		UserRating:     a.Rating,
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
 	}
 	return artist
+}
+
+func artistCoverArtURL(r *http.Request, artID model.ArtworkID, size int) string {
+	link := artwork.PublicLink(artID, size)
+	url := filepath.Join(consts.URLPathPublicImages, link)
+	return server.AbsoluteURL(r, url)
 }
 
 func toGenres(genres model.Genres) *responses.Genres {

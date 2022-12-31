@@ -2,10 +2,7 @@ package agents
 
 import (
 	"context"
-	"path/filepath"
 
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -29,23 +26,8 @@ func (p *localAgent) GetBiography(ctx context.Context, id, name, mbid string) (s
 	return localBiography, nil
 }
 
-func (p *localAgent) GetImages(_ context.Context, id, name, mbid string) ([]ArtistImage, error) {
-	return []ArtistImage{
-		p.artistImage(id, 300),
-		p.artistImage(id, 174),
-		p.artistImage(id, 64),
-	}, nil
-}
-
 func (p *localAgent) GetTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {
 	return nil, nil // TODO return 5-stars and liked songs sorted by playCount
-}
-
-func (p *localAgent) artistImage(id string, size int) ArtistImage {
-	return ArtistImage{
-		filepath.Join(consts.URLPathPublicImages, artwork.PublicLink(model.NewArtworkID(model.KindArtistArtwork, id), size)),
-		size,
-	}
 }
 
 func init() {

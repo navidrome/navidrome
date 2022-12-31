@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,7 +17,7 @@ type artistReader struct {
 	cacheKey
 	a      *artwork
 	artist model.Artist
-	files  []string
+	files  string
 }
 
 func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkID) (*artistReader, error) {
@@ -33,12 +34,14 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 		artist: *ar,
 	}
 	a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
+	var files []string
 	for _, al := range als {
-		a.files = append(a.files, al.ImageFiles)
+		files = append(files, al.ImageFiles)
 		if a.cacheKey.lastUpdate.Before(al.UpdatedAt) {
 			a.cacheKey.lastUpdate = al.UpdatedAt
 		}
 	}
+	a.files = strings.Join(files, string(filepath.ListSeparator))
 	a.cacheKey.artID = artID
 	return a, nil
 }
@@ -49,7 +52,7 @@ func (a *artistReader) LastUpdated() time.Time {
 
 func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	return selectImageReader(ctx, a.artID,
-		//fromExternalFile()
+		fromExternalFile(ctx, a.files, "artist.*"),
 		fromExternalSource(ctx, a.artist),
 		fromArtistPlaceholder(),
 	)
