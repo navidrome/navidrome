@@ -21,11 +21,18 @@ func (r *sqlRepository) updateGenres(id string, tableName string, genres model.G
 	if len(genres) == 0 {
 		return nil
 	}
-	ins := Insert(tableName+"_genres").Columns("genre_id", tableName+"_id")
+	var genreIds []string
 	for _, g := range genres {
-		ins = ins.Values(g.ID, id)
+		genreIds = append(genreIds, g.ID)
 	}
-	_, err = r.executeSQL(ins)
+	err = utils.RangeByChunks(genreIds, 100, func(ids []string) error {
+		ins := Insert(tableName+"_genres").Columns("genre_id", tableName+"_id")
+		for _, gid := range ids {
+			ins = ins.Values(gid, id)
+		}
+		_, err = r.executeSQL(ins)
+		return err
+	})
 	return err
 }
 
@@ -38,7 +45,7 @@ func (r *sqlRepository) loadMediaFileGenres(mfs *model.MediaFiles) error {
 		m[mf.ID] = mf
 	}
 
-	return utils.RangeByChunks(ids, 100, func(ids []string) error {
+	return utils.RangeByChunks(ids, 900, func(ids []string) error {
 		sql := Select("g.*", "mg.media_file_id").From("genre g").Join("media_file_genres mg on mg.genre_id = g.id").
 			Where(Eq{"mg.media_file_id": ids}).OrderBy("mg.media_file_id", "mg.rowid")
 		var genres []struct {
@@ -67,7 +74,7 @@ func (r *sqlRepository) loadAlbumGenres(mfs *model.Albums) error {
 		m[mf.ID] = mf
 	}
 
-	return utils.RangeByChunks(ids, 100, func(ids []string) error {
+	return utils.RangeByChunks(ids, 900, func(ids []string) error {
 		sql := Select("g.*", "ag.album_id").From("genre g").Join("album_genres ag on ag.genre_id = g.id").
 			Where(Eq{"ag.album_id": ids}).OrderBy("ag.album_id", "ag.rowid")
 		var genres []struct {
@@ -96,7 +103,7 @@ func (r *sqlRepository) loadArtistGenres(mfs *model.Artists) error {
 		m[mf.ID] = mf
 	}
 
-	return utils.RangeByChunks(ids, 100, func(ids []string) error {
+	return utils.RangeByChunks(ids, 900, func(ids []string) error {
 		sql := Select("g.*", "ag.artist_id").From("genre g").Join("artist_genres ag on ag.genre_id = g.id").
 			Where(Eq{"ag.artist_id": ids}).OrderBy("ag.artist_id", "ag.rowid")
 		var genres []struct {

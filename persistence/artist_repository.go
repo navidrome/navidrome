@@ -8,9 +8,10 @@ import (
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -23,11 +24,11 @@ type artistRepository struct {
 }
 
 type dbArtist struct {
-	model.Artist
-	SimilarArtists string `json:"similarArtists"`
+	model.Artist   `structs:",flatten"`
+	SimilarArtists string `structs:"similar_artists" json:"similarArtists"`
 }
 
-func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepository {
+func NewArtistRepository(ctx context.Context, o orm.QueryExecutor) model.ArtistRepository {
 	r := &artistRepository{}
 	r.ctx = ctx
 	r.ormer = o
@@ -60,16 +61,16 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *artistRepository) Put(a *model.Artist) error {
-	genres := a.Genres
-	a.Genres = nil
-	defer func() { a.Genres = genres }()
 	a.FullText = getFullText(a.Name, a.SortArtistName)
 	dba := r.fromModel(a)
 	_, err := r.put(dba.ID, dba)
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(a.ID, r.tableName, genres)
+	if a.ID == consts.VariousArtistsID {
+		return r.updateGenres(a.ID, r.tableName, nil)
+	}
+	return r.updateGenres(a.ID, r.tableName, a.Genres)
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
@@ -175,65 +176,6 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 	return result, nil
 }
 
-func (r *artistRepository) Refresh(ids ...string) error {
-	chunks := utils.BreakUpStringSlice(ids, 100)
-	for _, chunk := range chunks {
-		err := r.refresh(chunk...)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *artistRepository) refresh(ids ...string) error {
-	type refreshArtist struct {
-		model.Artist
-		CurrentId string
-		GenreIds  string
-	}
-	var artists []refreshArtist
-	sel := Select("f.album_artist_id as id", "f.album_artist as name", "count(*) as album_count", "a.id as current_id",
-		"group_concat(f.mbz_album_artist_id , ' ') as mbz_artist_id",
-		"f.sort_album_artist_name as sort_artist_name", "f.order_album_artist_name as order_artist_name",
-		"sum(f.song_count) as song_count", "sum(f.size) as size",
-		"alg.genre_ids").
-		From("album f").
-		LeftJoin("artist a on f.album_artist_id = a.id").
-		LeftJoin(`(select al.album_artist_id, group_concat(ag.genre_id, ' ') as genre_ids from album_genres ag
-				left join album al on al.id = ag.album_id where al.album_artist_id in ('` +
-			strings.Join(ids, "','") + `') group by al.album_artist_id) alg on alg.album_artist_id = f.album_artist_id`).
-		Where(Eq{"f.album_artist_id": ids}).
-		GroupBy("f.album_artist_id").OrderBy("f.id")
-	err := r.queryAll(sel, &artists)
-	if err != nil {
-		return err
-	}
-
-	toInsert := 0
-	toUpdate := 0
-	for _, ar := range artists {
-		if ar.CurrentId != "" {
-			toUpdate++
-		} else {
-			toInsert++
-		}
-		ar.MbzArtistID = getMostFrequentMbzID(r.ctx, ar.MbzArtistID, r.tableName, ar.Name)
-		ar.Genres = getGenres(ar.GenreIds)
-		err := r.Put(&ar.Artist)
-		if err != nil {
-			return err
-		}
-	}
-	if toInsert > 0 {
-		log.Debug(r.ctx, "Inserted new artists", "totalInserted", toInsert)
-	}
-	if toUpdate > 0 {
-		log.Debug(r.ctx, "Updated artists", "totalUpdated", toUpdate)
-	}
-	return err
-}
-
 func (r *artistRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_artist_id) from album)")
 	c, err := r.executeSQL(del)
@@ -274,21 +216,5 @@ func (r *artistRepository) NewInstance() interface{} {
 	return &model.Artist{}
 }
 
-func (r artistRepository) Delete(id string) error {
-	return r.delete(Eq{"artist.id": id})
-}
-
-func (r artistRepository) Save(entity interface{}) (string, error) {
-	artist := entity.(*model.Artist)
-	err := r.Put(artist)
-	return artist.ID, err
-}
-
-func (r artistRepository) Update(entity interface{}, cols ...string) error {
-	artist := entity.(*model.Artist)
-	return r.Put(artist)
-}
-
 var _ model.ArtistRepository = (*artistRepository)(nil)
 var _ model.ResourceRepository = (*artistRepository)(nil)
-var _ rest.Persistable = (*artistRepository)(nil)

@@ -4,8 +4,8 @@ import "github.com/navidrome/navidrome/model"
 
 type MockedUserPropsRepo struct {
 	model.UserPropsRepository
-	data map[string]string
-	err  error
+	Error error
+	data  map[string]string
 }
 
 func (p *MockedUserPropsRepo) init() {
@@ -15,8 +15,8 @@ func (p *MockedUserPropsRepo) init() {
 }
 
 func (p *MockedUserPropsRepo) Put(userId, key string, value string) error {
-	if p.err != nil {
-		return p.err
+	if p.Error != nil {
+		return p.Error
 	}
 	p.init()
 	p.data[userId+key] = value
@@ -24,8 +24,8 @@ func (p *MockedUserPropsRepo) Put(userId, key string, value string) error {
 }
 
 func (p *MockedUserPropsRepo) Get(userId, key string) (string, error) {
-	if p.err != nil {
-		return "", p.err
+	if p.Error != nil {
+		return "", p.Error
 	}
 	p.init()
 	if v, ok := p.data[userId+key]; ok {
@@ -35,8 +35,8 @@ func (p *MockedUserPropsRepo) Get(userId, key string) (string, error) {
 }
 
 func (p *MockedUserPropsRepo) Delete(userId, key string) error {
-	if p.err != nil {
-		return p.err
+	if p.Error != nil {
+		return p.Error
 	}
 	p.init()
 	if _, ok := p.data[userId+key]; ok {
@@ -47,13 +47,13 @@ func (p *MockedUserPropsRepo) Delete(userId, key string) error {
 }
 
 func (p *MockedUserPropsRepo) DefaultGet(userId, key string, defaultValue string) (string, error) {
-	if p.err != nil {
-		return "", p.err
+	if p.Error != nil {
+		return "", p.Error
 	}
 	p.init()
 	v, err := p.Get(userId, key)
 	if err != nil {
-		return defaultValue, nil
+		return defaultValue, nil //nolint:nilerr
 	}
 	return v, nil
 }

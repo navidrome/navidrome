@@ -11,6 +11,7 @@ import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
 import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
+import { useDrag } from 'react-dnd'
 import subsonic from '../subsonic'
 import {
   AlbumContextMenu,
@@ -19,6 +20,7 @@ import {
   RangeField,
 } from '../common'
 import lozad from 'lozad'
+import { DraggableTypes } from '../consts'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -109,12 +111,20 @@ const getColsForWidth = (width) => {
 }
 
 const Cover = withContentRect('bounds')(
-  ({ album, measureRef, contentRect }) => {
+  ({ record, measureRef, contentRect }) => {
     // Force height to be the same as the width determined by the GridList
     // noinspection JSSuspiciousNameCombination
     const classes = useCoverStyles({ height: contentRect.bounds.width })
+    const [, dragAlbumRef] = useDrag(
+      () => ({
+        type: DraggableTypes.ALBUM,
+        item: { albumIds: [record.id] },
+        options: { dropEffect: 'copy' },
+      }),
+      [record]
+    )
+
     const cls = [classes.nfade]
-    console.log(classes.nfade)
     const { observe } = lozad('[data-use-lozad]', {
       rootMargin: '0px 0px -30% 0px',
       threshold: 0.1,
@@ -125,23 +135,26 @@ const Cover = withContentRect('bounds')(
     useEffect(() => {
       observe()
     }, [observe])
+
     return (
-      <div className={classes.cover} ref={measureRef}>
-        <img
-          data-src={subsonic.getCoverArtUrl(album, 300)}
-          src={subsonic.getCoverArtUrl(album, 10)}
-          data-alt={album.name}
-          className={classes.cover}
-          data-use-lozad
-          data-loaded="false"
-          alt=""
-        />
+      <div ref={measureRef}>
+        <div className={classes.cover} ref={dragAlbumRef}>
+          <img
+            data-src={subsonic.getCoverArtUrl(record, 300)}
+            src={subsonic.getCoverArtUrl(record, 10)}
+            data-alt={record.name}
+            className={classes.cover}
+            data-use-lozad
+            data-loaded="false"
+            alt=""
+          />
+        </div>
       </div>
     )
   }
 )
 
-const AlbumGridTile = ({ showArtist, record, basePath }) => {
+const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'), {
     noSsr: true,
@@ -155,7 +168,7 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
         className={classes.link}
         to={linkToRecord(basePath, record.id, 'show')}
       >
-        <Cover album={record} />
+        <Cover record={record} />
         <GridListTileBar
           className={isDesktop ? classes.tileBar : classes.tileBarMobile}
           subtitle={
@@ -180,7 +193,7 @@ const AlbumGridTile = ({ showArtist, record, basePath }) => {
         <RangeField
           record={record}
           source={'year'}
-          sortBy={'maxYear'}
+          sortBy={'max_year'}
           sortByOrder={'DESC'}
           className={classes.albumSubtitle}
         />
@@ -193,7 +206,6 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
   const { filterValues } = useListContext()
   const isArtistView = !!(filterValues && filterValues.artist_id)
-
   return (
     <div className={classes.root}>
       <GridList

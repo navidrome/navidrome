@@ -4,12 +4,12 @@
         "song": {
             "name": "Skladba |||| Skladby",
             "fields": {
-                "albumArtist": "Umělec alba",
+                "albumArtist": "Interpret alba",
                 "duration": "Délka",
                 "trackNumber": "#",
                 "playCount": "Přehrání",
                 "title": "Název",
-                "artist": "Umělec",
+                "artist": "Interpret",
                 "album": "Album",
                 "path": "Cesta k souboru",
                 "genre": "Žánr",
@@ -24,7 +24,8 @@
                 "rating": "Hodnocení",
                 "quality": "Kvalita",
                 "bpm": "BPM",
-                "playDate": "Poslední přehravaná skladba"
+                "playDate": "Poslední přehravaná skladba",
+                "channels": "Kanály"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -32,14 +33,15 @@
                 "addToPlaylist": "Přidat do seznamu skladeb",
                 "shuffleAll": "Zamíchat vše",
                 "download": "Stáhnout",
-                "playNext": "Přehrát další"
+                "playNext": "Přehrát další",
+                "info": "Získat informace"
             }
         },
         "album": {
             "name": "Album |||| Alba",
             "fields": {
                 "albumArtist": "Interpret alba",
-                "artist": "Umělec",
+                "artist": "Interpret",
                 "duration": "Délka",
                 "songCount": "Skladby",
                 "playCount": "Přehrání",
@@ -57,7 +59,8 @@
                 "addToQueue": "Přehrát později",
                 "shuffle": "Zamíchat",
                 "addToPlaylist": "Přidat do seznamu skladeb",
-                "download": "Stáhnout"
+                "download": "Stáhnout",
+                "info": "Získat informace"
             },
             "lists": {
                 "all": "Všechno",
@@ -70,13 +73,14 @@
             }
         },
         "artist": {
-            "name": "Umělec |||| Umělci",
+            "name": "Interpret |||| Interpreti",
             "fields": {
                 "name": "Název",
                 "albumCount": "Počet alb",
                 "songCount": "Počet skladeb",
                 "playCount": "Přehrání",
-                "rating": "Hodnocení"
+                "rating": "Hodnocení",
+                "genre": "Žánr"
             }
         },
         "user": {
@@ -91,7 +95,8 @@
                 "createdAt": "Vytvořen",
                 "changePassword": "Změnit heslo?",
                 "currentPassword": "Současné heslo",
-                "newPassword": "Nové heslo"
+                "newPassword": "Nové heslo",
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Změna jména se zobrazí až při dalším přihlášení"
@@ -100,6 +105,10 @@
                 "created": "Uživatel vytvořen",
                 "updated": "Uživatel upraven",
                 "deleted": "Uživatel odstraněn"
+            },
+            "message": {
+                "listenBrainzToken": "Vložte svůj uživatelský ListenBrainz token.",
+                "clickHereForToken": "Klikněte zde pro získání svého tokenu"
             }
         },
         "player": {
@@ -112,7 +121,7 @@
                 "userName": "Uživatelské jméno",
                 "lastSeen": "Naposledy viděn",
                 "reportRealPath": "Zkutečná cesta hlášení",
-                "scrobbleEnabled": "Zaslat historii na Last.fm"
+                "scrobbleEnabled": "Poslat scrobblování na externí služby"
             }
         },
         "transcoding": {
@@ -129,7 +138,7 @@
             "fields": {
                 "name": "Název",
                 "duration": "Délka",
-                "owner": "Vlastník",
+                "ownerName": "Autor",
                 "public": "Veřejný",
                 "updatedAt": "Nahrán",
                 "createdAt": "Vytvořen",
@@ -141,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Přidat skladby do seznamu:",
                 "addNewPlaylist": "Vytvořit \"%{name}\"",
-                "export": "Export"
+                "export": "Export",
+                "makePublic": "Zveřejnit",
+                "makePrivate": "Nastavit jako soukromé"
             },
             "message": {
                 "duplicate_song": "Přidat duplicitní skladby",
@@ -299,10 +310,19 @@
         "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?",
         "notifications_blocked": "Zablokovali jste si oznámení pro tuto stránku v nastavení vašeho prohlížeče",
         "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše nebo nepřistupujete k Navidrome přes https",
-        "lastfmLinkSuccess": "Last.fm úspěšně připojeno a ukládání zapnuto",
+        "lastfmLinkSuccess": "Last.fm úspěšně připojeno a scrobblování zapnuto",
         "lastfmLinkFailure": "Last.fm nemohlo být připojeno",
-        "lastfmUnlinkSuccess": "Last.fm odpojeno a ukládání vypnuto",
-        "lastfmUnlinkFailure": "Last.fm nemohlo být odpojeno"
+        "lastfmUnlinkSuccess": "Last.fm odpojeno a scrobblování vypnuto",
+        "lastfmUnlinkFailure": "Last.fm nemohlo být odpojeno",
+        "openIn": {
+            "lastfm": "Otevřít na Last.fm",
+            "musicbrainz": "Otevřít na MusicBrainz"
+        },
+        "lastfmLink": "Číst dále...",
+        "listenBrainzLinkSuccess": "ListenBrainz úspěšně připojeno a scrobblování zapnuto jako uživatel: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz nemohlo být připojeno: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz odpojeno a scrobblování vypnuto",
+        "listenBrainzUnlinkFailure": "ListenBrainz nemohlo být odpojeno"
     },
     "menu": {
         "library": "Knihovna",
@@ -316,11 +336,14 @@
                 "language": "Jazyk",
                 "defaultView": "Výchozí stránka",
                 "desktop_notifications": "Oznámení na ploše",
-                "lastfmScrobbling": "Uložit na Last.fm"
+                "lastfmScrobbling": "Scrobblovat na Last.fm",
+                "listenBrainzScrobbling": "Scrobblovat na ListenBrainz"
             }
         },
         "albumList": "Alba",
-        "about": "O Navidrome"
+        "about": "O Navidrome",
+        "playlists": "Seznamy skladeb",
+        "sharedPlaylists": "Sdílené seznamy skladeb"
     },
     "player": {
         "playListsText": "Fronta",

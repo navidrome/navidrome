@@ -24,7 +24,8 @@
                 "rating": "Bewertung",
                 "quality": "Qualität",
                 "bpm": "BPM",
-                "playDate": "Letzte Wiedergabe"
+                "playDate": "Letzte Wiedergabe",
+                "channels": "Spuren"
             },
             "actions": {
                 "addToQueue": "Später abspielen",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Zur Playlist hinzufügen",
                 "shuffleAll": "Zufallswiedergabe",
                 "download": "Herunterladen",
-                "playNext": "Als nächstes abspielen"
+                "playNext": "Als nächstes abspielen",
+                "info": "Mehr Informationen"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "Später abspielen",
                 "shuffle": "Zufallswiedergabe",
                 "addToPlaylist": "Zur Playlist hinzufügen",
-                "download": "Herunterladen"
+                "download": "Herunterladen",
+                "info": "Mehr Informationen"
             },
             "lists": {
                 "all": "Alle",
@@ -76,7 +79,8 @@
                 "albumCount": "Albumanzahl",
                 "songCount": "Songanzahl",
                 "playCount": "Wiedergaben",
-                "rating": "Bewertung"
+                "rating": "Bewertung",
+                "genre": "Genre"
             }
         },
         "user": {
@@ -91,7 +95,8 @@
                 "createdAt": "Erstellt um",
                 "changePassword": "Passwort ändern?",
                 "currentPassword": "Aktuelles Passwort",
-                "newPassword": "Neues Passwort"
+                "newPassword": "Neues Passwort",
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Die Änderung wird erst nach dem nächsten Login gültig"
@@ -100,6 +105,10 @@
                 "created": "Benutzer erstellt",
                 "updated": "Benutzer aktualisiert",
                 "deleted": "Benutzer gelöscht"
+            },
+            "message": {
+                "listenBrainzToken": "Gib deinen ListenBrainz Benutzer Token ein",
+                "clickHereForToken": "Hier klicken um deinen Token abzurufen"
             }
         },
         "player": {
@@ -112,7 +121,7 @@
                 "userName": "Nutzername",
                 "lastSeen": "Zuletzt gesehen um",
                 "reportRealPath": "Echten Pfad anzeigen",
-                "scrobbleEnabled": "Scrobbles an Last.fm senden"
+                "scrobbleEnabled": "An externe Dienstleister scrobblen"
             }
         },
         "transcoding": {
@@ -129,7 +138,7 @@
             "fields": {
                 "name": "Name",
                 "duration": "Dauer",
-                "owner": "Inhaber",
+                "ownerName": "Inhaber",
                 "public": "Öffentlich",
                 "updatedAt": "Aktualisiert um",
                 "createdAt": "Erstellt um",
@@ -141,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Songs zur Playlist hinzufügen",
                 "addNewPlaylist": "\"%{name}\" erstellen",
-                "export": "Exportieren"
+                "export": "Exportieren",
+                "makePublic": "Öffentlich machen",
+                "makePrivate": "Privat stellen"
             },
             "message": {
                 "duplicate_song": "Duplikate hinzufügen",
@@ -302,7 +313,16 @@
         "lastfmLinkSuccess": "Last.fm Verbindung hergestellt und scrobbling aktiviert",
         "lastfmLinkFailure": "Last.fm konnte nicht verbunden werden",
         "lastfmUnlinkSuccess": "Last.fm Verbindung entfernt und scrobbling deaktiviert",
-        "lastfmUnlinkFailure": "Last.fm Verbindung konnte nicht entfernt werden"
+        "lastfmUnlinkFailure": "Last.fm Verbindung konnte nicht entfernt werden",
+        "openIn": {
+            "lastfm": "Auf Last.fm anzeigen",
+            "musicbrainz": "Auf MusicBrainz anzeigen"
+        },
+        "lastfmLink": "Mehr lesen",
+        "listenBrainzLinkSuccess": "Last.fm Verbindung hergestellt und und scrobbling aktiviert als user: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz konnte nicht verbunden werden: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz Verbindung entfernt und scrobbling deaktiviert",
+        "listenBrainzUnlinkFailure": "ListenBrainz Verbindung konnte nicht entfernt werden"
     },
     "menu": {
         "library": "Bibliothek",
@@ -316,11 +336,14 @@
                 "language": "Sprache",
                 "defaultView": "Standard-Ansicht",
                 "desktop_notifications": "Desktop-Benachrichtigungen",
-                "lastfmScrobbling": "Last.fm Scrobbling"
+                "lastfmScrobbling": "Last.fm Scrobbling",
+                "listenBrainzScrobbling": "ListenBrainz Scrobbling"
             }
         },
         "albumList": "Alben",
-        "about": "Über"
+        "about": "Über",
+        "playlists": "Playlisten",
+        "sharedPlaylists": "Geteilte Playlisten"
     },
     "player": {
         "playListsText": "Wiedergabeliste abspielen",

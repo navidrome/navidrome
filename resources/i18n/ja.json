@@ -24,7 +24,8 @@
                 "rating": "レート",
                 "quality": "品質",
                 "bpm": "BPM",
-                "playDate": "最後の再生"
+                "playDate": "最後の再生",
+                "channels": "チャンネル"
             },
             "actions": {
                 "addToQueue": "最後に再生",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "プレイリストに追加",
                 "shuffleAll": "全曲シャッフル",
                 "download": "ダウンロード",
-                "playNext": "次に再生"
+                "playNext": "次に再生",
+                "info": "詳細"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "最後に再生",
                 "shuffle": "シャッフル",
                 "addToPlaylist": "プレイリストへ追加",
-                "download": "ダウンロード"
+                "download": "ダウンロード",
+                "info": "詳細"
             },
             "lists": {
                 "all": "全て",
@@ -76,7 +79,8 @@
                 "albumCount": "アルバム枚数",
                 "songCount": "曲数",
                 "playCount": "再生数",
-                "rating": "レート"
+                "rating": "レート",
+                "genre": "ジャンル"
             }
         },
         "user": {
@@ -91,7 +95,8 @@
                 "createdAt": "作成日",
                 "changePassword": "パスワードを変更しますか？",
                 "currentPassword": "現在のパスワード",
-                "newPassword": "新しいパスワード"
+                "newPassword": "新しいパスワード",
+                "token": "トークン"
             },
             "helperTexts": {
                 "name": "名前の変更は次回ログイン以降反映されます"
@@ -100,6 +105,10 @@
                 "created": "ユーザーが作成されました",
                 "updated": "ユーザーが更新されました",
                 "deleted": "ユーザーが削除されました"
+            },
+            "message": {
+                "listenBrainzToken": "ListenBrainzユーザートークンを入力",
+                "clickHereForToken": "ここをクリックしトークンを入手"
             }
         },
         "player": {
@@ -112,7 +121,7 @@
                 "userName": "ユーザ名",
                 "lastSeen": "最後の利用",
                 "reportRealPath": "実際のファイルパスを返す",
-                "scrobbleEnabled": "Last.fmへscrobbleする"
+                "scrobbleEnabled": "他のサービスへscrobbleする"
             }
         },
         "transcoding": {
@@ -129,7 +138,7 @@
             "fields": {
                 "name": "名前",
                 "duration": "時間",
-                "owner": "所有者",
+                "ownerName": "所有者",
                 "public": "公開",
                 "updatedAt": "更新日",
                 "createdAt": "作成日",
@@ -141,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "プレイリストを選択",
                 "addNewPlaylist": "'%{name}' を作成",
-                "export": "エクスポート"
+                "export": "エクスポート",
+                "makePublic": "公開する",
+                "makePrivate": "非公開にする"
             },
             "message": {
                 "duplicate_song": "重複する曲を追加",
@@ -302,7 +313,16 @@
         "lastfmLinkSuccess": "Last.fmとリンクしscrobbleが有効になりました",
         "lastfmLinkFailure": "Last.fmとリンクできませんでした",
         "lastfmUnlinkSuccess": "設定が解除され、Last.fmへのscrobbleは無効になっています",
-        "lastfmUnlinkFailure": "Last.fmとリンクできませんでした"
+        "lastfmUnlinkFailure": "Last.fmとリンクできませんでした",
+        "openIn": {
+            "lastfm": "Last.fmで開く",
+            "musicbrainz": "MusicBrainzで開く"
+        },
+        "lastfmLink": "続きを読む",
+        "listenBrainzLinkSuccess": "%{user} へのscrobbling設定に成功しました",
+        "listenBrainzLinkFailure": "ListenBrainzとのリンクに失敗しました: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainzとのリンクとscrobblingを無効化しました。",
+        "listenBrainzUnlinkFailure": "ListenBrainzとのリンクを解除できませんでした"
     },
     "menu": {
         "library": "ライブラリ",
@@ -316,11 +336,14 @@
                 "language": "言語",
                 "defaultView": "デフォルト画面",
                 "desktop_notifications": "デスクトップ通知",
-                "lastfmScrobbling": "Last.fmへscrobbleする"
+                "lastfmScrobbling": "Last.fmへscrobbleする",
+                "listenBrainzScrobbling": "ListenBrainzへscrobble"
             }
         },
         "albumList": "アルバム",
-        "about": "詳細"
+        "about": "詳細",
+        "playlists": "プレイリスト",
+        "sharedPlaylists": "共有プレイリスト"
     },
     "player": {
         "playListsText": "再生リスト",

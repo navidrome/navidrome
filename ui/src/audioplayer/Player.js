@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
@@ -10,8 +10,8 @@ import {
 } from 'react-admin'
 import ReactGA from 'react-ga'
 import { GlobalHotKeys } from 'react-hotkeys'
-import ReactJkMusicPlayer from 'react-jinke-music-player'
-import 'react-jinke-music-player/assets/index.css'
+import ReactJkMusicPlayer from 'navidrome-music-player'
+import 'navidrome-music-player/assets/index.css'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import useStyle from './styles'
@@ -33,8 +33,12 @@ const Player = () => {
   const dispatch = useDispatch()
   const [startTime, setStartTime] = useState(null)
   const [scrobbled, setScrobbled] = useState(false)
+  const [preloaded, setPreload] = useState(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
+  const isMobilePlayer = useMediaQuery(
+    '(max-width: 768px) and (orientation : portrait)'
+  )
   const { authenticated } = useAuthState()
   const visible = authenticated && playerState.queue.length > 0
   const classes = useStyle({
@@ -51,9 +55,11 @@ const Player = () => {
       bounds: 'body',
       mode: 'full',
       loadAudioErrorPlayNext: false,
+      autoPlayInitLoadPlayList: true,
       clearPriorAudioLists: false,
       showDestroy: true,
       showDownload: false,
+      showLyric: true,
       showReload: false,
       toggleMode: !isDesktop,
       glassBg: false,
@@ -80,16 +86,24 @@ const Player = () => {
       ...defaultOptions,
       audioLists: playerState.queue.map((item) => item),
       playIndex: playerState.playIndex,
+      autoPlay: playerState.clear || playerState.playIndex === 0,
       clearPriorAudioLists: playerState.clear,
       extendsContent: <PlayerToolbar id={current.trackId} />,
-      defaultVolume: playerState.volume,
+      defaultVolume: isMobilePlayer ? 1 : playerState.volume,
     }
-  }, [playerState, defaultOptions])
+  }, [playerState, defaultOptions, isMobilePlayer])
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
     [dispatch]
   )
+
+  const nextSong = useCallback(() => {
+    const idx = playerState.queue.findIndex(
+      (item) => item.uuid === playerState.current.uuid
+    )
+    return idx !== null ? playerState.queue[idx + 1] : null
+  }, [playerState])
 
   const onAudioProgress = useCallback(
     (info) => {
@@ -102,12 +116,22 @@ const Player = () => {
         return
       }
 
+      if (!preloaded) {
+        const next = nextSong()
+        if (next != null) {
+          const audio = new Audio()
+          audio.src = next.musicSrc
+        }
+        setPreload(true)
+        return
+      }
+
       if (!scrobbled) {
         info.trackId && subsonic.scrobble(info.trackId, startTime)
         setScrobbled(true)
       }
     },
-    [startTime, scrobbled]
+    [startTime, scrobbled, nextSong, preloaded]
   )
 
   const onAudioVolumeChange = useCallback(
@@ -118,16 +142,15 @@ const Player = () => {
 
   const onAudioPlay = useCallback(
     (info) => {
-      if (audioInstance) {
-        audioInstance.volume = playerState.volume
-      }
       dispatch(currentPlaying(info))
-      setStartTime(Date.now())
+      if (startTime === null) {
+        setStartTime(Date.now())
+      }
       if (info.duration) {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
         subsonic.nowPlaying(info.trackId)
-        setScrobbled(false)
+        setPreload(false)
         if (config.gaTrackingId) {
           ReactGA.event({
             category: 'Player',
@@ -144,8 +167,17 @@ const Player = () => {
         }
       }
     },
-    [dispatch, showNotifications, audioInstance, playerState.volume]
+    [dispatch, showNotifications, startTime]
   )
+
+  const onAudioPlayTrackChange = useCallback(() => {
+    if (scrobbled) {
+      setScrobbled(false)
+    }
+    if (startTime !== null) {
+      setStartTime(null)
+    }
+  }, [scrobbled, startTime])
 
   const onAudioPause = useCallback(
     (info) => dispatch(currentPlaying(info)),
@@ -154,6 +186,8 @@ const Player = () => {
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
+      setScrobbled(false)
+      setStartTime(null)
       dispatch(currentPlaying(info))
       dataProvider
         .getOne('keepalive', { id: info.trackId })
@@ -184,6 +218,12 @@ const Player = () => {
     [audioInstance, playerState]
   )
 
+  useEffect(() => {
+    if (isMobilePlayer && audioInstance) {
+      audioInstance.volume = 1
+    }
+  }, [isMobilePlayer, audioInstance])
+
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
@@ -193,6 +233,7 @@ const Player = () => {
         onAudioVolumeChange={onAudioVolumeChange}
         onAudioProgress={onAudioProgress}
         onAudioPlay={onAudioPlay}
+        onAudioPlayTrackChange={onAudioPlayTrackChange}
         onAudioPause={onAudioPause}
         onAudioEnded={onAudioEnded}
         onCoverClick={onCoverClick}

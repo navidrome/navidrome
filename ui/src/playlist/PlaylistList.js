@@ -5,10 +5,15 @@ import {
   EditButton,
   Filter,
   NumberField,
+  ReferenceInput,
   SearchInput,
+  SelectInput,
   TextField,
   useUpdate,
   useNotify,
+  useRecordContext,
+  BulkDeleteButton,
+  usePermissions,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { useMediaQuery } from '@material-ui/core'
@@ -21,14 +26,31 @@ import {
   useResourceRefresh,
 } from '../common'
 import PlaylistListActions from './PlaylistListActions'
+import ChangePublicStatusButton from './ChangePublicStatusButton'
 
-const PlaylistFilter = (props) => (
-  <Filter {...props} variant={'outlined'}>
-    <SearchInput source="name" alwaysOn />
-  </Filter>
-)
+const PlaylistFilter = (props) => {
+  const { permissions } = usePermissions()
+  return (
+    <Filter {...props} variant={'outlined'}>
+      <SearchInput source="q" alwaysOn />
+      {permissions === 'admin' && (
+        <ReferenceInput
+          source="owner_id"
+          label={'resources.playlist.fields.ownerName'}
+          reference="user"
+          perPage={0}
+          sort={{ field: 'name', order: 'ASC' }}
+          alwaysOn
+        >
+          <SelectInput optionText="name" />
+        </ReferenceInput>
+      )}
+    </Filter>
+  )
+}
 
-const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
+const TogglePublicInput = ({ resource, source }) => {
+  const record = useRecordContext()
   const notify = useNotify()
   const [togglePublic] = useUpdate(
     resource,
@@ -51,41 +73,42 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
     e.stopPropagation()
   }
 
-  const canChange =
-    permissions === 'admin' ||
-    localStorage.getItem('username') === record['owner']
-
   return (
     <Switch
       checked={record[source]}
       onClick={handleClick}
-      disabled={!canChange}
+      disabled={!isWritable(record.ownerId)}
     />
   )
 }
 
-const PlaylistList = ({ permissions, ...props }) => {
+const PlaylistListBulkActions = (props) => (
+  <>
+    <ChangePublicStatusButton public={true} {...props} />
+    <ChangePublicStatusButton public={false} {...props} />
+    <BulkDeleteButton {...props} />
+  </>
+)
+
+const PlaylistList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   useResourceRefresh('playlist')
 
-  const toggleableFields = useMemo(() => {
-    return {
-      owner: <TextField source="owner" />,
-      songCount: isDesktop && <NumberField source="songCount" />,
-      duration: isDesktop && <DurationField source="duration" />,
+  const toggleableFields = useMemo(
+    () => ({
+      ownerName: isDesktop && <TextField source="ownerName" />,
+      songCount: !isXsmall && <NumberField source="songCount" />,
+      duration: <DurationField source="duration" />,
       updatedAt: isDesktop && (
         <DateField source="updatedAt" sortByOrder={'DESC'} />
       ),
       public: !isXsmall && (
-        <TogglePublicInput
-          source="public"
-          permissions={permissions}
-          sortByOrder={'DESC'}
-        />
+        <TogglePublicInput source="public" sortByOrder={'DESC'} />
       ),
-    }
-  }, [isDesktop, isXsmall, permissions])
+    }),
+    [isDesktop, isXsmall]
+  )
 
   const columns = useSelectedFields({
     resource: 'playlist',
@@ -98,11 +121,9 @@ const PlaylistList = ({ permissions, ...props }) => {
       exporter={false}
       filters={<PlaylistFilter />}
       actions={<PlaylistListActions />}
+      bulkActionButtons={!isXsmall && <PlaylistListBulkActions />}
     >
-      <Datagrid
-        rowClick="show"
-        isRowSelectable={(r) => isWritable(r && r.owner)}
-      >
+      <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
         <TextField source="name" />
         {columns}
         <Writable>

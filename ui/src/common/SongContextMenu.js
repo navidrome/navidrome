@@ -6,8 +6,15 @@ import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import clsx from 'clsx'
-import { playNext, addTracks, setTrack, openAddToPlaylist } from '../actions'
-import subsonic from '../subsonic'
+import {
+  playNext,
+  addTracks,
+  setTrack,
+  openAddToPlaylist,
+  openExtendedInfoDialog,
+  openDownloadMenu,
+  DOWNLOAD_MENU_SONG,
+} from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
@@ -61,7 +68,14 @@ export const SongContextMenu = ({
       label: `${translate('resources.song.actions.download')} (${formatBytes(
         record.size
       )})`,
-      action: (record) => subsonic.download(record.mediaFileId || record.id),
+      action: (record) => {
+        dispatch(openDownloadMenu(record, DOWNLOAD_MENU_SONG))
+      },
+    },
+    info: {
+      enabled: true,
+      label: translate('resources.song.actions.info'),
+      action: (record) => dispatch(openExtendedInfoDialog(record)),
     },
   }
 

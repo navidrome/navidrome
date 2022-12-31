@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -167,9 +167,9 @@ var _ = Describe("Logger", func() {
 	})
 
 	Describe("SetLevelString", func() {
-		It("converts Critical level", func() {
-			SetLevelString("Critical")
-			Expect(CurrentLevel()).To(Equal(LevelCritical))
+		It("converts Fatal level", func() {
+			SetLevelString("Fatal")
+			Expect(CurrentLevel()).To(Equal(LevelFatal))
 		})
 		It("converts Error level", func() {
 			SetLevelString("ERROR")

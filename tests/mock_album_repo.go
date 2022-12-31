@@ -74,6 +74,10 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	return m.all, nil
 }
 
+func (m *MockAlbumRepo) GetAllWithoutGenres(qo ...model.QueryOptions) (model.Albums, error) {
+	return m.GetAll(qo...)
+}
+
 func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
 	if m.err {
 		return errors.New("error")
@@ -85,21 +89,8 @@ func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
 	}
 	return model.ErrNotFound
 }
-
-func (m *MockAlbumRepo) FindByArtist(artistId string) (model.Albums, error) {
-	if m.err {
-		return nil, errors.New("Error!")
-	}
-	var res = make(model.Albums, len(m.data))
-	i := 0
-	for _, a := range m.data {
-		if a.AlbumArtistID == artistId {
-			res[i] = *a
-			i++
-		}
-	}
-
-	return res, nil
+func (m *MockAlbumRepo) CountAll(...model.QueryOptions) (int64, error) {
+	return int64(len(m.all)), nil
 }
 
 var _ model.AlbumRepository = (*MockAlbumRepo)(nil)

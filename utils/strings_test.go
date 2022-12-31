@@ -2,7 +2,7 @@ package utils
 
 import (
 	"github.com/navidrome/navidrome/conf"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -32,20 +32,6 @@ var _ = Describe("Strings", func() {
 			It("does not remove article if it is part of the first word", func() {
 				Expect(NoArticle("Thelonious Monk")).To(Equal("Thelonious Monk"))
 			})
-		})
-	})
-
-	Describe("StringInSlice", func() {
-		It("returns false if slice is empty", func() {
-			Expect(StringInSlice("test", nil)).To(BeFalse())
-		})
-
-		It("returns false if string is not found in slice", func() {
-			Expect(StringInSlice("aaa", []string{"bbb", "ccc"})).To(BeFalse())
-		})
-
-		It("returns true if string is found in slice", func() {
-			Expect(StringInSlice("bbb", []string{"bbb", "aaa", "ccc"})).To(BeTrue())
 		})
 	})
 

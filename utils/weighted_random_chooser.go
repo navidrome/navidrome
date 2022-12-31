@@ -1,34 +1,29 @@
 package utils
 
 import (
+	"crypto/rand"
 	"errors"
-	"math/rand"
-	"time"
+	"math/big"
 )
 
-type weightedChooser struct {
+type WeightedChooser struct {
 	entries     []interface{}
 	weights     []int
 	totalWeight int
-	rng         *rand.Rand
 }
 
-func NewWeightedRandomChooser() *weightedChooser {
-	src := rand.NewSource(time.Now().UTC().UnixNano())
-
-	return &weightedChooser{
-		rng: rand.New(src), // nolint:gosec
-	}
+func NewWeightedRandomChooser() *WeightedChooser {
+	return &WeightedChooser{}
 }
 
-func (w *weightedChooser) Put(value interface{}, weight int) {
+func (w *WeightedChooser) Put(value interface{}, weight int) {
 	w.entries = append(w.entries, value)
 	w.weights = append(w.weights, weight)
 	w.totalWeight += weight
 }
 
 // GetAndRemove choose a random entry based on their weights, and removes it from the list
-func (w *weightedChooser) GetAndRemove() (interface{}, error) {
+func (w *WeightedChooser) GetAndRemove() (interface{}, error) {
 	if w.totalWeight == 0 {
 		return nil, errors.New("cannot choose from zero weight")
 	}
@@ -42,10 +37,15 @@ func (w *weightedChooser) GetAndRemove() (interface{}, error) {
 }
 
 // Based on https://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python/
-func (w *weightedChooser) weightedChoice() (int, error) {
-	rnd := w.rng.Intn(w.totalWeight)
+func (w *WeightedChooser) weightedChoice() (int, error) {
+	if w.totalWeight == 0 {
+		return 0, errors.New("no choices available")
+	}
+	rndBig, _ := rand.Int(rand.Reader, big.NewInt(int64(w.totalWeight)))
+
+	rnd := rndBig.Int64()
 	for i, weight := range w.weights {
-		rnd -= weight
+		rnd -= int64(weight)
 		if rnd < 0 {
 			return i, nil
 		}
@@ -53,7 +53,7 @@ func (w *weightedChooser) weightedChoice() (int, error) {
 	return 0, errors.New("internal error - code should not reach this point")
 }
 
-func (w *weightedChooser) Remove(i int) {
+func (w *WeightedChooser) Remove(i int) {
 	w.totalWeight -= w.weights[i]
 
 	w.weights[i] = w.weights[len(w.weights)-1]
@@ -64,6 +64,6 @@ func (w *weightedChooser) Remove(i int) {
 	w.entries = w.entries[:len(w.entries)-1]
 }
 
-func (w *weightedChooser) Size() int {
+func (w *WeightedChooser) Size() int {
 	return len(w.entries)
 }

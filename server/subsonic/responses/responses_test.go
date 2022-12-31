@@ -1,4 +1,4 @@
-//+build linux darwin
+//go:build unix
 
 // TODO Fix snapshot tests in Windows
 // Response Snapshot tests. Only run in Linux and macOS, as they fail in Windows
@@ -12,7 +12,7 @@ import (
 
 	"github.com/navidrome/navidrome/consts"
 	. "github.com/navidrome/navidrome/server/subsonic/responses"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -352,10 +352,10 @@ var _ = Describe("Responses", func() {
 			BeforeEach(func() {
 				response.ArtistInfo.Biography = `Black Sabbath is an English <a target='_blank' href="http://www.last.fm/tag/heavy%20metal" class="bbcode_tag" rel="tag">heavy metal</a> band`
 				response.ArtistInfo.MusicBrainzID = "5182c1d9-c7d2-4dad-afa0-ccfeada921a8"
-				response.ArtistInfo.LastFmUrl = "http://www.last.fm/music/Black+Sabbath"
-				response.ArtistInfo.SmallImageUrl = "http://userserve-ak.last.fm/serve/64/27904353.jpg"
-				response.ArtistInfo.MediumImageUrl = "http://userserve-ak.last.fm/serve/126/27904353.jpg"
-				response.ArtistInfo.LargeImageUrl = "http://userserve-ak.last.fm/serve/_/27904353/Black+Sabbath+sabbath+1970.jpg"
+				response.ArtistInfo.LastFmUrl = "https://www.last.fm/music/Black+Sabbath"
+				response.ArtistInfo.SmallImageUrl = "https://userserve-ak.last.fm/serve/64/27904353.jpg"
+				response.ArtistInfo.MediumImageUrl = "https://userserve-ak.last.fm/serve/126/27904353.jpg"
+				response.ArtistInfo.LargeImageUrl = "https://userserve-ak.last.fm/serve/_/27904353/Black+Sabbath+sabbath+1970.jpg"
 				response.ArtistInfo.SimilarArtist = []Artist{
 					{Id: "22", Name: "Accept"},
 					{Id: "101", Name: "Bruce Dickinson"},
@@ -558,6 +558,39 @@ var _ = Describe("Responses", func() {
 			It("should match .JSON", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
+		})
+	})
+
+	Describe("Lyrics", func() {
+		BeforeEach(func() {
+			response.Lyrics = &Lyrics{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.Lyrics.Artist = "Rick Astley"
+				response.Lyrics.Title = "Never Gonna Give You Up"
+				response.Lyrics.Value = `Never gonna give you up
+				Never gonna let you down
+				Never gonna run around and desert you
+				Never gonna say goodbye`
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+
 		})
 	})
 })

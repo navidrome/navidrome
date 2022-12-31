@@ -1,14 +1,14 @@
 package ffmpeg
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Parser", func() {
-	var e *Parser
+var _ = Describe("Extractor", func() {
+	var e *Extractor
 	BeforeEach(func() {
-		e = &Parser{}
+		e = &Extractor{}
 	})
 
 	Context("extractMetadata", func() {
@@ -54,7 +54,6 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 
 		It("detects embedded cover art in ffmpeg 4.4 output", func() {
 			const output = `
-
 Input #0, flac, from '/run/media/naomi/Archivio/Musica/Katy Perry/Chained to the Rhythm/01 Katy Perry featuring Skip Marley - Chained to the Rhythm.flac':
   Metadata:
     ARTIST          : Katy Perry featuring Skip Marley
@@ -77,7 +76,25 @@ Input #0, ogg, from '/Users/deluan/Music/iTunes/iTunes Media/Music/_Testes/Jamai
       metadata_block_picture: AAAAAwAAAAppbWFnZS9qcGVnAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4Id/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQ
       TITLE           : Jamaican In New York (Album Version)`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKey("metadata_block_picture"))
+			md = md.Map(e.CustomMappings())
 			Expect(md).To(HaveKey("has_picture"))
+		})
+
+		It("detects embedded cover art in m4a containers", func() {
+			const output = `
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'Putumayo Presents_ Euro Groove/01 Destins et Désirs.m4a':
+  Metadata:
+    album           : Putumayo Presents: Euro Groove
+  Duration: 00:05:15.81, start: 0.047889, bitrate: 133 kb/s
+  Stream #0:0[0x1](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 125 kb/s (default)
+    Metadata:
+      creation_time   : 2008-03-11T21:03:23.000000Z
+      vendor_id       : [0][0][0][0]
+  Stream #0:1[0x0]: Video: png, rgb24(pc), 350x350, 90k tbr, 90k tbn (attached pic)
+`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("has_picture", []string{"true"}))
 		})
 
 		It("gets bitrate from the stream, if available", func() {
@@ -95,6 +112,64 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
   Duration: 00:05:02.63, start: 0.000000, bitrate: 140 kb/s`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
 			Expect(md).To(HaveKeyWithValue("duration", []string{"302.63"}))
+		})
+
+		It("parse flac bitrates", func() {
+			const output = `
+Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.mp3':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 477 kb/s
+    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
+		It("parse channels from the stream with bitrate", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/Music/Media/__/Crazy For You/01-01 Crazy For You.flac':
+  Metadata:
+    TITLE           : Crazy For You
+  Duration: 00:04:13.00, start: 0.000000, bitrate: 852 kb/s
+  Stream #0:0: Audio: flac, 44100 Hz, stereo, s16
+  Stream #0:1: Video: mjpeg (Progressive), yuvj444p(pc, bt470bg/unknown/unknown), 600x600, 90k tbr, 90k tbn, 90k tbc (attached pic)
+`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("bitrate", []string{"852"}))
+		})
+
+		It("parse 7.1 channels from the stream", func() {
+			const output = `
+Input #0, wav, from '/Users/deluan/Music/Music/Media/_/multichannel/Nums_7dot1_24_48000.wav':
+  Duration: 00:00:09.05, bitrate: 9216 kb/s
+  Stream #0:0: Audio: pcm_s24le ([1][0][0][0] / 0x0001), 48000 Hz, 7.1, s32 (24 bit), 9216 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"8"}))
+		})
+
+		It("parse channels from the stream without bitrate", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.flac':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 1371 kb/s
+    Stream #0:0: Audio: flac, 44100 Hz, stereo, fltp, s32 (24 bit)`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
+		It("parse channels from the stream with lang", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.m4a':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 1371 kb/s
+    Stream #0:0(eng): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 262 kb/s (default)`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
+		})
+
+		It("parse channels from the stream with lang 2", func() {
+			const output = `
+Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/Putumayo Presents Blues Lounge/09 Pablo's Blues.m4a':
+  Duration: 00:00:01.02, start: 0.000000, bitrate: 1371 kb/s
+    Stream #0:0(eng): Audio: vorbis, 44100 Hz, stereo, fltp, 192 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
 		})
 
 		It("parses stream level tags", func() {

@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -91,6 +91,13 @@ var _ = Describe("Request Helpers", func() {
 
 		It("returns all param occurrences as []time.Time", func() {
 			Expect(ParamTimes(r, "t")).To(Equal([]time.Time{d1, d2}))
+		})
+		It("returns current time as default if param is invalid", func() {
+			now := time.Now()
+			r = httptest.NewRequest("GET", "/ping?t=null", nil)
+			times := ParamTimes(r, "t")
+			Expect(times).To(HaveLen(1))
+			Expect(times[0]).To(BeTemporally(">=", now))
 		})
 	})
 

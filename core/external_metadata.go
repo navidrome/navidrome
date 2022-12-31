@@ -8,14 +8,16 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/microcosm-cc/bluemonday"
+	"github.com/kennygrant/sanitize"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
+	_ "github.com/navidrome/navidrome/core/agents/listenbrainz"
 	_ "github.com/navidrome/navidrome/core/agents/spotify"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/number"
 )
 
 const (
@@ -45,7 +47,7 @@ func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) ExternalMeta
 
 func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist, error) {
 	var entity interface{}
-	entity, err := GetEntityByID(ctx, e.ds, id)
+	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +84,18 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 		return nil, err
 	}
 
-	// If we have fresh info, just return it and trigger a refresh in the background
-	if time.Since(artist.ExternalInfoUpdatedAt) < consts.ArtistInfoTimeToLive {
+	// If we don't have any info, retrieves it now
+	if artist.ExternalInfoUpdatedAt.IsZero() {
+		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
+		err = e.refreshArtistInfo(ctx, artist)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// If info is expired, trigger a refresh in the background
+	if time.Since(artist.ExternalInfoUpdatedAt) > consts.ArtistInfoTimeToLive {
+		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
@@ -92,16 +104,8 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 				log.Error("Error refreshing ArtistInfo", "id", id, "name", artist.Name, err)
 			}
 		}()
-		log.Debug("Found cached ArtistInfo, refreshing in the background", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
-		err := e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
-		return &artist.Artist, err
 	}
 
-	log.Debug(ctx, "ArtistInfo not cached or expired", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
-	err = e.refreshArtistInfo(ctx, artist)
-	if err != nil {
-		return nil, err
-	}
 	err = e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
 	return &artist.Artist, err
 }
@@ -162,27 +166,36 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 		return nil, ctx.Err()
 	}
 
-	artists := model.Artists{artist.Artist}
-	artists = append(artists, artist.SimilarArtists...)
-
 	weightedSongs := utils.NewWeightedRandomChooser()
-	for _, a := range artists {
+	addArtist := func(a model.Artist, weightedSongs *utils.WeightedChooser, count, artistWeight int) error {
 		if utils.IsCtxDone(ctx) {
 			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
-			return nil, ctx.Err()
+			return ctx.Err()
 		}
 
-		topCount := utils.MaxInt(count, 20)
+		topCount := number.Max(count, 20)
 		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Name: a.Name, Artist: a}, topCount)
 		if err != nil {
 			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)
-			continue
+			return nil
 		}
 
-		weight := topCount * 4
+		weight := topCount * (4 + artistWeight)
 		for _, mf := range topSongs {
 			weightedSongs.Put(mf, weight)
 			weight -= 4
+		}
+		return nil
+	}
+
+	err = addArtist(artist.Artist, weightedSongs, count, 10)
+	if err != nil {
+		return nil, err
+	}
+	for _, a := range artist.SimilarArtists {
+		err := addArtist(a, weightedSongs, count, 0)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -226,6 +239,11 @@ func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents
 			break
 		}
 	}
+	if len(mfs) == 0 {
+		log.Debug(ctx, "No matching top songs found", "name", artist.Name)
+	} else {
+		log.Debug(ctx, "Found matching top songs", "name", artist.Name, "numSongs", len(mfs))
+	}
 	return mfs, nil
 }
 
@@ -237,6 +255,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 		if err == nil && len(mfs) > 0 {
 			return &mfs[0], nil
 		}
+		return e.findMatchingTrack(ctx, "", artistID, title)
 	}
 	mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
@@ -244,9 +263,10 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 				squirrel.Eq{"artist_id": artistID},
 				squirrel.Eq{"album_artist_id": artistID},
 			},
-			squirrel.Like{"title": title},
+			squirrel.Like{"order_title": strings.TrimSpace(sanitize.Accents(title))},
 		},
 		Sort: "starred desc, rating desc, year asc",
+		Max:  1,
 	})
 	if err != nil || len(mfs) == 0 {
 		return nil, model.ErrNotFound
@@ -267,8 +287,7 @@ func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.Ar
 	if bio == "" || err != nil {
 		return
 	}
-	policy := bluemonday.UGCPolicy()
-	bio = policy.Sanitize(bio)
+	bio = utils.SanitizeText(bio)
 	bio = strings.ReplaceAll(bio, "\n", " ")
 	artist.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
 }
@@ -331,7 +350,7 @@ func (e *externalMetadata) mapSimilarArtists(ctx context.Context, similar []agen
 
 func (e *externalMetadata) findArtistByName(ctx context.Context, artistName string) (*auxArtist, error) {
 	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.Like{"name": artistName},
+		Filters: squirrel.Like{"artist.name": artistName},
 		Max:     1,
 	})
 	if err != nil {
@@ -357,9 +376,10 @@ func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, c
 	}
 
 	similar, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.Eq{"id": ids},
+		Filters: squirrel.Eq{"artist.id": ids},
 	})
 	if err != nil {
+		log.Error("Error loading similar artists", "id", artist.ID, "name", artist.Name, err)
 		return err
 	}
 

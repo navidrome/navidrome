@@ -3,6 +3,8 @@ import { useHistory } from 'react-router-dom'
 import {
   AutocompleteInput,
   Datagrid,
+  DatagridBody,
+  DatagridRow,
   Filter,
   NumberField,
   ReferenceInput,
@@ -14,6 +16,7 @@ import { useMediaQuery, withWidth } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles } from '@material-ui/core/styles'
+import { useDrag } from 'react-dnd'
 import { AddToPlaylistDialog } from '../dialogs'
 import {
   ArtistContextMenu,
@@ -27,6 +30,8 @@ import {
 } from '../common'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
+import { DraggableTypes } from '../consts'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -56,7 +61,7 @@ const ArtistFilter = (props) => {
   const translate = useTranslate()
   return (
     <Filter {...props} variant={'outlined'}>
-      <SearchInput source="name" alwaysOn />
+      <SearchInput id="search" source="name" alwaysOn />
       <ReferenceInput
         label={translate('resources.artist.fields.genre')}
         source="genre_id"
@@ -77,6 +82,27 @@ const ArtistFilter = (props) => {
     </Filter>
   )
 }
+
+const ArtistDatagridRow = (props) => {
+  const { record } = props
+  const [, dragArtistRef] = useDrag(
+    () => ({
+      type: DraggableTypes.ARTIST,
+      item: { artistIds: [record?.id] },
+      options: { dropEffect: 'copy' },
+    }),
+    [record]
+  )
+  return <DatagridRow ref={dragArtistRef} {...props} />
+}
+
+const ArtistDatagridBody = (props) => (
+  <DatagridBody {...props} row={<ArtistDatagridRow />} />
+)
+
+const ArtistDatagrid = (props) => (
+  <Datagrid {...props} body={<ArtistDatagridBody />} />
+)
 
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const classes = useStyles()
@@ -112,7 +138,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
       {...rest}
     />
   ) : (
-    <Datagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
+    <ArtistDatagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
       <TextField source="name" />
       {columns}
       <ArtistContextMenu
@@ -130,7 +156,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
           )
         }
       />
-    </Datagrid>
+    </ArtistDatagrid>
   )
 }
 
@@ -148,6 +174,7 @@ const ArtistList = (props) => {
         <ArtistListView {...props} />
       </List>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
     </>
   )
 }

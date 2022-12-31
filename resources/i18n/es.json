@@ -22,9 +22,10 @@
                 "starred": "Favorito",
                 "comment": "Comentario",
                 "rating": "Calificación",
-                "quality": "Cualidad",
+                "quality": "Calidad",
                 "bpm": "BPM",
-                "playDate": "Últimas reproducciones"
+                "playDate": "Últimas reproducciones",
+                "channels": "Canales"
             },
             "actions": {
                 "addToQueue": "Reproducir después",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Agregar a la lista de reproducción",
                 "shuffleAll": "Todas aleatorias",
                 "download": "Descarga",
-                "playNext": "Siguiente"
+                "playNext": "Siguiente",
+                "info": "Obtener información"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "Reproducir después",
                 "shuffle": "Aletorio",
                 "addToPlaylist": "Agregar a la lista",
-                "download": "Descargar"
+                "download": "Descargar",
+                "info": "Obtener información"
             },
             "lists": {
                 "all": "Todos",
@@ -76,7 +79,8 @@
                 "albumCount": "Número de álbumes",
                 "songCount": "Número de canciones",
                 "playCount": "Reproducciones",
-                "rating": "Calificación"
+                "rating": "Calificación",
+                "genre": "Género"
             }
         },
         "user": {
@@ -91,7 +95,8 @@
                 "createdAt": "Creado el",
                 "changePassword": "¿Cambiar contraseña?",
                 "currentPassword": "Contraseña actual",
-                "newPassword": "Nueva contraseña"
+                "newPassword": "Nueva contraseña",
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión"
@@ -100,6 +105,10 @@
                 "created": "Usuario creado",
                 "updated": "Usuario actulalizado",
                 "deleted": "Usuario eliminado"
+            },
+            "message": {
+                "listenBrainzToken": "Escribe tu token de usuario de ListenBrainz",
+                "clickHereForToken": "Click aquí para obtener tu token"
             }
         },
         "player": {
@@ -112,7 +121,7 @@
                 "userName": "Usuario",
                 "lastSeen": "Última conexión",
                 "reportRealPath": "Reporta la ruta absoluta",
-                "scrobbleEnabled": "Enviá los Scrobbles a Last.fm"
+                "scrobbleEnabled": "Envía los scrobbles a servicios externos"
             }
         },
         "transcoding": {
@@ -129,7 +138,7 @@
             "fields": {
                 "name": "Nombre",
                 "duration": "Duración",
-                "owner": "Dueño",
+                "ownerName": "Dueño",
                 "public": "Público",
                 "updatedAt": "Actualizado el",
                 "createdAt": "Creado el",
@@ -141,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Seleccione una lista:",
                 "addNewPlaylist": "Creada \"%{name}\"",
-                "export": "Exportar"
+                "export": "Exportar",
+                "makePublic": "Hazla pública",
+                "makePrivate": "Hazla privada"
             },
             "message": {
                 "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la lista de reproducción",
@@ -302,7 +313,16 @@
         "lastfmLinkSuccess": "Last.fm esta conectado y el scrobbling esta activado",
         "lastfmLinkFailure": "No se pudo conectar con Last.fm",
         "lastfmUnlinkSuccess": "Last.fm se ha desconectado y el scrobbling se desactivo",
-        "lastfmUnlinkFailure": "No se pudo desconectar Last.fm"
+        "lastfmUnlinkFailure": "No se pudo desconectar Last.fm",
+        "openIn": {
+            "lastfm": "Ver en Last.fm",
+            "musicbrainz": "Ver en MusicBrainz"
+        },
+        "lastfmLink": "Leer más...",
+        "listenBrainzLinkSuccess": "Se ha conectado correctamente a ListenBrainz y se activo el scrobbling como el usuario: %{user}",
+        "listenBrainzLinkFailure": "No se pudo conectar con ListenBrainz: %{error}",
+        "listenBrainzUnlinkSuccess": "Se desconecto ListenBrainz y se desactivo el scrobbling",
+        "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz"
     },
     "menu": {
         "library": "Biblioteca",
@@ -316,11 +336,14 @@
                 "language": "Idioma",
                 "defaultView": "Vista por defecto",
                 "desktop_notifications": "Notificaciones de escritorio",
-                "lastfmScrobbling": "Scrobble a Last.fm"
+                "lastfmScrobbling": "Scrobble a Last.fm",
+                "listenBrainzScrobbling": "Scrobble a ListenBrainz"
             }
         },
         "albumList": "Álbumes",
-        "about": "Acerca de"
+        "about": "Acerca de",
+        "playlists": "Playlists",
+        "sharedPlaylists": "Playlists Compartidas"
     },
     "player": {
         "playListsText": "Lista de reproducción",

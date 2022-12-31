@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/log"
 )
 
 func ParamString(r *http.Request, param string) string {
@@ -28,9 +30,12 @@ func ParamTimes(r *http.Request, param string) []time.Time {
 	times := make([]time.Time, len(pStr))
 	for i, t := range pStr {
 		ti, err := strconv.ParseInt(t, 10, 64)
-		if err == nil {
-			times[i] = ToTime(ti)
+		if err != nil {
+			log.Warn(r.Context(), "Ignoring invalid time param", "time", t, err)
+			times[i] = time.Now()
+			continue
 		}
+		times[i] = ToTime(ti)
 	}
 	return times
 }

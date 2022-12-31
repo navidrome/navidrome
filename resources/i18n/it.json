@@ -24,7 +24,8 @@
                 "rating": "Valutazione",
                 "quality": "Qualità",
                 "bpm": "BPM",
-                "playDate": "Ultima riproduzione"
+                "playDate": "Ultima riproduzione",
+                "channels": "Canali"
             },
             "actions": {
                 "addToQueue": "Aggiungi alla coda",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Aggiungi alla playlist",
                 "shuffleAll": "Riproduci casualmente",
                 "download": "Scarica",
-                "playNext": "Riproduci come successivo"
+                "playNext": "Riproduci come successivo",
+                "info": "Informazioni"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "Aggiungi alla coda",
                 "shuffle": "Riproduci casualmente",
                 "addToPlaylist": "Aggiungi alla Playlist",
-                "download": "Scarica"
+                "download": "Scarica",
+                "info": "Informazioni"
             },
             "lists": {
                 "all": "Tutti",
@@ -76,7 +79,8 @@
                 "albumCount": "Album",
                 "songCount": "Numero tracce",
                 "playCount": "Riproduzioni",
-                "rating": "Valutazione"
+                "rating": "Valutazione",
+                "genre": "Genere"
             }
         },
         "user": {
@@ -91,7 +95,8 @@
                 "createdAt": "Creato a",
                 "changePassword": "Cambiare la password?",
                 "currentPassword": "Password Attuale",
-                "newPassword": "Nuova Password"
+                "newPassword": "Nuova Password",
+                "token": ""
             },
             "helperTexts": {
                 "name": "Le modifiche effettuate al tuo nome verrano mostrate al prossimo accesso"
@@ -100,6 +105,10 @@
                 "created": "Utente creato",
                 "updated": "Utente aggiornato",
                 "deleted": "Utente eliminato"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -111,7 +120,8 @@
                 "client": "Applicazione",
                 "userName": "Nome utente",
                 "lastSeen": "Ultimo accesso",
-                "reportRealPath": "Mostra percorso reale"
+                "reportRealPath": "Mostra percorso reale",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -128,7 +138,7 @@
             "fields": {
                 "name": "Nome",
                 "duration": "Durata",
-                "owner": "Creatore",
+                "ownerName": "Creatore",
                 "public": "Pubblica",
                 "updatedAt": "Ultimo aggiornamento",
                 "createdAt": "Data creazione",
@@ -140,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Aggiungi tracce alla playlist:",
                 "addNewPlaylist": "Aggiungi \"%{name}\"",
-                "export": "Esporta"
+                "export": "Esporta",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "Aggiungere i duplicati",
@@ -301,7 +313,16 @@
         "lastfmLinkSuccess": "Collegamento a Last.fm riuscito e scrobbling abilitato",
         "lastfmLinkFailure": "Non è stato possible collegare Last.fm",
         "lastfmUnlinkSuccess": "Lo scrobbling è stato disabilitato e Last.fm è stato disconnesso",
-        "lastfmUnlinkFailure": "Non è stato possibile scollegare Last.fm"
+        "lastfmUnlinkFailure": "Non è stato possibile scollegare Last.fm",
+        "openIn": {
+            "lastfm": "Apri in Last.fm",
+            "musicbrainz": "Apri in MusicBrainz"
+        },
+        "lastfmLink": "Per saperne di più...",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "Libreria",
@@ -315,11 +336,14 @@
                 "language": "Lingua",
                 "defaultView": "Vista Predefinita",
                 "desktop_notifications": "Notifiche desktop",
-                "lastfmScrobbling": "Esegui lo scrobbling tramite Last.fm"
+                "lastfmScrobbling": "Esegui lo scrobbling tramite Last.fm",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "Album",
-        "about": "Info"
+        "about": "Info",
+        "playlists": "Scalette",
+        "sharedPlaylists": "Scalette Condivise"
     },
     "player": {
         "playListsText": "Coda",

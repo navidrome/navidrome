@@ -19,15 +19,18 @@ import {
   SongBulkActions,
   SongContextMenu,
   SongDatagrid,
-  SongDetails,
+  SongInfo,
   SongTitleField,
   RatingField,
   QualityInfo,
   useSelectedFields,
   useResourceRefresh,
+  DateField,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import config from '../config'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -85,7 +88,6 @@ const useStyles = makeStyles(
 
 const AlbumSongs = (props) => {
   const { data, ids } = props
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
@@ -118,7 +120,12 @@ const AlbumSongs = (props) => {
           sortByOrder={'DESC'}
         />
       ),
+      playCount: isDesktop && (
+        <NumberField source="playCount" sortable={false} />
+      ),
+      playDate: <DateField source="playDate" sortable={false} showTime />,
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      channels: isDesktop && <NumberField source="channels" sortable={false} />,
       bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
       rating: isDesktop && config.enableStarRating && (
         <RatingField
@@ -135,7 +142,7 @@ const AlbumSongs = (props) => {
     resource: 'albumSong',
     columns: toggleableFields,
     omittedColumns: ['title'],
-    defaultOff: ['bpm', 'year'],
+    defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate'],
   })
 
   return (
@@ -156,7 +163,6 @@ const AlbumSongs = (props) => {
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
-            expand={isXsmall ? null : <SongDetails />}
             rowClick={(id) => dispatch(playTracks(data, ids, id))}
             {...props}
             hasBulkActions={true}
@@ -182,6 +188,8 @@ const AlbumSongs = (props) => {
         </Card>
       </div>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
+      <ExpandInfoDialog content={<SongInfo />} />
     </>
   )
 }

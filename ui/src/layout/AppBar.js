@@ -1,4 +1,4 @@
-import React, { createElement, forwardRef } from 'react'
+import React, { createElement, forwardRef, Fragment } from 'react'
 import {
   AppBar as RAAppBar,
   MenuItemLink,
@@ -131,6 +131,8 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   )
 }
 
-const AppBar = (props) => <RAAppBar {...props} userMenu={<CustomUserMenu />} />
+const AppBar = (props) => (
+  <RAAppBar {...props} container={Fragment} userMenu={<CustomUserMenu />} />
+)
 
 export default AppBar

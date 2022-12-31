@@ -3,25 +3,25 @@ package model
 import "time"
 
 type Artist struct {
-	Annotations
+	Annotations `structs:"-"`
 
-	ID                    string    `json:"id"               orm:"column(id)"`
-	Name                  string    `json:"name"`
-	AlbumCount            int       `json:"albumCount"`
-	SongCount             int       `json:"songCount"`
-	Genres                Genres    `json:"genres"`
-	FullText              string    `json:"fullText"`
-	SortArtistName        string    `json:"sortArtistName,omitempty"`
-	OrderArtistName       string    `json:"orderArtistName"`
-	Size                  int64     `json:"size"`
-	MbzArtistID           string    `json:"mbzArtistId,omitempty"      orm:"column(mbz_artist_id)"`
-	Biography             string    `json:"biography,omitempty"`
-	SmallImageUrl         string    `json:"smallImageUrl,omitempty"`
-	MediumImageUrl        string    `json:"mediumImageUrl,omitempty"`
-	LargeImageUrl         string    `json:"largeImageUrl,omitempty"`
-	ExternalUrl           string    `json:"externalUrl,omitempty"      orm:"column(external_url)"`
-	SimilarArtists        Artists   `json:"-"   orm:"-"`
-	ExternalInfoUpdatedAt time.Time `json:"externalInfoUpdatedAt"`
+	ID                    string    `structs:"id" json:"id"               orm:"column(id)"`
+	Name                  string    `structs:"name" json:"name"`
+	AlbumCount            int       `structs:"album_count" json:"albumCount"`
+	SongCount             int       `structs:"song_count" json:"songCount"`
+	Genres                Genres    `structs:"-" json:"genres"`
+	FullText              string    `structs:"full_text" json:"fullText"`
+	SortArtistName        string    `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
+	OrderArtistName       string    `structs:"order_artist_name" json:"orderArtistName"`
+	Size                  int64     `structs:"size" json:"size"`
+	MbzArtistID           string    `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"      orm:"column(mbz_artist_id)"`
+	Biography             string    `structs:"biography" json:"biography,omitempty"`
+	SmallImageUrl         string    `structs:"small_image_url" json:"smallImageUrl,omitempty"`
+	MediumImageUrl        string    `structs:"medium_image_url" json:"mediumImageUrl,omitempty"`
+	LargeImageUrl         string    `structs:"large_image_url" json:"largeImageUrl,omitempty"`
+	ExternalUrl           string    `structs:"external_url" json:"externalUrl,omitempty"      orm:"column(external_url)"`
+	SimilarArtists        Artists   `structs:"-"  json:"-"   orm:"-"`
+	ExternalInfoUpdatedAt time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt"`
 }
 
 func (a Artist) ArtistImageUrl() string {
@@ -49,11 +49,6 @@ type ArtistRepository interface {
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
 	Search(q string, offset int, size int) (Artists, error)
-	Refresh(ids ...string) error
 	GetIndex() (ArtistIndexes, error)
 	AnnotatedRepository
-}
-
-func (a Artist) GetAnnotations() Annotations {
-	return a.Annotations
 }

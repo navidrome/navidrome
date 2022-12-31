@@ -38,7 +38,8 @@ const unstar = (id) => httpClient(url('unstar', id))
 
 const setRating = (id, rating) => httpClient(url('setRating', id, { rating }))
 
-const download = (id) => (window.location.href = baseUrl(url('download', id)))
+const download = (id, format = 'raw', bitrate = '0') =>
+  (window.location.href = baseUrl(url('download', id, { format, bitrate })))
 
 const startScan = (options) => httpClient(url('startScan', null, options))
 
@@ -49,7 +50,17 @@ const getCoverArtUrl = (record, size) => {
     ...(record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
   }
-  return baseUrl(url('getCoverArt', record.coverArtId || 'not_found', options))
+
+  // TODO Move this logic to server. `song` and `album` should have a CoverArtID
+  if (record.album) {
+    return baseUrl(url('getCoverArt', 'mf-' + record.id, options))
+  } else {
+    return baseUrl(url('getCoverArt', 'al-' + record.id, options))
+  }
+}
+
+const getArtistInfo = (id) => {
+  return httpClient(url('getArtistInfo', id))
 }
 
 const streamUrl = (id) => {
@@ -68,4 +79,5 @@ export default {
   getScanStatus,
   getCoverArtUrl,
   streamUrl,
+  getArtistInfo,
 }

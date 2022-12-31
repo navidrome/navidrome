@@ -33,6 +33,7 @@ var audioFormats = map[string]format{
 	".dsf":  {typ: "audio/dsd", lossless: true},
 	".wv":   {typ: "audio/x-wavpack", lossless: true},
 	".wvp":  {typ: "audio/x-wavpack", lossless: true},
+	".mka":  {typ: "audio/x-matroska"},
 }
 var imageFormats = map[string]string{
 	".gif":  "image/gif",
@@ -56,4 +57,8 @@ func init() {
 	for ext, typ := range imageFormats {
 		_ = mime.AddExtensionType(ext, typ)
 	}
+
+	// In some circumstances, Windows sets JS mime-type to `text/plain`!
+	_ = mime.AddExtensionType(".js", "text/javascript")
+	_ = mime.AddExtensionType(".css", "text/css")
 }

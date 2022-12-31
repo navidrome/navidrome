@@ -46,6 +46,12 @@ export default {
         color: '#0085ff',
       },
     },
+    NDMobileArtistDetails: {
+      bgContainer: {
+        background:
+          'linear-gradient(to bottom, rgb(255 255 255 / 51%), rgb(250 250 250))!important',
+      },
+    },
   },
   player: {
     theme: 'light',

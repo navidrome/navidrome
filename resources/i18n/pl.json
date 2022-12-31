@@ -23,7 +23,9 @@
                 "comment": "Komentarz",
                 "rating": "Ocena",
                 "quality": "Jakość",
-                "bpm": ""
+                "bpm": "BPM",
+                "playDate": "Ostatnio Odtwarzane",
+                "channels": "Kanały"
             },
             "actions": {
                 "addToQueue": "Odtwarzaj Później",
@@ -31,7 +33,8 @@
                 "addToPlaylist": "Dodaj do Listy odtwarzania",
                 "shuffleAll": "Losuj Wszystkie",
                 "download": "Pobierz",
-                "playNext": "Odtwarzaj Następny"
+                "playNext": "Odtwarzaj Następny",
+                "info": "Zdobądź Informacje"
             }
         },
         "album": {
@@ -56,7 +59,8 @@
                 "addToQueue": "Odtwarzaj Później",
                 "shuffle": "Losowo",
                 "addToPlaylist": "Dodaj do Listy Odtwarzania",
-                "download": "Pobierz"
+                "download": "Pobierz",
+                "info": "Zdobądź Informacje"
             },
             "lists": {
                 "all": "Wszystkie",
@@ -75,7 +79,8 @@
                 "albumCount": "Liczba Albumów",
                 "songCount": "Liczba Utworów",
                 "playCount": "Liczba Odtworzeń",
-                "rating": "Ocena"
+                "rating": "Ocena",
+                "genre": "Gatunek"
             }
         },
         "user": {
@@ -88,17 +93,22 @@
                 "name": "Imię",
                 "password": "Hasło",
                 "createdAt": "Dodany",
-                "changePassword": "",
-                "currentPassword": "",
-                "newPassword": ""
+                "changePassword": "Zmienić hasło?",
+                "currentPassword": "Obecne hasło",
+                "newPassword": "Nowe hasło",
+                "token": ""
             },
             "helperTexts": {
-                "name": ""
+                "name": "Zmiana nazwy będzie widoczna przy następnym logowaniu"
             },
             "notifications": {
-                "created": "",
-                "updated": "",
-                "deleted": ""
+                "created": "Dodano użytkownika",
+                "updated": "Zaktualizowano użytkownika",
+                "deleted": "Usunięto użytkownika"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -110,7 +120,8 @@
                 "client": "Klient",
                 "userName": "Nazwa użytkownika",
                 "lastSeen": "Ostatnio Widziany",
-                "reportRealPath": "Zgłoś Rzeczywistą Ścieżkę"
+                "reportRealPath": "Zgłoś Rzeczywistą Ścieżkę",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -127,7 +138,7 @@
             "fields": {
                 "name": "Nazwa",
                 "duration": "Czas trwania",
-                "owner": "Właściciel",
+                "ownerName": "Właściciel",
                 "public": "Publiczna",
                 "updatedAt": "Zaktualizowana",
                 "createdAt": "Stworzona",
@@ -139,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Wybierz listę odtwarzania:",
                 "addNewPlaylist": "Stwórz \"%{name}\"",
-                "export": "Wyeksportuj"
+                "export": "Wyeksportuj",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "Dodaj zduplikowane utwory",
@@ -173,7 +186,7 @@
             "email": "Adres e-mail musi być poprawny",
             "oneOf": "Musi być jedną z: %{options}",
             "regex": "Musi pasować do określonego formatu (regexp): %{pattern}",
-            "unique": ""
+            "unique": "Musi być unikalne"
         },
         "action": {
             "add_filter": "Dodaj filtr",
@@ -277,7 +290,14 @@
             "data_provider_error": "Błąd dostawcy danych. Sprawdź konsolę, aby uzyskać szczegółowe informacje.",
             "i18n_error": "Nie można załadować tłumaczenia dla tego języka",
             "canceled": "Akcja anulowana",
-            "logged_out": "Twoja sesja została zakończona, proszę o ponowne połączenie."
+            "logged_out": "Twoja sesja została zakończona, proszę o ponowne połączenie.",
+            "new_version": "Dostępna nowa wersja! Proszę odświeżyć okno przeglądarki."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Kolumny Do Wyświetlenia",
+            "layout": "Układ",
+            "grid": "Siatka",
+            "table": "Tabela"
         }
     },
     "message": {
@@ -289,7 +309,20 @@
         "delete_user_title": "Usuń użytkownika '%{name}'",
         "delete_user_content": "Czy jesteś pewien, że chcesz usunąć tego użytkownika oraz wszystkie jego dane (wliczając w to listy odtwarzania oraz ustawienia)?",
         "notifications_blocked": "Zablokowałeś Powiadomienia w ustawieniach swojej przeglądarki",
-        "notifications_not_available": "Ta przeglądarka nie obsługuje powiadomień"
+        "notifications_not_available": "Ta przeglądarka nie obsługuje powiadomień",
+        "lastfmLinkSuccess": "Połączono Last.fm i włączono scrobbling",
+        "lastfmLinkFailure": "Nie można połączyć Last.fm",
+        "lastfmUnlinkSuccess": "Odłączono Last.fm i wyłączono scrobbling",
+        "lastfmUnlinkFailure": "Nie można odłączyć Last.fm",
+        "openIn": {
+            "lastfm": "Otwórz w Last.fm",
+            "musicbrainz": "Otwórz w MusicBrainz"
+        },
+        "lastfmLink": "Czytaj więcej...",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "Biblioteka",
@@ -302,11 +335,15 @@
                 "theme": "Wygląd",
                 "language": "Język",
                 "defaultView": "Widok Podstawowy",
-                "desktop_notifications": "Powiadomienia"
+                "desktop_notifications": "Powiadomienia",
+                "lastfmScrobbling": "Scrobbluj do Last.fm",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "Albumy",
-        "about": "O aplikacji"
+        "about": "O aplikacji",
+        "playlists": "Listy odtwarzania",
+        "sharedPlaylists": "Udostępnione listy odtwarzania"
     },
     "player": {
         "playListsText": "Kolejka Odtwarzania",

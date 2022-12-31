@@ -23,7 +23,9 @@
                 "comment": "ความคิดเห็น",
                 "rating": "Rating",
                 "quality": "คุณภาพ",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "เล่นล่าสุด",
+                "channels": "ช่อง"
             },
             "actions": {
                 "addToQueue": "เล่นหลังสุด",
@@ -31,7 +33,8 @@
                 "addToPlaylist": "เพิ่มในเพลย์ลิสต์",
                 "shuffleAll": "สุ่มทั้งหมด",
                 "download": "ดาวน์โหลด",
-                "playNext": "เล่นเพลงถัดไป"
+                "playNext": "เล่นเพลงถัดไป",
+                "info": "ดูรายละเอียด"
             }
         },
         "album": {
@@ -56,7 +59,8 @@
                 "addToQueue": "เล่นหลังสุด",
                 "shuffle": "เล่นแบบสุ่ม",
                 "addToPlaylist": "เพิ่งลงในเพลย์ลิสต์",
-                "download": "ดาวน์โหลด"
+                "download": "ดาวน์โหลด",
+                "info": "ดูรายละเอียด"
             },
             "lists": {
                 "all": "ทั้งหมด",
@@ -75,7 +79,8 @@
                 "albumCount": "อัลบั้ม",
                 "songCount": "จำนวนเพลง",
                 "playCount": "เล่น",
-                "rating": "Rating"
+                "rating": "Rating",
+                "genre": "ประเภท"
             }
         },
         "user": {
@@ -90,7 +95,8 @@
                 "createdAt": "สร้างเมื่อ",
                 "changePassword": "เปลี่ยนรหัสผ่าน",
                 "currentPassword": "รหัสผ่านปัจจุบัน",
-                "newPassword": "รหัสผ่านใหม่"
+                "newPassword": "รหัสผ่านใหม่",
+                "token": ""
             },
             "helperTexts": {
                 "name": "การเปลี่ยนชื่อจะมีผลในการล็อกอินครั้งถัดไป"
@@ -99,6 +105,10 @@
                 "created": "สร้างผู้ใช้งาน",
                 "updated": "อัพเดตผู้ใช้งาน",
                 "deleted": "ลบผู้ใช้งาน"
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -110,7 +120,8 @@
                 "client": "Client",
                 "userName": "ชื่อผู้ใช้งาน",
                 "lastSeen": "ใช้งานล่าสุดเมื่อ",
-                "reportRealPath": "รายงาน Real Path"
+                "reportRealPath": "รายงาน Real Path",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -127,7 +138,7 @@
             "fields": {
                 "name": "ชื่อ",
                 "duration": "เวลา",
-                "owner": "เจ้าของ",
+                "ownerName": "เจ้าของ",
                 "public": "สาธารณะ",
                 "updatedAt": "อัปเดตเมื่อ",
                 "createdAt": "สร้างขึ้นเมื่อ",
@@ -139,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "เลือกเพลย์ลิสต์",
                 "addNewPlaylist": "สร้าง \"%{name}\"",
-                "export": "ส่งออก"
+                "export": "ส่งออก",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "เพิ่มเพลงที่ซ้ำ",
@@ -277,7 +290,14 @@
             "data_provider_error": "dataProviderผิดพลาด โปรดตรวจสอบคอนโซลเพื่อดูรายละเอียด",
             "i18n_error": "ไม่สามารถเรียกคำแปลของภาษาที่เลือกได้",
             "canceled": "ยกเลิกการกระทำแล้ว",
-            "logged_out": "เซสชั่นของท่านสิ้นสุดแล้ว โปรดเชื่อมต่ออีกครั้ง"
+            "logged_out": "เซสชั่นของท่านสิ้นสุดแล้ว โปรดเชื่อมต่ออีกครั้ง",
+            "new_version": "มีเวอร์ชั่นใหม่! กรุณารีเฟรชหน้าจอนี้"
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "แสดงคอลัมน์",
+            "layout": "เลย์เอ้าท์",
+            "grid": "Grid",
+            "table": "Table"
         }
     },
     "message": {
@@ -289,7 +309,20 @@
         "delete_user_title": "ลบผู้ใช้ '%{name}'",
         "delete_user_content": "คุณแน่ใจที่จะลบผู้ใช้นี้และข้อมูลทั้งหมด(รวมถึงเพลย์ลิสท์และตั้งค่าต่างๆ)?",
         "notifications_blocked": "คุณบล็อกการแจ้งเตือนสำหรับเว็บไซต์นี้",
-        "notifications_not_available": "เบราเซอร์นี้ไม่รองรับการแจ้งเตือน Desktop หรือคุณไม่ได้เข้าถึง Navidrome ผ่าน https"
+        "notifications_not_available": "เบราเซอร์นี้ไม่รองรับการแจ้งเตือน Desktop หรือคุณไม่ได้เข้าถึง Navidrome ผ่าน https",
+        "lastfmLinkSuccess": "เชื่อมต่อ Last.fm สำเร็จและเปิดการ Scrobble",
+        "lastfmLinkFailure": "ไม่สามารถเชื่อมต่อ Last.fm ได้",
+        "lastfmUnlinkSuccess": "ยกเลิกการเชิ่มต่อ Last.fm สำเร็จและปิดการ Scrobble แล้ว",
+        "lastfmUnlinkFailure": "ไม่สามารถยกเลิกการเชิ่อมต่อกับ Last.fm ได้",
+        "openIn": {
+            "lastfm": "เปิดใน Last.fm",
+            "musicbrainz": "เปิดใน MusicBrainz"
+        },
+        "lastfmLink": "อ่านต่อ...",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": ""
     },
     "menu": {
         "library": "ไลบรารี่",
@@ -302,11 +335,15 @@
                 "theme": "ธีม",
                 "language": "ภาษา",
                 "defaultView": "หน้าเริ่มต้น",
-                "desktop_notifications": "การแจ่งเตือน Desktop"
+                "desktop_notifications": "การแจ่งเตือน Desktop",
+                "lastfmScrobbling": "Scrobble ไป Last.fm",
+                "listenBrainzScrobbling": ""
             }
         },
         "albumList": "อัลบั้ม",
-        "about": "เกี่ยวกับ"
+        "about": "เกี่ยวกับ",
+        "playlists": "เพลย์ลิสต์",
+        "sharedPlaylists": "เพลย์ลิสต์ที่แบ่งปัน"
     },
     "player": {
         "playListsText": "เพลย์ลิสต์",

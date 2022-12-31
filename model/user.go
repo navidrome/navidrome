@@ -3,23 +3,23 @@ package model
 import "time"
 
 type User struct {
-	ID           string     `json:"id" orm:"column(id)"`
-	UserName     string     `json:"userName"`
-	Name         string     `json:"name"`
-	Email        string     `json:"email"`
-	IsAdmin      bool       `json:"isAdmin"`
-	LastLoginAt  *time.Time `json:"lastLoginAt"`
-	LastAccessAt *time.Time `json:"lastAccessAt"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
+	ID           string    `structs:"id" json:"id" orm:"column(id)"`
+	UserName     string    `structs:"user_name" json:"userName"`
+	Name         string    `structs:"name" json:"name"`
+	Email        string    `structs:"email" json:"email"`
+	IsAdmin      bool      `structs:"is_admin" json:"isAdmin"`
+	LastLoginAt  time.Time `structs:"last_login_at" json:"lastLoginAt"`
+	LastAccessAt time.Time `structs:"last_access_at" json:"lastAccessAt"`
+	CreatedAt    time.Time `structs:"created_at" json:"createdAt"`
+	UpdatedAt    time.Time `structs:"updated_at" json:"updatedAt"`
 
 	// This is only available on the backend, and it is never sent over the wire
-	Password string `json:"-"`
+	Password string `structs:"-" json:"-"`
 	// This is used to set or change a password when calling Put. If it is empty, the password is not changed.
 	// It is received from the UI with the name "password"
-	NewPassword string `json:"password,omitempty"`
+	NewPassword string `structs:"password,omitempty" json:"password,omitempty"`
 	// If changing the password, this is also required
-	CurrentPassword string `json:"currentPassword,omitempty"`
+	CurrentPassword string `structs:"current_password,omitempty" json:"currentPassword,omitempty"`
 }
 
 type Users []User

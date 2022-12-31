@@ -14,8 +14,11 @@ import {
   playTracks,
   shuffleTracks,
   openAddToPlaylist,
+  openDownloadMenu,
+  openExtendedInfoDialog,
+  DOWNLOAD_MENU_ALBUM,
+  DOWNLOAD_MENU_ARTIST,
 } from '../actions'
-import subsonic from '../subsonic'
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
@@ -36,6 +39,7 @@ const ContextMenu = ({
   color,
   className,
   songQueryParams,
+  hideInfo,
 }) => {
   const classes = useStyles({ color })
   const dataProvider = useDataProvider()
@@ -81,8 +85,25 @@ const ContextMenu = ({
       label: `${translate('resources.album.actions.download')} (${formatBytes(
         record.size
       )})`,
-      action: () => subsonic.download(record.id),
+      action: () => {
+        dispatch(
+          openDownloadMenu(
+            record,
+            record.duration !== undefined
+              ? DOWNLOAD_MENU_ALBUM
+              : DOWNLOAD_MENU_ARTIST
+          )
+        )
+      },
     },
+    ...(!hideInfo && {
+      info: {
+        enabled: true,
+        needData: true,
+        label: translate('resources.album.actions.info'),
+        action: () => dispatch(openExtendedInfoDialog(record)),
+      },
+    }),
   }
 
   const handleClick = (e) => {
@@ -195,6 +216,7 @@ export const ArtistContextMenu = (props) =>
   props.record ? (
     <ContextMenu
       {...props}
+      hideInfo={true}
       resource={'artist'}
       songQueryParams={{
         pagination: { page: 1, perPage: 200 },

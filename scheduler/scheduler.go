@@ -13,13 +13,12 @@ type Scheduler interface {
 }
 
 func GetInstance() Scheduler {
-	instance := singleton.Get(&scheduler{}, func() interface{} {
+	return singleton.GetInstance(func() *scheduler {
 		c := cron.New(cron.WithLogger(&logger{}))
 		return &scheduler{
 			c: c,
 		}
 	})
-	return instance.(*scheduler)
 }
 
 type scheduler struct {

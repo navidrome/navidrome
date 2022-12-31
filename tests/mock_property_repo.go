@@ -4,8 +4,8 @@ import "github.com/navidrome/navidrome/model"
 
 type MockedPropertyRepo struct {
 	model.PropertyRepository
-	data map[string]string
-	err  error
+	Error error
+	data  map[string]string
 }
 
 func (p *MockedPropertyRepo) init() {
@@ -15,8 +15,8 @@ func (p *MockedPropertyRepo) init() {
 }
 
 func (p *MockedPropertyRepo) Put(id string, value string) error {
-	if p.err != nil {
-		return p.err
+	if p.Error != nil {
+		return p.Error
 	}
 	p.init()
 	p.data[id] = value
@@ -24,8 +24,8 @@ func (p *MockedPropertyRepo) Put(id string, value string) error {
 }
 
 func (p *MockedPropertyRepo) Get(id string) (string, error) {
-	if p.err != nil {
-		return "", p.err
+	if p.Error != nil {
+		return "", p.Error
 	}
 	p.init()
 	if v, ok := p.data[id]; ok {
@@ -35,8 +35,8 @@ func (p *MockedPropertyRepo) Get(id string) (string, error) {
 }
 
 func (p *MockedPropertyRepo) Delete(id string) error {
-	if p.err != nil {
-		return p.err
+	if p.Error != nil {
+		return p.Error
 	}
 	p.init()
 	if _, ok := p.data[id]; ok {
@@ -47,13 +47,13 @@ func (p *MockedPropertyRepo) Delete(id string) error {
 }
 
 func (p *MockedPropertyRepo) DefaultGet(id string, defaultValue string) (string, error) {
-	if p.err != nil {
-		return "", p.err
+	if p.Error != nil {
+		return "", p.Error
 	}
 	p.init()
 	v, err := p.Get(id)
 	if err != nil {
-		return defaultValue, nil
+		return defaultValue, nil //nolint:nilerr
 	}
 	return v, nil
 }

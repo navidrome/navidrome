@@ -6,13 +6,13 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/gravatar"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 func TestGravatar(t *testing.T) {
 	tests.Init(t, false)
-	log.SetLevel(log.LevelCritical)
+	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Gravatar Test Suite")
 }

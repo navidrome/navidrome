@@ -24,7 +24,8 @@
                 "rating": "Classificação",
                 "quality": "Qualidade",
                 "bpm": "BPM",
-                "playDate": "Últ. Execução"
+                "playDate": "Últ. Execução",
+                "channels": "Canais"
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
@@ -32,7 +33,8 @@
                 "addToPlaylist": "Adicionar à playlist",
                 "shuffleAll": "Aleatório",
                 "download": "Baixar",
-                "playNext": "Toca a seguir"
+                "playNext": "Toca a seguir",
+                "info": "Detalhes"
             }
         },
         "album": {
@@ -57,7 +59,8 @@
                 "addToQueue": "Adicionar à fila",
                 "shuffle": "Aleatório",
                 "addToPlaylist": "Adicionar à playlist",
-                "download": "Baixar"
+                "download": "Baixar",
+                "info": "Detalhes"
             },
             "lists": {
                 "all": "Todos",
@@ -76,7 +79,8 @@
                 "albumCount": "Total de Álbuns",
                 "songCount": "Total de Músicas",
                 "playCount": "Execuções",
-                "rating": "Classificação"
+                "rating": "Classificação",
+                "genre": "Gênero"
             }
         },
         "user": {
@@ -91,7 +95,8 @@
                 "createdAt": "Data de Criação",
                 "changePassword": "Trocar Senha?",
                 "currentPassword": "Senha Atual",
-                "newPassword": "Nova Senha"
+                "newPassword": "Nova Senha",
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Alterações no seu nome só serão refletidas no próximo login"
@@ -100,6 +105,10 @@
                 "created": "Novo usuário criado",
                 "updated": "Usuário atualizado com sucesso",
                 "deleted": "Usuário deletado com sucesso"
+            },
+            "message": {
+                "listenBrainzToken": "Entre seu token do ListenBrainz",
+                "clickHereForToken": "Clique aqui para obter seu token"
             }
         },
         "player": {
@@ -111,7 +120,8 @@
                 "client": "Cliente",
                 "userName": "Usuário",
                 "lastSeen": "Últ. acesso",
-                "reportRealPath": "Use paths reais"
+                "reportRealPath": "Use paths reais",
+                "scrobbleEnabled": "Enviar scrobbles para serviços externos"
             }
         },
         "transcoding": {
@@ -128,7 +138,7 @@
             "fields": {
                 "name": "Nome",
                 "duration": "Duração",
-                "owner": "Dono",
+                "ownerName": "Dono",
                 "public": "Pública",
                 "updatedAt": "Últ. Atualização",
                 "createdAt": "Data de Criação ",
@@ -140,7 +150,9 @@
             "actions": {
                 "selectPlaylist": "Selecione a playlist:",
                 "addNewPlaylist": "Criar \"%{name}\"",
-                "export": "Exportar"
+                "export": "Exportar",
+                "makePublic": "Pública",
+                "makePrivate": "Pessoal"
             },
             "message": {
                 "duplicate_song": "Adicionar músicas duplicadas",
@@ -298,10 +310,19 @@
         "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?",
         "notifications_blocked": "Você bloqueou notificações para este site nas configurações do seu browser",
         "notifications_not_available": "Este navegador não suporta notificações",
-        "lastfmLinkSuccess": "Sua conta em Last.fm foi conectada com sucesso",
-        "lastfmLinkFailure": "Sua conta em Last.fm não pode ser conectada",
-        "lastfmUnlinkSuccess": "Sua conta em Last.fm foi desconectada",
-        "lastfmUnlinkFailure": "Sua conta em Last.fm não pode ser desconectada"
+        "lastfmLinkSuccess": "Sua conta no Last.fm foi conectada com sucesso",
+        "lastfmLinkFailure": "Sua conta no Last.fm não pode ser conectada",
+        "lastfmUnlinkSuccess": "Sua conta no Last.fm foi desconectada",
+        "lastfmUnlinkFailure": "Sua conta no Last.fm não pode ser desconectada",
+        "openIn": {
+            "lastfm": "Abrir em Last.fm",
+            "musicbrainz": "Abrir em MusicBrainz"
+        },
+        "lastfmLink": "Leia mais",
+        "listenBrainzLinkSuccess": "Sua conta no ListenBrainz foi conectada com sucesso",
+        "listenBrainzLinkFailure": "Sua conta no ListenBrainz não pode ser conectada",
+        "listenBrainzUnlinkSuccess": "Sua conta no ListenBrainz foi desconectada",
+        "listenBrainzUnlinkFailure": "Sua conta no ListenBrainz não pode ser desconectada"
     },
     "menu": {
         "library": "Biblioteca",
@@ -315,11 +336,14 @@
                 "language": "Língua",
                 "defaultView": "Tela inicial",
                 "desktop_notifications": "Notificações",
-                "lastfmScrobbling": "Enviar scrobbles para Last.fm"
+                "lastfmScrobbling": "Enviar scrobbles para Last.fm",
+                "listenBrainzScrobbling": "Enviar scrobbles para ListenBrainz"
             }
         },
         "albumList": "Álbuns",
-        "about": "Info"
+        "about": "Info",
+        "playlists": "Playlists",
+        "sharedPlaylists": "Compartilhadas"
     },
     "player": {
         "playListsText": "Fila de Execução",

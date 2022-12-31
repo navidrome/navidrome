@@ -10,10 +10,11 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -24,7 +25,7 @@ var _ = Describe("serveIndex", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{MockedUser: mockUser}
-		conf.Server.UILoginBackgroundURL = ""
+		DeferCleanup(configtest.SetupConfig())
 	})
 
 	It("adds app_config to index.html", func() {
@@ -49,6 +50,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("firstTime", true))
 	})
 
+	It("includes the VariousArtistsID", func() {
+		mockUser.empty = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("variousArtistsId", consts.VariousArtistsID))
+	})
+
 	It("sets firstTime = false when User table is not empty", func() {
 		mockUser.empty = false
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -69,17 +81,6 @@ var _ = Describe("serveIndex", func() {
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("baseURL", "base_url_test"))
-	})
-
-	It("sets the uiLoginBackgroundURL", func() {
-		conf.Server.UILoginBackgroundURL = "my_background_url"
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "my_background_url"))
 	})
 
 	It("sets the welcomeMessage", func() {
@@ -148,6 +149,28 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("defaultTheme", "Light"))
 	})
 
+	It("sets the defaultLanguage", func() {
+		conf.Server.DefaultLanguage = "pt"
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("defaultLanguage", "pt"))
+	})
+
+	It("sets the defaultUIVolume", func() {
+		conf.Server.DefaultUIVolume = 45
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("defaultUIVolume", float64(45)))
+	})
+
 	It("sets the enableCoverAnimation", func() {
 		conf.Server.EnableCoverAnimation = true
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -177,7 +200,7 @@ var _ = Describe("serveIndex", func() {
 		serveIndex(ds, fs)(w, r)
 
 		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("version", consts.Version()))
+		Expect(config).To(HaveKeyWithValue("version", consts.Version))
 	})
 
 	It("sets the losslessFormats", func() {
@@ -211,6 +234,18 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("devEnableShare", false))
 	})
 
+	It("sets the devSidebarPlaylists", func() {
+		conf.Server.DevSidebarPlaylists = true
+
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devSidebarPlaylists", true))
+	})
+
 	It("sets the lastFMEnabled", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
@@ -231,9 +266,116 @@ var _ = Describe("serveIndex", func() {
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("lastFMApiKey", "APIKEY-123"))
 	})
+
+	It("sets the devShowArtistPage", func() {
+		conf.Server.DevShowArtistPage = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devShowArtistPage", true))
+	})
+
+	It("sets the listenBrainzEnabled", func() {
+		conf.Server.ListenBrainz.Enabled = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("listenBrainzEnabled", true))
+	})
+
+	Describe("loginBackgroundURL", func() {
+		Context("empty BaseURL", func() {
+			BeforeEach(func() {
+				conf.Server.BaseURL = "/"
+			})
+			When("it is the default URL", func() {
+				It("points to the default URL", func() {
+					conf.Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURL
+					r := httptest.NewRequest("GET", "/index.html", nil)
+					w := httptest.NewRecorder()
+
+					serveIndex(ds, fs)(w, r)
+
+					config := extractAppConfig(w.Body.String())
+					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", consts.DefaultUILoginBackgroundURL))
+				})
+			})
+			When("it is the default offline URL", func() {
+				It("points to the offline URL", func() {
+					conf.Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
+					r := httptest.NewRequest("GET", "/index.html", nil)
+					w := httptest.NewRecorder()
+
+					serveIndex(ds, fs)(w, r)
+
+					config := extractAppConfig(w.Body.String())
+					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", consts.DefaultUILoginBackgroundURLOffline))
+				})
+			})
+			When("it is a custom URL", func() {
+				It("points to the offline URL", func() {
+					conf.Server.UILoginBackgroundURL = "https://example.com/images/1.jpg"
+					r := httptest.NewRequest("GET", "/index.html", nil)
+					w := httptest.NewRecorder()
+
+					serveIndex(ds, fs)(w, r)
+
+					config := extractAppConfig(w.Body.String())
+					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "https://example.com/images/1.jpg"))
+				})
+			})
+		})
+		Context("with a BaseURL", func() {
+			BeforeEach(func() {
+				conf.Server.BaseURL = "/music"
+			})
+			When("it is the default URL", func() {
+				It("points to the default URL with BaseURL prefix", func() {
+					conf.Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURL
+					r := httptest.NewRequest("GET", "/index.html", nil)
+					w := httptest.NewRecorder()
+
+					serveIndex(ds, fs)(w, r)
+
+					config := extractAppConfig(w.Body.String())
+					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "/music"+consts.DefaultUILoginBackgroundURL))
+				})
+			})
+			When("it is the default offline URL", func() {
+				It("points to the offline URL", func() {
+					conf.Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
+					r := httptest.NewRequest("GET", "/index.html", nil)
+					w := httptest.NewRecorder()
+
+					serveIndex(ds, fs)(w, r)
+
+					config := extractAppConfig(w.Body.String())
+					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", consts.DefaultUILoginBackgroundURLOffline))
+				})
+			})
+			When("it is a custom URL", func() {
+				It("points to the offline URL", func() {
+					conf.Server.UILoginBackgroundURL = "https://example.com/images/1.jpg"
+					r := httptest.NewRequest("GET", "/index.html", nil)
+					w := httptest.NewRecorder()
+
+					serveIndex(ds, fs)(w, r)
+
+					config := extractAppConfig(w.Body.String())
+					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "https://example.com/images/1.jpg"))
+				})
+			})
+		})
+	})
 })
 
-var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__="([^"]*)`)
+var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__=(.*);</script>`)
 
 func extractAppConfig(body string) map[string]interface{} {
 	config := make(map[string]interface{})
@@ -241,7 +383,7 @@ func extractAppConfig(body string) map[string]interface{} {
 	if match == nil {
 		return config
 	}
-	str, err := strconv.Unquote("\"" + match[1] + "\"")
+	str, err := strconv.Unquote(match[1])
 	if err != nil {
 		panic(fmt.Sprintf("%s: %s", match[1], err))
 	}

@@ -3,29 +3,26 @@ package nativeapi
 import (
 	"encoding/json"
 	"io"
-	"net/http"
+	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/resources"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Translations", func() {
 	Describe("I18n files", func() {
-		var fs http.FileSystem
-		BeforeEach(func() {
-			fs = http.FS(resources.FS)
-		})
 		It("contains only valid json language files", func() {
-			dir, _ := fs.Open(consts.I18nFolder)
-			files, _ := dir.Readdir(0)
+			fsys := resources.FS()
+			dir, _ := fsys.Open(consts.I18nFolder)
+			files, _ := dir.(fs.ReadDirFile).ReadDir(-1)
 			for _, f := range files {
 				name := filepath.Base(f.Name())
 				filePath := filepath.Join(consts.I18nFolder, name)
-				file, _ := fs.Open(filePath)
+				file, _ := fsys.Open(filePath)
 				data, _ := io.ReadAll(file)
 				var out map[string]interface{}
 

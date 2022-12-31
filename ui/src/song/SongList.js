@@ -17,12 +17,13 @@ import {
   List,
   SongContextMenu,
   SongDatagrid,
-  SongDetails,
+  SongInfo,
   QuickFilter,
   SongTitleField,
   SongSimpleList,
   RatingField,
   useResourceRefresh,
+  ArtistLinkField,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { makeStyles } from '@material-ui/core/styles'
@@ -33,6 +34,8 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { AddToPlaylistDialog } from '../dialogs'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -106,8 +109,8 @@ const SongList = (props) => {
           sortByOrder={'ASC'}
         />
       ),
-      artist: <TextField source="artist" />,
-      albumArtist: <TextField source="albumArtist" />,
+      artist: <ArtistLinkField source="artist" />,
+      albumArtist: <ArtistLinkField source="albumArtist" />,
       trackNumber: isDesktop && <NumberField source="trackNumber" />,
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />
@@ -121,6 +124,9 @@ const SongList = (props) => {
         />
       ),
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      channels: isDesktop && (
+        <NumberField source="channels" sortByOrder={'ASC'} />
+      ),
       duration: <DurationField source="duration" />,
       rating: config.enableStarRating && (
         <RatingField
@@ -133,13 +139,22 @@ const SongList = (props) => {
       bpm: isDesktop && <NumberField source="bpm" />,
       genre: <TextField source="genre" />,
       comment: <TextField source="comment" />,
+      createdAt: <DateField source="createdAt" showTime />,
     }
   }, [isDesktop, classes.ratingField])
 
   const columns = useSelectedFields({
     resource: 'song',
     columns: toggleableFields,
-    defaultOff: ['bpm', 'playDate', 'albumArtist', 'genre', 'comment'],
+    defaultOff: [
+      'channels',
+      'bpm',
+      'playDate',
+      'albumArtist',
+      'genre',
+      'comment',
+      'createdAt',
+    ],
   })
 
   return (
@@ -157,7 +172,6 @@ const SongList = (props) => {
           <SongSimpleList />
         ) : (
           <SongDatagrid
-            expand={<SongDetails />}
             rowClick={handleRowClick}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
@@ -183,6 +197,8 @@ const SongList = (props) => {
         )}
       </List>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
+      <ExpandInfoDialog content={<SongInfo />} />
     </>
   )
 }

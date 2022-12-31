@@ -1,12 +1,12 @@
 package utils
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("WeightedRandomChooser", func() {
-	var w *weightedChooser
+	var w *WeightedChooser
 	BeforeEach(func() {
 		w = NewWeightedRandomChooser()
 		for i := 0; i < 10; i++ {

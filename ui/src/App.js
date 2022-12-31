@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import ReactGA from 'react-ga'
-import { Provider, useDispatch } from 'react-redux'
+import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
 import { Admin as RAAdmin, Resource } from 'react-admin'
 import { HotKeys } from 'react-hotkeys'
@@ -19,15 +19,18 @@ import customRoutes from './routes'
 import {
   themeReducer,
   addToPlaylistDialogReducer,
+  expandInfoDialogReducer,
+  listenBrainzTokenDialogReducer,
   playerReducer,
   albumViewReducer,
   activityReducer,
   settingsReducer,
+  downloadMenuDialogReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config from './config'
-import { setDispatch, startEventStream } from './eventStream'
+import { setDispatch, startEventStream, stopEventStream } from './eventStream'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
 
@@ -41,38 +44,43 @@ if (config.gaTrackingId) {
   ReactGA.pageview(window.location.pathname)
 }
 
+const adminStore = createAdminStore({
+  authProvider,
+  dataProvider,
+  history,
+  customReducers: {
+    player: playerReducer,
+    albumView: albumViewReducer,
+    theme: themeReducer,
+    addToPlaylistDialog: addToPlaylistDialogReducer,
+    downloadMenuDialog: downloadMenuDialogReducer,
+    expandInfoDialog: expandInfoDialogReducer,
+    listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
+    activity: activityReducer,
+    settings: settingsReducer,
+  },
+})
+
 const App = () => (
-  <Provider
-    store={createAdminStore({
-      authProvider,
-      dataProvider,
-      history,
-      customReducers: {
-        player: playerReducer,
-        albumView: albumViewReducer,
-        theme: themeReducer,
-        addToPlaylistDialog: addToPlaylistDialogReducer,
-        activity: activityReducer,
-        settings: settingsReducer,
-      },
-    })}
-  >
+  <Provider store={adminStore}>
     <Admin />
   </Provider>
 )
 
 const Admin = (props) => {
   useChangeThemeColor()
-  const dispatch = useDispatch()
   useEffect(() => {
     if (config.devActivityPanel) {
-      setDispatch(dispatch)
+      setDispatch(adminStore.dispatch)
       authProvider
         .checkAuth()
-        .then(() => startEventStream())
-        .catch(() => {}) // ignore if not logged in
+        .then(() => startEventStream(adminStore.dispatch))
+        .catch(() => {})
     }
-  }, [dispatch])
+    return () => {
+      stopEventStream()
+    }
+  }, [])
 
   return (
     <RAAdmin
@@ -91,7 +99,11 @@ const Admin = (props) => {
         <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
         <Resource name="artist" {...artist} />,
         <Resource name="song" {...song} />,
-        <Resource name="playlist" {...playlist} />,
+        <Resource
+          name="playlist"
+          {...playlist}
+          options={{ subMenu: 'playlist' }}
+        />,
         <Resource name="user" {...user} options={{ subMenu: 'settings' }} />,
         <Resource
           name="player"
