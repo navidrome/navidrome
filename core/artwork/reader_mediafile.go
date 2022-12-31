@@ -53,13 +53,3 @@ func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, str
 	ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.AlbumCoverArtID()))
 	return selectImageReader(ctx, a.artID, ff...)
 }
-
-func fromAlbum(ctx context.Context, a *artwork, id model.ArtworkID) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		r, _, err := a.Get(ctx, id.String(), 0)
-		if err != nil {
-			return nil, "", err
-		}
-		return r, id.String(), nil
-	}
-}

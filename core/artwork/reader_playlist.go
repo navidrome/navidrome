@@ -49,7 +49,7 @@ func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, stri
 	if err == nil {
 		ff = append(ff, a.fromGeneratedTile(ctx, pl.Tracks))
 	}
-	ff = append(ff, fromPlaceholder())
+	ff = append(ff, fromAlbumPlaceholder())
 	return selectImageReader(ctx, a.artID, ff...)
 }
 
