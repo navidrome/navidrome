@@ -48,7 +48,7 @@ const (
 
 	ServerReadHeaderTimeout = 3 * time.Second
 
-	ArtistInfoTimeToLive = time.Second
+	ArtistInfoTimeToLive = time.Second // TODO Revert
 	//ArtistInfoTimeToLive = 24 * time.Hour
 
 	I18nFolder   = "i18n"
