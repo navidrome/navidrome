@@ -38,7 +38,7 @@ func (api *Router) GetPlaylist(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subsonic, error) {
-	pls, err := api.ds.Playlist(ctx).GetWithTracks(id)
+	pls, err := api.ds.Playlist(ctx).GetWithTracks(id, true)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, err.Error(), "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")

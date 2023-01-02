@@ -39,7 +39,7 @@ func runExporter() {
 	sqlDB := db.Db()
 	ds := persistence.New(sqlDB)
 	ctx := auth.WithAdminUser(context.Background(), ds)
-	playlist, err := ds.Playlist(ctx).GetWithTracks(playlistID)
+	playlist, err := ds.Playlist(ctx).GetWithTracks(playlistID, true)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		log.Fatal("Error retrieving playlist", "name", playlistID, err)
 	}
@@ -49,7 +49,7 @@ func runExporter() {
 			log.Fatal("Error retrieving playlist", "name", playlistID, err)
 		}
 		if len(playlists) > 0 {
-			playlist, err = ds.Playlist(ctx).GetWithTracks(playlists[0].ID)
+			playlist, err = ds.Playlist(ctx).GetWithTracks(playlists[0].ID, true)
 			if err != nil {
 				log.Fatal("Error retrieving playlist", "name", playlistID, err)
 			}
