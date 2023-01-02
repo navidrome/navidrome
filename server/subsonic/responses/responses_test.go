@@ -286,6 +286,7 @@ var _ = Describe("Responses", func() {
 					Duration:  120,
 					Public:    true,
 					Owner:     "admin",
+					CoverArt:  "pl-123123123123",
 					Created:   timestamp,
 					Changed:   timestamp,
 				}

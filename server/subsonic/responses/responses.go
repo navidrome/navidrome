@@ -213,11 +213,11 @@ type Playlist struct {
 	Owner     string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
 	Created   time.Time `xml:"created,attr"                  json:"created"`
 	Changed   time.Time `xml:"changed,attr"                  json:"changed"`
+	CoverArt  string    `xml:"coverArt,attr,omitempty"       json:"coverArt,omitempty"`
 	/*
 		<xs:sequence>
 		    <xs:element name="allowedUser" type="xs:string" minOccurs="0" maxOccurs="unbounded"/> <!--Added in 1.8.0-->
 		</xs:sequence>
-		<xs:attribute name="coverArt" type="xs:string" use="optional"/>  <!--Added in 1.11.0-->
 	*/
 }
 

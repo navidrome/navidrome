@@ -171,5 +171,6 @@ func (api *Router) buildPlaylist(p model.Playlist) *responses.Playlist {
 	pls.Public = p.Public
 	pls.Created = p.CreatedAt
 	pls.Changed = p.UpdatedAt
+	pls.CoverArt = p.CoverArtID().String()
 	return pls
 }
