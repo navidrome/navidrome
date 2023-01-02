@@ -3,6 +3,7 @@ package agents
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -12,10 +13,12 @@ const (
 	localBiography = "Biography not available"
 )
 
-type localAgent struct{}
+type localAgent struct {
+	ds model.DataStore
+}
 
-func localsConstructor(_ model.DataStore) Interface {
-	return &localAgent{}
+func localsConstructor(ds model.DataStore) Interface {
+	return &localAgent{ds}
 }
 
 func (p *localAgent) AgentName() string {
@@ -27,7 +30,29 @@ func (p *localAgent) GetBiography(ctx context.Context, id, name, mbid string) (s
 }
 
 func (p *localAgent) GetTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {
-	return nil, nil // TODO return 5-stars and liked songs sorted by playCount
+	top, err := p.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Sort:  "playCount",
+		Order: "desc",
+		Max:   count,
+		Filters: squirrel.And{
+			squirrel.Eq{"artist_id": id},
+			squirrel.Or{
+				squirrel.Eq{"starred": true},
+				squirrel.Eq{"rating": 5},
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	var result []Song
+	for _, s := range top {
+		result = append(result, Song{
+			Name: s.Title,
+			MBID: s.MbzReleaseTrackID,
+		})
+	}
+	return result, nil
 }
 
 func init() {
