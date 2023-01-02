@@ -200,7 +200,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		var err error
 		repo := tx.Playlist(ctx)
 		if needsTrackRefresh {
-			pls, err = repo.GetWithTracks(playlistID)
+			pls, err = repo.GetWithTracks(playlistID, true)
 			pls.RemoveTracks(idxToRemove)
 			pls.AddTracks(idsToAdd)
 		} else {

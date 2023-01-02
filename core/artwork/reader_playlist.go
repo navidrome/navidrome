@@ -45,7 +45,7 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	var ff []sourceFunc
-	pl, err := a.a.ds.Playlist(ctx).GetWithTracks(a.pl.ID)
+	pl, err := a.a.ds.Playlist(ctx).GetWithTracks(a.pl.ID, false)
 	if err == nil {
 		ff = append(ff, a.fromGeneratedTile(ctx, pl.Tracks))
 	}
