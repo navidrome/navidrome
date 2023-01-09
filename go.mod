@@ -51,7 +51,7 @@ require (
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 	golang.org/x/sync v0.1.0
-	golang.org/x/text v0.5.0
+	golang.org/x/text v0.6.0
 	golang.org/x/tools v0.4.0
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
