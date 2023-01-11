@@ -55,12 +55,18 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 	defer orig.Close()
 
 	resized, origSize, err := resizeImage(r, a.size)
-	log.Trace(ctx, "Resizing artwork", "artID", a.artID, "original", origSize, "resized", a.size)
+	if resized == nil {
+		log.Trace(ctx, "Image smaller than requested size", "artID", a.artID, "original", origSize, "resized", a.size)
+	} else {
+		log.Trace(ctx, "Resizing artwork", "artID", a.artID, "original", origSize, "resized", a.size)
+	}
 	if err != nil {
 		log.Warn(ctx, "Could not resize image. Will return image as is", "artID", a.artID, "size", a.size, err)
+	}
+	if err != nil || resized == nil {
 		// Force finish reading any remaining data
 		_, _ = io.Copy(io.Discard, r)
-		return io.NopCloser(buf), "", nil
+		return io.NopCloser(buf), "", nil //nolint:nilerr
 	}
 	return io.NopCloser(resized), fmt.Sprintf("%s@%d", a.artID, a.size), nil
 }
@@ -68,6 +74,13 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 func asImageReader(r io.Reader) (io.Reader, string, error) {
 	br := bufio.NewReader(r)
 	buf, err := br.Peek(512)
+	if err == io.EOF && len(buf) > 0 {
+		// Check if there are enough bytes to detect type
+		typ := http.DetectContentType(buf)
+		if typ != "" {
+			return br, typ, nil
+		}
+	}
 	if err != nil {
 		return nil, "", err
 	}
@@ -85,9 +98,15 @@ func resizeImage(reader io.Reader, size int) (io.Reader, int, error) {
 		return nil, 0, err
 	}
 
-	// Preserve the aspect ratio of the image.
-	var m *image.NRGBA
+	// Don't upscale the image
 	bounds := img.Bounds()
+	originalSize := number.Max(bounds.Max.X, bounds.Max.Y)
+	if originalSize <= size {
+		return nil, originalSize, nil
+	}
+
+	var m *image.NRGBA
+	// Preserve the aspect ratio of the image.
 	if bounds.Max.X > bounds.Max.Y {
 		m = imaging.Resize(img, size, 0, imaging.Lanczos)
 	} else {
@@ -101,5 +120,5 @@ func resizeImage(reader io.Reader, size int) (io.Reader, int, error) {
 	} else {
 		err = jpeg.Encode(buf, m, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
 	}
-	return buf, number.Max(bounds.Max.X, bounds.Max.Y), err
+	return buf, originalSize, err
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -137,10 +138,13 @@ func (s *Server) frontendAssetsHandler() http.Handler {
 	return r
 }
 
-func AbsoluteURL(r *http.Request, url string) string {
+func AbsoluteURL(r *http.Request, url string, params url.Values) string {
 	if strings.HasPrefix(url, "/") {
 		appRoot := path.Join(r.Host, conf.Server.BaseURL, url)
 		url = r.URL.Scheme + "://" + appRoot
+	}
+	if len(params) > 0 {
+		url = url + "?" + params.Encode()
 	}
 	return url
 }

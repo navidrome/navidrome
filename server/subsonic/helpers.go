@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
@@ -90,7 +92,7 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 		AlbumCount:     a.AlbumCount,
 		UserRating:     a.Rating,
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: artistCoverArtURL(r, a.CoverArtID(), 0),
+		ArtistImageUrl: publicImageURL(r, a.CoverArtID(), 0),
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
@@ -104,7 +106,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: artistCoverArtURL(r, a.CoverArtID(), 0),
+		ArtistImageUrl: publicImageURL(r, a.CoverArtID(), 0),
 		UserRating:     a.Rating,
 	}
 	if a.Starred {
@@ -113,10 +115,14 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 	return artist
 }
 
-func artistCoverArtURL(r *http.Request, artID model.ArtworkID, size int) string {
-	link := artwork.PublicLink(artID, size)
-	url := filepath.Join(consts.URLPathPublicImages, link)
-	return server.AbsoluteURL(r, url)
+func publicImageURL(r *http.Request, artID model.ArtworkID, size int) string {
+	link := artwork.EncodeArtworkID(artID)
+	path := filepath.Join(consts.URLPathPublicImages, link)
+	params := url.Values{}
+	if size > 0 {
+		params.Add("size", strconv.Itoa(size))
+	}
+	return server.AbsoluteURL(r, path, params)
 }
 
 func toGenres(genres model.Genres) *responses.Genres {
