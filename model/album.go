@@ -39,6 +39,7 @@ type Album struct {
 	MbzAlbumType         string    `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment      string    `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
 	ImageFiles           string    `structs:"image_files" json:"imageFiles,omitempty"`
+	Paths                string    `structs:"paths" json:"paths,omitempty"`
 	CreatedAt            time.Time `structs:"created_at" json:"createdAt"`
 	UpdatedAt            time.Time `structs:"updated_at" json:"updatedAt"`
 }
