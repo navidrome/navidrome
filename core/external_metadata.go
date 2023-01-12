@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/kennygrant/sanitize"
+	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"

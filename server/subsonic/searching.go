@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kennygrant/sanitize"
+	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"

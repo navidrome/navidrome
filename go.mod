@@ -10,6 +10,7 @@ require (
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/cespare/reflex v0.3.1
 	github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47
+	github.com/deluan/sanitize v0.0.0-20180806073457-06ec0d0dbcd4
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/atime v1.1.0
@@ -25,7 +26,6 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/google/wire v0.5.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.0.8
 	github.com/matoous/go-nanoid v1.5.0
