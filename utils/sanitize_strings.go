@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kennygrant/sanitize"
+	"github.com/deluan/sanitize"
 	"github.com/microcosm-cc/bluemonday"
 )
 
