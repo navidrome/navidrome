@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/dhowden/tag"
 	"github.com/navidrome/navidrome/consts"
@@ -24,12 +25,13 @@ func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs 
 		if ctx.Err() != nil {
 			return nil, "", ctx.Err()
 		}
+		start := time.Now()
 		r, path, err := f()
 		if r != nil {
-			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "source", f)
+			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "source", f, "elapsed", time.Since(start))
 			return r, path, nil
 		}
-		log.Trace(ctx, "Tried to extract artwork", "artID", artID, "source", f, err)
+		log.Trace(ctx, "Failed trying to extract artwork", "artID", artID, "source", f, "elapsed", time.Since(start), err)
 	}
 	return nil, "", fmt.Errorf("could not get a cover art for %s", artID)
 }
