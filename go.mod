@@ -20,7 +20,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-chi/cors v1.2.1
-	github.com/go-chi/httprate v0.7.0
+	github.com/go-chi/httprate v0.7.1
 	github.com/go-chi/jwtauth/v5 v5.1.0
 	github.com/golangci/golangci-lint v1.50.1
 	github.com/google/uuid v1.3.0
