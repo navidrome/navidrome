@@ -30,9 +30,6 @@ var _ = Describe("Agents", func() {
 			ag = New(ds)
 		})
 
-		It("calls the placeholder GetBiography", func() {
-			Expect(ag.GetBiography(ctx, "123", "John Doe", "mb123")).To(Equal(localBiography))
-		})
 		It("calls the placeholder GetImages", func() {
 			mfRepo.SetData(model.MediaFiles{{ID: "1", Title: "One", MbzReleaseTrackID: "111"}, {ID: "2", Title: "Two", MbzReleaseTrackID: "222"}})
 			songs, err := ag.GetTopSongs(ctx, "123", "John Doe", "mb123", 2)
@@ -104,7 +101,8 @@ var _ = Describe("Agents", func() {
 			})
 			It("skips the agent if it returns an error", func() {
 				mock.Err = errors.New("error")
-				Expect(ag.GetBiography(ctx, "123", "test", "mb123")).To(Equal(localBiography))
+				_, err := ag.GetBiography(ctx, "123", "test", "mb123")
+				Expect(err).To(MatchError(ErrNotFound))
 				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
 			})
 			It("interrupts if the context is canceled", func() {
