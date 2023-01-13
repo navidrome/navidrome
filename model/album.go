@@ -20,7 +20,7 @@ type Album struct {
 	AllArtistIDs         string    `structs:"all_artist_ids" json:"allArtistIds"  orm:"column(all_artist_ids)"`
 	MaxYear              int       `structs:"max_year" json:"maxYear"`
 	MinYear              int       `structs:"min_year" json:"minYear"`
-	MinYear              int       `structs:"releaseyear" json:"releaseYear,omitempty"`
+	MinYear              int       `structs:"release_year" json:"releaseYear,omitempty"`
 	Compilation          bool      `structs:"compilation" json:"compilation"`
 	Comment              string    `structs:"comment" json:"comment,omitempty"`
 	SongCount            int       `structs:"song_count" json:"songCount"`
