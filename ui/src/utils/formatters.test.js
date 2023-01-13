@@ -19,7 +19,7 @@ describe('formatDuration', () => {
   it('formats seconds', () => {
     expect(formatDuration(0)).toEqual('00:00')
     expect(formatDuration(59)).toEqual('00:59')
-    expect(formatDuration(59.99)).toEqual('00:59')
+    expect(formatDuration(59.99)).toEqual('01:00')
   })
 
   it('formats days, hours and minutes', () => {
@@ -27,5 +27,7 @@ describe('formatDuration', () => {
     expect(formatDuration(3 * day + 3 * hour + 7 * minute)).toEqual(
       '3:03:07:00'
     )
+    expect(formatDuration(day)).toEqual('1:00:00:00')
+    expect(formatDuration(day + minute + 0.6)).toEqual('1:00:01:01')
   })
 })

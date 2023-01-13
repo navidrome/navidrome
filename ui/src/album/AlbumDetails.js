@@ -33,7 +33,7 @@ import {
 import config from '../config'
 import { intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
-import AnchorMe from '../common/AnchorMe'
+import AnchorMe from '../common/Linkify'
 
 const useStyles = makeStyles(
   (theme) => ({

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/kennygrant/sanitize"
+	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/number"
 )
 
 const (
@@ -46,7 +47,7 @@ func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) ExternalMeta
 
 func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist, error) {
 	var entity interface{}
-	entity, err := GetEntityByID(ctx, e.ds, id)
+	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +173,7 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 			return ctx.Err()
 		}
 
-		topCount := utils.MaxInt(count, 20)
+		topCount := number.Max(count, 20)
 		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Name: a.Name, Artist: a}, topCount)
 		if err != nil {
 			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)

@@ -31,6 +31,7 @@ import {
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
 import { DraggableTypes } from '../consts'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -60,7 +61,7 @@ const ArtistFilter = (props) => {
   const translate = useTranslate()
   return (
     <Filter {...props} variant={'outlined'}>
-      <SearchInput source="name" alwaysOn />
+      <SearchInput id="search" source="name" alwaysOn />
       <ReferenceInput
         label={translate('resources.artist.fields.genre')}
         source="genre_id"
@@ -173,6 +174,7 @@ const ArtistList = (props) => {
         <ArtistListView {...props} />
       </List>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
     </>
   )
 }

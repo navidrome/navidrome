@@ -78,8 +78,9 @@ type Artist struct {
 	Starred        *time.Time `xml:"starred,attr,omitempty"            json:"starred,omitempty"`
 	UserRating     int        `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"     json:"artistImageUrl,omitempty"`
-	/*
-		<xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
+	/* TODO:
+	<xs:attribute name="coverArt" type="xs:string" use="optional"/>
+	<xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
 }
 
@@ -116,6 +117,7 @@ type Child struct {
 	BitRate               int        `xml:"bitRate,attr,omitempty"                  json:"bitRate,omitempty"`
 	Path                  string     `xml:"path,attr,omitempty"                     json:"path,omitempty"`
 	PlayCount             int64      `xml:"playCount,attr,omitempty"                json:"playCount,omitempty"`
+	Played                *time.Time `xml:"played,attr,omitempty"                   json:"played,omitempty"`
 	DiscNumber            int        `xml:"discNumber,attr,omitempty"               json:"discNumber,omitempty"`
 	Created               *time.Time `xml:"created,attr,omitempty"                  json:"created,omitempty"`
 	AlbumId               string     `xml:"albumId,attr,omitempty"                  json:"albumId,omitempty"`
@@ -141,6 +143,7 @@ type Directory struct {
 	Parent     string     `xml:"parent,attr,omitempty"              json:"parent,omitempty"`
 	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	PlayCount  int64      `xml:"playCount,attr,omitempty"           json:"playCount,omitempty"`
+	Played     *time.Time `xml:"played,attr,omitempty"              json:"played,omitempty"`
 	UserRating int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
 
 	// ID3
@@ -178,6 +181,7 @@ type AlbumID3 struct {
 	SongCount  int        `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
 	Duration   int        `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
 	PlayCount  int64      `xml:"playCount,attr,omitempty"           json:"playCount,omitempty"`
+	Played     *time.Time `xml:"played,attr,omitempty"              json:"played,omitempty"`
 	Created    *time.Time `xml:"created,attr,omitempty"             json:"created,omitempty"`
 	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	UserRating int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
@@ -209,11 +213,11 @@ type Playlist struct {
 	Owner     string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
 	Created   time.Time `xml:"created,attr"                  json:"created"`
 	Changed   time.Time `xml:"changed,attr"                  json:"changed"`
+	CoverArt  string    `xml:"coverArt,attr,omitempty"       json:"coverArt,omitempty"`
 	/*
 		<xs:sequence>
 		    <xs:element name="allowedUser" type="xs:string" minOccurs="0" maxOccurs="unbounded"/> <!--Added in 1.8.0-->
 		</xs:sequence>
-		<xs:attribute name="coverArt" type="xs:string" use="optional"/>  <!--Added in 1.11.0-->
 	*/
 }
 

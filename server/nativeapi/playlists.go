@@ -47,14 +47,14 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 		ctx := r.Context()
 		plsRepo := ds.Playlist(ctx)
 		plsId := chi.URLParam(r, "playlistId")
-		pls, err := plsRepo.GetWithTracks(plsId)
+		pls, err := plsRepo.GetWithTracks(plsId, true)
 		if errors.Is(err, model.ErrNotFound) {
-			log.Warn("Playlist not found", "playlistId", plsId)
+			log.Warn(r.Context(), "Playlist not found", "playlistId", plsId)
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Error("Error retrieving the playlist", "playlistId", plsId, err)
+			log.Error(r.Context(), "Error retrieving the playlist", "playlistId", plsId, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -64,20 +64,10 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 		disposition := fmt.Sprintf("attachment; filename=\"%s.m3u\"", pls.Name)
 		w.Header().Set("Content-Disposition", disposition)
 
-		// TODO: Move this and the import playlist logic to `core`
-		_, err = w.Write([]byte("#EXTM3U\n"))
+		_, err = w.Write([]byte(pls.ToM3U8()))
 		if err != nil {
 			log.Error(ctx, "Error sending playlist", "name", pls.Name)
 			return
-		}
-		for _, t := range pls.Tracks {
-			header := fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title)
-			line := t.Path + "\n"
-			_, err = w.Write([]byte(header + line))
-			if err != nil {
-				log.Error(ctx, "Error sending playlist", "name", pls.Name)
-				return
-			}
 		}
 	}
 }
