@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"io/fs"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -55,6 +57,17 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 	a.artistFolder = utils.LongestCommonPrefix(paths)
 	a.cacheKey.artID = artID
 	return a, nil
+}
+
+func (a *artistReader) Key() string {
+	agentsHash := md5.Sum([]byte(conf.Server.Agents + conf.Server.Spotify.ID))
+	return fmt.Sprintf(
+		"%s.%d.%d.%x",
+		a.artID,
+		a.lastUpdate.UnixMilli(),
+		a.size,
+		agentsHash,
+	)
 }
 
 func (a *artistReader) LastUpdated() time.Time {
