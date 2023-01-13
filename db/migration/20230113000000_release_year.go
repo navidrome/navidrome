@@ -13,9 +13,9 @@ func init() {
 func upAddMediafileChannels(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
-    add releasedate integer;
-create index if not exists media_file_channels
-	on media_file (channels);
+    add releaseyear integer;
+alter table album
+    add releaseyear integer;
 `)
 	if err != nil {
 		return err
