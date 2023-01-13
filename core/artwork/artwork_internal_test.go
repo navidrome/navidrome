@@ -43,7 +43,7 @@ var _ = Describe("Artwork", func() {
 
 		cache := GetImageCache()
 		ffmpeg = tests.NewMockFFmpeg("content from ffmpeg")
-		aw = NewArtwork(ds, cache, ffmpeg).(*artwork)
+		aw = NewArtwork(ds, cache, ffmpeg, nil).(*artwork)
 	})
 
 	Describe("albumArtworkReader", func() {

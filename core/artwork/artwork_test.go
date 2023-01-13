@@ -27,7 +27,7 @@ var _ = Describe("Artwork", func() {
 		conf.Server.ImageCacheSize = "0" // Disable cache
 		cache := artwork.GetImageCache()
 		ffmpeg = tests.NewMockFFmpeg("content from ffmpeg")
-		aw = artwork.NewArtwork(ds, cache, ffmpeg)
+		aw = artwork.NewArtwork(ds, cache, ffmpeg, nil)
 	})
 
 	Context("Empty ID", func() {

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -21,12 +22,13 @@ import (
 type artistReader struct {
 	cacheKey
 	a            *artwork
+	em           core.ExternalMetadata
 	artist       model.Artist
 	artistFolder string
 	files        string
 }
 
-func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkID) (*artistReader, error) {
+func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, em core.ExternalMetadata) (*artistReader, error) {
 	ar, err := artwork.ds.Artist(ctx).Get(artID.ID)
 	if err != nil {
 		return nil, err
@@ -37,6 +39,7 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 	}
 	a := &artistReader{
 		a:      artwork,
+		em:     em,
 		artist: *ar,
 	}
 	a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
@@ -63,7 +66,7 @@ func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error
 	return selectImageReader(ctx, a.artID,
 		fromArtistFolder(ctx, a.artistFolder, "artist.*"),
 		fromExternalFile(ctx, a.files, "artist.*"),
-		fromExternalSource(ctx, a.artist),
+		fromExternalSource(ctx, a.artist, a.em),
 		fromArtistPlaceholder(),
 	)
 }
@@ -89,14 +92,15 @@ func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) 
 	}
 }
 
-func fromExternalSource(ctx context.Context, ar model.Artist) sourceFunc {
+func fromExternalSource(ctx context.Context, ar model.Artist, em core.ExternalMetadata) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		imageUrl := ar.ArtistImageUrl()
-		if !strings.HasPrefix(imageUrl, "http") {
-			return nil, "", nil
+		imageUrl, err := em.ArtistImage(ctx, ar.ID)
+		if err != nil {
+			return nil, "", err
 		}
+
 		hc := http.Client{Timeout: 5 * time.Second}
-		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl, nil)
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
 		resp, err := hc.Do(req)
 		if err != nil {
 			return nil, "", err
@@ -105,6 +109,6 @@ func fromExternalSource(ctx context.Context, ar model.Artist) sourceFunc {
 			resp.Body.Close()
 			return nil, "", fmt.Errorf("error retrieveing cover from %s: %s", imageUrl, resp.Status)
 		}
-		return resp.Body, imageUrl, nil
+		return resp.Body, imageUrl.String(), nil
 	}
 }
