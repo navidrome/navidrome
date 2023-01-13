@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -30,6 +31,7 @@ type ExternalMetadata interface {
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
+	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 }
 
 type externalMetadata struct {
@@ -211,6 +213,25 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 	}
 
 	return similarSongs, nil
+}
+
+func (e *externalMetadata) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
+	artist, err := e.getArtist(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	e.callGetImage(ctx, e.ag, artist)
+	if utils.IsCtxDone(ctx) {
+		log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
+		return nil, ctx.Err()
+	}
+
+	imageUrl := artist.ArtistImageUrl()
+	if imageUrl == "" {
+		return nil, agents.ErrNotFound
+	}
+	return url.Parse(imageUrl)
 }
 
 func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {

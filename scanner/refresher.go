@@ -143,6 +143,7 @@ func (r *refresher) refreshArtists(ctx context.Context, ids ...string) error {
 		if err != nil {
 			return err
 		}
+		r.cacheWarmer.PreCache(a.CoverArtID())
 	}
 	return nil
 }
