@@ -2,7 +2,6 @@ package artwork
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -80,7 +79,7 @@ func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) 
 			return nil, "", err
 		}
 		if len(matches) == 0 {
-			return nil, "", errors.New("no matches for " + pattern)
+			return nil, "", fmt.Errorf(`no matches for "%s" in %s`, pattern, artistFolder)
 		}
 		filePath := filepath.Join(artistFolder, matches[0])
 		f, err := os.Open(filePath)
