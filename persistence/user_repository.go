@@ -206,12 +206,12 @@ func validatePasswordChange(newUser *model.User, logged *model.User) error {
 	if logged.IsAdmin && newUser.ID != logged.ID {
 		return nil
 	}
-	if newUser.NewPassword != "" && newUser.CurrentPassword == "" {
-		err.Errors["currentPassword"] = "ra.validation.required"
+	if newUser.NewPassword == "" {
+		err.Errors["password"] = "ra.validation.required"
 	}
-	if newUser.CurrentPassword != "" {
-		if newUser.NewPassword == "" {
-			err.Errors["password"] = "ra.validation.required"
+	if conf.Server.ReverseProxyUserHeader == "" {
+		if newUser.CurrentPassword == "" {
+			err.Errors["currentPassword"] = "ra.validation.required"
 		}
 		if newUser.CurrentPassword != logged.Password {
 			err.Errors["currentPassword"] = "ra.validation.passwordDoesNotMatch"
