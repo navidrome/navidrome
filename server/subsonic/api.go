@@ -6,11 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"runtime"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -20,7 +19,6 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/number"
 )
 
 const Version = "1.16.1"
@@ -138,12 +136,17 @@ func (api *Router) routes() http.Handler {
 		h(r, "startScan", api.StartScan)
 	})
 	r.Group(func(r chi.Router) {
-		// configure request throttling
-		maxRequests := number.Max(2, runtime.NumCPU())
-		r.Use(middleware.ThrottleBacklog(maxRequests, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
 		hr(r, "getAvatar", api.GetAvatar)
-		hr(r, "getCoverArt", api.GetCoverArt)
 		h(r, "getLyrics", api.GetLyrics)
+	})
+	r.Group(func(r chi.Router) {
+		// configure request throttling
+		if conf.Server.DevArtworkMaxRequests > 0 {
+			maxRequests := conf.Server.DevArtworkMaxRequests
+			r.Use(middleware.ThrottleBacklog(maxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+				conf.Server.DevArtworkThrottleBacklogTimeout))
+		}
+		hr(r, "getCoverArt", api.GetCoverArt)
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(getPlayer(api.players))
