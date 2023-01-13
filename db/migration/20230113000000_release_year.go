@@ -13,9 +13,9 @@ func init() {
 func upAddMediafileChannels(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
-    add releaseyear integer;
+    add release_year integer;
 alter table album
-    add releaseyear integer;
+    add release_year integer;
 `)
 	if err != nil {
 		return err
