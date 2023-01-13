@@ -9,10 +9,6 @@ import (
 
 const LocalAgentName = "local"
 
-const (
-	localBiography = "Biography not available"
-)
-
 type localAgent struct {
 	ds model.DataStore
 }
@@ -23,10 +19,6 @@ func localsConstructor(ds model.DataStore) Interface {
 
 func (p *localAgent) AgentName() string {
 	return LocalAgentName
-}
-
-func (p *localAgent) GetBiography(ctx context.Context, id, name, mbid string) (string, error) {
-	return localBiography, nil
 }
 
 func (p *localAgent) GetTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {
