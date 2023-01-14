@@ -16,7 +16,7 @@ type playlistTrackRepository struct {
 	playlistRepo *playlistRepository
 }
 
-func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTrackRepository {
+func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool) model.PlaylistTrackRepository {
 	p := &playlistTrackRepository{}
 	p.playlistRepo = r
 	p.playlistId = playlistId
@@ -30,7 +30,9 @@ func (r *playlistRepository) Tracks(playlistId string) model.PlaylistTrackReposi
 	if err != nil {
 		return nil
 	}
-	r.refreshSmartPlaylist(pls)
+	if refreshSmartPlaylist {
+		r.refreshSmartPlaylist(pls)
+	}
 	p.playlist = pls
 	return p
 }
@@ -68,6 +70,18 @@ func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.P
 		tracks[i].MediaFile.Genres = mf.Genres
 	}
 	return tracks, err
+}
+
+func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]string, error) {
+	sql := r.newSelect(options...).Columns("distinct mf.album_id").
+		Join("media_file mf on mf.id = media_file_id").
+		Where(Eq{"playlist_id": r.playlistId})
+	var ids []string
+	err := r.queryAll(sql, &ids)
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
