@@ -32,7 +32,7 @@ func (p *Router) routes() http.Handler {
 
 	r.Group(func(r chi.Router) {
 		r.Use(server.URLParamsMiddleware)
-		r.Get("/img/{id}", p.handleImages)
+		r.HandleFunc("/img/{id}", p.handleImages)
 	})
 	return r
 }

@@ -34,7 +34,7 @@ func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *ht
 			w.Header().Set("Content-Length", length)
 		}
 
-		if r.Method == "HEAD" {
+		if r.Method == http.MethodHead {
 			go func() { _, _ = io.Copy(io.Discard, stream) }()
 		} else {
 			c, err := io.Copy(w, stream)
