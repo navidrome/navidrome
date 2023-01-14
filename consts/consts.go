@@ -29,14 +29,19 @@ const (
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 
-	URLPathUI          = "/app"
-	URLPathNativeAPI   = "/api"
-	URLPathSubsonicAPI = "/rest"
+	URLPathUI           = "/app"
+	URLPathNativeAPI    = "/api"
+	URLPathSubsonicAPI  = "/rest"
+	URLPathPublic       = "/p"
+	URLPathPublicImages = URLPathPublic + "/img"
 
-	// Login backgrounds from https://unsplash.com/collections/20072696/navidrome
-	DefaultUILoginBackgroundURL = "https://source.unsplash.com/collection/20072696/1600x900"
-	// In case external integrations are disabled
-	DefaultUILoginBackgroundURLOffline = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIAAAAiOjnJAAAABGdBTUEAALGPC/xhBQAAAiJJREFUeF7t0IEAAAAAw6D5Ux/khVBhwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDDwMDDVlwABBWcSrQAAAABJRU5ErkJggg=="
+	// DefaultUILoginBackgroundURL uses Navidrome curated background images collection,
+	// available at https://unsplash.com/collections/20072696/navidrome
+	DefaultUILoginBackgroundURL = "/backgrounds"
+
+	// DefaultUILoginBackgroundOffline Background image used in case external integrations are disabled
+	DefaultUILoginBackgroundOffline    = "iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIAAAAiOjnJAAAABGdBTUEAALGPC/xhBQAAAiJJREFUeF7t0IEAAAAAw6D5Ux/khVBhwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDDwMDDVlwABBWcSrQAAAABJRU5ErkJggg=="
+	DefaultUILoginBackgroundURLOffline = "data:image/png;base64," + DefaultUILoginBackgroundOffline
 
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
@@ -48,12 +53,17 @@ const (
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
 
-	PlaceholderAlbumArt = "placeholder.png"
-	PlaceholderAvatar   = "logo-192x192.png"
+	PlaceholderArtistArt = "artist-placeholder.webp"
+	PlaceholderAlbumArt  = "placeholder.png"
+	PlaceholderAvatar    = "logo-192x192.png"
+
+	DefaultUIVolume = 100
 
 	DefaultHttpClientTimeOut = 10 * time.Second
 
 	DefaultScannerExtractor = "taglib"
+
+	Zwsp = string('\u200b')
 )
 
 // Cache options
@@ -75,7 +85,8 @@ const (
 )
 
 var (
-	DefaultTranscodings = []map[string]interface{}{
+	DefaultDownsamplingFormat = "opus"
+	DefaultTranscodings       = []map[string]interface{}{
 		{
 			"name":           "mp3 audio",
 			"targetFormat":   "mp3",
@@ -87,6 +98,12 @@ var (
 			"targetFormat":   "opus",
 			"defaultBitRate": 128,
 			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+		},
+		{
+			"name":           "aac audio",
+			"targetFormat":   "aac",
+			"defaultBitRate": 256,
+			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 	}
 

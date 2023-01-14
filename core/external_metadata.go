@@ -2,13 +2,15 @@ package core
 
 import (
 	"context"
+	"errors"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/kennygrant/sanitize"
+	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
@@ -17,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/number"
 )
 
 const (
@@ -28,6 +31,7 @@ type ExternalMetadata interface {
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
+	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 }
 
 type externalMetadata struct {
@@ -46,7 +50,7 @@ func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) ExternalMeta
 
 func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist, error) {
 	var entity interface{}
-	entity, err := GetEntityByID(ctx, e.ds, id)
+	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +176,7 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 			return ctx.Err()
 		}
 
-		topCount := utils.MaxInt(count, 20)
+		topCount := number.Max(count, 20)
 		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Name: a.Name, Artist: a}, topCount)
 		if err != nil {
 			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)
@@ -181,7 +185,7 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 
 		weight := topCount * (4 + artistWeight)
 		for _, mf := range topSongs {
-			weightedSongs.Put(mf, weight)
+			weightedSongs.Add(mf, weight)
 			weight -= 4
 		}
 		return nil
@@ -211,6 +215,25 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 	return similarSongs, nil
 }
 
+func (e *externalMetadata) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
+	artist, err := e.getArtist(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	e.callGetImage(ctx, e.ag, artist)
+	if utils.IsCtxDone(ctx) {
+		log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
+		return nil, ctx.Err()
+	}
+
+	imageUrl := artist.ArtistImageUrl()
+	if imageUrl == "" {
+		return nil, agents.ErrNotFound
+	}
+	return url.Parse(imageUrl)
+}
+
 func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
 	artist, err := e.findArtistByName(ctx, artistName)
 	if err != nil {
@@ -223,6 +246,9 @@ func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, coun
 
 func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
 	songs, err := agent.GetTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
+	if errors.Is(err, agents.ErrNotFound) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

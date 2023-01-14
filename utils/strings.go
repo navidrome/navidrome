@@ -17,15 +17,6 @@ func NoArticle(name string) string {
 	return name
 }
 
-func StringInSlice(a string, slice []string) bool {
-	for _, b := range slice {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
-
 func InsertString(slice []string, value string, index int) []string {
 	return append(slice[:index], append([]string{value}, slice[index:]...)...)
 }

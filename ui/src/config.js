@@ -15,10 +15,10 @@ const defaultConfig = {
   welcomeMessage: '',
   gaTrackingId: '',
   devActivityPanel: true,
-  devFastAccessCoverArt: false,
   enableStarRating: true,
   defaultTheme: 'Dark',
   defaultLanguage: '',
+  defaultUIVolume: 100,
   enableUserEditing: true,
   devEnableShare: true,
   devSidebarPlaylists: true,
@@ -33,7 +33,6 @@ let config
 
 try {
   const appConfig = JSON.parse(window.__APP_CONFIG__)
-
   config = {
     ...defaultConfig,
     ...appConfig,

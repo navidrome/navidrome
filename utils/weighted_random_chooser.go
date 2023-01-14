@@ -2,26 +2,21 @@ package utils
 
 import (
 	"errors"
-	"math/rand"
-	"time"
+
+	"github.com/navidrome/navidrome/utils/number"
 )
 
 type WeightedChooser struct {
 	entries     []interface{}
 	weights     []int
 	totalWeight int
-	rng         *rand.Rand
 }
 
 func NewWeightedRandomChooser() *WeightedChooser {
-	src := rand.NewSource(time.Now().UTC().UnixNano())
-
-	return &WeightedChooser{
-		rng: rand.New(src), // nolint:gosec
-	}
+	return &WeightedChooser{}
 }
 
-func (w *WeightedChooser) Put(value interface{}, weight int) {
+func (w *WeightedChooser) Add(value interface{}, weight int) {
 	w.entries = append(w.entries, value)
 	w.weights = append(w.weights, weight)
 	w.totalWeight += weight
@@ -43,9 +38,12 @@ func (w *WeightedChooser) GetAndRemove() (interface{}, error) {
 
 // Based on https://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python/
 func (w *WeightedChooser) weightedChoice() (int, error) {
-	rnd := w.rng.Intn(w.totalWeight)
+	if w.totalWeight == 0 {
+		return 0, errors.New("no choices available")
+	}
+	rnd := number.RandomInt64(int64(w.totalWeight))
 	for i, weight := range w.weights {
-		rnd -= weight
+		rnd -= int64(weight)
 		if rnd < 0 {
 			return i, nil
 		}

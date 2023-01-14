@@ -12,7 +12,7 @@ import (
 
 func TestGravatar(t *testing.T) {
 	tests.Init(t, false)
-	log.SetLevel(log.LevelCritical)
+	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Gravatar Test Suite")
 }

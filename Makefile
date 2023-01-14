@@ -9,7 +9,7 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION=1.19.3-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.19.5-1 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
@@ -29,7 +29,7 @@ watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 .PHONY: watch
 
 test: ##@Development Run Go tests
-	go test ./...
+	go test -race ./...
 .PHONY: test
 
 testall: test ##@Development Run Go and JS tests

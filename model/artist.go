@@ -34,6 +34,10 @@ func (a Artist) ArtistImageUrl() string {
 	return a.SmallImageUrl
 }
 
+func (a Artist) CoverArtID() ArtworkID {
+	return artworkIDFromArtist(a)
+}
+
 type Artists []Artist
 
 type ArtistIndex struct {
@@ -49,7 +53,6 @@ type ArtistRepository interface {
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
 	Search(q string, offset int, size int) (Artists, error)
-	Refresh(ids ...string) error
 	GetIndex() (ArtistIndexes, error)
 	AnnotatedRepository
 }

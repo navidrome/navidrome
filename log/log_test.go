@@ -167,9 +167,9 @@ var _ = Describe("Logger", func() {
 	})
 
 	Describe("SetLevelString", func() {
-		It("converts Critical level", func() {
-			SetLevelString("Critical")
-			Expect(CurrentLevel()).To(Equal(LevelCritical))
+		It("converts Fatal level", func() {
+			SetLevelString("Fatal")
+			Expect(CurrentLevel()).To(Equal(LevelFatal))
 		})
 		It("converts Error level", func() {
 			SetLevelString("ERROR")

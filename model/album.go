@@ -1,14 +1,18 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/exp/slices"
+)
 
 type Album struct {
 	Annotations `structs:"-"`
 
 	ID                   string    `structs:"id" json:"id"            orm:"column(id)"`
 	Name                 string    `structs:"name" json:"name"`
-	CoverArtPath         string    `structs:"cover_art_path" json:"coverArtPath"`
-	CoverArtId           string    `structs:"cover_art_id" json:"coverArtId"`
+	EmbedArtPath         string    `structs:"embed_art_path" json:"embedArtPath"`
 	ArtistID             string    `structs:"artist_id" json:"artistId"      orm:"column(artist_id)"`
 	Artist               string    `structs:"artist" json:"artist"`
 	AlbumArtistID        string    `structs:"album_artist_id" json:"albumArtistId" orm:"column(album_artist_id)"`
@@ -34,17 +38,45 @@ type Album struct {
 	MbzAlbumArtistID     string    `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
 	MbzAlbumType         string    `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment      string    `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
+	ImageFiles           string    `structs:"image_files" json:"imageFiles,omitempty"`
+	Paths                string    `structs:"paths" json:"paths,omitempty"`
 	CreatedAt            time.Time `structs:"created_at" json:"createdAt"`
 	UpdatedAt            time.Time `structs:"updated_at" json:"updatedAt"`
 }
 
-type (
-	Albums []Album
-	DiscID struct {
-		AlbumID    string `json:"albumId"`
-		DiscNumber int    `json:"discNumber"`
+func (a Album) CoverArtID() ArtworkID {
+	return artworkIDFromAlbum(a)
+}
+
+type DiscID struct {
+	AlbumID    string `json:"albumId"`
+	DiscNumber int    `json:"discNumber"`
+}
+
+type Albums []Album
+
+// ToAlbumArtist creates an Artist object based on the attributes of this Albums collection.
+// It assumes all albums have the same AlbumArtist, or else results are unpredictable.
+func (als Albums) ToAlbumArtist() Artist {
+	a := Artist{AlbumCount: len(als)}
+	var mbzArtistIds []string
+	for _, al := range als {
+		a.ID = al.AlbumArtistID
+		a.Name = al.AlbumArtist
+		a.SortArtistName = al.SortAlbumArtistName
+		a.OrderArtistName = al.OrderAlbumArtistName
+
+		a.SongCount += al.SongCount
+		a.Size += al.Size
+		a.Genres = append(a.Genres, al.Genres...)
+		mbzArtistIds = append(mbzArtistIds, al.MbzAlbumArtistID)
 	}
-)
+	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
+	a.Genres = slices.Compact(a.Genres)
+	a.MbzArtistID = slice.MostFrequent(mbzArtistIds)
+
+	return a
+}
 
 type AlbumRepository interface {
 	CountAll(...QueryOptions) (int64, error)
@@ -54,6 +86,5 @@ type AlbumRepository interface {
 	GetAll(...QueryOptions) (Albums, error)
 	GetAllWithoutGenres(...QueryOptions) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
-	Refresh(ids ...string) error
 	AnnotatedRepository
 }

@@ -9,16 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kennygrant/sanitize"
+	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
-
-type SearchingController struct {
-	ds model.DataStore
-}
 
 type searchParams struct {
 	query        string
@@ -30,11 +26,7 @@ type searchParams struct {
 	songOffset   int
 }
 
-func NewSearchingController(ds model.DataStore) *SearchingController {
-	return &SearchingController{ds: ds}
-}
-
-func (c *SearchingController) getParams(r *http.Request) (*searchParams, error) {
+func (api *Router) getParams(r *http.Request) (*searchParams, error) {
 	var err error
 	sp := &searchParams{}
 	sp.query, err = requiredParamString(r, "query")
@@ -78,15 +70,19 @@ func doSearch[T any](ctx context.Context, wg *sync.WaitGroup, s searchFunc[T], q
 	return res
 }
 
-func (c *SearchingController) searchAll(r *http.Request, sp *searchParams) (mediaFiles model.MediaFiles, albums model.Albums, artists model.Artists) {
+func (api *Router) searchAll(r *http.Request, sp *searchParams) (mediaFiles model.MediaFiles, albums model.Albums, artists model.Artists) {
 	start := time.Now()
 	q := sanitize.Accents(strings.ToLower(strings.TrimSuffix(sp.query, "*")))
 	ctx := r.Context()
 	wg := &sync.WaitGroup{}
 	wg.Add(3)
-	go func() { mediaFiles = doSearch(ctx, wg, c.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount) }()
-	go func() { albums = doSearch(ctx, wg, c.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount) }()
-	go func() { artists = doSearch(ctx, wg, c.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount) }()
+	go func() {
+		mediaFiles = doSearch(ctx, wg, api.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount)
+	}()
+	go func() { albums = doSearch(ctx, wg, api.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount) }()
+	go func() {
+		artists = doSearch(ctx, wg, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount)
+	}()
 	wg.Wait()
 
 	if ctx.Err() == nil {
@@ -98,12 +94,12 @@ func (c *SearchingController) searchAll(r *http.Request, sp *searchParams) (medi
 	return mediaFiles, albums, artists
 }
 
-func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	sp, err := c.getParams(r)
+func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
+	sp, err := api.getParams(r)
 	if err != nil {
 		return nil, err
 	}
-	mfs, als, as := c.searchAll(r, sp)
+	mfs, als, as := api.searchAll(r, sp)
 
 	response := newResponse()
 	searchResult2 := &responses.SearchResult2{}
@@ -111,10 +107,12 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 	for i, artist := range as {
 		artist := artist
 		searchResult2.Artist[i] = responses.Artist{
-			Id:         artist.ID,
-			Name:       artist.Name,
-			AlbumCount: artist.AlbumCount,
-			UserRating: artist.Rating,
+			Id:             artist.ID,
+			Name:           artist.Name,
+			AlbumCount:     artist.AlbumCount,
+			UserRating:     artist.Rating,
+			CoverArt:       artist.CoverArtID().String(),
+			ArtistImageUrl: publicImageURL(r, artist.CoverArtID(), 0),
 		}
 		if artist.Starred {
 			searchResult2.Artist[i].Starred = &as[i].StarredAt
@@ -126,19 +124,19 @@ func (c *SearchingController) Search2(w http.ResponseWriter, r *http.Request) (*
 	return response, nil
 }
 
-func (c *SearchingController) Search3(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) Search3(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	sp, err := c.getParams(r)
+	sp, err := api.getParams(r)
 	if err != nil {
 		return nil, err
 	}
-	mfs, als, as := c.searchAll(r, sp)
+	mfs, als, as := api.searchAll(r, sp)
 
 	response := newResponse()
 	searchResult3 := &responses.SearchResult3{}
 	searchResult3.Artist = make([]responses.ArtistID3, len(as))
 	for i, artist := range as {
-		searchResult3.Artist[i] = toArtistID3(ctx, artist)
+		searchResult3.Artist[i] = toArtistID3(r, artist)
 	}
 	searchResult3.Album = childrenFromAlbums(ctx, als)
 	searchResult3.Song = childrenFromMediaFiles(ctx, mfs)

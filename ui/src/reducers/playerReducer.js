@@ -16,7 +16,7 @@ const initialState = {
   queue: [],
   current: {},
   clear: false,
-  volume: 0.5, // 50%
+  volume: config.defaultUIVolume / 100,
   savedPlayIndex: 0,
 }
 
@@ -37,8 +37,9 @@ const mapToAudioLists = (item) => {
     musicSrc: subsonic.streamUrl(trackId),
     cover: subsonic.getCoverArtUrl(
       {
-        coverArtId: config.devFastAccessCoverArt ? item.albumId : trackId,
+        id: trackId,
         updatedAt: item.updatedAt,
+        album: item.album,
       },
       300
     ),
