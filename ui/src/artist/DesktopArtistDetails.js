@@ -11,6 +11,7 @@ import Lightbox from 'react-image-lightbox'
 import { AddToPlaylistDialog } from '../dialogs'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -150,6 +151,7 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
         )}
       </Card>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
       <ExpandInfoDialog content={<AlbumInfo />} />
     </div>
   )
