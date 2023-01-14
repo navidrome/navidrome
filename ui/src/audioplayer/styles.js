@@ -32,6 +32,11 @@ const useStyle = makeStyles(
           display: 'none',
         },
       },
+      '@media (prefers-reduced-motion)': {
+        '& .music-player-panel .panel-content div.img-rotate': {
+          animation: 'none',
+        },
+      },
       '& .progress-bar-content': {
         display: 'flex',
         flexDirection: 'column',
