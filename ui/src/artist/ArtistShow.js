@@ -34,7 +34,7 @@ const ArtistDetails = (props) => {
       .catch((e) => {
         console.error('error on artist page', e)
       })
-  }, [record])
+  }, [record.id])
 
   const component = isDesktop ? DesktopArtistDetails : MobileArtistDetails
   return (
