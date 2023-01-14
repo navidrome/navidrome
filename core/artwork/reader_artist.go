@@ -55,6 +55,9 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 	}
 	a.files = strings.Join(files, string(filepath.ListSeparator))
 	a.artistFolder = utils.LongestCommonPrefix(paths)
+	if !strings.HasSuffix(a.artistFolder, string(filepath.Separator)) {
+		a.artistFolder, _ = filepath.Split(a.artistFolder)
+	}
 	a.cacheKey.artID = artID
 	return a, nil
 }
@@ -92,7 +95,7 @@ func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) 
 			return nil, "", err
 		}
 		if len(matches) == 0 {
-			return nil, "", fmt.Errorf(`no matches for "%s" in %s`, pattern, artistFolder)
+			return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, artistFolder)
 		}
 		filePath := filepath.Join(artistFolder, matches[0])
 		f, err := os.Open(filePath)
