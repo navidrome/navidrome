@@ -16,7 +16,7 @@ func NewWeightedRandomChooser() *WeightedChooser {
 	return &WeightedChooser{}
 }
 
-func (w *WeightedChooser) Put(value interface{}, weight int) {
+func (w *WeightedChooser) Add(value interface{}, weight int) {
 	w.entries = append(w.entries, value)
 	w.weights = append(w.weights, weight)
 	w.totalWeight += weight

@@ -182,7 +182,7 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 
 		weight := topCount * (4 + artistWeight)
 		for _, mf := range topSongs {
-			weightedSongs.Put(mf, weight)
+			weightedSongs.Add(mf, weight)
 			weight -= 4
 		}
 		return nil
