@@ -54,7 +54,8 @@ const useStyles = makeStyles(
     button: {
       marginLeft: '0.9em',
     },
-    loveButton: {
+    contextMenu: {
+      marginLeft: theme.spacing(1.5),
       top: theme.spacing(-0.2),
       left: theme.spacing(0.5),
     },
@@ -103,11 +104,11 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
               {title}
               {config.enableFavourites && (
                 <ArtistContextMenu
-                  className={classes.loveButton}
+                  className={classes.contextMenu}
                   record={record}
                   resource={'artist'}
                   size={'default'}
-                  aria-label="love"
+                  aria-label="artist context menu"
                   color="primary"
                 />
               )}
