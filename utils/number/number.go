@@ -1,6 +1,11 @@
 package number
 
-import "golang.org/x/exp/constraints"
+import (
+	"crypto/rand"
+	"math/big"
+
+	"golang.org/x/exp/constraints"
+)
 
 func Min[T constraints.Ordered](vs ...T) T {
 	if len(vs) == 0 {
@@ -28,4 +33,9 @@ func Max[T constraints.Ordered](vs ...T) T {
 		}
 	}
 	return max
+}
+
+func RandomInt64(max int64) int64 {
+	rnd, _ := rand.Int(rand.Reader, big.NewInt(max))
+	return rnd.Int64()
 }

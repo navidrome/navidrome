@@ -2,10 +2,8 @@ package backgrounds
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"math/big"
 	"net/http"
 	"net/url"
 	"path"
@@ -14,6 +12,7 @@ import (
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/number"
 	"gopkg.in/yaml.v3"
 )
 
@@ -52,8 +51,8 @@ func (h *Handler) getRandomImage(ctx context.Context) (string, error) {
 	if len(list) == 0 {
 		return "", errors.New("no images available")
 	}
-	rnd, _ := rand.Int(rand.Reader, big.NewInt(int64(len(list))))
-	return list[rnd.Int64()], nil
+	rnd := number.RandomInt64(int64(len(list)))
+	return list[rnd], nil
 }
 
 func (h *Handler) getImageList(ctx context.Context) ([]string, error) {
