@@ -367,8 +367,8 @@ type InternetRadioStations struct {
 }
 
 type Radio struct {
-	ID          string `xml:"id"          json:"id"`
-	StreamUrl   string `xml:"streamUrl"   json:"streamUrl"`
-	Name        string `xml:"name"        json:"name"`
-	HomepageUrl string `xml:"homePageUrl" json:"homePageUrl"`
+	ID          string `xml:"id,attr"                    json:"id"`
+	Name        string `xml:"name,attr"                  json:"name"`
+	StreamUrl   string `xml:"streamUrl,attr"             json:"streamUrl"`
+	HomepageUrl string `xml:"homePageUrl,omitempty,attr" json:"homePageUrl,omitempty"`
 }
