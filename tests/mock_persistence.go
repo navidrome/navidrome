@@ -19,6 +19,7 @@ type MockDataStore struct {
 	MockedTranscoding    model.TranscodingRepository
 	MockedUserProps      model.UserPropsRepository
 	MockedScrobbleBuffer model.ScrobbleBufferRepository
+	MockedRadioBuffer    model.RadioRepository
 }
 
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {
@@ -111,6 +112,13 @@ func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBuffe
 		db.MockedScrobbleBuffer = CreateMockedScrobbleBufferRepo()
 	}
 	return db.MockedScrobbleBuffer
+}
+
+func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
+	if db.MockedRadioBuffer == nil {
+		db.MockedRadioBuffer = CreateMockedRadioRepo()
+	}
+	return db.MockedRadioBuffer
 }
 
 func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {

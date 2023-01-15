@@ -52,6 +52,10 @@ func (s *SQLStore) Property(ctx context.Context) model.PropertyRepository {
 	return NewPropertyRepository(ctx, s.getOrmer())
 }
 
+func (s *SQLStore) Radio(ctx context.Context) model.RadioRepository {
+	return NewRadioRepository(ctx, s.getOrmer())
+}
+
 func (s *SQLStore) UserProps(ctx context.Context) model.UserPropsRepository {
 	return NewUserPropsRepository(ctx, s.getOrmer())
 }
@@ -94,6 +98,8 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.Genre(ctx).(model.ResourceRepository)
 	case model.Playlist:
 		return s.Playlist(ctx).(model.ResourceRepository)
+	case model.Radio:
+		return s.Radio(ctx).(model.ResourceRepository)
 	case model.Share:
 		return s.Share(ctx).(model.ResourceRepository)
 	}

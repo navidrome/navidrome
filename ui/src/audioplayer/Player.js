@@ -41,7 +41,9 @@ const Player = () => {
   )
   const { authenticated } = useAuthState()
   const visible = authenticated && playerState.queue.length > 0
+  const isRadio = playerState.current?.isRadio || false
   const classes = useStyle({
+    isRadio,
     visible,
     enableCoverAnimation: config.enableCoverAnimation,
   })
@@ -88,8 +90,11 @@ const Player = () => {
       playIndex: playerState.playIndex,
       autoPlay: playerState.clear || playerState.playIndex === 0,
       clearPriorAudioLists: playerState.clear,
-      extendsContent: <PlayerToolbar id={current.trackId} />,
+      extendsContent: (
+        <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
+      ),
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
+      showMediaSession: !current.isRadio,
     }
   }, [playerState, defaultOptions, isMobilePlayer])
 
@@ -113,6 +118,10 @@ const Player = () => {
 
       const progress = (info.currentTime / info.duration) * 100
       if (isNaN(info.duration) || (progress < 50 && info.currentTime < 240)) {
+        return
+      }
+
+      if (info.isRadio) {
         return
       }
 
@@ -149,7 +158,9 @@ const Player = () => {
       if (info.duration) {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
-        subsonic.nowPlaying(info.trackId)
+        if (!info.isRadio) {
+          subsonic.nowPlaying(info.trackId)
+        }
         setPreload(false)
         if (config.gaTrackingId) {
           ReactGA.event({
