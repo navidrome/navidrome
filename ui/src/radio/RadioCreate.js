@@ -50,8 +50,13 @@ const RadioCreate = (props) => {
     <Create title={<Title subTitle={title} />} {...props}>
       <SimpleForm save={save} variant={'outlined'}>
         <TextInput source="name" validate={[required()]} />
-        <TextInput type="url" source="streamUrl" validate={[required()]} />
-        <TextInput type="url" source="homepageUrl" />
+        <TextInput
+          type="url"
+          source="streamUrl"
+          fullWidth
+          validate={[required()]}
+        />
+        <TextInput type="url" source="homepageUrl" fullWidth />
       </SimpleForm>
     </Create>
   )
