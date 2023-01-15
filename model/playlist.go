@@ -106,11 +106,11 @@ type PlaylistRepository interface {
 	Exists(id string) (bool, error)
 	Put(pls *Playlist) error
 	Get(id string) (*Playlist, error)
-	GetWithTracks(id string) (*Playlist, error)
+	GetWithTracks(id string, refreshSmartPlaylist bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
-	Tracks(playlistId string) PlaylistTrackRepository
+	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
 }
 
 type PlaylistTrack struct {
@@ -133,6 +133,7 @@ func (plt PlaylistTracks) MediaFiles() MediaFiles {
 type PlaylistTrackRepository interface {
 	ResourceRepository
 	GetAll(options ...QueryOptions) (PlaylistTracks, error)
+	GetAlbumIDs(options ...QueryOptions) ([]string, error)
 	Add(mediaFileIds []string) (int, error)
 	AddAlbums(albumIds []string) (int, error)
 	AddArtists(artistIds []string) (int, error)

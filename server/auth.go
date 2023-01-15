@@ -107,8 +107,6 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 }
 
 func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
-	auth.Init(ds)
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
 		if err != nil {

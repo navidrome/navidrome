@@ -7,6 +7,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -18,14 +21,15 @@ type Artwork interface {
 	Get(ctx context.Context, id string, size int) (io.ReadCloser, time.Time, error)
 }
 
-func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg) Artwork {
-	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg}
+func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, em core.ExternalMetadata) Artwork {
+	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, em: em}
 }
 
 type artwork struct {
 	ds     model.DataStore
 	cache  cache.FileCache
 	ffmpeg ffmpeg.FFmpeg
+	em     core.ExternalMetadata
 }
 
 type artworkReader interface {
@@ -35,9 +39,6 @@ type artworkReader interface {
 }
 
 func (a *artwork) Get(ctx context.Context, id string, size int) (reader io.ReadCloser, lastUpdate time.Time, err error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
 	artID, err := a.getArtworkId(ctx, id)
 	if err != nil {
 		return nil, time.Time{}, err
@@ -73,6 +74,9 @@ func (a *artwork) getArtworkId(ctx context.Context, id string) (model.ArtworkID,
 		return model.ArtworkID{}, err
 	}
 	switch e := entity.(type) {
+	case *model.Artist:
+		artID = model.NewArtworkID(model.KindArtistArtwork, e.ID)
+		log.Trace(ctx, "ID is for an Artist", "id", id, "name", e.Name, "artist", e.Name)
 	case *model.Album:
 		artID = model.NewArtworkID(model.KindAlbumArtwork, e.ID)
 		log.Trace(ctx, "ID is for an Album", "id", id, "name", e.Name, "artist", e.AlbumArtist)
@@ -93,6 +97,8 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 		artReader, err = resizedFromOriginal(ctx, a, artID, size)
 	} else {
 		switch artID.Kind {
+		case model.KindArtistArtwork:
+			artReader, err = newArtistReader(ctx, a, artID, a.em)
 		case model.KindAlbumArtwork:
 			artReader, err = newAlbumArtworkReader(ctx, a, artID)
 		case model.KindMediaFileArtwork:
@@ -104,4 +110,32 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 		}
 	}
 	return artReader, err
+}
+
+func EncodeArtworkID(artID model.ArtworkID) string {
+	token, _ := auth.CreatePublicToken(map[string]any{"id": artID.String()})
+	return token
+}
+
+func DecodeArtworkID(tokenString string) (model.ArtworkID, error) {
+	token, err := auth.TokenAuth.Decode(tokenString)
+	if err != nil {
+		return model.ArtworkID{}, err
+	}
+	if token == nil {
+		return model.ArtworkID{}, errors.New("unauthorized")
+	}
+	err = jwt.Validate(token, jwt.WithRequiredClaim("id"))
+	if err != nil {
+		return model.ArtworkID{}, err
+	}
+	claims, err := token.AsMap(context.Background())
+	if err != nil {
+		return model.ArtworkID{}, err
+	}
+	id, ok := claims["id"].(string)
+	if !ok {
+		return model.ArtworkID{}, errors.New("invalid id type")
+	}
+	return model.ParseArtworkID(id)
 }

@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/dhowden/tag"
 	"github.com/navidrome/navidrome/consts"
@@ -24,12 +25,13 @@ func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs 
 		if ctx.Err() != nil {
 			return nil, "", ctx.Err()
 		}
+		start := time.Now()
 		r, path, err := f()
 		if r != nil {
-			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "source", f)
+			log.Trace(ctx, "Found artwork", "artID", artID, "path", path, "source", f, "elapsed", time.Since(start))
 			return r, path, nil
 		}
-		log.Trace(ctx, "Tried to extract artwork", "artID", artID, "source", f, err)
+		log.Trace(ctx, "Failed trying to extract artwork", "artID", artID, "source", f, "elapsed", time.Since(start), err)
 	}
 	return nil, "", fmt.Errorf("could not get a cover art for %s", artID)
 }
@@ -112,9 +114,26 @@ func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourc
 	}
 }
 
-func fromPlaceholder() sourceFunc {
+func fromAlbum(ctx context.Context, a *artwork, id model.ArtworkID) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		r, _, err := a.Get(ctx, id.String(), 0)
+		if err != nil {
+			return nil, "", err
+		}
+		return r, id.String(), nil
+	}
+}
+
+func fromAlbumPlaceholder() sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		r, _ := resources.FS().Open(consts.PlaceholderAlbumArt)
 		return r, consts.PlaceholderAlbumArt, nil
+	}
+}
+
+func fromArtistPlaceholder() sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		r, _ := resources.FS().Open(consts.PlaceholderArtistArt)
+		return r, consts.PlaceholderArtistArt, nil
 	}
 }

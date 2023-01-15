@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/number"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
@@ -73,15 +75,18 @@ type configOptions struct {
 	DefaultDownsamplingFormat string
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
-	DevLogSourceLine           bool
-	DevLogLevels               map[string]string
-	DevAutoCreateAdminPassword string
-	DevAutoLoginUsername       string
-	DevActivityPanel           bool
-	DevEnableShare             bool
-	DevSidebarPlaylists        bool
-	DevEnableBufferedScrobble  bool
-	DevShowArtistPage          bool
+	DevLogSourceLine                 bool
+	DevLogLevels                     map[string]string
+	DevAutoCreateAdminPassword       string
+	DevAutoLoginUsername             string
+	DevActivityPanel                 bool
+	DevEnableShare                   bool
+	DevSidebarPlaylists              bool
+	DevEnableBufferedScrobble        bool
+	DevShowArtistPage                bool
+	DevArtworkMaxRequests            int
+	DevArtworkThrottleBacklogLimit   int
+	DevArtworkThrottleBacklogTimeout time.Duration
 }
 
 type scannerOptions struct {
@@ -284,6 +289,9 @@ func init() {
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
+	viper.SetDefault("devartworkmaxrequests", number.Max(2, runtime.NumCPU()))
+	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
+	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 }
 
 func InitConfig(cfgFile string) {

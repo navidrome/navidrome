@@ -139,10 +139,15 @@ func (r *refresher) refreshArtists(ctx context.Context, ids ...string) error {
 	grouped := slice.Group(albums, func(al model.Album) string { return al.AlbumArtistID })
 	for _, group := range grouped {
 		a := model.Albums(group).ToAlbumArtist()
+
+		// Force a external metadata lookup on next access
+		a.ExternalInfoUpdatedAt = time.Time{}
+
 		err := repo.Put(&a)
 		if err != nil {
 			return err
 		}
+		r.cacheWarmer.PreCache(a.CoverArtID())
 	}
 	return nil
 }

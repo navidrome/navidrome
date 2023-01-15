@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kennygrant/sanitize"
+	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"

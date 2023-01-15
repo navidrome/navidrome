@@ -29,9 +29,11 @@ const (
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 
-	URLPathUI          = "/app"
-	URLPathNativeAPI   = "/api"
-	URLPathSubsonicAPI = "/rest"
+	URLPathUI           = "/app"
+	URLPathNativeAPI    = "/api"
+	URLPathSubsonicAPI  = "/rest"
+	URLPathPublic       = "/p"
+	URLPathPublicImages = URLPathPublic + "/img"
 
 	// DefaultUILoginBackgroundURL uses Navidrome curated background images collection,
 	// available at https://unsplash.com/collections/20072696/navidrome
@@ -51,8 +53,9 @@ const (
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
 
-	PlaceholderAlbumArt = "placeholder.png"
-	PlaceholderAvatar   = "logo-192x192.png"
+	PlaceholderArtistArt = "artist-placeholder.webp"
+	PlaceholderAlbumArt  = "placeholder.png"
+	PlaceholderAvatar    = "logo-192x192.png"
 
 	DefaultUIVolume = 100
 

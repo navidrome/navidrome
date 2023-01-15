@@ -25,7 +25,7 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 			constructor := func(ctx context.Context) rest.Repository {
 				plsRepo := ds.Playlist(ctx)
 				plsId := chi.URLParam(req, "playlistId")
-				return plsRepo.Tracks(plsId)
+				return plsRepo.Tracks(plsId, true)
 			}
 
 			handler(constructor).ServeHTTP(res, req)
@@ -47,7 +47,7 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 		ctx := r.Context()
 		plsRepo := ds.Playlist(ctx)
 		plsId := chi.URLParam(r, "playlistId")
-		pls, err := plsRepo.GetWithTracks(plsId)
+		pls, err := plsRepo.GetWithTracks(plsId, true)
 		if errors.Is(err, model.ErrNotFound) {
 			log.Warn(r.Context(), "Playlist not found", "playlistId", plsId)
 			http.Error(w, "not found", http.StatusNotFound)
@@ -77,7 +77,7 @@ func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
 		playlistId := utils.ParamString(r, ":playlistId")
 		ids := r.URL.Query()["id"]
 		err := ds.WithTx(func(tx model.DataStore) error {
-			tracksRepo := tx.Playlist(r.Context()).Tracks(playlistId)
+			tracksRepo := tx.Playlist(r.Context()).Tracks(playlistId, true)
 			return tracksRepo.Delete(ids...)
 		})
 		if len(ids) == 1 && errors.Is(err, model.ErrNotFound) {
@@ -125,7 +125,7 @@ func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
+		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId, true)
 		count, c := 0, 0
 		if c, err = tracksRepo.Add(payload.Ids); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -179,7 +179,7 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
+		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId, true)
 		err = tracksRepo.Reorder(id, newPos)
 		if errors.Is(err, rest.ErrPermissionDenied) {
 			http.Error(w, err.Error(), http.StatusForbidden)

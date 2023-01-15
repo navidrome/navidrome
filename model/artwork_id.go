@@ -12,13 +12,15 @@ type Kind struct{ prefix string }
 
 var (
 	KindMediaFileArtwork = Kind{"mf"}
+	KindArtistArtwork    = Kind{"ar"}
 	KindAlbumArtwork     = Kind{"al"}
 	KindPlaylistArtwork  = Kind{"pl"}
 )
 
 var artworkKindList = []string{
-	KindAlbumArtwork.prefix,
 	KindMediaFileArtwork.prefix,
+	KindArtistArtwork.prefix,
+	KindAlbumArtwork.prefix,
 	KindPlaylistArtwork.prefix,
 }
 
@@ -78,5 +80,12 @@ func artworkIDFromPlaylist(pls Playlist) ArtworkID {
 	return ArtworkID{
 		Kind: KindPlaylistArtwork,
 		ID:   pls.ID,
+	}
+}
+
+func artworkIDFromArtist(ar Artist) ArtworkID {
+	return ArtworkID{
+		Kind: KindArtistArtwork,
+		ID:   ar.ID,
 	}
 }

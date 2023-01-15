@@ -10,6 +10,7 @@ require (
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/cespare/reflex v0.3.1
 	github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47
+	github.com/deluan/sanitize v0.0.0-20180806073457-06ec0d0dbcd4
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/atime v1.1.0
@@ -19,13 +20,12 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-chi/cors v1.2.1
-	github.com/go-chi/httprate v0.7.0
+	github.com/go-chi/httprate v0.7.1
 	github.com/go-chi/jwtauth/v5 v5.1.0
 	github.com/golangci/golangci-lint v1.50.1
 	github.com/google/uuid v1.3.0
 	github.com/google/wire v0.5.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/kennygrant/sanitize v0.0.0-20170120101633-6a0bfdde8629
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.0.8
 	github.com/matoous/go-nanoid v1.5.0
@@ -33,7 +33,7 @@ require (
 	github.com/mattn/go-zglob v0.0.3
 	github.com/microcosm-cc/bluemonday v1.0.21
 	github.com/mileusna/useragent v1.2.1
-	github.com/onsi/ginkgo/v2 v2.6.1
+	github.com/onsi/ginkgo/v2 v2.7.0
 	github.com/onsi/gomega v1.24.2
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/prometheus/client_golang v1.14.0
@@ -47,8 +47,8 @@ require (
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 	golang.org/x/sync v0.1.0
-	golang.org/x/text v0.5.0
-	golang.org/x/tools v0.4.0
+	golang.org/x/text v0.6.0
+	golang.org/x/tools v0.5.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -232,8 +232,8 @@ require (
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20220827204233-334a2380cb91 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.4.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/net v0.5.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

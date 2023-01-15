@@ -31,5 +31,5 @@ func (a *emptyIDReader) Key() string {
 }
 
 func (a *emptyIDReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	return selectImageReader(ctx, a.artID, fromPlaceholder())
+	return selectImageReader(ctx, a.artID, fromAlbumPlaceholder())
 }

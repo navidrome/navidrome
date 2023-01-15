@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
+	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic"
 	"sync"
 )
@@ -48,18 +49,30 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg)
+	agentsAgents := agents.New(dataStore)
+	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	archiver := core.NewArchiver(mediaStreamer, dataStore)
 	players := core.NewPlayers(dataStore)
-	agentsAgents := agents.New(dataStore)
-	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
 	scanner := GetScanner()
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
 	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, playlists, playTracker)
+	return router
+}
+
+func CreatePublicRouter() *public.Router {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	fileCache := artwork.GetImageCache()
+	fFmpeg := ffmpeg.New()
+	agentsAgents := agents.New(dataStore)
+	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
+	router := public.New(artworkArtwork)
 	return router
 }
 
@@ -83,7 +96,9 @@ func createScanner() scanner.Scanner {
 	playlists := core.NewPlaylists(dataStore)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg)
+	agentsAgents := agents.New(dataStore)
+	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	scannerScanner := scanner.New(dataStore, playlists, cacheWarmer, broker)
@@ -92,7 +107,7 @@ func createScanner() scanner.Scanner {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, subsonic.New, nativeapi.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, db.Db)
 
 // Scanner must be a Singleton
 var (
