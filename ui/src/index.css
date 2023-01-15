@@ -12,6 +12,7 @@ code {
     monospace;
 }
 
-.radio-player .audio-main {
+.radio-player .audio-main, 
+.radio-player .react-jinke-music-player-mobile-progress {
   display: none !important;
 }

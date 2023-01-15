@@ -115,7 +115,10 @@ const RadioList = ({ permissions, ...props }) => {
               record={r}
               source={'streamUrl'}
               hideUrl
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
             />
           )}
           primaryText={(r) => r.name}

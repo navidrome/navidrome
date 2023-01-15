@@ -23,6 +23,7 @@ export const StreamField = ({ hideUrl, ...rest }) => {
   const playTrack = useCallback(
     async (evt) => {
       evt.stopPropagation()
+      evt.preventDefault()
       dispatch(setTrack(await songFromRadio(record)))
     },
     [dispatch, record]
