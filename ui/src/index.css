@@ -11,8 +11,3 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
-
-.radio-player .audio-main, 
-.radio-player .react-jinke-music-player-mobile-progress {
-  display: none !important;
-}

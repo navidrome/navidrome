@@ -23,7 +23,6 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
-import clsx from 'clsx'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -42,14 +41,15 @@ const Player = () => {
   )
   const { authenticated } = useAuthState()
   const visible = authenticated && playerState.queue.length > 0
+  const isRadio = playerState.current?.isRadio || false
   const classes = useStyle({
+    isRadio,
     visible,
     enableCoverAnimation: config.enableCoverAnimation,
   })
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
   )
-  const currentClass = playerState.current?.isRadio ? 'radio-player' : ''
 
   const defaultOptions = useMemo(
     () => ({
@@ -239,7 +239,7 @@ const Player = () => {
     <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
         {...options}
-        className={clsx(classes.player, currentClass)}
+        className={classes.player}
         onAudioListsChange={onAudioListsChange}
         onAudioVolumeChange={onAudioVolumeChange}
         onAudioProgress={onAudioProgress}
