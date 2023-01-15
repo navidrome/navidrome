@@ -121,6 +121,10 @@ const Player = () => {
         return
       }
 
+      if (info.isRadio) {
+        return
+      }
+
       if (!preloaded) {
         const next = nextSong()
         if (next != null) {
@@ -131,7 +135,7 @@ const Player = () => {
         return
       }
 
-      if (!info.isRadio && !scrobbled) {
+      if (!scrobbled) {
         info.trackId && subsonic.scrobble(info.trackId, startTime)
         setScrobbled(true)
       }
