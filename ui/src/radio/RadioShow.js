@@ -9,7 +9,6 @@ import {
   UrlField,
   useShowController,
 } from 'react-admin'
-import RadioActions from './RadioActions'
 import { StreamField } from './StreamField'
 
 const RadioShowLayout = ({ ...props }) => {
@@ -21,7 +20,6 @@ const RadioShowLayout = ({ ...props }) => {
 
   return (
     <>
-      {record && <RadioActions record={record} />}
       {record && (
         <Card>
           <SimpleShowLayout>

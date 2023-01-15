@@ -14,7 +14,6 @@ import {
   useRedirect,
 } from 'react-admin'
 import DeleteRadioButton from './DeleteRadioButton'
-import RadioActions from './RadioActions'
 
 const useStyles = makeStyles({
   toolbar: {
@@ -93,7 +92,6 @@ const RadioEditLayout = ({
 
   return (
     <>
-      {record && <RadioActions record={record} />}
       {record && (
         <Card>
           <SimpleForm
@@ -102,7 +100,7 @@ const RadioEditLayout = ({
             toolbar={<RadioToolbar />}
             {...props}
           >
-            <TextInput source="name" fullWidth validate={[required()]} />
+            <TextInput source="name" validate={[required()]} />
             <TextInput
               type="url"
               source="streamUrl"

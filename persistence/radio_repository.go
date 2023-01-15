@@ -23,6 +23,9 @@ func NewRadioRepository(ctx context.Context, o orm.QueryExecutor) model.RadioRep
 	r.ctx = ctx
 	r.ormer = o
 	r.tableName = "radio"
+	r.filterMappings = map[string]filterFunc{
+		"name": containsFilter,
+	}
 	return r
 }
 
