@@ -14,9 +14,9 @@ func upCreateInternetRadio(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table if not exists radio
 (
-  id            varchar(255) not null primary key,
+    id            varchar(255) not null primary key,
+	name          varchar not null unique,
 	stream_url    varchar not null,
-	name          varchar not null,
 	home_page_url varchar default '' not null,
 	created_at    datetime,
 	updated_at    datetime
