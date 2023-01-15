@@ -114,7 +114,7 @@ const RadioList = ({ permissions, ...props }) => {
             <StreamField
               record={r}
               source={'streamUrl'}
-              showUrl={false}
+              hideUrl
               onClick={(e) => e.stopPropagation()}
             />
           )}
