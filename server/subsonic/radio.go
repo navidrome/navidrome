@@ -24,7 +24,7 @@ func (api *Router) CreateInternetRadio(r *http.Request) (*responses.Subsonic, er
 
 	radio := &model.Radio{
 		StreamUrl:   streamUrl,
-		HomePageURL: homepageUrl,
+		HomePageUrl: homepageUrl,
 		Name:        name,
 	}
 
@@ -62,7 +62,7 @@ func (api *Router) GetInternetRadios(r *http.Request) (*responses.Subsonic, erro
 			ID:          g.ID,
 			Name:        g.Name,
 			StreamUrl:   g.StreamUrl,
-			HomepageUrl: g.HomePageURL,
+			HomepageUrl: g.HomePageUrl,
 		}
 	}
 
@@ -96,7 +96,7 @@ func (api *Router) UpdateInternetRadios(r *http.Request) (*responses.Subsonic, e
 	radio := &model.Radio{
 		ID:          id,
 		StreamUrl:   streamUrl,
-		HomePageURL: homepageUrl,
+		HomePageUrl: homepageUrl,
 		Name:        name,
 	}
 
