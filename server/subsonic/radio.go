@@ -51,7 +51,7 @@ func (api *Router) DeleteInternetRadio(r *http.Request) (*responses.Subsonic, er
 
 func (api *Router) GetInternetRadios(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	radios, err := api.ds.Radio(ctx).GetAll()
+	radios, err := api.ds.Radio(ctx).GetAll(model.QueryOptions{Sort: "name"})
 	if err != nil {
 		return nil, err
 	}
