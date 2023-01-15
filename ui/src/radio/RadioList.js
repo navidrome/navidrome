@@ -101,6 +101,7 @@ const RadioList = ({ permissions, ...props }) => {
     <List
       {...props}
       exporter={false}
+      sort={{ field: 'name', order: 'ASC' }}
       bulkActionButtons={isAdmin ? undefined : false}
       hasCreate={isAdmin}
       actions={<RadioListActions isAdmin={isAdmin} />}
