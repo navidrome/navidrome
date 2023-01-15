@@ -14,6 +14,7 @@ import song from './song'
 import album from './album'
 import artist from './artist'
 import playlist from './playlist'
+import radio from './radio'
 import { Player } from './audioplayer'
 import customRoutes from './routes'
 import {
@@ -99,6 +100,10 @@ const Admin = (props) => {
         <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
         <Resource name="artist" {...artist} />,
         <Resource name="song" {...song} />,
+        <Resource
+          name="radio"
+          {...(permissions === 'admin' ? radio.admin : radio.all)}
+        />,
         <Resource
           name="playlist"
           {...playlist}

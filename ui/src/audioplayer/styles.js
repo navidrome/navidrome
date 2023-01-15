@@ -78,6 +78,17 @@ const useStyle = makeStyles(
         {
           display: 'none',
         },
+      '& .music-player-panel .panel-content .progress-bar-content section.audio-main':
+        {
+          display: (props) => {
+            return props.isRadio ? 'none' : 'inline-flex'
+          },
+        },
+      '& .react-jinke-music-player-mobile-progress': {
+        display: (props) => {
+          return props.isRadio ? 'none' : 'flex'
+        },
+      },
     },
   }),
   { name: 'NDAudioPlayer' }

@@ -153,6 +153,12 @@ func (api *Router) routes() http.Handler {
 		hr(r, "stream", api.Stream)
 		hr(r, "download", api.Download)
 	})
+	r.Group(func(r chi.Router) {
+		h(r, "createInternetRadioStation", api.CreateInternetRadio)
+		h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
+		h(r, "getInternetRadioStations", api.GetInternetRadios)
+		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
+	})
 
 	// Not Implemented (yet?)
 	h501(r, "jukeboxControl")
@@ -160,8 +166,6 @@ func (api *Router) routes() http.Handler {
 	h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
 		"deletePodcastEpisode", "downloadPodcastEpisode")
-	h501(r, "getInternetRadioStations", "createInternetRadioStation", "updateInternetRadioStation",
-		"deleteInternetRadioStation")
 	h501(r, "createUser", "updateUser", "deleteUser", "changePassword")
 
 	// Deprecated/Won't implement/Out of scope endpoints
