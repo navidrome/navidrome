@@ -74,7 +74,7 @@ func (api *Router) GetInternetRadios(r *http.Request) (*responses.Subsonic, erro
 	return response, nil
 }
 
-func (api *Router) UpdateInternetRadios(r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) UpdateInternetRadio(r *http.Request) (*responses.Subsonic, error) {
 	id, err := requiredParamString(r, "id")
 	if err != nil {
 		return nil, err

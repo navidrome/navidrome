@@ -157,7 +157,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "createInternetRadioStation", api.CreateInternetRadio)
 		h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
 		h(r, "getInternetRadioStations", api.GetInternetRadios)
-		h(r, "updateInternetRadioStation", api.UpdateInternetRadios)
+		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 	})
 
 	// Not Implemented (yet?)
