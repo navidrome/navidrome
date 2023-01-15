@@ -44,7 +44,7 @@ var _ = Describe("RadioRepository", func() {
 		})
 
 		Describe("Count", func() {
-			It("returns the number of playlists in the DB", func() {
+			It("returns the number of radios in the DB", func() {
 				Expect(repo.CountAll()).To(Equal(int64(2)))
 			})
 		})
@@ -64,7 +64,7 @@ var _ = Describe("RadioRepository", func() {
 			It("returns an existing item", func() {
 				res, err := repo.Get(radioWithHomePage.ID)
 
-				Expect(err).To((BeNil()))
+				Expect(err).To(BeNil())
 				Expect(res.ID).To(Equal(radioWithHomePage.ID))
 			})
 
@@ -97,7 +97,7 @@ var _ = Describe("RadioRepository", func() {
 				item, err := repo.Get(radioWithHomePage.ID)
 				Expect(err).To(BeNil())
 
-				Expect(item.HomePageURL).To(Equal(""))
+				Expect(item.HomePageUrl).To(Equal(""))
 			})
 
 			It("successfully creates item", func() {
@@ -116,7 +116,7 @@ var _ = Describe("RadioRepository", func() {
 		})
 	})
 
-	Describe("Regilar User", func() {
+	Describe("Regular User", func() {
 		BeforeEach(func() {
 			ctx := log.NewContext(context.TODO())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: false})
@@ -124,7 +124,7 @@ var _ = Describe("RadioRepository", func() {
 		})
 
 		Describe("Count", func() {
-			It("returns the number of playlists in the DB", func() {
+			It("returns the number of radios in the DB", func() {
 				Expect(repo.CountAll()).To(Equal(int64(2)))
 			})
 		})
