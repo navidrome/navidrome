@@ -13,9 +13,7 @@ export const RadioContextMenu = ({ record, className }) => {
   const translate = useTranslate()
   const [anchorEl, setAnchorEl] = useState(null)
 
-  const resourceName = translate('resources.radio.name', { smart_count: 1 })
-
-  const newRecord = songFromRadio(record, resourceName)
+  const newRecord = songFromRadio(record)
 
   const handleClick = (e) => {
     setAnchorEl(e.currentTarget)

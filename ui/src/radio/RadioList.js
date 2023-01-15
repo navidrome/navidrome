@@ -8,10 +8,12 @@ import {
   sanitizeListRestProps,
   TextField,
   TopToolbar,
+  UrlField,
   useTranslate,
 } from 'react-admin'
 import { ToggleFieldsMenu, useSelectedFields } from '../common'
 import { RadioContextMenu } from './RadioContextMenu'
+import { StreamField } from './StreamField'
 
 const useStyles = makeStyles({
   row: {
@@ -66,8 +68,15 @@ const RadioList = ({ permissions, ...props }) => {
 
   const toggleableFields = {
     name: <TextField source="name" />,
-    streamUrl: <TextField source="streamUrl" />,
-    homePageUrl: <TextField source="homePageUrl" />,
+    homePageUrl: (
+      <UrlField
+        source="homePageUrl"
+        onClick={(e) => e.stopPropagation()}
+        target="_blank"
+        rel="noopener noreferrer"
+      />
+    ),
+    streamUrl: <StreamField source="streamUrl" />,
     createdAt: <DateField source="createdAt" showTime />,
     updatedAt: <DateField source="updatedAt" showTime />,
   }
@@ -75,7 +84,7 @@ const RadioList = ({ permissions, ...props }) => {
   const columns = useSelectedFields({
     resource: 'radio',
     columns: toggleableFields,
-    defaultOff: ['homePageUrl', 'createdAt', 'updatedAt'],
+    defaultOff: ['createdAt', 'updatedAt'],
   })
 
   return (

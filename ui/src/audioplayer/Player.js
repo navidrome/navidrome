@@ -23,6 +23,7 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
+import clsx from 'clsx'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -48,6 +49,7 @@ const Player = () => {
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
   )
+  const currentClass = playerState.current?.isRadio ? 'radio-player' : ''
 
   const defaultOptions = useMemo(
     () => ({
@@ -129,10 +131,8 @@ const Player = () => {
         return
       }
 
-      if (!scrobbled) {
-        info.trackId &&
-          !info.isRadio &&
-          subsonic.scrobble(info.trackId, startTime)
+      if (!info.isRadio && !scrobbled) {
+        info.trackId && subsonic.scrobble(info.trackId, startTime)
         setScrobbled(true)
       }
     },
@@ -235,7 +235,7 @@ const Player = () => {
     <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
         {...options}
-        className={classes.player}
+        className={clsx(classes.player, currentClass)}
         onAudioListsChange={onAudioListsChange}
         onAudioVolumeChange={onAudioVolumeChange}
         onAudioProgress={onAudioProgress}

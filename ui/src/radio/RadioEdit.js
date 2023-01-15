@@ -102,15 +102,17 @@ const RadioEditLayout = ({
             toolbar={<RadioToolbar />}
             {...props}
           >
-            <TextInput source="name" validate={[required()]} />
+            <TextInput source="name" fullWidth validate={[required()]} />
             <TextInput
               type="url"
               source="streamUrl"
+              fullWidth
               validate={[required(), urlValidate]}
             />
             <TextInput
               type="url"
               source="homePageUrl"
+              fullWidth
               validate={[urlValidate]}
             />
             <DateField variant="body1" source="updatedAt" showTime />

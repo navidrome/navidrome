@@ -21,9 +21,7 @@ const RadioActions = ({ className, record, ...rest }) => {
   const translate = useTranslate()
   const classes = useStyles()
 
-  const resourceName = translate('resources.radio.name', { smart_count: 1 })
-
-  const newRecord = songFromRadio(record, resourceName)
+  const newRecord = songFromRadio(record)
 
   const handlePlay = React.useCallback(() => {
     dispatch(setTrack(newRecord))
