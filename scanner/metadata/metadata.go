@@ -99,8 +99,8 @@ func (t Tags) SortAlbum() string       { return t.getSortTag("", "album") }
 func (t Tags) SortArtist() string      { return t.getSortTag("", "artist") }
 func (t Tags) SortAlbumArtist() string { return t.getSortTag("tso2", "albumartist", "album_artist") }
 func (t Tags) Genres() []string        { return t.getAllTagValues("genre") }
-func (t Tags) ReleaseYear() int        { return t.getYear("date") }
-func (t Tags) OriginalYear() int       { return t.getYear("originaldate") }
+func (t Tags) ReleaseYear() int        { return t.getYear("tdrl", "date") }
+func (t Tags) OriginalYear() int       { return t.getYear("tdor", "originaldate") }
 func (t Tags) RecordingYear() int      { return t.getYear("tdrc", "recordingdate") }
 func (t Tags) Comment() string         { return t.getFirstTagValue("comment") }
 func (t Tags) Lyrics() string          { return t.getFirstTagValue("lyrics", "lyrics-eng") }
