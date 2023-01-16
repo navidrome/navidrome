@@ -177,8 +177,9 @@ func (s mediaFileMapper) mapYear(md metadata.Tags) int {
 	return md.ReleaseYear()
 }
 
-func (s mediaFileMapper) mapOriginalYear(md metadata.Tags) int {
+func (s mediaFileMapper) mapReleaseYear(md metadata.Tags) int {
 	if conf.Server.DevUseOriginalDate {
 		return md.OriginalYear()
 	}
+	return nil
 }
