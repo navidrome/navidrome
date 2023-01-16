@@ -83,6 +83,7 @@ type configOptions struct {
 	DevEnableBufferedScrobble  bool
 	DevShowArtistPage          bool
 	DevUseOriginalDate         bool
+	DevGroupAlbumEditions      bool
 }
 
 type scannerOptions struct {
@@ -286,6 +287,7 @@ func init() {
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
 	viper.SetDefault("devuseoriginaldate", false)
+	viper.SetDefault("devgroupalbumeditions", true)
 }
 
 func InitConfig(cfgFile string) {
