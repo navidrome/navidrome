@@ -192,16 +192,16 @@ const Details = (props) => {
   const releaseYear = formatRange(record, 'releaseYear')
   year && addDetail(
     <>
-      {
-       (!isXsmall ? "Original " : "♫ ") +
+      {(!isXsmall ? "Original " : "♫ ") +
        year
-       }
+      }
     </>
   )
   (releaseYear != year) && addDetail(
     <>
-    (!isXsmall ? "Released " : "□ ") +
-    releaseYear
+      {(!isXsmall ? "Released " : "□ ") +
+       releaseYear
+      }
     </>
  )
   addDetail(
