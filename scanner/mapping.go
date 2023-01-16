@@ -42,8 +42,8 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.AlbumArtist = s.mapAlbumArtistName(md)
 	mf.Genre, mf.Genres = s.mapGenres(md.Genres())
 	mf.Compilation = md.Compilation()
-	mf.ReleaseYear = md.ReleaseYear
 	mf.Year = s.mapYear(md)
+	mf.ReleaseYear = s.mapReleaseYear(md)
 	mf.TrackNumber, _ = md.TrackNumber()
 	mf.DiscNumber, _ = md.DiscNumber()
 	mf.DiscSubtitle = md.DiscSubtitle()
@@ -168,8 +168,16 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 }
 
 func (s mediaFileMapper) mapYear(md metadata.Tags) int {
-	if md.Year() != 0 || conf.Server.DevUseOriginalDate {
-		return md.Year()
+	if  conf.Server.DevUseOriginalDate {
+		if md.OriginalYear() != 0 {
+			return md.OriginalYear()
+		}
 	}
 	return md.ReleaseYear()
+}
+
+func (s mediaFileMapper) mapOriginalYear(md metadata.Tags) int {
+	if conf.Server.DevUseOriginalDate {
+		return md.OriginalYear()
+	}
 }
