@@ -197,7 +197,7 @@ const Details = (props) => {
        year
        }
     </>
-  )             }
+  )
   (releaseYear != year) && addDetail(
     <>
     (!isXmall ? "Released " : "□ ") +
