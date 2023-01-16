@@ -46,7 +46,6 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	if conf.Server.DevUseOriginalDate {
 		mf.ReleaseYear = md.ReleaseYear()
 	}
-	mf.RecordingYear = md.RecordingYear()
 	mf.TrackNumber, _ = md.TrackNumber()
 	mf.DiscNumber, _ = md.DiscNumber()
 	mf.DiscSubtitle = md.DiscSubtitle()
