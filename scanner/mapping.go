@@ -181,5 +181,5 @@ func (s mediaFileMapper) mapReleaseYear(md metadata.Tags) int {
 	if conf.Server.DevUseOriginalDate {
 		return md.OriginalYear()
 	}
-	return nil
+	return 0
 }
