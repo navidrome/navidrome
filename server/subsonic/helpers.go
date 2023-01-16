@@ -11,10 +11,10 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
+	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
@@ -116,7 +116,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 }
 
 func publicImageURL(r *http.Request, artID model.ArtworkID, size int) string {
-	link := artwork.EncodeArtworkID(artID)
+	link := public.EncodeArtworkID(artID)
 	path := filepath.Join(consts.URLPathPublicImages, link)
 	params := url.Values{}
 	if size > 0 {
