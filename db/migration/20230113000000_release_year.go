@@ -7,10 +7,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(upAddMediafileChannels, downAddMediafileChannels)
+	goose.AddMigration(upAddRelRecYear, downAddRelRecYear)
 }
 
-func upAddMediafileChannels(tx *sql.Tx) error {
+func upAddRelRecYear(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
     add release_year integer;
@@ -21,8 +21,6 @@ alter table album
 alter table album
     add max_release_year integer;
 alter table album
-    add min_recording_year integer;
-alter table album
     add max_recording_year integer;
 `)
 	if err != nil {
@@ -32,6 +30,6 @@ alter table album
 	return forceFullRescan(tx)
 }
 
-func downAddMediafileChannels(tx *sql.Tx) error {
+func downAddRelRecYear(tx *sql.Tx) error {
 	return nil
 }
