@@ -5,7 +5,7 @@
   "dependencies": {
     "@material-ui/core": "^4.11.4",
     "@material-ui/icons": "^4.11.2",
-    "@material-ui/lab": "^4.0.0-alpha.58",
+    "@material-ui/lab": "^4.0.0-alpha.61",
     "@material-ui/styles": "^4.11.5",
     "blueimp-md5": "^2.19.0",
     "clsx": "^1.1.1",
