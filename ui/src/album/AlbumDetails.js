@@ -201,7 +201,7 @@ const Details = (props) => {
   )
   !yearsEqual && addDetail(
     <>
-      {(!isXsmall ? "Released " : "□ ") + releaseYear
+      {(!isXsmall ? "Released " : "☼ ") + releaseYear
       }
     </>
  )
