@@ -26,6 +26,7 @@ import {
   useSelectedFields,
   useResourceRefresh,
   DateField,
+  SizeField,
 } from '../common'
 import { AddToPlaylistDialog } from '../dialogs'
 import config from '../config'
@@ -125,6 +126,7 @@ const AlbumSongs = (props) => {
       ),
       playDate: <DateField source="playDate" sortable={false} showTime />,
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      size: isDesktop && <SizeField source="size" sortable={false} />,
       channels: isDesktop && <NumberField source="channels" sortable={false} />,
       bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
       rating: isDesktop && config.enableStarRating && (
@@ -142,7 +144,7 @@ const AlbumSongs = (props) => {
     resource: 'albumSong',
     columns: toggleableFields,
     omittedColumns: ['title'],
-    defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate'],
+    defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate', 'size'],
   })
 
   return (
