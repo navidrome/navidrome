@@ -33,6 +33,7 @@ type MediaFile struct {
 	DiscSubtitle         string    `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
 	Year                 int       `structs:"year" json:"year"`
 	ReleaseYear          int       `structs:"release_year" json:"releaseYear,omitempty"`
+	RecordingYear        int       `structs:"recording_year" json:"recordingYear,omitempty"`
 	Size                 int64     `structs:"size" json:"size"`
 	Suffix               string    `structs:"suffix" json:"suffix"`
 	Duration             float32   `structs:"duration" json:"duration"`
@@ -140,6 +141,12 @@ func (mfs MediaFiles) ToAlbum() Album {
 			}
 			a.MaxReleaseYear = number.Max(m.ReleaseYear)
 		}
+		if a.MinRecordingYear == 0 {
+			a.MinRecordingYear = m.RecordingYear
+		} else if m.RecordingYear > 0 {
+			a.MinRecordingYear = number.Min(a.MinRecordingYear, m.RecordingYear)
+		}
+		a.MaxRecordingYear = number.Max(m.RecordingYear)
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
 		a.Genres = append(a.Genres, m.Genres...)
