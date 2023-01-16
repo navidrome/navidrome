@@ -15,7 +15,8 @@ func upAddMediafileChannels(tx *sql.Tx) error {
 alter table media_file
     add release_year integer;
 alter table album
-    add release_year integer;
+    add min_release_year integer;
+    add max_release_year integer;
 `)
 	if err != nil {
 		return err
