@@ -2,7 +2,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { useRecordContext } from 'react-admin'
 
-export const formatRangeDouble = (record, source) => {
+export const formatRange = (record, source) => {
   const nameCapitalized = source.charAt(0).toUpperCase() + source.slice(1)
   const min = record[`min${nameCapitalized}`]
   const max = record[`max${nameCapitalized}`]
@@ -18,10 +18,15 @@ export const formatRangeDouble = (record, source) => {
 
 export const RangeFieldDouble = ({ className, source1, source2, ...rest }) => {
   const record = useRecordContext(rest)
+  if formatRange(record, source1) == formatRange(record, source2) {
+      return <span className={className}>{
+      formatRange(record, source1)
+      }</span>
+  } else {
   return <span className={className}>{"♫ " +
-    formatRangeDouble(record, source1) + " · □ "
-    formatRangeDouble(record, source2)
-  }</span>
+    formatRange(record, source1) + " · □ "
+    formatRange(record, source2)
+    }</span>
 }
 
 RangeFieldDouble.propTypes = {
