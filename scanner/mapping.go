@@ -43,7 +43,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Genre, mf.Genres = s.mapGenres(md.Genres())
 	mf.Compilation = md.Compilation()
 	mf.Year = s.mapYear(md)
-	if conf.Server.UseOriginalDate {
+	if conf.Server.DevUseOriginalDate {
 		mf.ReleaseYear = md.ReleaseYear()
 	}
 	mf.RecordingYear = md.RecordingYear()
