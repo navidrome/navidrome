@@ -46,6 +46,7 @@
                 "duration": "Time",
                 "songCount": "Songs",
                 "playCount": "Plays",
+                "size": "Size",
                 "name": "Name",
                 "genre": "Genre",
                 "compilation": "Compilation",
@@ -80,6 +81,7 @@
                 "name": "Name",
                 "albumCount": "Album Count",
                 "songCount": "Song Count",
+                "size": "Size",
                 "playCount": "Plays",
                 "rating": "Rating",
                 "genre": "Genre"

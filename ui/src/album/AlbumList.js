@@ -103,9 +103,10 @@ const AlbumList = (props) => {
       'year',
       'duration',
       'rating',
+      'size',
       'createdAt',
     ],
-    ['createdAt']
+    ['createdAt', 'size']
   )
 
   // If it does not have filter/sort params (usually coming from Menu),
