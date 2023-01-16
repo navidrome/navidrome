@@ -135,14 +135,14 @@ func (mfs MediaFiles) ToAlbum() Album {
 		} else if m.Year > 0 {
 			a.MinYear = number.Min(a.MinYear, m.Year)
 		}
-		a.MaxYear = number.Max(m.Year)
+		a.MaxYear = number.Max(a.MaxYear, m.Year)
 		if conf.Server.DevUseOriginalDate && conf.Server.DevGroupAlbumEditions {
 			if a.MinReleaseYear == 0 {
 				a.MinReleaseYear = m.ReleaseYear
 			} else if m.ReleaseYear > 0 {
 				a.MinReleaseYear = number.Min(a.MinReleaseYear, m.ReleaseYear)
 			}
-			a.MaxReleaseYear = number.Max(m.ReleaseYear)
+			a.MaxReleaseYear = number.Max(a.MaxReleaseYear, m.ReleaseYear)
 		}
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
