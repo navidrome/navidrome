@@ -190,6 +190,7 @@ const Details = (props) => {
 
   const year = formatRange(record, 'year')
   const releaseYear = formatRange(record, 'releaseYear')
+  releaseYear && year && addDetail(<>{"Original: "}</>)
   year && addDetail(<>{year}</>)
   releaseYear && addDetail(<>{"Released: " + releaseYear}</>)
   addDetail(
