@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { useRecordContext } from 'react-admin'
-import formatRange from '../common'
+import formatRange from './common'
 
 export const RangeFieldDouble = ({ className, source1, source2, ...rest }) => {
   const record = useRecordContext(rest)
