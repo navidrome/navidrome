@@ -193,14 +193,14 @@ const Details = (props) => {
   year && addDetail(
     <>
       {
-       (!isXmall ? "Original " : "♫ ") +
+       (!isXsmall ? "Original " : "♫ ") +
        year
        }
     </>
   )
   (releaseYear != year) && addDetail(
     <>
-    (!isXmall ? "Released " : "□ ") +
+    (!isXsmall ? "Released " : "□ ") +
     releaseYear
     </>
  )
