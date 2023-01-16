@@ -24,7 +24,7 @@ export const RangeFieldDouble = ({ className, source1, source2, ...rest }) => {
       }</span>
   } else {
   return <span className={className}>{"♫ " +
-    formatRange(record, source1) + " · □ "
+    formatRange(record, source1) + " · □ " +
     formatRange(record, source2)
     }</span>
 }
