@@ -46,7 +46,7 @@ func (p *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	artId, err := artwork.DecodeArtworkID(id)
+	artId, err := DecodeArtworkID(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
