@@ -123,6 +123,10 @@ func (mfs MediaFiles) ToAlbum() Album {
 		a.MbzAlbumComment = m.MbzAlbumComment
 		a.CatalogNum = m.CatalogNum
 		a.Compilation = m.Compilation
+		if conf.Server.DevUseOriginalDate && !conf.Server.DevGroupAlbumEditions {
+			a.MinReleaseYear = m.ReleaseYear
+			a.MaxReleaseYear = m.ReleaseYear
+		}
 
 		// Calculated attributes based on aggregations
 		a.Duration += m.Duration
@@ -133,7 +137,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 			a.MinYear = number.Min(a.MinYear, m.Year)
 		}
 		a.MaxYear = number.Max(m.Year)
-		if conf.Server.DevUseOriginalDate {
+		if conf.Server.DevUseOriginalDate && conf.Server.DevGroupAlbumEditions {
 			if a.MinReleaseYear == 0 {
 				a.MinReleaseYear = m.ReleaseYear
 			} else if m.ReleaseYear > 0 {
