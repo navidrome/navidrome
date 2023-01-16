@@ -363,7 +363,7 @@ var _ = Describe("lastfmAgent", func() {
 		It("returns the biography", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.album.getinfo.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			Expect(agent.GetAlbumInfo(ctx, "123", "U2", "mbid-1234")).To(Equal(&agents.AlbumInfo{
+			Expect(agent.GetAlbumInfo(ctx, "Believe", "Cher", "03c91c40-49a6-44a7-90e7-a700edf97a62")).To(Equal(&agents.AlbumInfo{
 				Name:         "Believe",
 				MBID:         "03c91c40-49a6-44a7-90e7-a700edf97a62",
 				Description:  "Believe is the twenty-third studio album by American singer-actress Cher, released on November 10, 1998 by Warner Bros. Records. The RIAA certified it Quadruple Platinum on December 23, 1999, recognizing four million shipments in the United States; Worldwide, the album has sold more than 20 million copies, making it the biggest-selling album of her career. In 1999 the album received three Grammy Awards nominations including \"Record of the Year\", \"Best Pop Album\" and winning \"Best Dance Recording\" for the single \"Believe\". It was released by Warner Bros. Records at the end of 1998. The album was executive produced by Rob <a href=\"https://www.last.fm/music/Cher/Believe\">Read more on Last.fm</a>.",
@@ -373,7 +373,7 @@ var _ = Describe("lastfmAgent", func() {
 				LargeImgUrl:  "https://lastfm.freetls.fastly.net/i/u/174s/3b54885952161aaea4ce2965b2db1638.png",
 			}))
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("mbid-1234"))
+			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("03c91c40-49a6-44a7-90e7-a700edf97a62"))
 		})
 
 		It("returns an error if Last.FM call fails", func() {

@@ -67,7 +67,7 @@ func (e *externalMetadata) getAlbum(ctx context.Context, id string) (*auxAlbum, 
 		artist.Album = *v
 		artist.Name = clearName(v.Name)
 	case *model.MediaFile:
-		return e.getAlbum(ctx, v.AlbumArtistID)
+		return e.getAlbum(ctx, v.AlbumID)
 	default:
 		return nil, model.ErrNotFound
 	}
@@ -96,7 +96,7 @@ func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*mod
 			defer cancel()
 			err := e.refreshAlbumInfo(ctx, album)
 			if err != nil {
-				log.Error("Error refreshing ArtistInfo", "id", id, "name", album.Name, err)
+				log.Error("Error refreshing AlbumInfo", "id", id, "name", album.Name, err)
 			}
 		}()
 	}
@@ -134,7 +134,7 @@ func (e *externalMetadata) refreshAlbumInfo(ctx context.Context, album *auxAlbum
 		log.Error(ctx, "Error trying to update album external information", "id", album.ID, "name", album.Name, err)
 	}
 
-	log.Trace(ctx, "ArtistInfo collected", "album", album)
+	log.Trace(ctx, "AlbumInfo collected", "album", album)
 	return nil
 }
 

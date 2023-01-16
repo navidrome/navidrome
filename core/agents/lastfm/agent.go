@@ -152,7 +152,7 @@ func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid s
 	isLastFMError := errors.As(err, &lfErr)
 
 	if mbid != "" && (isLastFMError && lfErr.Code == 6) {
-		log.Warn(ctx, "LastFM/album.getInfo could not find artist by mbid, trying again", "album", name, "mbid", mbid)
+		log.Warn(ctx, "LastFM/album.getInfo could not find album by mbid, trying again", "album", name, "mbid", mbid)
 		return l.callAlbumGetInfo(ctx, name, artist, "")
 	}
 
