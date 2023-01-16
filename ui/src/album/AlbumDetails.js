@@ -193,15 +193,15 @@ const Details = (props) => {
   const yearsEqual = (releaseYear == year)
   year && addDetail(
     <>
-      {(!isXsmall ? "Original " : "♫ ") +
-       year
+      {!yearsEqual && (
+      !isXsmall ? "Original " : "♫ ") +
+      year
       }
     </>
   )
   !yearsEqual && addDetail(
     <>
-      {(!isXsmall ? "Released " : "□ ") +
-       releaseYear
+      {(!isXsmall ? "Released " : "□ ") + releaseYear
       }
     </>
  )
