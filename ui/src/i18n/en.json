@@ -50,6 +50,8 @@
                 "genre": "Genre",
                 "compilation": "Compilation",
                 "year": "Year",
+                "originalYear": "Original",
+                "releaseYear": "Released",
                 "updatedAt": "Updated at",
                 "comment": "Comment",
                 "rating": "Rating",
