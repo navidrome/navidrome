@@ -193,7 +193,7 @@ const Details = (props) => {
   const yearsEqual = (releaseYear == year)
   year && addDetail(
     <>
-      {[!yearsEqual ? (!isXsmall ? (translate('resources.album.fields.original') + " ") : "♫ "):""),year].join(' ')
+      {[(!yearsEqual ? (!isXsmall ? (translate('resources.album.fields.original') + " ") : "♫ "):""),year].join(' ')
       }
     </>
   )
