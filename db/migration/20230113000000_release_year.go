@@ -2,7 +2,8 @@ package migrations
 
 import (
 	"database/sql"
-
+	
+        "github.com/navidrome/navidrome/conf"
 	"github.com/pressly/goose"
 )
 
@@ -24,8 +25,11 @@ create index if not exists media_file_track_number
 	if err != nil {
 		return err
 	}
-	notice(tx, "A full rescan needs to be performed to import more tags")
-	return forceFullRescan(tx)
+	
+	if conf.Server.DevUseOriginalDate {
+		notice(tx, "A full rescan needs to be performed to import more tags")
+		return forceFullRescan(tx)
+	}
 }
 
 func downAddRelRecYear(tx *sql.Tx) error {
