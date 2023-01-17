@@ -39,7 +39,7 @@ jobs:
         run: |
           git status --porcelain
           if [ -n "$(git status --porcelain)" ]; then
-            echo 'To fix this check, run "goimports -w $(find . -name '*.go' | grep -v '_gen.go$') && go mod tidy"'
+            echo "To fix this check, run: goimports -w $(find . -name '*.go' | grep -v '_gen.go$') && go mod tidy"
             exit 1
           fi
 
