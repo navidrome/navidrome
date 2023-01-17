@@ -207,6 +207,9 @@ func validatePasswordChange(newUser *model.User, logged *model.User) error {
 		return nil
 	}
 	if newUser.NewPassword == "" {
+		if newUser.CurrentPassword == "" {
+			return nil
+		}
 		err.Errors["password"] = "ra.validation.required"
 	}
 	if conf.Server.ReverseProxyUserHeader == "" {
