@@ -18,6 +18,8 @@ alter table album
     add min_release_year integer;
 alter table album
     add max_release_year integer;
+create index if not exists media_file_track_number
+	on media_file (release_year, disc_number, track_number);
 `)
 	if err != nil {
 		return err
