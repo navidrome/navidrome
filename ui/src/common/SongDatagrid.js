@@ -53,8 +53,8 @@ const DiscSubtitleRow = forwardRef(
   ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
-    const handlePlayDisc = (discNumber) => () => {
-      onClick(discNumber)
+    const handlePlayDisc = (releaseYear, discNumber) => () => {
+      onClick(releaseYear, discNumber)
     }
 
     let subtitle = []
@@ -64,19 +64,21 @@ const DiscSubtitleRow = forwardRef(
     if (record.discSubtitle) {
       subtitle.push(record.discSubtitle)
     }
-    if (record.releaseYear) {
-      subtitle.push( "\(" + record.releaseYear + "Release \)" )
+    let yeartitle = ""
+    if (record.releaseYear > 0) {
+      yeartitle.push(record.releaseYear + " Release ")
     }
 
     return (
       <TableRow
         hover
         ref={ref}
-        onClick={handlePlayDisc(record.discNumber)}
+        onClick={handlePlayDisc(record.releaseYear, record.discNumber)}
         className={classes.row}
       >
         <TableCell colSpan={colSpan}>
           <Typography variant="h6" className={classes.subtitle}>
+            {yeartitle}
             <AlbumIcon className={classes.discIcon} fontSize={'small'} />
             {subtitle.join(': ')}
           </Typography>
@@ -114,7 +116,7 @@ export const SongDatagridRow = ({
     () => ({
       type: DraggableTypes.DISC,
       item: {
-        discs: [{ albumId: record?.albumId, discNumber: record?.discNumber }],
+        discs: [{ albumId: record?.albumId, releaseYear: record?.releaseYear, discNumber: record?.discNumber }],
       },
       options: { dropEffect: 'copy' },
     }),
@@ -173,14 +175,15 @@ SongDatagridRow.defaultProps = {
 const SongDatagridBody = ({
   contextAlwaysVisible,
   showDiscSubtitles,
+  showReleaseYear,
   ...rest
 }) => {
   const dispatch = useDispatch()
   const { ids, data } = rest
 
   const playDisc = useCallback(
-    (discNumber) => {
-      const idsToPlay = ids.filter((id) => data[id].discNumber === discNumber)
+    (releaseYear, discNumber) => {
+      const idsToPlay = ids.filter((id) => (data[id].releaseYear === releaseYear && data[id].discNumber === discNumber))
       dispatch(playTracks(data, idsToPlay))
     },
     [dispatch, data, ids]
@@ -229,6 +232,7 @@ const SongDatagridBody = ({
 export const SongDatagrid = ({
   contextAlwaysVisible,
   showDiscSubtitles,
+  showReleaseYear,
   ...rest
 }) => {
   const classes = useStyles()
@@ -240,6 +244,7 @@ export const SongDatagrid = ({
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
           showDiscSubtitles={showDiscSubtitles}
+          showReleaseYear={showReleaseYear}
         />
       }
     />
@@ -249,5 +254,6 @@ export const SongDatagrid = ({
 SongDatagrid.propTypes = {
   contextAlwaysVisible: PropTypes.bool,
   showDiscSubtitles: PropTypes.bool,
+  showReleaseYear: PropTypes.bool
   classes: PropTypes.object,
 }
