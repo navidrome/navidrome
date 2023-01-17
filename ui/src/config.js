@@ -27,6 +27,7 @@ const defaultConfig = {
   listenBrainzEnabled: true,
   enableCoverAnimation: true,
   devShowArtistPage: true,
+  enableReplayGain: true,
 }
 
 let config
