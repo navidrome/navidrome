@@ -86,6 +86,8 @@ const useStyles = makeStyles(
   { name: 'RaList' }
 )
 
+
+
 const AlbumSongs = (props) => {
   const { data, ids } = props
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -167,7 +169,7 @@ const AlbumSongs = (props) => {
             {...props}
             hasBulkActions={true}
             showDiscSubtitles={true}
-            showReleaseYear={true}
+            showReleaseYear={showReleaseYear(props)}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
           >
@@ -201,6 +203,10 @@ export const removeAlbumCommentsFromSongs = ({ album, data }) => {
       song.comment = ''
     })
   }
+}
+
+const showReleaseYear = ({ album, data }) => {
+  return (album?.minReleaseYear != album?.maxReleaseYear)
 }
 
 const SanitizedAlbumSongs = (props) => {
