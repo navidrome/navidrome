@@ -38,10 +38,10 @@ var _ = Describe("Tags", func() {
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.mp3"))
 			Expect(m.Suffix()).To(Equal("mp3"))
 			Expect(m.Size()).To(Equal(int64(51876)))
-			Expect(m.AlbumGain()).To(Equal(3.21518))
-			Expect(m.AlbumPeak()).To(Equal(0.9125))
-			Expect(m.TrackGain()).To(Equal(-1.48))
-			Expect(m.TrackPeak()).To(Equal(0.4512))
+			Expect(m.RGAlbumGain()).To(Equal(3.21518))
+			Expect(m.RGAlbumPeak()).To(Equal(0.9125))
+			Expect(m.RGTrackGain()).To(Equal(-1.48))
+			Expect(m.RGTrackPeak()).To(Equal(0.4512))
 
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())
@@ -151,10 +151,10 @@ var _ = Describe("Tags", func() {
 				"replaygain_track_gain": {"+0.912dB"},
 				"replaygain_track_peak": {"0.9465"},
 			}
-			Expect(md.AlbumGain()).To(Equal(-2.581))
-			Expect(md.AlbumPeak()).To(Equal(0.35126))
-			Expect(md.TrackGain()).To(Equal(0.912))
-			Expect(md.TrackPeak()).To(Equal(0.9465))
+			Expect(md.RGAlbumGain()).To(Equal(-2.581))
+			Expect(md.RGAlbumPeak()).To(Equal(0.35126))
+			Expect(md.RGTrackGain()).To(Equal(0.912))
+			Expect(md.RGTrackPeak()).To(Equal(0.9465))
 		})
 	})
 })

@@ -121,10 +121,10 @@ func (t Tags) FilePath() string            { return t.filePath }
 func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
 
 // Replaygain Properties
-func (t Tags) AlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
-func (t Tags) AlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
-func (t Tags) TrackGain() float64 { return t.getGainValue("replaygain_track_gain") }
-func (t Tags) TrackPeak() float64 { return t.getPeakValue("replaygain_track_peak") }
+func (t Tags) RGAlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
+func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
+func (t Tags) RGTrackGain() float64 { return t.getGainValue("replaygain_track_gain") }
+func (t Tags) RGTrackPeak() float64 { return t.getPeakValue("replaygain_track_peak") }
 
 func (t Tags) getGainValue(tagName string) float64 {
 	// Gain is in the form [-]a.bb dB

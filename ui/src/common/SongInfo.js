@@ -19,25 +19,19 @@ import { MultiLineTextField } from './MultiLineTextField'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
 
-const useStyles = config.enableReplayGain
-  ? makeStyles({
-      gain: {
-        '&:after': {
-          content: "' dB'",
-        },
-      },
-      tableCell: {
-        width: '17.5%',
-      },
-    })
-  : makeStyles({
-      tableCell: {
-        width: '17.5%',
-      },
-    })
+const useStyles = makeStyles({
+  gain: {
+    '&:after': {
+      content: (props) => (props.gain ? " ' db'" : ''),
+    },
+  },
+  tableCell: {
+    width: '17.5%',
+  },
+})
 
 export const SongInfo = (props) => {
-  const classes = useStyles()
+  const classes = useStyles({ gain: config.enableReplayGain })
   const translate = useTranslate()
   const record = useRecordContext(props)
   const data = {
@@ -67,8 +61,12 @@ export const SongInfo = (props) => {
   }
 
   if (config.enableReplayGain) {
-    data.albumGain = <NumberField source="albumGain" className={classes.gain} />
-    data.trackGain = <NumberField source="trackGain" className={classes.gain} />
+    data.albumGain = (
+      <NumberField source="rgAlbumGain" className={classes.gain} />
+    )
+    data.trackGain = (
+      <NumberField source="rgTrackGain" className={classes.gain} />
+    )
   }
 
   return (

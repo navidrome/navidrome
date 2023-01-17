@@ -19,7 +19,7 @@ const useStyle = makeStyles(
   }
 )
 
-export const QualityInfo = ({ record, size, gainMode, className }) => {
+export const QualityInfo = ({ record, size, gainMode, preAmp, className }) => {
   const classes = useStyle()
   let { suffix, bitRate } = record
   let info = placeholder
@@ -34,7 +34,7 @@ export const QualityInfo = ({ record, size, gainMode, className }) => {
 
   if (gainMode !== 'none') {
     info += ` (${
-      gainMode === 'album' ? record.albumGain : record.trackGain
+      (gainMode === 'album' ? record.albumGain : record.trackGain) + preAmp
     } dB)`
   }
 

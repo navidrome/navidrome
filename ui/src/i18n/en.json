@@ -337,7 +337,14 @@
                 "defaultView": "Default View",
                 "desktop_notifications": "Desktop Notifications",
                 "lastfmScrobbling": "Scrobble to Last.fm",
-                "listenBrainzScrobbling": "Scrobble to ListenBrainz"
+                "listenBrainzScrobbling": "Scrobble to ListenBrainz",
+                "replaygain": "ReplayGain Mode",
+                "preAmp": "ReplayGain PreAmp (dB)",
+                "gain": {
+                    "none": "Disabled",
+                    "album": "Normalize albums",
+                    "track": "Normalize tracks"
+                }
             }
         },
         "albumList": "Albums",
@@ -368,12 +375,8 @@
             "orderLoop": "Repeat",
             "singleLoop": "Repeat One",
             "shufflePlay": "Shuffle"
-        },
-        "gain": {
-            "none": "No ReplayGain",
-            "album": "Gain per album",
-            "track": "Gain per track"
         }
+
     },
     "about": {
         "links": {

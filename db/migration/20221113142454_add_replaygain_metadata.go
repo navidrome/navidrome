@@ -13,13 +13,13 @@ func init() {
 func upAddReplaygainMetadata(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file add 
-	album_gain real;
+	rg_album_gain real;
 alter table media_file add 
-	album_peak real;
+	rg_album_peak real;
 alter table media_file add 
-	track_gain real;
+	rg_track_gain real;
 alter table media_file add 
-	track_peak real;
+	rg_track_peak real;
 `)
 	if err != nil {
 		return err

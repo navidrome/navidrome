@@ -24,14 +24,16 @@ import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 
-function calculateReplayGain(gain, peak) {
+function calculateReplayGain(preAmp, gain, peak) {
   if (gain === undefined || peak === undefined) {
     return 1
   }
 
+  console.log(gain, preAmp, typeof preAmp, peak)
+
   // https://wiki.hydrogenaud.io/index.php?title=ReplayGain_1.0_specification&section=19
   // Normalized to max gain
-  return Math.min(10 ** (gain / 20), 1 / peak)
+  return Math.min(10 ** ((gain + preAmp) / 20), 1 / peak)
 }
 
 const Player = () => {
@@ -58,9 +60,7 @@ const Player = () => {
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
   )
-
-  const gainMode = playerState.gainMode ?? 'none'
-
+  const gainInfo = useSelector((state) => state.replayGain)
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
 
@@ -72,6 +72,8 @@ const Player = () => {
       'AudioContext' in window
     ) {
       const ctx = new AudioContext()
+      // we need this to support radios in firefox
+      audioInstance.crossOrigin = 'anonymous'
       const source = ctx.createMediaElementSource(audioInstance)
       const gain = ctx.createGain()
 
@@ -90,13 +92,21 @@ const Player = () => {
 
       let numericGain
 
-      switch (gainMode) {
+      switch (gainInfo.gainMode) {
         case 'album': {
-          numericGain = calculateReplayGain(song.albumGain, song.albumPeak)
+          numericGain = calculateReplayGain(
+            gainInfo.preAmp,
+            song.rgAlbumGain,
+            song.rgAlbumPeak
+          )
           break
         }
         case 'track': {
-          numericGain = calculateReplayGain(song.trackGain, song.trackPeak)
+          numericGain = calculateReplayGain(
+            gainInfo.preAmp,
+            song.rgTrackGain,
+            song.rgTrackPeak
+          )
           break
         }
         default: {
@@ -104,9 +114,18 @@ const Player = () => {
         }
       }
 
+      console.log(numericGain)
+
       gainNode.gain.setValueAtTime(numericGain, context.currentTime)
     }
-  }, [audioInstance, context, gainNode, gainMode, playerState])
+  }, [
+    audioInstance,
+    context,
+    gainNode,
+    gainInfo.gainMode,
+    gainInfo.preAmp,
+    playerState,
+  ])
 
   const defaultOptions = useMemo(
     () => ({
@@ -134,13 +153,13 @@ const Player = () => {
       renderAudioTitle: (audioInfo, isMobile) => (
         <AudioTitle
           audioInfo={audioInfo}
-          gainMode={gainMode}
+          gainInfo={gainInfo}
           isMobile={isMobile}
         />
       ),
       locale: locale(translate),
     }),
-    [gainMode, isDesktop, playerTheme, translate]
+    [gainInfo, isDesktop, playerTheme, translate]
   )
 
   const options = useMemo(() => {

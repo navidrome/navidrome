@@ -51,10 +51,10 @@ type MediaFile struct {
 	MbzAlbumArtistID     string  `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
 	MbzAlbumType         string  `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment      string  `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
-	AlbumGain            float64 `structs:"album_gain" json:"albumGain"`
-	AlbumPeak            float64 `structs:"album_peak" json:"albumPeak"`
-	TrackGain            float64 `structs:"track_gain" json:"trackGain"`
-	TrackPeak            float64 `structs:"track_peak" json:"trackPeak"`
+	RGAlbumGain          float64 `structs:"rg_album_gain" json:"rgAlbumGain" orm:"column(rg_album_gain)"`
+	RGAlbumPeak          float64 `structs:"rg_album_peak" json:"rgAlbumPeak" orm:"column(rg_album_peak)"`
+	RGTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain" orm:"column(rg_track_gain)"`
+	RGTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak" orm:"column(rg_track_peak)"`
 
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)

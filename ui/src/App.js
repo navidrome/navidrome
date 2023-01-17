@@ -25,6 +25,7 @@ import {
   albumViewReducer,
   activityReducer,
   settingsReducer,
+  replayGainReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
@@ -56,6 +57,7 @@ const adminStore = createAdminStore({
     listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
     activity: activityReducer,
     settings: settingsReducer,
+    replayGain: replayGainReducer,
   },
 })
 

@@ -3,7 +3,6 @@ import subsonic from '../subsonic'
 import {
   PLAYER_ADD_TRACKS,
   PLAYER_CLEAR_QUEUE,
-  PLAYER_CHANGE_GAIN_MODE,
   PLAYER_CURRENT,
   PLAYER_PLAY_NEXT,
   PLAYER_PLAY_TRACKS,
@@ -19,7 +18,6 @@ const initialState = {
   clear: false,
   volume: config.defaultUIVolume / 100,
   savedPlayIndex: 0,
-  gainMode: 'album',
 }
 
 const mapToAudioLists = (item) => {
@@ -138,18 +136,6 @@ const reduceCurrent = (state, { data }) => {
   }
 }
 
-const reduceToggleGain = (state) => {
-  return {
-    ...state,
-    gainMode:
-      state.gainMode === 'track'
-        ? 'album'
-        : state.gainMode === 'album'
-        ? 'none'
-        : 'track',
-  }
-}
-
 export const playerReducer = (previousState = initialState, payload) => {
   const { type } = payload
   switch (type) {
@@ -169,8 +155,6 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceSyncQueue(previousState, payload)
     case PLAYER_CURRENT:
       return reduceCurrent(previousState, payload)
-    case PLAYER_CHANGE_GAIN_MODE:
-      return reduceToggleGain(previousState)
     default:
       return previousState
   }
