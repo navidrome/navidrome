@@ -166,6 +166,9 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
           record={record}
           source1={'year'}
           source2={'releaseYear'}
+          symbol1={'♫ '}
+          symbol2={'○ '}
+          divider={' · '}
           sortBy={'max_year'}
           sortByOrder={'DESC'}
           className={classes.albumSubtitle}
