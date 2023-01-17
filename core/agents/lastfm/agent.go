@@ -73,15 +73,18 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 	// This is true as of December 29, 2022
 	for _, img := range a.Image {
 		size := imageRegex.FindStringSubmatch(img.URL)
-		numericSize, err := strconv.Atoi(size[0][2:])
+		// Last.fm can return images without URL
+		if len(size) == 0 || len(size[0]) < 4 {
+			log.Trace(ctx, "LastFM/albuminfo image URL does not match expected regex or is empty", "url", img.URL, "size", img.Size)
+			continue
+		}
 
+		numericSize, err := strconv.Atoi(size[0][2:])
 		if err != nil {
-			log.Debug(ctx, "LastFM/albuminfo image URL does not match expected regex", "url", img.URL)
+			log.Error(ctx, "LastFM/albuminfo image URL does not match expected regex", "url", img.URL, "size", img.Size, err)
 			return nil, err
 		} else {
-			_, exists := seenSizes[numericSize]
-
-			if !exists {
+			if _, exists := seenSizes[numericSize]; !exists {
 				response.Images = append(response.Images, agents.ExternalImage{
 					Size: numericSize,
 					URL:  img.URL,

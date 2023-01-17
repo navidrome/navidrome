@@ -61,17 +61,17 @@ func (e *externalMetadata) getAlbum(ctx context.Context, id string) (*auxAlbum, 
 		return nil, err
 	}
 
-	var artist auxAlbum
+	var album auxAlbum
 	switch v := entity.(type) {
 	case *model.Album:
-		artist.Album = *v
-		artist.Name = clearName(v.Name)
+		album.Album = *v
+		album.Name = clearName(v.Name)
 	case *model.MediaFile:
 		return e.getAlbum(ctx, v.AlbumID)
 	default:
 		return nil, model.ErrNotFound
 	}
-	return &artist, nil
+	return &album, nil
 }
 
 func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error) {
@@ -106,6 +106,9 @@ func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*mod
 
 func (e *externalMetadata) refreshAlbumInfo(ctx context.Context, album *auxAlbum) error {
 	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	if err == agents.ErrNotFound {
+		return nil
+	}
 	if err != nil {
 		return err
 	}

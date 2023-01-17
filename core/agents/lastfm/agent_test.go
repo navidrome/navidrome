@@ -391,6 +391,18 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("03c91c40-49a6-44a7-90e7-a700edf97a62"))
 		})
 
+		It("returns empty images if no images are available", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty_urls.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			Expect(agent.GetAlbumInfo(ctx, "The Definitive Less Damage And More Joy", "The Jesus and Mary Chain", "")).To(Equal(&agents.AlbumInfo{
+				Name:   "The Definitive Less Damage And More Joy",
+				URL:    "https://www.last.fm/music/The+Jesus+and+Mary+Chain/The+Definitive+Less+Damage+And+More+Joy",
+				Images: []agents.ExternalImage{},
+			}))
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("album")).To(Equal("The Definitive Less Damage And More Joy"))
+		})
+
 		It("returns an error if Last.FM call fails", func() {
 			httpClient.Err = errors.New("error")
 			_, err := agent.GetAlbumInfo(ctx, "123", "U2", "mbid-1234")
