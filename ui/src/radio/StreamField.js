@@ -15,8 +15,8 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export const StreamField = ({ hideUrl, ...rest }) => {
-  const record = useRecordContext(rest)
+export const StreamField = (props) => {
+  const record = useRecordContext(props)
   const dispatch = useDispatch()
   const classes = useStyles()
 
@@ -32,7 +32,6 @@ export const StreamField = ({ hideUrl, ...rest }) => {
   return (
     <Button className={classes.button} onClick={playTrack}>
       <PlayArrowIcon />
-      {!hideUrl && record.streamUrl}
     </Button>
   )
 }
@@ -41,10 +40,8 @@ StreamField.propTypes = {
   label: PropTypes.string,
   record: PropTypes.object,
   source: PropTypes.string.isRequired,
-  hideUrl: PropTypes.bool,
 }
 
 StreamField.defaultProps = {
   addLabel: true,
-  hideUrl: false,
 }
