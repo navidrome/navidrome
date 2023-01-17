@@ -78,7 +78,7 @@ const DiscSubtitleRow = forwardRef(
       >
         <TableCell colSpan={colSpan}>
           <Typography variant="h6" className={classes.subtitle}>
-            {yeartitle}
+            {showReleaseYear && yeartitle}
             <AlbumIcon className={classes.discIcon} fontSize={'small'} />
             {subtitle.join(': ')}
           </Typography>
