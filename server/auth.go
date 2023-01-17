@@ -289,18 +289,18 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 	if user == nil || err != nil {
 		log.Info(r, "User passed in header not found", "user", username)
 		newUser := model.User{
-                        ID:          uuid.NewString(),
-                        UserName:    username,
-                        Name:        username,
-                        Email:       "",
-                        NewPassword: uuid.NewString(),
-                        IsAdmin:     false,
-                }
-                err := userRepo.Put(&newUser)
-                if err != nil {
-                        log.Error("Could not create new user", "user", username, err)
+			ID:          uuid.NewString(),
+			UserName:    username,
+			Name:        username,
+			Email:       "",
+			NewPassword: uuid.NewString(),
+			IsAdmin:     false,
+		}
+		err := userRepo.Put(&newUser)
+		if err != nil {
+			log.Error("Could not create new user", "user", username, err)
 			return nil
-                }
+		}
 		user, err = userRepo.FindByUsernameWithPassword(username)
 		if user == nil || err != nil {
 			log.Error("Created user but failed to fetch it", "user", username)
