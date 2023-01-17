@@ -66,7 +66,7 @@ const DiscSubtitleRow = forwardRef(
     }
     let yeartitle = ""
     if (record.releaseYear > 0) {
-      yeartitle.push(record.releaseYear + " Release ")
+      yeartitle = String(record.releaseYear) + " Release "
     }
 
     return (
