@@ -11,29 +11,35 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/scanner/metadata"
+	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
+	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
 	"github.com/navidrome/navidrome/utils"
 )
 
 type TagScanner struct {
 	rootFolder  string
 	ds          model.DataStore
-	cacheWarmer core.CacheWarmer
 	plsSync     *playlistImporter
 	cnt         *counters
 	mapper      *mediaFileMapper
+	cacheWarmer artwork.CacheWarmer
 }
 
-func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlists, cacheWarmer core.CacheWarmer) *TagScanner {
-	return &TagScanner{
+func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer) FolderScanner {
+	s := &TagScanner{
 		rootFolder:  rootFolder,
-		plsSync:     newPlaylistImporter(ds, playlists, rootFolder),
+		plsSync:     newPlaylistImporter(ds, playlists, cacheWarmer, rootFolder),
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
 	}
+
+	return s
 }
 
 type dirMap map[string]dirStats
@@ -69,7 +75,7 @@ const (
 // - If the playlist is in the DB and sync == true, import it, or else skip it
 // Delete all empty albums, delete all empty artists, clean-up playlists
 func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) (int64, error) {
-	ctx = s.withAdminUser(ctx)
+	ctx = auth.WithAdminUser(ctx, s.ds)
 	start := time.Now()
 
 	// Special case: if lastModifiedSince is zero, re-import all files
@@ -95,6 +101,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	s.cnt = &counters{}
 	genres := newCachedGenreRepository(ctx, s.ds.Genre(ctx))
 	s.mapper = newMediaFileMapper(s.rootFolder, genres)
+	refresher := newRefresher(s.ds, s.cacheWarmer, allFSDirs)
 
 	foldersFound, walkerError := s.getRootFolderWalker(ctx)
 	for {
@@ -105,10 +112,10 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 		progress <- folderStats.AudioFilesCount
 		allFSDirs[folderStats.Path] = folderStats
 
-		if s.folderHasChanged(ctx, folderStats, allDBDirs, lastModifiedSince) {
+		if s.folderHasChanged(folderStats, allDBDirs, lastModifiedSince) {
 			changedDirs = append(changedDirs, folderStats.Path)
 			log.Debug("Processing changed folder", "dir", folderStats.Path)
-			err := s.processChangedDir(ctx, folderStats.Path, fullScan)
+			err := s.processChangedDir(ctx, refresher, fullScan, folderStats.Path)
 			if err != nil {
 				log.Error("Error updating folder in the DB", "dir", folderStats.Path, err)
 			}
@@ -127,7 +134,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	}
 
 	for _, dir := range deletedDirs {
-		err := s.processDeletedDir(ctx, dir)
+		err := s.processDeletedDir(ctx, refresher, dir)
 		if err != nil {
 			log.Error("Error removing deleted folder from DB", "dir", dir, err)
 		}
@@ -198,7 +205,7 @@ func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]struct{}, err
 	return resp, nil
 }
 
-func (s *TagScanner) folderHasChanged(ctx context.Context, folder dirStats, dbDirs map[string]struct{}, lastModified time.Time) bool {
+func (s *TagScanner) folderHasChanged(folder dirStats, dbDirs map[string]struct{}, lastModified time.Time) bool {
 	_, inDB := dbDirs[folder.Path]
 	// If is a new folder with at least one song OR it was modified after lastModified
 	return (!inDB && (folder.AudioFilesCount > 0)) || folder.ModTime.After(lastModified)
@@ -220,9 +227,8 @@ func (s *TagScanner) getDeletedDirs(ctx context.Context, fsDirs dirMap, dbDirs m
 	return deleted
 }
 
-func (s *TagScanner) processDeletedDir(ctx context.Context, dir string) error {
+func (s *TagScanner) processDeletedDir(ctx context.Context, refresher *refresher, dir string) error {
 	start := time.Now()
-	buffer := newRefreshBuffer(ctx, s.ds)
 
 	mfs, err := s.ds.MediaFile(ctx).FindAllByPath(dir)
 	if err != nil {
@@ -236,18 +242,16 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, dir string) error {
 	s.cnt.deleted += c
 
 	for _, t := range mfs {
-		buffer.accumulate(t)
-		s.cacheWarmer.AddAlbum(ctx, t.AlbumID)
+		refresher.accumulate(t)
 	}
 
-	err = buffer.flush()
+	err = refresher.flush(ctx)
 	log.Info(ctx, "Finished processing deleted folder", "dir", dir, "purged", len(mfs), "elapsed", time.Since(start))
 	return err
 }
 
-func (s *TagScanner) processChangedDir(ctx context.Context, dir string, fullScan bool) error {
+func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher, fullScan bool, dir string) error {
 	start := time.Now()
-	buffer := newRefreshBuffer(ctx, s.ds)
 
 	// Load folder's current tracks from DB into a map
 	currentTracks := map[string]model.MediaFile{}
@@ -296,7 +300,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, fullScan
 		}
 
 		// Force a refresh of the album and artist, to cater for cover art files
-		buffer.accumulate(c)
+		refresher.accumulate(c)
 
 		// Only leaves in orphanTracks the ones not found in the folder. After this loop any remaining orphanTracks
 		// are considered gone from the music folder and will be deleted from DB
@@ -307,38 +311,38 @@ func (s *TagScanner) processChangedDir(ctx context.Context, dir string, fullScan
 	numPurgedTracks := 0
 
 	if len(filesToUpdate) > 0 {
-		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, dir, currentTracks, filesToUpdate, buffer)
+		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, refresher, dir, currentTracks, filesToUpdate)
 		if err != nil {
 			return err
 		}
 	}
 
 	if len(orphanTracks) > 0 {
-		numPurgedTracks, err = s.deleteOrphanSongs(ctx, dir, orphanTracks, buffer)
+		numPurgedTracks, err = s.deleteOrphanSongs(ctx, refresher, dir, orphanTracks)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Pre cache all changed album artwork
-	for albumID := range buffer.album {
-		s.cacheWarmer.AddAlbum(ctx, albumID)
-	}
-
-	err = buffer.flush()
+	err = refresher.flush(ctx)
 	log.Info(ctx, "Finished processing changed folder", "dir", dir, "updated", numUpdatedTracks,
 		"deleted", numPurgedTracks, "elapsed", time.Since(start))
 	return err
 }
 
-func (s *TagScanner) deleteOrphanSongs(ctx context.Context, dir string, tracksToDelete map[string]model.MediaFile, buffer *refreshBuffer) (int, error) {
+func (s *TagScanner) deleteOrphanSongs(
+	ctx context.Context,
+	refresher *refresher,
+	dir string,
+	tracksToDelete map[string]model.MediaFile,
+) (int, error) {
 	numPurgedTracks := 0
 
 	log.Debug(ctx, "Deleting orphan tracks from DB", "dir", dir, "numTracks", len(tracksToDelete))
 	// Remaining tracks from DB that are not in the folder are deleted
 	for _, ct := range tracksToDelete {
 		numPurgedTracks++
-		buffer.accumulate(ct)
+		refresher.accumulate(ct)
 		if err := s.ds.MediaFile(ctx).Delete(ct.ID); err != nil {
 			return 0, err
 		}
@@ -347,7 +351,13 @@ func (s *TagScanner) deleteOrphanSongs(ctx context.Context, dir string, tracksTo
 	return numPurgedTracks, nil
 }
 
-func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, currentTracks map[string]model.MediaFile, filesToUpdate []string, buffer *refreshBuffer) (int, error) {
+func (s *TagScanner) addOrUpdateTracksInDB(
+	ctx context.Context,
+	refresher *refresher,
+	dir string,
+	currentTracks map[string]model.MediaFile,
+	filesToUpdate []string,
+) (int, error) {
 	numUpdatedTracks := 0
 
 	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
@@ -372,7 +382,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(ctx context.Context, dir string, curr
 			if err != nil {
 				return 0, err
 			}
-			buffer.accumulate(n)
+			refresher.accumulate(n)
 			numUpdatedTracks++
 		}
 	}
@@ -393,22 +403,6 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 	return mfs, nil
 }
 
-func (s *TagScanner) withAdminUser(ctx context.Context) context.Context {
-	u, err := s.ds.User(ctx).FindFirstAdmin()
-	if err != nil {
-		c, err := s.ds.User(ctx).CountAll()
-		if c == 0 && err == nil {
-			log.Debug(ctx, "Scanner: No admin user yet!", err)
-		} else {
-			log.Error(ctx, "Scanner: No admin user found!", err)
-		}
-		u = &model.User{}
-	}
-
-	ctx = request.WithUsername(ctx, u.UserName)
-	return request.WithUser(ctx, *u)
-}
-
 func loadAllAudioFiles(dirPath string) (map[string]fs.DirEntry, error) {
 	files, err := fs.ReadDir(os.DirFS(dirPath), ".")
 	if err != nil {
@@ -423,7 +417,7 @@ func loadAllAudioFiles(dirPath string) (map[string]fs.DirEntry, error) {
 			continue
 		}
 		filePath := filepath.Join(dirPath, f.Name())
-		if !utils.IsAudioFile(filePath) {
+		if !model.IsAudioFile(filePath) {
 			continue
 		}
 		fileInfos[filePath] = f

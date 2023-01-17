@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -204,7 +204,7 @@ func (c *Client) sign(params url.Values) {
 	// the parameters must be in order before hashing
 	keys := make([]string, 0, len(params))
 	for k := range params {
-		if utils.StringInSlice(k, []string{"format", "callback"}) {
+		if slices.Contains([]string{"format", "callback"}, k) {
 			continue
 		}
 		keys = append(keys, k)

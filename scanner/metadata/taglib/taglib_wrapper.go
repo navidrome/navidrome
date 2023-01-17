@@ -46,8 +46,10 @@ func Read(filename string) (tags map[string][]string, err error) {
 
 		if os.IsPermission(fileErr) {
 			return nil, fmt.Errorf("navidrome does not have permission: %w", fileErr)
-		} else {
+		} else if fileErr != nil {
 			return nil, fmt.Errorf("cannot parse file media file: %w", fileErr)
+		} else {
+			return nil, fmt.Errorf("cannot parse file media file")
 		}
 	case C.TAGLIB_ERR_AUDIO_PROPS:
 		return nil, fmt.Errorf("can't get audio properties from file")

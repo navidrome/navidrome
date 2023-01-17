@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -19,7 +19,8 @@ type (
 	dirStats struct {
 		Path            string
 		ModTime         time.Time
-		HasImages       bool
+		Images          []string
+		ImagesUpdatedAt time.Time
 		HasPlaylist     bool
 		AudioFilesCount uint32
 	}
@@ -49,7 +50,7 @@ func walkFolder(ctx context.Context, rootPath string, currentFolder string, resu
 
 	dir := filepath.Clean(currentFolder)
 	log.Trace(ctx, "Found directory", "dir", dir, "audioCount", stats.AudioFilesCount,
-		"hasImages", stats.HasImages, "hasPlaylist", stats.HasPlaylist)
+		"images", stats.Images, "hasPlaylist", stats.HasPlaylist)
 	stats.Path = dir
 	results <- *stats
 
@@ -93,11 +94,16 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 			if fileInfo.ModTime().After(stats.ModTime) {
 				stats.ModTime = fileInfo.ModTime()
 			}
-			if utils.IsAudioFile(entry.Name()) {
+			switch {
+			case model.IsAudioFile(entry.Name()):
 				stats.AudioFilesCount++
-			} else {
-				stats.HasPlaylist = stats.HasPlaylist || core.IsPlaylist(entry.Name())
-				stats.HasImages = stats.HasImages || utils.IsImageFile(entry.Name())
+			case model.IsValidPlaylist(entry.Name()):
+				stats.HasPlaylist = true
+			case model.IsImageFile(entry.Name()):
+				stats.Images = append(stats.Images, entry.Name())
+				if fileInfo.ModTime().After(stats.ImagesUpdatedAt) {
+					stats.ImagesUpdatedAt = fileInfo.ModTime()
+				}
 			}
 		}
 	}

@@ -10,7 +10,7 @@ var _ = Describe("WeightedRandomChooser", func() {
 	BeforeEach(func() {
 		w = NewWeightedRandomChooser()
 		for i := 0; i < 10; i++ {
-			w.Put(i, i)
+			w.Add(i, i)
 		}
 	})
 
@@ -23,14 +23,14 @@ var _ = Describe("WeightedRandomChooser", func() {
 
 	It("returns the sole item", func() {
 		w = NewWeightedRandomChooser()
-		w.Put("a", 1)
+		w.Add("a", 1)
 		Expect(w.GetAndRemove()).To(Equal("a"))
 	})
 
 	It("fails when trying to choose from empty set", func() {
 		w = NewWeightedRandomChooser()
-		w.Put("a", 1)
-		w.Put("b", 1)
+		w.Add("a", 1)
+		w.Add("b", 1)
 		Expect(w.GetAndRemove()).To(BeElementOf("a", "b"))
 		Expect(w.GetAndRemove()).To(BeElementOf("a", "b"))
 		_, err := w.GetAndRemove()

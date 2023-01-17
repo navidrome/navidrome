@@ -15,7 +15,6 @@ const defaultConfig = {
   welcomeMessage: '',
   gaTrackingId: '',
   devActivityPanel: true,
-  devFastAccessCoverArt: false,
   enableStarRating: true,
   defaultTheme: 'Dark',
   defaultLanguage: '',

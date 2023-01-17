@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"runtime"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -29,7 +29,7 @@ type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic,
 type Router struct {
 	http.Handler
 	ds               model.DataStore
-	artwork          core.Artwork
+	artwork          artwork.Artwork
 	streamer         core.MediaStreamer
 	archiver         core.Archiver
 	players          core.Players
@@ -40,7 +40,7 @@ type Router struct {
 	scrobbler        scrobbler.PlayTracker
 }
 
-func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
+func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker) *Router {
 	r := &Router{
@@ -136,17 +136,28 @@ func (api *Router) routes() http.Handler {
 		h(r, "startScan", api.StartScan)
 	})
 	r.Group(func(r chi.Router) {
-		// configure request throttling
-		maxRequests := utils.MaxInt(2, runtime.NumCPU())
-		r.Use(middleware.ThrottleBacklog(maxRequests, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
 		hr(r, "getAvatar", api.GetAvatar)
-		hr(r, "getCoverArt", api.GetCoverArt)
 		h(r, "getLyrics", api.GetLyrics)
+	})
+	r.Group(func(r chi.Router) {
+		// configure request throttling
+		if conf.Server.DevArtworkMaxRequests > 0 {
+			maxRequests := conf.Server.DevArtworkMaxRequests
+			r.Use(middleware.ThrottleBacklog(maxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+				conf.Server.DevArtworkThrottleBacklogTimeout))
+		}
+		hr(r, "getCoverArt", api.GetCoverArt)
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(getPlayer(api.players))
 		hr(r, "stream", api.Stream)
 		hr(r, "download", api.Download)
+	})
+	r.Group(func(r chi.Router) {
+		h(r, "createInternetRadioStation", api.CreateInternetRadio)
+		h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
+		h(r, "getInternetRadioStations", api.GetInternetRadios)
+		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 	})
 
 	// Not Implemented (yet?)
@@ -155,8 +166,6 @@ func (api *Router) routes() http.Handler {
 	h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
 		"deletePodcastEpisode", "downloadPodcastEpisode")
-	h501(r, "getInternetRadioStations", "createInternetRadioStation", "updateInternetRadioStation",
-		"deleteInternetRadioStation")
 	h501(r, "createUser", "updateUser", "deleteUser", "changePassword")
 
 	// Deprecated/Won't implement/Out of scope endpoints
@@ -184,7 +193,7 @@ func hr(r chi.Router, path string, f handlerRaw) {
 				if errors.Is(err, model.ErrNotFound) {
 					err = newError(responses.ErrorDataNotFound, "data not found")
 				} else {
-					err = newError(responses.ErrorGeneric, "Internal Error")
+					err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 				}
 			}
 			sendError(w, r, err)
@@ -192,7 +201,7 @@ func hr(r chi.Router, path string, f handlerRaw) {
 		}
 		if r.Context().Err() != nil {
 			if log.CurrentLevel() >= log.LevelDebug {
-				log.Warn(r.Context(), "Request was interrupted", "path", path, r.Context().Err())
+				log.Warn(r.Context(), "Request was interrupted", "endpoint", r.URL.Path, r.Context().Err())
 			}
 			return
 		}
@@ -264,14 +273,14 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	}
 	if payload.Status == "ok" {
 		if log.CurrentLevel() >= log.LevelTrace {
-			log.Debug(r.Context(), "API: Successful response", "status", "OK", "body", string(response))
+			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK", "body", string(response))
 		} else {
-			log.Debug(r.Context(), "API: Successful response", "status", "OK")
+			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK")
 		}
 	} else {
-		log.Warn(r.Context(), "API: Failed response", "error", payload.Error.Code, "message", payload.Error.Message)
+		log.Warn(r.Context(), "API: Failed response", "endpoint", r.URL.Path, "error", payload.Error.Code, "message", payload.Error.Message)
 	}
 	if _, err := w.Write(response); err != nil {
-		log.Error(r, "Error sending response to client", "payload", string(response), err)
+		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
 	}
 }

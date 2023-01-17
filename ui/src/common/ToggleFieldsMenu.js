@@ -30,6 +30,7 @@ const useStyles = makeStyles({
 export const ToggleFieldsMenu = ({
   resource,
   topbarComponent: TopBarComponent,
+  hideColumns,
 }) => {
   const [anchorEl, setAnchorEl] = useState(null)
   const dispatch = useDispatch()
@@ -82,7 +83,7 @@ export const ToggleFieldsMenu = ({
         }}
       >
         {TopBarComponent && <TopBarComponent />}
-        {toggleableColumns ? (
+        {!hideColumns && toggleableColumns ? (
           <div>
             <Typography className={classes.title}>
               {translate('ra.toggleFieldsMenu.columnsToDisplay')}
@@ -107,4 +108,5 @@ export const ToggleFieldsMenu = ({
 ToggleFieldsMenu.propTypes = {
   resource: PropTypes.string.isRequired,
   topbarComponent: PropTypes.elementType,
+  hideColumns: PropTypes.bool,
 }

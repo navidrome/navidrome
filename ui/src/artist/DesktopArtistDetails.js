@@ -6,11 +6,12 @@ import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
 import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
-import { LoveButton, RatingField } from '../common'
+import { ArtistContextMenu, RatingField } from '../common'
 import Lightbox from 'react-image-lightbox'
 import { AddToPlaylistDialog } from '../dialogs'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -53,7 +54,8 @@ const useStyles = makeStyles(
     button: {
       marginLeft: '0.9em',
     },
-    loveButton: {
+    contextMenu: {
+      marginLeft: theme.spacing(1.5),
       top: theme.spacing(-0.2),
       left: theme.spacing(0.5),
     },
@@ -101,12 +103,12 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
             >
               {title}
               {config.enableFavourites && (
-                <LoveButton
-                  className={classes.loveButton}
+                <ArtistContextMenu
+                  className={classes.contextMenu}
                   record={record}
                   resource={'artist'}
                   size={'default'}
-                  aria-label="love"
+                  aria-label="artist context menu"
                   color="primary"
                 />
               )}
@@ -150,6 +152,7 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
         )}
       </Card>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
       <ExpandInfoDialog content={<AlbumInfo />} />
     </div>
   )

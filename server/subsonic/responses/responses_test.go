@@ -286,6 +286,7 @@ var _ = Describe("Responses", func() {
 					Duration:  120,
 					Public:    true,
 					Owner:     "admin",
+					CoverArt:  "pl-123123123123",
 					Created:   timestamp,
 					Changed:   timestamp,
 				}
@@ -591,6 +592,41 @@ var _ = Describe("Responses", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 
+		})
+	})
+
+	Describe("InternetRadioStations", func() {
+		BeforeEach(func() {
+			response.InternetRadioStations = &InternetRadioStations{}
+		})
+
+		Describe("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Describe("with data", func() {
+			BeforeEach(func() {
+				radio := make([]Radio, 1)
+				radio[0] = Radio{
+					ID:          "12345678",
+					StreamUrl:   "https://example.com/stream",
+					Name:        "Example Stream",
+					HomepageUrl: "https://example.com",
+				}
+				response.InternetRadioStations.Radios = radio
+			})
+
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
 		})
 	})
 })

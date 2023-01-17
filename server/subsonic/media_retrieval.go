@@ -1,10 +1,12 @@
 package subsonic
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -51,23 +53,32 @@ func (api *Router) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) 
 }
 
 func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id := utils.ParamStringDefault(r, "id", "non-existent")
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	id := utils.ParamString(r, "id")
 	size := utils.ParamInt(r, "size", 0)
 
+	imgReader, lastUpdate, err := api.artwork.Get(ctx, id, size)
 	w.Header().Set("cache-control", "public, max-age=315360000")
+	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
 
-	imgReader, err := api.artwork.Get(r.Context(), id, size)
-	if errors.Is(err, model.ErrNotFound) {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return nil, nil
+	case errors.Is(err, model.ErrNotFound):
 		log.Error(r, "Couldn't find coverArt", "id", id, err)
 		return nil, newError(responses.ErrorDataNotFound, "Artwork not found")
-	}
-	if err != nil {
+	case err != nil:
 		log.Error(r, "Error retrieving coverArt", "id", id, err)
 		return nil, err
 	}
 
 	defer imgReader.Close()
-	_, err = io.Copy(w, imgReader)
+	cnt, err := io.Copy(w, imgReader)
+	if err != nil {
+		log.Warn(ctx, "Error sending image", "count", cnt, err)
+	}
 
 	return nil, err
 }

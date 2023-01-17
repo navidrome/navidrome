@@ -11,7 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/transcoder"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -20,17 +20,18 @@ import (
 
 type MediaStreamer interface {
 	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int) (*Stream, error)
+	DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) (*Stream, error)
 }
 
 type TranscodingCache cache.FileCache
 
-func NewMediaStreamer(ds model.DataStore, t transcoder.Transcoder, cache TranscodingCache) MediaStreamer {
+func NewMediaStreamer(ds model.DataStore, t ffmpeg.FFmpeg, cache TranscodingCache) MediaStreamer {
 	return &mediaStreamer{ds: ds, transcoder: t, cache: cache}
 }
 
 type mediaStreamer struct {
 	ds         model.DataStore
-	transcoder transcoder.Transcoder
+	transcoder ffmpeg.FFmpeg
 	cache      cache.FileCache
 }
 
@@ -51,6 +52,10 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 		return nil, err
 	}
 
+	return ms.DoStream(ctx, mf, reqFormat, reqBitRate)
+}
+
+func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) (*Stream, error) {
 	var format string
 	var bitRate int
 	var cached bool
@@ -186,7 +191,7 @@ func GetTranscodingCache() TranscodingCache {
 					log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
 					return nil, os.ErrInvalid
 				}
-				out, err := job.ms.transcoder.Start(ctx, t.Command, job.mf.Path, job.bitRate)
+				out, err := job.ms.transcoder.Transcode(ctx, t.Command, job.mf.Path, job.bitRate)
 				if err != nil {
 					log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 					return nil, os.ErrInvalid
