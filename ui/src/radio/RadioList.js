@@ -89,7 +89,7 @@ const RadioList = ({ permissions, ...props }) => {
         rel="noopener noreferrer"
       />
     ),
-    streamUrl: <TextField source="streamUrl" hideUrl />,
+    streamUrl: <TextField source="streamUrl" />,
     updatedAt: <DateField source="updatedAt" showTime />,
     createdAt: <DateField source="createdAt" showTime />,
   }
