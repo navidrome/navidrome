@@ -133,7 +133,7 @@ func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
 	}
 	var clauses Or
 	for _, d := range discs {
-		clauses = append(clauses, And{Eq{"album_id": d.AlbumID}, Eq{"disc_number": d.DiscNumber}})
+		clauses = append(clauses, And{Eq{"album_id": d.AlbumID}, Eq{"release_year": d.releaseYear}, Eq{"disc_number": d.DiscNumber}})
 	}
 	return r.addMediaFileIds(clauses)
 }
