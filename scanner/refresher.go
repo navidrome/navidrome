@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/exp/maps"
 )
 
 // refresher is responsible for rolling up mediafiles attributes into albums attributes,
@@ -52,11 +53,11 @@ func (r *refresher) flush(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	r.album = map[string]struct{}{}
 	err = r.flushMap(ctx, r.artist, "artist", r.refreshArtists)
 	if err != nil {
 		return err
 	}
-	r.album = map[string]struct{}{}
 	r.artist = map[string]struct{}{}
 	return nil
 }
@@ -67,11 +68,8 @@ func (r *refresher) flushMap(ctx context.Context, m map[string]struct{}, entity 
 	if len(m) == 0 {
 		return nil
 	}
-	var ids []string
-	for id := range m {
-		ids = append(ids, id)
-		delete(m, id)
-	}
+
+	ids := maps.Keys(m)
 	chunks := utils.BreakUpStringSlice(ids, 100)
 	for _, chunk := range chunks {
 		err := refresh(ctx, chunk...)

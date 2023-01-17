@@ -44,13 +44,13 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	ff := []sourceFunc{
-		a.fromGeneratedTile(ctx),
+		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
 	}
 	return selectImageReader(ctx, a.artID, ff...)
 }
 
-func (a *playlistArtworkReader) fromGeneratedTile(ctx context.Context) sourceFunc {
+func (a *playlistArtworkReader) fromGeneratedTiledCover(ctx context.Context) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		tiles, err := a.loadTiles(ctx)
 		if err != nil {
