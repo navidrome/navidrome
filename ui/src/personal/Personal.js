@@ -8,6 +8,7 @@ import { NotificationsToggle } from './NotificationsToggle'
 import { LastfmScrobbleToggle } from './LastfmScrobbleToggle'
 import { ListenBrainzScrobbleToggle } from './ListenBrainzScrobbleToggle'
 import config from '../config'
+import { ReplayGainToggle } from './ReplayGainToggle'
 
 const useStyles = makeStyles({
   root: { marginTop: '1em' },
@@ -24,6 +25,7 @@ const Personal = () => {
         <SelectTheme />
         <SelectLanguage />
         <SelectDefaultView />
+        {config.enableReplayGain && <ReplayGainToggle />}
         <NotificationsToggle />
         {config.lastFMEnabled && <LastfmScrobbleToggle />}
         {config.listenBrainzEnabled && <ListenBrainzScrobbleToggle />}

@@ -41,6 +41,10 @@ var _ = Describe("Tags", func() {
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.mp3"))
 			Expect(m.Suffix()).To(Equal("mp3"))
 			Expect(m.Size()).To(Equal(int64(51876)))
+			Expect(m.RGAlbumGain()).To(Equal(3.21518))
+			Expect(m.RGAlbumPeak()).To(Equal(0.9125))
+			Expect(m.RGTrackGain()).To(Equal(-1.48))
+			Expect(m.RGTrackPeak()).To(Equal(0.4512))
 
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())

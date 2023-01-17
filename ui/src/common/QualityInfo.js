@@ -19,7 +19,7 @@ const useStyle = makeStyles(
   }
 )
 
-export const QualityInfo = ({ record, size, className }) => {
+export const QualityInfo = ({ record, size, gainMode, preAmp, className }) => {
   const classes = useStyle()
   let { suffix, bitRate } = record
   let info = placeholder
@@ -30,6 +30,12 @@ export const QualityInfo = ({ record, size, className }) => {
     if (!llFormats.has(suffix)) {
       info += ' ' + bitRate
     }
+  }
+
+  if (gainMode !== 'none') {
+    info += ` (${
+      (gainMode === 'album' ? record.albumGain : record.trackGain) + preAmp
+    } dB)`
   }
 
   return (
@@ -46,9 +52,11 @@ QualityInfo.propTypes = {
   record: PropTypes.object.isRequired,
   size: PropTypes.string,
   className: PropTypes.string,
+  gainMode: PropTypes.string,
 }
 
 QualityInfo.defaultProps = {
   record: {},
   size: 'small',
+  gainMode: 'none',
 }

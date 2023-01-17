@@ -302,4 +302,23 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 		md, _ := e.extractMetadata("tests/fixtures/test.ogg", output)
 		Expect(md).To(HaveKeyWithValue("fbpm", []string{"141.7"}))
 	})
+
+	It("parses replaygain data correctly", func() {
+		const output = `
+		Input #0, mp3, from 'test.mp3':
+			Metadata:
+				REPLAYGAIN_ALBUM_PEAK: 0.9125
+				REPLAYGAIN_TRACK_PEAK: 0.4512
+				REPLAYGAIN_TRACK_GAIN: -1.48 dB
+				REPLAYGAIN_ALBUM_GAIN: +3.21518 dB
+				Side data:
+					replaygain: track gain - -1.480000, track peak - 0.000011, album gain - 3.215180, album peak - 0.000021, 
+		`
+		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+		Expect(md).To(HaveKeyWithValue("replaygain_track_gain", []string{"-1.48 dB"}))
+		Expect(md).To(HaveKeyWithValue("replaygain_track_peak", []string{"0.4512"}))
+		Expect(md).To(HaveKeyWithValue("replaygain_album_gain", []string{"+3.21518 dB"}))
+		Expect(md).To(HaveKeyWithValue("replaygain_album_peak", []string{"0.9125"}))
+
+	})
 })

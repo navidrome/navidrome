@@ -63,6 +63,7 @@ type configOptions struct {
 	ReverseProxyUserHeader string
 	ReverseProxyWhitelist  string
 	Prometheus             prometheusOptions
+	EnableReplayGain       bool
 
 	Scanner scannerOptions
 
@@ -276,6 +277,8 @@ func init() {
 
 	viper.SetDefault("prometheus.enabled", false)
 	viper.SetDefault("prometheus.metricspath", "/metrics")
+
+	viper.SetDefault("enablereplaygain", false)
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")

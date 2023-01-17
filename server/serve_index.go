@@ -52,6 +52,7 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			"lastFMApiKey":            conf.Server.LastFM.ApiKey,
 			"devShowArtistPage":       conf.Server.DevShowArtistPage,
 			"listenBrainzEnabled":     conf.Server.ListenBrainz.Enabled,
+			"enableReplayGain":        conf.Server.EnableReplayGain,
 		}
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			appConfig["loginBackgroundURL"] = path.Join(conf.Server.BaseURL, conf.Server.UILoginBackgroundURL)
