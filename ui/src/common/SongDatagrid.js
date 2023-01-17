@@ -64,6 +64,9 @@ const DiscSubtitleRow = forwardRef(
     if (record.discSubtitle) {
       subtitle.push(record.discSubtitle)
     }
+    if (record.releaseYear) {
+      subtitle.push( "\(" + record.releaseYear + "Release \)" )
+    }
 
     return (
       <TableRow
@@ -82,6 +85,7 @@ const DiscSubtitleRow = forwardRef(
           <AlbumContextMenu
             record={{ id: record.albumId }}
             discNumber={record.discNumber}
+            releaseYear={record.releaseYear}
             showLove={false}
             className={classes.contextMenu}
             visible={contextAlwaysVisible}
