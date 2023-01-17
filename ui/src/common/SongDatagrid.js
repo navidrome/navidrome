@@ -50,7 +50,7 @@ const useStyles = makeStyles({
 })
 
 const DiscSubtitleRow = forwardRef(
-  ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
+  ({ record, onClick, colSpan, contextAlwaysVisible, showReleaseYear }, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
     const handlePlayDisc = (releaseYear, discNumber) => () => {
@@ -103,6 +103,7 @@ export const SongDatagridRow = ({
   children,
   firstTracks,
   contextAlwaysVisible,
+  showReleaseYear,
   onClickDiscSubtitle,
   className,
   ...rest
