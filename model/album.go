@@ -50,8 +50,9 @@ func (a Album) CoverArtID() ArtworkID {
 }
 
 type DiscID struct {
-	AlbumID    string `json:"albumId"`
-	DiscNumber int    `json:"discNumber"`
+	AlbumID     string `json:"albumId"`
+	ReleaseYear int    `json:"releaseYear"`
+	DiscNumber  int    `json:"discNumber"`
 }
 
 type Albums []Album
