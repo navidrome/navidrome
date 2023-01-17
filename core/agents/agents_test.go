@@ -115,7 +115,7 @@ var _ = Describe("Agents", func() {
 
 		Describe("GetImages", func() {
 			It("returns on first match", func() {
-				Expect(ag.GetImages(ctx, "123", "test", "mb123")).To(Equal([]ArtistImage{{
+				Expect(ag.GetImages(ctx, "123", "test", "mb123")).To(Equal([]ExternalImage{{
 					URL:  "imageUrl",
 					Size: 100,
 				}}))
@@ -182,13 +182,22 @@ var _ = Describe("Agents", func() {
 		Describe("GetAlbumInfo", func() {
 			It("returns meaningful data", func() {
 				Expect(ag.GetAlbumInfo(ctx, "album", "artist", "mbid")).To(Equal(&AlbumInfo{
-					Name:         "A Song",
-					MBID:         "mbid444",
-					Description:  "A Description",
-					URL:          "External URL",
-					SmallImgUrl:  "Small URL",
-					MediumImgUrl: "Medium URL",
-					LargeImgUrl:  "Large URL",
+					Name:        "A Song",
+					MBID:        "mbid444",
+					Description: "A Description",
+					URL:         "External URL",
+					Images: []ExternalImage{
+						{
+							Size: 174,
+							URL:  "https://lastfm.freetls.fastly.net/i/u/174s/00000000000000000000000000000000.png",
+						}, {
+							Size: 64,
+							URL:  "https://lastfm.freetls.fastly.net/i/u/64s/00000000000000000000000000000000.png",
+						}, {
+							Size: 34,
+							URL:  "https://lastfm.freetls.fastly.net/i/u/34s/00000000000000000000000000000000.png",
+						},
+					},
 				}))
 				Expect(mock.Args).To(ConsistOf("album", "artist", "mbid"))
 			})
@@ -241,12 +250,12 @@ func (a *mockAgent) GetBiography(_ context.Context, id, name, mbid string) (stri
 	return "bio", nil
 }
 
-func (a *mockAgent) GetImages(_ context.Context, id, name, mbid string) ([]ArtistImage, error) {
+func (a *mockAgent) GetImages(_ context.Context, id, name, mbid string) ([]ExternalImage, error) {
 	a.Args = []interface{}{id, name, mbid}
 	if a.Err != nil {
 		return nil, a.Err
 	}
-	return []ArtistImage{{
+	return []ExternalImage{{
 		URL:  "imageUrl",
 		Size: 100,
 	}}, nil
@@ -280,12 +289,21 @@ func (a *mockAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string)
 		return nil, a.Err
 	}
 	return &AlbumInfo{
-		Name:         "A Song",
-		MBID:         "mbid444",
-		Description:  "A Description",
-		URL:          "External URL",
-		SmallImgUrl:  "Small URL",
-		MediumImgUrl: "Medium URL",
-		LargeImgUrl:  "Large URL",
+		Name:        "A Song",
+		MBID:        "mbid444",
+		Description: "A Description",
+		URL:         "External URL",
+		Images: []ExternalImage{
+			{
+				Size: 174,
+				URL:  "https://lastfm.freetls.fastly.net/i/u/174s/00000000000000000000000000000000.png",
+			}, {
+				Size: 64,
+				URL:  "https://lastfm.freetls.fastly.net/i/u/64s/00000000000000000000000000000000.png",
+			}, {
+				Size: 34,
+				URL:  "https://lastfm.freetls.fastly.net/i/u/34s/00000000000000000000000000000000.png",
+			},
+		},
 	}, nil
 }

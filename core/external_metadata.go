@@ -117,16 +117,20 @@ func (e *externalMetadata) refreshAlbumInfo(ctx context.Context, album *auxAlbum
 		album.Description = info.Description
 	}
 
-	if info.SmallImgUrl != "" {
-		album.SmallImageUrl = info.SmallImgUrl
-	}
+	if len(info.Images) > 0 {
+		sort.Slice(info.Images, func(i, j int) bool {
+			return info.Images[i].Size > info.Images[j].Size
+		})
 
-	if info.MediumImgUrl != "" {
-		album.MediumImageUrl = info.MediumImgUrl
-	}
+		album.LargeImageUrl = info.Images[0].URL
 
-	if info.LargeImgUrl != "" {
-		album.LargeImageUrl = info.LargeImgUrl
+		if len(info.Images) >= 2 {
+			album.MediumImageUrl = info.Images[1].URL
+		}
+
+		if len(info.Images) >= 3 {
+			album.SmallImageUrl = info.Images[2].URL
+		}
 	}
 
 	err = e.ds.Album(ctx).Put(&album.Album)

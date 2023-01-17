@@ -14,18 +14,11 @@ type Interface interface {
 }
 
 type AlbumInfo struct {
-	Name         string
-	MBID         string
-	Description  string
-	URL          string
-	SmallImgUrl  string
-	MediumImgUrl string
-	LargeImgUrl  string
-}
-
-type AlbumImage struct {
-	URL  string
-	Size string
+	Name        string
+	MBID        string
+	Description string
+	URL         string
+	Images      []ExternalImage
 }
 
 type Artist struct {
@@ -33,7 +26,7 @@ type Artist struct {
 	MBID string
 }
 
-type ArtistImage struct {
+type ExternalImage struct {
 	URL  string
 	Size int
 }
@@ -68,7 +61,7 @@ type ArtistSimilarRetriever interface {
 }
 
 type ArtistImageRetriever interface {
-	GetImages(ctx context.Context, id, name, mbid string) ([]ArtistImage, error)
+	GetImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error)
 }
 
 type ArtistTopSongsRetriever interface {

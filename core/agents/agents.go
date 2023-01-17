@@ -121,7 +121,7 @@ func (a *Agents) GetSimilar(ctx context.Context, id, name, mbid string, limit in
 	return nil, ErrNotFound
 }
 
-func (a *Agents) GetImages(ctx context.Context, id, name, mbid string) ([]ArtistImage, error) {
+func (a *Agents) GetImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error) {
 	start := time.Now()
 	for _, ag := range a.agents {
 		if utils.IsCtxDone(ctx) {

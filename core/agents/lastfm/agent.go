@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"regexp"
+	"strconv"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -48,6 +50,8 @@ func (l *lastfmAgent) AgentName() string {
 	return lastFMAgentName
 }
 
+var imageRegex = regexp.MustCompile(`u\/(\d+)`)
+
 func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
 	a, err := l.callAlbumGetInfo(ctx, name, artist, mbid)
 	if err != nil {
@@ -59,18 +63,31 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 		MBID:        a.MBID,
 		Description: a.Description.Summary,
 		URL:         a.URL,
+		Images:      make([]agents.ExternalImage, 0),
 	}
+
+	// Last.fm can return duplicate sizes.
+	seenSizes := map[int]bool{}
 
 	// This assumes that Last.FM returns images with size small, medium, and large.
 	// This is true as of December 29, 2022
 	for _, img := range a.Image {
-		switch img.Size {
-		case "small":
-			response.SmallImgUrl = img.URL
-		case "medium":
-			response.MediumImgUrl = img.URL
-		case "large":
-			response.LargeImgUrl = img.URL
+		size := imageRegex.FindStringSubmatch(img.URL)
+		numericSize, err := strconv.Atoi(size[0][2:])
+
+		if err != nil {
+			log.Debug(ctx, "LastFM/albuminfo image URL does not match expected regex", "url", img.URL)
+			return nil, err
+		} else {
+			_, exists := seenSizes[numericSize]
+
+			if !exists {
+				response.Images = append(response.Images, agents.ExternalImage{
+					Size: numericSize,
+					URL:  img.URL,
+				})
+				seenSizes[numericSize] = true
+			}
 		}
 	}
 
