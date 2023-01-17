@@ -166,7 +166,7 @@ SongDatagridRow.propTypes = {
   children: PropTypes.node,
   firstTracks: PropTypes.instanceOf(Set),
   contextAlwaysVisible: PropTypes.bool,
-  showReleaseYear: PropTypes.bool
+  showReleaseYear: PropTypes.bool,
   onClickDiscSubtitle: PropTypes.func,
 }
 
