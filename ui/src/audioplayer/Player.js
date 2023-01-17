@@ -29,8 +29,6 @@ function calculateReplayGain(preAmp, gain, peak) {
     return 1
   }
 
-  console.log(gain, preAmp, typeof preAmp, peak)
-
   // https://wiki.hydrogenaud.io/index.php?title=ReplayGain_1.0_specification&section=19
   // Normalized to max gain
   return Math.min(10 ** ((gain + preAmp) / 20), 1 / peak)
@@ -115,8 +113,6 @@ const Player = () => {
           numericGain = 1
         }
       }
-
-      console.log(numericGain)
 
       gainNode.gain.setValueAtTime(numericGain, context.currentTime)
     }
