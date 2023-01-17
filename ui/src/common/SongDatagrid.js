@@ -254,6 +254,6 @@ export const SongDatagrid = ({
 SongDatagrid.propTypes = {
   contextAlwaysVisible: PropTypes.bool,
   showDiscSubtitles: PropTypes.bool,
-  showReleaseYear: PropTypes.bool
+  showReleaseYear: PropTypes.bool,
   classes: PropTypes.object,
 }
