@@ -145,6 +145,7 @@ export const SongDatagridRow = ({
           record={record}
           onClick={onClickDiscSubtitle}
           contextAlwaysVisible={contextAlwaysVisible}
+          showReleaseYear={showReleaseYear}
           colSpan={childCount + (rest.expand ? 1 : 0)}
         />
       )}
@@ -165,6 +166,7 @@ SongDatagridRow.propTypes = {
   children: PropTypes.node,
   firstTracks: PropTypes.instanceOf(Set),
   contextAlwaysVisible: PropTypes.bool,
+  showReleaseYear: PropTypes.bool
   onClickDiscSubtitle: PropTypes.func,
 }
 
