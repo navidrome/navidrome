@@ -50,7 +50,7 @@ const useStyles = makeStyles({
 })
 
 const DiscSubtitleRow = forwardRef(
-  ({ record, onClick, colSpan, contextAlwaysVisible, showReleaseYear }, ref) => {
+  ({ record, onClick, colSpan, contextAlwaysVisible}, ref, showReleaseYear) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
     const handlePlayDisc = (releaseYear, discNumber) => () => {
@@ -66,7 +66,7 @@ const DiscSubtitleRow = forwardRef(
     }
     let yeartitle = ""
     if (record.releaseYear > 0) {
-      yeartitle = String(record.releaseYear) + " Release "
+      yeartitle = showReleaseYear && (String(record.releaseYear) + " Release ")
     }
 
     return (
@@ -78,7 +78,7 @@ const DiscSubtitleRow = forwardRef(
       >
         <TableCell colSpan={colSpan}>
           <Typography variant="h6" className={classes.subtitle}>
-            {showReleaseYear && yeartitle}
+            {yeartitle}
             <AlbumIcon className={classes.discIcon} fontSize={'small'} />
             {subtitle.join(': ')}
           </Typography>
