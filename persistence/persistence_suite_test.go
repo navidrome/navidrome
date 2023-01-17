@@ -23,6 +23,7 @@ func TestPersistence(t *testing.T) {
 	//os.Remove("./test-123.db")
 	//conf.Server.DbPath = "./test-123.db"
 	conf.Server.DbPath = "file::memory:?cache=shared"
+	conf.Server.ReverseProxyUserHeader = ""
 	_ = orm.RegisterDataBase("default", db.Driver, conf.Server.DbPath)
 	db.EnsureLatestVersion()
 	log.SetLevel(log.LevelError)
