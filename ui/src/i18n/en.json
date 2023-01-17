@@ -368,8 +368,8 @@
                 "preAmp": "ReplayGain PreAmp (dB)",
                 "gain": {
                     "none": "Disabled",
-                    "album": "Normalize albums",
-                    "track": "Normalize tracks"
+                    "album": "Use Album Gain",
+                    "track": "Use Track Gain"
                 }
             }
         },
