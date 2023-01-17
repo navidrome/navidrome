@@ -202,7 +202,8 @@ const SongDatagridBody = ({
           foundSubtitle = foundSubtitle || data[id].discSubtitle
           if (
             acc.length === 0 ||
-            (last && data[id].discNumber !== data[last].discNumber)
+            (last && data[id].discNumber !== data[last].discNumber) ||
+            (last && data[id].releaseYear !== data[last].releaseYear)
           ) {
             acc.push(id)
           }
