@@ -38,6 +38,15 @@ func resizedFromOriginal(ctx context.Context, a *artwork, artID model.ArtworkID,
 	return r, nil
 }
 
+func (a *resizedArtworkReader) Key() string {
+	return fmt.Sprintf(
+		"%s.%d.%d",
+		a.cacheKey.Key(),
+		a.size,
+		conf.Server.CoverJpegQuality,
+	)
+}
+
 func (a *resizedArtworkReader) LastUpdated() time.Time {
 	return a.lastUpdate
 }

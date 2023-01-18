@@ -62,13 +62,12 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 }
 
 func (a *artistReader) Key() string {
-	agentsHash := md5.Sum([]byte(conf.Server.Agents + conf.Server.Spotify.ID))
+	hash := md5.Sum([]byte(conf.Server.Agents + conf.Server.Spotify.ID))
 	return fmt.Sprintf(
-		"%s.%d.%d.%x",
-		a.artID,
-		a.lastUpdate.UnixMilli(),
-		a.size,
-		agentsHash,
+		"%s.%x.%t",
+		a.cacheKey.Key(),
+		hash,
+		conf.Server.EnableExternalServices,
 	)
 }
 
