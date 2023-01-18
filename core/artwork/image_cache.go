@@ -15,7 +15,6 @@ import (
 
 type cacheKey struct {
 	artID      model.ArtworkID
-	size       int
 	lastUpdate time.Time
 }
 
