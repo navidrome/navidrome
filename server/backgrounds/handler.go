@@ -68,7 +68,7 @@ func (h *Handler) getImageList(ctx context.Context) ([]string, error) {
 	start := time.Now()
 
 	c := http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: time.Minute,
 	}
 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, buildPath(ndImageServiceURL, "index.yml"), nil)
