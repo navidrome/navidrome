@@ -190,19 +190,29 @@ const Details = (props) => {
 
   const year = formatRange(record, 'year')
   const releaseYear = formatRange(record, 'releaseYear')
-  const equalYears = (releaseYear === year)
-  year && addDetail(
+  const showBothYearFields  = (year && releaseYear && (year !== releaseYear))
+  
+  addDetail(
     <>
-      {[(!equalYears ? (!isXsmall ? (translate('resources.album.fields.original') + " ") : "♫ "):""),year].join(' ')
-      }
+    { [
+        (showBothYearFields
+          &&
+          (!isXsmall ? translate('resources.album.fields.original') : "♫")
+        ),
+        year
+      ].join('  ')
+    }
     </>
   )
-  !equalYears && addDetail(
+  showBothYearFields && addDetail(
     <>
-      {[(!isXsmall ? (translate('resources.album.fields.released') + " "): "○ "),releaseYear].join(' ')
-      }
+    { [
+        (!isXsmall ? translate('resources.album.fields.released') : "○"),
+        releaseYear
+      ].join('  ')
+    }
     </>
- )
+  )
   addDetail(
     <>
       {record.songCount +
