@@ -50,7 +50,7 @@ const useStyles = makeStyles({
 })
 
 const DiscSubtitleRow = forwardRef(
-  ({ record, onClick, colSpan, contextAlwaysVisible}, ref, showReleaseYear) => {
+  ({ record, onClick, colSpan, contextAlwaysVisible, showReleaseYear}, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
     const handlePlayDisc = (releaseYear, discNumber) => () => {
@@ -66,7 +66,7 @@ const DiscSubtitleRow = forwardRef(
     }
     let yeartitle = ""
     if (record.releaseYear > 0) {
-      yeartitle = showReleaseYear && (String(record.releaseYear) + " Release ")
+      yeartitle = (String(record.releaseYear) + " Release ")
     }
 
     return (
@@ -78,7 +78,7 @@ const DiscSubtitleRow = forwardRef(
       >
         <TableCell colSpan={colSpan}>
           <Typography variant="h6" className={classes.subtitle}>
-            {yeartitle}
+            {showReleaseYear && yeartitle}
             <AlbumIcon className={classes.discIcon} fontSize={'small'} />
             {subtitle.join(': ')}
           </Typography>
@@ -177,8 +177,8 @@ SongDatagridRow.defaultProps = {
 
 const SongDatagridBody = ({
   contextAlwaysVisible,
-  showDiscSubtitles,
   showReleaseYear,
+  showDiscSubtitles,
   ...rest
 }) => {
   const dispatch = useDispatch()
@@ -227,6 +227,7 @@ const SongDatagridBody = ({
           firstTracks={firstTracks}
           contextAlwaysVisible={contextAlwaysVisible}
           onClickDiscSubtitle={playDisc}
+          showReleaseYear={showReleaseYear}
         />
       }
     />
@@ -235,8 +236,8 @@ const SongDatagridBody = ({
 
 export const SongDatagrid = ({
   contextAlwaysVisible,
-  showDiscSubtitles,
   showReleaseYear,
+  showDiscSubtitles,
   ...rest
 }) => {
   const classes = useStyles()
@@ -247,8 +248,8 @@ export const SongDatagrid = ({
       body={
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
-          showDiscSubtitles={showDiscSubtitles}
           showReleaseYear={showReleaseYear}
+          showDiscSubtitles={showDiscSubtitles}
         />
       }
     />
