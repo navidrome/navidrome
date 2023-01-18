@@ -192,15 +192,7 @@ const Details = (props) => {
   const releaseYear = formatRange(record, 'releaseYear')
   const showBothYearFields  = (year && releaseYear && (year !== releaseYear))
   
-  if (showBothYearFields) {
-     addDetail(<>{[
-              (!isXsmall ? translate('resources.album.fields.original') : "♫"),
-              year
-              ].join('  ')
-            }</>)
-  } else {
-    addDetail(<>{year}</>)
-  }
+  year && addDetail(<>{["♫", year].join('  ')}</>)
   
   showBothYearFields && addDetail(
     <>
