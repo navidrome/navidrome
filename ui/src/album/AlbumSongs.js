@@ -6,6 +6,7 @@ import {
   NumberField,
   useVersion,
   useListContext,
+  useRecordContext,
   FunctionField,
 } from 'react-admin'
 import clsx from 'clsx'
@@ -206,6 +207,11 @@ export const removeAlbumCommentsFromSongs = ({ album, data }) => {
   }
 }
 
+export const showReleaseYear = (props) => {
+  const record = useRecordContext(props)
+  return (record[`minReleaseYear`] !== record[`maxReleaseYear`])
+}
+
 const SanitizedAlbumSongs = (props) => {
   removeAlbumCommentsFromSongs(props)
     const { loaded, loading, total, ...rest } = useListContext(props)
@@ -213,7 +219,7 @@ const SanitizedAlbumSongs = (props) => {
   return <>{loaded && <AlbumSongs
     {...rest}
     actions={props.actions}
-    showReleaseYear={showReleaseYear}
+    showReleaseYear={showReleaseYear(props)}
   />}</>
 }
 
