@@ -214,7 +214,7 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 func (e *externalMetadata) refreshArtistInfo(ctx context.Context, artist *auxArtist) error {
 	// Get MBID first, if it is not yet available
 	if artist.MbzArtistID == "" {
-		mbid, err := e.ag.GetMBID(ctx, artist.ID, artist.Name)
+		mbid, err := e.ag.GetArtistMBID(ctx, artist.ID, artist.Name)
 		if mbid != "" && err == nil {
 			artist.MbzArtistID = mbid
 		}
@@ -371,7 +371,7 @@ func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, coun
 }
 
 func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
-	songs, err := agent.GetTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
+	songs, err := agent.GetArtistTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
 	if errors.Is(err, agents.ErrNotFound) {
 		return nil, nil
 	}
@@ -426,7 +426,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 }
 
 func (e *externalMetadata) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) {
-	url, err := agent.GetURL(ctx, artist.ID, artist.Name, artist.MbzArtistID)
+	url, err := agent.GetArtistURL(ctx, artist.ID, artist.Name, artist.MbzArtistID)
 	if url == "" || err != nil {
 		return
 	}
@@ -434,7 +434,7 @@ func (e *externalMetadata) callGetURL(ctx context.Context, agent agents.ArtistUR
 }
 
 func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) {
-	bio, err := agent.GetBiography(ctx, artist.ID, clearName(artist.Name), artist.MbzArtistID)
+	bio, err := agent.GetArtistBiography(ctx, artist.ID, clearName(artist.Name), artist.MbzArtistID)
 	if bio == "" || err != nil {
 		return
 	}
@@ -444,7 +444,7 @@ func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.Ar
 }
 
 func (e *externalMetadata) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
-	images, err := agent.GetImages(ctx, artist.ID, artist.Name, artist.MbzArtistID)
+	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name, artist.MbzArtistID)
 	if len(images) == 0 || err != nil {
 		return
 	}
@@ -463,7 +463,7 @@ func (e *externalMetadata) callGetImage(ctx context.Context, agent agents.Artist
 
 func (e *externalMetadata) callGetSimilar(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
 	limit int, includeNotPresent bool) {
-	similar, err := agent.GetSimilar(ctx, artist.ID, artist.Name, artist.MbzArtistID, limit)
+	similar, err := agent.GetSimilarArtists(ctx, artist.ID, artist.Name, artist.MbzArtistID, limit)
 	if len(similar) == 0 || err != nil {
 		return
 	}

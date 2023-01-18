@@ -45,27 +45,27 @@ type AlbumInfoRetriever interface {
 }
 
 type ArtistMBIDRetriever interface {
-	GetMBID(ctx context.Context, id string, name string) (string, error)
+	GetArtistMBID(ctx context.Context, id string, name string) (string, error)
 }
 
 type ArtistURLRetriever interface {
-	GetURL(ctx context.Context, id, name, mbid string) (string, error)
+	GetArtistURL(ctx context.Context, id, name, mbid string) (string, error)
 }
 
 type ArtistBiographyRetriever interface {
-	GetBiography(ctx context.Context, id, name, mbid string) (string, error)
+	GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error)
 }
 
 type ArtistSimilarRetriever interface {
-	GetSimilar(ctx context.Context, id, name, mbid string, limit int) ([]Artist, error)
+	GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]Artist, error)
 }
 
 type ArtistImageRetriever interface {
-	GetImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error)
+	GetArtistImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error)
 }
 
 type ArtistTopSongsRetriever interface {
-	GetTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error)
+	GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error)
 }
 
 var Map map[string]Constructor

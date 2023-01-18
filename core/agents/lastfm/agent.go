@@ -97,7 +97,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 	return &response, nil
 }
 
-func (l *lastfmAgent) GetMBID(ctx context.Context, id string, name string) (string, error) {
+func (l *lastfmAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
 	a, err := l.callArtistGetInfo(ctx, name, "")
 	if err != nil {
 		return "", err
@@ -108,7 +108,7 @@ func (l *lastfmAgent) GetMBID(ctx context.Context, id string, name string) (stri
 	return a.MBID, nil
 }
 
-func (l *lastfmAgent) GetURL(ctx context.Context, id, name, mbid string) (string, error) {
+func (l *lastfmAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
 	a, err := l.callArtistGetInfo(ctx, name, mbid)
 	if err != nil {
 		return "", err
@@ -119,7 +119,7 @@ func (l *lastfmAgent) GetURL(ctx context.Context, id, name, mbid string) (string
 	return a.URL, nil
 }
 
-func (l *lastfmAgent) GetBiography(ctx context.Context, id, name, mbid string) (string, error) {
+func (l *lastfmAgent) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
 	a, err := l.callArtistGetInfo(ctx, name, mbid)
 	if err != nil {
 		return "", err
@@ -130,7 +130,7 @@ func (l *lastfmAgent) GetBiography(ctx context.Context, id, name, mbid string) (
 	return a.Bio.Summary, nil
 }
 
-func (l *lastfmAgent) GetSimilar(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
+func (l *lastfmAgent) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
 	resp, err := l.callArtistGetSimilar(ctx, name, mbid, limit)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func (l *lastfmAgent) GetSimilar(ctx context.Context, id, name, mbid string, lim
 	return res, nil
 }
 
-func (l *lastfmAgent) GetTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
+func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
 	resp, err := l.callArtistGetTopTracks(ctx, artistName, mbid, count)
 	if err != nil {
 		return nil, err
