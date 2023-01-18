@@ -52,6 +52,7 @@
                 "year": "Year",
                 "original": "Original",
                 "released": "Released",
+                "edition": "Edition",
                 "updatedAt": "Updated at",
                 "comment": "Comment",
                 "rating": "Rating",
