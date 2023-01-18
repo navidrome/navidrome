@@ -31,7 +31,7 @@ create index if not exists media_file_track_number
 		return forceFullRescan(tx)
 	} else {
 		notice(tx, "DevUseOriginalDate is false, so no full rescan needed")
-		return notice(tx)
+		return nil
 	}
 }
 
