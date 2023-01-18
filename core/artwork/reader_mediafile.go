@@ -2,9 +2,11 @@ package artwork
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -38,6 +40,13 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 	return a, nil
 }
 
+func (a *mediafileArtworkReader) Key() string {
+	return fmt.Sprintf(
+		"%s.%t",
+		a.cacheKey.Key(),
+		conf.Server.EnableMediaFileCoverArt,
+	)
+}
 func (a *mediafileArtworkReader) LastUpdated() time.Time {
 	return a.lastUpdate
 }

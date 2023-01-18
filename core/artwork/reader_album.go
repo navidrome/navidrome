@@ -2,6 +2,8 @@ package artwork
 
 import (
 	"context"
+	"crypto/md5"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -34,6 +36,18 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 	return a, nil
 }
 
+func (a *albumArtworkReader) Key() string {
+	var hash [16]byte
+	if conf.Server.EnableExternalServices {
+		hash = md5.Sum([]byte(conf.Server.Agents + conf.Server.CoverArtPriority))
+	}
+	return fmt.Sprintf(
+		"%s.%x.%t",
+		a.cacheKey.Key(),
+		hash,
+		conf.Server.EnableExternalServices,
+	)
+}
 func (a *albumArtworkReader) LastUpdated() time.Time {
 	return a.album.UpdatedAt
 }
