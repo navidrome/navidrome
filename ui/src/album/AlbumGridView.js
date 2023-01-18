@@ -17,7 +17,6 @@ import {
   AlbumContextMenu,
   PlayButton,
   ArtistLinkField,
-  RangeField,
   RangeFieldDouble,
 } from '../common'
 import { DraggableTypes } from '../consts'
