@@ -91,7 +91,6 @@ const useStyles = makeStyles(
 
 const AlbumSongs = (props) => {
   const { data, ids } = props
-  const showReleaseYear = props.showReleaseYear
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
@@ -171,7 +170,7 @@ const AlbumSongs = (props) => {
             {...props}
             hasBulkActions={true}
             showDiscSubtitles={true}
-            showReleaseYear={showReleaseYear}
+            showReleaseYear={props.showReleaseYear}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
           >
@@ -208,11 +207,12 @@ export const removeAlbumCommentsFromSongs = ({ album, data }) => {
 }
 
 export const showReleaseYear = (record) => {
-    return (record[`minReleaseYear`] !== record[`maxReleaseYear`])
+  return (record[`minReleaseYear`] !== record[`maxReleaseYear`])
 }
 
+
 const SanitizedAlbumSongs = (props) => {
-    const record = useRecordContext(props)
+  const record = useRecordContext(props)
   removeAlbumCommentsFromSongs(props)
     const { loaded, loading, total, ...rest } = useListContext(props)
   return <>{loaded && <AlbumSongs
