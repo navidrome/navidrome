@@ -69,7 +69,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 	// Last.fm can return duplicate sizes.
 	seenSizes := map[int]bool{}
 
-	// This assumes that Last.FM returns images with size small, medium, and large.
+	// This assumes that Last.fm returns images with size small, medium, and large.
 	// This is true as of December 29, 2022
 	for _, img := range a.Image {
 		size := imageRegex.FindStringSubmatch(img.URL)

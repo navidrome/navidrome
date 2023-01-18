@@ -48,7 +48,7 @@ var _ = Describe("Client", func() {
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=123&method=artist.getInfo"))
 		})
 
-		It("fails if Last.FM returns an http status != 200", func() {
+		It("fails if Last.fm returns an http status != 200", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Internal Server Error`)),
 				StatusCode: 500,
@@ -58,7 +58,7 @@ var _ = Describe("Client", func() {
 			Expect(err).To(MatchError("last.fm http status: (500)"))
 		})
 
-		It("fails if Last.FM returns an http status != 200", func() {
+		It("fails if Last.fm returns an http status != 200", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"error":3,"message":"Invalid Method - No method with that name in this package"}`)),
 				StatusCode: 400,
@@ -68,7 +68,7 @@ var _ = Describe("Client", func() {
 			Expect(err).To(MatchError(&lastFMError{Code: 3, Message: "Invalid Method - No method with that name in this package"}))
 		})
 
-		It("fails if Last.FM returns an error", func() {
+		It("fails if Last.fm returns an error", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"error":6,"message":"The artist you supplied could not be found"}`)),
 				StatusCode: 200,
