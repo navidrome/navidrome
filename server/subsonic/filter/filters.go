@@ -1,9 +1,11 @@
 package filter
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -49,9 +51,15 @@ func AlbumsByGenre(genre string) Options {
 }
 
 func AlbumsByArtistID(artistId string) Options {
+	var filters squirrel.Sqlizer
+	if conf.Server.SubsonicArtistParticipations {
+		filters = squirrel.Like{"all_artist_ids": fmt.Sprintf("%%%s%%", artistId)}
+	} else {
+		filters = squirrel.Eq{"album_artist_id": artistId}
+	}
 	return Options{
 		Sort:    "max_year",
-		Filters: squirrel.Eq{"album_artist_id": artistId},
+		Filters: filters,
 	}
 }
 
