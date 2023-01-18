@@ -128,8 +128,8 @@ func (s mediaFileMapper) trackID(md metadata.Tags) string {
 func (s mediaFileMapper) albumID(md metadata.Tags) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
 	
-	if conf.Server.DevUseOriginalDate && !conf.Server.DevGroupAlbumEditions && (md.ReleaseYear() > 0) {
-		return fmt.Sprintf("%x", md5.Sum([]byte(albumPath + string(md.ReleaseYear()))))
+	if conf.Server.DevUseOriginalDate && !conf.Server.DevGroupAlbumEditions && (md.Year() > 0) {
+		return fmt.Sprintf("%x", md5.Sum([]byte(albumPath + string(md.Year()))))
 	}
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
 }
