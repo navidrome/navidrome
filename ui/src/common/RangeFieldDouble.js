@@ -9,9 +9,9 @@ export const RangeFieldDouble = ({ className, source1, source2, symbol1, symbol2
       return <span className={className}>{
             formatRange(record, source1) +
             divider +
-            "\(\( " +
+            "(( " +
             symbol2 + 
-            "\)\)"
+            "))"
             }</span>
    }
   if (formatRange(record, source1) === formatRange(record, source2)) {
