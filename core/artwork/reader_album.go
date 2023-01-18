@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
 )
@@ -14,16 +15,18 @@ import (
 type albumArtworkReader struct {
 	cacheKey
 	a     *artwork
+	em    core.ExternalMetadata
 	album model.Album
 }
 
-func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID) (*albumArtworkReader, error) {
+func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, em core.ExternalMetadata) (*albumArtworkReader, error) {
 	al, err := artwork.ds.Album(ctx).Get(artID.ID)
 	if err != nil {
 		return nil, err
 	}
 	a := &albumArtworkReader{
 		a:     artwork,
+		em:    em,
 		album: *al,
 	}
 	a.cacheKey.artID = artID
@@ -36,21 +39,22 @@ func (a *albumArtworkReader) LastUpdated() time.Time {
 }
 
 func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	var ff = fromCoverArtPriority(ctx, a.a.ffmpeg, conf.Server.CoverArtPriority, a.album)
+	var ff = a.fromCoverArtPriority(ctx, a.a.ffmpeg, conf.Server.CoverArtPriority)
 	ff = append(ff, fromAlbumPlaceholder())
 	return selectImageReader(ctx, a.artID, ff...)
 }
 
-func fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string, al model.Album) []sourceFunc {
+func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
 	var ff []sourceFunc
 	for _, pattern := range strings.Split(strings.ToLower(priority), ",") {
 		pattern = strings.TrimSpace(pattern)
-		if pattern == "embedded" {
-			ff = append(ff, fromTag(al.EmbedArtPath), fromFFmpegTag(ctx, ffmpeg, al.EmbedArtPath))
-			continue
-		}
-		if al.ImageFiles != "" {
-			ff = append(ff, fromExternalFile(ctx, al.ImageFiles, pattern))
+		switch {
+		case pattern == "embedded":
+			ff = append(ff, fromTag(a.album.EmbedArtPath), fromFFmpegTag(ctx, ffmpeg, a.album.EmbedArtPath))
+		case pattern == "external":
+			ff = append(ff, fromAlbumExternalSource(ctx, a.album, a.em))
+		case a.album.ImageFiles != "":
+			ff = append(ff, fromExternalFile(ctx, a.album.ImageFiles, pattern))
 		}
 	}
 	return ff

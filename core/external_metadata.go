@@ -33,6 +33,7 @@ type ExternalMetadata interface {
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
+	AlbumImage(ctx context.Context, id string) (*url.URL, error)
 }
 
 type externalMetadata struct {
@@ -106,7 +107,7 @@ func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*mod
 
 func (e *externalMetadata) refreshAlbumInfo(ctx context.Context, album *auxAlbum) error {
 	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
-	if err == agents.ErrNotFound {
+	if errors.Is(err, agents.ErrNotFound) {
 		return nil
 	}
 	if err != nil {
@@ -329,6 +330,34 @@ func (e *externalMetadata) ArtistImage(ctx context.Context, id string) (*url.URL
 		return nil, agents.ErrNotFound
 	}
 	return url.Parse(imageUrl)
+}
+
+func (e *externalMetadata) AlbumImage(ctx context.Context, id string) (*url.URL, error) {
+	album, err := e.getAlbum(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	if errors.Is(err, agents.ErrNotFound) {
+		return nil, err
+	}
+	if utils.IsCtxDone(ctx) {
+		log.Warn(ctx, "AlbumImage call canceled", ctx.Err())
+		return nil, ctx.Err()
+	}
+
+	// Return the biggest image
+	var img agents.ExternalImage
+	for _, i := range info.Images {
+		if img.Size <= i.Size {
+			img = i
+		}
+	}
+	if img.URL == "" {
+		return nil, agents.ErrNotFound
+	}
+	return url.Parse(img.URL)
 }
 
 func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {

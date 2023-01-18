@@ -243,7 +243,7 @@ func init() {
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("probecommand", "ffmpeg %s -f ffmetadata")
-	viper.SetDefault("coverartpriority", "embedded, cover.*, folder.*, front.*")
+	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("enablegravatar", false)

@@ -171,7 +171,8 @@ func (a *Agents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*
 		}
 		album, err := agent.GetAlbumInfo(ctx, name, artist, mbid)
 		if err == nil {
-			log.Debug(ctx, "Got Album Info", "agent", ag.AgentName(), "album", name, "elapsed", time.Since(start))
+			log.Debug(ctx, "Got Album Info", "agent", ag.AgentName(), "album", name, "artist", artist,
+				"mbid", mbid, "elapsed", time.Since(start))
 			return album, nil
 		}
 	}
