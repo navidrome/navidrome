@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"regexp"
+	"strconv"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -48,7 +50,54 @@ func (l *lastfmAgent) AgentName() string {
 	return lastFMAgentName
 }
 
-func (l *lastfmAgent) GetMBID(ctx context.Context, id string, name string) (string, error) {
+var imageRegex = regexp.MustCompile(`u\/(\d+)`)
+
+func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
+	a, err := l.callAlbumGetInfo(ctx, name, artist, mbid)
+	if err != nil {
+		return nil, err
+	}
+
+	response := agents.AlbumInfo{
+		Name:        a.Name,
+		MBID:        a.MBID,
+		Description: a.Description.Summary,
+		URL:         a.URL,
+		Images:      make([]agents.ExternalImage, 0),
+	}
+
+	// Last.fm can return duplicate sizes.
+	seenSizes := map[int]bool{}
+
+	// This assumes that Last.fm returns images with size small, medium, and large.
+	// This is true as of December 29, 2022
+	for _, img := range a.Image {
+		size := imageRegex.FindStringSubmatch(img.URL)
+		// Last.fm can return images without URL
+		if len(size) == 0 || len(size[0]) < 4 {
+			log.Trace(ctx, "LastFM/albuminfo image URL does not match expected regex or is empty", "url", img.URL, "size", img.Size)
+			continue
+		}
+
+		numericSize, err := strconv.Atoi(size[0][2:])
+		if err != nil {
+			log.Error(ctx, "LastFM/albuminfo image URL does not match expected regex", "url", img.URL, "size", img.Size, err)
+			return nil, err
+		} else {
+			if _, exists := seenSizes[numericSize]; !exists {
+				response.Images = append(response.Images, agents.ExternalImage{
+					Size: numericSize,
+					URL:  img.URL,
+				})
+				seenSizes[numericSize] = true
+			}
+		}
+	}
+
+	return &response, nil
+}
+
+func (l *lastfmAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
 	a, err := l.callArtistGetInfo(ctx, name, "")
 	if err != nil {
 		return "", err
@@ -59,7 +108,7 @@ func (l *lastfmAgent) GetMBID(ctx context.Context, id string, name string) (stri
 	return a.MBID, nil
 }
 
-func (l *lastfmAgent) GetURL(ctx context.Context, id, name, mbid string) (string, error) {
+func (l *lastfmAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
 	a, err := l.callArtistGetInfo(ctx, name, mbid)
 	if err != nil {
 		return "", err
@@ -70,7 +119,7 @@ func (l *lastfmAgent) GetURL(ctx context.Context, id, name, mbid string) (string
 	return a.URL, nil
 }
 
-func (l *lastfmAgent) GetBiography(ctx context.Context, id, name, mbid string) (string, error) {
+func (l *lastfmAgent) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
 	a, err := l.callArtistGetInfo(ctx, name, mbid)
 	if err != nil {
 		return "", err
@@ -81,7 +130,7 @@ func (l *lastfmAgent) GetBiography(ctx context.Context, id, name, mbid string) (
 	return a.Bio.Summary, nil
 }
 
-func (l *lastfmAgent) GetSimilar(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
+func (l *lastfmAgent) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
 	resp, err := l.callArtistGetSimilar(ctx, name, mbid, limit)
 	if err != nil {
 		return nil, err
@@ -99,7 +148,7 @@ func (l *lastfmAgent) GetSimilar(ctx context.Context, id, name, mbid string, lim
 	return res, nil
 }
 
-func (l *lastfmAgent) GetTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
+func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
 	resp, err := l.callArtistGetTopTracks(ctx, artistName, mbid, count)
 	if err != nil {
 		return nil, err
@@ -115,6 +164,27 @@ func (l *lastfmAgent) GetTopSongs(ctx context.Context, id, artistName, mbid stri
 		})
 	}
 	return res, nil
+}
+
+func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid string) (*Album, error) {
+	a, err := l.client.AlbumGetInfo(ctx, name, artist, mbid)
+	var lfErr *lastFMError
+	isLastFMError := errors.As(err, &lfErr)
+
+	if mbid != "" && (isLastFMError && lfErr.Code == 6) {
+		log.Warn(ctx, "LastFM/album.getInfo could not find album by mbid, trying again", "album", name, "mbid", mbid)
+		return l.callAlbumGetInfo(ctx, name, artist, "")
+	}
+
+	if err != nil {
+		if isLastFMError && lfErr.Code == 6 {
+			log.Debug(ctx, "Album not found", "album", name, "mbid", mbid, err)
+		} else {
+			log.Error(ctx, "Error calling LastFM/album.getInfo", "album", name, "mbid", mbid, err)
+		}
+		return nil, err
+	}
+	return a, nil
 }
 
 func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, mbid string) (*Artist, error) {

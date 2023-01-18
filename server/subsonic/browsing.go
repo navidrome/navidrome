@@ -154,6 +154,7 @@ func (api *Router) GetArtist(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetAlbum(r *http.Request) (*responses.Subsonic, error) {
 	id := utils.ParamString(r, "id")
+
 	ctx := r.Context()
 
 	album, err := api.ds.Album(ctx).Get(id)
@@ -174,6 +175,32 @@ func (api *Router) GetAlbum(r *http.Request) (*responses.Subsonic, error) {
 
 	response := newResponse()
 	response.AlbumWithSongsID3 = api.buildAlbum(ctx, album, mfs)
+	return response, nil
+}
+
+func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
+	id, err := requiredParamString(r, "id")
+	ctx := r.Context()
+
+	if err != nil {
+		return nil, err
+	}
+
+	album, err := api.externalMetadata.UpdateAlbumInfo(ctx, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	response := newResponse()
+	response.AlbumInfo = &responses.AlbumInfo{}
+	response.AlbumInfo.Notes = album.Description
+	response.AlbumInfo.SmallImageUrl = album.SmallImageUrl
+	response.AlbumInfo.MediumImageUrl = album.MediumImageUrl
+	response.AlbumInfo.LargeImageUrl = album.LargeImageUrl
+	response.AlbumInfo.LastFmUrl = album.ExternalUrl
+	response.AlbumInfo.MusicBrainzID = album.MbzAlbumID
+
 	return response, nil
 }
 
@@ -397,7 +424,6 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 	if album.Starred {
 		dir.Starred = &album.StarredAt
 	}
-
 	dir.Song = childrenFromMediaFiles(ctx, mfs)
 	return dir
 }

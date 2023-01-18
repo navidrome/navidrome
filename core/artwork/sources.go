@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/dhowden/tag"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -137,4 +140,40 @@ func fromArtistPlaceholder() sourceFunc {
 		r, _ := resources.FS().Open(consts.PlaceholderArtistArt)
 		return r, consts.PlaceholderArtistArt, nil
 	}
+}
+
+func fromArtistExternalSource(ctx context.Context, ar model.Artist, em core.ExternalMetadata) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		imageUrl, err := em.ArtistImage(ctx, ar.ID)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return fromURL(ctx, imageUrl)
+	}
+}
+
+func fromAlbumExternalSource(ctx context.Context, al model.Album, em core.ExternalMetadata) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		imageUrl, err := em.AlbumImage(ctx, al.ID)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return fromURL(ctx, imageUrl)
+	}
+}
+
+func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, error) {
+	hc := http.Client{Timeout: 5 * time.Second}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, "", fmt.Errorf("error retrieveing artwork from %s: %s", imageUrl, resp.Status)
+	}
+	return resp.Body, imageUrl.String(), nil
 }
