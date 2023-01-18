@@ -29,6 +29,8 @@ create index if not exists media_file_track_number
 	if conf.Server.DevUseOriginalDate {
 		notice(tx, "A full rescan needs to be performed to import more tags")
 		return forceFullRescan(tx)
+	} else {
+		return nil
 	}
 }
 
