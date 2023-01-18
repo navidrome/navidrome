@@ -207,19 +207,18 @@ export const removeAlbumCommentsFromSongs = ({ album, data }) => {
   }
 }
 
-export const showReleaseYear = (props) => {
-  const record = useRecordContext(props)
-  return (record[`minReleaseYear`] !== record[`maxReleaseYear`])
+export const showReleaseYear = (record) => {
+    return (record[`minReleaseYear`] !== record[`maxReleaseYear`])
 }
 
 const SanitizedAlbumSongs = (props) => {
+    const record = useRecordContext(props)
   removeAlbumCommentsFromSongs(props)
     const { loaded, loading, total, ...rest } = useListContext(props)
-    const showReleaseYear = true
   return <>{loaded && <AlbumSongs
     {...rest}
     actions={props.actions}
-    showReleaseYear={showReleaseYear(props)}
+    showReleaseYear={showReleaseYear(record)}
   />}</>
 }
 
