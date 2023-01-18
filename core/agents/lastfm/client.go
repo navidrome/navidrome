@@ -45,6 +45,20 @@ type Client struct {
 	hc     httpDoer
 }
 
+func (c *Client) AlbumGetInfo(ctx context.Context, name string, artist string, mbid string) (*Album, error) {
+	params := url.Values{}
+	params.Add("method", "album.getInfo")
+	params.Add("album", name)
+	params.Add("artist", artist)
+	params.Add("mbid", mbid)
+	params.Add("lang", c.lang)
+	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Album, nil
+}
+
 func (c *Client) ArtistGetInfo(ctx context.Context, name string, mbid string) (*Artist, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getInfo")

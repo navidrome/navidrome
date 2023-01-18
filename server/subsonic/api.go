@@ -83,6 +83,8 @@ func (api *Router) routes() http.Handler {
 		h(r, "getArtist", api.GetArtist)
 		h(r, "getAlbum", api.GetAlbum)
 		h(r, "getSong", api.GetSong)
+		h(r, "getAlbumInfo", api.GetAlbumInfo)
+		h(r, "getAlbumInfo2", api.GetAlbumInfo)
 		h(r, "getArtistInfo", api.GetArtistInfo)
 		h(r, "getArtistInfo2", api.GetArtistInfo2)
 		h(r, "getTopSongs", api.GetTopSongs)
@@ -162,7 +164,6 @@ func (api *Router) routes() http.Handler {
 
 	// Not Implemented (yet?)
 	h501(r, "jukeboxControl")
-	h501(r, "getAlbumInfo", "getAlbumInfo2")
 	h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
 		"deletePodcastEpisode", "downloadPodcastEpisode")

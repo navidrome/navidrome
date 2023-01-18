@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback, useState, useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -90,6 +90,13 @@ const useStyles = makeStyles(
       marginTop: '1em',
       float: 'left',
       wordBreak: 'break-word',
+    },
+    notes: {
+      display: 'inline-block',
+      marginTop: '1em',
+      float: 'left',
+      wordBreak: 'break-word',
+      cursor: 'pointer',
     },
     pointerCursor: {
       cursor: 'pointer',
@@ -211,6 +218,29 @@ const AlbumDetails = (props) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [albumInfo, setAlbumInfo] = useState()
+
+  let notes =
+    albumInfo?.notes?.replace(new RegExp('<.*>', 'g'), '') || record.notes
+
+  if (notes !== undefined) {
+    notes += '..'
+  }
+
+  useEffect(() => {
+    subsonic
+      .getAlbumInfo(record.id)
+      .then((resp) => resp.json['subsonic-response'])
+      .then((data) => {
+        if (data.status === 'ok') {
+          setAlbumInfo(data.albumInfo)
+        }
+      })
+      .catch((e) => {
+        console.error('error on album page', e)
+      })
+  }, [record])
 
   const imageUrl = subsonic.getCoverArtUrl(record, 300)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
@@ -277,11 +307,38 @@ const AlbumDetails = (props) => {
                 <AlbumExternalLinks className={classes.externalLinks} />
               </Typography>
             )}
+            {isDesktop && (
+              <Collapse
+                collapsedHeight={'2.75em'}
+                in={expanded}
+                timeout={'auto'}
+                className={classes.notes}
+              >
+                <Typography
+                  variant={'body1'}
+                  onClick={() => setExpanded(!expanded)}
+                >
+                  <span dangerouslySetInnerHTML={{ __html: notes }} />
+                </Typography>
+              </Collapse>
+            )}
             {isDesktop && record['comment'] && <AlbumComment record={record} />}
           </CardContent>
         </div>
       </div>
       {!isDesktop && record['comment'] && <AlbumComment record={record} />}
+      {!isDesktop && (
+        <div className={classes.notes}>
+          <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
+            <Typography
+              variant={'body1'}
+              onClick={() => setExpanded(!expanded)}
+            >
+              <span dangerouslySetInnerHTML={{ __html: notes }} />
+            </Typography>
+          </Collapse>
+        </div>
+      )}
       {isLightboxOpen && (
         <Lightbox
           imagePadding={50}

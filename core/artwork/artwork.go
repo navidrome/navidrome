@@ -98,7 +98,7 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 		case model.KindArtistArtwork:
 			artReader, err = newArtistReader(ctx, a, artID, a.em)
 		case model.KindAlbumArtwork:
-			artReader, err = newAlbumArtworkReader(ctx, a, artID)
+			artReader, err = newAlbumArtworkReader(ctx, a, artID, a.em)
 		case model.KindMediaFileArtwork:
 			artReader, err = newMediafileArtworkReader(ctx, a, artID)
 		case model.KindPlaylistArtwork:

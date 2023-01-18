@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,7 +80,7 @@ func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error
 	return selectImageReader(ctx, a.artID,
 		fromArtistFolder(ctx, a.artistFolder, "artist.*"),
 		fromExternalFile(ctx, a.files, "artist.*"),
-		fromExternalSource(ctx, a.artist, a.em),
+		fromArtistExternalSource(ctx, a.artist, a.em),
 		fromArtistPlaceholder(),
 	)
 }
@@ -104,26 +103,5 @@ func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) 
 			return nil, "", err
 		}
 		return f, filePath, err
-	}
-}
-
-func fromExternalSource(ctx context.Context, ar model.Artist, em core.ExternalMetadata) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		imageUrl, err := em.ArtistImage(ctx, ar.ID)
-		if err != nil {
-			return nil, "", err
-		}
-
-		hc := http.Client{Timeout: 5 * time.Second}
-		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
-		resp, err := hc.Do(req)
-		if err != nil {
-			return nil, "", err
-		}
-		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
-			return nil, "", fmt.Errorf("error retrieveing cover from %s: %s", imageUrl, resp.Status)
-		}
-		return resp.Body, imageUrl.String(), nil
 	}
 }

@@ -44,7 +44,7 @@ func (s *spotifyAgent) AgentName() string {
 	return spotifyAgentName
 }
 
-func (s *spotifyAgent) GetImages(ctx context.Context, id, name, mbid string) ([]agents.ArtistImage, error) {
+func (s *spotifyAgent) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
 	a, err := s.searchArtist(ctx, name)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
@@ -55,9 +55,9 @@ func (s *spotifyAgent) GetImages(ctx context.Context, id, name, mbid string) ([]
 		return nil, err
 	}
 
-	var res []agents.ArtistImage
+	var res []agents.ExternalImage
 	for _, img := range a.Images {
-		res = append(res, agents.ArtistImage{
+		res = append(res, agents.ExternalImage{
 			URL:  img.URL,
 			Size: img.Width,
 		})

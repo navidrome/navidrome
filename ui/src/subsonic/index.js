@@ -63,6 +63,10 @@ const getArtistInfo = (id) => {
   return httpClient(url('getArtistInfo', id))
 }
 
+const getAlbumInfo = (id) => {
+  return httpClient(url('getAlbumInfo', id))
+}
+
 const streamUrl = (id) => {
   return baseUrl(url('stream', id, { ts: true }))
 }
@@ -79,5 +83,6 @@ export default {
   getScanStatus,
   getCoverArtUrl,
   streamUrl,
+  getAlbumInfo,
   getArtistInfo,
 }
