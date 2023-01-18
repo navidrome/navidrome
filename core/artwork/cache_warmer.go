@@ -65,10 +65,11 @@ func (a *cacheWarmer) sendWakeSignal() {
 
 func (a *cacheWarmer) run(ctx context.Context) {
 	for {
-		time.AfterFunc(10*time.Second, func() {
+		t := time.AfterFunc(10*time.Second, func() {
 			a.sendWakeSignal()
 		})
 		<-a.wakeSignal
+		t.Stop()
 
 		// If cache not available, keep waiting
 		if !a.cache.Available(ctx) {

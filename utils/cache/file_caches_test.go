@@ -16,9 +16,9 @@ import (
 
 // Call NewFileCache and wait for it to be ready
 func callNewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) *fileCache {
-	fc := NewFileCache(name, cacheSize, cacheFolder, maxItems, getReader)
-	Eventually(func() bool { return fc.Ready(context.Background()) }).Should(BeTrue())
-	return fc.(*fileCache)
+	fc := NewFileCache(name, cacheSize, cacheFolder, maxItems, getReader).(*fileCache)
+	Eventually(func() bool { return fc.ready.Get() }).Should(BeTrue())
+	return fc
 }
 
 var _ = Describe("File Caches", func() {
