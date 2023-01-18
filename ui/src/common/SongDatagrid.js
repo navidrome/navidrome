@@ -1,6 +1,6 @@
 import React, { isValidElement, useMemo, useCallback, forwardRef } from 'react'
 import { useDispatch } from 'react-redux'
-import { Datagrid, PureDatagridBody, PureDatagridRow } from 'react-admin'
+import { Datagrid, PureDatagridBody, PureDatagridRow, useTranslate} from 'react-admin'
 import {
   TableCell,
   TableRow,
@@ -53,6 +53,7 @@ const DiscSubtitleRow = forwardRef(
   ({ record, onClick, colSpan, contextAlwaysVisible, showReleaseYear}, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
+    const translate = useTranslate()
     const handlePlayDisc = (releaseYear, discNumber) => () => {
       onClick(releaseYear, discNumber)
     }
@@ -64,9 +65,10 @@ const DiscSubtitleRow = forwardRef(
     if (record.discSubtitle) {
       subtitle.push(record.discSubtitle)
     }
-    let yeartitle = ""
+    let yeartitle = []
     if (record.releaseYear > 0) {
-      yeartitle = (String(record.releaseYear) + " Release ")
+      yeartitle.push(String(record.releaseYear))
+      yeartitle.push(translate('resources.album.fields.edition'))
     }
 
     return (
@@ -78,7 +80,7 @@ const DiscSubtitleRow = forwardRef(
       >
         <TableCell colSpan={colSpan}>
           <Typography variant="h6" className={classes.subtitle}>
-            {showReleaseYear && yeartitle}
+            {showReleaseYear && yeartitle.join(' ')}
             <AlbumIcon className={classes.discIcon} fontSize={'small'} />
             {subtitle.join(': ')}
           </Typography>
