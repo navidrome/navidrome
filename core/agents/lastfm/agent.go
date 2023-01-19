@@ -27,7 +27,7 @@ type lastfmAgent struct {
 	apiKey      string
 	secret      string
 	lang        string
-	client      *Client
+	client      *client
 }
 
 func lastFMConstructor(ds model.DataStore) *lastfmAgent {
@@ -42,7 +42,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
-	l.client = NewClient(l.apiKey, l.secret, l.lang, chc)
+	l.client = newClient(l.apiKey, l.secret, l.lang, chc)
 	return l
 }
 
@@ -167,7 +167,7 @@ func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbi
 }
 
 func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid string) (*Album, error) {
-	a, err := l.client.AlbumGetInfo(ctx, name, artist, mbid)
+	a, err := l.client.albumGetInfo(ctx, name, artist, mbid)
 	var lfErr *lastFMError
 	isLastFMError := errors.As(err, &lfErr)
 
@@ -188,7 +188,7 @@ func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid s
 }
 
 func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, mbid string) (*Artist, error) {
-	a, err := l.client.ArtistGetInfo(ctx, name, mbid)
+	a, err := l.client.artistGetInfo(ctx, name, mbid)
 	var lfErr *lastFMError
 	isLastFMError := errors.As(err, &lfErr)
 
@@ -205,7 +205,7 @@ func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, mbid s
 }
 
 func (l *lastfmAgent) callArtistGetSimilar(ctx context.Context, name string, mbid string, limit int) ([]Artist, error) {
-	s, err := l.client.ArtistGetSimilar(ctx, name, mbid, limit)
+	s, err := l.client.artistGetSimilar(ctx, name, mbid, limit)
 	var lfErr *lastFMError
 	isLastFMError := errors.As(err, &lfErr)
 	if mbid != "" && ((err == nil && s.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
@@ -220,7 +220,7 @@ func (l *lastfmAgent) callArtistGetSimilar(ctx context.Context, name string, mbi
 }
 
 func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName, mbid string, count int) ([]Track, error) {
-	t, err := l.client.ArtistGetTopTracks(ctx, artistName, mbid, count)
+	t, err := l.client.artistGetTopTracks(ctx, artistName, mbid, count)
 	var lfErr *lastFMError
 	isLastFMError := errors.As(err, &lfErr)
 	if mbid != "" && ((err == nil && t.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
@@ -240,7 +240,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 		return scrobbler.ErrNotAuthorized
 	}
 
-	err = l.client.UpdateNowPlaying(ctx, sk, ScrobbleInfo{
+	err = l.client.updateNowPlaying(ctx, sk, ScrobbleInfo{
 		artist:      track.Artist,
 		track:       track.Title,
 		album:       track.Album,
@@ -266,7 +266,7 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		log.Debug(ctx, "Skipping Last.fm scrobble for short song", "track", s.Title, "duration", s.Duration)
 		return nil
 	}
-	err = l.client.Scrobble(ctx, sk, ScrobbleInfo{
+	err = l.client.scrobble(ctx, sk, ScrobbleInfo{
 		artist:      s.Artist,
 		track:       s.Title,
 		album:       s.Album,
