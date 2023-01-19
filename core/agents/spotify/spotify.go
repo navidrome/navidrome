@@ -23,7 +23,7 @@ type spotifyAgent struct {
 	ds     model.DataStore
 	id     string
 	secret string
-	client *Client
+	client *client
 }
 
 func spotifyConstructor(ds model.DataStore) agents.Interface {
@@ -36,7 +36,7 @@ func spotifyConstructor(ds model.DataStore) agents.Interface {
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
-	l.client = NewClient(l.id, l.secret, chc)
+	l.client = newClient(l.id, l.secret, chc)
 	return l
 }
 
@@ -66,7 +66,7 @@ func (s *spotifyAgent) GetArtistImages(ctx context.Context, id, name, mbid strin
 }
 
 func (s *spotifyAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {
-	artists, err := s.client.SearchArtists(ctx, name, 40)
+	artists, err := s.client.searchArtists(ctx, name, 40)
 	if err != nil || len(artists) == 0 {
 		return nil, model.ErrNotFound
 	}
