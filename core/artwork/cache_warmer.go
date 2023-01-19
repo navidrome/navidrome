@@ -65,11 +65,10 @@ func (a *cacheWarmer) sendWakeSignal() {
 
 func (a *cacheWarmer) run(ctx context.Context) {
 	for {
-		t := time.AfterFunc(10*time.Second, func() {
-			a.sendWakeSignal()
-		})
-		<-a.wakeSignal
-		t.Stop()
+		a.waitSignal(ctx, 10*time.Second)
+		if ctx.Err() != nil {
+			break
+		}
 
 		// If cache not available, keep waiting
 		if !a.cache.Available(ctx) {
@@ -92,6 +91,20 @@ func (a *cacheWarmer) run(ctx context.Context) {
 		a.mutex.Unlock()
 
 		a.processBatch(ctx, batch)
+	}
+}
+
+func (a *cacheWarmer) waitSignal(ctx context.Context, timeout time.Duration) {
+	var to <-chan time.Time
+	if !a.cache.Available(ctx) {
+		tmr := time.NewTimer(timeout)
+		defer tmr.Stop()
+		to = tmr.C
+	}
+	select {
+	case <-to:
+	case <-a.wakeSignal:
+	case <-ctx.Done():
 	}
 }
 
