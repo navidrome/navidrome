@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +19,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
+
+const AutogenPrefix = "__NAVIDROME_AUTOGEN__"
 
 type userRepository struct {
 	sqlRepository
@@ -212,7 +215,8 @@ func validatePasswordChange(newUser *model.User, logged *model.User) error {
 		}
 		err.Errors["password"] = "ra.validation.required"
 	}
-	if conf.Server.ReverseProxyUserHeader == "" {
+
+	if !strings.HasPrefix(logged.Password, AutogenPrefix) {
 		if newUser.CurrentPassword == "" {
 			err.Errors["currentPassword"] = "ra.validation.required"
 		}
