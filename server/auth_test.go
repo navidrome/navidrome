@@ -71,7 +71,7 @@ var _ = Describe("Auth", func() {
 
 			It("sets auth data if IPv4 matches whitelist", func() {
 				req.RemoteAddr = "192.168.0.42:25293"
-				serveIndex(ds, fs)(resp, req)
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				parsed := config["auth"].(map[string]interface{})
@@ -81,7 +81,7 @@ var _ = Describe("Auth", func() {
 
 			It("sets no auth data if IPv4 does not match whitelist", func() {
 				req.RemoteAddr = "8.8.8.8:25293"
-				serveIndex(ds, fs)(resp, req)
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				Expect(config["auth"]).To(BeNil())
@@ -89,7 +89,7 @@ var _ = Describe("Auth", func() {
 
 			It("sets auth data if IPv6 matches whitelist", func() {
 				req.RemoteAddr = "[2001:4860:4860:1234:5678:0000:4242:8888]:25293"
-				serveIndex(ds, fs)(resp, req)
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				parsed := config["auth"].(map[string]interface{})
@@ -99,7 +99,7 @@ var _ = Describe("Auth", func() {
 
 			It("sets no auth data if IPv6 does not match whitelist", func() {
 				req.RemoteAddr = "[5005:0:3003]:25293"
-				serveIndex(ds, fs)(resp, req)
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				Expect(config["auth"]).To(BeNil())
@@ -107,7 +107,7 @@ var _ = Describe("Auth", func() {
 
 			It("sets no auth data if user does not exist", func() {
 				req.Header.Set("Remote-User", "INVALID_USER")
-				serveIndex(ds, fs)(resp, req)
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				Expect(config["auth"]).To(BeNil())
@@ -115,7 +115,7 @@ var _ = Describe("Auth", func() {
 
 			It("sets auth data if user exists", func() {
 				req.RemoteAddr = "192.168.0.42:25293"
-				serveIndex(ds, fs)(resp, req)
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				parsed := config["auth"].(map[string]interface{})

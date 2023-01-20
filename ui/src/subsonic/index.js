@@ -69,8 +69,13 @@ const getAlbumInfo = (id) => {
   return httpClient(url('getAlbumInfo', id))
 }
 
-const streamUrl = (id) => {
-  return baseUrl(url('stream', id, { ts: true }))
+const streamUrl = (id, options) => {
+  return baseUrl(
+    url('stream', id, {
+      ts: true,
+      ...options,
+    })
+  )
 }
 
 export default {

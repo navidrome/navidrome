@@ -133,7 +133,7 @@ func (s *Server) initRoutes() {
 func (s *Server) frontendAssetsHandler() http.Handler {
 	r := chi.NewRouter()
 
-	r.Handle("/", serveIndex(s.ds, ui.BuildAssets()))
+	r.Handle("/", Index(s.ds, ui.BuildAssets()))
 	r.Handle("/*", http.StripPrefix(s.appRoot, http.FileServer(http.FS(ui.BuildAssets()))))
 	return r
 }

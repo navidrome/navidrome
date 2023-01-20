@@ -16,8 +16,16 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
+func Index(ds model.DataStore, fs fs.FS) http.HandlerFunc {
+	return serveIndex(ds, fs, nil)
+}
+
+func IndexWithShare(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.HandlerFunc {
+	return serveIndex(ds, fs, shareInfo)
+}
+
 // Injects the config in the `index.html` template
-func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
+func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := ds.User(r.Context()).CountAll()
 		firstTime := c == 0 && err == nil
@@ -61,11 +69,18 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 		if auth != nil {
 			appConfig["auth"] = auth
 		}
-		j, err := json.Marshal(appConfig)
+		appConfigJson, err := json.Marshal(appConfig)
 		if err != nil {
 			log.Error(r, "Error converting config to JSON", "config", appConfig, err)
 		} else {
-			log.Trace(r, "Injecting config in index.html", "config", string(j))
+			log.Trace(r, "Injecting config in index.html", "config", string(appConfigJson))
+		}
+
+		shareInfoJson, err := json.Marshal(shareInfo)
+		if err != nil {
+			log.Error(r, "Error converting shareInfo to JSON", "config", shareInfo, err)
+		} else {
+			log.Trace(r, "Injecting shareInfo in index.html", "config", string(shareInfoJson))
 		}
 
 		log.Debug("UI configuration", "appConfig", appConfig)
@@ -74,7 +89,8 @@ func serveIndex(ds model.DataStore, fs fs.FS) http.HandlerFunc {
 			version = "v" + version
 		}
 		data := map[string]interface{}{
-			"AppConfig": string(j),
+			"AppConfig": string(appConfigJson),
+			"ShareInfo": string(shareInfoJson),
 			"Version":   version,
 		}
 		w.Header().Set("Content-Type", "text/html")

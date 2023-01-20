@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -17,11 +18,12 @@ import (
 
 type Router struct {
 	http.Handler
-	artwork artwork.Artwork
+	artwork  artwork.Artwork
+	streamer core.MediaStreamer
 }
 
-func New(artwork artwork.Artwork) *Router {
-	p := &Router{artwork: artwork}
+func New(artwork artwork.Artwork, streamer core.MediaStreamer) *Router {
+	p := &Router{artwork: artwork, streamer: streamer}
 	p.Handler = p.routes()
 
 	return p
@@ -32,6 +34,7 @@ func (p *Router) routes() http.Handler {
 
 	r.Group(func(r chi.Router) {
 		r.Use(server.URLParamsMiddleware)
+		r.HandleFunc("/s/{id}", p.handleStream)
 		r.HandleFunc("/img/{id}", p.handleImages)
 	})
 	return r

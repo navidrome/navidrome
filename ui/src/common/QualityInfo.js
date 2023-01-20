@@ -27,7 +27,7 @@ export const QualityInfo = ({ record, size, gainMode, preAmp, className }) => {
   if (suffix) {
     suffix = suffix.toUpperCase()
     info = suffix
-    if (!llFormats.has(suffix)) {
+    if (!llFormats.has(suffix) && bitRate > 0) {
       info += ' ' + bitRate
     }
   }
