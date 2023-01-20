@@ -34,5 +34,10 @@ func DecodeArtworkID(tokenString string) (model.ArtworkID, error) {
 	if !ok {
 		return model.ArtworkID{}, errors.New("invalid id type")
 	}
-	return model.ParseArtworkID(id)
+	artID, err := model.ParseArtworkID(id)
+	if err == nil {
+		return artID, nil
+	}
+	// Try to default to mediafile artworkId
+	return model.ParseArtworkID("mf-" + id)
 }

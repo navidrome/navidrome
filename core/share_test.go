@@ -34,7 +34,7 @@ var _ = Describe("Share", func() {
 				id, err := repo.Save(entity)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(id).ToNot(BeEmpty())
-				Expect(entity.Name).ToNot(BeEmpty())
+				Expect(entity.ID).To(Equal(id))
 			})
 		})
 
