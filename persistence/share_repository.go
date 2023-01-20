@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
@@ -32,9 +33,13 @@ func (r *shareRepository) Delete(id string) error {
 }
 
 func (r *shareRepository) selectShare(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Columns("*")
+	return r.newSelect(options...).Join("user u on u.id = share.user_id").
+		Columns("share.*", "user_name as username")
 }
 
+func (r *shareRepository) Exists(id string) (bool, error) {
+	return r.exists(Select().Where(Eq{"id": id}))
+}
 func (r *shareRepository) GetAll(options ...model.QueryOptions) (model.Shares, error) {
 	sq := r.selectShare(options...)
 	res := model.Shares{}
@@ -42,14 +47,13 @@ func (r *shareRepository) GetAll(options ...model.QueryOptions) (model.Shares, e
 	return res, err
 }
 
-func (r *shareRepository) Put(s *model.Share) error {
-	_, err := r.put(s.ID, s)
-	return err
-}
-
 func (r *shareRepository) Update(id string, entity interface{}, cols ...string) error {
 	s := entity.(*model.Share)
+	// TODO Validate record
 	s.ID = id
+	now := time.Now()
+	s.UpdatedAt = &now
+	cols = append(cols, "updated_at")
 	_, err := r.put(id, s, cols...)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
@@ -59,6 +63,14 @@ func (r *shareRepository) Update(id string, entity interface{}, cols ...string) 
 
 func (r *shareRepository) Save(entity interface{}) (string, error) {
 	s := entity.(*model.Share)
+	// TODO Validate record
+	u := loggedUser(r.ctx)
+	if s.UserID == "" {
+		s.UserID = u.ID
+	}
+	now := time.Now()
+	s.CreatedAt = &now
+	s.UpdatedAt = &now
 	id, err := r.put(s.ID, s)
 	if errors.Is(err, model.ErrNotFound) {
 		return "", rest.ErrNotFound
@@ -83,7 +95,7 @@ func (r *shareRepository) NewInstance() interface{} {
 }
 
 func (r *shareRepository) Get(id string) (*model.Share, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
+	sel := r.selectShare().Columns("*").Where(Eq{"share.id": id})
 	var res model.Share
 	err := r.queryOne(sel, &res)
 	return &res, err

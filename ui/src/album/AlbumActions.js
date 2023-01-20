@@ -25,6 +25,9 @@ import { formatBytes } from '../utils'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
+import { useDialog } from '../dialogs/useDialog'
+import { ShareDialog } from '../dialogs/ShareDialog'
+import ShareIcon from '@material-ui/icons/Share'
 
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
@@ -43,6 +46,7 @@ const AlbumActions = ({
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const shareDialog = useDialog()
 
   const handlePlay = React.useCallback(() => {
     dispatch(playTracks(data, ids))
@@ -102,6 +106,14 @@ const AlbumActions = ({
           >
             <PlaylistAddIcon />
           </Button>
+          {config.devEnableShare && (
+            <Button
+              onClick={shareDialog.open}
+              label={translate('resources.album.actions.share')}
+            >
+              <ShareIcon />
+            </Button>
+          )}
           {config.enableDownloads && (
             <Button
               onClick={handleDownload}
@@ -116,6 +128,12 @@ const AlbumActions = ({
         </div>
         <div>{isNotSmall && <ToggleFieldsMenu resource="albumSong" />}</div>
       </div>
+      <ShareDialog
+        {...shareDialog.props}
+        close={shareDialog.close}
+        ids={[record.id]}
+        resource={'album'}
+      />
     </TopToolbar>
   )
 }

@@ -60,6 +60,7 @@
                 "playAll": "Play",
                 "playNext": "Play Next",
                 "addToQueue": "Play Later",
+                "share": "Share",
                 "shuffle": "Shuffle",
                 "addToPlaylist": "Add to Playlist",
                 "download": "Download",
@@ -179,6 +180,24 @@
             },
             "actions": {
                 "playNow": "Play Now"
+            }
+        },
+        "share": {
+            "name": "Share |||| Shares",
+            "fields": {
+                "username": "Shared By",
+                "url": "URL",
+                "description": "Description",
+                "contents": "Contents",
+                "expiresAt": "Expires at",
+                "lastVisitedAt": "Last Visited at",
+                "visitCount": "Visits",
+                "updatedAt": "Updated at",
+                "createdAt": "Created at"
+            },
+            "notifications": {
+            },
+            "actions": {
             }
         }
     },

@@ -22,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
 	"github.com/navidrome/navidrome/server/public"
+	"github.com/navidrome/navidrome/server/shares"
 	"github.com/navidrome/navidrome/server/subsonic"
 	"sync"
 )
@@ -72,7 +73,17 @@ func CreatePublicRouter() *public.Router {
 	agentsAgents := agents.New(dataStore)
 	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
-	router := public.New(artworkArtwork)
+	transcodingCache := core.GetTranscodingCache()
+	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
+	router := public.New(artworkArtwork, mediaStreamer)
+	return router
+}
+
+func CreateSharesRouter() *shares.Router {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	share := core.NewShare(dataStore)
+	router := shares.New(dataStore, share)
 	return router
 }
 
@@ -107,7 +118,7 @@ func createScanner() scanner.Scanner {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, subsonic.New, nativeapi.New, public.New, shares.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, db.Db)
 
 // Scanner must be a Singleton
 var (
