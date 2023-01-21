@@ -14,7 +14,7 @@ export const RangeFieldDouble = ({ className, source1, source2, symbol1, symbol2
             ")))"
             }</span>
    }
-  if (formatRange(record, source1) === formatRange(record, source2) || formatRange(record,source2) = 0) {
+  if (formatRange(record, source1) === formatRange(record, source2) || formatRange(record,source2) === 0) {
           return <span className={className}>{
             formatRange(record, source1)
             }</span>
