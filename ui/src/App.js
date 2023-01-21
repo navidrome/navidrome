@@ -36,7 +36,7 @@ import config, { shareInfo } from './config'
 import { setDispatch, startEventStream, stopEventStream } from './eventStream'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
-import ShareApp from './ShareApp'
+import SharePlayer from './SharePlayer'
 
 const history = createHashHistory()
 
@@ -141,7 +141,7 @@ const Admin = (props) => {
 
 const AppWithHotkeys = () => {
   if (config.devEnableShare && shareInfo) {
-    return <ShareApp />
+    return <SharePlayer />
   }
   return (
     <HotKeys keyMap={keyMap}>

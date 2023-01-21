@@ -28,7 +28,6 @@ const defaultConfig = {
   enableCoverAnimation: true,
   devShowArtistPage: true,
   enableReplayGain: true,
-  shareBaseUrl: '/s',
   publicBaseUrl: '/p',
 }
 

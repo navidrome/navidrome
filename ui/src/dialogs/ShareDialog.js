@@ -4,6 +4,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
+  Switch,
 } from '@material-ui/core'
 import {
   SelectInput,
@@ -14,12 +16,12 @@ import {
 } from 'react-admin'
 import { useMemo, useState } from 'react'
 import { shareUrl } from '../utils'
-import Typography from '@material-ui/core/Typography'
 
-export const ShareDialog = ({ open, close, onClose, ids, resource }) => {
+export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
   const notify = useNotify()
   const [format, setFormat] = useState('')
   const [maxBitRate, setMaxBitRate] = useState(0)
+  const [originalFormat, setUseOriginalFormat] = useState(true)
   const { data: formats, loading } = useGetList(
     'transcoding',
     {
@@ -38,6 +40,17 @@ export const ShareDialog = ({ open, close, onClose, ids, resource }) => {
           }),
     [formats, loading]
   )
+
+  const handleOriginal = (e) => {
+    const original = e.target.checked
+
+    setUseOriginalFormat(original)
+
+    if (original) {
+      setFormat('')
+      setMaxBitRate(0)
+    }
+  }
 
   const [createShare] = useCreate(
     'share',
@@ -78,47 +91,50 @@ export const ShareDialog = ({ open, close, onClose, ids, resource }) => {
       open={open}
       onClose={onClose}
       onBackdropClick={onClose}
-      aria-labelledby="info-dialog-album"
+      aria-labelledby="share-dialog"
       fullWidth={true}
       maxWidth={'sm'}
     >
-      <DialogTitle id="info-dialog-album">
-        Create a link to share your music with friends
-      </DialogTitle>
+      <DialogTitle id="share-dialog">{title}</DialogTitle>
       <DialogContent>
         <SimpleForm toolbar={null} variant={'outlined'}>
-          <Typography variant="body1">Select transcoding options:</Typography>
-          <Typography variant="caption">
-            (Leave options empty for original quality)
-          </Typography>
-          <SelectInput
-            source="format"
-            choices={formatOptions}
-            resettable
-            onChange={(event) => {
-              setFormat(event.target.value)
-            }}
+          <FormControlLabel
+            control={<Switch checked={originalFormat} />}
+            label={'Share in original format'}
+            onChange={handleOriginal}
           />
-          <SelectInput
-            source="bitrate"
-            choices={[
-              { id: 32, name: '32' },
-              { id: 48, name: '48' },
-              { id: 64, name: '64' },
-              { id: 80, name: '80' },
-              { id: 96, name: '96' },
-              { id: 112, name: '112' },
-              { id: 128, name: '128' },
-              { id: 160, name: '160' },
-              { id: 192, name: '192' },
-              { id: 256, name: '256' },
-              { id: 320, name: '320' },
-            ]}
-            resettable
-            onChange={(event) => {
-              setMaxBitRate(event.target.value)
-            }}
-          />
+          {!originalFormat && (
+            <SelectInput
+              source="format"
+              choices={formatOptions}
+              resettable
+              onChange={(event) => {
+                setFormat(event.target.value)
+              }}
+            />
+          )}
+          {!originalFormat && (
+            <SelectInput
+              source="bitrate"
+              choices={[
+                { id: 32, name: '32' },
+                { id: 48, name: '48' },
+                { id: 64, name: '64' },
+                { id: 80, name: '80' },
+                { id: 96, name: '96' },
+                { id: 112, name: '112' },
+                { id: 128, name: '128' },
+                { id: 160, name: '160' },
+                { id: 192, name: '192' },
+                { id: 256, name: '256' },
+                { id: 320, name: '320' },
+              ]}
+              resettable
+              onChange={(event) => {
+                setMaxBitRate(event.target.value)
+              }}
+            />
+          )}
         </SimpleForm>
       </DialogContent>
       <DialogActions>

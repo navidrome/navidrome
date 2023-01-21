@@ -133,6 +133,7 @@ const AlbumActions = ({
         close={shareDialog.close}
         ids={[record.id]}
         resource={'album'}
+        title={`Share album '${record.name}'`}
       />
     </TopToolbar>
   )
@@ -146,7 +147,6 @@ AlbumActions.propTypes = {
 AlbumActions.defaultProps = {
   record: {},
   selectedIds: [],
-  onUnselectItems: () => null,
 }
 
 export default AlbumActions
