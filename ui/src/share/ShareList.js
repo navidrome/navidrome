@@ -33,6 +33,9 @@ const ShareList = (props) => {
               label="URL"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => {
+                e.stopPropagation()
+              }}
             >
               {r.id}
             </Link>
