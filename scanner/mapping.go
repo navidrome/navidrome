@@ -128,8 +128,15 @@ func (s mediaFileMapper) trackID(md metadata.Tags) string {
 func (s mediaFileMapper) albumID(md metadata.Tags) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
 	
-	if conf.Server.DevUseOriginalDate && !conf.Server.DevGroupAlbumEditions && (md.Year() > 0) {
-		return fmt.Sprintf("%x", md5.Sum([]byte(albumPath + string(md.Year()))))
+
+
+	if !conf.Server.GroupAlbumEditions && (md.Year() > 0) {
+		if conf.Server.UseOriginalDate {
+			releaseYear := string(md.Year())
+		} else {
+			releaseYear := string(md.ReleaseYear())
+		}
+		return fmt.Sprintf("%x", md5.Sum([]byte(albumPath + releaseYear)))
 	}
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
 }
@@ -172,7 +179,7 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 }
 
 func (s mediaFileMapper) mapYear(md metadata.Tags) int {
-	if  conf.Server.DevUseOriginalDate {
+	if  conf.Server.UseOriginalDate {
 		if md.OriginalYear() != 0 {
 			return md.OriginalYear()
 		}
@@ -181,7 +188,7 @@ func (s mediaFileMapper) mapYear(md metadata.Tags) int {
 }
 
 func (s mediaFileMapper) mapReleaseYear(md metadata.Tags) int {
-	if  conf.Server.DevUseOriginalDate {
+	if  conf.Server.UseOriginalDate {
 		return md.Year()
 	}
 	return md.ReleaseYear()
