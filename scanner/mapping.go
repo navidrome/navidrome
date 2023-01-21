@@ -130,8 +130,8 @@ func (s mediaFileMapper) albumID(md metadata.Tags) string {
 	
 
 
-	if !conf.Server.GroupAlbumEditions && (md.Year() > 0) {
-		if conf.Server.UseOriginalDate {
+	if !conf.Server.Scanner.GroupAlbumEditions && (md.Year() > 0) {
+		if conf.Server.Scanner.UseOriginalDate {
 			releaseYear := string(md.Year())
 		} else {
 			releaseYear := string(md.ReleaseYear())
@@ -179,7 +179,7 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 }
 
 func (s mediaFileMapper) mapYear(md metadata.Tags) int {
-	if  conf.Server.UseOriginalDate {
+	if  conf.Server.Scanner.UseOriginalDate {
 		if md.OriginalYear() != 0 {
 			return md.OriginalYear()
 		}
@@ -188,7 +188,7 @@ func (s mediaFileMapper) mapYear(md metadata.Tags) int {
 }
 
 func (s mediaFileMapper) mapReleaseYear(md metadata.Tags) int {
-	if  conf.Server.UseOriginalDate {
+	if  conf.Server.Scanner.UseOriginalDate {
 		return md.Year()
 	}
 	return md.ReleaseYear()
