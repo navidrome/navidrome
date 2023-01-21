@@ -35,12 +35,13 @@ const useStyles = makeStyles(
       flex: '1 0 auto',
     },
     cover: {
-      width: 151,
+      width: '12rem',
+      height: '12rem',
       borderRadius: '6em',
       cursor: 'pointer',
     },
     artistImage: {
-      maxHeight: '9.5rem',
+      maxHeight: '12rem',
       backgroundColor: 'inherit',
       display: 'flex',
       boxShadow: 'none',
