@@ -264,8 +264,8 @@ func init() {
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
-	viper.SetDefault("useoriginaldate", false)
-	viper.SetDefault("groupalbumeditions", true)
+	viper.SetDefault("scanner.useoriginaldate", false)
+	viper.SetDefault("scanner.groupalbumeditions", true)
 
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
