@@ -17,7 +17,6 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
 	"github.com/navidrome/navidrome/server/public"
-	"github.com/navidrome/navidrome/server/shares"
 	"github.com/navidrome/navidrome/server/subsonic"
 )
 
@@ -27,7 +26,6 @@ var allProviders = wire.NewSet(
 	subsonic.New,
 	nativeapi.New,
 	public.New,
-	shares.New,
 	persistence.New,
 	lastfm.NewRouter,
 	listenbrainz.NewRouter,
@@ -56,12 +54,6 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 }
 
 func CreatePublicRouter() *public.Router {
-	panic(wire.Build(
-		allProviders,
-	))
-}
-
-func CreateSharesRouter() *shares.Router {
 	panic(wire.Build(
 		allProviders,
 	))

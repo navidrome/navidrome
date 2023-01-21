@@ -1,48 +1,15 @@
-package shares
+package public
 
 import (
 	"errors"
 	"net/http"
-	"path"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/ui"
 )
-
-type Router struct {
-	http.Handler
-	ds            model.DataStore
-	share         core.Share
-	assetsHandler http.Handler
-	streamer      core.MediaStreamer
-}
-
-func New(ds model.DataStore, share core.Share) *Router {
-	p := &Router{ds: ds, share: share}
-	shareRoot := path.Join(conf.Server.BaseURL, consts.URLPathShares)
-	p.assetsHandler = http.StripPrefix(shareRoot, http.FileServer(http.FS(ui.BuildAssets())))
-	p.Handler = p.routes()
-
-	return p
-}
-
-func (p *Router) routes() http.Handler {
-	r := chi.NewRouter()
-
-	r.Group(func(r chi.Router) {
-		r.Use(server.URLParamsMiddleware)
-		r.HandleFunc("/{id}", p.handleShares)
-		r.Handle("/*", p.assetsHandler)
-	})
-	return r
-}
 
 func (p *Router) handleShares(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get(":id")
@@ -82,6 +49,7 @@ func (p *Router) mapShareInfo(s *model.Share) *model.Share {
 		Tracks:      s.Tracks,
 	}
 	for i := range s.Tracks {
+		// TODO Use Encode(Artwork)ID?
 		claims := map[string]any{"id": s.Tracks[i].ID}
 		if s.Format != "" {
 			claims["f"] = s.Format
@@ -89,7 +57,7 @@ func (p *Router) mapShareInfo(s *model.Share) *model.Share {
 		if s.MaxBitRate != 0 {
 			claims["b"] = s.MaxBitRate
 		}
-		id, _ := auth.CreateExpiringPublicToken(*s.ExpiresAt, claims)
+		id, _ := auth.CreateExpiringPublicToken(s.ExpiresAt, claims)
 		mapped.Tracks[i].ID = id
 	}
 	return mapped

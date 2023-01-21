@@ -51,8 +51,7 @@ func (r *shareRepository) Update(id string, entity interface{}, cols ...string) 
 	s := entity.(*model.Share)
 	// TODO Validate record
 	s.ID = id
-	now := time.Now()
-	s.UpdatedAt = &now
+	s.UpdatedAt = time.Now()
 	cols = append(cols, "updated_at")
 	_, err := r.put(id, s, cols...)
 	if errors.Is(err, model.ErrNotFound) {
@@ -68,9 +67,8 @@ func (r *shareRepository) Save(entity interface{}) (string, error) {
 	if s.UserID == "" {
 		s.UserID = u.ID
 	}
-	now := time.Now()
-	s.CreatedAt = &now
-	s.UpdatedAt = &now
+	s.CreatedAt = time.Now()
+	s.UpdatedAt = time.Now()
 	id, err := r.put(s.ID, s)
 	if errors.Is(err, model.ErrNotFound) {
 		return "", rest.ErrNotFound

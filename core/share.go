@@ -35,8 +35,7 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 		return nil, err
 	}
 	share := entity.(*model.Share)
-	now := time.Now()
-	share.LastVisitedAt = &now
+	share.LastVisitedAt = time.Now()
 	share.VisitCount++
 
 	err = repo.(rest.Persistable).Update(id, share, "last_visited_at", "visit_count")
@@ -112,8 +111,7 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	}
 	s.ID = id
 	if s.ExpiresAt.IsZero() {
-		exp := time.Now().Add(365 * 24 * time.Hour)
-		s.ExpiresAt = &exp
+		s.ExpiresAt = time.Now().Add(365 * 24 * time.Hour)
 	}
 	id, err = r.Persistable.Save(s)
 	return id, err
