@@ -82,13 +82,13 @@ type configOptions struct {
 	DevSidebarPlaylists        bool
 	DevEnableBufferedScrobble  bool
 	DevShowArtistPage          bool
-	DevUseOriginalDate         bool
-	DevGroupAlbumEditions      bool
 }
 
 type scannerOptions struct {
-	Extractor       string
-	GenreSeparators string
+	Extractor       	string
+	GenreSeparators 	string
+	UseOriginalDate         bool
+	GroupAlbumEditions      bool
 }
 
 type lastfmOptions struct {
