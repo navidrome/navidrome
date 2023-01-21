@@ -20,7 +20,6 @@ const ArtistDetails = (props) => {
   const biography =
     artistInfo?.biography?.replace(new RegExp('<.*>', 'g'), '') ||
     record.biography
-  const img = artistInfo?.largeImageUrl || record.largeImageUrl
 
   useEffect(() => {
     subsonic
@@ -40,7 +39,6 @@ const ArtistDetails = (props) => {
   return (
     <>
       {createElement(component, {
-        img,
         artistInfo,
         record,
         biography,

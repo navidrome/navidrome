@@ -4,8 +4,9 @@ import { makeStyles } from '@material-ui/core/styles'
 import Card from '@material-ui/core/Card'
 import CardMedia from '@material-ui/core/CardMedia'
 import config from '../config'
-import { LoveButton, RatingField } from '../common'
+import { ArtistContextMenu, RatingField } from '../common'
 import Lightbox from 'react-image-lightbox'
+import subsonic from '../subsonic'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -74,7 +75,8 @@ const useStyles = makeStyles(
   { name: 'NDMobileArtistDetails' }
 )
 
-const MobileArtistDetails = ({ img, artistInfo, biography, record }) => {
+const MobileArtistDetails = ({ artistInfo, biography, record }) => {
+  const img = subsonic.getCoverArtUrl(record)
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles({ img, expanded })
   const title = record.name
@@ -94,7 +96,7 @@ const MobileArtistDetails = ({ img, artistInfo, biography, record }) => {
             {artistInfo && (
               <CardMedia
                 className={classes.cover}
-                image={artistInfo.mediumImageUrl}
+                image={subsonic.getCoverArtUrl(record, 300)}
                 onClick={handleOpenLightbox}
                 title={title}
               />
@@ -107,16 +109,15 @@ const MobileArtistDetails = ({ img, artistInfo, biography, record }) => {
               className={classes.artistName}
             >
               {title}
-              {config.enableFavourites && (
-                <LoveButton
-                  className={classes.loveButton}
-                  record={record}
-                  resource={'artist'}
-                  size={'small'}
-                  aria-label="love"
-                  color="primary"
-                />
-              )}
+              <ArtistContextMenu
+                showLove={config.enableFavourites}
+                className={classes.loveButton}
+                record={record}
+                resource={'artist'}
+                size={'small'}
+                aria-label="love"
+                color="primary"
+              />
             </Typography>
             {config.enableStarRating && (
               <RatingField
@@ -141,7 +142,7 @@ const MobileArtistDetails = ({ img, artistInfo, biography, record }) => {
           imagePadding={50}
           animationDuration={200}
           imageTitle={record.name}
-          mainSrc={artistInfo.largeImageUrl}
+          mainSrc={img}
           onCloseRequest={handleCloseLightbox}
         />
       )}
