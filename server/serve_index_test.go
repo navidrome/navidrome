@@ -234,6 +234,16 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("devEnableShare", false))
 	})
 
+	It("sets the defaultDownsamplingFormat", func() {
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("defaultDownsamplingFormat", conf.Server.DefaultDownsamplingFormat))
+	})
+
 	It("sets the devSidebarPlaylists", func() {
 		conf.Server.DevSidebarPlaylists = true
 

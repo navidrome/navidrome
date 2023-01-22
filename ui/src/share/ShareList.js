@@ -9,11 +9,12 @@ import React from 'react'
 import { DateField, QualityInfo } from '../common'
 import { shareUrl } from '../utils'
 import { Link } from '@material-ui/core'
+import config from '../config'
 
 export const FormatInfo = ({ record, size }) => {
   const r = { suffix: record.format, bitRate: record.maxBitRate }
-  // TODO Get DefaultDownsamplingFormat
-  r.suffix = r.suffix || (r.bitRate ? 'opus' : 'Original')
+  r.suffix =
+    r.suffix || (r.bitRate ? config.defaultDownsamplingFormat : 'Original')
   return <QualityInfo record={r} size={size} />
 }
 
