@@ -16,8 +16,8 @@ export const ReplayGainToggle = (props) => {
         label={translate('menu.personal.options.replaygain')}
         choices={[
           { id: 'none', name: 'menu.personal.options.gain.none' },
-          { id: 'track', name: 'menu.personal.options.gain.album' },
-          { id: 'album', name: 'menu.personal.options.gain.track' },
+          { id: 'album', name: 'menu.personal.options.gain.album' },
+          { id: 'track', name: 'menu.personal.options.gain.track' },
         ]}
         defaultValue={gainInfo.gainMode}
         onChange={(event) => {
