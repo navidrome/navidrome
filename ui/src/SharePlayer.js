@@ -1,13 +1,13 @@
 import ReactJkMusicPlayer from 'navidrome-music-player'
 import config, { shareInfo } from './config'
-import { baseUrl } from './utils'
+import { baseUrl, shareCoverUrl, shareStreamUrl } from './utils'
 
 const SharePlayer = () => {
   const list = shareInfo?.tracks.map((s) => {
     return {
       name: s.title,
-      musicSrc: baseUrl(config.publicBaseUrl + '/s/' + s.id),
-      cover: baseUrl(config.publicBaseUrl + '/img/' + s.id + '?size=300'),
+      musicSrc: shareStreamUrl(s.id),
+      cover: shareCoverUrl(s.id),
       singer: s.artist,
       duration: s.duration,
     }
