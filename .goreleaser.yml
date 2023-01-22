@@ -1,6 +1,10 @@
 # GoReleaser config
 project_name: navidrome
 
+before:
+  hooks:
+    - go env -w GOFLAGS="-buildvcs=false"
+
 builds:
   - id: navidrome_linux_amd64
     env:
@@ -10,7 +14,7 @@ builds:
     goarch:
       - amd64
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static -lz'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -24,7 +28,7 @@ builds:
     goarch:
       - "386"
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -44,7 +48,7 @@ builds:
       - "6"
       - "7"
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -60,7 +64,7 @@ builds:
     goarch:
       - arm64
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -76,7 +80,7 @@ builds:
     goarch:
       - "386"
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -92,7 +96,7 @@ builds:
     goarch:
       - amd64
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -108,7 +112,7 @@ builds:
     goarch:
       - amd64
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 

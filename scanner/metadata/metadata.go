@@ -14,25 +14,25 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
-	"github.com/navidrome/navidrome/scanner/metadata/taglib"
 )
 
-type Parser interface {
-	Parse(files ...string) (map[string]map[string][]string, error)
+type Extractor interface {
+	Parse(files ...string) (map[string]ParsedTags, error)
+	CustomMappings() ParsedTags
 }
 
-var parsers = map[string]Parser{
-	"ffmpeg": &ffmpeg.Parser{},
-	"taglib": &taglib.Parser{},
+var extractors = map[string]Extractor{}
+
+func RegisterExtractor(id string, parser Extractor) {
+	extractors[id] = parser
 }
 
 func Extract(files ...string) (map[string]Tags, error) {
-	p, ok := parsers[conf.Server.Scanner.Extractor]
+	p, ok := extractors[conf.Server.Scanner.Extractor]
 	if !ok {
 		log.Warn("Invalid 'Scanner.Extractor' option. Using default", "requested", conf.Server.Scanner.Extractor,
 			"validOptions", "ffmpeg,taglib", "default", consts.DefaultScannerExtractor)
-		p = parsers[consts.DefaultScannerExtractor]
+		p = extractors[consts.DefaultScannerExtractor]
 	}
 
 	extractedTags, err := p.Parse(files...)
@@ -48,20 +48,42 @@ func Extract(files ...string) (map[string]Tags, error) {
 			continue
 		}
 
-		result[filePath] = Tags{
-			filePath: filePath,
-			fileInfo: fileInfo,
-			tags:     tags,
-		}
+		tags = tags.Map(p.CustomMappings())
+		result[filePath] = NewTag(filePath, fileInfo, tags)
 	}
 
 	return result, nil
 }
 
+func NewTag(filePath string, fileInfo os.FileInfo, tags ParsedTags) Tags {
+	return Tags{
+		filePath: filePath,
+		fileInfo: fileInfo,
+		tags:     tags,
+	}
+}
+
+type ParsedTags map[string][]string
+
+func (p ParsedTags) Map(customMappings ParsedTags) ParsedTags {
+	if customMappings == nil {
+		return p
+	}
+	for tagName, alternatives := range customMappings {
+		for _, altName := range alternatives {
+			if altValue, ok := p[altName]; ok {
+				p[tagName] = append(p[tagName], altValue...)
+				delete(p, altName)
+			}
+		}
+	}
+	return p
+}
+
 type Tags struct {
 	filePath string
 	fileInfo os.FileInfo
-	tags     map[string][]string
+	tags     ParsedTags
 }
 
 // Common tags
@@ -91,6 +113,7 @@ func (t Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "
 func (t Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
 
 // MusicBrainz Identifiers
+
 func (t Tags) MbzReleaseTrackID() string {
 	return t.getMbzID("musicbrainz_releasetrackid", "musicbrainz release track id")
 }
@@ -120,6 +143,39 @@ func (t Tags) Size() int64                 { return t.fileInfo.Size() }
 func (t Tags) FilePath() string            { return t.filePath }
 func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
 
+// Replaygain Properties
+func (t Tags) RGAlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
+func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
+func (t Tags) RGTrackGain() float64 { return t.getGainValue("replaygain_track_gain") }
+func (t Tags) RGTrackPeak() float64 { return t.getPeakValue("replaygain_track_peak") }
+
+func (t Tags) getGainValue(tagName string) float64 {
+	// Gain is in the form [-]a.bb dB
+	var tag = t.getFirstTagValue(tagName)
+
+	if tag == "" {
+		return 0
+	}
+
+	tag = strings.TrimSpace(strings.Replace(tag, "dB", "", 1))
+
+	var value, err = strconv.ParseFloat(tag, 64)
+	if err != nil {
+		return 0
+	}
+	return value
+}
+
+func (t Tags) getPeakValue(tagName string) float64 {
+	var tag = t.getFirstTagValue(tagName)
+	var value, err = strconv.ParseFloat(tag, 64)
+	if err != nil {
+		// A default of 1 for peak value resulds in no changes
+		return 1
+	}
+	return value
+}
+
 func (t Tags) getTags(tagNames ...string) []string {
 	for _, tag := range tagNames {
 		if v, ok := t.tags[tag]; ok {
@@ -147,10 +203,10 @@ func (t Tags) getAllTagValues(tagNames ...string) []string {
 	return values
 }
 
-func (t Tags) getSortTag(originalTag string, tagNamess ...string) string {
+func (t Tags) getSortTag(originalTag string, tagNames ...string) string {
 	formats := []string{"sort%s", "sort_%s", "sort-%s", "%ssort", "%s_sort", "%s-sort"}
 	all := []string{originalTag}
-	for _, tag := range tagNamess {
+	for _, tag := range tagNames {
 		for _, format := range formats {
 			name := fmt.Sprintf(format, tag)
 			all = append(all, name)

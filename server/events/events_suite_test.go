@@ -11,7 +11,7 @@ import (
 
 func TestEvents(t *testing.T) {
 	tests.Init(t, false)
-	log.SetLevel(log.LevelCritical)
+	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Events Suite")
 }

@@ -25,7 +25,8 @@
                 "rating": "Rating",
                 "quality": "Quality",
                 "bpm": "BPM",
-                "playDate": "Last Played"
+                "playDate": "Last Played",
+                "createdAt": "Date added"
             },
             "actions": {
                 "addToQueue": "Play Later",
@@ -45,13 +46,15 @@
                 "duration": "Time",
                 "songCount": "Songs",
                 "playCount": "Plays",
+                "size": "Size",
                 "name": "Name",
                 "genre": "Genre",
                 "compilation": "Compilation",
                 "year": "Year",
                 "updatedAt": "Updated at",
                 "comment": "Comment",
-                "rating": "Rating"
+                "rating": "Rating",
+                "createdAt": "Date added"
             },
             "actions": {
                 "playAll": "Play",
@@ -78,6 +81,7 @@
                 "name": "Name",
                 "albumCount": "Album Count",
                 "songCount": "Song Count",
+                "size": "Size",
                 "playCount": "Plays",
                 "rating": "Rating",
                 "genre": "Genre"
@@ -158,6 +162,24 @@
                 "duplicate_song": "Add duplicated songs",
                 "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?"
             }
+        },
+        "radio": {
+            "name": "Radio |||| Radios",
+            "fields": {
+                "name": "Name",
+                "streamUrl": "Stream URL",
+                "homePageUrl": "Home Page URL",
+                "updatedAt": "Updated at",
+                "createdAt": "Created at"
+            },
+            "notifications": {
+                "created": "Radio created",
+                "updated": "Radio updated",
+                "deleted": "Radio deleted"
+            },
+            "actions": {
+                "playNow": "Play Now"
+            }
         }
     },
     "ra": {
@@ -186,7 +208,8 @@
             "email": "Must be a valid email",
             "oneOf": "Must be one of: %{options}",
             "regex": "Must match a specific format (regexp): %{pattern}",
-            "unique": "Must be unique"
+            "unique": "Must be unique",
+            "url": "Must be a valid URL"
         },
         "action": {
             "add_filter": "Add filter",
@@ -308,6 +331,8 @@
         "noPlaylistsAvailable": "None available",
         "delete_user_title": "Delete user '%{name}'",
         "delete_user_content": "Are you sure you want to delete this user and all their data (including playlists and preferences)?",
+        "delete_radio_title": "Delete radio '%{name}'",
+        "delete_radio_content": "Are you sure you want to remove this radio?",
         "notifications_blocked": "You have blocked Notifications for this site in your browser's settings",
         "notifications_not_available": "This browser does not support desktop notifications or you are not accessing Navidrome over https",
         "lastfmLinkSuccess": "Last.fm successfully linked and scrobbling enabled",
@@ -322,7 +347,8 @@
             "lastfm": "Open in Last.fm",
             "musicbrainz": "Open in MusicBrainz"
         },
-        "lastfmLink": "Read More..."
+        "lastfmLink": "Read More...",
+        "originalFormat": "Download in original format"
     },
     "menu": {
         "library": "Library",
@@ -337,7 +363,14 @@
                 "defaultView": "Default View",
                 "desktop_notifications": "Desktop Notifications",
                 "lastfmScrobbling": "Scrobble to Last.fm",
-                "listenBrainzScrobbling": "Scrobble to ListenBrainz"
+                "listenBrainzScrobbling": "Scrobble to ListenBrainz",
+                "replaygain": "ReplayGain Mode",
+                "preAmp": "ReplayGain PreAmp (dB)",
+                "gain": {
+                    "none": "Disabled",
+                    "album": "Use Album Gain",
+                    "track": "Use Track Gain"
+                }
             }
         },
         "albumList": "Albums",
@@ -369,6 +402,7 @@
             "singleLoop": "Repeat One",
             "shufflePlay": "Shuffle"
         }
+
     },
     "about": {
         "links": {

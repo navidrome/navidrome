@@ -34,6 +34,7 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { AddToPlaylistDialog } from '../dialogs'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
+import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles({
@@ -138,6 +139,7 @@ const SongList = (props) => {
       bpm: isDesktop && <NumberField source="bpm" />,
       genre: <TextField source="genre" />,
       comment: <TextField source="comment" />,
+      createdAt: <DateField source="createdAt" showTime />,
     }
   }, [isDesktop, classes.ratingField])
 
@@ -151,6 +153,7 @@ const SongList = (props) => {
       'albumArtist',
       'genre',
       'comment',
+      'createdAt',
     ],
   })
 
@@ -194,6 +197,7 @@ const SongList = (props) => {
         )}
       </List>
       <AddToPlaylistDialog />
+      <DownloadMenuDialog />
       <ExpandInfoDialog content={<SongInfo />} />
     </>
   )

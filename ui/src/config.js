@@ -15,7 +15,6 @@ const defaultConfig = {
   welcomeMessage: '',
   gaTrackingId: '',
   devActivityPanel: true,
-  devFastAccessCoverArt: false,
   enableStarRating: true,
   defaultTheme: 'Dark',
   defaultLanguage: '',
@@ -28,6 +27,7 @@ const defaultConfig = {
   listenBrainzEnabled: true,
   enableCoverAnimation: true,
   devShowArtistPage: true,
+  enableReplayGain: true,
 }
 
 let config

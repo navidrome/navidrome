@@ -23,7 +23,7 @@ type listenBrainzAgent struct {
 	ds          model.DataStore
 	sessionKeys *agents.SessionKeys
 	baseURL     string
-	client      *Client
+	client      *client
 }
 
 func listenBrainzConstructor(ds model.DataStore) *listenBrainzAgent {
@@ -36,7 +36,7 @@ func listenBrainzConstructor(ds model.DataStore) *listenBrainzAgent {
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
-	l.client = NewClient(l.baseURL, chc)
+	l.client = newClient(l.baseURL, chc)
 	return l
 }
 
@@ -70,9 +70,9 @@ func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track
 	}
 
 	li := l.formatListen(track)
-	err = l.client.UpdateNowPlaying(ctx, sk, li)
+	err = l.client.updateNowPlaying(ctx, sk, li)
 	if err != nil {
-		log.Warn(ctx, "ListenBrainz UpdateNowPlaying returned error", "track", track.Title, err)
+		log.Warn(ctx, "ListenBrainz updateNowPlaying returned error", "track", track.Title, err)
 		return scrobbler.ErrUnrecoverable
 	}
 	return nil
@@ -86,7 +86,7 @@ func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrob
 
 	li := l.formatListen(&s.MediaFile)
 	li.ListenedAt = int(s.TimeStamp.Unix())
-	err = l.client.Scrobble(ctx, sk, li)
+	err = l.client.scrobble(ctx, sk, li)
 
 	if err == nil {
 		return nil

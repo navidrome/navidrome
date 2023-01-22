@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
@@ -45,8 +46,8 @@ type scanner struct {
 	lock        *sync.RWMutex
 	ds          model.DataStore
 	pls         core.Playlists
-	cacheWarmer core.CacheWarmer
 	broker      events.Broker
+	cacheWarmer artwork.CacheWarmer
 }
 
 type scanStatus struct {
@@ -56,15 +57,15 @@ type scanStatus struct {
 	lastUpdate  time.Time
 }
 
-func New(ds model.DataStore, playlists core.Playlists, cacheWarmer core.CacheWarmer, broker events.Broker) Scanner {
+func New(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer, broker events.Broker) Scanner {
 	s := &scanner{
 		ds:          ds,
 		pls:         playlists,
-		cacheWarmer: cacheWarmer,
 		broker:      broker,
 		folders:     map[string]FolderScanner{},
 		status:      map[string]*scanStatus{},
 		lock:        &sync.RWMutex{},
+		cacheWarmer: cacheWarmer,
 	}
 	s.loadFolders()
 	return s
@@ -143,7 +144,6 @@ func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 	}
 	defer isScanning.Unlock()
 
-	defer s.cacheWarmer.Flush(ctx)
 	var hasError bool
 	for folder := range s.folders {
 		err := s.rescan(ctx, folder, fullRescan)

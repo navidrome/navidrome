@@ -14,6 +14,7 @@ import song from './song'
 import album from './album'
 import artist from './artist'
 import playlist from './playlist'
+import radio from './radio'
 import { Player } from './audioplayer'
 import customRoutes from './routes'
 import {
@@ -25,6 +26,8 @@ import {
   albumViewReducer,
   activityReducer,
   settingsReducer,
+  replayGainReducer,
+  downloadMenuDialogReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
@@ -52,10 +55,12 @@ const adminStore = createAdminStore({
     albumView: albumViewReducer,
     theme: themeReducer,
     addToPlaylistDialog: addToPlaylistDialogReducer,
+    downloadMenuDialog: downloadMenuDialogReducer,
     expandInfoDialog: expandInfoDialogReducer,
     listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
     activity: activityReducer,
     settings: settingsReducer,
+    replayGain: replayGainReducer,
   },
 })
 
@@ -97,6 +102,10 @@ const Admin = (props) => {
         <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
         <Resource name="artist" {...artist} />,
         <Resource name="song" {...song} />,
+        <Resource
+          name="radio"
+          {...(permissions === 'admin' ? radio.admin : radio.all)}
+        />,
         <Resource
           name="playlist"
           {...playlist}

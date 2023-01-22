@@ -286,6 +286,7 @@ var _ = Describe("Responses", func() {
 					Duration:  120,
 					Public:    true,
 					Owner:     "admin",
+					CoverArt:  "pl-123123123123",
 					Created:   timestamp,
 					Changed:   timestamp,
 				}
@@ -323,6 +324,39 @@ var _ = Describe("Responses", func() {
 				genres[1] = Genre{SongCount: 500, AlbumCount: 50, Name: "Reggae"}
 				genres[2] = Genre{SongCount: 0, AlbumCount: 0, Name: "Pop"}
 				response.Genres.Genre = genres
+			})
+
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("AlbumInfo", func() {
+		BeforeEach(func() {
+			response.AlbumInfo = &AlbumInfo{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.AlbumInfo.SmallImageUrl = "https://lastfm.freetls.fastly.net/i/u/34s/3b54885952161aaea4ce2965b2db1638.png"
+				response.AlbumInfo.MediumImageUrl = "https://lastfm.freetls.fastly.net/i/u/64s/3b54885952161aaea4ce2965b2db1638.png"
+				response.AlbumInfo.LargeImageUrl = "https://lastfm.freetls.fastly.net/i/u/174s/3b54885952161aaea4ce2965b2db1638.png"
+				response.AlbumInfo.LastFmUrl = "https://www.last.fm/music/Cher/Believe"
+				response.AlbumInfo.MusicBrainzID = "03c91c40-49a6-44a7-90e7-a700edf97a62"
+				response.AlbumInfo.Notes = "Believe is the twenty-third studio album by American singer-actress Cher..."
 			})
 
 			It("should match .XML", func() {
@@ -591,6 +625,41 @@ var _ = Describe("Responses", func() {
 				Expect(json.Marshal(response)).To(MatchSnapshot())
 			})
 
+		})
+	})
+
+	Describe("InternetRadioStations", func() {
+		BeforeEach(func() {
+			response.InternetRadioStations = &InternetRadioStations{}
+		})
+
+		Describe("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Describe("with data", func() {
+			BeforeEach(func() {
+				radio := make([]Radio, 1)
+				radio[0] = Radio{
+					ID:          "12345678",
+					StreamUrl:   "https://example.com/stream",
+					Name:        "Example Stream",
+					HomepageUrl: "https://example.com",
+				}
+				response.InternetRadioStations.Radios = radio
+			})
+
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
 		})
 	})
 })

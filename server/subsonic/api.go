@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"runtime"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -29,7 +29,7 @@ type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic,
 type Router struct {
 	http.Handler
 	ds               model.DataStore
-	artwork          core.Artwork
+	artwork          artwork.Artwork
 	streamer         core.MediaStreamer
 	archiver         core.Archiver
 	players          core.Players
@@ -40,7 +40,7 @@ type Router struct {
 	scrobbler        scrobbler.PlayTracker
 }
 
-func New(ds model.DataStore, artwork core.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
+func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker) *Router {
 	r := &Router{
@@ -83,6 +83,8 @@ func (api *Router) routes() http.Handler {
 		h(r, "getArtist", api.GetArtist)
 		h(r, "getAlbum", api.GetAlbum)
 		h(r, "getSong", api.GetSong)
+		h(r, "getAlbumInfo", api.GetAlbumInfo)
+		h(r, "getAlbumInfo2", api.GetAlbumInfo)
 		h(r, "getArtistInfo", api.GetArtistInfo)
 		h(r, "getArtistInfo2", api.GetArtistInfo2)
 		h(r, "getTopSongs", api.GetTopSongs)
@@ -136,27 +138,35 @@ func (api *Router) routes() http.Handler {
 		h(r, "startScan", api.StartScan)
 	})
 	r.Group(func(r chi.Router) {
-		// configure request throttling
-		maxRequests := utils.MaxInt(2, runtime.NumCPU())
-		r.Use(middleware.ThrottleBacklog(maxRequests, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
 		hr(r, "getAvatar", api.GetAvatar)
-		hr(r, "getCoverArt", api.GetCoverArt)
 		h(r, "getLyrics", api.GetLyrics)
+	})
+	r.Group(func(r chi.Router) {
+		// configure request throttling
+		if conf.Server.DevArtworkMaxRequests > 0 {
+			maxRequests := conf.Server.DevArtworkMaxRequests
+			r.Use(middleware.ThrottleBacklog(maxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+				conf.Server.DevArtworkThrottleBacklogTimeout))
+		}
+		hr(r, "getCoverArt", api.GetCoverArt)
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(getPlayer(api.players))
 		hr(r, "stream", api.Stream)
 		hr(r, "download", api.Download)
 	})
+	r.Group(func(r chi.Router) {
+		h(r, "createInternetRadioStation", api.CreateInternetRadio)
+		h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
+		h(r, "getInternetRadioStations", api.GetInternetRadios)
+		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
+	})
 
 	// Not Implemented (yet?)
 	h501(r, "jukeboxControl")
-	h501(r, "getAlbumInfo", "getAlbumInfo2")
 	h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
 		"deletePodcastEpisode", "downloadPodcastEpisode")
-	h501(r, "getInternetRadioStations", "createInternetRadioStation", "updateInternetRadioStation",
-		"deleteInternetRadioStation")
 	h501(r, "createUser", "updateUser", "deleteUser", "changePassword")
 
 	// Deprecated/Won't implement/Out of scope endpoints
@@ -184,7 +194,7 @@ func hr(r chi.Router, path string, f handlerRaw) {
 				if errors.Is(err, model.ErrNotFound) {
 					err = newError(responses.ErrorDataNotFound, "data not found")
 				} else {
-					err = newError(responses.ErrorGeneric, "Internal Error")
+					err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 				}
 			}
 			sendError(w, r, err)
