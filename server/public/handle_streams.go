@@ -98,7 +98,7 @@ func decodeStreamInfo(tokenString string) (shareTrackInfo, error) {
 	}
 	resp := shareTrackInfo{}
 	resp.id = id
-	resp.format, ok = claims["f"].(string)
-	resp.bitrate, ok = claims["b"].(int)
+	resp.format, _ = claims["f"].(string)
+	resp.bitrate, _ = claims["b"].(int)
 	return resp, nil
 }
