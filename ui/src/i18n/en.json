@@ -257,7 +257,9 @@
             "open_menu": "Open menu",
             "close_menu": "Close menu",
             "unselect": "Unselect",
-            "skip": "Skip"
+            "skip": "Skip",
+            "share": "Share",
+            "download":  "Download"
         },
         "boolean": {
             "true": "Yes",
@@ -367,6 +369,9 @@
             "musicbrainz": "Open in MusicBrainz"
         },
         "lastfmLink": "Read More...",
+        "shareOriginalFormat": "Share in original format",
+        "shareDialogTitle": "Share %{resource} '%{name}'",
+        "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
         "originalFormat": "Download in original format"
     },
     "menu": {
