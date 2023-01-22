@@ -15,12 +15,16 @@ const SharePlayer = () => {
   const options = {
     audioLists: list,
     mode: 'full',
+    toggleMode: false,
     mobileMediaQuery: '',
     showDownload: false,
     showReload: false,
     showMediaSession: true,
     theme: 'auto',
     showThemeSwitch: false,
+    remove: false,
+    spaceBar: true,
+    volumeFade: { fadeIn: 200, fadeOut: 200 },
   }
   return <ReactJkMusicPlayer {...options} />
 }
