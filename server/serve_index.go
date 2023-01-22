@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"html/template"
 	"io"
@@ -77,12 +78,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			log.Trace(r, "Injecting config in index.html", "config", string(appConfigJson))
 		}
 
-		shareInfoJson, err := json.Marshal(shareInfo)
-		if err != nil {
-			log.Error(r, "Error converting shareInfo to JSON", "config", shareInfo, err)
-		} else {
-			log.Trace(r, "Injecting shareInfo in index.html", "config", string(shareInfoJson))
-		}
+		shareInfoJson := marshalShareData(r.Context(), shareInfo)
 
 		log.Debug("UI configuration", "appConfig", appConfig)
 		version := consts.Version
@@ -120,4 +116,26 @@ func getIndexTemplate(r *http.Request, fs fs.FS) (*template.Template, error) {
 		return nil, err
 	}
 	return t, nil
+}
+
+type shareData struct {
+	Description string             `json:"description"`
+	Tracks      []model.ShareTrack `json:"tracks"`
+}
+
+func marshalShareData(ctx context.Context, shareInfo *model.Share) []byte {
+	if shareInfo == nil {
+		return nil
+	}
+	data := shareData{
+		Description: shareInfo.Description,
+		Tracks:      shareInfo.Tracks,
+	}
+	shareInfoJson, err := json.Marshal(data)
+	if err != nil {
+		log.Error(ctx, "Error converting shareInfo to JSON", "config", shareInfo, err)
+	} else {
+		log.Trace(ctx, "Injecting shareInfo in index.html", "config", string(shareInfoJson))
+	}
+	return shareInfoJson
 }
