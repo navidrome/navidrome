@@ -10,6 +10,7 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -44,22 +45,17 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 	}
 
 	idList := strings.Split(share.ResourceIDs, ",")
+	var mfs model.MediaFiles
 	switch share.ResourceType {
 	case "album":
-		share.Tracks, err = s.loadMediafiles(ctx, squirrel.Eq{"album_id": idList}, "album")
+		mfs, err = s.loadMediafiles(ctx, squirrel.Eq{"album_id": idList}, "album")
+	case "playlist":
+		mfs, err = s.loadPlaylistTracks(ctx, share.ResourceIDs)
 	}
 	if err != nil {
 		return nil, err
 	}
-	return entity.(*model.Share), nil
-}
-
-func (s *shareService) loadMediafiles(ctx context.Context, filter squirrel.Eq, sort string) ([]model.ShareTrack, error) {
-	all, err := s.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: filter, Sort: sort})
-	if err != nil {
-		return nil, err
-	}
-	return slice.Map(all, func(mf model.MediaFile) model.ShareTrack {
+	share.Tracks = slice.Map(mfs, func(mf model.MediaFile) model.ShareTrack {
 		return model.ShareTrack{
 			ID:        mf.ID,
 			Title:     mf.Title,
@@ -68,7 +64,23 @@ func (s *shareService) loadMediafiles(ctx context.Context, filter squirrel.Eq, s
 			Duration:  mf.Duration,
 			UpdatedAt: mf.UpdatedAt,
 		}
-	}), nil
+	})
+	return entity.(*model.Share), nil
+}
+
+func (s *shareService) loadMediafiles(ctx context.Context, filter squirrel.Eq, sort string) (model.MediaFiles, error) {
+	return s.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: filter, Sort: sort})
+}
+
+func (s *shareService) loadPlaylistTracks(ctx context.Context, id string) (model.MediaFiles, error) {
+	// Create a context with a fake admin user, to be able to access playlists
+	ctx = request.WithUser(context.TODO(), model.User{IsAdmin: true})
+
+	tracks, err := s.ds.Playlist(ctx).Tracks(id, true).GetAll(model.QueryOptions{Sort: "id"})
+	if err != nil {
+		return nil, err
+	}
+	return tracks.MediaFiles(), nil
 }
 
 func (s *shareService) NewRepository(ctx context.Context) rest.Repository {
@@ -117,8 +129,11 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	if s.ExpiresAt.IsZero() {
 		s.ExpiresAt = time.Now().Add(365 * 24 * time.Hour)
 	}
-	if s.ResourceType == "album" {
+	switch s.ResourceType {
+	case "album":
 		s.Contents = r.shareContentsFromAlbums(s.ID, s.ResourceIDs)
+	case "playlist":
+		s.Contents = r.shareContentsFromPlaylist(s.ID, s.ResourceIDs)
 	}
 	id, err = r.Persistable.Save(s)
 	return id, err
@@ -136,6 +151,18 @@ func (r *shareRepositoryWrapper) shareContentsFromAlbums(shareID string, ids str
 	}
 	names := slice.Map(all, func(a model.Album) string { return a.Name })
 	content := strings.Join(names, ", ")
+	if len(content) > 30 {
+		content = content[:26] + "..."
+	}
+	return content
+}
+func (r *shareRepositoryWrapper) shareContentsFromPlaylist(shareID string, id string) string {
+	pls, err := r.ds.Playlist(r.ctx).Get(id)
+	if err != nil {
+		log.Error(r.ctx, "Error retrieving album names for share", "share", shareID, err)
+		return ""
+	}
+	content := pls.Name
 	if len(content) > 30 {
 		content = content[:26] + "..."
 	}
