@@ -5,13 +5,20 @@ import {
   DialogContent,
   DialogTitle,
 } from '@material-ui/core'
-import { SimpleForm, TextInput, useCreate, useNotify } from 'react-admin'
+import {
+  SimpleForm,
+  TextInput,
+  useCreate,
+  useNotify,
+  useTranslate,
+} from 'react-admin'
 import { useState } from 'react'
 import { shareUrl } from '../utils'
 import { useTranscodingOptions } from './useTranscodingOptions'
 
-export const ShareDialog = ({ open, onClose, ids, resource, title }) => {
+export const ShareDialog = ({ open, onClose, ids, resource, name }) => {
   const notify = useNotify()
+  const translate = useTranslate()
   const [description, setDescription] = useState('')
   const { TranscodingOptionsInput, format, maxBitRate, originalFormat } =
     useTranscodingOptions()
@@ -57,9 +64,16 @@ export const ShareDialog = ({ open, onClose, ids, resource, title }) => {
       onBackdropClick={onClose}
       aria-labelledby="share-dialog"
       fullWidth={true}
-      maxWidth={'xs'}
+      maxWidth={'sm'}
     >
-      <DialogTitle id="share-dialog">{title}</DialogTitle>
+      <DialogTitle id="share-dialog">
+        {translate('message.shareDialogTitle', {
+          resource: translate(`resources.${resource}.name`, {
+            smart_count: ids?.length,
+          }).toLocaleLowerCase(),
+          name,
+        })}
+      </DialogTitle>
       <DialogContent>
         <SimpleForm toolbar={null} variant={'outlined'}>
           <TextInput
@@ -69,15 +83,18 @@ export const ShareDialog = ({ open, onClose, ids, resource, title }) => {
               setDescription(event.target.value)
             }}
           />
-          <TranscodingOptionsInput />
+          <TranscodingOptionsInput
+            fullWidth
+            label={translate('message.shareOriginalFormat')}
+          />
         </SimpleForm>
       </DialogContent>
       <DialogActions>
         <Button onClick={createShare} color="primary">
-          Share
+          {translate('ra.action.share')}
         </Button>
         <Button onClick={onClose} color="primary">
-          Cancel
+          {translate('ra.action.close')}
         </Button>
       </DialogActions>
     </Dialog>

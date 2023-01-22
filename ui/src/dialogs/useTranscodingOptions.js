@@ -1,9 +1,15 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import config from '../config'
-import { DEFAULT_SHARE_BITRATE } from '../consts'
-import { BooleanInput, SelectInput, useGetList } from 'react-admin'
+import { BITRATE_CHOICES, DEFAULT_SHARE_BITRATE } from '../consts'
+import {
+  BooleanInput,
+  SelectInput,
+  useGetList,
+  useTranslate,
+} from 'react-admin'
 
 export const useTranscodingOptions = () => {
+  const translate = useTranslate()
   const [format, setFormat] = useState(config.defaultDownsamplingFormat)
   const [maxBitRate, setMaxBitRate] = useState(DEFAULT_SHARE_BITRATE)
   const [originalFormat, setUseOriginalFormat] = useState(true)
@@ -22,7 +28,7 @@ export const useTranscodingOptions = () => {
       loadingFormats
         ? []
         : Object.values(formats).map((f) => {
-            return { id: f.targetFormat, name: f.targetFormat }
+            return { id: f.targetFormat, name: f.name }
           }),
     [formats, loadingFormats]
   )
@@ -39,14 +45,15 @@ export const useTranscodingOptions = () => {
   )
 
   const TranscodingOptionsInput = useMemo(() => {
-    return ({ basePath, ...props }) => {
+    return ({ label, basePath, ...props }) => {
       return (
         <>
           <BooleanInput
             {...props}
             source="original"
             defaultValue={originalFormat}
-            label={'Share in original format'}
+            label={label}
+            fullWidth
             onChange={handleOriginal}
           />
           {!originalFormat && (
@@ -55,6 +62,7 @@ export const useTranscodingOptions = () => {
                 {...props}
                 source="format"
                 defaultValue={format}
+                label={translate('resources.player.fields.transcodingId')}
                 choices={formatOptions}
                 onChange={(event) => {
                   setFormat(event.target.value)
@@ -63,20 +71,9 @@ export const useTranscodingOptions = () => {
               <SelectInput
                 {...props}
                 source="maxBitRate"
+                label={translate('resources.player.fields.maxBitRate')}
                 defaultValue={maxBitRate}
-                choices={[
-                  { id: 32, name: '32' },
-                  { id: 48, name: '48' },
-                  { id: 64, name: '64' },
-                  { id: 80, name: '80' },
-                  { id: 96, name: '96' },
-                  { id: 112, name: '112' },
-                  { id: 128, name: '128' },
-                  { id: 160, name: '160' },
-                  { id: 192, name: '192' },
-                  { id: 256, name: '256' },
-                  { id: 320, name: '320' },
-                ]}
+                choices={BITRATE_CHOICES}
                 onChange={(event) => {
                   setMaxBitRate(event.target.value)
                 }}
@@ -86,7 +83,14 @@ export const useTranscodingOptions = () => {
         </>
       )
     }
-  }, [handleOriginal, formatOptions, format, maxBitRate, originalFormat])
+  }, [
+    handleOriginal,
+    formatOptions,
+    format,
+    maxBitRate,
+    originalFormat,
+    translate,
+  ])
 
   return {
     TranscodingOptionsInput,
