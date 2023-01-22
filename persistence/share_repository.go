@@ -93,7 +93,7 @@ func (r *shareRepository) NewInstance() interface{} {
 }
 
 func (r *shareRepository) Get(id string) (*model.Share, error) {
-	sel := r.selectShare().Columns("*").Where(Eq{"share.id": id})
+	sel := r.selectShare().Where(Eq{"share.id": id})
 	var res model.Share
 	err := r.queryOne(sel, &res)
 	return &res, err
