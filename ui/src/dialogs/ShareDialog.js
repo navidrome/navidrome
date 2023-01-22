@@ -4,58 +4,17 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
-  Switch,
 } from '@material-ui/core'
-import {
-  SelectInput,
-  SimpleForm,
-  TextInput,
-  useCreate,
-  useGetList,
-  useNotify,
-} from 'react-admin'
-import { useMemo, useState } from 'react'
+import { SimpleForm, TextInput, useCreate, useNotify } from 'react-admin'
+import { useState } from 'react'
 import { shareUrl } from '../utils'
-import config from '../config'
-import { DEFAULT_SHARE_BITRATE } from '../consts'
+import { useTranscodingOptions } from './useTranscodingOptions'
 
-export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
+export const ShareDialog = ({ open, onClose, ids, resource, title }) => {
   const notify = useNotify()
-  const [format, setFormat] = useState(config.defaultDownsamplingFormat)
-  const [maxBitRate, setMaxBitRate] = useState(DEFAULT_SHARE_BITRATE)
-  const [originalFormat, setUseOriginalFormat] = useState(true)
   const [description, setDescription] = useState('')
-  const { data: formats, loading: loadingFormats } = useGetList(
-    'transcoding',
-    {
-      page: 1,
-      perPage: 1000,
-    },
-    { field: 'name', order: 'ASC' }
-  )
-
-  const formatOptions = useMemo(
-    () =>
-      loadingFormats
-        ? []
-        : Object.values(formats).map((f) => {
-            return { id: f.targetFormat, name: f.targetFormat }
-          }),
-    [formats, loadingFormats]
-  )
-
-  const handleOriginal = (e) => {
-    const original = e.target.checked
-
-    setUseOriginalFormat(original)
-
-    if (original) {
-      setFormat('')
-      setMaxBitRate(0)
-    }
-  }
-
+  const { TranscodingOptionsInput, format, maxBitRate, originalFormat } =
+    useTranscodingOptions()
   const [createShare] = useCreate(
     'share',
     {
@@ -68,7 +27,7 @@ export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
     {
       onSuccess: (res) => {
         const url = shareUrl(res?.data?.id)
-        close()
+        onClose()
         navigator.clipboard
           .writeText(url)
           .then(() => {
@@ -98,54 +57,19 @@ export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
       onBackdropClick={onClose}
       aria-labelledby="share-dialog"
       fullWidth={true}
-      maxWidth={'sm'}
+      maxWidth={'xs'}
     >
       <DialogTitle id="share-dialog">{title}</DialogTitle>
       <DialogContent>
         <SimpleForm toolbar={null} variant={'outlined'}>
-          <FormControlLabel
-            control={<Switch checked={originalFormat} />}
-            label={'Share in original format'}
-            onChange={handleOriginal}
-          />
           <TextInput
             source="description"
+            fullWidth
             onChange={(event) => {
               setDescription(event.target.value)
             }}
           />
-          {!originalFormat && (
-            <SelectInput
-              source="format"
-              defaultValue={format}
-              choices={formatOptions}
-              onChange={(event) => {
-                setFormat(event.target.value)
-              }}
-            />
-          )}
-          {!originalFormat && (
-            <SelectInput
-              source="maxBitRate"
-              defaultValue={maxBitRate}
-              choices={[
-                { id: 32, name: '32' },
-                { id: 48, name: '48' },
-                { id: 64, name: '64' },
-                { id: 80, name: '80' },
-                { id: 96, name: '96' },
-                { id: 112, name: '112' },
-                { id: 128, name: '128' },
-                { id: 160, name: '160' },
-                { id: 192, name: '192' },
-                { id: 256, name: '256' },
-                { id: 320, name: '320' },
-              ]}
-              onChange={(event) => {
-                setMaxBitRate(event.target.value)
-              }}
-            />
-          )}
+          <TranscodingOptionsInput />
         </SimpleForm>
       </DialogContent>
       <DialogActions>

@@ -4,12 +4,12 @@ import { useCallback, useMemo, useState } from 'react'
 export const useDialog = () => {
   const [anchorEl, setAnchorEl] = useState(null)
 
-  const open = useCallback((event) => {
+  const openDialog = useCallback((event) => {
     event?.stopPropagation()
     setAnchorEl(event.currentTarget)
   }, [])
 
-  const close = useCallback((event) => {
+  const closeDialog = useCallback((event) => {
     event?.stopPropagation()
     setAnchorEl(null)
   }, [])
@@ -18,13 +18,13 @@ export const useDialog = () => {
     return {
       anchorEl,
       open: Boolean(anchorEl),
-      onClose: close,
+      onClose: closeDialog,
     }
-  }, [anchorEl, close])
+  }, [anchorEl, closeDialog])
 
   return {
-    open,
-    close,
+    openDialog,
+    closeDialog,
     props,
   }
 }
