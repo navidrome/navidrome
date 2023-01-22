@@ -12,6 +12,7 @@ import (
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
@@ -112,7 +113,7 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 			AlbumCount:     artist.AlbumCount,
 			UserRating:     artist.Rating,
 			CoverArt:       artist.CoverArtID().String(),
-			ArtistImageUrl: publicImageURL(r, artist.CoverArtID(), 0),
+			ArtistImageUrl: public.ImageURL(r, artist.CoverArtID(), 0),
 		}
 		if artist.Starred {
 			searchResult2.Artist[i].Starred = &as[i].StarredAt

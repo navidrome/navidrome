@@ -74,7 +74,7 @@ func (s *shareService) loadMediafiles(ctx context.Context, filter squirrel.Eq, s
 
 func (s *shareService) loadPlaylistTracks(ctx context.Context, id string) (model.MediaFiles, error) {
 	// Create a context with a fake admin user, to be able to access playlists
-	ctx = request.WithUser(context.TODO(), model.User{IsAdmin: true})
+	ctx = request.WithUser(ctx, model.User{IsAdmin: true})
 
 	tracks, err := s.ds.Playlist(ctx).Tracks(id, true).GetAll(model.QueryOptions{Sort: "id"})
 	if err != nil {

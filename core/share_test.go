@@ -29,7 +29,7 @@ var _ = Describe("Share", func() {
 		})
 
 		Describe("Save", func() {
-			It("it adds a random name", func() {
+			It("it sets a random ID", func() {
 				entity := &model.Share{Description: "test"}
 				id, err := repo.Save(entity)
 				Expect(err).ToNot(HaveOccurred())
@@ -44,7 +44,7 @@ var _ = Describe("Share", func() {
 				err := repo.Update("id", entity)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockedRepo.(*tests.MockShareRepo).Entity).To(Equal("entity"))
-				Expect(mockedRepo.(*tests.MockShareRepo).Cols).To(ConsistOf("description"))
+				Expect(mockedRepo.(*tests.MockShareRepo).Cols).To(ConsistOf("description", "expires_at"))
 			})
 		})
 	})
