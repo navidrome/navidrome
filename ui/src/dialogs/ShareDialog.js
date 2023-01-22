@@ -10,6 +10,7 @@ import {
 import {
   SelectInput,
   SimpleForm,
+  TextInput,
   useCreate,
   useGetList,
   useNotify,
@@ -24,6 +25,7 @@ export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
   const [format, setFormat] = useState(config.defaultDownsamplingFormat)
   const [maxBitRate, setMaxBitRate] = useState(DEFAULT_SHARE_BITRATE)
   const [originalFormat, setUseOriginalFormat] = useState(true)
+  const [description, setDescription] = useState('')
   const { data: formats, loading: loadingFormats } = useGetList(
     'transcoding',
     {
@@ -59,6 +61,7 @@ export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
     {
       resourceType: resource,
       resourceIds: ids?.join(','),
+      description,
       ...(!originalFormat && { format }),
       ...(!originalFormat && { maxBitRate }),
     },
@@ -104,6 +107,12 @@ export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
             control={<Switch checked={originalFormat} />}
             label={'Share in original format'}
             onChange={handleOriginal}
+          />
+          <TextInput
+            source="description"
+            onChange={(event) => {
+              setDescription(event.target.value)
+            }}
           />
           {!originalFormat && (
             <SelectInput

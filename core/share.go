@@ -74,9 +74,11 @@ func (s *shareService) loadMediafiles(ctx context.Context, filter squirrel.Eq, s
 func (s *shareService) NewRepository(ctx context.Context) rest.Repository {
 	repo := s.ds.Share(ctx)
 	wrapper := &shareRepositoryWrapper{
+		ctx:             ctx,
 		ShareRepository: repo,
 		Repository:      repo.(rest.Repository),
 		Persistable:     repo.(rest.Persistable),
+		ds:              s.ds,
 	}
 	return wrapper
 }
@@ -85,6 +87,8 @@ type shareRepositoryWrapper struct {
 	model.ShareRepository
 	rest.Repository
 	rest.Persistable
+	ctx context.Context
+	ds  model.DataStore
 }
 
 func (r *shareRepositoryWrapper) newId() (string, error) {
@@ -113,10 +117,27 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	if s.ExpiresAt.IsZero() {
 		s.ExpiresAt = time.Now().Add(365 * 24 * time.Hour)
 	}
+	if s.ResourceType == "album" {
+		s.Contents = r.shareContentsFromAlbums(s.ID, s.ResourceIDs)
+	}
 	id, err = r.Persistable.Save(s)
 	return id, err
 }
 
 func (r *shareRepositoryWrapper) Update(id string, entity interface{}, _ ...string) error {
 	return r.Persistable.Update(id, entity, "description", "expires_at")
+}
+
+func (r *shareRepositoryWrapper) shareContentsFromAlbums(shareID string, ids string) string {
+	all, err := r.ds.Album(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": ids}})
+	if err != nil {
+		log.Error(r.ctx, "Error retrieving album names for share", "share", shareID, err)
+		return ""
+	}
+	names := slice.Map(all, func(a model.Album) string { return a.Name })
+	content := strings.Join(names, ", ")
+	if len(content) > 30 {
+		content = content[:26] + "..."
+	}
+	return content
 }

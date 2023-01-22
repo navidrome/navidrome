@@ -44,7 +44,7 @@ const ShareList = (props) => {
         />
         <TextField source="username" />
         <TextField source="description" />
-        <DateField source="contents" />
+        <TextField source="contents" />
         <FormatInfo source="format" />
         <NumberField source="visitCount" />
         <DateField source="expiresAt" showTime />
