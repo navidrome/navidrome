@@ -16,13 +16,15 @@ import {
 } from 'react-admin'
 import { useMemo, useState } from 'react'
 import { shareUrl } from '../utils'
+import config from '../config'
+import { DEFAULT_SHARE_BITRATE } from '../consts'
 
 export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
   const notify = useNotify()
-  const [format, setFormat] = useState('')
-  const [maxBitRate, setMaxBitRate] = useState(0)
+  const [format, setFormat] = useState(config.defaultDownsamplingFormat)
+  const [maxBitRate, setMaxBitRate] = useState(DEFAULT_SHARE_BITRATE)
   const [originalFormat, setUseOriginalFormat] = useState(true)
-  const { data: formats, loading } = useGetList(
+  const { data: formats, loading: loadingFormats } = useGetList(
     'transcoding',
     {
       page: 1,
@@ -33,12 +35,12 @@ export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
 
   const formatOptions = useMemo(
     () =>
-      loading
+      loadingFormats
         ? []
         : Object.values(formats).map((f) => {
             return { id: f.targetFormat, name: f.targetFormat }
           }),
-    [formats, loading]
+    [formats, loadingFormats]
   )
 
   const handleOriginal = (e) => {
@@ -57,8 +59,8 @@ export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
     {
       resourceType: resource,
       resourceIds: ids?.join(','),
-      format,
-      maxBitRate,
+      ...(!originalFormat && { format }),
+      ...(!originalFormat && { maxBitRate }),
     },
     {
       onSuccess: (res) => {
@@ -106,8 +108,8 @@ export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
           {!originalFormat && (
             <SelectInput
               source="format"
+              defaultValue={format}
               choices={formatOptions}
-              resettable
               onChange={(event) => {
                 setFormat(event.target.value)
               }}
@@ -115,7 +117,8 @@ export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
           )}
           {!originalFormat && (
             <SelectInput
-              source="bitrate"
+              source="maxBitRate"
+              defaultValue={maxBitRate}
               choices={[
                 { id: 32, name: '32' },
                 { id: 48, name: '48' },
@@ -129,7 +132,6 @@ export const ShareDialog = ({ open, close, onClose, ids, resource, title }) => {
                 { id: 256, name: '256' },
                 { id: 320, name: '320' },
               ]}
-              resettable
               onChange={(event) => {
                 setMaxBitRate(event.target.value)
               }}

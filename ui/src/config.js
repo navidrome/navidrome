@@ -28,6 +28,7 @@ const defaultConfig = {
   enableCoverAnimation: true,
   devShowArtistPage: true,
   enableReplayGain: true,
+  defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/p',
 }
 
