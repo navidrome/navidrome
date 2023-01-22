@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -39,26 +38,17 @@ func (p *Router) handleShares(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s = p.mapShareInfo(s)
+	s = p.mapShareInfo(*s)
 	server.IndexWithShare(p.ds, ui.BuildAssets(), s)(w, r)
 }
 
-func (p *Router) mapShareInfo(s *model.Share) *model.Share {
+func (p *Router) mapShareInfo(s model.Share) *model.Share {
 	mapped := &model.Share{
 		Description: s.Description,
 		Tracks:      s.Tracks,
 	}
 	for i := range s.Tracks {
-		// TODO Use Encode(Artwork)ID?
-		claims := map[string]any{"id": s.Tracks[i].ID}
-		if s.Format != "" {
-			claims["f"] = s.Format
-		}
-		if s.MaxBitRate != 0 {
-			claims["b"] = s.MaxBitRate
-		}
-		id, _ := auth.CreateExpiringPublicToken(s.ExpiresAt, claims)
-		mapped.Tracks[i].ID = id
+		mapped.Tracks[i].ID = encodeMediafileShare(s, s.Tracks[i].ID)
 	}
 	return mapped
 }
