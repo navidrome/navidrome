@@ -1,4 +1,3 @@
-import React from 'react'
 import {
   TextInput,
   BooleanInput,
@@ -12,6 +11,7 @@ import {
 } from 'react-admin'
 import { Title } from '../common'
 import config from '../config'
+import { BITRATE_CHOICES } from '../consts'
 
 const PlayerTitle = ({ record }) => {
   const translate = useTranslate()
@@ -30,23 +30,7 @@ const PlayerEdit = (props) => (
       >
         <SelectInput source="name" resettable />
       </ReferenceInput>
-      <SelectInput
-        source="maxBitRate"
-        choices={[
-          { id: 32, name: '32' },
-          { id: 48, name: '48' },
-          { id: 64, name: '64' },
-          { id: 80, name: '80' },
-          { id: 96, name: '96' },
-          { id: 112, name: '112' },
-          { id: 128, name: '128' },
-          { id: 160, name: '160' },
-          { id: 192, name: '192' },
-          { id: 256, name: '256' },
-          { id: 320, name: '320' },
-          { id: 0, name: '-' },
-        ]}
-      />
+      <SelectInput source="maxBitRate" resettable choices={BITRATE_CHOICES} />
       <BooleanInput source="reportRealPath" fullWidth />
       {(config.lastFMEnabled || config.listenBrainzEnabled) && (
         <BooleanInput source="scrobbleEnabled" fullWidth />

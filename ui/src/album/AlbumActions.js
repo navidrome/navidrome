@@ -132,7 +132,7 @@ const AlbumActions = ({
         {...shareDialog.props}
         ids={[record.id]}
         resource={'album'}
-        title={`Share album '${record.name}'`}
+        name={record.name}
       />
     </TopToolbar>
   )
