@@ -108,7 +108,7 @@ const AlbumActions = ({
           </Button>
           {config.devEnableShare && (
             <Button
-              onClick={shareDialog.open}
+              onClick={shareDialog.openDialog}
               label={translate('resources.album.actions.share')}
             >
               <ShareIcon />
@@ -130,7 +130,6 @@ const AlbumActions = ({
       </div>
       <ShareDialog
         {...shareDialog.props}
-        close={shareDialog.close}
         ids={[record.id]}
         resource={'album'}
         title={`Share album '${record.name}'`}
