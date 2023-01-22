@@ -109,7 +109,7 @@ const AlbumActions = ({
           {config.devEnableShare && (
             <Button
               onClick={shareDialog.openDialog}
-              label={translate('resources.album.actions.share')}
+              label={translate('ra.action.share')}
             >
               <ShareIcon />
             </Button>
@@ -118,7 +118,7 @@ const AlbumActions = ({
             <Button
               onClick={handleDownload}
               label={
-                translate('resources.album.actions.download') +
+                translate('ra.action.download') +
                 (isDesktop ? ` (${formatBytes(record.size)})` : '')
               }
             >
