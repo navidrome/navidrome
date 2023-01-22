@@ -55,16 +55,7 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 	if err != nil {
 		return nil, err
 	}
-	share.Tracks = slice.Map(mfs, func(mf model.MediaFile) model.ShareTrack {
-		return model.ShareTrack{
-			ID:        mf.ID,
-			Title:     mf.Title,
-			Artist:    mf.Artist,
-			Album:     mf.Album,
-			Duration:  mf.Duration,
-			UpdatedAt: mf.UpdatedAt,
-		}
-	})
+	share.Tracks = mfs
 	return entity.(*model.Share), nil
 }
 
@@ -129,12 +120,26 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	if s.ExpiresAt.IsZero() {
 		s.ExpiresAt = time.Now().Add(365 * 24 * time.Hour)
 	}
-	switch s.ResourceType {
-	case "album":
-		s.Contents = r.shareContentsFromAlbums(s.ID, s.ResourceIDs)
-	case "playlist":
-		s.Contents = r.shareContentsFromPlaylist(s.ID, s.ResourceIDs)
+
+	// TODO Validate all ids
+	firstId := strings.SplitN(s.ResourceIDs, ",", 1)[0]
+	v, err := model.GetEntityByID(r.ctx, r.ds, firstId)
+	if err != nil {
+		return "", err
 	}
+	switch v.(type) {
+	case *model.Album:
+		s.ResourceType = "album"
+		s.Contents = r.shareContentsFromAlbums(s.ID, s.ResourceIDs)
+	case *model.Playlist:
+		s.ResourceType = "playlist"
+		s.Contents = r.shareContentsFromPlaylist(s.ID, s.ResourceIDs)
+	case *model.Artist:
+		s.ResourceType = "artist"
+	case *model.MediaFile:
+		s.ResourceType = "song"
+	}
+
 	id, err = r.Persistable.Save(s)
 	return id, err
 }

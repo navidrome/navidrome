@@ -46,3 +46,8 @@ func (p *Router) routes() http.Handler {
 	})
 	return r
 }
+
+func ShareURL(r *http.Request, id string) string {
+	uri := path.Join(consts.URLPathPublic, id)
+	return server.AbsoluteURL(r, uri, nil)
+}

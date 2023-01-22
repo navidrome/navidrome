@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"path/filepath"
+	"path"
 	"strconv"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -17,12 +17,12 @@ import (
 
 func ImageURL(r *http.Request, artID model.ArtworkID, size int) string {
 	link := encodeArtworkID(artID)
-	path := filepath.Join(consts.URLPathPublicImages, link)
+	uri := path.Join(consts.URLPathPublicImages, link)
 	params := url.Values{}
 	if size > 0 {
 		params.Add("size", strconv.Itoa(size))
 	}
-	return server.AbsoluteURL(r, path, params)
+	return server.AbsoluteURL(r, uri, params)
 }
 
 func encodeArtworkID(artID model.ArtworkID) string {

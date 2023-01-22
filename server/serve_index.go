@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func Index(ds model.DataStore, fs fs.FS) http.HandlerFunc {
@@ -119,8 +121,17 @@ func getIndexTemplate(r *http.Request, fs fs.FS) (*template.Template, error) {
 }
 
 type shareData struct {
-	Description string             `json:"description"`
-	Tracks      []model.ShareTrack `json:"tracks"`
+	Description string       `json:"description"`
+	Tracks      []shareTrack `json:"tracks"`
+}
+
+type shareTrack struct {
+	ID        string    `json:"id,omitempty"`
+	Title     string    `json:"title,omitempty"`
+	Artist    string    `json:"artist,omitempty"`
+	Album     string    `json:"album,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Duration  float32   `json:"duration,omitempty"`
 }
 
 func marshalShareData(ctx context.Context, shareInfo *model.Share) []byte {
@@ -129,8 +140,18 @@ func marshalShareData(ctx context.Context, shareInfo *model.Share) []byte {
 	}
 	data := shareData{
 		Description: shareInfo.Description,
-		Tracks:      shareInfo.Tracks,
 	}
+	data.Tracks = slice.Map(shareInfo.Tracks, func(mf model.MediaFile) shareTrack {
+		return shareTrack{
+			ID:        mf.ID,
+			Title:     mf.Title,
+			Artist:    mf.Artist,
+			Album:     mf.Album,
+			Duration:  mf.Duration,
+			UpdatedAt: mf.UpdatedAt,
+		}
+	})
+
 	shareInfoJson, err := json.Marshal(data)
 	if err != nil {
 		log.Error(ctx, "Error converting shareInfo to JSON", "config", shareInfo, err)
