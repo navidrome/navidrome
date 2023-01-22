@@ -371,6 +371,8 @@
         "lastfmLink": "Read More...",
         "shareOriginalFormat": "Share in original format",
         "shareDialogTitle": "Share %{resource} '%{name}'",
+        "shareSuccess": "URL copied to clipboard: %{url}",
+        "shareFailure": "Error copying URL %{url} to clipboard",
         "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
         "originalFormat": "Download in original format"
     },

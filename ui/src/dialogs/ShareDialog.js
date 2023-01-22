@@ -38,18 +38,21 @@ export const ShareDialog = ({ open, onClose, ids, resource, name }) => {
         navigator.clipboard
           .writeText(url)
           .then(() => {
-            notify(`URL copied to clipboard: ${url}`, {
+            notify(translate('message.shareSuccess', { url }), {
               type: 'info',
               multiLine: true,
               duration: 0,
             })
           })
           .catch((err) => {
-            notify(`Error copying URL ${url} to clipboard: ${err.message}`, {
-              type: 'warning',
-              multiLine: true,
-              duration: 0,
-            })
+            notify(
+              translate('message.shareFailure', { url }) + ': ' + err.message,
+              {
+                type: 'warning',
+                multiLine: true,
+                duration: 0,
+              }
+            )
           })
       },
       onFailure: (error) =>
