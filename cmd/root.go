@@ -73,6 +73,10 @@ func runNavidrome() {
 	g.Go(startScheduler(ctx))
 	g.Go(schedulePeriodicScan(ctx))
 
+	if conf.Server.DevEnableJukebox {
+		g.Go(startJukeboxServer(ctx))
+	}
+
 	if err := g.Wait(); err != nil && !errors.Is(err, interrupted) {
 		log.Error("Fatal error in Navidrome. Aborting", err)
 	}
@@ -135,6 +139,14 @@ func startScheduler(ctx context.Context) func() error {
 
 	return func() error {
 		schedulerInstance.Run(ctx)
+		return nil
+	}
+}
+
+func startJukeboxServer(ctx context.Context) func() error {
+	log.Info(ctx, "Starting jukebox server")
+
+	return func() error {
 		return nil
 	}
 }
