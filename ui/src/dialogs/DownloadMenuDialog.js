@@ -49,13 +49,14 @@ const DownloadMenuDialog = () => {
       maxWidth={'sm'}
     >
       <DialogTitle id="download-dialog">
-        {translate('message.downloadDialogTitle', {
-          resource: translate(`resources.${recordType}.name`, {
-            smart_count: 1,
-          }).toLocaleLowerCase(),
-          name: record?.name || record?.title,
-          size: formatBytes(record?.size),
-        })}
+        {recordType &&
+          translate('message.downloadDialogTitle', {
+            resource: translate(`resources.${recordType}.name`, {
+              smart_count: 1,
+            }).toLocaleLowerCase(),
+            name: record?.name || record?.title,
+            size: formatBytes(record?.size),
+          })}
       </DialogTitle>
       <DialogContent>
         <SimpleForm toolbar={null} variant={'outlined'}>
