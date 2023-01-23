@@ -190,16 +190,25 @@ const Details = (props) => {
 
   const year = formatRange(record, 'year')
   const releaseYear = formatRange(record, 'releaseYear')
-  const showBothYearFields  = (year && releaseYear && (year !== releaseYear))
+  const options = {year: "numeric", month: "long", day: "numeric"}
+  let date = year
+  if (record.date !== '0001-01-01T00:00:00Z') {
+  date = new Date(record.date).toLocaleDateString(undefined, options)
+  }
+  let releaseDate = releaseYear
+  if (record.releaseDate !== '0001-01-01T00:00:00Z') {
+  releaseDate = new Date(record.releaseDate).toLocaleDateString(undefined, options)
+  }
+
+  const showReleaseYear  = (releaseYear && ((year !== releaseYear) || (date !== releaseDate)))
   
-  year && addDetail(<>{["♫", year].join('  ')}</>)
+  year && addDetail(<>{["♫", (!isXsmall ? date : year)].join('  ')}</>)
   
-  showBothYearFields && addDetail(
+  showReleaseYear && addDetail(
     <>
-    { [
-        (!isXsmall ? translate('resources.album.fields.released') : "○"),
-        releaseYear
-      ].join('  ')
+    { 
+        (!isXsmall ? [translate('resources.album.fields.released'),releaseDate] : ["○",releaseYear])
+      .join('  ')
     }
     </>
   )
