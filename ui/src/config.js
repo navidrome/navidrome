@@ -29,7 +29,7 @@ const defaultConfig = {
   devShowArtistPage: true,
   enableReplayGain: true,
   defaultDownsamplingFormat: 'opus',
-  publicBaseUrl: '/p',
+  publicBaseUrl: '/share',
 }
 
 let config

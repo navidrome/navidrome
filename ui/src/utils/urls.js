@@ -7,8 +7,11 @@ export const baseUrl = (path) => {
   return parts.join('/')
 }
 
-export const shareUrl = (path) => {
-  const url = new URL(config.publicBaseUrl + '/' + path, window.location.href)
+export const shareUrl = (id) => {
+  const url = new URL(
+    baseUrl(config.publicBaseUrl + '/' + id),
+    window.location.href
+  )
   return url.href
 }
 
