@@ -187,7 +187,7 @@ const SongDatagridBody = ({
   const { ids, data } = rest
 
   const playDisc = useCallback(
-    (releaseYear, discNumber) => {
+    (releaseYear, releaseDate, discNumber) => {
       const idsToPlay = ids.filter((id) => (data[id].releaseYear === releaseYear && data[id].releaseDate === releaseDate && data[id].discNumber === discNumber))
       dispatch(playTracks(data, idsToPlay))
     },
@@ -209,7 +209,7 @@ const SongDatagridBody = ({
             acc.length === 0 ||
             (last && data[id].discNumber !== data[last].discNumber) ||
             (last && data[id].releaseYear !== data[last].releaseYear) ||
-            (last && data[id].releaseDate !== data[last].releaseDate) ||
+            (last && data[id].releaseDate !== data[last].releaseDate)
           ) {
             acc.push(id)
           }
