@@ -148,7 +148,13 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 }
 
 func (r *shareRepositoryWrapper) Update(id string, entity interface{}, _ ...string) error {
-	return r.Persistable.Update(id, entity, "description", "expires_at")
+	cols := []string{"description"}
+
+	// TODO Better handling of Share expiration
+	if !entity.(*model.Share).ExpiresAt.IsZero() {
+		cols = append(cols, "expires_at")
+	}
+	return r.Persistable.Update(id, entity, cols...)
 }
 
 func (r *shareRepositoryWrapper) shareContentsFromAlbums(shareID string, ids string) string {
