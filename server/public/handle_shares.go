@@ -27,6 +27,9 @@ func (p *Router) handleShares(w http.ResponseWriter, r *http.Request) {
 	// If it is not, consider it a share ID
 	s, err := p.share.Load(r.Context(), id)
 	switch {
+	case errors.Is(err, model.ErrNotAvailable):
+		log.Error(r, "Share expired", "id", id, err)
+		http.Error(w, "Share not available anymore", http.StatusGone)
 	case errors.Is(err, model.ErrNotFound):
 		log.Error(r, "Share not found", "id", id, err)
 		http.Error(w, "Share not found", http.StatusNotFound)
