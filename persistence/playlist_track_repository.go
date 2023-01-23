@@ -109,7 +109,7 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
 }
 
 func (r *playlistTrackRepository) addMediaFileIds(cond Sqlizer) (int, error) {
-	sq := Select("id").From("media_file").Where(cond).OrderBy("album_artist, album, release_year, disc_number, track_number")
+	sq := Select("id").From("media_file").Where(cond).OrderBy("album_artist, album, release_year, release_date, disc_number, track_number")
 	var ids []string
 	err := r.queryAll(sq, &ids)
 	if err != nil {
