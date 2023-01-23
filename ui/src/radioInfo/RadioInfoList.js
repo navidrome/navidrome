@@ -98,7 +98,14 @@ const TagField = (props) => {
 
   if (isLong) {
     children.push(
-      <Button key={-1} onClick={() => setShowAll(!showAll)}>
+      <Button
+        key={-1}
+        onClick={(event) => {
+          setShowAll(!showAll)
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+      >
         {translate(`resources.radioInfo.actions.${showAll ? 'hide' : 'show'}`)}
       </Button>
     )

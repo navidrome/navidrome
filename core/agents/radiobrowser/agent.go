@@ -82,7 +82,7 @@ func (r *RadioBrowserAgent) GetRadioInfo(ctx context.Context) error {
 		}
 
 		millis := time.Now().UnixNano() / int64(time.Millisecond)
-		r.ds.Property(ctx).Put(model.PropLastRefresh, fmt.Sprint(millis))
+		_ = r.ds.Property(ctx).Put(model.PropLastRefresh, fmt.Sprint(millis))
 
 		return nil
 	})
