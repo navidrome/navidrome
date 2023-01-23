@@ -32,7 +32,7 @@ const (
 	URLPathUI           = "/app"
 	URLPathNativeAPI    = "/api"
 	URLPathSubsonicAPI  = "/rest"
-	URLPathPublic       = "/p"
+	URLPathPublic       = "/share"
 	URLPathPublicImages = URLPathPublic + "/img"
 
 	// DefaultUILoginBackgroundURL uses Navidrome curated background images collection,
