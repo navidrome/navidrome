@@ -3,12 +3,16 @@ package persistence
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 type shareRepository struct {
@@ -40,11 +44,64 @@ func (r *shareRepository) selectShare(options ...model.QueryOptions) SelectBuild
 func (r *shareRepository) Exists(id string) (bool, error) {
 	return r.exists(Select().Where(Eq{"id": id}))
 }
+func (r *shareRepository) Get(id string) (*model.Share, error) {
+	sel := r.selectShare().Where(Eq{"share.id": id})
+	var res model.Share
+	err := r.queryOne(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadMedia(&res)
+	return &res, err
+}
+
 func (r *shareRepository) GetAll(options ...model.QueryOptions) (model.Shares, error) {
 	sq := r.selectShare(options...)
 	res := model.Shares{}
 	err := r.queryAll(sq, &res)
+	if err != nil {
+		return nil, err
+	}
+	for i := range res {
+		err = r.loadMedia(&res[i])
+		if err != nil {
+			return nil, fmt.Errorf("error loading media for share %s: %w", res[i].ID, err)
+		}
+	}
 	return res, err
+}
+
+func (r *shareRepository) loadMedia(share *model.Share) error {
+	var err error
+	ids := strings.Split(share.ResourceIDs, ",")
+	if len(ids) == 0 {
+		return nil
+	}
+	switch share.ResourceType {
+	case "album":
+		albumRepo := NewAlbumRepository(r.ctx, r.ormer)
+		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: Eq{"id": ids}})
+		if err != nil {
+			return err
+		}
+		mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
+		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: Eq{"album_id": ids}, Sort: "album"})
+		return err
+	case "playlist":
+		// Create a context with a fake admin user, to be able to access all playlists
+		ctx := request.WithUser(r.ctx, model.User{IsAdmin: true})
+		plsRepo := NewPlaylistRepository(ctx, r.ormer)
+		tracks, err := plsRepo.Tracks(ids[0], true).GetAll(model.QueryOptions{Sort: "id"})
+		if err != nil {
+			return err
+		}
+		if len(tracks) >= 0 {
+			share.Tracks = tracks.MediaFiles()
+		}
+		return nil
+	}
+	log.Warn(r.ctx, "Unsupported Share ResourceType", "share", share.ID, "resourceType", share.ResourceType)
+	return nil
 }
 
 func (r *shareRepository) Update(id string, entity interface{}, cols ...string) error {
@@ -92,19 +149,18 @@ func (r *shareRepository) NewInstance() interface{} {
 	return &model.Share{}
 }
 
-func (r *shareRepository) Get(id string) (*model.Share, error) {
+func (r *shareRepository) Read(id string) (interface{}, error) {
 	sel := r.selectShare().Where(Eq{"share.id": id})
 	var res model.Share
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
-func (r *shareRepository) Read(id string) (interface{}, error) {
-	return r.Get(id)
-}
-
 func (r *shareRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	return r.GetAll(r.parseRestOptions(options...))
+	sq := r.selectShare(r.parseRestOptions(options...))
+	res := model.Shares{}
+	err := r.queryAll(sq, &res)
+	return res, err
 }
 
 var _ model.ShareRepository = (*shareRepository)(nil)
