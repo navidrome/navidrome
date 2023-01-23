@@ -49,7 +49,10 @@ type Subsonic struct {
 	ScanStatus *ScanStatus `xml:"scanStatus,omitempty"                                    json:"scanStatus,omitempty"`
 	Lyrics     *Lyrics     `xml:"lyrics,omitempty"                                        json:"lyrics,omitempty"`
 
-	InternetRadioStations *InternetRadioStations `xml:"internetRadioStations,omitempty"  json:"internetRadioStations,omitempty"`
+	InternetRadioStations *InternetRadioStations `xml:"internetRadioStations,omitempty"   json:"internetRadioStations,omitempty"`
+
+	JukeboxStatus   *JukeboxStatus   `xml:"jukeboxStatus,omitempty"                       json:"jukeboxStatus,omitempty"`
+	JukeboxPlaylist *JukeboxPlaylist `xml:"jukeboxPlaylist,omitempty"                     json:"jukeboxPlaylist,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -381,4 +384,16 @@ type Radio struct {
 	Name        string `xml:"name,attr"                  json:"name"`
 	StreamUrl   string `xml:"streamUrl,attr"             json:"streamUrl"`
 	HomepageUrl string `xml:"homePageUrl,omitempty,attr" json:"homePageUrl,omitempty"`
+}
+
+type JukeboxStatus struct {
+	CurrentIndex int64   `xml:"currentIndex,attr"       json:"currentIndex"`
+	Playing      bool    `xml:"playing,attr"            json:"playing"`
+	Gain         float64 `xml:"gain,attr"               json:"gain"`
+	Position     int64   `xml:"position,omitempty,attr" json:"position,omitempty"`
+}
+
+type JukeboxPlaylist struct {
+	JukeboxStatus
+	Entry []Child `xml:"entry,omitempty"         json:"entry,omitempty"`
 }

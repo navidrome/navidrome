@@ -162,8 +162,15 @@ func (api *Router) routes() http.Handler {
 		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 	})
 
+	if conf.Server.DevEnableJukebox {
+		r.Group(func(r chi.Router) {
+			h(r, "jukeboxControl", api.JukeboxControl)
+		})
+	} else {
+		h501(r, "jukeboxControl")
+	}
+
 	// Not Implemented (yet?)
-	h501(r, "jukeboxControl")
 	h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
 		"deletePodcastEpisode", "downloadPodcastEpisode")
