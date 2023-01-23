@@ -54,6 +54,8 @@ var _ = Describe("RadioBrowserAgent", func() {
 			data, err := ds.RadioInfo(ctx).Get("6e79967a-aac0-488d-89ec-7656f6db4ca8")
 			Expect(err).To(BeNil())
 			Expect(data.Url).To(Equal("https://ais-nzme.streamguys1.com/nz_002_aac"))
+
+			Expect(ds.Property(ctx).Get(model.PropLastRefresh)).NotTo(BeNil())
 		})
 
 		It("Purges existing entries", func() {

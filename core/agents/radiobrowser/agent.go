@@ -2,7 +2,10 @@ package radiobrowser
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
@@ -10,6 +13,7 @@ import (
 
 const (
 	fetchAgentTimeout = 100000000000000 // 100s
+	minTimeToRefresh  = 24 * time.Hour
 )
 
 type RadioBrowserAgent struct {
@@ -28,6 +32,20 @@ func RadioBrowserConstructor(ds model.DataStore) RadioBrowserAgent {
 	}
 	r.client = NewClient(r.baseUrl, hc)
 	return r
+}
+
+func (r *RadioBrowserAgent) ShouldPerformInitialScan(ctx context.Context) bool {
+	ms, err := r.ds.Property(ctx).Get(model.PropLastRefresh)
+	if err != nil {
+		return true
+	}
+	if ms == "" {
+		return true
+	}
+	i, _ := strconv.ParseInt(ms, 10, 64)
+	since := time.Since(time.Unix(0, i*int64(time.Millisecond)))
+
+	return since >= minTimeToRefresh
 }
 
 func (r *RadioBrowserAgent) GetRadioInfo(ctx context.Context) error {
@@ -62,6 +80,9 @@ func (r *RadioBrowserAgent) GetRadioInfo(ctx context.Context) error {
 				return err
 			}
 		}
+
+		millis := time.Now().UnixNano() / int64(time.Millisecond)
+		r.ds.Property(ctx).Put(model.PropLastRefresh, fmt.Sprint(millis))
 
 		return nil
 	})

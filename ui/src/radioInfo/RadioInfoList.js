@@ -163,7 +163,7 @@ export const RadioInfoList = (props) => {
       />
     ),
     url: <FunctionField render={(r) => r.url_resolved || r.url} />,
-    tags: <TagField />,
+    tags: <TagField source="tags" />,
     country: <TextField source="countryCode" />,
     bitrate: <NumberField source="bitrate" />,
     codec: <TextField source="codec" />,

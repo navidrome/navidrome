@@ -149,12 +149,14 @@ func schedulePeriodicRadioRefresh(ctx context.Context) func() error {
 			log.Error("Error radio info refresh scan", err)
 		}
 
-		// time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
-		// log.Debug("Executing initial radio info refresh scan")
-		// if err := radioInfo.GetRadioInfo(ctx); err != nil {
-		// 	log.Error("Error executing initial refresh", err)
-		// }
-		// log.Debug("Finished initial radio info refresh ")
+		if radioInfo.ShouldPerformInitialScan(ctx) {
+			time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
+			log.Debug("Executing initial radio info refresh scan")
+			if err := radioInfo.GetRadioInfo(ctx); err != nil {
+				log.Error("Error executing initial refresh", err)
+			}
+			log.Debug("Finished initial radio info refresh ")
+		}
 		return nil
 	}
 }

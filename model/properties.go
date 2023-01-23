@@ -2,7 +2,8 @@ package model
 
 const (
 	// TODO Move other prop keys to here
-	PropLastScan = "LastScan"
+	PropLastScan    = "LastScan"
+	PropLastRefresh = "LastRefresh"
 )
 
 type PropertyRepository interface {
