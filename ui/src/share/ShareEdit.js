@@ -1,6 +1,5 @@
 import {
-  DateField,
-  DateInput,
+  DateTimeInput,
   Edit,
   NumberField,
   SimpleForm,
@@ -8,6 +7,7 @@ import {
 } from 'react-admin'
 import { shareUrl } from '../utils'
 import { Link } from '@material-ui/core'
+import { DateField } from '../common'
 
 export const ShareEdit = (props) => {
   const { id } = props
@@ -19,14 +19,14 @@ export const ShareEdit = (props) => {
           {url}
         </Link>
         <TextInput source="description" />
+        <DateTimeInput source="expiresAt" />
         <TextInput source="contents" disabled />
         <TextInput source="format" disabled />
         <TextInput source="maxBitRate" disabled />
-        <DateInput source="expiresAt" disabled />
         <TextInput source="username" disabled />
         <NumberField source="visitCount" disabled />
-        <DateField source="lastVisitedAt" disabled />
-        <DateField source="createdAt" disabled />
+        <DateField source="lastVisitedAt" disabled showTime />
+        <DateField source="createdAt" disabled showTime />
       </SimpleForm>
     </Edit>
   )
