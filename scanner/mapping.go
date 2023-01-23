@@ -42,8 +42,8 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.AlbumArtist = s.mapAlbumArtistName(md)
 	mf.Genre, mf.Genres = s.mapGenres(md.Genres())
 	mf.Compilation = md.Compilation()
-	mf.Year = s.mapYear(md)
-	mf.ReleaseYear = s.mapReleaseYear(md)
+	mf.Year, mf.Date = s.mapDate(md)
+	mf.ReleaseYear, mf.ReleaseDate = s.mapReleaseDate(md)
 	mf.TrackNumber, _ = md.TrackNumber()
 	mf.DiscNumber, _ = md.DiscNumber()
 	mf.DiscSubtitle = md.DiscSubtitle()
@@ -127,12 +127,13 @@ func (s mediaFileMapper) trackID(md metadata.Tags) string {
 
 func (s mediaFileMapper) albumID(md metadata.Tags) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
-
-	if !conf.Server.Scanner.GroupAlbumEditions && (md.Year() > 0) {
-		if conf.Server.Scanner.UseOriginalDate {
-			return fmt.Sprintf("%x", md5.Sum([]byte(albumPath + string(md.Year()) )))
+	layout := "2012-12-01"
+	releaseYear, releaseDate := s.mapReleaseDate(md)
+	if !conf.Server.Scanner.GroupAlbumEditions && releaseYear != 0 {
+		if  releaseDate.IsZero() {
+			albumPath = fmt.Sprintf("%s\\%d", albumPath, releaseYear)
 		} else {
-			return fmt.Sprintf("%x", md5.Sum([]byte(albumPath + string(md.ReleaseYear()) )))
+			albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate.Format(layout))
 		}
 	}
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
@@ -175,18 +176,19 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 	return result[0].Name, result
 }
 
-func (s mediaFileMapper) mapYear(md metadata.Tags) int {
+func (s mediaFileMapper) mapDate(md metadata.Tags) (int, time.Time) {
+	originalYear, _ := md.OriginalDate()
 	if  conf.Server.Scanner.UseOriginalDate {
-		if md.OriginalYear() != 0 {
-			return md.OriginalYear()
+		if originalYear != 0 {
+			return 	md.OriginalDate()
 		}
 	}
-	return md.Year()
+	return md.Date()
 }
 
-func (s mediaFileMapper) mapReleaseYear(md metadata.Tags) int {
+func (s mediaFileMapper) mapReleaseDate(md metadata.Tags) (int, time.Time) {
 	if  conf.Server.Scanner.UseOriginalDate {
-		return md.Year()
+		return md.Date()
 	}
-	return md.ReleaseYear()
+	return md.ReleaseDate()
 }
