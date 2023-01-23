@@ -18,6 +18,7 @@ navidrome.db
 embedded_gen.go
 dist
 music
+cache
 docker-compose.yml
 navidrome.db-shm
 navidrome.db-wal
