@@ -49,7 +49,11 @@ func ParamTime(r *http.Request, param string, def time.Time) time.Time {
 	if err != nil {
 		return def
 	}
-	return ToTime(value)
+	t := ToTime(value)
+	if t.Before(time.Date(1970, time.January, 2, 0, 0, 0, 0, time.UTC)) {
+		return def
+	}
+	return t
 }
 
 func ParamInt(r *http.Request, param string, def int) int {
