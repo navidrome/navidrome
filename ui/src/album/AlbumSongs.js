@@ -87,8 +87,6 @@ const useStyles = makeStyles(
   { name: 'RaList' }
 )
 
-
-
 const AlbumSongs = (props) => {
   const { data, ids } = props
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -102,7 +100,7 @@ const AlbumSongs = (props) => {
       trackNumber: isDesktop && (
         <TextField
           source="trackNumber"
-          sortBy="releaseYear asc, discNumber asc, trackNumber asc"
+          sortBy="releaseYear asc, releaseDate asc, discNumber asc, trackNumber asc"
           label="#"
           sortable={false}
         />
