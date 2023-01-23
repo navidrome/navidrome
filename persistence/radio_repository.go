@@ -48,7 +48,9 @@ func (r *radioRepository) Delete(id string) error {
 }
 
 func (r *radioRepository) Get(id string) (*model.Radio, error) {
-	sel := r.newSelect().Where(Eq{"id": id}).Columns("*")
+	sel := r.newSelect().
+		Columns("*").
+		Where(Eq{"id": id})
 	res := model.Radio{}
 	err := r.queryOne(sel, &res)
 	return &res, err
@@ -73,9 +75,10 @@ func (r *radioRepository) Put(radio *model.Radio) error {
 	if radio.ID == "" {
 		radio.CreatedAt = time.Now()
 		radio.ID = strings.ReplaceAll(uuid.NewString(), "-", "")
-		values, _ = toSqlArgs(*radio)
+		values, _ = toSqlArgs(*radio, radio.BaseRadioInfo)
 	} else {
-		values, _ = toSqlArgs(*radio)
+		values, _ = toSqlArgs(*radio, radio.BaseRadioInfo)
+		delete(values, "radioinfo_id")
 		update := Update(r.tableName).Where(Eq{"id": radio.ID}).SetMap(values)
 		count, err := r.executeSQL(update)
 

@@ -1,8 +1,9 @@
-import { Card, makeStyles } from '@material-ui/core'
-import React, { useCallback } from 'react'
+import { Box, Card, makeStyles } from '@material-ui/core'
+import React, { useCallback, useState } from 'react'
 import {
   DateField,
   EditContextProvider,
+  NumberInput,
   required,
   SaveButton,
   SimpleForm,
@@ -14,6 +15,7 @@ import {
   useRedirect,
 } from 'react-admin'
 import DeleteRadioButton from './DeleteRadioButton'
+import { FaviconHandler } from './FaviconHandler'
 
 const useStyles = makeStyles({
   toolbar: {
@@ -55,8 +57,15 @@ const RadioEditLayout = ({
 
   const { record } = props
 
+  const [favicon, setFavicon] = useState()
+  const [loading, setLoading] = useState(false)
+
   const save = useCallback(
     async (values) => {
+      if (values.favicon && !favicon) {
+        return { favicon: 'ra.page.not_found' }
+      }
+
       try {
         await mutate(
           {
@@ -83,7 +92,7 @@ const RadioEditLayout = ({
         }
       }
     },
-    [mutate, notify, redirect]
+    [favicon, mutate, notify, redirect]
   )
 
   if (!record) {
@@ -113,6 +122,26 @@ const RadioEditLayout = ({
               fullWidth
               validate={[urlValidate]}
             />
+            <FaviconHandler
+              favicon={favicon}
+              loading={loading}
+              setFavicon={setFavicon}
+              setLoading={setLoading}
+            />
+            <TextInput type="text" source="tags" fullWidth />
+            <Box display="flex" width="100% !important">
+              <Box flex={1} mr="0.5em">
+                <TextInput source="codec" fullWidth variant="outlined" />
+              </Box>
+              <Box flex={1} mr="0.5em">
+                <NumberInput
+                  min={0}
+                  source="bitrate"
+                  fullWidth
+                  variant="outlined"
+                />
+              </Box>
+            </Box>
             <DateField variant="body1" source="updatedAt" showTime />
             <DateField variant="body1" source="createdAt" showTime />
           </SimpleForm>

@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
+	"github.com/navidrome/navidrome/core/agents/radiobrowser"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/persistence"
@@ -88,5 +89,26 @@ func createScanner() scanner.Scanner {
 	panic(wire.Build(
 		allProviders,
 		scanner.New,
+	))
+}
+
+// Radio Info Agent must be a Singleton
+
+var (
+	onceRadioAgent     sync.Once
+	radioAgentInstance radiobrowser.RadioBrowserAgent
+)
+
+func GetRadioInfo() radiobrowser.RadioBrowserAgent {
+	onceRadioAgent.Do(func() {
+		radioAgentInstance = createRadioInfo()
+	})
+	return radioAgentInstance
+}
+
+func createRadioInfo() radiobrowser.RadioBrowserAgent {
+	panic(wire.Build(
+		allProviders,
+		radiobrowser.RadioBrowserConstructor,
 	))
 }

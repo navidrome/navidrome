@@ -10,8 +10,13 @@ import (
 	"github.com/fatih/structs"
 )
 
-func toSqlArgs(rec interface{}) (map[string]interface{}, error) {
-	m := structs.Map(rec)
+func toSqlArgs(rec ...interface{}) (map[string]interface{}, error) {
+	m := map[string]interface{}{}
+
+	for _, arg := range rec {
+		structs.FillMap(arg, m)
+	}
+
 	for k, v := range m {
 		if t, ok := v.(time.Time); ok {
 			m[k] = t.Format(time.RFC3339Nano)

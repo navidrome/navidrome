@@ -68,6 +68,10 @@ type ArtistTopSongsRetriever interface {
 	GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error)
 }
 
+type RadioInfoRetriever interface {
+	GetRadioInfo(ctx context.Context) error
+}
+
 var Map map[string]Constructor
 
 func Register(name string, init Constructor) {

@@ -180,6 +180,25 @@
             "actions": {
                 "playNow": "Play Now"
             }
+        },
+        "radioInfo": {
+            "name": "Radio Search",
+            "fields": {
+                "image": "Favicon",
+                "name": "Name",
+                "homepage": "Home page",
+                "url": "Stream URL",
+                "tags": "Stream tag(s)",
+                "countrycode": "Country",
+                "country": "Country",
+                "bitrate": "Bitrate",
+                "codec": "Codec",
+                "existing": "Already added"
+            },
+            "actions": {
+                "hide": "Hide extra",
+                "show": "Show all"
+            }
         }
     },
     "ra": {
@@ -292,6 +311,7 @@
             "unsaved_changes": "Some of your changes weren't saved. Are you sure you want to ignore them?"
         },
         "navigation": {
+            "end_of_results": "No more results",
             "no_results": "No results found",
             "no_more_results": "The page number %{page} is out of boundaries. Try the previous page.",
             "page_out_of_boundaries": "Page number %{page} out of boundaries",
@@ -299,6 +319,7 @@
             "page_out_from_begin": "Cannot go before page 1",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} of %{total}",
             "page_rows_per_page": "Items per page:",
+            "page_idx": "Page {count}",
             "next": "Next",
             "prev": "Prev",
             "skip_nav": "Skip to content"

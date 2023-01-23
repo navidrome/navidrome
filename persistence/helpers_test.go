@@ -24,7 +24,9 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 	Describe("toSqlArgs", func() {
-		type Embed struct{}
+		type Embed struct {
+			Info string `structs:"info" json:"info"`
+		}
 		type Model struct {
 			Embed     `structs:"-"`
 			ID        string     `structs:"id" json:"id"`
@@ -43,6 +45,21 @@ var _ = Describe("Helpers", func() {
 			Expect(args).To(HaveKeyWithValue("album_id", "456"))
 			Expect(args).To(HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)))
 			Expect(args).To(HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)))
+			Expect(args).ToNot(HaveKey("Embed"))
+		})
+
+		It("returns a map when multiple values given", func() {
+			now := time.Now()
+			m := &Model{ID: "123", AlbumId: "456", CreatedAt: now, UpdatedAt: &now, PlayCount: 2, Embed: Embed{
+				Info: "nested key",
+			}}
+			args, err := toSqlArgs(m, m.Embed)
+			Expect(err).To(BeNil())
+			Expect(args).To(HaveKeyWithValue("id", "123"))
+			Expect(args).To(HaveKeyWithValue("album_id", "456"))
+			Expect(args).To(HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)))
+			Expect(args).To(HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)))
+			Expect(args).To(HaveKeyWithValue("info", "nested key"))
 			Expect(args).ToNot(HaveKey("Embed"))
 		})
 	})

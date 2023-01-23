@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
@@ -82,14 +83,33 @@ var _ = Describe("RadioRepository", func() {
 				Expect(all[0].ID).To(Equal(radioWithoutHomePage.ID))
 				Expect(all[1].ID).To(Equal(radioWithHomePage.ID))
 			})
+
+			It("Returns specific item when filtering by name", func() {
+				all, err := repo.GetAll(
+					model.QueryOptions{Filters: squirrel.Like{"name": "Exa%"}})
+				Expect(err).To(BeNil())
+				Expect(all).To(HaveLen(1))
+				Expect(all[0].BaseRadioInfo).To(Equal(radioWithHomePage.BaseRadioInfo))
+				Expect(all[0].ID).To(Equal(radioWithHomePage.ID))
+			})
 		})
 
 		Describe("Put", func() {
 			It("successfully updates item", func() {
+				newInfo := model.BaseRadioInfo{
+					Tags:        "tag6",
+					Country:     ".....",
+					CountryCode: "??",
+					Codec:       "FLAC",
+					Bitrate:     196,
+				}
+
 				err := repo.Put(&model.Radio{
-					ID:        radioWithHomePage.ID,
-					Name:      "New Name",
-					StreamUrl: "https://example.com:4533/app",
+					ID:            radioWithHomePage.ID,
+					Name:          "New Name",
+					StreamUrl:     "https://example.com:4533/app",
+					Favicon:       "https://example.com/favicon.ico",
+					BaseRadioInfo: newInfo,
 				})
 
 				Expect(err).To(BeNil())
@@ -98,6 +118,8 @@ var _ = Describe("RadioRepository", func() {
 				Expect(err).To(BeNil())
 
 				Expect(item.HomePageUrl).To(Equal(""))
+				Expect(item.Favicon).To(Equal("https://example.com/favicon.ico"))
+				Expect(item.BaseRadioInfo).To(Equal(newInfo))
 			})
 
 			It("successfully creates item", func() {

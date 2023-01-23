@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
+	"github.com/navidrome/navidrome/core/agents/radiobrowser"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -105,6 +106,13 @@ func createScanner() scanner.Scanner {
 	return scannerScanner
 }
 
+func createRadioInfo() radiobrowser.RadioBrowserAgent {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	radioBrowserAgent := radiobrowser.RadioBrowserConstructor(dataStore)
+	return radioBrowserAgent
+}
+
 // wire_injectors.go:
 
 var allProviders = wire.NewSet(core.Set, artwork.Set, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, db.Db)
@@ -120,4 +128,16 @@ func GetScanner() scanner.Scanner {
 		scannerInstance = createScanner()
 	})
 	return scannerInstance
+}
+
+var (
+	onceRadioAgent     sync.Once
+	radioAgentInstance radiobrowser.RadioBrowserAgent
+)
+
+func GetRadioInfo() radiobrowser.RadioBrowserAgent {
+	onceRadioAgent.Do(func() {
+		radioAgentInstance = createRadioInfo()
+	})
+	return radioAgentInstance
 }

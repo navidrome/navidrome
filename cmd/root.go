@@ -72,6 +72,7 @@ func runNavidrome() {
 	g.Go(startSignaler(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(schedulePeriodicScan(ctx))
+	g.Go(schedulePeriodicRadioRefresh(ctx))
 
 	if err := g.Wait(); err != nil && !errors.Is(err, interrupted) {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -125,6 +126,35 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 			log.Error("Error executing initial scan", err)
 		}
 		log.Debug("Finished initial scan")
+		return nil
+	}
+}
+
+func schedulePeriodicRadioRefresh(ctx context.Context) func() error {
+	return func() error {
+		schedule := conf.Server.RadioBrowser.RefreshSchedule
+		if !conf.Server.RadioBrowser.Enabled {
+			log.Warn("Periodic radio info refresh is DISABLED")
+			return nil
+		}
+
+		radioInfo := GetRadioInfo()
+		schedulerInstance := scheduler.GetInstance()
+
+		log.Info("Scheduling radio info refresh", "schedule", schedule)
+		err := schedulerInstance.Add(schedule, func() {
+			_ = radioInfo.GetRadioInfo(ctx)
+		})
+		if err != nil {
+			log.Error("Error radio info refresh scan", err)
+		}
+
+		// time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
+		// log.Debug("Executing initial radio info refresh scan")
+		// if err := radioInfo.GetRadioInfo(ctx); err != nil {
+		// 	log.Error("Error executing initial refresh", err)
+		// }
+		// log.Debug("Finished initial radio info refresh ")
 		return nil
 	}
 }

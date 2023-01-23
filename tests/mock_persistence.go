@@ -7,19 +7,20 @@ import (
 )
 
 type MockDataStore struct {
-	MockedGenre          model.GenreRepository
-	MockedAlbum          model.AlbumRepository
-	MockedArtist         model.ArtistRepository
-	MockedMediaFile      model.MediaFileRepository
-	MockedUser           model.UserRepository
-	MockedProperty       model.PropertyRepository
-	MockedPlayer         model.PlayerRepository
-	MockedPlaylist       model.PlaylistRepository
-	MockedShare          model.ShareRepository
-	MockedTranscoding    model.TranscodingRepository
-	MockedUserProps      model.UserPropsRepository
-	MockedScrobbleBuffer model.ScrobbleBufferRepository
-	MockedRadioBuffer    model.RadioRepository
+	MockedGenre           model.GenreRepository
+	MockedAlbum           model.AlbumRepository
+	MockedArtist          model.ArtistRepository
+	MockedMediaFile       model.MediaFileRepository
+	MockedUser            model.UserRepository
+	MockedProperty        model.PropertyRepository
+	MockedPlayer          model.PlayerRepository
+	MockedPlaylist        model.PlaylistRepository
+	MockedShare           model.ShareRepository
+	MockedTranscoding     model.TranscodingRepository
+	MockedUserProps       model.UserPropsRepository
+	MockedScrobbleBuffer  model.ScrobbleBufferRepository
+	MockedRadioBuffer     model.RadioRepository
+	MockedRadioInfoBuffer model.RadioInfoRepository
 }
 
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {
@@ -119,6 +120,13 @@ func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
 		db.MockedRadioBuffer = CreateMockedRadioRepo()
 	}
 	return db.MockedRadioBuffer
+}
+
+func (db *MockDataStore) RadioInfo(ctx context.Context) model.RadioInfoRepository {
+	if db.MockedRadioInfoBuffer == nil {
+		db.MockedRadioInfoBuffer = CreateMockedRadioInfoRepo()
+	}
+	return db.MockedRadioInfoBuffer
 }
 
 func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {

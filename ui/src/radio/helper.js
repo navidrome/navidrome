@@ -5,8 +5,15 @@ export async function songFromRadio(radio) {
 
   let cover = 'internet-radio-icon.svg'
   try {
-    const url = new URL(radio.homePageUrl ?? radio.streamUrl)
-    url.pathname = '/favicon.ico'
+    let url
+
+    if (radio.favicon) {
+      url = new URL(radio.favicon)
+    } else {
+      url = new URL(radio.homePageUrl ?? radio.streamUrl)
+      url.pathname = '/favicon.ico'
+    }
+
     await resourceExists(url)
     cover = url.toString()
   } catch {}

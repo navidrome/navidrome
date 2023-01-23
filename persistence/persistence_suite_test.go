@@ -70,9 +70,43 @@ var (
 )
 
 var (
-	radioWithoutHomePage = model.Radio{ID: "1235", StreamUrl: "https://example.com:8000/1/stream.mp3", HomePageUrl: "", Name: "No Homepage"}
-	radioWithHomePage    = model.Radio{ID: "5010", StreamUrl: "https://example.com/stream.mp3", Name: "Example Radio", HomePageUrl: "https://example.com"}
-	testRadios           = model.Radios{radioWithoutHomePage, radioWithHomePage}
+	radioWithoutHomePage = model.Radio{ID: "1235", StreamUrl: "https://example.com:8000/1/stream.mp3", HomePageUrl: "", Name: "No Homepage", BaseRadioInfo: model.BaseRadioInfo{
+		Tags:        "tag2,tag3",
+		Country:     "",
+		CountryCode: "CC",
+		Codec:       "AAC",
+		Bitrate:     64,
+	}}
+	radioWithHomePage = model.Radio{ID: "5010", StreamUrl: "https://example.com/stream.mp3", Name: "Example Radio", HomePageUrl: "https://example.com", BaseRadioInfo: model.BaseRadioInfo{
+		Tags:        "tag0",
+		Country:     "...",
+		CountryCode: "CC",
+		Codec:       "OGG",
+		Bitrate:     128,
+	}}
+	testRadios = model.Radios{radioWithoutHomePage, radioWithHomePage}
+)
+
+var (
+	fullRadioWithMatch = model.RadioInfo{
+		ID: "999", Name: "Sample Radio", Url: "https://example.com/radio",
+		Homepage: "https://example.com", Favicon: "https://example.com/favicon.ico",
+		BaseRadioInfo: model.BaseRadioInfo{
+			Tags: "tag1,tag2,tag3", Country: "Finland", CountryCode: "FI", Codec: "OGG", Bitrate: 320,
+		},
+		Existing: false,
+	}
+	fullRadioWithoutMatch = model.RadioInfo{
+		ID:       "23456",
+		Name:     "Alternate Sample Radio",
+		Url:      "http://example.com/radio/6",
+		Homepage: "",
+		Favicon:  "",
+		BaseRadioInfo: model.BaseRadioInfo{
+			Tags: "tag1,tag4", Country: "Fiji", CountryCode: "FJ", Codec: "MP3", Bitrate: 192,
+		},
+	}
+	testRadioInfo = model.RadioInfos{fullRadioWithMatch, fullRadioWithoutMatch}
 )
 
 var (
@@ -130,6 +164,15 @@ var _ = BeforeSuite(func() {
 	for i := range testArtists {
 		a := testArtists[i]
 		err := arr.Put(&a)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	rir := NewRadioInfoRepository(ctx, o)
+	for i := range testRadioInfo {
+		r := testRadioInfo[i]
+		err := rir.Insert(&r)
 		if err != nil {
 			panic(err)
 		}

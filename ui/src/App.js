@@ -35,6 +35,7 @@ import config from './config'
 import { setDispatch, startEventStream, stopEventStream } from './eventStream'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
+import radioInfo from './radioInfo'
 
 const history = createHashHistory()
 
@@ -106,6 +107,9 @@ const Admin = (props) => {
           name="radio"
           {...(permissions === 'admin' ? radio.admin : radio.all)}
         />,
+        permissions === 'admin' ? (
+          <Resource name="radioInfo" {...radioInfo} options={{ subMenu: '' }} />
+        ) : undefined,
         <Resource
           name="playlist"
           {...playlist}

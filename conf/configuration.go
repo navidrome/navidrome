@@ -71,6 +71,7 @@ type configOptions struct {
 	LastFM       lastfmOptions
 	Spotify      spotifyOptions
 	ListenBrainz listenBrainzOptions
+	RadioBrowser radioBrowserOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine                 bool
@@ -114,6 +115,12 @@ type prometheusOptions struct {
 	MetricsPath string
 }
 
+type radioBrowserOptions struct {
+	Enabled         bool
+	BaseUrl         string
+	RefreshSchedule string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -147,6 +154,10 @@ func Load() {
 
 	if err := validateScanSchedule(); err != nil {
 		os.Exit(1)
+	}
+
+	if err := validateRadioBrowserSchedule(); err != nil {
+		os.Exit(-1)
 	}
 
 	// Print current configuration if log level is Debug
@@ -193,19 +204,37 @@ func validateScanSchedule() error {
 			log.Warn("Setting ScanSchedule", "schedule", Server.ScanSchedule)
 		}
 	}
-	if Server.ScanSchedule == "0" || Server.ScanSchedule == "" {
-		Server.ScanSchedule = ""
-		return nil
+	sched, err := validateSchedule(Server.ScanSchedule, "ScanSchedule")
+	Server.ScanSchedule = sched
+
+	return err
+}
+
+func validateRadioBrowserSchedule() error {
+	sched, err := validateSchedule(Server.RadioBrowser.RefreshSchedule, "RadioBrowser.RefreshSchedule")
+	Server.RadioBrowser.RefreshSchedule = sched
+
+	if sched == "" {
+		Server.RadioBrowser.Enabled = false
 	}
-	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
-		Server.ScanSchedule = "@every " + Server.ScanSchedule
+
+	return err
+}
+
+func validateSchedule(schedule, property string) (string, error) {
+	if schedule == "0" || schedule == "" {
+		return "", nil
+	}
+	if _, err := time.ParseDuration(schedule); err == nil {
+		schedule = "@every " + Server.ScanSchedule
 	}
 	c := cron.New()
-	_, err := c.AddFunc(Server.ScanSchedule, func() {})
+	_, err := c.AddFunc(schedule, func() {})
 	if err != nil {
-		log.Error("Invalid ScanSchedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", Server.ScanSchedule, err)
+		log.Error("Invalid Schedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "property", property, "schedule", schedule, err)
 	}
-	return err
+
+	return schedule, err
 }
 
 // AddHook is used to register initialization code that should run as soon as the config is loaded
@@ -276,6 +305,9 @@ func init() {
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
+	viper.SetDefault("radiobrowser.baseurl", "https://de1.api.radio-browser.info")
+	viper.SetDefault("radiobrowser.enabled", "true")
+	viper.SetDefault("radiobrowser.refreshschedule", "@every 24h")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

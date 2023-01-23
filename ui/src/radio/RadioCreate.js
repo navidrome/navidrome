@@ -1,15 +1,32 @@
-import React, { useCallback } from 'react'
+import { Box, makeStyles } from '@material-ui/core'
+import React, { useCallback, useState } from 'react'
 import {
   Create,
+  NumberInput,
   required,
+  SaveButton,
   SimpleForm,
   TextInput,
+  Toolbar,
   useMutation,
   useNotify,
   useRedirect,
   useTranslate,
 } from 'react-admin'
 import { Title } from '../common'
+import { FaviconHandler } from './FaviconHandler'
+
+const useStyles = makeStyles({
+  hidden: {
+    display: 'none !important',
+  },
+})
+
+const RadioCreateToolbar = (props) => (
+  <Toolbar {...props}>
+    <SaveButton disabled={props.invalid || props.loading} />
+  </Toolbar>
+)
 
 const RadioCreate = (props) => {
   const translate = useTranslate()
@@ -17,13 +34,20 @@ const RadioCreate = (props) => {
   const notify = useNotify()
   const redirect = useRedirect()
 
+  const styles = useStyles()
+
   const resourceName = translate('resources.radio.name', { smart_count: 1 })
   const title = translate('ra.page.create', {
     name: `${resourceName}`,
   })
+  const [favicon, setFavicon] = useState()
+  const [loading, setLoading] = useState(false)
 
   const save = useCallback(
     async (values) => {
+      if (values.favicon && !favicon) {
+        return { favicon: 'ra.page.not_found' }
+      }
       try {
         await mutate(
           {
@@ -43,13 +67,17 @@ const RadioCreate = (props) => {
         }
       }
     },
-    [mutate, notify, redirect]
+    [favicon, mutate, notify, redirect]
   )
 
   return (
     <Create title={<Title subTitle={title} />} {...props}>
-      <SimpleForm save={save} variant={'outlined'}>
-        <TextInput source="name" validate={[required()]} />
+      <SimpleForm
+        save={save}
+        variant="outlined"
+        toolbar={<RadioCreateToolbar loading={loading} />}
+      >
+        <TextInput source="name" validate={[required()]} fullWidth />
         <TextInput
           type="url"
           source="streamUrl"
@@ -57,6 +85,32 @@ const RadioCreate = (props) => {
           validate={[required()]}
         />
         <TextInput type="url" source="homepageUrl" fullWidth />
+        <FaviconHandler
+          favicon={favicon}
+          loading={loading}
+          setFavicon={setFavicon}
+          setLoading={setLoading}
+        />
+        <TextInput source="tags" fullWidth />
+        <Box display="flex" width="100% !important">
+          <Box flex={1} mr="0.5em">
+            <TextInput source="codec" fullWidth variant="outlined" />
+          </Box>
+          <Box flex={1} mr="0.5em">
+            <NumberInput
+              min={0}
+              source="bitrate"
+              fullWidth
+              variant="outlined"
+            />
+          </Box>
+        </Box>
+        <TextInput
+          className={styles.hidden}
+          source="radioInfoId"
+          disabled
+          hidden
+        />
       </SimpleForm>
     </Create>
   )

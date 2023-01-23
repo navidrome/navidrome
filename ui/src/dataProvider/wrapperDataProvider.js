@@ -13,7 +13,6 @@ const mapResource = (resource, params) => {
         plsId = params.filter.playlist_id
       }
       return [`playlist/${plsId}/tracks`, params]
-
     default:
       return [resource, params]
   }

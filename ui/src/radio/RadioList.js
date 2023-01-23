@@ -6,6 +6,7 @@ import {
   DateField,
   EditButton,
   Filter,
+  Link,
   List,
   sanitizeListRestProps,
   SearchInput,
@@ -56,9 +57,12 @@ const RadioListActions = ({
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       {isAdmin && (
-        <CreateButton basePath="/radio">
-          {translate('ra.action.create')}
-        </CreateButton>
+        <>
+          <Link to="/radioInfo">Find new radios</Link>
+          <CreateButton basePath="/radio">
+            {translate('ra.action.create')}
+          </CreateButton>
+        </>
       )}
       {filters &&
         cloneElement(filters, {
