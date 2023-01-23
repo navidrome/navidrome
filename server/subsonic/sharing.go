@@ -13,12 +13,11 @@ import (
 )
 
 func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
-	repo := api.share.NewRepository(r.Context())
-	entity, err := repo.ReadAll()
+	repo := api.share.NewRepository(r.Context()).(model.ShareRepository)
+	shares, err := repo.GetAll()
 	if err != nil {
 		return nil, err
 	}
-	shares := entity.(model.Shares)
 
 	response := newResponse()
 	response.Shares = &responses.Shares{}
@@ -29,8 +28,7 @@ func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) buildShare(r *http.Request, share model.Share) responses.Share {
-	return responses.Share{
-		Entry:       childrenFromMediaFiles(r.Context(), share.Tracks),
+	resp := responses.Share{
 		ID:          share.ID,
 		Url:         public.ShareURL(r, share.ID),
 		Description: share.Description,
@@ -40,6 +38,12 @@ func (api *Router) buildShare(r *http.Request, share model.Share) responses.Shar
 		LastVisited: share.LastVisitedAt,
 		VisitCount:  share.VisitCount,
 	}
+	if len(share.Albums) > 0 {
+		resp.Entry = childrenFromAlbums(r.Context(), share.Albums)
+	} else {
+		resp.Entry = childrenFromMediaFiles(r.Context(), share.Tracks)
+	}
+	return resp
 }
 
 func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
@@ -63,11 +67,10 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	entity, err := repo.Read(id)
+	share, err = repo.(model.ShareRepository).Get(id)
 	if err != nil {
 		return nil, err
 	}
-	share = entity.(*model.Share)
 
 	response := newResponse()
 	response.Shares = &responses.Shares{Share: []responses.Share{api.buildShare(r, *share)}}

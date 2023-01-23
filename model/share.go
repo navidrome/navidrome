@@ -20,11 +20,13 @@ type Share struct {
 	CreatedAt     time.Time  `structs:"created_at" json:"createdAt,omitempty"`
 	UpdatedAt     time.Time  `structs:"updated_at" json:"updatedAt,omitempty"`
 	Tracks        MediaFiles `structs:"-" json:"tracks,omitempty"      orm:"-"`
+	Albums        Albums     `structs:"-" json:"albums,omitempty"      orm:"-"`
 }
 
 type Shares []Share
 
 type ShareRepository interface {
 	Exists(id string) (bool, error)
+	Get(id string) (*Share, error)
 	GetAll(options ...QueryOptions) (Shares, error)
 }
