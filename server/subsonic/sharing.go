@@ -73,3 +73,42 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 	response.Shares = &responses.Shares{Share: []responses.Share{api.buildShare(r, *share)}}
 	return response, nil
 }
+
+func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
+	id := utils.ParamString(r, "id")
+	if id == "" {
+		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	}
+
+	description := utils.ParamString(r, "description")
+	expires := utils.ParamTime(r, "expires", time.Time{})
+
+	repo := api.share.NewRepository(r.Context())
+	share := &model.Share{
+		ID:          id,
+		Description: description,
+		ExpiresAt:   expires,
+	}
+
+	err := repo.(rest.Persistable).Update(id, share)
+	if err != nil {
+		return nil, err
+	}
+
+	return newResponse(), nil
+}
+
+func (api *Router) DeleteShare(r *http.Request) (*responses.Subsonic, error) {
+	id := utils.ParamString(r, "id")
+	if id == "" {
+		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	}
+
+	repo := api.share.NewRepository(r.Context())
+	err := repo.(rest.Persistable).Delete(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return newResponse(), nil
+}

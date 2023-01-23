@@ -42,7 +42,7 @@ func ParamTimes(r *http.Request, param string) []time.Time {
 
 func ParamTime(r *http.Request, param string, def time.Time) time.Time {
 	v := ParamString(r, param)
-	if v == "" {
+	if v == "" || v == "-1" {
 		return def
 	}
 	value, err := strconv.ParseInt(v, 10, 64)
