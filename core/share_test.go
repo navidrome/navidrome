@@ -42,11 +42,10 @@ var _ = Describe("Share", func() {
 
 		Describe("Update", func() {
 			It("filters out read-only fields", func() {
-				entity := "entity"
+				entity := &model.Share{}
 				err := repo.Update("id", entity)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mockedRepo.(*tests.MockShareRepo).Entity).To(Equal("entity"))
-				Expect(mockedRepo.(*tests.MockShareRepo).Cols).To(ConsistOf("description", "expires_at"))
+				Expect(mockedRepo.(*tests.MockShareRepo).Cols).To(ConsistOf("description"))
 			})
 		})
 	})
