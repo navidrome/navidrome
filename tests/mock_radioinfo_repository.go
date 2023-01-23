@@ -56,6 +56,18 @@ func (m *MockedRadioInfoRepo) Get(id string) (*model.RadioInfo, error) {
 	return nil, model.ErrNotFound
 }
 
+func (m *MockedRadioInfoRepo) GetAllIds() (map[string]bool, error) {
+	if m.err {
+		return nil, errors.New("error")
+	}
+
+	all := map[string]bool{}
+	for _, g := range m.data {
+		all[g.ID] = true
+	}
+	return all, nil
+}
+
 func (m *MockedRadioInfoRepo) Insert(model *model.RadioInfo) error {
 	if m.err {
 		return errors.New("error")
@@ -64,12 +76,15 @@ func (m *MockedRadioInfoRepo) Insert(model *model.RadioInfo) error {
 	return nil
 }
 
-func (m *MockedRadioInfoRepo) Purge() error {
+func (m *MockedRadioInfoRepo) DeleteMany(ids []string) error {
 	if m.err {
 		return errors.New("error")
 	}
 
-	m.data = make(map[string]*model.RadioInfo)
+	for _, id := range ids {
+		delete(m.data, id)
+	}
+
 	return nil
 }
 

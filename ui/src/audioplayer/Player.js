@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
 import {
+  Confirm,
   createMuiTheme,
   useAuthState,
   useDataProvider,
@@ -63,6 +64,7 @@ const Player = () => {
   const gainInfo = useSelector((state) => state.replayGain)
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
+  const [errorUrl, setErrorUrl] = useState(undefined)
 
   useEffect(() => {
     if (
@@ -291,6 +293,12 @@ const Player = () => {
     [dispatch, dataProvider]
   )
 
+  const onAudioError = (error, id, list, info) => {
+    if (info.isRadio) {
+      setErrorUrl(info.musicSrc)
+    }
+  }
+
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
     if (mode === 'full' && audioInfo?.song?.albumId) {
       window.location.href = `#/album/${audioInfo.song.albumId}/show`
@@ -319,11 +327,18 @@ const Player = () => {
     }
   }, [isMobilePlayer, audioInstance])
 
+  const handleConfirm = () => {
+    window.open(errorUrl, '_blank')
+    setErrorUrl(undefined)
+  }
+  const handleClose = () => setErrorUrl(undefined)
+
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
         {...options}
         className={classes.player}
+        onAudioError={onAudioError}
         onAudioListsChange={onAudioListsChange}
         onAudioVolumeChange={onAudioVolumeChange}
         onAudioProgress={onAudioProgress}
@@ -336,6 +351,13 @@ const Player = () => {
         getAudioInstance={setAudioInstance}
       />
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
+      <Confirm
+        isOpen={errorUrl !== undefined}
+        title="message.radioErrorTitle"
+        content="message.radioErrorBody"
+        onConfirm={handleConfirm}
+        onClose={handleClose}
+      />
     </ThemeProvider>
   )
 }

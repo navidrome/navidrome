@@ -23,8 +23,10 @@ type RadioInfos []RadioInfo
 type RadioInfoRepository interface {
 	ResourceRepository
 	CountAll(options ...QueryOptions) (int64, error)
+	DeleteMany(id []string) error
 	Get(id string) (*RadioInfo, error)
 	GetAll(options ...QueryOptions) (RadioInfos, error)
+	GetAllIds() (map[string]bool, error)
 	Insert(m *RadioInfo) error
-	Purge() error
+	Update(m *RadioInfo) error
 }

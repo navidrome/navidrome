@@ -1,9 +1,8 @@
-import { Box, Card, makeStyles } from '@material-ui/core'
+import { Card, makeStyles } from '@material-ui/core'
 import React, { useCallback, useState } from 'react'
 import {
   DateField,
   EditContextProvider,
-  NumberInput,
   required,
   SaveButton,
   SimpleForm,
@@ -16,6 +15,7 @@ import {
 } from 'react-admin'
 import DeleteRadioButton from './DeleteRadioButton'
 import { FaviconHandler } from './FaviconHandler'
+import { QualityRow } from './QualityRow'
 
 const useStyles = makeStyles({
   toolbar: {
@@ -129,19 +129,7 @@ const RadioEditLayout = ({
               setLoading={setLoading}
             />
             <TextInput type="text" source="tags" fullWidth />
-            <Box display="flex" width="100% !important">
-              <Box flex={1} mr="0.5em">
-                <TextInput source="codec" fullWidth variant="outlined" />
-              </Box>
-              <Box flex={1} mr="0.5em">
-                <NumberInput
-                  min={0}
-                  source="bitrate"
-                  fullWidth
-                  variant="outlined"
-                />
-              </Box>
-            </Box>
+            <QualityRow />
             <DateField variant="body1" source="updatedAt" showTime />
             <DateField variant="body1" source="createdAt" showTime />
           </SimpleForm>

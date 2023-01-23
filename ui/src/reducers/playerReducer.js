@@ -27,6 +27,7 @@ const mapToAudioLists = (item) => {
   if (item.isRadio) {
     return {
       trackId,
+      infoId: item.infoId,
       uuid: uuidv4(),
       name: item.name,
       song: item,

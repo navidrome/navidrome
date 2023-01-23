@@ -14,6 +14,7 @@ import (
 const (
 	fetchAgentTimeout = 100000000000000 // 100s
 	minTimeToRefresh  = 24 * time.Hour
+	maxQueryVariables = 1000 // You can go higher than this, but just a precaution
 )
 
 type RadioBrowserAgent struct {
@@ -54,14 +55,14 @@ func (r *RadioBrowserAgent) GetRadioInfo(ctx context.Context) error {
 		return err
 	}
 	return r.ds.WithTx(func(tx model.DataStore) error {
-		err := r.ds.RadioInfo(ctx).Purge()
+		existing, err := r.ds.RadioInfo(ctx).GetAllIds()
 
 		if err != nil {
 			return err
 		}
 
 		for _, radio := range *radios {
-			err = r.ds.RadioInfo(ctx).Insert(&model.RadioInfo{
+			model := &model.RadioInfo{
 				ID:       radio.StationID,
 				Name:     radio.Name,
 				Url:      radio.Url,
@@ -74,8 +75,37 @@ func (r *RadioBrowserAgent) GetRadioInfo(ctx context.Context) error {
 					Codec:       radio.Codec,
 					Bitrate:     radio.Bitrate,
 				},
-			})
+			}
+			_, ok := existing[model.ID]
 
+			if ok {
+				err = r.ds.RadioInfo(ctx).Update(model)
+				delete(existing, radio.ID)
+			} else {
+				err = r.ds.RadioInfo(ctx).Insert(model)
+			}
+
+			if err != nil {
+				return err
+			}
+		}
+
+		toDelete := []string{}
+
+		for id := range existing {
+			toDelete = append(toDelete, id)
+			if len(toDelete) == maxQueryVariables {
+				err := r.ds.RadioInfo(ctx).DeleteMany(toDelete)
+				if err != nil {
+					return err
+				}
+
+				toDelete = []string{}
+			}
+		}
+
+		if len(toDelete) != 0 {
+			err := r.ds.RadioInfo(ctx).DeleteMany(toDelete)
 			if err != nil {
 				return err
 			}

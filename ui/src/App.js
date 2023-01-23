@@ -108,7 +108,7 @@ const Admin = (props) => {
           {...(permissions === 'admin' ? radio.admin : radio.all)}
         />,
         permissions === 'admin' ? (
-          <Resource name="radioInfo" {...radioInfo} options={{ subMenu: '' }} />
+          <Resource name="radioInfo" {...radioInfo} />
         ) : undefined,
         <Resource
           name="playlist"

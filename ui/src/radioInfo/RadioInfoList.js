@@ -43,6 +43,7 @@ const RadioInfoFilter = (props) => {
       <TextInput id="tag" source="tags" />
       <BooleanInput source="https" />
       <BooleanInput source="existing" />
+      <TextInput id="id" source="id" />
     </Filter>
   )
 }
@@ -79,11 +80,12 @@ const TagField = (props) => {
   const translate = useTranslate()
   const [showAll, setShowAll] = useState(false)
   const record = useRecordContext(props)
-  const tags = record.tags
 
-  if (!record || !tags) {
+  if (!record || !record.tags) {
     return <span></span>
   }
+
+  const tags = record.tags
 
   const tagList = tags.split(',')
   const isLong = tagList.length > BASE_TAGS_TO_SHOW
@@ -185,16 +187,19 @@ export const RadioInfoList = (props) => {
 
   const handleRowClick = async (
     id,
-    basePath,
-    { favicon, homepage, url, name }
+    _basePath,
+    { bitrate, codec, favicon, homepage, url, name }
   ) => {
     dispatch(
       setTrack(
         await songFromRadio({
+          bitRate: bitrate,
           favicon,
           homePageUrl: homepage,
+          infoId: id,
           name,
           streamUrl: url,
+          suffix: codec,
         })
       )
     )

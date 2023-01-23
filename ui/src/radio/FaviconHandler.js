@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import { ImageField, Loading, TextInput } from 'react-admin'
 
 export const FaviconHandler = ({
+  basePath,
   favicon,
   loading,
   setFavicon,

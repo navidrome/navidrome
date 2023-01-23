@@ -22,15 +22,22 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
     trackGain: song.rgTrackGain,
   }
 
+  let link
+
+  if (audioInfo.isRadio) {
+    if (audioInfo.infoId) {
+      const display = JSON.stringify({ id: true })
+      const filter = JSON.stringify({ id: audioInfo.infoId })
+      link = `/radioInfo?${display}=${display}&filter=${filter}&page=1`
+    } else {
+      link = `/radio/${audioInfo.trackId}/show`
+    }
+  } else {
+    link = `/album/${song.albumId}/show`
+  }
+
   return (
-    <Link
-      to={
-        audioInfo.isRadio
-          ? `/radio/${audioInfo.trackId}/show`
-          : `/album/${song.albumId}/show`
-      }
-      className={className}
-    >
+    <Link to={link} className={className}>
       <span>
         <span className={clsx(classes.songTitle, 'songTitle')}>
           {song.title}

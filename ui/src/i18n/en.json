@@ -369,7 +369,9 @@
             "musicbrainz": "Open in MusicBrainz"
         },
         "lastfmLink": "Read More...",
-        "originalFormat": "Download in original format"
+        "originalFormat": "Download in original format",
+        "radioErrorBody": "Internet radio stream cannot be played in the Navidrome webapp. Open in a new page?",
+        "radioErrorTitle": "Error playing internet radio"
     },
     "menu": {
         "library": "Library",

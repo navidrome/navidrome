@@ -27,6 +27,7 @@ func NewRadioInfoRepository(ctx context.Context, o orm.QueryExecutor) model.Radi
 	r.filterMappings = map[string]filterFunc{
 		"country":  countryFilter,
 		"existing": existsFilter,
+		"id":       idFilter(r.tableName),
 		"https":    httpsFilter,
 		"name":     nameFilter,
 		"tags":     tagsFilter,
@@ -114,8 +115,35 @@ func (r *radioInfoRepository) GetAll(options ...model.QueryOptions) (model.Radio
 	return res, err
 }
 
-func (r *radioInfoRepository) Purge() error {
-	query := Delete(r.tableName)
+func (r *radioInfoRepository) GetAllIds() (map[string]bool, error) {
+	sel := r.newSelect().Columns("id").OrderBy("id")
+	res := []string{}
+	err := r.queryAll(sel, &res)
+
+	if err != nil {
+		return nil, err
+	}
+
+	mapping := map[string]bool{}
+
+	for _, key := range res {
+		mapping[key] = true
+	}
+	return mapping, nil
+}
+
+func (r *radioInfoRepository) Update(m *model.RadioInfo) error {
+	radioMap, _ := toSqlArgs(*m, m.BaseRadioInfo)
+
+	delete(radioMap, "existing")
+
+	sql := Update(r.tableName).SetMap(radioMap).Where(Eq{"id": m.ID})
+	_, err := r.executeSQL(sql)
+	return err
+}
+
+func (r *radioInfoRepository) DeleteMany(id []string) error {
+	query := Delete(r.tableName).Where(Eq{"id": id})
 	_, err := r.executeSQL(query)
 	return err
 }

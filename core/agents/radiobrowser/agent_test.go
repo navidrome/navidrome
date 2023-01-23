@@ -40,10 +40,6 @@ var _ = Describe("RadioBrowserAgent", func() {
 			agent.client = client
 		})
 
-		AfterEach(func() {
-			_ = ds.RadioInfo(ctx).Purge()
-		})
-
 		It("Updates the database", func() {
 			f, _ := os.Open("tests/fixtures/radiobrowser.stations.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}

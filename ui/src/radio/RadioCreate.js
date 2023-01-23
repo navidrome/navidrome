@@ -1,8 +1,7 @@
-import { Box, makeStyles } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core'
 import React, { useCallback, useState } from 'react'
 import {
   Create,
-  NumberInput,
   required,
   SaveButton,
   SimpleForm,
@@ -15,6 +14,7 @@ import {
 } from 'react-admin'
 import { Title } from '../common'
 import { FaviconHandler } from './FaviconHandler'
+import { QualityRow } from './QualityRow'
 
 const useStyles = makeStyles({
   hidden: {
@@ -24,7 +24,7 @@ const useStyles = makeStyles({
 
 const RadioCreateToolbar = (props) => (
   <Toolbar {...props}>
-    <SaveButton disabled={props.invalid || props.loading} />
+    <SaveButton disabled={props.invalid || props.isloading === 'true'} />
   </Toolbar>
 )
 
@@ -75,7 +75,7 @@ const RadioCreate = (props) => {
       <SimpleForm
         save={save}
         variant="outlined"
-        toolbar={<RadioCreateToolbar loading={loading} />}
+        toolbar={<RadioCreateToolbar isloading={loading.toString()} />}
       >
         <TextInput source="name" validate={[required()]} fullWidth />
         <TextInput
@@ -92,19 +92,7 @@ const RadioCreate = (props) => {
           setLoading={setLoading}
         />
         <TextInput source="tags" fullWidth />
-        <Box display="flex" width="100% !important">
-          <Box flex={1} mr="0.5em">
-            <TextInput source="codec" fullWidth variant="outlined" />
-          </Box>
-          <Box flex={1} mr="0.5em">
-            <NumberInput
-              min={0}
-              source="bitrate"
-              fullWidth
-              variant="outlined"
-            />
-          </Box>
-        </Box>
+        <QualityRow />
         <TextInput
           className={styles.hidden}
           source="radioInfoId"

@@ -18,6 +18,14 @@ export async function songFromRadio(radio) {
     cover = url.toString()
   } catch {}
 
+  if (radio.codec) {
+    radio.suffix = radio.codec
+  }
+
+  if (radio.bitrate) {
+    radio.bitRate = radio.bitrate
+  }
+
   return {
     ...radio,
     title: radio.name,
