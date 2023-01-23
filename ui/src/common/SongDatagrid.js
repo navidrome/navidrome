@@ -119,7 +119,7 @@ export const SongDatagridRow = ({
     () => ({
       type: DraggableTypes.DISC,
       item: {
-        discs: [{ albumId: record?.albumId, releaseYear: record?.releaseYear, discNumber: record?.discNumber }],
+        discs: [{ albumId: record?.albumId, releaseYear: record?.releaseYear, releaseDate: record?.releaseDate, discNumber: record?.discNumber }],
       },
       options: { dropEffect: 'copy' },
     }),
@@ -188,7 +188,7 @@ const SongDatagridBody = ({
 
   const playDisc = useCallback(
     (releaseYear, discNumber) => {
-      const idsToPlay = ids.filter((id) => (data[id].releaseYear === releaseYear && data[id].discNumber === discNumber))
+      const idsToPlay = ids.filter((id) => (data[id].releaseYear === releaseYear && data[id].releaseDate === releaseDate && data[id].discNumber === discNumber))
       dispatch(playTracks(data, idsToPlay))
     },
     [dispatch, data, ids]
@@ -208,7 +208,8 @@ const SongDatagridBody = ({
           if (
             acc.length === 0 ||
             (last && data[id].discNumber !== data[last].discNumber) ||
-            (last && data[id].releaseYear !== data[last].releaseYear)
+            (last && data[id].releaseYear !== data[last].releaseYear) ||
+            (last && data[id].releaseDate !== data[last].releaseDate) ||
           ) {
             acc.push(id)
           }
