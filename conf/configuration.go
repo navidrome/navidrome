@@ -66,6 +66,7 @@ type configOptions struct {
 	ReverseProxyWhitelist        string
 	Prometheus                   prometheusOptions
 	Scanner                      scannerOptions
+	Jukebox                      jukeboxOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -112,6 +113,14 @@ type listenBrainzOptions struct {
 type prometheusOptions struct {
 	Enabled     bool
 	MetricsPath string
+}
+
+type DeviceDefinition []string
+
+type jukeboxOptions struct {
+	Enabled bool
+	Devices []DeviceDefinition
+	Default string
 }
 
 var (
@@ -263,6 +272,10 @@ func init() {
 
 	viper.SetDefault("prometheus.enabled", false)
 	viper.SetDefault("prometheus.metricspath", "/metrics")
+
+	viper.SetDefault("jukebox.enabled", false)
+	viper.SetDefault("jukebox.devices", []DeviceDefinition{})
+	viper.SetDefault("jukebox.default", "")
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
