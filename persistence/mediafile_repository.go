@@ -26,8 +26,8 @@ func NewMediaFileRepository(ctx context.Context, o orm.QueryExecutor) *mediaFile
 	r.ormer = o
 	r.tableName = "media_file"
 	r.sortMappings = map[string]string{
-		"artist": "order_artist_name asc, order_album_name asc, release_year asc, disc_number asc, track_number asc",
-		"album":  "order_album_name asc, release_year asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
+		"artist": "order_artist_name asc, order_album_name asc, release_year asc, release_date asc, disc_number asc, track_number asc",
+		"album":  "order_album_name asc, release_year asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
 		"random": "RANDOM()",
 	}
 	r.filterMappings = map[string]filterFunc{
