@@ -32,7 +32,9 @@ type MediaFile struct {
 	DiscNumber           int       `structs:"disc_number" json:"discNumber"`
 	DiscSubtitle         string    `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
 	Year                 int       `structs:"year" json:"year"`
+	Date				 time.Time `structs:"date" json:"date,omitempty"`
 	ReleaseYear          int       `structs:"release_year" json:"releaseYear,omitempty"`
+	ReleaseDate          time.Time `structs:"release_date" json:"releaseDate,omitempty"`
 	Size                 int64     `structs:"size" json:"size"`
 	Suffix               string    `structs:"suffix" json:"suffix"`
 	Duration             float32   `structs:"duration" json:"duration"`
@@ -104,6 +106,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	var songArtistIds []string
 	var mbzAlbumIds []string
 	var comments []string
+	var dates []time.Time
+	var releaseDates []time.Time
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs on an album
 		a.ID = m.AlbumID
@@ -125,6 +129,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 		if !conf.Server.Scanner.GroupAlbumEditions {
 			a.MinReleaseYear = m.ReleaseYear
 			a.MaxReleaseYear = m.ReleaseYear
+			a.ReleaseDate = m.ReleaseDate
 		}
 
 		// Calculated attributes based on aggregations
@@ -144,6 +149,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 			}
 			a.MaxReleaseYear = number.Max(a.MaxReleaseYear, m.ReleaseYear)
 		}
+		dates = append(dates, m.Date)
+		releaseDates = append(releaseDates, m.ReleaseDate)
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
 		a.Genres = append(a.Genres, m.Genres...)
@@ -159,6 +166,19 @@ func (mfs MediaFiles) ToAlbum() Album {
 			a.EmbedArtPath = m.Path
 		}
 	}
+
+	dates = slices.Compact(dates)
+	if len(dates) == 1 {
+		a.Date = dates[0]
+	}
+
+	if conf.Server.Scanner.GroupAlbumEditions {
+		releaseDates = slices.Compact(releaseDates)
+			if len(releaseDates) == 1 {
+			a.ReleaseDate = releaseDates[0]
+		}
+	}
+
 	comments = slices.Compact(comments)
 	if len(comments) == 1 {
 		a.Comment = comments[0]
