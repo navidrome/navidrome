@@ -10,7 +10,6 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -31,11 +30,10 @@ type shareService struct {
 
 func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error) {
 	repo := s.ds.Share(ctx)
-	entity, err := repo.(rest.Repository).Read(id)
+	share, err := repo.Get(id)
 	if err != nil {
 		return nil, err
 	}
-	share := entity.(*model.Share)
 	if !share.ExpiresAt.IsZero() && share.ExpiresAt.Before(time.Now()) {
 		return nil, model.ErrNotAvailable
 	}
@@ -46,35 +44,7 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 	if err != nil {
 		log.Warn(ctx, "Could not increment visit count for share", "share", share.ID)
 	}
-
-	idList := strings.Split(share.ResourceIDs, ",")
-	var mfs model.MediaFiles
-	switch share.ResourceType {
-	case "album":
-		mfs, err = s.loadMediafiles(ctx, squirrel.Eq{"album_id": idList}, "album")
-	case "playlist":
-		mfs, err = s.loadPlaylistTracks(ctx, share.ResourceIDs)
-	}
-	if err != nil {
-		return nil, err
-	}
-	share.Tracks = mfs
-	return entity.(*model.Share), nil
-}
-
-func (s *shareService) loadMediafiles(ctx context.Context, filter squirrel.Eq, sort string) (model.MediaFiles, error) {
-	return s.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: filter, Sort: sort})
-}
-
-func (s *shareService) loadPlaylistTracks(ctx context.Context, id string) (model.MediaFiles, error) {
-	// Create a context with a fake admin user, to be able to access playlists
-	ctx = request.WithUser(ctx, model.User{IsAdmin: true})
-
-	tracks, err := s.ds.Playlist(ctx).Tracks(id, true).GetAll(model.QueryOptions{Sort: "id"})
-	if err != nil {
-		return nil, err
-	}
-	return tracks.MediaFiles(), nil
+	return share, nil
 }
 
 func (s *shareService) NewRepository(ctx context.Context) rest.Repository {
