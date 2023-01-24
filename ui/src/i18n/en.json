@@ -1,3 +1,4 @@
+
 {
     "languageName": "English",
     "resources": {
@@ -189,9 +190,11 @@
                 "url": "URL",
                 "description": "Description",
                 "contents": "Contents",
-                "expiresAt": "Expires at",
-                "lastVisitedAt": "Last Visited at",
+                "expiresAt": "Expires",
+                "lastVisitedAt": "Last Visited",
                 "visitCount": "Visits",
+                "format": "Format",
+                "maxBitRate": "Max. Bit Rate",
                 "updatedAt": "Updated at",
                 "createdAt": "Created at"
             },
