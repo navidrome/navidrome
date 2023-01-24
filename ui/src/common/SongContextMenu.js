@@ -14,6 +14,7 @@ import {
   openExtendedInfoDialog,
   openDownloadMenu,
   DOWNLOAD_MENU_SONG,
+  openShareMenu,
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
@@ -63,11 +64,16 @@ export const SongContextMenu = ({
           })
         ),
     },
+    share: {
+      enabled: config.devEnableShare,
+      label: translate('ra.action.share'),
+      action: (record) => {
+        dispatch(openShareMenu([record.id], 'song', record.title))
+      },
+    },
     download: {
       enabled: config.enableDownloads,
-      label: `${translate('resources.song.actions.download')} (${formatBytes(
-        record.size
-      )})`,
+      label: `${translate('ra.action.download')} (${formatBytes(record.size)})`,
       action: (record) => {
         dispatch(openDownloadMenu(record, DOWNLOAD_MENU_SONG))
       },
