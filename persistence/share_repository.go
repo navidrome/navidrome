@@ -101,11 +101,26 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		return nil
 	case "media_file":
 		mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
-		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: Eq{"id": ids}})
+		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: Eq{"id": ids}})
+		share.Tracks = sortByIdPosition(tracks, ids)
 		return err
 	}
 	log.Warn(r.ctx, "Unsupported Share ResourceType", "share", share.ID, "resourceType", share.ResourceType)
 	return nil
+}
+
+func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
+	m := map[string]int{}
+	for i, mf := range mfs {
+		m[mf.ID] = i
+	}
+	var sorted model.MediaFiles
+	for _, id := range ids {
+		if idx, ok := m[id]; ok {
+			sorted = append(sorted, mfs[idx])
+		}
+	}
+	return sorted
 }
 
 func (r *shareRepository) Update(id string, entity interface{}, cols ...string) error {
