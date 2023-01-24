@@ -150,7 +150,10 @@ func startPlaybackServer(ctx context.Context) func() error {
 	playbackInstance := playback.GetInstance()
 
 	return func() error {
-		playbackInstance.Run(ctx)
+		err := playbackInstance.Run(ctx)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 }

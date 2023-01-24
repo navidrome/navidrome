@@ -116,11 +116,11 @@ type prometheusOptions struct {
 	MetricsPath string
 }
 
-type DeviceDefinition []string
+type AudioDeviceDefinition []string
 
 type jukeboxOptions struct {
 	Enabled bool
-	Devices []DeviceDefinition
+	Devices []AudioDeviceDefinition
 	Default string
 }
 
@@ -275,7 +275,7 @@ func init() {
 	viper.SetDefault("prometheus.metricspath", "/metrics")
 
 	viper.SetDefault("jukebox.enabled", false)
-	viper.SetDefault("jukebox.devices", []DeviceDefinition{})
+	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
 	viper.SetDefault("jukebox.default", "")
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
