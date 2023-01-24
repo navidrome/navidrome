@@ -8,11 +8,13 @@ import {
   useDataProvider,
   useNotify,
 } from 'react-admin'
+import { useMediaQuery, makeStyles } from '@material-ui/core'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
+import ShareIcon from '@material-ui/icons/Share'
 import { httpClient } from '../dataProvider'
 import {
   playNext,
@@ -21,22 +23,26 @@ import {
   shuffleTracks,
   openDownloadMenu,
   DOWNLOAD_MENU_PLAY,
+  openShareMenu,
 } from '../actions'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
 import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
-import { useMediaQuery, makeStyles } from '@material-ui/core'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
-import { ShareDialog } from '../dialogs/ShareDialog'
-import { useDialog } from '../dialogs/useDialog'
-import ShareIcon from '@material-ui/icons/Share'
 
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
 })
 
-const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
+const PlaylistActions = ({
+  className,
+  ids,
+  data,
+  record,
+  resource,
+  ...rest
+}) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const classes = useStyles()
@@ -44,7 +50,6 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const notify = useNotify()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
-  const shareDialog = useDialog()
 
   const getAllSongsAndDispatch = React.useCallback(
     (action) => {
@@ -87,6 +92,10 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const handleShuffle = React.useCallback(() => {
     getAllSongsAndDispatch(shuffleTracks)
   }, [getAllSongsAndDispatch])
+
+  const handleShare = React.useCallback(() => {
+    dispatch(openShareMenu([record.id], resource, record.name))
+  }, [dispatch, record, resource])
 
   const handleDownload = React.useCallback(() => {
     dispatch(openDownloadMenu(record, DOWNLOAD_MENU_PLAY))
@@ -138,10 +147,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
             <RiPlayListAddFill />
           </Button>
           {config.devEnableShare && (
-            <Button
-              onClick={shareDialog.openDialog}
-              label={translate('ra.action.share')}
-            >
+            <Button onClick={handleShare} label={translate('ra.action.share')}>
               <ShareIcon />
             </Button>
           )}
@@ -165,12 +171,6 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
         </div>
         <div>{isNotSmall && <ToggleFieldsMenu resource="playlistTrack" />}</div>
       </div>
-      <ShareDialog
-        {...shareDialog.props}
-        ids={[record.id]}
-        resource={'playlist'}
-        name={record.name}
-      />
     </TopToolbar>
   )
 }

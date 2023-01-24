@@ -10,11 +10,11 @@ import { Link } from '@material-ui/core'
 import { DateField } from '../common'
 
 export const ShareEdit = (props) => {
-  const { id } = props
+  const { id, basePath, hasCreate, ...rest } = props
   const url = shareUrl(id)
   return (
     <Edit {...props}>
-      <SimpleForm>
+      <SimpleForm {...rest}>
         <Link source="URL" href={url} target="_blank" rel="noopener noreferrer">
           {url}
         </Link>
