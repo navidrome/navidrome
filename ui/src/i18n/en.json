@@ -238,6 +238,7 @@
             "add": "Add",
             "back": "Go Back",
             "bulk_actions": "1 item selected |||| %{smart_count} items selected",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "cancel": "Cancel",
             "clear_input_value": "Clear value",
             "clone": "Clone",
