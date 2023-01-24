@@ -78,6 +78,15 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		return nil
 	}
 	switch share.ResourceType {
+	case "artist":
+		albumRepo := NewAlbumRepository(r.ctx, r.ormer)
+		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: Eq{"album_artist_id": ids}, Sort: "artist"})
+		if err != nil {
+			return err
+		}
+		mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
+		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: Eq{"album_artist_id": ids}, Sort: "artist"})
+		return err
 	case "album":
 		albumRepo := NewAlbumRepository(r.ctx, r.ormer)
 		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: Eq{"id": ids}})

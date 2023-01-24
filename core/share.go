@@ -100,6 +100,9 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 		return "", err
 	}
 	switch v.(type) {
+	case *model.Artist:
+		s.ResourceType = "artist"
+		s.Contents = r.contentsLabelFromArtist(s.ID, s.ResourceIDs)
 	case *model.Album:
 		s.ResourceType = "album"
 		s.Contents = r.contentsLabelFromAlbums(s.ID, s.ResourceIDs)
@@ -131,6 +134,16 @@ func (r *shareRepositoryWrapper) Update(id string, entity interface{}, _ ...stri
 	return r.Persistable.Update(id, entity, cols...)
 }
 
+func (r *shareRepositoryWrapper) contentsLabelFromArtist(shareID string, ids string) string {
+	idList := strings.SplitN(ids, ",", 2)
+	a, err := r.ds.Artist(r.ctx).Get(idList[0])
+	if err != nil {
+		log.Error(r.ctx, "Error retrieving artist name for share", "share", shareID, err)
+		return ""
+	}
+	return a.Name
+}
+
 func (r *shareRepositoryWrapper) contentsLabelFromAlbums(shareID string, ids string) string {
 	idList := strings.Split(ids, ",")
 	all, err := r.ds.Album(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": idList}})
@@ -156,6 +169,10 @@ func (r *shareRepositoryWrapper) contentsLabelFromMediaFiles(shareID string, ids
 	if err != nil {
 		log.Error(r.ctx, "Error retrieving media files for share", "share", shareID, err)
 		return ""
+	}
+
+	if len(mfs) == 1 {
+		return mfs[0].Title
 	}
 
 	albums := slice.Group(mfs, func(mf model.MediaFile) string {
