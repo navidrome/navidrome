@@ -28,9 +28,7 @@ import {
   DateField,
   SizeField,
 } from '../common'
-import { AddToPlaylistDialog } from '../dialogs'
 import config from '../config'
-import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles(
@@ -189,8 +187,6 @@ const AlbumSongs = (props) => {
           </SongDatagrid>
         </Card>
       </div>
-      <AddToPlaylistDialog />
-      <DownloadMenuDialog />
       <ExpandInfoDialog content={<SongInfo />} />
     </>
   )
