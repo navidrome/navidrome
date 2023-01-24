@@ -177,18 +177,35 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 }
 
 func (s mediaFileMapper) mapDate(md metadata.Tags) (int, time.Time) {
-	originalYear, _ := md.OriginalDate()
-	if  conf.Server.Scanner.UseOriginalDate {
-		if originalYear != 0 {
-			return 	md.OriginalDate()
+	originalYear, originalDate  := md.OriginalDate()
+	year, date 					:= md.Date()
+	zeroDate 					:= time.Time{}
+	dateAfterOriginalDate		:= false
+
+	if (date.After(zeroDate)) && (originalDate.After(zeroDate)) {
+		dateAfterOriginalDate = date.After(originalDate)
+	}
+
+	if (year > originalYear) || (dateAfterOriginalDate) {
+		if originalYear > 0 {
+			return md.OriginalDate()
 		}
 	}
-	return md.Date()
+	return 	md.Date()
 }
 
 func (s mediaFileMapper) mapReleaseDate(md metadata.Tags) (int, time.Time) {
-	if  conf.Server.Scanner.UseOriginalDate {
-		return md.Date()
+	year, date 					:= md.Date()
+	releaseYear, releaseDate	:= md.ReleaseDate()
+	zeroDate 					:= time.Time{}
+	dateAfterReleaseDate		:= false
+	
+	if (date.After(zeroDate)) && (releaseDate.After(zeroDate)) {
+		dateAfterReleaseDate = date.After(releaseDate)
+	}
+
+	if  (year > releaseYear) || (dateAfterReleaseDate) {
+			return md.Date()
 	}
 	return md.ReleaseDate()
 }
