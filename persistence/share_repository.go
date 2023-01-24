@@ -99,6 +99,10 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 			share.Tracks = tracks.MediaFiles()
 		}
 		return nil
+	case "media_file":
+		mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
+		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: Eq{"id": ids}})
+		return err
 	}
 	log.Warn(r.ctx, "Unsupported Share ResourceType", "share", share.ID, "resourceType", share.ResourceType)
 	return nil

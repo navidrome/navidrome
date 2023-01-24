@@ -94,8 +94,7 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 		s.ExpiresAt = time.Now().Add(365 * 24 * time.Hour)
 	}
 
-	// TODO Validate all ids
-	firstId := strings.SplitN(s.ResourceIDs, ",", 1)[0]
+	firstId := strings.SplitN(s.ResourceIDs, ",", 2)[0]
 	v, err := model.GetEntityByID(r.ctx, r.ds, firstId)
 	if err != nil {
 		return "", err
@@ -107,10 +106,11 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	case *model.Playlist:
 		s.ResourceType = "playlist"
 		s.Contents = r.shareContentsFromPlaylist(s.ID, s.ResourceIDs)
-	case *model.Artist:
-		s.ResourceType = "artist"
 	case *model.MediaFile:
-		s.ResourceType = "song"
+		s.ResourceType = "media_file"
+	default:
+		log.Error(r.ctx, "Invalid Resource ID", "id", firstId)
+		return "", model.ErrNotFound
 	}
 
 	id, err = r.Persistable.Save(s)
