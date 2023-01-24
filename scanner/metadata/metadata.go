@@ -198,7 +198,9 @@ func (t Tags) getDate(tagNames ...string) (int, time.Time) {
 	// now try the month + day
 	matchMonthDay := dateRegexMonthDay.FindStringSubmatch(tag)
 	if len(matchMonthDay) == 0 {
-		log.Warn("Error parsing date field for month + day: maybe tag has only a year?", "file", t.filePath, "date", tag)
+		if len(tag) > 4 {
+			log.Warn("Error parsing date field for month + day", "file", t.filePath, "date", tag)
+		}
 		return year, time.Time{}
 	}
 	month, _ := strconv.Atoi(matchMonthDay[1])
