@@ -38,6 +38,9 @@ func (api *Router) buildShare(r *http.Request, share model.Share) responses.Shar
 		LastVisited: share.LastVisitedAt,
 		VisitCount:  share.VisitCount,
 	}
+	if resp.Description == "" {
+		resp.Description = share.Contents
+	}
 	if len(share.Albums) > 0 {
 		resp.Entry = childrenFromAlbums(r.Context(), share.Albums)
 	} else {
