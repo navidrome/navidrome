@@ -2,9 +2,6 @@
 const musicListActions = {
   alignItems: 'center',
   '@global': {
-    button: {
-      margin: 5,
-    },
     'button:first-child:not(:only-child)': {
       '@media screen and (max-width: 720px)': {
         transform: 'scale(1.5)',

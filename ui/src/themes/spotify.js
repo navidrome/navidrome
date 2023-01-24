@@ -10,7 +10,6 @@ const musicListActions = {
   alignItems: 'center',
   '@global': {
     button: {
-      margin: 5,
       border: '1px solid transparent',
       backgroundColor: 'inherit',
       color: '#b3b3b3',
