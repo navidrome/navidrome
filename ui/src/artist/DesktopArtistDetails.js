@@ -8,10 +8,8 @@ import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
 import { ArtistContextMenu, RatingField } from '../common'
 import Lightbox from 'react-image-lightbox'
-import { AddToPlaylistDialog } from '../dialogs'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
-import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 import subsonic from '../subsonic'
 
 const useStyles = makeStyles(
@@ -152,8 +150,6 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
           />
         )}
       </Card>
-      <AddToPlaylistDialog />
-      <DownloadMenuDialog />
       <ExpandInfoDialog content={<AlbumInfo />} />
     </div>
   )

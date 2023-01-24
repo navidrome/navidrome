@@ -9,7 +9,6 @@ import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
 import inflection from 'inflection'
 import albumLists from '../album/albumLists'
-import { HelpDialog } from '../dialogs'
 import PlaylistsSubMenu from './PlaylistsSubMenu'
 import config from '../config'
 
@@ -139,7 +138,6 @@ const Menu = ({ dense = false }) => {
       ) : (
         resources.filter(subItems('playlist')).map(renderResourceMenuItemLink)
       )}
-      <HelpDialog />
     </div>
   )
 }
