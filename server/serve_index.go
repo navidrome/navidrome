@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"html/template"
 	"io"
@@ -80,8 +79,6 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			log.Trace(r, "Injecting config in index.html", "config", string(appConfigJson))
 		}
 
-		shareInfoJson := marshalShareData(r.Context(), shareInfo)
-
 		log.Debug("UI configuration", "appConfig", appConfig)
 		version := consts.Version
 		if version != "dev" {
@@ -89,9 +86,10 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 		}
 		data := map[string]interface{}{
 			"AppConfig": string(appConfigJson),
-			"ShareInfo": string(shareInfoJson),
 			"Version":   version,
 		}
+		addShareData(r, data, shareInfo)
+
 		w.Header().Set("Content-Type", "text/html")
 		err = t.Execute(w, data)
 		if err != nil {
@@ -134,14 +132,15 @@ type shareTrack struct {
 	Duration  float32   `json:"duration,omitempty"`
 }
 
-func marshalShareData(ctx context.Context, shareInfo *model.Share) []byte {
-	if shareInfo == nil {
-		return nil
+func addShareData(r *http.Request, data map[string]interface{}, shareInfo *model.Share) {
+	ctx := r.Context()
+	if shareInfo == nil || shareInfo.ID == "" {
+		return
 	}
-	data := shareData{
+	sd := shareData{
 		Description: shareInfo.Description,
 	}
-	data.Tracks = slice.Map(shareInfo.Tracks, func(mf model.MediaFile) shareTrack {
+	sd.Tracks = slice.Map(shareInfo.Tracks, func(mf model.MediaFile) shareTrack {
 		return shareTrack{
 			ID:        mf.ID,
 			Title:     mf.Title,
@@ -152,11 +151,19 @@ func marshalShareData(ctx context.Context, shareInfo *model.Share) []byte {
 		}
 	})
 
-	shareInfoJson, err := json.Marshal(data)
+	shareInfoJson, err := json.Marshal(sd)
 	if err != nil {
 		log.Error(ctx, "Error converting shareInfo to JSON", "config", shareInfo, err)
 	} else {
 		log.Trace(ctx, "Injecting shareInfo in index.html", "config", string(shareInfoJson))
 	}
-	return shareInfoJson
+
+	if shareInfo.Description != "" {
+		data["ShareDescription"] = shareInfo.Description
+	} else {
+		data["ShareDescription"] = shareInfo.Contents
+	}
+	data["ShareURL"] = shareInfo.URL
+	data["ShareImageURL"] = shareInfo.ImageURL
+	data["ShareInfo"] = string(shareInfoJson)
 }

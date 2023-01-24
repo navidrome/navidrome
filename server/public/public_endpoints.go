@@ -41,6 +41,7 @@ func (p *Router) routes() http.Handler {
 		if conf.Server.DevEnableShare {
 			r.HandleFunc("/s/{id}", p.handleStream)
 			r.HandleFunc("/{id}", p.handleShares)
+			r.HandleFunc("/", p.handleShares)
 			r.Handle("/*", p.assetsHandler)
 		}
 	})

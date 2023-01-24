@@ -1,7 +1,10 @@
 package model
 
 import (
+	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/utils/number"
 )
 
 type Share struct {
@@ -21,6 +24,25 @@ type Share struct {
 	UpdatedAt     time.Time  `structs:"updated_at" json:"updatedAt,omitempty"`
 	Tracks        MediaFiles `structs:"-" json:"tracks,omitempty"      orm:"-"`
 	Albums        Albums     `structs:"-" json:"albums,omitempty"      orm:"-"`
+	URL           string     `structs:"-" json:"-"      orm:"-"`
+	ImageURL      string     `structs:"-" json:"-"      orm:"-"`
+}
+
+func (s Share) CoverArtID() ArtworkID {
+	ids := strings.SplitN(s.ResourceIDs, ",", 2)
+	if len(ids) == 0 {
+		return ArtworkID{}
+	}
+	switch s.ResourceType {
+	case "album":
+		return Album{ID: ids[0]}.CoverArtID()
+	case "playlist":
+		return Playlist{ID: ids[0]}.CoverArtID()
+	case "artist":
+		return Artist{ID: ids[0]}.CoverArtID()
+	}
+	rnd := number.RandomInt64(int64(len(s.Tracks)))
+	return s.Tracks[rnd].CoverArtID()
 }
 
 type Shares []Share
