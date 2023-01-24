@@ -19,9 +19,13 @@ import { useDispatch, useSelector } from 'react-redux'
 import { closeShareMenu } from '../actions'
 
 export const ShareDialog = () => {
-  const { open, ids, resource, name } = useSelector(
-    (state) => state.shareDialog
-  )
+  const {
+    open,
+    ids,
+    resource,
+    name,
+    label = 'message.shareDialogTitle',
+  } = useSelector((state) => state.shareDialog)
   const dispatch = useDispatch()
   const notify = useNotify()
   const translate = useTranslate()
@@ -88,11 +92,12 @@ export const ShareDialog = () => {
     >
       <DialogTitle id="share-dialog">
         {resource &&
-          translate('message.shareDialogTitle', {
+          translate(label, {
             resource: translate(`resources.${resource}.name`, {
               smart_count: ids?.length,
             }).toLocaleLowerCase(),
             name,
+            smart_count: ids?.length,
           })}
       </DialogTitle>
       <DialogContent>
