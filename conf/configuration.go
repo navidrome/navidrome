@@ -87,7 +87,6 @@ type configOptions struct {
 type scannerOptions struct {
 	Extractor       	string
 	GenreSeparators 	string
-	UseOriginalDate         bool
 	GroupAlbumEditions      bool
 }
 
@@ -264,7 +263,6 @@ func init() {
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
-	viper.SetDefault("scanner.useoriginaldate", false)
 	viper.SetDefault("scanner.groupalbumeditions", true)
 
 	viper.SetDefault("agents", "lastfm,spotify")
