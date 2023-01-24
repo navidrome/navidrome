@@ -14,7 +14,7 @@ import (
 
 func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
 	repo := api.share.NewRepository(r.Context()).(model.ShareRepository)
-	shares, err := repo.GetAll()
+	shares, err := repo.GetAll(model.QueryOptions{Sort: "created_at desc"})
 	if err != nil {
 		return nil, err
 	}
