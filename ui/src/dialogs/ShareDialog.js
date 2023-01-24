@@ -12,7 +12,7 @@ import {
   useNotify,
   useTranslate,
 } from 'react-admin'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { shareUrl } from '../utils'
 import { useTranscodingOptions } from './useTranscodingOptions'
 import { useDispatch, useSelector } from 'react-redux'
@@ -26,6 +26,9 @@ export const ShareDialog = () => {
   const notify = useNotify()
   const translate = useTranslate()
   const [description, setDescription] = useState('')
+  useEffect(() => {
+    setDescription('')
+  }, [ids])
   const { TranscodingOptionsInput, format, maxBitRate, originalFormat } =
     useTranscodingOptions()
   const [createShare] = useCreate(
