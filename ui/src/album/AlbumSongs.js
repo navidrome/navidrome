@@ -145,6 +145,10 @@ const AlbumSongs = (props) => {
     defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate', 'size'],
   })
 
+  const bulkActionsLabel = isDesktop
+    ? 'ra.action.bulk_actions'
+    : 'ra.action.bulk_actions_mobile'
+
   return (
     <>
       <ListToolbar
@@ -159,7 +163,7 @@ const AlbumSongs = (props) => {
           })}
           key={version}
         >
-          <BulkActionsToolbar {...props}>
+          <BulkActionsToolbar {...props} label={bulkActionsLabel}>
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
