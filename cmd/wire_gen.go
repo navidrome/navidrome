@@ -60,7 +60,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
-	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, playlists, playTracker)
+	share := core.NewShare(dataStore)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, playlists, playTracker, share)
 	return router
 }
 
@@ -72,7 +73,10 @@ func CreatePublicRouter() *public.Router {
 	agentsAgents := agents.New(dataStore)
 	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
-	router := public.New(artworkArtwork)
+	transcodingCache := core.GetTranscodingCache()
+	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
+	share := core.NewShare(dataStore)
+	router := public.New(dataStore, artworkArtwork, mediaStreamer, share)
 	return router
 }
 

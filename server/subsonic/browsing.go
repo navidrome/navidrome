@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
@@ -256,9 +257,9 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
 	response.ArtistInfo.Biography = artist.Biography
-	response.ArtistInfo.SmallImageUrl = publicImageURL(r, artist.CoverArtID(), 160)
-	response.ArtistInfo.MediumImageUrl = publicImageURL(r, artist.CoverArtID(), 320)
-	response.ArtistInfo.LargeImageUrl = publicImageURL(r, artist.CoverArtID(), 0)
+	response.ArtistInfo.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 160)
+	response.ArtistInfo.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 320)
+	response.ArtistInfo.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 0)
 	response.ArtistInfo.LastFmUrl = artist.ExternalUrl
 	response.ArtistInfo.MusicBrainzID = artist.MbzArtistID
 	for _, s := range artist.SimilarArtists {

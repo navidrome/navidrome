@@ -35,7 +35,6 @@ func Init(ds model.DataStore) {
 func createBaseClaims() map[string]any {
 	tokenClaims := map[string]any{}
 	tokenClaims[jwt.IssuerKey] = consts.JWTIssuer
-	tokenClaims[jwt.IssuedAtKey] = time.Now().UTC().Unix()
 	return tokenClaims
 }
 
@@ -49,9 +48,23 @@ func CreatePublicToken(claims map[string]any) (string, error) {
 	return token, err
 }
 
+func CreateExpiringPublicToken(exp time.Time, claims map[string]any) (string, error) {
+	tokenClaims := createBaseClaims()
+	if !exp.IsZero() {
+		tokenClaims[jwt.ExpirationKey] = exp.UTC().Unix()
+	}
+	for k, v := range claims {
+		tokenClaims[k] = v
+	}
+	_, token, err := TokenAuth.Encode(tokenClaims)
+
+	return token, err
+}
+
 func CreateToken(u *model.User) (string, error) {
 	claims := createBaseClaims()
 	claims[jwt.SubjectKey] = u.UserName
+	claims[jwt.IssuedAtKey] = time.Now().UTC().Unix()
 	claims["uid"] = u.ID
 	claims["adm"] = u.IsAdmin
 	token, _, err := TokenAuth.Encode(claims)
