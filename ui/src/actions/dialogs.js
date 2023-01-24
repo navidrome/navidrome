@@ -15,11 +15,12 @@ export const DOWNLOAD_MENU_SONG = 'song'
 export const SHARE_MENU_OPEN = 'SHARE_MENU_OPEN'
 export const SHARE_MENU_CLOSE = 'SHARE_MENU_CLOSE'
 
-export const openShareMenu = (ids, resource, name) => ({
+export const openShareMenu = (ids, resource, name, label) => ({
   type: SHARE_MENU_OPEN,
   ids,
   resource,
   name,
+  label,
 })
 
 export const closeShareMenu = () => ({

@@ -26,7 +26,7 @@ export const shareDialogReducer = (
   },
   payload
 ) => {
-  const { type, ids, resource, name } = payload
+  const { type, ids, resource, name, label } = payload
   switch (type) {
     case SHARE_MENU_OPEN:
       return {
@@ -35,6 +35,7 @@ export const shareDialogReducer = (
         ids,
         resource,
         name,
+        label,
       }
     case SHARE_MENU_CLOSE:
       return {
