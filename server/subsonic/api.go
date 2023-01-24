@@ -127,12 +127,6 @@ func (api *Router) routes() http.Handler {
 		h(r, "savePlayQueue", api.SavePlayQueue)
 	})
 	r.Group(func(r chi.Router) {
-		h(r, "getShares", api.GetShares)
-		h(r, "createShare", api.CreateShare)
-		h(r, "updateShare", api.UpdateShare)
-		h(r, "deleteShare", api.DeleteShare)
-	})
-	r.Group(func(r chi.Router) {
 		r.Use(getPlayer(api.players))
 		h(r, "search2", api.Search2)
 		h(r, "search3", api.Search3)
@@ -169,6 +163,16 @@ func (api *Router) routes() http.Handler {
 		h(r, "getInternetRadioStations", api.GetInternetRadios)
 		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 	})
+	if conf.Server.DevEnableShare {
+		r.Group(func(r chi.Router) {
+			h(r, "getShares", api.GetShares)
+			h(r, "createShare", api.CreateShare)
+			h(r, "updateShare", api.UpdateShare)
+			h(r, "deleteShare", api.DeleteShare)
+		})
+	} else {
+		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
+	}
 
 	// Not Implemented (yet?)
 	h501(r, "jukeboxControl")
