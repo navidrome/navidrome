@@ -15,8 +15,14 @@ import {
 import { useState } from 'react'
 import { shareUrl } from '../utils'
 import { useTranscodingOptions } from './useTranscodingOptions'
+import { useDispatch, useSelector } from 'react-redux'
+import { closeShareMenu } from '../actions'
 
-export const ShareDialog = ({ open, onClose, ids, resource, name }) => {
+export const ShareDialog = () => {
+  const { open, ids, resource, name } = useSelector(
+    (state) => state.shareDialog
+  )
+  const dispatch = useDispatch()
   const notify = useNotify()
   const translate = useTranslate()
   const [description, setDescription] = useState('')
@@ -34,15 +40,10 @@ export const ShareDialog = ({ open, onClose, ids, resource, name }) => {
     {
       onSuccess: (res) => {
         const url = shareUrl(res?.data?.id)
-        onClose()
         navigator.clipboard
           .writeText(url)
           .then(() => {
-            notify(translate('message.shareSuccess', { url }), {
-              type: 'info',
-              multiLine: true,
-              duration: 0,
-            })
+            notify('message.shareSuccess', 'info', { url }, false, 0)
           })
           .catch((err) => {
             notify(
@@ -56,26 +57,40 @@ export const ShareDialog = ({ open, onClose, ids, resource, name }) => {
           })
       },
       onFailure: (error) =>
-        notify(`Error sharing media: ${error.message}`, { type: 'warning' }),
+        notify(translate('ra.page.error') + ': ' + error.message, {
+          type: 'warning',
+        }),
     }
   )
+
+  const handleShare = (e) => {
+    createShare()
+    dispatch(closeShareMenu())
+    e.stopPropagation()
+  }
+
+  const handleClose = (e) => {
+    dispatch(closeShareMenu())
+    e.stopPropagation()
+  }
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
-      onBackdropClick={onClose}
+      onClose={handleClose}
+      onBackdropClick={handleClose}
       aria-labelledby="share-dialog"
       fullWidth={true}
       maxWidth={'sm'}
     >
       <DialogTitle id="share-dialog">
-        {translate('message.shareDialogTitle', {
-          resource: translate(`resources.${resource}.name`, {
-            smart_count: ids?.length,
-          }).toLocaleLowerCase(),
-          name,
-        })}
+        {resource &&
+          translate('message.shareDialogTitle', {
+            resource: translate(`resources.${resource}.name`, {
+              smart_count: ids?.length,
+            }).toLocaleLowerCase(),
+            name,
+          })}
       </DialogTitle>
       <DialogContent>
         <SimpleForm toolbar={null} variant={'outlined'}>
@@ -93,11 +108,11 @@ export const ShareDialog = ({ open, onClose, ids, resource, name }) => {
         </SimpleForm>
       </DialogContent>
       <DialogActions>
-        <Button onClick={createShare} color="primary">
-          {translate('ra.action.share')}
-        </Button>
-        <Button onClick={onClose} color="primary">
+        <Button onClick={handleClose} color="primary">
           {translate('ra.action.close')}
+        </Button>
+        <Button onClick={handleShare} color="primary">
+          {translate('ra.action.share')}
         </Button>
       </DialogActions>
     </Dialog>
