@@ -379,7 +379,7 @@
         "shareSuccess": "URL copied to clipboard: %{url}",
         "shareFailure": "Error copying URL %{url} to clipboard",
         "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
-        "originalFormat": "Download in original format"
+        "downloadOriginalFormat": "Download in original format"
     },
     "menu": {
         "library": "Library",
