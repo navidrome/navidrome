@@ -63,11 +63,21 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		return nil, newError(responses.ErrorMissingParameter, "Unknown action: %s", actionString)
 	}
 
-	response := newResponse()
-	response.JukeboxStatus = &responses.JukeboxStatus{}
-	response.JukeboxStatus.CurrentIndex = 0
-	response.JukeboxStatus.Playing = false
-	response.JukeboxStatus.Gain = 0
-	response.JukeboxStatus.Position = 0
+	return handleJukeboxAction(action, r)
+}
+
+func handleJukeboxAction(action ActionType, r *http.Request) (*responses.Subsonic, error) {
+	response := createJukeboxStatus(0, false, 0, 0)
 	return response, nil
+}
+
+func createJukeboxStatus(currentIndex int64, playing bool, gain float64, position int64) *responses.Subsonic {
+	response := newResponse()
+	response.JukeboxStatus = &responses.JukeboxStatus{
+		CurrentIndex: currentIndex,
+		Playing:      playing,
+		Gain:         gain,
+		Position:     position,
+	}
+	return response
 }
