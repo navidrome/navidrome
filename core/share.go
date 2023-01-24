@@ -102,15 +102,19 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	switch v.(type) {
 	case *model.Album:
 		s.ResourceType = "album"
-		s.Contents = r.shareContentsFromAlbums(s.ID, s.ResourceIDs)
+		s.Contents = r.contentsLabelFromAlbums(s.ID, s.ResourceIDs)
 	case *model.Playlist:
 		s.ResourceType = "playlist"
-		s.Contents = r.shareContentsFromPlaylist(s.ID, s.ResourceIDs)
+		s.Contents = r.contentsLabelFromPlaylist(s.ID, s.ResourceIDs)
 	case *model.MediaFile:
 		s.ResourceType = "media_file"
+		s.Contents = r.contentsLabelFromMediaFiles(s.ID, s.ResourceIDs)
 	default:
 		log.Error(r.ctx, "Invalid Resource ID", "id", firstId)
 		return "", model.ErrNotFound
+	}
+	if len(s.Contents) > 30 {
+		s.Contents = s.Contents[:26] + "..."
 	}
 
 	id, err = r.Persistable.Save(s)
@@ -127,28 +131,49 @@ func (r *shareRepositoryWrapper) Update(id string, entity interface{}, _ ...stri
 	return r.Persistable.Update(id, entity, cols...)
 }
 
-func (r *shareRepositoryWrapper) shareContentsFromAlbums(shareID string, ids string) string {
-	all, err := r.ds.Album(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": ids}})
+func (r *shareRepositoryWrapper) contentsLabelFromAlbums(shareID string, ids string) string {
+	idList := strings.Split(ids, ",")
+	all, err := r.ds.Album(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": idList}})
 	if err != nil {
 		log.Error(r.ctx, "Error retrieving album names for share", "share", shareID, err)
 		return ""
 	}
 	names := slice.Map(all, func(a model.Album) string { return a.Name })
-	content := strings.Join(names, ", ")
-	if len(content) > 30 {
-		content = content[:26] + "..."
-	}
-	return content
+	return strings.Join(names, ", ")
 }
-func (r *shareRepositoryWrapper) shareContentsFromPlaylist(shareID string, id string) string {
+func (r *shareRepositoryWrapper) contentsLabelFromPlaylist(shareID string, id string) string {
 	pls, err := r.ds.Playlist(r.ctx).Get(id)
 	if err != nil {
 		log.Error(r.ctx, "Error retrieving album names for share", "share", shareID, err)
 		return ""
 	}
-	content := pls.Name
-	if len(content) > 30 {
-		content = content[:26] + "..."
+	return pls.Name
+}
+
+func (r *shareRepositoryWrapper) contentsLabelFromMediaFiles(shareID string, ids string) string {
+	idList := strings.Split(ids, ",")
+	mfs, err := r.ds.MediaFile(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": idList}})
+	if err != nil {
+		log.Error(r.ctx, "Error retrieving media files for share", "share", shareID, err)
+		return ""
 	}
-	return content
+
+	albums := slice.Group(mfs, func(mf model.MediaFile) string {
+		return mf.Album
+	})
+	if len(albums) == 1 {
+		for name := range albums {
+			return name
+		}
+	}
+	artists := slice.Group(mfs, func(mf model.MediaFile) string {
+		return mf.AlbumArtist
+	})
+	if len(artists) == 1 {
+		for name := range artists {
+			return name
+		}
+	}
+
+	return mfs[0].Title
 }
