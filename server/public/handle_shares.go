@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -41,17 +42,15 @@ func (p *Router) handleShares(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s = p.mapShareInfo(*s)
+	s = p.mapShareInfo(r, *s)
 	server.IndexWithShare(p.ds, ui.BuildAssets(), s)(w, r)
 }
 
-func (p *Router) mapShareInfo(s model.Share) *model.Share {
-	mapped := &model.Share{
-		Description: s.Description,
-		Tracks:      s.Tracks,
-	}
+func (p *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
+	s.URL = ShareURL(r, s.ID)
+	s.ImageURL = ImageURL(r, s.CoverArtID(), consts.UICoverArtSize)
 	for i := range s.Tracks {
-		mapped.Tracks[i].ID = encodeMediafileShare(s, s.Tracks[i].ID)
+		s.Tracks[i].ID = encodeMediafileShare(s, s.Tracks[i].ID)
 	}
-	return mapped
+	return &s
 }
