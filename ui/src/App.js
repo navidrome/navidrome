@@ -29,6 +29,7 @@ import {
   settingsReducer,
   replayGainReducer,
   downloadMenuDialogReducer,
+  shareDialogReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
@@ -60,6 +61,7 @@ const adminStore = createAdminStore({
     downloadMenuDialog: downloadMenuDialogReducer,
     expandInfoDialog: expandInfoDialogReducer,
     listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
+    shareDialog: shareDialogReducer,
     activity: activityReducer,
     settings: settingsReducer,
     replayGain: replayGainReducer,

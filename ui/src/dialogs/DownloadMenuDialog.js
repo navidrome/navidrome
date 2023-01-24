@@ -67,11 +67,11 @@ const DownloadMenuDialog = () => {
         </SimpleForm>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleDownload} color="primary">
-          {translate('ra.action.download')}
-        </Button>
         <Button onClick={handleClose} color="secondary">
           {translate('ra.action.close')}
+        </Button>
+        <Button onClick={handleDownload} color="primary">
+          {translate('ra.action.download')}
         </Button>
       </DialogActions>
     </Dialog>
