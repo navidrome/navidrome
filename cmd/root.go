@@ -10,6 +10,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
@@ -74,7 +75,7 @@ func runNavidrome() {
 	g.Go(schedulePeriodicScan(ctx))
 
 	if conf.Server.DevEnableJukebox {
-		g.Go(startJukeboxServer(ctx))
+		g.Go(startPlaybackServer(ctx))
 	}
 
 	if err := g.Wait(); err != nil && !errors.Is(err, interrupted) {
@@ -143,10 +144,13 @@ func startScheduler(ctx context.Context) func() error {
 	}
 }
 
-func startJukeboxServer(ctx context.Context) func() error {
-	log.Info(ctx, "Starting jukebox server")
+func startPlaybackServer(ctx context.Context) func() error {
+	log.Info(ctx, "Starting playback server")
+
+	playbackInstance := playback.GetInstance()
 
 	return func() error {
+		playbackInstance.Run(ctx)
 		return nil
 	}
 }
