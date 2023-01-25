@@ -22,7 +22,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/utils/gravatar"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -294,7 +293,7 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 			UserName:    username,
 			Name:        username,
 			Email:       "",
-			NewPassword: persistence.AutogenPrefix + uuid.NewString(),
+			NewPassword: consts.PasswordAutogenPrefix + uuid.NewString(),
 			IsAdmin:     false,
 		}
 		err := userRepo.Put(&newUser)

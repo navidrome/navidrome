@@ -20,8 +20,6 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
-const AutogenPrefix = "__NAVIDROME_AUTOGEN__"
-
 type userRepository struct {
 	sqlRepository
 	sqlRestful
@@ -216,7 +214,7 @@ func validatePasswordChange(newUser *model.User, logged *model.User) error {
 		err.Errors["password"] = "ra.validation.required"
 	}
 
-	if !strings.HasPrefix(logged.Password, AutogenPrefix) {
+	if !strings.HasPrefix(logged.Password, consts.PasswordAutogenPrefix) {
 		if newUser.CurrentPassword == "" {
 			err.Errors["currentPassword"] = "ra.validation.required"
 		}
