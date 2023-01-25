@@ -151,8 +151,10 @@ func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 	}
 	if hasError {
 		log.Error("Errors while scanning media. Please check the logs")
+		core.WriteAfterScanMetrics(ctx, s.ds, false)
 		return ErrScanError
 	}
+	core.WriteAfterScanMetrics(ctx, s.ds, true)
 	return nil
 }
 

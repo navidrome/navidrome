@@ -24,4 +24,5 @@ type PlayerRepository interface {
 	Get(id string) (*Player, error)
 	FindMatch(userName, client, typ string) (*Player, error)
 	Put(p *Player) error
+	// TODO: Add CountAll method. Useful at least for metrics.
 }
