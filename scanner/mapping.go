@@ -42,8 +42,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.AlbumArtist = s.mapAlbumArtistName(md)
 	mf.Genre, mf.Genres = s.mapGenres(md.Genres())
 	mf.Compilation = md.Compilation()
-	mf.Year, mf.Date = s.mapDate(md)
-	mf.ReleaseYear, mf.ReleaseDate = s.mapReleaseDate(md)
+	mf.Year, mf.Date, mf.ReleaseYear, mf.ReleaseDate = s.mapDates(md)
 	mf.TrackNumber, _ = md.TrackNumber()
 	mf.DiscNumber, _ = md.DiscNumber()
 	mf.DiscSubtitle = md.DiscSubtitle()
@@ -127,13 +126,17 @@ func (s mediaFileMapper) trackID(md metadata.Tags) string {
 
 func (s mediaFileMapper) albumID(md metadata.Tags) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
-	layout := "2012-12-01"
-	releaseYear, releaseDate := s.mapReleaseDate(md)
-	if !conf.Server.Scanner.GroupAlbumEditions && releaseYear != 0 {
-		if  releaseDate.IsZero() {
-			albumPath = fmt.Sprintf("%s\\%d", albumPath, releaseYear)
-		} else {
-			albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate.Format(layout))
+	
+	if !conf.Server.Scanner.GroupAlbumEditions {
+		_, _, releaseYear, releaseDate := s.mapDates(md)
+		// don't like this too much - this means parsing all three date fields twice, seems redundant
+		if releaseYear != 0 {
+			if  releaseDate.IsZero() {
+				albumPath = fmt.Sprintf("%s\\%d", albumPath, releaseYear)
+			} else {
+				layout := "2012-12-01"
+				albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate.Format(layout))
+			}
 		}
 	}
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
@@ -176,36 +179,17 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 	return result[0].Name, result
 }
 
-func (s mediaFileMapper) mapDate(md metadata.Tags) (int, time.Time) {
+func (s mediaFileMapper) mapDates(md metadata.Tags) (int, time.Time, int, time.Time) {
 	originalYear, originalDate  := md.OriginalDate()
 	year, date 					:= md.Date()
-	zeroDate 					:= time.Time{}
-	dateAfterOriginalDate		:= false
-
-	if (date.After(zeroDate)) && (originalDate.After(zeroDate)) {
-		dateAfterOriginalDate = date.After(originalDate)
-	}
-
-	if (year > originalYear) || (dateAfterOriginalDate) {
-		if originalYear > 0 {
-			return md.OriginalDate()
-		}
-	}
-	return 	md.Date()
-}
-
-func (s mediaFileMapper) mapReleaseDate(md metadata.Tags) (int, time.Time) {
-	year, date 					:= md.Date()
 	releaseYear, releaseDate	:= md.ReleaseDate()
-	zeroDate 					:= time.Time{}
-	dateAfterReleaseDate		:= false
 	
-	if (date.After(zeroDate)) && (releaseDate.After(zeroDate)) {
-		dateAfterReleaseDate = date.After(releaseDate)
+	// MusicBrainz Picard writes the Release Date of an album to the Date tag, not to the Release Date tag
+	taggedLikePicard 			:= (originalYear != 0) &&
+								   (releaseYear == 0) &&
+								   (year >= originalYear)
+	if taggedLikePicard {
+		return originalYear, originalDate, year, date
 	}
-
-	if  (year > releaseYear) || (dateAfterReleaseDate) {
-			return md.Date()
-	}
-	return md.ReleaseDate()
+	return year, date, releaseYear, releaseDate
 }
