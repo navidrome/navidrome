@@ -7,11 +7,13 @@ import (
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
-type ActionParameter struct {
-	Index  int64
-	Offset int64
-	Id     string
-	Gain   float64
+type Action struct {
+	actionType ActionType
+	user       string
+	Index      int64
+	Offset     int64
+	Id         string
+	Gain       float64
 }
 
 type ActionType int
@@ -89,48 +91,48 @@ func parseAction(action string) ActionType {
 	}
 }
 
-func parseActionParameter(action ActionType, r *http.Request) (ActionParameter, error) {
+func parseActionParameter(action ActionType, r *http.Request) (Action, error) {
 	switch action {
 	case ActionRemove:
 		index, err := getParameterAsInt64(r, "index")
 		if err != nil {
-			return ActionParameter{}, err
+			return Action{}, err
 		}
 
-		return ActionParameter{Index: index}, nil
+		return Action{Index: index}, nil
 	case ActionSkip:
 		index, err := getParameterAsInt64(r, "index")
 		if err != nil {
-			return ActionParameter{}, err
+			return Action{}, err
 		}
 
 		offset, err := getParameterAsInt64(r, "offset")
 		if err != nil {
-			return ActionParameter{}, err
+			return Action{}, err
 		}
 
-		return ActionParameter{Index: index, Offset: offset}, nil
+		return Action{Index: index, Offset: offset}, nil
 	case ActionAdd, ActionSet:
 		id, err := requiredParamString(r, "id")
 		if err != nil {
-			return ActionParameter{}, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
+			return Action{}, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
 		}
-		return ActionParameter{Id: id}, nil
+		return Action{Id: id}, nil
 
 	case ActionSetGain:
 		gainStr, err := requiredParamString(r, "gain")
 		if err != nil {
-			return ActionParameter{}, newError(responses.ErrorMissingParameter, "missing parameter gain, err: %s", err)
+			return Action{}, newError(responses.ErrorMissingParameter, "missing parameter gain, err: %s", err)
 		}
 
 		gain, err := strconv.ParseFloat(gainStr, 64)
 		if err != nil {
-			return ActionParameter{}, newError(responses.ErrorMissingParameter, "error parsing gain integer value, err: %s", err)
+			return Action{}, newError(responses.ErrorMissingParameter, "error parsing gain integer value, err: %s", err)
 		}
-		return ActionParameter{Gain: gain}, nil
+		return Action{Gain: gain}, nil
 	}
 
-	return ActionParameter{}, nil
+	return Action{}, nil
 }
 
 func getParameterAsInt64(r *http.Request, name string) (int64, error) {

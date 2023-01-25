@@ -1,7 +1,6 @@
 package subsonic
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
@@ -21,22 +20,23 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 
-	action := parseAction(actionString)
-	if action == ActionUnknown {
+	actionType := parseAction(actionString)
+	if actionType == ActionUnknown {
 		return nil, newError(responses.ErrorMissingParameter, "Unknown action: %s", actionString)
 	}
 
-	parameter, err := parseActionParameter(action, r)
+	action, err := parseActionParameter(actionType, r)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx := r.Context()
-	return handleJukeboxAction(ctx, action, user, parameter)
+	action.actionType = actionType
+	action.user = user
+	return handleJukeboxAction(action)
 }
 
-func handleJukeboxAction(ctx context.Context, action ActionType, user string, parameter ActionParameter) (*responses.Subsonic, error) {
-	log.Debug(fmt.Sprintf("Handle action: %s for user: %s, parameter: %v", action, user, parameter))
+func handleJukeboxAction(action Action) (*responses.Subsonic, error) {
+	log.Debug(fmt.Sprintf("Handle action: %s for user: %s, parameter: %v", action.actionType, action.user, action))
 	playback := playback.GetInstance()
 	playback.Play()
 
