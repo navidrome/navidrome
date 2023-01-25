@@ -106,7 +106,6 @@ const PlaylistList = (props) => {
       public: !isXsmall && (
         <TogglePublicInput source="public" sortByOrder={'DESC'} />
       ),
-      genre: <TextField source="genre" />,
       comment: <TextField source="comment" />,
     }),
     [isDesktop, isXsmall]
@@ -115,7 +114,7 @@ const PlaylistList = (props) => {
   const columns = useSelectedFields({
     resource: 'playlist',
     columns: toggleableFields,
-    defaultOff: ['genre', 'comment'],
+    defaultOff: ['comment'],
   })
 
   return (
