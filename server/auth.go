@@ -298,12 +298,12 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 		}
 		err := userRepo.Put(&newUser)
 		if err != nil {
-			log.Error("Could not create new user", "user", username, err)
+			log.Error(r, "Could not create new user", "user", username, err)
 			return nil
 		}
 		user, err = userRepo.FindByUsernameWithPassword(username)
 		if user == nil || err != nil {
-			log.Error("Created user but failed to fetch it", "user", username)
+			log.Error(r, "Created user but failed to fetch it", "user", username)
 			return nil
 		}
 	}
