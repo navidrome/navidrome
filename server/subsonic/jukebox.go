@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/log"
@@ -34,63 +33,6 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 
 	ctx := r.Context()
 	return handleJukeboxAction(ctx, action, user, parameter)
-}
-
-func parseActionParameter(action ActionType, r *http.Request) (ActionParameter, error) {
-	switch action {
-	case ActionRemove:
-		index, err := getParameterAsInt64(r, "index")
-		if err != nil {
-			return ActionParameter{}, err
-		}
-
-		return ActionParameter{Index: index}, nil
-	case ActionSkip:
-		index, err := getParameterAsInt64(r, "index")
-		if err != nil {
-			return ActionParameter{}, err
-		}
-
-		offset, err := getParameterAsInt64(r, "offset")
-		if err != nil {
-			return ActionParameter{}, err
-		}
-
-		return ActionParameter{Index: index, Offset: offset}, nil
-	case ActionAdd, ActionSet:
-		id, err := requiredParamString(r, "id")
-		if err != nil {
-			return ActionParameter{}, newError(responses.ErrorMissingParameter, "missing parameter id, err: %w", err)
-		}
-		return ActionParameter{Id: id}, nil
-
-	case ActionSetGain:
-		gainStr, err := requiredParamString(r, "gain")
-		if err != nil {
-			return ActionParameter{}, newError(responses.ErrorMissingParameter, "missing parameter gain, err: %w", err)
-		}
-
-		gain, err := strconv.ParseFloat(gainStr, 64)
-		if err != nil {
-			return ActionParameter{}, newError(responses.ErrorMissingParameter, "error parsing gain integer value, err: %w", err)
-		}
-		return ActionParameter{Gain: gain}, nil
-	}
-
-	return ActionParameter{}, nil
-}
-
-func getParameterAsInt64(r *http.Request, name string) (int64, error) {
-	indexStr, err := requiredParamString(r, name)
-	if err != nil {
-		return 0, newError(responses.ErrorMissingParameter, "missing parameter %s, err: %w", name, err)
-	}
-
-	index, err := strconv.ParseInt(indexStr, 10, 64)
-	if err != nil {
-		return 0, newError(responses.ErrorMissingParameter, "error parsing %s integer value, err: %w", name, err)
-	}
-	return index, nil
 }
 
 func handleJukeboxAction(ctx context.Context, action ActionType, user string, parameter ActionParameter) (*responses.Subsonic, error) {
