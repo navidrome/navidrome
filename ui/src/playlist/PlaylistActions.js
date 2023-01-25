@@ -35,14 +35,7 @@ const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
 })
 
-const PlaylistActions = ({
-  className,
-  ids,
-  data,
-  record,
-  resource,
-  ...rest
-}) => {
+const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const classes = useStyles()
@@ -94,8 +87,8 @@ const PlaylistActions = ({
   }, [getAllSongsAndDispatch])
 
   const handleShare = React.useCallback(() => {
-    dispatch(openShareMenu([record.id], resource, record.name))
-  }, [dispatch, record, resource])
+    dispatch(openShareMenu([record.id], 'playlist', record.name))
+  }, [dispatch, record])
 
   const handleDownload = React.useCallback(() => {
     dispatch(openDownloadMenu(record, DOWNLOAD_MENU_PLAY))
