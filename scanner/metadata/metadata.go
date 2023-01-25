@@ -99,7 +99,7 @@ func (t Tags) SortAlbumArtist() string 		{ return t.getSortTag("tso2", "albumart
 func (t Tags) Genres() []string        		{ return t.getAllTagValues("genre") }
 func (t Tags) Date() (int, time.Time)		  	{ return t.getDate("date") }
 func (t Tags) OriginalDate() (int, time.Time) 	{ return t.getDate("originaldate") }
-func (t Tags) ReleaseDate() (int, time.Time) 	{ return t.getDate("releasedate", "tdrl") }
+func (t Tags) ReleaseDate() (int, time.Time) 	{ return t.getDate("releasedate") }
 func (t Tags) Comment() string         		{ return t.getFirstTagValue("comment") }
 func (t Tags) Lyrics() string          		{ return t.getFirstTagValue("lyrics", "lyrics-eng") }
 func (t Tags) Compilation() bool      		{ return t.getBool("tcmp", "compilation") }
@@ -181,32 +181,38 @@ func (t Tags) getSortTag(originalTag string, tagNames ...string) string {
 }
 
 var dateRegexYear = regexp.MustCompile(`([12]\d\d\d)`)
-var dateRegexMonthDay = regexp.MustCompile(`\-(0[1-9]|1[012])\-(0[1-9]|[12][0-9]|3[01])`)
+var dateRegexYearMonthDay = regexp.MustCompile(`\-(0[0-9]|1[012])\-(0[0-9]|[12][0-9]|3[01])`)
 
 func (t Tags) getDate(tagNames ...string) (int, time.Time) {
 	tag := t.getFirstTagValue(tagNames...)
 	if tag == "" {
 		return 0, time.Time{}
 	}
-	// first try to get just the year
+	// first try to get just a year
 	matchYear := dateRegexYear.FindStringSubmatch(tag)
 		if len(matchYear) == 0 {
-		log.Warn("Error parsing date field for year", "file", t.filePath, "date", tag)
+		log.Warn("Error parsing " + tagNames[0] + " field for year", "file", t.filePath, "date", tag)
 		return 0, time.Time{}
 	}
 	year, _ := strconv.Atoi(matchYear[1])
-	// now try the month + day
-	matchMonthDay := dateRegexMonthDay.FindStringSubmatch(tag)
-	if len(matchMonthDay) == 0 {
-		if len(tag) > 4 {
-			log.Warn("Error parsing date field for month + day", "file", t.filePath, "date", tag)
-		}
+	if len(tag) <5 {
 		return year, time.Time{}
 	}
-	month, _ := strconv.Atoi(matchMonthDay[1])
-	day, _ := strconv.Atoi(matchMonthDay[2])
-	date := time.Date(year, time.January, day, 0, 0, 0, 0, time.UTC)
-	date = date.AddDate(0, month - 1, 0)
+
+	//now try the year + month + day
+	if len(tag) > 10 {
+		tag = tag[:10]
+	}
+	layout := "2006-01-02"
+	date, err := time.Parse(layout, tag)
+	if err != nil {
+		layout = "2006-01"
+		date, err = time.Parse(layout, tag)
+		if err != nil {
+			log.Warn("Error parsing " + tagNames[0] + " field for month + day", "file", t.filePath, "date", tag)
+			return year, time.Time{}
+		}
+	}	
 	return year, date
 }
 
