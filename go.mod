@@ -28,19 +28,19 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.0.8
-	github.com/matoous/go-nanoid v1.5.0
+	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mattn/go-zglob v0.0.3
 	github.com/microcosm-cc/bluemonday v1.0.21
 	github.com/mileusna/useragent v1.2.1
 	github.com/onsi/ginkgo/v2 v2.7.0
-	github.com/onsi/gomega v1.24.2
+	github.com/onsi/gomega v1.26.0
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/prometheus/client_golang v1.14.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
-	github.com/spf13/viper v1.14.0
+	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.1
 	github.com/unrolled/secure v1.13.0
 	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
@@ -158,7 +158,7 @@ require (
 	github.com/lestrrat-go/option v1.0.0 // indirect
 	github.com/lib/pq v1.10.6 // indirect
 	github.com/lufeee/execinquery v1.2.1 // indirect
-	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/maratori/testableexamples v1.0.0 // indirect
 	github.com/maratori/testpackage v1.1.0 // indirect
 	github.com/matoous/godox v0.0.0-20210227103229-6504466cf951 // indirect
@@ -178,8 +178,7 @@ require (
 	github.com/ogier/pflag v0.0.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
-	github.com/pelletier/go-toml v1.9.5 // indirect
-	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
+	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/phayes/checkstyle v0.0.0-20170904204023-bfd46e6a821d // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -205,14 +204,14 @@ require (
 	github.com/sivchari/tenv v1.7.0 // indirect
 	github.com/sonatard/noctx v0.0.1 // indirect
 	github.com/sourcegraph/go-diff v0.6.1 // indirect
-	github.com/spf13/afero v1.9.2 // indirect
+	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/ssgreg/nlreturn/v2 v2.2.1 // indirect
 	github.com/stbenjam/no-sprintf-host-port v0.1.1 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
-	github.com/subosito/gotenv v1.4.1 // indirect
+	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/tdakkota/asciicheck v0.1.1 // indirect
 	github.com/tetafro/godot v1.4.11 // indirect
 	github.com/timakin/bodyclose v0.0.0-20210704033933-f49887972144 // indirect

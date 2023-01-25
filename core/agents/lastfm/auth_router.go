@@ -28,7 +28,7 @@ type Router struct {
 	http.Handler
 	ds          model.DataStore
 	sessionKeys *agents.SessionKeys
-	client      *Client
+	client      *client
 	apiKey      string
 	secret      string
 }
@@ -44,7 +44,7 @@ func NewRouter(ds model.DataStore) *Router {
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	r.client = NewClient(r.apiKey, r.secret, "en", hc)
+	r.client = newClient(r.apiKey, r.secret, "en", hc)
 	return r
 }
 
@@ -115,7 +115,7 @@ func (s *Router) callback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Router) fetchSessionKey(ctx context.Context, uid, token string) error {
-	sessionKey, err := s.client.GetSession(ctx, token)
+	sessionKey, err := s.client.getSession(ctx, token)
 	if err != nil {
 		log.Error(ctx, "Could not fetch LastFM session key", "userId", uid, "token", token,
 			"requestId", middleware.GetReqID(ctx), err)

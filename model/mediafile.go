@@ -135,7 +135,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 		} else if m.Year > 0 {
 			a.MinYear = number.Min(a.MinYear, m.Year)
 		}
-		a.MaxYear = number.Max(m.Year)
+		a.MaxYear = number.Max(a.MaxYear, m.Year)
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
 		a.Genres = append(a.Genres, m.Genres...)

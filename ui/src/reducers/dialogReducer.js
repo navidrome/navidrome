@@ -13,7 +13,39 @@ import {
   EXTENDED_INFO_CLOSE,
   LISTENBRAINZ_TOKEN_OPEN,
   LISTENBRAINZ_TOKEN_CLOSE,
+  SHARE_MENU_OPEN,
+  SHARE_MENU_CLOSE,
 } from '../actions'
+
+export const shareDialogReducer = (
+  previousState = {
+    open: false,
+    ids: [],
+    resource: '',
+    name: '',
+  },
+  payload
+) => {
+  const { type, ids, resource, name, label } = payload
+  switch (type) {
+    case SHARE_MENU_OPEN:
+      return {
+        ...previousState,
+        open: true,
+        ids,
+        resource,
+        name,
+        label,
+      }
+    case SHARE_MENU_CLOSE:
+      return {
+        ...previousState,
+        open: false,
+      }
+    default:
+      return previousState
+  }
+}
 
 export const addToPlaylistDialogReducer = (
   previousState = {

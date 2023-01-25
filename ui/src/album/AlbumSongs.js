@@ -28,9 +28,7 @@ import {
   DateField,
   SizeField,
 } from '../common'
-import { AddToPlaylistDialog } from '../dialogs'
 import config from '../config'
-import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles(
@@ -147,6 +145,10 @@ const AlbumSongs = (props) => {
     defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate', 'size'],
   })
 
+  const bulkActionsLabel = isDesktop
+    ? 'ra.action.bulk_actions'
+    : 'ra.action.bulk_actions_mobile'
+
   return (
     <>
       <ListToolbar
@@ -161,7 +163,7 @@ const AlbumSongs = (props) => {
           })}
           key={version}
         >
-          <BulkActionsToolbar {...props}>
+          <BulkActionsToolbar {...props} label={bulkActionsLabel}>
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
@@ -189,8 +191,6 @@ const AlbumSongs = (props) => {
           </SongDatagrid>
         </Card>
       </div>
-      <AddToPlaylistDialog />
-      <DownloadMenuDialog />
       <ExpandInfoDialog content={<SongInfo />} />
     </>
   )

@@ -1,3 +1,4 @@
+
 {
     "languageName": "English",
     "resources": {
@@ -60,6 +61,7 @@
                 "playAll": "Play",
                 "playNext": "Play Next",
                 "addToQueue": "Play Later",
+                "share": "Share",
                 "shuffle": "Shuffle",
                 "addToPlaylist": "Add to Playlist",
                 "download": "Download",
@@ -199,6 +201,26 @@
                 "hide": "Hide extra",
                 "show": "Show all"
             }
+        },
+        "share": {
+            "name": "Share |||| Shares",
+            "fields": {
+                "username": "Shared By",
+                "url": "URL",
+                "description": "Description",
+                "contents": "Contents",
+                "expiresAt": "Expires",
+                "lastVisitedAt": "Last Visited",
+                "visitCount": "Visits",
+                "format": "Format",
+                "maxBitRate": "Max. Bit Rate",
+                "updatedAt": "Updated at",
+                "createdAt": "Created at"
+            },
+            "notifications": {
+            },
+            "actions": {
+            }
         }
     },
     "ra": {
@@ -235,6 +257,7 @@
             "add": "Add",
             "back": "Go Back",
             "bulk_actions": "1 item selected |||| %{smart_count} items selected",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "cancel": "Cancel",
             "clear_input_value": "Clear value",
             "clone": "Clone",
@@ -257,7 +280,9 @@
             "open_menu": "Open menu",
             "close_menu": "Close menu",
             "unselect": "Unselect",
-            "skip": "Skip"
+            "skip": "Skip",
+            "share": "Share",
+            "download":  "Download"
         },
         "boolean": {
             "true": "Yes",
@@ -371,7 +396,14 @@
         "lastfmLink": "Read More...",
         "originalFormat": "Download in original format",
         "radioErrorBody": "Internet radio stream cannot be played in the Navidrome webapp. Open in a new page?",
-        "radioErrorTitle": "Error playing internet radio"
+        "radioErrorTitle": "Error playing internet radio",
+        "shareOriginalFormat": "Share in original format",
+        "shareDialogTitle": "Share %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Share 1 %{resource} |||| Share %{smart_count} %{resource}",
+        "shareSuccess": "URL copied to clipboard: %{url}",
+        "shareFailure": "Error copying URL %{url} to clipboard",
+        "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
+        "downloadOriginalFormat": "Download in original format"
     },
     "menu": {
         "library": "Library",

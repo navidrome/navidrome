@@ -15,6 +15,7 @@ import album from './album'
 import artist from './artist'
 import playlist from './playlist'
 import radio from './radio'
+import share from './share'
 import { Player } from './audioplayer'
 import customRoutes from './routes'
 import {
@@ -28,14 +29,16 @@ import {
   settingsReducer,
   replayGainReducer,
   downloadMenuDialogReducer,
+  shareDialogReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
-import config from './config'
+import config, { shareInfo } from './config'
 import { setDispatch, startEventStream, stopEventStream } from './eventStream'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
 import radioInfo from './radioInfo'
+import SharePlayer from './SharePlayer'
 
 const history = createHashHistory()
 
@@ -59,6 +62,7 @@ const adminStore = createAdminStore({
     downloadMenuDialog: downloadMenuDialogReducer,
     expandInfoDialog: expandInfoDialogReducer,
     listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
+    shareDialog: shareDialogReducer,
     activity: activityReducer,
     settings: settingsReducer,
     replayGain: replayGainReducer,
@@ -110,6 +114,7 @@ const Admin = (props) => {
         permissions === 'admin' ? (
           <Resource name="radioInfo" {...radioInfo} />
         ) : undefined,
+        config.devEnableShare && <Resource name="share" {...share} />,
         <Resource
           name="playlist"
           {...playlist}
@@ -140,10 +145,15 @@ const Admin = (props) => {
   )
 }
 
-const AppWithHotkeys = () => (
-  <HotKeys keyMap={keyMap}>
-    <App />
-  </HotKeys>
-)
+const AppWithHotkeys = () => {
+  if (config.devEnableShare && shareInfo) {
+    return <SharePlayer />
+  }
+  return (
+    <HotKeys keyMap={keyMap}>
+      <App />
+    </HotKeys>
+  )
+}
 
 export default AppWithHotkeys

@@ -40,6 +40,7 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
+// TODO Break up this interface in more specific methods, like artists
 type AlbumInfoRetriever interface {
 	GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*AlbumInfo, error)
 }
