@@ -125,11 +125,12 @@ jobs:
           name: js-bundle
           path: ui/build
 
-      - name: Show Tags
-        run: git tag
-
-      - name: Show Version
-        run: git describe --tags
+      - name: Config /github/workspace folder as trusted
+        uses: docker://deluan/ci-goreleaser:1.19.5-1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: /bin/bash -c "git config --global --add safe.directory /github/workspace;  git describe --dirty --always --tags"
 
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
