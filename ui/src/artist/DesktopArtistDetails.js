@@ -135,7 +135,9 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
             </Collapse>
           </CardContent>
           <Typography component={'div'} className={classes.button}>
-            <ArtistExternalLinks artistInfo={artistInfo} record={record} />
+            {config.enableExternalServices && (
+              <ArtistExternalLinks artistInfo={artistInfo} record={record} />
+            )}
           </Typography>
         </div>
         {isLightboxOpen && (

@@ -304,7 +304,9 @@ const AlbumDetails = (props) => {
             )}
             {!isXsmall && (
               <Typography component={'div'} className={classes.recordMeta}>
-                <AlbumExternalLinks className={classes.externalLinks} />
+                {config.enableExternalServices && (
+                  <AlbumExternalLinks className={classes.externalLinks} />
+                )}
               </Typography>
             )}
             {isDesktop && (

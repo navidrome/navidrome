@@ -310,6 +310,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("enableReplayGain", true))
 	})
 
+	It("sets the enableExternalServices", func() {
+		conf.Server.EnableExternalServices = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableExternalServices", true))
+	})
+
 	Describe("loginBackgroundURL", func() {
 		Context("empty BaseURL", func() {
 			BeforeEach(func() {
