@@ -1,62 +1,41 @@
-import React, { useCallback } from 'react'
 import {
   Create,
   required,
   SimpleForm,
   TextInput,
-  useMutation,
-  useNotify,
-  useRedirect,
   useTranslate,
 } from 'react-admin'
 import { Title } from '../common'
+import { urlValidate } from '../utils/validations'
 
-const RadioCreate = (props) => {
+const RadioTitle = () => {
   const translate = useTranslate()
-  const [mutate] = useMutation()
-  const notify = useNotify()
-  const redirect = useRedirect()
-
-  const resourceName = translate('resources.radio.name', { smart_count: 1 })
+  const resourceName = translate('resources.radio.name', {
+    smart_count: 1,
+  })
   const title = translate('ra.page.create', {
     name: `${resourceName}`,
   })
+  return <Title subTitle={title} />
+}
 
-  const save = useCallback(
-    async (values) => {
-      try {
-        await mutate(
-          {
-            type: 'create',
-            resource: 'radio',
-            payload: { data: values },
-          },
-          { returnPromise: true }
-        )
-        notify('resources.radio.notifications.created', 'info', {
-          smart_count: 1,
-        })
-        redirect('/radio')
-      } catch (error) {
-        if (error.body.errors) {
-          return error.body.errors
-        }
-      }
-    },
-    [mutate, notify, redirect]
-  )
-
+const RadioCreate = (props) => {
   return (
-    <Create title={<Title subTitle={title} />} {...props}>
-      <SimpleForm save={save} variant={'outlined'}>
+    <Create title={<RadioTitle />} {...props}>
+      <SimpleForm redirect="list" variant={'outlined'}>
         <TextInput source="name" validate={[required()]} />
         <TextInput
           type="url"
           source="streamUrl"
           fullWidth
-          validate={[required()]}
+          validate={[required(), urlValidate]}
         />
-        <TextInput type="url" source="homepageUrl" fullWidth />
+        <TextInput
+          type="url"
+          source="homepageUrl"
+          fullWidth
+          validate={[urlValidate]}
+        />
       </SimpleForm>
     </Create>
   )
