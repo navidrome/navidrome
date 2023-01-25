@@ -62,7 +62,7 @@ const DownloadMenuDialog = () => {
         <SimpleForm toolbar={null} variant={'outlined'}>
           <TranscodingOptionsInput
             fullWidth
-            label={translate('message.originalFormat')}
+            label={translate('message.downloadOriginalFormat')}
           />
         </SimpleForm>
       </DialogContent>
