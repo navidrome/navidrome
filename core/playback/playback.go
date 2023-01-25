@@ -28,21 +28,24 @@ func GetInstance() PlaybackServer {
 }
 
 type playbackServer struct {
+	ctx *context.Context
 }
 
-func (s *playbackServer) Run(ctx context.Context) error {
+func (ps *playbackServer) Run(ctx context.Context) error {
 	err := verifyConfiguration(conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
 	if err != nil {
 		return err
 	}
 	log.Info(ctx, "Using audio device: "+conf.Server.Jukebox.Default)
 
+	ps.ctx = &ctx
+
 	<-ctx.Done()
 	return nil
 }
 
-func (s *playbackServer) Play() error {
-	// just a test
+func (ps *playbackServer) Play() error {
+	// log.Debug("User: " + core.UserName(*ps.ctx))
 	playSong("tests/fixtures/test.mp3")
 	return nil
 }
