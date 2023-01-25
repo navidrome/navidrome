@@ -11,12 +11,14 @@ import (
 
 	"os"
 
+	"github.com/faiface/beep"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 )
 
 type PlaybackServer interface {
 	Run(ctx context.Context) error
+	Play() error
 }
 
 func GetInstance() PlaybackServer {
@@ -35,14 +37,18 @@ func (s *playbackServer) Run(ctx context.Context) error {
 	}
 	log.Info(ctx, "Using audio device: "+conf.Server.Jukebox.Default)
 
-	// just a test
-	playSong("tests/fixtures/test.mp3")
-
 	<-ctx.Done()
 	return nil
 }
 
+func (s *playbackServer) Play() error {
+	// just a test
+	playSong("tests/fixtures/test.mp3")
+	return nil
+}
+
 func playSong(songname string) {
+	log.Debug("Playing song: " + songname)
 	f, err := os.Open(songname)
 	if err != nil {
 		log.Fatal(err)
@@ -60,7 +66,12 @@ func playSong(songname string) {
 		log.Fatal(err)
 	}
 
-	speaker.Play(streamer)
+	done := make(chan bool)
+	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
+		done <- true
+	})))
+
+	<-done
 }
 
 func verifyConfiguration(devices []conf.AudioDeviceDefinition, defaultDevice string) error {

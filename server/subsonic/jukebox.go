@@ -3,6 +3,7 @@ package subsonic
 import (
 	"net/http"
 
+	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
@@ -67,6 +68,9 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 }
 
 func handleJukeboxAction(action ActionType, r *http.Request) (*responses.Subsonic, error) {
+	playback := playback.GetInstance()
+	playback.Play()
+
 	response := createJukeboxStatus(0, false, 0, 0)
 	return response, nil
 }
