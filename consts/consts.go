@@ -25,6 +25,7 @@ const (
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
 	DefaultEncryptionKey  = "just for obfuscation"
 	PasswordsEncryptedKey = "PasswordsEncryptedKey"
+	PasswordAutogenPrefix = "__NAVIDROME_AUTOGEN__" //nolint:gosec
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -206,12 +207,16 @@ func validatePasswordChange(newUser *model.User, logged *model.User) error {
 	if logged.IsAdmin && newUser.ID != logged.ID {
 		return nil
 	}
-	if newUser.NewPassword != "" && newUser.CurrentPassword == "" {
-		err.Errors["currentPassword"] = "ra.validation.required"
+	if newUser.NewPassword == "" {
+		if newUser.CurrentPassword == "" {
+			return nil
+		}
+		err.Errors["password"] = "ra.validation.required"
 	}
-	if newUser.CurrentPassword != "" {
-		if newUser.NewPassword == "" {
-			err.Errors["password"] = "ra.validation.required"
+
+	if !strings.HasPrefix(logged.Password, consts.PasswordAutogenPrefix) {
+		if newUser.CurrentPassword == "" {
+			err.Errors["currentPassword"] = "ra.validation.required"
 		}
 		if newUser.CurrentPassword != logged.Password {
 			err.Errors["currentPassword"] = "ra.validation.passwordDoesNotMatch"
