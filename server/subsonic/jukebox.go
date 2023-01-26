@@ -40,7 +40,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionSet:
 		id, err := requiredParamString(r, "id")
 		if err != nil {
-			return newFailure(), fmt.Errorf("missing parameter id, err: %s", err)
+			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
 		}
 		status, err := pb.Set(user, id)
 		if err != nil {
@@ -62,12 +62,12 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionSkip:
 		index, err := getParameterAsInt64(r, "index")
 		if err != nil {
-			return newFailure(), err
+			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter index, err: %s", err)
 		}
 
 		offset, err := getParameterAsInt64(r, "offset")
 		if err != nil {
-			return newFailure(), err
+			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter offset, err: %s", err)
 		}
 
 		status, err := pb.Skip(user, index, offset)
@@ -78,7 +78,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionAdd:
 		id, err := requiredParamString(r, "id")
 		if err != nil {
-			return newFailure(), fmt.Errorf("missing parameter id, err: %s", err)
+			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
 		}
 		status, err := pb.Add(user, id)
 		if err != nil {
@@ -111,12 +111,12 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionSetGain:
 		gainStr, err := requiredParamString(r, "gain")
 		if err != nil {
-			return newFailure(), fmt.Errorf("missing parameter gain, err: %s", err)
+			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter gain, err: %s", err)
 		}
 
 		gain, err := strconv.ParseFloat(gainStr, 64)
 		if err != nil {
-			return newFailure(), fmt.Errorf("error parsing gain integer value, err: %s", err)
+			return newFailure(), newError(responses.ErrorMissingParameter, "error parsing gain integer value, err: %s", err)
 		}
 		status, err := pb.SetGain(user, gain)
 		if err != nil {
