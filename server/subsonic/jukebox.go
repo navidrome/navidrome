@@ -38,7 +38,12 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 func handleJukeboxAction(action Action) (*responses.Subsonic, error) {
 	log.Debug(fmt.Sprintf("Handle action: %s for user: %s, parameter: %v", action.actionType, action.user, action))
 	playback := playback.GetInstance()
-	playback.Play()
+
+	switch action.actionType {
+	case ActionGet:
+		playback.Play()
+
+	}
 
 	response := createJukeboxStatus(0, false, 0, 0)
 	return response, nil

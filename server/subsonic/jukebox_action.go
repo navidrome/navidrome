@@ -1,10 +1,9 @@
 package subsonic
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
-
-	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
 type Action struct {
@@ -115,19 +114,19 @@ func parseActionParameter(action ActionType, r *http.Request) (Action, error) {
 	case ActionAdd, ActionSet:
 		id, err := requiredParamString(r, "id")
 		if err != nil {
-			return Action{}, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
+			return Action{}, fmt.Errorf("missing parameter id, err: %s", err)
 		}
 		return Action{Id: id}, nil
 
 	case ActionSetGain:
 		gainStr, err := requiredParamString(r, "gain")
 		if err != nil {
-			return Action{}, newError(responses.ErrorMissingParameter, "missing parameter gain, err: %s", err)
+			return Action{}, fmt.Errorf("missing parameter gain, err: %s", err)
 		}
 
 		gain, err := strconv.ParseFloat(gainStr, 64)
 		if err != nil {
-			return Action{}, newError(responses.ErrorMissingParameter, "error parsing gain integer value, err: %s", err)
+			return Action{}, fmt.Errorf("error parsing gain integer value, err: %s", err)
 		}
 		return Action{Gain: gain}, nil
 	}
@@ -138,12 +137,12 @@ func parseActionParameter(action ActionType, r *http.Request) (Action, error) {
 func getParameterAsInt64(r *http.Request, name string) (int64, error) {
 	indexStr, err := requiredParamString(r, name)
 	if err != nil {
-		return 0, newError(responses.ErrorMissingParameter, "missing parameter %s, err: %s", name, err)
+		return 0, fmt.Errorf("missing parameter %s, err: %s", name, err)
 	}
 
 	index, err := strconv.ParseInt(indexStr, 10, 64)
 	if err != nil {
-		return 0, newError(responses.ErrorMissingParameter, "error parsing %s integer value, err: %s", name, err)
+		return 0, fmt.Errorf("error parsing %s integer value, err: %s", name, err)
 	}
 	return index, nil
 }
