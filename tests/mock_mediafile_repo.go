@@ -53,7 +53,7 @@ func (m *MockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFi
 
 func (m *MockMediaFileRepo) Exists(id string) (bool, error) {
 	if m.err {
-		return false, errors.New("Error!")
+		return false, errors.New("error")
 	}
 	_, found := m.data[id]
 	return found, nil
@@ -61,7 +61,7 @@ func (m *MockMediaFileRepo) Exists(id string) (bool, error) {
 
 func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 	if m.err {
-		return nil, errors.New("Error!")
+		return nil, errors.New("error")
 	}
 	if d, ok := m.data[id]; ok {
 		return d, nil
@@ -94,7 +94,7 @@ func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
 
 func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, error) {
 	if m.err {
-		return nil, errors.New("Error!")
+		return nil, errors.New("error")
 	}
 	var res = make(model.MediaFiles, len(m.data))
 	i := 0

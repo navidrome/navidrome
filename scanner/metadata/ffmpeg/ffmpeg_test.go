@@ -5,10 +5,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Parser", func() {
-	var e *Parser
+var _ = Describe("Extractor", func() {
+	var e *Extractor
 	BeforeEach(func() {
-		e = &Parser{}
+		e = &Extractor{}
 	})
 
 	Context("extractMetadata", func() {
@@ -54,7 +54,6 @@ Input #0, mp3, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations/
 
 		It("detects embedded cover art in ffmpeg 4.4 output", func() {
 			const output = `
-
 Input #0, flac, from '/run/media/naomi/Archivio/Musica/Katy Perry/Chained to the Rhythm/01 Katy Perry featuring Skip Marley - Chained to the Rhythm.flac':
   Metadata:
     ARTIST          : Katy Perry featuring Skip Marley
@@ -77,7 +76,25 @@ Input #0, ogg, from '/Users/deluan/Music/iTunes/iTunes Media/Music/_Testes/Jamai
       metadata_block_picture: AAAAAwAAAAppbWFnZS9qcGVnAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4Id/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQ
       TITLE           : Jamaican In New York (Album Version)`
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKey("metadata_block_picture"))
+			md = md.Map(e.CustomMappings())
 			Expect(md).To(HaveKey("has_picture"))
+		})
+
+		It("detects embedded cover art in m4a containers", func() {
+			const output = `
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'Putumayo Presents_ Euro Groove/01 Destins et Désirs.m4a':
+  Metadata:
+    album           : Putumayo Presents: Euro Groove
+  Duration: 00:05:15.81, start: 0.047889, bitrate: 133 kb/s
+  Stream #0:0[0x1](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 125 kb/s (default)
+    Metadata:
+      creation_time   : 2008-03-11T21:03:23.000000Z
+      vendor_id       : [0][0][0][0]
+  Stream #0:1[0x0]: Video: png, rgb24(pc), 350x350, 90k tbr, 90k tbn (attached pic)
+`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("has_picture", []string{"true"}))
 		})
 
 		It("gets bitrate from the stream, if available", func() {
@@ -284,5 +301,24 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 	        FBPM            : 141.7`
 		md, _ := e.extractMetadata("tests/fixtures/test.ogg", output)
 		Expect(md).To(HaveKeyWithValue("fbpm", []string{"141.7"}))
+	})
+
+	It("parses replaygain data correctly", func() {
+		const output = `
+		Input #0, mp3, from 'test.mp3':
+			Metadata:
+				REPLAYGAIN_ALBUM_PEAK: 0.9125
+				REPLAYGAIN_TRACK_PEAK: 0.4512
+				REPLAYGAIN_TRACK_GAIN: -1.48 dB
+				REPLAYGAIN_ALBUM_GAIN: +3.21518 dB
+				Side data:
+					replaygain: track gain - -1.480000, track peak - 0.000011, album gain - 3.215180, album peak - 0.000021, 
+		`
+		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+		Expect(md).To(HaveKeyWithValue("replaygain_track_gain", []string{"-1.48 dB"}))
+		Expect(md).To(HaveKeyWithValue("replaygain_track_peak", []string{"0.4512"}))
+		Expect(md).To(HaveKeyWithValue("replaygain_album_gain", []string{"+3.21518 dB"}))
+		Expect(md).To(HaveKeyWithValue("replaygain_album_peak", []string{"0.9125"}))
+
 	})
 })

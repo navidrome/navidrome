@@ -15,7 +15,6 @@ const defaultConfig = {
   welcomeMessage: '',
   gaTrackingId: '',
   devActivityPanel: true,
-  devFastAccessCoverArt: false,
   enableStarRating: true,
   defaultTheme: 'Dark',
   defaultLanguage: '',
@@ -26,8 +25,12 @@ const defaultConfig = {
   lastFMEnabled: true,
   lastFMApiKey: '9b94a5515ea66b2da3ec03c12300327e',
   listenBrainzEnabled: true,
+  enableExternalServices: true,
   enableCoverAnimation: true,
   devShowArtistPage: true,
+  enableReplayGain: true,
+  defaultDownsamplingFormat: 'opus',
+  publicBaseUrl: '/share',
 }
 
 let config
@@ -40,6 +43,14 @@ try {
   }
 } catch (e) {
   config = defaultConfig
+}
+
+export let shareInfo
+
+try {
+  shareInfo = JSON.parse(window.__SHARE_INFO__)
+} catch (e) {
+  shareInfo = null
 }
 
 export default config

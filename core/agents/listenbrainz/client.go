@@ -25,11 +25,11 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func NewClient(baseURL string, hc httpDoer) *Client {
-	return &Client{baseURL, hc}
+func newClient(baseURL string, hc httpDoer) *client {
+	return &client{baseURL, hc}
 }
 
-type Client struct {
+type client struct {
 	baseURL string
 	hc      httpDoer
 }
@@ -86,7 +86,7 @@ type additionalInfo struct {
 	ReleaseMbID             string   `json:"release_mbid,omitempty"`
 }
 
-func (c *Client) ValidateToken(ctx context.Context, apiKey string) (*listenBrainzResponse, error) {
+func (c *client) validateToken(ctx context.Context, apiKey string) (*listenBrainzResponse, error) {
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
 	}
@@ -97,7 +97,7 @@ func (c *Client) ValidateToken(ctx context.Context, apiKey string) (*listenBrain
 	return response, nil
 }
 
-func (c *Client) UpdateNowPlaying(ctx context.Context, apiKey string, li listenInfo) error {
+func (c *client) updateNowPlaying(ctx context.Context, apiKey string, li listenInfo) error {
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
 		Body: listenBrainzRequestBody{
@@ -116,7 +116,7 @@ func (c *Client) UpdateNowPlaying(ctx context.Context, apiKey string, li listenI
 	return nil
 }
 
-func (c *Client) Scrobble(ctx context.Context, apiKey string, li listenInfo) error {
+func (c *client) scrobble(ctx context.Context, apiKey string, li listenInfo) error {
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
 		Body: listenBrainzRequestBody{
@@ -134,7 +134,7 @@ func (c *Client) Scrobble(ctx context.Context, apiKey string, li listenInfo) err
 	return nil
 }
 
-func (c *Client) Star(ctx context.Context, apiKey string, star bool, id string) error {
+func (c *client) Star(ctx context.Context, apiKey string, star bool, id string) error {
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
 	}
@@ -163,7 +163,7 @@ func (c *Client) Star(ctx context.Context, apiKey string, star bool, id string) 
 	return nil
 }
 
-func (c *Client) path(endpoint string) (string, error) {
+func (c *client) path(endpoint string) (string, error) {
 	u, err := url.Parse(c.baseURL)
 	if err != nil {
 		return "", err
@@ -172,7 +172,7 @@ func (c *Client) path(endpoint string) (string, error) {
 	return u.String(), nil
 }
 
-func (c *Client) makeRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest, fb *listenBrainzFeedbackBody) (*listenBrainzResponse, error) {
+func (c *client) makeRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest, fb *listenBrainzFeedbackBody) (*listenBrainzResponse, error) {
 	var b []byte
 
 	if fb != nil {

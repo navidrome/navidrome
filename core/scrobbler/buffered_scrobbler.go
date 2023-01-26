@@ -7,14 +7,15 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/pl"
 )
 
 func newBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *bufferedScrobbler {
 	b := &bufferedScrobbler{ds: ds, wrapped: s, service: service}
 	b.wakeSignal = make(chan struct{}, 1)
-	b.starSignal = make(chan struct{}, 1)
-	go b.runQueue()
-	go b.runStar()
+
+	go b.run(context.TODO())
+	go b.runStar(context.TODO())
 	return b
 }
 
@@ -91,15 +92,14 @@ func (b *bufferedScrobbler) sendStarSignal() {
 	}
 }
 
-func (b *bufferedScrobbler) runQueue() {
-	ctx := context.Background()
+func (b *bufferedScrobbler) run(ctx context.Context) {
 	for {
 		if !b.processScrobbleQueue(ctx) {
 			time.AfterFunc(5*time.Second, func() {
 				b.sendWakeSignal()
 			})
 		}
-		<-b.wakeSignal
+		<-pl.ReadOrDone(ctx, b.wakeSignal)
 	}
 }
 
@@ -153,9 +153,7 @@ func (b *bufferedScrobbler) processUserScrobbleQueue(ctx context.Context, userId
 	}
 }
 
-func (b *bufferedScrobbler) runStar() {
-	ctx := context.Background()
-
+func (b *bufferedScrobbler) runStar(ctx context.Context) {
 	for {
 		if !b.processStarQueue(ctx) {
 			time.AfterFunc(5*time.Second, func() {

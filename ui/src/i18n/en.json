@@ -1,3 +1,4 @@
+
 {
     "languageName": "English",
     "resources": {
@@ -46,6 +47,7 @@
                 "duration": "Time",
                 "songCount": "Songs",
                 "playCount": "Plays",
+                "size": "Size",
                 "name": "Name",
                 "genre": "Genre",
                 "compilation": "Compilation",
@@ -59,6 +61,7 @@
                 "playAll": "Play",
                 "playNext": "Play Next",
                 "addToQueue": "Play Later",
+                "share": "Share",
                 "shuffle": "Shuffle",
                 "addToPlaylist": "Add to Playlist",
                 "download": "Download",
@@ -80,6 +83,7 @@
                 "name": "Name",
                 "albumCount": "Album Count",
                 "songCount": "Song Count",
+                "size": "Size",
                 "playCount": "Plays",
                 "rating": "Rating",
                 "genre": "Genre"
@@ -160,6 +164,39 @@
                 "duplicate_song": "Add duplicated songs",
                 "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?"
             }
+        },
+        "radio": {
+            "name": "Radio |||| Radios",
+            "fields": {
+                "name": "Name",
+                "streamUrl": "Stream URL",
+                "homePageUrl": "Home Page URL",
+                "updatedAt": "Updated at",
+                "createdAt": "Created at"
+            },
+            "actions": {
+                "playNow": "Play Now"
+            }
+        },
+        "share": {
+            "name": "Share |||| Shares",
+            "fields": {
+                "username": "Shared By",
+                "url": "URL",
+                "description": "Description",
+                "contents": "Contents",
+                "expiresAt": "Expires",
+                "lastVisitedAt": "Last Visited",
+                "visitCount": "Visits",
+                "format": "Format",
+                "maxBitRate": "Max. Bit Rate",
+                "updatedAt": "Updated at",
+                "createdAt": "Created at"
+            },
+            "notifications": {
+            },
+            "actions": {
+            }
         }
     },
     "ra": {
@@ -188,13 +225,15 @@
             "email": "Must be a valid email",
             "oneOf": "Must be one of: %{options}",
             "regex": "Must match a specific format (regexp): %{pattern}",
-            "unique": "Must be unique"
+            "unique": "Must be unique",
+            "url": "Must be a valid URL"
         },
         "action": {
             "add_filter": "Add filter",
             "add": "Add",
             "back": "Go Back",
             "bulk_actions": "1 item selected |||| %{smart_count} items selected",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "cancel": "Cancel",
             "clear_input_value": "Clear value",
             "clone": "Clone",
@@ -217,7 +256,9 @@
             "open_menu": "Open menu",
             "close_menu": "Close menu",
             "unselect": "Unselect",
-            "skip": "Skip"
+            "skip": "Skip",
+            "share": "Share",
+            "download":  "Download"
         },
         "boolean": {
             "true": "Yes",
@@ -325,7 +366,13 @@
             "musicbrainz": "Open in MusicBrainz"
         },
         "lastfmLink": "Read More...",
-        "originalFormat": "Download in original format"
+        "shareOriginalFormat": "Share in original format",
+        "shareDialogTitle": "Share %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Share 1 %{resource} |||| Share %{smart_count} %{resource}",
+        "shareSuccess": "URL copied to clipboard: %{url}",
+        "shareFailure": "Error copying URL %{url} to clipboard",
+        "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
+        "downloadOriginalFormat": "Download in original format"
     },
     "menu": {
         "library": "Library",
@@ -340,7 +387,14 @@
                 "defaultView": "Default View",
                 "desktop_notifications": "Desktop Notifications",
                 "lastfmScrobbling": "Scrobble to Last.fm",
-                "listenBrainzScrobbling": "Scrobble to ListenBrainz"
+                "listenBrainzScrobbling": "Scrobble to ListenBrainz",
+                "replaygain": "ReplayGain Mode",
+                "preAmp": "ReplayGain PreAmp (dB)",
+                "gain": {
+                    "none": "Disabled",
+                    "album": "Use Album Gain",
+                    "track": "Use Track Gain"
+                }
             }
         },
         "albumList": "Albums",
@@ -372,6 +426,7 @@
             "singleLoop": "Repeat One",
             "shufflePlay": "Shuffle"
         }
+
     },
     "about": {
         "links": {

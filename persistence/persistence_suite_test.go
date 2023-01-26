@@ -46,9 +46,9 @@ var (
 )
 
 var (
-	albumSgtPeppers    = model.Album{ID: "101", Name: "Sgt Peppers", Artist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", Genre: "Rock", Genres: model.Genres{genreRock}, CoverArtId: "1", CoverArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967, FullText: " beatles peppers sgt the"}
-	albumAbbeyRoad     = model.Album{ID: "102", Name: "Abbey Road", Artist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", Genre: "Rock", Genres: model.Genres{genreRock}, CoverArtId: "2", CoverArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969, FullText: " abbey beatles road the"}
-	albumRadioactivity = model.Album{ID: "103", Name: "Radioactivity", Artist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", Genre: "Electronic", Genres: model.Genres{genreElectronic, genreRock}, CoverArtId: "3", CoverArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, FullText: " kraftwerk radioactivity"}
+	albumSgtPeppers    = model.Album{ID: "101", Name: "Sgt Peppers", Artist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", Genre: "Rock", Genres: model.Genres{genreRock}, EmbedArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967, FullText: " beatles peppers sgt the"}
+	albumAbbeyRoad     = model.Album{ID: "102", Name: "Abbey Road", Artist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", Genre: "Rock", Genres: model.Genres{genreRock}, EmbedArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969, FullText: " abbey beatles road the"}
+	albumRadioactivity = model.Album{ID: "103", Name: "Radioactivity", Artist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", Genre: "Electronic", Genres: model.Genres{genreElectronic, genreRock}, EmbedArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, FullText: " kraftwerk radioactivity"}
 	testAlbums         = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,
@@ -70,6 +70,12 @@ var (
 )
 
 var (
+	radioWithoutHomePage = model.Radio{ID: "1235", StreamUrl: "https://example.com:8000/1/stream.mp3", HomePageUrl: "", Name: "No Homepage"}
+	radioWithHomePage    = model.Radio{ID: "5010", StreamUrl: "https://example.com/stream.mp3", Name: "Example Radio", HomePageUrl: "https://example.com"}
+	testRadios           = model.Radios{radioWithoutHomePage, radioWithHomePage}
+)
+
+var (
 	plsBest       model.Playlist
 	plsCool       model.Playlist
 	testPlaylists []*model.Playlist
@@ -84,7 +90,7 @@ func P(path string) string {
 var _ = BeforeSuite(func() {
 	o := orm.NewOrm()
 	ctx := log.NewContext(context.TODO())
-	user := model.User{ID: "userid", UserName: "userid"}
+	user := model.User{ID: "userid", UserName: "userid", IsAdmin: true}
 	ctx = request.WithUser(ctx, user)
 
 	ur := NewUserRepository(ctx, o)
@@ -124,6 +130,15 @@ var _ = BeforeSuite(func() {
 	for i := range testArtists {
 		a := testArtists[i]
 		err := arr.Put(&a)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	rar := NewRadioRepository(ctx, o)
+	for i := range testRadios {
+		r := testRadios[i]
+		err := rar.Put(&r)
 		if err != nil {
 			panic(err)
 		}

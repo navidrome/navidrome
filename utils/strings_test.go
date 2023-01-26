@@ -35,20 +35,6 @@ var _ = Describe("Strings", func() {
 		})
 	})
 
-	Describe("StringInSlice", func() {
-		It("returns false if slice is empty", func() {
-			Expect(StringInSlice("test", nil)).To(BeFalse())
-		})
-
-		It("returns false if string is not found in slice", func() {
-			Expect(StringInSlice("aaa", []string{"bbb", "ccc"})).To(BeFalse())
-		})
-
-		It("returns true if string is found in slice", func() {
-			Expect(StringInSlice("bbb", []string{"bbb", "aaa", "ccc"})).To(BeTrue())
-		})
-	})
-
 	Describe("MoveString", func() {
 		It("moves item to end of slice", func() {
 			Expect(MoveString([]string{"1", "2", "3"}, 0, 2)).To(ConsistOf("2", "3", "1"))

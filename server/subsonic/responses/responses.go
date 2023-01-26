@@ -37,6 +37,7 @@ type Subsonic struct {
 	ArtistWithAlbumsID3 *ArtistWithAlbumsID3 `xml:"artist,omitempty"                      json:"artist,omitempty"`
 	AlbumWithSongsID3   *AlbumWithSongsID3   `xml:"album,omitempty"                       json:"album,omitempty"`
 
+	AlbumInfo     *AlbumInfo     `xml:"albumInfo,omitempty"                               json:"albumInfo,omitempty"`
 	ArtistInfo    *ArtistInfo    `xml:"artistInfo,omitempty"                              json:"artistInfo,omitempty"`
 	ArtistInfo2   *ArtistInfo2   `xml:"artistInfo2,omitempty"                             json:"artistInfo2,omitempty"`
 	SimilarSongs  *SimilarSongs  `xml:"similarSongs,omitempty"                            json:"similarSongs,omitempty"`
@@ -44,9 +45,12 @@ type Subsonic struct {
 	TopSongs      *TopSongs      `xml:"topSongs,omitempty"                                json:"topSongs,omitempty"`
 
 	PlayQueue  *PlayQueue  `xml:"playQueue,omitempty"                                     json:"playQueue,omitempty"`
+	Shares     *Shares     `xml:"shares,omitempty"                                     json:"shares,omitempty"`
 	Bookmarks  *Bookmarks  `xml:"bookmarks,omitempty"                                     json:"bookmarks,omitempty"`
 	ScanStatus *ScanStatus `xml:"scanStatus,omitempty"                                    json:"scanStatus,omitempty"`
 	Lyrics     *Lyrics     `xml:"lyrics,omitempty"                                        json:"lyrics,omitempty"`
+
+	InternetRadioStations *InternetRadioStations `xml:"internetRadioStations,omitempty"  json:"internetRadioStations,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -77,9 +81,10 @@ type Artist struct {
 	AlbumCount     int        `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
 	Starred        *time.Time `xml:"starred,attr,omitempty"            json:"starred,omitempty"`
 	UserRating     int        `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
+	CoverArt       string     `xml:"coverArt,attr,omitempty"           json:"coverArt,omitempty"`
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"     json:"artistImageUrl,omitempty"`
-	/*
-		<xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
+	/* TODO:
+	<xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
 	*/
 }
 
@@ -212,11 +217,11 @@ type Playlist struct {
 	Owner     string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
 	Created   time.Time `xml:"created,attr"                  json:"created"`
 	Changed   time.Time `xml:"changed,attr"                  json:"changed"`
+	CoverArt  string    `xml:"coverArt,attr,omitempty"       json:"coverArt,omitempty"`
 	/*
 		<xs:sequence>
 		    <xs:element name="allowedUser" type="xs:string" minOccurs="0" maxOccurs="unbounded"/> <!--Added in 1.8.0-->
 		</xs:sequence>
-		<xs:attribute name="coverArt" type="xs:string" use="optional"/>  <!--Added in 1.11.0-->
 	*/
 }
 
@@ -293,6 +298,15 @@ type Genres struct {
 	Genre []Genre `xml:"genre,omitempty"                      json:"genre,omitempty"`
 }
 
+type AlbumInfo struct {
+	Notes          string `xml:"notes,omitempty"          json:"notes,omitempty"`
+	MusicBrainzID  string `xml:"musicBrainzId,omitempty"      json:"musicBrainzId,omitempty"`
+	LastFmUrl      string `xml:"lastFmUrl,omitempty"          json:"lastFmUrl,omitempty"`
+	SmallImageUrl  string `xml:"smallImageUrl,omitempty"      json:"smallImageUrl,omitempty"`
+	MediumImageUrl string `xml:"mediumImageUrl,omitempty"     json:"mediumImageUrl,omitempty"`
+	LargeImageUrl  string `xml:"largeImageUrl,omitempty"      json:"largeImageUrl,omitempty"`
+}
+
 type ArtistInfoBase struct {
 	Biography      string `xml:"biography,omitempty"          json:"biography,omitempty"`
 	MusicBrainzID  string `xml:"musicBrainzId,omitempty"      json:"musicBrainzId,omitempty"`
@@ -346,6 +360,22 @@ type Bookmarks struct {
 	Bookmark []Bookmark `xml:"bookmark,omitempty"    json:"bookmark,omitempty"`
 }
 
+type Share struct {
+	Entry       []Child    `xml:"entry,omitempty"             json:"entry,omitempty"`
+	ID          string     `xml:"id,attr"                     json:"id"`
+	Url         string     `xml:"url,attr"                    json:"url"`
+	Description string     `xml:"description,omitempty,attr"  json:"description,omitempty"`
+	Username    string     `xml:"username,attr"               json:"username"`
+	Created     time.Time  `xml:"created,attr"                json:"created"`
+	Expires     *time.Time `xml:"expires,omitempty,attr"      json:"expires,omitempty"`
+	LastVisited time.Time  `xml:"lastVisited,omitempty,attr"  json:"lastVisited"`
+	VisitCount  int        `xml:"visitCount,attr"             json:"visitCount"`
+}
+
+type Shares struct {
+	Share []Share `xml:"share,omitempty" json:"share,omitempty"`
+}
+
 type ScanStatus struct {
 	Scanning    bool       `xml:"scanning,attr"            json:"scanning"`
 	Count       int64      `xml:"count,attr"               json:"count"`
@@ -357,4 +387,15 @@ type Lyrics struct {
 	Artist string `xml:"artist,omitempty,attr"  json:"artist,omitempty"`
 	Title  string `xml:"title,omitempty,attr"   json:"title,omitempty"`
 	Value  string `xml:",chardata"              json:"value"`
+}
+
+type InternetRadioStations struct {
+	Radios []Radio `xml:"internetRadioStation"               json:"internetRadioStation,omitempty"`
+}
+
+type Radio struct {
+	ID          string `xml:"id,attr"                    json:"id"`
+	Name        string `xml:"name,attr"                  json:"name"`
+	StreamUrl   string `xml:"streamUrl,attr"             json:"streamUrl"`
+	HomepageUrl string `xml:"homePageUrl,omitempty,attr" json:"homePageUrl,omitempty"`
 }

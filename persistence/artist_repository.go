@@ -176,65 +176,6 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 	return result, nil
 }
 
-func (r *artistRepository) Refresh(ids ...string) error {
-	chunks := utils.BreakUpStringSlice(ids, 100)
-	for _, chunk := range chunks {
-		err := r.refresh(chunk...)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *artistRepository) refresh(ids ...string) error {
-	type refreshArtist struct {
-		model.Artist
-		CurrentId string
-		GenreIds  string
-	}
-	var artists []refreshArtist
-	sel := Select("f.album_artist_id as id", "f.album_artist as name", "count(*) as album_count", "a.id as current_id",
-		"group_concat(f.mbz_album_artist_id , ' ') as mbz_artist_id",
-		"f.sort_album_artist_name as sort_artist_name", "f.order_album_artist_name as order_artist_name",
-		"sum(f.song_count) as song_count", "sum(f.size) as size",
-		"alg.genre_ids").
-		From("album f").
-		LeftJoin("artist a on f.album_artist_id = a.id").
-		LeftJoin(`(select al.album_artist_id, group_concat(ag.genre_id, ' ') as genre_ids from album_genres ag
-				left join album al on al.id = ag.album_id where al.album_artist_id in ('` +
-			strings.Join(ids, "','") + `') group by al.album_artist_id) alg on alg.album_artist_id = f.album_artist_id`).
-		Where(Eq{"f.album_artist_id": ids}).
-		GroupBy("f.album_artist_id").OrderBy("f.id")
-	err := r.queryAll(sel, &artists)
-	if err != nil {
-		return err
-	}
-
-	toInsert := 0
-	toUpdate := 0
-	for _, ar := range artists {
-		if ar.CurrentId != "" {
-			toUpdate++
-		} else {
-			toInsert++
-		}
-		ar.MbzArtistID = getMostFrequentMbzID(r.ctx, ar.MbzArtistID, r.tableName, ar.Name)
-		ar.Genres = getGenres(ar.GenreIds)
-		err := r.Put(&ar.Artist)
-		if err != nil {
-			return err
-		}
-	}
-	if toInsert > 0 {
-		log.Debug(r.ctx, "Inserted new artists", "totalInserted", toInsert)
-	}
-	if toUpdate > 0 {
-		log.Debug(r.ctx, "Updated artists", "totalUpdated", toUpdate)
-	}
-	return err
-}
-
 func (r *artistRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_artist_id) from album)")
 	c, err := r.executeSQL(del)

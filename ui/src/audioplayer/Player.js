@@ -24,6 +24,16 @@ import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 
+function calculateReplayGain(preAmp, gain, peak) {
+  if (gain === undefined || peak === undefined) {
+    return 1
+  }
+
+  // https://wiki.hydrogenaud.io/index.php?title=ReplayGain_1.0_specification&section=19
+  // Normalized to max gain
+  return Math.min(10 ** ((gain + preAmp) / 20), 1 / peak)
+}
+
 const Player = () => {
   const theme = useCurrentTheme()
   const translate = useTranslate()
@@ -41,13 +51,79 @@ const Player = () => {
   )
   const { authenticated } = useAuthState()
   const visible = authenticated && playerState.queue.length > 0
+  const isRadio = playerState.current?.isRadio || false
   const classes = useStyle({
+    isRadio,
     visible,
     enableCoverAnimation: config.enableCoverAnimation,
   })
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
   )
+  const gainInfo = useSelector((state) => state.replayGain)
+  const [context, setContext] = useState(null)
+  const [gainNode, setGainNode] = useState(null)
+
+  useEffect(() => {
+    if (
+      context === null &&
+      audioInstance &&
+      config.enableReplayGain &&
+      'AudioContext' in window
+    ) {
+      const ctx = new AudioContext()
+      // we need this to support radios in firefox
+      audioInstance.crossOrigin = 'anonymous'
+      const source = ctx.createMediaElementSource(audioInstance)
+      const gain = ctx.createGain()
+
+      source.connect(gain)
+      gain.connect(ctx.destination)
+
+      setContext(ctx)
+      setGainNode(gain)
+    }
+  }, [audioInstance, context])
+
+  useEffect(() => {
+    if (gainNode) {
+      const current = playerState.current || {}
+      const song = current.song || {}
+
+      let numericGain
+
+      switch (gainInfo.gainMode) {
+        case 'album': {
+          numericGain = calculateReplayGain(
+            gainInfo.preAmp,
+            song.rgAlbumGain,
+            song.rgAlbumPeak
+          )
+          break
+        }
+        case 'track': {
+          numericGain = calculateReplayGain(
+            gainInfo.preAmp,
+            song.rgTrackGain,
+            song.rgTrackPeak
+          )
+          break
+        }
+        default: {
+          numericGain = 1
+        }
+      }
+
+      gainNode.gain.setValueAtTime(numericGain, context.currentTime)
+    }
+  }, [
+    audioInstance,
+    context,
+    gainNode,
+    gainInfo.gainMode,
+    gainInfo.preAmp,
+    playerState,
+  ])
 
   const defaultOptions = useMemo(
     () => ({
@@ -73,11 +149,15 @@ const Player = () => {
       },
       volumeFade: { fadeIn: 200, fadeOut: 200 },
       renderAudioTitle: (audioInfo, isMobile) => (
-        <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
+        <AudioTitle
+          audioInfo={audioInfo}
+          gainInfo={gainInfo}
+          isMobile={isMobile}
+        />
       ),
       locale: locale(translate),
     }),
-    [isDesktop, playerTheme, translate]
+    [gainInfo, isDesktop, playerTheme, translate]
   )
 
   const options = useMemo(() => {
@@ -88,8 +168,11 @@ const Player = () => {
       playIndex: playerState.playIndex,
       autoPlay: playerState.clear || playerState.playIndex === 0,
       clearPriorAudioLists: playerState.clear,
-      extendsContent: <PlayerToolbar id={current.trackId} />,
+      extendsContent: (
+        <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
+      ),
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
+      showMediaSession: !current.isRadio,
     }
   }, [playerState, defaultOptions, isMobilePlayer])
 
@@ -113,6 +196,10 @@ const Player = () => {
 
       const progress = (info.currentTime / info.duration) * 100
       if (isNaN(info.duration) || (progress < 50 && info.currentTime < 240)) {
+        return
+      }
+
+      if (info.isRadio) {
         return
       }
 
@@ -142,6 +229,12 @@ const Player = () => {
 
   const onAudioPlay = useCallback(
     (info) => {
+      // Do this to start the context; on chrome-based browsers, the context
+      // will start paused since it is created prior to user interaction
+      if (context && context.state !== 'running') {
+        context.resume()
+      }
+
       dispatch(currentPlaying(info))
       if (startTime === null) {
         setStartTime(Date.now())
@@ -149,7 +242,9 @@ const Player = () => {
       if (info.duration) {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
-        subsonic.nowPlaying(info.trackId)
+        if (!info.isRadio) {
+          subsonic.nowPlaying(info.trackId)
+        }
         setPreload(false)
         if (config.gaTrackingId) {
           ReactGA.event({
@@ -167,7 +262,7 @@ const Player = () => {
         }
       }
     },
-    [dispatch, showNotifications, startTime]
+    [context, dispatch, showNotifications, startTime]
   )
 
   const onAudioPlayTrackChange = useCallback(() => {

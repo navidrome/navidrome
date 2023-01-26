@@ -31,7 +31,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
 		httpClient = &tests.FakeHttpClient{}
 		agent = listenBrainzConstructor(ds)
-		agent.client = NewClient("http://localhost:8080", httpClient)
+		agent.client = newClient("http://localhost:8080", httpClient)
 		track = &model.MediaFile{
 			ID:          "123",
 			Title:       "Track Title",
@@ -162,10 +162,10 @@ var _ = Describe("listenBrainzAgent", func() {
 
 	Describe("CanProxyStars", func() {
 		var httpClient *tests.FakeHttpClient
-		var client *Client
+		var client *client
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client = NewClient("http://localhost:8080", httpClient)
+			client = newClient("http://localhost:8080", httpClient)
 		})
 
 		It("should not proxy if disabled", func() {

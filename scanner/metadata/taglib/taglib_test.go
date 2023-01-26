@@ -8,13 +8,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Parser", func() {
-	var e *Parser
+var _ = Describe("Extractor", func() {
+	var e *Extractor
 	// This file will have 0222 (no read) permission during these tests
 	var accessForbiddenFile = "tests/fixtures/test_no_read_permission.ogg"
 
 	BeforeEach(func() {
-		e = &Parser{}
+		e = &Extractor{}
 
 		err := os.Chmod(accessForbiddenFile, 0222)
 		Expect(err).ToNot(HaveOccurred())
@@ -42,7 +42,6 @@ var _ = Describe("Parser", func() {
 			Expect(m).To(HaveKeyWithValue("tcmp", []string{"1"})) // Compilation
 			Expect(m).To(HaveKeyWithValue("genre", []string{"Rock"}))
 			Expect(m).To(HaveKeyWithValue("date", []string{"2014", "2014"}))
-			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10", "2/10", "2"}))
 			Expect(m).To(HaveKeyWithValue("discnumber", []string{"1/2"}))
 			Expect(m).To(HaveKeyWithValue("has_picture", []string{"true"}))
 			Expect(m).To(HaveKeyWithValue("duration", []string{"1.02"}))
@@ -51,6 +50,10 @@ var _ = Describe("Parser", func() {
 			Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
 			Expect(m).To(HaveKeyWithValue("lyrics", []string{"Lyrics 1\rLyrics 2"}))
 			Expect(m).To(HaveKeyWithValue("bpm", []string{"123"}))
+
+			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10"}))
+			m = m.Map(e.CustomMappings())
+			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10", "2/10", "2"}))
 
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())

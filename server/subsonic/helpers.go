@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
@@ -72,21 +73,22 @@ func getUser(ctx context.Context) model.User {
 	return model.User{}
 }
 
-func toArtists(ctx context.Context, artists model.Artists) []responses.Artist {
+func toArtists(r *http.Request, artists model.Artists) []responses.Artist {
 	as := make([]responses.Artist, len(artists))
 	for i, artist := range artists {
-		as[i] = toArtist(ctx, artist)
+		as[i] = toArtist(r, artist)
 	}
 	return as
 }
 
-func toArtist(ctx context.Context, a model.Artist) responses.Artist {
+func toArtist(r *http.Request, a model.Artist) responses.Artist {
 	artist := responses.Artist{
 		Id:             a.ID,
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
 		UserRating:     a.Rating,
-		ArtistImageUrl: a.ArtistImageUrl(),
+		CoverArt:       a.CoverArtID().String(),
+		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 0),
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
@@ -94,12 +96,13 @@ func toArtist(ctx context.Context, a model.Artist) responses.Artist {
 	return artist
 }
 
-func toArtistID3(ctx context.Context, a model.Artist) responses.ArtistID3 {
+func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 	artist := responses.ArtistID3{
 		Id:             a.ID,
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
-		ArtistImageUrl: a.ArtistImageUrl(),
+		CoverArt:       a.CoverArtID().String(),
+		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 0),
 		UserRating:     a.Rating,
 	}
 	if a.Starred {
@@ -147,11 +150,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Size = mf.Size
 	child.Suffix = mf.Suffix
 	child.BitRate = mf.BitRate
-	if mf.HasCoverArt {
-		child.CoverArt = mf.ID
-	} else {
-		child.CoverArt = "al-" + mf.AlbumID
-	}
+	child.CoverArt = mf.CoverArtID().String()
 	child.ContentType = mf.ContentType()
 	player, ok := request.PlayerFrom(ctx)
 	if ok && player.ReportRealPath {
@@ -202,7 +201,7 @@ func childrenFromMediaFiles(ctx context.Context, mfs model.MediaFiles) []respons
 	return children
 }
 
-func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
+func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child := responses.Child{}
 	child.Id = al.ID
 	child.IsDir = true
@@ -212,7 +211,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child.Artist = al.AlbumArtist
 	child.Year = al.MaxYear
 	child.Genre = al.Genre
-	child.CoverArt = al.CoverArtId
+	child.CoverArt = al.CoverArtID().String()
 	child.Created = &al.CreatedAt
 	child.Parent = al.AlbumArtistID
 	child.ArtistId = al.AlbumArtistID

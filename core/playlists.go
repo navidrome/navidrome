@@ -200,12 +200,12 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		var err error
 		repo := tx.Playlist(ctx)
 		if needsTrackRefresh {
-			pls, err = repo.GetWithTracks(playlistID)
+			pls, err = repo.GetWithTracks(playlistID, true)
 			pls.RemoveTracks(idxToRemove)
 			pls.AddTracks(idsToAdd)
 		} else {
 			if len(idsToAdd) > 0 {
-				_, err = repo.Tracks(playlistID).Add(idsToAdd)
+				_, err = repo.Tracks(playlistID, true).Add(idsToAdd)
 				if err != nil {
 					return err
 				}
@@ -232,7 +232,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		}
 		// Special case: The playlist is now empty
 		if len(idxToRemove) > 0 && len(pls.Tracks) == 0 {
-			if err = repo.Tracks(playlistID).DeleteAll(); err != nil {
+			if err = repo.Tracks(playlistID, true).DeleteAll(); err != nil {
 				return err
 			}
 		}
