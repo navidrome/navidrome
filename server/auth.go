@@ -107,8 +107,6 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 }
 
 func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
-	auth.Init(ds)
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
 		if err != nil {
@@ -217,6 +215,7 @@ func UsernameFromConfig(r *http.Request) string {
 func contextWithUser(ctx context.Context, ds model.DataStore, username string) (context.Context, error) {
 	user, err := ds.User(ctx).FindByUsername(username)
 	if err == nil {
+		ctx = log.NewContext(ctx, "username", username)
 		ctx = request.WithUsername(ctx, user.UserName)
 		return request.WithUser(ctx, *user), nil
 	}
@@ -286,8 +285,25 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 	userRepo := ds.User(r.Context())
 	user, err := userRepo.FindByUsernameWithPassword(username)
 	if user == nil || err != nil {
-		log.Warn(r, "User passed in header not found", "user", username)
-		return nil
+		log.Info(r, "User passed in header not found", "user", username)
+		newUser := model.User{
+			ID:          uuid.NewString(),
+			UserName:    username,
+			Name:        username,
+			Email:       "",
+			NewPassword: consts.PasswordAutogenPrefix + uuid.NewString(),
+			IsAdmin:     false,
+		}
+		err := userRepo.Put(&newUser)
+		if err != nil {
+			log.Error(r, "Could not create new user", "user", username, err)
+			return nil
+		}
+		user, err = userRepo.FindByUsernameWithPassword(username)
+		if user == nil || err != nil {
+			log.Error(r, "Created user but failed to fetch it", "user", username)
+			return nil
+		}
 	}
 
 	err = userRepo.UpdateLastLoginAt(user.ID)

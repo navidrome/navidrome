@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 var (
@@ -31,11 +32,39 @@ func Init(ds model.DataStore) {
 	})
 }
 
+func createBaseClaims() map[string]any {
+	tokenClaims := map[string]any{}
+	tokenClaims[jwt.IssuerKey] = consts.JWTIssuer
+	return tokenClaims
+}
+
+func CreatePublicToken(claims map[string]any) (string, error) {
+	tokenClaims := createBaseClaims()
+	for k, v := range claims {
+		tokenClaims[k] = v
+	}
+	_, token, err := TokenAuth.Encode(tokenClaims)
+
+	return token, err
+}
+
+func CreateExpiringPublicToken(exp time.Time, claims map[string]any) (string, error) {
+	tokenClaims := createBaseClaims()
+	if !exp.IsZero() {
+		tokenClaims[jwt.ExpirationKey] = exp.UTC().Unix()
+	}
+	for k, v := range claims {
+		tokenClaims[k] = v
+	}
+	_, token, err := TokenAuth.Encode(tokenClaims)
+
+	return token, err
+}
+
 func CreateToken(u *model.User) (string, error) {
-	claims := map[string]interface{}{}
-	claims[jwt.IssuerKey] = consts.JWTIssuer
-	claims[jwt.IssuedAtKey] = time.Now().UTC().Unix()
+	claims := createBaseClaims()
 	claims[jwt.SubjectKey] = u.UserName
+	claims[jwt.IssuedAtKey] = time.Now().UTC().Unix()
 	claims["uid"] = u.ID
 	claims["adm"] = u.IsAdmin
 	token, _, err := TokenAuth.Encode(claims)
@@ -64,4 +93,20 @@ func Validate(tokenStr string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return token.AsMap(context.Background())
+}
+
+func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
+	u, err := ds.User(ctx).FindFirstAdmin()
+	if err != nil {
+		c, err := ds.User(ctx).CountAll()
+		if c == 0 && err == nil {
+			log.Debug(ctx, "Scanner: No admin user yet!", err)
+		} else {
+			log.Error(ctx, "Scanner: No admin user found!", err)
+		}
+		u = &model.User{}
+	}
+
+	ctx = request.WithUsername(ctx, u.UserName)
+	return request.WithUser(ctx, *u)
 }

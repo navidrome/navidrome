@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"crypto/rand"
 	"errors"
-	"math/big"
+
+	"github.com/navidrome/navidrome/utils/number"
 )
 
 type WeightedChooser struct {
@@ -16,7 +16,7 @@ func NewWeightedRandomChooser() *WeightedChooser {
 	return &WeightedChooser{}
 }
 
-func (w *WeightedChooser) Put(value interface{}, weight int) {
+func (w *WeightedChooser) Add(value interface{}, weight int) {
 	w.entries = append(w.entries, value)
 	w.weights = append(w.weights, weight)
 	w.totalWeight += weight
@@ -41,9 +41,7 @@ func (w *WeightedChooser) weightedChoice() (int, error) {
 	if w.totalWeight == 0 {
 		return 0, errors.New("no choices available")
 	}
-	rndBig, _ := rand.Int(rand.Reader, big.NewInt(int64(w.totalWeight)))
-
-	rnd := rndBig.Int64()
+	rnd := number.RandomInt64(int64(w.totalWeight))
 	for i, weight := range w.weights {
 		rnd -= int64(weight)
 		if rnd < 0 {

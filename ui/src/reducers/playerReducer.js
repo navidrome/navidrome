@@ -20,12 +20,26 @@ const initialState = {
   savedPlayIndex: 0,
 }
 
+const timestampRegex =
+  /(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])/g
+
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, trackId is mediaFileId
   const trackId = item.mediaFileId || item.id
+
+  if (item.isRadio) {
+    return {
+      trackId,
+      uuid: uuidv4(),
+      name: item.name,
+      song: item,
+      musicSrc: item.streamUrl,
+      cover: item.cover,
+      isRadio: true,
+    }
+  }
+
   const { lyrics } = item
-  const timestampRegex =
-    /(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])/g
   return {
     trackId,
     uuid: uuidv4(),
@@ -37,8 +51,9 @@ const mapToAudioLists = (item) => {
     musicSrc: subsonic.streamUrl(trackId),
     cover: subsonic.getCoverArtUrl(
       {
-        coverArtId: config.devFastAccessCoverArt ? item.albumId : trackId,
+        id: trackId,
         updatedAt: item.updatedAt,
+        album: item.album,
       },
       300
     ),

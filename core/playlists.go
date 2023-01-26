@@ -22,7 +22,7 @@ import (
 
 type Playlists interface {
 	ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error)
-	Update(ctx context.Context, playlistId string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error
+	Update(ctx context.Context, playlistID string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error
 }
 
 type playlists struct {
@@ -31,11 +31,6 @@ type playlists struct {
 
 func NewPlaylists(ds model.DataStore) Playlists {
 	return &playlists{ds: ds}
-}
-
-func IsPlaylist(filePath string) bool {
-	extension := strings.ToLower(filepath.Ext(filePath))
-	return extension == ".m3u" || extension == ".m3u8" || extension == ".nsp"
 }
 
 func (s *playlists) ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error) {
@@ -194,7 +189,7 @@ func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	return 0, nil, nil
 }
 
-func (s *playlists) Update(ctx context.Context, playlistId string,
+func (s *playlists) Update(ctx context.Context, playlistID string,
 	name *string, comment *string, public *bool,
 	idsToAdd []string, idxToRemove []int) error {
 	needsInfoUpdate := name != nil || comment != nil || public != nil
@@ -205,18 +200,18 @@ func (s *playlists) Update(ctx context.Context, playlistId string,
 		var err error
 		repo := tx.Playlist(ctx)
 		if needsTrackRefresh {
-			pls, err = repo.GetWithTracks(playlistId)
+			pls, err = repo.GetWithTracks(playlistID, true)
 			pls.RemoveTracks(idxToRemove)
 			pls.AddTracks(idsToAdd)
 		} else {
 			if len(idsToAdd) > 0 {
-				_, err = repo.Tracks(playlistId).Add(idsToAdd)
+				_, err = repo.Tracks(playlistID, true).Add(idsToAdd)
 				if err != nil {
 					return err
 				}
 			}
 			if needsInfoUpdate {
-				pls, err = repo.Get(playlistId)
+				pls, err = repo.Get(playlistID)
 			}
 		}
 		if err != nil {
@@ -237,7 +232,7 @@ func (s *playlists) Update(ctx context.Context, playlistId string,
 		}
 		// Special case: The playlist is now empty
 		if len(idxToRemove) > 0 && len(pls.Tracks) == 0 {
-			if err = repo.Tracks(playlistId).DeleteAll(); err != nil {
+			if err = repo.Tracks(playlistID, true).DeleteAll(); err != nil {
 				return err
 			}
 		}
