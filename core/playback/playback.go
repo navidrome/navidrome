@@ -32,14 +32,24 @@ type PlaybackServer interface {
 	SetGain(user string, gain float64) (responses.JukeboxStatus, error)
 }
 
+type PlaybackDevice struct {
+	Owner      string
+	Name       string
+	Method     string
+	DeviceName string
+	Playlist   responses.JukeboxPlaylist
+	Status     responses.JukeboxStatus
+}
+
+type playbackServer struct {
+	ctx             *context.Context
+	playbackDevices []PlaybackDevice
+}
+
 func GetInstance() PlaybackServer {
 	return singleton.GetInstance(func() *playbackServer {
 		return &playbackServer{}
 	})
-}
-
-type playbackServer struct {
-	ctx *context.Context
 }
 
 func (ps *playbackServer) Run(ctx context.Context) error {
@@ -47,12 +57,30 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Info(ctx, "Using audio device: "+conf.Server.Jukebox.Default)
+
+	ps.playbackDevices = initDeviceStatus(conf.Server.Jukebox.Devices)
+	log.Info(ctx, fmt.Sprintf("%d audio devices found", len(conf.Server.Jukebox.Devices)))
+	log.Info(ctx, "Using default audio device: "+conf.Server.Jukebox.Default)
 
 	ps.ctx = &ctx
 
 	<-ctx.Done()
 	return nil
+}
+
+func initDeviceStatus(devices []conf.AudioDeviceDefinition) []PlaybackDevice {
+	pbDevices := make([]PlaybackDevice, len(devices))
+	for idx, audioDevice := range devices {
+		pbDevices[idx] = PlaybackDevice{
+			Owner:      "",
+			Name:       audioDevice[0],
+			Method:     audioDevice[1],
+			DeviceName: audioDevice[2],
+			Playlist:   responses.JukeboxPlaylist{},
+			Status:     responses.JukeboxStatus{},
+		}
+	}
+	return pbDevices
 }
 
 func (ps *playbackServer) Get(user string) (responses.JukeboxPlaylist, error) {
