@@ -41,8 +41,27 @@ func handleJukeboxAction(action Action) (*responses.Subsonic, error) {
 
 	switch action.actionType {
 	case ActionGet:
-		playback.Play()
-
+		playback.Get(action.user)
+	case ActionStatus:
+		playback.Status(action.user)
+	case ActionSet:
+		playback.Set(action.user, action.Id)
+	case ActionStart:
+		playback.Start(action.user)
+	case ActionStop:
+		playback.Stop(action.user)
+	case ActionSkip:
+		playback.Skip(action.user, action.Index, action.Offset)
+	case ActionAdd:
+		playback.Add(action.user, action.Id)
+	case ActionClear:
+		playback.Clear(action.user)
+	case ActionRemove:
+		playback.Remove(action.user, action.Index)
+	case ActionShuffle:
+		playback.Shuffle(action.user)
+	case ActionSetGain:
+		playback.SetGain(action.user, action.Gain)
 	}
 
 	response := createJukeboxStatus(0, false, 0, 0)

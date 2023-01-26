@@ -7,6 +7,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/singleton"
 
 	"os"
@@ -18,7 +19,17 @@ import (
 
 type PlaybackServer interface {
 	Run(ctx context.Context) error
-	Play() error
+	Get(user string) responses.JukeboxPlaylist
+	Status(user string) responses.JukeboxStatus
+	Set(user string, id string) responses.JukeboxStatus
+	Start(user string) responses.JukeboxStatus
+	Stop(user string) responses.JukeboxStatus
+	Skip(user string, index int64, offset int64) responses.JukeboxStatus
+	Add(user string, id string) responses.JukeboxStatus
+	Clear(user string) responses.JukeboxStatus
+	Remove(user string, index int64) responses.JukeboxStatus
+	Shuffle(user string) responses.JukeboxStatus
+	SetGain(user string, gain float64) responses.JukeboxStatus
 }
 
 func GetInstance() PlaybackServer {
@@ -44,10 +55,51 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (ps *playbackServer) Play() error {
-	// log.Debug("User: " + core.UserName(*ps.ctx))
+func (ps *playbackServer) Get(user string) responses.JukeboxPlaylist {
+	log.Debug("processing Get action")
+	return responses.JukeboxPlaylist{}
+}
+
+func (ps *playbackServer) Status(user string) responses.JukeboxStatus {
+	log.Debug("processing Status action")
+	return responses.JukeboxStatus{}
+}
+func (ps *playbackServer) Set(user string, id string) responses.JukeboxStatus {
+	log.Debug("processing Set action")
+	return responses.JukeboxStatus{}
+}
+func (ps *playbackServer) Start(user string) responses.JukeboxStatus {
+	log.Debug("processing Start action")
 	playSong("tests/fixtures/test.mp3")
-	return nil
+	return responses.JukeboxStatus{}
+}
+func (ps *playbackServer) Stop(user string) responses.JukeboxStatus {
+	log.Debug("processing Stop action")
+	return responses.JukeboxStatus{}
+}
+func (ps *playbackServer) Skip(user string, index int64, offset int64) responses.JukeboxStatus {
+	log.Debug("processing Skip action")
+	return responses.JukeboxStatus{}
+}
+func (ps *playbackServer) Add(user string, id string) responses.JukeboxStatus {
+	log.Debug("processing Add action")
+	return responses.JukeboxStatus{}
+}
+func (ps *playbackServer) Clear(user string) responses.JukeboxStatus {
+	log.Debug("processing Clear action")
+	return responses.JukeboxStatus{}
+}
+func (ps *playbackServer) Remove(user string, index int64) responses.JukeboxStatus {
+	log.Debug("processing Remove action")
+	return responses.JukeboxStatus{}
+}
+func (ps *playbackServer) Shuffle(user string) responses.JukeboxStatus {
+	log.Debug("processing Shuffle action")
+	return responses.JukeboxStatus{}
+}
+func (ps *playbackServer) SetGain(user string, gain float64) responses.JukeboxStatus {
+	log.Debug("processing SetGain action")
+	return responses.JukeboxStatus{}
 }
 
 func playSong(songname string) {
