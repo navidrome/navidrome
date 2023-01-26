@@ -23,6 +23,10 @@ func newResponse() *responses.Subsonic {
 	return &responses.Subsonic{Status: "ok", Version: Version, Type: consts.AppName, ServerVersion: consts.Version}
 }
 
+func newFailure() *responses.Subsonic {
+	return &responses.Subsonic{Status: "failed", Version: Version, Type: consts.AppName, ServerVersion: consts.Version}
+}
+
 func requiredParamString(r *http.Request, param string) (string, error) {
 	p := utils.ParamString(r, param)
 	if p == "" {

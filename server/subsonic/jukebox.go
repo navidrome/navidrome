@@ -3,9 +3,9 @@ package subsonic
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/navidrome/navidrome/core/playback"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
@@ -20,61 +20,90 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 
-	actionType := parseAction(actionString)
-	if actionType == ActionUnknown {
+	pb := playback.GetInstance()
+
+	switch parseAction(actionString) {
+	case ActionGet:
+		pb.Get(user)
+		return newResponse(), nil
+	case ActionStatus:
+		pb.Status(user)
+		return newResponse(), nil
+	case ActionSet:
+		id, err := requiredParamString(r, "id")
+		if err != nil {
+			return newFailure(), fmt.Errorf("missing parameter id, err: %s", err)
+		}
+		pb.Set(user, id)
+		return newResponse(), nil
+	case ActionStart:
+		pb.Start(user)
+		return newResponse(), nil
+	case ActionStop:
+		pb.Stop(user)
+		return newResponse(), nil
+	case ActionSkip:
+		index, err := getParameterAsInt64(r, "index")
+		if err != nil {
+			return newFailure(), err
+		}
+
+		offset, err := getParameterAsInt64(r, "offset")
+		if err != nil {
+			return newFailure(), err
+		}
+
+		pb.Skip(user, index, offset)
+		return newResponse(), nil
+	case ActionAdd:
+		id, err := requiredParamString(r, "id")
+		if err != nil {
+			return newFailure(), fmt.Errorf("missing parameter id, err: %s", err)
+		}
+		pb.Add(user, id)
+		return newResponse(), nil
+	case ActionClear:
+		pb.Clear(user)
+		return newResponse(), nil
+	case ActionRemove:
+		index, err := getParameterAsInt64(r, "index")
+		if err != nil {
+			return newFailure(), err
+		}
+
+		pb.Remove(user, index)
+		return newResponse(), nil
+	case ActionShuffle:
+		pb.Shuffle(user)
+		return newResponse(), nil
+	case ActionSetGain:
+		gainStr, err := requiredParamString(r, "gain")
+		if err != nil {
+			return newFailure(), fmt.Errorf("missing parameter gain, err: %s", err)
+		}
+
+		gain, err := strconv.ParseFloat(gainStr, 64)
+		if err != nil {
+			return newFailure(), fmt.Errorf("error parsing gain integer value, err: %s", err)
+		}
+		pb.SetGain(user, gain)
+		return newResponse(), nil
+	case ActionUnknown:
 		return nil, newError(responses.ErrorMissingParameter, "Unknown action: %s", actionString)
 	}
 
-	action, err := parseActionParameter(actionType, r)
+	return nil, newError(responses.ErrorMissingParameter, "action not found")
+}
+
+func getParameterAsInt64(r *http.Request, name string) (int64, error) {
+	indexStr, err := requiredParamString(r, name)
 	if err != nil {
-		return nil, err
+		return 0, fmt.Errorf("missing parameter %s, err: %s", name, err)
 	}
 
-	action.actionType = actionType
-	action.user = user
-	return handleJukeboxAction(action)
-}
-
-func handleJukeboxAction(action Action) (*responses.Subsonic, error) {
-	log.Debug(fmt.Sprintf("Handle action: %s for user: %s, parameter: %v", action.actionType, action.user, action))
-	playback := playback.GetInstance()
-
-	switch action.actionType {
-	case ActionGet:
-		playback.Get(action.user)
-	case ActionStatus:
-		playback.Status(action.user)
-	case ActionSet:
-		playback.Set(action.user, action.Id)
-	case ActionStart:
-		playback.Start(action.user)
-	case ActionStop:
-		playback.Stop(action.user)
-	case ActionSkip:
-		playback.Skip(action.user, action.Index, action.Offset)
-	case ActionAdd:
-		playback.Add(action.user, action.Id)
-	case ActionClear:
-		playback.Clear(action.user)
-	case ActionRemove:
-		playback.Remove(action.user, action.Index)
-	case ActionShuffle:
-		playback.Shuffle(action.user)
-	case ActionSetGain:
-		playback.SetGain(action.user, action.Gain)
+	index, err := strconv.ParseInt(indexStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("error parsing %s integer value, err: %s", name, err)
 	}
-
-	response := createJukeboxStatus(0, false, 0, 0)
-	return response, nil
-}
-
-func createJukeboxStatus(currentIndex int64, playing bool, gain float64, position int64) *responses.Subsonic {
-	response := newResponse()
-	response.JukeboxStatus = &responses.JukeboxStatus{
-		CurrentIndex: currentIndex,
-		Playing:      playing,
-		Gain:         gain,
-		Position:     position,
-	}
-	return response
+	return index, nil
 }

@@ -70,7 +70,7 @@ func (ps *playbackServer) Set(user string, id string) responses.JukeboxStatus {
 }
 func (ps *playbackServer) Start(user string) responses.JukeboxStatus {
 	log.Debug("processing Start action")
-	playSong("tests/fixtures/test.mp3")
+	// playSong("tests/fixtures/test.mp3")
 	return responses.JukeboxStatus{}
 }
 func (ps *playbackServer) Stop(user string) responses.JukeboxStatus {
