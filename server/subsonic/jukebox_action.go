@@ -32,62 +32,35 @@ const (
 	ActionSetGain
 )
 
-func (action ActionType) String() string {
-	switch action {
-	case ActionGet:
-		return "Get"
-	case ActionStatus:
-		return "Status"
-	case ActionSet:
-		return "Set"
-	case ActionStart:
-		return "Start"
-	case ActionStop:
-		return "Stop"
-	case ActionSkip:
-		return "Skip"
-	case ActionAdd:
-		return "Add"
-	case ActionClear:
-		return "Clear"
-	case ActionRemove:
-		return "Remove"
-	case ActionShuffle:
-		return "Shuffle"
-	case ActionSetGain:
-		return "SetGain"
-	default:
-		return "Unknown"
-	}
+var ACTION_MAP = map[ActionType]string{
+	ActionGet:     "get",
+	ActionStatus:  "status",
+	ActionSet:     "set",
+	ActionStart:   "start",
+	ActionStop:    "stop",
+	ActionSkip:    "skip",
+	ActionAdd:     "add",
+	ActionClear:   "clear",
+	ActionRemove:  "remove",
+	ActionShuffle: "shuffle",
+	ActionSetGain: "setGain",
 }
 
-func parseAction(action string) ActionType {
-	switch action {
-	case "get":
-		return ActionGet
-	case "status":
-		return ActionStatus
-	case "set":
-		return ActionSet
-	case "start":
-		return ActionStart
-	case "stop":
-		return ActionStop
-	case "skip":
-		return ActionSkip
-	case "add":
-		return ActionAdd
-	case "clear":
-		return ActionClear
-	case "remove":
-		return ActionRemove
-	case "shuffle":
-		return ActionShuffle
-	case "setGain":
-		return ActionSetGain
-	default:
-		return ActionUnknown
+func (action ActionType) String() string {
+	value, found := ACTION_MAP[action]
+	if found {
+		return value
 	}
+	return "Unknown"
+}
+
+func parseAction(actionStr string) ActionType {
+	for k, v := range ACTION_MAP {
+		if v == actionStr {
+			return k
+		}
+	}
+	return ActionUnknown
 }
 
 func parseActionParameter(action ActionType, r *http.Request) (Action, error) {
