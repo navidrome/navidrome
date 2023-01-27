@@ -4,7 +4,7 @@ on:
   schedule:
     - cron:  '0 10 * * *'
 jobs:
-  update-dep:
+  update-translations:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -14,13 +14,10 @@ jobs:
           POEDITOR_APIKEY: ${{ secrets.POEDITOR_APIKEY }}
         run: |
           ./update-translations.sh
-          npm install
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v4
         with:
           token: ${{ secrets.PAT }}
           commit-message: Update translations
-          title: Update translations
-          body: |
-            - Update translations with latest from POEditor
+          title: Update translations from POEditor
           branch: update-translations
