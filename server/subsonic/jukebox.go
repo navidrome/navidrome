@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/navidrome/navidrome/core/playback"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
@@ -26,7 +27,10 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 
-	switch parseAction(actionString) {
+	action := parseAction(actionString)
+	log.Debug(fmt.Sprintf("processing action: %s", action))
+
+	switch action {
 	case ActionGet:
 		playlist, err := pb.Get(user)
 		if err != nil {
