@@ -19,6 +19,7 @@ import (
 
 type PlaybackServer interface {
 	Run(ctx context.Context) error
+	GetDevice(user string) (*PlaybackDevice, error)
 	Get(user string) (responses.JukeboxPlaylist, error)
 	Status(user string) (responses.JukeboxStatus, error)
 	Set(user string, id string) (responses.JukeboxStatus, error)
@@ -33,7 +34,8 @@ type PlaybackServer interface {
 }
 
 type PlaybackDevice struct {
-	Owner      string
+	Default    bool
+	User       string
 	Name       string
 	Method     string
 	DeviceName string
@@ -53,12 +55,12 @@ func GetInstance() PlaybackServer {
 }
 
 func (ps *playbackServer) Run(ctx context.Context) error {
-	err := verifyConfiguration(conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
+	devices, err := initDeviceStatus(conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
+	ps.playbackDevices = devices
+
 	if err != nil {
 		return err
 	}
-
-	ps.playbackDevices = initDeviceStatus(conf.Server.Jukebox.Devices)
 	log.Info(ctx, fmt.Sprintf("%d audio devices found", len(conf.Server.Jukebox.Devices)))
 	log.Info(ctx, "Using default audio device: "+conf.Server.Jukebox.Default)
 
@@ -68,19 +70,48 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func initDeviceStatus(devices []conf.AudioDeviceDefinition) []PlaybackDevice {
+func initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string) ([]PlaybackDevice, error) {
 	pbDevices := make([]PlaybackDevice, len(devices))
+	defaultDeviceFound := false
+
 	for idx, audioDevice := range devices {
+		if len(audioDevice) != 3 {
+			return []PlaybackDevice{}, fmt.Errorf("audio device definition ought to contain 3 fields, found: %d ", len(audioDevice))
+		}
+
 		pbDevices[idx] = PlaybackDevice{
-			Owner:      "",
+			User:       "",
 			Name:       audioDevice[0],
 			Method:     audioDevice[1],
 			DeviceName: audioDevice[2],
 			Playlist:   responses.JukeboxPlaylist{},
 			Status:     responses.JukeboxStatus{},
 		}
+
+		if audioDevice[0] == defaultDevice {
+			pbDevices[idx].Default = true
+			defaultDeviceFound = true
+		}
 	}
-	return pbDevices
+
+	if !defaultDeviceFound {
+		return []PlaybackDevice{}, fmt.Errorf("default device name not found: %s ", defaultDevice)
+	}
+	return pbDevices, nil
+}
+
+func (ps *playbackServer) getDefaultDevice() (*PlaybackDevice, error) {
+	for _, audioDevice := range ps.playbackDevices {
+		if audioDevice.Default {
+			return &audioDevice, nil
+		}
+	}
+	return &PlaybackDevice{}, fmt.Errorf("no default device found")
+}
+
+func (ps *playbackServer) GetDevice(user string) (*PlaybackDevice, error) {
+	log.Debug("processing GetDevice")
+	return ps.getDefaultDevice()
 }
 
 func (ps *playbackServer) Get(user string) (responses.JukeboxPlaylist, error) {
@@ -155,16 +186,4 @@ func playSong(songname string) {
 	})))
 
 	<-done
-}
-
-func verifyConfiguration(devices []conf.AudioDeviceDefinition, defaultDevice string) error {
-	for _, audioDevice := range devices {
-		if len(audioDevice) != 3 {
-			return fmt.Errorf("audio device definition ought to contain 3 fields, found: %d ", len(audioDevice))
-		}
-		if audioDevice[0] == defaultDevice {
-			return nil
-		}
-	}
-	return fmt.Errorf("default audio device not found in list of devices: %s", defaultDevice)
 }
