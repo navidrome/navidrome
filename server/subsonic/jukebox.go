@@ -20,7 +20,11 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 
-	pb := playback.GetInstance()
+	pbServer := playback.GetInstance()
+	pb, err := pbServer.GetDevice(user)
+	if err != nil {
+		return nil, err
+	}
 
 	switch parseAction(actionString) {
 	case ActionGet:

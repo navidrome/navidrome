@@ -20,27 +20,16 @@ import (
 type PlaybackServer interface {
 	Run(ctx context.Context) error
 	GetDevice(user string) (*PlaybackDevice, error)
-	Get(user string) (responses.JukeboxPlaylist, error)
-	Status(user string) (responses.JukeboxStatus, error)
-	Set(user string, id string) (responses.JukeboxStatus, error)
-	Start(user string) (responses.JukeboxStatus, error)
-	Stop(user string) (responses.JukeboxStatus, error)
-	Skip(user string, index int64, offset int64) (responses.JukeboxStatus, error)
-	Add(user string, id string) (responses.JukeboxStatus, error)
-	Clear(user string) (responses.JukeboxStatus, error)
-	Remove(user string, index int64) (responses.JukeboxStatus, error)
-	Shuffle(user string) (responses.JukeboxStatus, error)
-	SetGain(user string, gain float64) (responses.JukeboxStatus, error)
 }
 
 type PlaybackDevice struct {
-	Default    bool
-	User       string
-	Name       string
-	Method     string
-	DeviceName string
-	Playlist   responses.JukeboxPlaylist
-	Status     responses.JukeboxStatus
+	Default       bool
+	User          string
+	Name          string
+	Method        string
+	DeviceName    string
+	Playlist      responses.JukeboxPlaylist
+	JukeboxStatus responses.JukeboxStatus
 }
 
 type playbackServer struct {
@@ -80,12 +69,12 @@ func initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string
 		}
 
 		pbDevices[idx] = PlaybackDevice{
-			User:       "",
-			Name:       audioDevice[0],
-			Method:     audioDevice[1],
-			DeviceName: audioDevice[2],
-			Playlist:   responses.JukeboxPlaylist{},
-			Status:     responses.JukeboxStatus{},
+			User:          "",
+			Name:          audioDevice[0],
+			Method:        audioDevice[1],
+			DeviceName:    audioDevice[2],
+			Playlist:      responses.JukeboxPlaylist{},
+			JukeboxStatus: responses.JukeboxStatus{},
 		}
 
 		if audioDevice[0] == defaultDevice {
@@ -111,52 +100,53 @@ func (ps *playbackServer) getDefaultDevice() (*PlaybackDevice, error) {
 
 func (ps *playbackServer) GetDevice(user string) (*PlaybackDevice, error) {
 	log.Debug("processing GetDevice")
+	// README: here we might plug-in the user-device mapping one fine day
 	return ps.getDefaultDevice()
 }
 
-func (ps *playbackServer) Get(user string) (responses.JukeboxPlaylist, error) {
+func (pd *PlaybackDevice) Get(user string) (responses.JukeboxPlaylist, error) {
 	log.Debug("processing Get action")
 	return responses.JukeboxPlaylist{}, nil
 }
 
-func (ps *playbackServer) Status(user string) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Status(user string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Status action")
 	return responses.JukeboxStatus{}, nil
 }
-func (ps *playbackServer) Set(user string, id string) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Set(user string, id string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Set action")
 	return responses.JukeboxStatus{}, nil
 }
-func (ps *playbackServer) Start(user string) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Start(user string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Start action")
-	// playSong("tests/fixtures/test.mp3")
+	playSong("tests/fixtures/test.mp3")
 	return responses.JukeboxStatus{}, nil
 }
-func (ps *playbackServer) Stop(user string) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Stop(user string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Stop action")
 	return responses.JukeboxStatus{}, nil
 }
-func (ps *playbackServer) Skip(user string, index int64, offset int64) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Skip(user string, index int64, offset int64) (responses.JukeboxStatus, error) {
 	log.Debug("processing Skip action")
 	return responses.JukeboxStatus{}, nil
 }
-func (ps *playbackServer) Add(user string, id string) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Add(user string, id string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Add action")
 	return responses.JukeboxStatus{}, nil
 }
-func (ps *playbackServer) Clear(user string) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Clear(user string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Clear action")
 	return responses.JukeboxStatus{}, nil
 }
-func (ps *playbackServer) Remove(user string, index int64) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Remove(user string, index int64) (responses.JukeboxStatus, error) {
 	log.Debug("processing Remove action")
 	return responses.JukeboxStatus{}, nil
 }
-func (ps *playbackServer) Shuffle(user string) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Shuffle(user string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Shuffle action")
 	return responses.JukeboxStatus{}, nil
 }
-func (ps *playbackServer) SetGain(user string, gain float64) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) SetGain(user string, gain float64) (responses.JukeboxStatus, error) {
 	log.Debug("processing SetGain action")
 	return responses.JukeboxStatus{}, nil
 }
