@@ -5,7 +5,10 @@ import (
 	"fmt"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
@@ -27,7 +30,9 @@ func GetInstance() PlaybackServer {
 }
 
 func (ps *playbackServer) Run(ctx context.Context) error {
-	devices, err := initDeviceStatus(conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
+	dataStore := persistence.New(db.Db())
+
+	devices, err := initDeviceStatus(ctx, dataStore, conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
 	ps.playbackDevices = devices
 
 	if err != nil {
@@ -42,7 +47,7 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string) ([]PlaybackDevice, error) {
+func initDeviceStatus(ctx context.Context, ds model.DataStore, devices []conf.AudioDeviceDefinition, defaultDevice string) ([]PlaybackDevice, error) {
 	pbDevices := make([]PlaybackDevice, len(devices))
 	defaultDeviceFound := false
 
@@ -52,6 +57,8 @@ func initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string
 		}
 
 		pbDevices[idx] = PlaybackDevice{
+			DataStore:     ds,
+			Ctx:           ctx,
 			User:          "",
 			Name:          audioDevice[0],
 			Method:        audioDevice[1],

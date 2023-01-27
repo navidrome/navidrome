@@ -1,6 +1,7 @@
 package playback
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -8,10 +9,13 @@ import (
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
 type PlaybackDevice struct {
+	Ctx           context.Context
+	DataStore     model.DataStore
 	Default       bool
 	User          string
 	Name          string
@@ -32,6 +36,14 @@ func (pd *PlaybackDevice) Status(user string) (responses.JukeboxStatus, error) {
 }
 func (pd *PlaybackDevice) Set(user string, id string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Set action")
+
+	mf, err := pd.DataStore.MediaFile(pd.Ctx).Get(id)
+	if err != nil {
+		return responses.JukeboxStatus{}, err
+	}
+
+	log.Debug("Found mediafile: " + mf.Path)
+
 	return responses.JukeboxStatus{}, nil
 }
 func (pd *PlaybackDevice) Start(user string) (responses.JukeboxStatus, error) {
