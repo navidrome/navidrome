@@ -25,7 +25,8 @@
                 "quality": "Kwaliteit",
                 "bpm": "BPM",
                 "playDate": "Laatst afgespeeld",
-                "channels": "Kanalen"
+                "channels": "Kanalen",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Voeg toe aan wachtrij",
@@ -51,7 +52,9 @@
                 "year": "Jaar",
                 "updatedAt": "Bijgewerkt op",
                 "comment": "Commentaar",
-                "rating": "Beoordeling"
+                "rating": "Beoordeling",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "Afspelen",
@@ -60,7 +63,8 @@
                 "shuffle": "Shuffle",
                 "addToPlaylist": "Toevoegen aan afspeellijst",
                 "download": "Downloaden",
-                "info": "Meer info"
+                "info": "Meer info",
+                "share": ""
             },
             "lists": {
                 "all": "Alle",
@@ -80,7 +84,8 @@
                 "songCount": "Aantal nummers",
                 "playCount": "Afgespeeld",
                 "rating": "Beoordeling",
-                "genre": "Genre"
+                "genre": "Genre",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +163,35 @@
                 "duplicate_song": "Dubbele nummers toevoegen",
                 "song_exist": "Er komen nummers dubbel in de afspeellijst. Wil je de dubbele nummers toevoegen of overslaan?"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +220,8 @@
             "email": "Moet een geldig e-mailadres zijn",
             "oneOf": "Moet een zijn van: %{options}",
             "regex": "Moet overeenkomen met een specifiek format (regexp): %{pattern}",
-            "unique": "Moet uniek zijn"
+            "unique": "Moet uniek zijn",
+            "url": ""
         },
         "action": {
             "add_filter": "Voeg filter toe",
@@ -215,7 +250,10 @@
             "open_menu": "Open menu",
             "close_menu": "Sluit menu",
             "unselect": "Deselecteer",
-            "skip": "Overslaan"
+            "skip": "Overslaan",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Ja",
@@ -322,7 +360,14 @@
         "listenBrainzLinkSuccess": "ListenBrainz is succesvol gelinkt en scrobbling staat aan, als gebruiker: %{user}",
         "listenBrainzLinkFailure": "ListenBrainz kon niet worden gelinkt: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz ontkoppeld",
-        "listenBrainzUnlinkFailure": "ListenBrainz kon niet ontkoppeld worden"
+        "listenBrainzUnlinkFailure": "ListenBrainz kon niet ontkoppeld worden",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": ""
     },
     "menu": {
         "library": "Bibliotheek",
@@ -337,7 +382,14 @@
                 "defaultView": "Standaard weergave",
                 "desktop_notifications": "Bureaubladmeldingen",
                 "lastfmScrobbling": "Scrobble naar Last.fm",
-                "listenBrainzScrobbling": "Scrobble naar ListenBrainz"
+                "listenBrainzScrobbling": "Scrobble naar ListenBrainz",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Albums",
@@ -395,7 +447,8 @@
             "next_song": "Volgend nummer",
             "vol_up": "Volume harder",
             "vol_down": "Volume zachter",
-            "toggle_love": "Voeg toe aan favorieten"
+            "toggle_love": "Voeg toe aan favorieten",
+            "current_song": "Ga naar huidig nummer"
         }
     }
 }

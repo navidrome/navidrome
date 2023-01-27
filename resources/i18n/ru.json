@@ -25,7 +25,8 @@
                 "quality": "Качество",
                 "bpm": "BPM",
                 "playDate": "Последнее воспроизведение",
-                "channels": ""
+                "channels": "",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "В очередь",
@@ -51,7 +52,9 @@
                 "year": "Год",
                 "updatedAt": "Обновлен",
                 "comment": "Комментарий",
-                "rating": "Рейтинг"
+                "rating": "Рейтинг",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "Играть",
@@ -60,7 +63,8 @@
                 "shuffle": "Перемешать",
                 "addToPlaylist": "Добавить в плейлист",
                 "download": "Скачать",
-                "info": ""
+                "info": "",
+                "share": ""
             },
             "lists": {
                 "all": "Все",
@@ -80,7 +84,8 @@
                 "songCount": "Количество треков",
                 "playCount": "Проигран",
                 "rating": "Рейтинг",
-                "genre": "Жанр"
+                "genre": "Жанр",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +163,35 @@
                 "duplicate_song": "Повторяющиеся треки",
                 "song_exist": "Некоторые треки уже есть в плейлисте. Вы хотите добавить их или пропустить?"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +220,8 @@
             "email": "Некорректный email",
             "oneOf": "Должно быть одним из: %{options}",
             "regex": "Должно быть в формате (regexp): %{pattern}",
-            "unique": "Должно быть уникальным"
+            "unique": "Должно быть уникальным",
+            "url": ""
         },
         "action": {
             "add_filter": "Фильтр",
@@ -215,7 +250,10 @@
             "open_menu": "Открыть меню",
             "close_menu": "Закрыть меню",
             "unselect": "Отменить выделение",
-            "skip": "Пропустить"
+            "skip": "Пропустить",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Да",
@@ -322,7 +360,14 @@
         "listenBrainzLinkSuccess": "",
         "listenBrainzLinkFailure": "",
         "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": ""
     },
     "menu": {
         "library": "Библиотека",
@@ -337,7 +382,14 @@
                 "defaultView": "Вид по умолчанию",
                 "desktop_notifications": "Уведомления на рабочем столе",
                 "lastfmScrobbling": "Скробблинг Last.fm",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Альбомы",
@@ -395,7 +447,8 @@
             "next_song": "Следующий трек",
             "vol_up": "Увеличить громкость",
             "vol_down": "Уменьшить громкость",
-            "toggle_love": "Добавить / удалить песню из избранного"
+            "toggle_love": "Добавить / удалить песню из избранного",
+            "current_song": ""
         }
     }
 }
