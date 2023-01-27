@@ -180,8 +180,7 @@ func (t Tags) getSortTag(originalTag string, tagNames ...string) string {
 	return t.getFirstTagValue(all...)
 }
 
-var dateRegexYear = regexp.MustCompile(`([12]\d\d\d)`)
-var dateRegexYearMonthDay = regexp.MustCompile(`\-(0[0-9]|1[012])\-(0[0-9]|[12][0-9]|3[01])`)
+var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
 
 func (t Tags) getDate(tagNames ...string) (int, time.Time) {
 	tag := t.getFirstTagValue(tagNames...)
@@ -189,17 +188,18 @@ func (t Tags) getDate(tagNames ...string) (int, time.Time) {
 		return 0, time.Time{}
 	}
 	// first try to get just a year
-	matchYear := dateRegexYear.FindStringSubmatch(tag)
-		if len(matchYear) == 0 {
+	match := dateRegex.FindStringSubmatch(tag)
+		if len(match) == 0 {
 		log.Warn("Error parsing " + tagNames[0] + " field for year", "file", t.filePath, "date", tag)
 		return 0, time.Time{}
 	}
-	year, _ := strconv.Atoi(matchYear[1])
+	year, _ := strconv.Atoi(match[1])
+	
 	if len(tag) <5 {
 		return year, time.Time{}
 	}
 
-	//now try the year + month + day
+	//now try the YYYY-MM-DD
 	if len(tag) > 10 {
 		tag = tag[:10]
 	}
