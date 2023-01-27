@@ -25,7 +25,8 @@
                 "quality": "Якість",
                 "bpm": "Темп",
                 "playDate": "Востаннє відтворено",
-                "channels": "Канали"
+                "channels": "Канали",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Прослухати пізніше",
@@ -51,7 +52,9 @@
                 "year": "Рік",
                 "updatedAt": "Оновлено",
                 "comment": "Коментар",
-                "rating": "Рейтинг"
+                "rating": "Рейтинг",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "Прослухати",
@@ -60,7 +63,8 @@
                 "shuffle": "Перемішати",
                 "addToPlaylist": "Додати у список відтворення",
                 "download": "Завантажити",
-                "info": "Отримати інформацію"
+                "info": "Отримати інформацію",
+                "share": ""
             },
             "lists": {
                 "all": "Усі",
@@ -80,7 +84,8 @@
                 "songCount": "Кількість пісень",
                 "playCount": "Відтворено",
                 "rating": "Рейтинг",
-                "genre": "Жанр"
+                "genre": "Жанр",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +163,35 @@
                 "duplicate_song": "Додати повторювані пісні",
                 "song_exist": "У список відтворення додаються дублікати. Хочете додати дублікати або пропустити їх?"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +220,8 @@
             "email": "Хибний email",
             "oneOf": "Повинен бути одним з: %{options}",
             "regex": "Повинен відповідати формату (регулярний вираз): %{pattern}",
-            "unique": "Має бути унікальним"
+            "unique": "Має бути унікальним",
+            "url": ""
         },
         "action": {
             "add_filter": "Додати фільтр",
@@ -215,7 +250,10 @@
             "open_menu": "Відкрити меню",
             "close_menu": "Закрити меню",
             "unselect": "Забрати виділення",
-            "skip": "Пропустити"
+            "skip": "Пропустити",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Так",
@@ -322,7 +360,14 @@
         "listenBrainzLinkSuccess": "",
         "listenBrainzLinkFailure": "",
         "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": ""
     },
     "menu": {
         "library": "Бібліотека",
@@ -337,7 +382,14 @@
                 "defaultView": "Вигляд по замовчуванню",
                 "desktop_notifications": "Сповіщення",
                 "lastfmScrobbling": "",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Альбом",
@@ -395,7 +447,8 @@
             "next_song": "Наступна пісня",
             "vol_up": "Гучність вгору",
             "vol_down": "Гучність вниз",
-            "toggle_love": "Відмітити поточні пісні"
+            "toggle_love": "Відмітити поточні пісні",
+            "current_song": ""
         }
     }
 }

@@ -25,7 +25,8 @@
                 "quality": "Qualité",
                 "bpm": "BPM",
                 "playDate": "Derniers joués",
-                "channels": "Canaux"
+                "channels": "Canaux",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -51,7 +52,9 @@
                 "year": "Année",
                 "updatedAt": "Mis à jour le",
                 "comment": "Commentaire",
-                "rating": "Classement"
+                "rating": "Classement",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "Lire",
@@ -60,7 +63,8 @@
                 "shuffle": "Mélanger",
                 "addToPlaylist": "Ajouter à la playlist",
                 "download": "Télécharger",
-                "info": "Plus d'informations"
+                "info": "Plus d'informations",
+                "share": ""
             },
             "lists": {
                 "all": "Tous",
@@ -80,7 +84,8 @@
                 "songCount": "Nombre de pistes",
                 "playCount": "Lectures",
                 "rating": "Classement",
-                "genre": "Genre"
+                "genre": "Genre",
+                "size": ""
             }
         },
         "user": {
@@ -158,13 +163,42 @@
                 "duplicate_song": "Pistes déjà présentes dans la playlist",
                 "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": ""
+            }
         }
     },
     "ra": {
         "auth": {
             "welcome1": "Merci d'avoir installé Navidrome !",
             "welcome2": "Pour commencer, créez un compte administrateur",
-            "confirmPassword": "Confirmer votre mot de passe",
+            "confirmPassword": "Confirmez votre mot de passe",
             "buttonCreateAdmin": "Créer un compte administrateur",
             "auth_check_error": "Merci de vous connecter pour continuer",
             "user_menu": "Profil",
@@ -186,7 +220,8 @@
             "email": "Doit être un e-mail",
             "oneOf": "Doit être au choix : %{options}",
             "regex": "Doit respecter un format spécifique (regexp) : %{pattern}",
-            "unique": "Doit être unique"
+            "unique": "Doit être unique",
+            "url": ""
         },
         "action": {
             "add_filter": "Ajouter un filtre",
@@ -215,7 +250,10 @@
             "open_menu": "Ouvrir le menu",
             "close_menu": "Fermer le menu",
             "unselect": "Désélectionner",
-            "skip": "Ignorer"
+            "skip": "Ignorer",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Oui",
@@ -322,7 +360,14 @@
         "listenBrainzLinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant activés pour l'utilisateur: %{user}",
         "listenBrainzLinkFailure": "Échec lors de la liaison avec ListenBrainz: %{error}",
         "listenBrainzUnlinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant désactivés",
-        "listenBrainzUnlinkFailure": "Échec lors de la désactivation de la liaison avec ListenBrainz"
+        "listenBrainzUnlinkFailure": "Échec lors de la désactivation de la liaison avec ListenBrainz",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": ""
     },
     "menu": {
         "library": "Bibliothèque",
@@ -337,7 +382,14 @@
                 "defaultView": "Vue par défaut",
                 "desktop_notifications": "Notifications de bureau",
                 "lastfmScrobbling": "Scrobbler vers Last.fm",
-                "listenBrainzScrobbling": "Scrobbler vers ListenBrainz"
+                "listenBrainzScrobbling": "Scrobbler vers ListenBrainz",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Albums",
@@ -395,7 +447,8 @@
             "next_song": "Morceau suivant",
             "vol_up": "Augmenter le volume",
             "vol_down": "Baisser le volume",
-            "toggle_love": "Ajouter/Enlever le morceau des favoris"
+            "toggle_love": "Ajouter/Enlever le morceau des favoris",
+            "current_song": ""
         }
     }
 }

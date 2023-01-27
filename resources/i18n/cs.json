@@ -25,7 +25,8 @@
                 "quality": "Kvalita",
                 "bpm": "BPM",
                 "playDate": "Poslední přehravaná skladba",
-                "channels": "Kanály"
+                "channels": "Kanály",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -51,7 +52,9 @@
                 "year": "Rok",
                 "updatedAt": "Aktualizováno",
                 "comment": "Komentář",
-                "rating": "Hodnocení"
+                "rating": "Hodnocení",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "Přehrát",
@@ -60,7 +63,8 @@
                 "shuffle": "Zamíchat",
                 "addToPlaylist": "Přidat do seznamu skladeb",
                 "download": "Stáhnout",
-                "info": "Získat informace"
+                "info": "Získat informace",
+                "share": ""
             },
             "lists": {
                 "all": "Všechno",
@@ -80,7 +84,8 @@
                 "songCount": "Počet skladeb",
                 "playCount": "Přehrání",
                 "rating": "Hodnocení",
-                "genre": "Žánr"
+                "genre": "Žánr",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +163,35 @@
                 "duplicate_song": "Přidat duplicitní skladby",
                 "song_exist": "Do seznamu skladeb se přidávají duplikáty. Chcete je přidat nebo přeskočit?"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +220,8 @@
             "email": "Musí být platná emailová adresa",
             "oneOf": "Musí splňovat jedno z: %{options}",
             "regex": "Musí být ve specifickém formátu (regexp): %{pattern}",
-            "unique": "Musí být jedinečný"
+            "unique": "Musí být jedinečný",
+            "url": ""
         },
         "action": {
             "add_filter": "Přidat filtr",
@@ -215,7 +250,10 @@
             "open_menu": "Otevřít nabídku",
             "close_menu": "Zavřít nabídku",
             "unselect": "Zrušit výběr",
-            "skip": "Přeskočit"
+            "skip": "Přeskočit",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Ano",
@@ -322,7 +360,14 @@
         "listenBrainzLinkSuccess": "ListenBrainz úspěšně připojeno a scrobblování zapnuto jako uživatel: %{user}",
         "listenBrainzLinkFailure": "ListenBrainz nemohlo být připojeno: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz odpojeno a scrobblování vypnuto",
-        "listenBrainzUnlinkFailure": "ListenBrainz nemohlo být odpojeno"
+        "listenBrainzUnlinkFailure": "ListenBrainz nemohlo být odpojeno",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": ""
     },
     "menu": {
         "library": "Knihovna",
@@ -337,7 +382,14 @@
                 "defaultView": "Výchozí stránka",
                 "desktop_notifications": "Oznámení na ploše",
                 "lastfmScrobbling": "Scrobblovat na Last.fm",
-                "listenBrainzScrobbling": "Scrobblovat na ListenBrainz"
+                "listenBrainzScrobbling": "Scrobblovat na ListenBrainz",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Alba",
@@ -395,7 +447,8 @@
             "next_song": "Následující skladba",
             "vol_up": "Zvýšit hlasitost",
             "vol_down": "Snížit hlasitost",
-            "toggle_love": "Přidat tuto skladbu do oblíbených"
+            "toggle_love": "Přidat tuto skladbu do oblíbených",
+            "current_song": "Přejít na aktuální skladbu"
         }
     }
 }
