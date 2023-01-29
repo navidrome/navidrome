@@ -31,31 +31,21 @@ type archiver struct {
 }
 
 func (a *archiver) ZipAlbum(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
-	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.Eq{"album_id": id},
-		Sort:    "album",
-	})
-	if err != nil {
-		log.Error(ctx, "Error loading mediafiles from album", "id", id, err)
-		return err
-	}
-	return a.zipAlbums(ctx, id, format, bitrate, out, mfs)
+	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"album_id": id})
 }
 
 func (a *archiver) ZipArtist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
-	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.Eq{"album_artist_id": id},
-		Sort:    "album",
-	})
+	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"album_artist_id": id})
+}
+
+func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, filters squirrel.Sqlizer) error {
+	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: filters, Sort: "album"})
 	if err != nil {
 		log.Error(ctx, "Error loading mediafiles from artist", "id", id, err)
 		return err
 	}
-	return a.zipAlbums(ctx, id, format, bitrate, out, mfs)
-}
 
-func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, mfs model.MediaFiles) error {
-	z := zip.NewWriter(out)
+	z := createZipWriter(out, format, bitrate)
 	albums := slice.Group(mfs, func(mf model.MediaFile) string {
 		return mf.AlbumID
 	})
@@ -69,11 +59,21 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 			_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
 		}
 	}
-	err := z.Close()
+	err = z.Close()
 	if err != nil {
 		log.Error(ctx, "Error closing zip file", "id", id, err)
 	}
 	return err
+}
+
+func createZipWriter(out io.Writer, format string, bitrate int) *zip.Writer {
+	z := zip.NewWriter(out)
+	comment := "Downloaded from Navidrome"
+	if format != "raw" {
+		comment = fmt.Sprintf("%s, transcoded to %s %dbps", comment, format, bitrate)
+	}
+	_ = z.SetComment(comment)
+	return z
 }
 
 func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultDisc bool) string {
@@ -97,8 +97,8 @@ func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bi
 }
 
 func (a *archiver) zipPlaylist(ctx context.Context, id string, format string, bitrate int, out io.Writer, pls *model.Playlist) error {
+	z := createZipWriter(out, format, bitrate)
 	mfs := pls.MediaFiles()
-	z := zip.NewWriter(out)
 	log.Debug(ctx, "Zipping playlist", "name", pls.Name, "format", format, "bitrate", bitrate, "numTracks", len(mfs))
 	for idx, mf := range mfs {
 		file := a.playlistFilename(mf, format, idx)
@@ -144,7 +144,7 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 
 	defer func() {
 		if err := r.Close(); err != nil && log.CurrentLevel() >= log.LevelDebug {
-			log.Error("Error closing stream", "id", mf.ID, "file", mf.Path, err)
+			log.Error(ctx, "Error closing stream", "id", mf.ID, "file", mf.Path, err)
 		}
 	}()
 
