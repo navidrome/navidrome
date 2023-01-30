@@ -365,6 +365,7 @@
         "shareOriginalFormat": "Compartilhar no formato original",
         "shareDialogTitle": "Compartilhar %{resource} '%{name}'",
         "shareBatchDialogTitle": "Compartilhar 1 %{resource} |||| Compartilhar %{smart_count} %{resource}",
+        "shareCopyToClipboard": "Copie para o clipboard: Ctrl+C, Enter",
         "shareSuccess": "Link copiado para o clipboard : %{url}",
         "shareFailure": "Erro ao copiar o link %{url} para o clipboard",
         "downloadDialogTitle": "Baixar %{resource} '%{name}' (%{size})"
