@@ -52,6 +52,7 @@ type configOptions struct {
 	EnableFavourites             bool
 	EnableStarRating             bool
 	EnableUserEditing            bool
+	EnableSharing                bool
 	DefaultTheme                 string
 	DefaultLanguage              string
 	DefaultUIVolume              int
@@ -78,7 +79,6 @@ type configOptions struct {
 	DevAutoCreateAdminPassword       string
 	DevAutoLoginUsername             string
 	DevActivityPanel                 bool
-	DevEnableShare                   bool
 	DevSidebarPlaylists              bool
 	DevEnableBufferedScrobble        bool
 	DevShowArtistPage                bool
@@ -282,7 +282,7 @@ func init() {
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devactivitypanel", true)
-	viper.SetDefault("devenableshare", false)
+	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)

@@ -110,7 +110,7 @@ const Admin = (props) => {
           name="radio"
           {...(permissions === 'admin' ? radio.admin : radio.all)}
         />,
-        config.devEnableShare && <Resource name="share" {...share} />,
+        config.enableSharing && <Resource name="share" {...share} />,
         <Resource
           name="playlist"
           {...playlist}
@@ -142,7 +142,7 @@ const Admin = (props) => {
 }
 
 const AppWithHotkeys = () => {
-  if (config.devEnableShare && shareInfo) {
+  if (config.enableSharing && shareInfo) {
     return <SharePlayer />
   }
   return (

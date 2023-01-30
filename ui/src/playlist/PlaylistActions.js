@@ -139,7 +139,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
           >
             <RiPlayListAddFill />
           </Button>
-          {config.devEnableShare && (
+          {config.enableSharing && (
             <Button onClick={handleShare} label={translate('ra.action.share')}>
               <ShareIcon />
             </Button>

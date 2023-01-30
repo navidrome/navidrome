@@ -224,14 +224,14 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("enableUserEditing", true))
 	})
 
-	It("sets the devEnableShare", func() {
+	It("sets the enableSharing", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
 		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("devEnableShare", false))
+		Expect(config).To(HaveKeyWithValue("enableSharing", false))
 	})
 
 	It("sets the defaultDownsamplingFormat", func() {

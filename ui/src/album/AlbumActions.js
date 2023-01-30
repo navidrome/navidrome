@@ -108,7 +108,7 @@ const AlbumActions = ({
           >
             <PlaylistAddIcon />
           </Button>
-          {config.devEnableShare && (
+          {config.enableSharing && (
             <Button onClick={handleShare} label={translate('ra.action.share')}>
               <ShareIcon />
             </Button>

@@ -56,7 +56,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"losslessFormats":           strings.ToUpper(strings.Join(consts.LosslessFormats, ",")),
 			"devActivityPanel":          conf.Server.DevActivityPanel,
 			"enableUserEditing":         conf.Server.EnableUserEditing,
-			"devEnableShare":            conf.Server.DevEnableShare,
+			"enableSharing":             conf.Server.EnableSharing,
 			"devSidebarPlaylists":       conf.Server.DevSidebarPlaylists,
 			"lastFMEnabled":             conf.Server.LastFM.Enabled,
 			"lastFMApiKey":              conf.Server.LastFM.ApiKey,

@@ -65,7 +65,7 @@ export const SongContextMenu = ({
         ),
     },
     share: {
-      enabled: config.devEnableShare,
+      enabled: config.enableSharing,
       label: translate('ra.action.share'),
       action: (record) => {
         dispatch(openShareMenu([record.id], 'song', record.title))

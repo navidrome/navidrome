@@ -22,7 +22,7 @@ func (api *Router) GetUser(r *http.Request) (*responses.Subsonic, error) {
 	response.User.StreamRole = true
 	response.User.ScrobblingEnabled = true
 	response.User.DownloadRole = conf.Server.EnableDownloads
-	response.User.ShareRole = conf.Server.DevEnableShare
+	response.User.ShareRole = conf.Server.EnableSharing
 	return response, nil
 }
 
@@ -38,7 +38,7 @@ func (api *Router) GetUsers(r *http.Request) (*responses.Subsonic, error) {
 	user.StreamRole = true
 	user.ScrobblingEnabled = true
 	user.DownloadRole = conf.Server.EnableDownloads
-	user.ShareRole = conf.Server.DevEnableShare
+	user.ShareRole = conf.Server.EnableSharing
 	response := newResponse()
 	response.Users = &responses.Users{User: []responses.User{user}}
 	return response, nil
