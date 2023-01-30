@@ -193,7 +193,7 @@ func (t Tags) getDate(tagNames ...string) (int, time.Time) {
 	}
 	// first get just the year
 	match := dateRegex.FindStringSubmatch(tag)
-		if len(match) == 0 {
+	if len(match) == 0 {
 		log.Warn("Error parsing " + tagNames[0] + " field for year", "file", t.filePath, "date", tag)
 		return 0, time.Time{}
 	}
