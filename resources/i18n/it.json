@@ -101,7 +101,7 @@
                 "changePassword": "Cambiare la password?",
                 "currentPassword": "Password Attuale",
                 "newPassword": "Nuova Password",
-                "token": ""
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Le modifiche effettuate al tuo nome verrano mostrate al prossimo accesso"
@@ -112,8 +112,8 @@
                 "deleted": "Utente eliminato"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "Inserisci il tuo token utente ListenBrainz.",
+                "clickHereForToken": "Clicca qui per ottenere il tuo token"
             }
         },
         "player": {
@@ -357,8 +357,8 @@
             "musicbrainz": "Apri in MusicBrainz"
         },
         "lastfmLink": "Per saperne di più...",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
+        "listenBrainzLinkSuccess": "ListenBrainz collegato con successo, abilitato lo scrobbling per l'utente %{user}",
+        "listenBrainzLinkFailure": "Non è stato possibile collegare ListenBrainz: %{error}",
         "listenBrainzUnlinkSuccess": "",
         "listenBrainzUnlinkFailure": "",
         "downloadOriginalFormat": "",
