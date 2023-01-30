@@ -29,25 +29,28 @@ const ShareList = (props) => {
 
   const handleShare = (r) => (e) => {
     const url = shareUrl(r?.id)
-    navigator.clipboard
-      .writeText(url)
-      .then(() => {
-        notify(translate('message.shareSuccess', { url }), {
-          type: 'info',
-          multiLine: true,
-          duration: 0,
-        })
-      })
-      .catch((err) => {
-        notify(
-          translate('message.shareFailure', { url }) + ': ' + err.message,
-          {
-            type: 'warning',
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => {
+          notify(translate('message.shareSuccess', { url }), {
+            type: 'info',
             multiLine: true,
             duration: 0,
-          }
-        )
-      })
+          })
+        })
+        .catch((err) => {
+          notify(
+            translate('message.shareFailure', { url }) + ': ' + err.message,
+            {
+              type: 'warning',
+              multiLine: true,
+              duration: 0,
+            }
+          )
+        })
+    } else prompt(translate('message.shareCopyToClipboard'), url)
+
     e.preventDefault()
     e.stopPropagation()
   }

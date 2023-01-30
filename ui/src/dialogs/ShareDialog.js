@@ -47,21 +47,23 @@ export const ShareDialog = () => {
     {
       onSuccess: (res) => {
         const url = shareUrl(res?.data?.id)
-        navigator.clipboard
-          .writeText(url)
-          .then(() => {
-            notify('message.shareSuccess', 'info', { url }, false, 0)
-          })
-          .catch((err) => {
-            notify(
-              translate('message.shareFailure', { url }) + ': ' + err.message,
-              {
-                type: 'warning',
-                multiLine: true,
-                duration: 0,
-              }
-            )
-          })
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard
+            .writeText(url)
+            .then(() => {
+              notify('message.shareSuccess', 'info', { url }, false, 0)
+            })
+            .catch((err) => {
+              notify(
+                translate('message.shareFailure', { url }) + ': ' + err.message,
+                {
+                  type: 'warning',
+                  multiLine: true,
+                  duration: 0,
+                }
+              )
+            })
+        } else prompt(translate('message.shareCopyToClipboard'), url)
       },
       onFailure: (error) =>
         notify(translate('ra.page.error') + ': ' + error.message, {
