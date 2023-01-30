@@ -19,13 +19,14 @@
                 "updatedAt": "更新於",
                 "bitRate": "位元率",
                 "discSubtitle": "光盤字幕",
-                "channels": "聲道",
                 "starred": "收藏",
                 "comment": "註釋",
                 "rating": "評分",
                 "quality": "品質",
                 "bpm": "BPM",
-                "playDate": "上次播放"
+                "playDate": "上次播放",
+                "channels": "聲道",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "加入至播放佇列",
@@ -51,7 +52,9 @@
                 "year": "發行年份",
                 "updatedAt": "更新於",
                 "comment": "註釋",
-                "rating": "評分"
+                "rating": "評分",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "立即播放",
@@ -60,7 +63,8 @@
                 "shuffle": "隨機播放",
                 "addToPlaylist": "加入播放清單",
                 "download": "下載",
-                "info": "獲取信息"
+                "info": "獲取信息",
+                "share": ""
             },
             "lists": {
                 "all": "所有",
@@ -80,7 +84,8 @@
                 "songCount": "歌曲數",
                 "playCount": "播放次數",
                 "rating": "評分",
-                "genre": "類型"
+                "genre": "類型",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +163,35 @@
                 "duplicate_song": "加入重複的歌曲",
                 "song_exist": "有重複歌曲正在播放清單裡，您要加入或略過重複歌曲？"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +220,8 @@
             "email": "必須是有效的電子信箱",
             "oneOf": "必須為: %{options}其中一項",
             "regex": "必須符合指定的格式（正则表达式）：%{pattern}",
-            "unique": "必須是唯一的"
+            "unique": "必須是唯一的",
+            "url": ""
         },
         "action": {
             "add_filter": "加入篩選",
@@ -215,7 +250,10 @@
             "open_menu": "打開選單",
             "close_menu": "關閉選單",
             "unselect": "未選擇",
-            "skip": "略過"
+            "skip": "略過",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "是",
@@ -314,15 +352,22 @@
         "lastfmLinkFailure": "Last.fm 無法連接",
         "lastfmUnlinkSuccess": "Last.fm 已無連接並停用音樂記錄",
         "lastfmUnlinkFailure": "Last.fm 無法取消連接",
-        "listenBrainzLinkSuccess": "ListenBrainz 成功連接並開啟音樂記錄",
-        "listenBrainzLinkFailure": "ListenBrainz 無法連接：%{error}",
-        "listenBrainzUnlinkSuccess": "ListenBrainz 已無連接並停用音樂記錄",
-        "listenBrainzUnlinkFailure": "ListenBrainz 無法取消連接",
         "openIn": {
             "lastfm": "在 Last.fm 打開",
             "musicbrainz": "在 MusicBrainz 打開"
         },
-        "lastfmLink": "繼續閱讀…"
+        "lastfmLink": "繼續閱讀…",
+        "listenBrainzLinkSuccess": "ListenBrainz 成功連接並開啟音樂記錄",
+        "listenBrainzLinkFailure": "ListenBrainz 無法連接：%{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz 已無連接並停用音樂記錄",
+        "listenBrainzUnlinkFailure": "ListenBrainz 無法取消連接",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": ""
     },
     "menu": {
         "library": "音樂庫",
@@ -337,7 +382,14 @@
                 "defaultView": "預設畫面",
                 "desktop_notifications": "桌面通知",
                 "lastfmScrobbling": "啟用 Last.fm 音樂記錄",
-                "listenBrainzScrobbling": "啟用 ListenBrainz 音樂記錄"
+                "listenBrainzScrobbling": "啟用 ListenBrainz 音樂記錄",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "專輯",
@@ -395,7 +447,8 @@
             "next_song": "下一首歌",
             "vol_up": "提高音量",
             "vol_down": "降低音量",
-            "toggle_love": "添加或移除星標"
+            "toggle_love": "添加或移除星標",
+            "current_song": ""
         }
     }
 }
