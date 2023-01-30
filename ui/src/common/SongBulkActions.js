@@ -44,7 +44,7 @@ export const SongBulkActions = (props) => {
         icon={<RiPlayListAddFill />}
         className={classes.button}
       />
-      {config.devEnableShare && (
+      {config.enableSharing && (
         <BatchShareButton {...props} className={classes.button} />
       )}
       <AddToPlaylistButton {...props} className={classes.button} />

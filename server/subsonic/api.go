@@ -163,7 +163,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "getInternetRadioStations", api.GetInternetRadios)
 		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 	})
-	if conf.Server.DevEnableShare {
+	if conf.Server.EnableSharing {
 		r.Group(func(r chi.Router) {
 			h(r, "getShares", api.GetShares)
 			h(r, "createShare", api.CreateShare)

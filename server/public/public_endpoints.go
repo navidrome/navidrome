@@ -38,7 +38,7 @@ func (p *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		r.Use(server.URLParamsMiddleware)
 		r.HandleFunc("/img/{id}", p.handleImages)
-		if conf.Server.DevEnableShare {
+		if conf.Server.EnableSharing {
 			r.HandleFunc("/s/{id}", p.handleStream)
 			r.HandleFunc("/{id}", p.handleShares)
 			r.HandleFunc("/", p.handleShares)
