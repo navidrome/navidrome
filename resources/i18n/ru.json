@@ -2,7 +2,7 @@
     "languageName": "Pусский",
     "resources": {
         "song": {
-            "name": "Трека |||| Треки",
+            "name": "Трек |||| Треки",
             "fields": {
                 "albumArtist": "Исполнитель альбома",
                 "duration": "Длительность",
@@ -25,8 +25,8 @@
                 "quality": "Качество",
                 "bpm": "BPM",
                 "playDate": "Последнее воспроизведение",
-                "channels": "",
-                "createdAt": ""
+                "channels": "Каналы",
+                "createdAt": "Дата добавления"
             },
             "actions": {
                 "addToQueue": "В очередь",
@@ -35,7 +35,7 @@
                 "shuffleAll": "Перемешать",
                 "download": "Скачать",
                 "playNext": "Следующий",
-                "info": ""
+                "info": "Информация"
             }
         },
         "album": {
@@ -53,8 +53,8 @@
                 "updatedAt": "Обновлен",
                 "comment": "Комментарий",
                 "rating": "Рейтинг",
-                "createdAt": "",
-                "size": ""
+                "createdAt": "Дата добавления",
+                "size": "Размер"
             },
             "actions": {
                 "playAll": "Играть",
@@ -63,8 +63,8 @@
                 "shuffle": "Перемешать",
                 "addToPlaylist": "Добавить в плейлист",
                 "download": "Скачать",
-                "info": "",
-                "share": ""
+                "info": "Информация",
+                "share": "Поделиться"
             },
             "lists": {
                 "all": "Все",
@@ -85,7 +85,7 @@
                 "playCount": "Проигран",
                 "rating": "Рейтинг",
                 "genre": "Жанр",
-                "size": ""
+                "size": "Размер"
             }
         },
         "user": {
@@ -101,7 +101,7 @@
                 "changePassword": "Сменить пароль?",
                 "currentPassword": "Текущий пароль",
                 "newPassword": "Новый пароль",
-                "token": ""
+                "token": "Токен"
             },
             "helperTexts": {
                 "name": "Изменение вступит в силу после следующего входа в систему"
@@ -112,8 +112,8 @@
                 "deleted": "Пользователь удален"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "Введите свой токен пользователя ListenBrainz.",
+                "clickHereForToken": "Нажмите здесь, чтобы получить токен"
             }
         },
         "player": {
@@ -126,13 +126,13 @@
                 "userName": "Пользователь",
                 "lastSeen": "Был на сайте",
                 "reportRealPath": "Показать реальный путь",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "Отправлять скробблы во внешние службы"
             }
         },
         "transcoding": {
             "name": "Транскодирование  |||| Транскодирование",
             "fields": {
-                "name": "Наименование",
+                "name": "Название",
                 "targetFormat": "Целевой формат",
                 "defaultBitRate": "Битрейт по умолчанию",
                 "command": "Команда"
@@ -153,11 +153,11 @@
                 "path": "Импортировать из"
             },
             "actions": {
-                "selectPlaylist": "Выберите плейлист",
+                "selectPlaylist": "Выберите плейлист:",
                 "addNewPlaylist": "Создать \"%{name}\"",
                 "export": "Экспорт",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "Опубликовать",
+                "makePrivate": "Сделать личным"
             },
             "message": {
                 "duplicate_song": "Повторяющиеся треки",
@@ -165,32 +165,32 @@
             }
         },
         "radio": {
-            "name": "",
+            "name": "Радио |||| Радио",
             "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "name": "Имя",
+                "streamUrl": "Ссылка на поток",
+                "homePageUrl": "Домашняя страница",
+                "updatedAt": "Обновлено",
+                "createdAt": "Создано"
             },
             "actions": {
-                "playNow": ""
+                "playNow": "Играть сейчас"
             }
         },
         "share": {
-            "name": "",
+            "name": "Общий доступ |||| Общий доступ",
             "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "username": "Поделился",
+                "url": "Ссылка",
+                "description": "Описание",
+                "contents": "Содержание",
+                "expiresAt": "Ссылка истекает",
+                "lastVisitedAt": "Последнее посещение",
+                "visitCount": "Посещения",
+                "format": "Формат",
+                "maxBitRate": "Макс. Битрейт",
+                "updatedAt": "Обновлено в",
+                "createdAt": "Создано"
             }
         }
     },
@@ -209,7 +209,7 @@
             "logout": "Выйти"
         },
         "validation": {
-            "invalidChars": "Пожалуйста используйте только буквы и цифры",
+            "invalidChars": "Пожалуйста, используйте только буквы и цифры",
             "passwordDoesNotMatch": "Пароли не совпадают",
             "required": "Обязательно для заполнения",
             "minLength": "Минимальное кол-во символов %{min}",
@@ -221,7 +221,7 @@
             "oneOf": "Должно быть одним из: %{options}",
             "regex": "Должно быть в формате (regexp): %{pattern}",
             "unique": "Должно быть уникальным",
-            "url": ""
+            "url": "Должен быть действительным URL адрес"
         },
         "action": {
             "add_filter": "Фильтр",
@@ -251,9 +251,9 @@
             "close_menu": "Закрыть меню",
             "unselect": "Отменить выделение",
             "skip": "Пропустить",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Поделиться",
+            "download": "Скачать"
         },
         "boolean": {
             "true": "Да",
@@ -322,7 +322,7 @@
             "updated": "Элемент обновлен |||| %{smart_count} обновлено |||| %{smart_count} обновлено",
             "created": "Элемент создан",
             "deleted": "Элемент удален |||| %{smart_count} удалено |||| %{smart_count} удалено",
-            "bad_item": "Элемент не валиден",
+            "bad_item": "Элемент неправильный",
             "item_doesnt_exist": "Элемент не существует",
             "http_error": "Ошибка сервера",
             "data_provider_error": "Ошибка dataProvider, проверьте консоль",
@@ -356,18 +356,18 @@
             "lastfm": "Показать на Last.fm",
             "musicbrainz": "Показать на MusicBrainz"
         },
-        "lastfmLink": "",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": "",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": ""
+        "lastfmLink": "Подробнее...",
+        "listenBrainzLinkSuccess": "ListenBrainz скробблинг успешно подключен для пользователя: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz не может быть связан:",
+        "listenBrainzUnlinkSuccess": "ListenBrainz скробблинг отключен",
+        "listenBrainzUnlinkFailure": "ListenBrainz не удалось отключить",
+        "downloadOriginalFormat": "Скачать в оригинальном формате",
+        "shareOriginalFormat": "Поделиться в оригинальном формате",
+        "shareDialogTitle": "Поделиться %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Поделиться 1 %{resource} |||| Поделиться %{smart_count} %{resource}",
+        "shareSuccess": "URL скопирован в буфер обмена: %{url}",
+        "shareFailure": "Ошибка копирования URL-адреса %{url} в буфер обмена",
+        "downloadDialogTitle": "Скачать %{resource} '%{name}' (%{size})"
     },
     "menu": {
         "library": "Библиотека",
@@ -382,26 +382,26 @@
                 "defaultView": "Вид по умолчанию",
                 "desktop_notifications": "Уведомления на рабочем столе",
                 "lastfmScrobbling": "Скробблинг Last.fm",
-                "listenBrainzScrobbling": "",
-                "replaygain": "",
-                "preAmp": "",
+                "listenBrainzScrobbling": "Скробблинг ListenBrainz",
+                "replaygain": "ReplayGain режим",
+                "preAmp": "ReplayGain предусилитель (dB)",
                 "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
+                    "none": "Отключить",
+                    "album": "Использовать усиление альбома",
+                    "track": "Использовать усиление трека"
                 }
             }
         },
         "albumList": "Альбомы",
         "about": "О нас",
-        "playlists": "",
-        "sharedPlaylists": ""
+        "playlists": "Плейлисты",
+        "sharedPlaylists": "Поделиться плейлистом"
     },
     "player": {
         "playListsText": "Очередь воспроизведения",
         "openText": "Открыть",
         "closeText": "Закрыть",
-        "notContentText": "Не музыка",
+        "notContentText": "Нет музыки",
         "clickToPlayText": "Играть",
         "clickToPauseText": "Пауза",
         "nextTrackText": "Следующий трек",
@@ -448,7 +448,7 @@
             "vol_up": "Увеличить громкость",
             "vol_down": "Уменьшить громкость",
             "toggle_love": "Добавить / удалить песню из избранного",
-            "current_song": ""
+            "current_song": "Перейти к текущей песне"
         }
     }
 }
