@@ -13,16 +13,16 @@ func init() {
 func upAddRelRecYear(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
-    add date datetime null default null;
+    add date date null default null;
 alter table media_file
-    add release_date datetime null default null;
+    add release_date date null default null;
 alter table media_file
     add release_year integer;
 	
 alter table album
-    add date datetime null default null;
+    add date date null default null;
 alter table album
-    add release_date datetime null default null;
+    add release_date date null default null;
 alter table album
     add min_release_year integer;
 alter table album
