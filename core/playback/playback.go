@@ -57,14 +57,18 @@ func initDeviceStatus(ctx context.Context, ds model.DataStore, devices []conf.Au
 		}
 
 		pbDevices[idx] = PlaybackDevice{
-			DataStore:     ds,
-			Ctx:           ctx,
-			User:          "",
-			Name:          audioDevice[0],
-			Method:        audioDevice[1],
-			DeviceName:    audioDevice[2],
-			Playlist:      responses.JukeboxPlaylist{},
-			JukeboxStatus: responses.JukeboxStatus{},
+			DataStore:  ds,
+			Ctx:        ctx,
+			User:       "",
+			Name:       audioDevice[0],
+			Method:     audioDevice[1],
+			DeviceName: audioDevice[2],
+			Playlist: responses.JukeboxPlaylist{
+				JukeboxStatus: responses.JukeboxStatus{},
+				Entry: []responses.Child{
+					{},
+				},
+			},
 		}
 
 		if audioDevice[0] == defaultDevice {
