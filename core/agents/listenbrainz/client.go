@@ -151,6 +151,7 @@ func (c *client) makeRequest(ctx context.Context, method string, endpoint string
 		req.Header.Add("Authorization", fmt.Sprintf("Token %s", r.ApiKey))
 	}
 
+	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz %s request", req.Method), "url", req.URL)
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return nil, err

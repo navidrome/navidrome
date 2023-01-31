@@ -87,6 +87,7 @@ func (c *client) authorize(ctx context.Context) (string, error) {
 }
 
 func (c *client) makeRequest(req *http.Request, response interface{}) error {
+	log.Trace(req.Context(), fmt.Sprintf("Sending Spotify %s request", req.Method), "url", req.URL)
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return err

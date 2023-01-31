@@ -191,6 +191,7 @@ func (c *client) makeRequest(ctx context.Context, method string, params url.Valu
 	req, _ := http.NewRequestWithContext(ctx, method, apiBaseUrl, nil)
 	req.URL.RawQuery = params.Encode()
 
+	log.Trace(ctx, fmt.Sprintf("Sending Last.fm %s request", req.Method), "url", req.URL)
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return nil, err
