@@ -122,14 +122,7 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 	}
 
 	go func() {
-		log.Debug("Starting PLAYBACK goroutine")
-		done := make(chan bool)
-		speaker.Play(beep.Seq(pd.Ctrl, beep.Callback(func() {
-			log.Debug("Hitting the BEEP end-of-stream callback.")
-			done <- true
-		})))
-		<-done
-		log.Debug("Ending PLAYBACK goroutine")
+		speaker.Play(pd.Ctrl)
 	}()
 
 }
