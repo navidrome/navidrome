@@ -367,7 +367,8 @@
         "shareBatchDialogTitle": "",
         "shareSuccess": "",
         "shareFailure": "",
-        "downloadDialogTitle": ""
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "音樂庫",

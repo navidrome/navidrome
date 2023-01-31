@@ -367,7 +367,8 @@
         "shareBatchDialogTitle": "1 %{resource} を共有 |||| %{smart_count} %{resource} を共有",
         "shareSuccess": "コピーしました: %{url}",
         "shareFailure": "コピーに失敗しました %{url}",
-        "downloadDialogTitle": "ダウンロード %{resource} '%{name}' (%{size})"
+        "downloadDialogTitle": "ダウンロード %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "ライブラリ",

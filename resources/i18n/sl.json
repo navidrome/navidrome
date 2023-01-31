@@ -367,7 +367,8 @@
         "shareBatchDialogTitle": "Deli 1 %{resource} |||| Deli %{smart_count} %{resource}",
         "shareSuccess": "URL kopiran v odložišče: %{url}",
         "shareFailure": "Napaka pri kopiranju URL-ja %{url} v odložišče",
-        "downloadDialogTitle": "Prenesi %{resource} '%{name}' (%{size})"
+        "downloadDialogTitle": "Prenesi %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Knjižnica",

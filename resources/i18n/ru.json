@@ -367,7 +367,8 @@
         "shareBatchDialogTitle": "Поделиться 1 %{resource} |||| Поделиться %{smart_count} %{resource}",
         "shareSuccess": "URL скопирован в буфер обмена: %{url}",
         "shareFailure": "Ошибка копирования URL-адреса %{url} в буфер обмена",
-        "downloadDialogTitle": "Скачать %{resource} '%{name}' (%{size})"
+        "downloadDialogTitle": "Скачать %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Библиотека",
