@@ -24,7 +24,7 @@ type PlaybackDevice struct {
 	Method     string
 	DeviceName string
 	Playlist   responses.JukeboxPlaylist
-	Ctrl       beep.Ctrl
+	Ctrl       *beep.Ctrl
 }
 
 func (pd *PlaybackDevice) Get(user string) (responses.JukeboxPlaylist, error) {
@@ -96,11 +96,9 @@ func (pd *PlaybackDevice) playHead() {
 }
 
 func (pd *PlaybackDevice) pauseHead() {
-	// speaker.Lock()
-	// pd.Ctrl.Paused = true
-	// pd.Ctrl.Streamer = nil
-	speaker.Clear()
-	// speaker.Unlock()
+	speaker.Lock()
+	pd.Ctrl.Paused = true
+	speaker.Unlock()
 }
 
 func (pd *PlaybackDevice) prepareSong(songname string) {
@@ -115,10 +113,8 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 		log.Fatal(err)
 	}
 
-	pd.Ctrl = beep.Ctrl{
-		Streamer: streamer,
-		Paused:   false,
-	}
+	pd.Ctrl.Streamer = streamer
+	pd.Ctrl.Paused = true
 
 	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	if err != nil {
@@ -126,12 +122,14 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 	}
 
 	go func() {
+		log.Debug("Starting PLAYBACK goroutine")
 		done := make(chan bool)
-		speaker.Play(beep.Seq(&pd.Ctrl, beep.Callback(func() {
+		speaker.Play(beep.Seq(pd.Ctrl, beep.Callback(func() {
+			log.Debug("Hitting the BEEP end-of-stream callback.")
 			done <- true
 		})))
 		<-done
-
+		log.Debug("Ending PLAYBACK goroutine")
 	}()
 
 }

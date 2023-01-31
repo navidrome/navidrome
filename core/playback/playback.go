@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/faiface/beep"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -69,6 +70,7 @@ func initDeviceStatus(ctx context.Context, ds model.DataStore, devices []conf.Au
 					{},
 				},
 			},
+			Ctrl: &beep.Ctrl{},
 		}
 
 		if audioDevice[0] == defaultDevice {
