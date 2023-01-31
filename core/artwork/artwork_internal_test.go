@@ -8,7 +8,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -67,13 +66,12 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(path).To(Equal("tests/fixtures/test.mp3"))
 			})
-			It("returns placeholder if embed path is not available", func() {
+			It("returns ErrUnavailable if embed path is not available", func() {
 				ffmpeg.Error = errors.New("not available")
 				aw, err := newAlbumArtworkReader(ctx, aw, alEmbedNotFound.CoverArtID(), nil)
 				Expect(err).ToNot(HaveOccurred())
-				_, path, err := aw.Reader(ctx)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal(consts.PlaceholderAlbumArt))
+				_, _, err = aw.Reader(ctx)
+				Expect(err).To(MatchError(ErrUnavailable))
 			})
 		})
 		Context("External images", func() {
@@ -90,12 +88,11 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(path).To(Equal("tests/fixtures/front.png"))
 			})
-			It("returns placeholder if external file is not available", func() {
+			It("returns ErrUnavailable if external file is not available", func() {
 				aw, err := newAlbumArtworkReader(ctx, aw, alExternalNotFound.CoverArtID(), nil)
 				Expect(err).ToNot(HaveOccurred())
-				_, path, err := aw.Reader(ctx)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal(consts.PlaceholderAlbumArt))
+				_, _, err = aw.Reader(ctx)
+				Expect(err).To(MatchError(ErrUnavailable))
 			})
 		})
 		Context("Multiple covers", func() {
@@ -178,7 +175,7 @@ var _ = Describe("Artwork", func() {
 		})
 		It("returns a PNG if original image is a PNG", func() {
 			conf.Server.CoverArtPriority = "front.png"
-			r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID().String(), 15)
+			r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15)
 			Expect(err).ToNot(HaveOccurred())
 
 			br, format, err := asImageReader(r)
@@ -192,7 +189,7 @@ var _ = Describe("Artwork", func() {
 		})
 		It("returns a JPEG if original image is not a PNG", func() {
 			conf.Server.CoverArtPriority = "cover.jpg"
-			r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID().String(), 200)
+			r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 200)
 			Expect(err).ToNot(HaveOccurred())
 
 			br, format, err := asImageReader(r)

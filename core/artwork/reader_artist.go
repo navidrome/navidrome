@@ -80,7 +80,6 @@ func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error
 		fromArtistFolder(ctx, a.artistFolder, "artist.*"),
 		fromExternalFile(ctx, a.files, "artist.*"),
 		fromArtistExternalSource(ctx, a.artist, a.em),
-		fromArtistPlaceholder(),
 	)
 }
 
