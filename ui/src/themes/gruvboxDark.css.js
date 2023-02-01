@@ -47,4 +47,8 @@ module.exports = `
     color: #ebdbb2
 }
 
+.MuiCheckbox-colorSecondary.Mui-checked {
+    color: #458588 !important
+}
+
 `
