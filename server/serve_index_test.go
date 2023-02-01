@@ -94,6 +94,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("welcomeMessage", "Hello"))
 	})
 
+	It("sets the maxSidebarPlaylists", func() {
+		conf.Server.MaxSidebarPlaylists = 42
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("maxSidebarPlaylists", float64(42)))
+	})
+
 	It("sets the enableTranscodingConfig", func() {
 		conf.Server.EnableTranscodingConfig = true
 		r := httptest.NewRequest("GET", "/index.html", nil)
