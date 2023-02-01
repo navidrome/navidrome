@@ -68,4 +68,19 @@ var _ = Describe("radio-browser responses", func() {
 			Expect(*second.GeoLong).To(Equal(-22.5))
 		})
 	})
+
+	Describe("/url/stationid", func() {
+		var resp UrlResponse
+		body, _ := os.ReadFile("tests/fixtures/radiobrowser.url.json")
+		err := json.Unmarshal(body, &resp)
+		Expect(err).To(BeNil())
+
+		Expect(resp).To(Equal(UrlResponse{
+			Ok:        true,
+			Message:   "retrieved station url",
+			StationId: "6e79967a-aac0-488d-89ec-7656f6db4ca8",
+			Name:      "\tNewstalkZBAuckland",
+			Url:       "",
+		}))
+	})
 })

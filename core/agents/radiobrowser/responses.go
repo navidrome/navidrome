@@ -42,3 +42,11 @@ type RadioStation struct {
 }
 
 type RadioStations []RadioStation
+
+type UrlResponse struct {
+	Ok        bool   `json:"ok"`
+	Message   string `json:"message"`
+	StationId string `json:"stationuuid"`
+	Name      string `json:"name"`
+	Url       string `json:"url"`
+}

@@ -30,7 +30,7 @@ var _ = Describe("RadioBrowserAgent", func() {
 	})
 
 	Describe("GetRadioInfo", func() {
-		var agent RadioBrowserAgent
+		var agent *radioBrowserAgent
 		var httpClient *tests.FakeHttpClient
 
 		BeforeEach(func() {
@@ -46,7 +46,7 @@ var _ = Describe("RadioBrowserAgent", func() {
 			Expect(agent.GetRadioInfo(ctx)).To(BeNil())
 			count, err := ds.RadioInfo(ctx).CountAll()
 			Expect(err).To(BeNil())
-			Expect(count).To(Equal(int64(6)))
+			Expect(count).To(Equal(int64(5)))
 			data, err := ds.RadioInfo(ctx).Get("6e79967a-aac0-488d-89ec-7656f6db4ca8")
 			Expect(err).To(BeNil())
 			Expect(data.Url).To(Equal("https://ais-nzme.streamguys1.com/nz_002_aac"))
@@ -76,7 +76,7 @@ var _ = Describe("RadioBrowserAgent", func() {
 			Expect(agent.GetRadioInfo(ctx)).To(BeNil())
 			count, err := ds.RadioInfo(ctx).CountAll()
 			Expect(err).To(BeNil())
-			Expect(count).To(Equal(int64(6)))
+			Expect(count).To(Equal(int64(5)))
 			data, err := ds.RadioInfo(ctx).Get("123")
 			Expect(data).To(BeNil())
 			Expect(err).ToNot(BeNil())

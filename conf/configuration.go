@@ -119,6 +119,7 @@ type radioBrowserOptions struct {
 	Enabled         bool
 	BaseUrl         string
 	RefreshSchedule string
+	SendClicks      bool
 }
 
 var (
@@ -216,6 +217,7 @@ func validateRadioBrowserSchedule() error {
 
 	if sched == "" {
 		Server.RadioBrowser.Enabled = false
+		Server.RadioBrowser.SendClicks = false
 	}
 
 	return err
@@ -308,6 +310,7 @@ func init() {
 	viper.SetDefault("radiobrowser.baseurl", "https://de1.api.radio-browser.info")
 	viper.SetDefault("radiobrowser.enabled", "true")
 	viper.SetDefault("radiobrowser.refreshschedule", "@every 24h")
+	viper.SetDefault("radiobrowser.sendclicks", true)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

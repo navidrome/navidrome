@@ -30,6 +30,7 @@ const defaultConfig = {
   enableReplayGain: true,
   defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/share',
+  sendRadioClicks: false,
 }
 
 let config

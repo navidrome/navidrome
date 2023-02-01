@@ -109,6 +109,6 @@ func GetRadioInfo() radiobrowser.RadioBrowserAgent {
 func createRadioInfo() radiobrowser.RadioBrowserAgent {
 	panic(wire.Build(
 		allProviders,
-		radiobrowser.RadioBrowserConstructor,
+		radiobrowser.GetRadioBrowser,
 	))
 }

@@ -50,6 +50,10 @@ func (n *Router) routes() http.Handler {
 
 		n.addPlaylistTrackRoute(r)
 
+		if conf.Server.RadioBrowser.SendClicks {
+			n.submitStation(r)
+		}
+
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
@@ -108,6 +112,14 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				deleteFromPlaylist(n.ds)(w, r)
 			})
+		})
+	})
+}
+
+func (n *Router) submitStation(r chi.Router) {
+	r.Route("/radio/{radioId}", func(r chi.Router) {
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			submitClick(n.ds)
 		})
 	})
 }

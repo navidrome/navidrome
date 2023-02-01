@@ -45,3 +45,21 @@ func (c *Client) GetAllRadios(ctx context.Context) (*RadioStations, error) {
 	}
 	return &stations, nil
 }
+
+func (c *Client) Click(ctx context.Context, id string) error {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/json/url/"+id, nil)
+	req.Header.Add("User-Agent", consts.AppName+"/"+consts.Version)
+
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var clickResp UrlResponse
+	err = decoder.Decode(&clickResp)
+
+	return err
+}

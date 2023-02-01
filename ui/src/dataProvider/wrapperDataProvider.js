@@ -73,6 +73,9 @@ const wrapperDataProvider = {
       body: JSON.stringify(data),
     }).then(({ json }) => ({ data: json }))
   },
+  radioClick: (id) => {
+    return httpClient(`${REST_URL}/radio/${id}`)
+  },
 }
 
 export default wrapperDataProvider

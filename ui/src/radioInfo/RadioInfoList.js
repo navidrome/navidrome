@@ -18,12 +18,14 @@ import {
   TextInput,
   TopToolbar,
   UrlField,
+  useDataProvider,
   useRecordContext,
   useTranslate,
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import { setTrack } from '../actions'
 import { ToggleFieldsMenu, useSelectedFields } from '../common'
+import config from '../config'
 import { songFromRadio } from '../radio/helper'
 import { StreamField } from '../radio/StreamField'
 
@@ -154,6 +156,7 @@ const NewRadioButton = ({ record }) => {
 }
 
 export const RadioInfoList = (props) => {
+  const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const classes = useStyles()
@@ -190,6 +193,9 @@ export const RadioInfoList = (props) => {
     _basePath,
     { bitrate, codec, favicon, homepage, url, name }
   ) => {
+    if (config.sendRadioClicks) {
+      dataProvider.radioClick(id)
+    }
     dispatch(
       setTrack(
         await songFromRadio({

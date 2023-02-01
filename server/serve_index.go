@@ -64,6 +64,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"listenBrainzEnabled":       conf.Server.ListenBrainz.Enabled,
 			"enableReplayGain":          conf.Server.EnableReplayGain,
 			"defaultDownsamplingFormat": conf.Server.DefaultDownsamplingFormat,
+			"sendRadioClicks":           conf.Server.RadioBrowser.SendClicks,
 		}
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			appConfig["loginBackgroundURL"] = path.Join(conf.Server.BaseURL, conf.Server.UILoginBackgroundURL)

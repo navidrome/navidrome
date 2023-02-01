@@ -113,7 +113,7 @@ func createScanner() scanner.Scanner {
 func createRadioInfo() radiobrowser.RadioBrowserAgent {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	radioBrowserAgent := radiobrowser.RadioBrowserConstructor(dataStore)
+	radioBrowserAgent := radiobrowser.GetRadioBrowser(dataStore)
 	return radioBrowserAgent
 }
 

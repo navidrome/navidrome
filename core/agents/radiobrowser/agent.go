@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/singleton"
 )
 
 const (
@@ -17,14 +19,20 @@ const (
 	maxQueryVariables = 1000 // You can go higher than this, but just a precaution
 )
 
-type RadioBrowserAgent struct {
-	ds      model.DataStore
-	baseUrl string
-	client  *Client
+type RadioBrowserAgent interface {
+	GetRadioInfo(ctx context.Context) error
+	ShouldPerformInitialScan(ctx context.Context) bool
+	SubmitClick(ctx context.Context, id string) error
 }
 
-func RadioBrowserConstructor(ds model.DataStore) RadioBrowserAgent {
-	r := RadioBrowserAgent{
+func GetRadioBrowser(ds model.DataStore) RadioBrowserAgent {
+	return singleton.GetInstance(func() *radioBrowserAgent {
+		return RadioBrowserConstructor(ds)
+	})
+}
+
+func RadioBrowserConstructor(ds model.DataStore) *radioBrowserAgent {
+	r := radioBrowserAgent{
 		ds:      ds,
 		baseUrl: conf.Server.RadioBrowser.BaseUrl,
 	}
@@ -32,10 +40,16 @@ func RadioBrowserConstructor(ds model.DataStore) RadioBrowserAgent {
 		Timeout: fetchAgentTimeout,
 	}
 	r.client = NewClient(r.baseUrl, hc)
-	return r
+	return &r
 }
 
-func (r *RadioBrowserAgent) ShouldPerformInitialScan(ctx context.Context) bool {
+type radioBrowserAgent struct {
+	ds      model.DataStore
+	baseUrl string
+	client  *Client
+}
+
+func (r *radioBrowserAgent) ShouldPerformInitialScan(ctx context.Context) bool {
 	ms, err := r.ds.Property(ctx).Get(model.PropLastRefresh)
 	if err != nil {
 		return true
@@ -49,7 +63,7 @@ func (r *RadioBrowserAgent) ShouldPerformInitialScan(ctx context.Context) bool {
 	return since >= minTimeToRefresh
 }
 
-func (r *RadioBrowserAgent) GetRadioInfo(ctx context.Context) error {
+func (r *radioBrowserAgent) GetRadioInfo(ctx context.Context) error {
 	radios, err := r.client.GetAllRadios(ctx)
 	if err != nil {
 		return err
@@ -62,6 +76,13 @@ func (r *RadioBrowserAgent) GetRadioInfo(ctx context.Context) error {
 		}
 
 		for _, radio := range *radios {
+			name := strings.TrimSpace(radio.Name)
+
+			// for some reason, some of the radios are only whitespace
+			if len(name) == 0 {
+				continue
+			}
+
 			model := &model.RadioInfo{
 				ID:       radio.StationID,
 				Name:     radio.Name,
@@ -116,4 +137,8 @@ func (r *RadioBrowserAgent) GetRadioInfo(ctx context.Context) error {
 
 		return nil
 	})
+}
+
+func (r *radioBrowserAgent) SubmitClick(ctx context.Context, id string) error {
+	return r.client.Click(ctx, id)
 }
