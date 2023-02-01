@@ -220,6 +220,7 @@ export const RadioInfoList = (props) => {
       actions={<RadioInfoActions />}
       filters={<RadioInfoFilter />}
       perPage={isXsmall ? 25 : 10}
+      title={'resources.radioInfo.attribution'}
     >
       {isXsmall ? (
         <SimpleList

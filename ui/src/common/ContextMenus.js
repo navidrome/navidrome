@@ -81,12 +81,11 @@ const ContextMenu = ({
       action: (data, ids) => dispatch(openAddToPlaylist({ selectedIds: ids })),
     },
     share: {
-      enabled: config.devEnableShare,
+      enabled: config.enableSharing,
       needData: false,
       label: translate('ra.action.share'),
-      action: (record) => {
-        dispatch(openShareMenu([record.id], resource, record.name))
-      },
+      action: (record) =>
+        dispatch(openShareMenu([record.id], resource, record.name)),
     },
     download: {
       enabled: config.enableDownloads && record.size,

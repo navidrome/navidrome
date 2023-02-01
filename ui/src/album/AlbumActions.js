@@ -37,7 +37,6 @@ const AlbumActions = ({
   ids,
   data,
   record,
-  resource,
   permanentFilter,
   ...rest
 }) => {
@@ -68,8 +67,8 @@ const AlbumActions = ({
   }, [dispatch, ids])
 
   const handleShare = React.useCallback(() => {
-    dispatch(openShareMenu([record.id], resource, record.name))
-  }, [dispatch, record, resource])
+    dispatch(openShareMenu([record.id], 'album', record.name))
+  }, [dispatch, record])
 
   const handleDownload = React.useCallback(() => {
     dispatch(openDownloadMenu(record, DOWNLOAD_MENU_ALBUM))
@@ -109,7 +108,7 @@ const AlbumActions = ({
           >
             <PlaylistAddIcon />
           </Button>
-          {config.devEnableShare && (
+          {config.enableSharing && (
             <Button onClick={handleShare} label={translate('ra.action.share')}>
               <ShareIcon />
             </Button>

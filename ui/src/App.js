@@ -115,6 +115,7 @@ const Admin = (props) => {
           <Resource name="radioInfo" {...radioInfo} />
         ) : undefined,
         config.devEnableShare && <Resource name="share" {...share} />,
+        config.enableSharing && <Resource name="share" {...share} />,
         <Resource
           name="playlist"
           {...playlist}
@@ -146,7 +147,7 @@ const Admin = (props) => {
 }
 
 const AppWithHotkeys = () => {
-  if (config.devEnableShare && shareInfo) {
+  if (config.enableSharing && shareInfo) {
     return <SharePlayer />
   }
   return (

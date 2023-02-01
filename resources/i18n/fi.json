@@ -25,7 +25,8 @@
                 "quality": "Äänenlaatu",
                 "bpm": "BPM",
                 "playDate": "Viimeksi kuunneltu",
-                "channels": "Kanavat"
+                "channels": "Kanavat",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Lisää jonoon",
@@ -51,7 +52,9 @@
                 "year": "Vuosi",
                 "updatedAt": "Päivitetty",
                 "comment": "Kommentti",
-                "rating": "Arvostelu"
+                "rating": "Arvostelu",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "Soita",
@@ -60,7 +63,8 @@
                 "shuffle": "Sekoita",
                 "addToPlaylist": "Lisää soittolistaan",
                 "download": "Lataa",
-                "info": "Info"
+                "info": "Info",
+                "share": ""
             },
             "lists": {
                 "all": "Kaikki",
@@ -80,7 +84,8 @@
                 "songCount": "Kappaleiden määrä",
                 "playCount": "Kuuntelukertoja",
                 "rating": "Arvostelu",
-                "genre": "Tyylilaji"
+                "genre": "Tyylilaji",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +163,35 @@
                 "duplicate_song": "Lisää olemassa oleva kappale",
                 "song_exist": "Olet lisäämässä soittolistalla jo olevaa kappaletta. Haluatko lisätä saman kappaleen vai ohittaa sen?"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +220,8 @@
             "email": "Pitää olla oikea sähköpostiosoite",
             "oneOf": "Pitää olla joku näistä: %{options}",
             "regex": "Pitää olla määrätyssä muodossa (regexp): %{pattern}",
-            "unique": "Pitää olla yksilöllinen"
+            "unique": "Pitää olla yksilöllinen",
+            "url": ""
         },
         "action": {
             "add_filter": "Lisää suodatin",
@@ -215,7 +250,10 @@
             "open_menu": "Avaa valikko",
             "close_menu": "Sulje valikko",
             "unselect": "Poista valinta",
-            "skip": "Ohita"
+            "skip": "Ohita",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Kyllä",
@@ -322,7 +360,14 @@
         "listenBrainzLinkSuccess": "ListenBrainz linkitetty onnistuneesti ja käyttäjän %{user} kuuntelutottumus otettu käyttöön",
         "listenBrainzLinkFailure": "Ei voitu linkittää ListenBrainz palveluun: %{error}",
         "listenBrainzUnlinkSuccess": "Linkitys ListenBrainz poistettu ja kuuntelutottumus poistettu käytöstä",
-        "listenBrainzUnlinkFailure": "ListenBrainz linkitystä ei voitu poistaa"
+        "listenBrainzUnlinkFailure": "ListenBrainz linkitystä ei voitu poistaa",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": ""
     },
     "menu": {
         "library": "Kirjasto",
@@ -337,7 +382,14 @@
                 "defaultView": "Oletusnäkymä",
                 "desktop_notifications": "Työpöytäilmoitukset",
                 "lastfmScrobbling": "Kuuntelutottumuksen lähetys Last.fm-palveluun",
-                "listenBrainzScrobbling": "Kuuntelutottumuksen lähetys ListenBrainz-palveluun"
+                "listenBrainzScrobbling": "Kuuntelutottumuksen lähetys ListenBrainz-palveluun",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Albumit",
@@ -395,7 +447,8 @@
             "next_song": "Seuraava kappale",
             "vol_up": "Kovemmalle",
             "vol_down": "Hiljemmalle",
-            "toggle_love": "Lisää kappale suosikkeihin"
+            "toggle_love": "Lisää kappale suosikkeihin",
+            "current_song": "Siirry nykyiseen kappaleeseen"
         }
     }
 }

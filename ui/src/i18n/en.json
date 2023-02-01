@@ -178,7 +178,7 @@
             }
         },
         "radioInfo": {
-            "name": "Radio Search -- Powered by radio-browser.info",
+            "name": "Radio Search",
             "fields": {
                 "image": "Favicon",
                 "name": "Name",
@@ -194,7 +194,8 @@
             "actions": {
                 "hide": "Hide extra",
                 "show": "Show all"
-            }
+            },
+            "attribution": "Radio Search: Powered By radio-browser.info"
         },
         "share": {
             "name": "Share |||| Shares",
@@ -390,6 +391,7 @@
         "shareOriginalFormat": "Share in original format",
         "shareDialogTitle": "Share %{resource} '%{name}'",
         "shareBatchDialogTitle": "Share 1 %{resource} |||| Share %{smart_count} %{resource}",
+        "shareCopyToClipboard": "Copy to clipboard: Ctrl+C, Enter",
         "shareSuccess": "URL copied to clipboard: %{url}",
         "shareFailure": "Error copying URL %{url} to clipboard",
         "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
