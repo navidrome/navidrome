@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
@@ -141,19 +142,17 @@ func (api *Router) GetArtist(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(id))
-	if err != nil {
-		log.Error(ctx, "Error retrieving albums by artist", "id", id, "name", artist.Name, err)
-		return nil, err
-	}
-
 	response := newResponse()
-	response.ArtistWithAlbumsID3 = api.buildArtist(r, artist, albums)
-	return response, nil
+	response.ArtistWithAlbumsID3, err = api.buildArtist(r, artist)
+	if err != nil {
+		log.Error(ctx, "Error retrieving albums by artist", "id", artist.ID, "name", artist.Name, err)
+	}
+	return response, err
 }
 
 func (api *Router) GetAlbum(r *http.Request) (*responses.Subsonic, error) {
 	id := utils.ParamString(r, "id")
+
 	ctx := r.Context()
 
 	album, err := api.ds.Album(ctx).Get(id)
@@ -174,6 +173,32 @@ func (api *Router) GetAlbum(r *http.Request) (*responses.Subsonic, error) {
 
 	response := newResponse()
 	response.AlbumWithSongsID3 = api.buildAlbum(ctx, album, mfs)
+	return response, nil
+}
+
+func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
+	id, err := requiredParamString(r, "id")
+	ctx := r.Context()
+
+	if err != nil {
+		return nil, err
+	}
+
+	album, err := api.externalMetadata.UpdateAlbumInfo(ctx, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	response := newResponse()
+	response.AlbumInfo = &responses.AlbumInfo{}
+	response.AlbumInfo.Notes = album.Description
+	response.AlbumInfo.SmallImageUrl = album.SmallImageUrl
+	response.AlbumInfo.MediumImageUrl = album.MediumImageUrl
+	response.AlbumInfo.LargeImageUrl = album.LargeImageUrl
+	response.AlbumInfo.LastFmUrl = album.ExternalUrl
+	response.AlbumInfo.MusicBrainzID = album.MbzAlbumID
+
 	return response, nil
 }
 
@@ -232,9 +257,9 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
 	response.ArtistInfo.Biography = artist.Biography
-	response.ArtistInfo.SmallImageUrl = publicImageURL(r, artist.CoverArtID(), 160)
-	response.ArtistInfo.MediumImageUrl = publicImageURL(r, artist.CoverArtID(), 320)
-	response.ArtistInfo.LargeImageUrl = publicImageURL(r, artist.CoverArtID(), 0)
+	response.ArtistInfo.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 160)
+	response.ArtistInfo.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 320)
+	response.ArtistInfo.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 0)
 	response.ArtistInfo.LastFmUrl = artist.ExternalUrl
 	response.ArtistInfo.MusicBrainzID = artist.MbzArtistID
 	for _, s := range artist.SimilarArtists {
@@ -343,11 +368,18 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 	return dir, nil
 }
 
-func (api *Router) buildArtist(r *http.Request, artist *model.Artist, albums model.Albums) *responses.ArtistWithAlbumsID3 {
+func (api *Router) buildArtist(r *http.Request, artist *model.Artist) (*responses.ArtistWithAlbumsID3, error) {
+	ctx := r.Context()
 	a := &responses.ArtistWithAlbumsID3{}
 	a.ArtistID3 = toArtistID3(r, *artist)
+
+	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
+	if err != nil {
+		return nil, err
+	}
+
 	a.Album = childrenFromAlbums(r.Context(), albums)
-	return a
+	return a, nil
 }
 
 func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) (*responses.Directory, error) {
@@ -397,7 +429,6 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 	if album.Starred {
 		dir.Starred = &album.StarredAt
 	}
-
 	dir.Song = childrenFromMediaFiles(ctx, mfs)
 	return dir
 }

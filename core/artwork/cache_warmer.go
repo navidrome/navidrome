@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -64,10 +65,10 @@ func (a *cacheWarmer) sendWakeSignal() {
 
 func (a *cacheWarmer) run(ctx context.Context) {
 	for {
-		time.AfterFunc(10*time.Second, func() {
-			a.sendWakeSignal()
-		})
-		<-a.wakeSignal
+		a.waitSignal(ctx, 10*time.Second)
+		if ctx.Err() != nil {
+			break
+		}
 
 		// If cache not available, keep waiting
 		if !a.cache.Available(ctx) {
@@ -93,6 +94,20 @@ func (a *cacheWarmer) run(ctx context.Context) {
 	}
 }
 
+func (a *cacheWarmer) waitSignal(ctx context.Context, timeout time.Duration) {
+	var to <-chan time.Time
+	if !a.cache.Available(ctx) {
+		tmr := time.NewTimer(timeout)
+		defer tmr.Stop()
+		to = tmr.C
+	}
+	select {
+	case <-to:
+	case <-a.wakeSignal:
+	case <-ctx.Done():
+	}
+}
+
 func (a *cacheWarmer) processBatch(ctx context.Context, batch []string) {
 	log.Trace(ctx, "PreCaching a new batch of artwork", "batchSize", len(batch))
 	input := pl.FromSlice(ctx, batch)
@@ -106,7 +121,7 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id string) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	r, _, err := a.artwork.Get(ctx, id, 0)
+	r, _, err := a.artwork.Get(ctx, id, consts.UICoverArtSize)
 	if err != nil {
 		return fmt.Errorf("error cacheing id='%s': %w", id, err)
 	}

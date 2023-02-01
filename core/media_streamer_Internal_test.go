@@ -27,7 +27,7 @@ var _ = Describe("MediaStreamer", func() {
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
 		})
 		testCache := GetTranscodingCache()
-		Eventually(func() bool { return testCache.Ready(context.TODO()) }).Should(BeTrue())
+		Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
 	})
 	AfterEach(func() {
 		_ = os.RemoveAll(conf.Server.DataFolder)
@@ -75,14 +75,23 @@ var _ = Describe("MediaStreamer", func() {
 				Expect(format).To(Equal("raw"))
 				Expect(bitRate).To(Equal(320))
 			})
-			It("returns the DefaultDownsamplingFormat if a maxBitrate but not the format", func() {
-				conf.Server.DefaultDownsamplingFormat = "opus"
-				mf.Suffix = "FLAC"
-				mf.BitRate = 960
-				format, bitRate := selectTranscodingOptions(ctx, ds, mf, "", 128)
-				Expect(format).To(Equal("opus"))
-				Expect(bitRate).To(Equal(128))
-
+			Context("Downsampling", func() {
+				BeforeEach(func() {
+					conf.Server.DefaultDownsamplingFormat = "opus"
+					mf.Suffix = "FLAC"
+					mf.BitRate = 960
+				})
+				It("returns the DefaultDownsamplingFormat if a maxBitrate is requested but not the format", func() {
+					format, bitRate := selectTranscodingOptions(ctx, ds, mf, "", 128)
+					Expect(format).To(Equal("opus"))
+					Expect(bitRate).To(Equal(128))
+				})
+				It("returns raw if maxBitrate is equal or greater than original", func() {
+					// This happens with DSub (and maybe other clients?). See https://github.com/navidrome/navidrome/issues/2066
+					format, bitRate := selectTranscodingOptions(ctx, ds, mf, "", 960)
+					Expect(format).To(Equal("raw"))
+					Expect(bitRate).To(Equal(0))
+				})
 			})
 		})
 

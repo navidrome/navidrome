@@ -15,18 +15,14 @@ import (
 
 type cacheKey struct {
 	artID      model.ArtworkID
-	size       int
 	lastUpdate time.Time
 }
 
 func (k *cacheKey) Key() string {
 	return fmt.Sprintf(
-		"%s.%d.%d.%d.%t",
-		k.artID.ID,
+		"%s.%d",
+		k.artID,
 		k.lastUpdate.UnixMilli(),
-		k.size,
-		conf.Server.CoverJpegQuality,
-		conf.Server.EnableMediaFileCoverArt,
 	)
 }
 

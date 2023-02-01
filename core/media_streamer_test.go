@@ -30,7 +30,7 @@ var _ = Describe("MediaStreamer", func() {
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
 		})
 		testCache := core.GetTranscodingCache()
-		Eventually(func() bool { return testCache.Ready(context.TODO()) }).Should(BeTrue())
+		Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
 		streamer = core.NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 	AfterEach(func() {

@@ -25,17 +25,17 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func NewClient(id, secret string, hc httpDoer) *Client {
-	return &Client{id, secret, hc}
+func newClient(id, secret string, hc httpDoer) *client {
+	return &client{id, secret, hc}
 }
 
-type Client struct {
+type client struct {
 	id     string
 	secret string
 	hc     httpDoer
 }
 
-func (c *Client) SearchArtists(ctx context.Context, name string, limit int) ([]Artist, error) {
+func (c *client) searchArtists(ctx context.Context, name string, limit int) ([]Artist, error) {
 	token, err := c.authorize(ctx)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (c *Client) SearchArtists(ctx context.Context, name string, limit int) ([]A
 	params.Add("q", name)
 	params.Add("offset", "0")
 	params.Add("limit", strconv.Itoa(limit))
-	req, _ := http.NewRequest("GET", apiBaseUrl+"search", nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", apiBaseUrl+"search", nil)
 	req.URL.RawQuery = params.Encode()
 	req.Header.Add("Authorization", "Bearer "+token)
 
@@ -62,12 +62,12 @@ func (c *Client) SearchArtists(ctx context.Context, name string, limit int) ([]A
 	return results.Artists.Items, err
 }
 
-func (c *Client) authorize(ctx context.Context) (string, error) {
+func (c *client) authorize(ctx context.Context) (string, error) {
 	payload := url.Values{}
 	payload.Add("grant_type", "client_credentials")
 
 	encodePayload := payload.Encode()
-	req, _ := http.NewRequest("POST", "https://accounts.spotify.com/api/token", strings.NewReader(encodePayload))
+	req, _ := http.NewRequestWithContext(ctx, "POST", "https://accounts.spotify.com/api/token", strings.NewReader(encodePayload))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(encodePayload)))
 	auth := c.id + ":" + c.secret
@@ -86,7 +86,8 @@ func (c *Client) authorize(ctx context.Context) (string, error) {
 	return "", errors.New("invalid response")
 }
 
-func (c *Client) makeRequest(req *http.Request, response interface{}) error {
+func (c *client) makeRequest(req *http.Request, response interface{}) error {
+	log.Trace(req.Context(), fmt.Sprintf("Sending Spotify %s request", req.Method), "url", req.URL)
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return err
@@ -105,7 +106,7 @@ func (c *Client) makeRequest(req *http.Request, response interface{}) error {
 	return json.Unmarshal(data, response)
 }
 
-func (c *Client) parseError(data []byte) error {
+func (c *client) parseError(data []byte) error {
 	var e Error
 	err := json.Unmarshal(data, &e)
 	if err != nil {

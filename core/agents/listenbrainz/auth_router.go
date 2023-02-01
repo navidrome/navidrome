@@ -28,7 +28,7 @@ type Router struct {
 	http.Handler
 	ds          model.DataStore
 	sessionKeys sessionKeysRepo
-	client      *Client
+	client      *client
 }
 
 func NewRouter(ds model.DataStore) *Router {
@@ -40,7 +40,7 @@ func NewRouter(ds model.DataStore) *Router {
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	r.client = NewClient(conf.Server.ListenBrainz.BaseURL, hc)
+	r.client = newClient(conf.Server.ListenBrainz.BaseURL, hc)
 	return r
 }
 
@@ -89,7 +89,7 @@ func (s *Router) link(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u, _ := request.UserFrom(r.Context())
-	resp, err := s.client.ValidateToken(r.Context(), payload.Token)
+	resp, err := s.client.validateToken(r.Context(), payload.Token)
 	if err != nil {
 		log.Error(r.Context(), "Could not validate ListenBrainz token", "userId", u.ID, "requestId", middleware.GetReqID(r.Context()), err)
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())

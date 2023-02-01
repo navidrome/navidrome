@@ -5,7 +5,7 @@ import clsx from 'clsx'
 import { QualityInfo } from '../common'
 import useStyle from './styles'
 
-const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
+const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
   const classes = useStyle()
   const className = classes.audioTitle
   const isDesktop = useMediaQuery('(min-width:810px)')
@@ -15,7 +15,12 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
   }
 
   const song = audioInfo.song
-  const qi = { suffix: song.suffix, bitRate: song.bitRate }
+  const qi = {
+    suffix: song.suffix,
+    bitRate: song.bitRate,
+    albumGain: song.rgAlbumGain,
+    trackGain: song.rgTrackGain,
+  }
 
   return (
     <Link
@@ -31,7 +36,11 @@ const AudioTitle = React.memo(({ audioInfo, isMobile }) => {
           {song.title}
         </span>
         {isDesktop && (
-          <QualityInfo record={qi} className={classes.qualityInfo} />
+          <QualityInfo
+            record={qi}
+            className={classes.qualityInfo}
+            {...gainInfo}
+          />
         )}
       </span>
       {isMobile ? (

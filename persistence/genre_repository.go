@@ -3,6 +3,8 @@ package persistence
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
@@ -35,10 +37,21 @@ func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error
 	return res, err
 }
 
+// Put is an Upsert operation, based on the name of the genre: If the name already exists, returns its ID, or else
+// insert the new genre in the DB and returns its new created ID.
 func (r *genreRepository) Put(m *model.Genre) error {
-	id, err := r.put(m.ID, m)
-	m.ID = id
-	return err
+	if m.ID == "" {
+		m.ID = uuid.NewString()
+	}
+	sql := Insert("genre").Columns("id", "name").Values(m.ID, m.Name).
+		Suffix("on conflict (name) do update set name=excluded.name returning id")
+	resp := model.Genre{}
+	err := r.queryOne(sql, &resp)
+	if err != nil {
+		return err
+	}
+	m.ID = resp.ID
+	return nil
 }
 
 func (r *genreRepository) Count(options ...rest.QueryOptions) (int64, error) {

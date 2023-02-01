@@ -20,22 +20,35 @@ import (
 )
 
 type resizedArtworkReader struct {
-	cacheKey
-	a *artwork
+	artID      model.ArtworkID
+	cacheKey   string
+	lastUpdate time.Time
+	size       int
+	a          *artwork
 }
 
 func resizedFromOriginal(ctx context.Context, a *artwork, artID model.ArtworkID, size int) (*resizedArtworkReader, error) {
 	r := &resizedArtworkReader{a: a}
-	r.cacheKey.artID = artID
-	r.cacheKey.size = size
+	r.artID = artID
+	r.size = size
 
-	// Get lastUpdated from original artwork
+	// Get lastUpdated and cacheKey from original artwork
 	original, err := a.getArtworkReader(ctx, artID, 0)
 	if err != nil {
 		return nil, err
 	}
-	r.cacheKey.lastUpdate = original.LastUpdated()
+	r.cacheKey = original.Key()
+	r.lastUpdate = original.LastUpdated()
 	return r, nil
+}
+
+func (a *resizedArtworkReader) Key() string {
+	return fmt.Sprintf(
+		"%s.%d.%d",
+		a.cacheKey,
+		a.size,
+		conf.Server.CoverJpegQuality,
+	)
 }
 
 func (a *resizedArtworkReader) LastUpdated() time.Time {

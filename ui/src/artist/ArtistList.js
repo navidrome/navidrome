@@ -17,7 +17,6 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDrag } from 'react-dnd'
-import { AddToPlaylistDialog } from '../dialogs'
 import {
   ArtistContextMenu,
   List,
@@ -27,11 +26,11 @@ import {
   RatingField,
   useSelectedFields,
   useResourceRefresh,
+  SizeField,
 } from '../common'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
 import { DraggableTypes } from '../consts'
-import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -115,6 +114,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
     return {
       albumCount: <NumberField source="albumCount" sortByOrder={'DESC'} />,
       songCount: <NumberField source="songCount" sortByOrder={'DESC'} />,
+      size: !isXsmall && <SizeField source="size" />,
       playCount: <NumberField source="playCount" sortByOrder={'DESC'} />,
       rating: config.enableStarRating && (
         <RatingField
@@ -125,12 +125,15 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
         />
       ),
     }
-  }, [classes.ratingField])
+  }, [classes.ratingField, isXsmall])
 
-  const columns = useSelectedFields({
-    resource: 'artist',
-    columns: toggleableFields,
-  })
+  const columns = useSelectedFields(
+    {
+      resource: 'artist',
+      columns: toggleableFields,
+    },
+    ['size']
+  )
 
   return isXsmall ? (
     <ArtistSimpleList
@@ -173,8 +176,6 @@ const ArtistList = (props) => {
       >
         <ArtistListView {...props} />
       </List>
-      <AddToPlaylistDialog />
-      <DownloadMenuDialog />
     </>
   )
 }

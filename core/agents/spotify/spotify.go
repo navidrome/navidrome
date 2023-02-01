@@ -23,7 +23,7 @@ type spotifyAgent struct {
 	ds     model.DataStore
 	id     string
 	secret string
-	client *Client
+	client *client
 }
 
 func spotifyConstructor(ds model.DataStore) agents.Interface {
@@ -36,7 +36,7 @@ func spotifyConstructor(ds model.DataStore) agents.Interface {
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
-	l.client = NewClient(l.id, l.secret, chc)
+	l.client = newClient(l.id, l.secret, chc)
 	return l
 }
 
@@ -44,7 +44,7 @@ func (s *spotifyAgent) AgentName() string {
 	return spotifyAgentName
 }
 
-func (s *spotifyAgent) GetImages(ctx context.Context, id, name, mbid string) ([]agents.ArtistImage, error) {
+func (s *spotifyAgent) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
 	a, err := s.searchArtist(ctx, name)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
@@ -55,9 +55,9 @@ func (s *spotifyAgent) GetImages(ctx context.Context, id, name, mbid string) ([]
 		return nil, err
 	}
 
-	var res []agents.ArtistImage
+	var res []agents.ExternalImage
 	for _, img := range a.Images {
-		res = append(res, agents.ArtistImage{
+		res = append(res, agents.ExternalImage{
 			URL:  img.URL,
 			Size: img.Width,
 		})
@@ -66,7 +66,7 @@ func (s *spotifyAgent) GetImages(ctx context.Context, id, name, mbid string) ([]
 }
 
 func (s *spotifyAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {
-	artists, err := s.client.SearchArtists(ctx, name, 40)
+	artists, err := s.client.searchArtists(ctx, name, 40)
 	if err != nil || len(artists) == 0 {
 		return nil, model.ErrNotFound
 	}

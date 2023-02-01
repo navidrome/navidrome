@@ -21,7 +21,7 @@ func (p *localAgent) AgentName() string {
 	return LocalAgentName
 }
 
-func (p *localAgent) GetTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {
+func (p *localAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {
 	top, err := p.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Sort:  "playCount",
 		Order: "desc",

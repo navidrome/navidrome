@@ -25,6 +25,7 @@ const (
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
 	DefaultEncryptionKey  = "just for obfuscation"
 	PasswordsEncryptedKey = "PasswordsEncryptedKey"
+	PasswordAutogenPrefix = "__NAVIDROME_AUTOGEN__" //nolint:gosec
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
@@ -32,7 +33,7 @@ const (
 	URLPathUI           = "/app"
 	URLPathNativeAPI    = "/api"
 	URLPathSubsonicAPI  = "/rest"
-	URLPathPublic       = "/p"
+	URLPathPublic       = "/share"
 	URLPathPublicImages = URLPathPublic + "/img"
 
 	// DefaultUILoginBackgroundURL uses Navidrome curated background images collection,
@@ -49,6 +50,7 @@ const (
 	ServerReadHeaderTimeout = 3 * time.Second
 
 	ArtistInfoTimeToLive = 24 * time.Hour
+	AlbumInfoTimeToLive  = 7 * 24 * time.Hour
 
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
@@ -56,8 +58,8 @@ const (
 	PlaceholderArtistArt = "artist-placeholder.webp"
 	PlaceholderAlbumArt  = "placeholder.png"
 	PlaceholderAvatar    = "logo-192x192.png"
-
-	DefaultUIVolume = 100
+	UICoverArtSize       = 300
+	DefaultUIVolume      = 100
 
 	DefaultHttpClientTimeOut = 10 * time.Second
 

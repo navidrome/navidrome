@@ -4,6 +4,7 @@ import {
   CreateButton,
   Datagrid,
   DateField,
+  EditButton,
   Filter,
   List,
   sanitizeListRestProps,
@@ -16,6 +17,9 @@ import {
 } from 'react-admin'
 import { ToggleFieldsMenu, useSelectedFields } from '../common'
 import { StreamField } from './StreamField'
+import { setTrack } from '../actions'
+import { songFromRadio } from './helper'
+import { useDispatch } from 'react-redux'
 
 const useStyles = makeStyles({
   row: {
@@ -70,10 +74,9 @@ const RadioListActions = ({
 }
 
 const RadioList = ({ permissions, ...props }) => {
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
-
   const classes = useStyles()
-
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const dispatch = useDispatch()
   const isAdmin = permissions === 'admin'
 
   const toggleableFields = {
@@ -86,16 +89,20 @@ const RadioList = ({ permissions, ...props }) => {
         rel="noopener noreferrer"
       />
     ),
-    streamUrl: <StreamField source="streamUrl" />,
-    createdAt: <DateField source="createdAt" showTime />,
+    streamUrl: <TextField source="streamUrl" />,
     updatedAt: <DateField source="updatedAt" showTime />,
+    createdAt: <DateField source="createdAt" showTime />,
   }
 
   const columns = useSelectedFields({
     resource: 'radio',
     columns: toggleableFields,
-    defaultOff: ['updatedAt'],
+    defaultOff: ['createdAt'],
   })
+
+  const handleRowClick = async (id, basePath, record) => {
+    dispatch(setTrack(await songFromRadio(record)))
+  }
 
   return (
     <List
@@ -110,7 +117,6 @@ const RadioList = ({ permissions, ...props }) => {
     >
       {isXsmall ? (
         <SimpleList
-          linkType={isAdmin ? 'edit' : 'show'}
           leftIcon={(r) => (
             <StreamField
               record={r}
@@ -126,11 +132,9 @@ const RadioList = ({ permissions, ...props }) => {
           secondaryText={(r) => r.homePageUrl}
         />
       ) : (
-        <Datagrid
-          rowClick={isAdmin ? 'edit' : 'show'}
-          classes={{ row: classes.row }}
-        >
+        <Datagrid rowClick={handleRowClick} classes={{ row: classes.row }}>
           {columns}
+          {isAdmin && <EditButton />}
         </Datagrid>
       )}
     </List>

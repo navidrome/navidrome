@@ -4,24 +4,29 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
-type Kind struct{ prefix string }
+type Kind struct {
+	prefix string
+	name   string
+}
+
+func (k Kind) String() string {
+	return k.name
+}
 
 var (
-	KindMediaFileArtwork = Kind{"mf"}
-	KindArtistArtwork    = Kind{"ar"}
-	KindAlbumArtwork     = Kind{"al"}
-	KindPlaylistArtwork  = Kind{"pl"}
+	KindMediaFileArtwork = Kind{"mf", "media_file"}
+	KindArtistArtwork    = Kind{"ar", "artist"}
+	KindAlbumArtwork     = Kind{"al", "album"}
+	KindPlaylistArtwork  = Kind{"pl", "playlist"}
 )
 
-var artworkKindList = []string{
-	KindMediaFileArtwork.prefix,
-	KindArtistArtwork.prefix,
-	KindAlbumArtwork.prefix,
-	KindPlaylistArtwork.prefix,
+var artworkKindMap = map[string]Kind{
+	KindMediaFileArtwork.prefix: KindMediaFileArtwork,
+	KindArtistArtwork.prefix:    KindArtistArtwork,
+	KindAlbumArtwork.prefix:     KindAlbumArtwork,
+	KindPlaylistArtwork.prefix:  KindPlaylistArtwork,
 }
 
 type ArtworkID struct {
@@ -45,13 +50,14 @@ func ParseArtworkID(id string) (ArtworkID, error) {
 	if len(parts) != 2 {
 		return ArtworkID{}, errors.New("invalid artwork id")
 	}
-	if !slices.Contains(artworkKindList, parts[0]) {
+	if kind, ok := artworkKindMap[parts[0]]; !ok {
 		return ArtworkID{}, errors.New("invalid artwork kind")
+	} else {
+		return ArtworkID{
+			Kind: kind,
+			ID:   parts[1],
+		}, nil
 	}
-	return ArtworkID{
-		Kind: Kind{parts[0]},
-		ID:   parts[1],
-	}, nil
 }
 
 func MustParseArtworkID(id string) ArtworkID {

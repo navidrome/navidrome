@@ -12,6 +12,20 @@ export const DOWNLOAD_MENU_ALBUM = 'album'
 export const DOWNLOAD_MENU_ARTIST = 'artist'
 export const DOWNLOAD_MENU_PLAY = 'playlist'
 export const DOWNLOAD_MENU_SONG = 'song'
+export const SHARE_MENU_OPEN = 'SHARE_MENU_OPEN'
+export const SHARE_MENU_CLOSE = 'SHARE_MENU_CLOSE'
+
+export const openShareMenu = (ids, resource, name, label) => ({
+  type: SHARE_MENU_OPEN,
+  ids,
+  resource,
+  name,
+  label,
+})
+
+export const closeShareMenu = () => ({
+  type: SHARE_MENU_CLOSE,
+})
 
 export const openAddToPlaylist = ({ selectedIds, onSuccess }) => ({
   type: ADD_TO_PLAYLIST_OPEN,
