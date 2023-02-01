@@ -44,6 +44,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"baseURL":                   utils.SanitizeText(strings.TrimSuffix(conf.Server.BaseURL, "/")),
 			"loginBackgroundURL":        utils.SanitizeText(conf.Server.UILoginBackgroundURL),
 			"welcomeMessage":            utils.SanitizeText(conf.Server.UIWelcomeMessage),
+			"maxSidebarPlaylists":       conf.Server.MaxSidebarPlaylists,
 			"enableTranscodingConfig":   conf.Server.EnableTranscodingConfig,
 			"enableDownloads":           conf.Server.EnableDownloads,
 			"enableFavourites":          conf.Server.EnableFavourites,
