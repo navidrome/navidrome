@@ -86,6 +86,8 @@ type configOptions struct {
 	DevArtworkMaxRequests            int
 	DevArtworkThrottleBacklogLimit   int
 	DevArtworkThrottleBacklogTimeout time.Duration
+	DevArtistInfoTimeToLive          time.Duration
+	DevAlbumInfoTimeToLive           time.Duration
 }
 
 type scannerOptions struct {
@@ -291,6 +293,8 @@ func init() {
 	viper.SetDefault("devartworkmaxrequests", number.Max(2, runtime.NumCPU()/3))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
+	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
+	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 }
 
 func InitConfig(cfgFile string) {

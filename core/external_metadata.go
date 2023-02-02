@@ -11,7 +11,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/sanitize"
-	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
 	_ "github.com/navidrome/navidrome/core/agents/listenbrainz"
@@ -90,7 +90,7 @@ func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*mod
 		}
 	}
 
-	if time.Since(album.ExternalInfoUpdatedAt) > consts.AlbumInfoTimeToLive {
+	if time.Since(album.ExternalInfoUpdatedAt) > conf.Server.DevAlbumInfoTimeToLive {
 		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", album.Name)
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -205,7 +205,7 @@ func (e *externalMetadata) refreshArtistInfo(ctx context.Context, id string) (*a
 	}
 
 	// If info is expired, trigger a populateArtistInfo in the background
-	if time.Since(artist.ExternalInfoUpdatedAt) > consts.ArtistInfoTimeToLive {
+	if time.Since(artist.ExternalInfoUpdatedAt) > conf.Server.DevArtistInfoTimeToLive {
 		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -474,7 +474,9 @@ func (e *externalMetadata) callGetSimilar(ctx context.Context, agent agents.Arti
 	if len(similar) == 0 || err != nil {
 		return
 	}
+	start := time.Now()
 	sa, err := e.mapSimilarArtists(ctx, similar, includeNotPresent)
+	log.Debug(ctx, "Mapped Similar Artists", "agent", "artist", artist.Name, "numSimilar", len(sa), "elapsed", time.Since(start))
 	if err != nil {
 		return
 	}

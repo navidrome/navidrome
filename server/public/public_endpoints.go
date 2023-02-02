@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/ui"
@@ -40,8 +41,10 @@ func (p *Router) routes() http.Handler {
 		r.Use(server.URLParamsMiddleware)
 		r.Group(func(r chi.Router) {
 			if conf.Server.DevArtworkMaxRequests > 0 {
-				maxRequests := conf.Server.DevArtworkMaxRequests
-				r.Use(middleware.ThrottleBacklog(maxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+				log.Debug("Public images endpoint will be throttled", "maxRequests", conf.Server.DevArtworkMaxRequests,
+					"backlogLimit", conf.Server.DevArtworkThrottleBacklogLimit, "backlogTimeout",
+					conf.Server.DevArtworkThrottleBacklogTimeout)
+				r.Use(middleware.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
 					conf.Server.DevArtworkThrottleBacklogTimeout))
 			}
 			r.HandleFunc("/img/{id}", p.handleImages)
