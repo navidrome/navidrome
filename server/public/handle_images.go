@@ -14,6 +14,11 @@ import (
 )
 
 func (p *Router) handleImages(w http.ResponseWriter, r *http.Request) {
+	// If context is already canceled, discard request without further processing
+	if r.Context().Err() != nil {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	id := r.URL.Query().Get(":id")
@@ -27,10 +32,9 @@ func (p *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	size := utils.ParamInt(r, "size", 0)
-	imgReader, lastUpdate, err := p.artwork.Get(ctx, artId, size)
 
+	imgReader, lastUpdate, err := p.artwork.Get(ctx, artId, size)
 	switch {
 	case errors.Is(err, context.Canceled):
 		return
