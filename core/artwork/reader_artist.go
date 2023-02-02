@@ -42,7 +42,9 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 		em:     em,
 		artist: *ar,
 	}
-	a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
+	// TODO Find a way to factor in the ExternalUpdateInfoAt in the cache key. Problem is that it can
+	// change _after_ retrieving from external sources, making the key invalid
+	//a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
 	var files []string
 	var paths []string
 	for _, al := range als {
@@ -64,10 +66,10 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 func (a *artistReader) Key() string {
 	hash := md5.Sum([]byte(conf.Server.Agents + conf.Server.Spotify.ID))
 	return fmt.Sprintf(
-		"%s.%x.%t ",
+		"%s.%t.%x",
 		a.cacheKey.Key(),
-		hash,
 		conf.Server.EnableExternalServices,
+		hash,
 	)
 }
 

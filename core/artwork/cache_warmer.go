@@ -48,7 +48,15 @@ type cacheWarmer struct {
 	wakeSignal chan struct{}
 }
 
+var ignoredIds = map[string]struct{}{
+	consts.VariousArtistsID: {},
+	consts.UnknownArtistID:  {},
+}
+
 func (a *cacheWarmer) PreCache(artID model.ArtworkID) {
+	if _, shouldIgnore := ignoredIds[artID.ID]; shouldIgnore {
+		return
+	}
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	a.buffer[artID] = struct{}{}
