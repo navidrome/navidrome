@@ -32,9 +32,9 @@ type MediaFile struct {
 	DiscNumber           int       `structs:"disc_number" json:"discNumber"`
 	DiscSubtitle         string    `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
 	Year                 int       `structs:"year" json:"year"`
-	Date		     time.Time `structs:"date" json:"date,omitempty"`
+	Date		     	 string    `structs:"date" json:"date,omitempty"`
 	ReleaseYear          int       `structs:"release_year" json:"releaseYear,omitempty"`
-	ReleaseDate          time.Time `structs:"release_date" json:"releaseDate,omitempty"`
+	ReleaseDate          string    `structs:"release_date" json:"releaseDate,omitempty"`
 	Size                 int64     `structs:"size" json:"size"`
 	Suffix               string    `structs:"suffix" json:"suffix"`
 	Duration             float32   `structs:"duration" json:"duration"`
@@ -106,8 +106,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	var songArtistIds []string
 	var mbzAlbumIds []string
 	var comments []string
-	var dates []time.Time
-	var releaseDates []time.Time
+	var dates []string
+	var releaseDates []string
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs on an album
 		a.ID = m.AlbumID
@@ -169,7 +169,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 
 	dates = slices.Compact(dates)
 	if len(dates) == 1 {
-		a.Date = dates[0]
+			a.Date = dates[0]
 	}
 
 	if conf.Server.Scanner.GroupAlbumEditions {
