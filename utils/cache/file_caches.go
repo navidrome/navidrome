@@ -85,7 +85,11 @@ func (fc *fileCache) invalidate(ctx context.Context, key string) error {
 	if !fc.cache.Exists(key) {
 		return nil
 	}
-	return fc.cache.Remove(key)
+	err := fc.cache.Remove(key)
+	if err != nil {
+		log.Warn(ctx, "Error removing key from cache", "cache", fc.name, "key", key, err)
+	}
+	return err
 }
 
 func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
@@ -110,14 +114,15 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		log.Trace(ctx, "Cache MISS", "cache", fc.name, "key", key)
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
+			r.Close()
+			w.Close()
+			_ = fc.invalidate(ctx, key)
 			return nil, err
 		}
 		go func() {
 			if err := copyAndClose(w, reader); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
-				if err = fc.invalidate(ctx, key); err != nil {
-					log.Warn(ctx, "Error removing key from cache", "cache", fc.name, "key", key, err)
-				}
+				_ = fc.invalidate(ctx, key)
 			} else {
 				log.Trace(ctx, "File successfully stored in cache", "cache", fc.name, "key", key)
 			}

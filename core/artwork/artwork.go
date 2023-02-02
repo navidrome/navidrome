@@ -65,7 +65,7 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int) (rea
 
 	r, err := a.cache.Get(ctx, artReader)
 	if err != nil {
-		if !errors.Is(err, context.Canceled) {
+		if !errors.Is(err, context.Canceled) && !errors.Is(err, ErrUnavailable) {
 			log.Error(ctx, "Error accessing image cache", "id", artID, "size", size, err)
 		}
 		return nil, time.Time{}, err
