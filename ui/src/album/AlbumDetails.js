@@ -178,6 +178,20 @@ const GenreList = () => {
   )
 }
 
+const FormatFullDate = (date) => {
+  const dashes = date.split("-").length - 1
+  switch(dashes) {
+    case 2:
+      let options = {year: "numeric", month: "long", day: "numeric"}
+      return new Date(date).toLocaleDateString(undefined, options)
+    case 1:
+      options = {year: "numeric", month: "long"}
+      return new Date(date).toLocaleDateString(undefined, options)
+    default:
+      return ''
+  }
+}
+
 const Details = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const translate = useTranslate()
@@ -189,15 +203,15 @@ const Details = (props) => {
   }
 
   const year = formatRange(record, 'year')
-  const releaseYear = formatRange(record, 'releaseYear')
-  const options = {year: "numeric", month: "long", day: "numeric"}
   let date = year
-  if (record.date !== '0001-01-01T00:00:00Z') {
-  date = new Date(record.date).toLocaleDateString(undefined, options)
+  if (record.date) {
+    if (record.date.length > 4) {date = FormatFullDate(record.date)}
   }
+
+  const releaseYear = formatRange(record, 'releaseYear')
   let releaseDate = releaseYear
-  if (record.releaseDate !== '0001-01-01T00:00:00Z') {
-  releaseDate = new Date(record.releaseDate).toLocaleDateString(undefined, options)
+  if (record.releaseDate) {
+    if (record.releaseDate.length > 4) {releaseDate = FormatFullDate(record.releaseDate)}
   }
 
   const showReleaseYear  = (releaseYear && ((year !== releaseYear) || (date !== releaseDate)))
@@ -212,6 +226,7 @@ const Details = (props) => {
     }
     </>
   )
+
   addDetail(
     <>
       {record.songCount +
