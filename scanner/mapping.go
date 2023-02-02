@@ -128,16 +128,11 @@ func (s mediaFileMapper) albumID(md metadata.Tags) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
 	
 	if !conf.Server.Scanner.GroupAlbumEditions {
-		// don't really like this - doing s.MapDates again means parsing all three date tags twice, seems redundant
-		_, _, releaseYear, releaseDate := s.mapDates(md)
+		// don't really like this - using mapDates() means parsing all three date tags again, seems redundant
+		_, _, _, releaseDate := s.mapDates(md)
 		
-		if releaseYear != 0 {
-			if  releaseDate.IsZero() {
-				albumPath = fmt.Sprintf("%s\\%d", albumPath, releaseYear)
-			} else {
-				layout := "2012-12-01"
-				albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate.Format(layout))
-			}
+		if (len(releaseDate) != 0) {
+				albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate)
 		}
 	}
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
@@ -180,15 +175,15 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 	return result[0].Name, result
 }
 
-func (s mediaFileMapper) mapDates(md metadata.Tags) (int, time.Time, int, time.Time) {
-	originalYear, originalDate  := md.OriginalDate()
-	year, date 		    := md.Date()
-	releaseYear, releaseDate    := md.ReleaseDate()
+func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string) {
+	originalYear, originalDate   := md.OriginalDate()
+	year, date 					 := md.Date()
+	releaseYear, releaseDate     := md.ReleaseDate()
 	
 	// MusicBrainz Picard writes the Release Date of an album to the Date tag, not to the Release Date tag
-	taggedLikePicard 			:= (originalYear != 0) &&
-						   (releaseYear == 0) &&
-						   (year >= originalYear)
+	taggedLikePicard 		:= (originalYear != 0) &&
+							(releaseYear == 0) &&
+						    (year >= originalYear)
 	if taggedLikePicard {
 		return originalYear, originalDate, year, date
 	}
