@@ -180,6 +180,16 @@ func clearName(name string) string {
 }
 
 func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, similarCount int, includeNotPresent bool) (*model.Artist, error) {
+	artist, err := e.refreshArtistInfo(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
+	return &artist.Artist, err
+}
+
+func (e *externalMetadata) refreshArtistInfo(ctx context.Context, id string) (*auxArtist, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
@@ -188,30 +198,28 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 	// If we don't have any info, retrieves it now
 	if artist.ExternalInfoUpdatedAt.IsZero() {
 		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
-		err = e.refreshArtistInfo(ctx, artist)
+		err := e.populateArtistInfo(ctx, artist)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// If info is expired, trigger a refresh in the background
+	// If info is expired, trigger a populateArtistInfo in the background
 	if time.Since(artist.ExternalInfoUpdatedAt) > consts.ArtistInfoTimeToLive {
 		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
-			err := e.refreshArtistInfo(ctx, artist)
+			err := e.populateArtistInfo(ctx, artist)
 			if err != nil {
 				log.Error("Error refreshing ArtistInfo", "id", id, "name", artist.Name, err)
 			}
 		}()
 	}
-
-	err = e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
-	return &artist.Artist, err
+	return artist, nil
 }
 
-func (e *externalMetadata) refreshArtistInfo(ctx context.Context, artist *auxArtist) error {
+func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist *auxArtist) error {
 	// Get MBID first, if it is not yet available
 	if artist.MbzArtistID == "" {
 		mbid, err := e.ag.GetArtistMBID(ctx, artist.ID, artist.Name)
@@ -314,12 +322,11 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 }
 
 func (e *externalMetadata) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
-	artist, err := e.getArtist(ctx, id)
+	artist, err := e.refreshArtistInfo(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	e.callGetImage(ctx, e.ag, artist)
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
 		return nil, ctx.Err()
