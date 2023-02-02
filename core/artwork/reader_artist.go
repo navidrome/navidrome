@@ -13,6 +13,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -49,12 +50,12 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 	var paths []string
 	for _, al := range als {
 		files = append(files, al.ImageFiles)
-		paths = append(paths, filepath.SplitList(al.Paths)...)
+		paths = append(paths, splitList(al.Paths)...)
 		if a.cacheKey.lastUpdate.Before(al.UpdatedAt) {
 			a.cacheKey.lastUpdate = al.UpdatedAt
 		}
 	}
-	a.files = strings.Join(files, string(filepath.ListSeparator))
+	a.files = strings.Join(files, consts.Zwsp)
 	a.artistFolder = utils.LongestCommonPrefix(paths)
 	if !strings.HasSuffix(a.artistFolder, string(filepath.Separator)) {
 		a.artistFolder, _ = filepath.Split(a.artistFolder)

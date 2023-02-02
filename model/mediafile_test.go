@@ -5,6 +5,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	. "github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -52,7 +53,7 @@ var _ = Describe("MediaFiles", func() {
 			Expect(album.CatalogNum).To(Equal("CatalogNum"))
 			Expect(album.Compilation).To(BeTrue())
 			Expect(album.EmbedArtPath).To(Equal("/music2/file2.mp3"))
-			Expect(album.Paths).To(Equal("/music1:/music2"))
+			Expect(album.Paths).To(Equal("/music1" + consts.Zwsp + "/music2"))
 		})
 	})
 	Context("Aggregated attributes", func() {

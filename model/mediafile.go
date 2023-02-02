@@ -151,7 +151,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 			a.EmbedArtPath = m.Path
 		}
 	}
-	a.Paths = strings.Join(mfs.Dirs(), string(filepath.ListSeparator))
+	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
 	comments = slices.Compact(comments)
 	if len(comments) == 1 {
 		a.Comment = comments[0]
