@@ -288,7 +288,7 @@ func init() {
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
-	viper.SetDefault("devartworkmaxrequests", number.Max(2, runtime.NumCPU()))
+	viper.SetDefault("devartworkmaxrequests", number.Max(2, runtime.NumCPU()/3))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 }

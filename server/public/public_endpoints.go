@@ -5,6 +5,7 @@ import (
 	"path"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -37,7 +38,14 @@ func (p *Router) routes() http.Handler {
 
 	r.Group(func(r chi.Router) {
 		r.Use(server.URLParamsMiddleware)
-		r.HandleFunc("/img/{id}", p.handleImages)
+		r.Group(func(r chi.Router) {
+			if conf.Server.DevArtworkMaxRequests > 0 {
+				maxRequests := conf.Server.DevArtworkMaxRequests
+				r.Use(middleware.ThrottleBacklog(maxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+					conf.Server.DevArtworkThrottleBacklogTimeout))
+			}
+			r.HandleFunc("/img/{id}", p.handleImages)
+		})
 		if conf.Server.EnableSharing {
 			r.HandleFunc("/s/{id}", p.handleStream)
 			r.HandleFunc("/{id}", p.handleShares)
