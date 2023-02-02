@@ -20,10 +20,10 @@ type Album struct {
 	AllArtistIDs         string    `structs:"all_artist_ids" json:"allArtistIds"  orm:"column(all_artist_ids)"`
 	MaxYear              int       `structs:"max_year" json:"maxYear"`
 	MinYear              int       `structs:"min_year" json:"minYear"`
-	Date		     time.Time `structs:"date" json:"date,omitempty"`
+	Date		     	 string    `structs:"date" json:"date,omitempty"`
 	MinReleaseYear       int       `structs:"min_release_year" json:"minReleaseYear,omitempty"`
 	MaxReleaseYear       int       `structs:"max_release_year" json:"maxReleaseYear,omitempty"`
-	ReleaseDate 	     time.Time `structs:"release_date" json:"releaseDate,omitempty"`
+	ReleaseDate 	     string    `structs:"release_date" json:"releaseDate,omitempty"`
 	Compilation          bool      `structs:"compilation" json:"compilation"`
 	Comment              string    `structs:"comment" json:"comment,omitempty"`
 	SongCount            int       `structs:"song_count" json:"songCount"`
