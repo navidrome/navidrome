@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -34,7 +35,7 @@ var _ = Describe("Artwork", func() {
 		alOnlyExternal = model.Album{ID: "444", Name: "Only external", ImageFiles: "tests/fixtures/front.png"}
 		alExternalNotFound = model.Album{ID: "555", Name: "External not found", ImageFiles: "tests/fixtures/NON_EXISTENT.png"}
 		alMultipleCovers = model.Album{ID: "666", Name: "All options", EmbedArtPath: "tests/fixtures/test.mp3",
-			ImageFiles: "tests/fixtures/cover.jpg:tests/fixtures/front.png",
+			ImageFiles: "tests/fixtures/cover.jpg" + consts.Zwsp + "tests/fixtures/front.png",
 		}
 		mfWithEmbed = model.MediaFile{ID: "22", Path: "tests/fixtures/test.mp3", HasCoverArt: true, AlbumID: "222"}
 		mfWithoutEmbed = model.MediaFile{ID: "44", Path: "tests/fixtures/test.ogg", AlbumID: "444"}

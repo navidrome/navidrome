@@ -59,7 +59,7 @@ func upAddAlbumPathsDirs(filePaths string) string {
 	}
 	slices.Sort(dirs)
 	dirs = slices.Compact(dirs)
-	return strings.Join(dirs, string(filepath.ListSeparator))
+	return strings.Join(dirs, consts.Zwsp)
 }
 
 func downAddAlbumPaths(tx *sql.Tx) error {
