@@ -46,6 +46,7 @@ func NewCachedHTTPClient(wrapped httpDoer, ttl time.Duration) *CachedHTTPClient 
 		if err != nil {
 			return nil, 0, err
 		}
+		defer resp.Body.Close()
 		return c.serializeResponse(resp), ttl, nil
 	})
 	c.cache.SetNewItemCallback(func(key string, value interface{}) {
