@@ -126,11 +126,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 		a.MbzAlbumComment = m.MbzAlbumComment
 		a.CatalogNum = m.CatalogNum
 		a.Compilation = m.Compilation
-		if !conf.Server.Scanner.GroupAlbumEditions {
-			a.MinReleaseYear = m.ReleaseYear
-			a.MaxReleaseYear = m.ReleaseYear
-			a.ReleaseDate = m.ReleaseDate
-		}
 
 		// Calculated attributes based on aggregations
 		a.Duration += m.Duration
@@ -141,6 +136,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 			a.MinYear = number.Min(a.MinYear, m.Year)
 		}
 		a.MaxYear = number.Max(a.MaxYear, m.Year)
+
 		if conf.Server.Scanner.GroupAlbumEditions {
 			if a.MinReleaseYear == 0 {
 				a.MinReleaseYear = m.ReleaseYear
@@ -148,7 +144,11 @@ func (mfs MediaFiles) ToAlbum() Album {
 				a.MinReleaseYear = number.Min(a.MinReleaseYear, m.ReleaseYear)
 			}
 			a.MaxReleaseYear = number.Max(a.MaxReleaseYear, m.ReleaseYear)
+		} else {
+			a.MinReleaseYear = m.ReleaseYear
+			a.MaxReleaseYear = m.ReleaseYear
 		}
+
 		dates = append(dates, m.Date)
 		releaseDates = append(releaseDates, m.ReleaseDate)
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
@@ -167,22 +167,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 		}
 	}
 
-	dates = slices.Compact(dates)
-	if len(dates) == 1 {
-			a.Date = dates[0]
-	}
-
-	if conf.Server.Scanner.GroupAlbumEditions {
-		releaseDates = slices.Compact(releaseDates)
-			if len(releaseDates) == 1 {
-			a.ReleaseDate = releaseDates[0]
-		}
-	}
-
-	comments = slices.Compact(comments)
-	if len(comments) == 1 {
-		a.Comment = comments[0]
-	}
+	a.Date = AllOrNothing(dates)
+	a.ReleaseDate = AllOrNothing(releaseDates)
+	a.Comment = AllOrNothing(comments)
 	a.Genre = slice.MostFrequent(a.Genres).Name
 	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
 	a.Genres = slices.Compact(a.Genres)
@@ -194,6 +181,14 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
 
 	return a
+}
+
+func AllOrNothing(items []string) string {
+	items = slices.Compact(items)
+	if len(items) == 1 {
+		return items[0]
+	}
+	return ""
 }
 
 func newer(t1, t2 time.Time) time.Time {
