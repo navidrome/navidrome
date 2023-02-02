@@ -1,270 +1,250 @@
-package metadata
+package model
 
 import (
-	"fmt"
-	"math"
-	"os"
-	"path"
-	"regexp"
-	"strconv"
+	"mime"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/number"
+	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/exp/slices"
 )
 
-type Extractor interface {
-	Parse(files ...string) (map[string]ParsedTags, error)
-	CustomMappings() ParsedTags
+type MediaFile struct {
+	Annotations  `structs:"-"`
+	Bookmarkable `structs:"-"`
+
+	ID                   string    `structs:"id" json:"id"            orm:"pk;column(id)"`
+	Path                 string    `structs:"path" json:"path"`
+	Title                string    `structs:"title" json:"title"`
+	Album                string    `structs:"album" json:"album"`
+	ArtistID             string    `structs:"artist_id" json:"artistId"      orm:"pk;column(artist_id)"`
+	Artist               string    `structs:"artist" json:"artist"`
+	AlbumArtistID        string    `structs:"album_artist_id" json:"albumArtistId" orm:"pk;column(album_artist_id)"`
+	AlbumArtist          string    `structs:"album_artist" json:"albumArtist"`
+	AlbumID              string    `structs:"album_id" json:"albumId"       orm:"pk;column(album_id)"`
+	HasCoverArt          bool      `structs:"has_cover_art" json:"hasCoverArt"`
+	TrackNumber          int       `structs:"track_number" json:"trackNumber"`
+	DiscNumber           int       `structs:"disc_number" json:"discNumber"`
+	DiscSubtitle         string    `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
+	Year                 int       `structs:"year" json:"year"`
+	Date		     	 string    `structs:"date" json:"date,omitempty"`
+	ReleaseYear          int       `structs:"release_year" json:"releaseYear,omitempty"`
+	ReleaseDate          string    `structs:"release_date" json:"releaseDate,omitempty"`
+	Size                 int64     `structs:"size" json:"size"`
+	Suffix               string    `structs:"suffix" json:"suffix"`
+	Duration             float32   `structs:"duration" json:"duration"`
+	BitRate              int       `structs:"bit_rate" json:"bitRate"`
+	Channels             int       `structs:"channels" json:"channels"`
+	Genre                string    `structs:"genre" json:"genre"`
+	Genres               Genres    `structs:"-" json:"genres"`
+	FullText             string    `structs:"full_text" json:"fullText"`
+	SortTitle            string    `structs:"sort_title" json:"sortTitle,omitempty"`
+	SortAlbumName        string    `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
+	SortArtistName       string    `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
+	SortAlbumArtistName  string    `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
+	OrderTitle           string    `structs:"order_title" json:"orderTitle,omitempty"`
+	OrderAlbumName       string    `structs:"order_album_name" json:"orderAlbumName"`
+	OrderArtistName      string    `structs:"order_artist_name" json:"orderArtistName"`
+	OrderAlbumArtistName string    `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
+	Compilation          bool      `structs:"compilation" json:"compilation"`
+	Comment              string    `structs:"comment" json:"comment,omitempty"`
+	Lyrics               string    `structs:"lyrics" json:"lyrics,omitempty"`
+	Bpm                  int       `structs:"bpm" json:"bpm,omitempty"`
+	CatalogNum           string    `structs:"catalog_num" json:"catalogNum,omitempty"`
+	MbzTrackID           string    `structs:"mbz_track_id" json:"mbzTrackId,omitempty"         orm:"column(mbz_track_id)"`
+	MbzReleaseTrackID    string    `structs:"mbz_release_track_id" json:"mbzReleaseTrackId,omitempty" orm:"column(mbz_release_track_id)"`
+	MbzAlbumID           string    `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"         orm:"column(mbz_album_id)"`
+	MbzArtistID          string    `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"        orm:"column(mbz_artist_id)"`
+	MbzAlbumArtistID     string    `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
+	MbzAlbumType         string    `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
+	MbzAlbumComment      string    `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
+	CreatedAt            time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
+	UpdatedAt            time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
 }
 
-var extractors = map[string]Extractor{}
-
-func RegisterExtractor(id string, parser Extractor) {
-	extractors[id] = parser
+func (mf MediaFile) ContentType() string {
+	return mime.TypeByExtension("." + mf.Suffix)
 }
 
-func Extract(files ...string) (map[string]Tags, error) {
-	p, ok := extractors[conf.Server.Scanner.Extractor]
-	if !ok {
-		log.Warn("Invalid 'Scanner.Extractor' option. Using default", "requested", conf.Server.Scanner.Extractor,
-			"validOptions", "ffmpeg,taglib", "default", consts.DefaultScannerExtractor)
-		p = extractors[consts.DefaultScannerExtractor]
+func (mf MediaFile) CoverArtID() ArtworkID {
+	// If it has a cover art, return it (if feature is disabled, skip)
+	if mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt {
+		return artworkIDFromMediaFile(mf)
 	}
+	// if it does not have a coverArt, fallback to the album cover
+	return mf.AlbumCoverArtID()
+}
 
-	extractedTags, err := p.Parse(files...)
-	if err != nil {
-		return nil, err
+func (mf MediaFile) AlbumCoverArtID() ArtworkID {
+	return artworkIDFromAlbum(Album{ID: mf.AlbumID})
+}
+
+type MediaFiles []MediaFile
+
+// Dirs returns a deduped list of all directories from the MediaFiles' paths
+func (mfs MediaFiles) Dirs() []string {
+	var dirs []string
+	for _, mf := range mfs {
+		dir, _ := filepath.Split(mf.Path)
+		dirs = append(dirs, filepath.Clean(dir))
 	}
+	slices.Sort(dirs)
+	return slices.Compact(dirs)
+}
 
-	result := map[string]Tags{}
-	for filePath, tags := range extractedTags {
-		fileInfo, err := os.Stat(filePath)
-		if err != nil {
-			log.Warn("Error stating file. Skipping", "filePath", filePath, err)
-			continue
+// ToAlbum creates an Album object based on the attributes of this MediaFiles collection.
+// It assumes all mediafiles have the same Album, or else results are unpredictable.
+func (mfs MediaFiles) ToAlbum() Album {
+	a := Album{SongCount: len(mfs)}
+	var fullText []string
+	var albumArtistIds []string
+	var songArtistIds []string
+	var mbzAlbumIds []string
+	var comments []string
+	var dates []string
+	var releaseDates []string
+	for _, m := range mfs {
+		// We assume these attributes are all the same for all songs on an album
+		a.ID = m.AlbumID
+		a.Name = m.Album
+		a.Artist = m.Artist
+		a.ArtistID = m.ArtistID
+		a.AlbumArtist = m.AlbumArtist
+		a.AlbumArtistID = m.AlbumArtistID
+		a.SortAlbumName = m.SortAlbumName
+		a.SortArtistName = m.SortArtistName
+		a.SortAlbumArtistName = m.SortAlbumArtistName
+		a.OrderAlbumName = m.OrderAlbumName
+		a.OrderAlbumArtistName = m.OrderAlbumArtistName
+		a.MbzAlbumArtistID = m.MbzAlbumArtistID
+		a.MbzAlbumType = m.MbzAlbumType
+		a.MbzAlbumComment = m.MbzAlbumComment
+		a.CatalogNum = m.CatalogNum
+		a.Compilation = m.Compilation
+		if !conf.Server.Scanner.GroupAlbumEditions {
+			a.MinReleaseYear = m.ReleaseYear
+			a.MaxReleaseYear = m.ReleaseYear
+			a.ReleaseDate = m.ReleaseDate
 		}
 
-		tags = tags.Map(p.CustomMappings())
-		result[filePath] = NewTag(filePath, fileInfo, tags)
-	}
-
-	return result, nil
-}
-
-func NewTag(filePath string, fileInfo os.FileInfo, tags ParsedTags) Tags {
-	return Tags{
-		filePath: filePath,
-		fileInfo: fileInfo,
-		tags:     tags,
-	}
-}
-
-type ParsedTags map[string][]string
-
-func (p ParsedTags) Map(customMappings ParsedTags) ParsedTags {
-	if customMappings == nil {
-		return p
-	}
-	for tagName, alternatives := range customMappings {
-		for _, altName := range alternatives {
-			if altValue, ok := p[altName]; ok {
-				p[tagName] = append(p[tagName], altValue...)
-				delete(p, altName)
+		// Calculated attributes based on aggregations
+		a.Duration += m.Duration
+		a.Size += m.Size
+		if a.MinYear == 0 {
+			a.MinYear = m.Year
+		} else if m.Year > 0 {
+			a.MinYear = number.Min(a.MinYear, m.Year)
+		}
+		a.MaxYear = number.Max(a.MaxYear, m.Year)
+		if conf.Server.Scanner.GroupAlbumEditions {
+			if a.MinReleaseYear == 0 {
+				a.MinReleaseYear = m.ReleaseYear
+			} else if m.ReleaseYear > 0 {
+				a.MinReleaseYear = number.Min(a.MinReleaseYear, m.ReleaseYear)
 			}
+			a.MaxReleaseYear = number.Max(a.MaxReleaseYear, m.ReleaseYear)
+		}
+		dates = append(dates, m.Date)
+		releaseDates = append(releaseDates, m.ReleaseDate)
+		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
+		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
+		a.Genres = append(a.Genres, m.Genres...)
+		comments = append(comments, m.Comment)
+		albumArtistIds = append(albumArtistIds, m.AlbumArtistID)
+		songArtistIds = append(songArtistIds, m.ArtistID)
+		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
+		fullText = append(fullText,
+			m.Album, m.AlbumArtist, m.Artist,
+			m.SortAlbumName, m.SortAlbumArtistName, m.SortArtistName,
+			m.DiscSubtitle)
+		if m.HasCoverArt && a.EmbedArtPath == "" {
+			a.EmbedArtPath = m.Path
 		}
 	}
-	return p
-}
 
-type Tags struct {
-	filePath string
-	fileInfo os.FileInfo
-	tags     ParsedTags
-}
+	dates = slices.Compact(dates)
+	if len(dates) == 1 {
+			a.Date = dates[0]
+	}
 
-// Common tags
-
-func (t Tags) Title() string  { return t.getFirstTagValue("title", "sort_name", "titlesort") }
-func (t Tags) Album() string  { return t.getFirstTagValue("album", "sort_album", "albumsort") }
-func (t Tags) Artist() string { return t.getFirstTagValue("artist", "sort_artist", "artistsort") }
-func (t Tags) AlbumArtist() string {
-	return t.getFirstTagValue("album_artist", "album artist", "albumartist")
-}
-func (t Tags) SortTitle() string       { return t.getSortTag("", "title", "name") }
-func (t Tags) SortAlbum() string       { return t.getSortTag("", "album") }
-func (t Tags) SortArtist() string      { return t.getSortTag("", "artist") }
-func (t Tags) SortAlbumArtist() string { return t.getSortTag("tso2", "albumartist", "album_artist") }
-func (t Tags) Genres() []string        { return t.getAllTagValues("genre") }
-func (t Tags) Date() (int, time.Time)		  	{ return t.getDate("date") }
-func (t Tags) OriginalDate() (int, time.Time) 	{ return t.getDate("originaldate") }
-func (t Tags) ReleaseDate() (int, time.Time) 	{ return t.getDate("releasedate") }
-func (t Tags) Comment() string         { return t.getFirstTagValue("comment") }
-func (t Tags) Lyrics() string          { return t.getFirstTagValue("lyrics", "lyrics-eng") }
-func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
-func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
-func (t Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }
-func (t Tags) DiscSubtitle() string {
-	return t.getFirstTagValue("tsst", "discsubtitle", "setsubtitle")
-}
-func (t Tags) CatalogNum() string { return t.getFirstTagValue("catalognumber") }
-func (t Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "bpm", "fbpm"))) }
-func (t Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
-
-// MusicBrainz Identifiers
-
-func (t Tags) MbzReleaseTrackID() string {
-	return t.getMbzID("musicbrainz_releasetrackid", "musicbrainz release track id")
-}
-
-func (t Tags) MbzTrackID() string { return t.getMbzID("musicbrainz_trackid", "musicbrainz track id") }
-func (t Tags) MbzAlbumID() string { return t.getMbzID("musicbrainz_albumid", "musicbrainz album id") }
-func (t Tags) MbzArtistID() string {
-	return t.getMbzID("musicbrainz_artistid", "musicbrainz artist id")
-}
-func (t Tags) MbzAlbumArtistID() string {
-	return t.getMbzID("musicbrainz_albumartistid", "musicbrainz album artist id")
-}
-func (t Tags) MbzAlbumType() string {
-	return t.getFirstTagValue("musicbrainz_albumtype", "musicbrainz album type")
-}
-func (t Tags) MbzAlbumComment() string {
-	return t.getFirstTagValue("musicbrainz_albumcomment", "musicbrainz album comment")
-}
-
-// File properties
-
-func (t Tags) Duration() float32           { return float32(t.getFloat("duration")) }
-func (t Tags) BitRate() int                { return t.getInt("bitrate") }
-func (t Tags) Channels() int               { return t.getInt("channels") }
-func (t Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
-func (t Tags) Size() int64                 { return t.fileInfo.Size() }
-func (t Tags) FilePath() string            { return t.filePath }
-func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
-
-func (t Tags) getTags(tagNames ...string) []string {
-	for _, tag := range tagNames {
-		if v, ok := t.tags[tag]; ok {
-			return v
+	if conf.Server.Scanner.GroupAlbumEditions {
+		releaseDates = slices.Compact(releaseDates)
+			if len(releaseDates) == 1 {
+			a.ReleaseDate = releaseDates[0]
 		}
 	}
-	return nil
-}
 
-func (t Tags) getFirstTagValue(tagNames ...string) string {
-	ts := t.getTags(tagNames...)
-	if len(ts) > 0 {
-		return ts[0]
+	comments = slices.Compact(comments)
+	if len(comments) == 1 {
+		a.Comment = comments[0]
 	}
-	return ""
+	a.Genre = slice.MostFrequent(a.Genres).Name
+	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
+	a.Genres = slices.Compact(a.Genres)
+	a.FullText = " " + utils.SanitizeStrings(fullText...)
+	a = fixAlbumArtist(a, albumArtistIds)
+	songArtistIds = append(songArtistIds, a.AlbumArtistID, a.ArtistID)
+	slices.Sort(songArtistIds)
+	a.AllArtistIDs = strings.Join(slices.Compact(songArtistIds), " ")
+	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
+
+	return a
 }
 
-func (t Tags) getAllTagValues(tagNames ...string) []string {
-	var values []string
-	for _, tag := range tagNames {
-		if v, ok := t.tags[tag]; ok {
-			values = append(values, v...)
+func newer(t1, t2 time.Time) time.Time {
+	if t1.After(t2) {
+		return t1
+	}
+	return t2
+}
+
+func older(t1, t2 time.Time) time.Time {
+	if t1.IsZero() {
+		return t2
+	}
+	if t1.After(t2) {
+		return t2
+	}
+	return t1
+}
+
+func fixAlbumArtist(a Album, albumArtistIds []string) Album {
+	if !a.Compilation {
+		if a.AlbumArtistID == "" {
+			a.AlbumArtistID = a.ArtistID
+			a.AlbumArtist = a.Artist
 		}
+		return a
 	}
-	return values
+
+	albumArtistIds = slices.Compact(albumArtistIds)
+	if len(albumArtistIds) > 1 {
+		a.AlbumArtist = consts.VariousArtists
+		a.AlbumArtistID = consts.VariousArtistsID
+	}
+	return a
 }
 
-func (t Tags) getSortTag(originalTag string, tagNames ...string) string {
-	formats := []string{"sort%s", "sort_%s", "sort-%s", "%ssort", "%s_sort", "%s-sort"}
-	all := []string{originalTag}
-	for _, tag := range tagNames {
-		for _, format := range formats {
-			name := fmt.Sprintf(format, tag)
-			all = append(all, name)
-		}
-	}
-	return t.getFirstTagValue(all...)
-}
+type MediaFileRepository interface {
+	CountAll(options ...QueryOptions) (int64, error)
+	Exists(id string) (bool, error)
+	Put(m *MediaFile) error
+	Get(id string) (*MediaFile, error)
+	GetAll(options ...QueryOptions) (MediaFiles, error)
+	Search(q string, offset int, size int) (MediaFiles, error)
+	Delete(id string) error
 
-var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
+	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
+	FindAllByPath(path string) (MediaFiles, error)
+	FindByPath(path string) (*MediaFile, error)
+	FindPathsRecursively(basePath string) ([]string, error)
+	DeleteByPath(path string) (int64, error)
 
-func (t Tags) getDate(tagNames ...string) (int, time.Time) {
-	tag := t.getFirstTagValue(tagNames...)
-	if len(tag) < 4 {
-		return 0, time.Time{}
-	}
-	// first get just the year
-	match := dateRegex.FindStringSubmatch(tag)
-	if len(match) == 0 {
-		log.Warn("Error parsing " + tagNames[0] + " field for year", "file", t.filePath, "date", tag)
-		return 0, time.Time{}
-	}
-	year, _ := strconv.Atoi(match[1])
-	
-	if len(tag) < 5 {
-		return year, time.Time{}
-	}
-
-	//then try YYYY-MM-DD
-	if len(tag) > 10 {
-		tag = tag[:10]
-	}
-	layout := "2006-01-02"
-	date, err := time.Parse(layout, tag)
-	if err != nil {
-		layout = "2006-01"
-		date, err = time.Parse(layout, tag)
-		if err != nil {
-			log.Warn("Error parsing " + tagNames[0] + " field for month + day", "file", t.filePath, "date", tag)
-			return year, time.Time{}
-		}
-	}	
-	return year, date
-}
-
-func (t Tags) getBool(tagNames ...string) bool {
-	tag := t.getFirstTagValue(tagNames...)
-	if tag == "" {
-		return false
-	}
-	i, _ := strconv.Atoi(strings.TrimSpace(tag))
-	return i == 1
-}
-
-func (t Tags) getTuple(tagNames ...string) (int, int) {
-	tag := t.getFirstTagValue(tagNames...)
-	if tag == "" {
-		return 0, 0
-	}
-	tuple := strings.Split(tag, "/")
-	t1, t2 := 0, 0
-	t1, _ = strconv.Atoi(tuple[0])
-	if len(tuple) > 1 {
-		t2, _ = strconv.Atoi(tuple[1])
-	} else {
-		t2tag := t.getFirstTagValue(tagNames[0] + "total")
-		t2, _ = strconv.Atoi(t2tag)
-	}
-	return t1, t2
-}
-
-func (t Tags) getMbzID(tagNames ...string) string {
-	tag := t.getFirstTagValue(tagNames...)
-	if _, err := uuid.Parse(tag); err != nil {
-		return ""
-	}
-	return tag
-}
-
-func (t Tags) getInt(tagNames ...string) int {
-	tag := t.getFirstTagValue(tagNames...)
-	i, _ := strconv.Atoi(tag)
-	return i
-}
-
-func (t Tags) getFloat(tagNames ...string) float64 {
-	var tag = t.getFirstTagValue(tagNames...)
-	var value, err = strconv.ParseFloat(tag, 64)
-	if err != nil {
-		return 0
-	}
-	return value
+	AnnotatedRepository
+	BookmarkableRepository
 }
