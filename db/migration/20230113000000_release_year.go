@@ -13,20 +13,21 @@ func init() {
 func upAddRelRecYear(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
-    add date date null default null;
+    add date varchar(255) default '' not null;
 alter table media_file
-    add release_date date null default null;
+    add release_date varchar(255) default '' not null;
 alter table media_file
-    add release_year integer;
-	
+    add release_year integer default 0 not null;
+
 alter table album
-    add date date null default null;
+    add date varchar(255) default '' not null;
 alter table album
-    add release_date date null default null;
+    add release_date varchar(255) default '' not null;
 alter table album
-    add min_release_year integer;
+    add min_release_year integer default 0 not null;
 alter table album
-    add max_release_year integer;
+    add max_release_year integer default 0 not null;
+
 create index if not exists media_file_track_number
 	on media_file (release_year, disc_number, track_number);
 `)
