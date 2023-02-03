@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -20,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/number"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -229,12 +229,13 @@ func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist *auxAr
 	}
 
 	// Call all registered agents and collect information
-	callParallel([]func(){
-		func() { e.callGetBiography(ctx, e.ag, artist) },
-		func() { e.callGetURL(ctx, e.ag, artist) },
-		func() { e.callGetImage(ctx, e.ag, artist) },
-		func() { e.callGetSimilar(ctx, e.ag, artist, maxSimilarArtists, true) },
-	})
+	g := errgroup.Group{}
+	g.SetLimit(2)
+	g.Go(func() error { e.callGetImage(ctx, e.ag, artist); return nil })
+	g.Go(func() error { e.callGetBiography(ctx, e.ag, artist); return nil })
+	g.Go(func() error { e.callGetURL(ctx, e.ag, artist); return nil })
+	g.Go(func() error { e.callGetSimilar(ctx, e.ag, artist, maxSimilarArtists, true); return nil })
+	_ = g.Wait()
 
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "ArtistInfo update canceled", "elapsed", "id", artist.ID, "name", artist.Name, time.Since(start), ctx.Err())
@@ -250,18 +251,6 @@ func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist *auxAr
 		log.Trace(ctx, "ArtistInfo collected", "artist", artist, "elapsed", time.Since(start))
 	}
 	return nil
-}
-
-func callParallel(fs []func()) {
-	wg := &sync.WaitGroup{}
-	wg.Add(len(fs))
-	for _, f := range fs {
-		go func(f func()) {
-			f()
-			wg.Done()
-		}(f)
-	}
-	wg.Wait()
 }
 
 func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
