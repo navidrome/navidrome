@@ -74,13 +74,13 @@ func (h *Handler) getImageList(ctx context.Context) ([]string, error) {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, buildPath(ndImageServiceURL, "index.yml"), nil)
 	resp, err := c.Do(req)
 	if err != nil {
-		log.Warn(ctx, "Could not get list from image service", err)
+		log.Warn(ctx, "Could not get background images from image service", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 	dec := yaml.NewDecoder(resp.Body)
 	err = dec.Decode(&h.list)
-	log.Debug(ctx, "Loaded images from image service", "total", len(h.list), "elapsed", time.Since(start))
+	log.Debug(ctx, "Loaded background images from image service", "total", len(h.list), "elapsed", time.Since(start))
 	return h.list, err
 }
 
