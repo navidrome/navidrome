@@ -476,7 +476,7 @@ func (e *externalMetadata) callGetSimilar(ctx context.Context, agent agents.Arti
 	}
 	start := time.Now()
 	sa, err := e.mapSimilarArtists(ctx, similar, includeNotPresent)
-	log.Debug(ctx, "Mapped Similar Artists", "agent", "artist", artist.Name, "numSimilar", len(sa), "elapsed", time.Since(start))
+	log.Debug(ctx, "Mapped Similar Artists", "artist", artist.Name, "numSimilar", len(sa), "elapsed", time.Since(start))
 	if err != nil {
 		return
 	}
