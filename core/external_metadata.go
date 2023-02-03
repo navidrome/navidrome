@@ -322,11 +322,12 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 }
 
 func (e *externalMetadata) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
-	artist, err := e.refreshArtistInfo(ctx, id)
+	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
+	e.callGetImage(ctx, e.ag, artist)
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
 		return nil, ctx.Err()
