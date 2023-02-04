@@ -146,7 +146,7 @@ func (api *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		// configure request throttling
 		if conf.Server.DevArtworkMaxRequests > 0 {
-			log.Debug("Subsonic getCoverArt endpoint will be throttled", "maxRequests", conf.Server.DevArtworkMaxRequests,
+			log.Debug("Throttling Subsonic getCoverArt endpoint", "maxRequests", conf.Server.DevArtworkMaxRequests,
 				"backlogLimit", conf.Server.DevArtworkThrottleBacklogLimit, "backlogTimeout",
 				conf.Server.DevArtworkThrottleBacklogTimeout)
 			r.Use(middleware.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
