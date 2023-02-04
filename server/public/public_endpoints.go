@@ -41,7 +41,7 @@ func (p *Router) routes() http.Handler {
 		r.Use(server.URLParamsMiddleware)
 		r.Group(func(r chi.Router) {
 			if conf.Server.DevArtworkMaxRequests > 0 {
-				log.Debug("Public images endpoint will be throttled", "maxRequests", conf.Server.DevArtworkMaxRequests,
+				log.Debug("Throttling public images endpoint", "maxRequests", conf.Server.DevArtworkMaxRequests,
 					"backlogLimit", conf.Server.DevArtworkThrottleBacklogLimit, "backlogTimeout",
 					conf.Server.DevArtworkThrottleBacklogTimeout)
 				r.Use(middleware.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
