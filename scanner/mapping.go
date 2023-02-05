@@ -122,7 +122,7 @@ func (s mediaFileMapper) mapArtistName(md metadata.Tags) string {
 func (s mediaFileMapper) mapAlbumName(md metadata.Tags) string {
 	name := md.Album()
 	if name == "" {
-		return "[Unknown Album]"
+		return consts.UnknownAlbum
 	}
 	return name
 }

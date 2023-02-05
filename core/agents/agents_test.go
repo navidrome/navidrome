@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 
@@ -61,6 +62,18 @@ var _ = Describe("Agents", func() {
 				Expect(ag.GetArtistMBID(ctx, "123", "test")).To(Equal("mbid"))
 				Expect(mock.Args).To(ConsistOf("123", "test"))
 			})
+			It("returns empty if artist is Various Artists", func() {
+				mbid, err := ag.GetArtistMBID(ctx, consts.VariousArtistsID, consts.VariousArtists)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mbid).To(BeEmpty())
+				Expect(mock.Args).To(BeEmpty())
+			})
+			It("returns not found if artist is Unknown Artist", func() {
+				mbid, err := ag.GetArtistMBID(ctx, consts.VariousArtistsID, consts.VariousArtists)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mbid).To(BeEmpty())
+				Expect(mock.Args).To(BeEmpty())
+			})
 			It("skips the agent if it returns an error", func() {
 				mock.Err = errors.New("error")
 				_, err := ag.GetArtistMBID(ctx, "123", "test")
@@ -80,6 +93,18 @@ var _ = Describe("Agents", func() {
 				Expect(ag.GetArtistURL(ctx, "123", "test", "mb123")).To(Equal("url"))
 				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
 			})
+			It("returns empty if artist is Various Artists", func() {
+				url, err := ag.GetArtistURL(ctx, consts.VariousArtistsID, consts.VariousArtists, "")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(url).To(BeEmpty())
+				Expect(mock.Args).To(BeEmpty())
+			})
+			It("returns not found if artist is Unknown Artist", func() {
+				url, err := ag.GetArtistURL(ctx, consts.VariousArtistsID, consts.VariousArtists, "")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(url).To(BeEmpty())
+				Expect(mock.Args).To(BeEmpty())
+			})
 			It("skips the agent if it returns an error", func() {
 				mock.Err = errors.New("error")
 				_, err := ag.GetArtistURL(ctx, "123", "test", "mb123")
@@ -98,6 +123,18 @@ var _ = Describe("Agents", func() {
 			It("returns on first match", func() {
 				Expect(ag.GetArtistBiography(ctx, "123", "test", "mb123")).To(Equal("bio"))
 				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
+			})
+			It("returns empty if artist is Various Artists", func() {
+				bio, err := ag.GetArtistBiography(ctx, consts.VariousArtistsID, consts.VariousArtists, "")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bio).To(BeEmpty())
+				Expect(mock.Args).To(BeEmpty())
+			})
+			It("returns not found if artist is Unknown Artist", func() {
+				bio, err := ag.GetArtistBiography(ctx, consts.VariousArtistsID, consts.VariousArtists, "")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bio).To(BeEmpty())
+				Expect(mock.Args).To(BeEmpty())
 			})
 			It("skips the agent if it returns an error", func() {
 				mock.Err = errors.New("error")

@@ -425,7 +425,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 
 func (e *externalMetadata) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) {
 	artisURL, err := agent.GetArtistURL(ctx, artist.ID, artist.Name, artist.MbzArtistID)
-	if artisURL == "" || err != nil {
+	if err != nil {
 		return
 	}
 	artist.ExternalUrl = artisURL
@@ -433,7 +433,7 @@ func (e *externalMetadata) callGetURL(ctx context.Context, agent agents.ArtistUR
 
 func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) {
 	bio, err := agent.GetArtistBiography(ctx, artist.ID, clearName(artist.Name), artist.MbzArtistID)
-	if bio == "" || err != nil {
+	if err != nil {
 		return
 	}
 	bio = utils.SanitizeText(bio)
@@ -443,7 +443,7 @@ func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.Ar
 
 func (e *externalMetadata) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
 	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name, artist.MbzArtistID)
-	if len(images) == 0 || err != nil {
+	if err != nil {
 		return
 	}
 	sort.Slice(images, func(i, j int) bool { return images[i].Size > images[j].Size })
