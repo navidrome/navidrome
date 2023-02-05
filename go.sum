@@ -141,8 +141,8 @@ github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 h1:HbphB4TFFXpv7MNrT52FGrrgVXF1
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0/go.mod h1:DZGJHZMqrU4JJqFAWUS2UO1+lbSKsdiOoYi9Zzey7Fc=
 github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47 h1:IhGAYGDi212gspq0XkYAI+DN5e9lfAIm8Qgu1wj9yN4=
 github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47/go.mod h1:tSgDythFsl0QgS/PFWfIZqcJKnkADWneY80jaVRlqK8=
-github.com/deluan/sanitize v0.0.0-20180806073457-06ec0d0dbcd4 h1:InFtwusyW3EYzJij24J+1dAHnQnXx1no2FlY52XBdyQ=
-github.com/deluan/sanitize v0.0.0-20180806073457-06ec0d0dbcd4/go.mod h1:y973LnzsvCnDm0L+WTN/QMcFCdxehofrM9ejXZNhbjA=
+github.com/deluan/sanitize v0.0.0-20230205000301-6c233e80fe2e h1:UMfzPvwQHst/Un71y7gVWH4ltrXwJjuePWPMpVdy2t4=
+github.com/deluan/sanitize v0.0.0-20230205000301-6c233e80fe2e/go.mod h1:ZNCLJfehvEf34B7BbLKjgpsL9lyW7q938w/GY1XgV4E=
 github.com/denis-tingaikin/go-header v0.4.3 h1:tEaZKAlqql6SKCY++utLmkPLd6K8IBM20Ha7UVm+mtU=
 github.com/denis-tingaikin/go-header v0.4.3/go.mod h1:0wOCWuN71D5qIgE2nz9KrKmuYBAC2Mra5RassOIQ2/c=
 github.com/denisenkom/go-mssqldb v0.10.0 h1:QykgLZBorFE95+gO3u9esLd0BmbvpWp0/waNNZfHBM8=
