@@ -319,6 +319,7 @@ func InitConfig(cfgFile string) {
 	err := viper.ReadInConfig()
 	if viper.ConfigFileUsed() != "" && err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Navidrome could not open config file: ", err)
+		os.Exit(1)
 	}
 }
 
