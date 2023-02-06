@@ -108,22 +108,32 @@ const UserEdit = (props) => {
         save={save}
       >
         {permissions === 'admin' && (
-          <TextInput source="userName" validate={[required()]} />
+          <TextInput
+            spellCheck={false}
+            source="userName"
+            validate={[required()]}
+          />
         )}
         <TextInput
           source="name"
           validate={[required()]}
           {...getNameHelperText()}
         />
-        <TextInput source="email" validate={[email()]} />
+        <TextInput spellCheck={false} source="email" validate={[email()]} />
         <BooleanInput source="changePassword" />
         <FormDataConsumer>
           {(formDataProps) => (
-            <CurrentPasswordInput isMyself={isMyself} {...formDataProps} />
+            <CurrentPasswordInput
+              spellCheck={false}
+              isMyself={isMyself}
+              {...formDataProps}
+            />
           )}
         </FormDataConsumer>
         <FormDataConsumer>
-          {(formDataProps) => <NewPasswordInput {...formDataProps} />}
+          {(formDataProps) => (
+            <NewPasswordInput spellCheck={false} {...formDataProps} />
+          )}
         </FormDataConsumer>
 
         {permissions === 'admin' && (

@@ -51,10 +51,18 @@ const UserCreate = (props) => {
   return (
     <Create title={<Title subTitle={title} />} {...props}>
       <SimpleForm save={save} variant={'outlined'}>
-        <TextInput source="userName" validate={[required()]} />
+        <TextInput
+          spellCheck={false}
+          source="userName"
+          validate={[required()]}
+        />
         <TextInput source="name" validate={[required()]} />
-        <TextInput source="email" validate={[email()]} />
-        <PasswordInput source="password" validate={[required()]} />
+        <TextInput spellCheck={false} source="email" validate={[email()]} />
+        <PasswordInput
+          spellCheck={false}
+          source="password"
+          validate={[required()]}
+        />
         <BooleanInput source="isAdmin" defaultValue={false} />
       </SimpleForm>
     </Create>
