@@ -39,7 +39,7 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 
 func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error) {
 	log.Trace(ctx, "Executing ffmpeg command", "cmd", args)
-	j := &Cmd{ctx: ctx, args: args}
+	j := &ffCmd{args: args}
 	j.PipeReader, j.out = io.Pipe()
 	err := j.start()
 	if err != nil {
@@ -49,16 +49,15 @@ func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error
 	return j, nil
 }
 
-type Cmd struct {
+type ffCmd struct {
 	*io.PipeReader
 	out  *io.PipeWriter
-	ctx  context.Context
 	args []string
 	cmd  *exec.Cmd
 }
 
-func (j *Cmd) start() error {
-	cmd := exec.CommandContext(j.ctx, j.args[0], j.args[1:]...) // #nosec
+func (j *ffCmd) start() error {
+	cmd := exec.Command(j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
 	if log.CurrentLevel() >= log.LevelTrace {
 		cmd.Stderr = os.Stderr
@@ -73,7 +72,7 @@ func (j *Cmd) start() error {
 	return nil
 }
 
-func (j *Cmd) wait() {
+func (j *ffCmd) wait() {
 	if err := j.cmd.Wait(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
@@ -81,10 +80,6 @@ func (j *Cmd) wait() {
 		} else {
 			_ = j.out.CloseWithError(fmt.Errorf("waiting %s cmd: %w", j.args[0], err))
 		}
-		return
-	}
-	if j.ctx.Err() != nil {
-		_ = j.out.CloseWithError(j.ctx.Err())
 		return
 	}
 	_ = j.out.Close()
