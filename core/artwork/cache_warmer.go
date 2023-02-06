@@ -23,7 +23,7 @@ type CacheWarmer interface {
 
 func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 	// If image cache is disabled, return a NOOP implementation
-	if conf.Server.ImageCacheSize == "0" {
+	if conf.Server.ImageCacheSize == "0" || !conf.Server.EnableArtworkPrecache {
 		return &noopCacheWarmer{}
 	}
 
