@@ -3,12 +3,12 @@ package server
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -77,9 +77,9 @@ func createJWTSecret(ds model.DataStore) error {
 }
 
 func checkFfmpegInstallation() {
-	path, err := exec.LookPath("ffmpeg")
+	f := ffmpeg.New()
+	_, err := f.CmdPath()
 	if err == nil {
-		log.Info("Found ffmpeg", "path", path)
 		return
 	}
 	log.Warn("Unable to find ffmpeg. Transcoding will fail if used", err)

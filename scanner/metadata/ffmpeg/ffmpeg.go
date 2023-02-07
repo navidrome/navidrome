@@ -2,33 +2,35 @@ package ffmpeg
 
 import (
 	"bufio"
+	"context"
 	"errors"
-	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/scanner/metadata"
 )
 
 const ExtractorID = "ffmpeg"
 
-type Extractor struct{}
+type Extractor struct {
+	ffmpeg ffmpeg.FFmpeg
+}
 
 func (e *Extractor) Parse(files ...string) (map[string]metadata.ParsedTags, error) {
-	args := e.createProbeCommand(files)
-
-	log.Trace("Executing command", "args", args)
-	cmd := exec.Command(args[0], args[1:]...) // #nosec
-	output, _ := cmd.CombinedOutput()
+	output, err := e.ffmpeg.Probe(context.TODO(), files)
+	if err != nil {
+		log.Error("Cannot use ffmpeg to extract tags. Aborting", err)
+		return nil, err
+	}
 	fileTags := map[string]metadata.ParsedTags{}
 	if len(output) == 0 {
 		return fileTags, errors.New("error extracting metadata files")
 	}
-	infos := e.parseOutput(string(output))
+	infos := e.parseOutput(output)
 	for file, info := range infos {
 		tags, err := e.extractMetadata(file, info)
 		// Skip files with errors
@@ -197,22 +199,6 @@ func (e *Extractor) parseChannels(tag string) string {
 }
 
 // Inputs will always be absolute paths
-func (e *Extractor) createProbeCommand(inputs []string) []string {
-	split := strings.Split(conf.Server.ProbeCommand, " ")
-	args := make([]string, 0)
-
-	for _, s := range split {
-		if s == "%s" {
-			for _, inp := range inputs {
-				args = append(args, "-i", inp)
-			}
-		} else {
-			args = append(args, s)
-		}
-	}
-	return args
-}
-
 func init() {
-	metadata.RegisterExtractor(ExtractorID, &Extractor{})
+	metadata.RegisterExtractor(ExtractorID, &Extractor{ffmpeg: ffmpeg.New()})
 }

@@ -179,7 +179,7 @@ func (r *mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
 
 func (r *mediaFileRepository) removeNonAlbumArtistIds() error {
 	upd := Update(r.tableName).Set("artist_id", "").Where(notExists("artist", ConcatExpr("id = artist_id")))
-	log.Debug(r.ctx, "Removing non-album artist_id")
+	log.Debug(r.ctx, "Removing non-album artist_ids")
 	_, err := r.executeSQL(upd)
 	return err
 }
