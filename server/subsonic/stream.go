@@ -127,10 +127,16 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	switch v := entity.(type) {
 	case *model.MediaFile:
 		stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate)
-
 		if err != nil {
 			return nil, err
 		}
+
+		// Make sure the stream will be closed at the end, to avoid leakage
+		defer func() {
+			if err := stream.Close(); err != nil && log.CurrentLevel() >= log.LevelDebug {
+				log.Error("Error closing stream", "id", id, "file", stream.Name(), err)
+			}
+		}()
 
 		disposition := fmt.Sprintf("attachment; filename=\"%s\"", stream.Name())
 		w.Header().Set("Content-Disposition", disposition)
