@@ -7,7 +7,6 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/pl"
 )
 
 func newBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *bufferedScrobbler {
@@ -57,7 +56,12 @@ func (b *bufferedScrobbler) run(ctx context.Context) {
 				b.sendWakeSignal()
 			})
 		}
-		<-pl.ReadOrDone(ctx, b.wakeSignal)
+		select {
+		case <-b.wakeSignal:
+			continue
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
