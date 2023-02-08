@@ -49,7 +49,7 @@ var _ = Describe("Artwork", func() {
 	Describe("albumArtworkReader", func() {
 		Context("ID not found", func() {
 			It("returns ErrNotFound if album is not in the DB", func() {
-				_, err := newAlbumArtworkReader(ctx, aw, model.MustParseArtworkID("al-NOT_FOUND"), nil)
+				_, err := newAlbumArtworkReader(ctx, aw, model.MustParseArtworkID("al-NOT-FOUND"), nil)
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
@@ -157,14 +157,14 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal("al-444"))
+				Expect(path).To(Equal("al-444_0"))
 			})
 			It("returns album cover if media file has no cover art", func() {
 				aw, err := newMediafileArtworkReader(ctx, aw, model.MustParseArtworkID("mf-"+mfWithoutEmbed.ID))
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal("al-444"))
+				Expect(path).To(Equal("al-444_0"))
 			})
 		})
 	})

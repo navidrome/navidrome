@@ -20,8 +20,9 @@ type cacheKey struct {
 
 func (k *cacheKey) Key() string {
 	return fmt.Sprintf(
-		"%s.%d",
-		k.artID,
+		"%s-%s.%d",
+		k.artID.Kind,
+		k.artID.ID,
 		k.lastUpdate.UnixMilli(),
 	)
 }
