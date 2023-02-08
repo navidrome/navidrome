@@ -73,6 +73,10 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int) (rea
 	return r, artReader.LastUpdated(), nil
 }
 
+type coverArtGetter interface {
+	CoverArtID() model.ArtworkID
+}
+
 func (a *artwork) getArtworkId(ctx context.Context, id string) (model.ArtworkID, error) {
 	if id == "" {
 		return model.ArtworkID{}, ErrUnavailable
@@ -87,18 +91,17 @@ func (a *artwork) getArtworkId(ctx context.Context, id string) (model.ArtworkID,
 	if err != nil {
 		return model.ArtworkID{}, err
 	}
+	if e, ok := entity.(coverArtGetter); ok {
+		artID = e.CoverArtID()
+	}
 	switch e := entity.(type) {
 	case *model.Artist:
-		artID = model.NewArtworkID(model.KindArtistArtwork, e.ID)
 		log.Trace(ctx, "ID is for an Artist", "id", id, "name", e.Name, "artist", e.Name)
 	case *model.Album:
-		artID = model.NewArtworkID(model.KindAlbumArtwork, e.ID)
 		log.Trace(ctx, "ID is for an Album", "id", id, "name", e.Name, "artist", e.AlbumArtist)
 	case *model.MediaFile:
-		artID = model.NewArtworkID(model.KindMediaFileArtwork, e.ID)
 		log.Trace(ctx, "ID is for a MediaFile", "id", id, "title", e.Title, "album", e.Album)
 	case *model.Playlist:
-		artID = model.NewArtworkID(model.KindPlaylistArtwork, e.ID)
 		log.Trace(ctx, "ID is for a Playlist", "id", id, "name", e.Name)
 	}
 	return artID, nil
