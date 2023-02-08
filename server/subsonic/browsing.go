@@ -193,9 +193,10 @@ func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.AlbumInfo = &responses.AlbumInfo{}
 	response.AlbumInfo.Notes = album.Description
-	response.AlbumInfo.SmallImageUrl = album.SmallImageUrl
-	response.AlbumInfo.MediumImageUrl = album.MediumImageUrl
-	response.AlbumInfo.LargeImageUrl = album.LargeImageUrl
+	response.AlbumInfo.SmallImageUrl = public.ImageURL(r, album.CoverArtID(), 150)
+	response.AlbumInfo.MediumImageUrl = public.ImageURL(r, album.CoverArtID(), 300)
+	response.AlbumInfo.LargeImageUrl = public.ImageURL(r, album.CoverArtID(), 600)
+
 	response.AlbumInfo.LastFmUrl = album.ExternalUrl
 	response.AlbumInfo.MusicBrainzID = album.MbzAlbumID
 
@@ -257,9 +258,9 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
 	response.ArtistInfo.Biography = artist.Biography
-	response.ArtistInfo.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 160)
-	response.ArtistInfo.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 320)
-	response.ArtistInfo.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 0)
+	response.ArtistInfo.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 150)
+	response.ArtistInfo.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 300)
+	response.ArtistInfo.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 600)
 	response.ArtistInfo.LastFmUrl = artist.ExternalUrl
 	response.ArtistInfo.MusicBrainzID = artist.MbzArtistID
 	for _, s := range artist.SimilarArtists {
