@@ -88,7 +88,7 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 		AlbumCount:     a.AlbumCount,
 		UserRating:     a.Rating,
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 0),
+		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
@@ -102,7 +102,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		Name:           a.Name,
 		AlbumCount:     a.AlbumCount,
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 0),
+		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     a.Rating,
 	}
 	if a.Starred {

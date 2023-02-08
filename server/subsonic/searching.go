@@ -107,7 +107,7 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 			AlbumCount:     artist.AlbumCount,
 			UserRating:     artist.Rating,
 			CoverArt:       artist.CoverArtID().String(),
-			ArtistImageUrl: public.ImageURL(r, artist.CoverArtID(), 0),
+			ArtistImageUrl: public.ImageURL(r, artist.CoverArtID(), 600),
 		}
 		if artist.Starred {
 			searchResult2.Artist[i].Starred = &as[i].StarredAt
