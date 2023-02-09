@@ -69,18 +69,15 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.MbzAlbumArtistID = md.MbzAlbumArtistID()
 	mf.MbzAlbumType = md.MbzAlbumType()
 	mf.MbzAlbumComment = md.MbzAlbumComment()
+	mf.RGAlbumGain = md.RGAlbumGain()
+	mf.RGAlbumPeak = md.RGAlbumPeak()
+	mf.RGTrackGain = md.RGTrackGain()
+	mf.RGTrackPeak = md.RGTrackPeak()
 	mf.Comment = utils.SanitizeText(md.Comment())
 	mf.Lyrics = utils.SanitizeText(md.Lyrics())
 	mf.Bpm = md.Bpm()
 	mf.CreatedAt = time.Now()
 	mf.UpdatedAt = md.ModificationTime()
-
-	if conf.Server.EnableReplayGain {
-		mf.RGAlbumGain = md.RGAlbumGain()
-		mf.RGAlbumPeak = md.RGAlbumPeak()
-		mf.RGTrackGain = md.RGTrackGain()
-		mf.RGTrackPeak = md.RGTrackPeak()
-	}
 
 	return *mf
 }

@@ -256,7 +256,7 @@ func init() {
 	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
-	viper.SetDefault("enablereplaygain", false)
+	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
