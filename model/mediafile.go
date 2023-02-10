@@ -33,7 +33,6 @@ type MediaFile struct {
 	DiscSubtitle         string    `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
 	Year                 int       `structs:"year" json:"year"`
 	Date		     string    `structs:"date" json:"date,omitempty"`
-	ReleaseYear          int       `structs:"release_year" json:"releaseYear,omitempty"`
 	ReleaseDate          string    `structs:"release_date" json:"releaseDate,omitempty"`
 	Size                 int64     `structs:"size" json:"size"`
 	Suffix               string    `structs:"suffix" json:"suffix"`
