@@ -21,8 +21,8 @@ export const PlayButton = ({ record, size, className }) => {
     dataProvider
       .getList('song', {
         pagination: { page: 1, perPage: -1 },
-        sort: { field: 'releaseYear, releaseDate, discNumber, trackNumber', order: 'ASC' },
-        filter: { album_id: record.id, release_year: record.releaseYear, disc_number: record.discNumber },
+        sort: { field: 'releaseDate, discNumber, trackNumber', order: 'ASC' },
+        filter: { album_id: record.id, release_date: record.releaseDate, disc_number: record.discNumber },
       })
       .then((response) => {
         let { data, ids } = extractSongsData(response)
