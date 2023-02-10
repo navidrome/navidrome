@@ -22,7 +22,7 @@ type Album struct {
 	MinYear              int       `structs:"min_year" json:"minYear"`
 	Date		     string    `structs:"date" json:"date,omitempty"`
 	ReleaseDate 	     string    `structs:"release_date" json:"releaseDate,omitempty"`
-	Editions			 int	   `structs:"editions" json:"editions"`
+	Editions	     int       `structs:"editions" json:"editions"`
 	Compilation          bool      `structs:"compilation" json:"compilation"`
 	Comment              string    `structs:"comment" json:"comment,omitempty"`
 	SongCount            int       `structs:"song_count" json:"songCount"`
@@ -52,7 +52,7 @@ func (a Album) CoverArtID() ArtworkID {
 
 type DiscID struct {
 	AlbumID     string `json:"albumId"`
-	ReleaseYear int    `json:"releaseYear"`
+	ReleaseDate string `json:"releaseDate"`
 	DiscNumber  int    `json:"discNumber"`
 }
 
