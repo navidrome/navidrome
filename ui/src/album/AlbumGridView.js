@@ -164,8 +164,8 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
           <RangeFieldDouble
               record={record}
               source={'year'}
-              symbol1={'♫ '}
-              symbol2={'○ '}
+              symbol1={'♫'}
+              symbol2={'○'}
               separator={' · '}
               sortBy={'max_year'}
               sortByOrder={'DESC'}
