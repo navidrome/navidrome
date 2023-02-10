@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
+	"sort"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
@@ -137,18 +137,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 		}
 		a.MaxYear = number.Max(a.MaxYear, m.Year)
 
-		if conf.Server.Scanner.GroupAlbumEditions {
-			if a.MinReleaseYear == 0 {
-				a.MinReleaseYear = m.ReleaseYear
-			} else if m.ReleaseYear > 0 {
-				a.MinReleaseYear = number.Min(a.MinReleaseYear, m.ReleaseYear)
-			}
-			a.MaxReleaseYear = number.Max(a.MaxReleaseYear, m.ReleaseYear)
-		} else {
-			a.MinReleaseYear = m.ReleaseYear
-			a.MaxReleaseYear = m.ReleaseYear
-		}
-
 		dates = append(dates, m.Date)
 		releaseDates = append(releaseDates, m.ReleaseDate)
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
@@ -167,9 +155,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 		}
 	}
 
-	a.Date = AllOrNothing(dates)
-	a.ReleaseDate = AllOrNothing(releaseDates)
-	a.Comment = AllOrNothing(comments)
+	a.Date,_ = AllOrNothing(dates)
+	a.ReleaseDate, a.Editions = AllOrNothing(releaseDates)
+	a.Comment,_ = AllOrNothing(comments)
 	a.Genre = slice.MostFrequent(a.Genres).Name
 	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
 	a.Genres = slices.Compact(a.Genres)
@@ -183,12 +171,16 @@ func (mfs MediaFiles) ToAlbum() Album {
 	return a
 }
 
-func AllOrNothing(items []string) string {
+func AllOrNothing(items []string) (string, int) {
 	items = slices.Compact(items)
 	if len(items) == 1 {
-		return items[0]
+		return items[0],1
 	}
-	return ""
+	if len(items) > 1 {
+		sort.Strings(items)
+		return "", len(slices.Compact(items))
+	}
+	return "", 0
 }
 
 func newer(t1, t2 time.Time) time.Time {
