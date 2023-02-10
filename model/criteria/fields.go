@@ -16,7 +16,6 @@ var fieldMap = map[string]*mappedField{
 	"discnumber":      {field: "media_file.disc_number"},
 	"year":            {field: "media_file.year"},
 	"date":            {field: "media_file.date"},
-	"releaseyear":     {field: "media_file.release_year"},
 	"releasedate":     {field: "media_file.release_date"},
 	"size":            {field: "media_file.size"},
 	"compilation":     {field: "media_file.compilation"},
