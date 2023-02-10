@@ -24,9 +24,7 @@ alter table album
 alter table album
     add release_date varchar(255) default '' not null;
 alter table album
-    add min_release_year integer default 0 not null;
-alter table album
-    add max_release_year integer default 0 not null;
+    add editions integer default 0 not null;
 `)
 	if err != nil {
 		return err
