@@ -16,8 +16,6 @@ alter table media_file
     add date varchar(255) default '' not null;
 alter table media_file
     add release_date varchar(255) default '' not null;
-alter table media_file
-    add release_year integer default 0 not null;
 
 alter table album
     add date varchar(255) default '' not null;
