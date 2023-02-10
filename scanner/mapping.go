@@ -42,7 +42,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.AlbumArtist = s.mapAlbumArtistName(md)
 	mf.Genre, mf.Genres = s.mapGenres(md.Genres())
 	mf.Compilation = md.Compilation()
-	mf.Year, mf.Date, mf.ReleaseYear, mf.ReleaseDate = s.mapDates(md)
+	mf.Year, mf.Date, mf.ReleaseDate = s.mapDates(md)
 	mf.TrackNumber, _ = md.TrackNumber()
 	mf.DiscNumber, _ = md.DiscNumber()
 	mf.DiscSubtitle = md.DiscSubtitle()
@@ -129,7 +129,7 @@ func (s mediaFileMapper) albumID(md metadata.Tags) string {
 	
 	if !conf.Server.Scanner.GroupAlbumEditions {
 		// don't really like this - using mapDates() means parsing all three date tags again, seems redundant
-		_, _, _, releaseDate := s.mapDates(md)
+		_, _, releaseDate := s.mapDates(md)
 		
 		if (len(releaseDate) != 0) {
 				albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate)
@@ -175,7 +175,7 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 	return result[0].Name, result
 }
 
-func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string) {
+func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, string) {
 	originalYear, originalDate   := md.OriginalDate()
 	year, date 					 := md.Date()
 	releaseYear, releaseDate     := md.ReleaseDate()
@@ -185,7 +185,7 @@ func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string) {
 							(releaseYear == 0) &&
 						    (year >= originalYear)
 	if taggedLikePicard {
-		return originalYear, originalDate, year, date
+		return originalYear, originalDate, date
 	}
-	return year, date, releaseYear, releaseDate
+	return year, date, releaseDate
 }
