@@ -1,222 +1,212 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import {
-  BulkActionsToolbar,
-  ListToolbar,
-  TextField,
-  NumberField,
-  useVersion,
-  useListContext,
-  useRecordContext,
-  FunctionField,
-} from 'react-admin'
-import clsx from 'clsx'
-import { useDispatch } from 'react-redux'
-import { Card, useMediaQuery } from '@material-ui/core'
+  GridList,
+  GridListTile,
+  Typography,
+  GridListTileBar,
+  useMediaQuery,
+} from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
-import { playTracks } from '../actions'
+import withWidth from '@material-ui/core/withWidth'
+import { Link } from 'react-router-dom'
+import { linkToRecord, useListContext, Loading } from 'react-admin'
+import { withContentRect } from 'react-measure'
+import { useDrag } from 'react-dnd'
+import subsonic from '../subsonic'
 import {
-  DurationField,
-  SongBulkActions,
-  SongContextMenu,
-  SongDatagrid,
-  SongInfo,
-  SongTitleField,
-  RatingField,
-  QualityInfo,
-  useSelectedFields,
-  useResourceRefresh,
-  DateField,
+  AlbumContextMenu,
+  PlayButton,
+  ArtistLinkField,
+  RangeFieldDouble,
 } from '../common'
-import { AddToPlaylistDialog } from '../dialogs'
-import config from '../config'
-import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
-import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import { DraggableTypes } from '../consts'
 
 const useStyles = makeStyles(
   (theme) => ({
-    root: {},
-    main: {
-      display: 'flex',
+    root: {
+      margin: '20px',
+      display: 'grid',
     },
-    content: {
-      marginTop: 0,
-      transition: theme.transitions.create('margin-top'),
+    tileBar: {
+      transition: 'all 150ms ease-out',
+      opacity: 0,
+      textAlign: 'left',
+      marginBottom: '3px',
+      background:
+        'linear-gradient(to top, rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
+    },
+    tileBarMobile: {
+      textAlign: 'left',
+      marginBottom: '3px',
+      background:
+        'linear-gradient(to top, rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
+    },
+    albumArtistName: {
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      textAlign: 'left',
+      fontSize: '1em',
+    },
+    albumName: {
+      fontSize: '14px',
+      color: theme.palette.type === 'dark' ? '#eee' : 'black',
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      textOverflow: 'ellipsis',
+    },
+    albumSubtitle: {
+      fontSize: '12px',
+      color: theme.palette.type === 'dark' ? '#c5c5c5' : '#696969',
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      textOverflow: 'ellipsis',
+    },
+    link: {
       position: 'relative',
-      flex: '1 1 auto',
-      [theme.breakpoints.down('xs')]: {
-        boxShadow: 'none',
+      display: 'block',
+      textDecoration: 'none',
+      '&:hover $tileBar': {
+        opacity: 1,
       },
     },
-    bulkActionsDisplayed: {
-      marginTop: -theme.spacing(8),
-      transition: theme.transitions.create('margin-top'),
+    albumLink: {
+      position: 'relative',
+      display: 'block',
+      textDecoration: 'none',
     },
-    actions: {
-      zIndex: 2,
-      display: 'flex',
-      justifyContent: 'flex-end',
-      flexWrap: 'wrap',
-    },
-    noResults: { padding: 20 },
-    columnIcon: {
-      marginLeft: '3px',
-      marginTop: '-2px',
-      verticalAlign: 'text-top',
-    },
-    toolbar: {
-      justifyContent: 'flex-start',
-    },
-    row: {
-      '&:hover': {
-        '& $contextMenu': {
-          visibility: 'visible',
-        },
-        '& $ratingField': {
-          visibility: 'visible',
-        },
-      },
-    },
-    contextMenu: {
-      visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
-    },
-    ratingField: {
-      visibility: 'hidden',
-    },
+    albumContainer: {},
+    albumPlayButton: { color: 'white' },
   }),
-  { name: 'RaList' }
+  { name: 'NDAlbumGridView' }
 )
 
-const AlbumSongs = (props) => {
-  const { data, ids } = props
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-  const classes = useStyles({ isDesktop })
-  const dispatch = useDispatch()
-  const version = useVersion()
-  useResourceRefresh('song', 'album')
+const useCoverStyles = makeStyles({
+  cover: {
+    display: 'inline-block',
+    width: '100%',
+    objectFit: 'contain',
+    height: (props) => props.height,
+  },
+})
 
-  const toggleableFields = useMemo(() => {
-    return {
-      trackNumber: isDesktop && (
-        <TextField
-          source="trackNumber"
-          sortBy="releaseYear asc, releaseDate asc, discNumber asc, trackNumber asc"
-          label="#"
-          sortable={false}
-        />
-      ),
-      title: (
-        <SongTitleField
-          source="title"
-          sortable={false}
-          showTrackNumbers={!isDesktop}
-        />
-      ),
-      artist: isDesktop && <TextField source="artist" sortable={false} />,
-      duration: <DurationField source="duration" sortable={false} />,
-      year: isDesktop && (
-        <FunctionField
-          source="year"
-          render={(r) => r.year || ''}
-          sortByOrder={'DESC'}
-        />
-      ),
-      playCount: isDesktop && (
-        <NumberField source="playCount" sortable={false} />
-      ),
-      playDate: <DateField source="playDate" sortable={false} showTime />,
-      quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
-      channels: isDesktop && <NumberField source="channels" sortable={false} />,
-      bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
-      rating: isDesktop && config.enableStarRating && (
-        <RatingField
-          resource={'song'}
-          source="rating"
-          sortable={false}
-          className={classes.ratingField}
-        />
-      ),
-    }
-  }, [isDesktop, classes.ratingField])
+const getColsForWidth = (width) => {
+  if (width === 'xs') return 2
+  if (width === 'sm') return 3
+  if (width === 'md') return 4
+  if (width === 'lg') return 6
+  return 9
+}
 
-  const columns = useSelectedFields({
-    resource: 'albumSong',
-    columns: toggleableFields,
-    omittedColumns: ['title'],
-    defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate'],
-  })
-
-  return (
-    <>
-      <ListToolbar
-        classes={{ toolbar: classes.toolbar }}
-        actions={props.actions}
-        {...props}
-      />
-      <div className={classes.main}>
-        <Card
-          className={clsx(classes.content, {
-            [classes.bulkActionsDisplayed]: props.selectedIds.length > 0,
-          })}
-          key={version}
-        >
-          <BulkActionsToolbar {...props}>
-            <SongBulkActions />
-          </BulkActionsToolbar>
-          <SongDatagrid
-            rowClick={(id) => dispatch(playTracks(data, ids, id))}
-            {...props}
-            hasBulkActions={true}
-            showDiscSubtitles={true}
-            showReleaseYear={props.showReleaseYear}
-            contextAlwaysVisible={!isDesktop}
-            classes={{ row: classes.row }}
-          >
-            {columns}
-            <SongContextMenu
-              source={'starred'}
-              sortable={false}
-              className={classes.contextMenu}
-              label={
-                config.enableFavourites && (
-                  <FavoriteBorderIcon
-                    fontSize={'small'}
-                    className={classes.columnIcon}
-                  />
-                )
-              }
-            />
-          </SongDatagrid>
-        </Card>
+const Cover = withContentRect('bounds')(
+  ({ record, measureRef, contentRect }) => {
+    // Force height to be the same as the width determined by the GridList
+    // noinspection JSSuspiciousNameCombination
+    const classes = useCoverStyles({ height: contentRect.bounds.width })
+    const [, dragAlbumRef] = useDrag(
+      () => ({
+        type: DraggableTypes.ALBUM,
+        item: { albumIds: [record.id] },
+        options: { dropEffect: 'copy' },
+      }),
+      [record]
+    )
+    return (
+      <div ref={measureRef}>
+        <div ref={dragAlbumRef}>
+          <img
+            src={subsonic.getCoverArtUrl(record, 300)}
+            alt={record.name}
+            className={classes.cover}
+          />
+        </div>
       </div>
-      <AddToPlaylistDialog />
-      <DownloadMenuDialog />
-      <ExpandInfoDialog content={<SongInfo />} />
-    </>
+    )
+  }
+)
+
+const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
+  const classes = useStyles()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'), {
+    noSsr: true,
+  })
+  if (!record) {
+    return null
+  }
+  return (
+    <div className={classes.albumContainer}>
+      <Link
+        className={classes.link}
+        to={linkToRecord(basePath, record.id, 'show')}
+      >
+        <Cover record={record} />
+        <GridListTileBar
+          className={isDesktop ? classes.tileBar : classes.tileBarMobile}
+          subtitle={
+            <PlayButton
+              className={classes.albumPlayButton}
+              record={record}
+              size="small"
+            />
+          }
+          actionIcon={<AlbumContextMenu record={record} color={'white'} />}
+        />
+      </Link>
+      <Link
+        className={classes.albumLink}
+        to={linkToRecord(basePath, record.id, 'show')}
+      >
+        <Typography className={classes.albumName}>{record.name}</Typography>
+      </Link>
+      {showArtist ? (
+        <ArtistLinkField record={record} className={classes.albumSubtitle} />
+        ) : (
+          <RangeFieldDouble
+              record={record}
+              source={'year'}
+              symbol1={'♫'}
+              symbol2={'○'}
+              separator={' · '}
+              sortBy={'max_year'}
+              sortByOrder={'DESC'}
+              className={classes.albumSubtitle}
+            /> 
+        )
+      }
+    </div>
   )
 }
 
-export const removeAlbumCommentsFromSongs = ({ album, data }) => {
-  if (album?.comment && data) {
-    Object.values(data).forEach((song) => {
-      song.comment = ''
-    })
-  }
+const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
+  const classes = useStyles()
+  const { filterValues } = useListContext()
+  const isArtistView = !!(filterValues && filterValues.artist_id)
+  return (
+    <div className={classes.root}>
+      <GridList
+        component={'div'}
+        cellHeight={'auto'}
+        cols={getColsForWidth(width)}
+        spacing={20}
+      >
+        {ids.map((id) => (
+          <GridListTile className={classes.gridListTile} key={id}>
+            <AlbumGridTile
+              record={data[id]}
+              basePath={basePath}
+              showArtist={!isArtistView}
+            />
+          </GridListTile>
+        ))}
+      </GridList>
+    </div>
+  )
 }
 
-export const showReleaseYear = (record) => {
-  return (record[`minReleaseYear`] !== record[`maxReleaseYear`])
+const AlbumGridView = ({ albumListType, loaded, loading, ...props }) => {
+  const hide =
+    (loading && albumListType === 'random') || !props.data || !props.ids
+  return hide ? <Loading /> : <LoadedAlbumGrid {...props} />
 }
 
-const SanitizedAlbumSongs = (props) => {
-  const record = useRecordContext(props)
-  removeAlbumCommentsFromSongs(props)
-  const { loaded, loading, total, ...rest } = useListContext(props)
-  return <>{loaded && <AlbumSongs
-    {...rest}
-    actions={props.actions}
-    showReleaseYear={showReleaseYear(record)}
-  />}</>
-}
-
-export default SanitizedAlbumSongs
+export default withWidth()(AlbumGridView)
