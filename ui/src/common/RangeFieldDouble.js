@@ -18,7 +18,7 @@ export const RangeFieldDouble = ({ className, source, symbol1, symbol2, separato
       ].join(separator)
    }
 
-   if ((yearRange != releaseYear) && (yearRange.length > 0) && (releaseYear.length > 0)) {
+   if ((yearRange !== releaseYear) && (yearRange.length > 0) && (releaseYear.length > 0)) {
     subtitle = [
       [(yearRange && symbol1), yearRange].join(' '),
       [symbol2, releaseYear].join(' ')
