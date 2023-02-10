@@ -13,15 +13,15 @@ export const RangeFieldDouble = ({ className, source, symbol1, symbol2, separato
 
   if (editions > 1) {
     subtitle = [
-      (yearRange && symbol1) + yearRange,
-      '( ' + editions + ' )))'
+      [(yearRange && symbol1), yearRange].join(' '),
+      ['(',editions,')))'].join(' ')
       ].join(separator)
    }
 
    if ((yearRange != releaseYear) && (yearRange.length > 0) && (releaseYear.length > 0)) {
     subtitle = [
-      (yearRange && symbol1) + yearRange,
-      symbol2 + releaseYear
+      [(yearRange && symbol1), yearRange].join(' '),
+      [symbol2, releaseYear].join(' ')
       ].join(separator)
    }
 
