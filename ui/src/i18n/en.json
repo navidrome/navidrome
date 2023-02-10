@@ -51,7 +51,7 @@
                 "compilation": "Compilation",
                 "year": "Year",
                 "released": "Released",
-                "edition": "Edition",
+                "edition": "Edition |||| Editions",
                 "updatedAt": "Updated at",
                 "comment": "Comment",
                 "rating": "Rating",
