@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
+import IcecastMetadataPlayer from 'icecast-metadata-player'
 import {
   createMuiTheme,
   useAuthState,
@@ -63,6 +64,7 @@ const Player = () => {
   const gainInfo = useSelector((state) => state.replayGain)
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
+  const [radioCast, setRadioCast] = useState(null)
 
   useEffect(() => {
     if (
@@ -124,6 +126,40 @@ const Player = () => {
     gainInfo.preAmp,
     playerState,
   ])
+
+  useEffect(() => {
+    if (isRadio) {
+      const newUrl = playerState.current.musicSrc
+      if (radioCast !== null) {
+        // radioCast.switchEndpoint(newUrl)
+      } else {
+        const player = new IcecastMetadataPlayer(newUrl, {
+          onMetadata: (meta) => {
+            console.log(meta)
+          },
+          onPlay: () => {
+            console.log('playing')
+          },
+          onStop: () => {},
+          onLoad: () => {},
+          onError: (error) => {},
+          onRetry: () => {},
+          onStreamStart: () => {},
+          onSwitch: () => {},
+          icyDetectionTimeout: 5000,
+          enableLogging: true,
+          audioElement: audioInstance,
+          retryTimeout: 120,
+          metadataTypes: ['icy', 'ogg'],
+        })
+
+        player.play()
+        setRadioCast(player)
+      }
+    } else if (radioCast !== null) {
+      setRadioCast(null)
+    }
+  }, [audioInstance, isRadio, playerState, radioCast])
 
   const defaultOptions = useMemo(
     () => ({

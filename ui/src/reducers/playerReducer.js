@@ -33,7 +33,9 @@ const mapToAudioLists = (item) => {
       uuid: uuidv4(),
       name: item.name,
       song: item,
-      musicSrc: item.streamUrl,
+      musicSrc: subsonic.url('proxy', '', {
+        url: item.streamUrl,
+      }),
       cover: item.cover,
       isRadio: true,
     }

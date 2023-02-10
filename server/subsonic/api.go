@@ -1,11 +1,13 @@
 package subsonic
 
 import (
+	"bufio"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -175,6 +177,9 @@ func (api *Router) routes() http.Handler {
 	} else {
 		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	}
+	r.Group(func(r chi.Router) {
+		r.Get("/proxy", proxyRadio)
+	})
 
 	// Not Implemented (yet?)
 	h501(r, "jukeboxControl")
@@ -296,5 +301,83 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	}
 	if _, err := w.Write(response); err != nil {
 		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
+	}
+}
+
+var (
+	headers = []string{"content-type", "icy-br", "icy-genre", "icy-name", "icy-pub", "icy-sr", "icy-url", "icy-metaint"}
+)
+
+func proxyRadio(w http.ResponseWriter, r *http.Request) {
+	urls := r.URL.Query()["url"]
+
+	if len(urls) != 1 {
+		http.Error(w, "Must provide one URL", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	client := http.Client{}
+
+	streamUrl, err := url.QueryUnescape(urls[0])
+
+	if err != nil {
+		log.Error(r, "Bad stream url", "url", urls[0], err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "HEAD", streamUrl, nil)
+
+	if err != nil {
+		log.Error(r, "Error creating request", "url", streamUrl, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	req.Header.Set("Icy-Metadata", "1")
+	headResp, err := client.Do(req)
+
+	if err != nil {
+		log.Error(r, "Error fetching stream", "url", streamUrl, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	headResp.Body.Close()
+
+	req, _ = http.NewRequestWithContext(ctx, "GET", streamUrl, nil)
+	req.Header.Set("Icy-Metadata", "1")
+	mainResp, err := client.Do(req)
+
+	if err != nil {
+		log.Error(r, "Error fetching stream", "url", streamUrl, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for _, header := range headers {
+		w.Header().Set(header, headResp.Header.Get(header))
+	}
+
+	// Basically, the question is how do we copy mainResp (the internet radio)
+	// over to the output writer, w. This leads to a choppy mess
+	defer mainResp.Body.Close()
+	reader := bufio.NewReader(mainResp.Body)
+	buf := make([]byte, 10000)
+	for {
+		count, err := reader.Read(buf)
+
+		if count == 0 {
+			break
+		}
+
+		if err != nil {
+			break
+		}
+		_, err = w.Write(buf)
+
+		if err != nil {
+			break
+		}
 	}
 }
