@@ -214,7 +214,7 @@ func (t Tags) getDate(tagNames ...string) (int, string) {
 		_, err = time.Parse(layout, tag)
 		if err != nil {
 			log.Warn("Error parsing " + tagNames[0] + " field for month + day", "file", t.filePath, "date", tag)
-			return year, ""
+			return year, match[1]
 		}
 	}	
 	return year, tag
