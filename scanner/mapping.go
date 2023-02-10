@@ -177,13 +177,13 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 
 func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, string) {
 	originalYear, originalDate   := md.OriginalDate()
-	year, date 					 := md.Date()
+	year, date 		     := md.Date()
 	releaseYear, releaseDate     := md.ReleaseDate()
 	
 	// MusicBrainz Picard writes the Release Date of an album to the Date tag, not to the Release Date tag
-	taggedLikePicard 		:= (originalYear != 0) &&
-							(releaseYear == 0) &&
-						    (year >= originalYear)
+	taggedLikePicard := (originalYear != 0) &&
+			    (releaseYear == 0) &&
+		            (year >= originalYear)
 	if taggedLikePicard {
 		return originalYear, originalDate, date
 	}
