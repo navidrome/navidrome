@@ -180,13 +180,29 @@ const GenreList = () => {
 
 const FormatFullDate = (date) => {
   const dashes = date.split("-").length - 1
+  let options = {
+    year: "numeric"
+  }
   switch(dashes) {
     case 2:
-      let options = {year: "numeric", month: "long", day: "numeric"}
+      options = {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      }
       return new Date(date).toLocaleDateString(undefined, options)
     case 1:
-      options = {year: "numeric", month: "long"}
+      options = {
+        year: "numeric",
+        month: "long"
+      }
       return new Date(date).toLocaleDateString(undefined, options)
+    case 0:
+      if (date.length == 4) {
+        return new Date(date).toLocaleDateString(undefined, options)
+      } else {
+        return ''
+      }
     default:
       return ''
   }
@@ -207,22 +223,33 @@ const Details = (props) => {
   if (record.date) {
     if (record.date.length > 4) {date = FormatFullDate(record.date)}
   }
-
-  const releaseYear = formatRange(record, 'releaseYear')
-  let releaseDate = releaseYear
-  if (record.releaseDate) {
-    if (record.releaseDate.length > 4) {releaseDate = FormatFullDate(record.releaseDate)}
-  }
-
-  const showReleaseYear  = (releaseYear && ((year !== releaseYear) || (date !== releaseDate)))
-  
   year && addDetail(<>{["♫", (!isXsmall ? date : year)].join('  ')}</>)
   
-  showReleaseYear && addDetail(
+  let releaseDate = date
+  if (record.releaseDate) {
+    releaseDate = FormatFullDate(record.releaseDate)
+  }
+  const showReleaseDate  = (date !== releaseDate)
+  showReleaseDate && addDetail(
     <>
     { 
-        (!isXsmall ? [translate('resources.album.fields.released'),releaseDate] : ["○",releaseYear])
+        (!isXsmall ? [translate('resources.album.fields.released'),releaseDate] : ["○",releaseDate.substring(0,4)])
       .join('  ')
+    }
+    </>
+  )
+  
+  const showEditions = (record.editions > 1)
+  showEditions && addDetail(
+    <>
+    { 
+      (!isXsmall ?
+        [record.editions, translate('resources.album.fields.edition', {
+          smart_count: record.editions,
+        })].join(' ')
+        :
+        ['(', record.editions, ')))'].join(' ')
+      )
     }
     </>
   )
