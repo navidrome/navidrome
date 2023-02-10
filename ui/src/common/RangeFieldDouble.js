@@ -3,30 +3,31 @@ import PropTypes from 'prop-types'
 import { useRecordContext } from 'react-admin'
 import { formatRange } from '../common'
 
-export const RangeFieldDouble = ({ className, source1, source2, symbol1, symbol2, divider, ...rest }) => {
+export const RangeFieldDouble = ({ className, source, symbol1, symbol2, separator, ...rest }) => {
   const record = useRecordContext(rest)
-  if (formatRange(record,source2).includes('-')) {
-      return <span className={className}>{
-            formatRange(record, source1) +
-            divider +
-            "( " +
-            symbol2 + 
-            ")))"
-            }</span>
+  const yearRange = formatRange(record, source).toString()
+  const editions = [record.editions]
+  const releaseDate = [record.releaseDate]
+  const releaseYear = releaseDate.toString().substring(0,4)
+  let subtitle = yearRange
+
+  if (editions > 1) {
+    subtitle = [
+      (yearRange && symbol1) + yearRange,
+      '( ' + editions + ' )))'
+      ].join(separator)
    }
-  if ((formatRange(record, source1) === formatRange(record, source2)) || (formatRange(record, source2) === "") ) {
-          return <span className={className}>{
-            formatRange(record, source1)
-            }</span>
-        } else {
-          return <span className={className}>{
-            symbol1 +
-            formatRange(record, source1) +
-            divider +
-            symbol2 +
-            formatRange(record, source2)
-           }</span>
-        }
+
+   if ((yearRange != releaseYear) && (yearRange.length > 0) && (releaseYear.length > 0)) {
+    subtitle = [
+      (yearRange && symbol1) + yearRange,
+      symbol2 + releaseYear
+      ].join(separator)
+   }
+
+  return <span className={className}>
+    {subtitle}
+    </span>
 }
 
 RangeFieldDouble.propTypes = {
