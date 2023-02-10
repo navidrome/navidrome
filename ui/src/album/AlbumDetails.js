@@ -25,6 +25,7 @@ import {
   ArtistLinkField,
   DurationField,
   formatRange,
+  FormatFullDate,
   SizeField,
   LoveButton,
   RatingField,
@@ -178,36 +179,6 @@ const GenreList = () => {
   )
 }
 
-const FormatFullDate = (date) => {
-  const dashes = date.split("-").length - 1
-  let options = {
-    year: "numeric"
-  }
-  switch(dashes) {
-    case 2:
-      options = {
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      }
-      return new Date(date).toLocaleDateString(undefined, options)
-    case 1:
-      options = {
-        year: "numeric",
-        month: "long"
-      }
-      return new Date(date).toLocaleDateString(undefined, options)
-    case 0:
-      if (date.length == 4) {
-        return new Date(date).toLocaleDateString(undefined, options)
-      } else {
-        return ''
-      }
-    default:
-      return ''
-  }
-}
-
 const Details = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const translate = useTranslate()
@@ -218,12 +189,12 @@ const Details = (props) => {
     details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>)
   }
 
-  const year = formatRange(record, 'year')
-  let date = year
+  const yearRange = formatRange(record, 'year')
+  let date = yearRange
   if (record.date) {
-    if (record.date.length > 4) {date = FormatFullDate(record.date)}
+    date = FormatFullDate(record.date)
   }
-  year && addDetail(<>{["♫", (!isXsmall ? date : year)].join('  ')}</>)
+  yearRange && addDetail(<>{["♫", (!isXsmall ? date : yearRange)].join('  ')}</>)
   
   let releaseDate = date
   if (record.releaseDate) {
