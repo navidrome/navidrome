@@ -16,10 +16,10 @@ import (
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
-const nowPlayingExpire = 60 * time.Minute
+const maxNowPlayingExpire = 60 * time.Minute
 
 type NowPlayingInfo struct {
-	TrackID    string
+	MediaFile  model.MediaFile
 	Start      time.Time
 	Username   string
 	PlayerId   string
@@ -46,50 +46,58 @@ type playTracker struct {
 
 func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
 	return singleton.GetInstance(func() *playTracker {
-		m := ttlcache.NewCache()
-		m.SkipTTLExtensionOnHit(true)
-		_ = m.SetTTL(nowPlayingExpire)
-		p := &playTracker{ds: ds, playMap: m, broker: broker}
-		p.scrobblers = make(map[string]Scrobbler)
-		for name, constructor := range constructors {
-			s := constructor(ds)
-			if conf.Server.DevEnableBufferedScrobble {
-				s = newBufferedScrobbler(ds, s, name)
-			}
-			p.scrobblers[name] = s
-		}
-		return p
+		return newPlayTracker(ds, broker)
 	})
 }
 
+// This constructor only exists for testing. For normal usage, the PlayTracker has to be a singleton, returned by
+// the GetPlayTracker function above
+func newPlayTracker(ds model.DataStore, broker events.Broker) *playTracker {
+	m := ttlcache.NewCache()
+	m.SkipTTLExtensionOnHit(true)
+	_ = m.SetTTL(maxNowPlayingExpire)
+	p := &playTracker{ds: ds, playMap: m, broker: broker}
+	p.scrobblers = make(map[string]Scrobbler)
+	for name, constructor := range constructors {
+		s := constructor(ds)
+		if conf.Server.DevEnableBufferedScrobble {
+			s = newBufferedScrobbler(ds, s, name)
+		}
+		p.scrobblers[name] = s
+	}
+	return p
+}
+
 func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error {
+	mf, err := p.ds.MediaFile(ctx).Get(trackId)
+	if err != nil {
+		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
+		return err
+	}
+
 	user, _ := request.UserFrom(ctx)
 	info := NowPlayingInfo{
-		TrackID:    trackId,
+		MediaFile:  *mf,
 		Start:      time.Now(),
 		Username:   user.UserName,
 		PlayerId:   playerId,
 		PlayerName: playerName,
 	}
-	_ = p.playMap.Set(playerId, info)
+
+	ttl := time.Duration(int(mf.Duration)+5) * time.Second
+	_ = p.playMap.SetWithTTL(playerId, info, ttl)
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
-		p.dispatchNowPlaying(ctx, user.ID, trackId)
+		p.dispatchNowPlaying(ctx, user.ID, mf)
 	}
 	return nil
 }
 
-func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, trackId string) {
-	t, err := p.ds.MediaFile(ctx).Get(trackId)
-	if err != nil {
-		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
-		return
-	}
+func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile) {
 	if t.Artist == consts.UnknownArtist {
 		log.Debug(ctx, "Ignoring external NowPlaying update for track with unknown artist", "track", t.Title, "artist", t.Artist)
 		return
 	}
-	// TODO Parallelize
 	for name, s := range p.scrobblers {
 		if !s.IsAuthorized(ctx, userId) {
 			continue
@@ -103,7 +111,7 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, tra
 	}
 }
 
-func (p *playTracker) GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error) {
+func (p *playTracker) GetNowPlaying(_ context.Context) ([]NowPlayingInfo, error) {
 	var res []NowPlayingInfo
 	for _, playerId := range p.playMap.GetKeys() {
 		value, err := p.playMap.Get(playerId)
