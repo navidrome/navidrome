@@ -10,6 +10,10 @@ const useStyle = makeStyles({
       pointerEvents: (props) => props.single && 'none',
       opacity: (props) => props.single && 0.65,
     },
+    '& .react-jinke-music-player-mobile': {
+      maxWidth: 768,
+      margin: 'auto',
+    },
   },
 })
 
