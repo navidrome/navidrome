@@ -359,24 +359,26 @@ func proxyRadio(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(header, headResp.Header.Get(header))
 	}
 
-	// Basically, the question is how do we copy mainResp (the internet radio)
-	// over to the output writer, w. This leads to a choppy mess
 	defer mainResp.Body.Close()
 	reader := bufio.NewReader(mainResp.Body)
-	buf := make([]byte, 10000)
+	buf := make([]byte, 8192)
 	for {
 		count, err := reader.Read(buf)
 
 		if count == 0 {
+			log.Info(r, "Done")
 			break
 		}
 
 		if err != nil {
+			log.Error(r, "Error reading data", "url", streamUrl, err)
 			break
 		}
-		_, err = w.Write(buf)
+
+		_, err = w.Write(buf[0:count])
 
 		if err != nil {
+			log.Error(r, "Error writing data", "url", streamUrl, err)
 			break
 		}
 	}

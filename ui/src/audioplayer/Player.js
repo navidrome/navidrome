@@ -65,6 +65,8 @@ const Player = () => {
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
   const [radioCast, setRadioCast] = useState(null)
+  const [radioUrl, setRadioUrl] = useState(null)
+  const [radioMeta, setRadioMeta] = useState(null)
 
   useEffect(() => {
     if (
@@ -129,37 +131,74 @@ const Player = () => {
 
   useEffect(() => {
     if (isRadio) {
+
       const newUrl = playerState.current.musicSrc
       if (radioCast !== null) {
-        // radioCast.switchEndpoint(newUrl)
+        if (newUrl !== radioUrl) {
+          setRadioMeta(null)
+          radioCast.detachAudioElement().then(() => {
+            const player = new IcecastMetadataPlayer(newUrl, {
+              onMetadata: (meta) => {
+                setRadioMeta(meta)
+              },
+              onPlay: () => {
+              },
+              onStop: () => {},
+              onLoad: () => {
+              },
+              onError: console.error,
+              onRetry: () => {},
+              onStreamStart: () => {
+              },
+              onSwitch: () => {},
+              icyDetectionTimeout: 10000,
+              enableLogging: false,
+              audioElement: audioInstance,
+              retryTimeout: 120,
+              metadataTypes: ['icy'],
+            })
+    
+            player.play()
+
+            setRadioCast(player)
+            setRadioUrl(newUrl)
+          })
+        }
       } else {
         const player = new IcecastMetadataPlayer(newUrl, {
           onMetadata: (meta) => {
-            console.log(meta)
+            setRadioMeta(meta)
           },
           onPlay: () => {
-            console.log('playing')
           },
           onStop: () => {},
-          onLoad: () => {},
-          onError: (error) => {},
+          onLoad: () => {
+          },
+          onError: console.error,
           onRetry: () => {},
-          onStreamStart: () => {},
+          onStreamStart: () => {
+          },
           onSwitch: () => {},
-          icyDetectionTimeout: 5000,
-          enableLogging: true,
+          icyDetectionTimeout: 10000,
+          enableLogging: false,
           audioElement: audioInstance,
           retryTimeout: 120,
-          metadataTypes: ['icy', 'ogg'],
+          metadataTypes: ['icy'],
         })
+        
 
         player.play()
         setRadioCast(player)
+        setRadioUrl(newUrl)
       }
     } else if (radioCast !== null) {
-      setRadioCast(null)
+      setRadioMeta(null)
+      radioCast.detachAudioElement().then(() => {
+        console.log('detached')
+        setRadioCast(null)
+      })
     }
-  }, [audioInstance, isRadio, playerState, radioCast])
+  }, [audioInstance, isRadio, playerState, radioCast, radioMeta, radioUrl])
 
   const defaultOptions = useMemo(
     () => ({
@@ -189,11 +228,12 @@ const Player = () => {
           audioInfo={audioInfo}
           gainInfo={gainInfo}
           isMobile={isMobile}
+          radioInfo={radioMeta}
         />
       ),
       locale: locale(translate),
     }),
-    [gainInfo, isDesktop, playerTheme, translate]
+    [gainInfo, isDesktop, playerTheme, radioMeta, translate]
   )
 
   const options = useMemo(() => {
@@ -202,7 +242,7 @@ const Player = () => {
       ...defaultOptions,
       audioLists: playerState.queue.map((item) => item),
       playIndex: playerState.playIndex,
-      autoPlay: playerState.clear || playerState.playIndex === 0,
+      autoPlay: !isRadio && (playerState.clear || playerState.playIndex === 0),
       clearPriorAudioLists: playerState.clear,
       extendsContent: (
         <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
@@ -210,7 +250,7 @@ const Player = () => {
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
       showMediaSession: !current.isRadio,
     }
-  }, [playerState, defaultOptions, isMobilePlayer])
+  }, [playerState, defaultOptions, isMobilePlayer, isRadio])
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
