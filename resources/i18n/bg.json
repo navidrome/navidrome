@@ -26,7 +26,7 @@
                 "bpm": "BPM",
                 "playDate": "Последно слушана",
                 "channels": "Канала",
-                "createdAt": ""
+                "createdAt": "Добавено на"
             },
             "actions": {
                 "addToQueue": "Пусни по-късно",
@@ -53,8 +53,8 @@
                 "updatedAt": "Актуализиран",
                 "comment": "Коментар",
                 "rating": "Рейтинг",
-                "createdAt": "",
-                "size": ""
+                "createdAt": "Добавено на",
+                "size": "Размер"
             },
             "actions": {
                 "playAll": "Пусни",
@@ -64,7 +64,7 @@
                 "addToPlaylist": "Добави към плейлист",
                 "download": "Свали",
                 "info": "Информация",
-                "share": ""
+                "share": "Сподели"
             },
             "lists": {
                 "all": "Всички",
@@ -85,7 +85,7 @@
                 "playCount": "Пускания",
                 "rating": "Рейтинг",
                 "genre": "Жанр",
-                "size": ""
+                "size": "Размер"
             }
         },
         "user": {
@@ -165,39 +165,39 @@
             }
         },
         "radio": {
-            "name": "",
+            "name": "Радиостанция |||| Радиостанции",
             "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "name": "Име",
+                "streamUrl": "Стрийм адрес",
+                "homePageUrl": "Начална страница адрес",
+                "updatedAt": "Актуализиранa на",
+                "createdAt": "Създаденa на"
             },
             "actions": {
-                "playNow": ""
+                "playNow": "Възпроизвеждане сега"
             }
         },
         "share": {
-            "name": "",
+            "name": "Сподели |||| Споделени",
             "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "username": "Споделено от",
+                "url": "Адрес",
+                "description": "Описание",
+                "contents": "Съдържание",
+                "expiresAt": "Изтича",
+                "lastVisitedAt": "Последно посетен",
+                "visitCount": "Посещения",
+                "format": "Формат",
+                "maxBitRate": "Макс. Bit Rate",
+                "updatedAt": "Актуализирана на",
+                "createdAt": "Създадена на"
             }
         }
     },
     "ra": {
         "auth": {
             "welcome1": "Благодаря, че инсталирахте Navidrome!",
-            "welcome2": "За да започнете, създайте администраторски акаунт",
+            "welcome2": "За да започнете, създайте администраторски профил",
             "confirmPassword": "Потвърдете паролата",
             "buttonCreateAdmin": "Създaй администратор",
             "auth_check_error": "Моля, влезте за да продължите",
@@ -221,7 +221,7 @@
             "oneOf": "Трябва да е едно от: %{options}",
             "regex": "Трябва да съответства на конкретен формат (regexp): %{pattern}",
             "unique": "Трябва да е уникално",
-            "url": ""
+            "url": "Трябва да бъде валиден адрес"
         },
         "action": {
             "add_filter": "Добави филтър",
@@ -231,7 +231,7 @@
             "cancel": "Отмени",
             "clear_input_value": "Изчисти въведеното",
             "clone": "Клонирай",
-            "confirm": "Потвърдете",
+            "confirm": "Потвърди",
             "create": "Създай",
             "delete": "Изтрий",
             "edit": "Редактирай",
@@ -251,9 +251,9 @@
             "close_menu": "Затвори меню",
             "unselect": "Премахни избора",
             "skip": "Пропусни",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Споделяне",
+            "download": "Сваляне"
         },
         "boolean": {
             "true": "Да",
@@ -269,7 +269,7 @@
             "not_found": "Не е намерен",
             "show": "%{name} #%{id}",
             "empty": "Все още няма %{name}.",
-            "invite": "Желаете ли да добавите един?"
+            "invite": "Желаете ли да добавите?"
         },
         "input": {
             "file": {
@@ -361,14 +361,14 @@
         "listenBrainzLinkFailure": "ListenBrainz не можа да бъде свързан: %{error}",
         "listenBrainzUnlinkSuccess": "Връзката с ListenBrainz е прекъсната! Scrobbling е деактивиран",
         "listenBrainzUnlinkFailure": "Връзката с ListenBrainz не можа да бъде прекратена",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+        "downloadOriginalFormat": "Свали в оригиналния формат",
+        "shareOriginalFormat": "Сподели в оригинален формат",
+        "shareDialogTitle": "Сподели %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Сподели 1 %{resource} |||| Сподели %{smart_count} %{resource}",
+        "shareSuccess": "Адресът е копиран в клипборда: %{url}",
+        "shareFailure": "Грешка при копиране на адрес %{url} в клипборда",
+        "downloadDialogTitle": "Сваляне %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Копиране в клипборда: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Библиотека",
@@ -384,12 +384,12 @@
                 "desktop_notifications": "Известия на работния плот",
                 "lastfmScrobbling": "Scrobble към Last.fm",
                 "listenBrainzScrobbling": "Scrobble към ListenBrainz",
-                "replaygain": "",
-                "preAmp": "",
+                "replaygain": "Режим ReplayGain",
+                "preAmp": "ReplayGain PreAmp (dB)",
                 "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
+                    "none": "Изключен",
+                    "album": "Използвай Album Gain",
+                    "track": "Използвай Track Gain"
                 }
             }
         },
@@ -449,7 +449,7 @@
             "vol_up": "Увеличи звука",
             "vol_down": "Намали звука",
             "toggle_love": "Добави песента към любими",
-            "current_song": ""
+            "current_song": "Премини към текущата песен"
         }
     }
 }
