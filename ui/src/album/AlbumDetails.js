@@ -204,7 +204,7 @@ const Details = (props) => {
   showReleaseDate && addDetail(
     <>
     { 
-        (!isXsmall ? [translate('resources.album.fields.released'),releaseDate] : ["○",releaseDate.substring(0,4)])
+        (!isXsmall ? [translate('resources.album.fields.released'),releaseDate] : ["○",record.releaseDate.substring(0,4)])
       .join('  ')
     }
     </>
