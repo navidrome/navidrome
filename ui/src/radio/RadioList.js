@@ -17,7 +17,7 @@ import {
 } from 'react-admin'
 import { ToggleFieldsMenu, useSelectedFields } from '../common'
 import { StreamField } from './StreamField'
-import { setTrack } from '../actions'
+import { playRadio } from '../actions'
 import { songFromRadio } from './helper'
 import { useDispatch } from 'react-redux'
 
@@ -101,7 +101,7 @@ const RadioList = ({ permissions, ...props }) => {
   })
 
   const handleRowClick = async (id, basePath, record) => {
-    dispatch(setTrack(await songFromRadio(record)))
+    dispatch(playRadio(await songFromRadio(record)))
   }
 
   return (

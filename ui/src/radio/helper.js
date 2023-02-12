@@ -1,3 +1,5 @@
+import subsonic from '../subsonic'
+
 export async function songFromRadio(radio) {
   if (!radio) {
     return undefined
@@ -13,11 +15,10 @@ export async function songFromRadio(radio) {
 
   return {
     ...radio,
-    title: radio.name,
-    album: radio.homePageUrl || radio.name,
-    artist: radio.name,
     cover,
-    isRadio: true,
+    streamUrl: subsonic.url('proxy', '', {
+      url: radio.streamUrl,
+    }),
   }
 }
 

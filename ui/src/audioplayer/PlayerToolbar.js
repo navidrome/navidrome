@@ -35,7 +35,6 @@ const Toolbar = ({ id }) => {
   )
 }
 
-const PlayerToolbar = ({ id, isRadio }) =>
-  id && !isRadio ? <Toolbar id={id} /> : <Placeholder />
+const PlayerToolbar = ({ id }) => (id ? <Toolbar id={id} /> : <Placeholder />)
 
 export default PlayerToolbar

@@ -93,5 +93,5 @@ export const setVolume = (volume) => ({
 
 export const playRadio = (radio) => ({
   type: PLAYER_SET_RADIO,
-  data: { radio }
+  data: { radio },
 })

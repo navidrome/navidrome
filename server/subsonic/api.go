@@ -111,6 +111,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "star", api.Star)
 		h(r, "unstar", api.Unstar)
 		h(r, "scrobble", api.Scrobble)
+		h(r, "scrobbleRadio", api.ScrobbleRadio)
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(getPlayer(api.players))
@@ -178,6 +179,17 @@ func (api *Router) routes() http.Handler {
 		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	}
 	r.Group(func(r chi.Router) {
+		// These are not official subsonic routes. However, they use subsonic
+		// as opposed to native API because it makes authentication easier from the
+		// client side (namely, fetching audio and images)
+		throttle := conf.Server.DevMaxRadioStreams
+
+		if throttle == 0 {
+			return
+		} else if throttle != -1 {
+			r.Use(middleware.Throttle(conf.Server.DevArtworkMaxRequests))
+		}
+
 		r.Get("/proxy", proxyRadio)
 	})
 
@@ -362,11 +374,18 @@ func proxyRadio(w http.ResponseWriter, r *http.Request) {
 	defer mainResp.Body.Close()
 	reader := bufio.NewReader(mainResp.Body)
 	buf := make([]byte, 8192)
+
+	done := false
+
+	go func() {
+		<-r.Context().Done()
+		done = true
+	}()
+
 	for {
 		count, err := reader.Read(buf)
 
-		if count == 0 {
-			log.Info(r, "Done")
+		if count == 0 || done {
 			break
 		}
 

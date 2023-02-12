@@ -33,8 +33,10 @@ type Submission struct {
 
 type PlayTracker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error
+	NowPlayingRadio(ctx context.Context, artist, title string)
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, submissions []Submission) error
+	SubmitRadio(ctx context.Context, artist, title string)
 }
 
 type playTracker struct {
@@ -74,17 +76,33 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	_ = p.playMap.Set(playerId, info)
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
-		p.dispatchNowPlaying(ctx, user.ID, trackId)
+		t, err := p.ds.MediaFile(ctx).Get(trackId)
+		if err != nil {
+			log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
+			return nil
+		}
+
+		p.dispatchNowPlaying(ctx, user.ID, t)
 	}
 	return nil
 }
 
-func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, trackId string) {
-	t, err := p.ds.MediaFile(ctx).Get(trackId)
-	if err != nil {
-		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
-		return
+func (p *playTracker) NowPlayingRadio(ctx context.Context, artist, title string) {
+	player, _ := request.PlayerFrom(ctx)
+
+	if player.ScrobbleEnabled {
+		user, _ := request.UserFrom(ctx)
+
+		file := model.MediaFile{
+			Artist: artist,
+			Title:  title,
+		}
+
+		p.dispatchNowPlaying(ctx, user.ID, &file)
 	}
+}
+
+func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile) {
 	if t.Artist == consts.UnknownArtist {
 		log.Debug(ctx, "Ignoring external NowPlaying update for track with unknown artist", "track", t.Title, "artist", t.Artist)
 		return
@@ -151,6 +169,19 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 		p.broker.SendMessage(ctx, event)
 	}
 	return nil
+}
+
+func (p *playTracker) SubmitRadio(ctx context.Context, artist, title string) {
+	player, _ := request.PlayerFrom(ctx)
+
+	if player.ScrobbleEnabled {
+		file := model.MediaFile{
+			Artist: artist,
+			Title:  title,
+		}
+
+		p.dispatchScrobble(ctx, &file, time.Now())
+	}
 }
 
 func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, timestamp time.Time) error {

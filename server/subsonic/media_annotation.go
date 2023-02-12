@@ -189,6 +189,29 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	return newResponse(), nil
 }
 
+func (api *Router) ScrobbleRadio(r *http.Request) (*responses.Subsonic, error) {
+	artist, err := requiredParamString(r, "artist")
+	if err != nil {
+		return nil, err
+	}
+
+	title, err := requiredParamString(r, "title")
+	if err != nil {
+		return nil, err
+	}
+
+	submission := utils.ParamBool(r, "submission", true)
+	ctx := r.Context()
+
+	if submission {
+		api.scrobbler.SubmitRadio(ctx, artist, title)
+	} else {
+		api.scrobbler.NowPlayingRadio(ctx, artist, title)
+	}
+
+	return newResponse(), nil
+}
+
 func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []time.Time) error {
 	var submissions []scrobbler.Submission
 	log.Debug(ctx, "Scrobbling tracks", "ids", ids, "times", times)

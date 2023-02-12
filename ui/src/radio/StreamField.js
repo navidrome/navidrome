@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import React, { useCallback } from 'react'
 import { useRecordContext } from 'react-admin'
 import { useDispatch } from 'react-redux'
-import { setTrack } from '../actions'
+import { playRadio } from '../actions'
 import { songFromRadio } from './helper'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 
@@ -24,7 +24,7 @@ export const StreamField = (props) => {
     async (evt) => {
       evt.stopPropagation()
       evt.preventDefault()
-      dispatch(setTrack(await songFromRadio(record)))
+      dispatch(playRadio(await songFromRadio(record)))
     },
     [dispatch, record]
   )

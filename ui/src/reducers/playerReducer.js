@@ -6,6 +6,7 @@ import {
   PLAYER_CURRENT,
   PLAYER_PLAY_NEXT,
   PLAYER_PLAY_TRACKS,
+  PLAYER_SET_RADIO,
   PLAYER_SET_TRACK,
   PLAYER_SET_VOLUME,
   PLAYER_SYNC_QUEUE,
@@ -15,6 +16,7 @@ import config from '../config'
 const initialState = {
   queue: [],
   current: {},
+  radio: {},
   clear: false,
   volume: config.defaultUIVolume / 100,
   savedPlayIndex: 0,
@@ -26,20 +28,6 @@ const timestampRegex =
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, trackId is mediaFileId
   const trackId = item.mediaFileId || item.id
-
-  if (item.isRadio) {
-    return {
-      trackId,
-      uuid: uuidv4(),
-      name: item.name,
-      song: item,
-      musicSrc: subsonic.url('proxy', '', {
-        url: item.streamUrl,
-      }),
-      cover: item.cover,
-      isRadio: true,
-    }
-  }
 
   const { lyrics } = item
   return {
@@ -77,6 +65,7 @@ const reducePlayTracks = (state, { data, id }) => {
     queue,
     playIndex,
     clear: true,
+    radio: {},
   }
 }
 
@@ -86,6 +75,7 @@ const reduceSetTrack = (state, { data }) => {
     queue: [mapToAudioLists(data)],
     playIndex: 0,
     clear: true,
+    radio: {},
   }
 }
 
@@ -120,6 +110,7 @@ const reducePlayNext = (state, { data }) => {
     ...state,
     queue: newQueue,
     clear: true,
+    radio: {},
   }
 }
 
@@ -153,6 +144,14 @@ const reduceCurrent = (state, { data }) => {
   }
 }
 
+const reduceRadio = (state, { data: { radio } }) => {
+  return {
+    ...initialState,
+    volume: state.volume,
+    radio,
+  }
+}
+
 export const playerReducer = (previousState = initialState, payload) => {
   const { type } = payload
   switch (type) {
@@ -172,6 +171,8 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceSyncQueue(previousState, payload)
     case PLAYER_CURRENT:
       return reduceCurrent(previousState, payload)
+    case PLAYER_SET_RADIO:
+      return reduceRadio(previousState, payload)
     default:
       return previousState
   }
