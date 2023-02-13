@@ -117,17 +117,17 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		}
 		return statusResponse(status), nil
 	case ActionSkip:
-		index, err := getParameterAsInt64(r, "index")
+		index, err := requiredParamInt(r, "index")
 		if err != nil {
 			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter index, err: %s", err)
 		}
 
-		offset, err := getParameterAsInt64(r, "offset")
+		offset, err := requiredParamInt(r, "offset")
 		if err != nil {
 			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter offset, err: %s", err)
 		}
 
-		status, err := pb.Skip(user, index, offset)
+		status, err := pb.Skip(user, int64(index), int64(offset))
 		if err != nil {
 			return nil, err
 		}
@@ -149,12 +149,12 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		}
 		return statusResponse(status), nil
 	case ActionRemove:
-		index, err := getParameterAsInt64(r, "index")
+		index, err := requiredParamInt(r, "index")
 		if err != nil {
 			return newFailure(), err
 		}
 
-		status, err := pb.Remove(user, index)
+		status, err := pb.Remove(user, int64(index))
 		if err != nil {
 			return nil, err
 		}
@@ -191,17 +191,4 @@ func statusResponse(status responses.JukeboxStatus) *responses.Subsonic {
 	response := newResponse()
 	response.JukeboxStatus = &status
 	return response
-}
-
-func getParameterAsInt64(r *http.Request, name string) (int64, error) {
-	indexStr, err := requiredParamString(r, name)
-	if err != nil {
-		return 0, fmt.Errorf("missing parameter %s, err: %s", name, err)
-	}
-
-	index, err := strconv.ParseInt(indexStr, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("error parsing %s integer value, err: %s", name, err)
-	}
-	return index, nil
 }
