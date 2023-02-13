@@ -97,7 +97,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionSet:
 		id, err := requiredParamString(r, "id")
 		if err != nil {
-			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
+			return nil, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
 		}
 		status, err := pb.Set(user, id)
 		if err != nil {
@@ -119,12 +119,12 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionSkip:
 		index, err := requiredParamInt(r, "index")
 		if err != nil {
-			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter index, err: %s", err)
+			return nil, newError(responses.ErrorMissingParameter, "missing parameter index, err: %s", err)
 		}
 
 		offset, err := requiredParamInt(r, "offset")
 		if err != nil {
-			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter offset, err: %s", err)
+			return nil, newError(responses.ErrorMissingParameter, "missing parameter offset, err: %s", err)
 		}
 
 		status, err := pb.Skip(user, int64(index), int64(offset))
@@ -135,7 +135,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionAdd:
 		id, err := requiredParamString(r, "id")
 		if err != nil {
-			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
+			return nil, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
 		}
 		status, err := pb.Add(user, id)
 		if err != nil {
@@ -151,7 +151,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionRemove:
 		index, err := requiredParamInt(r, "index")
 		if err != nil {
-			return newFailure(), err
+			return nil, err
 		}
 
 		status, err := pb.Remove(user, int64(index))
@@ -168,12 +168,12 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionSetGain:
 		gainStr, err := requiredParamString(r, "gain")
 		if err != nil {
-			return newFailure(), newError(responses.ErrorMissingParameter, "missing parameter gain, err: %s", err)
+			return nil, newError(responses.ErrorMissingParameter, "missing parameter gain, err: %s", err)
 		}
 
 		gain, err := strconv.ParseFloat(gainStr, 64)
 		if err != nil {
-			return newFailure(), newError(responses.ErrorMissingParameter, "error parsing gain integer value, err: %s", err)
+			return nil, newError(responses.ErrorMissingParameter, "error parsing gain integer value, err: %s", err)
 		}
 		status, err := pb.SetGain(user, gain)
 		if err != nil {
