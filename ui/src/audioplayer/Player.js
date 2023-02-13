@@ -71,7 +71,7 @@ const Player = () => {
     if (context && gainNode === null && audioInstance) {
       if (gainMode && gainMode !== 'none') {
         // we need this to support radios in firefox
-        // audioInstance.crossOrigin = 'anonymous'
+        audioInstance.crossOrigin = 'anonymous'
         const source = context.createMediaElementSource(audioInstance)
         const gain = context.createGain()
 
