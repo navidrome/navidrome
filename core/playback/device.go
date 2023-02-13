@@ -36,10 +36,10 @@ func (pd *PlaybackDevice) Status(user string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Status action")
 	return responses.JukeboxStatus{}, nil
 }
-func (pd *PlaybackDevice) Set(user string, id string) (responses.JukeboxStatus, error) {
-	log.Debug("processing Set action")
+func (pd *PlaybackDevice) Set(user string, ids []string) (responses.JukeboxStatus, error) {
+	log.Debug("processing Set action.")
 
-	mf, err := pd.DataStore.MediaFile(pd.Ctx).Get(id)
+	mf, err := pd.DataStore.MediaFile(pd.Ctx).Get(ids[0])
 	if err != nil {
 		return responses.JukeboxStatus{}, err
 	}
@@ -67,7 +67,7 @@ func (pd *PlaybackDevice) Skip(user string, index int, offset int) (responses.Ju
 	log.Debug("processing Skip action")
 	return responses.JukeboxStatus{}, nil
 }
-func (pd *PlaybackDevice) Add(user string, id string) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Add(user string, ids []string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Add action")
 	// pd.Playlist.Entry = append(pd.Playlist.Entry, child)
 	return responses.JukeboxStatus{}, nil

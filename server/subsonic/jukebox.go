@@ -95,11 +95,11 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		}
 		return statusResponse(status), nil
 	case ActionSet:
-		id, err := requiredParamString(r, "id")
+		ids, err := requiredParamStrings(r, "id")
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
 		}
-		status, err := pb.Set(user, id)
+		status, err := pb.Set(user, ids)
 		if err != nil {
 			return nil, err
 		}
@@ -133,11 +133,12 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		}
 		return statusResponse(status), nil
 	case ActionAdd:
-		id, err := requiredParamString(r, "id")
+		ids, err := requiredParamStrings(r, "id")
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
 		}
-		status, err := pb.Add(user, id)
+
+		status, err := pb.Add(user, ids)
 		if err != nil {
 			return nil, err
 		}
