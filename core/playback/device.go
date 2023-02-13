@@ -63,7 +63,7 @@ func (pd *PlaybackDevice) Stop(user string) (responses.JukeboxStatus, error) {
 	pd.pauseHead()
 	return responses.JukeboxStatus{}, nil
 }
-func (pd *PlaybackDevice) Skip(user string, index int64, offset int64) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Skip(user string, index int, offset int) (responses.JukeboxStatus, error) {
 	log.Debug("processing Skip action")
 	return responses.JukeboxStatus{}, nil
 }
@@ -76,7 +76,7 @@ func (pd *PlaybackDevice) Clear(user string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Clear action")
 	return responses.JukeboxStatus{}, nil
 }
-func (pd *PlaybackDevice) Remove(user string, index int64) (responses.JukeboxStatus, error) {
+func (pd *PlaybackDevice) Remove(user string, index int) (responses.JukeboxStatus, error) {
 	log.Debug("processing Remove action")
 	return responses.JukeboxStatus{}, nil
 }

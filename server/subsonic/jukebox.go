@@ -127,7 +127,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter offset, err: %s", err)
 		}
 
-		status, err := pb.Skip(user, int64(index), int64(offset))
+		status, err := pb.Skip(user, index, offset)
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +154,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 			return nil, err
 		}
 
-		status, err := pb.Remove(user, int64(index))
+		status, err := pb.Remove(user, index)
 		if err != nil {
 			return nil, err
 		}
