@@ -15,6 +15,7 @@ import { useDrag } from 'react-dnd'
 import { playTracks } from '../actions'
 import { AlbumContextMenu } from '../common'
 import { DraggableTypes } from '../consts'
+import useResumeContext from './useResumeContext'
 
 const useStyles = makeStyles({
   subtitle: {
@@ -172,14 +173,16 @@ const SongDatagridBody = ({
   ...rest
 }) => {
   const dispatch = useDispatch()
+  const resumeContext = useResumeContext()
   const { ids, data } = rest
 
   const playDisc = useCallback(
     (discNumber) => {
       const idsToPlay = ids.filter((id) => data[id].discNumber === discNumber)
+      resumeContext()
       dispatch(playTracks(data, idsToPlay))
     },
-    [dispatch, data, ids]
+    [ids, resumeContext, dispatch, data]
   )
 
   const firstTracks = useMemo(() => {

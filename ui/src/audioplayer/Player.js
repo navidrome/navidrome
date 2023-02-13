@@ -23,6 +23,7 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
+import useResumeContext from '../common/useResumeContext'
 
 function calculateReplayGain(preAmp, gain, peak) {
   if (gain === undefined || peak === undefined) {
@@ -60,30 +61,27 @@ const Player = () => {
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false
   )
-  const gainInfo = useSelector((state) => state.replayGain)
-  const [context, setContext] = useState(null)
+  const { context, gainMode, preAmp } = useSelector(
+    (state) => state.replayGain || {}
+  )
   const [gainNode, setGainNode] = useState(null)
+  const resumeContext = useResumeContext()
 
   useEffect(() => {
-    if (
-      context === null &&
-      audioInstance &&
-      config.enableReplayGain &&
-      'AudioContext' in window
-    ) {
-      const ctx = new AudioContext()
-      // we need this to support radios in firefox
-      audioInstance.crossOrigin = 'anonymous'
-      const source = ctx.createMediaElementSource(audioInstance)
-      const gain = ctx.createGain()
+    if (context && gainNode === null && audioInstance) {
+      if (gainMode && gainMode !== 'none') {
+        // we need this to support radios in firefox
+        // audioInstance.crossOrigin = 'anonymous'
+        const source = context.createMediaElementSource(audioInstance)
+        const gain = context.createGain()
 
-      source.connect(gain)
-      gain.connect(ctx.destination)
+        source.connect(gain)
+        gain.connect(context.destination)
 
-      setContext(ctx)
-      setGainNode(gain)
+        setGainNode(gain)
+      }
     }
-  }, [audioInstance, context])
+  }, [audioInstance, context, gainMode, gainNode])
 
   useEffect(() => {
     if (gainNode) {
@@ -92,10 +90,10 @@ const Player = () => {
 
       let numericGain
 
-      switch (gainInfo.gainMode) {
+      switch (gainMode) {
         case 'album': {
           numericGain = calculateReplayGain(
-            gainInfo.preAmp,
+            preAmp,
             song.rgAlbumGain,
             song.rgAlbumPeak
           )
@@ -103,7 +101,7 @@ const Player = () => {
         }
         case 'track': {
           numericGain = calculateReplayGain(
-            gainInfo.preAmp,
+            preAmp,
             song.rgTrackGain,
             song.rgTrackPeak
           )
@@ -116,14 +114,21 @@ const Player = () => {
 
       gainNode.gain.setValueAtTime(numericGain, context.currentTime)
     }
-  }, [
-    audioInstance,
-    context,
-    gainNode,
-    gainInfo.gainMode,
-    gainInfo.preAmp,
-    playerState,
-  ])
+  }, [audioInstance, gainNode, gainMode, preAmp, playerState, context])
+
+  useEffect(() => {
+    if (audioInstance) {
+      const domNode = document.querySelector('.player-content')
+
+      if (domNode) {
+        domNode.addEventListener('click', resumeContext)
+
+        return () => {
+          domNode.removeEventListener('click', resumeContext)
+        }
+      }
+    }
+  }, [audioInstance, resumeContext])
 
   const defaultOptions = useMemo(
     () => ({
@@ -151,13 +156,13 @@ const Player = () => {
       renderAudioTitle: (audioInfo, isMobile) => (
         <AudioTitle
           audioInfo={audioInfo}
-          gainInfo={gainInfo}
+          gainInfo={{ gainMode, preAmp }}
           isMobile={isMobile}
         />
       ),
       locale: locale(translate),
     }),
-    [gainInfo, isDesktop, playerTheme, translate]
+    [gainMode, isDesktop, playerTheme, preAmp, translate]
   )
 
   const options = useMemo(() => {
@@ -229,12 +234,6 @@ const Player = () => {
 
   const onAudioPlay = useCallback(
     (info) => {
-      // Do this to start the context; on chrome-based browsers, the context
-      // will start paused since it is created prior to user interaction
-      if (context && context.state !== 'running') {
-        context.resume()
-      }
-
       dispatch(currentPlaying(info))
       if (startTime === null) {
         setStartTime(Date.now())
@@ -262,7 +261,7 @@ const Player = () => {
         }
       }
     },
-    [context, dispatch, showNotifications, startTime]
+    [dispatch, showNotifications, startTime]
   )
 
   const onAudioPlayTrackChange = useCallback(() => {

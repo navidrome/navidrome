@@ -30,6 +30,7 @@ import {
 } from '../common'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import useResumeContext from '../common/useResumeContext'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -91,6 +92,7 @@ const AlbumSongs = (props) => {
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
   const version = useVersion()
+  const resumeContext = useResumeContext()
   useResourceRefresh('song', 'album')
 
   const toggleableFields = useMemo(() => {
@@ -167,7 +169,10 @@ const AlbumSongs = (props) => {
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
-            rowClick={(id) => dispatch(playTracks(data, ids, id))}
+            rowClick={(id) => {
+              resumeContext()
+              dispatch(playTracks(data, ids, id))
+            }}
             {...props}
             hasBulkActions={true}
             showDiscSubtitles={true}

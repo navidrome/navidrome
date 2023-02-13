@@ -1,4 +1,18 @@
 import { CHANGE_GAIN, CHANGE_PREAMP } from '../actions'
+import config from '../config'
+
+function initialState() {
+  const state = {
+    gainMode: localStorage.getItem('gainMode') || 'none',
+    preAmp: getPreAmp(),
+  }
+
+  if (config.enableReplayGain && 'AudioContext' in window) {
+    state.context = new AudioContext()
+  }
+
+  return state
+}
 
 const getPreAmp = () => {
   const storage = localStorage.getItem('preamp')
@@ -11,13 +25,8 @@ const getPreAmp = () => {
   }
 }
 
-const initialState = {
-  gainMode: localStorage.getItem('gainMode') || 'none',
-  preAmp: getPreAmp(),
-}
-
 export const replayGainReducer = (
-  previousState = initialState,
+  previousState = initialState(),
   { type, payload }
 ) => {
   switch (type) {

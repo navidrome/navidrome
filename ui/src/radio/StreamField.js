@@ -6,6 +6,7 @@ import { useDispatch } from 'react-redux'
 import { setTrack } from '../actions'
 import { songFromRadio } from './helper'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
+import useResumeContext from '../common/useResumeContext'
 
 const useStyles = makeStyles((theme) => ({
   button: {
@@ -19,14 +20,16 @@ export const StreamField = (props) => {
   const record = useRecordContext(props)
   const dispatch = useDispatch()
   const classes = useStyles()
+  const resumeContext = useResumeContext()
 
   const playTrack = useCallback(
     async (evt) => {
       evt.stopPropagation()
       evt.preventDefault()
+      resumeContext()
       dispatch(setTrack(await songFromRadio(record)))
     },
-    [dispatch, record]
+    [dispatch, record, resumeContext]
   )
 
   return (

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import PropTypes from 'prop-types'
 import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
@@ -11,6 +11,7 @@ import { DurationField, SongContextMenu, RatingField } from './index'
 import { setTrack } from '../actions'
 import { useDispatch } from 'react-redux'
 import config from '../config'
+import useResumeContext from './useResumeContext'
 
 const useStyles = makeStyles(
   {
@@ -65,13 +66,23 @@ export const SongSimpleList = ({
 }) => {
   const dispatch = useDispatch()
   const classes = useStyles({ classes: classesOverride })
+  const resumeContext = useResumeContext()
+
+  const doSetTrack = useCallback(
+    (id) => {
+      resumeContext()
+      dispatch(setTrack(data[id]))
+    },
+    [data, dispatch, resumeContext]
+  )
+
   return (
     (loading || total > 0) && (
       <List className={className} {...sanitizeListRestProps(rest)}>
         {ids.map(
           (id) =>
             data[id] && (
-              <span key={id} onClick={() => dispatch(setTrack(data[id]))}>
+              <span key={id} onClick={doSetTrack}>
                 <ListItem className={classes.listItem} button={true}>
                   <ListItemText
                     primary={

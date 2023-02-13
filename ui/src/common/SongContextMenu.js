@@ -19,6 +19,7 @@ import {
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
+import useResumeContext from './useResumeContext'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -36,22 +37,32 @@ export const SongContextMenu = ({
   const classes = useStyles()
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const resumeContext = useResumeContext()
   const [anchorEl, setAnchorEl] = useState(null)
   const options = {
     playNow: {
       enabled: true,
       label: translate('resources.song.actions.playNow'),
-      action: (record) => dispatch(setTrack(record)),
+      action: (record) => {
+        resumeContext()
+        dispatch(setTrack(record))
+      },
     },
     playNext: {
       enabled: true,
       label: translate('resources.song.actions.playNext'),
-      action: (record) => dispatch(playNext({ [record.id]: record })),
+      action: (record) => {
+        resumeContext()
+        dispatch(playNext({ [record.id]: record }))
+      },
     },
     addToQueue: {
       enabled: true,
       label: translate('resources.song.actions.addToQueue'),
-      action: (record) => dispatch(addTracks({ [record.id]: record })),
+      action: (record) => {
+        resumeContext()
+        dispatch(addTracks({ [record.id]: record }))
+      },
     },
     addToPlaylist: {
       enabled: true,

@@ -31,6 +31,7 @@ import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import useResumeContext from '../common/useResumeContext'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -91,6 +92,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const dataProvider = useDataProvider()
   const notify = useNotify()
   const version = useVersion()
+  const resumeContext = useResumeContext()
   useResourceRefresh('song', 'playlist')
 
   const onAddToPlaylist = useCallback(
@@ -196,7 +198,10 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
             nodeSelector={'tr'}
           >
             <SongDatagrid
-              rowClick={(id) => dispatch(playTracks(data, ids, id))}
+              rowClick={(id) => {
+                resumeContext()
+                dispatch(playTracks(data, ids, id))
+              }}
               {...listContext}
               hasBulkActions={!readOnly}
               contextAlwaysVisible={!isDesktop}

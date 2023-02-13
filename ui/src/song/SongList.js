@@ -34,6 +34,7 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import useResumeContext from '../common/useResumeContext'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -91,8 +92,10 @@ const SongList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   useResourceRefresh('song')
+  const resumeContext = useResumeContext()
 
   const handleRowClick = (id, basePath, record) => {
+    resumeContext()
     dispatch(setTrack(record))
   }
 

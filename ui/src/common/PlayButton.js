@@ -5,6 +5,7 @@ import { IconButton } from '@material-ui/core'
 import { useDispatch } from 'react-redux'
 import { useDataProvider } from 'react-admin'
 import { playTracks } from '../actions'
+import useResumeContext from './useResumeContext'
 
 export const PlayButton = ({ record, size, className }) => {
   let extractSongsData = function (response) {
@@ -17,7 +18,10 @@ export const PlayButton = ({ record, size, className }) => {
   }
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
+  const resumeContext = useResumeContext()
+
   const playAlbum = (record) => {
+    resumeContext()
     dataProvider
       .getList('song', {
         pagination: { page: 1, perPage: -1 },

@@ -8,6 +8,7 @@ import { AddToPlaylistButton } from './AddToPlaylistButton'
 import { makeStyles } from '@material-ui/core/styles'
 import { BatchShareButton } from './BatchShareButton'
 import config from '../config'
+import useResumeContext from './useResumeContext'
 
 const useStyles = makeStyles((theme) => ({
   button: {
@@ -18,28 +19,39 @@ const useStyles = makeStyles((theme) => ({
 export const SongBulkActions = (props) => {
   const classes = useStyles()
   const unselectAll = useUnselectAll()
+  const resumeContext = useResumeContext()
   useEffect(() => {
     unselectAll(props.resource)
   }, [unselectAll, props.resource])
+
   return (
     <Fragment>
       <BatchPlayButton
         {...props}
-        action={playTracks}
+        action={(args) => {
+          resumeContext()
+          playTracks(args)
+        }}
         label={'resources.song.actions.playNow'}
         icon={<PlayArrowIcon />}
         className={classes.button}
       />
       <BatchPlayButton
         {...props}
-        action={playNext}
+        action={(args) => {
+          resumeContext()
+          playNext(args)
+        }}
         label={'resources.song.actions.playNext'}
         icon={<RiPlayList2Fill />}
         className={classes.button}
       />
       <BatchPlayButton
         {...props}
-        action={addTracks}
+        action={(args) => {
+          resumeContext()
+          addTracks(args)
+        }}
         label={'resources.song.actions.addToQueue'}
         icon={<RiPlayListAddFill />}
         className={classes.button}

@@ -23,6 +23,7 @@ import {
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
+import useResumeContext from './useResumeContext'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -47,6 +48,7 @@ const ContextMenu = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()
+  const resumeContext = useResumeContext()
   const [anchorEl, setAnchorEl] = useState(null)
 
   const options = {
@@ -54,25 +56,37 @@ const ContextMenu = ({
       enabled: true,
       needData: true,
       label: translate('resources.album.actions.playAll'),
-      action: (data, ids) => dispatch(playTracks(data, ids)),
+      action: (data, ids) => {
+        resumeContext()
+        dispatch(playTracks(data, ids))
+      },
     },
     playNext: {
       enabled: true,
       needData: true,
       label: translate('resources.album.actions.playNext'),
-      action: (data, ids) => dispatch(playNext(data, ids)),
+      action: (data, ids) => {
+        resumeContext()
+        dispatch(playNext(data, ids))
+      },
     },
     addToQueue: {
       enabled: true,
       needData: true,
       label: translate('resources.album.actions.addToQueue'),
-      action: (data, ids) => dispatch(addTracks(data, ids)),
+      action: (data, ids) => {
+        resumeContext()
+        dispatch(addTracks(data, ids))
+      },
     },
     shuffle: {
       enabled: true,
       needData: true,
       label: translate('resources.album.actions.shuffle'),
-      action: (data, ids) => dispatch(shuffleTracks(data, ids)),
+      action: (data, ids) => {
+        resumeContext()
+        dispatch(shuffleTracks(data, ids))
+      },
     },
     addToPlaylist: {
       enabled: true,

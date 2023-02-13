@@ -20,6 +20,7 @@ import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
 import { songFromRadio } from './helper'
 import { useDispatch } from 'react-redux'
+import useResumeContext from '../common/useResumeContext'
 
 const useStyles = makeStyles({
   row: {
@@ -77,6 +78,8 @@ const RadioList = ({ permissions, ...props }) => {
   const classes = useStyles()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const dispatch = useDispatch()
+  const resumeContext = useResumeContext()
+
   const isAdmin = permissions === 'admin'
 
   const toggleableFields = {
@@ -101,6 +104,7 @@ const RadioList = ({ permissions, ...props }) => {
   })
 
   const handleRowClick = async (id, basePath, record) => {
+    resumeContext()
     dispatch(setTrack(await songFromRadio(record)))
   }
 

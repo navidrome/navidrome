@@ -4,14 +4,17 @@ import { useDispatch } from 'react-redux'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import { playTracks } from '../actions'
 import PropTypes from 'prop-types'
+import useResumeContext from './useResumeContext'
 
 export const ShuffleAllButton = ({ filters }) => {
   const translate = useTranslate()
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const notify = useNotify()
+  const resumeContext = useResumeContext()
 
   const handleOnClick = () => {
+    resumeContext()
     dataProvider
       .getList('song', {
         pagination: { page: 1, perPage: 500 },
