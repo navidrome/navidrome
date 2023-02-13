@@ -10,7 +10,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
-	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -64,13 +63,7 @@ func initDeviceStatus(ctx context.Context, ds model.DataStore, devices []conf.Au
 			Name:       audioDevice[0],
 			Method:     audioDevice[1],
 			DeviceName: audioDevice[2],
-			Playlist: responses.JukeboxPlaylist{
-				JukeboxStatus: responses.JukeboxStatus{},
-				Entry: []responses.Child{
-					{},
-				},
-			},
-			Ctrl: &beep.Ctrl{},
+			Ctrl:       &beep.Ctrl{},
 		}
 
 		if audioDevice[0] == defaultDevice {

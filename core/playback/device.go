@@ -2,7 +2,6 @@ package playback
 
 import (
 	"context"
-	"mime"
 	"os"
 	"time"
 
@@ -23,7 +22,6 @@ type PlaybackDevice struct {
 	Name       string
 	Method     string
 	DeviceName string
-	Playlist   responses.JukeboxPlaylist
 	Ctrl       *beep.Ctrl
 }
 
@@ -46,10 +44,7 @@ func (pd *PlaybackDevice) Set(user string, ids []string) (responses.JukeboxStatu
 
 	log.Debug("Found mediafile: " + mf.Path)
 
-	child := childFromMediaFile(pd.Ctx, *mf)
-
-	pd.Playlist.Entry[0] = child
-	pd.prepareSong(child.Path)
+	pd.prepareSong(mf.Path)
 
 	return responses.JukeboxStatus{}, nil
 }
@@ -135,46 +130,4 @@ func getTranscoding(ctx context.Context) (format string, bitRate int) {
 		bitRate = plr.MaxBitRate
 	}
 	return
-}
-
-// FIXME: this is a copy from subsonic/helpers.go consolidate.
-func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
-	child := responses.Child{}
-	child.Id = mf.ID
-	child.Title = mf.Title
-	child.IsDir = false
-	child.Parent = mf.AlbumID
-	child.Album = mf.Album
-	child.Year = mf.Year
-	child.Artist = mf.Artist
-	child.Genre = mf.Genre
-	child.Track = mf.TrackNumber
-	child.Duration = int(mf.Duration)
-	child.Size = mf.Size
-	child.Suffix = mf.Suffix
-	child.BitRate = mf.BitRate
-	child.CoverArt = mf.CoverArtID().String()
-	child.ContentType = mf.ContentType()
-	child.Path = mf.Path
-	child.DiscNumber = mf.DiscNumber
-	child.Created = &mf.CreatedAt
-	child.AlbumId = mf.AlbumID
-	child.ArtistId = mf.ArtistID
-	child.Type = "music"
-	child.PlayCount = mf.PlayCount
-	if mf.PlayCount > 0 {
-		child.Played = &mf.PlayDate
-	}
-	if mf.Starred {
-		child.Starred = &mf.StarredAt
-	}
-	child.UserRating = mf.Rating
-
-	format, _ := getTranscoding(ctx)
-	if mf.Suffix != "" && format != "" && mf.Suffix != format {
-		child.TranscodedSuffix = format
-		child.TranscodedContentType = mime.TypeByExtension("." + format)
-	}
-	child.BookmarkPosition = mf.BookmarkPosition
-	return child
 }
