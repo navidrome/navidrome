@@ -141,7 +141,13 @@ func (api *Router) proxyIcon(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer resp.Body.Close()
-	io.Copy(w, resp.Body)
+	_, err = io.Copy(w, resp.Body)
+
+	if err != nil {
+		log.Error(r, "Error fetching icon", "url", iconUrl, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 var (

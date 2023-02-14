@@ -11,11 +11,11 @@ export async function songFromRadio(radio) {
     const url = new URL(radio.homePageUrl ?? radio.streamUrl)
     url.pathname = '/favicon.ico'
 
-    let urlString;
+    let urlString
 
     if (config.enableProxy) {
       urlString = subsonic.url('proxy/icon', '', {
-        url: url.toString()
+        url: url.toString(),
       })
     } else {
       urlString = url.toString()
@@ -25,7 +25,7 @@ export async function songFromRadio(radio) {
     cover = urlString
   } catch {}
 
-  let streamUrl;
+  let streamUrl
 
   if (config.enableProxy) {
     streamUrl = subsonic.url('proxy/stream', '', {

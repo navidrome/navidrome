@@ -94,7 +94,7 @@ const RadioPlayer = ({
 
         return () => {
           node.src = ''
-        } 
+        }
       } else {
         return
       }
