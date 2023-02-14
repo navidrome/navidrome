@@ -10,7 +10,6 @@ import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
 import {
   createMuiTheme,
-  Loading,
   useAuthState,
   useDataProvider,
   useTranslate,
