@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
 import {
   createMuiTheme,
+  Loading,
   useAuthState,
   useDataProvider,
   useTranslate,
@@ -23,7 +24,8 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
-import RadioPlayer from '../radio/RadioPlayer'
+
+const RadioPlayer = React.lazy(() => import('../radio/RadioPlayer'))
 
 function calculateReplayGain(preAmp, gain, peak) {
   if (gain === undefined || peak === undefined) {
@@ -332,12 +334,16 @@ const Player = () => {
         onBeforeDestroy={onBeforeDestroy}
         getAudioInstance={setAudioInstance}
       />
-      <RadioPlayer
-        className={radioClasses.player}
-        locale={playerLocale}
-        theme={playerTheme}
-        {...(playerState.radio || {})}
-      />
+      {isRadio && (
+        <Suspense fallback={<Loading />}>
+          <RadioPlayer
+            className={radioClasses.player}
+            locale={playerLocale}
+            theme={playerTheme}
+            {...(playerState.radio || {})}
+          />
+        </Suspense>
+      )}
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>
   )

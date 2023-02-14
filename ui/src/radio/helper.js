@@ -1,3 +1,4 @@
+import config from '../config'
 import subsonic from '../subsonic'
 
 export async function songFromRadio(radio) {
@@ -9,17 +10,32 @@ export async function songFromRadio(radio) {
   try {
     const url = new URL(radio.homePageUrl ?? radio.streamUrl)
     url.pathname = '/favicon.ico'
-    await resourceExists(url)
-    cover = url.toString()
+
+    let urlString;
+
+    if (config.enableProxy) {
+      urlString = subsonic.url('proxy/icon', '', {
+        url: url.toString()
+      })
+    } else {
+      urlString = url.toString()
+    }
+
+    await resourceExists(urlString)
+    cover = urlString
   } catch {}
 
-  return {
-    ...radio,
-    cover,
-    streamUrl: subsonic.url('proxy', '', {
+  let streamUrl;
+
+  if (config.enableProxy) {
+    streamUrl = subsonic.url('proxy/stream', '', {
       url: radio.streamUrl,
-    }),
+    })
+  } else {
+    streamUrl = radio.streamUrl
   }
+
+  return { ...radio, cover, streamUrl }
 }
 
 const resourceExists = (url) => {

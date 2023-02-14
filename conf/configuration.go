@@ -89,6 +89,7 @@ type configOptions struct {
 	DevArtworkThrottleBacklogTimeout time.Duration
 	DevArtistInfoTimeToLive          time.Duration
 	DevAlbumInfoTimeToLive           time.Duration
+	EnableProxy                      bool
 	DevMaxRadioStreams               int
 }
 
@@ -298,6 +299,7 @@ func init() {
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
+	viper.SetDefault("enableproxy", true)
 	viper.SetDefault("devmaxradiostreams", consts.MaxRadioStreams)
 }
 

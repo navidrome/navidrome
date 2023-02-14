@@ -19,6 +19,7 @@ import { clearQueue } from '../actions'
 import { useMediaQuery } from '@material-ui/core'
 import RadioPlayerMobile from './RadioPlayerMobile'
 import subsonic from '../subsonic'
+import config from '../config'
 
 const DEFAULT_ICON = {
   pause: <AnimatePauseIcon />,
@@ -41,7 +42,6 @@ function parseMetadata(metadata) {
   return [artist, title]
 }
 
-// light, darg, ligera
 const RadioPlayer = ({
   className,
   cover,
@@ -58,17 +58,11 @@ const RadioPlayer = ({
 
   const [cast, setCast] = useState(null)
   const [currentStream, setCurrentStream] = useState(null)
-  const [lastUpdate, setLastUpdate] = useState(null)
   const [loading, setLoading] = useState(false)
   const [metadata, setMetadata] = useState({})
   const [playing, setPlaying] = useState(false)
-  const [savedVolume, setSavedVolume] = useState(0)
-  const [timeoutId, setTimeoutId] = useState(null)
+  const [savedVolume, setSavedVolume] = useState(1)
   const [volume, setVolume] = useState(1)
-
-  // Yes. We have a lock. This is here to prevent attempts to create multiple
-  // players. Necessary because they are created in an async function
-  const [lock, setLock] = useState(false)
 
   const isMobile = useMediaQuery(
     '(max-width: 768px) and (orientation : portrait)'
@@ -81,13 +75,72 @@ const RadioPlayer = ({
   const mapListenToBar = (vol) => Math.sqrt(vol)
   const mapBarToListen = (vol) => vol ** 2
 
-  const metadataUpdate = useCallback(
-    (newMetadata) => {
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId)
-      }
+  useEffect(() => {
+    const streamChanged = currentStream !== streamUrl
 
-      const [artist, title] = parseMetadata(newMetadata)
+    if (cast && !streamChanged && cast.state !== 'stopped') {
+      return
+    }
+
+    if (!config.enableProxy) {
+      const node = audioRef.current
+
+      if (node && streamChanged) {
+        node.crossOrigin = 'anonymous'
+        node.src = streamUrl
+
+        node.play()
+        setPlaying(true)
+
+        return () => {
+          node.src = ''
+        } 
+      } else {
+        return
+      }
+    }
+
+    if (cast) {
+      cast.stop()
+      cast.detachAudioElement()
+    }
+
+    if (streamUrl) {
+      const player = new IcecastMetadataPlayer(streamUrl, {
+        onMetadata: setMetadata,
+        onPlay: () => {
+          setLoading(false)
+          setPlaying(true)
+        },
+        onStop: () => {
+          setPlaying(false)
+        },
+        icyDetectionTimeout: 10000,
+        enableLogging: true,
+        audioElement: audioRef.current,
+        playbackMethod: 'mediasource',
+      })
+
+      player.id = Math.random()
+      player.play()
+
+      setCast(player)
+      setLoading(true)
+    } else {
+      setCast(null)
+    }
+
+    setCurrentStream(streamUrl)
+    setMetadata({})
+  }, [audioRef, cast, currentStream, streamUrl])
+
+  useEffect(() => {
+    if (metadata.StreamTitle) {
+      let scrobbled = false
+
+      const currentUpdate = new Date()
+
+      const [artist, title] = parseMetadata(metadata)
 
       if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
@@ -99,93 +152,25 @@ const RadioPlayer = ({
 
       subsonic.scrobbleRadio(artist, title, false)
 
-      const updateTime = new Date()
-
-      if (lastUpdate !== null && metadata.StreamTitle) {
-        const diffMillis = updateTime - lastUpdate
-
-        if (diffMillis > MIN_TIME_BETWEEN_SCROBBLE_MS) {
-          const [priorArtist, priorTitle] = parseMetadata(metadata)
-
-          subsonic.scrobbleRadio(priorArtist, priorTitle, true)
-        }
-      }
-
-      const newTimer = setTimeout(() => {
+      const timeout = setTimeout(() => {
+        scrobbled = true
         subsonic.scrobbleRadio(artist, title, true)
       }, SCROBBLE_DELAY_MS)
 
-      setLastUpdate(updateTime)
-      setMetadata(newMetadata)
-      setTimeoutId(newTimer)
-    },
-    [lastUpdate, metadata, name, timeoutId]
-  )
+      return () => {
+        const now = new Date()
 
-  useEffect(() => {
-    async function handleChange() {
-      if (
-        lock ||
-        (cast && currentStream === streamUrl && cast.state !== 'stopped')
-      ) {
-        return
-      }
+        if (!scrobbled) {
+          clearTimeout(timeout)
 
-      if (cast) {
-        setLock(true)
-
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId)
-          setTimeoutId(null)
+          if (now - currentUpdate > MIN_TIME_BETWEEN_SCROBBLE_MS) {
+            const [priorArtist, priorTitle] = parseMetadata(metadata)
+            subsonic.scrobbleRadio(priorArtist, priorTitle, true)
+          }
         }
-
-        await cast.stop()
-        await cast.detachAudioElement()
       }
-
-      if (streamUrl) {
-        const player = new IcecastMetadataPlayer(streamUrl, {
-          onMetadata: metadataUpdate,
-          onPlay: () => {
-            setLoading(false)
-            setPlaying(true)
-          },
-          onStop: () => {
-            setPlaying(false)
-          },
-          onLoad: () => {
-            console.log('loading')
-          },
-          icyDetectionTimeout: 10000,
-          enableLogging: true,
-          audioElement: audioRef.current,
-          playbackMethod: 'mediasource',
-        })
-
-        player.id = Math.random()
-        player.play()
-
-        setCast(player)
-        setLoading(true)
-        setMetadata({})
-      } else {
-        setCast(null)
-      }
-
-      setCurrentStream(streamUrl)
-      setLock(false)
     }
-
-    handleChange()
-  }, [
-    audioRef,
-    cast,
-    currentStream,
-    lock,
-    metadataUpdate,
-    streamUrl,
-    timeoutId,
-  ])
+  }, [metadata, name])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -198,44 +183,43 @@ const RadioPlayer = ({
     }
   }, [audioRef])
 
-  const setAudioVolume = useCallback(
-    (volumeBarVal) => {
-      if (cast) {
-        cast.audioElement.volume = mapBarToListen(volumeBarVal)
+  const setAudioVolume = useCallback((volumeBarVal) => {
+    if (audioRef.current) {
+      audioRef.current.volume = mapBarToListen(volumeBarVal)
 
-        setSavedVolume(volumeBarVal)
-        setVolume(volumeBarVal)
-      }
-    },
-    [cast]
-  )
+      setSavedVolume(volumeBarVal)
+      setVolume(volumeBarVal)
+    }
+  }, [])
 
   const mute = useCallback(() => {
-    if (cast) {
-      setVolume(0)
-      setSavedVolume(cast.audioElement.volume)
+    const audio = audioRef.current
 
-      cast.audioElement.volume = 0
+    if (audio) {
+      setVolume(0)
+      setSavedVolume(audio.volume)
+
+      audio.volume = 0
     }
-  }, [cast])
+  }, [])
 
   const resetVolume = useCallback(() => {
     setAudioVolume(mapListenToBar(savedVolume || 0.1))
   }, [savedVolume, setAudioVolume])
 
   const togglePlay = useCallback(() => {
-    if (cast) {
-      const elem = cast.audioElement
+    const audio = audioRef.current
 
-      if (elem.paused) {
-        elem.play()
+    if (audio) {
+      if (audio.paused) {
+        audio.play()
         setPlaying(true)
       } else {
-        elem.pause()
+        audio.pause()
         setPlaying(false)
       }
     }
-  }, [cast])
+  }, [])
 
   const coverClick = useCallback(() => {
     window.location.href = `#/radio?displayedFilters={}&filter={"name":"${name}"}`

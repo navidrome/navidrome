@@ -32,6 +32,7 @@ const defaultConfig = {
   enableReplayGain: true,
   defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/share',
+  enableProxy: true,
 }
 
 let config

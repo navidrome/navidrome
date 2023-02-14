@@ -1,13 +1,11 @@
 package subsonic
 
 import (
-	"bufio"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -178,20 +176,27 @@ func (api *Router) routes() http.Handler {
 	} else {
 		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	}
-	r.Group(func(r chi.Router) {
-		// These are not official subsonic routes. However, they use subsonic
-		// as opposed to native API because it makes authentication easier from the
-		// client side (namely, fetching audio and images)
-		throttle := conf.Server.DevMaxRadioStreams
 
-		if throttle == 0 {
-			return
-		} else if throttle != -1 {
-			r.Use(middleware.Throttle(conf.Server.DevArtworkMaxRequests))
-		}
+	if conf.Server.EnableProxy {
+		r.Route("/proxy", func(r chi.Router) {
+			r.Get("/icon", api.proxyIcon)
 
-		r.Get("/proxy", proxyRadio)
-	})
+			r.Group(func(r chi.Router) {
+				// These are not official subsonic routes. However, they use subsonic
+				// as opposed to native API because it makes authentication easier from the
+				// client side (namely, fetching audio and images)
+				throttle := conf.Server.DevMaxRadioStreams
+
+				if throttle == 0 {
+					return
+				} else if throttle != -1 {
+					r.Use(middleware.Throttle(conf.Server.DevArtworkMaxRequests))
+				}
+
+				r.Get("/stream", api.proxyRadio)
+			})
+		})
+	}
 
 	// Not Implemented (yet?)
 	h501(r, "jukeboxControl")
@@ -313,92 +318,5 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	}
 	if _, err := w.Write(response); err != nil {
 		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
-	}
-}
-
-var (
-	headers = []string{"content-type", "icy-br", "icy-genre", "icy-name", "icy-pub", "icy-sr", "icy-url", "icy-metaint"}
-)
-
-func proxyRadio(w http.ResponseWriter, r *http.Request) {
-	urls := r.URL.Query()["url"]
-
-	if len(urls) != 1 {
-		http.Error(w, "Must provide one URL", http.StatusBadRequest)
-		return
-	}
-
-	ctx := r.Context()
-	client := http.Client{}
-
-	streamUrl, err := url.QueryUnescape(urls[0])
-
-	if err != nil {
-		log.Error(r, "Bad stream url", "url", urls[0], err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "HEAD", streamUrl, nil)
-
-	if err != nil {
-		log.Error(r, "Error creating request", "url", streamUrl, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	req.Header.Set("Icy-Metadata", "1")
-	headResp, err := client.Do(req)
-
-	if err != nil {
-		log.Error(r, "Error fetching stream", "url", streamUrl, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	headResp.Body.Close()
-
-	req, _ = http.NewRequestWithContext(ctx, "GET", streamUrl, nil)
-	req.Header.Set("Icy-Metadata", "1")
-	mainResp, err := client.Do(req)
-
-	if err != nil {
-		log.Error(r, "Error fetching stream", "url", streamUrl, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	for _, header := range headers {
-		w.Header().Set(header, headResp.Header.Get(header))
-	}
-
-	defer mainResp.Body.Close()
-	reader := bufio.NewReader(mainResp.Body)
-	buf := make([]byte, 8192)
-
-	done := false
-
-	go func() {
-		<-r.Context().Done()
-		done = true
-	}()
-
-	for {
-		count, err := reader.Read(buf)
-
-		if count == 0 || done {
-			break
-		}
-
-		if err != nil {
-			log.Error(r, "Error reading data", "url", streamUrl, err)
-			break
-		}
-
-		_, err = w.Write(buf[0:count])
-
-		if err != nil {
-			log.Error(r, "Error writing data", "url", streamUrl, err)
-			break
-		}
 	}
 }

@@ -80,6 +80,10 @@ func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepos
 	return NewScrobbleBufferRepository(ctx, s.getOrmer())
 }
 
+func (s *SQLStore) ScrobbleRadio(ctx context.Context) model.ScrobbleRadioRepository {
+	return NewScrobbleRadioRepository(ctx, s.getOrmer())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
