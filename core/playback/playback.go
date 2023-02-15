@@ -72,9 +72,9 @@ func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition,
 }
 
 func (ps *playbackServer) getDefaultDevice() (*PlaybackDevice, error) {
-	for _, audioDevice := range ps.playbackDevices {
+	for idx, audioDevice := range ps.playbackDevices {
 		if audioDevice.Default {
-			return &audioDevice, nil
+			return &ps.playbackDevices[idx], nil
 		}
 	}
 	return &PlaybackDevice{}, fmt.Errorf("no default device found")

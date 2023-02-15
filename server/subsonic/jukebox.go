@@ -172,11 +172,11 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter gain, err: %s", err)
 		}
 
-		gain, err := strconv.ParseFloat(gainStr, 64)
+		gain, err := strconv.ParseFloat(gainStr, 32)
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "error parsing gain integer value, err: %s", err)
 		}
-		status, err := pb.SetGain(user, gain)
+		status, err := pb.SetGain(user, float32(gain))
 		if err != nil {
 			return nil, err
 		}

@@ -1,7 +1,7 @@
 package playback
 
 import (
-	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -10,7 +10,6 @@ import (
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
@@ -24,12 +23,13 @@ type PlaybackDevice struct {
 	Ctrl                 *beep.Ctrl
 	Volume               *effects.Volume
 	PlaybackQueue        Queue
+	Gain                 float32
 }
 
 type DeviceStatus struct {
 	CurrentIndex int
 	Playing      bool
-	Gain         float64
+	Gain         float32
 	Position     int
 }
 
@@ -42,8 +42,13 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		DeviceName:           deviceName,
 		Ctrl:                 &beep.Ctrl{},
 		Volume:               &effects.Volume{},
+		Gain:                 0,
 		PlaybackQueue:        Queue{},
 	}
+}
+
+func (pd *PlaybackDevice) String() string {
+	return fmt.Sprintf("Name: %s, Gain: %f", pd.Name, pd.Gain)
 }
 
 func (pd *PlaybackDevice) Get(user string) (responses.JukeboxPlaylist, error) {
@@ -52,7 +57,7 @@ func (pd *PlaybackDevice) Get(user string) (responses.JukeboxPlaylist, error) {
 }
 
 func (pd *PlaybackDevice) Status(user string) (DeviceStatus, error) {
-	log.Debug("processing Status action")
+	log.Debug(fmt.Sprintf("processing Status action on: %s", pd))
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Set(user string, ids []string) (DeviceStatus, error) {
@@ -89,7 +94,7 @@ func (pd *PlaybackDevice) Add(user string, ids []string) (DeviceStatus, error) {
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Clear(user string) (DeviceStatus, error) {
-	log.Debug("processing Clear action")
+	log.Debug(fmt.Sprintf("processing Clear action on: %s", pd))
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Remove(user string, index int) (DeviceStatus, error) {
@@ -100,8 +105,10 @@ func (pd *PlaybackDevice) Shuffle(user string) (DeviceStatus, error) {
 	log.Debug("processing Shuffle action")
 	return pd.getStatus(), nil
 }
-func (pd *PlaybackDevice) SetGain(user string, gain float64) (DeviceStatus, error) {
-	log.Debug("processing SetGain action")
+func (pd *PlaybackDevice) SetGain(user string, gain float32) (DeviceStatus, error) {
+	log.Debug(fmt.Sprintf("processing SetGain action on: %s", pd))
+
+	pd.Gain = gain
 
 	speaker.Lock()
 	// pd.Volume.Silent = !pd.Volume.Silent
@@ -153,7 +160,7 @@ func (pd *PlaybackDevice) getStatus() DeviceStatus {
 	return DeviceStatus{
 		CurrentIndex: 0,
 		Playing:      !pd.Ctrl.Paused,
-		Gain:         0,
+		Gain:         pd.Gain,
 		Position:     pd.Position(),
 	}
 }
@@ -164,14 +171,4 @@ func (pd *PlaybackDevice) Position() int {
 		return streamer.Position()
 	}
 	return 0
-}
-
-func getTranscoding(ctx context.Context) (format string, bitRate int) {
-	if trc, ok := request.TranscodingFrom(ctx); ok {
-		format = trc.TargetFormat
-	}
-	if plr, ok := request.PlayerFrom(ctx); ok {
-		bitRate = plr.MaxBitRate
-	}
-	return
 }
