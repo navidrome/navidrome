@@ -188,8 +188,13 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	return nil, newError(responses.ErrorMissingParameter, "action not found")
 }
 
-func statusResponse(status responses.JukeboxStatus) *responses.Subsonic {
+func statusResponse(status playback.DeviceStatus) *responses.Subsonic {
 	response := newResponse()
-	response.JukeboxStatus = &status
+	response.JukeboxStatus = &responses.JukeboxStatus{
+		CurrentIndex: status.CurrentIndex,
+		Playing:      status.Playing,
+		Gain:         status.Gain,
+		Position:     status.Position,
+	}
 	return response
 }

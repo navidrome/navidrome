@@ -387,10 +387,10 @@ type Radio struct {
 }
 
 type JukeboxStatus struct {
-	CurrentIndex int64   `xml:"currentIndex,attr"       json:"currentIndex"`
+	CurrentIndex int     `xml:"currentIndex,attr"       json:"currentIndex"`
 	Playing      bool    `xml:"playing,attr"            json:"playing"`
 	Gain         float64 `xml:"gain,attr"               json:"gain"`
-	Position     int64   `xml:"position,omitempty,attr" json:"position,omitempty"`
+	Position     int     `xml:"position,omitempty,attr" json:"position,omitempty"`
 }
 
 type JukeboxPlaylist struct {
