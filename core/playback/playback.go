@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/faiface/beep"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -16,10 +15,12 @@ import (
 type PlaybackServer interface {
 	Run(ctx context.Context) error
 	GetDevice(user string) (*PlaybackDevice, error)
+	GetMediaFile(id string) (*model.MediaFile, error)
 }
 
 type playbackServer struct {
 	ctx             *context.Context
+	datastore       model.DataStore
 	playbackDevices []PlaybackDevice
 }
 
@@ -30,9 +31,9 @@ func GetInstance() PlaybackServer {
 }
 
 func (ps *playbackServer) Run(ctx context.Context) error {
-	dataStore := persistence.New(db.Db())
+	ps.datastore = persistence.New(db.Db())
 
-	devices, err := initDeviceStatus(ctx, dataStore, conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
+	devices, err := ps.initDeviceStatus(conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
 	ps.playbackDevices = devices
 
 	if err != nil {
@@ -47,7 +48,7 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func initDeviceStatus(ctx context.Context, ds model.DataStore, devices []conf.AudioDeviceDefinition, defaultDevice string) ([]PlaybackDevice, error) {
+func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string) ([]PlaybackDevice, error) {
 	pbDevices := make([]PlaybackDevice, len(devices))
 	defaultDeviceFound := false
 
@@ -56,15 +57,7 @@ func initDeviceStatus(ctx context.Context, ds model.DataStore, devices []conf.Au
 			return []PlaybackDevice{}, fmt.Errorf("audio device definition ought to contain 3 fields, found: %d ", len(audioDevice))
 		}
 
-		pbDevices[idx] = PlaybackDevice{
-			DataStore:  ds,
-			Ctx:        ctx,
-			User:       "",
-			Name:       audioDevice[0],
-			Method:     audioDevice[1],
-			DeviceName: audioDevice[2],
-			Ctrl:       &beep.Ctrl{},
-		}
+		pbDevices[idx] = *NewPlaybackDevice(ps, audioDevice[0], audioDevice[1], audioDevice[2])
 
 		if audioDevice[0] == defaultDevice {
 			pbDevices[idx].Default = true
@@ -85,6 +78,10 @@ func (ps *playbackServer) getDefaultDevice() (*PlaybackDevice, error) {
 		}
 	}
 	return &PlaybackDevice{}, fmt.Errorf("no default device found")
+}
+
+func (ps *playbackServer) GetMediaFile(id string) (*model.MediaFile, error) {
+	return ps.datastore.MediaFile(*ps.ctx).Get(id)
 }
 
 func (ps *playbackServer) GetDevice(user string) (*PlaybackDevice, error) {

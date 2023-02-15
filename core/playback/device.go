@@ -9,20 +9,29 @@ import (
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
 type PlaybackDevice struct {
-	Ctx        context.Context
-	DataStore  model.DataStore
-	Default    bool
-	User       string
-	Name       string
-	Method     string
-	DeviceName string
-	Ctrl       *beep.Ctrl
+	ParentPlaybackServer PlaybackServer
+	Default              bool
+	User                 string
+	Name                 string
+	Method               string
+	DeviceName           string
+	Ctrl                 *beep.Ctrl
+}
+
+func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string, deviceName string) *PlaybackDevice {
+	return &PlaybackDevice{
+		ParentPlaybackServer: playbackServer,
+		User:                 "",
+		Name:                 name,
+		Method:               method,
+		DeviceName:           deviceName,
+		Ctrl:                 &beep.Ctrl{},
+	}
 }
 
 func (pd *PlaybackDevice) Get(user string) (responses.JukeboxPlaylist, error) {
@@ -37,7 +46,7 @@ func (pd *PlaybackDevice) Status(user string) (responses.JukeboxStatus, error) {
 func (pd *PlaybackDevice) Set(user string, ids []string) (responses.JukeboxStatus, error) {
 	log.Debug("processing Set action.")
 
-	mf, err := pd.DataStore.MediaFile(pd.Ctx).Get(ids[0])
+	mf, err := pd.ParentPlaybackServer.GetMediaFile(ids[0])
 	if err != nil {
 		return responses.JukeboxStatus{}, err
 	}
