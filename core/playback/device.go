@@ -21,7 +21,6 @@ type PlaybackDevice struct {
 	Name                 string
 	Method               string
 	DeviceName           string
-	Streamer             beep.StreamSeeker
 	Ctrl                 *beep.Ctrl
 	Volume               *effects.Volume
 	PlaybackQueue        Queue
@@ -153,10 +152,18 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 func (pd *PlaybackDevice) getStatus() DeviceStatus {
 	return DeviceStatus{
 		CurrentIndex: 0,
-		Playing:      false,
+		Playing:      !pd.Ctrl.Paused,
 		Gain:         0,
-		Position:     0, // pd.Streamer.Position(),
+		Position:     pd.Position(),
 	}
+}
+
+func (pd *PlaybackDevice) Position() int {
+	streamer, ok := pd.Ctrl.Streamer.(beep.StreamSeeker)
+	if ok {
+		return streamer.Position()
+	}
+	return 0
 }
 
 func getTranscoding(ctx context.Context) (format string, bitRate int) {
