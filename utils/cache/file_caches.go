@@ -6,6 +6,7 @@ import (
 	"io"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/djherbis/fscache"
@@ -24,7 +25,6 @@ type ReadFunc func(ctx context.Context, item Item) (io.Reader, error)
 
 type FileCache interface {
 	Get(ctx context.Context, item Item) (*CachedStream, error)
-	Ready(ctx context.Context) bool
 	Available(ctx context.Context) bool
 }
 
@@ -46,7 +46,7 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 		fc.cache = cache
 		fc.disabled = cache == nil || err != nil
 		log.Info("Finished initializing cache", "cache", fc.name, "maxSize", fc.cacheSize, "elapsedTime", time.Since(start))
-		fc.ready = true
+		fc.ready.Store(true)
 		if err != nil {
 			log.Error(fmt.Sprintf("Cache %s will be DISABLED due to previous errors", "name"), fc.name, err)
 		}
@@ -66,39 +66,35 @@ type fileCache struct {
 	cache       fscache.Cache
 	getReader   ReadFunc
 	disabled    bool
-	ready       bool
+	ready       atomic.Bool
 	mutex       *sync.RWMutex
 }
 
-func (fc *fileCache) Ready(_ context.Context) bool {
-	fc.mutex.RLock()
-	defer fc.mutex.RUnlock()
-	return fc.ready
-}
-
-func (fc *fileCache) Available(ctx context.Context) bool {
+func (fc *fileCache) Available(_ context.Context) bool {
 	fc.mutex.RLock()
 	defer fc.mutex.RUnlock()
 
-	if !fc.ready {
-		log.Debug(ctx, "Cache not initialized yet", "cache", fc.name)
-	}
-
-	return fc.ready && !fc.disabled
+	return fc.ready.Load() && !fc.disabled
 }
 
 func (fc *fileCache) invalidate(ctx context.Context, key string) error {
 	if !fc.Available(ctx) {
+		log.Debug(ctx, "Cache not initialized yet. Cannot invalidate key", "cache", fc.name, "key", key)
 		return nil
 	}
 	if !fc.cache.Exists(key) {
 		return nil
 	}
-	return fc.cache.Remove(key)
+	err := fc.cache.Remove(key)
+	if err != nil {
+		log.Warn(ctx, "Error removing key from cache", "cache", fc.name, "key", key, err)
+	}
+	return err
 }
 
 func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 	if !fc.Available(ctx) {
+		log.Debug(ctx, "Cache not initialized yet. Reading data directly from reader", "cache", fc.name)
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
 			return nil, err
@@ -118,14 +114,15 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		log.Trace(ctx, "Cache MISS", "cache", fc.name, "key", key)
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
+			r.Close()
+			w.Close()
+			_ = fc.invalidate(ctx, key)
 			return nil, err
 		}
 		go func() {
 			if err := copyAndClose(w, reader); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
-				if err = fc.invalidate(ctx, key); err != nil {
-					log.Warn(ctx, "Error removing key from cache", "cache", fc.name, "key", key, err)
-				}
+				_ = fc.invalidate(ctx, key)
 			} else {
 				log.Trace(ctx, "File successfully stored in cache", "cache", fc.name, "key", key)
 			}
@@ -210,7 +207,7 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		return nil, nil
 	}
 
-	lru := NewFileHaunter(maxItems, int64(size), consts.DefaultCacheCleanUpInterval)
+	lru := NewFileHaunter(name, maxItems, int64(size), consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
 	cacheFolder = filepath.Join(conf.Server.DataFolder, cacheFolder)
 

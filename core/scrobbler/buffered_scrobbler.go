@@ -12,7 +12,7 @@ import (
 func newBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *bufferedScrobbler {
 	b := &bufferedScrobbler{ds: ds, wrapped: s, service: service}
 	b.wakeSignal = make(chan struct{}, 1)
-	go b.run()
+	go b.run(context.TODO())
 	return b
 }
 
@@ -49,15 +49,19 @@ func (b *bufferedScrobbler) sendWakeSignal() {
 	}
 }
 
-func (b *bufferedScrobbler) run() {
-	ctx := context.Background()
+func (b *bufferedScrobbler) run(ctx context.Context) {
 	for {
 		if !b.processQueue(ctx) {
 			time.AfterFunc(5*time.Second, func() {
 				b.sendWakeSignal()
 			})
 		}
-		<-b.wakeSignal
+		select {
+		case <-b.wakeSignal:
+			continue
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

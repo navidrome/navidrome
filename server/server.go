@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/ui"
+	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type Server struct {
@@ -28,6 +30,7 @@ type Server struct {
 
 func New(ds model.DataStore) *Server {
 	s := &Server{ds: ds}
+	auth.Init(s.ds)
 	initialSetup(ds)
 	s.initRoutes()
 	checkFfmpegInstallation()
@@ -36,7 +39,7 @@ func New(ds model.DataStore) *Server {
 }
 
 func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler) {
-	urlPath = path.Join(conf.Server.BaseURL, urlPath)
+	urlPath = path.Join(conf.Server.BasePath, urlPath)
 	log.Info(fmt.Sprintf("Mounting %s routes", description), "path", urlPath)
 	s.router.Group(func(r chi.Router) {
 		r.Mount(urlPath, subRouter)
@@ -80,9 +83,7 @@ func (s *Server) Run(ctx context.Context, addr string) error {
 }
 
 func (s *Server) initRoutes() {
-	auth.Init(s.ds)
-
-	s.appRoot = path.Join(conf.Server.BaseURL, consts.URLPathUI)
+	s.appRoot = path.Join(conf.Server.BasePath, consts.URLPathUI)
 
 	r := chi.NewRouter()
 
@@ -103,7 +104,7 @@ func (s *Server) initRoutes() {
 	r.Use(authHeaderMapper)
 	r.Use(jwtVerifier)
 
-	r.Route(path.Join(conf.Server.BaseURL, "/auth"), func(r chi.Router) {
+	r.Route(path.Join(conf.Server.BasePath, "/auth"), func(r chi.Router) {
 		if conf.Server.AuthRequestLimit > 0 {
 			log.Info("Login rate limit set", "requestLimit", conf.Server.AuthRequestLimit,
 				"windowLength", conf.Server.AuthWindowLength)
@@ -133,15 +134,25 @@ func (s *Server) initRoutes() {
 func (s *Server) frontendAssetsHandler() http.Handler {
 	r := chi.NewRouter()
 
-	r.Handle("/", serveIndex(s.ds, ui.BuildAssets()))
+	r.Handle("/", Index(s.ds, ui.BuildAssets()))
 	r.Handle("/*", http.StripPrefix(s.appRoot, http.FileServer(http.FS(ui.BuildAssets()))))
 	return r
 }
 
-func AbsoluteURL(r *http.Request, url string) string {
-	if strings.HasPrefix(url, "/") {
-		appRoot := path.Join(r.Host, conf.Server.BaseURL, url)
-		url = r.URL.Scheme + "://" + appRoot
+func AbsoluteURL(r *http.Request, u string, params url.Values) string {
+	buildUrl, _ := url.Parse(u)
+	if strings.HasPrefix(u, "/") {
+		buildUrl.Path = path.Join(conf.Server.BasePath, buildUrl.Path)
+		if conf.Server.BaseHost != "" {
+			buildUrl.Scheme = IfZero(conf.Server.BaseScheme, "http")
+			buildUrl.Host = conf.Server.BaseHost
+		} else {
+			buildUrl.Scheme = r.URL.Scheme
+			buildUrl.Host = r.Host
+		}
 	}
-	return url
+	if len(params) > 0 {
+		buildUrl.RawQuery = params.Encode()
+	}
+	return buildUrl.String()
 }

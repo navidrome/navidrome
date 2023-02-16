@@ -32,7 +32,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		Expect(w.Code).To(Equal(200))
 		config := extractAppConfig(w.Body.String())
@@ -44,7 +44,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("firstTime", true))
@@ -55,7 +55,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("variousArtistsId", consts.VariousArtistsID))
@@ -66,18 +66,18 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("firstTime", false))
 	})
 
 	It("sets baseURL", func() {
-		conf.Server.BaseURL = "base_url_test"
+		conf.Server.BasePath = "base_url_test"
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("baseURL", "base_url_test"))
@@ -88,10 +88,21 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("welcomeMessage", "Hello"))
+	})
+
+	It("sets the maxSidebarPlaylists", func() {
+		conf.Server.MaxSidebarPlaylists = 42
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("maxSidebarPlaylists", float64(42)))
 	})
 
 	It("sets the enableTranscodingConfig", func() {
@@ -99,7 +110,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("enableTranscodingConfig", true))
@@ -110,7 +121,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("enableDownloads", true))
@@ -121,7 +132,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("enableFavourites", true))
@@ -132,7 +143,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("enableStarRating", true))
@@ -143,7 +154,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("defaultTheme", "Light"))
@@ -154,7 +165,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("defaultLanguage", "pt"))
@@ -165,7 +176,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("defaultUIVolume", float64(45)))
@@ -176,7 +187,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("enableCoverAnimation", true))
@@ -187,7 +198,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("gaTrackingId", "UA-12345"))
@@ -197,7 +208,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("version", consts.Version))
@@ -207,7 +218,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		expected := strings.ToUpper(strings.Join(consts.LosslessFormats, ","))
@@ -218,20 +229,30 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("enableUserEditing", true))
 	})
 
-	It("sets the devEnableShare", func() {
+	It("sets the enableSharing", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("devEnableShare", false))
+		Expect(config).To(HaveKeyWithValue("enableSharing", false))
+	})
+
+	It("sets the defaultDownsamplingFormat", func() {
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("defaultDownsamplingFormat", conf.Server.DefaultDownsamplingFormat))
 	})
 
 	It("sets the devSidebarPlaylists", func() {
@@ -240,7 +261,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("devSidebarPlaylists", true))
@@ -250,7 +271,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("lastFMEnabled", true))
@@ -261,7 +282,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("lastFMApiKey", "APIKEY-123"))
@@ -272,7 +293,7 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("devShowArtistPage", true))
@@ -283,16 +304,38 @@ var _ = Describe("serveIndex", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
-		serveIndex(ds, fs)(w, r)
+		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("listenBrainzEnabled", true))
 	})
 
+	It("sets the enableReplayGain", func() {
+		conf.Server.EnableReplayGain = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableReplayGain", true))
+	})
+
+	It("sets the enableExternalServices", func() {
+		conf.Server.EnableExternalServices = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableExternalServices", true))
+	})
+
 	Describe("loginBackgroundURL", func() {
 		Context("empty BaseURL", func() {
 			BeforeEach(func() {
-				conf.Server.BaseURL = "/"
+				conf.Server.BasePath = "/"
 			})
 			When("it is the default URL", func() {
 				It("points to the default URL", func() {
@@ -300,7 +343,7 @@ var _ = Describe("serveIndex", func() {
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
-					serveIndex(ds, fs)(w, r)
+					serveIndex(ds, fs, nil)(w, r)
 
 					config := extractAppConfig(w.Body.String())
 					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", consts.DefaultUILoginBackgroundURL))
@@ -312,7 +355,7 @@ var _ = Describe("serveIndex", func() {
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
-					serveIndex(ds, fs)(w, r)
+					serveIndex(ds, fs, nil)(w, r)
 
 					config := extractAppConfig(w.Body.String())
 					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", consts.DefaultUILoginBackgroundURLOffline))
@@ -324,7 +367,7 @@ var _ = Describe("serveIndex", func() {
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
-					serveIndex(ds, fs)(w, r)
+					serveIndex(ds, fs, nil)(w, r)
 
 					config := extractAppConfig(w.Body.String())
 					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "https://example.com/images/1.jpg"))
@@ -333,7 +376,7 @@ var _ = Describe("serveIndex", func() {
 		})
 		Context("with a BaseURL", func() {
 			BeforeEach(func() {
-				conf.Server.BaseURL = "/music"
+				conf.Server.BasePath = "/music"
 			})
 			When("it is the default URL", func() {
 				It("points to the default URL with BaseURL prefix", func() {
@@ -341,7 +384,7 @@ var _ = Describe("serveIndex", func() {
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
-					serveIndex(ds, fs)(w, r)
+					serveIndex(ds, fs, nil)(w, r)
 
 					config := extractAppConfig(w.Body.String())
 					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "/music"+consts.DefaultUILoginBackgroundURL))
@@ -353,7 +396,7 @@ var _ = Describe("serveIndex", func() {
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
-					serveIndex(ds, fs)(w, r)
+					serveIndex(ds, fs, nil)(w, r)
 
 					config := extractAppConfig(w.Body.String())
 					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", consts.DefaultUILoginBackgroundURLOffline))
@@ -365,7 +408,7 @@ var _ = Describe("serveIndex", func() {
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
-					serveIndex(ds, fs)(w, r)
+					serveIndex(ds, fs, nil)(w, r)
 
 					config := extractAppConfig(w.Body.String())
 					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "https://example.com/images/1.jpg"))

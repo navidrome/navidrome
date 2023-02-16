@@ -8,13 +8,12 @@ import (
 	"image/draw"
 	"image/png"
 	"io"
-	"math/rand"
 	"time"
 
 	"github.com/disintegration/imaging"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/slices"
 )
 
 type playlistArtworkReader struct {
@@ -44,18 +43,16 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 }
 
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	var ff []sourceFunc
-	pl, err := a.a.ds.Playlist(ctx).GetWithTracks(a.pl.ID, false)
-	if err == nil {
-		ff = append(ff, a.fromGeneratedTile(ctx, pl.Tracks))
+	ff := []sourceFunc{
+		a.fromGeneratedTiledCover(ctx),
+		fromAlbumPlaceholder(),
 	}
-	ff = append(ff, fromPlaceholder())
 	return selectImageReader(ctx, a.artID, ff...)
 }
 
-func (a *playlistArtworkReader) fromGeneratedTile(ctx context.Context, tracks model.PlaylistTracks) sourceFunc {
+func (a *playlistArtworkReader) fromGeneratedTiledCover(ctx context.Context) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		tiles, err := a.loadTiles(ctx, tracks)
+		tiles, err := a.loadTiles(ctx)
 		if err != nil {
 			return nil, "", err
 		}
@@ -64,19 +61,21 @@ func (a *playlistArtworkReader) fromGeneratedTile(ctx context.Context, tracks mo
 	}
 }
 
-func compactIDs(tracks model.PlaylistTracks) []model.ArtworkID {
-	slices.SortFunc(tracks, func(a, b model.PlaylistTrack) bool { return a.AlbumID < b.AlbumID })
-	tracks = slices.CompactFunc(tracks, func(a, b model.PlaylistTrack) bool { return a.AlbumID == b.AlbumID })
-	ids := slice.Map(tracks, func(e model.PlaylistTrack) model.ArtworkID {
-		return e.AlbumCoverArtID()
+func toArtworkIDs(albumIDs []string) []model.ArtworkID {
+	return slice.Map(albumIDs, func(id string) model.ArtworkID {
+		al := model.Album{ID: id}
+		return al.CoverArtID()
 	})
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(ids), func(i, j int) { ids[i], ids[j] = ids[j], ids[i] })
-	return ids
 }
 
-func (a *playlistArtworkReader) loadTiles(ctx context.Context, t model.PlaylistTracks) ([]image.Image, error) {
-	ids := compactIDs(t)
+func (a *playlistArtworkReader) loadTiles(ctx context.Context) ([]image.Image, error) {
+	tracksRepo := a.a.ds.Playlist(ctx).Tracks(a.pl.ID, false)
+	albumIds, err := tracksRepo.GetAlbumIDs(model.QueryOptions{Max: 4, Sort: "random()"})
+	if err != nil {
+		log.Error(ctx, "Error getting album IDs for playlist", "id", a.pl.ID, "name", a.pl.Name, err)
+		return nil, err
+	}
+	ids := toArtworkIDs(albumIds)
 
 	var tiles []image.Image
 	for len(tiles) < 4 {

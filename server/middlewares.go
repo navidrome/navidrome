@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/navidrome/navidrome/conf"
+	. "github.com/navidrome/navidrome/utils/gg"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
@@ -127,7 +131,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteStrictMode,
-				Path:     "/",
+				Path:     IfZero(conf.Server.BasePath, "/"),
 			}
 			http.SetCookie(w, c)
 		} else {
@@ -198,4 +202,27 @@ func firstOr(or string, strings ...string) string {
 		}
 	}
 	return or
+}
+
+// URLParamsMiddleware convert Chi URL params (from Context) to query params, as expected by our REST package
+func URLParamsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := chi.RouteContext(r.Context())
+		parts := make([]string, 0)
+		for i, key := range ctx.URLParams.Keys {
+			value := ctx.URLParams.Values[i]
+			if key == "*" {
+				continue
+			}
+			parts = append(parts, url.QueryEscape(":"+key)+"="+url.QueryEscape(value))
+		}
+		q := strings.Join(parts, "&")
+		if r.URL.RawQuery == "" {
+			r.URL.RawQuery = q
+		} else {
+			r.URL.RawQuery += "&" + q
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

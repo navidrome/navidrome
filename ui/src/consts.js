@@ -19,4 +19,8 @@ DraggableTypes.ALL.push(
   DraggableTypes.ARTIST
 )
 
-export const MAX_SIDEBAR_PLAYLISTS = 100
+export const DEFAULT_SHARE_BITRATE = 128
+
+export const BITRATE_CHOICES = [
+  32, 48, 64, 80, 96, 112, 128, 160, 192, 256, 320,
+].map((b) => ({ id: b, name: b.toString() }))

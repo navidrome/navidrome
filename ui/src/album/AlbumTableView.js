@@ -19,6 +19,7 @@ import {
   AlbumContextMenu,
   RatingField,
   useSelectedFields,
+  SizeField,
 } from '../common'
 import config from '../config'
 import { DraggableTypes } from '../consts'
@@ -95,6 +96,7 @@ const AlbumTableView = ({
         <RangeField source={'year'} sortBy={'max_year'} sortByOrder={'DESC'} />
       ),
       duration: isDesktop && <DurationField source="duration" />,
+      size: isDesktop && <SizeField source="size" />,
       rating: config.enableStarRating && (
         <RatingField
           source={'rating'}

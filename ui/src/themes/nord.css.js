@@ -109,7 +109,7 @@ module.exports = `
 
 .react-jinke-music-player-main .music-player-lyric {
     color: #D8DEE9;
-    -webkit-text-stroke: 2px #2E3440;
+    -webkit-text-stroke: 0.5px #2E3440;
     font-weight: bolder;
 }
 

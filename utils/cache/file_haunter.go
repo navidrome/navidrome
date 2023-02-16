@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/djherbis/fscache"
+	"github.com/dustin/go-humanize"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -20,8 +21,9 @@ type haunterKV struct {
 // If maxItems or maxSize are 0, they won't be checked
 //
 // Based on fscache.NewLRUHaunter
-func NewFileHaunter(maxItems int, maxSize int64, period time.Duration) fscache.LRUHaunter {
+func NewFileHaunter(name string, maxItems int, maxSize int64, period time.Duration) fscache.LRUHaunter {
 	return &fileHaunter{
+		name:     name,
 		period:   period,
 		maxItems: maxItems,
 		maxSize:  maxSize,
@@ -29,6 +31,7 @@ func NewFileHaunter(maxItems int, maxSize int64, period time.Duration) fscache.L
 }
 
 type fileHaunter struct {
+	name     string
 	period   time.Duration
 	maxItems int
 	maxSize  int64
@@ -43,6 +46,7 @@ func (j *fileHaunter) Scrub(c fscache.CacheAccessor) (keysToReap []string) {
 	var size int64
 	var okFiles []haunterKV
 
+	log.Trace("Running cache cleanup", "cache", j.name, "maxSize", humanize.Bytes(uint64(j.maxSize)))
 	c.EnumerateEntries(func(key string, e fscache.Entry) bool {
 		if e.InUse() {
 			return true
@@ -90,6 +94,8 @@ func (j *fileHaunter) Scrub(c fscache.CacheAccessor) (keysToReap []string) {
 		return true
 	}
 
+	log.Trace("Current cache stats", "cache", j.name, "size", humanize.Bytes(uint64(size)), "numItems", count)
+
 	if j.maxItems > 0 {
 		for count > j.maxItems {
 			if !collectKeysToReapFn() {
@@ -106,6 +112,9 @@ func (j *fileHaunter) Scrub(c fscache.CacheAccessor) (keysToReap []string) {
 		}
 	}
 
+	if len(keysToReap) > 0 {
+		log.Trace("Removing items from cache", "cache", j.name, "numItems", len(keysToReap))
+	}
 	return keysToReap
 }
 

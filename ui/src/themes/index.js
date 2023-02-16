@@ -7,6 +7,7 @@ import LigeraTheme from './ligera'
 import MonokaiTheme from './monokai'
 import ElectricPurpleTheme from './electricPurple'
 import NordTheme from './nord'
+import GruvboxDarkTheme from './gruvboxDark'
 
 export default {
   // Classic default themes
@@ -17,6 +18,7 @@ export default {
   ElectricPurpleTheme,
   ExtraDarkTheme,
   GreenTheme,
+  GruvboxDarkTheme,
   LigeraTheme,
   MonokaiTheme,
   NordTheme,

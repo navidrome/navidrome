@@ -5,6 +5,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	. "github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -21,14 +22,14 @@ var _ = Describe("MediaFiles", func() {
 					SortAlbumName: "SortAlbumName", SortArtistName: "SortArtistName", SortAlbumArtistName: "SortAlbumArtistName",
 					OrderAlbumName: "OrderAlbumName", OrderAlbumArtistName: "OrderAlbumArtistName",
 					MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
-					Compilation: false, CatalogNum: "",
+					Compilation: false, CatalogNum: "", Path: "/music1/file1.mp3",
 				},
 				{
 					ID: "2", Album: "Album", ArtistID: "ArtistID", Artist: "Artist", AlbumArtistID: "AlbumArtistID", AlbumArtist: "AlbumArtist", AlbumID: "AlbumID",
 					SortAlbumName: "SortAlbumName", SortArtistName: "SortArtistName", SortAlbumArtistName: "SortAlbumArtistName",
 					OrderAlbumName: "OrderAlbumName", OrderArtistName: "OrderArtistName", OrderAlbumArtistName: "OrderAlbumArtistName",
 					MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
-					Compilation: true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "/music/file.mp3",
+					Compilation: true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "/music2/file2.mp3",
 				},
 			}
 		})
@@ -51,7 +52,8 @@ var _ = Describe("MediaFiles", func() {
 			Expect(album.MbzAlbumComment).To(Equal("MbzAlbumComment"))
 			Expect(album.CatalogNum).To(Equal("CatalogNum"))
 			Expect(album.Compilation).To(BeTrue())
-			Expect(album.EmbedArtPath).To(Equal("/music/file.mp3"))
+			Expect(album.EmbedArtPath).To(Equal("/music2/file2.mp3"))
+			Expect(album.Paths).To(Equal("/music1" + consts.Zwsp + "/music2"))
 		})
 	})
 	Context("Aggregated attributes", func() {

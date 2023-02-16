@@ -6,11 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"runtime"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -20,7 +19,6 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/number"
 )
 
 const Version = "1.16.1"
@@ -40,11 +38,12 @@ type Router struct {
 	scanner          scanner.Scanner
 	broker           events.Broker
 	scrobbler        scrobbler.PlayTracker
+	share            core.Share
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker,
-	playlists core.Playlists, scrobbler scrobbler.PlayTracker) *Router {
+	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share) *Router {
 	r := &Router{
 		ds:               ds,
 		artwork:          artwork,
@@ -56,6 +55,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreame
 		scanner:          scanner,
 		broker:           broker,
 		scrobbler:        scrobbler,
+		share:            share,
 	}
 	r.Handler = r.routes()
 	return r
@@ -85,6 +85,8 @@ func (api *Router) routes() http.Handler {
 		h(r, "getArtist", api.GetArtist)
 		h(r, "getAlbum", api.GetAlbum)
 		h(r, "getSong", api.GetSong)
+		h(r, "getAlbumInfo", api.GetAlbumInfo)
+		h(r, "getAlbumInfo2", api.GetAlbumInfo)
 		h(r, "getArtistInfo", api.GetArtistInfo)
 		h(r, "getArtistInfo2", api.GetArtistInfo2)
 		h(r, "getTopSongs", api.GetTopSongs)
@@ -138,27 +140,46 @@ func (api *Router) routes() http.Handler {
 		h(r, "startScan", api.StartScan)
 	})
 	r.Group(func(r chi.Router) {
-		// configure request throttling
-		maxRequests := number.Max(2, runtime.NumCPU())
-		r.Use(middleware.ThrottleBacklog(maxRequests, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout))
 		hr(r, "getAvatar", api.GetAvatar)
-		hr(r, "getCoverArt", api.GetCoverArt)
 		h(r, "getLyrics", api.GetLyrics)
+	})
+	r.Group(func(r chi.Router) {
+		// configure request throttling
+		if conf.Server.DevArtworkMaxRequests > 0 {
+			log.Debug("Throttling Subsonic getCoverArt endpoint", "maxRequests", conf.Server.DevArtworkMaxRequests,
+				"backlogLimit", conf.Server.DevArtworkThrottleBacklogLimit, "backlogTimeout",
+				conf.Server.DevArtworkThrottleBacklogTimeout)
+			r.Use(middleware.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+				conf.Server.DevArtworkThrottleBacklogTimeout))
+		}
+		hr(r, "getCoverArt", api.GetCoverArt)
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(getPlayer(api.players))
 		hr(r, "stream", api.Stream)
 		hr(r, "download", api.Download)
 	})
+	r.Group(func(r chi.Router) {
+		h(r, "createInternetRadioStation", api.CreateInternetRadio)
+		h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
+		h(r, "getInternetRadioStations", api.GetInternetRadios)
+		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
+	})
+	if conf.Server.EnableSharing {
+		r.Group(func(r chi.Router) {
+			h(r, "getShares", api.GetShares)
+			h(r, "createShare", api.CreateShare)
+			h(r, "updateShare", api.UpdateShare)
+			h(r, "deleteShare", api.DeleteShare)
+		})
+	} else {
+		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
+	}
 
 	// Not Implemented (yet?)
 	h501(r, "jukeboxControl")
-	h501(r, "getAlbumInfo", "getAlbumInfo2")
-	h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
 		"deletePodcastEpisode", "downloadPodcastEpisode")
-	h501(r, "getInternetRadioStations", "createInternetRadioStation", "updateInternetRadioStation",
-		"deleteInternetRadioStation")
 	h501(r, "createUser", "updateUser", "deleteUser", "changePassword")
 
 	// Deprecated/Won't implement/Out of scope endpoints
