@@ -145,13 +145,15 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 	pd.Ctrl.Streamer = streamer
 	pd.Ctrl.Paused = true
 
+	pd.Volume = &effects.Volume{Streamer: pd.Ctrl, Base: 2}
+
 	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	go func() {
-		speaker.Play(pd.Ctrl)
+		speaker.Play(pd.Volume)
 	}()
 
 }
