@@ -6,6 +6,7 @@ import (
 	"io"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/djherbis/fscache"
@@ -14,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type Item interface {
@@ -46,7 +46,7 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 		fc.cache = cache
 		fc.disabled = cache == nil || err != nil
 		log.Info("Finished initializing cache", "cache", fc.name, "maxSize", fc.cacheSize, "elapsedTime", time.Since(start))
-		fc.ready.Set(true)
+		fc.ready.Store(true)
 		if err != nil {
 			log.Error(fmt.Sprintf("Cache %s will be DISABLED due to previous errors", "name"), fc.name, err)
 		}
@@ -66,7 +66,7 @@ type fileCache struct {
 	cache       fscache.Cache
 	getReader   ReadFunc
 	disabled    bool
-	ready       utils.AtomicBool
+	ready       atomic.Bool
 	mutex       *sync.RWMutex
 }
 
@@ -74,7 +74,7 @@ func (fc *fileCache) Available(_ context.Context) bool {
 	fc.mutex.RLock()
 	defer fc.mutex.RUnlock()
 
-	return fc.ready.Get() && !fc.disabled
+	return fc.ready.Load() && !fc.disabled
 }
 
 func (fc *fileCache) invalidate(ctx context.Context, key string) error {
