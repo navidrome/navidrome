@@ -96,9 +96,9 @@ type configOptions struct {
 }
 
 type scannerOptions struct {
-	Extractor       	string
-	GenreSeparators 	string
-	GroupAlbumEditions      bool
+	Extractor          string
+	GenreSeparators    string
+	GroupAlbumEditions bool
 }
 
 type lastfmOptions struct {

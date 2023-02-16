@@ -3,9 +3,10 @@ package model
 import (
 	"mime"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
-	"sort"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
@@ -32,8 +33,8 @@ type MediaFile struct {
 	DiscNumber           int     `structs:"disc_number" json:"discNumber"`
 	DiscSubtitle         string  `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
 	Year                 int     `structs:"year" json:"year"`
-	Date		     string    `structs:"date" json:"date,omitempty"`
-	ReleaseDate          string    `structs:"release_date" json:"releaseDate,omitempty"`
+	Date                 string  `structs:"date" json:"date,omitempty"`
+	ReleaseDate          string  `structs:"release_date" json:"releaseDate,omitempty"`
 	Size                 int64   `structs:"size" json:"size"`
 	Suffix               string  `structs:"suffix" json:"suffix"`
 	Duration             float32 `structs:"duration" json:"duration"`
@@ -160,9 +161,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 	}
 
 	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
-	a.Date,_ = AllOrNothing(dates)
+	a.Date, _ = AllOrNothing(dates)
 	a.ReleaseDate, a.Editions = AllOrNothing(releaseDates)
-	a.Comment,_ = AllOrNothing(comments)
+	a.Comment, _ = AllOrNothing(comments)
 	a.Genre = slice.MostFrequent(a.Genres).Name
 	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
 	a.Genres = slices.Compact(a.Genres)
@@ -179,7 +180,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 func AllOrNothing(items []string) (string, int) {
 	items = slices.Compact(items)
 	if len(items) == 1 {
-		return items[0],1
+		return items[0], 1
 	}
 	if len(items) > 1 {
 		sort.Strings(items)
