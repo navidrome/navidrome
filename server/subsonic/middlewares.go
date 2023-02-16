@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	ua "github.com/mileusna/useragent"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
@@ -20,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
+	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 func postFormToQueryParams(next http.Handler) http.Handler {
@@ -164,7 +166,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 					MaxAge:   consts.CookieExpiry,
 					HttpOnly: true,
 					SameSite: http.SameSiteStrictMode,
-					Path:     "/",
+					Path:     IfZero(conf.Server.BaseURL, "/"),
 				}
 				http.SetCookie(w, cookie)
 			}
