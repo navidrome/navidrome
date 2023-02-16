@@ -11,6 +11,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/navidrome/navidrome/conf"
+	. "github.com/navidrome/navidrome/utils/gg"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
@@ -129,7 +131,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteStrictMode,
-				Path:     "/",
+				Path:     IfZero(conf.Server.BaseURL, "/"),
 			}
 			http.SetCookie(w, c)
 		} else {
