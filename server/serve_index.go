@@ -41,7 +41,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"version":                   consts.Version,
 			"firstTime":                 firstTime,
 			"variousArtistsId":          consts.VariousArtistsID,
-			"baseURL":                   utils.SanitizeText(strings.TrimSuffix(conf.Server.BaseURL, "/")),
+			"baseURL":                   utils.SanitizeText(strings.TrimSuffix(conf.Server.BasePath, "/")),
 			"loginBackgroundURL":        utils.SanitizeText(conf.Server.UILoginBackgroundURL),
 			"welcomeMessage":            utils.SanitizeText(conf.Server.UIWelcomeMessage),
 			"maxSidebarPlaylists":       conf.Server.MaxSidebarPlaylists,
@@ -68,7 +68,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"defaultDownsamplingFormat": conf.Server.DefaultDownsamplingFormat,
 		}
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
-			appConfig["loginBackgroundURL"] = path.Join(conf.Server.BaseURL, conf.Server.UILoginBackgroundURL)
+			appConfig["loginBackgroundURL"] = path.Join(conf.Server.BasePath, conf.Server.UILoginBackgroundURL)
 		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {

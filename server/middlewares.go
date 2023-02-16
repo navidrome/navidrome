@@ -131,7 +131,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteStrictMode,
-				Path:     IfZero(conf.Server.BaseURL, "/"),
+				Path:     IfZero(conf.Server.BasePath, "/"),
 			}
 			http.SetCookie(w, c)
 		} else {

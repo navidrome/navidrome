@@ -27,7 +27,7 @@ type Router struct {
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, share core.Share) *Router {
 	p := &Router{ds: ds, artwork: artwork, streamer: streamer, share: share}
-	shareRoot := path.Join(conf.Server.BaseURL, consts.URLPathPublic)
+	shareRoot := path.Join(conf.Server.BasePath, consts.URLPathPublic)
 	p.assetsHandler = http.StripPrefix(shareRoot, http.FileServer(http.FS(ui.BuildAssets())))
 	p.Handler = p.routes()
 
