@@ -57,7 +57,7 @@ func (pd *PlaybackDevice) Get() (model.MediaFiles, DeviceStatus, error) {
 }
 
 func (pd *PlaybackDevice) Status() (DeviceStatus, error) {
-	log.Debug(fmt.Sprintf("processing Status action on: %s", pd))
+	log.Debug(fmt.Sprintf("processing Status action on: %s, queue: %s", pd, pd.PlaybackQueue))
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Set(ids []string) (DeviceStatus, error) {
@@ -151,9 +151,7 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 		log.Fatal(err)
 	}
 
-	pd.Ctrl.Streamer = streamer
-	pd.Ctrl.Paused = true
-
+	pd.Ctrl = &beep.Ctrl{Streamer: streamer, Paused: true}
 	pd.Volume = &effects.Volume{Streamer: pd.Ctrl, Base: 2}
 
 	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))

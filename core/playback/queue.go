@@ -1,6 +1,8 @@
 package playback
 
 import (
+	"fmt"
+
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -15,6 +17,14 @@ func NewQueue() *Queue {
 		Index: -1,
 		Items: model.MediaFiles{},
 	}
+}
+
+func (pd *Queue) String() string {
+	filenames := ""
+	for _, item := range pd.Items {
+		filenames += item.Path + " "
+	}
+	return fmt.Sprintf("#Items: %d, idx: %d, files: %s", len(pd.Items), pd.Index, filenames)
 }
 
 // returns the current mediafile or nil
