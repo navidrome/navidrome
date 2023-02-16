@@ -22,6 +22,7 @@ type PlaybackDevice struct {
 	DeviceName           string
 	Ctrl                 *beep.Ctrl
 	Volume               *effects.Volume
+	Prepared             bool
 	PlaybackQueue        *Queue
 	Gain                 float32
 }
@@ -42,13 +43,14 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		DeviceName:           deviceName,
 		Ctrl:                 &beep.Ctrl{Paused: true},
 		Volume:               &effects.Volume{},
+		Prepared:             false,
 		Gain:                 0,
 		PlaybackQueue:        NewQueue(),
 	}
 }
 
 func (pd *PlaybackDevice) String() string {
-	return fmt.Sprintf("Name: %s, Gain: %f", pd.Name, pd.Gain)
+	return fmt.Sprintf("Name: %s, Gain: %.4f, Prepared: %t", pd.Name, pd.Gain, pd.Prepared)
 }
 
 func (pd *PlaybackDevice) Get() (model.MediaFiles, DeviceStatus, error) {
@@ -60,6 +62,8 @@ func (pd *PlaybackDevice) Status() (DeviceStatus, error) {
 	log.Debug(fmt.Sprintf("processing Status action on: %s, queue: %s", pd, pd.PlaybackQueue))
 	return pd.getStatus(), nil
 }
+
+// set is similar to a clear followed by a add, but will not change the currently playing track.
 func (pd *PlaybackDevice) Set(ids []string) (DeviceStatus, error) {
 	pd.Clear()
 	return pd.Add(ids)
@@ -73,7 +77,9 @@ func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
 		return DeviceStatus{}, fmt.Errorf("there is no current song")
 	}
 
-	pd.prepareSong(currentSong.Path)
+	if !pd.Prepared {
+		pd.prepareSong(currentSong.Path)
+	}
 	pd.playHead()
 	return pd.getStatus(), nil
 }
@@ -153,6 +159,7 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 
 	pd.Ctrl = &beep.Ctrl{Streamer: streamer, Paused: true}
 	pd.Volume = &effects.Volume{Streamer: pd.Ctrl, Base: 2}
+	pd.Prepared = true
 
 	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	if err != nil {
