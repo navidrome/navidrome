@@ -82,7 +82,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 
 	switch action {
 	case ActionGet:
-		mediafiles, status, err := pb.Get(user)
+		mediafiles, status, err := pb.Get()
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +96,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		response.JukeboxPlaylist = &playlist
 		return response, nil
 	case ActionStatus:
-		status, err := pb.Status(user)
+		status, err := pb.Status()
 		if err != nil {
 			return nil, err
 		}
@@ -106,19 +106,19 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
 		}
-		status, err := pb.Set(user, ids)
+		status, err := pb.Set(ids)
 		if err != nil {
 			return nil, err
 		}
 		return statusResponse(status), nil
 	case ActionStart:
-		status, err := pb.Start(user)
+		status, err := pb.Start()
 		if err != nil {
 			return nil, err
 		}
 		return statusResponse(status), nil
 	case ActionStop:
-		status, err := pb.Stop(user)
+		status, err := pb.Stop()
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +134,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter offset, err: %s", err)
 		}
 
-		status, err := pb.Skip(user, index, offset)
+		status, err := pb.Skip(index, offset)
 		if err != nil {
 			return nil, err
 		}
@@ -145,13 +145,13 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
 		}
 
-		status, err := pb.Add(user, ids)
+		status, err := pb.Add(ids)
 		if err != nil {
 			return nil, err
 		}
 		return statusResponse(status), nil
 	case ActionClear:
-		status, err := pb.Clear(user)
+		status, err := pb.Clear()
 		if err != nil {
 			return nil, err
 		}
@@ -162,13 +162,13 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 			return nil, err
 		}
 
-		status, err := pb.Remove(user, index)
+		status, err := pb.Remove(index)
 		if err != nil {
 			return nil, err
 		}
 		return statusResponse(status), nil
 	case ActionShuffle:
-		status, err := pb.Shuffle(user)
+		status, err := pb.Shuffle()
 		if err != nil {
 			return nil, err
 		}
@@ -183,7 +183,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "error parsing gain integer value, err: %s", err)
 		}
-		status, err := pb.SetGain(user, float32(gain))
+		status, err := pb.SetGain(float32(gain))
 		if err != nil {
 			return nil, err
 		}

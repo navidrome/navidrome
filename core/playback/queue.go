@@ -1,6 +1,9 @@
 package playback
 
-import "github.com/navidrome/navidrome/model"
+import (
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+)
 
 type Queue struct {
 	Index int
@@ -19,6 +22,11 @@ func (pd *Queue) Current() *model.MediaFile {
 	if pd.Index == -1 {
 		return nil
 	}
+	if pd.Index >= len(pd.Items) {
+		log.Error("internal error: current song index out of bounds", "idx", pd.Index, "length", len(pd.Items))
+		return nil
+	}
+
 	return &pd.Items[pd.Index]
 }
 

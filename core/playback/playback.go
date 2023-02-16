@@ -87,5 +87,10 @@ func (ps *playbackServer) GetMediaFile(id string) (*model.MediaFile, error) {
 func (ps *playbackServer) GetDevice(user string) (*PlaybackDevice, error) {
 	log.Debug("processing GetDevice")
 	// README: here we might plug-in the user-device mapping one fine day
-	return ps.getDefaultDevice()
+	device, err := ps.getDefaultDevice()
+	if err != nil {
+		return &PlaybackDevice{}, err
+	}
+	device.User = user
+	return device, nil
 }

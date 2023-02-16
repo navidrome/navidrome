@@ -40,7 +40,7 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		Name:                 name,
 		Method:               method,
 		DeviceName:           deviceName,
-		Ctrl:                 &beep.Ctrl{},
+		Ctrl:                 &beep.Ctrl{Paused: true},
 		Volume:               &effects.Volume{},
 		Gain:                 0,
 		PlaybackQueue:        NewQueue(),
@@ -51,21 +51,21 @@ func (pd *PlaybackDevice) String() string {
 	return fmt.Sprintf("Name: %s, Gain: %f", pd.Name, pd.Gain)
 }
 
-func (pd *PlaybackDevice) Get(user string) (model.MediaFiles, DeviceStatus, error) {
+func (pd *PlaybackDevice) Get() (model.MediaFiles, DeviceStatus, error) {
 	log.Debug("processing Get action")
 	return pd.PlaybackQueue.Get(), pd.getStatus(), nil
 }
 
-func (pd *PlaybackDevice) Status(user string) (DeviceStatus, error) {
+func (pd *PlaybackDevice) Status() (DeviceStatus, error) {
 	log.Debug(fmt.Sprintf("processing Status action on: %s", pd))
 	return pd.getStatus(), nil
 }
-func (pd *PlaybackDevice) Set(user string, ids []string) (DeviceStatus, error) {
-	pd.Clear(user)
-	return pd.Add(user, ids)
+func (pd *PlaybackDevice) Set(ids []string) (DeviceStatus, error) {
+	pd.Clear()
+	return pd.Add(ids)
 }
 
-func (pd *PlaybackDevice) Start(user string) (DeviceStatus, error) {
+func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
 	log.Debug("processing Start action")
 
 	currentSong := pd.PlaybackQueue.Current()
@@ -77,16 +77,16 @@ func (pd *PlaybackDevice) Start(user string) (DeviceStatus, error) {
 	pd.playHead()
 	return pd.getStatus(), nil
 }
-func (pd *PlaybackDevice) Stop(user string) (DeviceStatus, error) {
+func (pd *PlaybackDevice) Stop() (DeviceStatus, error) {
 	log.Debug("processing Stop action")
 	pd.pauseHead()
 	return pd.getStatus(), nil
 }
-func (pd *PlaybackDevice) Skip(user string, index int, offset int) (DeviceStatus, error) {
+func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
 	log.Debug("processing Skip action")
 	return pd.getStatus(), nil
 }
-func (pd *PlaybackDevice) Add(user string, ids []string) (DeviceStatus, error) {
+func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
 	log.Debug("processing Add action")
 
 	items := model.MediaFiles{}
@@ -103,19 +103,19 @@ func (pd *PlaybackDevice) Add(user string, ids []string) (DeviceStatus, error) {
 
 	return pd.getStatus(), nil
 }
-func (pd *PlaybackDevice) Clear(user string) (DeviceStatus, error) {
+func (pd *PlaybackDevice) Clear() (DeviceStatus, error) {
 	log.Debug(fmt.Sprintf("processing Clear action on: %s", pd))
 	return pd.getStatus(), nil
 }
-func (pd *PlaybackDevice) Remove(user string, index int) (DeviceStatus, error) {
+func (pd *PlaybackDevice) Remove(index int) (DeviceStatus, error) {
 	log.Debug("processing Remove action")
 	return pd.getStatus(), nil
 }
-func (pd *PlaybackDevice) Shuffle(user string) (DeviceStatus, error) {
+func (pd *PlaybackDevice) Shuffle() (DeviceStatus, error) {
 	log.Debug("processing Shuffle action")
 	return pd.getStatus(), nil
 }
-func (pd *PlaybackDevice) SetGain(user string, gain float32) (DeviceStatus, error) {
+func (pd *PlaybackDevice) SetGain(gain float32) (DeviceStatus, error) {
 	log.Debug(fmt.Sprintf("processing SetGain action on: %s", pd))
 
 	pd.Gain = gain
@@ -169,7 +169,7 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 
 func (pd *PlaybackDevice) getStatus() DeviceStatus {
 	return DeviceStatus{
-		CurrentIndex: 0,
+		CurrentIndex: pd.PlaybackQueue.Index,
 		Playing:      !pd.Ctrl.Paused,
 		Gain:         pd.Gain,
 		Position:     pd.Position(),
