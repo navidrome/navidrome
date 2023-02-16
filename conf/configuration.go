@@ -2,6 +2,7 @@ package conf
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -28,6 +29,9 @@ type configOptions struct {
 	ScanSchedule                 string
 	SessionTimeout               time.Duration
 	BaseURL                      string
+	BasePath                     string
+	BaseHost                     string
+	BaseScheme                   string
 	UILoginBackgroundURL         string
 	UIWelcomeMessage             string
 	MaxSidebarPlaylists          int
@@ -151,6 +155,19 @@ func Load() {
 
 	if err := validateScanSchedule(); err != nil {
 		os.Exit(1)
+	}
+
+	if Server.BaseURL != "" {
+		u, err := url.Parse(Server.BaseURL)
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "FATAL: Invalid BaseURL %s: %s\n", Server.BaseURL, err.Error())
+			os.Exit(1)
+		}
+		Server.BasePath = u.Path
+		u.Path = ""
+		u.RawQuery = ""
+		Server.BaseHost = u.Host
+		Server.BaseScheme = u.Scheme
 	}
 
 	// Print current configuration if log level is Debug
