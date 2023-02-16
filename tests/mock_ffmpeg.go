@@ -5,8 +5,7 @@ import (
 	"io"
 	"strings"
 	"sync"
-
-	"github.com/navidrome/navidrome/utils"
+	"sync/atomic"
 )
 
 func NewMockFFmpeg(data string) *MockFFmpeg {
@@ -16,7 +15,7 @@ func NewMockFFmpeg(data string) *MockFFmpeg {
 type MockFFmpeg struct {
 	io.Reader
 	lock   sync.Mutex
-	closed utils.AtomicBool
+	closed atomic.Bool
 	Error  error
 }
 
@@ -54,10 +53,10 @@ func (ff *MockFFmpeg) Read(p []byte) (n int, err error) {
 }
 
 func (ff *MockFFmpeg) Close() error {
-	ff.closed.Set(true)
+	ff.closed.Store(true)
 	return nil
 }
 
 func (ff *MockFFmpeg) IsClosed() bool {
-	return ff.closed.Get()
+	return ff.closed.Load()
 }
