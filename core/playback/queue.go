@@ -69,3 +69,23 @@ func (pd *Queue) Clear() {
 func (pd *Queue) Remove(idx int) {}
 
 func (pd *Queue) Shuffle() {}
+
+// Sets the index to a new, valid value inside the Items. Values lower than zero are going to be zero,
+// values above will be limited by number of items.
+func (pd *Queue) SetIndex(idx int) {
+	pd.Index = max(0, min(idx, len(pd.Items)-1))
+}
+
+func max(x, y int) int {
+	if x < y {
+		return y
+	}
+	return x
+}
+
+func min(x, y int) int {
+	if x > y {
+		return y
+	}
+	return x
+}

@@ -89,7 +89,25 @@ func (pd *PlaybackDevice) Stop() (DeviceStatus, error) {
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
-	log.Debug("processing Skip action")
+	log.Debug("processing Skip action", "index", index, "offset", offset)
+
+	if index == pd.PlaybackQueue.Index {
+		log.Debug("Nothing to do, we are on the right index")
+		return pd.getStatus(), nil
+	}
+
+	wasPlaying := pd.isPlaying()
+
+	if wasPlaying {
+		pd.pauseHead()
+	}
+	pd.PlaybackQueue.SetIndex(index)
+	pd.Prepared = false
+
+	if wasPlaying {
+		pd.Start()
+	}
+
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
@@ -145,6 +163,10 @@ func (pd *PlaybackDevice) pauseHead() {
 	speaker.Unlock()
 }
 
+func (pd *PlaybackDevice) isPlaying() bool {
+	return pd.Prepared && !pd.Ctrl.Paused
+}
+
 func (pd *PlaybackDevice) prepareSong(songname string) {
 	log.Debug("Playing song: " + songname)
 	f, err := os.Open(songname)
@@ -175,7 +197,7 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 func (pd *PlaybackDevice) getStatus() DeviceStatus {
 	return DeviceStatus{
 		CurrentIndex: pd.PlaybackQueue.Index,
-		Playing:      !pd.Ctrl.Paused,
+		Playing:      pd.isPlaying(),
 		Gain:         pd.Gain,
 		Position:     pd.Position(),
 	}
