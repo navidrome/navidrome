@@ -10,7 +10,7 @@ import (
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/model"
 )
 
 type PlaybackDevice struct {
@@ -22,7 +22,7 @@ type PlaybackDevice struct {
 	DeviceName           string
 	Ctrl                 *beep.Ctrl
 	Volume               *effects.Volume
-	PlaybackQueue        Queue
+	PlaybackQueue        *Queue
 	Gain                 float32
 }
 
@@ -43,7 +43,7 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		Ctrl:                 &beep.Ctrl{},
 		Volume:               &effects.Volume{},
 		Gain:                 0,
-		PlaybackQueue:        Queue{},
+		PlaybackQueue:        NewQueue(),
 	}
 }
 
@@ -51,9 +51,9 @@ func (pd *PlaybackDevice) String() string {
 	return fmt.Sprintf("Name: %s, Gain: %f", pd.Name, pd.Gain)
 }
 
-func (pd *PlaybackDevice) Get(user string) (responses.JukeboxPlaylist, error) {
+func (pd *PlaybackDevice) Get(user string) (model.MediaFiles, DeviceStatus, error) {
 	log.Debug("processing Get action")
-	return responses.JukeboxPlaylist{}, nil
+	return pd.PlaybackQueue.Get(), pd.getStatus(), nil
 }
 
 func (pd *PlaybackDevice) Status(user string) (DeviceStatus, error) {
@@ -61,21 +61,19 @@ func (pd *PlaybackDevice) Status(user string) (DeviceStatus, error) {
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Set(user string, ids []string) (DeviceStatus, error) {
-	log.Debug("processing Set action.")
-
-	mf, err := pd.ParentPlaybackServer.GetMediaFile(ids[0])
-	if err != nil {
-		return DeviceStatus{}, err
-	}
-
-	log.Debug("Found mediafile: " + mf.Path)
-
-	pd.prepareSong(mf.Path)
-
-	return pd.getStatus(), nil
+	pd.Clear(user)
+	return pd.Add(user, ids)
 }
+
 func (pd *PlaybackDevice) Start(user string) (DeviceStatus, error) {
 	log.Debug("processing Start action")
+
+	currentSong := pd.PlaybackQueue.Current()
+	if currentSong == nil {
+		return DeviceStatus{}, fmt.Errorf("there is no current song")
+	}
+
+	pd.prepareSong(currentSong.Path)
 	pd.playHead()
 	return pd.getStatus(), nil
 }
@@ -90,7 +88,19 @@ func (pd *PlaybackDevice) Skip(user string, index int, offset int) (DeviceStatus
 }
 func (pd *PlaybackDevice) Add(user string, ids []string) (DeviceStatus, error) {
 	log.Debug("processing Add action")
-	// pd.Playlist.Entry = append(pd.Playlist.Entry, child)
+
+	items := model.MediaFiles{}
+
+	for _, id := range ids {
+		mf, err := pd.ParentPlaybackServer.GetMediaFile(id)
+		if err != nil {
+			return DeviceStatus{}, err
+		}
+		log.Debug("Found mediafile: " + mf.Path)
+		items = append(items, *mf)
+	}
+	pd.PlaybackQueue.Add(items)
+
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Clear(user string) (DeviceStatus, error) {
@@ -111,7 +121,6 @@ func (pd *PlaybackDevice) SetGain(user string, gain float32) (DeviceStatus, erro
 	pd.Gain = gain
 
 	speaker.Lock()
-	// pd.Volume.Silent = !pd.Volume.Silent
 	pd.Volume.Volume -= 0.1
 	speaker.Unlock()
 

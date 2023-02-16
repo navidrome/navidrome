@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
@@ -81,10 +82,16 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 
 	switch action {
 	case ActionGet:
-		playlist, err := pb.Get(user)
+		mediafiles, status, err := pb.Get(user)
 		if err != nil {
 			return nil, err
 		}
+
+		playlist := responses.JukeboxPlaylist{
+			JukeboxStatus: *deviceStatusToJukeboxStatus(status),
+			Entry:         mediafilesToChilds(mediafiles),
+		}
+
 		response := newResponse()
 		response.JukeboxPlaylist = &playlist
 		return response, nil
@@ -190,11 +197,20 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 
 func statusResponse(status playback.DeviceStatus) *responses.Subsonic {
 	response := newResponse()
-	response.JukeboxStatus = &responses.JukeboxStatus{
+	response.JukeboxStatus = deviceStatusToJukeboxStatus(status)
+	return response
+}
+
+func deviceStatusToJukeboxStatus(status playback.DeviceStatus) *responses.JukeboxStatus {
+	return &responses.JukeboxStatus{
 		CurrentIndex: status.CurrentIndex,
 		Playing:      status.Playing,
 		Gain:         status.Gain,
 		Position:     status.Position,
 	}
-	return response
+}
+
+// FIXME: implement
+func mediafilesToChilds(items model.MediaFiles) []responses.Child {
+	return []responses.Child{}
 }
