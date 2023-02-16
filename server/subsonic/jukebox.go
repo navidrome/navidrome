@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -89,7 +90,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 
 		playlist := responses.JukeboxPlaylist{
 			JukeboxStatus: *deviceStatusToJukeboxStatus(status),
-			Entry:         mediafilesToChilds(mediafiles),
+			Entry:         mediafilesToChilds(r.Context(), mediafiles),
 		}
 
 		response := newResponse()
@@ -210,7 +211,10 @@ func deviceStatusToJukeboxStatus(status playback.DeviceStatus) *responses.Jukebo
 	}
 }
 
-// FIXME: implement
-func mediafilesToChilds(items model.MediaFiles) []responses.Child {
-	return []responses.Child{}
+func mediafilesToChilds(ctx context.Context, items model.MediaFiles) []responses.Child {
+	result := []responses.Child{}
+	for _, item := range items {
+		result = append(result, ChildFromMediaFile(ctx, item))
+	}
+	return result
 }

@@ -153,8 +153,7 @@ func getTranscoding(ctx context.Context) (format string, bitRate int) {
 
 // This seems to be duplicated, but it is an initial step into merging `engine` and the `subsonic` packages,
 // In the future there won't be any conversion to/from `engine. Entry` anymore
-// FIXME: there's a copy in playback which needs to be consolidated as well.
-func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
+func ChildFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
 	child := responses.Child{}
 	child.Id = mf.ID
 	child.Title = mf.Title
@@ -215,7 +214,7 @@ func mapSlashToDash(target string) string {
 func childrenFromMediaFiles(ctx context.Context, mfs model.MediaFiles) []responses.Child {
 	children := make([]responses.Child, len(mfs))
 	for i, mf := range mfs {
-		children[i] = childFromMediaFile(ctx, mf)
+		children[i] = ChildFromMediaFile(ctx, mf)
 	}
 	return children
 }
