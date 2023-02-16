@@ -14,7 +14,7 @@ import (
 
 type PlaybackServer interface {
 	Run(ctx context.Context) error
-	GetDevice(user string) (*PlaybackDevice, error)
+	GetDeviceForUser(user string) (*PlaybackDevice, error)
 	GetMediaFile(id string) (*model.MediaFile, error)
 }
 
@@ -84,7 +84,7 @@ func (ps *playbackServer) GetMediaFile(id string) (*model.MediaFile, error) {
 	return ps.datastore.MediaFile(*ps.ctx).Get(id)
 }
 
-func (ps *playbackServer) GetDevice(user string) (*PlaybackDevice, error) {
+func (ps *playbackServer) GetDeviceForUser(user string) (*PlaybackDevice, error) {
 	log.Debug("processing GetDevice")
 	// README: here we might plug-in the user-device mapping one fine day
 	device, err := ps.getDefaultDevice()
