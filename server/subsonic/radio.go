@@ -151,7 +151,7 @@ func (api *Router) proxyIcon(w http.ResponseWriter, r *http.Request) {
 }
 
 var (
-	headers = []string{"content-type", "icy-br", "icy-genre", "icy-name", "icy-pub", "icy-sr", "icy-url", "icy-metaint"}
+	headers = []string{"ice-audio-info", "icy-br", "icy-description", "icy-genre", "icy-name", "icy-pub", "icy-sr", "icy-url", "icy-vbr", "icy-metaint"}
 )
 
 func (api *Router) proxyRadio(w http.ResponseWriter, r *http.Request) {
@@ -203,8 +203,13 @@ func (api *Router) proxyRadio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, header := range headers {
-		w.Header().Set(header, headResp.Header.Get(header))
+		val := headResp.Header.Get(header)
+		if val != "" {
+			w.Header().Set(header, val)
+		}
 	}
+
+	w.Header().Set("Content-Type", mainResp.Header.Get("Content-Type"))
 
 	defer mainResp.Body.Close()
 	reader := bufio.NewReader(mainResp.Body)

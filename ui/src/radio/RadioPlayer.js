@@ -116,7 +116,7 @@ const RadioPlayer = ({
           setPlaying(false)
         },
         icyDetectionTimeout: 10000,
-        enableLogging: true,
+        enableLogging: false, // set this to true for dev
         audioElement: audioRef.current,
         playbackMethod: 'mediasource',
       })
