@@ -64,7 +64,7 @@ const EditionRow = forwardRef(
     if (record.releaseDate) {
       editionTitle.push(translate('resources.album.fields.released'))
       editionTitle.push(FormatFullDate(record.releaseDate))
-      if (record.catalogNum) {
+      if (record.catalogNum && isDesktop) {
         editionTitle.push("· Cat #")
         editionTitle.push(record.catalogNum)
       }
