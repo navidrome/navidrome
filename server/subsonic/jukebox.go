@@ -132,7 +132,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 
 		offset, err := requiredParamInt(r, "offset")
 		if err != nil {
-			return nil, newError(responses.ErrorMissingParameter, "missing parameter offset, err: %s", err)
+			offset = 0
 		}
 
 		status, err := pb.Skip(index, offset)
