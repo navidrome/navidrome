@@ -25,6 +25,7 @@ type PlaybackDevice struct {
 	Prepared             bool
 	PlaybackQueue        *Queue
 	Gain                 float32
+	SampleRate           beep.SampleRate
 }
 
 type DeviceStatus struct {
@@ -80,28 +81,30 @@ func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
 	if !pd.Prepared {
 		pd.prepareSong(currentSong.Path)
 	}
-	pd.playHead()
+
+	err := pd.SetPosition()
+	if err != nil {
+		return DeviceStatus{}, fmt.Errorf("could not set position to %d", pd.PlaybackQueue.Offset)
+	}
+
+	pd.Play()
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Stop() (DeviceStatus, error) {
 	log.Debug("processing Stop action")
-	pd.pauseHead()
+	pd.Pause()
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
 	log.Debug("processing Skip action", "index", index, "offset", offset)
 
-	if index == pd.PlaybackQueue.Index {
-		log.Debug("Nothing to do, we are on the right index")
-		return pd.getStatus(), nil
-	}
-
 	wasPlaying := pd.isPlaying()
 
 	if wasPlaying {
-		pd.pauseHead()
+		pd.Pause()
 	}
 	pd.PlaybackQueue.SetIndex(index)
+	pd.PlaybackQueue.SetOffset(offset)
 	pd.Prepared = false
 
 	if wasPlaying {
@@ -151,13 +154,13 @@ func (pd *PlaybackDevice) SetGain(gain float32) (DeviceStatus, error) {
 	return pd.getStatus(), nil
 }
 
-func (pd *PlaybackDevice) playHead() {
+func (pd *PlaybackDevice) Play() {
 	speaker.Lock()
 	pd.Ctrl.Paused = false
 	speaker.Unlock()
 }
 
-func (pd *PlaybackDevice) pauseHead() {
+func (pd *PlaybackDevice) Pause() {
 	speaker.Lock()
 	pd.Ctrl.Paused = true
 	speaker.Unlock()
@@ -182,6 +185,7 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 	pd.Ctrl = &beep.Ctrl{Streamer: streamer, Paused: true}
 	pd.Volume = &effects.Volume{Streamer: pd.Ctrl, Base: 2}
 	pd.Prepared = true
+	pd.SampleRate = format.SampleRate
 
 	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	if err != nil {
@@ -203,10 +207,24 @@ func (pd *PlaybackDevice) getStatus() DeviceStatus {
 	}
 }
 
+// Position returns the playback position in seconds
 func (pd *PlaybackDevice) Position() int {
 	streamer, ok := pd.Ctrl.Streamer.(beep.StreamSeeker)
 	if ok {
-		return streamer.Position()
+		position := pd.SampleRate.D(streamer.Position())
+		posSecs := position.Round(time.Second).Seconds()
+		return int(posSecs)
 	}
 	return 0
+}
+
+func (pd *PlaybackDevice) SetPosition() error {
+	streamer, ok := pd.Ctrl.Streamer.(beep.StreamSeeker)
+	if ok {
+		sampleRatePerSecond := pd.SampleRate.N(time.Second)
+		nextPosition := sampleRatePerSecond * pd.PlaybackQueue.Offset
+		log.Debug("Samplerate per second", "samplerate", sampleRatePerSecond)
+		return streamer.Seek(nextPosition)
+	}
+	return fmt.Errorf("streamer is not seekable")
 }

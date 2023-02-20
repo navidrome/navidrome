@@ -8,14 +8,16 @@ import (
 )
 
 type Queue struct {
-	Index int
-	Items model.MediaFiles
+	Index  int
+	Items  model.MediaFiles
+	Offset int
 }
 
 func NewQueue() *Queue {
 	return &Queue{
-		Index: -1,
-		Items: model.MediaFiles{},
+		Index:  -1,
+		Items:  model.MediaFiles{},
+		Offset: 0,
 	}
 }
 
@@ -24,7 +26,7 @@ func (pd *Queue) String() string {
 	for _, item := range pd.Items {
 		filenames += item.Path + " "
 	}
-	return fmt.Sprintf("#Items: %d, idx: %d, files: %s", len(pd.Items), pd.Index, filenames)
+	return fmt.Sprintf("#Items: %d, idx: %d, offset: %d, files: %s", len(pd.Items), pd.Index, pd.Offset, filenames)
 }
 
 // returns the current mediafile or nil
@@ -74,6 +76,13 @@ func (pd *Queue) Shuffle() {}
 // values above will be limited by number of items.
 func (pd *Queue) SetIndex(idx int) {
 	pd.Index = max(0, min(idx, len(pd.Items)-1))
+}
+
+// SetOffset sets the plaing offset as second into the current track and checks if offset is within the duration of the track
+// FIXME: implement check
+func (pd *Queue) SetOffset(offset int) error {
+	pd.Offset = offset
+	return nil
 }
 
 func max(x, y int) int {
