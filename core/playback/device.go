@@ -45,7 +45,7 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		Ctrl:                 &beep.Ctrl{Paused: true},
 		Volume:               &effects.Volume{},
 		Prepared:             false,
-		Gain:                 0,
+		Gain:                 0.5,
 		PlaybackQueue:        NewQueue(),
 	}
 }
@@ -143,15 +143,19 @@ func (pd *PlaybackDevice) Shuffle() (DeviceStatus, error) {
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) SetGain(gain float32) (DeviceStatus, error) {
-	log.Debug(fmt.Sprintf("processing SetGain action on: %s", pd))
+	difference := gain - pd.Gain
+	log.Debug(fmt.Sprintf("processing SetGain action. Actual gain: %f, gain to set: %f, difference: %f", pd.Gain, gain, difference))
 
+	pd.adjustVolume(float64(difference) * 5)
 	pd.Gain = gain
 
-	speaker.Lock()
-	pd.Volume.Volume -= 0.1
-	speaker.Unlock()
-
 	return pd.getStatus(), nil
+}
+
+func (pd *PlaybackDevice) adjustVolume(value float64) {
+	speaker.Lock()
+	pd.Volume.Volume += value
+	speaker.Unlock()
 }
 
 func (pd *PlaybackDevice) Play() {
