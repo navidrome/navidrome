@@ -27,7 +27,9 @@ func New() FFmpeg {
 }
 
 const (
-	extractImageCmd = "ffmpeg -i %s -an -vcodec copy -f image2pipe -"
+	// OGG cover uses "Theora", which is not supported by the browser's image tag.
+	// However, we can tell ffmpeg to perform the image conversion for us.
+	extractImageCmd = "ffmpeg -i %s -an -c:v mjpeg -f image2pipe -"
 	probeCmd        = "ffmpeg %s -f ffmetadata"
 )
 
