@@ -65,6 +65,7 @@ func (pd *Queue) Add(items model.MediaFiles) {
 func (pd *Queue) Clear() {
 	pd.Index = -1
 	pd.Items = nil
+	pd.Offset = 0
 }
 
 // idx Zero-based index of the song to skip to or remove.

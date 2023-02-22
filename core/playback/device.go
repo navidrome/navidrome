@@ -73,13 +73,13 @@ func (pd *PlaybackDevice) Set(ids []string) (DeviceStatus, error) {
 func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
 	log.Debug("processing Start action")
 
-	currentSong := pd.PlaybackQueue.Current()
-	if currentSong == nil {
+	currentTrack := pd.PlaybackQueue.Current()
+	if currentTrack == nil {
 		return DeviceStatus{}, fmt.Errorf("there is no current song")
 	}
 
 	if !pd.Prepared {
-		pd.prepareSong(currentSong.Path)
+		pd.loadTrack(*currentTrack)
 	}
 
 	err := pd.SetPosition()
@@ -132,6 +132,7 @@ func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
 }
 func (pd *PlaybackDevice) Clear() (DeviceStatus, error) {
 	log.Debug(fmt.Sprintf("processing Clear action on: %s", pd))
+	pd.PlaybackQueue.Clear()
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Remove(index int) (DeviceStatus, error) {
@@ -174,16 +175,24 @@ func (pd *PlaybackDevice) isPlaying() bool {
 	return pd.Prepared && !pd.Ctrl.Paused
 }
 
-func (pd *PlaybackDevice) prepareSong(songname string) {
-	log.Debug("Playing song: " + songname)
-	f, err := os.Open(songname)
-	if err != nil {
-		log.Fatal(err)
-	}
+func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
+	contentType := mf.ContentType()
+	log.Debug("loading track", "trackname", mf.Path, "mediatype", contentType)
 
-	streamer, format, err := mp3.Decode(f)
-	if err != nil {
-		log.Fatal(err)
+	var streamer beep.StreamSeekCloser
+	var format beep.Format
+	var err error
+
+	switch contentType {
+	case "audio/mpeg":
+		streamer, format, err = decodeMp3(mf.Path)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+	default:
+		log.Error("unsupported content type", "contentType", contentType)
+		return
 	}
 
 	pd.Ctrl = &beep.Ctrl{Streamer: streamer, Paused: true}
@@ -200,6 +209,15 @@ func (pd *PlaybackDevice) prepareSong(songname string) {
 		speaker.Play(pd.Volume)
 	}()
 
+}
+
+func decodeMp3(path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, beep.Format{}, err
+
+	}
+	return mp3.Decode(f)
 }
 
 func (pd *PlaybackDevice) getStatus() DeviceStatus {
