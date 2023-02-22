@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -18,14 +16,13 @@ type PlaybackServer interface {
 	Run(ctx context.Context) error
 	GetDeviceForUser(user string) (*PlaybackDevice, error)
 	GetMediaFile(id string) (*model.MediaFile, error)
-	GetStreamer() core.MediaStreamer
+	GetCtx() *context.Context
 }
 
 type playbackServer struct {
 	ctx             *context.Context
 	datastore       model.DataStore
 	playbackDevices []PlaybackDevice
-	mediaStreamer   core.MediaStreamer
 }
 
 func GetInstance() PlaybackServer {
@@ -36,8 +33,6 @@ func GetInstance() PlaybackServer {
 
 func (ps *playbackServer) Run(ctx context.Context) error {
 	ps.datastore = persistence.New(db.Db())
-	ps.mediaStreamer = ps.initStreamer(ps.datastore)
-
 	devices, err := ps.initDeviceStatus(conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
 	ps.playbackDevices = devices
 
@@ -53,14 +48,8 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (ps *playbackServer) initStreamer(datastore model.DataStore) core.MediaStreamer {
-	fFmpeg := ffmpeg.New()
-	transcodingCache := core.GetTranscodingCache()
-	return core.NewMediaStreamer(datastore, fFmpeg, transcodingCache)
-}
-
-func (ps *playbackServer) GetStreamer() core.MediaStreamer {
-	return ps.mediaStreamer
+func (ps *playbackServer) GetCtx() *context.Context {
+	return ps.ctx
 }
 
 func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string) ([]PlaybackDevice, error) {

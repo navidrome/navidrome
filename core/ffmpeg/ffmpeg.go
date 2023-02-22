@@ -16,6 +16,7 @@ import (
 type FFmpeg interface {
 	Transcode(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
+	ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error)
 	// TODO Move scanner ffmpeg probe to here
 }
 
@@ -24,6 +25,7 @@ func New() FFmpeg {
 }
 
 const extractImageCmd = "ffmpeg -i %s -an -vcodec copy -f image2pipe -"
+const createWavCmd = "ffmpeg -i %s -c:a pcm_s16le -f wav -"
 
 type ffmpeg struct{}
 
@@ -34,6 +36,11 @@ func (e *ffmpeg) Transcode(ctx context.Context, command, path string, maxBitRate
 
 func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, error) {
 	args := createFFmpegCommand(extractImageCmd, path, 0)
+	return e.start(ctx, args)
+}
+
+func (e *ffmpeg) ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error) {
+	args := createFFmpegCommand(createWavCmd, path, 0)
 	return e.start(ctx, args)
 }
 

@@ -2,6 +2,7 @@ package playback
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
+	"github.com/faiface/beep/wav"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -75,7 +78,7 @@ func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
 
 	currentTrack := pd.PlaybackQueue.Current()
 	if currentTrack == nil {
-		return DeviceStatus{}, fmt.Errorf("there is no current song")
+		return DeviceStatus{CurrentIndex: -1, Gain: 0.5, Playing: false}, nil
 	}
 
 	if !pd.Prepared {
@@ -133,6 +136,7 @@ func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
 func (pd *PlaybackDevice) Clear() (DeviceStatus, error) {
 	log.Debug(fmt.Sprintf("processing Clear action on: %s", pd))
 	pd.PlaybackQueue.Clear()
+	pd.Prepared = false
 	return pd.getStatus(), nil
 }
 func (pd *PlaybackDevice) Remove(index int) (DeviceStatus, error) {
@@ -187,9 +191,45 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 	case "audio/mpeg":
 		streamer, format, err = decodeMp3(mf.Path)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return
 		}
+	case "audio/x-wav":
+		streamer, format, err = decodeWAV(mf.Path)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+	case "audio/mp4":
+		fFmpeg := ffmpeg.New()
+		s, err := fFmpeg.ConvertToWAV(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		b, err := ioutil.ReadAll(s)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		tempFile, err := os.CreateTemp("", "*.wav")
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		tempFile.Write(b)
+		name := tempFile.Name()
+		tempFile.Close()
+
+		log.Debug("using tempfile: " + name)
+		streamer, format, err = decodeWAV(name)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
 	default:
 		log.Error("unsupported content type", "contentType", contentType)
 		return
@@ -202,7 +242,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 
 	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	go func() {
@@ -218,6 +258,15 @@ func decodeMp3(path string) (s beep.StreamSeekCloser, format beep.Format, err er
 
 	}
 	return mp3.Decode(f)
+}
+
+func decodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, beep.Format{}, err
+
+	}
+	return wav.Decode(f)
 }
 
 func (pd *PlaybackDevice) getStatus() DeviceStatus {
