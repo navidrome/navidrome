@@ -47,7 +47,7 @@ var _ = Describe("ffmpeg", func() {
   Stream #0:0: Audio: ... whatever ...
   Stream #0:1: Video: png, rgba(pc), 16x16 [SAR 5669:5669 DAR 1:1], 90k tbr, 90k tbn, 90k tbc (attached pic)
 			`)).To(Equal("png"))
-			
+
 			Expect(matchProbedVideoStreamType(`
   Duration: 00:00:03.66, start: 0.000000, bitrate: 22 kb/s
   Stream #0:0: Video: theora, yuv444p, 214x152 [SAR 1:1 DAR 107:76], 25 tbr, 25 tbn, 25 tbc
