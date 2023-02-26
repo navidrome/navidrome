@@ -7,12 +7,14 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
+	"golang.org/x/exp/slices"
 )
 
 type FFmpeg interface {
@@ -27,10 +29,17 @@ func New() FFmpeg {
 }
 
 const (
-	// OGG cover uses "Theora", which is not supported by the browser's image tag.
-	// However, we can tell ffmpeg to perform the image conversion for us.
-	extractImageCmd = "ffmpeg -i %s -an -c:v mjpeg -f image2pipe -"
+	extractImageCmd = "ffmpeg -i %s -an -c:v %i -f image2pipe -"
 	probeCmd        = "ffmpeg %s -f ffmetadata"
+)
+
+var (
+	//   Stream #0:0: Video: theora, yuv444p, 214x152 [SAR 1:1 DAR 107:76], 25 tbr, 25 tbn, 25 tbc
+	//   Stream #0:0: Video: webp, yuv420p
+	//   Stream #0:0: Video: mjpeg (Baseline),
+	//   Stream #0:0: Video: png, rgb24(pc),
+	videoStreamTypeRegex   = regexp.MustCompile(`Stream #\d+:\d*(?:\(\w+\))?: Video: ([^\s,]+)`)
+	supportedRawStreamType = []string{"webp", "mjpeg", "png"}
 )
 
 type ffmpeg struct{}
@@ -47,8 +56,23 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 	if _, err := ffmpegCmd(); err != nil {
 		return nil, err
 	}
-	args := createFFmpegCommand(extractImageCmd, path, 0)
+
+	imgFormat, err := e.GetVideoStreamType(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	args := createCoverExtractCommand(imgFormat, path)
 	return e.start(ctx, args)
+}
+
+func (e *ffmpeg) GetVideoStreamType(ctx context.Context, file_path string) (string, error) {
+	output, err := e.Probe(ctx, []string{file_path})
+	if err == nil {
+		return "", nil
+	}
+
+	return matchProbedVideoStreamType(output)
 }
 
 func (e *ffmpeg) Probe(ctx context.Context, files []string) (string, error) {
@@ -124,6 +148,25 @@ func createFFmpegCommand(cmd, path string, maxBitRate int) []string {
 	}
 
 	return split
+}
+
+func createCoverExtractCommand(imgFmt, audioPath string) []string {
+	ffmpegOutputFormat := "mjpeg"
+	if slices.Contains(supportedRawStreamType, imgFmt) {
+		ffmpegOutputFormat = "copy"
+	}
+
+	cmd := strings.ReplaceAll(extractImageCmd, "%i", ffmpegOutputFormat)
+	return createFFmpegCommand(cmd, audioPath, 0)
+}
+
+func matchProbedVideoStreamType(output string) (string, error) {
+	match := videoStreamTypeRegex.FindStringSubmatch(output)
+	if match == nil {
+		return "", fmt.Errorf("could not detect stream cover type")
+	}
+
+	return match[1], nil
 }
 
 func createProbeCommand(cmd string, inputs []string) []string {
