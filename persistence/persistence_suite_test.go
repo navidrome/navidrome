@@ -1,7 +1,11 @@
 package persistence
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -70,9 +74,40 @@ var (
 )
 
 var (
-	radioWithoutHomePage = model.Radio{ID: "1235", StreamUrl: "https://example.com:8000/1/stream.mp3", HomePageUrl: "", Name: "No Homepage"}
-	radioWithHomePage    = model.Radio{ID: "5010", StreamUrl: "https://example.com/stream.mp3", Name: "Example Radio", HomePageUrl: "https://example.com"}
-	testRadios           = model.Radios{radioWithoutHomePage, radioWithHomePage}
+	m3uLinks = model.RadioLinks{
+		model.RadioLink{Name: "1", Url: "https://example.com:6000/stream"},
+		model.RadioLink{Name: "2", Url: "https://example.com:6000/stream/20"},
+		model.RadioLink{Name: "3", Url: "https://example.com:6000/stream/40"},
+		model.RadioLink{Name: "4", Url: "https://example.com:6000/stream/100"},
+	}
+	m3uExtendedLinks = model.RadioLinks{
+		model.RadioLink{Name: "Sample Radio 10", Url: "https://example.com:8000/stream"},
+		model.RadioLink{Name: "Sample Radio 100", Url: "https://example.com:8000/stream/20"},
+		model.RadioLink{Name: "3", Url: "https://example.com:8000/stream/40"},
+		model.RadioLink{Name: "4", Url: "https://example.com:8000/stream/100"},
+	}
+	plsLinks = model.RadioLinks{
+		model.RadioLink{Name: "Sample Radio 1", Url: "https://example.com:1000/stream"},
+		model.RadioLink{Name: "2", Url: "https://example.com:1000/stream/4"},
+		model.RadioLink{Name: "Sample Radio 2", Url: "https://example.com:1000/stream/2"},
+		model.RadioLink{Name: "6", Url: "http://example.com:1000/stream/1000"},
+	}
+)
+
+var (
+	radioWithoutHomePage = model.Radio{ID: "1235", StreamUrl: "https://example.com:8000/1/stream.mp3", HomePageUrl: "", Name: "No Homepage", IsPlaylist: false}
+	radioWithHomePage    = model.Radio{ID: "5010", StreamUrl: "https://example.com/stream.mp3", Name: "Example Radio", HomePageUrl: "https://example.com", IsPlaylist: false}
+	radioWithM3u         = model.Radio{ID: "1234", StreamUrl: "https://example.com/stream.m3u", Name: "M3U Playlist", IsPlaylist: true, Links: m3uLinks}
+	radioWithExtendedM3u = model.Radio{ID: "2345", StreamUrl: "https://example.com/stream-extended.m3u", Name: "M3U Extended Playlist", IsPlaylist: true, Links: m3uExtendedLinks}
+	radioWithPls         = model.Radio{ID: "3456", StreamUrl: "https://example.com/stream.pls", Name: "PLS Playlist", IsPlaylist: true, Links: plsLinks}
+
+	testRadios = model.Radios{
+		radioWithoutHomePage,
+		radioWithHomePage,
+		radioWithM3u,
+		radioWithExtendedM3u,
+		radioWithPls,
+	}
 )
 
 var (
@@ -83,6 +118,54 @@ var (
 
 func P(path string) string {
 	return filepath.FromSlash(path)
+}
+
+func SetupRadio(repo *radioRepository, client *tests.FakeHttpClient) {
+	repo.client = client
+	client.Res = http.Response{
+		Body:       io.NopCloser(bytes.NewBufferString("")),
+		StatusCode: 200,
+	}
+
+	err := repo.Put(&radioWithoutHomePage)
+	if err != nil {
+		panic(err)
+	}
+
+	err = repo.Put(&radioWithHomePage)
+	if err != nil {
+		panic(err)
+	}
+
+	f, _ := os.Open("tests/fixtures/radios/radio.m3u")
+	header := http.Header{}
+	header.Set("Content-Type", M3U_TYPE)
+	client.Res = http.Response{
+		Body: f, StatusCode: 200, Header: header,
+	}
+	err = repo.Put(&radioWithM3u)
+	if err != nil {
+		panic(err)
+	}
+
+	f, _ = os.Open("tests/fixtures/radios/radio-extended.m3u")
+	client.Res = http.Response{
+		Body: f, StatusCode: 200, Header: header,
+	}
+	err = repo.Put(&radioWithExtendedM3u)
+	if err != nil {
+		panic(err)
+	}
+
+	f, _ = os.Open("tests/fixtures/radios/radio.pls")
+	header.Set("Content-Type", PLS_TYPE)
+	client.Res = http.Response{
+		Body: f, StatusCode: 200, Header: header,
+	}
+	err = repo.Put(&radioWithPls)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // Initialize test DB
@@ -136,13 +219,10 @@ var _ = BeforeSuite(func() {
 	}
 
 	rar := NewRadioRepository(ctx, o)
-	for i := range testRadios {
-		r := testRadios[i]
-		err := rar.Put(&r)
-		if err != nil {
-			panic(err)
-		}
-	}
+
+	testClient := &tests.FakeHttpClient{}
+
+	SetupRadio(rar.(*radioRepository), testClient)
 
 	plsBest = model.Playlist{
 		Name:      "Best",

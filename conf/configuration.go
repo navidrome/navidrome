@@ -90,7 +90,7 @@ type configOptions struct {
 	DevArtistInfoTimeToLive          time.Duration
 	DevAlbumInfoTimeToLive           time.Duration
 	EnableProxy                      bool
-	DevMaxRadioStreams               int
+	MaxRadioStreams                  int
 }
 
 type scannerOptions struct {
@@ -300,7 +300,7 @@ func init() {
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("enableproxy", true)
-	viper.SetDefault("devmaxradiostreams", consts.MaxRadioStreams)
+	viper.SetDefault("maxradiostreams", consts.MaxRadioStreams)
 }
 
 func InitConfig(cfgFile string) {

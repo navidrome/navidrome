@@ -332,6 +332,18 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("enableExternalServices", true))
 	})
 
+	It("sets the enableProxy", func() {
+		conf.Server.EnableProxy = false
+		conf.Server.EnableExternalServices = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableProxy", false))
+	})
+
 	Describe("loginBackgroundURL", func() {
 		Context("empty BaseURL", func() {
 			BeforeEach(func() {

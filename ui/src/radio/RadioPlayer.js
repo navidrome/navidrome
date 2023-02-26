@@ -34,14 +34,6 @@ const DEFAULT_ICON = {
 const MIN_TIME_BETWEEN_SCROBBLE_MS = 30 * 1000
 const SCROBBLE_DELAY_MS = 4 * 60 * 1000
 
-function parseMetadata(metadata) {
-  const split = metadata.StreamTitle.split(' - ')
-  const artist = split[0]
-  const title = split.slice(1).join(' - ')
-
-  return [artist, title]
-}
-
 const RadioPlayer = ({
   className,
   cover,
@@ -107,13 +99,23 @@ const RadioPlayer = ({
 
     if (streamUrl) {
       const player = new IcecastMetadataPlayer(streamUrl, {
-        onMetadata: setMetadata,
+        onMetadata: (data) => {
+          const split = data.StreamTitle.split(' - ')
+
+          let artist, title
+
+          if (split.length === 1) {
+            title = split[0]
+          } else {
+            artist = split[0]
+            title = split.slice(1).join(' - ')
+          }
+
+          setMetadata({ artist, title })
+        },
         onPlay: () => {
           setLoading(false)
           setPlaying(true)
-        },
-        onStop: () => {
-          setPlaying(false)
         },
         icyDetectionTimeout: 10000,
         enableLogging: false, // set this to true for dev
@@ -135,12 +137,12 @@ const RadioPlayer = ({
   }, [audioRef, cast, currentStream, streamUrl])
 
   useEffect(() => {
-    if (metadata.StreamTitle) {
+    if (metadata.title) {
       let scrobbled = false
 
       const currentUpdate = new Date()
 
-      const [artist, title] = parseMetadata(metadata)
+      const { artist, title } = metadata
 
       if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
@@ -150,22 +152,22 @@ const RadioPlayer = ({
         })
       }
 
-      subsonic.scrobbleRadio(artist, title, false)
+      if (artist) {
+        subsonic.scrobbleRadio(artist, title, false)
 
-      const timeout = setTimeout(() => {
-        scrobbled = true
-        subsonic.scrobbleRadio(artist, title, true)
-      }, SCROBBLE_DELAY_MS)
+        const timeout = setTimeout(() => {
+          scrobbled = true
+          subsonic.scrobbleRadio(artist, title, true)
+        }, SCROBBLE_DELAY_MS)
 
-      return () => {
-        const now = new Date()
+        return () => {
+          const now = new Date()
 
-        if (!scrobbled) {
-          clearTimeout(timeout)
-
-          if (now - currentUpdate > MIN_TIME_BETWEEN_SCROBBLE_MS) {
-            const [priorArtist, priorTitle] = parseMetadata(metadata)
-            subsonic.scrobbleRadio(priorArtist, priorTitle, true)
+          if (!scrobbled) {
+            clearTimeout(timeout)
+            if (now - currentUpdate > MIN_TIME_BETWEEN_SCROBBLE_MS) {
+              subsonic.scrobbleRadio(artist, title, true)
+            }
           }
         }
       }
@@ -176,9 +178,15 @@ const RadioPlayer = ({
     const audio = audioRef.current
 
     if (audio) {
-      audio.onvolumechange = () => {
+      function volumeChange() {
         const { volume } = audio
         setVolume(mapListenToBar(volume))
+      }
+
+      audio.addEventListener('volumechange', volumeChange)
+
+      return () => {
+        audio.removeEventListener('volumechange', volumeChange)
       }
     }
   }, [audioRef])
@@ -222,8 +230,8 @@ const RadioPlayer = ({
   }, [])
 
   const coverClick = useCallback(() => {
-    window.location.href = `#/radio?displayedFilters={}&filter={"name":"${name}"}`
-  }, [name])
+    window.location.href = `#/radio/${id}/show`
+  }, [id])
 
   const stopPlaying = useCallback(() => {
     audioRef.current.src = ''
@@ -269,15 +277,16 @@ const RadioPlayer = ({
               />
             )}
             <div className="progress-bar-content">
-              <span className="audio-title" title={metadata.StreamTitle || ''}>
-                <RadioTitle
-                  homePageUrl={homePageUrl}
-                  isMobile={false}
-                  metadata={metadata}
-                  name={name}
-                />
-              </span>
-              <section className="audio-main"></section>
+              {metadata.title && (
+                <span className="audio-title" title={metadata.title}>
+                  <RadioTitle
+                    homePageUrl={homePageUrl}
+                    isMobile={false}
+                    metadata={metadata}
+                    name={name}
+                  />
+                </span>
+              )}
             </div>
             <div className="player-content">
               <span className="group">

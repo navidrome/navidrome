@@ -185,7 +185,7 @@ func (api *Router) routes() http.Handler {
 				// These are not official subsonic routes. However, they use subsonic
 				// as opposed to native API because it makes authentication easier from the
 				// client side (namely, fetching audio and images)
-				throttle := conf.Server.DevMaxRadioStreams
+				throttle := conf.Server.MaxRadioStreams
 
 				if throttle == 0 {
 					return

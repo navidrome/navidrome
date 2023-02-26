@@ -1,25 +1,11 @@
-import {
-  DateField,
-  Edit,
-  required,
-  SimpleForm,
-  TextInput,
-  useTranslate,
-} from 'react-admin'
+import { DateField, Edit, required, SimpleForm, TextInput } from 'react-admin'
 import { urlValidate } from '../utils/validations'
-import { Title } from '../common'
+import RadioLinkList from './RadioLinkList'
+import RadioPageTitle from './RadioPageTitle'
 
-const RadioTitle = ({ record }) => {
-  const translate = useTranslate()
-  const resourceName = translate('resources.radio.name', {
-    smart_count: 1,
-  })
-  return <Title subTitle={`${resourceName} ${record ? record.name : ''}`} />
-}
-
-const RadioEdit = (props) => {
+const RadioEdit = ({ hasCreate, hasEdit, hasList, hasShow, ...props }) => {
   return (
-    <Edit title={<RadioTitle />} {...props}>
+    <Edit title={<RadioPageTitle />} {...props}>
       <SimpleForm variant="outlined" {...props}>
         <TextInput source="name" validate={[required()]} />
         <TextInput
@@ -34,6 +20,7 @@ const RadioEdit = (props) => {
           fullWidth
           validate={[urlValidate]}
         />
+        <RadioLinkList />
         <DateField variant="body1" source="updatedAt" showTime />
         <DateField variant="body1" source="createdAt" showTime />
       </SimpleForm>

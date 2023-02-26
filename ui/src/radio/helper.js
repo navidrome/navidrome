@@ -1,7 +1,7 @@
 import config from '../config'
 import subsonic from '../subsonic'
 
-export async function songFromRadio(radio) {
+export async function songFromRadio(radio, subStream) {
   if (!radio) {
     return undefined
   }
@@ -25,17 +25,27 @@ export async function songFromRadio(radio) {
     cover = urlString
   } catch {}
 
+  let radioName, targetUrl
+
+  if (subStream) {
+    radioName = `${subStream.name} (${radio.name})`
+    targetUrl = subStream.url
+  } else {
+    radioName = radio.name
+    targetUrl = radio.streamUrl
+  }
+
   let streamUrl
 
   if (config.enableProxy) {
     streamUrl = subsonic.url('proxy/stream', '', {
-      url: radio.streamUrl,
+      url: targetUrl,
     })
   } else {
-    streamUrl = radio.streamUrl
+    streamUrl = targetUrl
   }
 
-  return { ...radio, cover, streamUrl }
+  return { ...radio, cover, name: radioName, streamUrl }
 }
 
 const resourceExists = (url) => {

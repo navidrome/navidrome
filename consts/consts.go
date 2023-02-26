@@ -68,7 +68,7 @@ const (
 
 	Zwsp = string('\u200b')
 
-	MaxRadioStreams = -1 // Unlimited
+	MaxRadioStreams = 100 // Unlimited
 )
 
 // Cache options

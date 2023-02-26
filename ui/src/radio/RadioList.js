@@ -1,6 +1,7 @@
 import { makeStyles, useMediaQuery } from '@material-ui/core'
 import React, { cloneElement } from 'react'
 import {
+  BooleanField,
   CreateButton,
   Datagrid,
   DateField,
@@ -31,6 +32,9 @@ const useStyles = makeStyles({
   },
   contextMenu: {
     visibility: 'hidden',
+  },
+  streamUrl: {
+    overflowWrap: 'anywhere',
   },
 })
 
@@ -89,7 +93,8 @@ const RadioList = ({ permissions, ...props }) => {
         rel="noopener noreferrer"
       />
     ),
-    streamUrl: <TextField source="streamUrl" />,
+    streamUrl: <TextField className={classes.streamUrl} source="streamUrl" />,
+    isPlaylist: <BooleanField source="isPlaylist" />,
     updatedAt: <DateField source="updatedAt" showTime />,
     createdAt: <DateField source="createdAt" showTime />,
   }
@@ -97,11 +102,15 @@ const RadioList = ({ permissions, ...props }) => {
   const columns = useSelectedFields({
     resource: 'radio',
     columns: toggleableFields,
-    defaultOff: ['createdAt'],
+    defaultOff: ['createdAt', 'streamUrl'],
   })
 
   const handleRowClick = async (id, basePath, record) => {
-    dispatch(playRadio(await songFromRadio(record)))
+    if (!record.isPlaylist) {
+      dispatch(playRadio(await songFromRadio(record)))
+    } else {
+      window.location.href = `#/radio/${id}/show`
+    }
   }
 
   return (

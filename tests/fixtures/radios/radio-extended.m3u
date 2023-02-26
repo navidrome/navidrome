@@ -1,0 +1,14 @@
+#EXTM#U
+
+#EXTINF:1,Sample Radio 10
+https://example.com:8000/stream
+
+#EXTINF:1,Sample Radio 100
+https://example.com:8000/stream/20
+
+
+https://example.com:8000/stream/40
+
+
+
+https://example.com:8000/stream/100
