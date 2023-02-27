@@ -6,14 +6,15 @@ const prefix = 'react-jinke-music-player-mobile'
 
 const RadioPlayerMobile = ({
   cover,
-  homePageUrl,
   icon,
+  id,
   loading,
   locale,
   metadata,
   name,
   onClose,
   onCoverClick,
+  onFix,
   onPlay,
   playing,
 }) => (
@@ -21,10 +22,11 @@ const RadioPlayerMobile = ({
     <div className={`${prefix}-header group`}>
       <div className={`${prefix}-header-title`} title={name}>
         <RadioTitle
-          homePageUrl={homePageUrl}
+          id={id}
           isMobile={true}
           metadata={metadata}
           name={name}
+          onFix={onFix}
         />
       </div>
 

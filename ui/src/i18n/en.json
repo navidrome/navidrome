@@ -175,13 +175,16 @@
                 "createdAt": "Created at",
                 "isPlaylist": "Playlist?",
                 "url": "Stream URL",
-                "links": "Radio links. Click one to play"
+                "links": "Radio links. Click one to play",
+                "title": "Track title",
+                "artist": "Track artist"
             },
             "actions": {
                 "playNow": "Play Now"
             },
             "message": {
-                "noArtist": "Could not detect artist. Click to update"
+                "noArtist": "Could not detect artist. Click to update",
+                "noArtistNotif": "Could not detect artist. Please manually fix"
             }
         },
         "share": {

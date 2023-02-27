@@ -13,13 +13,16 @@ import {
   VolumeUnmuteIcon,
 } from 'navidrome-music-player/es/components/Icon'
 import RadioTitle from './RadioTitle'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 
 import { clearQueue } from '../actions'
 import { useMediaQuery } from '@material-ui/core'
 import RadioPlayerMobile from './RadioPlayerMobile'
 import subsonic from '../subsonic'
 import config from '../config'
+import { sendNotification } from '../utils'
+import { useTranslate } from 'react-admin'
+import RadioDialog from './RadioDialog'
 
 const DEFAULT_ICON = {
   pause: <AnimatePauseIcon />,
@@ -47,6 +50,7 @@ const RadioPlayer = ({
 }) => {
   const dispatch = useDispatch()
   const audioRef = useRef()
+  const translate = useTranslate()
 
   const [cast, setCast] = useState(null)
   const [currentStream, setCurrentStream] = useState(null)
@@ -55,9 +59,13 @@ const RadioPlayer = ({
   const [playing, setPlaying] = useState(false)
   const [savedVolume, setSavedVolume] = useState(1)
   const [volume, setVolume] = useState(1)
+  const [open, setOpen] = useState(false)
 
   const isMobile = useMediaQuery(
     '(max-width: 768px) and (orientation : portrait)'
+  )
+  const showNotifications = useSelector(
+    (state) => state.settings.notifications || false
   )
 
   const Spin = () => <span className="loading group">{icon.loading}</span>
@@ -142,7 +150,7 @@ const RadioPlayer = ({
 
       const currentUpdate = new Date()
 
-      const { artist, title } = metadata
+      const { artist, fix, title } = metadata
 
       if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
@@ -150,6 +158,14 @@ const RadioPlayer = ({
           artist,
           title,
         })
+      }
+
+      if (showNotifications && !fix) {
+        const body = artist
+          ? `${artist} - ${name}`
+          : translate('resources.radio.message.noArtistNotif')
+
+        sendNotification(title, body, cover)
       }
 
       if (artist) {
@@ -165,14 +181,14 @@ const RadioPlayer = ({
 
           if (!scrobbled) {
             clearTimeout(timeout)
-            if (now - currentUpdate > MIN_TIME_BETWEEN_SCROBBLE_MS) {
+            if (now - currentUpdate > MIN_TIME_BETWEEN_SCROBBLE_MS || fix) {
               subsonic.scrobbleRadio(artist, title, true)
             }
           }
         }
       }
     }
-  }, [metadata, name])
+  }, [cover, metadata, name, showNotifications, translate])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -215,6 +231,14 @@ const RadioPlayer = ({
     setAudioVolume(mapListenToBar(savedVolume || 0.1))
   }, [savedVolume, setAudioVolume])
 
+  const openModal = () => {
+    setOpen(true)
+  }
+
+  const closeModal = () => {
+    setOpen(false)
+  }
+
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
 
@@ -252,14 +276,15 @@ const RadioPlayer = ({
       {isMobile && (
         <RadioPlayerMobile
           cover={cover}
-          homePageUrl={homePageUrl}
           icon={iconMap}
+          id={id}
           loading={loading}
           locale={locale}
           metadata={metadata}
           name={name}
           onClose={stopPlaying}
           onCoverClick={coverClick}
+          onFix={openModal}
           onPlay={togglePlay}
           playing={playing}
         />
@@ -280,10 +305,11 @@ const RadioPlayer = ({
               {metadata.title && (
                 <span className="audio-title" title={metadata.title}>
                   <RadioTitle
-                    homePageUrl={homePageUrl}
+                    id={id}
                     isMobile={false}
                     metadata={metadata}
                     name={name}
+                    onFix={openModal}
                   />
                 </span>
               )}
@@ -342,6 +368,12 @@ const RadioPlayer = ({
       )}
 
       {streamUrl && <audio ref={audioRef} />}
+      <RadioDialog
+        open={open}
+        onClose={closeModal}
+        setMetadata={setMetadata}
+        title={metadata.title}
+      />
     </div>
   )
 }
