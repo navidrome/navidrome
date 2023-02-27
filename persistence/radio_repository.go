@@ -173,15 +173,27 @@ func (r *radioRepository) Update(id string, entity interface{}, cols ...string) 
 	return err
 }
 
+type Playlist int
+
 const (
-	M3U_X_TYPE           = "audio/x-mpegurl"
-	M3U_TYPE             = "audio/mpegurl"
-	PLS_TYPE             = "audio/x-scpls"
-	APPLICATION_PLS_TYPE = "application/pls+xml"
-	MAX_PLS_BODY         = 1024 * 1024 // 1 MiB
+	M3U Playlist = iota
+	PLS
+)
+
+const (
+	MAX_PLS_BODY = 1024 * 1024 // 1 MiB
 )
 
 var (
+	M3U_TYPES = map[string]Playlist{
+		"application/mpegurl":                 M3U,
+		"application/x-mpegurl":               M3U,
+		"audio/mpegurl":                       M3U,
+		"audio/x-mpegurl":                     M3U,
+		"application/vnd.apple.mpegurl":       M3U,
+		"application/vnd.apple.mpegurl.audio": M3U,
+		"audio/x-scpls":                       PLS,
+	}
 	ErrLargePlaylistBody = errors.New("upstream playlist larger than 1 MB")
 )
 
@@ -195,26 +207,26 @@ func (r *radioRepository) refreshLinks(radio *model.Radio) error {
 
 	defer req.Body.Close()
 
+	contentType := strings.TrimSpace(req.Header.Get("Content-Type"))
+	pls, isPls := M3U_TYPES[contentType]
+
+	if !isPls {
+		return nil
+	}
+
+	if req.ContentLength == -1 || req.ContentLength > MAX_PLS_BODY {
+		return ErrLargePlaylistBody
+	}
+
 	var links *model.RadioLinks
 
-	switch req.Header.Get("Content-Type") {
-	case M3U_X_TYPE, M3U_TYPE:
-		if req.ContentLength == -1 || req.ContentLength > MAX_PLS_BODY {
-			return ErrLargePlaylistBody
-		}
-
+	if pls == M3U {
 		links = r.parseM3u(radio.ID, req)
-	case PLS_TYPE, APPLICATION_PLS_TYPE:
-		if req.ContentLength == -1 || req.ContentLength > MAX_PLS_BODY {
-			return ErrLargePlaylistBody
-		}
-
-		links, err = r.parsePls(radio.ID, *req)
+	} else {
+		links, err = r.parsePls(radio.ID, req)
 		if err != nil {
 			return err
 		}
-	default:
-		return nil
 	}
 
 	del := Delete("radio_link").Where(Eq{"radio_id": radio.ID})
@@ -283,7 +295,7 @@ func (r *radioRepository) parseM3u(id string, req *http.Response) *model.RadioLi
 	return &links
 }
 
-func (r *radioRepository) parsePls(id string, req http.Response) (*model.RadioLinks, error) {
+func (r *radioRepository) parsePls(id string, req *http.Response) (*model.RadioLinks, error) {
 	scanner := bufio.NewScanner(req.Body)
 
 	file := ""

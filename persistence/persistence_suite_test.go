@@ -139,7 +139,7 @@ func SetupRadio(repo *radioRepository, client *tests.FakeHttpClient) {
 
 	f, _ := os.Open("tests/fixtures/radios/radio.m3u")
 	header := http.Header{}
-	header.Set("Content-Type", M3U_TYPE)
+	header.Set("Content-Type", "application/mpegurl")
 	client.Res = http.Response{
 		Body: f, StatusCode: 200, Header: header,
 	}
@@ -158,7 +158,7 @@ func SetupRadio(repo *radioRepository, client *tests.FakeHttpClient) {
 	}
 
 	f, _ = os.Open("tests/fixtures/radios/radio.pls")
-	header.Set("Content-Type", PLS_TYPE)
+	header.Set("Content-Type", "audio/x-scpls")
 	client.Res = http.Response{
 		Body: f, StatusCode: 200, Header: header,
 	}

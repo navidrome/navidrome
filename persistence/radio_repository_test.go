@@ -202,9 +202,9 @@ var _ = Describe("RadioRepository", func() {
 				})
 			}
 
-			testCreate("radio.m3u", M3U_TYPE, &m3uLinks)
-			testCreate("radio-extended.m3u", M3U_X_TYPE, &m3uExtendedLinks)
-			testCreate("radio.pls", PLS_TYPE, &plsLinks)
+			testCreate("radio.m3u", "audio/mpegurl", &m3uLinks)
+			testCreate("radio-extended.m3u", "audio/x-mpegurl", &m3uExtendedLinks)
+			testCreate("radio.pls", "audio/x-scpls", &plsLinks)
 
 			testUpdate := func(id string, filename string, contentType string, links *model.RadioLinks) {
 				ext := path.Ext(filename)
@@ -245,9 +245,9 @@ var _ = Describe("RadioRepository", func() {
 				})
 			}
 
-			testUpdate("3456", "radio.m3u", M3U_TYPE, &m3uLinks)
-			testUpdate("1234", "radio-extended.m3u", M3U_X_TYPE, &m3uExtendedLinks)
-			testUpdate("2345", "radio.pls", PLS_TYPE, &plsLinks)
+			testUpdate("3456", "radio.m3u", "application/vnd.apple.mpegurl", &m3uLinks)
+			testUpdate("1234", "radio-extended.m3u", "application/vnd.apple.mpegurl.audio", &m3uExtendedLinks)
+			testUpdate("2345", "radio.pls", "audio/x-scpls", &plsLinks)
 		})
 	})
 
