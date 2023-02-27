@@ -14,6 +14,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -94,6 +95,8 @@ func (r *radioRepository) Put(radio *model.Radio) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
 	}
+
+	log.Info(r.ctx, "PUT", "Radio", radio)
 
 	var values map[string]interface{}
 
@@ -208,13 +211,13 @@ func (r *radioRepository) refreshLinks(radio *model.Radio) error {
 	defer req.Body.Close()
 
 	contentType := strings.TrimSpace(req.Header.Get("Content-Type"))
-	pls, isPls := M3U_TYPES[contentType]
+	pls, isPlaylist := M3U_TYPES[contentType]
 
-	if !isPls {
+	if !isPlaylist {
 		return nil
 	}
 
-	if req.ContentLength == -1 || req.ContentLength > MAX_PLS_BODY {
+	if req.ContentLength > MAX_PLS_BODY {
 		return ErrLargePlaylistBody
 	}
 
