@@ -19,20 +19,21 @@ var _ = Describe("Tags", func() {
 			mds, err := metadata.Extract("tests/fixtures/test.mp3", "tests/fixtures/test.ogg")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(mds).To(HaveLen(2))
-
+			
 			m := mds["tests/fixtures/test.mp3"]
-			_, Date := m.Date()
-			_, OriginalDate := m.OriginalDate
-			_, ReleaseDate := m.ReleaseDate
 			Expect(m.Title()).To(Equal("Song"))
 			Expect(m.Album()).To(Equal("Album"))
 			Expect(m.Artist()).To(Equal("Artist"))
 			Expect(m.AlbumArtist()).To(Equal("Album Artist"))
 			Expect(m.Compilation()).To(BeTrue())
 			Expect(m.Genres()).To(Equal([]string{"Rock"}))
-			Expect(Date).To(Equal("2014-05-21")
-			Expect(OriginalDate).To(Equal("1996-11-21")
-			Expect(ReleaseDate).To(Equal("2020-12-31")
+			y, d := m.Date()
+			Expect(y).To(Equal(2014)
+			Expect(d).To(Equal("2014-05-21")
+			y, d = m.OriginalDate()
+			Expect(d).To(Equal("1996-11-21")
+			y, d = m.ReleaseDate()
+			Expect(d).To(Equal("2020-12-31")
 			n, t := m.TrackNumber()
 			Expect(n).To(Equal(2))
 			Expect(t).To(Equal(10))
