@@ -201,36 +201,37 @@ const Details = (props) => {
   if (record.date) {
     date = FormatFullDate(record.date)
   }
-  yearRange && addDetail(<>{["♫", (!isXsmall ? date : yearRange)].join('  ')}</>)
-  
+  yearRange && addDetail(<>{['♫', !isXsmall ? date : yearRange].join('  ')}</>)
+
   let releaseDate = date
   if (record.releaseDate) {
     releaseDate = FormatFullDate(record.releaseDate)
   }
-  const showReleaseDate  = (date !== releaseDate)
-  showReleaseDate && addDetail(
-    <>
-    { 
-        (!isXsmall ? [translate('resources.album.fields.released'),releaseDate] : ["○",record.releaseDate.substring(0,4)])
-      .join('  ')
-    }
-    </>
-  )
-  
-  const showEditions = (record.editions > 1)
-  showEditions && addDetail(
-    <>
-    { 
-      (!isXsmall ?
-        [record.editions, translate('resources.album.fields.edition', {
-          smart_count: record.editions,
-        })].join(' ')
-        :
-        ['(', record.editions, ')))'].join(' ')
-      )
-    }
-    </>
-  )
+  const showReleaseDate = date !== releaseDate
+  showReleaseDate &&
+    addDetail(
+      <>
+        {(!isXsmall
+          ? [translate('resources.album.fields.released'), releaseDate]
+          : ['○', record.releaseDate.substring(0, 4)]
+        ).join('  ')}
+      </>
+    )
+
+  const showEditions = record.editions > 1
+  showEditions &&
+    addDetail(
+      <>
+        {!isXsmall
+          ? [
+              record.editions,
+              translate('resources.album.fields.edition', {
+                smart_count: record.editions,
+              }),
+            ].join(' ')
+          : ['(', record.editions, ')))'].join(' ')}
+      </>
+    )
 
   addDetail(
     <>
