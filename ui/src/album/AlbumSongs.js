@@ -6,7 +6,6 @@ import {
   NumberField,
   useVersion,
   useListContext,
-  useRecordContext,
   FunctionField,
 } from 'react-admin'
 import clsx from 'clsx'
