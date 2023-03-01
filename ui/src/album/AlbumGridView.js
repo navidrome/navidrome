@@ -160,19 +160,18 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
       </Link>
       {showArtist ? (
         <ArtistLinkField record={record} className={classes.albumSubtitle} />
-        ) : (
-          <RangeFieldDouble
-              record={record}
-              source={'year'}
-              symbol1={'♫'}
-              symbol2={'○'}
-              separator={' · '}
-              sortBy={'max_year'}
-              sortByOrder={'DESC'}
-              className={classes.albumSubtitle}
-            /> 
-        )
-      }
+      ) : (
+        <RangeFieldDouble
+          record={record}
+          source={'year'}
+          symbol1={'♫'}
+          symbol2={'○'}
+          separator={' · '}
+          sortBy={'max_year'}
+          sortByOrder={'DESC'}
+          className={classes.albumSubtitle}
+        />
+      )}
     </div>
   )
 }
